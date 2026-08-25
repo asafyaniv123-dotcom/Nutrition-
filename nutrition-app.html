@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="תזונה">
+<title>מעקב תזונה</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:#fbf7f2;font-family:-apple-system,Arial,sans-serif;color:#4a4340;direction:rtl;min-height:100vh;-webkit-font-smoothing:antialiased;}
+.vr{font-weight:700;letter-spacing:-.01em;}
+
+/* HEADER */
+#header{background:linear-gradient(135deg,#f0eafa,#eaf5ee);padding:16px 14px 12px;position:sticky;top:0;z-index:20;}
+.date-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.date-btn{background:rgba(255,255,255,.75);border:none;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:18px;color:#4a4340;}
+.date-center{text-align:center;}
+.date-today{font-size:9px;color:#a690cf;letter-spacing:.12em;margin-bottom:2px;}
+.date-label{font-size:15px;font-weight:700;}
+.tabs{display:flex;gap:6px;background:rgba(255,255,255,.5);border-radius:12px;padding:4px;}
+.tab{flex:1;padding:7px;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;}
+.tab.on{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;}
+.tab:not(.on){background:transparent;color:#a89e97;}
+
+/* CONTENT */
+#content{padding:12px 12px 80px;max-width:480px;margin:0 auto;}
+
+/* CARD */
+.card{background:#fff;border-radius:20px;padding:16px 14px;margin-bottom:11px;box-shadow:0 4px 16px rgba(200,180,160,.12);}
+.card-ttl{font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700;margin-bottom:12px;text-align:center;}
+
+/* MACRO BARS */
+.macro-row{display:flex;justify-content:space-around;gap:6px;}
+.mcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.mpct{font-size:9px;font-weight:700;}
+.mtrack{width:30px;height:90px;background:#f2ede6;border-radius:15px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;}
+.mfill{width:100%;border-radius:15px;transition:height .4s;}
+.f0{background:linear-gradient(180deg,#c9bce0,#a690cf);}
+.f1{background:linear-gradient(180deg,#f3b9a8,#e08a72);}
+.f2{background:linear-gradient(180deg,#bfe0c7,#8fc79e);}
+.f3{background:linear-gradient(180deg,#f6dfa0,#e8c162);}
+.mval{font-size:11px;font-weight:700;color:#4a4340;}
+.mlbl{font-size:9px;color:#a89e97;margin-top:-2px;}
+
+/* PILLS */
+.pills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:11px;}
+.pill{background:#fff;border-radius:14px;padding:10px 6px;text-align:center;box-shadow:0 4px 12px rgba(200,180,160,.1);}
+.pill-val{font-size:17px;font-weight:700;}
+.pill-lbl{font-size:9px;color:#a89e97;margin-top:2px;}
+
+/* WATER */
+.water{background:linear-gradient(135deg,#e8f4fd,#d6eaf8);border-radius:20px;padding:13px 14px;margin-bottom:11px;}
+.water-hd{display:flex;justify-content:space-between;margin-bottom:7px;}
+.water-t{font-size:12px;font-weight:700;color:#5b8fa8;}
+.water-n{font-size:12px;font-weight:700;color:#3a7ca5;}
+.water-bar{background:rgba(255,255,255,.5);border-radius:4px;height:7px;overflow:hidden;margin-bottom:9px;}
+.water-fill{height:100%;background:linear-gradient(90deg,#74b9e8,#3a7ca5);border-radius:4px;transition:width .4s;}
+.water-btns{display:flex;gap:5px;}
+.wb{flex:1;background:rgba(255,255,255,.75);border:none;border-radius:9px;padding:7px 0;font-size:12px;font-weight:700;cursor:pointer;color:#3a7ca5;}
+.wr{background:rgba(255,255,255,.5);border:none;border-radius:9px;padding:7px 10px;font-size:12px;cursor:pointer;color:#a89e97;}
+
+/* QUICK ADD */
+.qa-card{background:#fff;border-radius:20px;margin-bottom:11px;box-shadow:0 4px 16px rgba(200,180,160,.12);overflow:hidden;}
+.qa-toggle{width:100%;background:none;border:none;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+.qa-lbl{font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700;}
+.qa-arrow{font-size:14px;color:#a89e97;transition:transform .2s;}
+.qa-list{padding:0 10px 12px;}
+.qbtn{width:100%;display:flex;align-items:center;gap:10px;background:#fbf7f2;border:none;border-radius:12px;padding:9px 10px;cursor:pointer;text-align:right;margin-bottom:6px;}
+.qbtn:active{opacity:.7;}
+.qemoji{font-size:20px;flex-shrink:0;}
+.qname{font-size:12.5px;font-weight:700;color:#4a4340;}
+.qdesc{font-size:10px;color:#a89e97;margin-top:1px;}
+.qkcal{font-size:10px;font-weight:700;color:#a89e97;flex-shrink:0;text-align:left;}
+
+/* MANUAL */
+.man-btn{width:100%;border:none;border-radius:16px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:4px;}
+.man-btn.closed{background:#fff;color:#a690cf;box-shadow:0 4px 14px rgba(200,180,160,.1);}
+.man-btn.open{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;border-radius:16px 16px 0 0;}
+.man-form{background:#fff;border-radius:0 0 16px 16px;padding:13px 13px;box-shadow:0 6px 14px rgba(200,180,160,.1);margin-bottom:7px;}
+.man-inp{width:100%;border:1.5px solid #f2ede6;border-radius:9px;padding:9px 11px;font-size:13px;direction:rtl;outline:none;margin-bottom:9px;}
+.man-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:11px;}
+.man-flbl{font-size:9px;font-weight:700;margin-bottom:3px;}
+.man-num{width:100%;border:1.5px solid #f2ede6;border-radius:7px;padding:6px 5px;font-size:13px;text-align:center;outline:none;}
+.add-btn{width:100%;background:linear-gradient(135deg,#bfe0c7,#8fc79e);border:none;border-radius:11px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;}
+
+/* MEAL LOG */
+.meal-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f2ede6;}
+.meal-name{font-size:13px;font-weight:700;color:#4a4340;}
+.meal-sub{font-size:10.5px;color:#a89e97;margin-top:2px;}
+.meal-del{background:none;border:none;cursor:pointer;color:#f3b9a8;font-size:16px;padding:3px 7px;flex-shrink:0;}
+.log-total{display:flex;justify-content:space-between;margin-top:9px;padding-top:7px;border-top:2px solid #f2ede6;}
+
+/* HISTORY */
+.hbars{display:flex;gap:4px;align-items:flex-end;position:relative;}
+.hcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+.hbar{width:100%;border-radius:5px 5px 0 0;min-height:3px;}
+.hdate{font-size:8px;color:#a89e97;margin-top:4px;font-weight:700;}
+.hval{font-size:8px;color:#a89e97;margin-bottom:2px;}
+.tline{position:absolute;left:0;right:0;border-top:2px dashed #a690cf;pointer-events:none;}
+.tlbl{font-size:8px;color:#a690cf;position:absolute;right:0;top:-11px;font-weight:700;}
+.avg-box{background:linear-gradient(135deg,#eef5ee,#f0eafa);border-radius:18px;padding:14px 16px;}
+.avg-inner{display:flex;justify-content:space-around;}
+.avg-val{font-size:20px;font-weight:700;}
+.avg-lbl{font-size:9.5px;color:#a89e97;margin-top:2px;}
+
+/* TOAST */
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#4a4340;color:#fff;font-size:13px;font-weight:700;padding:9px 18px;border-radius:18px;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.2);opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;}
+#toast.on{opacity:1;}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+<div id="header">
+  <div class="date-row">
+    <button class="date-btn" onclick="goDay(-1)">‹</button>
+    <div class="date-center">
+      <div class="date-today" id="today-label"></div>
+      <div class="date-label" id="date-label"></div>
+    </div>
+    <button class="date-btn" id="fwd-btn" onclick="goDay(1)">›</button>
+  </div>
+  <div class="tabs">
+    <button class="tab on" id="tab-today" onclick="setTab('today')">יומי</button>
+    <button class="tab" id="tab-history" onclick="setTab('history')">היסטוריה</button>
+  </div>
+</div>
+
+<div id="content"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+const T = {kcal:1975,p:155,c:200,f:60,water:3000};
+
+const PRESETS = [
+  {id:'b',emoji:'🍳',name:'ארוחת בוקר רגילה',desc:'2 ביצים + לחם + ריקוטה + ירקות',kcal:304,p:18.5,c:29,f:12},
+  {id:'cr',emoji:'🍗',name:'מנת עוף-אורז',desc:'150 גרם עוף + 150 גרם אורז/אפונה/גזר',kcal:321,p:39,c:33,f:3.5},
+  {id:'tu',emoji:'🐟',name:'פחית טונה',desc:'טונה במים',kcal:90,p:24,c:0,f:1},
+  {id:'pm',emoji:'🥤',name:'שייק פרומקס',desc:'Herbalife Promax',kcal:190,p:25,c:18,f:1.5},
+  {id:'py',emoji:'☕',name:'PRO יטבתה',desc:'350 מ"ל קפה/שוקולד',kcal:135,p:25,c:8.5,f:0.75},
+];
+
+// ── STATE ─────────────────────────────────────────────────
+let curDate = todayStr();
+let curTab  = 'today';
+let qaOpen  = true;
+let manOpen = false;
+
+// ── HELPERS ───────────────────────────────────────────────
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function pct(v,m){ return Math.min(100,Math.round(v/m*100)); }
+function fmtTime(){ return new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDate(s){
+  const d=new Date(s+'T12:00:00');
+  const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const mos=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  return days[d.getDay()]+', '+d.getDate()+' ב'+mos[d.getMonth()];
+}
+
+// ── STORAGE ───────────────────────────────────────────────
+function sk(d){ return 'nutri_'+d; }
+function loadDay(d){
+  try{ const x=localStorage.getItem(sk(d)); return x?JSON.parse(x):{meals:[],water:0}; }
+  catch{ return {meals:[],water:0}; }
+}
+function saveDay(d,data){ try{localStorage.setItem(sk(d),JSON.stringify(data));}catch{} }
+
+// ── TOAST ─────────────────────────────────────────────────
+let _tt=null;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('on');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('on'),1700);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────
+function goDay(d){
+  const nd=new Date(curDate+'T12:00:00'); nd.setDate(nd.getDate()+d);
+  const ns=nd.toISOString().slice(0,10);
+  if(ns<=todayStr()){ curDate=ns; render(); }
+}
+
+function setTab(t){
+  curTab=t;
+  document.getElementById('tab-today').className='tab'+(t==='today'?' on':'');
+  document.getElementById('tab-history').className='tab'+(t==='history'?' on':'');
+  render();
+}
+
+// ── ACTIONS ───────────────────────────────────────────────
+function addMeal(meal){
+  const day=loadDay(curDate);
+  day.meals.push({...meal,id:Date.now(),time:fmtTime()});
+  saveDay(curDate,day); toast('✓ '+meal.name+' נוסף'); render();
+}
+
+function removeMeal(id){
+  const day=loadDay(curDate);
+  day.meals=day.meals.filter(m=>m.id!==id);
+  saveDay(curDate,day); render();
+}
+
+function addWater(ml){
+  const day=loadDay(curDate);
+  day.water=Math.min((day.water||0)+ml,6000);
+  saveDay(curDate,day); render();
+}
+
+function resetWater(){
+  const day=loadDay(curDate);
+  day.water=0; saveDay(curDate,day); render();
+}
+
+function addManual(){
+  const name=document.getElementById('m-name').value.trim();
+  const kcal=parseFloat(document.getElementById('m-kcal').value)||0;
+  if(!name||!kcal){ alert('נא למלא שם וקלוריות'); return; }
+  addMeal({
+    name,kcal,
+    p:parseFloat(document.getElementById('m-p').value)||0,
+    c:parseFloat(document.getElementById('m-c').value)||0,
+    f:parseFloat(document.getElementById('m-f').value)||0,
+  });
+  manOpen=false;
+}
+
+// ── RENDER ────────────────────────────────────────────────
+function render(){
+  // header
+  const isToday=curDate===todayStr();
+  document.getElementById('today-label').textContent=isToday?'היום':'';
+  document.getElementById('date-label').textContent=fmtDate(curDate);
+  document.getElementById('fwd-btn').style.opacity=isToday?'.2':'1';
+
+  if(curTab==='today') renderToday();
+  else renderHistory();
+}
+
+function renderToday(){
+  const day=loadDay(curDate);
+  const meals=day.meals||[];
+  const water=day.water||0;
+  const tot=meals.reduce((a,m)=>({kcal:a.kcal+(m.kcal||0),p:a.p+(m.p||0),c:a.c+(m.c||0),f:a.f+(m.f||0)}),{kcal:0,p:0,c:0,f:0});
+
+  const bars=[
+    {v:Math.round(tot.kcal),t:T.kcal,lbl:'קק"ל',cls:'f0',col:'#a690cf'},
+    {v:Math.round(tot.p),t:T.p,lbl:'חלבון',cls:'f1',col:'#e08a72'},
+    {v:Math.round(tot.c),t:T.c,lbl:'פחמימה',cls:'f2',col:'#8fc79e'},
+    {v:Math.round(tot.f),t:T.f,lbl:'שומן',cls:'f3',col:'#e8c162'},
+  ];
+
+  const macroHTML=`<div class="card">
+    <div class="card-ttl">התקדמות מול היעד</div>
+    <div class="macro-row">${bars.map(b=>{
+      const p2=pct(b.v,b.t);
+      return `<div class="mcol">
+        <div class="mpct" style="color:${p2>=100?b.col:'#a89e97'}">${p2}%</div>
+        <div class="mtrack"><div class="mfill ${b.cls}" style="height:${p2}%;min-height:${b.v>0?4:0}px"></div></div>
+        <div class="mval">${b.v}</div>
+        <div class="mlbl">${b.lbl}</div>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+
+  const pills=`<div class="pills">
+    <div class="pill"><div class="pill-val" style="color:#a690cf">${Math.max(0,Math.round(T.kcal-tot.kcal))}</div><div class="pill-lbl">קק"ל נותרו</div></div>
+    <div class="pill"><div class="pill-val" style="color:#e08a72">${Math.max(0,Math.round(T.p-tot.p))}g</div><div class="pill-lbl">חלבון נותר</div></div>
+    <div class="pill"><div class="pill-val" style="color:#e8c162">${Math.max(0,Math.round(T.f-tot.f))}g</div><div class="pill-lbl">שומן נותר</div></div>
+  </div>`;
+
+  const wp=pct(water,T.water);
+  const waterHTML=`<div class="water">
+    <div class="water-hd"><span class="water-t">💧 מים</span><span class="water-n">${water} / ${T.water} מ"ל</span></div>
+    <div class="water-bar"><div class="water-fill" style="width:${wp}%"></div></div>
+    <div class="water-btns">
+      <button class="wb" onclick="addWater(250)">+250מ"ל</button>
+      <button class="wb" onclick="addWater(500)">+500מ"ל</button>
+      <button class="wb" onclick="addWater(1000)">+1L</button>
+      <button class="wr" onclick="resetWater()">↺</button>
+    </div>
+  </div>`;
+
+  const qaHTML=`<div class="qa-card">
+    <button class="qa-toggle" onclick="qaOpen=!qaOpen;render()">
+      <span class="qa-lbl">הוספה מהירה</span>
+      <span class="qa-arrow" style="transform:${qaOpen?'rotate(180deg)':'rotate(0)'}">⌃</span>
+    </button>
+    ${qaOpen?`<div class="qa-list">${PRESETS.map(m=>`
+      <button class="qbtn" onclick='addMeal(${JSON.stringify(m)})'>
+        <span class="qemoji">${m.emoji}</span>
+        <div><div class="qname">${m.name}</div><div class="qdesc">${m.desc}</div></div>
+        <div class="qkcal">${m.kcal}<br><span style="font-size:9px">קק"ל</span></div>
+      </button>`).join('')}</div>`:''}
+  </div>`;
+
+  const manHTML=`
+    <button class="man-btn ${manOpen?'open':'closed'}" onclick="manOpen=!manOpen;render()">
+      ${manOpen?'✕  סגור':'+ הוספה ידנית'}
+    </button>
+    ${manOpen?`<div class="man-form">
+      <input id="m-name" class="man-inp" placeholder="שם הארוחה">
+      <div class="man-grid">
+        <div><div class="man-flbl" style="color:#a690cf">קק"ל</div><input id="m-kcal" class="man-num" type="number" placeholder="0"></div>
+        <div><div class="man-flbl" style="color:#e08a72">חלבון</div><input id="m-p" class="man-num" type="number" placeholder="0"></div>
+        <div><div class="man-flbl" style="color:#8fc79e">פחמימה</div><input id="m-c" class="man-num" type="number" placeholder="0"></div>
+        <div><div class="man-flbl" style="color:#e8c162">שומן</div><input id="m-f" class="man-num" type="number" placeholder="0"></div>
+      </div>
+      <button class="add-btn" onclick="addManual()">הוסף ✓</button>
+    </div>`:''}`;
+
+  let logHTML='';
+  if(meals.length>0){
+    const t2=meals.reduce((a,m)=>({kcal:a.kcal+m.kcal,p:a.p+m.p,c:a.c+m.c,f:a.f+m.f}),{kcal:0,p:0,c:0,f:0});
+    logHTML=`<div class="card" style="margin-top:0">
+      <div class="card-ttl">ארוחות היום</div>
+      ${meals.map(m=>`<div class="meal-row">
+        <div style="flex:1">
+          <div class="meal-name">${m.name}</div>
+          <div class="meal-sub">${Math.round(m.kcal)} קק"ל · ${Math.round(m.p)}ח/${Math.round(m.c)}פ/${Math.round(m.f)}ש${m.time?' · '+m.time:''}</div>
+        </div>
+        <button class="meal-del" onclick="removeMeal(${m.id})">✕</button>
+      </div>`).join('')}
+      <div class="log-total">
+        <span style="font-size:13px;font-weight:700">סה"כ</span>
+        <span style="font-size:11px;color:#a89e97">${Math.round(t2.kcal)} קק"ל · ${Math.round(t2.p)}ח/${Math.round(t2.c)}פ/${Math.round(t2.f)}ש</span>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('content').innerHTML=macroHTML+pills+waterHTML+qaHTML+manHTML+logHTML;
+}
+
+function renderHistory(){
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const s=d.toISOString().slice(0,10);
+    const day=loadDay(s);
+    const kcal=Math.round(day.meals.reduce((a,m)=>a+(m.kcal||0),0));
+    const p=Math.round(day.meals.reduce((a,m)=>a+(m.p||0),0));
+    days.push({date:s,kcal,p});
+  }
+
+  const active=days.filter(d=>d.kcal>0);
+  const maxK=Math.max(...days.map(d=>d.kcal),T.kcal+300);
+  const avgK=active.length?Math.round(active.reduce((a,d)=>a+d.kcal,0)/active.length):0;
+  const avgP=active.length?Math.round(active.reduce((a,d)=>a+d.p,0)/active.length):0;
+  const inTarget=active.filter(d=>d.kcal<=T.kcal).length;
+
+  const kcalBars=`<div class="card">
+    <div class="card-ttl">קלוריות — 7 ימים אחרונים</div>
+    <div class="hbars" style="height:120px">
+      <div class="tline" style="bottom:${(T.kcal/maxK*100)}%"><span class="tlbl">יעד</span></div>
+      ${days.map(({date,kcal})=>{
+        const h=kcal>0?(kcal/maxK*100)+'%':'3px';
+        const isT=date===todayStr();
+        const bg=kcal===0?'#f2ede6':kcal>T.kcal?'linear-gradient(180deg,#f3b9a8,#e08a72)':'linear-gradient(180deg,#c9bce0,#a690cf)';
+        const d2=new Date(date+'T12:00:00');
+        return `<div class="hcol">
+          <div class="hval">${kcal>0?kcal:''}</div>
+          <div class="hbar" style="height:${h};background:${bg};${isT?'outline:2px solid #a690cf':''}"></div>
+          <div class="hdate" style="color:${isT?'#a690cf':'#a89e97'}">${d2.getDate()}/${d2.getMonth()+1}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  const pBars=`<div class="card">
+    <div class="card-ttl">חלבון — 7 ימים אחרונים</div>
+    <div class="hbars" style="height:90px">
+      ${days.map(({date,p})=>{
+        const h=p>0?(p/180*100)+'%':'3px';
+        const bg=p===0?'#f2ede6':p>=T.p?'linear-gradient(180deg,#bfe0c7,#8fc79e)':'linear-gradient(180deg,#f3b9a8,#e08a72)';
+        const d2=new Date(date+'T12:00:00');
+        return `<div class="hcol">
+          <div class="hbar" style="height:${h};background:${bg}"></div>
+          <div class="hdate">${p>0?p+'g':'—'}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  const avgHTML=active.length?`<div class="avg-box">
+    <div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:10px;letter-spacing:.1em">ממוצעים (${active.length} ימים)</div>
+    <div class="avg-inner">
+      <div class="avg-item"><div class="avg-val" style="color:#a690cf">${avgK}</div><div class="avg-lbl">קק"ל ממוצע</div></div>
+      <div class="avg-item"><div class="avg-val" style="color:#e08a72">${avgP}g</div><div class="avg-lbl">חלבון ממוצע</div></div>
+      <div class="avg-item"><div class="avg-val" style="color:#8fc79e">${inTarget}/${active.length}</div><div class="avg-lbl">ימים ביעד</div></div>
+    </div>
+  </div>`:'';
+
+  document.getElementById('content').innerHTML=kcalBars+pBars+avgHTML;
+}
+
+// ── INIT ──────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
