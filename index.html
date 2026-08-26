@@ -8,7 +8,23 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f0eb;color:#4a4340;direction:rtl;min-height:100vh}
-.app{max-width:480px;margin:0 auto;padding:0 0 100px}
+.app{max-width:480px;margin:0 auto;padding:0 0 100px;display:none}
+.hdr-userbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.hdr-username{font-size:11px;color:#a89e97;font-weight:600}
+.hdr-logout{background:none;border:none;color:#a690cf;font-weight:700;font-size:11px;cursor:pointer;padding:2px 4px}
+.auth-screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px 16px}
+.auth-card{width:100%;max-width:380px;background:#fff;border-radius:26px;padding:28px 22px;box-shadow:0 8px 30px rgba(200,180,160,.18)}
+.auth-logo{text-align:center;font-size:36px;margin-bottom:6px}
+.auth-title{text-align:center;font-size:20px;font-weight:700;margin-bottom:4px}
+.auth-sub{text-align:center;font-size:12px;color:#a89e97;margin-bottom:20px}
+.auth-tabs{display:flex;gap:4px;background:#f5f0eb;border-radius:14px;padding:4px;margin-bottom:20px}
+.auth-tab{flex:1;padding:9px 4px;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:#a89e97}
+.auth-tab.on{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
+.auth-field{margin-bottom:12px}
+.auth-lbl{font-size:11px;color:#a89e97;font-weight:700;margin-bottom:5px;display:block}
+.auth-err{background:rgba(243,185,168,.15);color:#e08a72;font-size:12px;font-weight:600;border-radius:10px;padding:9px 12px;margin-bottom:12px;text-align:center}
+.auth-btn{width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;margin-top:6px}
+.auth-btn:disabled{opacity:.6}
 .hdr{background:linear-gradient(135deg,#f0ebe3,#e8dff5);padding:16px 16px 12px;position:sticky;top:0;z-index:10}
 .hdr-date{text-align:center;font-size:11px;color:#a89e97;margin-bottom:3px}
 .hdr-title{text-align:center;font-size:18px;font-weight:700;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -140,8 +156,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </style>
 </head>
 <body>
+<div id="auth-screen" class="auth-screen"></div>
 <div class="app">
   <div class="hdr">
+    <div class="hdr-userbar">
+      <button class="hdr-logout" onclick="logout()">יציאה</button>
+      <div class="hdr-username" id="hdr-username"></div>
+    </div>
     <div class="hdr-date" id="hdr-date"></div>
     <div class="hdr-title" id="hdr-title"></div>
     <div class="hdr-nav">
@@ -199,14 +220,151 @@ function showToast(msg){
 }
 function starsHTML(n,max){var s='';for(var i=1;i<=max;i++)s+='<span style="color:'+(i<=n?'#e8c162':'#f2ede6')+'">&#9733;</span>';return s;}
 
-function loadDay(d){try{var x=localStorage.getItem('day_'+d);return x?JSON.parse(x):{meals:[],water:0};}catch(e){return{meals:[],water:0};}}
-function saveDay(d,data){try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}}
-function loadSummary(d){try{var x=localStorage.getItem('sum_'+d);return x?JSON.parse(x):null;}catch(e){return null;}}
-function saveSummary(d,data){try{localStorage.setItem('sum_'+d,JSON.stringify(data));}catch(e){}}
-function loadLib(){try{var x=localStorage.getItem('my_meals');return x?JSON.parse(x):[]; }catch(e){return[];}}
-function saveLibData(arr){try{localStorage.setItem('my_meals',JSON.stringify(arr));}catch(e){}}
-function loadComposed(){try{var x=localStorage.getItem('composed_meals');return x?JSON.parse(x):[]; }catch(e){return[];}}
-function saveComposed(arr){try{localStorage.setItem('composed_meals',JSON.stringify(arr));}catch(e){}}
+function loadDay(d){try{var x=localStorage.getItem('day_'+currentUser+'_'+d);return x?JSON.parse(x):{meals:[],water:0};}catch(e){return{meals:[],water:0};}}
+function saveDay(d,data){try{localStorage.setItem('day_'+currentUser+'_'+d,JSON.stringify(data));}catch(e){}}
+function loadSummary(d){try{var x=localStorage.getItem('sum_'+currentUser+'_'+d);return x?JSON.parse(x):null;}catch(e){return null;}}
+function saveSummary(d,data){try{localStorage.setItem('sum_'+currentUser+'_'+d,JSON.stringify(data));}catch(e){}}
+function loadLib(){try{var x=localStorage.getItem('my_meals_'+currentUser);return x?JSON.parse(x):[]; }catch(e){return[];}}
+function saveLibData(arr){try{localStorage.setItem('my_meals_'+currentUser,JSON.stringify(arr));}catch(e){}}
+function loadComposed(){try{var x=localStorage.getItem('composed_meals_'+currentUser);return x?JSON.parse(x):[]; }catch(e){return[];}}
+function saveComposed(arr){try{localStorage.setItem('composed_meals_'+currentUser,JSON.stringify(arr));}catch(e){}}
+
+/* ---------- auth: accounts + login (client-side, localStorage-backed) ---------- */
+var currentUser=null;
+var authMode='login',authErr='';
+
+function loadUsers(){try{var x=localStorage.getItem('users');return x?JSON.parse(x):[];}catch(e){return[];}}
+function saveUsers(arr){try{localStorage.setItem('users',JSON.stringify(arr));}catch(e){}}
+function findUser(name){
+  var users=loadUsers();var ln=(name||'').trim().toLowerCase();
+  for(var i=0;i<users.length;i++)if(users[i].username.toLowerCase()===ln)return users[i];
+  return null;
+}
+function bufToHex(buf){var b=new Uint8Array(buf);var s='';for(var i=0;i<b.length;i++){var h=b[i].toString(16);s+=h.length<2?'0'+h:h;}return s;}
+function randSalt(){
+  if(window.crypto&&window.crypto.getRandomValues){var arr=new Uint8Array(16);crypto.getRandomValues(arr);return bufToHex(arr);}
+  var s='';for(var i=0;i<32;i++)s+=Math.floor(Math.random()*16).toString(16);return s;
+}
+function simpleHash(str){
+  var h=5381;
+  for(var i=0;i<str.length;i++){h=((h<<5)+h)+str.charCodeAt(i);h=h&h;}
+  return (h>>>0).toString(16);
+}
+function hashPassword(pw,salt){
+  var input=salt+':'+pw;
+  if(window.crypto&&window.crypto.subtle){
+    try{
+      return crypto.subtle.digest('SHA-256',new TextEncoder().encode(input)).then(bufToHex).catch(function(){return simpleHash(input);});
+    }catch(e){}
+  }
+  return Promise.resolve(simpleHash(input));
+}
+function migrateLegacyData(username){
+  var keys=Object.keys(localStorage);
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i];
+    if(/^day_\d{4}-\d{2}-\d{2}$/.test(k)){
+      var v=localStorage.getItem(k);localStorage.setItem('day_'+username+'_'+k.slice(4),v);localStorage.removeItem(k);
+    }else if(/^sum_\d{4}-\d{2}-\d{2}$/.test(k)){
+      var v2=localStorage.getItem(k);localStorage.setItem('sum_'+username+'_'+k.slice(4),v2);localStorage.removeItem(k);
+    }else if(k==='my_meals'){
+      var v3=localStorage.getItem(k);localStorage.setItem('my_meals_'+username,v3);localStorage.removeItem(k);
+    }else if(k==='composed_meals'){
+      var v4=localStorage.getItem(k);localStorage.setItem('composed_meals_'+username,v4);localStorage.removeItem(k);
+    }
+  }
+}
+function showApp(show){
+  var app=document.querySelector('.app');if(app)app.style.display=show?'block':'none';
+  var au=document.getElementById('auth-screen');if(au)au.style.display=show?'none':'flex';
+}
+function setAuthMode(m){authMode=m;authErr='';renderAuth();}
+function reRenderAuthKeepUser(){
+  var uf=document.getElementById('auth-user');var uVal=uf?uf.value:'';
+  renderAuth();
+  var uf2=document.getElementById('auth-user');if(uf2)uf2.value=uVal;
+}
+function renderAuth(){
+  var el=document.getElementById('auth-screen');if(!el)return;
+  var h='<div class="auth-card">';
+  h+='<div class="auth-logo">🥗</div>';
+  h+='<div class="auth-title">תזונה</div>';
+  h+='<div class="auth-sub">'+(authMode==='signup'?'יצירת חשבון חדש':'התחברות לחשבון שלך')+'</div>';
+  h+='<div class="auth-tabs">';
+  h+='<button class="auth-tab'+(authMode==='login'?' on':'')+'" onclick="setAuthMode(\'login\')">כניסה</button>';
+  h+='<button class="auth-tab'+(authMode==='signup'?' on':'')+'" onclick="setAuthMode(\'signup\')">הרשמה</button>';
+  h+='</div>';
+  if(authErr)h+='<div class="auth-err">'+esc(authErr)+'</div>';
+  h+='<div class="auth-field"><span class="auth-lbl">שם משתמש</span><input id="auth-user" class="mtin" style="margin-bottom:0" autocomplete="username"></div>';
+  h+='<div class="auth-field"><span class="auth-lbl">סיסמה</span><input id="auth-pass" type="password" class="mtin" style="margin-bottom:0" autocomplete="'+(authMode==='signup'?'new-password':'current-password')+'"></div>';
+  if(authMode==='signup')h+='<div class="auth-field"><span class="auth-lbl">אימות סיסמה</span><input id="auth-pass2" type="password" class="mtin" style="margin-bottom:0" autocomplete="new-password"></div>';
+  h+='<button class="auth-btn" id="auth-submit" onclick="'+(authMode==='signup'?'submitSignup()':'submitLogin()')+'">'+(authMode==='signup'?'יצירת חשבון':'כניסה')+'</button>';
+  h+='</div>';
+  el.innerHTML=h;
+  var onEnter=function(e){if(e.key==='Enter'){if(authMode==='signup')submitSignup();else submitLogin();}};
+  ['auth-user','auth-pass','auth-pass2'].forEach(function(id){var f=document.getElementById(id);if(f)f.onkeydown=onEnter;});
+  var fu=document.getElementById('auth-user');if(fu)fu.focus();
+}
+function submitLogin(){
+  authErr='';
+  var u=(document.getElementById('auth-user').value||'').trim();
+  var p=document.getElementById('auth-pass').value||'';
+  if(!u||!p){authErr='נא למלא שם משתמש וסיסמה';reRenderAuthKeepUser();return;}
+  var user=findUser(u);
+  if(!user){authErr='משתמש לא נמצא';reRenderAuthKeepUser();return;}
+  var btn=document.getElementById('auth-submit');if(btn){btn.disabled=true;btn.textContent='...';}
+  hashPassword(p,user.salt).then(function(hash){
+    if(hash===user.hash)loginAs(user.username);
+    else{authErr='סיסמה שגויה';reRenderAuthKeepUser();}
+  });
+}
+function submitSignup(){
+  authErr='';
+  var u=(document.getElementById('auth-user').value||'').trim();
+  var p=document.getElementById('auth-pass').value||'';
+  var p2=document.getElementById('auth-pass2').value||'';
+  if(!u||u.length<2){authErr='שם משתמש קצר מדי';reRenderAuthKeepUser();return;}
+  if(!/^[a-zA-Z0-9_א-ת]+$/.test(u)){authErr='שם משתמש יכול להכיל אותיות, ספרות וקו תחתון בלבד';reRenderAuthKeepUser();return;}
+  if(p.length<4){authErr='הסיסמה חייבת להכיל לפחות 4 תווים';reRenderAuthKeepUser();return;}
+  if(p!==p2){authErr='הסיסמאות אינן תואמות';reRenderAuthKeepUser();return;}
+  if(findUser(u)){authErr='שם המשתמש כבר תפוס';reRenderAuthKeepUser();return;}
+  var btn=document.getElementById('auth-submit');if(btn){btn.disabled=true;btn.textContent='...';}
+  var salt=randSalt();
+  hashPassword(p,salt).then(function(hash){
+    var users=loadUsers();
+    var isFirst=users.length===0;
+    users.push({username:u,salt:salt,hash:hash,createdAt:Date.now()});
+    saveUsers(users);
+    if(isFirst)migrateLegacyData(u);
+    loginAs(u);
+  });
+}
+function loginAs(username){
+  currentUser=username;
+  try{localStorage.setItem('current_user',username);}catch(e){}
+  authErr='';authMode='login';
+  showApp(true);
+  render();
+}
+function logout(){
+  currentUser=null;
+  try{localStorage.removeItem('current_user');}catch(e){}
+  authMode='login';authErr='';
+  showApp(false);
+  renderAuth();
+}
+function initAuth(){
+  var saved=null;try{saved=localStorage.getItem('current_user');}catch(e){}
+  if(saved&&findUser(saved)){
+    currentUser=saved;
+    showApp(true);
+    render();
+  }else{
+    currentUser=null;
+    showApp(false);
+    renderAuth();
+  }
+}
 
 function addMealToLib(meal){
   var lib=loadLib();
@@ -386,6 +544,7 @@ function goDay(dir){var d=new Date(curDate+'T12:00:00');d.setDate(d.getDate()+di
 function switchTab(t){curTab=t;render();}
 
 function render(){
+  var ue=document.getElementById('hdr-username');if(ue)ue.textContent=currentUser||'';
   var de=document.getElementById('hdr-date');var te=document.getElementById('hdr-title');
   if(de)de.textContent=curDate===todayStr()?'\u05D4\u05D9\u05D5\u05DD':'';
   if(te)te.textContent=fmtDate(curDate);
@@ -583,7 +742,7 @@ function renderSummaryOverlay(dateStr){
 
 document.getElementById('btnPrev').onclick=function(){goDay(-1);};
 document.getElementById('btnNext').onclick=function(){goDay(1);};
-render();
+initAuth();
 </script>
 </body>
 </html>
