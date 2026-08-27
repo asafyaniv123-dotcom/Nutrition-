@@ -184,10 +184,30 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .lib-pick-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:7px;cursor:pointer}
 .lib-pick-item:active{background:var(--primary-bg)}
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:16px;font-size:13px;font-weight:600;z-index:100;pointer-events:none}
+/* ---- greet / home screen ---- */
+.greet-screen{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:22px 18px;background:var(--dots),var(--paper)}
+.greet-card{width:100%;max-width:360px;background:var(--card);border-radius:22px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden;text-align:center;cursor:pointer;padding-bottom:26px;-webkit-user-select:none;user-select:none}
+.greet-card:active{transform:scale(.985)}
+.greet-sky{display:flex;align-items:center;justify-content:center;padding:22px 8px 4px;border-bottom:2px dashed var(--border);transition:background .6s ease}
+.greet-sky.morning{background:linear-gradient(180deg,#bcd6f2 0%,#fdf1d6 88%)}
+.greet-sky.afternoon{background:linear-gradient(180deg,#7fbdf0 0%,#eaf6ff 92%)}
+.greet-sky.evening{background:linear-gradient(180deg,#4d5486 0%,#dd9a68 100%)}
+.greet-sky.night{background:linear-gradient(180deg,#161b34 0%,#333a63 100%)}
+.greet-date{font-size:12.5px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-top:16px;direction:ltr}
+.greet-time{font-size:46px;font-weight:700;font-family:'Rubik Marker Hand',cursive;color:var(--ink);margin:2px 0 8px;direction:ltr}
+.greet-msg{font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;font-family:'Rubik Marker Hand',cursive}
+.greet-hint{font-size:11px;color:var(--muted);margin-top:10px}
+@keyframes twinkle{0%,100%{opacity:.3}50%{opacity:1}}
+.greet-star{animation:twinkle 2.2s ease-in-out infinite}
+@keyframes clouddrift{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+.greet-cloud{animation:clouddrift 7s ease-in-out infinite}
+@keyframes sunglow{0%,100%{opacity:.75}50%{opacity:1}}
+.greet-sun-rays{animation:sunglow 2.6s ease-in-out infinite}
 </style>
 </head>
 <body>
 <div id="auth-screen" class="auth-screen"></div>
+<div id="greet-screen" class="greet-screen"></div>
 <div class="app">
   <div class="hdr">
     <div class="hdr-userbar">
@@ -374,13 +394,15 @@ function loginAs(username){
   currentUser=username;
   try{localStorage.setItem('current_user',username);}catch(e){}
   authErr='';authMode='login';
-  showApp(true);
-  render();
+  var au=document.getElementById('auth-screen');if(au)au.style.display='none';
+  showGreet();
 }
 function logout(){
   currentUser=null;
   try{localStorage.removeItem('current_user');}catch(e){}
   authMode='login';authErr='';
+  clearInterval(greetClock);greetClock=null;
+  var gs=document.getElementById('greet-screen');if(gs)gs.style.display='none';
   showApp(false);
   renderAuth();
 }
@@ -388,13 +410,72 @@ function initAuth(){
   var saved=null;try{saved=localStorage.getItem('current_user');}catch(e){}
   if(saved&&findUser(saved)){
     currentUser=saved;
-    showApp(true);
-    render();
+    showGreet();
   }else{
     currentUser=null;
     showApp(false);
     renderAuth();
   }
+}
+
+/* ---------- greet / home screen: date, time & a sky that matches the hour ---------- */
+var greetClock=null;
+function greetBand(d){
+  var h=d.getHours();
+  if(h>=5&&h<12)return'morning';
+  if(h>=12&&h<17)return'afternoon';
+  if(h>=17&&h<21)return'evening';
+  return'night';
+}
+function greetMsg(band){
+  return{morning:'בוקר טוב',afternoon:'צהריים טובים',evening:'ערב טוב',night:'לילה טוב'}[band];
+}
+function fmtGreetDate(d){return('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}
+function fmtGreetTime(d){return('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+function greetSceneSVG(band){
+  var s='<svg viewBox="0 0 220 130" width="100%" height="130" xmlns="http://www.w3.org/2000/svg">';
+  if(band==='morning'||band==='afternoon'){
+    var cy=band==='morning'?80:50,r=band==='morning'?23:29;
+    s+='<g class="greet-sun-rays" stroke="#c99a2e" stroke-width="2.5" stroke-linecap="round">';
+    var rays=[[0,-1],[.7,-.7],[1,0],[.7,.7],[0,1],[-.7,.7],[-1,0],[-.7,-.7]];
+    for(var i=0;i<rays.length;i++){var dx=rays[i][0],dy=rays[i][1];s+='<line x1="'+(110+dx*(r+6))+'" y1="'+(cy+dy*(r+6))+'" x2="'+(110+dx*(r+14))+'" y2="'+(cy+dy*(r+14))+'"/>';}
+    s+='</g>';
+    s+='<circle cx="110" cy="'+cy+'" r="'+r+'" fill="#f4d68a" stroke="#c99a2e" stroke-width="2.5"/>';
+    s+='<g class="greet-cloud" fill="none" stroke="#8a8073" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M28 100c-8 0-14-6-14-13 0-6 4-11 10-13 1-8 8-14 17-14 7 0 13 4 16 10 2-1 4-1 6-1 8 0 15 6 15 14 0 8-7 14-15 14H28z"/></g>';
+    s+='<g class="greet-cloud" style="animation-delay:-3.2s" fill="none" stroke="#b6ad98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M150 40c-6 0-10-4-10-9 0-4 3-8 7-9 1-6 6-10 12-10 5 0 9 3 11 7 1-.5 3-1 4-1 6 0 10 4 10 10 0 6-5 9-10 9h-24z"/></g>';
+  }else{
+    var stars=[[34,20],[182,72],[60,92],[150,20],[100,100]];
+    for(var j=0;j<stars.length;j++){var sx=stars[j][0],sy=stars[j][1];s+='<g class="greet-star" stroke="#f4e9c9" stroke-width="1.6" stroke-linecap="round" style="animation-delay:-'+(j*.7)+'s"><line x1="'+sx+'" y1="'+(sy-6)+'" x2="'+sx+'" y2="'+(sy+6)+'"/><line x1="'+(sx-6)+'" y1="'+sy+'" x2="'+(sx+6)+'" y2="'+sy+'"/></g>';}
+    s+='<path d="M118 20a34 34 0 1 0 24 58 27 27 0 0 1-24-58z" fill="#dfe6f6" stroke="#7690cf" stroke-width="2.2" stroke-linejoin="round"/>';
+    s+='<g class="greet-cloud" fill="none" stroke="#6f7590" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M30 104c-8 0-14-6-14-13 0-6 4-11 10-13 1-8 8-14 17-14 7 0 13 4 16 10 2-1 4-1 6-1 8 0 15 6 15 14 0 8-7 14-15 14H30z"/></g>';
+  }
+  s+='</svg>';
+  return s;
+}
+function renderGreet(){
+  var el=document.getElementById('greet-screen');if(!el)return;
+  var now=new Date(),band=greetBand(now);
+  var h='<div class="greet-card" onclick="enterFromGreet()">';
+  h+='<div class="greet-sky '+band+'">'+greetSceneSVG(band)+'</div>';
+  h+='<div class="greet-date">'+fmtGreetDate(now)+'</div>';
+  h+='<div class="greet-time">'+fmtGreetTime(now)+'</div>';
+  h+='<div class="greet-msg">'+greetMsg(band)+(currentUser?', '+esc(currentUser):'')+'</div>';
+  h+='<div class="greet-hint">געו כדי להתחיל &#8594;</div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
+function showGreet(){
+  var el=document.getElementById('greet-screen');if(!el)return;
+  renderGreet();
+  el.style.display='flex';
+  clearInterval(greetClock);
+  greetClock=setInterval(renderGreet,15000);
+}
+function enterFromGreet(){
+  clearInterval(greetClock);greetClock=null;
+  var el=document.getElementById('greet-screen');if(el)el.style.display='none';
+  showApp(true);
+  render();
 }
 
 function addMealToLib(meal){
