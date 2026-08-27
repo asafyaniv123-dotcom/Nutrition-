@@ -184,19 +184,17 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .lib-pick-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:7px;cursor:pointer}
 .lib-pick-item:active{background:var(--primary-bg)}
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:16px;font-size:13px;font-weight:600;z-index:100;pointer-events:none}
-/* ---- greet / home screen ---- */
-.greet-screen{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:22px 18px;background:var(--dots),var(--paper)}
-.greet-card{width:100%;max-width:360px;background:var(--card);border-radius:22px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden;text-align:center;cursor:pointer;padding-bottom:26px;-webkit-user-select:none;user-select:none}
-.greet-card:active{transform:scale(.985)}
-.greet-sky{display:flex;align-items:center;justify-content:center;padding:22px 8px 4px;border-bottom:2px dashed var(--border);transition:background .6s ease}
+/* ---- greet banner: date/time/greeting at the top of the app, flowing into tracking below ---- */
+.greet-banner{position:relative;overflow:hidden;text-align:center}
+.greet-sky{display:flex;align-items:center;justify-content:center;padding:22px 8px 18px;position:relative;transition:background .6s ease}
+.greet-sky::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:12px;background-image:radial-gradient(circle,var(--paper) 3.6px,transparent 4px),radial-gradient(circle,#b6ad98 2px,transparent 2.4px);background-size:24px 12px,24px 12px;background-repeat:repeat-x}
 .greet-sky.morning{background:linear-gradient(180deg,#bcd6f2 0%,#fdf1d6 88%)}
 .greet-sky.afternoon{background:linear-gradient(180deg,#7fbdf0 0%,#eaf6ff 92%)}
 .greet-sky.evening{background:linear-gradient(180deg,#4d5486 0%,#dd9a68 100%)}
 .greet-sky.night{background:linear-gradient(180deg,#161b34 0%,#333a63 100%)}
-.greet-date{font-size:12.5px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-top:16px;direction:ltr}
-.greet-time{font-size:46px;font-weight:700;font-family:'Rubik Marker Hand',cursive;color:var(--ink);margin:2px 0 8px;direction:ltr}
-.greet-msg{font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;font-family:'Rubik Marker Hand',cursive}
-.greet-hint{font-size:11px;color:var(--muted);margin-top:10px}
+.greet-date{font-size:12.5px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-top:14px;direction:ltr}
+.greet-time{font-size:42px;font-weight:700;font-family:'Rubik Marker Hand',cursive;color:var(--ink);margin:2px 0 6px;direction:ltr}
+.greet-msg{font-size:19px;font-weight:700;color:var(--primary);margin-bottom:14px;font-family:'Rubik Marker Hand',cursive}
 @keyframes twinkle{0%,100%{opacity:.3}50%{opacity:1}}
 .greet-star{animation:twinkle 2.2s ease-in-out infinite}
 @keyframes clouddrift{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
@@ -207,8 +205,8 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 </head>
 <body>
 <div id="auth-screen" class="auth-screen"></div>
-<div id="greet-screen" class="greet-screen"></div>
 <div class="app">
+  <div id="greet-banner" class="greet-banner"></div>
   <div class="hdr">
     <div class="hdr-userbar">
       <button class="hdr-logout" onclick="logout()">יציאה</button>
@@ -394,15 +392,15 @@ function loginAs(username){
   currentUser=username;
   try{localStorage.setItem('current_user',username);}catch(e){}
   authErr='';authMode='login';
-  var au=document.getElementById('auth-screen');if(au)au.style.display='none';
-  showGreet();
+  showApp(true);
+  render();
+  startGreetClock();
 }
 function logout(){
   currentUser=null;
   try{localStorage.removeItem('current_user');}catch(e){}
   authMode='login';authErr='';
   clearInterval(greetClock);greetClock=null;
-  var gs=document.getElementById('greet-screen');if(gs)gs.style.display='none';
   showApp(false);
   renderAuth();
 }
@@ -410,7 +408,9 @@ function initAuth(){
   var saved=null;try{saved=localStorage.getItem('current_user');}catch(e){}
   if(saved&&findUser(saved)){
     currentUser=saved;
-    showGreet();
+    showApp(true);
+    render();
+    startGreetClock();
   }else{
     currentUser=null;
     showApp(false);
@@ -452,30 +452,19 @@ function greetSceneSVG(band){
   s+='</svg>';
   return s;
 }
-function renderGreet(){
-  var el=document.getElementById('greet-screen');if(!el)return;
+function renderGreetBanner(){
+  var el=document.getElementById('greet-banner');if(!el)return;
   var now=new Date(),band=greetBand(now);
-  var h='<div class="greet-card" onclick="enterFromGreet()">';
-  h+='<div class="greet-sky '+band+'">'+greetSceneSVG(band)+'</div>';
+  var h='<div class="greet-sky '+band+'">'+greetSceneSVG(band)+'</div>';
   h+='<div class="greet-date">'+fmtGreetDate(now)+'</div>';
   h+='<div class="greet-time">'+fmtGreetTime(now)+'</div>';
   h+='<div class="greet-msg">'+greetMsg(band)+(currentUser?', '+esc(currentUser):'')+'</div>';
-  h+='<div class="greet-hint">געו כדי להתחיל &#8594;</div>';
-  h+='</div>';
   el.innerHTML=h;
 }
-function showGreet(){
-  var el=document.getElementById('greet-screen');if(!el)return;
-  renderGreet();
-  el.style.display='flex';
+function startGreetClock(){
+  renderGreetBanner();
   clearInterval(greetClock);
-  greetClock=setInterval(renderGreet,15000);
-}
-function enterFromGreet(){
-  clearInterval(greetClock);greetClock=null;
-  var el=document.getElementById('greet-screen');if(el)el.style.display='none';
-  showApp(true);
-  render();
+  greetClock=setInterval(renderGreetBanner,15000);
 }
 
 function addMealToLib(meal){
