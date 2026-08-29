@@ -2901,6 +2901,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   navigator.serviceWorker.register('sw.js').then(function(r){
     _swReg=r;
     if(typeof renderSumRem==='function')renderSumRem();
+    if(typeof sumRemPushSync==='function')sumRemPushSync();
   }).catch(function(){});
 }
 
@@ -2960,6 +2961,7 @@ function sumRemToggle(on){
   renderSumRem();
   showToast(o.on?'✓ תזכורת יומית הופעלה':'התזכורת בוטלה');
   if(o.on)sumRemCheck();
+  sumRemPushSync();   // register or drop the server-side subscription
 }
 
 function sumRemSetTime(v){
@@ -2970,13 +2972,85 @@ function sumRemSetTime(v){
   saveSumRem(o);
   renderSumRem();
   showToast('✓ נקבע ל-'+v);
+  sumRemPushSync();   // push the new time to the server
+}
+
+/* ── WEB PUSH ── */
+// The only way a reminder arrives with the app fully closed: a server holds the
+// subscription and pushes at the chosen time. Everything above still works
+// without this - if PUSH_SERVER is empty the app just degrades to open-app only.
+var PUSH_SERVER='';   // e.g. 'https://nutrition-push.<subdomain>.workers.dev'
+var VAPID_PUBLIC='BGZWOIHQcO_gj3wDvRa78k3g7A60BDJnhckbC9W15vfgsrQeQYMXu7X6FT0RPqGZhOGjzQgtQyJ_jDktq4GuU-o';
+
+var _pushState='idle';  // idle | ok | error
+
+function pushSupported(){
+  return !!(PUSH_SERVER && _swReg && _swReg.pushManager && 'PushManager' in window);
+}
+
+function urlB64ToUint8(s){
+  var pad=new Array((4-s.length%4)%4+1).join('=');
+  var raw=atob((s+pad).replace(/-/g,'+').replace(/_/g,'/'));
+  var arr=new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+
+function localTZ(){
+  try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}
+}
+
+// The service worker cannot read localStorage, so leave it what a resubscribe needs.
+function pushStashConfig(o){
+  if(!('caches' in window))return;
+  try{
+    caches.open('sumrem-config').then(function(c){
+      c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ()}),
+        {headers:{'Content-Type':'application/json'}}));
+    });
+  }catch(e){}
+}
+
+function sumRemPushSync(){
+  var o=loadSumRem();
+  if(!pushSupported())return;
+  if(!o.on){sumRemPushDrop();return;}
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  pushStashConfig(o);
+  _swReg.pushManager.getSubscription().then(function(sub){
+    if(sub)return sub;
+    return _swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(VAPID_PUBLIC)});
+  }).then(function(sub){
+    return fetch(PUSH_SERVER+'/subscribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ()})
+    });
+  }).then(function(r){
+    _pushState=r&&r.ok?'ok':'error';renderSumRem();
+  }).catch(function(){_pushState='error';renderSumRem();});
+}
+
+function sumRemPushDrop(){
+  if(!pushSupported())return;
+  _swReg.pushManager.getSubscription().then(function(sub){
+    if(!sub){_pushState='idle';return null;}
+    var ep=sub.endpoint;
+    return sub.unsubscribe().then(function(){
+      return fetch(PUSH_SERVER+'/unsubscribe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({endpoint:ep})
+      });
+    });
+  }).then(function(){_pushState='idle';renderSumRem();}).catch(function(){});
 }
 
 function sumRemAsk(){
   if(!('Notification' in window)){showToast('הדפדפן לא תומך בהתראות מערכת');return;}
   try{
     var r=Notification.requestPermission(function(){renderSumRem();});
-    if(r&&r.then)r.then(function(p){renderSumRem();showToast(p==='granted'?'✓ התראות מאושרות':'ההרשאה לא ניתנה');});
+    if(r&&r.then)r.then(function(p){renderSumRem();if(p==='granted')sumRemPushSync();showToast(p==='granted'?'✓ התראות מאושרות':'ההרשאה לא ניתנה');});
   }catch(e){}
 }
 
@@ -3018,7 +3092,15 @@ function renderSumRem(){
     h+='<div style="'+box+'">הדפדפן הזה לא תומך בהתראות מערכת. התזכורת תוצג בתוך האפליקציה.</div>';
   }
 
-  h+='<div style="font-size:10px;color:#a89e97;line-height:1.6;margin-bottom:10px">התזכורת פועלת כשהאפליקציה פתוחה או ברקע. אם כבר סיכמת את היום, לא תישלח תזכורת.</div>';
+  // Say plainly whether a closed app will still get the reminder - this is the
+  // single thing users are most likely to assume wrongly.
+  if(PUSH_SERVER&&_pushState==='ok'){
+    h+='<div style="font-size:10px;color:#7bb389;line-height:1.6;margin-bottom:10px">&#10003; ההתראה תגיע גם כשהאפליקציה סגורה לגמרי.</div>';
+  } else if(PUSH_SERVER&&_pushState==='error'){
+    h+='<div style="font-size:10px;color:#e08a72;line-height:1.6;margin-bottom:10px">הרישום לשרת ההתראות נכשל. כרגע התזכורת תפעל רק כשהאפליקציה פתוחה.</div>';
+  } else {
+    h+='<div style="font-size:10px;color:#a89e97;line-height:1.6;margin-bottom:10px">התזכורת פועלת כשהאפליקציה פתוחה או ברקע. אם כבר סיכמת את היום, לא תישלח תזכורת.</div>';
+  }
   h+='<button onclick="sumRemTest()" style="width:100%;background:#f5f0eb;color:#a89e97;border:none;border-radius:11px;padding:9px;font-size:11px;font-weight:700;cursor:pointer">בדיקה עכשיו</button>';
 
   h+='</div>';
