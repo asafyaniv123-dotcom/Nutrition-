@@ -195,6 +195,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .vb-size{bottom:-13px;right:-13px;cursor:nwse-resize}
 .vb-size:after{content:'';width:9px;height:9px;border-left:2px solid #a690cf;border-bottom:2px solid #a690cf;margin:0 2px 2px 0}
 .vb-rot{bottom:-13px;left:-13px}
+.vb-text{max-width:80%;text-align:center;font-weight:800;line-height:1.3;white-space:pre-wrap}
+.vb-text .vb-tx{display:block;padding:2px 4px}
+.vb-item.on .vb-tx{outline:2px dashed #a690cf;outline-offset:3px;border-radius:5px}
+.vb-edit{top:-13px;left:-13px;font-size:12px}
+.vb-sw{width:28px;height:28px;border-radius:50%;border:2px solid #e6ded4;padding:0;cursor:pointer}
+.vb-sw.on{border-color:#4a4340;transform:scale(1.12)}
 .vb-empty{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:none;border:none;cursor:pointer;color:#a89e97;font-family:inherit}
 .vb-add{background:linear-gradient(135deg,#f0eafa,#e8dff5);border:1.5px dashed #a690cf;border-radius:12px;padding:7px 14px;font-size:11px;font-weight:700;color:#a690cf;cursor:pointer;font-family:inherit}
 .vb-hint{text-align:center;font-size:9px;color:#c0b8b0;margin-top:10px;line-height:1.6}
@@ -5594,16 +5600,25 @@ function deleteStop(tripIdx,stopIdx){
 
 
 /* ── VISION BOARD ── */
-// Photos the user arranges by hand inside a framed square on the home screen.
-// Geometry is kept in percentages of the frame, so an arrangement survives a
-// different screen size; photos are downscaled on the way in, because
-// localStorage holds a few megabytes and a camera roll would fill it in three
-// pictures.
+// Photos and words the user arranges by hand inside a framed square on the home
+// screen. Geometry is kept in percentages of the frame, so an arrangement
+// survives a different screen size; photos are downscaled on the way in,
+// because localStorage holds a few megabytes and a camera roll would fill it in
+// three pictures.
+//
+// A note is the same kind of object as a photo and moves through the same
+// gestures. The one difference is what scaling means: a photo has a width, a
+// note has a font size - both stored as a percentage of the frame, both driven
+// by the same corner handle.
 var VB_KEY='vision_board';
 var VB_MAX=520;   // longest edge kept of an uploaded photo, in px
-var _vbSel=null;  // id of the selected photo, or null
+var VB_COLORS=['#4a4340','#a690cf','#e08a72','#8aa899','#ffffff'];
+var _vbSel=null;  // id of the selected item, or null
 var _vbG=null;    // the gesture in progress - see vbDown
 var _vbPts={};    // pointerId -> last client position, for two-finger gestures
+var _vbEditId=null;               // note being edited in the sheet, null = new one
+var _vbColor=VB_COLORS[0];
+var _vbResizeBound=false;
 
 function loadVision(){
   try{var x=localStorage.getItem(VB_KEY);var a=x?JSON.parse(x):[];return Array.isArray(a)?a:[];}catch(e){return[];}
@@ -5614,6 +5629,9 @@ function saveVision(a){
 }
 function vbFind(a,id){for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
 function vbClamp(v,lo,hi){return v<lo?lo:(v>hi?hi:v);}
+function vbTop(a){var t=0;a.forEach(function(o){if((o.z||1)>t)t=o.z||1;});return t;}
+// Where a new item lands: scattered around the middle rather than stacked.
+function vbSpot(n){return {x:34+(n%3)*16,y:34+(Math.floor(n/3)%3)*16};}
 
 function renderVisionBoard(){
   var el=document.getElementById('home-vision');if(!el)return;
@@ -5621,33 +5639,86 @@ function renderVisionBoard(){
   var h='<div style="background:#fff;border-radius:22px;padding:18px 16px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
   h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px">';
   h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700">VISION BOARD</div>';
+  h+='<div style="display:flex;gap:6px">';
   h+='<button class="vb-add" onclick="vbPick()">+ תמונה</button>';
-  h+='</div>';
+  h+='<button class="vb-add" onclick="vbOpenText(\'\')">+ טקסט</button>';
+  h+='</div></div>';
   h+='<input type="file" id="vb-file" accept="image/*" multiple style="display:none" onchange="handleVisionPhoto(this)">';
   h+='<div class="vb-frame"><div class="vb-canvas" id="vb-canvas">';
   if(!items.length){
-    h+='<button class="vb-empty" onclick="vbPick()">'+
+    h+='<div class="vb-empty">'+
          '<div style="font-size:34px">&#x1F5BC;&#xFE0F;</div>'+
-         '<div style="font-size:12px">הוסף תמונות של מה שאתה רוצה לראות קורה</div>'+
-       '</button>';
+         '<div style="font-size:12px;margin-bottom:4px">תמונות ומילים של מה שאתה רוצה לראות קורה</div>'+
+         '<div style="display:flex;gap:8px">'+
+           '<button class="vb-add" onclick="vbPick()">+ תמונה</button>'+
+           '<button class="vb-add" onclick="vbOpenText(\'\')">+ טקסט</button>'+
+         '</div>'+
+       '</div>';
   }else{
     items.forEach(function(it){
-      h+='<div class="vb-item'+(it.id===_vbSel?' on':'')+'" data-id="'+it.id+'" '+
-           'style="left:'+it.x+'%;top:'+it.y+'%;width:'+it.w+'%;z-index:'+(it.z||1)+';'+
-           'transform:translate(-50%,-50%) rotate('+it.rot+'deg)">'+
-           '<img src="'+it.src+'" draggable="false" alt="">'+
-           '<button class="vb-del" onclick="vbDelete(\''+it.id+'\')">&#10005;</button>'+
-           '<span class="vb-h vb-size"></span>'+
-           '<span class="vb-h vb-rot">&#8635;</span>'+
-         '</div>';
+      var sel=(it.id===_vbSel?' on':'');
+      var pos='left:'+it.x+'%;top:'+it.y+'%;z-index:'+(it.z||1)+';'+
+              'transform:translate(-50%,-50%) rotate('+it.rot+'deg)';
+      var del='<button class="vb-del" onclick="vbDelete(\''+it.id+'\')">&#10005;</button>';
+      var handles='<span class="vb-h vb-size"></span><span class="vb-h vb-rot">&#8635;</span>';
+      if(it.kind==='text'){
+        // White words sit on top of photos; anything darker sits on the mat.
+        var light=String(it.color).toLowerCase().indexOf('#fff')===0;
+        var shadow=light?'0 1px 4px rgba(60,50,45,.6)':'0 1px 3px rgba(255,255,255,.6)';
+        h+='<div class="vb-item vb-text'+sel+'" data-id="'+it.id+'" data-fs="'+it.fs+'" '+
+             'style="'+pos+';color:'+it.color+';text-shadow:'+shadow+'">'+
+             '<span class="vb-tx">'+esc(it.text).replace(/\n/g,'<br>')+'</span>'+
+             del+
+             '<button class="vb-h vb-edit" onclick="vbOpenText(\''+it.id+'\')">&#9998;</button>'+
+             handles+
+           '</div>';
+      }else{
+        h+='<div class="vb-item'+sel+'" data-id="'+it.id+'" style="'+pos+';width:'+it.w+'%">'+
+             '<img src="'+it.src+'" draggable="false" alt="">'+
+             del+handles+
+           '</div>';
+      }
     });
   }
   h+='</div></div>';
-  if(items.length)h+='<div class="vb-hint">גע בתמונה כדי לבחור &#183; גרור להזזה &#183; הפינות מגדילות ומסובבות &#183; שתי אצבעות עושות את שתיהן יחד</div>';
+  if(items.length)h+='<div class="vb-hint">גע כדי לבחור &#183; גרור להזזה &#183; הפינות מגדילות ומסובבות &#183; שתי אצבעות עושות את שתיהן יחד</div>';
+
+  // Sheet for writing a note, shared by "+ טקסט" and the pencil on a note.
+  h+='<div id="vb-text-overlay" style="display:none;position:fixed;inset:0;background:rgba(74,67,64,.6);z-index:200;align-items:flex-end;justify-content:center">';
+  h+='<div style="background:#fbf7f2;border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px 18px 34px">';
+  h+='<div style="width:40px;height:4px;background:#c9bce0;border-radius:2px;margin:0 auto 16px"></div>';
+  h+='<div style="font-size:15px;font-weight:800;color:#4a4340;margin-bottom:14px">טקסט על הלוח</div>';
+  h+='<textarea id="vb-text-inp" rows="2" placeholder="מה אתה רוצה לראות קורה?" style="width:100%;border:1.5px solid #eae3dc;border-radius:14px;padding:12px;font-size:14px;font-family:inherit;color:#4a4340;background:#fff;resize:none;margin-bottom:14px"></textarea>';
+  h+='<div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:8px">צבע</div>';
+  h+='<div id="vb-swatches" style="display:flex;gap:10px;margin-bottom:20px">';
+  VB_COLORS.forEach(function(c){
+    h+='<button class="vb-sw" data-c="'+c+'" onclick="vbPickColor(\''+c+'\')" style="background:'+c+'"></button>';
+  });
+  h+='</div>';
+  h+='<div style="display:flex;gap:10px">';
+  h+='<button onclick="vbCloseText()" style="flex:1;background:#f0ebe3;border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:700;color:#a89e97;cursor:pointer;font-family:inherit">ביטול</button>';
+  h+='<button onclick="vbSaveText()" style="flex:2;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">שמירה</button>';
+  h+='</div></div></div>';
+
   h+='</div>';
   el.innerHTML=h;
+  vbSizeText();
   var c=document.getElementById('vb-canvas');
   if(c)c.addEventListener('pointerdown',vbDown);
+  // A note's size is a share of the frame, so it has to be recomputed in px
+  // whenever the frame itself changes width.
+  if(!_vbResizeBound&&window.addEventListener){
+    window.addEventListener('resize',vbSizeText);_vbResizeBound=true;
+  }
+}
+
+function vbSizeText(){
+  var c=document.getElementById('vb-canvas');if(!c)return;
+  var w=c.getBoundingClientRect().width;
+  var els=c.querySelectorAll('.vb-text');
+  for(var i=0;i<els.length;i++){
+    els[i].style.fontSize=(parseFloat(els[i].getAttribute('data-fs'))/100*w)+'px';
+  }
 }
 
 function vbPick(){var f=document.getElementById('vb-file');if(f)f.click();}
@@ -5659,12 +5730,13 @@ function vbSelect(id){
   var c=document.getElementById('vb-canvas');if(!c)return;
   var els=c.querySelectorAll('.vb-item');
   for(var i=0;i<els.length;i++){
-    els[i].className='vb-item'+(els[i].getAttribute('data-id')===id?' on':'');
+    var base='vb-item'+(els[i].className.indexOf('vb-text')>=0?' vb-text':'');
+    els[i].className=base+(els[i].getAttribute('data-id')===id?' on':'');
   }
   if(!id)return;
   var a=loadVision(),it=vbFind(a,id);if(!it)return;
-  var top=0;a.forEach(function(o){if((o.z||1)>top)top=o.z||1;});
-  if((it.z||1)<top){          // touching a photo brings it to the front
+  var top=vbTop(a);
+  if((it.z||1)<top){          // touching an item brings it to the front
     it.z=top+1;saveVision(a);
     var el=c.querySelector('.vb-item[data-id="'+id+'"]');if(el)el.style.zIndex=it.z;
   }
@@ -5681,7 +5753,8 @@ function vbTwo(){
 function vbDown(e){
   var el=e.target.closest?e.target.closest('.vb-item'):null;
   if(!el){vbSelect(null);return;}
-  if(e.target.closest('.vb-del'))return;   // let the click handler delete it
+  // The two badges are buttons: let their click handlers run instead of dragging.
+  if(e.target.closest('.vb-del')||e.target.closest('.vb-edit'))return;
   var id=el.getAttribute('data-id');
   if(id!==_vbSel)vbSelect(id);
   _vbPts[e.pointerId]={x:e.clientX,y:e.clientY};
@@ -5694,11 +5767,13 @@ function vbDown(e){
     _vbG.d0=p.d;_vbG.a0=p.a;_vbG.mx=p.x;_vbG.my=p.y;
   }else{
     var it=vbFind(loadVision(),id);if(!it)return;
+    var text=it.kind==='text';
+    var scale=text?it.fs:it.w;   // what the corner handle grows: font size or width
     var mode=e.target.closest('.vb-size')?'size':(e.target.closest('.vb-rot')?'rot':'move');
     var cx=r.left+it.x/100*r.width,cy=r.top+it.y/100*r.height;
-    _vbG={id:id,el:el,mode:mode,r:r,
-          it:{x:it.x,y:it.y,w:it.w,rot:it.rot},
-          cur:{x:it.x,y:it.y,w:it.w,rot:it.rot},
+    _vbG={id:id,el:el,mode:mode,r:r,text:text,
+          it:{x:it.x,y:it.y,w:scale,rot:it.rot},
+          cur:{x:it.x,y:it.y,w:scale,rot:it.rot},
           px:e.clientX,py:e.clientY,
           d0:Math.max(8,Math.hypot(e.clientX-cx,e.clientY-cy)),
           a0:Math.atan2(e.clientY-cy,e.clientX-cx)};
@@ -5713,9 +5788,10 @@ function vbMove(e){
   if(!_vbG)return;
   if(_vbPts[e.pointerId])_vbPts[e.pointerId]={x:e.clientX,y:e.clientY};
   var g=_vbG,r=g.r,c=g.cur;
+  var lo=g.text?2:8,hi=g.text?40:140;
   if(g.mode==='pinch'&&Object.keys(_vbPts).length>=2){
     var p=vbTwo();
-    c.w=vbClamp(g.it.w*(p.d/g.d0),8,140);
+    c.w=vbClamp(g.it.w*(p.d/g.d0),lo,hi);
     c.rot=g.it.rot+(p.a-g.a0)*180/Math.PI;
     c.x=vbClamp(g.it.x+(p.x-g.mx)/r.width*100,0,100);
     c.y=vbClamp(g.it.y+(p.y-g.my)/r.height*100,0,100);
@@ -5724,10 +5800,12 @@ function vbMove(e){
     c.y=vbClamp(g.it.y+(e.clientY-g.py)/r.height*100,0,100);
   }else{
     var cx=r.left+c.x/100*r.width,cy=r.top+c.y/100*r.height;
-    if(g.mode==='size')c.w=vbClamp(g.it.w*Math.hypot(e.clientX-cx,e.clientY-cy)/g.d0,8,140);
+    if(g.mode==='size')c.w=vbClamp(g.it.w*Math.hypot(e.clientX-cx,e.clientY-cy)/g.d0,lo,hi);
     else c.rot=g.it.rot+(Math.atan2(e.clientY-cy,e.clientX-cx)-g.a0)*180/Math.PI;
   }
-  g.el.style.left=c.x+'%';g.el.style.top=c.y+'%';g.el.style.width=c.w+'%';
+  g.el.style.left=c.x+'%';g.el.style.top=c.y+'%';
+  if(g.text)g.el.style.fontSize=(c.w/100*r.width)+'px';
+  else g.el.style.width=c.w+'%';
   g.el.style.transform='translate(-50%,-50%) rotate('+c.rot+'deg)';
   e.preventDefault();
 }
@@ -5753,8 +5831,14 @@ function vbUp(e){
 function vbCommit(){
   var g=_vbG;if(!g)return;
   var a=loadVision(),it=vbFind(a,g.id);if(!it)return;
-  it.x=+g.cur.x.toFixed(2);it.y=+g.cur.y.toFixed(2);
-  it.w=+g.cur.w.toFixed(2);it.rot=+g.cur.rot.toFixed(1);
+  it.x=+g.cur.x.toFixed(2);it.y=+g.cur.y.toFixed(2);it.rot=+g.cur.rot.toFixed(1);
+  if(g.text){
+    it.fs=+g.cur.w.toFixed(2);
+    // keep the attribute in step, or the next window resize restores the old size
+    if(g.el.setAttribute)g.el.setAttribute('data-fs',it.fs);
+  }else{
+    it.w=+g.cur.w.toFixed(2);
+  }
   saveVision(a);
 }
 
@@ -5764,6 +5848,58 @@ function vbDelete(id){
   if(_vbSel===id)_vbSel=null;
   renderVisionBoard();
 }
+
+/* ── notes ── */
+
+function vbOpenText(id){
+  _vbEditId=id||null;
+  var it=_vbEditId?vbFind(loadVision(),_vbEditId):null;
+  _vbColor=it?it.color:VB_COLORS[0];
+  var ov=document.getElementById('vb-text-overlay');if(!ov)return;
+  var inp=document.getElementById('vb-text-inp');
+  if(inp)inp.value=it?it.text:'';
+  vbPaintSwatches();
+  ov.style.display='flex';
+  if(inp&&inp.focus)setTimeout(function(){inp.focus();},60);
+}
+
+function vbCloseText(){
+  var ov=document.getElementById('vb-text-overlay');if(ov)ov.style.display='none';
+  _vbEditId=null;
+}
+
+function vbPickColor(c){_vbColor=c;vbPaintSwatches();}
+
+function vbPaintSwatches(){
+  var box=document.getElementById('vb-swatches');if(!box)return;
+  var sw=box.querySelectorAll('.vb-sw');
+  for(var i=0;i<sw.length;i++){
+    sw[i].className='vb-sw'+(sw[i].getAttribute('data-c')===_vbColor?' on':'');
+  }
+}
+
+function vbSaveText(){
+  var inp=document.getElementById('vb-text-inp');
+  var txt=inp?inp.value.trim():'';
+  var a=loadVision();
+  if(!txt){
+    // an emptied note is a deleted note - there is nothing left to show
+    if(_vbEditId)a=a.filter(function(o){return o.id!==_vbEditId;});
+    saveVision(a);vbCloseText();renderVisionBoard();return;
+  }
+  if(_vbEditId){
+    var it=vbFind(a,_vbEditId);
+    if(it){it.text=txt;it.color=_vbColor;}
+  }else{
+    var spot=vbSpot(a.length);
+    a.push({id:'vt'+Date.now(),kind:'text',text:txt,color:_vbColor,
+            x:spot.x,y:spot.y,fs:7,
+            rot:Math.round((Math.random()*10-5)*10)/10,z:vbTop(a)+1});
+  }
+  saveVision(a);vbCloseText();renderVisionBoard();
+}
+
+/* ── photos ── */
 
 // Fit the photo inside VB_MAX and re-encode as JPEG - a 4MB camera shot comes
 // out around 60KB, which is what lets a boardful of them live in localStorage.
@@ -5794,11 +5930,10 @@ function handleVisionPhoto(input){
   files.forEach(function(file,i){
     vbScale(file,function(src){
       if(src){
-        var n=a.length;
+        var spot=vbSpot(a.length);
         a.push({id:'vb'+Date.now()+'_'+i,src:src,
-                x:34+(n%3)*16,y:34+(Math.floor(n/3)%3)*16,   // scatter, don't stack
-                w:38,rot:Math.round((Math.random()*14-7)*10)/10,
-                z:n+1});
+                x:spot.x,y:spot.y,w:38,
+                rot:Math.round((Math.random()*14-7)*10)/10,z:vbTop(a)+1});
         added++;
       }
       if(--pending===0){
