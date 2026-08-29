@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e8dff5">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="תזונה">
+<link rel="apple-touch-icon" href="assets/logo.png">
+<link rel="icon" href="assets/logo.png">
 <title>&#x05EA;&#x05D6;&#x05D5;&#x05E0;&#x05D4;</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -1212,6 +1218,7 @@ function goHome(){
   refreshHomeCal();
   renderTripToggle();
   renderReminders();
+  renderSumRem();
   renderBookWidget();
 }
 
@@ -2870,6 +2877,153 @@ function toggleGoal(idx){
 function deleteGoal(idx){
   var goals=loadHabitGoals();goals.splice(idx,1);saveHabitGoals(goals);renderHabits();
 }
+
+/* ── DAY SUMMARY REMINDER ── */
+// Universal reminder engine: OS notification where the browser supports it,
+// in-app banner everywhere else. Runs while the app is open or in a live tab.
+var SUMREM_KEY='sum_reminder';
+
+function loadSumRem(){try{var x=localStorage.getItem(SUMREM_KEY);var o=x?JSON.parse(x):null;if(!o)return{on:false,time:'21:00',last:''};return{on:!!o.on,time:o.time||'21:00',last:o.last||''};}catch(e){return{on:false,time:'21:00',last:''};}}
+function saveSumRem(o){try{localStorage.setItem(SUMREM_KEY,JSON.stringify(o));}catch(e){}}
+
+function nowHHMM(){var n=new Date();return ('0'+n.getHours()).slice(-2)+':'+('0'+n.getMinutes()).slice(-2);}
+
+// granted | denied | default | unsupported
+function sumRemPerm(){if(!('Notification' in window))return 'unsupported';return Notification.permission;}
+
+// Registered service worker, or null. Mobile Chrome forbids the `new Notification()`
+// constructor, so on a phone this registration is what makes OS notifications possible.
+var _swReg=null;
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+  navigator.serviceWorker.register('sw.js').then(function(r){
+    _swReg=r;
+    if(typeof renderSumRem==='function')renderSumRem();
+  }).catch(function(){});
+}
+
+function sumRemShowOS(title,body){
+  if(!('Notification' in window)||Notification.permission!=='granted')return false;
+  var opts={body:body,icon:'assets/logo.png',badge:'assets/logo.png',tag:'sumrem',renotify:true};
+  if(_swReg&&_swReg.showNotification){
+    try{_swReg.showNotification(title,opts);return true;}catch(e){}
+  }
+  try{
+    var n=new Notification(title,opts);
+    n.onclick=function(){try{window.focus();}catch(e){}n.close();sumRemGo();};
+    return true;
+  }catch(e){return false;}   // mobile Chrome without an active SW lands here
+}
+
+function sumRemBanner(msg){
+  var old=document.getElementById('sumrem-banner');if(old)old.remove();
+  var d=document.createElement('div');
+  d.id='sumrem-banner';
+  d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:900;display:flex;justify-content:center;padding:10px 12px;pointer-events:none';
+  d.innerHTML='<div style="pointer-events:auto;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;border-radius:18px;padding:12px 14px;box-shadow:0 8px 28px rgba(74,67,64,.28);width:100%;max-width:420px;display:flex;align-items:center;gap:10px">'+
+    '<span style="font-size:20px;flex-shrink:0">&#x1F319;</span>'+
+    '<div style="flex:1;font-size:13px;font-weight:700;line-height:1.5">'+esc(msg)+'</div>'+
+    '<button onclick="sumRemGo()" style="background:#fff;color:#a690cf;border:none;border-radius:11px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0">סיכום</button>'+
+    '<button onclick="sumRemDismiss()" style="background:none;border:none;color:rgba(255,255,255,.85);font-size:19px;cursor:pointer;padding:0 2px;flex-shrink:0">&times;</button>'+
+  '</div>';
+  document.body.appendChild(d);
+}
+function sumRemDismiss(){var b=document.getElementById('sumrem-banner');if(b)b.remove();}
+function sumRemGo(){sumRemDismiss();enterModule('endofday');window.scrollTo(0,0);}
+
+function sumRemFire(){
+  var o=loadSumRem();
+  o.last=todayStr();saveSumRem(o);
+  sumRemShowOS('סיכום יום','הגיע הזמן לסכם את היום שלך');
+  if(!document.hidden)sumRemBanner('הגיע הזמן לסיכום היום');
+  renderSumRem();
+}
+
+function sumRemCheck(){
+  var o=loadSumRem();
+  if(!o.on||!o.time)return;
+  var t=todayStr();
+  if(o.last===t)return;        // already fired today
+  if(loadSummary(t))return;    // day already summarized - no nagging
+  if(nowHHMM()>=o.time)sumRemFire();
+}
+
+function sumRemToggle(on){
+  var o=loadSumRem();
+  o.on=!!on;
+  // Enabling after the hour already passed shouldn't fire retroactively - start tomorrow.
+  o.last=(o.on&&nowHHMM()>=o.time)?todayStr():'';
+  saveSumRem(o);
+  if(o.on&&('Notification' in window)&&Notification.permission==='default')sumRemAsk();
+  renderSumRem();
+  showToast(o.on?'✓ תזכורת יומית הופעלה':'התזכורת בוטלה');
+  if(o.on)sumRemCheck();
+}
+
+function sumRemSetTime(v){
+  if(!v)return;
+  var o=loadSumRem();
+  o.time=v;
+  o.last=(nowHHMM()>=v)?todayStr():'';
+  saveSumRem(o);
+  renderSumRem();
+  showToast('✓ נקבע ל-'+v);
+}
+
+function sumRemAsk(){
+  if(!('Notification' in window)){showToast('הדפדפן לא תומך בהתראות מערכת');return;}
+  try{
+    var r=Notification.requestPermission(function(){renderSumRem();});
+    if(r&&r.then)r.then(function(p){renderSumRem();showToast(p==='granted'?'✓ התראות מאושרות':'ההרשאה לא ניתנה');});
+  }catch(e){}
+}
+
+function sumRemTest(){
+  var ok=sumRemShowOS('סיכום יום','זו תזכורת בדיקה - הכל עובד');
+  sumRemBanner('תזכורת בדיקה'+(ok?'':' (בתוך האפליקציה בלבד)'));
+}
+
+function renderSumRem(){
+  var el=document.getElementById('home-sumrem');if(!el)return;
+  var o=loadSumRem();
+  var perm=sumRemPerm();
+  var h='<div style="background:#fff;border-radius:22px;padding:18px 16px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
+
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:'+(o.on?'14px':'10px')+'">';
+  h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700">תזכורת לסיכום יום</div>';
+  h+='<button class="trip-toggle-track'+(o.on?' on':'')+'" onclick="sumRemToggle('+(o.on?'false':'true')+')"><div class="trip-toggle-thumb"></div></button>';
+  h+='</div>';
+
+  if(!o.on){
+    h+='<div style="font-size:11px;color:#a89e97;line-height:1.7">קבעו שעה קבועה, ותקבלו תזכורת יומית לסכם את היום.</div>';
+    h+='</div>';el.innerHTML=h;return;
+  }
+
+  h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+  h+='<span style="font-size:12px;color:#6a6360;font-weight:700;flex-shrink:0">בשעה</span>';
+  h+='<input type="time" value="'+o.time+'" onchange="sumRemSetTime(this.value)" style="flex:1;border:1px solid #e8dff5;background:#faf7ff;border-radius:12px;padding:9px 12px;font-size:15px;font-weight:700;color:#4a4340;font-family:inherit;text-align:center">';
+  h+='</div>';
+
+  var box='background:#faf7ff;border:1px solid #e8dff5;border-radius:14px;padding:10px 12px;margin-bottom:10px;font-size:11px;line-height:1.7;color:#6a6360';
+  if(perm==='default'){
+    h+='<div style="'+box+'">כדי לקבל התראה על מסך הטלפון צריך לאשר הרשאה.';
+    h+='<button onclick="sumRemAsk()" style="display:block;width:100%;margin-top:8px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;border:none;border-radius:11px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">אישור התראות</button></div>';
+  } else if(perm==='granted'){
+    h+='<div style="'+box+';color:#7bb389;border-color:#cfe8d6;background:#f4fbf6">&#10003; התראות מאושרות במכשיר הזה</div>';
+  } else if(perm==='denied'){
+    h+='<div style="'+box+'">ההתראות חסומות בהגדרות הדפדפן. התזכורת תוצג בתוך האפליקציה בלבד.</div>';
+  } else {
+    h+='<div style="'+box+'">הדפדפן הזה לא תומך בהתראות מערכת. התזכורת תוצג בתוך האפליקציה.</div>';
+  }
+
+  h+='<div style="font-size:10px;color:#a89e97;line-height:1.6;margin-bottom:10px">התזכורת פועלת כשהאפליקציה פתוחה או ברקע. אם כבר סיכמת את היום, לא תישלח תזכורת.</div>';
+  h+='<button onclick="sumRemTest()" style="width:100%;background:#f5f0eb;color:#a89e97;border:none;border-radius:11px;padding:9px;font-size:11px;font-weight:700;cursor:pointer">בדיקה עכשיו</button>';
+
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+setInterval(sumRemCheck,20000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)sumRemCheck();});
 
 /* ── REMINDERS ── */
 // Types: task=□, event=○, appt=△, note=·, due=⊙, important=★, reminder=!, idea=?, buy=$, birthday=⬡, work=W, study=M
@@ -5381,6 +5535,7 @@ function confirmTripOn(){
     '<div class="home-date" id="home-date"></div>'+
     '<div id="home-cal" style="width:100%;max-width:380px;margin-top:20px"></div>'+
     '<div id="home-reminders" style="width:100%;max-width:380px;margin-top:16px"></div>'+
+    '<div id="home-sumrem" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="home-book" style="width:100%;max-width:380px;margin-top:16px;margin-bottom:20px"></div>';
   document.body.appendChild(home);
   // Set date
@@ -5391,6 +5546,7 @@ function confirmTripOn(){
   document.getElementById('home-cal').innerHTML=buildHomeCalHTML();
   renderTripToggle();
   renderReminders();
+  renderSumRem();
   renderBookWidget();
   // Hide app initially
   document.querySelector('.app').style.display='none';
