@@ -24,6 +24,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tab{flex:1;padding:7px 4px;border:none;border-radius:11px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:#a89e97;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .tab.on{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
 .content{padding:14px 14px 0}
+/* The game is a whole page of its own - dark, full-bleed, with its own CSS
+   reset - so it runs inside an iframe instead of fighting the app's styles. */
+.app.game-mode{padding-bottom:0}
+.game-wrap{border-radius:22px;overflow:hidden;background:#160d06;box-shadow:0 4px 18px rgba(120,80,40,.22)}
+.game-frame{display:block;width:100%;height:520px;border:0}
 .macro-card{background:#fff;border-radius:22px;padding:18px 16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)}
 .macro-title{font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700;text-align:center;margin-bottom:14px}
 .macro-bars{display:flex;gap:10px;justify-content:center;align-items:flex-end}
@@ -167,6 +172,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .home-card.goals{background:linear-gradient(145deg,#e8fef0,#d0fde0);box-shadow:0 8px 32px rgba(76,154,76,.2)}
 .home-card.planning{background:linear-gradient(145deg,#e8f4ff,#d0e8ff);box-shadow:0 8px 32px rgba(79,110,247,.18)}
 .home-card.planning{background:linear-gradient(145deg,#e8f4fd,#d0e8f8);box-shadow:0 8px 32px rgba(58,124,165,.2)}
+.home-card.game{background:linear-gradient(145deg,#fdf2e2,#f6e1c3);box-shadow:0 8px 32px rgba(201,139,63,.22)}
 .home-card.trip{background:linear-gradient(145deg,#e8f0ff,#dde8ff);box-shadow:0 8px 32px rgba(66,99,235,.15);justify-content:flex-start;padding:20px 22px}
 @keyframes plane-fly{0%{transform:translateX(0) rotate(0deg)}30%{transform:translateX(-6px) rotate(-8deg)}60%{transform:translateX(4px) rotate(5deg)}100%{transform:translateX(0) rotate(0deg)}}
 .plane-anim{animation:plane-fly 2s ease-in-out infinite}
@@ -1295,6 +1301,9 @@ var currentModule=null; // null = home, 'nutrition', 'endofday'
 
 function goHome(){
   currentModule=null;
+  document.querySelector('.app').classList.remove('game-mode');
+  document.getElementById('btnPrev').style.display='';
+  document.getElementById('btnNext').style.display='';
   document.querySelector('.app').style.display='none';
   document.querySelector('.tabs').style.display='';
   document.getElementById('home-screen').style.display='flex';
@@ -1308,6 +1317,9 @@ function goHome(){
 
 function enterModule(mod){
   currentModule=mod;
+  document.querySelector('.app').classList.remove('game-mode');
+  document.getElementById('btnPrev').style.display='';
+  document.getElementById('btnNext').style.display='';
   document.getElementById('home-screen').style.display='none';
   if(mod==='nutrition'){
     document.querySelector('.app').style.display='block';
@@ -1340,6 +1352,15 @@ function enterModule(mod){
     document.getElementById('hdr-title').textContent='תכנון זמן';
     _planStep=0;_planData={intent:'',anchors:[],goal:'',subgoal:'',priorities:[],feeling:'',blocker:'',blockerSolution:'',reminders:[]};
     renderPlanning();
+  } else if(mod==='game'){
+    document.querySelector('.app').style.display='block';
+    document.querySelector('.app').classList.add('game-mode');
+    document.querySelector('.tabs').style.display='none';
+    document.getElementById('hdr-date').textContent='';
+    document.getElementById('hdr-title').textContent='משחק';
+    document.getElementById('btnPrev').style.display='none';
+    document.getElementById('btnNext').style.display='none';
+    renderGame();
   } else if(mod==='goals'){
     document.querySelector('.app').style.display='block';
     document.querySelector('.tabs').style.display='none';
@@ -5997,6 +6018,31 @@ function confirmTripOn(){
   },900);
 }
 
+// ---------------------------------------------------------------------
+// משחק - "החץ", a game for the table. It is a complete page of its own, kept
+// at the bottom of this file in a #game-src block and handed to an iframe, so
+// its dark full-screen styling stays sealed off from the app's.
+// ---------------------------------------------------------------------
+var _gameFrame=null;
+function sizeGameFrame(){
+  if(!_gameFrame||!_gameFrame.parentNode)return;
+  var top=_gameFrame.getBoundingClientRect().top;
+  _gameFrame.style.height=Math.max(360,window.innerHeight-top-12)+'px';
+}
+function renderGame(){
+  document.getElementById('content').innerHTML='<div class="game-wrap"><iframe class="game-frame" id="game-frame" title="החץ"></iframe></div>';
+  _gameFrame=document.getElementById('game-frame');
+  var src=document.getElementById('game-src');
+  // the stored page has its closing script tag escaped so it cannot end the
+  // block that carries it; put it back on the way into the iframe.
+  _gameFrame.srcdoc=src?src.textContent.trim().split('<\\/script>').join('<'+'/script>'):'';
+  _gameFrame.addEventListener('load',sizeGameFrame);
+  window.scrollTo(0,0);
+  sizeGameFrame();
+  requestAnimationFrame(sizeGameFrame);
+}
+window.addEventListener('resize',sizeGameFrame);
+
 // Build home screen DOM
 (function(){
   var home=document.createElement('div');
@@ -6046,6 +6092,11 @@ function confirmTripOn(){
         '<div class="home-card-title">תכנון זמן</div>'+
         '<div class="home-card-sub">לתכנן את היום שאחרי</div>'+
       '</button>'+
+      '<button class="home-card game" onclick="enterModule(\'game\')">'+
+        '<div class="home-card-icon">&#x1F3F9;</div>'+
+        '<div class="home-card-title">משחק</div>'+
+        '<div class="home-card-sub">החץ &mdash; מי עונה על השאלה</div>'+
+      '</button>'+
     '</div>'+
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
@@ -6069,6 +6120,1143 @@ function confirmTripOn(){
   // Hide app initially
   document.querySelector('.app').style.display='none';
 })();
+</script>
+
+<!-- The game "החץ", verbatim, as the standalone page it is. renderGame()
+     hands it to an iframe. -->
+<script type="text/html" id="game-src">
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#150d07">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="החץ">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23241608'/><circle cx='50' cy='50' r='38' fill='none' stroke='%235a3a1f' stroke-width='5'/><circle cx='50' cy='50' r='26' fill='none' stroke='%234a2f18' stroke-width='4'/><path d='M50 16 L58 50 L50 56 L42 50 Z' fill='%23ff8a3c'/><circle cx='50' cy='52' r='6' fill='%23c98b3f'/></svg>">
+<title>החץ</title>
+<style>
+/* =====================================================================
+   an old wooden board: table planks, a slice of trunk, brass and parchment
+   ===================================================================== */
+:root{
+  --wood-0:#160d06;
+  --wood-1:#241609;
+  --wood-2:#3a2411;
+  --wood-3:#553516;
+  --wood-4:#7a5130;
+  --bark:#1a1008;
+  --brass:#c98b3f;
+  --brass-hi:#f0cd94;
+  --ember:#ff8a3c;
+  --parch:#e9dcbe;
+  --parch-2:#dccca8;
+  --ink:#3b2a17;
+  --txt:#eddcc0;
+  --muted:#a08e73;
+  --line:rgba(255,220,170,.14);
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='170' height='170' filter='url(%23n)'/%3E%3C/svg%3E");
+  --serif:'Frank Ruhl Libre','Frank Ruehl CLM','FrankRuehl','David','Noto Serif Hebrew','Times New Roman',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Arial Hebrew','Noto Sans Hebrew',Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:var(--sans);
+  color:var(--txt);direction:rtl;overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  background-color:var(--wood-0);
+  background-image:
+    radial-gradient(125% 85% at 50% 6%,rgba(120,75,35,.28),transparent 62%),
+    repeating-linear-gradient(90deg,rgba(0,0,0,.5) 0 2px,rgba(255,210,150,.03) 2px 4px,transparent 4px 132px),
+    repeating-linear-gradient(90deg,rgba(255,225,180,.014) 0 3px,transparent 3px 11px),
+    linear-gradient(180deg,#2a1a0b,#130b05);
+}
+/* a dusting of grain over the whole table */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:var(--grain);opacity:.055;
+}
+button,input{font-family:inherit;color:inherit}
+::selection{background:rgba(201,139,63,.35)}
+
+/* ---------- screens ---------- */
+.screen{
+  position:fixed;inset:0;display:none;flex-direction:column;z-index:1;
+  padding:calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 18px);
+}
+.screen.on{display:flex;animation:fade .5s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.center{justify-content:center;align-items:center;text-align:center;overflow-y:auto}
+
+/* ---------- type ---------- */
+.eyebrow{font-size:11px;letter-spacing:.42em;color:var(--muted);font-weight:700}
+.title{
+  font-family:var(--serif);
+  font-size:clamp(58px,21vw,116px);font-weight:700;line-height:1;
+  background:linear-gradient(180deg,#f3d7a4 0%,var(--brass) 45%,#7d5122 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  margin:16px 0 14px;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 12px 26px rgba(0,0,0,.5));
+}
+.tagline{font-family:var(--serif);font-size:clamp(17px,4.8vw,22px);color:#d8c39c;line-height:1.5;max-width:22ch}
+.step-title{font-family:var(--serif);font-size:clamp(22px,5.6vw,28px);font-weight:700;margin-bottom:6px}
+.step-sub{font-size:14px;color:var(--muted);margin-bottom:26px;max-width:30ch;line-height:1.5}
+
+/* ---------- buttons: wood with a brass edge ---------- */
+.btn{
+  border:1px solid rgba(201,139,63,.4);border-radius:12px;padding:16px 32px;
+  font-size:17px;font-weight:700;cursor:pointer;color:#f0dcbb;
+  background-image:var(--grain),linear-gradient(180deg,#4b2f16,#301c0c);
+  background-blend-mode:overlay,normal;
+  box-shadow:0 4px 0 rgba(0,0,0,.45),inset 0 1px 0 rgba(255,220,170,.14);
+  transition:transform .12s ease,box-shadow .12s ease,opacity .2s ease;
+}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.45),inset 0 1px 0 rgba(255,220,170,.1)}
+.btn.primary{
+  color:#2a1806;border-color:#8a5a22;
+  background-image:var(--grain),linear-gradient(180deg,#f0cd94,var(--brass) 45%,#9a6526);
+  background-blend-mode:soft-light,normal;
+  text-shadow:0 1px 0 rgba(255,235,200,.5);
+  box-shadow:0 4px 0 #5e3a12,0 10px 26px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,245,220,.6);
+}
+.btn.wide{width:100%;max-width:420px}
+.btn.ghost{background-image:none;background:rgba(255,220,170,.05);color:var(--muted);font-weight:600;font-size:15px;padding:12px 26px;box-shadow:none;border-color:rgba(255,220,170,.12)}
+.btn.ghost:active{transform:scale(.97)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+
+/* ---------- player count ---------- */
+.count-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:340px;margin-bottom:30px}
+.count-btn{
+  aspect-ratio:1;border-radius:50%;border:1px solid rgba(201,139,63,.3);
+  font-family:var(--serif);font-size:28px;font-weight:700;cursor:pointer;color:#e2caa0;
+  background-image:var(--grain),radial-gradient(circle at 38% 30%,#54331a,#2a1809 75%);
+  background-blend-mode:overlay,normal;
+  box-shadow:0 4px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,220,170,.12);
+  transition:all .2s ease;
+}
+.count-btn.on{
+  border-color:var(--brass);color:#2a1806;
+  background-image:var(--grain),radial-gradient(circle at 38% 28%,#f2d29c,var(--brass) 60%,#8f5e21);
+  background-blend-mode:soft-light,normal;
+  text-shadow:0 1px 0 rgba(255,240,210,.5);
+  box-shadow:0 4px 0 #5e3a12,0 0 26px rgba(201,139,63,.35);
+}
+.count-btn:active{transform:translateY(3px)}
+
+/* ---------- names ---------- */
+.names{width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px;margin-bottom:26px}
+.name-row{display:flex;align-items:center;gap:12px}
+.name-dot{
+  width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--serif);font-size:14px;font-weight:700;color:#f0e2c6;
+  background:radial-gradient(circle at 36% 30%,hsl(var(--h) 30% 40%),hsl(var(--h) 32% 22%));
+  border:1px solid hsl(var(--h) 30% 52% / .5);
+  box-shadow:inset 0 1px 0 rgba(255,235,200,.18),0 3px 6px rgba(0,0,0,.45);
+}
+.name-row input{
+  flex:1;min-width:0;border:1px solid rgba(255,220,170,.16);
+  background:rgba(20,12,6,.55);
+  border-radius:10px;padding:14px 16px;font-size:16px;outline:none;transition:border-color .2s;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.5);
+}
+.name-row input:focus{border-color:rgba(201,139,63,.65)}
+.name-row input::placeholder{color:#6d5b42}
+
+/* ---------- game top bar ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto}
+.brand{font-family:var(--serif);font-size:15px;letter-spacing:.34em;color:var(--brass);font-weight:700;padding-right:4px}
+.icons{display:flex;gap:7px}
+.icon-btn{
+  width:39px;height:39px;border-radius:50%;border:1px solid rgba(201,139,63,.28);
+  background:radial-gradient(circle at 38% 30%,#432913,#221306);
+  display:grid;place-items:center;font-size:15px;cursor:pointer;color:#dcc39a;
+  box-shadow:0 3px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,220,170,.12);
+  transition:transform .12s ease,opacity .2s ease;
+}
+.icon-btn:active{transform:translateY(2px)}
+.icon-btn.off{opacity:.4}
+
+/* ---------- stage ---------- */
+.stage-wrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+.stage{position:relative;transition:transform .55s cubic-bezier(.2,.85,.2,1);transform:scale(1)}
+body.sheet-open .stage{transform:scale(.62) translateY(-11%)}
+
+/* the slice of trunk: growth rings around an off-centre heart */
+.board{
+  position:absolute;inset:0;border-radius:50%;
+  border:calc(var(--s) * .014) solid var(--bark);
+  background-image:
+    repeating-radial-gradient(circle at 46% 43%,
+      rgba(0,0,0,.20) 0 2px,rgba(255,205,150,.045) 2px 5px,transparent 5px 11px),
+    repeating-radial-gradient(circle at 46% 43%,
+      rgba(0,0,0,.13) 0 7px,transparent 7px 19px),
+    repeating-radial-gradient(circle at 46% 43%,
+      rgba(0,0,0,.09) 0 15px,transparent 15px 43px),
+    radial-gradient(circle at 38% 30%,#7c5330 0%,#5b3a1e 34%,#40280f 66%,#2b1a09 100%);
+  box-shadow:
+    inset 0 0 calc(var(--s) * .09) rgba(0,0,0,.75),
+    0 calc(var(--s) * .03) calc(var(--s) * .09) rgba(0,0,0,.6);
+}
+/* two knots in the wood */
+.board::before,.board::after{
+  content:'';position:absolute;border-radius:50%;pointer-events:none;
+  background:radial-gradient(ellipse at 45% 40%,rgba(0,0,0,.55),rgba(0,0,0,.28) 45%,transparent 72%);
+}
+.board::before{width:13%;height:9%;left:14%;top:63%;transform:rotate(-18deg)}
+.board::after{width:8%;height:6%;left:72%;top:19%;transform:rotate(24deg)}
+
+.grain-layer{
+  position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background-image:var(--grain);opacity:.10;mix-blend-mode:overlay;
+}
+
+/* one stained wedge per player, redrawn whenever a peg is dragged */
+.wedges,.wedge-win{
+  position:absolute;inset:4%;border-radius:50%;pointer-events:none;
+  -webkit-mask:radial-gradient(circle,transparent 0 52%,#000 53%);
+          mask:radial-gradient(circle,transparent 0 52%,#000 53%);
+}
+.wedge-win{opacity:0;transition:opacity .5s ease;mix-blend-mode:screen}
+.wedge-win.on{opacity:1}
+
+/* the boundaries read as splits in the wood */
+.spokes{position:absolute;inset:0;pointer-events:none}
+.spoke{
+  position:absolute;left:50%;top:50%;width:2px;height:48%;transform-origin:50% 0;
+  background:linear-gradient(to bottom,
+    transparent 0 54%,rgba(0,0,0,.55) 54%,rgba(0,0,0,.3) 88%,transparent 100%);
+  box-shadow:1px 0 0 rgba(255,215,160,.05);
+}
+
+/* carved circles */
+.ring{
+  position:absolute;inset:10%;border-radius:50%;
+  border:1px solid rgba(0,0,0,.45);
+  box-shadow:0 1px 0 rgba(255,215,160,.07),inset 0 -1px 0 rgba(255,215,160,.05);
+}
+.ring.inner{inset:31%}
+.glow{
+  position:absolute;left:50%;top:50%;width:58%;aspect-ratio:1;transform:translate(-50%,-50%);
+  border-radius:50%;background:radial-gradient(circle,rgba(255,168,80,.13),transparent 68%);
+  pointer-events:none;transition:opacity .6s;opacity:.4;
+}
+body.spinning .glow{opacity:1}
+
+.shock{
+  position:absolute;left:50%;top:50%;width:24%;aspect-ratio:1;border-radius:50%;
+  border:2px solid rgba(255,178,96,.9);opacity:0;pointer-events:none;
+  transform:translate(-50%,-50%) scale(.35);
+}
+.shock.go{animation:shock 1s cubic-bezier(.2,.7,.3,1)}
+@keyframes shock{
+  0%{opacity:.7;transform:translate(-50%,-50%) scale(.35)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(3.7)}
+}
+
+/* ---------- the pegs ---------- */
+.node{
+  position:absolute;left:50%;top:50%;width:22%;aspect-ratio:1;touch-action:none;cursor:grab;
+  transform:translate(-50%,-50%) translate(var(--x,0px),var(--y,0px)) scale(1);
+  transition:transform .45s cubic-bezier(.34,1.4,.5,1);
+}
+.node.dragging{transition:none;cursor:grabbing;z-index:9}
+.node.dragging .node-in{box-shadow:0 16px 30px rgba(0,0,0,.7),inset 0 2px 0 rgba(255,225,180,.2)}
+.node-in{
+  position:absolute;inset:0;border-radius:50%;padding:9%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center;
+  background-image:
+    var(--grain),
+    repeating-radial-gradient(circle at 44% 38%,rgba(0,0,0,.16) 0 1px,transparent 1px 4px),
+    radial-gradient(circle at 38% 28%,#8a5c34,#5c3a1c 55%,#38220e 100%);
+  background-blend-mode:overlay,normal,normal;
+  border:1px solid rgba(0,0,0,.55);
+  box-shadow:
+    inset 0 2px 0 rgba(255,225,180,.16),
+    inset 0 0 0 3px hsl(var(--h) 28% 38% / .5),
+    inset 0 -4px 8px rgba(0,0,0,.5),
+    0 6px 14px rgba(0,0,0,.6);
+  transition:box-shadow .35s,filter .35s;
+}
+.node-name{
+  font-family:var(--serif);
+  font-size:calc(var(--s) * .045);font-weight:700;line-height:1.15;width:100%;color:#f6e7c8;
+  text-shadow:0 2px 2px rgba(0,0,0,.75),0 -1px 0 rgba(255,230,190,.12);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;
+}
+.node-count{font-size:calc(var(--s) * .026);color:#c3a880;font-weight:700}
+.node.win{transform:translate(-50%,-50%) translate(var(--x,0px),var(--y,0px)) scale(1.15);z-index:8}
+.node.win .node-in{
+  filter:brightness(1.18) saturate(1.1);
+  animation:lamp 2.6s ease-in-out infinite;
+}
+@keyframes lamp{
+  0%,100%{box-shadow:
+    inset 0 2px 0 rgba(255,235,200,.22),inset 0 0 0 3px rgba(255,178,96,.55),
+    inset 0 -4px 8px rgba(0,0,0,.45),0 0 34px 4px rgba(255,150,60,.32)}
+  50%{box-shadow:
+    inset 0 2px 0 rgba(255,235,200,.3),inset 0 0 0 3px rgba(255,200,130,.8),
+    inset 0 -4px 8px rgba(0,0,0,.45),0 0 58px 12px rgba(255,150,60,.5)}
+}
+
+/* ---------- the needle ---------- */
+.arrow{position:absolute;inset:0;will-change:transform;transform:rotate(0deg)}
+.arrow-trail{
+  position:absolute;inset:9%;border-radius:50%;pointer-events:none;
+  opacity:var(--trail,0);transition:opacity .25s linear;
+  background:conic-gradient(from 292deg,
+    rgba(120,70,30,0) 0deg,
+    rgba(160,95,40,.10) 32deg,
+    rgba(255,150,70,.22) 62deg,
+    rgba(255,210,150,.34) 68deg,
+    rgba(255,150,70,0) 70deg);
+  -webkit-mask:radial-gradient(circle,transparent 0 32%,#000 34% 60%,transparent 63%);
+          mask:radial-gradient(circle,transparent 0 32%,#000 34% 60%,transparent 63%);
+}
+.arrow svg{position:absolute;inset:0;width:100%;height:100%;display:block;
+  filter:drop-shadow(calc(var(--s) * .006) calc(var(--s) * .01) calc(var(--s) * .008) rgba(0,0,0,.6))}
+
+/* ---------- the brass pivot ---------- */
+.hub{
+  position:absolute;left:50%;top:50%;width:21%;aspect-ratio:1;transform:translate(-50%,-50%);
+  border-radius:50%;border:1px solid #3a2409;cursor:pointer;
+  background:
+    radial-gradient(circle at 36% 28%,#f5dcaa 0%,#c98b3f 38%,#8a5a22 72%,#4d2f0f 100%);
+  box-shadow:
+    0 4px 10px rgba(0,0,0,.7),
+    inset 0 2px 3px rgba(255,245,215,.55),
+    inset 0 -3px 6px rgba(0,0,0,.5);
+  display:grid;place-items:center;z-index:10;
+  animation:shine 4s ease-in-out infinite;
+}
+.hub::after{
+  content:'';width:26%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#5a3a15,#241405);
+  box-shadow:inset 0 1px 1px rgba(0,0,0,.8),0 1px 0 rgba(255,230,180,.25);
+}
+@keyframes shine{
+  0%,100%{box-shadow:0 4px 10px rgba(0,0,0,.7),0 0 0 0 rgba(255,180,90,.0),inset 0 2px 3px rgba(255,245,215,.55),inset 0 -3px 6px rgba(0,0,0,.5)}
+  50%{box-shadow:0 4px 10px rgba(0,0,0,.7),0 0 20px 4px rgba(255,180,90,.28),inset 0 2px 3px rgba(255,245,215,.55),inset 0 -3px 6px rgba(0,0,0,.5)}
+}
+.hub:active{transform:translate(-50%,-50%) scale(.93)}
+body.spinning .hub{animation:none}
+
+/* ---------- bottom ---------- */
+.bottom{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:12px;transition:opacity .35s,transform .35s}
+body.sheet-open .bottom{opacity:0;transform:translateY(30px);pointer-events:none}
+.hint{font-size:12.5px;color:var(--muted);text-align:center;line-height:1.4;min-height:18px}
+
+/* ---------- parchment sheets ---------- */
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  color:var(--ink);
+  background-color:var(--parch);
+  background-image:
+    var(--grain),
+    radial-gradient(ellipse at 12% 8%,rgba(150,110,60,.22),transparent 45%),
+    radial-gradient(ellipse at 88% 22%,rgba(140,100,55,.18),transparent 40%),
+    radial-gradient(ellipse at 60% 96%,rgba(120,85,45,.25),transparent 50%),
+    linear-gradient(180deg,#efe4c9,#d9c8a2);
+  background-blend-mode:multiply,normal,normal,normal,normal;
+  border-top:3px solid #8a6a3c;
+  border-radius:20px 20px 0 0;
+  padding:22px 22px calc(env(safe-area-inset-bottom) + 22px);
+  transform:translateY(115%);transition:transform .55s cubic-bezier(.2,.9,.2,1);
+  max-height:66vh;overflow-y:auto;
+  box-shadow:0 -18px 50px rgba(0,0,0,.65),inset 0 2px 0 rgba(255,250,235,.6);
+}
+.sheet.on{transform:none}
+.grab{width:52px;height:4px;border-radius:2px;background:rgba(90,65,35,.3);margin:-6px auto 16px}
+.winner{font-family:var(--serif);font-size:clamp(22px,5.8vw,29px);font-weight:700;margin-bottom:18px;text-align:center;color:#2f2010}
+.q-cat{
+  font-size:10.5px;letter-spacing:.34em;color:#8a6535;font-weight:700;text-align:center;
+  margin-bottom:14px;position:relative;
+}
+.q-cat::before,.q-cat::after{
+  content:'';position:absolute;top:50%;width:18%;height:1px;background:rgba(120,90,50,.45);
+}
+.q-cat::before{right:8%}
+.q-cat::after{left:8%}
+.q-text{
+  font-family:var(--serif);
+  font-size:clamp(20px,5.3vw,27px);line-height:1.55;font-weight:600;text-align:center;
+  color:#33230f;margin-bottom:24px;text-shadow:0 1px 0 rgba(255,250,235,.5);
+}
+.sheet-actions{display:flex;gap:10px}
+.sheet-actions .btn{
+  flex:1;padding:15px 8px;font-size:15.5px;color:#f0dcbb;
+  border-color:rgba(60,38,15,.5);
+}
+.sheet-actions .btn.primary{color:#2a1806}
+
+.backdrop{position:fixed;inset:0;background:rgba(10,6,3,.65);z-index:25;opacity:0;pointer-events:none;transition:opacity .35s}
+.backdrop.on{opacity:1;pointer-events:auto}
+.hist-title{font-family:var(--serif);font-size:15px;letter-spacing:.3em;color:#7a5a30;font-weight:700;text-align:center;margin-bottom:18px}
+.hist-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.hist-name{font-family:var(--serif);font-size:16px;font-weight:700;width:32%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#33230f}
+.hist-bar{flex:1;height:9px;border-radius:2px;background:rgba(90,65,35,.18);overflow:hidden;box-shadow:inset 0 1px 2px rgba(80,55,25,.3)}
+.hist-fill{height:100%;transition:width .5s ease}
+.hist-num{font-size:13px;color:#7a5a30;font-weight:600;width:66px;text-align:left}
+</style>
+</head>
+<body>
+
+<!-- ========== 1. intro ========== -->
+<section class="screen center on" id="scr-intro">
+  <div class="eyebrow">משחק לשולחן</div>
+  <h1 class="title">החץ</h1>
+  <p class="tagline">מי הולך לענות על השאלה?</p>
+  <button class="btn primary" id="btn-start" style="margin-top:40px">התחל משחק</button>
+</section>
+
+<!-- ========== 2. how many ========== -->
+<section class="screen center" id="scr-count">
+  <h2 class="step-title">כמה אתם?</h2>
+  <p class="step-sub">בחרו את מספר השחקנים סביב השולחן</p>
+  <div class="count-grid" id="count-grid"></div>
+  <button class="btn primary wide" id="btn-count-next">המשך</button>
+  <button class="btn ghost" id="btn-count-back" style="margin-top:14px">חזרה</button>
+</section>
+
+<!-- ========== 3. names ========== -->
+<section class="screen center" id="scr-names">
+  <h2 class="step-title">מי משחק?</h2>
+  <p class="step-sub">אפשר גם להשאיר ריק ולהמשיך</p>
+  <div class="names" id="names"></div>
+  <button class="btn primary wide" id="btn-names-next">המשך</button>
+  <button class="btn ghost" id="btn-names-back" style="margin-top:14px">חזרה</button>
+</section>
+
+<!-- ========== 4. game ========== -->
+<section class="screen" id="scr-game">
+  <div class="top">
+    <div class="brand">החץ</div>
+    <div class="icons">
+      <button class="icon-btn" id="btn-sound" title="סאונד">&#128266;</button>
+      <button class="icon-btn" id="btn-reset" title="פריסה מחדש">&#9711;</button>
+      <button class="icon-btn" id="btn-hist" title="היסטוריה">&#9776;</button>
+      <button class="icon-btn" id="btn-new" title="משחק חדש">&#10005;</button>
+    </div>
+  </div>
+
+  <div class="stage-wrap" id="stage-wrap">
+    <div class="stage" id="stage">
+      <div class="board"></div>
+      <div class="wedges" id="wedges"></div>
+      <div class="wedge-win" id="wedge-win"></div>
+      <div class="spokes" id="spokes"></div>
+      <div class="ring"></div>
+      <div class="ring inner"></div>
+      <div class="glow"></div>
+      <div class="grain-layer"></div>
+      <div class="shock" id="shock"></div>
+      <div class="arrow" id="arrow">
+        <div class="arrow-trail"></div>
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id="cop" x1=".2" y1="0" x2=".8" y2="1">
+              <stop offset="0%" stop-color="#ffd7ae"/>
+              <stop offset="26%" stop-color="#ff9d50"/>
+              <stop offset="62%" stop-color="#ef7a26"/>
+              <stop offset="100%" stop-color="#a8410b"/>
+            </linearGradient>
+            <linearGradient id="shaft" x1=".15" y1="0" x2=".9" y2="0">
+              <stop offset="0%" stop-color="#9a6a3c"/>
+              <stop offset="35%" stop-color="#73461f"/>
+              <stop offset="100%" stop-color="#3f2510"/>
+            </linearGradient>
+            <linearGradient id="brs" x1=".2" y1="0" x2=".8" y2="1">
+              <stop offset="0%" stop-color="#f3d9a6"/>
+              <stop offset="55%" stop-color="#c98b3f"/>
+              <stop offset="100%" stop-color="#7a4d18"/>
+            </linearGradient>
+          </defs>
+          <!-- wooden shaft -->
+          <path d="M50 40 L53.4 44 L52.2 63 L50 67 L47.8 63 L46.6 44 Z" fill="url(#shaft)"/>
+          <path d="M50 41 L50 66" stroke="#2e1a09" stroke-width=".45" opacity=".5"/>
+          <path d="M48.7 44 L49 62" stroke="#2e1a09" stroke-width=".3" opacity=".35"/>
+          <path d="M51.4 45 L51 61" stroke="#2e1a09" stroke-width=".3" opacity=".3"/>
+          <!-- brass collar -->
+          <path d="M46.4 41.6 L53.6 41.6 L53.2 44.6 L46.8 44.6 Z" fill="url(#brs)"/>
+          <!-- copper head -->
+          <path d="M50 25.5 L55.2 43 L50 46.6 L44.8 43 Z" fill="url(#cop)"/>
+          <path d="M50 25.5 L50 46.6 L44.8 43 Z" fill="#fff" opacity=".18"/>
+          <path d="M50 25.5 L55.2 43 L50 46.6" fill="none" stroke="#7d2f06" stroke-width=".4" opacity=".6"/>
+          <!-- counterweight -->
+          <path d="M50 67 L52.6 71.5 L50 74 L47.4 71.5 Z" fill="url(#brs)" opacity=".85"/>
+        </svg>
+      </div>
+      <button class="hub" id="hub" aria-label="סובב"></button>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <button class="btn primary wide" id="btn-spin">התחל סבב</button>
+    <div class="hint" id="hint">גררו את העיגולים לפי מקומות הישיבה סביב השולחן</div>
+  </div>
+</section>
+
+<!-- ========== overlays ========== -->
+<div class="backdrop" id="backdrop"></div>
+
+<div class="sheet" id="sheet-result">
+  <div class="grab"></div>
+  <div class="winner" id="winner"></div>
+  <div class="q-cat" id="q-cat"></div>
+  <div class="q-text" id="q-text"></div>
+  <div class="sheet-actions">
+    <button class="btn" id="btn-respin">&#8635; סובב שוב</button>
+    <button class="btn primary" id="btn-answered">&#10003; עניתי</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet-hist">
+  <div class="grab"></div>
+  <div class="hist-title">מי כבר נשאל</div>
+  <div id="hist-list"></div>
+  <button class="btn wide" id="btn-hist-close" style="margin-top:18px">סגירה</button>
+</div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   1. QUESTIONS
+   ===================================================================== */
+const QUESTIONS = [
+  // עצמי
+  {c:'עצמי', q:'מה הדבר שאתה הכי אוהב בעצמך אבל כמעט אף פעם לא אומר בקול?'},
+  {c:'עצמי', q:'איזה צד באופי שלך אתה מנסה להסתיר מאנשים?'},
+  {c:'עצמי', q:'מה הדבר שהכי קשה לך לסלוח לעצמך עליו?'},
+  {c:'עצמי', q:'מתי בפעם האחרונה הרגשת שאתה באמת עצמך?'},
+  {c:'עצמי', q:'איזה הרגל שלך היית רוצה להשאיר מאחור?'},
+  {c:'עצמי', q:'מה הדבר שאתה הכי רוצה לשנות בעצמך?'},
+  {c:'עצמי', q:'מה אנשים בדרך כלל לא מבינים לגביך?'},
+  {c:'עצמי', q:'איזה חלק בעצמך אתה מרגיש שעדיין לא הכרת מספיק?'},
+  // עבר
+  {c:'עבר', q:'איזה רגע מהעבר שלך הכי השפיע על מי שאתה היום?'},
+  {c:'עבר', q:'אם היית יכול לדבר עם עצמך בגיל 16, מה היית אומר?'},
+  {c:'עבר', q:'איזו טעות מהעבר לימדה אותך הכי הרבה?'},
+  {c:'עבר', q:'על איזה רגע בחיים שלך היית רוצה לחזור?'},
+  {c:'עבר', q:'איזה אדם מהעבר שלך עדיין משפיע עליך?'},
+  {c:'עבר', q:'מה היית עושה אחרת אילו היית מקבל הזדמנות נוספת?'},
+  // קשרים ואהבה
+  {c:'קשרים ואהבה', q:'מה הדבר שהכי חשוב לך להרגיש בתוך קשר?'},
+  {c:'קשרים ואהבה', q:'מה גורם לך להרגיש באמת אהוב?'},
+  {c:'קשרים ואהבה', q:'מה הדבר שהכי מפחיד אותך במערכות יחסים?'},
+  {c:'קשרים ואהבה', q:'האם קל לך לסמוך על אנשים? למה?'},
+  {c:'קשרים ואהבה', q:'מה למדת על אהבה מהקשרים שהיו לך?'},
+  {c:'קשרים ואהבה', q:'איזה דבר אתה מחפש באדם אחר אבל מתקשה למצוא?'},
+  {c:'קשרים ואהבה', q:'האם אתה יותר מפחד להיות לבד או להיות עם האדם הלא נכון?'},
+  // אומץ ופחד
+  {c:'אומץ ופחד', q:'מה הדבר שאתה הכי מפחד לעשות אבל יודע שאתה רוצה?'},
+  {c:'אומץ ופחד', q:'איזה פחד מנהל אותך יותר ממה שהיית רוצה להודות?'},
+  {c:'אומץ ופחד', q:'מתי בפעם האחרונה עשית משהו למרות שפחדת?'},
+  {c:'אומץ ופחד', q:'אם היית יודע שאף אחד לא ישפוט אותך, מה היית עושה?'},
+  {c:'אומץ ופחד', q:'מה הדבר שאתה דוחה שוב ושוב למרות שאתה יודע שהוא חשוב לך?'},
+  // עתיד וחלומות
+  {c:'עתיד וחלומות', q:'איפה אתה באמת רוצה להיות בעוד חמש שנים?'},
+  {c:'עתיד וחלומות', q:'איזה חלום שלך אתה מפחד להגיד בקול?'},
+  {c:'עתיד וחלומות', q:'אם כסף לא היה שיקול, איך היית חי?'},
+  {c:'עתיד וחלומות', q:'מה היית רוצה שאנשים יזכרו ממך?'},
+  {c:'עתיד וחלומות', q:'איזה חיים היית רוצה לבנות לעצמך?'},
+  {c:'עתיד וחלומות', q:'מה אתה מרגיש שחסר לך כדי להפוך לגרסה שאתה רוצה להיות?'},
+  {c:'עתיד וחלומות', q:'אם היית יודע בוודאות שתצליח, מה היית מתחיל מחר?'},
+  // עמוק יותר
+  {c:'עמוק יותר', q:'מה הדבר שאתה הכי מתבייש בו אבל למדת לקבל?'},
+  {c:'עמוק יותר', q:'מתי לאחרונה הרגשת שאתה לא מספיק?'},
+  {c:'עמוק יותר', q:'מה אתה עושה כשקשה לך במקום להתמודד?'},
+  {c:'עמוק יותר', q:'איזה שקר אתה מספר לעצמך לפעמים?'},
+  {c:'עמוק יותר', q:'מה הדבר שאתה הכי צריך לשמוע ממישהו אחר?'},
+  {c:'עמוק יותר', q:'איזה חלק בחיים שלך נראה טוב מבחוץ אבל מרגיש אחרת מבפנים?'},
+  {c:'עמוק יותר', q:'מה הדבר שאתה הכי מפחד לאבד?'},
+  {c:'עמוק יותר', q:'מה אתה מרגיש שאתה עדיין מנסה להוכיח — ולמי?'},
+  {c:'עמוק יותר', q:'איזה שיעור בחיים אתה מרגיש שאתה חוזר עליו שוב ושוב?'},
+  {c:'עמוק יותר', q:'מה היית רוצה שמישהו ישאל אותך אבל אף פעם לא שואלים?'},
+  {c:'עמוק יותר', q:'מתי בפעם האחרונה הרגשת באמת גאה בעצמך?'},
+  {c:'עמוק יותר', q:'איזה דבר בחיים שלך הגיע הזמן לשחרר?'}
+];
+
+/* faded paint on old wood - one shade per seat, none of them near the
+   copper of the arrowhead */
+const HUES = [190, 345, 120, 215, 285, 75, 235, 315];
+
+/* =====================================================================
+   2. STATE
+   ===================================================================== */
+const state = {
+  count: 5,
+  players: [],      // {name, picks, angle, hue}   angle: degrees clockwise from the top
+  lastIndex: -1,    // nobody is picked twice in a row
+  rotation: 0,      // accumulated arrow rotation
+  spinning: false,
+  sound: true,
+  deck: []          // shuffled question indices
+};
+
+const $ = id => document.getElementById(id);
+const escapeHtml = s => s.replace(/[&<>"']/g, ch =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const norm = a => ((a % 360) + 360) % 360;
+/* signed shortest distance from b to a, in -180..180 */
+const diff = (a, b) => { let d = norm(a - b); return d > 180 ? d - 360 : d; };
+
+/* =====================================================================
+   3. SOUND - WebAudio only, no files and no network
+   ===================================================================== */
+let ac = null;
+function audio(){
+  if (!ac) {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (C) ac = new C();
+  }
+  if (ac && ac.state === 'suspended') ac.resume();
+  return ac;
+}
+/* a dry wooden knock rather than a bell */
+function tick(volume, freq){
+  if (!state.sound) return;
+  const a = audio(); if (!a) return;
+  const t = a.currentTime;
+  const o = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
+  o.type = 'square';
+  o.frequency.setValueAtTime(freq, t);
+  o.frequency.exponentialRampToValueAtTime(freq * .4, t + .05);
+  f.type = 'bandpass';
+  f.frequency.setValueAtTime(freq * .9, t);
+  f.Q.setValueAtTime(2.2, t);
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.linearRampToValueAtTime(volume, t + .003);
+  g.gain.exponentialRampToValueAtTime(.0001, t + .07);
+  o.connect(f).connect(g).connect(a.destination);
+  o.start(t); o.stop(t + .09);
+}
+function chime(){
+  if (!state.sound) return;
+  const a = audio(); if (!a) return;
+  const t = a.currentTime;
+  [[392, 0, .16], [523.25, .1, .14], [659.25, .2, .12]].forEach(function(n){
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(n[0], t + n[1]);
+    g.gain.setValueAtTime(.0001, t + n[1]);
+    g.gain.linearRampToValueAtTime(n[2], t + n[1] + .02);
+    g.gain.exponentialRampToValueAtTime(.0001, t + n[1] + .9);
+    o.connect(g).connect(a.destination);
+    o.start(t + n[1]); o.stop(t + n[1] + 1);
+  });
+}
+function buzz(pattern){ if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch(e){} } }
+
+/* =====================================================================
+   4. SCREENS
+   ===================================================================== */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+}
+
+$('btn-start').onclick = () => { audio(); show('scr-count'); };
+
+const countGrid = $('count-grid');
+[3,4,5,6,7,8].forEach(n => {
+  const b = document.createElement('button');
+  b.className = 'count-btn' + (n === state.count ? ' on' : '');
+  b.textContent = n;
+  b.onclick = () => {
+    state.count = n;
+    [...countGrid.children].forEach(c => c.classList.toggle('on', c === b));
+    tick(.14, 900);
+  };
+  countGrid.appendChild(b);
+});
+$('btn-count-back').onclick = () => show('scr-intro');
+$('btn-count-next').onclick = () => { buildNameInputs(); show('scr-names'); };
+
+function buildNameInputs(){
+  const box = $('names');
+  const previous = [...box.querySelectorAll('input')].map(i => i.value);
+  box.innerHTML = '';
+  for (let i = 0; i < state.count; i++) {
+    const row = document.createElement('div');
+    row.className = 'name-row';
+    row.innerHTML =
+      '<div class="name-dot" style="--h:' + HUES[i % HUES.length] + '">' + (i + 1) + '</div>' +
+      '<input type="text" maxlength="14" autocomplete="off" autocapitalize="words" ' +
+      'placeholder="שחקן ' + (i + 1) + '" enterkeyhint="next">';
+    box.appendChild(row);
+  }
+  const inputs = [...box.querySelectorAll('input')];
+  inputs.forEach((inp, i) => {
+    if (previous[i]) inp.value = previous[i];
+    inp.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (inputs[i + 1]) inputs[i + 1].focus(); else inp.blur();
+    });
+  });
+}
+$('btn-names-back').onclick = () => show('scr-count');
+$('btn-names-next').onclick = () => {
+  const inputs = [...$('names').querySelectorAll('input')];
+  state.players = inputs.map((inp, i) => ({
+    name: inp.value.trim() || ('שחקן ' + (i + 1)),
+    picks: 0,
+    angle: 0,
+    hue: HUES[i % HUES.length]
+  }));
+  spreadEvenly();
+  startGame();
+};
+
+/* =====================================================================
+   5. SEATS - angles are free, so the pegs can be dragged anywhere
+   ===================================================================== */
+const stage = $('stage'), arrow = $('arrow'), nodesBox = document.createElement('div');
+nodesBox.id = 'nodes';
+nodesBox.style.cssText = 'position:absolute;inset:0';
+stage.insertBefore(nodesBox, $('hub'));
+
+const NODE_R = 37;                                     // seat radius, % of the stage
+const minGap = () => Math.min(20, 300 / state.players.length);
+
+function spreadEvenly(){
+  const sec = 360 / state.players.length;
+  state.players.forEach((p, i) => { p.angle = i * sec; });
+}
+
+/* the seat nearest to a given needle angle - works with uneven spacing */
+function seatAt(a){
+  let best = 0, bestD = 999;
+  state.players.forEach((p, i) => {
+    const d = Math.abs(diff(a, p.angle));
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+
+/* how much free room a seat has on each side, in degrees */
+function room(i){
+  let cw = 360, ccw = 360;
+  state.players.forEach((p, k) => {
+    if (k === i) return;
+    const d = norm(p.angle - state.players[i].angle);
+    cw = Math.min(cw, d);
+    ccw = Math.min(ccw, 360 - d);
+  });
+  if (state.players.length === 1) { cw = 180; ccw = 180; }
+  return {cw: cw / 2, ccw: ccw / 2};
+}
+
+/* a dragged peg stays inside the free arc between its two neighbours,
+   so two seats can never end up on the same spot - if they did, the needle
+   would have no way to say which of them it stopped on */
+function clampAngle(i, a){
+  const gap = minGap();
+  const others = state.players.filter((p, k) => k !== i).map(p => p.angle);
+  if (!others.length) return norm(a);
+
+  let next = 0, nextD = 361, prev = 0, prevD = 361;
+  others.forEach(o => {
+    const cw = norm(o - a), ccw = norm(a - o);
+    if (cw < nextD) { nextD = cw; next = o; }
+    if (ccw < prevD) { prevD = ccw; prev = o; }
+  });
+
+  const arc = norm(next - prev) || 360;        // the free arc holding this seat
+  if (arc < gap * 2) return norm(prev + arc / 2);
+  if (nextD < gap) return norm(next - gap);
+  if (prevD < gap) return norm(prev + gap);
+  return norm(a);
+}
+
+/* =====================================================================
+   6. BOARD
+   ===================================================================== */
+function buildBoard(){
+  nodesBox.innerHTML = '';
+  state.players.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'node';
+    el.style.setProperty('--h', p.hue);
+    el.dataset.i = i;
+    el.innerHTML =
+      '<div class="node-in"><span class="node-name"></span><span class="node-count"></span></div>';
+    el.querySelector('.node-name').textContent = p.name;
+    attachDrag(el, i);
+    nodesBox.appendChild(el);
+  });
+  paintCounts();
+  layout();
+}
+
+function placeNodes(){
+  const size = stage.clientWidth || 1;
+  const r = size * NODE_R / 100;
+  [...nodesBox.children].forEach((el, i) => {
+    const a = state.players[i].angle * Math.PI / 180;
+    el.style.setProperty('--x', (r * Math.sin(a)).toFixed(1) + 'px');
+    el.style.setProperty('--y', (-r * Math.cos(a)).toFixed(1) + 'px');
+    // the phone lies flat on the table, so each name faces the person sitting there
+    el.querySelector('.node-in').style.transform = 'rotate(' + (state.players[i].angle + 180) + 'deg)';
+  });
+}
+
+function paintCounts(){
+  [...nodesBox.children].forEach((el, i) => {
+    const c = state.players[i].picks;
+    el.querySelector('.node-count').textContent = c ? '×' + c : '';
+  });
+}
+
+/* the stained ring behind the seats, plus a split in the wood on every boundary */
+function paintWedges(){
+  const n = state.players.length;
+  if (!n) return;
+  const order = state.players.map((p, i) => i).sort((a, b) => state.players[a].angle - state.players[b].angle);
+  const mids = order.map((idx, k) => {
+    const a = state.players[idx].angle;
+    let b = state.players[order[(k + 1) % n]].angle;
+    if (b <= a) b += 360;
+    return norm((a + b) / 2);
+  });
+
+  const segs = [];
+  order.forEach((idx, k) => {
+    const s = mids[(k - 1 + n) % n], e = mids[k];
+    const col = 'hsl(' + state.players[idx].hue + ' 32% 42% / .16)';
+    if (e < s) { segs.push([s, 360, col]); segs.push([0, e, col]); }
+    else segs.push([s, e, col]);
+  });
+  segs.sort((a, b) => a[0] - b[0]);
+  $('wedges').style.background =
+    'conic-gradient(' + segs.map(s => s[2] + ' ' + s[0].toFixed(2) + 'deg ' + s[1].toFixed(2) + 'deg').join(',') + ')';
+
+  $('spokes').innerHTML = mids.map(m =>
+    '<div class="spoke" style="transform:translate(-50%,0) rotate(' + (m + 180).toFixed(2) + 'deg)"></div>'
+  ).join('');
+}
+
+/* lamplight falling on the chosen seat's slice of the board */
+function lightWedge(i){
+  const r = room(i);
+  const from = norm(state.players[i].angle - r.ccw), to = norm(state.players[i].angle + r.cw);
+  const col = 'rgba(255,168,84,.20)';
+  const parts = from < to
+    ? ['transparent 0deg ' + from.toFixed(2) + 'deg', col + ' ' + from.toFixed(2) + 'deg ' + to.toFixed(2) + 'deg',
+       'transparent ' + to.toFixed(2) + 'deg 360deg']
+    : [col + ' 0deg ' + to.toFixed(2) + 'deg', 'transparent ' + to.toFixed(2) + 'deg ' + from.toFixed(2) + 'deg',
+       col + ' ' + from.toFixed(2) + 'deg 360deg'];
+  const w = $('wedge-win');
+  w.style.background = 'conic-gradient(' + parts.join(',') + ')';
+  w.classList.add('on');
+}
+function darkWedge(){ $('wedge-win').classList.remove('on'); }
+
+/* the stage is a square filling whatever room the layout leaves it */
+function layout(){
+  const wrap = $('stage-wrap');
+  const size = Math.max(180, Math.min(wrap.clientWidth, wrap.clientHeight, 560));
+  stage.style.width = size + 'px';
+  stage.style.height = size + 'px';
+  stage.style.setProperty('--s', size + 'px');
+  placeNodes();
+  paintWedges();
+}
+if (window.ResizeObserver) new ResizeObserver(layout).observe($('stage-wrap'));
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 250));
+
+/* =====================================================================
+   7. DRAGGING A SEAT
+   ===================================================================== */
+function attachDrag(el, i){
+  let active = false, startA = 0, moved = false;
+
+  const angleOf = e => {
+    const r = stage.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    return norm(Math.atan2(dx, -dy) * 180 / Math.PI);
+  };
+
+  el.addEventListener('pointerdown', e => {
+    if (state.spinning || document.body.classList.contains('sheet-open')) return;
+    active = true; moved = false;
+    startA = angleOf(e);
+    el.setPointerCapture(e.pointerId);
+  });
+
+  el.addEventListener('pointermove', e => {
+    if (!active) return;
+    const a = angleOf(e);
+    if (!moved) {
+      if (Math.abs(diff(a, startA)) < 3) return;      // ignore a plain tap
+      moved = true;
+      el.classList.add('dragging');
+      darkWedge();
+      buzz(8);
+    }
+    state.players[i].angle = clampAngle(i, a);
+    placeNodes();
+    paintWedges();
+  });
+
+  const end = e => {
+    if (!active) return;
+    active = false;
+    el.classList.remove('dragging');
+    if (moved) {
+      $('hint').textContent = 'מוכנים לסבב הבא';
+      tick(.2, 620);
+    }
+    try { el.releasePointerCapture(e.pointerId); } catch(err){}
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+
+$('btn-reset').onclick = () => {
+  if (state.spinning) return;
+  spreadEvenly();
+  placeNodes();
+  paintWedges();
+  tick(.2, 800);
+};
+
+/* =====================================================================
+   8. SPIN - wind up, long throw, small overshoot, settle back
+   ===================================================================== */
+function pickPlayer(){
+  const n = state.players.length, pool = [];
+  for (let i = 0; i < n; i++) if (i !== state.lastIndex || n === 1) pool.push(i);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function currentAngle(){
+  const t = getComputedStyle(arrow).transform;
+  if (!t || t === 'none') return 0;
+  const m = t.match(/matrix\(([^)]+)\)/);
+  if (!m) return 0;
+  const p = m[1].split(',').map(Number);
+  return Math.atan2(p[1], p[0]) * 180 / Math.PI;
+}
+
+/* one knock every time the needle passes a peg, and a smear that
+   thickens with speed - both read the real angle, frame by frame */
+let tickRAF = 0;
+function runTicks(){
+  let prev = currentAngle(), prevT = performance.now(), lastSeat = -1, lastPlay = 0;
+
+  const step = now => {
+    const raw = currentAngle();
+    const d = diff(raw, prev);
+    const speed = Math.abs(d) / Math.max(1, now - prevT) * 1000;   // deg per second
+    prev = raw; prevT = now;
+
+    arrow.style.setProperty('--trail', Math.min(speed / 900, 1).toFixed(2));
+
+    const seat = seatAt(norm(raw));
+    if (seat !== lastSeat) {
+      lastSeat = seat;
+      const f = Math.min(speed / 800, 1);            // 1 = fast, 0 = almost stopped
+      if (now - lastPlay > 28) {
+        tick(.06 + (1 - f) * .2, 620 + f * 320);     // slower means louder and lower
+        lastPlay = now;
+      }
+    }
+    if (state.spinning) tickRAF = requestAnimationFrame(step);
+    else arrow.style.setProperty('--trail', 0);
+  };
+  tickRAF = requestAnimationFrame(step);
+}
+
+let timers = [];
+const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+
+function spin(){
+  if (state.spinning || !state.players.length) return;
+  audio();
+  closeSheet();
+  darkWedge();
+  state.spinning = true;
+  document.body.classList.add('spinning');
+  $('btn-spin').disabled = true;
+  $('btn-spin').textContent = 'מסתובב…';
+  $('hint').textContent = 'החץ מסתובב';
+  [...nodesBox.children].forEach(el => el.classList.remove('win'));
+
+  const idx = pickPlayer();
+  const r = room(idx);
+  const j = Math.random() * 2 - 1;
+  const rest = state.players[idx].angle + (j > 0 ? j * r.cw : j * r.ccw) * .55;
+  const over = Math.min(7, Math.min(r.cw, r.ccw) * .35);
+  const turns = 5 + Math.floor(Math.random() * 4);
+  const dur = 4200 + Math.random() * 1700;
+
+  // 1. wind up backwards
+  const r1 = state.rotation - 14;
+  arrow.style.transition = 'transform 380ms cubic-bezier(.35,0,.25,1)';
+  void arrow.offsetWidth;
+  arrow.style.transform = 'rotate(' + r1 + 'deg)';
+  runTicks();
+
+  // 2. the throw, landing just past the seat
+  const delta = norm(norm(rest + over) - norm(r1));
+  const r2 = r1 + turns * 360 + delta;
+  later(() => {
+    arrow.style.transition = 'transform ' + dur + 'ms cubic-bezier(.12,.72,.12,1)';
+    arrow.style.transform = 'rotate(' + r2 + 'deg)';
+  }, 390);
+
+  // 3. settle back onto it
+  const r3 = r2 - over;
+  later(() => {
+    arrow.style.transition = 'transform 680ms cubic-bezier(.2,.9,.3,1)';
+    arrow.style.transform = 'rotate(' + r3 + 'deg)';
+  }, 400 + dur + 30);
+
+  later(() => { state.rotation = r3; land(idx); }, 400 + dur + 30 + 700);
+}
+
+function land(idx){
+  state.spinning = false;
+  state.lastIndex = idx;
+  state.players[idx].picks++;
+  cancelAnimationFrame(tickRAF);
+  arrow.style.setProperty('--trail', 0);
+  document.body.classList.remove('spinning');
+  $('btn-spin').disabled = false;
+  $('btn-spin').textContent = 'התחל סבב';
+  $('hint').textContent = 'תורו של ' + state.players[idx].name;
+
+  nodesBox.children[idx].classList.add('win');
+  lightWedge(idx);
+  paintCounts();
+
+  const s = $('shock');
+  s.classList.remove('go'); void s.offsetWidth; s.classList.add('go');
+
+  chime();
+  buzz([18, 60, 30]);
+
+  const q = nextQuestion();
+  $('winner').innerHTML =
+    '<b style="color:hsl(' + state.players[idx].hue + ' 42% 28%)">' +
+    escapeHtml(state.players[idx].name) + '</b>, הגיע תורך.';
+  $('q-cat').textContent = q.c;
+  $('q-text').textContent = q.q;
+  later(() => openSheet($('sheet-result')), 620);
+}
+
+/* =====================================================================
+   9. QUESTION DECK - every question is asked once before any repeat
+   ===================================================================== */
+function nextQuestion(){
+  if (!state.deck.length) {
+    state.deck = QUESTIONS.map((_, i) => i);
+    for (let i = state.deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = state.deck[i]; state.deck[i] = state.deck[j]; state.deck[j] = tmp;
+    }
+  }
+  return QUESTIONS[state.deck.pop()];
+}
+
+/* =====================================================================
+   10. SHEETS
+   ===================================================================== */
+function openSheet(el){
+  document.querySelectorAll('.sheet').forEach(s => s.classList.toggle('on', s === el));
+  document.body.classList.add('sheet-open');
+  $('backdrop').classList.toggle('on', el === $('sheet-hist'));
+}
+function closeSheet(){
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on'));
+  document.body.classList.remove('sheet-open');
+  $('backdrop').classList.remove('on');
+}
+$('backdrop').onclick = closeSheet;
+$('btn-hist-close').onclick = closeSheet;
+
+$('btn-respin').onclick = () => { closeSheet(); later(spin, 340); };
+$('btn-answered').onclick = () => {
+  closeSheet();
+  [...nodesBox.children].forEach(el => el.classList.remove('win'));
+  darkWedge();
+  $('hint').textContent = 'מוכנים לסבב הבא';
+};
+
+$('btn-hist').onclick = () => {
+  const top = Math.max(1, ...state.players.map(p => p.picks));
+  $('hist-list').innerHTML = state.players.map(p =>
+    '<div class="hist-row">' +
+      '<div class="hist-name">' + escapeHtml(p.name) + '</div>' +
+      '<div class="hist-bar"><div class="hist-fill" style="width:' + (p.picks / top * 100) + '%;' +
+        'background:linear-gradient(90deg,hsl(' + p.hue + ' 30% 30%),hsl(' + p.hue + ' 34% 48%))"></div></div>' +
+      '<div class="hist-num">' +
+        (p.picks === 0 ? '0 פעמים' : p.picks === 1 ? 'פעם אחת' : p.picks + ' פעמים') +
+      '</div>' +
+    '</div>'
+  ).join('');
+  openSheet($('sheet-hist'));
+};
+
+/* =====================================================================
+   11. GAME CONTROLS
+   ===================================================================== */
+$('hub').onclick = spin;
+$('btn-spin').onclick = spin;
+
+$('btn-sound').onclick = () => {
+  state.sound = !state.sound;
+  $('btn-sound').classList.toggle('off', !state.sound);
+  $('btn-sound').innerHTML = state.sound ? '&#128266;' : '&#128263;';
+  if (state.sound) tick(.2, 800);
+};
+
+$('btn-new').onclick = () => {
+  if (state.spinning) return;
+  clearTimers();
+  closeSheet();
+  releaseWake();
+  show('scr-count');
+};
+
+function startGame(){
+  clearTimers();
+  state.lastIndex = -1;
+  state.rotation = 0;
+  arrow.style.transition = 'none';
+  arrow.style.transform = 'rotate(0deg)';
+  arrow.style.setProperty('--trail', 0);
+  darkWedge();
+  buildBoard();
+  closeSheet();
+  $('btn-spin').disabled = false;
+  $('btn-spin').textContent = 'התחל סבב';
+  $('hint').textContent = 'גררו את העיגולים לפי מקומות הישיבה סביב השולחן';
+  show('scr-game');
+  requestAnimationFrame(layout);
+  requestWake();
+}
+
+/* keep the screen awake while the phone sits in the middle of the table */
+let wake = null;
+function requestWake(){
+  try {
+    if (navigator.wakeLock) navigator.wakeLock.request('screen').then(w => { wake = w; }, () => {});
+  } catch(e){}
+}
+function releaseWake(){ try { if (wake) { wake.release(); wake = null; } } catch(e){} }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && $('scr-game').classList.contains('on')) requestWake();
+});
+<\/script>
+</body>
+</html>
 </script>
 </body>
 </html>
