@@ -10,10 +10,12 @@
 <meta name="apple-mobile-web-app-title" content="תזונה">
 <link rel="apple-touch-icon" href="assets/logo.png">
 <link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap">
 <title>&#x05EA;&#x05D6;&#x05D5;&#x05E0;&#x05D4;</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f0eb;color:#4a4340;direction:rtl;min-height:100vh}
+body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f0eb;color:#4a4340;direction:rtl;min-height:100vh}
 .app{max-width:480px;margin:0 auto;padding:0 0 100px}
 .hdr{background:linear-gradient(135deg,#f0ebe3,#e8dff5);padding:16px 16px 12px;position:sticky;top:0;z-index:10}
 .hdr-date{text-align:center;font-size:11px;color:#a89e97;margin-bottom:3px}
@@ -182,10 +184,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .trip-toggle-track.on{background:linear-gradient(135deg,#4f6ef7,#3d4fd6)}
 .trip-toggle-thumb{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:right .3s;box-shadow:0 2px 6px rgba(0,0,0,.2)}
 .trip-toggle-track.on .trip-toggle-thumb{right:calc(100% - 27px)}
-.home-card-icon{font-size:44px;line-height:1}
+/* The icon sits in a white disc rather than being a bare glyph - it gives every
+   card the same optical weight whatever the icon, which emoji never did. */
+.home-card-icon{width:46px;height:46px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(160,140,120,.16)}
+.home-card-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .home-card-title{font-size:15px;font-weight:800;color:#4a4340}
 .home-card-sub{font-size:11px;color:#a89e97;line-height:1.4}
 .home-card-badge{position:absolute;top:12px;left:12px;background:rgba(166,144,207,.2);border-radius:20px;padding:3px 8px;font-size:9px;font-weight:700;color:#a690cf}
+/* "היום" - the day's macros and water summarised on the home screen, so the
+   numbers are readable without entering תזונה first. Same shapes as the
+   macro card inside the module, just sized for a glance. */
+.ht-card{background:#fff;border-radius:22px;padding:16px 16px 18px;box-shadow:0 4px 16px rgba(200,180,160,.12)}
+.ht-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+.ht-lbl{font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700}
+.ht-open{background:none;border:none;font-size:10.5px;color:#a690cf;font-weight:700;cursor:pointer;font-family:inherit;padding:0}
+.ht-bars{display:flex;gap:10px;justify-content:center;align-items:flex-end}
+.ht-col{display:flex;flex-direction:column;align-items:center;gap:6px;width:68px}
+.ht-pct{font-size:11px;color:#a89e97;font-weight:600}
+.ht-track{width:34px;height:86px;background:#f2ede6;border-radius:17px;overflow:hidden;position:relative}
+.ht-fill{position:absolute;bottom:0;width:100%;border-radius:17px;transition:height .6s cubic-bezier(.34,1.56,.64,1)}
+.ht-val{font-size:16px;font-weight:700}
+.ht-lb{font-size:11px;color:#a89e97}
+.ht-water{background:linear-gradient(135deg,#e8f4fd,#dbeef9);border-radius:16px;padding:12px 14px;margin-top:14px}
+.ht-whd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ht-wt{font-size:13px;font-weight:700;color:#3a7ca5}
+.ht-wn{font-size:12px;color:#5b8fa8;font-weight:600}
+.ht-wb{height:6px;background:rgba(255,255,255,.5);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.ht-wf{height:100%;background:linear-gradient(90deg,#74b9e8,#3a7ca5);border-radius:3px;transition:width .5s}
+.ht-wbtns{display:flex;gap:7px}
+.ht-wadd{flex:1;background:#fff;border:none;border-radius:11px;padding:8px;font-size:12px;font-weight:700;color:#3a7ca5;cursor:pointer;font-family:inherit}
 .home-date{margin-top:auto;padding-top:32px;font-size:12px;color:#c0b8b0;text-align:center}
 /* Vision board: a framed square on the home screen holding photos the user
    arranges by hand. The mat and the white photo borders are doing the work of
@@ -1308,6 +1335,7 @@ function goHome(){
   document.querySelector('.tabs').style.display='';
   document.getElementById('home-screen').style.display='flex';
   refreshHomeCal();
+  renderHomeToday();
   renderVisionBoard();
   renderTripToggle();
   renderReminders();
@@ -6043,6 +6071,50 @@ function renderGame(){
 }
 window.addEventListener('resize',sizeGameFrame);
 
+// "היום" on the home screen - the same four macro bars and water row the
+// תזונה module shows, read straight off today's record. It always reports
+// today, whatever day the module happens to be parked on.
+function renderHomeToday(){
+  var el=document.getElementById('home-today');
+  if(!el)return;
+  var day=loadDay(todayStr());
+  var kcal=Math.round(day.meals.reduce(function(a,m){return a+(m.kcal||0);},0));
+  var p=r2(day.meals.reduce(function(a,m){return a+(m.p||0);},0));
+  var c=r2(day.meals.reduce(function(a,m){return a+(m.c||0);},0));
+  var f=r2(day.meals.reduce(function(a,m){return a+(m.f||0);},0));
+  var water=day.water||0;
+  var wp=Math.min(100,Math.round(water/TARGETS.water*100));
+  var bars=[
+    {v:kcal,pct:Math.min(100,Math.round(kcal/TARGETS.kcal*100)),lbl:'קק"ל',g:'linear-gradient(180deg,#c9bce0,#a690cf)',col:'#a690cf'},
+    {v:p+'g',pct:Math.min(100,Math.round(p/TARGETS.p*100)),lbl:'חלבון',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:'#e08a72'},
+    {v:c+'g',pct:Math.min(100,Math.round(c/TARGETS.c*100)),lbl:'פחמימה',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:'#8fc79e'},
+    {v:f+'g',pct:Math.min(100,Math.round(f/TARGETS.f*100)),lbl:'שומן',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:'#e8c162'}
+  ];
+  var n=day.meals.length;
+  var h='<div class="ht-card"><div class="ht-hd"><div class="ht-lbl">היום</div>'+
+    '<button class="ht-open" onclick="enterModule(\'nutrition\')">'+
+    (n?n+(n===1?' ארוחה נרשמה':' ארוחות נרשמו'):'עוד לא נרשמה ארוחה')+' &#8249;</button></div><div class="ht-bars">';
+  for(var i=0;i<bars.length;i++){
+    var b=bars[i];
+    h+='<div class="ht-col"><div class="ht-pct">'+b.pct+'%</div>'+
+       '<div class="ht-track"><div class="ht-fill" style="height:'+b.pct+'%;background:'+b.g+'"></div></div>'+
+       '<div class="ht-val" style="color:'+b.col+'">'+b.v+'</div><div class="ht-lb">'+b.lbl+'</div></div>';
+  }
+  h+='</div><div class="ht-water"><div class="ht-whd"><span class="ht-wt">&#x1F4A7; מים</span>'+
+    '<span class="ht-wn">'+water+' / '+TARGETS.water+' מ"ל</span></div>'+
+    '<div class="ht-wb"><div class="ht-wf" style="width:'+wp+'%"></div></div>'+
+    '<div class="ht-wbtns"><button class="ht-wadd" onclick="homeAddWater(250)">+250מ"ל</button>'+
+    '<button class="ht-wadd" onclick="homeAddWater(500)">+500מ"ל</button>'+
+    '<button class="ht-wadd" onclick="homeAddWater(1000)">+1L</button></div></div></div>';
+  el.innerHTML=h;
+}
+function homeAddWater(ml){
+  var k=todayStr(),d=loadDay(k);
+  d.water=(d.water||0)+ml;
+  saveDay(k,d);
+  renderHomeToday();
+}
+
 // Build home screen DOM
 (function(){
   var home=document.createElement('div');
@@ -6053,51 +6125,52 @@ window.addEventListener('resize',sizeGameFrame);
     '<div class="home-sub">Become the best version of yourself</div>'+
     '<div class="home-grid">'+
       '<button class="home-card nutrition" onclick="enterModule(\'nutrition\')">'+
-        '<div class="home-card-icon">&#x1F37D;</div>'+
+        '<div class="home-card-icon" style="color:#a690cf"><svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 7c0-1 1-1.5 1-2.5S9 3 9 3"/><path d="M13.5 7c0-1 1-1.5 1-2.5s-1-1.5-1-1.5"/></svg></div>'+
         '<div class="home-card-title">תזונה</div>'+
         '<div class="home-card-sub">מעקב ארוחות, מאקרו ומים</div>'+
       '</button>'+
       '<button class="home-card fitness" onclick="enterModule(\'fitness\')">'+
-        '<div class="home-card-icon">&#x1F3CB;&#xFE0F;</div>'+
+        '<div class="home-card-icon" style="color:#e08a72"><svg viewBox="0 0 24 24"><path d="M3 9.5v5"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M21 9.5v5"/><path d="M6.5 12h11"/></svg></div>'+
         '<div class="home-card-title">כושר</div>'+
         '<div class="home-card-sub">אימונים ומעקב התקדמות</div>'+
       '</button>'+
       '<button class="home-card hobbies" onclick="enterModule(\'hobbies\')">'+
-        '<div class="home-card-icon">&#x1F3A8;</div>'+
+        '<div class="home-card-icon" style="color:#6fb283"><svg viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 1.9 1.9 0 0 0 1.5-3.1 1.9 1.9 0 0 1 1.5-3.1h2.1a3 3 0 0 0 2.9-3A8.8 8.8 0 0 0 12 3.2Z"/><circle cx="8.2" cy="10" r=".9"/><circle cx="12" cy="7.6" r=".9"/><circle cx="15.8" cy="10" r=".9"/></svg></div>'+
         '<div class="home-card-title">תחביבים</div>'+
         '<div class="home-card-sub">מעקב דברים שאתה אוהב</div>'+
       '</button>'+
       '<button class="home-card endofday" onclick="enterModule(\'endofday\')">'+
-        '<div class="home-card-icon">&#x1F319;</div>'+
+        '<div class="home-card-icon" style="color:#3a7ca5"><svg viewBox="0 0 24 24"><path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/></svg></div>'+
         '<div class="home-card-title">סיום יום</div>'+
         '<div class="home-card-sub">ראיון יומי ושיקוף</div>'+
       '</button>'+
       '<button class="home-card insights" onclick="enterModule(\'insights\')">'+
-        '<div class="home-card-icon">&#x1F9E0;</div>'+
+        '<div class="home-card-icon" style="color:#7a716b"><svg viewBox="0 0 24 24"><path d="M9.2 17.6h5.6"/><path d="M10.2 20.4h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.4h5v-.4c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4Z"/></svg></div>'+
         '<div class="home-card-title">תובנות</div>'+
         '<div class="home-card-sub">מחשבות, שאלות וגילויים</div>'+
       '</button>'+
       '<button class="home-card people" onclick="enterModule(\'people\')">'+
-        '<div class="home-card-icon">&#x1F9E1;</div>'+
+        '<div class="home-card-icon" style="color:#e08a72"><svg viewBox="0 0 24 24"><circle cx="9.2" cy="8.6" r="3.2"/><path d="M3.6 19.6a5.6 5.6 0 0 1 11.2 0"/><path d="M16.4 6.3a3.2 3.2 0 0 1 0 6.1"/><path d="M17.6 14.6a5.6 5.6 0 0 1 2.8 5"/></svg></div>'+
         '<div class="home-card-title">האנשים שלי</div>'+
         '<div class="home-card-sub">אנשים שחשובים לי</div>'+
       '</button>'+
       '<button class="home-card goals" onclick="enterModule(\'goals\')">'+
-        '<div class="home-card-icon">&#x1F3AF;</div>'+
+        '<div class="home-card-icon" style="color:#4c9a4c"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/></svg></div>'+
         '<div class="home-card-title">מטרות</div>'+
         '<div class="home-card-sub">חלומות והדרך להגשימהם</div>'+
       '</button>'+
       '<button class="home-card planning" onclick="enterModule(\'planning\')">'+
-        '<div class="home-card-icon">&#x1F5D3;</div>'+
+        '<div class="home-card-icon" style="color:#3a7ca5"><svg viewBox="0 0 24 24"><rect x="3.6" y="5" width="16.8" height="15" rx="3"/><path d="M3.6 9.6h16.8"/><path d="M8 3.2v3.4"/><path d="M16 3.2v3.4"/></svg></div>'+
         '<div class="home-card-title">תכנון זמן</div>'+
         '<div class="home-card-sub">לתכנן את היום שאחרי</div>'+
       '</button>'+
       '<button class="home-card game" onclick="enterModule(\'game\')">'+
-        '<div class="home-card-icon">&#x1F3F9;</div>'+
+        '<div class="home-card-icon" style="color:#c98b3f"><svg viewBox="0 0 24 24"><path d="M4 20 18.5 5.5"/><path d="M13.5 5.5h5v5"/><path d="m6.5 13.5 4 4"/></svg></div>'+
         '<div class="home-card-title">משחק</div>'+
         '<div class="home-card-sub">החץ &mdash; מי עונה על השאלה</div>'+
       '</button>'+
     '</div>'+
+    '<div id="home-today" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
     '<div id="home-cal" style="width:100%;max-width:380px;margin-top:20px"></div>'+
@@ -6112,6 +6185,7 @@ window.addEventListener('resize',sizeGameFrame);
   var mn=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   document.getElementById('home-date').textContent=dn[d.getDay()]+', '+d.getDate()+' ב'+mn[d.getMonth()];
   document.getElementById('home-cal').innerHTML=buildHomeCalHTML();
+  renderHomeToday();
   renderVisionBoard();
   renderTripToggle();
   renderReminders();
