@@ -181,6 +181,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .home-card-sub{font-size:11px;color:#a89e97;line-height:1.4}
 .home-card-badge{position:absolute;top:12px;left:12px;background:rgba(166,144,207,.2);border-radius:20px;padding:3px 8px;font-size:9px;font-weight:700;color:#a690cf}
 .home-date{margin-top:auto;padding-top:32px;font-size:12px;color:#c0b8b0;text-align:center}
+/* Vision board: a framed square on the home screen holding photos the user
+   arranges by hand. The mat and the white photo borders are doing the work of
+   making it read as a physical pinboard rather than a gallery grid. */
+.vb-frame{padding:10px;background:linear-gradient(160deg,#f4ece1,#e7dbc9);border-radius:18px;box-shadow:0 6px 18px rgba(190,170,145,.22)}
+.vb-canvas{position:relative;width:100%;padding-bottom:100%;background:#fdfbf8;border-radius:10px;overflow:hidden;box-shadow:inset 0 2px 10px rgba(160,140,120,.18)}
+.vb-item{position:absolute;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.vb-item img{display:block;width:100%;border-radius:3px;border:4px solid #fff;box-shadow:0 3px 10px rgba(120,100,85,.3);pointer-events:none}
+.vb-item.on img{border-color:#f3eefb;box-shadow:0 0 0 2px #a690cf,0 3px 10px rgba(120,100,85,.3)}
+.vb-h,.vb-del{display:none;position:absolute;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(120,100,85,.32);border:none;padding:0;align-items:center;justify-content:center;font-size:13px;line-height:1;color:#a690cf;cursor:pointer}
+.vb-item.on .vb-h,.vb-item.on .vb-del{display:flex}
+.vb-del{top:-13px;right:-13px;color:#e08a72;font-size:12px;font-weight:700}
+.vb-size{bottom:-13px;right:-13px;cursor:nwse-resize}
+.vb-size:after{content:'';width:9px;height:9px;border-left:2px solid #a690cf;border-bottom:2px solid #a690cf;margin:0 2px 2px 0}
+.vb-rot{bottom:-13px;left:-13px}
+.vb-empty{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:none;border:none;cursor:pointer;color:#a89e97;font-family:inherit}
+.vb-add{background:linear-gradient(135deg,#f0eafa,#e8dff5);border:1.5px dashed #a690cf;border-radius:12px;padding:7px 14px;font-size:11px;font-weight:700;color:#a690cf;cursor:pointer;font-family:inherit}
+.vb-hint{text-align:center;font-size:9px;color:#c0b8b0;margin-top:10px;line-height:1.6}
 </style>
 <script>
 /* ── DEV / STABLE SPLIT ──
@@ -1276,6 +1293,7 @@ function goHome(){
   document.querySelector('.tabs').style.display='';
   document.getElementById('home-screen').style.display='flex';
   refreshHomeCal();
+  renderVisionBoard();
   renderTripToggle();
   renderReminders();
   renderSumRem();
@@ -5574,6 +5592,222 @@ function deleteStop(tripIdx,stopIdx){
   saveTrips(trips);renderTrip();
 }
 
+
+/* ── VISION BOARD ── */
+// Photos the user arranges by hand inside a framed square on the home screen.
+// Geometry is kept in percentages of the frame, so an arrangement survives a
+// different screen size; photos are downscaled on the way in, because
+// localStorage holds a few megabytes and a camera roll would fill it in three
+// pictures.
+var VB_KEY='vision_board';
+var VB_MAX=520;   // longest edge kept of an uploaded photo, in px
+var _vbSel=null;  // id of the selected photo, or null
+var _vbG=null;    // the gesture in progress - see vbDown
+var _vbPts={};    // pointerId -> last client position, for two-finger gestures
+
+function loadVision(){
+  try{var x=localStorage.getItem(VB_KEY);var a=x?JSON.parse(x):[];return Array.isArray(a)?a:[];}catch(e){return[];}
+}
+function saveVision(a){
+  try{localStorage.setItem(VB_KEY,JSON.stringify(a));return true;}
+  catch(e){showToast('אין מספיק מקום לעוד תמונות');return false;}
+}
+function vbFind(a,id){for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
+function vbClamp(v,lo,hi){return v<lo?lo:(v>hi?hi:v);}
+
+function renderVisionBoard(){
+  var el=document.getElementById('home-vision');if(!el)return;
+  var items=loadVision();
+  var h='<div style="background:#fff;border-radius:22px;padding:18px 16px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px">';
+  h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700">VISION BOARD</div>';
+  h+='<button class="vb-add" onclick="vbPick()">+ תמונה</button>';
+  h+='</div>';
+  h+='<input type="file" id="vb-file" accept="image/*" multiple style="display:none" onchange="handleVisionPhoto(this)">';
+  h+='<div class="vb-frame"><div class="vb-canvas" id="vb-canvas">';
+  if(!items.length){
+    h+='<button class="vb-empty" onclick="vbPick()">'+
+         '<div style="font-size:34px">&#x1F5BC;&#xFE0F;</div>'+
+         '<div style="font-size:12px">הוסף תמונות של מה שאתה רוצה לראות קורה</div>'+
+       '</button>';
+  }else{
+    items.forEach(function(it){
+      h+='<div class="vb-item'+(it.id===_vbSel?' on':'')+'" data-id="'+it.id+'" '+
+           'style="left:'+it.x+'%;top:'+it.y+'%;width:'+it.w+'%;z-index:'+(it.z||1)+';'+
+           'transform:translate(-50%,-50%) rotate('+it.rot+'deg)">'+
+           '<img src="'+it.src+'" draggable="false" alt="">'+
+           '<button class="vb-del" onclick="vbDelete(\''+it.id+'\')">&#10005;</button>'+
+           '<span class="vb-h vb-size"></span>'+
+           '<span class="vb-h vb-rot">&#8635;</span>'+
+         '</div>';
+    });
+  }
+  h+='</div></div>';
+  if(items.length)h+='<div class="vb-hint">גע בתמונה כדי לבחור &#183; גרור להזזה &#183; הפינות מגדילות ומסובבות &#183; שתי אצבעות עושות את שתיהן יחד</div>';
+  h+='</div>';
+  el.innerHTML=h;
+  var c=document.getElementById('vb-canvas');
+  if(c)c.addEventListener('pointerdown',vbDown);
+}
+
+function vbPick(){var f=document.getElementById('vb-file');if(f)f.click();}
+
+// Selection is a class swap rather than a re-render: re-rendering here would
+// throw away the very element the finger is already holding.
+function vbSelect(id){
+  _vbSel=id;
+  var c=document.getElementById('vb-canvas');if(!c)return;
+  var els=c.querySelectorAll('.vb-item');
+  for(var i=0;i<els.length;i++){
+    els[i].className='vb-item'+(els[i].getAttribute('data-id')===id?' on':'');
+  }
+  if(!id)return;
+  var a=loadVision(),it=vbFind(a,id);if(!it)return;
+  var top=0;a.forEach(function(o){if((o.z||1)>top)top=o.z||1;});
+  if((it.z||1)<top){          // touching a photo brings it to the front
+    it.z=top+1;saveVision(a);
+    var el=c.querySelector('.vb-item[data-id="'+id+'"]');if(el)el.style.zIndex=it.z;
+  }
+}
+
+// Distance, angle and midpoint between the two fingers currently down.
+function vbTwo(){
+  var k=Object.keys(_vbPts),a=_vbPts[k[0]],b=_vbPts[k[1]];
+  return {d:Math.max(8,Math.hypot(b.x-a.x,b.y-a.y)),
+          a:Math.atan2(b.y-a.y,b.x-a.x),
+          x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+}
+
+function vbDown(e){
+  var el=e.target.closest?e.target.closest('.vb-item'):null;
+  if(!el){vbSelect(null);return;}
+  if(e.target.closest('.vb-del'))return;   // let the click handler delete it
+  var id=el.getAttribute('data-id');
+  if(id!==_vbSel)vbSelect(id);
+  _vbPts[e.pointerId]={x:e.clientX,y:e.clientY};
+  var r=document.getElementById('vb-canvas').getBoundingClientRect();
+
+  if(Object.keys(_vbPts).length>=2&&_vbG&&_vbG.id===id){
+    var p=vbTwo();
+    _vbG.mode='pinch';
+    _vbG.it={x:_vbG.cur.x,y:_vbG.cur.y,w:_vbG.cur.w,rot:_vbG.cur.rot};
+    _vbG.d0=p.d;_vbG.a0=p.a;_vbG.mx=p.x;_vbG.my=p.y;
+  }else{
+    var it=vbFind(loadVision(),id);if(!it)return;
+    var mode=e.target.closest('.vb-size')?'size':(e.target.closest('.vb-rot')?'rot':'move');
+    var cx=r.left+it.x/100*r.width,cy=r.top+it.y/100*r.height;
+    _vbG={id:id,el:el,mode:mode,r:r,
+          it:{x:it.x,y:it.y,w:it.w,rot:it.rot},
+          cur:{x:it.x,y:it.y,w:it.w,rot:it.rot},
+          px:e.clientX,py:e.clientY,
+          d0:Math.max(8,Math.hypot(e.clientX-cx,e.clientY-cy)),
+          a0:Math.atan2(e.clientY-cy,e.clientX-cx)};
+    window.addEventListener('pointermove',vbMove);
+    window.addEventListener('pointerup',vbUp);
+    window.addEventListener('pointercancel',vbUp);
+  }
+  e.preventDefault();
+}
+
+function vbMove(e){
+  if(!_vbG)return;
+  if(_vbPts[e.pointerId])_vbPts[e.pointerId]={x:e.clientX,y:e.clientY};
+  var g=_vbG,r=g.r,c=g.cur;
+  if(g.mode==='pinch'&&Object.keys(_vbPts).length>=2){
+    var p=vbTwo();
+    c.w=vbClamp(g.it.w*(p.d/g.d0),8,140);
+    c.rot=g.it.rot+(p.a-g.a0)*180/Math.PI;
+    c.x=vbClamp(g.it.x+(p.x-g.mx)/r.width*100,0,100);
+    c.y=vbClamp(g.it.y+(p.y-g.my)/r.height*100,0,100);
+  }else if(g.mode==='move'){
+    c.x=vbClamp(g.it.x+(e.clientX-g.px)/r.width*100,0,100);
+    c.y=vbClamp(g.it.y+(e.clientY-g.py)/r.height*100,0,100);
+  }else{
+    var cx=r.left+c.x/100*r.width,cy=r.top+c.y/100*r.height;
+    if(g.mode==='size')c.w=vbClamp(g.it.w*Math.hypot(e.clientX-cx,e.clientY-cy)/g.d0,8,140);
+    else c.rot=g.it.rot+(Math.atan2(e.clientY-cy,e.clientX-cx)-g.a0)*180/Math.PI;
+  }
+  g.el.style.left=c.x+'%';g.el.style.top=c.y+'%';g.el.style.width=c.w+'%';
+  g.el.style.transform='translate(-50%,-50%) rotate('+c.rot+'deg)';
+  e.preventDefault();
+}
+
+function vbUp(e){
+  delete _vbPts[e.pointerId];
+  var g=_vbG;if(!g)return;
+  var left=Object.keys(_vbPts);
+  if(left.length===1&&g.mode==='pinch'){
+    // one finger lifted out of a pinch - carry on dragging with the other
+    var p=_vbPts[left[0]];
+    g.mode='move';g.it={x:g.cur.x,y:g.cur.y,w:g.cur.w,rot:g.cur.rot};g.px=p.x;g.py=p.y;
+    return;
+  }
+  if(left.length)return;
+  vbCommit();
+  window.removeEventListener('pointermove',vbMove);
+  window.removeEventListener('pointerup',vbUp);
+  window.removeEventListener('pointercancel',vbUp);
+  _vbG=null;
+}
+
+function vbCommit(){
+  var g=_vbG;if(!g)return;
+  var a=loadVision(),it=vbFind(a,g.id);if(!it)return;
+  it.x=+g.cur.x.toFixed(2);it.y=+g.cur.y.toFixed(2);
+  it.w=+g.cur.w.toFixed(2);it.rot=+g.cur.rot.toFixed(1);
+  saveVision(a);
+}
+
+function vbDelete(id){
+  var a=loadVision().filter(function(o){return o.id!==id;});
+  saveVision(a);
+  if(_vbSel===id)_vbSel=null;
+  renderVisionBoard();
+}
+
+// Fit the photo inside VB_MAX and re-encode as JPEG - a 4MB camera shot comes
+// out around 60KB, which is what lets a boardful of them live in localStorage.
+function vbScale(file,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var s=Math.min(1,VB_MAX/Math.max(img.width,img.height));
+      var cv=document.createElement('canvas');
+      cv.width=Math.max(1,Math.round(img.width*s));
+      cv.height=Math.max(1,Math.round(img.height*s));
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      try{cb(cv.toDataURL('image/jpeg',0.8));}catch(err){cb(null);}
+    };
+    img.onerror=function(){cb(null);};
+    img.src=e.target.result;
+  };
+  reader.onerror=function(){cb(null);};
+  reader.readAsDataURL(file);
+}
+
+function handleVisionPhoto(input){
+  var files=Array.prototype.slice.call(input.files||[]);
+  input.value='';   // so picking the same photo twice still fires onchange
+  if(!files.length)return;
+  var a=loadVision(),pending=files.length,added=0;
+  files.forEach(function(file,i){
+    vbScale(file,function(src){
+      if(src){
+        var n=a.length;
+        a.push({id:'vb'+Date.now()+'_'+i,src:src,
+                x:34+(n%3)*16,y:34+(Math.floor(n/3)%3)*16,   // scatter, don't stack
+                w:38,rot:Math.round((Math.random()*14-7)*10)/10,
+                z:n+1});
+        added++;
+      }
+      if(--pending===0){
+        if(added)saveVision(a);
+        renderVisionBoard();
+      }
+    });
+  });
+}
 function renderTripToggle(){
   var el=document.getElementById('trip-toggle-strip');if(!el)return;
   var isOn=loadActiveTrip()>=0&&loadTrips().length>0;
@@ -5681,6 +5915,7 @@ function confirmTripOn(){
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
     '<div id="home-cal" style="width:100%;max-width:380px;margin-top:20px"></div>'+
+    '<div id="home-vision" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="home-reminders" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="home-sumrem" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="home-book" style="width:100%;max-width:380px;margin-top:16px;margin-bottom:20px"></div>';
@@ -5691,6 +5926,7 @@ function confirmTripOn(){
   var mn=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   document.getElementById('home-date').textContent=dn[d.getDay()]+', '+d.getDate()+' ב'+mn[d.getMonth()];
   document.getElementById('home-cal').innerHTML=buildHomeCalHTML();
+  renderVisionBoard();
   renderTripToggle();
   renderReminders();
   renderSumRem();
