@@ -416,7 +416,43 @@ function loadStepsSrc(){
   return{kind:'manual',label:'',last:''};
 }
 function saveStepsSrc(o){try{localStorage.setItem(STEPS_SRC_KEY,JSON.stringify(o));}catch(e){}}
-var STEPS_SRC_NAMES={manual:'הזנה ידנית',shortcut:'קיצור דרך',server:'סנכרון אוטומטי'};
+var STEPS_SRC_NAMES={manual:'הזנה ידנית',shortcut:'קיצור דרך',server:'סנכרון אוטומטי',health:'Apple Health'};
+var _stepsAdvOpen=false;
+
+/* ── NATIVE BRIDGE ──
+   A web page has no access to HealthKit, and never will - that is Apple's
+   line, not a gap in this app. The native shell this prototype is headed for
+   does have it, and reaches the page through a WKWebView message handler.
+   Everything Apple Health goes through this one seam: when the shell is
+   present the source screen offers a real connect button, and when it is not
+   it says so plainly. Nothing else in the app knows the difference. */
+function nativeHealth(){
+  try{
+    var w=window.webkit&&window.webkit.messageHandlers;
+    return(w&&w.health)?w.health:null;
+  }catch(e){return null;}
+}
+function healthConnect(){
+  var b=nativeHealth();
+  if(!b){showToast('דורש את גרסת האפליקציה');return;}
+  try{b.postMessage({action:'connect'});}catch(e){showToast('החיבור נכשל');}
+}
+// The shell calls this back with {"2026-08-30": 8412, ...} once HealthKit
+// has answered. Same merge rule as every other source: it is a write, and
+// the newest write for a day wins.
+window.onHealthSteps=function(days){
+  if(!days||typeof days!=='object')return 0;
+  var n=0;
+  Object.keys(days).forEach(function(d){
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&typeof days[d]==='number'){saveSteps(d,days[d],'health');n++;}
+  });
+  if(n){
+    var s=loadStepsSrc();s.kind='health';s.last=new Date().toISOString();saveStepsSrc(s);
+    showToast('✓ עודכן מ־Apple Health');
+  }
+  if(typeof _fitView!=='undefined'&&(_fitView==='steps'||_fitView==='steps-setup'))renderFitness();
+  return n;
+};
 
 /* The token the shortcut posts alongside the step count. It is a bearer
    secret: whoever holds it can write steps for this install and nothing else.
@@ -1731,6 +1767,7 @@ function stepsAppURL(){return location.origin+location.pathname;}
 function renderFitSteps(){
   document.getElementById('hdr-title').textContent='צעדים';
   var src=loadStepsSrc(),today=todayStr(),rec=loadSteps(today),v=rec?rec.v:0;
+  var linked=src.kind!=='manual';
   var h='<div style="padding-bottom:20px">';
 
   h+='<div style="background:#fff;border-radius:22px;padding:22px 18px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12);text-align:center">';
@@ -1768,12 +1805,12 @@ function renderFitSteps(){
   h+='</div></div>';
 
   h+='<div class="card"><div class="cttl">מקור הנתונים</div>';
-  h+='<button onclick="_fitView=\'steps-setup\';renderFitness()" style="width:100%;display:flex;align-items:center;gap:12px;background:'+(src.kind==='shortcut'?'linear-gradient(135deg,#eaf5ee,#d8f0e0)':'#fbf7f2')+';border:none;border-radius:14px;padding:13px 14px;cursor:pointer;text-align:right;font-family:inherit">';
-  h+='<div style="width:38px;height:38px;border-radius:13px;background:#fff;display:flex;align-items:center;justify-content:center;color:'+(src.kind==='shortcut'?'#6fb283':'#a89e97')+';flex-shrink:0">';
+  h+='<button onclick="_fitView=\'steps-setup\';renderFitness()" style="width:100%;display:flex;align-items:center;gap:12px;background:'+(linked?'linear-gradient(135deg,#eaf5ee,#d8f0e0)':'#fbf7f2')+';border:none;border-radius:14px;padding:13px 14px;cursor:pointer;text-align:right;font-family:inherit">';
+  h+='<div style="width:38px;height:38px;border-radius:13px;background:#fff;display:flex;align-items:center;justify-content:center;color:'+(linked?'#6fb283':'#a89e97')+';flex-shrink:0">';
   h+='<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><rect x="6.5" y="2.5" width="11" height="19" rx="3"/><path d="M10.5 5.6h3"/></svg></div>';
   h+='<div style="flex:1;min-width:0">';
-  h+='<div style="font-size:13px;font-weight:800;color:#4a4340">'+(src.kind==='shortcut'?'מחובר'+(src.label?' &middot; '+esc(src.label):''):'חבר שעון או אפליקציה')+'</div>';
-  h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">'+(src.kind==='shortcut'?(src.last?'סונכרן '+stepsAgo(src.last):'ממתין לסנכרון ראשון'):'גארמין, אפל וואטש, או אפליקציית כושר')+'</div>';
+  h+='<div style="font-size:13px;font-weight:800;color:#4a4340">'+(linked?(STEPS_SRC_NAMES[src.kind]||'מחובר'):'חבר שעון או אפליקציה')+'</div>';
+  h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">'+(linked?(src.last?'סונכרן '+stepsAgo(src.last):'ממתין לסנכרון ראשון'):'גארמין, אפל וואטש, או אפליקציית כושר')+'</div>';
   h+='</div><div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
   h+='<button onclick="syncStepsNow()" style="width:100%;background:#f5f0eb;border:none;border-radius:12px;padding:10px;font-size:11.5px;font-weight:700;cursor:pointer;color:#a89e97;margin-top:8px;font-family:inherit">סנכרן עכשיו</button>';
   h+='</div>';
@@ -1804,62 +1841,60 @@ function saveStepsManual(){
 }
 
 function renderFitStepsSetup(){
-  document.getElementById('hdr-title').textContent='חיבור מקור צעדים';
-  var src=loadStepsSrc(),url=stepsAppURL();
+  document.getElementById('hdr-title').textContent='מקורות צעדים';
+  var src=loadStepsSrc(),native=!!nativeHealth();
+  var connected=src.kind==='health';
   var h='<div style="padding-bottom:20px">';
 
-  h+='<div style="background:linear-gradient(135deg,#f0eafa,#eaf5ee);border-radius:20px;padding:16px;margin-bottom:12px">';
-  h+='<div style="font-size:13px;font-weight:800;color:#4a4340;margin-bottom:8px">למה זה עובד לכל השעונים</div>';
-  h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.65">גארמין, אפל וואטש, פיטביט ורוב אפליקציות הכושר כותבים את הצעדים לאפליקציית הבריאות של האייפון. אז במקום להתחבר לכל שירות בנפרד &mdash; מה שדורש אישור מפתח מכל אחד מהם &mdash; קוראים פעם אחת מהבריאות.</div>';
+  /* Apple Health is the whole strategy in one card: a Garmin watch, an Apple
+     Watch, a Fitbit and the phone itself all write their steps into it, so
+     this is the only source that ever needs connecting. It can only be read
+     from the native build - a web page has no access to HealthKit at all -
+     so in the browser the card says so rather than pretending. */
+  h+='<div class="card" style="border:2px solid '+(connected?'#bfe0c7':'#e8dff5')+'">';
+  h+='<div style="display:flex;align-items:center;gap:13px;margin-bottom:13px">';
+  h+='<div style="width:46px;height:46px;border-radius:16px;background:linear-gradient(145deg,#fdeef1,#fadde3);display:flex;align-items:center;justify-content:center;color:#e0728c;flex-shrink:0">';
+  h+='<svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M12 20.3s-7.4-4.5-7.4-9.6a4.3 4.3 0 0 1 7.4-2.7 4.3 4.3 0 0 1 7.4 2.7c0 5.1-7.4 9.6-7.4 9.6Z"/></svg></div>';
+  h+='<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:#4a4340">Apple Health</div>';
+  h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">'+(connected?'מחובר'+(src.last?' &middot; סונכרן '+stepsAgo(src.last):''):'המקור המומלץ')+'</div></div>';
+  if(connected)h+='<div style="color:#4c9a4c;font-size:18px;flex-shrink:0">&#10003;</div>';
   h+='</div>';
 
-  h+='<div class="card"><div class="cttl">שלב ראשון, משותף לשתי הדרכים</div>';
-  var steps=[
-    'פתח את אפליקציית <b>קיצורי דרך</b> באייפון וצור קיצור חדש.',
-    'הוסף פעולה שמוצאת דגימות בריאות מסוג <b>צעדים</b>, מסוננות לתאריך של היום, וסכם אותן.',
-    'ב&rlm;אוטומציה, קבע שהקיצור ירוץ כל יום בשעה קבועה &mdash; למשל 22:45, לפני הראיון של סיום יום.'
-  ];
-  h+='<div style="display:flex;flex-direction:column;gap:11px">';
-  for(var i=0;i<steps.length;i++){
-    h+='<div style="display:flex;gap:10px;align-items:flex-start">';
-    h+='<div style="width:20px;height:20px;border-radius:50%;background:#f0eafa;color:#a690cf;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">'+(i+1)+'</div>';
-    h+='<div style="font-size:12px;color:#4a4340;line-height:1.6;flex:1">'+steps[i]+'</div></div>';
-  }
-  h+='</div>';
-  h+='<div style="font-size:10px;color:#c0b8b0;line-height:1.6;margin-top:12px">שמות הפעולות משתנים קצת בין גרסאות iOS. אם לא מצאת פעולה בשם הזה, חפש &rlm;"בריאות" בחיפוש הפעולות.</div>';
+  h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.65;margin-bottom:13px">השעון והאפליקציות שלך כותבים אל הבריאות בלאו הכי, אז זה החיבור היחיד שצריך לעשות:</div>';
+  var feeds=['שעון גארמין','אפל וואטש','פיטביט','האייפון עצמו'];
+  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
+  for(var fi=0;fi<feeds.length;fi++)h+='<span style="background:#f5f0eb;border-radius:10px;padding:5px 10px;font-size:10.5px;font-weight:700;color:#a89e97">'+feeds[fi]+'</span>';
   h+='</div>';
 
-  var tok=stepsToken();
-
-  h+='<div class="card" style="border:2px solid #bfe0c7"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  h+='<div class="cttl" style="margin:0">דרך א &mdash; סנכרון אוטומטי</div>';
-  h+='<div style="background:#eaf5ee;border-radius:10px;padding:3px 9px;font-size:9px;font-weight:800;color:#4c9a4c">מומלץ</div></div>';
-  h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.6;margin-bottom:12px">הקיצור שולח את המספר לשרת ברקע, בלי שהאפליקציה נפתחת. האפליקציה מושכת אותו בפעם הבאה שתפתח אותה.</div>';
-  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:5px">הוסף פעולה &rlm;"קבל תוכן מכתובת" עם:</div>';
-  h+='<div style="background:#fbf7f2;border-radius:12px;padding:12px;font-size:10.5px;color:#4a4340;direction:ltr;text-align:left;word-break:break-all;line-height:1.8;font-family:ui-monospace,Menlo,Consolas,monospace">';
-  h+='POST '+esc(SYNC_SERVER)+'/steps<br>Content-Type: application/json<br><br>{"token":"'+esc(tok)+'",<br>&nbsp;"steps":<span style="color:#a690cf">&lt;הסכום&gt;</span>}</div>';
-  h+='<div style="display:flex;gap:8px;margin-top:10px">';
-  h+='<button onclick="copyText(SYNC_SERVER+\'/steps\',\'הכתובת\')" style="flex:1;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit">העתק כתובת</button>';
-  h+='<button onclick="copyText(\''+tok+'\',\'הטוקן\')" style="flex:1;background:#f0eafa;border:none;border-radius:11px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#a690cf;font-family:inherit">העתק טוקן</button></div>';
-  h+='<div style="font-size:10px;color:#c0b8b0;line-height:1.6;margin-top:10px">הטוקן הוא סיסמה. מי שמחזיק בו יכול לכתוב צעדים להתקנה הזאת &mdash; ורק את זה. אל תפרסם אותו.</div>';
-  h+='</div>';
-
-  h+='<div class="card"><div class="cttl">דרך ב &mdash; קישור</div>';
-  h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.6;margin-bottom:12px">בלי שרת ובלי טוקן, אבל הקיצור <b>פותח</b> את האפליקציה בכל פעם. אם באייפון הקישור נפתח בספארי ולא באפליקציה המותקנת, הצעדים ינחתו בעותק הלא נכון &mdash; ואז דרך א היא התשובה.</div>';
-  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:5px">הוסף פעולה &rlm;"פתח כתובות" עם:</div>';
-  h+='<div style="background:#fbf7f2;border-radius:12px;padding:12px;font-size:10.5px;color:#4a4340;direction:ltr;text-align:left;word-break:break-all;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace">'+esc(url)+'#steps=<span style="color:#a690cf">&lt;הסכום&gt;</span></div>';
-  h+='<button onclick="copyText(stepsAppURL()+\'#steps=\',\'הכתובת\')" style="width:100%;background:#f0eafa;border:none;border-radius:11px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#a690cf;margin-top:10px;font-family:inherit">העתק כתובת</button>';
-  h+='<div style="font-size:10px;color:#a89e97;line-height:1.6;margin-top:10px">בשתי הדרכים אפשר להוסיף גם תאריך כדי לרשום ליום אחר. בלי זה, הצעדים נרשמים להיום.</div>';
-  h+='</div>';
-
-  if(src.kind==='shortcut'){
-    h+='<div style="background:linear-gradient(135deg,#eaf5ee,#d8f0e0);border-radius:16px;padding:14px;margin-bottom:12px;text-align:center">';
-    h+='<div style="font-size:12.5px;font-weight:800;color:#4c9a4c">&#10003; המקור מחובר</div>';
-    h+='<div style="font-size:10.5px;color:#6fb283;margin-top:3px">'+(src.last?'סנכרון אחרון '+stepsAgo(src.last):'')+'</div></div>';
+  if(native){
+    h+='<button onclick="healthConnect()" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:13px;padding:13px;font-size:13.5px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit">'+(connected?'סנכרן עכשיו':'חבר את Apple Health')+'</button>';
   } else {
-    h+='<div style="background:#fbf7f2;border-radius:16px;padding:14px;margin-bottom:12px;text-align:center">';
-    h+='<div style="font-size:11.5px;color:#a89e97;line-height:1.6">המקור יסומן כמחובר אוטומטית<br>ברגע שהקיצור ישלח את הצעדים בפעם הראשונה.</div></div>';
+    h+='<div style="background:#fbf7f2;border-radius:13px;padding:12px 13px;font-size:11px;color:#a89e97;line-height:1.65">החיבור הזה נפתח בגרסת האפליקציה מה&rlm;־App Store. לדפדפן אין גישה לבריאות של אפל &mdash; זו מגבלה של אפל, לא חוסר באפליקציה.</div>';
   }
+  h+='</div>';
+
+  h+='<button onclick="_fitView=\'steps\';renderFitness()" style="width:100%;display:flex;align-items:center;gap:12px;background:#fff;border:none;border-radius:18px;padding:14px 15px;margin-bottom:12px;box-shadow:0 4px 14px rgba(200,180,160,.12);cursor:pointer;text-align:right;font-family:inherit">';
+  h+='<div style="width:40px;height:40px;border-radius:14px;background:#f5f0eb;display:flex;align-items:center;justify-content:center;color:#a89e97;flex-shrink:0">';
+  h+='<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M4.5 19.5 19 5"/><path d="m14.5 5 5 0 0 5"/><path d="M4.5 12h6"/></svg></div>';
+  h+='<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800;color:#4a4340">הזנה ידנית</div>';
+  h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">תמיד זמינה, גם כשמחובר מקור</div></div>';
+  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
+
+  // The shortcut is scaffolding for the prototype, not part of the product.
+  h+='<div class="qacard"><button class="qatog" onclick="_stepsAdvOpen=!_stepsAdvOpen;renderFitStepsSetup()">';
+  h+='<span class="qalbl">למפתחים &mdash; קיצור דרך זמני</span>';
+  h+='<span class="qaarro" style="transform:'+(_stepsAdvOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
+  if(_stepsAdvOpen){
+    var tok=stepsToken();
+    h+='<div class="qalist"><div style="font-size:11px;color:#a89e97;line-height:1.65;margin-bottom:11px">עד שקיימת גרסת האפליקציה, קיצור דרך באייפון יכול לשלוח את הצעדים לשרת. זה פיגום לבדיקות, לא חלק מהמוצר.</div>';
+    h+='<div style="background:#fbf7f2;border-radius:11px;padding:11px;font-size:10px;color:#4a4340;direction:ltr;text-align:left;word-break:break-all;line-height:1.8;font-family:ui-monospace,Menlo,Consolas,monospace">';
+    h+='POST '+esc(SYNC_SERVER)+'/steps<br>{"token":"'+esc(tok)+'", "steps":&lt;sum&gt;}</div>';
+    h+='<div style="display:flex;gap:7px;margin-top:9px">';
+    h+='<button onclick="copyText(SYNC_SERVER+\'/steps\',\'הכתובת\')" style="flex:1;background:#f0eafa;border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:#a690cf;font-family:inherit">העתק כתובת</button>';
+    h+='<button onclick="copyText(\''+tok+'\',\'הטוקן\')" style="flex:1;background:#f0eafa;border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:#a690cf;font-family:inherit">העתק טוקן</button></div>';
+    h+='<div style="font-size:9.5px;color:#c0b8b0;line-height:1.6;margin-top:9px">אפשר גם לפתוח את האפליקציה עם <span style="direction:ltr;display:inline-block">#steps=&lt;sum&gt;</span> בסוף הכתובת.</div></div>';
+  }
+  h+='</div>';
 
   h+='<button onclick="_fitView=\'steps\';renderFitness()" style="width:100%;background:#f5f0eb;border:none;border-radius:12px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#a89e97;font-family:inherit">&#8250; חזרה לצעדים</button>';
   h+='</div>';
