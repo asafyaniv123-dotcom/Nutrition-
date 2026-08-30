@@ -16,9 +16,12 @@
 const TTL = 86400;              // let the push service hold it for a day
 const LATE_WINDOW_MIN = 120;    // don't deliver a reminder more than 2h late
 
+const STEPS_DAYS = 14;                  // days of step counts kept per token
+const STEPS_TTL = 60 * 60 * 24 * 120;   // and how long an idle token survives
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
@@ -145,6 +148,52 @@ export default {
       if (!b.endpoint) return json({ error: 'missing endpoint' }, 400);
       const res = await sendPush(b.endpoint, env);
       return json({ ok: res.ok, status: res.status, body: await res.text().catch(() => '') });
+    }
+
+    /* ── STEPS ──
+       A drop box for step counts, so a phone shortcut can post the day's
+       total in the background and the app can pick it up whenever it next
+       opens. One KV key per token holds the last two weeks, which keeps a
+       sync to a single read and a post to a read plus a write.
+
+       The token is a bearer secret the app generates and shows on its setup
+       screen: whoever holds it can write step counts for that one app
+       install, and nothing else. Steps are all that is ever stored here. */
+    if (url.pathname === '/steps') {
+      if (req.method === 'POST') {
+        let b;
+        try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+        const token = String((b && b.token) || '');
+        if (!/^[a-f0-9]{32}$/.test(token)) return json({ error: 'bad token' }, 400);
+
+        const v = Math.round(Number(b.steps));
+        if (!Number.isFinite(v) || v < 0 || v > 300000) return json({ error: 'bad steps' }, 400);
+
+        // A shortcut that does not bother sending the date means "today".
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '')
+          ? b.date
+          : new Date().toISOString().slice(0, 10);
+
+        const key = 'st:' + token;
+        const rec = (await env.SUBS.get(key, 'json')) || { days: {} };
+        rec.days[date] = { v, at: new Date().toISOString() };
+
+        // Two weeks is all the app ever asks for; drop the rest.
+        const keep = Object.keys(rec.days).sort().slice(-STEPS_DAYS);
+        const days = {};
+        for (const d of keep) days[d] = rec.days[d];
+        rec.days = days;
+
+        await env.SUBS.put(key, JSON.stringify(rec), { expirationTtl: STEPS_TTL });
+        return json({ ok: true, date, steps: v });
+      }
+
+      if (req.method === 'GET') {
+        const token = url.searchParams.get('token') || '';
+        if (!/^[a-f0-9]{32}$/.test(token)) return json({ error: 'bad token' }, 400);
+        const rec = (await env.SUBS.get('st:' + token, 'json')) || { days: {} };
+        return json({ ok: true, days: rec.days });
+      }
     }
 
     return json({ error: 'not found' }, 404);

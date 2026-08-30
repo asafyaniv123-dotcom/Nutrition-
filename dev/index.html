@@ -406,7 +406,53 @@ function loadStepsSrc(){
   return{kind:'manual',label:'',last:''};
 }
 function saveStepsSrc(o){try{localStorage.setItem(STEPS_SRC_KEY,JSON.stringify(o));}catch(e){}}
-var STEPS_SRC_NAMES={manual:'הזנה ידנית',shortcut:'קיצור דרך'};
+var STEPS_SRC_NAMES={manual:'הזנה ידנית',shortcut:'קיצור דרך',server:'סנכרון אוטומטי'};
+
+/* The token the shortcut posts alongside the step count. It is a bearer
+   secret: whoever holds it can write steps for this install and nothing else.
+   Generated once, on the setup screen, and never leaves the device except in
+   the shortcut the user builds. */
+function stepsToken(){
+  var t='';
+  try{t=localStorage.getItem('steps_token')||'';}catch(e){}
+  if(/^[a-f0-9]{32}$/.test(t))return t;
+  var a=new Uint8Array(16),i;
+  if(window.crypto&&crypto.getRandomValues)crypto.getRandomValues(a);
+  else for(i=0;i<16;i++)a[i]=Math.floor(Math.random()*256);
+  t='';for(i=0;i<16;i++)t+=('0'+a[i].toString(16)).slice(-2);
+  try{localStorage.setItem('steps_token',t);}catch(e){}
+  return t;
+}
+
+/* Pull whatever the shortcut has posted since we last looked. The newest write
+   wins per day whatever wrote it, so a number typed by hand this morning is
+   replaced by the watch's real count tonight - and a correction typed after
+   the watch reported is not undone on the next sync. */
+function syncStepsFromServer(cb){
+  var t='';
+  try{t=localStorage.getItem('steps_token')||'';}catch(e){}
+  if(!SYNC_SERVER||!/^[a-f0-9]{32}$/.test(t)){if(cb)cb(false);return;}
+  fetch(SYNC_SERVER+'/steps?token='+t,{cache:'no-store'})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(o){
+      if(!o||!o.days){if(cb)cb(false);return;}
+      var changed=0;
+      Object.keys(o.days).forEach(function(d){
+        var remote=o.days[d];
+        if(!remote||typeof remote.v!=='number')return;
+        var local=loadSteps(d);
+        if(local&&local.at&&remote.at&&new Date(local.at)>=new Date(remote.at))return;
+        if(local&&local.v===remote.v)return;
+        saveSteps(d,remote.v,'server');
+        changed++;
+      });
+      if(changed){
+        var s=loadStepsSrc();s.kind='server';s.last=new Date().toISOString();saveStepsSrc(s);
+      }
+      if(cb)cb(changed>0);
+    })
+    .catch(function(){if(cb)cb(false);});
+}
 function loadLib(){try{var x=localStorage.getItem('my_meals');return x?JSON.parse(x):[]; }catch(e){return[];}}
 function saveLibData(arr){try{localStorage.setItem('my_meals',JSON.stringify(arr));}catch(e){}}
 function loadComposed(){try{var x=localStorage.getItem('composed_meals');return x?JSON.parse(x):[]; }catch(e){return[];}}
@@ -1704,11 +1750,20 @@ function renderFitSteps(){
   h+='<div style="font-size:13px;font-weight:800;color:#4a4340">'+(src.kind==='shortcut'?'מחובר'+(src.label?' &middot; '+esc(src.label):''):'חבר שעון או אפליקציה')+'</div>';
   h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">'+(src.kind==='shortcut'?(src.last?'סונכרן '+stepsAgo(src.last):'ממתין לסנכרון ראשון'):'גארמין, אפל וואטש, או אפליקציית כושר')+'</div>';
   h+='</div><div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
+  h+='<button onclick="syncStepsNow()" style="width:100%;background:#f5f0eb;border:none;border-radius:12px;padding:10px;font-size:11.5px;font-weight:700;cursor:pointer;color:#a89e97;margin-top:8px;font-family:inherit">סנכרן עכשיו</button>';
   h+='</div>';
 
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="width:100%;background:#f5f0eb;border:none;border-radius:12px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#a89e97;font-family:inherit">&#8250; חזרה לכושר</button>';
   h+='</div>';
   document.getElementById('content').innerHTML=h;
+}
+
+function syncStepsNow(){
+  showToast('מסנכרן…');
+  syncStepsFromServer(function(changed){
+    if(_fitView==='steps')renderFitSteps();
+    showToast(changed?'✓ עודכן':'אין נתונים חדשים');
+  });
 }
 
 function saveStepsManual(){
@@ -1730,11 +1785,10 @@ function renderFitStepsSetup(){
   h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.65">גארמין, אפל וואטש, פיטביט ורוב אפליקציות הכושר כותבים את הצעדים לאפליקציית הבריאות של האייפון. אז במקום להתחבר לכל שירות בנפרד &mdash; מה שדורש אישור מפתח מכל אחד מהם &mdash; קוראים פעם אחת מהבריאות.</div>';
   h+='</div>';
 
-  h+='<div class="card"><div class="cttl">מה צריך להגדיר, פעם אחת</div>';
+  h+='<div class="card"><div class="cttl">שלב ראשון, משותף לשתי הדרכים</div>';
   var steps=[
     'פתח את אפליקציית <b>קיצורי דרך</b> באייפון וצור קיצור חדש.',
     'הוסף פעולה שמוצאת דגימות בריאות מסוג <b>צעדים</b>, מסוננות לתאריך של היום, וסכם אותן.',
-    'הוסף פעולה <b>"פתח כתובות"</b> עם הכתובת שלמטה, כשבמקום <b>0</b> אתה שם את הסכום מהשלב הקודם.',
     'ב&rlm;אוטומציה, קבע שהקיצור ירוץ כל יום בשעה קבועה &mdash; למשל 22:45, לפני הראיון של סיום יום.'
   ];
   h+='<div style="display:flex;flex-direction:column;gap:11px">';
@@ -1747,10 +1801,27 @@ function renderFitStepsSetup(){
   h+='<div style="font-size:10px;color:#c0b8b0;line-height:1.6;margin-top:12px">שמות הפעולות משתנים קצת בין גרסאות iOS. אם לא מצאת פעולה בשם הזה, חפש &rlm;"בריאות" בחיפוש הפעולות.</div>';
   h+='</div>';
 
-  h+='<div class="card"><div class="cttl">הכתובת לקיצור</div>';
-  h+='<div style="background:#fbf7f2;border-radius:12px;padding:12px;font-size:11px;color:#4a4340;direction:ltr;text-align:left;word-break:break-all;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace">'+esc(url)+'#steps=0</div>';
-  h+='<button onclick="copyStepsURL()" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:11px;font-size:12.5px;font-weight:700;cursor:pointer;color:#fff;margin-top:10px;font-family:inherit">העתק כתובת</button>';
-  h+='<div style="font-size:10px;color:#a89e97;line-height:1.6;margin-top:10px">אפשר להוסיף גם <span style="direction:ltr;display:inline-block">&amp;d=2026-08-30</span> כדי לרשום את הצעדים ליום אחר. בלי זה, הם נרשמים להיום.</div>';
+  var tok=stepsToken();
+
+  h+='<div class="card" style="border:2px solid #bfe0c7"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  h+='<div class="cttl" style="margin:0">דרך א &mdash; סנכרון אוטומטי</div>';
+  h+='<div style="background:#eaf5ee;border-radius:10px;padding:3px 9px;font-size:9px;font-weight:800;color:#4c9a4c">מומלץ</div></div>';
+  h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.6;margin-bottom:12px">הקיצור שולח את המספר לשרת ברקע, בלי שהאפליקציה נפתחת. האפליקציה מושכת אותו בפעם הבאה שתפתח אותה.</div>';
+  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:5px">הוסף פעולה &rlm;"קבל תוכן מכתובת" עם:</div>';
+  h+='<div style="background:#fbf7f2;border-radius:12px;padding:12px;font-size:10.5px;color:#4a4340;direction:ltr;text-align:left;word-break:break-all;line-height:1.8;font-family:ui-monospace,Menlo,Consolas,monospace">';
+  h+='POST '+esc(SYNC_SERVER)+'/steps<br>Content-Type: application/json<br><br>{"token":"'+esc(tok)+'",<br>&nbsp;"steps":<span style="color:#a690cf">&lt;הסכום&gt;</span>}</div>';
+  h+='<div style="display:flex;gap:8px;margin-top:10px">';
+  h+='<button onclick="copyText(SYNC_SERVER+\'/steps\',\'הכתובת\')" style="flex:1;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit">העתק כתובת</button>';
+  h+='<button onclick="copyText(\''+tok+'\',\'הטוקן\')" style="flex:1;background:#f0eafa;border:none;border-radius:11px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#a690cf;font-family:inherit">העתק טוקן</button></div>';
+  h+='<div style="font-size:10px;color:#c0b8b0;line-height:1.6;margin-top:10px">הטוקן הוא סיסמה. מי שמחזיק בו יכול לכתוב צעדים להתקנה הזאת &mdash; ורק את זה. אל תפרסם אותו.</div>';
+  h+='</div>';
+
+  h+='<div class="card"><div class="cttl">דרך ב &mdash; קישור</div>';
+  h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.6;margin-bottom:12px">בלי שרת ובלי טוקן, אבל הקיצור <b>פותח</b> את האפליקציה בכל פעם. אם באייפון הקישור נפתח בספארי ולא באפליקציה המותקנת, הצעדים ינחתו בעותק הלא נכון &mdash; ואז דרך א היא התשובה.</div>';
+  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:5px">הוסף פעולה &rlm;"פתח כתובות" עם:</div>';
+  h+='<div style="background:#fbf7f2;border-radius:12px;padding:12px;font-size:10.5px;color:#4a4340;direction:ltr;text-align:left;word-break:break-all;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace">'+esc(url)+'#steps=<span style="color:#a690cf">&lt;הסכום&gt;</span></div>';
+  h+='<button onclick="copyText(stepsAppURL()+\'#steps=\',\'הכתובת\')" style="width:100%;background:#f0eafa;border:none;border-radius:11px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#a690cf;margin-top:10px;font-family:inherit">העתק כתובת</button>';
+  h+='<div style="font-size:10px;color:#a89e97;line-height:1.6;margin-top:10px">בשתי הדרכים אפשר להוסיף גם תאריך כדי לרשום ליום אחר. בלי זה, הצעדים נרשמים להיום.</div>';
   h+='</div>';
 
   if(src.kind==='shortcut'){
@@ -1767,10 +1838,9 @@ function renderFitStepsSetup(){
   document.getElementById('content').innerHTML=h;
 }
 
-function copyStepsURL(){
-  var t=stepsAppURL()+'#steps=0';
+function copyText(t,what){
   if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(t).then(function(){showToast('✓ הכתובת הועתקה');},function(){showToast('לא ניתן להעתיק');});
+    navigator.clipboard.writeText(t).then(function(){showToast('✓ '+(what||'הטקסט')+' הועתק');},function(){showToast('לא ניתן להעתיק');});
   } else showToast('לא ניתן להעתיק');
 }
 
@@ -3309,7 +3379,12 @@ function sumRemSetTime(v){
 // without this - if PUSH_SERVER is empty the app just degrades to open-app only.
 // Empty in the dev copy: a second subscription from the same phone would mean
 // two notifications every evening, and dev is not the app being lived in.
-var PUSH_SERVER=window.__DEV__?'':'https://nutrition-push.nutrition-push.workers.dev';
+// The push subscription is deliberately off in dev - one notification a night,
+// not two. Steps sync has no such problem, so it addresses the server directly
+// and works in both copies. They hold separate tokens, so a dev experiment
+// never writes into the real app's steps.
+var SYNC_SERVER='https://nutrition-push.nutrition-push.workers.dev';
+var PUSH_SERVER=window.__DEV__?'':SYNC_SERVER;
 var VAPID_PUBLIC='BGZWOIHQcO_gj3wDvRa78k3g7A60BDJnhckbC9W15vfgsrQeQYMXu7X6FT0RPqGZhOGjzQgtQyJ_jDktq4GuU-o';
 
 var _pushState='idle';  // idle | ok | error
@@ -6381,6 +6456,7 @@ function homeAddWater(ml){
   document.getElementById('home-date').textContent=dn[d.getDay()]+', '+d.getDate()+' ב'+mn[d.getMonth()];
   document.getElementById('home-cal').innerHTML=buildHomeCalHTML();
   ingestStepsFromLink();
+  syncStepsFromServer();
   renderHomeToday();
   renderVisionBoard();
   renderTripToggle();
