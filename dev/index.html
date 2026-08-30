@@ -1483,6 +1483,7 @@ function goHome(){
   renderReminders();
   renderSumRem();
   renderBookWidget();
+  renderBackup();
 }
 
 function enterModule(mod){
@@ -6448,6 +6449,173 @@ function homeAddWater(ml){
   renderHomeToday();
 }
 
+/* ── BACKUP ──
+   Everything the app knows lives in this browser's localStorage and nowhere
+   else. Delete the app, change phone, and a year of tracking is gone - and
+   there is no other way to carry data from this web prototype into the
+   native build, or between the dev and stable copies.
+
+   localStorage.length/key() are used rather than a list of known keys, so a
+   feature added later is backed up without anyone remembering to add it
+   here. In dev those go through the namespacing shim and return the app's
+   own key names, which is exactly what should end up in the file.
+
+   The steps token is deliberately left out: it is a bearer secret, and a
+   backup file travels - through mail, a cloud drive, a chat. A fresh
+   install mints its own. */
+var BACKUP_SKIP={steps_token:1,last_export:1};
+
+function collectAppData(){
+  var out={},i,k;
+  for(i=0;i<localStorage.length;i++){
+    k=localStorage.key(i);
+    if(!k||BACKUP_SKIP[k])continue;
+    try{out[k]=localStorage.getItem(k);}catch(e){}
+  }
+  return out;
+}
+
+function buildBackup(){
+  var data=collectAppData();
+  return JSON.stringify({
+    app:'better-me',version:1,
+    exportedAt:new Date().toISOString(),
+    keyCount:Object.keys(data).length,
+    data:data
+  });
+}
+
+function exportData(){
+  var text=buildBackup(),name='better-me-'+todayStr()+'.json';
+  var blob=new Blob([text],{type:'application/json'});
+  var kb=Math.max(1,Math.round(blob.size/1024));
+  var file=null;
+  try{file=new File([blob],name,{type:'application/json'});}catch(e){}
+  try{localStorage.setItem('last_export',new Date().toISOString());}catch(e){}
+
+  // The share sheet is the only reliable way to save a file out of a web app
+  // on iOS; a download link is the fallback everywhere else.
+  if(file&&navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:'גיבוי Better Me'}).then(function(){
+      renderBackup();showToast('✓ הגיבוי נשמר · '+kb+'KB');
+    },function(){});
+    return;
+  }
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=name;a.style.display='none';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){try{URL.revokeObjectURL(url);a.remove();}catch(e){}},1000);
+  renderBackup();showToast('✓ הגיבוי ירד · '+kb+'KB');
+}
+
+var _pendingImport=null;
+
+function importPick(){var i=document.getElementById('backup-file');if(i)i.click();}
+
+function importChosen(input){
+  var f=input.files&&input.files[0];
+  input.value='';
+  if(!f)return;
+  var r=new FileReader();
+  r.onerror=function(){showToast('לא ניתן לקרוא את הקובץ');};
+  r.onload=function(){
+    var o=null;
+    try{o=JSON.parse(r.result);}catch(e){}
+    if(!o||o.app!=='better-me'||!o.data||typeof o.data!=='object'){
+      showToast('הקובץ לא נראה כמו גיבוי של האפליקציה');return;
+    }
+    _pendingImport=o;renderImportSheet();
+  };
+  r.readAsText(f);
+}
+
+function backupSummary(o){
+  var keys=Object.keys(o.data),days=[],i,m;
+  for(i=0;i<keys.length;i++){
+    m=/^day_(\d{4}-\d{2}-\d{2})$/.exec(keys[i]);
+    if(m)days.push(m[1]);
+  }
+  days.sort();
+  return{keys:keys.length,days:days.length,from:days[0]||'',to:days[days.length-1]||''};
+}
+
+function closeImport(){
+  _pendingImport=null;
+  var el=document.getElementById('imp-overlay');
+  if(el)el.remove();
+}
+
+function renderImportSheet(){
+  var o=_pendingImport;if(!o)return;
+  var s=backupSummary(o),mine=Object.keys(collectAppData()).length;
+  var h='<div class="summary-overlay" id="imp-overlay" onclick="if(event.target===this)closeImport()">';
+  h+='<div class="summary-sheet"><div class="summary-pull"></div>';
+  h+='<button class="summary-close" onclick="closeImport()">&times;</button>';
+  h+='<div style="font-size:17px;font-weight:800;color:#4a4340;margin-bottom:14px">ייבוא גיבוי</div>';
+
+  h+='<div style="background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px">';
+  h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700;margin-bottom:10px">מה יש בקובץ</div>';
+  h+='<div style="display:flex;justify-content:space-around;text-align:center">';
+  h+='<div><div style="font-size:20px;font-weight:800;color:#a690cf">'+s.keys+'</div><div style="font-size:9.5px;color:#a89e97;margin-top:2px">פריטים</div></div>';
+  h+='<div><div style="font-size:20px;font-weight:800;color:#8fc79e">'+s.days+'</div><div style="font-size:9.5px;color:#a89e97;margin-top:2px">ימי מעקב</div></div>';
+  h+='</div>';
+  if(s.from)h+='<div style="font-size:10px;color:#c0b8b0;text-align:center;margin-top:10px">'+s.from+' עד '+s.to+'</div>';
+  if(o.exportedAt)h+='<div style="font-size:10px;color:#c0b8b0;text-align:center;margin-top:4px">יוצא ב־'+o.exportedAt.slice(0,10)+'</div>';
+  h+='</div>';
+
+  h+='<div style="font-size:11px;color:#a89e97;line-height:1.6;margin-bottom:12px">במכשיר הזה יש כרגע '+mine+' פריטים.</div>';
+
+  h+='<button onclick="applyImport(\'merge\')" style="width:100%;background:linear-gradient(135deg,#bfe0c7,#8fc79e);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit;margin-bottom:8px">מיזוג</button>';
+  h+='<div style="font-size:10.5px;color:#a89e97;line-height:1.6;margin-bottom:16px">מוסיף רק מה שחסר. שום דבר שקיים כאן לא נדרס. זו הבחירה הבטוחה.</div>';
+
+  h+='<button onclick="applyImport(\'replace\')" style="width:100%;background:#fff;border:1.5px solid #f3b9a8;border-radius:14px;padding:13px;font-size:13.5px;font-weight:800;cursor:pointer;color:#e08a72;font-family:inherit;margin-bottom:8px">החלפה מלאה</button>';
+  h+='<div style="font-size:10.5px;color:#a89e97;line-height:1.6;margin-bottom:16px">מוחק את כל הנתונים במכשיר הזה ושם את הקובץ במקומם. אין דרך חזרה, אלא אם ייצאת גיבוי קודם.</div>';
+
+  h+='<button onclick="closeImport()" style="width:100%;background:none;border:none;padding:10px;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit">ביטול</button>';
+  h+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+function applyImport(mode){
+  var o=_pendingImport;if(!o)return;
+  var data=o.data,keys=Object.keys(data),i,k,n=0;
+  if(mode==='replace'){
+    var mine=[],j;
+    for(j=0;j<localStorage.length;j++){k=localStorage.key(j);if(k&&!BACKUP_SKIP[k])mine.push(k);}
+    for(j=0;j<mine.length;j++){try{localStorage.removeItem(mine[j]);}catch(e){}}
+  }
+  for(i=0;i<keys.length;i++){
+    k=keys[i];
+    if(BACKUP_SKIP[k])continue;
+    if(mode==='merge'&&localStorage.getItem(k)!==null)continue;
+    if(typeof data[k]!=='string')continue;
+    try{localStorage.setItem(k,data[k]);n++;}catch(e){}
+  }
+  closeImport();
+  showToast('✓ יובאו '+n+' פריטים');
+  // Half the app caches its data in module variables; a reload is the honest
+  // way to make every screen read the new state.
+  setTimeout(function(){location.reload();},800);
+}
+
+function renderBackup(){
+  var el=document.getElementById('home-backup');if(!el)return;
+  var last='';try{last=localStorage.getItem('last_export')||'';}catch(e){}
+  var n=Object.keys(collectAppData()).length;
+  var h='<div style="background:#fff;border-radius:20px;padding:15px 16px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">';
+  h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700">גיבוי</div>';
+  h+='<div style="font-size:10px;color:#c0b8b0">'+n+' פריטים</div></div>';
+  h+='<div style="font-size:10.5px;color:'+(last?'#a89e97':'#e08a72')+';line-height:1.6;margin-bottom:12px">'+(last?'ייצוא אחרון '+stepsAgo(last):'כל הנתונים קיימים רק במכשיר הזה — עוד לא יצא גיבוי.')+'</div>';
+  h+='<div style="display:flex;gap:8px">';
+  h+='<button onclick="exportData()" style="flex:1;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:12px;padding:11px;font-size:12.5px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit">ייצוא</button>';
+  h+='<button onclick="importPick()" style="flex:1;background:#f5f0eb;border:none;border-radius:12px;padding:11px;font-size:12.5px;font-weight:700;cursor:pointer;color:#a89e97;font-family:inherit">ייבוא</button></div>';
+  h+='<input type="file" id="backup-file" accept="application/json,.json" style="display:none" onchange="importChosen(this)">';
+  h+='</div>';
+  el.innerHTML=h;
+}
+
 // Build home screen DOM
 (function(){
   var home=document.createElement('div');
@@ -6510,7 +6678,7 @@ function homeAddWater(ml){
     '<div id="home-vision" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="home-reminders" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="home-sumrem" style="width:100%;max-width:380px;margin-top:16px"></div>'+
-    '<div id="home-book" style="width:100%;max-width:380px;margin-top:16px;margin-bottom:20px"></div>';
+    '<div id="home-book" style="width:100%;max-width:380px;margin-top:16px;margin-bottom:20px"></div>'+'<div id="home-backup" style="width:100%;max-width:380px;margin-bottom:20px"></div>';
   document.body.appendChild(home);
   // Set date
   var d=new Date();
@@ -6526,6 +6694,7 @@ function homeAddWater(ml){
   renderReminders();
   renderSumRem();
   renderBookWidget();
+  renderBackup();
   // Hide app initially
   document.querySelector('.app').style.display='none';
 })();
