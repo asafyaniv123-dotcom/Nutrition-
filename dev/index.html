@@ -6676,13 +6676,16 @@ function renderBackup(){
    question on screen at a time, every answer saved the moment it is given,
    and nothing required.
 
+   Two stages. The quick summary is seven questions and stands on its own;
+   the deeper pass is fifteen more and is always opt-in.
+
    The record is still sum_<date>. A week of real summaries already lives
    there and the calendar, the history view and the deficit chart all read
    them, so the fields that already existed keep their original names -
-   mood, moment, photo, song, quote, differently, steps. Only genuinely new
-   answers get new names. Nothing that works today has to change. */
+   mood, moment, photo, song, quote, differently, steps, timeclock. Only
+   genuinely new answers get new names. Nothing that works today changes. */
 
-var _rfView='home',_rfStep=0,_rfDate='',_rfDraft=null;
+var _rfView='home',_rfStage=1,_rfStep=0,_rfDate='';
 
 var RF_MOODS=[
   {v:1,l:'קשה',c:'#d9795f'},
@@ -6694,6 +6697,13 @@ var RF_MOODS=[
 var RF_MOUTHS=['M8.6 16.4q3.4-3.2 6.8 0','M8.6 15.8q3.4-1.7 6.8 0','M8.6 15.3h6.8','M8.6 14.8q3.4 1.7 6.8 0','M8.6 14.2q3.4 3.2 6.8 0'];
 var RF_BODY=['אנרגטי','עייף','רגוע','מתוח','כבד','חזק','כאוב'];
 var RF_PLANNED=['בכלל לא','קצת','חלקית','די הרבה','לגמרי'];
+var RF_ENERGY=['אנשים','עבודה','יצירה','אימון','מנוחה','טבע','מוזיקה','זמן לבד','משהו אחר'];
+// What drains is not the mirror of what fills, so it gets its own list.
+var RF_DRAIN=['עבודה','אנשים','מסכים','חוסר שינה','התנגשויות','דברים שנדחו','רעש','דאגות','משהו אחר'];
+var RF_PROC=['לא היה לי כוח','לא היה לי זמן','שכחתי','פחדתי להתחיל','לא ידעתי מאיפה להתחיל','משהו אחר היה חשוב יותר','אחר'];
+var RF_SELFCARE=['אימון','זמן לבד','מוזיקה','לצאת החוצה','לדבר עם מישהו','לישון מספיק','לאכול משהו טוב','יצירה','כלום מיוחד'];
+var RF_IMPACT=['לטובה','לרעה','גם וגם'];
+var RF_PARTS=['בוקר','צהריים','אחה״צ','ערב','לילה'];
 
 var RF_STAGE1=[
   {id:'mood',kind:'mood',q:'איך הרגשת היום?'},
@@ -6705,12 +6715,36 @@ var RF_STAGE1=[
   {id:'takeawayForTomorrow',kind:'text',q:'מה אתה לוקח מהיום הזה למחר?',ph:'מחשבה, כוונה, או משהו קטן.'}
 ];
 
+var RF_STAGE2=[
+  {id:'impactfulMoment',kind:'text',q:'מה היה הרגע שהכי השפיע עליך היום?',ph:'משהו ששינה את איך שהרגשת, חשבת או המשכת את היום.'},
+  {id:'proudOf',kind:'text',q:'במה אתה הכי גאה היום?',ph:'גם משהו קטן נחשב.'},
+  {id:'energyGivers',kind:'chipsNote',q:'מה נתן לך הכי הרבה אנרגיה היום?',opts:RF_ENERGY,note:'energyGiversNote',ph:'רוצה לפרט?'},
+  {id:'energyDrainers',kind:'chipsNote',q:'ומה הכי רוקן אותך היום?',opts:RF_DRAIN,note:'energyDrainersNote',ph:'רוצה לפרט?'},
+  {id:'procrastinated',kind:'branch',q:'היה משהו שרצית לעשות היום אבל דחית?',follow:'מה לדעתך גרם לך לדחות אותו?',opts:RF_PROC,listId:'procrastinationReasons',note:'procrastinatedTask',ph:'מה זה היה?'},
+  {id:'influentialPerson',kind:'person',q:'מי היה האדם שהכי השפיע על היום שלך?'},
+  {id:'recurringThought',kind:'text',q:'איזו מחשבה חזרה אליך היום יותר מפעם אחת?',ph:'משהו שהעסיק אותך, ריגש אותך או פשוט לא יצא לך מהראש.'},
+  {id:'selfCare',kind:'branch',q:'עשית היום משהו שעשה לך טוב?',follow:'מה עשית?',opts:RF_SELFCARE,listId:'selfCareActivity',note:'selfCareNote',ph:'או כתוב במילים שלך'},
+  {id:'dayTimeline',kind:'timeline',q:'איך היום שלך התגלגל?',sub:'רק הרגעים המרכזיים — לא כל שעה.'},
+  {id:'timeclock',kind:'clock',q:'לאן הלך הזמן שלך היום?',sub:'סמן על השעון, והחלוקה תיבנה מעצמה.'},
+  {id:'steps',kind:'steps',q:'כמה צעדים צעדת היום?'},
+  {id:'song',kind:'song',q:'מה השיר של היום שלך?',sub:'איזה שיר הכי מתאים למה שעבר עליך היום?'},
+  {id:'quote',kind:'text',q:'יש משפט שלקחת איתך היום?',sub:'משהו ששמעת, קראת או חשבת ולא עזב אותך.',ph:'משפט, מחשבה, רגע...'},
+  {id:'differently',kind:'text',q:'אם היית יכול לחזור לרגע אחד היום — מה היית עושה אחרת?',sub:'לא כדי לשפוט את היום. רק כדי להבין אותו טוב יותר.'},
+  {id:'endOfDayMood',kind:'mood',q:'איך אתה מרגיש עכשיו, ברגע הזה?'}
+];
+
+function rfSteps(){return _rfStage===2?RF_STAGE2:RF_STAGE1;}
+
 function rfFace(i,col,on){
   return '<svg viewBox="0 0 24 24" stroke="'+(on?col:'#c0b8b0')+'">'+
     '<circle cx="12" cy="12" r="9.2"/>'+
     '<circle cx="9.1" cy="9.9" r=".95" fill="'+(on?col:'#c0b8b0')+'" stroke="none"/>'+
     '<circle cx="14.9" cy="9.9" r=".95" fill="'+(on?col:'#c0b8b0')+'" stroke="none"/>'+
     '<path d="'+RF_MOUTHS[i]+'"/></svg>';
+}
+function rfFaceMini(m){
+  var i=Math.max(1,Math.min(5,m))-1;
+  return '<svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke-width:1.7;stroke-linecap:round" stroke="'+RF_MOODS[i].c+'"><circle cx="12" cy="12" r="9.2"/><circle cx="9.1" cy="9.9" r=".95" fill="'+RF_MOODS[i].c+'" stroke="none"/><circle cx="14.9" cy="9.9" r=".95" fill="'+RF_MOODS[i].c+'" stroke="none"/><path d="'+RF_MOUTHS[i]+'"/></svg>';
 }
 
 function rfRec(d){return loadSummary(d)||null;}
@@ -6728,13 +6762,11 @@ function rfSave(patch){
   return r;
 }
 function rfVal(id){var r=rfRec(_rfDate);return r?r[id]:undefined;}
+function rfArr(id){var v=rfVal(id);return Array.isArray(v)?v:[];}
 function rfDone(r){return !!(r&&r.done);}
+function rfProgress(){return Math.round(_rfStep/rfSteps().length*100);}
 
-function rfProgress(){return Math.round(_rfStep/RF_STAGE1.length*100);}
-
-function enterReflect(){
-  _rfDate=todayStr();_rfView='home';renderReflect();
-}
+function enterReflect(){_rfDate=todayStr();_rfView='home';renderReflect();}
 function renderReflect(){
   document.getElementById('hdr-title').textContent='סיום יום';
   if(_rfView==='home')renderReflectHome();
@@ -6749,7 +6781,6 @@ function renderReflect(){
 function renderReflectHome(){
   var today=todayStr(),r=rfRec(today);
   var h='<div style="padding-bottom:24px">';
-
   h+='<div class="rf-hero">';
   if(!r){
     h+='<div class="rf-hero-t">עוד לא עצרת לסכם את היום.</div>';
@@ -6768,7 +6799,6 @@ function renderReflectHome(){
   }
   h+='</div>';
 
-  // previous days
   var prev=[],i,d,s;
   for(i=1;i<=60;i++){
     d=new Date();d.setDate(d.getDate()-i);
@@ -6788,18 +6818,13 @@ function renderReflectHome(){
       else h+='<div class="rf-day-th" style="display:flex;align-items:center;justify-content:center">'+(pr.mood?rfFaceMini(pr.mood):'')+'</div>';
       h+='<div style="flex:1;min-width:0">';
       h+='<div style="font-size:13px;font-weight:800;color:#4a4340">'+dn+' &middot; '+dt.getDate()+'.'+(dt.getMonth()+1)+'</div>';
-      h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">'+rfRecap(pr)+'</div>';
-      h+='</div>';
+      h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">'+rfRecap(pr)+'</div></div>';
       if(pr.dayRating)h+='<div style="font-size:16px;font-weight:800;color:#a690cf;flex-shrink:0">'+pr.dayRating+'</div>';
       h+='</button>';
     }
   }
   h+='</div>';
   document.getElementById('content').innerHTML=h;
-}
-function rfFaceMini(m){
-  var i=Math.max(1,Math.min(5,m))-1;
-  return '<svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke-width:1.7;stroke-linecap:round" stroke="'+RF_MOODS[i].c+'"><circle cx="12" cy="12" r="9.2"/><circle cx="9.1" cy="9.9" r=".95" fill="'+RF_MOODS[i].c+'" stroke="none"/><circle cx="14.9" cy="9.9" r=".95" fill="'+RF_MOODS[i].c+'" stroke="none"/><path d="'+RF_MOUTHS[i]+'"/></svg>';
 }
 function rfRecap(r){
   var bits=[];
@@ -6808,14 +6833,12 @@ function rfRecap(r){
   if(r.photo)bits.push('תמונה');
   return bits.length?bits.join(' · '):'נשמר';
 }
-
-function rfStart(){
-  _rfDate=todayStr();_rfStep=0;_rfView='intro';renderReflect();
-}
+function rfStart(){_rfDate=todayStr();_rfStage=1;_rfStep=0;_rfView='intro';renderReflect();}
 function rfResume(){
   _rfDate=todayStr();
   var r=rfRec(_rfDate);
-  _rfStep=Math.min(RF_STAGE1.length-1,(r&&r.lastStep)||0);
+  _rfStage=(r&&r.lastStage)||1;
+  _rfStep=Math.min(rfSteps().length-1,(r&&r.lastStep)||0);
   _rfView='step';renderReflect();
 }
 
@@ -6824,7 +6847,7 @@ function renderReflectIntro(){
   var h='<div class="rf"><div class="rf-body" style="text-align:center">';
   h+='<div class="rf-q" style="font-size:27px">בוא ניקח רגע להסתכל על היום שלך.</div>';
   h+='<div class="rf-sub" style="font-size:14px">כמה דקות, וזה שלך.</div>';
-  h+='<button onclick="_rfView=\'step\';_rfStep=0;renderReflect()" class="rf-next" style="margin-top:36px">נתחיל</button>';
+  h+='<button onclick="_rfView=\'step\';_rfStage=1;_rfStep=0;renderReflect()" class="rf-next" style="margin-top:36px">נתחיל</button>';
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-ghost">לא עכשיו</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
@@ -6832,46 +6855,44 @@ function renderReflectIntro(){
 
 /* ── one question ── */
 function renderReflectStep(){
-  var q=RF_STAGE1[_rfStep];
-  if(!q){_rfView='bridge';renderReflect();return;}
-  var cur=rfVal(q.id);
+  var q=rfSteps()[_rfStep];
+  if(!q){rfStageEnd();return;}
+  var cur=rfVal(q.id),i,c,o;
 
   var h='<div class="rf"><div class="rf-top">';
   h+='<button class="rf-icon" onclick="rfBack()">&#8250;</button>';
   h+='<div class="rf-bar"><div class="rf-bar-f" style="width:'+rfProgress()+'%"></div></div>';
   h+='<button class="rf-skip" onclick="rfSkip()">דלג</button>';
-  h+='</div><div class="rf-body" id="rf-body">';
+  h+='</div><div class="rf-body">';
   h+='<div class="rf-q">'+q.q+'</div>';
   if(q.sub)h+='<div class="rf-sub">'+q.sub+'</div>';
   h+='<div class="rf-field">';
 
   if(q.kind==='mood'){
     h+='<div class="rf-moods">';
-    for(var i=0;i<RF_MOODS.length;i++){
+    for(i=0;i<RF_MOODS.length;i++){
       var m=RF_MOODS[i],on=cur===m.v;
-      h+='<button class="rf-mood'+(on?' on':'')+'" onclick="rfPickMood('+m.v+')">'+rfFace(i,m.c,on)+'<span class="rf-mood-l">'+m.l+'</span></button>';
+      h+='<button class="rf-mood'+(on?' on':'')+'" onclick="rfPickMood(\''+q.id+'\','+m.v+')">'+rfFace(i,m.c,on)+'<span class="rf-mood-l">'+m.l+'</span></button>';
     }
     h+='</div>';
   }
   else if(q.kind==='chips'){
-    var sel=Array.isArray(cur)?cur:[];
-    h+='<div class="rf-chips">';
-    for(var c=0;c<q.opts.length;c++){
-      var o=q.opts[c];
-      h+='<button class="rf-chip'+(sel.indexOf(o)>=0?' on':'')+'" onclick="rfToggleChip(\''+q.id+'\',\''+o+'\')">'+o+'</button>';
-    }
-    h+='</div>';
+    h+=rfChipsHTML(q.id,q.opts,rfArr(q.id));
+    h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
+  }
+  else if(q.kind==='chipsNote'){
+    h+=rfChipsHTML(q.id,q.opts,rfArr(q.id));
+    h+='<textarea class="rf-in" id="rf-note" style="min-height:64px;margin-top:18px" placeholder="'+(q.ph||'')+'">'+(rfVal(q.note)?esc(rfVal(q.note)):'')+'</textarea>';
     h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
   }
   else if(q.kind==='scale'){
     h+='<div class="rf-scale">';
-    for(var n=1;n<=10;n++)h+='<button class="rf-num'+(cur===n?' on':'')+'" onclick="rfPickScale('+n+')">'+n+'</button>';
-    h+='</div>';
-    h+='<div class="rf-echo" id="rf-echo">'+(cur?rfRatingEcho(cur):'')+'</div>';
+    for(i=1;i<=10;i++)h+='<button class="rf-num'+(cur===i?' on':'')+'" onclick="rfPickScale('+i+')">'+i+'</button>';
+    h+='</div><div class="rf-echo" id="rf-echo">'+(cur?rfRatingEcho(cur):'')+'</div>';
   }
   else if(q.kind==='ladder'){
     h+='<div class="rf-ladder">';
-    for(var L=0;L<q.opts.length;L++)h+='<button class="rf-rung'+(cur===L+1?' on':'')+'" onclick="rfPickLadder('+(L+1)+')">'+q.opts[L]+'</button>';
+    for(i=0;i<q.opts.length;i++)h+='<button class="rf-rung'+(cur===i+1?' on':'')+'" onclick="rfPickLadder('+(i+1)+')">'+q.opts[i]+'</button>';
     h+='</div>';
   }
   else if(q.kind==='text'){
@@ -6887,11 +6908,111 @@ function renderReflectStep(){
     h+='<input type="file" id="rf-file" accept="image/*" style="display:none" onchange="rfPhotoPick(this)">';
     h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
   }
+  /* yes / no, and the follow-up only if yes */
+  else if(q.kind==='branch'){
+    h+='<div class="rf-ladder">';
+    h+='<button class="rf-rung'+(cur===true?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',true)">כן</button>';
+    h+='<button class="rf-rung'+(cur===false?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',false)">לא</button>';
+    h+='</div>';
+    if(cur===true){
+      h+='<div class="rf-sub" style="margin-top:26px;font-weight:700;color:#4a4340;font-size:15px">'+q.follow+'</div>';
+      h+='<div style="margin-top:14px">'+rfChipsHTML(q.listId,q.opts,rfArr(q.listId))+'</div>';
+      h+='<textarea class="rf-in" id="rf-note" style="min-height:64px;margin-top:16px" placeholder="'+(q.ph||'')+'">'+(rfVal(q.note)?esc(rfVal(q.note)):'')+'</textarea>';
+      h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
+    }
+  }
+  /* pick from the people area, or add someone */
+  else if(q.kind==='person'){
+    var people=loadPeople(),sel=rfVal('influentialPerson')||'';
+    h+='<div class="rf-chips">';
+    for(i=0;i<people.length;i++){
+      o=people[i].name||'';
+      if(!o)continue;
+      h+='<button class="rf-chip'+(sel===o?' on':'')+'" onclick="rfPickPerson(\''+esc(o).replace(/'/g,"\\'")+'\')">'+esc(o)+'</button>';
+    }
+    h+='<button class="rf-chip" style="border-style:dashed" onclick="rfAddPerson()">+ אדם חדש</button>';
+    h+='</div>';
+    if(sel){
+      h+='<div class="rf-sub" style="margin-top:26px;font-weight:700;color:#4a4340;font-size:15px">איך הוא השפיע עליך היום?</div>';
+      h+='<div class="rf-ladder" style="margin-top:14px">';
+      for(i=0;i<RF_IMPACT.length;i++)h+='<button class="rf-rung'+(rfVal('influentialPersonImpact')===RF_IMPACT[i]?' on':'')+'" onclick="rfSave({influentialPersonImpact:\''+RF_IMPACT[i]+'\'});renderReflectStep()">'+RF_IMPACT[i]+'</button>';
+      h+='</div>';
+    }
+    h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
+  }
+  /* the day as a short vertical timeline */
+  else if(q.kind==='timeline'){
+    var tl=rfArr('dayTimeline');
+    h+='<div style="display:flex;flex-direction:column;gap:0">';
+    for(i=0;i<tl.length;i++){
+      h+='<div style="display:flex;gap:12px;align-items:flex-start">';
+      h+='<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:14px">';
+      h+='<div style="width:9px;height:9px;border-radius:50%;background:#a690cf;margin-top:5px"></div>';
+      if(i<tl.length-1)h+='<div style="width:1.5px;flex:1;background:#e4ddd4;min-height:28px"></div>';
+      h+='</div>';
+      h+='<div style="flex:1;padding-bottom:16px;min-width:0">';
+      h+='<div style="font-size:10.5px;color:#a89e97;font-weight:700">'+esc(tl[i].t||'')+'</div>';
+      h+='<div style="font-size:14px;color:#4a4340;line-height:1.5;margin-top:2px">'+esc(tl[i].w||'')+'</div></div>';
+      h+='<button onclick="rfTlDel('+i+')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;padding:2px 4px;flex-shrink:0">&times;</button>';
+      h+='</div>';
+    }
+    h+='</div>';
+    h+='<div style="display:flex;gap:7px;margin-top:'+(tl.length?'8px':'0')+'">';
+    h+='<input id="rf-tl-t" class="mtin" style="width:96px;margin-bottom:0;font-size:12px" placeholder="שעה" list="rf-parts">';
+    h+='<datalist id="rf-parts">';
+    for(i=0;i<RF_PARTS.length;i++)h+='<option value="'+RF_PARTS[i]+'">';
+    h+='</datalist>';
+    h+='<input id="rf-tl-w" class="mtin" style="flex:1;margin-bottom:0;font-size:12px" placeholder="מה קרה?" onkeydown="if(event.key===\'Enter\')rfTlAdd()">';
+    h+='<button onclick="rfTlAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:10px;padding:0 16px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0">+</button>';
+    h+='</div>';
+    h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
+  }
+  /* the existing hour spiral; the per-category totals are derived from it */
+  else if(q.kind==='clock'){
+    interviewAnswers.timeclock=Array.isArray(rfVal('timeclock'))&&rfVal('timeclock').length===25?rfVal('timeclock').slice():new Array(25).fill('none');
+    var CLKC={sleep:'#f3b9a8',work:'#8fc79e',social:'#c9b8f0',other:'#e8c162',none:''};
+    var cats=[['sleep','שינה'],['work','עבודה'],['social','חברתי'],['other','אחר'],['none','נקה']];
+    var selCat=window._clockSelCat||'sleep';
+    h+='<div style="display:flex;gap:7px;justify-content:center;margin-bottom:14px;flex-wrap:wrap">';
+    for(i=0;i<cats.length;i++){
+      var isSel=selCat===cats[i][0],dotC=CLKC[cats[i][0]]||'#c9bce0';
+      h+='<button onclick="rfClockCat(\''+cats[i][0]+'\')" style="border:2px solid '+(isSel?dotC:'#f0ebe3')+';border-radius:12px;padding:7px 10px;cursor:pointer;background:'+(isSel?'#fff':'#f5f0eb')+';display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#4a4340;font-family:inherit">';
+      h+='<span style="width:10px;height:10px;border-radius:50%;background:'+dotC+';display:inline-block;flex-shrink:0"></span>'+cats[i][1]+'</button>';
+    }
+    h+='</div>';
+    h+='<canvas id="clock-canvas" width="280" height="310" style="display:block;margin:0 auto;touch-action:none;cursor:pointer"></canvas>';
+    h+='<div id="rf-clock-sum" style="margin-top:12px">'+rfClockTotalsHTML()+'</div>';
+    h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
+    window._clockNeedsInit=true;
+  }
+  else if(q.kind==='steps'){
+    var sv=stepsOf(_rfDate);
+    if(sv>0){
+      h+='<div style="text-align:center;padding:6px 0"><div style="font-size:44px;font-weight:800;color:#8fc79e;line-height:1">'+sv.toLocaleString()+'</div>';
+      h+='<div style="font-size:11px;color:#a89e97;margin-top:6px">נקרא מהמקור שחיברת</div></div>';
+    } else {
+      h+='<input id="rf-in" type="number" inputmode="numeric" class="rf-in" style="min-height:0;text-align:center;font-size:30px;font-weight:800" placeholder="10000">';
+    }
+    h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
+    h+='<button onclick="rfSkip()" class="rf-ghost">אין לי מושג</button>';
+  }
+  else if(q.kind==='song'){
+    h+='<input id="rf-song" class="rf-in" style="min-height:0" placeholder="שם השיר" value="'+(rfVal('song')?esc(rfVal('song')):'')+'">';
+    h+='<input id="rf-artist" class="rf-in" style="min-height:0;margin-top:6px" placeholder="אמן" value="'+(rfVal('songArtist')?esc(rfVal('songArtist')):'')+'">';
+    h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
+  }
 
   h+='</div></div></div>';
   document.getElementById('content').innerHTML=h;
+  if(window._clockNeedsInit){window._clockNeedsInit=false;setTimeout(function(){clockInitDrag();clockDraw();},30);}
 }
 
+function rfChipsHTML(id,opts,sel){
+  var h='<div class="rf-chips">',i;
+  for(i=0;i<opts.length;i++)
+    h+='<button class="rf-chip'+(sel.indexOf(opts[i])>=0?' on':'')+'" onclick="rfToggleChip(\''+id+'\',\''+opts[i]+'\')">'+opts[i]+'</button>';
+  return h+'</div>';
+}
 function rfRatingEcho(n){
   if(n<=3)return'יום לא פשוט.';
   if(n<=6)return'יום מעורב.';
@@ -6904,36 +7025,75 @@ function rfPhotoHTML(src){
     '<svg viewBox="0 0 24 24"><path d="M3.5 8.5a2 2 0 0 1 2-2h2l1.4-2h6.2l1.4 2h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/><circle cx="12" cy="12.8" r="3.6"/></svg>'+
     '<div style="font-size:13px;color:#a89e97;margin-top:12px;font-weight:700">לצלם או לבחור מהגלריה</div></button>';
 }
+// The spec's "X of 24" - counted off the hour spiral rather than typed again.
+function rfClockTotals(clk){
+  var t={sleep:0,work:0,social:0,other:0},i;
+  for(i=0;i<25;i++)if(t[clk[i]]!==undefined)t[clk[i]]++;
+  return t;
+}
+function rfClockTotalsHTML(){
+  var clk=interviewAnswers.timeclock||new Array(25).fill('none');
+  var t=rfClockTotals(clk),C={sleep:'#f3b9a8',work:'#8fc79e',social:'#c9b8f0',other:'#e8c162'};
+  var L={sleep:'שינה',work:'עבודה',social:'חברתי',other:'אחר'},k,tot=0;
+  var h='<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">';
+  for(k in t)if(t[k]>0){tot+=t[k];h+='<div style="text-align:center"><div style="font-size:16px;font-weight:800;color:'+C[k]+'">'+t[k]+'h</div><div style="font-size:9px;color:#a89e97">'+L[k]+'</div></div>';}
+  h+='</div><div style="text-align:center;font-size:10.5px;color:#c0b8b0;margin-top:8px">'+tot+' מתוך 24 שעות</div>';
+  return h;
+}
+function rfClockCat(cat){window._clockSelCat=cat;renderReflectStep();}
 
 /* ── answering ── */
 function rfCommitText(){
-  var q=RF_STAGE1[_rfStep];if(!q)return;
+  var q=rfSteps()[_rfStep];if(!q)return;
+  var el,p={};
   if(q.kind==='text'){
-    var el=document.getElementById('rf-in');
-    if(el){var p={};p[q.id]=el.value.trim();rfSave(p);}
+    el=document.getElementById('rf-in');
+    if(el){p[q.id]=el.value.trim();rfSave(p);}
   } else if(q.kind==='photo'){
-    var cap=document.getElementById('rf-cap');
-    if(cap)rfSave({photoCaption:cap.value.trim()});
+    el=document.getElementById('rf-cap');
+    if(el)rfSave({photoCaption:el.value.trim()});
+  } else if(q.kind==='chipsNote'||q.kind==='branch'){
+    el=document.getElementById('rf-note');
+    if(el&&q.note){p[q.note]=el.value.trim();rfSave(p);}
+  } else if(q.kind==='steps'){
+    el=document.getElementById('rf-in');
+    var n=el?parseInt(el.value,10):NaN;
+    if(n>=0){saveSteps(_rfDate,n,'manual');rfSave({steps:n});}
+    else rfSave({steps:stepsOf(_rfDate)});
+  } else if(q.kind==='song'){
+    var s1=document.getElementById('rf-song'),s2=document.getElementById('rf-artist');
+    rfSave({song:s1?s1.value.trim():'',songArtist:s2?s2.value.trim():''});
+  } else if(q.kind==='clock'){
+    var clk=interviewAnswers.timeclock||new Array(25).fill('none');
+    rfSave({timeclock:clk.slice(),timeDistribution:rfClockTotals(clk)});
   }
 }
+function rfStageEnd(){
+  if(_rfStage===1){_rfView='bridge';renderReflect();}
+  else rfFinish();
+}
 function rfAdvance(){
-  rfSave({lastStep:Math.min(RF_STAGE1.length-1,_rfStep+1)});
+  var last=rfSteps().length-1;
+  rfSave({lastStep:Math.min(last,_rfStep+1),lastStage:_rfStage});
   _rfStep++;
-  if(_rfStep>=RF_STAGE1.length){_rfView='bridge';renderReflect();}
+  if(_rfStep>rfSteps().length-1)rfStageEnd();
   else renderReflect();
 }
 function rfNext(){rfCommitText();rfAdvance();}
 function rfSkip(){rfCommitText();rfAdvance();}
 function rfBack(){
   rfCommitText();
-  if(_rfStep===0){_rfView='home';renderReflect();return;}
-  _rfStep--;rfSave({lastStep:_rfStep});renderReflect();
+  if(_rfStep===0){
+    if(_rfStage===2){_rfStage=1;_rfStep=RF_STAGE1.length-1;renderReflect();return;}
+    _rfView='home';renderReflect();return;
+  }
+  _rfStep--;rfSave({lastStep:_rfStep,lastStage:_rfStage});renderReflect();
 }
 
 // Simple choices need no confirm button: pick, see it land, move on.
 function rfAutoAdvance(){setTimeout(rfAdvance,300);}
-function rfPickMood(v){
-  rfSave({mood:v});
+function rfPickMood(id,v){
+  var p={};p[id]=v;rfSave(p);
   var b=document.querySelectorAll('.rf-mood');
   for(var i=0;i<b.length;i++)b[i].className='rf-mood'+(i===v-1?' on':'');
   rfAutoAdvance();
@@ -6952,11 +7112,38 @@ function rfPickLadder(n){
   rfAutoAdvance();
 }
 function rfToggleChip(id,val){
-  var cur=rfVal(id);var arr=Array.isArray(cur)?cur.slice():[];
-  var i=arr.indexOf(val);
+  var arr=rfArr(id).slice(),i=arr.indexOf(val);
   if(i>=0)arr.splice(i,1);else arr.push(val);
   var p={};p[id]=arr;rfSave(p);
   renderReflectStep();
+}
+// "No" is an answer, so it moves on by itself; "yes" opens the follow-up.
+function rfPickBranch(id,yes){
+  var p={};p[id]=yes;rfSave(p);
+  if(!yes)rfAutoAdvance();else renderReflectStep();
+}
+function rfPickPerson(name){rfSave({influentialPerson:name});renderReflectStep();}
+function rfAddPerson(){
+  var n=prompt('שם האדם');
+  if(!n||!n.trim())return;
+  var people=loadPeople();
+  people.push({name:n.trim(),relationship:'',whatTheyMean:'',whatILove:'',currentUpdate:'',toAsk:'',contactFreq:'monthly',lastContact:null,avatar:'',memories:[],importantDates:[]});
+  savePeople(people);
+  rfSave({influentialPerson:n.trim()});
+  renderReflectStep();
+}
+function rfTlAdd(){
+  var t=document.getElementById('rf-tl-t'),w=document.getElementById('rf-tl-w');
+  if(!w||!w.value.trim())return;
+  var arr=rfArr('dayTimeline').slice();
+  arr.push({t:(t&&t.value.trim())||'',w:w.value.trim()});
+  rfSave({dayTimeline:arr});
+  renderReflectStep();
+  setTimeout(function(){var e=document.getElementById('rf-tl-w');if(e)e.focus();},40);
+}
+function rfTlDel(i){
+  var arr=rfArr('dayTimeline').slice();
+  arr.splice(i,1);rfSave({dayTimeline:arr});renderReflectStep();
 }
 function rfPhotoClear(){rfSave({photo:'',photoCaption:''});renderReflectStep();}
 function rfPhotoPick(input){
@@ -6984,7 +7171,7 @@ function renderReflectBridge(){
   var h='<div class="rf"><div class="rf-body" style="text-align:center">';
   h+='<div class="rf-q">סיימנו את הסיכום המהיר.</div>';
   h+='<div class="rf-sub" style="font-size:14px">רוצה להסתכל קצת יותר לעומק על היום שלך?</div>';
-  h+='<button onclick="showToast(\'ההעמקה בדרך\')" class="rf-next" style="margin-top:32px">כן, בוא נמשיך</button>';
+  h+='<button onclick="_rfStage=2;_rfStep=0;_rfView=\'step\';renderReflect()" class="rf-next" style="margin-top:32px">כן, בוא נמשיך</button>';
   h+='<button onclick="rfFinish()" class="rf-ghost">לא, סיימתי להיום</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
@@ -6992,7 +7179,7 @@ function renderReflectBridge(){
 
 function rfFinish(){
   var r=rfSave({done:true});
-  if(r.dayRating||r.mood)saveSummaryTotals(r);
+  saveSummaryTotals(r);
   _rfView='done';renderReflect();
 }
 // The day's food and water numbers were part of the old summary record and
@@ -7016,11 +7203,9 @@ function renderReflectDone(){
   var h='<div class="rf"><div class="rf-body">';
   h+='<div class="rf-q" style="text-align:center">זהו להיום.</div>';
   h+='<div class="rf-sub" style="text-align:center;font-size:14px">עצרת לרגע, הסתכלת על היום שלך — ועכשיו אפשר לשחרר אותו.</div>';
-
   h+='<div style="margin-top:30px;display:flex;flex-direction:column;gap:14px">';
   if(r.photo)h+='<img src="'+r.photo+'" style="width:100%;border-radius:20px;display:block">';
   if(r.photoCaption)h+='<div style="font-size:12.5px;color:#a89e97;line-height:1.6;text-align:center">'+esc(r.photoCaption)+'</div>';
-
   if(r.mood||r.dayRating){
     h+='<div style="display:flex;justify-content:center;align-items:center;gap:26px;padding:6px 0">';
     if(r.mood)h+='<div style="text-align:center">'+rfFaceMini(r.mood)+'<div style="font-size:10.5px;color:#a89e97;margin-top:5px">'+RF_MOODS[Math.max(1,Math.min(5,r.mood))-1].l+'</div></div>';
@@ -7028,9 +7213,9 @@ function renderReflectDone(){
     h+='</div>';
   }
   if(r.moment)h+=rfDoneBlock('הרגע הטוב',r.moment);
+  if(r.impactfulMoment)h+=rfDoneBlock('הכי השפיע',r.impactfulMoment);
   if(r.takeawayForTomorrow)h+=rfDoneBlock('למחר',r.takeawayForTomorrow);
   h+='</div>';
-
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-next" style="margin-top:30px">סיימתי להיום</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
