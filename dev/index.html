@@ -205,16 +205,24 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .rf-flow-x{background:none;border:none;color:#e0c4bb;font-size:16px;cursor:pointer;padding:4px 2px;flex-shrink:0;font-family:inherit}
 .rf-flow-ar{text-align:center;color:#c9bce0;font-size:15px;padding:5px 0;line-height:1}
 .rf-flow-add{width:100%;background:rgba(166,144,207,.08);border:1.5px dashed #c9bce0;border-radius:14px;padding:11px;font-size:12.5px;font-weight:700;color:#a690cf;cursor:pointer;font-family:inherit;margin-top:12px}
-/* the week: seven boxes and a pool of things to drop into them */
-.wk-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
-.wk-day{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
-.wk-dn{font-size:9.5px;font-weight:800;color:#4a4340;line-height:1;white-space:nowrap;letter-spacing:-.2px}
-.wk-dd{font-size:8.5px;color:#a89e97;line-height:1;white-space:nowrap}
-.wk-box{width:100%;aspect-ratio:.8;background:#fff;border:1.5px solid #ece5da;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s,background .15s;margin-top:2px}
-.wk-box.today{border-color:#c9bce0}
-.wk-box.on{background:linear-gradient(135deg,#f0eafa,#e8dff5);border-color:#a690cf}
-.wk-box.hot{border-color:#8fc79e;background:#eaf5ee}
-.wk-n{font-size:12px;font-weight:800;color:#a690cf}
+/* the week: seven day columns, a third of the screen tall, cut into three
+   bands. The cells are the drop targets and keep the text visible. */
+.wk-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:5px}
+.wk-hcell{text-align:center;min-width:0;padding:2px 0;border-radius:8px}
+.wk-hcell.today{background:linear-gradient(135deg,#f0eafa,#e8dff5)}
+.wk-dn{font-size:9.5px;font-weight:800;color:#4a4340;line-height:1.15;white-space:nowrap;letter-spacing:-.2px}
+.wk-dd{font-size:8.5px;color:#a89e97;line-height:1.2;white-space:nowrap}
+.wk-table{position:relative;height:34vh;min-height:250px;background:#fff;border:1.5px solid #ece5da;border-radius:14px;overflow:hidden}
+.wk-bands{position:absolute;inset:0;pointer-events:none;z-index:2}
+.wk-band-l{position:absolute;right:0;left:0;height:1px;background:#ece5da}
+.wk-band-t{position:absolute;right:5px;font-size:8px;font-weight:700;color:#d2c9c1;letter-spacing:.06em;margin-top:3px}
+.wk-cols{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));z-index:1}
+.wk-col{display:flex;flex-direction:column;min-width:0;border-left:1px solid #f4efe9}
+.wk-col:last-child{border-left:none}
+.wk-col.today{background:rgba(166,144,207,.06)}
+.wk-cell{flex:1;min-height:0;padding:3px 2px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer;transition:background .15s}
+.wk-cell.hot{background:rgba(143,199,158,.22)}
+.wk-chip{background:linear-gradient(135deg,#f0eafa,#e8dff5);border-radius:5px;padding:2px 3px;font-size:8px;line-height:1.25;color:#5f5148;font-weight:700;overflow:hidden;word-break:break-word}
 .wk-task{display:flex;align-items:center;gap:9px;background:#fff;border-radius:13px;padding:11px 12px;margin-bottom:7px;box-shadow:0 3px 10px rgba(200,180,160,.12);touch-action:none;cursor:grab}
 .wk-grip{color:#d8cfc7;font-size:11px;line-height:1;flex-shrink:0;letter-spacing:-3px}
 .wk-ghost{position:fixed;z-index:200;margin:0;pointer-events:none;opacity:.94;transform:rotate(-2deg);box-shadow:0 12px 28px rgba(120,100,85,.32)}
@@ -4366,13 +4374,17 @@ function loadPlanHistory(){try{var x=localStorage.getItem('plan_history');return
 function savePlanHistory(arr){try{localStorage.setItem('plan_history',JSON.stringify(arr));}catch(e){}}
 
 /* ── WEEKLY PLANNING ──
-   Seven boxes for the week, and a pool of things you want to happen in it.
-   A task starts in the pool with no day and is dragged onto one - or dragged
-   back out. HTML5 drag-and-drop does not work on iOS Safari, so this uses the
-   same pointer-event drag the vision board uses: a ghost that follows the
-   finger, and a hit test against the boxes on release. */
+   The week as a table: seven day columns about a third of the screen tall,
+   cut by two lines into morning, noon and evening. A task is written into the
+   pool below with no day, then dragged into one of the twenty-one cells - or
+   dragged back out. What was written stays legible inside the cell; tapping a
+   day opens its three bands underneath for editing.
+
+   HTML5 drag-and-drop does nothing on iOS Safari, so this is pointer events
+   with a ghost that follows the finger, the same way the vision board works. */
 var _wkSun=null,_wkOpen=-1,_wkDrag=null;
 var WK_DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+var WK_SLOTS=[['m','בוקר'],['n','צהריים'],['e','ערב']];
 
 function weekSunday(d){
   var x=new Date(d);
@@ -4392,48 +4404,74 @@ function wkShort(d){
   var dd=d.getDate(),mm=d.getMonth()+1;
   return (dd<10?'0':'')+dd+'/'+(mm<10?'0':'')+mm;
 }
+// A task placed on a day before the bands existed sits in the morning.
+function wkSlotOf(t){return t.s==='n'||t.s==='e'?t.s:'m';}
+function wkIn(tasks,date,slot){
+  var out=[],i;
+  for(i=0;i<tasks.length;i++)
+    if(tasks[i].d===date&&wkSlotOf(tasks[i])===slot)out.push(tasks[i]);
+  return out;
+}
 
 function renderPlanWeek(){
   if(!_wkSun)_wkSun=weekSunday(new Date());
-  var wk=loadWeek(_wkSun),i,t;
+  var wk=loadWeek(_wkSun),i,j,t;
   var today=wkStamp(new Date()),thisWeek=wkStamp(weekSunday(new Date()))===wkStamp(_wkSun);
 
   var h='<div style="padding-bottom:30px">';
-  h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 14px">&#8250; חזרה</button>';
+  h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 12px">&#8250; חזרה</button>';
 
-  // which week
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
   h+='<button onclick="wkShift(1)" style="background:#fff;border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
   h+='<div style="text-align:center"><div style="font-size:14px;font-weight:800;color:#4a4340">'+(thisWeek?'השבוע':'שבוע של '+wkShort(_wkSun))+'</div>';
   h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+wkShort(_wkSun)+' &ndash; '+wkShort(wkDateOf(_wkSun,6))+'</div></div>';
   h+='<button onclick="wkShift(-1)" style="background:#fff;border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
   h+='</div>';
 
-  // the seven boxes
-  h+='<div class="wk-grid">';
+  // day names and dates, above the table
+  h+='<div class="wk-head">';
   for(i=0;i<7;i++){
-    var d=wkDateOf(_wkSun,i),st=wkStamp(d);
-    var n=0;
-    for(t=0;t<wk.tasks.length;t++)if(wk.tasks[t].d===st)n++;
-    h+='<div class="wk-day">';
-    h+='<div class="wk-dn">'+WK_DAYS[i]+'</div>';
-    h+='<div class="wk-dd">'+wkShort(d)+'</div>';
-    h+='<div class="wk-box'+(st===today?' today':'')+(_wkOpen===i?' on':'')+'" data-date="'+st+'" onclick="wkOpen('+i+')">';
-    if(n>0)h+='<div class="wk-n">'+n+'</div>';
-    h+='</div></div>';
+    var d=wkDateOf(_wkSun,i);
+    h+='<div class="wk-hcell'+(wkStamp(d)===today?' today':'')+'">';
+    h+='<div class="wk-dn">'+WK_DAYS[i]+'</div><div class="wk-dd">'+wkShort(d)+'</div></div>';
   }
   h+='</div>';
 
-  // the open day
-  if(_wkOpen>=0){
-    var od=wkDateOf(_wkSun,_wkOpen),ost=wkStamp(od),any=false;
-    h+='<div style="margin-top:16px">';
-    h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin-bottom:9px">'+WK_DAYS[_wkOpen]+' &middot; '+wkShort(od)+'</div>';
-    for(t=0;t<wk.tasks.length;t++){
-      if(wk.tasks[t].d!==ost)continue;
-      any=true;h+=wkTaskHTML(wk.tasks[t]);
+  // the table itself: seven columns, three bands
+  h+='<div class="wk-table">';
+  h+='<div class="wk-bands"><div class="wk-band-l" style="top:33.333%"></div><div class="wk-band-l" style="top:66.666%"></div>';
+  for(j=0;j<3;j++)h+='<div class="wk-band-t" style="top:'+(j*33.333)+'%">'+WK_SLOTS[j][1]+'</div>';
+  h+='</div>';
+  h+='<div class="wk-cols">';
+  for(i=0;i<7;i++){
+    var dt=wkDateOf(_wkSun,i),st=wkStamp(dt);
+    h+='<div class="wk-col'+(st===today?' today':'')+'">';
+    for(j=0;j<3;j++){
+      var list=wkIn(wk.tasks,st,WK_SLOTS[j][0]);
+      h+='<div class="wk-cell" data-date="'+st+'" data-slot="'+WK_SLOTS[j][0]+'" onclick="wkOpen('+i+')">';
+      for(t=0;t<list.length;t++)h+='<div class="wk-chip">'+esc(list[t].w)+'</div>';
+      h+='</div>';
     }
-    if(!any)h+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;padding:4px 2px">אין כאן כלום עדיין. גרור לכאן משימה מלמטה.</div>';
+    h+='</div>';
+  }
+  h+='</div></div>';
+
+  // the open day, in full
+  if(_wkOpen>=0){
+    var od=wkDateOf(_wkSun,_wkOpen),ost=wkStamp(od);
+    h+='<div style="margin-top:16px">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
+    h+='<div style="font-size:12.5px;font-weight:800;color:#4a4340">'+WK_DAYS[_wkOpen]+' &middot; '+wkShort(od)+'</div>';
+    h+='<button onclick="wkOpen('+_wkOpen+')" style="background:none;border:none;font-size:11px;color:#a89e97;cursor:pointer;font-family:inherit">סגור</button></div>';
+    var anyDay=false;
+    for(j=0;j<3;j++){
+      var dl=wkIn(wk.tasks,ost,WK_SLOTS[j][0]);
+      if(!dl.length)continue;
+      anyDay=true;
+      h+='<div style="font-size:9.5px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin:10px 0 7px">'+WK_SLOTS[j][1]+'</div>';
+      for(t=0;t<dl.length;t++)h+=wkTaskHTML(dl[t]);
+    }
+    if(!anyDay)h+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;padding:4px 2px">אין כאן כלום עדיין. גרור לכאן משימה מלמטה.</div>';
     h+='</div>';
   }
 
@@ -4444,11 +4482,11 @@ function renderPlanWeek(){
   h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin-bottom:9px">מה אתה רוצה שיקרה השבוע</div>';
   h+='<div id="wk-pool" class="wk-pool">';
   for(t=0;t<pool.length;t++)h+=wkTaskHTML(pool[t]);
-  if(!pool.length)h+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;padding:8px 2px">כתוב למטה, ואז גרור ליום שבו זה יקרה.</div>';
+  if(!pool.length)h+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;padding:8px 2px">כתוב למטה, ואז גרור לרצועה שבה זה יקרה.</div>';
   h+='</div>';
 
   h+='<div style="display:flex;gap:8px;margin-top:10px">';
-  h+='<input id="wk-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משהו שאתה רוצה שיקרה השבוע" onkeydown="if(event.key===\'Enter\')wkAdd()">';
+  h+='<input id="wk-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משימה או פגישה" onkeydown="if(event.key===\'Enter\')wkAdd()">';
   h+='<button onclick="wkAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
   h+='</div></div>';
 
@@ -4463,25 +4501,23 @@ function wkTaskHTML(t){
   return '<div class="wk-task" data-task="'+t.id+'">'+
     '<div class="wk-grip">&#8942;&#8942;</div>'+
     '<div style="flex:1;min-width:0;font-size:13.5px;color:#4a4340;line-height:1.45">'+esc(t.w)+'</div>'+
-    (t.d?'<button onclick="wkAssign(\''+t.id+'\',\'\')" style="background:none;border:none;color:#c9bce0;font-size:12px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>':'')+
+    (t.d?'<button onclick="wkAssign(\''+t.id+'\',\'\',\'\')" style="background:none;border:none;color:#c9bce0;font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>':'')+
     '<button onclick="wkDel(\''+t.id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button></div>';
 }
 
-function wkShift(dir){
-  _wkSun=wkDateOf(_wkSun,dir*7);_wkOpen=-1;renderPlanWeek();
-}
+function wkShift(dir){_wkSun=wkDateOf(_wkSun,dir*7);_wkOpen=-1;renderPlanWeek();}
 function wkOpen(i){_wkOpen=_wkOpen===i?-1:i;renderPlanWeek();}
 function wkAdd(){
   var el=document.getElementById('wk-in');
   if(!el||!el.value.trim())return;
   var wk=loadWeek(_wkSun);
-  wk.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),d:''});
+  wk.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),d:'',s:''});
   saveWeek(_wkSun,wk);renderPlanWeek();
   setTimeout(function(){var e=document.getElementById('wk-in');if(e)e.focus();},40);
 }
-function wkAssign(id,date){
+function wkAssign(id,date,slot){
   var wk=loadWeek(_wkSun),i;
-  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id)wk.tasks[i].d=date||'';
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){wk.tasks[i].d=date||'';wk.tasks[i].s=date?(slot||'m'):'';}
   saveWeek(_wkSun,wk);renderPlanWeek();
 }
 function wkDel(id){
@@ -4510,11 +4546,11 @@ function wkDown(e){
   window.addEventListener('pointercancel',wkUp);
   e.preventDefault();
 }
-function wkHitBox(x,y){
-  var boxes=document.querySelectorAll('.wk-box'),i,r;
-  for(i=0;i<boxes.length;i++){
-    r=boxes[i].getBoundingClientRect();
-    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return boxes[i];
+function wkHitCell(x,y){
+  var cells=document.querySelectorAll('.wk-cell'),i,r;
+  for(i=0;i<cells.length;i++){
+    r=cells[i].getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return cells[i];
   }
   return null;
 }
@@ -4529,14 +4565,14 @@ function wkMove(e){
   _wkDrag.moved=true;
   _wkDrag.g.style.left=(e.clientX-_wkDrag.dx)+'px';
   _wkDrag.g.style.top=(e.clientY-_wkDrag.dy)+'px';
-  var hit=wkHitBox(e.clientX,e.clientY),boxes=document.querySelectorAll('.wk-box'),i;
-  for(i=0;i<boxes.length;i++)boxes[i].classList.toggle('hot',boxes[i]===hit);
+  var hit=wkHitCell(e.clientX,e.clientY),cells=document.querySelectorAll('.wk-cell'),i;
+  for(i=0;i<cells.length;i++)cells[i].classList.toggle('hot',cells[i]===hit);
   var p=document.getElementById('wk-pool');
   if(p)p.classList.toggle('hot',!hit&&wkOverPool(e.clientX,e.clientY));
 }
 function wkUp(e){
   if(!_wkDrag)return;
-  var hit=wkHitBox(e.clientX,e.clientY);
+  var hit=wkHitCell(e.clientX,e.clientY);
   var onPool=!hit&&wkOverPool(e.clientX,e.clientY);
   try{_wkDrag.g.remove();}catch(err){}
   if(_wkDrag.src)_wkDrag.src.style.opacity='';
@@ -4545,9 +4581,9 @@ function wkUp(e){
   window.removeEventListener('pointercancel',wkUp);
   var id=_wkDrag.id,moved=_wkDrag.moved;
   _wkDrag=null;
-  if(!moved)return;                          // a tap, not a drag
-  if(hit)wkAssign(id,hit.getAttribute('data-date'));
-  else if(onPool)wkAssign(id,'');
+  if(!moved)return;                          // a tap, not a drop
+  if(hit)wkAssign(id,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));
+  else if(onPool)wkAssign(id,'','');
   else renderPlanWeek();                     // dropped nowhere: put it back
 }
 
