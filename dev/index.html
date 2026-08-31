@@ -127,6 +127,29 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .pf-goals{display:flex;gap:6px}
 .pf-goal{flex:1;border:1.5px solid #f2ede6;border-radius:14px;padding:11px 6px;background:#fff;font-size:11.5px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit;line-height:1.3}
 .pf-goal.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
+/* the ministry database - a search card sitting above your own library */
+.fdb-in{width:100%;border:1.5px solid #f2ede6;border-radius:12px;padding:10px 12px;font-size:16px;font-family:inherit;outline:none;margin-bottom:8px;background:#fff}
+.fdb-in:focus{border-color:#c9bce0}
+.fdb-msg{font-size:11.5px;color:#a89e97;padding:10px 4px;text-align:center;line-height:1.6}
+.fdb-list{max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:3px}
+.fdb-row{display:flex;align-items:center;gap:8px;width:100%;border:none;background:#fff;border-radius:11px;padding:9px 10px;cursor:pointer;font-family:inherit;text-align:right;box-shadow:0 1px 5px rgba(200,180,160,.1)}
+.fdb-rn{flex:1;min-width:0;font-size:12px;font-weight:700;color:#4a4340;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fdb-rk{font-size:12.5px;font-weight:800;color:#a690cf;flex-shrink:0}
+.fdb-ru{font-size:8.5px;color:#c0b6ae;font-weight:700;margin-right:2px}
+.fdb-conf{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(200,180,160,.14)}
+.fdb-cname{font-size:13.5px;font-weight:800;color:#4a4340;line-height:1.4}
+.fdb-c100{font-size:10.5px;color:#a89e97;margin-top:4px}
+.fdb-grow{display:flex;align-items:center;gap:8px;margin-top:12px}
+.fdb-glbl{font-size:12px;font-weight:700;color:#4a4340}
+.fdb-gin{flex:1;min-width:0;border:1.5px solid #f2ede6;border-radius:10px;padding:9px;font-size:16px;font-weight:800;text-align:center;outline:none;font-family:inherit}
+.fdb-gin:focus{border-color:#c9bce0}
+.fdb-gu{font-size:11px;color:#a89e97;font-weight:700}
+.fdb-preview{margin-top:11px;padding:9px;border-radius:10px;background:#faf7f3;font-size:12px;font-weight:700;color:#7a716b;text-align:center}
+.fdb-btns{display:flex;gap:7px;margin-top:11px}
+.fdb-add{flex:1;border:none;border-radius:12px;padding:11px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer}
+.fdb-back{border:1.5px solid #f2ede6;border-radius:12px;padding:11px 14px;background:none;color:#a89e97;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
+.fdb-save{width:100%;margin-top:7px;border:1.5px dashed #ddd3ca;border-radius:12px;padding:9px;background:none;color:#a89e97;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer}
+.fdb-saved{margin-top:9px;font-size:10.5px;color:#6fb283;font-weight:700;text-align:center}
 .pf-sexes{display:flex;gap:6px;flex:1;min-width:0}
 .pf-sex{flex:1;border:1.5px solid #f2ede6;border-radius:10px;padding:8px 4px;background:#fff;font-size:12px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit}
 .pf-sex.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
@@ -1162,15 +1185,166 @@ function addMealToLib(meal){
   saveLibData(lib);showToast('✓ נשמר בספרייה!');
 }
 function removeFromLib(idx){var lib=loadLib();if(lib[idx]){var name=lib[idx].name;saveLibData(lib.filter(function(m){return m.name!==name;}));pendingLib=null;render();}}
-function selectLib(idx){var lib=loadLib();if(lib[idx])pendingLib=lib[idx].name;render();}
+function selectLib(idx){var lib=loadLib();if(lib[idx]){pendingLib=lib[idx].name;libGrams=100;}render();}
+var libGrams=100;
+function libSetGrams(v){
+  libGrams=parseFloat(v)||0;
+  var el=document.getElementById('lib-preview');
+  if(el)el.innerHTML=libPreviewHTML();
+}
+function libAmount(meal){
+  if(mealBasis(meal)!=='100g')return {kcal:meal.kcal,p:meal.p,c:meal.c,f:meal.f,label:meal.name};
+  var m=(libGrams||0)/100;
+  return {kcal:Math.round(meal.kcal*m),p:Math.round(meal.p*m*10)/10,
+          c:Math.round(meal.c*m*10)/10,f:Math.round(meal.f*m*10)/10,
+          label:meal.name+' ('+libGrams+'g)'};
+}
+function libPreviewHTML(){
+  var lib=loadLib(),meal=lib.find(function(m){return m.name===pendingLib;});
+  if(!meal)return '';
+  var a=libAmount(meal);
+  return '<b>'+a.kcal+'</b> קק"ל &middot; '+a.p+'ח &middot; '+a.c+'פ &middot; '+a.f+'ש';
+}
 function confirmLib(){
   if(!pendingLib)return;
   var lib=loadLib();var meal=lib.find(function(m){return m.name===pendingLib;});if(!meal){pendingLib=null;return;}
+  var a=libAmount(meal);
   var day=loadDay(curDate);
-  day.meals.push({name:meal.name,kcal:meal.kcal,p:meal.p,c:meal.c,f:meal.f,id:Date.now(),time:fmtTime()});
-  saveDay(curDate,day);showToast('✓ '+meal.name+' נוספה');pendingLib=null;render();
+  day.meals.push({name:a.label,kcal:a.kcal,p:a.p,c:a.c,f:a.f,id:Date.now(),time:fmtTime()});
+  saveDay(curDate,day);showToast('✓ נוספה');pendingLib=null;render();
 }
 function cancelLib(){pendingLib=null;render();}
+
+/* ── THE FOOD DATABASE ──
+   3,623 foods from the Ministry of Health's national table, every one of them
+   per 100 g. It is fetched the first time the card is opened rather than at
+   startup: 400KB is not worth spending on someone who only ever taps their
+   own saved meals.
+
+   The card paints its own results instead of going through render(), which
+   rebuilds the whole screen and would take the keyboard away after every
+   letter typed.
+
+   The data file sits beside the app on the server and dev is one directory
+   deeper, so the path is worked out from where the page itself is. */
+function appBase(){
+  return location.pathname.replace(/[^\/]*$/,'').replace(/(^|\/)dev\/$/,'$1');
+}
+var _foods=null,_foodsState='idle';
+var fdbOpen=false,fdbPick=null,fdbGrams=100,_fdbQ='';
+function foodsLoad(then){
+  if(_foodsState==='ready'){then();return;}
+  if(_foodsState==='loading')return;
+  _foodsState='loading';fdbPaint();
+  fetch(appBase()+'data/foods.json')
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+    .then(function(d){
+      _foods=(d&&d.foods)||[];
+      // matching ignores the punctuation Hebrew food names are inconsistent
+      // about, so קוטג' and קוטג׳ and קוטג all find each other
+      for(var i=0;i<_foods.length;i++)_foods[i].s=foodKey(_foods[i].n);
+      _foodsState='ready';then();
+    })
+    .catch(function(){_foodsState='error';fdbPaint();});
+}
+function foodKey(s){
+  return String(s).replace(/['’׳"“”״,.\-]/g,'').replace(/\s+/g,' ').trim();
+}
+function foodSearch(q){
+  q=foodKey(q);
+  if(!q||!_foods)return [];
+  var starts=[],has=[],i,f,at;
+  for(i=0;i<_foods.length;i++){
+    f=_foods[i];
+    at=f.s.indexOf(q);
+    if(at===0)starts.push(f);
+    else if(at>0)has.push(f);
+    if(starts.length>=40)break;
+  }
+  return starts.concat(has).slice(0,40);
+}
+function fdbToggle(){
+  fdbOpen=!fdbOpen;fdbPick=null;
+  render();
+  if(fdbOpen)foodsLoad(fdbPaint);
+}
+function fdbType(v){_fdbQ=v;fdbPick=null;fdbPaint();}
+function fdbSelect(id){fdbPick=id;fdbGrams=100;fdbPaint();}
+function fdbBack(){fdbPick=null;fdbPaint();}
+function fdbSetGrams(v){
+  fdbGrams=parseFloat(v)||0;
+  var el=document.getElementById('fdb-preview');
+  if(el)el.innerHTML=fdbPreviewHTML();
+}
+function fdbFind(id){
+  if(!_foods)return null;
+  for(var i=0;i<_foods.length;i++)if(_foods[i].id===id)return _foods[i];
+  return null;
+}
+function fdbAmount(f,g){
+  var m=(g||0)/100;
+  return {kcal:Math.round(f.k*m),p:Math.round(f.p*m*10)/10,
+          c:Math.round(f.c*m*10)/10,f:Math.round(f.f*m*10)/10};
+}
+function fdbPreviewHTML(){
+  var f=fdbFind(fdbPick);if(!f)return '';
+  var a=fdbAmount(f,fdbGrams);
+  return '<b style="color:#a690cf">'+a.kcal+'</b> קק"ל &middot; '+a.p+'ח &middot; '+a.c+'פ &middot; '+a.f+'ש';
+}
+function fdbAdd(){
+  var f=fdbFind(fdbPick);if(!f||!fdbGrams)return;
+  var a=fdbAmount(f,fdbGrams);
+  var day=loadDay(curDate);
+  day.meals.push({name:f.n+' ('+fdbGrams+'g)',kcal:a.kcal,p:a.p,c:a.c,f:a.f,
+                  id:Date.now(),time:fmtTime()});
+  saveDay(curDate,day);
+  showToast('✓ נוסף ליום');
+  fdbPick=null;_fdbQ='';render();
+}
+// saves the food itself, per 100 g, so it can be reached without searching again
+function fdbSaveToLib(){
+  var f=fdbFind(fdbPick);if(!f)return;
+  addMealToLib({name:f.n,kcal:f.k,p:f.p,c:f.c,f:f.f,basis:'100g'});
+  fdbPaint();
+}
+function fdbPaint(){
+  var el=document.getElementById('fdb-body');
+  if(!el)return;
+  if(_foodsState==='loading'){el.innerHTML='<div class="fdb-msg">טוען את המאגר…</div>';return;}
+  if(_foodsState==='error'){el.innerHTML='<div class="fdb-msg">לא הצלחתי לטעון את המאגר. בדוק חיבור ונסה שוב.</div>';return;}
+  if(_foodsState!=='ready'){el.innerHTML='';return;}
+  if(fdbPick){
+    var f=fdbFind(fdbPick);
+    if(f){
+      var inLib=loadLib().some(function(m){return m.name===f.n;});
+      el.innerHTML='<div class="fdb-conf">'+
+        '<div class="fdb-cname">'+esc(f.n)+'</div>'+
+        '<div class="fdb-c100">'+f.k+' קק"ל ל-100 גרם &middot; '+f.p+'ח '+f.c+'פ '+f.f+'ש</div>'+
+        '<div class="fdb-grow"><span class="fdb-glbl">כמה גרם?</span>'+
+        '<input class="fdb-gin" id="fdb-grams" type="number" inputmode="decimal" value="'+fdbGrams+'" oninput="fdbSetGrams(this.value)">'+
+        '<span class="fdb-gu">g</span></div>'+
+        '<div class="fdb-preview" id="fdb-preview">'+fdbPreviewHTML()+'</div>'+
+        '<div class="fdb-btns">'+
+        '<button class="fdb-add" onclick="fdbAdd()">הוסף ליום ✓</button>'+
+        '<button class="fdb-back" onclick="fdbBack()">חזרה</button></div>'+
+        (inLib?'<div class="fdb-saved">✓ כבר בספרייה שלך</div>'
+              :'<button class="fdb-save" onclick="fdbSaveToLib()">שמור בספרייה שלי</button>')+
+        '</div>';
+      return;
+    }
+  }
+  if(!_fdbQ){el.innerHTML='<div class="fdb-msg">'+_foods.length.toLocaleString()+' מאכלים ממאגר משרד הבריאות. הקלד כדי לחפש.</div>';return;}
+  var res=foodSearch(_fdbQ);
+  if(!res.length){el.innerHTML='<div class="fdb-msg">לא נמצא. נסה מילה אחרת.</div>';return;}
+  var h='<div class="fdb-list">',i;
+  for(i=0;i<res.length;i++){
+    h+='<button class="fdb-row" onclick="fdbSelect(\u0027'+res[i].id+'\u0027)">'+
+       '<span class="fdb-rn">'+esc(res[i].n)+'</span>'+
+       '<span class="fdb-rk">'+res[i].k+'<span class="fdb-ru">/100g</span></span></button>';
+  }
+  el.innerHTML=h+'</div>';
+}
+
 function toggleLib(){libOpen=!libOpen;pendingLib=null;render();}
 function toggleComp(){compOpen=!compOpen;render();}
 function setCompCat(c){compCat=c;render();}
@@ -1459,15 +1633,33 @@ function renderToday(){
   compHTML+='</div>';
 
   var lib=loadLib();
+  var fdbHTML='<div class="qacard"><button class="qatog" onclick="fdbToggle()"><span class="qalbl">&#x1F50D; מאגר המזון</span><span class="qaarro" style="transform:'+(fdbOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
+  if(fdbOpen){
+    fdbHTML+='<div class="qalist"><input class="fdb-in" id="fdb-q" placeholder="חפש מאכל…" value="'+esc(_fdbQ)+'" oninput="fdbType(this.value)"><div id="fdb-body"></div></div>';
+  }
+  fdbHTML+='</div>';
+
   var libHTML='<div class="qacard"><button class="qatog" onclick="toggleLib()"><span class="qalbl">&#x1F4DA; הספרייה שלי</span><span class="qaarro" style="transform:'+(libOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
   if(libOpen){
     libHTML+='<div class="qalist">';
     if(lib.length===0)libHTML+='<div style="font-size:12px;color:#a89e97;padding:8px;text-align:center">עדיין לא שמרת מוצרים</div>';
     for(var li=0;li<lib.length;li++){
       var lm=lib[li];var isSel=pendingLib===lm.name;
-      libHTML+='<div class="lbtn" style="'+(isSel?'border:2px solid #a690cf;':'')+'" onclick="selectLib('+li+')">'+(lm.photo?'<img src="'+lm.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0;margin-left:6px">':'')+'<div style="flex:1"><div class="lnm">'+esc(lm.name)+'</div><div class="lmac">'+lm.kcal+' קק"ל &middot; '+lm.p+'p '+lm.c+'c '+lm.f+'f</div></div><div class="qkc">'+lm.kcal+'<br><span style="font-size:9px">קק"ל</span></div><button class="ldel" onclick="event.stopPropagation();removeFromLib('+li+')">&times;</button></div>';
+      libHTML+='<div class="lbtn" style="'+(isSel?'border:2px solid #a690cf;':'')+'" onclick="selectLib('+li+')">'+(lm.photo?'<img src="'+lm.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0;margin-left:6px">':'')+'<div style="flex:1"><div class="lnm">'+esc(lm.name)+'</div><div class="lmac">'+lm.kcal+(mealBasis(lm)==='100g'?'/100g':'')+' קק"ל &middot; '+lm.p+'p '+lm.c+'c '+lm.f+'f</div></div><div class="qkc">'+lm.kcal+'<br><span style="font-size:9px">קק"ל</span></div><button class="ldel" onclick="event.stopPropagation();removeFromLib('+li+')">&times;</button></div>';
     }
-    if(pendingLib){var pm=lib.find(function(m){return m.name===pendingLib;});if(pm)libHTML+='<div class="confirm-card" id="lib-confirm"><div class="confirm-name">'+esc(pm.name)+'</div><div class="confirm-mac">'+pm.kcal+' קק"ל &middot; '+pm.p+'p &middot; '+pm.c+'c &middot; '+pm.f+'f</div><div class="confirm-btns"><button class="confirm-yes" onclick="confirmLib()">הוסף &#10003;</button><button class="confirm-no" onclick="cancelLib()">ביטול</button></div></div>';}
+    if(pendingLib){
+      var pm=lib.find(function(m){return m.name===pendingLib;});
+      if(pm){
+        var per100=mealBasis(pm)==='100g';
+        libHTML+='<div class="confirm-card" id="lib-confirm"><div class="confirm-name">'+esc(pm.name)+'</div>'+
+          '<div class="confirm-mac">'+pm.kcal+' קק"ל'+(per100?' ל-100 גרם':'')+' &middot; '+pm.p+'p &middot; '+pm.c+'c &middot; '+pm.f+'f</div>';
+        if(per100)libHTML+='<div class="fdb-grow"><span class="fdb-glbl">כמה גרם?</span>'+
+          '<input class="fdb-gin" type="number" inputmode="decimal" value="'+libGrams+'" oninput="libSetGrams(this.value)">'+
+          '<span class="fdb-gu">g</span></div>'+
+          '<div class="fdb-preview" id="lib-preview">'+libPreviewHTML()+'</div>';
+        libHTML+='<div class="confirm-btns"><button class="confirm-yes" onclick="confirmLib()">הוסף &#10003;</button><button class="confirm-no" onclick="cancelLib()">ביטול</button></div></div>';
+      }
+    }
     libHTML+='</div>';
   }
   libHTML+='</div>';
@@ -1484,7 +1676,8 @@ function renderToday(){
     logHTML+='</div>';
   }
 
-  document.getElementById('content').innerHTML=macroHTML+pillsHTML+waterHTML+stepsHTML+compHTML+libHTML+manHTML+logHTML;
+  document.getElementById('content').innerHTML=macroHTML+pillsHTML+waterHTML+stepsHTML+compHTML+fdbHTML+libHTML+manHTML+logHTML;
+  if(fdbOpen)fdbPaint();
   animateBars();
 }
 
