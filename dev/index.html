@@ -109,6 +109,24 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .log-time{font-size:9.5px;color:#a89e97;margin-top:1px}
 .log-kcal{font-size:13px;font-weight:700;color:#a690cf}
 .log-del{background:none;border:none;cursor:pointer;color:#f3b9a8;font-size:16px;padding:2px 6px}
+/* the personal details inside תזונה - one label, one field, one unit per row */
+.pf-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f7f3ee}
+.pf-row:last-of-type{border-bottom:none}
+.pf-lbl{flex:0 0 78px;font-size:12.5px;font-weight:700;color:#4a4340}
+.pf-in{flex:1;min-width:0;border:1.5px solid #f2ede6;border-radius:10px;padding:9px 10px;font-size:16px;font-weight:700;color:#4a4340;outline:none;font-family:inherit;background:#fff;text-align:center}
+.pf-in:focus{border-color:#c9bce0}
+.pf-note{flex:0 0 52px;font-size:10.5px;color:#a89e97;font-weight:700}
+.pf-derived{margin-top:12px;padding-top:11px;border-top:1px solid #f7f3ee;font-size:11px;color:#a89e97;font-weight:700;letter-spacing:.04em}
+.pf-acts{display:flex;flex-direction:column;gap:6px}
+.pf-act{display:flex;align-items:center;gap:10px;width:100%;border:1.5px solid #f2ede6;border-radius:14px;padding:10px 11px;background:#fff;cursor:pointer;font-family:inherit;text-align:right}
+.pf-act.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7)}
+.pf-actn{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#f2ede6;color:#a89e97;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.pf-act.on .pf-actn{background:#a690cf;color:#fff}
+.pf-actt{font-size:12.5px;font-weight:800;color:#4a4340}
+.pf-acts2{font-size:10.5px;color:#a89e97;margin-right:auto;text-align:left}
+.pf-goals{display:flex;gap:6px}
+.pf-goal{flex:1;border:1.5px solid #f2ede6;border-radius:14px;padding:11px 6px;background:#fff;font-size:11.5px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit;line-height:1.3}
+.pf-goal.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
 .card{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)}
 .cttl{font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700;margin-bottom:12px}
 .avgbox{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)}
@@ -588,6 +606,7 @@ body.night .me-hero,body.night .me-card{background:rgba(255,255,255,.94)}
         <button class="tab" id="tab-history" onclick="switchTab('history')">היסטוריה</button>
         <button class="tab on" id="tab-today" onclick="switchTab('today')">יומי</button>
         <button class="tab" id="tab-recipes" onclick="switchTab('recipes')">מתכונים</button>
+        <button class="tab" id="tab-profile" onclick="switchTab('profile')">אישי</button>
       </div>
       <button class="nav-arrow" id="btnNext">&#8250;</button>
     </div>
@@ -596,6 +615,116 @@ body.night .me-hero,body.night .me-card{background:rgba(255,255,255,.94)}
 </div>
 <script>
 var TARGETS={kcal:1975,p:155,c:200,f:60,water:3000};
+/* ── THE PERSONAL DETAILS ──
+   Who the tracking is about, kept in one record inside תזונה: date of birth,
+   height, weight, how much you move, and what you are aiming at.
+
+   Age is derived from the birth date rather than stored, so it never goes
+   stale - a stored age is wrong within a year of writing it down.
+
+   Every weight that is entered is appended to a dated list as well as
+   replacing the current one. Nothing shows that list yet; it is kept because
+   a weight typed over is otherwise gone for good, and this is the one number
+   here that is supposed to change. */
+var PROFILE_KEY='profile_v1';
+var ACT_LEVELS=[
+  {v:1,t:'כמעט ללא',s:'יום יושבני, בלי אימונים'},
+  {v:2,t:'קלה',s:'1&ndash;2 אימונים בשבוע'},
+  {v:3,t:'בינונית',s:'3&ndash;4 אימונים בשבוע'},
+  {v:4,t:'גבוהה',s:'5&ndash;6 אימונים בשבוע'},
+  {v:5,t:'מאוד גבוהה',s:'כל יום, או עבודה פיזית'}
+];
+var GOALS=[
+  {v:'lose',t:'ירידה במשקל'},
+  {v:'keep',t:'שמירה על המשקל'},
+  {v:'gain',t:'עלייה במסה'}
+];
+function loadProfile(){
+  try{var o=JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}');return o&&typeof o==='object'?o:{};}
+  catch(e){return {};}
+}
+function saveProfile(p){
+  try{localStorage.setItem(PROFILE_KEY,JSON.stringify(p));}catch(e){}
+}
+function profileAge(birth){
+  if(!birth)return null;
+  var b=new Date(birth+'T00:00:00');
+  if(isNaN(b))return null;
+  var n=new Date(),a=n.getFullYear()-b.getFullYear();
+  var m=n.getMonth()-b.getMonth();
+  if(m<0||(m===0&&n.getDate()<b.getDate()))a--;
+  return (a>=0&&a<130)?a:null;
+}
+function profileBMI(p){
+  var h=parseFloat(p.height),w=parseFloat(p.weight);
+  if(!h||!w||h<80||h>250||w<20||w>400)return null;
+  return Math.round(w/Math.pow(h/100,2)*10)/10;
+}
+function profSet(field,val){
+  var p=loadProfile();
+  p[field]=val;
+  p.updatedAt=new Date().toISOString();
+  saveProfile(p);
+  renderProfile();
+}
+function profNum(field,el){
+  var p=loadProfile(),v=el.value.trim();
+  if(v===''){delete p[field];}
+  else{
+    var n=parseFloat(v);
+    if(isNaN(n))return;
+    p[field]=n;
+    if(field==='weight'){
+      // a weight typed over is otherwise gone; keep one entry per day
+      var d=todayStr();
+      p.weights=Array.isArray(p.weights)?p.weights:[];
+      p.weights=p.weights.filter(function(x){return x.d!==d;});
+      p.weights.push({d:d,v:n});
+      if(p.weights.length>400)p.weights=p.weights.slice(-400);
+    }
+  }
+  p.updatedAt=new Date().toISOString();
+  saveProfile(p);
+  renderProfile();
+}
+function renderProfile(){
+  var p=loadProfile(),h='',i;
+  var age=profileAge(p.birth),bmi=profileBMI(p);
+
+  h+='<div class="card"><div class="cttl">פרטים אישיים</div>';
+  h+='<div class="pf-row"><label class="pf-lbl">תאריך לידה</label>'+
+     '<input class="pf-in" type="date" value="'+(p.birth||'')+'" onchange="profSet(\u0027birth\u0027,this.value)">'+
+     '<span class="pf-note">'+(age===null?'':age+' שנים')+'</span></div>';
+  h+='<div class="pf-row"><label class="pf-lbl">גובה</label>'+
+     '<input class="pf-in" type="number" inputmode="decimal" step="0.5" placeholder="0" value="'+(p.height!==undefined?p.height:'')+'" onchange="profNum(\u0027height\u0027,this)">'+
+     '<span class="pf-note">ס"מ</span></div>';
+  h+='<div class="pf-row"><label class="pf-lbl">משקל</label>'+
+     '<input class="pf-in" type="number" inputmode="decimal" step="0.1" placeholder="0" value="'+(p.weight!==undefined?p.weight:'')+'" onchange="profNum(\u0027weight\u0027,this)">'+
+     '<span class="pf-note">ק"ג</span></div>';
+  if(bmi!==null)
+    h+='<div class="pf-derived">BMI '+bmi+'</div>';
+  h+='</div>';
+
+  h+='<div class="card"><div class="cttl">פעילות גופנית</div><div class="pf-acts">';
+  for(i=0;i<ACT_LEVELS.length;i++){
+    var a=ACT_LEVELS[i];
+    h+='<button class="pf-act'+(p.activity===a.v?' on':'')+'" onclick="profSet(\u0027activity\u0027,'+a.v+')">'+
+       '<span class="pf-actn">'+a.v+'</span>'+
+       '<span class="pf-actt">'+a.t+'</span>'+
+       '<span class="pf-acts2">'+a.s+'</span></button>';
+  }
+  h+='</div></div>';
+
+  h+='<div class="card"><div class="cttl">מטרה</div><div class="pf-goals">';
+  for(i=0;i<GOALS.length;i++){
+    var g=GOALS[i];
+    h+='<button class="pf-goal'+(p.goal===g.v?' on':'')+'" onclick="profSet(\u0027goal\u0027,\u0027'+g.v+'\u0027)">'+g.t+'</button>';
+  }
+  h+='</div></div>';
+
+  document.getElementById('content').innerHTML=h;
+}
+
 var CATS=[
   ['breakfast','בוקר'],
   ['lunch','צהריים'],
@@ -1119,10 +1248,14 @@ function switchTab(t){curTab=t;render();}
 
 function render(){
   var de=document.getElementById('hdr-date');var te=document.getElementById('hdr-title');
-  if(de)de.textContent=curDate===todayStr()?'היום':'';
-  if(te)te.textContent=fmtDate(curDate);
-  ['today','history','recipes'].forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.className='tab'+(curTab===t?' on':'');});
-  if(curTab==='today')renderToday();else if(curTab==='history')renderHistory();else if(curTab==='recipes')renderRecipes();else renderDay();
+  var onProfile=curTab==='profile';
+  if(de)de.textContent=(!onProfile&&curDate===todayStr())?'היום':'';
+  if(te)te.textContent=onProfile?'פרטים אישיים':fmtDate(curDate);
+  var pv=document.getElementById('btnPrev'),nx=document.getElementById('btnNext');
+  if(pv)pv.style.visibility=onProfile?'hidden':'';
+  if(nx)nx.style.visibility=onProfile?'hidden':'';
+  ['today','history','recipes','profile'].forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.className='tab'+(curTab===t?' on':'');});
+  if(curTab==='today')renderToday();else if(curTab==='history')renderHistory();else if(curTab==='recipes')renderRecipes();else if(curTab==='profile')renderProfile();else renderDay();
   hydratePhotos();
 }
 
