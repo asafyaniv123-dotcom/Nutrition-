@@ -192,9 +192,16 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 /* the day's anchors, stacked with an arrow between them */
 .rf-flow{display:flex;flex-direction:column}
 .rf-flow-row{display:flex;align-items:center;gap:6px}
-.rf-flow-box{flex:1;min-width:0;background:#fff;border:1.5px solid #e4ddd4;border-radius:14px;padding:13px 14px;font-size:14px;color:#4a4340;font-family:inherit;outline:none;direction:rtl}
-.rf-flow-box:focus{border-color:#a690cf}
-.rf-flow-box::placeholder{color:#c9c0b8}
+.rf-flow-box{flex:1;min-width:0;background:#fff;border:1.5px solid #e4ddd4;border-radius:14px;padding:7px 8px 7px 10px}
+.rf-flow-box:focus-within{border-color:#a690cf}
+.rf-flow-line{display:flex;align-items:center;gap:4px}
+.rf-flow-in{flex:1;min-width:0;border:none;background:none;outline:none;padding:6px 4px;font-size:14px;color:#4a4340;font-family:inherit;direction:rtl}
+.rf-flow-in::placeholder{color:#c9c0b8}
+.rf-flow-cam{background:none;border:none;padding:5px;cursor:pointer;color:#c0b8b0;flex-shrink:0;line-height:0;font-family:inherit}
+.rf-flow-cam svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.rf-flow-imgwrap{position:relative;margin-bottom:6px}
+.rf-flow-img{width:100%;height:92px;object-fit:cover;border-radius:9px;display:block}
+.rf-flow-imgx{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:50%;background:rgba(74,67,64,.6);border:none;color:#fff;font-size:12px;cursor:pointer;line-height:1;font-family:inherit}
 .rf-flow-x{background:none;border:none;color:#e0c4bb;font-size:16px;cursor:pointer;padding:4px 2px;flex-shrink:0;font-family:inherit}
 .rf-flow-ar{text-align:center;color:#c9bce0;font-size:15px;padding:5px 0;line-height:1}
 .rf-flow-add{width:100%;background:rgba(166,144,207,.08);border:1.5px dashed #c9bce0;border-radius:14px;padding:11px;font-size:12.5px;font-weight:700;color:#a690cf;cursor:pointer;font-family:inherit;margin-top:12px}
@@ -455,6 +462,23 @@ function starsHTML(n,max){var s='';for(var i=1;i<=max;i++)s+='<span style="color
 
 function loadDay(d){try{var x=localStorage.getItem('day_'+d);return x?JSON.parse(x):{meals:[],water:0};}catch(e){return{meals:[],water:0};}}
 function saveDay(d,data){try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}}
+/* flow has had three shapes: a comma-separated string, an array of strings,
+   and now {w,p} so an anchor can carry its own photo. Everything reads it
+   through here, so an old summary opens the same as a new one. */
+function parseFlow(v){
+  var out=[],i,s;
+  if(Array.isArray(v)){
+    for(i=0;i<v.length;i++){
+      s=v[i];if(!s)continue;
+      if(typeof s==='string'){if(s.trim())out.push({w:s.trim(),p:''});}
+      else if(s.w||s.p)out.push({w:s.w||'',p:s.p||''});
+    }
+  } else if(typeof v==='string'&&v){
+    var parts=v.split(/[,\n]|←|→/);
+    for(i=0;i<parts.length;i++){s=parts[i].trim();if(s)out.push({w:s,p:''});}
+  }
+  return out;
+}
 function loadSummary(d){try{var x=localStorage.getItem('sum_'+d);return x?JSON.parse(x):null;}catch(e){return null;}}
 function saveSummary(d,data){try{localStorage.setItem('sum_'+d,JSON.stringify(data));}catch(e){}}
 
@@ -1481,9 +1505,7 @@ function renderDay(){
 function renderSummaryOverlay(dateStr){
   var sum=loadSummary(dateStr);if(!sum)return;
   var old=document.getElementById('sum-overlay');if(old)old.remove();
-  var flowStops=[];
-  if(Array.isArray(sum.flow)){flowStops=sum.flow.filter(function(s){return s&&s.trim();});}
-  else if(sum.flow&&typeof sum.flow==='string'){var fp=sum.flow.split(/,|←|→|\n/);for(var fi=0;fi<fp.length;fi++){var fs=fp[fi].trim();if(fs)flowStops.push(fs);}}
+  var flowStops=parseFlow(sum.flow);
   var div=document.createElement('div');div.id='sum-overlay';div.className='summary-overlay';
   div.onclick=function(e){if(e.target===div)closeSummary();};
   var h='<div class="summary-sheet"><div class="summary-pull"></div><button class="summary-close" onclick="closeSummary()">&times;</button>';
@@ -1496,7 +1518,16 @@ function renderSummaryOverlay(dateStr){
     if(sum.photoCaption)h+='<div style="font-size:12px;color:#6a6360;text-align:center;font-style:italic;margin-bottom:12px;line-height:1.5">'+esc(sum.photoCaption)+'</div>';
   }
   if(sum.moment)h+='<div style="background:linear-gradient(135deg,#fdf1e9,#f5eefa);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:9px;color:#a89e97;margin-bottom:6px">&#x2728; הרגע הכי טוב</div><div style="font-size:14px;line-height:1.6">'+esc(sum.moment)+'</div></div>';
-  if(flowStops.length>0){h+='<div style="background:#fff;border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 4px 14px rgba(200,180,160,.1)"><div style="font-size:9px;color:#a89e97;margin-bottom:10px">תרשים זרימת היום</div><div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">';for(var fi2=0;fi2<flowStops.length;fi2++){h+='<div style="background:linear-gradient(135deg,#f0ebe3,#e8e0f5);border-radius:9px;padding:5px 10px;font-size:12px;font-weight:600">'+esc(flowStops[fi2])+'</div>';if(fi2<flowStops.length-1)h+='<span style="color:#a89e97">&#8592;</span>';}h+='</div></div>';}
+  if(flowStops.length>0){
+    h+='<div style="background:#fff;border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 4px 14px rgba(200,180,160,.1)"><div style="font-size:9px;color:#a89e97;margin-bottom:10px">תרשים זרימת היום</div>';
+    for(var fi2=0;fi2<flowStops.length;fi2++){
+      h+='<div style="display:flex;gap:10px;align-items:center">';
+      if(flowStops[fi2].p)h+='<img src="'+flowStops[fi2].p+'" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0">';
+      h+='<div style="font-size:13px;font-weight:600;color:#4a4340;line-height:1.5">'+esc(flowStops[fi2].w)+'</div></div>';
+      if(fi2<flowStops.length-1)h+='<div style="color:#c9bce0;font-size:13px;padding:4px 0 4px 16px;text-align:right">&#8595;</div>';
+    }
+    h+='</div>';
+  }
   var kp=Math.min(100,Math.round(sum.kcal/TARGETS.kcal*100)),pp2=Math.min(100,Math.round(sum.p/TARGETS.p*100)),cp3=Math.min(100,Math.round(sum.c/TARGETS.c*100)),fp2=Math.min(100,Math.round(sum.f/TARGETS.f*100));
   h+='<div style="background:#fff;border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 4px 14px rgba(200,180,160,.1)"><div style="font-size:9px;color:#a89e97;margin-bottom:10px">תזונה יומית</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
   var smb=[{v:sum.kcal,pct:kp,lbl:'קק"ל',g:'linear-gradient(180deg,#c9bce0,#a690cf)',col:'#a690cf'},{v:sum.p+'g',pct:pp2,lbl:'חלבון',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:'#e08a72'},{v:sum.c+'g',pct:cp3,lbl:'פחמימה',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:'#8fc79e'},{v:sum.f+'g',pct:fp2,lbl:'שומן',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:'#e8c162'}];
@@ -7101,17 +7132,25 @@ function renderReflectStep(){
      side: the point is that each one is a sentence you will recognise in a
      year, and three of those do not fit across a phone. */
   else if(q.kind==='flow'){
-    var fl=rfArr('flow');
-    if(!fl.length)fl=['','',''];
+    var fl=rfFlowRaw();
+    while(fl.length<3)fl.push({w:'',p:''});
     h+='<div class="rf-flow">';
     for(i=0;i<fl.length;i++){
-      h+='<div class="rf-flow-row">';
-      h+='<input class="rf-flow-box" id="rf-fl-'+i+'" value="'+esc(fl[i]||'')+'" placeholder="'+(i===0?'איך התחיל':(i===fl.length-1?'ואיך נגמר':'ואז'))+'">';
+      h+='<div class="rf-flow-row"><div class="rf-flow-box">';
+      if(fl[i].p){
+        h+='<div class="rf-flow-imgwrap"><img class="rf-flow-img" src="'+fl[i].p+'">';
+        h+='<button class="rf-flow-imgx" onclick="rfFlowPhotoClear('+i+')">&times;</button></div>';
+      }
+      h+='<div class="rf-flow-line">';
+      h+='<input class="rf-flow-in" id="rf-fl-'+i+'" value="'+esc(fl[i].w||'')+'" placeholder="'+(i===0?'איך התחיל':(i===fl.length-1?'ואיך נגמר':'ואז'))+'">';
+      h+='<button class="rf-flow-cam" onclick="rfFlowPhoto('+i+')"><svg viewBox="0 0 24 24"><path d="M3.5 8.5a2 2 0 0 1 2-2h2l1.4-2h6.2l1.4 2h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/><circle cx="12" cy="12.8" r="3.6"/></svg></button>';
+      h+='</div></div>';
       if(fl.length>1)h+='<button class="rf-flow-x" onclick="rfFlowDel('+i+')">&times;</button>';
       h+='</div>';
       if(i<fl.length-1)h+='<div class="rf-flow-ar">&#8595;</div>';
     }
     h+='</div>';
+    h+='<input type="file" id="rf-fl-file" accept="image/*" style="display:none" onchange="rfFlowPhotoPick(this)">';
     h+='<button class="rf-flow-add" onclick="rfFlowAdd()">+ עוגן נוסף</button>';
     h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
   }
@@ -7186,9 +7225,9 @@ function rfCommitText(){
     var clk=interviewAnswers.timeclock||new Array(25).fill('none');
     rfSave({timeclock:clk.slice(),timeDistribution:rfClockTotals(clk)});
   } else if(q.kind==='flow'){
-    // empty boxes are scaffolding, not answers
+    // an empty box is scaffolding; one with only a photo is still an answer
     var a=rfFlowRead(),keep=[],j;
-    for(j=0;j<a.length;j++)if(a[j])keep.push(a[j]);
+    for(j=0;j<a.length;j++)if(a[j].w||a[j].p)keep.push(a[j]);
     rfSave({flow:keep});
   }
 }
@@ -7257,21 +7296,67 @@ function rfAddPerson(){
   rfSave({influentialPerson:n.trim()});
   renderReflectStep();
 }
+/* While the screen is open every slot is kept, empty ones included, so the
+   boxes on screen stay lined up with the photos in storage. parseFlow, which
+   drops the empties, is for reading a saved day. */
+function rfFlowRaw(){
+  var v=rfVal('flow'),out=[],i,s;
+  if(!Array.isArray(v))return parseFlow(v);
+  for(i=0;i<v.length;i++){
+    s=v[i];
+    if(typeof s==='string')out.push({w:s,p:''});
+    else if(s&&typeof s==='object')out.push({w:s.w||'',p:s.p||''});
+    else out.push({w:'',p:''});
+  }
+  return out;
+}
 // The boxes are live inputs, so anything typed has to be read out of the DOM
-// before a re-render replaces them.
+// before a re-render replaces them; photos come from storage by the same index.
 function rfFlowRead(){
-  var out=[],i=0,el;
-  while((el=document.getElementById('rf-fl-'+i))){out.push(el.value.trim());i++;}
+  var stored=rfFlowRaw(),out=[],i=0,el;
+  while((el=document.getElementById('rf-fl-'+i))){
+    out.push({w:el.value.trim(),p:(stored[i]&&stored[i].p)||''});
+    i++;
+  }
   return out;
 }
 function rfFlowAdd(){
-  var a=rfFlowRead();a.push('');
+  var a=rfFlowRead();a.push({w:'',p:''});
   rfSave({flow:a});renderReflectStep();
   setTimeout(function(){var e=document.getElementById('rf-fl-'+(a.length-1));if(e)e.focus();},40);
 }
 function rfFlowDel(i){
   var a=rfFlowRead();a.splice(i,1);
   rfSave({flow:a});renderReflectStep();
+}
+var _rfFlowIdx=-1;
+function rfFlowPhoto(i){_rfFlowIdx=i;var f=document.getElementById('rf-fl-file');if(f)f.click();}
+function rfFlowPhotoClear(i){
+  var a=rfFlowRead();
+  if(a[i])a[i].p='';
+  rfSave({flow:a});renderReflectStep();
+}
+function rfFlowPhotoPick(input){
+  var file=input.files&&input.files[0],idx=_rfFlowIdx;
+  input.value='';
+  if(!file||idx<0)return;
+  var a=rfFlowRead();               // capture what is typed before re-rendering
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      // Deliberately smaller than the day photo: these are thumbnails inside a
+      // diagram, and several of them ride along with every day.
+      var cv=document.createElement('canvas'),mx=640,w=img.width,h=img.height;
+      if(w>mx){h=Math.round(h*mx/w);w=mx;}
+      if(h>mx){w=Math.round(w*mx/h);h=mx;}
+      cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
+      if(a[idx])a[idx].p=cv.toDataURL('image/jpeg',0.68);
+      rfSave({flow:a});renderReflectStep();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 function rfTlAdd(){
   var t=document.getElementById('rf-tl-t'),w=document.getElementById('rf-tl-w');
