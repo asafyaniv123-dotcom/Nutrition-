@@ -207,15 +207,17 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .rf-flow-add{width:100%;background:rgba(166,144,207,.08);border:1.5px dashed #c9bce0;border-radius:14px;padding:11px;font-size:12.5px;font-weight:700;color:#a690cf;cursor:pointer;font-family:inherit;margin-top:12px}
 /* the week: seven day columns, a third of the screen tall, cut into three
    bands. The cells are the drop targets and keep the text visible. */
-.wk-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:5px}
+.wk-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:5px;margin-right:35px}
+.wk-wrap{display:flex;gap:5px;align-items:stretch}
+.wk-slots{width:30px;flex-shrink:0;display:flex;flex-direction:column}
+.wk-slot-l{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:8px;font-weight:700;color:#b8afa7;letter-spacing:.03em;line-height:1.15}
 .wk-hcell{text-align:center;min-width:0;padding:2px 0;border-radius:8px}
 .wk-hcell.today{background:linear-gradient(135deg,#f0eafa,#e8dff5)}
 .wk-dn{font-size:9.5px;font-weight:800;color:#4a4340;line-height:1.15;white-space:nowrap;letter-spacing:-.2px}
 .wk-dd{font-size:8.5px;color:#a89e97;line-height:1.2;white-space:nowrap}
-.wk-table{position:relative;height:34vh;min-height:250px;background:#fff;border:1.5px solid #ece5da;border-radius:14px;overflow:hidden}
+.wk-table{flex:1;min-width:0;position:relative;height:34vh;min-height:250px;background:#fff;border:1.5px solid #ece5da;border-radius:14px;overflow:hidden}
 .wk-bands{position:absolute;inset:0;pointer-events:none;z-index:2}
 .wk-band-l{position:absolute;right:0;left:0;height:1px;background:#ece5da}
-.wk-band-t{position:absolute;right:5px;font-size:8px;font-weight:700;color:#d2c9c1;letter-spacing:.06em;margin-top:3px}
 .wk-cols{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));z-index:1}
 .wk-col{display:flex;flex-direction:column;min-width:0;border-left:1px solid #f4efe9}
 .wk-col:last-child{border-left:none}
@@ -228,6 +230,11 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .wk-ghost{position:fixed;z-index:200;margin:0;pointer-events:none;opacity:.94;transform:rotate(-2deg);box-shadow:0 12px 28px rgba(120,100,85,.32)}
 .wk-pool{min-height:56px;border-radius:14px;transition:background .15s}
 .wk-pool.hot{background:rgba(166,144,207,.09)}
+.wk-dot{width:15px;height:15px;border-radius:50%;border:none;padding:0;cursor:pointer;flex-shrink:0;box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(0,0,0,.06)}
+.wk-sw{display:flex;gap:7px}
+.wk-swatch{width:22px;height:22px;border-radius:50%;border:none;padding:0;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.wk-swatch.on{transform:scale(1.16);box-shadow:0 0 0 2px #fff,0 0 0 3.5px #4a4340}
+.wk-picker{background:#fff;border-radius:12px;padding:10px 12px;margin:-3px 0 9px;box-shadow:0 3px 10px rgba(200,180,160,.14);display:flex;justify-content:center}
 .interview{padding:20px 16px;min-height:60vh;display:flex;flex-direction:column}
 .q-num{font-size:10px;color:#a89e97;letter-spacing:.1em;margin-bottom:8px}
 .q-text{font-size:20px;font-weight:700;margin-bottom:24px;line-height:1.4}
@@ -4385,6 +4392,29 @@ function savePlanHistory(arr){try{localStorage.setItem('plan_history',JSON.strin
 var _wkSun=null,_wkOpen=-1,_wkDrag=null;
 var WK_DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 var WK_SLOTS=[['m','בוקר'],['n','צהריים'],['e','ערב']];
+// Drawn from the palette the rest of the app already uses, so a coloured week
+// still looks like the same app.
+var WK_COLORS=[
+  {k:'lav',bg:'linear-gradient(135deg,#f0eafa,#e8dff5)',dot:'#a690cf',tx:'#5b4f6b'},
+  {k:'ter',bg:'linear-gradient(135deg,#fef0e8,#fae0d0)',dot:'#e08a72',tx:'#7a4f40'},
+  {k:'grn',bg:'linear-gradient(135deg,#eaf5ee,#d8f0e0)',dot:'#6fb283',tx:'#3f6349'},
+  {k:'blu',bg:'linear-gradient(135deg,#e8f4fd,#d6ebf7)',dot:'#3a7ca5',tx:'#2f5a73'},
+  {k:'amb',bg:'linear-gradient(135deg,#fdf2e2,#f6e1c3)',dot:'#c98b3f',tx:'#6d5530'},
+  {k:'gry',bg:'linear-gradient(135deg,#f0ede8,#e6e2db)',dot:'#8d847d',tx:'#57504a'}
+];
+var _wkNewColor='lav',_wkPick='';
+function wkColor(k){
+  for(var i=0;i<WK_COLORS.length;i++)if(WK_COLORS[i].k===k)return WK_COLORS[i];
+  return WK_COLORS[0];
+}
+function wkSwatches(onclickTpl,sel){
+  var h='<div class="wk-sw">',i,c;
+  for(i=0;i<WK_COLORS.length;i++){
+    c=WK_COLORS[i];
+    h+='<button class="wk-swatch'+(sel===c.k?' on':'')+'" style="background:'+c.dot+'" onclick="'+onclickTpl.replace('%K%',c.k)+'"></button>';
+  }
+  return h+'</div>';
+}
 
 function weekSunday(d){
   var x=new Date(d);
@@ -4438,10 +4468,13 @@ function renderPlanWeek(){
   h+='</div>';
 
   // the table itself: seven columns, three bands
-  h+='<div class="wk-table">';
-  h+='<div class="wk-bands"><div class="wk-band-l" style="top:33.333%"></div><div class="wk-band-l" style="top:66.666%"></div>';
-  for(j=0;j<3;j++)h+='<div class="wk-band-t" style="top:'+(j*33.333)+'%">'+WK_SLOTS[j][1]+'</div>';
+  // The band labels sit beside the table, not over it: overlaid they covered
+  // whatever was written in the outermost column.
+  h+='<div class="wk-wrap"><div class="wk-slots">';
+  for(j=0;j<3;j++)h+='<div class="wk-slot-l">'+WK_SLOTS[j][1]+'</div>';
   h+='</div>';
+  h+='<div class="wk-table">';
+  h+='<div class="wk-bands"><div class="wk-band-l" style="top:33.333%"></div><div class="wk-band-l" style="top:66.666%"></div></div>';
   h+='<div class="wk-cols">';
   for(i=0;i<7;i++){
     var dt=wkDateOf(_wkSun,i),st=wkStamp(dt);
@@ -4449,12 +4482,15 @@ function renderPlanWeek(){
     for(j=0;j<3;j++){
       var list=wkIn(wk.tasks,st,WK_SLOTS[j][0]);
       h+='<div class="wk-cell" data-date="'+st+'" data-slot="'+WK_SLOTS[j][0]+'" onclick="wkOpen('+i+')">';
-      for(t=0;t<list.length;t++)h+='<div class="wk-chip">'+esc(list[t].w)+'</div>';
+      for(t=0;t<list.length;t++){
+        var cc=wkColor(list[t].c);
+        h+='<div class="wk-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(list[t].w)+'</div>';
+      }
       h+='</div>';
     }
     h+='</div>';
   }
-  h+='</div></div>';
+  h+='</div></div></div>';
 
   // the open day, in full
   if(_wkOpen>=0){
@@ -4485,7 +4521,11 @@ function renderPlanWeek(){
   if(!pool.length)h+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;padding:8px 2px">כתוב למטה, ואז גרור לרצועה שבה זה יקרה.</div>';
   h+='</div>';
 
-  h+='<div style="display:flex;gap:8px;margin-top:10px">';
+  h+='<div style="display:flex;align-items:center;gap:9px;margin-top:12px">';
+  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;flex-shrink:0">צבע</div>';
+  h+=wkSwatches("_wkNewColor='%K%';renderPlanWeek()",_wkNewColor);
+  h+='</div>';
+  h+='<div style="display:flex;gap:8px;margin-top:8px">';
   h+='<input id="wk-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משימה או פגישה" onkeydown="if(event.key===\'Enter\')wkAdd()">';
   h+='<button onclick="wkAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
   h+='</div></div>';
@@ -4498,11 +4538,23 @@ function renderPlanWeek(){
 }
 
 function wkTaskHTML(t){
-  return '<div class="wk-task" data-task="'+t.id+'">'+
-    '<div class="wk-grip">&#8942;&#8942;</div>'+
-    '<div style="flex:1;min-width:0;font-size:13.5px;color:#4a4340;line-height:1.45">'+esc(t.w)+'</div>'+
-    (t.d?'<button onclick="wkAssign(\''+t.id+'\',\'\',\'\')" style="background:none;border:none;color:#c9bce0;font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>':'')+
-    '<button onclick="wkDel(\''+t.id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button></div>';
+  var c=wkColor(t.c);
+  var h='<div class="wk-task" data-task="'+t.id+'" style="border-right:4px solid '+c.dot+'">';
+  h+='<div class="wk-grip">&#8942;&#8942;</div>';
+  h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="wkPick(\''+t.id+'\')"></button>';
+  h+='<div style="flex:1;min-width:0;font-size:13.5px;color:#4a4340;line-height:1.45">'+esc(t.w)+'</div>';
+  if(t.d)h+='<button onclick="wkAssign(\''+t.id+'\',\'\',\'\')" style="background:none;border:none;color:#c9bce0;font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>';
+  h+='<button onclick="wkDel(\''+t.id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
+  h+='</div>';
+  // The palette opens under the task it belongs to, leaving its text in view.
+  if(_wkPick===t.id)h+='<div class="wk-picker">'+wkSwatches("wkSetColor('"+t.id+"','%K%')",t.c||'lav')+'</div>';
+  return h;
+}
+function wkPick(id){_wkPick=(_wkPick===id?'':id);renderPlanWeek();}
+function wkSetColor(id,k){
+  var wk=loadWeek(_wkSun),i;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id)wk.tasks[i].c=k;
+  saveWeek(_wkSun,wk);_wkPick='';renderPlanWeek();
 }
 
 function wkShift(dir){_wkSun=wkDateOf(_wkSun,dir*7);_wkOpen=-1;renderPlanWeek();}
@@ -4511,7 +4563,7 @@ function wkAdd(){
   var el=document.getElementById('wk-in');
   if(!el||!el.value.trim())return;
   var wk=loadWeek(_wkSun);
-  wk.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),d:'',s:''});
+  wk.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),d:'',s:'',c:_wkNewColor});
   saveWeek(_wkSun,wk);renderPlanWeek();
   setTimeout(function(){var e=document.getElementById('wk-in');if(e)e.focus();},40);
 }
