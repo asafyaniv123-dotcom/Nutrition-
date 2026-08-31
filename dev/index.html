@@ -243,6 +243,9 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .dp-slot{flex:1;min-width:0;padding:5px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;transition:background .15s}
 .dp-slot.hot{background:rgba(143,199,158,.22)}
 .dp-chip{border-radius:8px;padding:5px 9px;font-size:11.5px;font-weight:700;line-height:1.3;max-width:100%;word-break:break-word;touch-action:none;cursor:grab}
+.dp-q{font-size:13.5px;font-weight:800;color:#4a4340;line-height:1.4;margin-bottom:9px}
+.dp-ta{width:100%;background:#fff;border:none;border-radius:14px;padding:12px 14px;font-size:12.5px;color:#4a4340;line-height:1.6;font-family:inherit;direction:rtl;outline:none;resize:none;min-height:74px}
+.dp-ta::placeholder{color:#c9c0b8}
 .dp-note-m{font-size:7px;vertical-align:middle;margin-right:5px;opacity:.55}
 .interview{padding:20px 16px;min-height:60vh;display:flex;flex-direction:column}
 .q-num{font-size:10px;color:#a89e97;letter-spacing:.1em;margin-bottom:8px}
@@ -4841,25 +4844,41 @@ function renderPlanDay(){
   out+='<button onclick="dpAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
   out+='</div></div>';
 
-  // the deep plan for this day, under the hours
-  var dpl=planForDate(_dpDate);
+  /* The deeper questions, open in place under the hours rather than behind a
+     button. Four of them, saved as you go. "מחר" only when the day really is
+     tomorrow - on any other day it names the day instead. */
+  var dpl=deepGet(),tm=wkStamp(new Date(Date.now()+86400000));
+  var when=(_dpDate===tm)?'מחר':('ביום '+WK_DAYS[d.getDay()]);
+  var feels=(dpl.feeling||'');
   out+='<div style="margin-top:24px;background:linear-gradient(150deg,#f5eefa,#eaf1f8);border-radius:22px;padding:18px 16px">';
-  out+='<div style="font-size:14px;font-weight:800;color:#4a4340">תכנון מעמיק</div>';
-  out+='<div style="font-size:11.5px;color:#7d746e;line-height:1.6;margin-top:6px">לא רשימה — הכוונה של היום, המסגרת שלו, ומה עלול להפריע.</div>';
-  if(dpl){
-    if(dpl.intent)out+='<div style="background:#fff;border-radius:14px;padding:12px 14px;margin-top:13px;font-size:12.5px;color:#4a4340;line-height:1.6">'+esc(dpl.intent)+'</div>';
-    if(Array.isArray(dpl.priorities)&&dpl.priorities.length){
-      out+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">';
-      for(i=0;i<dpl.priorities.length;i++){
-        var pv=dpl.priorities[i];
-        out+='<span style="background:#fff;border-radius:10px;padding:5px 10px;font-size:10.5px;font-weight:700;color:#5f5148">'+esc(typeof pv==='string'?pv:(pv&&pv.text)||'')+'</span>';
-      }
-      out+='</div>';
-    }
-    out+='<button onclick="planDeep()" style="width:100%;background:#fff;border:none;border-radius:13px;padding:12px;font-size:12.5px;font-weight:800;cursor:pointer;color:#a690cf;font-family:inherit;margin-top:13px">ערוך את התכנון</button>';
-  } else {
-    out+='<button onclick="planDeep()" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:13px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit;margin-top:14px">התחל תכנון מעמיק</button>';
+
+  out+='<div class="dp-q">מה חשוב לך ש'+(when==='מחר'?'מחר':when.replace('ביום ','ביום '))+' יקרה?</div>';
+  out+='<textarea id="dp-intent" class="dp-ta" onblur="deepSaveText()" placeholder="לא רשימה — מה על הלב שלך?">'+esc(dpl.intent||'')+'</textarea>';
+
+  out+='<div class="dp-q" style="margin-top:20px">איך אני רוצה להרגיש '+when+'?</div>';
+  out+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
+  for(i=0;i<PLAN_FEELINGS.length;i++){
+    var fl=PLAN_FEELINGS[i],on=feels.indexOf(fl)>=0;
+    out+='<button onclick="deepToggleFeeling(\''+fl+'\')" style="border:2px solid '+(on?'#a690cf':'#eee7f5')+';border-radius:16px;padding:9px 14px;cursor:pointer;background:'+(on?'#fff':'rgba(255,255,255,.6)')+';font-size:12.5px;font-weight:700;color:'+(on?'#7d63b8':'#8d847d')+';font-family:inherit">'+PLAN_FEELING_EMOJIS[fl]+' '+fl+'</button>';
   }
+  out+='</div>';
+
+  out+='<div class="dp-q" style="margin-top:20px">מה עלול להפריע?</div>';
+  out+='<textarea id="dp-blocker" class="dp-ta" onblur="deepSaveText()" placeholder="למשל: אני נוטה להימרח בבוקר...">'+esc(dpl.blocker||'')+'</textarea>';
+
+  out+='<div class="dp-q" style="margin-top:20px">דברים שחשוב לזכור</div>';
+  var rems=Array.isArray(dpl.reminders)?dpl.reminders:[];
+  for(i=0;i<rems.length;i++){
+    out+='<div style="display:flex;align-items:center;gap:9px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:6px">';
+    out+='<span style="width:5px;height:5px;border-radius:50%;background:#a690cf;flex-shrink:0"></span>';
+    out+='<div style="flex:1;min-width:0;font-size:12.5px;color:#4a4340;line-height:1.45">'+esc(rems[i])+'</div>';
+    out+='<button onclick="deepDelRemember('+i+')" style="background:none;border:none;color:#e0c4bb;font-size:14px;cursor:pointer;font-family:inherit">&times;</button></div>';
+  }
+  out+='<div style="display:flex;gap:8px;margin-top:'+(rems.length?'4px':'0')+'">';
+  out+='<input id="dp-rem" class="mtin" style="flex:1;margin-bottom:0" placeholder="למשל: להתקשר לדניאל" onkeydown="if(event.key===\'Enter\')deepAddRemember()">';
+  out+='<button onclick="deepAddRemember()" style="background:#fff;border:none;border-radius:11px;padding:0 16px;font-size:18px;font-weight:700;cursor:pointer;color:#a690cf;flex-shrink:0;font-family:inherit">+</button>';
+  out+='</div>';
+
   out+='</div>';
 
   out+='</div>';
@@ -4891,12 +4910,55 @@ function dpShift(dir){
   _dpDate=wkStamp(d);_dpPick='';renderPlanDay();
 }
 function planOpenDay(date){_planMode='day';_dpDate=date;renderPlanning();window.scrollTo(0,0);}
-// The wizard, opened for the day whose grid it sits under.
-function planDeep(){
-  var prev=planForDate(_dpDate);
-  _planFor=_dpDate;_planFrom='day';_planMode='daily';_planStep=0;
-  _planData=prev?Object.assign({},prev):{intent:'',anchors:[],goal:'',subgoal:'',priorities:[],feeling:'',blocker:'',blockerSolution:'',reminders:[]};
-  renderPlanning();window.scrollTo(0,0);
+
+/* The deeper answers live in plan_history keyed by the day, the same store
+   the planning journal reads, and are written as they are given rather than
+   at the end of a flow. */
+function deepGet(){return planForDate(_dpDate)||{};}
+function deepSave(patch){
+  var hist=loadPlanHistory(),out=[],rec=null,i,k;
+  for(i=0;i<hist.length;i++){
+    if(hist[i].forDate===_dpDate)rec=hist[i];else out.push(hist[i]);
+  }
+  rec=rec||{forDate:_dpDate};
+  for(k in patch)if(Object.prototype.hasOwnProperty.call(patch,k))rec[k]=patch[k];
+  rec.forDate=_dpDate;rec.date=Date.now();
+  out.unshift(rec);
+  if(out.length>60)out=out.slice(0,60);
+  savePlanHistory(out);
+}
+// Typed text is read straight off the screen, so nothing is lost when a chip
+// or a reminder triggers a re-render.
+function deepSaveText(){
+  var a=document.getElementById('dp-intent'),b=document.getElementById('dp-blocker');
+  if(!a&&!b)return;
+  deepSave({intent:a?a.value.trim():(deepGet().intent||''),
+            blocker:b?b.value.trim():(deepGet().blocker||'')});
+}
+function deepToggleFeeling(f){
+  deepSaveText();
+  var cur=(deepGet().feeling||'').split(',').filter(function(x){return x;});
+  var i=cur.indexOf(f);
+  if(i>=0)cur.splice(i,1);else cur.push(f);
+  deepSave({feeling:cur.join(',')});
+  renderPlanDay();
+}
+function deepAddRemember(){
+  var el=document.getElementById('dp-rem');
+  if(!el||!el.value.trim())return;
+  deepSaveText();
+  var list=(Array.isArray(deepGet().reminders)?deepGet().reminders:[]).slice();
+  list.push(el.value.trim());
+  deepSave({reminders:list});
+  renderPlanDay();
+  setTimeout(function(){var e=document.getElementById('dp-rem');if(e)e.focus();},40);
+}
+function deepDelRemember(i){
+  deepSaveText();
+  var list=(Array.isArray(deepGet().reminders)?deepGet().reminders:[]).slice();
+  list.splice(i,1);
+  deepSave({reminders:list});
+  renderPlanDay();
 }
 
 /* ── the drag ── */
@@ -5024,6 +5086,9 @@ function renderPlanHome(){
 function planGo(mode){
   _planMode=mode;
   if(mode==='daily'){
+    _planMode='day';_dpDate=wkStamp(new Date(Date.now()+86400000));renderPlanning();window.scrollTo(0,0);return;
+  }
+  if(false){
     _planFor='';_planFrom='';_planStep=0;
     _planData={intent:'',anchors:[],goal:'',subgoal:'',priorities:[],feeling:'',blocker:'',blockerSolution:'',reminders:[]};
   }
