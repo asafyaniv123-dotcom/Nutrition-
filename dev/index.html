@@ -265,6 +265,11 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 @keyframes dp-fine-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .dp-fine-b{background:#fff;border:1.5px solid #e4ddd4;border-radius:7px;padding:7px 2px;font-size:10px;font-weight:700;color:#a89e97;text-align:center;direction:ltr;transition:all .12s}
 .dp-fine-b.on{background:linear-gradient(135deg,#bfe0c7,#8fc79e);border-color:#8fc79e;color:#fff;transform:scale(1.06)}
+/* pulling down the hour column to say how long something runs */
+.dp-row.reach .dp-h{background:linear-gradient(135deg,#f0eafa,#e8dff5);color:#7d63b8}
+.dp-ghost-end{opacity:.35!important}
+.dp-spans{display:flex;flex-direction:column;gap:2px;justify-content:center;padding:0 4px;flex-shrink:0}
+.dp-span{width:3px;height:14px;border-radius:2px;display:block;opacity:.65}
 .interview{padding:20px 16px;min-height:60vh;display:flex;flex-direction:column}
 .q-num{font-size:10px;color:#a89e97;letter-spacing:.1em;margin-bottom:8px}
 .q-text{font-size:20px;font-weight:700;margin-bottom:24px;line-height:1.4}
@@ -4695,8 +4700,8 @@ var DP_FROM=6,DP_TO=23;
 function dpKey(date){return 'dplan_'+date;}
 function loadDPlan(date){
   try{var x=localStorage.getItem(dpKey(date));var o=x?JSON.parse(x):null;
-    if(o&&Array.isArray(o.items))return{items:o.items,hours:o.hours||{},mins:o.mins||{},notes:o.notes||{}};}catch(e){}
-  return{items:[],hours:{},mins:{},notes:{}};
+    if(o&&Array.isArray(o.items))return{items:o.items,hours:o.hours||{},mins:o.mins||{},ends:o.ends||{},notes:o.notes||{}};}catch(e){}
+  return{items:[],hours:{},mins:{},ends:{},notes:{}};
 }
 function saveDPlan(date,o){try{localStorage.setItem(dpKey(date),JSON.stringify(o));}catch(e){}}
 
@@ -4708,18 +4713,18 @@ function dpAll(date){
     if(wk.tasks[i].d!==date)continue;
     var hv=dp.hours[wk.tasks[i].id];
     out.push({id:wk.tasks[i].id,w:wk.tasks[i].w,c:wk.tasks[i].c,
-              hour:(typeof hv==='number'?hv:null),min:dp.mins[wk.tasks[i].id]||0,src:'week',slot:wkSlotOf(wk.tasks[i])});
+              hour:(typeof hv==='number'?hv:null),min:dp.mins[wk.tasks[i].id]||0,end:dp.ends[wk.tasks[i].id]||0,src:'week',slot:wkSlotOf(wk.tasks[i])});
   }
   // whatever the month put on this date arrives the same way the week's does
   var mt=moTasksOn(date);
   for(i=0;i<mt.length;i++){
     var mh=dp.hours[mt[i].id];
     out.push({id:mt[i].id,w:mt[i].w,c:mt[i].c,
-              hour:(typeof mh==='number'?mh:null),min:dp.mins[mt[i].id]||0,src:'month'});
+              hour:(typeof mh==='number'?mh:null),min:dp.mins[mt[i].id]||0,end:dp.ends[mt[i].id]||0,src:'month'});
   }
   for(i=0;i<dp.items.length;i++)
     out.push({id:dp.items[i].id,w:dp.items[i].w,c:dp.items[i].c,n:dp.items[i].n||'',
-              hour:(typeof dp.items[i].h==='number'?dp.items[i].h:null),min:dp.items[i].mn||0,src:'day'});
+              hour:(typeof dp.items[i].h==='number'?dp.items[i].h:null),min:dp.items[i].mn||0,end:dp.items[i].e||0,src:'day'});
   return out;
 }
 // A note on a week task lives on the day, like its hour, so the week record
@@ -4845,6 +4850,28 @@ function dpCloseFine(){
     f[i].remove();
   }
 }
+// End times are minutes from midnight, so a task can run past its own hour.
+function dpSetEnd(id,mins){
+  var dp=loadDPlan(_dpDate),i,found=false;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id===id){
+    if(mins)dp.items[i].e=mins;else delete dp.items[i].e;
+    found=true;
+  }
+  if(!found){
+    if(mins)dp.ends[id]=mins;else delete dp.ends[id];
+  }
+  saveDPlan(_dpDate,dp);renderPlanDay();
+}
+function dpMins(t){return (t.hour||0)*60+(t.min||0);}
+function dpFmt(mins){return dpHM(Math.floor(mins/60),mins%60);}
+function dpHitHourLabel(x,y){
+  var b=document.querySelectorAll('.dp-h'),i,r;
+  for(i=0;i<b.length;i++){
+    r=b[i].getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return b[i];
+  }
+  return null;
+}
 function dpHitFine(x,y){
   var b=document.querySelectorAll('.dp-fine-b'),i,r;
   for(i=0;i<b.length;i++){
@@ -4873,7 +4900,16 @@ function renderPlanDay(){
   // the hours
   out+='<div class="dp-grid">';
   for(h=DP_FROM;h<=DP_TO;h++){
-    out+='<div class="dp-row"><div class="dp-h">'+dpHH(h)+'</div>';
+    out+='<div class="dp-row" data-hrow="'+h+'"><div class="dp-h" data-hour="'+h+'">'+dpHH(h)+'</div>';
+    // a thin bar in the hours a task runs through, after the one it starts in
+    var spans='';
+    for(i=0;i<all.length;i++){
+      if(all[i].hour===null||!all[i].end)continue;
+      if(all[i].hour>=h)continue;
+      if(all[i].end<=h*60)continue;
+      spans+='<span class="dp-span" style="background:'+wkColor(all[i].c).dot+'"></span>';
+    }
+    if(spans)out+='<div class="dp-spans">'+spans+'</div>';
     out+='<div class="dp-slot" data-hour="'+h+'">';
     // within an hour, earlier minutes first
     var inHour=[];
@@ -4883,7 +4919,8 @@ function renderPlanDay(){
       var c=wkColor(inHour[i].c);
       var nt=dpNoteOf(inHour[i].id);
       out+='<div class="dp-chip" data-task="'+inHour[i].id+'" style="background:'+c.bg+';color:'+c.tx+'">';
-      if(inHour[i].min)out+='<span class="dp-min">'+dpHM(h,inHour[i].min)+'</span>';
+      if(inHour[i].end)out+='<span class="dp-min">'+dpFmt(dpMins(inHour[i]))+'&ndash;'+dpFmt(inHour[i].end)+'</span>';
+      else if(inHour[i].min)out+='<span class="dp-min">'+dpHM(h,inHour[i].min)+'</span>';
       out+=esc(inHour[i].w)+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
     }
     out+='</div></div>';
@@ -5051,7 +5088,9 @@ function dpDown(e){
   document.body.appendChild(g);
   el.style.opacity='.3';
   _dpDrag={id:el.getAttribute('data-task'),lib:el.getAttribute('data-lib')||'',g:g,src:el,
-           dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};
+           dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false,
+           // only a chip already sitting on an hour can be given an end time
+           canEnd:el.classList.contains('dp-chip'),mode:'move'};
   window.addEventListener('pointermove',dpMove);
   window.addEventListener('pointerup',dpUp);
   window.addEventListener('pointercancel',dpUp);
@@ -5080,6 +5119,16 @@ function dpMove(e){
   _dpDrag.moved=true;
   _dpDrag.g.style.left=(e.clientX-_dpDrag.dx)+'px';
   _dpDrag.g.style.top=(e.clientY-_dpDrag.dy)+'px';
+  /* Sliding onto the hour column turns the gesture into "how long does this
+     run", and it stays that way - the finger is already off the task, so
+     switching back mid-pull would be a surprise. */
+  if(_dpDrag.mode==='move'&&_dpDrag.canEnd&&dpHitHourLabel(e.clientX,e.clientY)){
+    _dpDrag.mode='end';
+    _dpDrag.g.classList.add('dp-ghost-end');
+    dpCloseFine();_dpDrag.lastHit=null;clearTimeout(_dpDrag.holdT);
+  }
+  if(_dpDrag.mode==='end'){dpMoveEnd(e);return;}
+
   var hit=dpHitSlot(e.clientX,e.clientY),s=document.querySelectorAll('.dp-slot'),i;
   for(i=0;i<s.length;i++)s[i].classList.toggle('hot',s[i]===hit);
 
@@ -5095,9 +5144,64 @@ function dpMove(e){
   var fb=dpHitFine(e.clientX,e.clientY),all=document.querySelectorAll('.dp-fine-b');
   for(i=0;i<all.length;i++)all[i].classList.toggle('on',all[i]===fb);
 }
+/* Pulling down the hour column marks out how far the task runs. Waiting on an
+   hour opens the same five-minute steps, so the end can be exact too. */
+function dpMoveEnd(e){
+  var t=dpFind(_dpDrag.id);
+  if(!t||t.hour===null)return;
+  var lbl=dpHitHourLabel(e.clientX,e.clientY);
+  var fineB=dpHitFine(e.clientX,e.clientY),i;
+  var rows=document.querySelectorAll('.dp-row'),startM=dpMins(t);
+  var upto=fineB?parseInt(fineB.getAttribute('data-hour'),10)
+                :(lbl?parseInt(lbl.getAttribute('data-hour'),10):null);
+  for(i=0;i<rows.length;i++){
+    var rh=parseInt(rows[i].getAttribute('data-hrow'),10);
+    rows[i].classList.toggle('reach',upto!==null&&rh>=t.hour&&rh<=upto);
+  }
+  // Once the steps are open the finger moves off the hour column onto them,
+  // which must not read as leaving.
+  if(!fineB&&lbl!==_dpDrag.lastLbl){
+    _dpDrag.lastLbl=lbl;
+    clearTimeout(_dpDrag.holdT);
+    dpCloseFine();
+    // no point offering minutes in an hour that ends before the task starts
+    if(lbl&&parseInt(lbl.getAttribute('data-hour'),10)*60+59>startM){
+      _dpDrag.holdT=setTimeout(function(){
+        if(_dpDrag&&_dpDrag.lastLbl===lbl){
+          var row=lbl.parentElement;
+          dpOpenFine(row.querySelector('.dp-slot'));
+        }
+      },DP_HOLD);
+    }
+  }
+  var all=document.querySelectorAll('.dp-fine-b');
+  for(i=0;i<all.length;i++)all[i].classList.toggle('on',all[i]===fineB);
+}
+function dpClearReach(){
+  var r=document.querySelectorAll('.dp-row'),i;
+  for(i=0;i<r.length;i++)r[i].classList.remove('reach');
+}
+
 function dpUp(e){
   if(!_dpDrag)return;
   clearTimeout(_dpDrag.holdT);
+  if(_dpDrag.mode==='end'){
+    var t=dpFind(_dpDrag.id);
+    var fb=dpHitFine(e.clientX,e.clientY),lb=dpHitHourLabel(e.clientX,e.clientY);
+    var mins=fb?parseInt(fb.getAttribute('data-hour'),10)*60+parseInt(fb.getAttribute('data-min'),10)
+               :(lb?parseInt(lb.getAttribute('data-hour'),10)*60:null);
+    try{_dpDrag.g.remove();}catch(err){}
+    if(_dpDrag.src)_dpDrag.src.style.opacity='';
+    window.removeEventListener('pointermove',dpMove);
+    window.removeEventListener('pointerup',dpUp);
+    window.removeEventListener('pointercancel',dpUp);
+    var eid=_dpDrag.id;_dpDrag=null;
+    dpCloseFine();dpClearReach();
+    // an end at or before the start is no end at all
+    if(mins!==null&&t&&mins>dpMins(t))dpSetEnd(eid,mins);
+    else renderPlanDay();
+    return;
+  }
   // A release on an opened five-minute step wins over the hour behind it.
   var fine=dpHitFine(e.clientX,e.clientY);
   var fineH=fine?parseInt(fine.getAttribute('data-hour'),10):null;
