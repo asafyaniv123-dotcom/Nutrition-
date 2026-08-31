@@ -268,8 +268,12 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 /* pulling down the hour column to say how long something runs */
 .dp-row.reach .dp-h{background:linear-gradient(135deg,#f0eafa,#e8dff5);color:#7d63b8}
 .dp-ghost-end{opacity:.35!important}
-.dp-spans{display:flex;flex-direction:column;gap:2px;justify-content:center;padding:0 4px;flex-shrink:0}
-.dp-span{width:3px;height:14px;border-radius:2px;display:block;opacity:.65}
+/* a task that runs past its hour, carried on down the grid */
+.dp-chip.head{width:100%;border-bottom-right-radius:0;border-bottom-left-radius:0;margin-bottom:-5px;min-height:39px;display:flex;align-items:center;box-sizing:border-box}
+/* min-height in per cent does not resolve inside a wrapping flex row, so the
+   band is sized to the row instead: 44px less the slot's 5px padding. */
+.dp-cont{width:100%;border-radius:0;padding:0 9px;font-size:11.5px;font-weight:700;line-height:1.3;opacity:.72;margin:-5px 0;min-height:44px;box-sizing:border-box;display:flex;align-items:center}
+.dp-cont.tail{border-bottom-right-radius:8px;border-bottom-left-radius:8px;margin-bottom:-5px;min-height:39px}
 .interview{padding:20px 16px;min-height:60vh;display:flex;flex-direction:column}
 .q-num{font-size:10px;color:#a89e97;letter-spacing:.1em;margin-bottom:8px}
 .q-text{font-size:20px;font-weight:700;margin-bottom:24px;line-height:1.4}
@@ -4901,16 +4905,20 @@ function renderPlanDay(){
   out+='<div class="dp-grid">';
   for(h=DP_FROM;h<=DP_TO;h++){
     out+='<div class="dp-row" data-hrow="'+h+'"><div class="dp-h" data-hour="'+h+'">'+dpHH(h)+'</div>';
-    // a thin bar in the hours a task runs through, after the one it starts in
-    var spans='';
-    for(i=0;i<all.length;i++){
-      if(all[i].hour===null||!all[i].end)continue;
-      if(all[i].hour>=h)continue;
-      if(all[i].end<=h*60)continue;
-      spans+='<span class="dp-span" style="background:'+wkColor(all[i].c).dot+'"></span>';
-    }
-    if(spans)out+='<div class="dp-spans">'+spans+'</div>';
     out+='<div class="dp-slot" data-hour="'+h+'">';
+
+    /* Something running past its hour keeps going down the grid: a full-width
+       band in the hour it starts, and another in each hour it reaches, joined
+       by squared-off edges so it reads as one block crossing the lines. */
+    for(i=0;i<all.length;i++){
+      var ct=all[i];
+      if(ct.hour===null||!ct.end)continue;
+      var lastH=Math.floor((ct.end-1)/60);
+      if(lastH<=ct.hour||h<=ct.hour||h>lastH)continue;
+      var cc=wkColor(ct.c);
+      out+='<div class="dp-cont'+(h===lastH?' tail':'')+'" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(ct.w)+'</div>';
+    }
+
     // within an hour, earlier minutes first
     var inHour=[];
     for(i=0;i<all.length;i++)if(all[i].hour===h)inHour.push(all[i]);
@@ -4918,7 +4926,8 @@ function renderPlanDay(){
     for(i=0;i<inHour.length;i++){
       var c=wkColor(inHour[i].c);
       var nt=dpNoteOf(inHour[i].id);
-      out+='<div class="dp-chip" data-task="'+inHour[i].id+'" style="background:'+c.bg+';color:'+c.tx+'">';
+      var runsOn=inHour[i].end&&Math.floor((inHour[i].end-1)/60)>h;
+      out+='<div class="dp-chip'+(runsOn?' head':'')+'" data-task="'+inHour[i].id+'" style="background:'+c.bg+';color:'+c.tx+'">';
       if(inHour[i].end)out+='<span class="dp-min">'+dpFmt(dpMins(inHour[i]))+'&ndash;'+dpFmt(inHour[i].end)+'</span>';
       else if(inHour[i].min)out+='<span class="dp-min">'+dpHM(h,inHour[i].min)+'</span>';
       out+=esc(inHour[i].w)+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
@@ -5151,6 +5160,7 @@ function dpMoveEnd(e){
   if(!t||t.hour===null)return;
   var lbl=dpHitHourLabel(e.clientX,e.clientY);
   var fineB=dpHitFine(e.clientX,e.clientY),i;
+  var all=document.querySelectorAll('.dp-fine-b');
   var rows=document.querySelectorAll('.dp-row'),startM=dpMins(t);
   var upto=fineB?parseInt(fineB.getAttribute('data-hour'),10)
                 :(lbl?parseInt(lbl.getAttribute('data-hour'),10):null);
@@ -5158,8 +5168,16 @@ function dpMoveEnd(e){
     var rh=parseInt(rows[i].getAttribute('data-hrow'),10);
     rows[i].classList.toggle('reach',upto!==null&&rh>=t.hour&&rh<=upto);
   }
-  // Once the steps are open the finger moves off the hour column onto them,
-  // which must not read as leaving.
+  /* Getting from the hour column to the steps takes the finger across gaps
+     that belong to neither, and the row grows when they open, moving
+     everything under it. So once they are open only a deliberate move to a
+     different hour closes them - never a wobble on the way. */
+  var openRow=document.querySelector('.dp-slot.fine');
+  var leavingForAnother=lbl&&openRow&&lbl.parentElement!==openRow.parentElement;
+  if(openRow&&!leavingForAnother){
+    for(i=0;i<all.length;i++)all[i].classList.toggle('on',all[i]===fineB);
+    return;
+  }
   if(!fineB&&lbl!==_dpDrag.lastLbl){
     _dpDrag.lastLbl=lbl;
     clearTimeout(_dpDrag.holdT);
@@ -5174,7 +5192,6 @@ function dpMoveEnd(e){
       },DP_HOLD);
     }
   }
-  var all=document.querySelectorAll('.dp-fine-b');
   for(i=0;i<all.length;i++)all[i].classList.toggle('on',all[i]===fineB);
 }
 function dpClearReach(){
