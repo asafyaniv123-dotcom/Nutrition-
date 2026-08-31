@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#e8dff5">
@@ -390,11 +390,11 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 /* ── THE TWO HALVES ── */
 /* ltr on purpose: read left to right the two buttons spell the app's name, so
    Better must sit left of Me even though everything around them is rtl */
-.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:140;direction:ltr;display:flex;gap:8px;padding:8px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(250,246,241,.94);backdrop-filter:blur(12px);border-top:1px solid rgba(190,175,160,.22)}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:140;direction:ltr;display:flex;gap:8px;padding:8px 16px max(24px,calc(env(safe-area-inset-bottom) + 10px));background:rgba(250,246,241,.94);backdrop-filter:blur(12px);border-top:1px solid rgba(190,175,160,.22)}
 .tb{flex:1;background:none;border:none;border-radius:14px;padding:11px 6px;font-family:inherit;font-size:15px;font-weight:800;letter-spacing:-.2px;color:#b9b0a8;cursor:pointer;transition:color .2s,background .2s;direction:ltr}
 .tb.on{color:#fff;background:linear-gradient(135deg,#c9bce0,#a690cf);box-shadow:0 4px 14px rgba(166,144,207,.32)}
-.app,.home{padding-bottom:96px}
-.me-screen{display:none;min-height:100vh;background:linear-gradient(165deg,#f4efe8 0%,#eee7f2 100%);padding:34px 16px 100px}
+.app,.home{padding-bottom:118px}
+.me-screen{display:none;min-height:100vh;background:linear-gradient(165deg,#f4efe8 0%,#eee7f2 100%);padding:34px 16px 122px}
 .me-wrap{max-width:480px;margin:0 auto}
 .me-top{text-align:center;margin-bottom:18px}
 .me-logo{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1;direction:ltr;background:linear-gradient(135deg,#a690cf,#e08a72);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
@@ -402,6 +402,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .me-range{display:flex;gap:5px;background:rgba(255,255,255,.6);border-radius:13px;padding:4px;margin-bottom:14px}
 .me-rb{flex:1;border:none;border-radius:10px;padding:8px 4px;font-family:inherit;font-size:11.5px;font-weight:700;color:#a89e97;background:none;cursor:pointer}
 .me-rb.on{background:#fff;color:#4a4340;box-shadow:0 2px 7px rgba(200,180,160,.2)}
+.me-slot{margin-bottom:12px}
 .me-hero{background:#fff;border-radius:22px;padding:20px;text-align:center;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12)}
 .me-hero-n{font-size:40px;font-weight:800;color:#7c5cc4;line-height:1}
 .me-hero-l{font-size:11.5px;color:#a89e97;margin-top:6px}
@@ -8696,15 +8697,17 @@ function renderMe(){
   h+='<div class="me-top"><div class="me-logo">Me</div>';
   h+='<div class="me-sub">מה שהימים מצטברים אליו</div></div>';
 
+  // the one number worth leading with
+  h+='<div class="me-hero"><div class="me-hero-n">'+done+'</div>';
+  h+='<div class="me-hero-l">ימים שסיכמת מתוך '+_meRange+'</div></div>';
+
+  h+='<div id="home-cal" class="me-slot"></div>';
+  h+='<div id="home-vision" class="me-slot"></div>';
   h+='<div class="me-range">';
   [[7,'שבוע'],[14,'שבועיים'],[30,'חודש']].forEach(function(o){
     h+='<button class="me-rb'+(_meRange===o[0]?' on':'')+'" onclick="_meRange='+o[0]+';renderMe()">'+o[1]+'</button>';
   });
   h+='</div>';
-
-  // the one number worth leading with
-  h+='<div class="me-hero"><div class="me-hero-n">'+done+'</div>';
-  h+='<div class="me-hero-l">ימים שסיכמת מתוך '+_meRange+'</div></div>';
 
   var ratings=[];
   for(i=0;i<rows.length;i++)if(rows[i].sum&&rows[i].sum.dayRating)ratings.push(rows[i].sum.dayRating);
@@ -8722,9 +8725,15 @@ function renderMe(){
 
   h+=meTimeSplit(rows);
   h+=meInsights(rows);
+  h+='<div id="home-book" class="me-slot"></div>';
 
   h+='</div>';
   document.getElementById('me-screen').innerHTML=h;
+  // the widgets render into the slots by id, exactly as they did on the home screen
+  var cal=document.getElementById('home-cal');
+  if(cal)cal.innerHTML=buildHomeCalHTML();
+  renderVisionBoard();
+  renderBookWidget();
 }
 
 /* The only place here that needs more than one colour, so the only place the
@@ -8868,11 +8877,10 @@ function showMain(t){
     '<div id="home-today" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
-    '<div id="home-cal" style="width:100%;max-width:380px;margin-top:20px"></div>'+
-    '<div id="home-vision" style="width:100%;max-width:380px;margin-top:16px"></div>'+
+
     '<div id="home-reminders" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="home-sumrem" style="width:100%;max-width:380px;margin-top:16px"></div>'+
-    '<div id="home-book" style="width:100%;max-width:380px;margin-top:16px;margin-bottom:20px"></div>'+'<div id="home-backup" style="width:100%;max-width:380px;margin-bottom:20px"></div>';
+'<div id="home-backup" style="width:100%;max-width:380px;margin-bottom:20px"></div>';
   document.body.appendChild(home);
 
   var me=document.createElement('div');
@@ -8889,7 +8897,8 @@ function showMain(t){
   var dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   var mn=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   document.getElementById('home-date').textContent=dn[d.getDay()]+', '+d.getDate()+' ב'+mn[d.getMonth()];
-  document.getElementById('home-cal').innerHTML=buildHomeCalHTML();
+  var _hc=document.getElementById('home-cal');
+  if(_hc)_hc.innerHTML=buildHomeCalHTML();
   migratePhotos();
   ingestStepsFromLink();
   syncStepsFromServer();
