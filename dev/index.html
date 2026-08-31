@@ -1358,8 +1358,9 @@ function scanOpen(){
    The camera is driven directly rather than through the library's own
    scanning loop, so the frame that gets decoded is the sensor's, at whatever
    resolution the phone will give. */
-var _scanStream=null;
+var _scanStream=null,_scanBusy=false;
 function scanCamStart(){
+  _scanBusy=false;
   var v=document.getElementById('scan-video');
   if(!v)return;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -1382,6 +1383,9 @@ function scanCamStart(){
       scanMsg('החזק את הברקוד בתוך המסגרת, קרוב ומלא רוחב &mdash; ואז לחץ סרוק');
     })
     .catch(function(err){
+      // getUserMedia can settle long after the shutter has been pressed, and
+      // a stale camera complaint must not paint over the read's own message
+      if(_scanBusy)return;
       var m=String((err&&(err.name+' '+err.message))||err||'');
       if(/NotAllowed|Permission|Denied/i.test(m))
         scanMsg('אין הרשאה למצלמה. אפשר לאשר בהגדרות האתר, לבחור תמונה, או להקליד את הספרות.');
@@ -1400,6 +1404,7 @@ function scanCamStop(){
   if(v){try{v.pause();v.srcObject=null;}catch(e){}}
 }
 function scanUnfreeze(){
+  _scanBusy=false;
   var c=document.getElementById('scan-frozen'),v=document.getElementById('scan-video'),b=document.getElementById('scan-shot');
   if(c)c.classList.remove('on');
   if(v)v.style.visibility='';
@@ -1411,6 +1416,7 @@ function scanShoot(){
   if(!v||!c||!v.videoWidth){scanMsg('המצלמה עוד לא מוכנה.');return;}
   c.width=v.videoWidth;c.height=v.videoHeight;
   c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+  _scanBusy=true;
   c.classList.add('on');
   v.style.visibility='hidden';
   if(b){b.disabled=true;b.textContent='מפענח…';}
@@ -1435,6 +1441,118 @@ function scanShoot(){
    A grey pass is tried too, stretched to full black-and-white, for the case
    the tests could not fake: a shiny wrapper under a ceiling light, where the
    bars are dark grey on light grey rather than black on white. */
+/* ── READING THE DIGITS ──
+   When the bars will not read, the number printed under them still will.
+
+   The reason this is safe rather than a guess is the check digit: the last
+   figure of a barcode is computed from the ones before it, so a misread is
+   almost always arithmetically impossible and gets thrown away instead of
+   sending us to look up somebody else's product. Only a number that checks
+   out is looked up; digits that do not check out are put in the box below
+   for you to correct, which still beats typing thirteen figures from
+   scratch.
+
+   Tesseract is fetched when it is first needed rather than shipped: it is
+   several megabytes, and this whole flow already needs the network anyway -
+   a barcode is nothing without the lookup that turns it into a product. */
+var TESS_URL='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+var _tessLib=null;
+function tessLoad(){
+  if(_tessLib)return _tessLib;
+  _tessLib=new Promise(function(res,rej){
+    if(window.Tesseract){res();return;}
+    var s=document.createElement('script');
+    s.src=TESS_URL;
+    s.onload=function(){window.Tesseract?res():rej(new Error('empty'));};
+    s.onerror=function(){rej(new Error('failed'));};
+    document.head.appendChild(s);
+  });
+  return _tessLib;
+}
+// the last digit is computed from the rest, which is what makes a read
+// trustworthy enough to act on
+function gtinValid(s){
+  if(!/^\d+$/.test(s))return false;
+  if([8,12,13,14].indexOf(s.length)<0)return false;
+  var sum=0,mul=3,i;
+  for(i=s.length-2;i>=0;i--){sum+=(+s[i])*mul;mul=(mul===3)?1:3;}
+  return ((10-(sum%10))%10)===(+s[s.length-1]);
+}
+/* Pull the runs of digits out of the text and keep the ones that check.
+   Only whole runs are tested, plus 13-digit windows of a longer one. Short
+   substrings are deliberately not fished out of long ones: any random eight
+   digits pass the check one time in ten, so hunting for an EAN-8 inside a
+   thirteen-digit run manufactures a plausible wrong answer out of a misread,
+   which is worse than admitting the read failed. */
+function gtinFrom(text){
+  var runs=String(text||'').match(/\d{6,}/g)||[],out=[],i,r,k,sub;
+  for(i=0;i<runs.length;i++){
+    r=runs[i];
+    if(gtinValid(r)&&out.indexOf(r)<0)out.push(r);
+    if(r.length>13)
+      for(k=0;k+13<=r.length;k++){
+        sub=r.substr(k,13);
+        if(gtinValid(sub)&&out.indexOf(sub)<0)out.push(sub);
+      }
+  }
+  out.sort(function(a,b){return b.length-a.length;});
+  return {valid:out,longest:runs.slice().sort(function(a,b){return b.length-a.length;})[0]||''};
+}
+function ocrDigits(cv){
+  return tessLoad().then(function(){
+    return Tesseract.createWorker('eng').then(function(w){
+      return w.setParameters({tessedit_char_whitelist:'0123456789'})
+        .then(function(){return w.recognize(cv);})
+        .then(function(r){
+          var t=(r&&r.data&&r.data.text)||'';
+          return w.terminate().then(function(){return t;},function(){return t;});
+        })
+        .catch(function(e){
+          try{w.terminate();}catch(x){}
+          throw e;
+        });
+    });
+  });
+}
+function scanReadDigits(){
+  var c=document.getElementById('scan-frozen');
+  if(!c)return;
+  scanMsg('הפסים לא נקראו. קורא את הספרות…');
+  var views=[c,scanContrast(c),scanRotate(c,90),scanRotate(c,270)];
+  var i=0,best='';
+  function next(){
+    if(i>=views.length){scanDigitsFailed(best);return;}
+    var v=views[i++];
+    scanMsg('קורא את הספרות… '+i+'/'+views.length);
+    ocrDigits(v).then(function(text){
+      var g=gtinFrom(text);
+      if(g.valid.length){scanCamStop();barcodeLookup(g.valid[0]);return;}
+      if(g.longest.length>best.length)best=g.longest;
+      next();
+    }).catch(function(){
+      scanMsg('לא הצלחתי לטעון את קורא הספרות. אפשר להקליד אותן למטה.');
+      scanRetryButton();
+    });
+  }
+  next();
+}
+function scanDigitsFailed(best){
+  var f=document.getElementById('scan-code');
+  if(best&&f){
+    f.value=best;
+    scanMsg('קראתי <b>'+esc(best)+'</b> אבל זה לא מסתדר עם ספרת הביקורת. תקן מה שצריך ולחץ חפש.');
+    try{f.focus();}catch(e){}
+  } else {
+    scanMsg('לא הצלחתי לקרוא. אפשר להקליד את הספרות שמתחת לפסים &mdash; זה תמיד עובד.');
+    if(f)try{f.focus();}catch(e){}
+  }
+  scanRetryButton();
+}
+function scanRetryButton(){
+  var b=document.getElementById('scan-shot');
+  if(b){b.disabled=false;b.textContent='נסה שוב';b.onclick=function(){this.onclick=scanShoot;scanUnfreeze();};}
+}
+
 function scanRotate(src,deg){
   if(!deg)return src;
   var swap=(deg===90||deg===270);
@@ -1491,14 +1609,7 @@ function scanDecodeFrozen(){
     ];
     var i=0;
     function next(){
-      if(i>=plan.length){
-        scanMsg('לא זיהיתי ברקוד. אפשר להקליד את הספרות שמתחת לפסים &mdash; זה תמיד עובד.');
-        var b=document.getElementById('scan-shot');
-        if(b){b.disabled=false;b.textContent='נסה שוב';b.onclick=function(){this.onclick=scanShoot;scanUnfreeze();};}
-        var f=document.getElementById('scan-code');
-        if(f)f.focus();
-        return;
-      }
+      if(i>=plan.length){scanReadDigits();return;}
       var step=plan[i++];
       scanMsg('מפענח… '+i+'/'+plan.length);
       var img;
@@ -1542,7 +1653,20 @@ function scanPhoto(input){
   scanLibLoad().then(function(){
     scanDecodeBlob(f).then(function(txt){
       if(txt){scanCamStop();barcodeLookup(String(txt).trim());}
-      else scanMsg('לא זיהיתי ברקוד בתמונה. נסה קרוב יותר וישר, או הקלד את הספרות.');
+      else{
+        var c=document.getElementById('scan-frozen');
+        if(c){
+          var im=new Image();
+          im.onload=function(){
+            c.width=im.naturalWidth;c.height=im.naturalHeight;
+            c.getContext('2d').drawImage(im,0,0);
+            URL.revokeObjectURL(im.src);
+            scanReadDigits();
+          };
+          im.onerror=function(){scanMsg('לא זיהיתי ברקוד בתמונה. אפשר להקליד את הספרות.');};
+          im.src=URL.createObjectURL(f);
+        } else scanMsg('לא זיהיתי ברקוד בתמונה. אפשר להקליד את הספרות.');
+      }
     });
   }).catch(function(){scanMsg('הסורק לא נטען. אפשר להקליד את הספרות למטה.');});
 }
