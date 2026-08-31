@@ -4665,6 +4665,7 @@ function wkMove(e){
   _wkDrag.moved=true;
   _wkDrag.g.style.left=(e.clientX-_wkDrag.dx)+'px';
   _wkDrag.g.style.top=(e.clientY-_wkDrag.dy)+'px';
+  dragEdgeScroll(e.clientX,e.clientY,wkMove);
   var hit=wkHitCell(e.clientX,e.clientY),cells=document.querySelectorAll('.wk-cell'),i;
   for(i=0;i<cells.length;i++)cells[i].classList.toggle('hot',cells[i]===hit);
   var p=document.getElementById('wk-pool');
@@ -4672,6 +4673,7 @@ function wkMove(e){
 }
 function wkUp(e){
   if(!_wkDrag)return;
+  dragScrollStop();
   var hit=wkHitCell(e.clientX,e.clientY);
   var onPool=!hit&&wkOverPool(e.clientX,e.clientY);
   try{_wkDrag.g.remove();}catch(err){}
@@ -5128,6 +5130,7 @@ function dpMove(e){
   _dpDrag.moved=true;
   _dpDrag.g.style.left=(e.clientX-_dpDrag.dx)+'px';
   _dpDrag.g.style.top=(e.clientY-_dpDrag.dy)+'px';
+  dragEdgeScroll(e.clientX,e.clientY,dpMove);
   /* Sliding onto the hour column turns the gesture into "how long does this
      run", and it stays that way - the finger is already off the task, so
      switching back mid-pull would be a surprise. */
@@ -5201,6 +5204,7 @@ function dpClearReach(){
 
 function dpUp(e){
   if(!_dpDrag)return;
+  dragScrollStop();
   clearTimeout(_dpDrag.holdT);
   if(_dpDrag.mode==='end'){
     var t=dpFind(_dpDrag.id);
@@ -5245,6 +5249,34 @@ function dpUp(e){
   else if(hit)dpAssign(id,parseInt(hit.getAttribute('data-hour'),10),0);
   else if(onPool)dpAssign(id,null);
   else renderPlanDay();
+}
+
+/* ── DRAG-EDGE SCROLLING ──
+   Everything is written at the bottom of these screens and most of the grid is
+   above the fold, so without this the early hours simply cannot be reached: a
+   finger that leaves the viewport has nowhere to drop. Holding the drag near
+   the top or bottom edge scrolls the page under it, faster the closer to the
+   edge, and the hit test re-runs on every tick so the highlight keeps up. */
+var _dragScroll=null,DRAG_EDGE=95;
+function dragEdgeScroll(x,y,onTick){
+  var top=y<DRAG_EDGE,bot=y>window.innerHeight-DRAG_EDGE;
+  if(!top&&!bot){dragScrollStop();return;}
+  var dir=top?-1:1;
+  if(_dragScroll){_dragScroll.x=x;_dragScroll.y=y;_dragScroll.dir=dir;return;}
+  _dragScroll={x:x,y:y,dir:dir,fn:onTick};
+  _dragScroll.t=setInterval(function(){
+    var s=_dragScroll;
+    if(!s){return;}
+    var d=s.dir<0?(DRAG_EDGE-s.y):(s.y-(window.innerHeight-DRAG_EDGE));
+    var v=Math.max(4,Math.min(24,Math.round(d/3)));
+    var before=window.scrollY;
+    window.scrollBy(0,s.dir*v);
+    if(window.scrollY===before)return;          // already at the end
+    if(s.fn)s.fn({clientX:s.x,clientY:s.y});
+  },16);
+}
+function dragScrollStop(){
+  if(_dragScroll){clearInterval(_dragScroll.t);_dragScroll=null;}
 }
 
 /* ── RECURRING TASKS ──
@@ -5509,11 +5541,13 @@ function moMove(e){
   _moDrag.moved=true;
   _moDrag.g.style.left=(e.clientX-_moDrag.dx)+'px';
   _moDrag.g.style.top=(e.clientY-_moDrag.dy)+'px';
+  dragEdgeScroll(e.clientX,e.clientY,moMove);
   var hit=moHitCell(e.clientX,e.clientY),c=document.querySelectorAll('.mo-cell'),i;
   for(i=0;i<c.length;i++)c[i].classList.toggle('hot',c[i]===hit);
 }
 function moUp(e){
   if(!_moDrag)return;
+  dragScrollStop();
   var hit=moHitCell(e.clientX,e.clientY);
   var onPool=!hit&&moOverPool(e.clientX,e.clientY);
   try{_moDrag.g.remove();}catch(err){}
