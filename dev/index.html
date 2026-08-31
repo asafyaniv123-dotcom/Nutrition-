@@ -243,6 +243,16 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .dp-slot{flex:1;min-width:0;padding:5px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;transition:background .15s}
 .dp-slot.hot{background:rgba(143,199,158,.22)}
 .dp-chip{border-radius:8px;padding:5px 9px;font-size:11.5px;font-weight:700;line-height:1.3;max-width:100%;word-break:break-word;touch-action:none;cursor:grab}
+/* the month as a calendar */
+.mo-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:4px}
+.mo-hd{text-align:center;font-size:9px;font-weight:800;color:#a89e97}
+.mo-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.mo-cell{min-height:54px;background:#fff;border:1.5px solid #ece5da;border-radius:9px;padding:3px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer;transition:background .15s,border-color .15s}
+.mo-cell.mo-blank{background:none;border-color:transparent;cursor:default}
+.mo-cell.today{border-color:#a690cf}
+.mo-cell.hot{border-color:#8fc79e;background:#eaf5ee}
+.mo-n{font-size:9px;font-weight:700;color:#b8afa7;line-height:1}
+.mo-chip{border-radius:4px;padding:2px 3px;font-size:7.5px;line-height:1.2;font-weight:700;overflow:hidden;word-break:break-word}
 .dp-q{font-size:13.5px;font-weight:800;color:#4a4340;line-height:1.4;margin-bottom:9px}
 .dp-ta{width:100%;background:#fff;border:none;border-radius:14px;padding:12px 14px;font-size:12.5px;color:#4a4340;line-height:1.6;font-family:inherit;direction:rtl;outline:none;resize:none;min-height:74px}
 .dp-ta::placeholder{color:#c9c0b8}
@@ -4542,6 +4552,7 @@ function renderPlanWeek(){
   document.getElementById('content').innerHTML=h;
   var box=document.getElementById('content');
   box.removeEventListener('pointerdown',dpDown);
+  box.removeEventListener('pointerdown',moDown);
   box.removeEventListener('pointerdown',wkDown);
   box.addEventListener('pointerdown',wkDown);
 }
@@ -4679,6 +4690,13 @@ function dpAll(date){
     out.push({id:wk.tasks[i].id,w:wk.tasks[i].w,c:wk.tasks[i].c,
               hour:(typeof hv==='number'?hv:null),src:'week',slot:wkSlotOf(wk.tasks[i])});
   }
+  // whatever the month put on this date arrives the same way the week's does
+  var mt=moTasksOn(date);
+  for(i=0;i<mt.length;i++){
+    var mh=dp.hours[mt[i].id];
+    out.push({id:mt[i].id,w:mt[i].w,c:mt[i].c,
+              hour:(typeof mh==='number'?mh:null),src:'month'});
+  }
   for(i=0;i<dp.items.length;i++)
     out.push({id:dp.items[i].id,w:dp.items[i].w,c:dp.items[i].c,n:dp.items[i].n||'',
               hour:(typeof dp.items[i].h==='number'?dp.items[i].h:null),src:'day'});
@@ -4727,7 +4745,7 @@ function renderDpSheet(){
   h+='<button class="summary-close" onclick="dpCloseDetail(true)">&times;</button>';
   h+='<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">';
   h+='<span style="width:13px;height:13px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span>';
-  h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97">'+(t.hour!==null?dpHH(t.hour):'ללא שעה')+(t.src==='week'?' &middot; מהשבוע':'')+'</div></div>';
+  h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97">'+(t.hour!==null?dpHH(t.hour):'ללא שעה')+(t.src!=='day'?' &middot; '+(t.src==='month'?'מהחודש':'מהשבוע'):'')+'</div></div>';
   if(t.src==='day')
     h+='<input id="dp-d-title" class="mtin" style="font-size:16px;font-weight:800" value="'+esc(t.w)+'">';
   else
@@ -4808,11 +4826,11 @@ function renderPlanDay(){
   var fromWeek=[],mine=[];
   for(i=0;i<all.length;i++){
     if(all[i].hour!==null)continue;
-    (all[i].src==='week'?fromWeek:mine).push(all[i]);
+    (all[i].src==='day'?mine:fromWeek).push(all[i]);
   }
   if(fromWeek.length){
     out+='<div style="margin-top:18px">';
-    out+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin-bottom:9px">מהתכנון השבועי</div>';
+    out+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin-bottom:9px">מהתכנון שמעל</div>';
     out+='<div id="dp-week" class="wk-pool">';
     for(i=0;i<fromWeek.length;i++)out+=dpTaskHTML(fromWeek[i]);
     out+='</div></div>';
@@ -4878,6 +4896,7 @@ function renderPlanDay(){
   // it. Left attached, both drags start at once and fight over the drop.
   var box=document.getElementById('content');
   box.removeEventListener('pointerdown',wkDown);
+  box.removeEventListener('pointerdown',moDown);
   box.removeEventListener('pointerdown',dpDown);
   box.addEventListener('pointerdown',dpDown);
 }
@@ -4889,7 +4908,7 @@ function dpTaskHTML(t){
   if(t.src==='day')h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="dpPick(\''+t.id+'\')"></button>';
   else h+='<span class="wk-dot" style="background:'+c.dot+';cursor:default"></span>';
   h+='<div style="flex:1;min-width:0;font-size:13.5px;color:#4a4340;line-height:1.45">'+esc(t.w)+'</div>';
-  if(t.src==='week')h+='<span style="font-size:9px;color:#c0b8b0;flex-shrink:0">מהשבוע</span>';
+  if(t.src!=='day')h+='<span style="font-size:9px;color:#c0b8b0;flex-shrink:0">'+(t.src==='month'?'מהחודש':'מהשבוע')+'</span>';
   else h+='<button onclick="dpDel(\''+t.id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
   h+='</div>';
   if(_dpPick===t.id)h+='<div class="wk-picker">'+wkSwatches("dpSetColor('"+t.id+"','%K%')",t.c||'lav')+'</div>';
@@ -5012,6 +5031,194 @@ function dpUp(e){
   else renderPlanDay();
 }
 
+/* ── MONTHLY PLANNING ──
+   The month as a calendar, and a pool of what you want it to hold. Same
+   mechanics as the week: write it with no date, drag it onto one, colour it,
+   open it for details.
+
+   It flows downward like everything else here. A month task landing on a date
+   shows up in that day's grid, where it can be given an hour - and that hour
+   is stored on the day, never written back. Nothing written on a day or in a
+   week ever climbs into the month. */
+var _moMonth=null,_moNewColor='lav',_moPick='',_moDrag=null;
+var MO_NAMES=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+function moFirst(d){var x=new Date(d);x.setHours(12,0,0,0);x.setDate(1);return x;}
+function moKey(m){return 'mplan_'+m.getFullYear()+'-'+(m.getMonth()<9?'0':'')+(m.getMonth()+1);}
+function loadMonth(m){
+  try{var x=localStorage.getItem(moKey(m));var o=x?JSON.parse(x):null;
+    return(o&&Array.isArray(o.tasks))?o:{tasks:[]};}catch(e){return{tasks:[]};}
+}
+function saveMonth(m,o){try{localStorage.setItem(moKey(m),JSON.stringify(o));}catch(e){}}
+// Every month task sitting on this date, whichever month record holds it.
+function moTasksOn(date){
+  var m=new Date(date+'T12:00:00'),wk=loadMonth(moFirst(m)),out=[],i;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].d===date)out.push(wk.tasks[i]);
+  return out;
+}
+
+function renderPlanMonth(){
+  if(!_moMonth)_moMonth=moFirst(new Date());
+  var mo=loadMonth(_moMonth),i,t;
+  var year=_moMonth.getFullYear(),mi=_moMonth.getMonth();
+  var first=new Date(year,mi,1,12),days=new Date(year,mi+1,0).getDate();
+  var lead=first.getDay(),today=wkStamp(new Date());
+
+  var h='<div style="padding-bottom:30px">';
+  h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 12px">&#8250; חזרה</button>';
+
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+  h+='<button onclick="moShift(1)" style="background:#fff;border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
+  h+='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:#4a4340">'+MO_NAMES[mi]+' '+year+'</div>';
+  h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+mo.tasks.filter(function(x){return x.d;}).length+' מתוך '+mo.tasks.length+' משובצים</div></div>';
+  h+='<button onclick="moShift(-1)" style="background:#fff;border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
+  h+='</div>';
+
+  h+='<div class="mo-head">';
+  // single letters: "ראש" and "שלי" are worse than no abbreviation at all
+  for(i=0;i<7;i++)h+='<div class="mo-hd">'+['א','ב','ג','ד','ה','ו','ש'][i]+'</div>';
+  h+='</div>';
+
+  h+='<div class="mo-grid">';
+  for(i=0;i<lead;i++)h+='<div class="mo-cell mo-blank"></div>';
+  for(i=1;i<=days;i++){
+    var st=year+'-'+(mi<9?'0':'')+(mi+1)+'-'+(i<10?'0':'')+i;
+    h+='<div class="mo-cell'+(st===today?' today':'')+'" data-date="'+st+'" onclick="planOpenDay(\''+st+'\')">';
+    h+='<div class="mo-n">'+i+'</div>';
+    for(t=0;t<mo.tasks.length;t++){
+      if(mo.tasks[t].d!==st)continue;
+      var cc=wkColor(mo.tasks[t].c);
+      h+='<div class="mo-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(mo.tasks[t].w)+'</div>';
+    }
+    h+='</div>';
+  }
+  h+='</div>';
+  h+='<div style="font-size:9.5px;color:#c0b8b0;text-align:center;margin-top:8px">לחיצה על יום פותחת את התכנון שלו</div>';
+
+  var pool=[];
+  for(t=0;t<mo.tasks.length;t++)if(!mo.tasks[t].d)pool.push(mo.tasks[t]);
+  h+='<div style="margin-top:20px">';
+  h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin-bottom:9px">מה אתה רוצה שיקרה החודש</div>';
+  h+='<div id="mo-pool" class="wk-pool">';
+  for(t=0;t<pool.length;t++)h+=moTaskHTML(pool[t]);
+  if(!pool.length)h+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;padding:8px 2px">כתוב למטה, ואז גרור ליום. אפשר גם להשאיר בלי תאריך.</div>';
+  h+='</div>';
+
+  h+='<div style="display:flex;align-items:center;gap:9px;margin-top:12px">';
+  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;flex-shrink:0">צבע</div>';
+  h+=wkSwatches("_moNewColor='%K%';renderPlanMonth()",_moNewColor);
+  h+='</div>';
+  h+='<div style="display:flex;gap:8px;margin-top:8px">';
+  h+='<input id="mo-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משהו לחודש הזה" onkeydown="if(event.key===\'Enter\')moAdd()">';
+  h+='<button onclick="moAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
+  h+='</div></div></div>';
+
+  document.getElementById('content').innerHTML=h;
+  var box=document.getElementById('content');
+  box.removeEventListener('pointerdown',wkDown);
+  box.removeEventListener('pointerdown',dpDown);
+  box.removeEventListener('pointerdown',moDown);
+  box.addEventListener('pointerdown',moDown);
+}
+
+function moTaskHTML(t){
+  var c=wkColor(t.c),h='';
+  h+='<div class="wk-task" data-task="'+t.id+'" style="border-right:4px solid '+c.dot+'">';
+  h+='<div class="wk-grip">&#8942;&#8942;</div>';
+  h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="moPick(\''+t.id+'\')"></button>';
+  h+='<div style="flex:1;min-width:0;font-size:13.5px;color:#4a4340;line-height:1.45">'+esc(t.w)+'</div>';
+  if(t.d)h+='<button onclick="moAssign(\''+t.id+'\',\'\')" style="background:none;border:none;color:#c9bce0;font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>';
+  h+='<button onclick="moDel(\''+t.id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
+  h+='</div>';
+  if(_moPick===t.id)h+='<div class="wk-picker">'+wkSwatches("moSetColor('"+t.id+"','%K%')",t.c||'lav')+'</div>';
+  return h;
+}
+function moShift(dir){
+  _moMonth=new Date(_moMonth.getFullYear(),_moMonth.getMonth()+dir,1,12);
+  _moPick='';renderPlanMonth();
+}
+function moAdd(){
+  var el=document.getElementById('mo-in');
+  if(!el||!el.value.trim())return;
+  var mo=loadMonth(_moMonth);
+  mo.tasks.push({id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),d:'',c:_moNewColor});
+  saveMonth(_moMonth,mo);renderPlanMonth();
+  setTimeout(function(){var e=document.getElementById('mo-in');if(e)e.focus();},40);
+}
+function moAssign(id,date){
+  var mo=loadMonth(_moMonth),i;
+  for(i=0;i<mo.tasks.length;i++)if(mo.tasks[i].id===id)mo.tasks[i].d=date||'';
+  saveMonth(_moMonth,mo);renderPlanMonth();
+}
+function moDel(id){
+  var mo=loadMonth(_moMonth),out=[],i;
+  for(i=0;i<mo.tasks.length;i++)if(mo.tasks[i].id!==id)out.push(mo.tasks[i]);
+  mo.tasks=out;saveMonth(_moMonth,mo);renderPlanMonth();
+}
+function moPick(id){_moPick=(_moPick===id?'':id);renderPlanMonth();}
+function moSetColor(id,k){
+  var mo=loadMonth(_moMonth),i;
+  for(i=0;i<mo.tasks.length;i++)if(mo.tasks[i].id===id)mo.tasks[i].c=k;
+  saveMonth(_moMonth,mo);_moPick='';renderPlanMonth();
+}
+
+/* ── the drag ── */
+function moDown(e){
+  var el=e.target.closest?e.target.closest('[data-task]'):null;
+  if(!el)return;
+  if(e.target.closest('button'))return;
+  var r=el.getBoundingClientRect();
+  var g=el.cloneNode(true);
+  g.className='wk-task wk-ghost';
+  g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';
+  document.body.appendChild(g);
+  el.style.opacity='.3';
+  _moDrag={id:el.getAttribute('data-task'),g:g,src:el,
+           dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};
+  window.addEventListener('pointermove',moMove);
+  window.addEventListener('pointerup',moUp);
+  window.addEventListener('pointercancel',moUp);
+  e.preventDefault();
+}
+function moHitCell(x,y){
+  var c=document.querySelectorAll('.mo-cell[data-date]'),i,r;
+  for(i=0;i<c.length;i++){
+    r=c[i].getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return c[i];
+  }
+  return null;
+}
+function moOverPool(x,y){
+  var p=document.getElementById('mo-pool');
+  if(!p)return false;
+  var r=p.getBoundingClientRect();
+  return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
+}
+function moMove(e){
+  if(!_moDrag)return;
+  _moDrag.moved=true;
+  _moDrag.g.style.left=(e.clientX-_moDrag.dx)+'px';
+  _moDrag.g.style.top=(e.clientY-_moDrag.dy)+'px';
+  var hit=moHitCell(e.clientX,e.clientY),c=document.querySelectorAll('.mo-cell'),i;
+  for(i=0;i<c.length;i++)c[i].classList.toggle('hot',c[i]===hit);
+}
+function moUp(e){
+  if(!_moDrag)return;
+  var hit=moHitCell(e.clientX,e.clientY);
+  var onPool=!hit&&moOverPool(e.clientX,e.clientY);
+  try{_moDrag.g.remove();}catch(err){}
+  if(_moDrag.src)_moDrag.src.style.opacity='';
+  window.removeEventListener('pointermove',moMove);
+  window.removeEventListener('pointerup',moUp);
+  window.removeEventListener('pointercancel',moUp);
+  var id=_moDrag.id,moved=_moDrag.moved;
+  _moDrag=null;
+  if(!moved)return;
+  if(hit)moAssign(id,hit.getAttribute('data-date'));
+  else if(onPool)moAssign(id,'');
+  else renderPlanMonth();
+}
+
 /* Planning opens on a choice of horizon rather than dropping straight into
    tomorrow. The daily wizard is the one that exists; the other two are
    placeholders on purpose, waiting to be specified. */
@@ -5022,7 +5229,7 @@ function renderPlanning(){
   if(!_planMode)return renderPlanHome();
   if(_planMode==='weekly')return renderPlanWeek();
   if(_planMode==='day')return renderPlanDay();
-  if(_planMode==='yearly')return renderPlanSoon('yearly');
+  if(_planMode==='monthly')return renderPlanMonth();
   if(_planStep===-1)return renderPlanHistory();
   renderPlanHome();
 }
@@ -5034,7 +5241,7 @@ var PLAN_MODES=[
   {id:'weekly',t:'תכנון שבועי',s:'לראות את השבוע כולו לפני שהוא מתחיל',
    g:'linear-gradient(145deg,#f5eefa,#ede4f7)',c:'#a690cf',
    ic:'<rect x="3.6" y="5" width="16.8" height="15" rx="3"/><path d="M3.6 9.6h16.8"/><path d="M8 3.2v3.4"/><path d="M16 3.2v3.4"/><path d="M7.4 13.6h3"/><path d="M13.6 13.6h3"/>'},
-  {id:'yearly',t:'תכנון שנתי',s:'לאן אתה הולך השנה, ומה יזיז אותך לשם',
+  {id:'monthly',t:'תכנון חודשי',s:'מה החודש הזה צריך להחזיק, ומתי',
    g:'linear-gradient(145deg,#eaf5ee,#d8f0e0)',c:'#6fb283',
    ic:'<circle cx="12" cy="12" r="8.6"/><path d="m14.9 9.1-1.7 4.1-4.1 1.7 1.7-4.1Z"/>'}
 ];
@@ -5053,8 +5260,15 @@ function renderPlanHome(){
 
   for(i=0;i<PLAN_MODES.length;i++){
     var m=PLAN_MODES[i];
+    // Each card says where that horizon actually stands.
     if(m.id==='daily')st=plannedToday?'מחר כבר מתוכנן':'מחר עוד לא מתוכנן';
-    else st='עוד לא נבנה';
+    else if(m.id==='weekly'){
+      var wt=loadWeek(weekSunday(new Date())).tasks.length;
+      st=wt?wt+' בשבוע הזה':'השבוע עוד ריק';
+    } else {
+      var mt=loadMonth(moFirst(new Date())).tasks.length;
+      st=mt?mt+' בחודש הזה':'החודש עוד ריק';
+    }
     h+='<button onclick="planGo(\''+m.id+'\')" style="width:100%;display:flex;align-items:center;gap:13px;background:'+m.g+';border:none;border-radius:22px;padding:17px 16px;margin-bottom:11px;cursor:pointer;text-align:right;font-family:inherit">';
     h+='<div style="width:46px;height:46px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:'+m.c+';flex-shrink:0;box-shadow:0 3px 10px rgba(160,140,120,.16)">';
     h+='<svg viewBox="0 0 24 24" style="width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">'+m.ic+'</svg></div>';
@@ -5077,22 +5291,6 @@ function planGo(mode){
   if(mode==='daily'){mode='day';_dpDate=wkStamp(new Date(Date.now()+86400000));}
   _planMode=mode;_planStep=0;
   renderPlanning();window.scrollTo(0,0);
-}
-
-// Named, not hidden: the horizon exists in the app, the screen behind it does
-// not yet, and saying so beats a button that goes nowhere.
-function renderPlanSoon(mode){
-  var m=PLAN_MODES[mode==='weekly'?1:2];
-  var h='<div style="padding-bottom:26px">';
-  h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 18px">&#8250; חזרה</button>';
-  h+='<div style="background:'+m.g+';border-radius:24px;padding:26px 20px;text-align:center">';
-  h+='<div style="width:54px;height:54px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:'+m.c+';margin:0 auto 14px;box-shadow:0 3px 10px rgba(160,140,120,.16)">';
-  h+='<svg viewBox="0 0 24 24" style="width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">'+m.ic+'</svg></div>';
-  h+='<div style="font-size:18px;font-weight:800;color:#4a4340">'+m.t+'</div>';
-  h+='<div style="font-size:12.5px;color:#7d746e;line-height:1.65;margin-top:8px">'+m.s+'.</div>';
-  h+='<div style="font-size:11.5px;color:#a89e97;line-height:1.65;margin-top:16px">המסך הזה עוד לא נבנה. הוא הבא בתור.</div>';
-  h+='</div></div>';
-  document.getElementById('content').innerHTML=h;
 }
 
 function planForDate(date){
