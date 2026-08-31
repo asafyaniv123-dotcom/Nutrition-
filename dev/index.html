@@ -4542,6 +4542,12 @@ function deleteHabit(idx){
   renderHabits();
 }
 
+function focusNewHabit(){
+  var el=document.getElementById('new-habit-inp');
+  if(!el)return;
+  el.scrollIntoView({block:'center'});
+  try{el.focus();}catch(e){}
+}
 function renderHabits(){
   var habits=loadHabits();
   var log=loadHabitLog();
@@ -4550,7 +4556,7 @@ function renderHabits(){
   var daysInMonth=new Date(y,mo+1,0).getDate();
   var todayD=now.getDate();
   var mn=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
-  var dayNames=['אחד','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  var dayNames=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   var h='';
 
   // ── HEADER ──
@@ -4608,7 +4614,8 @@ function renderHabits(){
 
   // Habit name headers
   h+='<thead><tr>';
-  h+='<th style="font-size:10px;color:#a89e97;font-weight:700;text-align:right;padding:0 8px 12px;width:48px">יום</th>';
+  h+='<th style="font-size:9px;color:#a89e97;font-weight:700;text-align:center;padding:0 2px 12px;width:26px"></th>';
+  h+='<th style="font-size:9px;color:#a89e97;font-weight:700;text-align:right;padding:0 4px 12px 2px;width:46px">יום</th>';
   for(var hi=0;hi<habits.length;hi++){
     h+='<th style="text-align:center;padding:0 4px 12px;border-right:'+(hi<habits.length-1?'1.5px solid #f0ebe3':'none')+'">';
     h+='<div style="display:inline-flex;flex-direction:column;align-items:center;gap:4px">';
@@ -4618,19 +4625,29 @@ function renderHabits(){
     h+='</div>';
     h+='</div></th>';
   }
+  h+='<th style="padding:0 2px 12px;width:30px;vertical-align:top">'+
+     '<button onclick="focusNewHabit()" title="הוסף תחביב" style="background:linear-gradient(135deg,#f0eafa,#eaf5ee);border:1.5px dashed #c9bce0;border-radius:10px;width:26px;height:30px;font-size:15px;line-height:1;cursor:pointer;color:#a690cf;font-family:inherit">+</button></th>';
   h+='</tr></thead><tbody>';
 
   // Day rows
   for(var d=1;d<=daysInMonth;d++){
     var date=new Date(y,mo,d);
+    var dw=date.getDay();
     var isToday=d===todayD;
     var isFuture=d>todayD;
-    var rowBg=isToday?'background:rgba(166,144,207,.08);':'';
-    h+='<tr style="'+rowBg+'">';
-    var dayLbl=dayNames[date.getDay()].slice(0,1);
-    h+='<td style="padding:3px 6px;text-align:right;white-space:nowrap;line-height:1">';
-    h+='<span style="font-size:'+(isToday?'12':'10')+'px;font-weight:'+(isToday?'800':'400')+';color:'+(isToday?'#a690cf':(isFuture?'#c0b8b0':'#6a6360'))+'">'+d+' <span style="font-size:8px;color:#c0b8b0">'+dayLbl+'</span></span>';
-    h+='</td>';
+    /* Friday and Saturday are shaded, and a line is drawn where Sunday
+       starts a new one, so the month reads as weeks rather than as thirty
+       identical rows - you can see at a glance which week you are in. */
+    var isWeekend=(dw===5||dw===6);
+    var rowBg=isToday?'background:rgba(166,144,207,.11);'
+                     :(isWeekend?'background:rgba(230,222,208,.5);':'');
+    var weekLine=(dw===0&&d>1)?'border-top:2px solid #e4dcd1;':'';
+    h+='<tr style="'+rowBg+weekLine+'">';
+    var dCol=isToday?'#a690cf':(isFuture?'#c0b8b0':'#6a6360');
+    h+='<td style="padding:3px 3px 3px 1px;text-align:center;white-space:nowrap;line-height:1">'+
+       '<span style="font-size:'+(isToday?'13':'11.5')+'px;font-weight:'+(isToday?'800':'700')+';color:'+dCol+'">'+d+'</span></td>';
+    h+='<td style="padding:3px 5px 3px 1px;text-align:right;white-space:nowrap;line-height:1;border-left:1.5px solid #f0ebe3">'+
+       '<span style="font-size:9.5px;font-weight:'+(isWeekend?'800':'600')+';color:'+(isToday?'#a690cf':(isWeekend?'#9a8f80':(isFuture?'#c9c1b8':'#a89e97')))+'">'+dayNames[dw]+'</span></td>';
     for(var hi2=0;hi2<habits.length;hi2++){
       var done=!!log[habits[hi2]+'__'+d];
       var borderCol=done?'#6db88a':(isToday?'#a690cf':(isFuture?'#e8e4de':'#ccc7c0'));
@@ -4652,18 +4669,20 @@ function renderHabits(){
       }
       h+='</td>';
     }
+    h+='<td></td>';
     h+='</tr>';
   }
 
   // % footer row
   h+='<tr style="border-top:1.5px solid #f0ebe3">';
-  h+='<td style="padding:8px 6px;font-size:10px;color:#a89e97;font-weight:700;text-align:right">%</td>';
+  h+='<td colspan="2" style="padding:8px 5px;font-size:10px;color:#a89e97;font-weight:700;text-align:right">%</td>';
   for(var hi3=0;hi3<habits.length;hi3++){
     var done2=0;
     for(var ddd=1;ddd<=todayD;ddd++)if(log[habits[hi3]+'__'+ddd])done2++;
     var pct=todayD>0?Math.round(done2/todayD*100):0;
     h+='<td style="text-align:center;padding:8px 4px;border-right:'+(hi3<habits.length-1?'1.5px solid #f0ebe3':'none')+'"><div style="font-size:13px;font-weight:800;color:'+(pct>=70?'#8fc79e':pct>=40?'#e8c162':'#e08a72')+'">'+pct+'</div></td>';
   }
+  h+='<td></td>';
   h+='</tr>';
   h+='</tbody></table></div>';
 
