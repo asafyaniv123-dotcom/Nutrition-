@@ -387,6 +387,35 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .ht-wf{height:100%;background:linear-gradient(90deg,#74b9e8,#3a7ca5);border-radius:3px;transition:width .5s}
 .ht-wbtns{display:flex;gap:7px}
 .ht-wadd{flex:1;background:#fff;border:none;border-radius:11px;padding:8px;font-size:12px;font-weight:700;color:#3a7ca5;cursor:pointer;font-family:inherit}
+/* ── THE SKY ──
+   One fixed layer behind everything, animating transform and opacity only so
+   it stays on the compositor. The home and Me sit on it; module screens get
+   their own ground back, because a moving sky behind a food log is noise. */
+.sky{position:fixed;inset:0;z-index:0;pointer-events:none;transition:background 1.6s ease}
+.cloud{position:absolute;border-radius:50%;filter:blur(26px);opacity:.5;will-change:transform}
+.c1{width:58vw;height:22vh;top:8%;background:rgba(255,255,255,.62);animation:drift1 96s linear infinite}
+.c2{width:46vw;height:17vh;top:26%;background:rgba(255,255,255,.44);animation:drift2 138s linear infinite}
+.c3{width:70vw;height:26vh;top:52%;background:rgba(255,255,255,.30);animation:drift3 172s linear infinite}
+@keyframes drift1{0%{transform:translateX(-70vw)}100%{transform:translateX(120vw)}}
+@keyframes drift2{0%{transform:translateX(120vw)}100%{transform:translateX(-70vw)}}
+@keyframes drift3{0%{transform:translateX(-80vw)}100%{transform:translateX(120vw)}}
+.stars{position:absolute;inset:0;display:none}
+.stars.out{display:block;animation:starsIn 1.8s ease forwards}
+@keyframes starsIn{from{opacity:0}to{opacity:1}}
+.stars i{position:absolute;background:#fff;border-radius:50%;opacity:.2;animation-name:twinkle;animation-iteration-count:infinite;animation-timing-function:ease-in-out}
+@keyframes twinkle{0%,100%{opacity:.18;transform:scale(.85)}50%{opacity:.95;transform:scale(1.15)}}
+/* clouds read as haze by day and would read as fog at night */
+.sky-night .cloud{opacity:.10}
+.sky-dusk .cloud{opacity:.34}
+body.night .home-sub,body.night .home-date,body.night .me-sub{color:#a79ec4}
+/* a cream slab under a night sky reads as a hole in it */
+body.night .tabbar{background:rgba(28,24,44,.86);border-top-color:rgba(255,255,255,.09)}
+body.night .tb{color:#8f86ae}
+body.night .me-hero,body.night .me-card{background:rgba(255,255,255,.94)}
+#home-screen,#me-screen{position:relative;z-index:1;background:none}
+.app{position:relative;z-index:1;background:#f5f0eb}
+@media (prefers-reduced-motion:reduce){.cloud,.stars i{animation:none}}
+
 /* ── THE TWO HALVES ── */
 /* ltr on purpose: read left to right the two buttons spell the app's name, so
    Better must sit left of Me even though everything around them is rtl */
@@ -8800,6 +8829,83 @@ function meInsight(title,line,foot,col){
     '<div class="me-ins-f">'+foot+'</div></div>';
 }
 
+/* ── THE SKY ──
+   The background is not a flat colour any more: it is the hour you opened the
+   app in. Six phases from before dawn to night, a light that sits where the
+   sun would be, cloud shapes drifting slowly enough that you only notice if
+   you look, and stars that come out after dark.
+
+   Kept cheap on purpose. Three drifting shapes by day, plus thirty small
+   stars after dark - and the star field is display:none until then, so they
+   cost nothing in daylight. Everything animates only transform and
+   opacity, so it stays on the compositor and never touches layout - a phone
+   held for two minutes should not get warm. Motion is off entirely for anyone
+   who has asked their system for less of it.
+
+   It sits behind Better's home and behind Me. Module screens keep the flat
+   ground: a drifting sky behind a hundred rows of a food log is noise. */
+var SKY_PHASES={
+  night:  {a:'#221d38',b:'#171528',glow:'rgba(150,140,220,.20)',gx:'78%',gy:'14%',dark:true},
+  dawn:   {a:'#fbe6da',b:'#ecdff0',glow:'rgba(255,190,150,.42)',gx:'82%',gy:'80%'},
+  morning:{a:'#f4efe6',b:'#e6eef6',glow:'rgba(255,225,180,.34)',gx:'74%',gy:'26%'},
+  day:    {a:'#f0ebe3',b:'#e8dff5',glow:'rgba(255,240,205,.30)',gx:'50%',gy:'6%'},
+  golden: {a:'#fbe7d6',b:'#eeddea',glow:'rgba(255,180,120,.40)',gx:'18%',gy:'74%'},
+  dusk:   {a:'#e5dbf0',b:'#d6cbe6',glow:'rgba(190,150,215,.34)',gx:'14%',gy:'86%'}
+};
+function skyPhase(h){
+  if(h<5)return'night';
+  if(h<7)return'dawn';
+  if(h<11)return'morning';
+  if(h<16)return'day';
+  if(h<19)return'golden';
+  if(h<21)return'dusk';
+  return'night';
+}
+var _skyNow='';
+function buildSky(){
+  if(document.getElementById('sky'))return;
+  var d=document.createElement('div');
+  d.id='sky';d.className='sky';
+  var h='<div class="sky-glow"></div>';
+  h+='<div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>';
+  // Positions are fixed rather than random so the sky is the same sky every
+  // time you open it, not a different one each load.
+  var seeds=[[8,14],[21,32],[34,9],[47,24],[58,41],[66,12],[73,29],[81,17],[88,37],
+             [13,44],[27,52],[41,58],[55,49],[69,56],[84,47],[92,26],[4,33],[17,22],
+             [30,38],[44,12],[62,25],[76,44],[90,58],[52,17],[24,7],[38,45],[70,8],
+             [96,40],[11,58],[63,36]];
+  h+='<div class="stars">';
+  for(var i=0;i<seeds.length;i++){
+    var s=seeds[i],dur=(2.6+(i%5)*0.7).toFixed(1),del=((i*0.37)%3.4).toFixed(2);
+    h+='<i style="left:'+s[0]+'%;top:'+s[1]+'%;animation-duration:'+dur+'s;animation-delay:'+del+'s;'+
+       'width:'+(i%4===0?2.4:1.7)+'px;height:'+(i%4===0?2.4:1.7)+'px"></i>';
+  }
+  h+='</div>';
+  d.innerHTML=h;
+  document.body.insertBefore(d,document.body.firstChild);
+}
+function paintSky(){
+  buildSky();
+  var el=document.getElementById('sky');
+  if(!el)return;
+  var name=skyPhase(new Date().getHours());
+  if(name===_skyNow)return;
+  _skyNow=name;
+  var p=SKY_PHASES[name];
+  el.style.background='radial-gradient(120% 70% at '+p.gx+' '+p.gy+', '+p.glow+', transparent 62%),'+
+                      'linear-gradient(165deg,'+p.a+' 0%,'+p.b+' 100%)';
+  el.className='sky sky-'+name;
+  // Set directly rather than through the cascade: one place decides the phase,
+  // and it is the same place that decides the colours.
+  var st=el.querySelector('.stars');
+  if(st)st.className='stars'+(p.dark?' out':'');
+  document.body.classList.toggle('night',!!p.dark);
+}
+// Re-checked every few minutes so a phase can change while the app is open,
+// and on the way back from the background where timers were frozen.
+setInterval(paintSky,180000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)paintSky();});
+
 /* ── THE TWO HALVES ──
    Better holds everything you do; Me holds what it added up to. The wordmark
    is the navigation - read left to right the two buttons spell the app. */
@@ -8892,6 +8998,7 @@ function showMain(t){
   bar.innerHTML='<button id="tb-better" class="tb on" onclick="showMain(\'better\')">Better</button>'+
                 '<button id="tb-me" class="tb" onclick="showMain(\'me\')">Me</button>';
   document.body.appendChild(bar);
+  paintSky();
   // Set date
   var d=new Date();
   var dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
