@@ -462,6 +462,131 @@ function starsHTML(n,max){var s='';for(var i=1;i<=max;i++)s+='<span style="color
 
 function loadDay(d){try{var x=localStorage.getItem('day_'+d);return x?JSON.parse(x):{meals:[],water:0};}catch(e){return{meals:[],water:0};}}
 function saveDay(d,data){try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}}
+/* ── PHOTO STORE ──
+   Photos used to sit as data URIs inside the day's record. localStorage has
+   about 5MB for the whole app, a day photo is ~580KB and a flow anchor ~270KB,
+   so three or four days filled it - and setItem failing throws into an empty
+   catch, which means a summary would look saved and not be.
+
+   Pictures now live in IndexedDB, whose quota is orders of magnitude larger,
+   and a record keeps only a key. Rendering stays synchronous: markup carries
+   data-photo="<key>" with no src, and hydratePhotos fills it in when the read
+   comes back. Anything that still holds a data: URI - every photo written
+   before this - keeps rendering directly, so nothing had to be migrated for
+   the app to keep working. */
+var _idb=null,_idbDead=false;
+function idbOpen(){
+  if(_idb)return Promise.resolve(_idb);
+  if(_idbDead||!window.indexedDB)return Promise.resolve(null);
+  return new Promise(function(res){
+    var rq;
+    try{rq=indexedDB.open('bm-photos',1);}catch(e){_idbDead=true;return res(null);}
+    rq.onupgradeneeded=function(){try{rq.result.createObjectStore('p');}catch(e){}};
+    rq.onsuccess=function(){_idb=rq.result;res(_idb);};
+    rq.onerror=function(){_idbDead=true;res(null);};
+    rq.onblocked=function(){res(null);};
+  });
+}
+function idbStore(mode){
+  return idbOpen().then(function(db){
+    if(!db)return null;
+    try{return db.transaction('p',mode).objectStore('p');}catch(e){return null;}
+  });
+}
+function photoPut(dataURI){
+  var key='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  return idbStore('readwrite').then(function(st){
+    if(!st)return null;
+    return new Promise(function(res){
+      var rq;
+      try{rq=st.put(dataURI,key);}catch(e){return res(null);}
+      rq.onsuccess=function(){res(key);};
+      rq.onerror=function(){res(null);};
+    });
+  });
+}
+function photoGet(key){
+  return idbStore('readonly').then(function(st){
+    if(!st)return null;
+    return new Promise(function(res){
+      var rq;
+      try{rq=st.get(key);}catch(e){return res(null);}
+      rq.onsuccess=function(){res(rq.result||null);};
+      rq.onerror=function(){res(null);};
+    });
+  });
+}
+function photoDel(ref){
+  if(!isPhotoKey(ref))return Promise.resolve();
+  return idbStore('readwrite').then(function(st){if(st){try{st.delete(ref);}catch(e){}}});
+}
+function photoAll(){
+  return idbStore('readonly').then(function(st){
+    if(!st)return {};
+    return new Promise(function(res){
+      var out={},rq;
+      try{rq=st.openCursor();}catch(e){return res(out);}
+      rq.onsuccess=function(){var c=rq.result;if(!c)return res(out);out[c.key]=c.value;c.continue();};
+      rq.onerror=function(){res(out);};
+    });
+  });
+}
+function photoPutKeyed(key,dataURI){
+  return idbStore('readwrite').then(function(st){
+    if(!st)return;
+    try{st.put(dataURI,key);}catch(e){}
+  });
+}
+// A legacy value is the picture itself; a new one is a key into the store.
+function isPhotoKey(v){return !!v&&typeof v==='string'&&v.indexOf('data:')!==0;}
+function photoImg(ref,attrs){
+  if(!ref)return '';
+  if(isPhotoKey(ref))return '<img data-photo="'+esc(ref)+'" '+(attrs||'')+'>';
+  return '<img src="'+ref+'" '+(attrs||'')+'>';
+}
+function hydratePhotos(root){
+  var els=(root||document).querySelectorAll('img[data-photo]'),i;
+  for(i=0;i<els.length;i++)(function(el){
+    var k=el.getAttribute('data-photo');
+    el.removeAttribute('data-photo');
+    photoGet(k).then(function(d){if(d)el.src=d;});
+  })(els[i]);
+}
+
+/* One-time move of the photos already written into the day records. Each one
+   is written to the store before the record is rewritten, so a failure part
+   way through leaves the original data URI in place rather than a dangling
+   key. Runs quietly in the background; the app works either way. */
+function migratePhotos(){
+  var FLAG='photos_in_idb';
+  try{if(localStorage.getItem(FLAG)==='1')return;}catch(e){return;}
+  idbOpen().then(function(db){
+    if(!db)return;
+    var keys=[],i,k;
+    for(i=0;i<localStorage.length;i++){k=localStorage.key(i);if(k&&k.indexOf('sum_')===0)keys.push(k);}
+    var chain=Promise.resolve();
+    keys.forEach(function(sk){
+      chain=chain.then(function(){
+        var r;
+        try{r=JSON.parse(localStorage.getItem(sk));}catch(e){return;}
+        if(!r)return;
+        var jobs=[],moved={n:0};
+        if(r.photo&&!isPhotoKey(r.photo))
+          jobs.push(photoPut(r.photo).then(function(key){if(key){r.photo=key;moved.n++;}}));
+        if(Array.isArray(r.flow))r.flow.forEach(function(it){
+          if(it&&typeof it==='object'&&it.p&&!isPhotoKey(it.p))
+            jobs.push(photoPut(it.p).then(function(key){if(key){it.p=key;moved.n++;}}));
+        });
+        if(!jobs.length)return;
+        return Promise.all(jobs).then(function(){
+          if(moved.n){try{localStorage.setItem(sk,JSON.stringify(r));}catch(e){}}
+        });
+      });
+    });
+    return chain.then(function(){try{localStorage.setItem(FLAG,'1');}catch(e){}});
+  });
+}
+
 /* flow has had three shapes: a comma-separated string, an array of strings,
    and now {w,p} so an anchor can carry its own photo. Everything reads it
    through here, so an old summary opens the same as a new one. */
@@ -818,6 +943,7 @@ function render(){
   if(te)te.textContent=fmtDate(curDate);
   ['today','history','recipes'].forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.className='tab'+(curTab===t?' on':'');});
   if(curTab==='today')renderToday();else if(curTab==='history')renderHistory();else if(curTab==='recipes')renderRecipes();else renderDay();
+  hydratePhotos();
 }
 
 function renderToday(){
@@ -1284,7 +1410,7 @@ function buildHomeCalHTML(){
     var dotRow=dots?'<div style="display:flex;justify-content:center;margin-top:1px">'+dots+'</div>':'';
 
     if(sum&&sum.photo){
-      h+='<button class="cal-d has-photo" onclick="openCalDay(\''+ds+'\')"><img src="'+sum.photo+'" alt=""></button>';
+      h+='<button class="cal-d has-photo" onclick="openCalDay(\''+ds+'\')">'+photoImg(sum.photo,'alt=""')+'</button>';
     } else {
       var cls='cal-d'+(sum?' has':'')+(isT?' today':'');
       h+='<button class="'+cls+'" onclick="openCalDay(\''+ds+'\')">';
@@ -1397,7 +1523,7 @@ function openCalDay(ds){
   h+='</div></div></div>';
 
   div.innerHTML=h;
-  document.body.appendChild(div);
+  document.body.appendChild(div);hydratePhotos(div);
 
   _calDayType='task';
   calDaySelectType('task');
@@ -1494,7 +1620,7 @@ function renderDay(){
   for(var day=1;day<=last.getDate();day++){
     var ds=y+'-'+(mo<9?'0':'')+(mo+1)+'-'+(day<10?'0':'')+day;
     var sum=loadSummary(ds);var isT=ds===todayStr();
-    if(sum&&sum.photo)html+='<button class="cal-d has-photo" onclick="openSummary(\''+ds+'\')"><img src="'+sum.photo+'" alt=""></button>';
+    if(sum&&sum.photo)html+='<button class="cal-d has-photo" onclick="openSummary(\''+ds+'\')">'+photoImg(sum.photo,'alt=""')+'</button>';
     else if(sum)html+='<button class="cal-d has'+(isT?' today':'')+'" onclick="openSummary(\''+ds+'\')"><span>'+day+'</span><div class="cal-d-dot"></div></button>';
     else html+='<button class="cal-d'+(isT?' today':'')+'" onclick="switchTab(\'today\')">'+(isT?'<strong>'+day+'</strong>':day)+'</button>';
   }
@@ -1514,7 +1640,7 @@ function renderSummaryOverlay(dateStr){
   h+='<div style="font-size:20px;font-weight:700;margin-bottom:10px">'+fmtDate(dateStr)+'</div>';
   h+='<div style="display:flex;gap:20px"><div style="text-align:center"><div style="font-size:18px">'+starsHTML(sum.mood,5)+'</div><div style="font-size:9px;color:#a89e97">מזג</div></div><div style="text-align:center"><div style="font-size:18px">'+starsHTML(sum.body,5)+'</div><div style="font-size:9px;color:#a89e97">גוף</div></div></div></div>';
   if(sum.photo){
-    h+='<img src="'+sum.photo+'" style="width:100%;max-height:260px;object-fit:contain;border-radius:16px;margin-bottom:'+(sum.photoCaption?'6px':'12px')+'">';
+    h+=photoImg(sum.photo,'style="width:100%;max-height:260px;object-fit:contain;border-radius:16px;margin-bottom:'+(sum.photoCaption?'6px':'12px')+'"');
     if(sum.photoCaption)h+='<div style="font-size:12px;color:#6a6360;text-align:center;font-style:italic;margin-bottom:12px;line-height:1.5">'+esc(sum.photoCaption)+'</div>';
   }
   if(sum.moment)h+='<div style="background:linear-gradient(135deg,#fdf1e9,#f5eefa);border-radius:16px;padding:14px;margin-bottom:12px"><div style="font-size:9px;color:#a89e97;margin-bottom:6px">&#x2728; הרגע הכי טוב</div><div style="font-size:14px;line-height:1.6">'+esc(sum.moment)+'</div></div>';
@@ -1522,7 +1648,7 @@ function renderSummaryOverlay(dateStr){
     h+='<div style="background:#fff;border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 4px 14px rgba(200,180,160,.1)"><div style="font-size:9px;color:#a89e97;margin-bottom:10px">תרשים זרימת היום</div>';
     for(var fi2=0;fi2<flowStops.length;fi2++){
       h+='<div style="display:flex;gap:10px;align-items:center">';
-      if(flowStops[fi2].p)h+='<img src="'+flowStops[fi2].p+'" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0">';
+      if(flowStops[fi2].p)h+=photoImg(flowStops[fi2].p,'style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0"');
       h+='<div style="font-size:13px;font-weight:600;color:#4a4340;line-height:1.5">'+esc(flowStops[fi2].w)+'</div></div>';
       if(fi2<flowStops.length-1)h+='<div style="color:#c9bce0;font-size:13px;padding:4px 0 4px 16px;text-align:right">&#8595;</div>';
     }
@@ -6580,18 +6706,27 @@ function collectAppData(){
   return out;
 }
 
+// Photos live in IndexedDB now, so a backup that only walked localStorage
+// would quietly leave every picture behind.
 function buildBackup(){
   var data=collectAppData();
-  return JSON.stringify({
-    app:'better-me',version:1,
-    exportedAt:new Date().toISOString(),
-    keyCount:Object.keys(data).length,
-    data:data
+  return photoAll().then(function(photos){
+    return JSON.stringify({
+      app:'better-me',version:2,
+      exportedAt:new Date().toISOString(),
+      keyCount:Object.keys(data).length,
+      photoCount:Object.keys(photos).length,
+      data:data,photos:photos
+    });
   });
 }
 
 function exportData(){
-  var text=buildBackup(),name='better-me-'+todayStr()+'.json';
+  showToast('מכין גיבוי…');
+  buildBackup().then(exportDeliver);
+}
+function exportDeliver(text){
+  var name='better-me-'+todayStr()+'.json';
   var blob=new Blob([text],{type:'application/json'});
   var kb=Math.max(1,Math.round(blob.size/1024));
   var file=null;
@@ -6664,6 +6799,7 @@ function renderImportSheet(){
   h+='<div style="display:flex;justify-content:space-around;text-align:center">';
   h+='<div><div style="font-size:20px;font-weight:800;color:#a690cf">'+s.keys+'</div><div style="font-size:9.5px;color:#a89e97;margin-top:2px">פריטים</div></div>';
   h+='<div><div style="font-size:20px;font-weight:800;color:#8fc79e">'+s.days+'</div><div style="font-size:9.5px;color:#a89e97;margin-top:2px">ימי מעקב</div></div>';
+  if(o.photoCount)h+='<div><div style="font-size:20px;font-weight:800;color:#e08a72">'+o.photoCount+'</div><div style="font-size:9.5px;color:#a89e97;margin-top:2px">תמונות</div></div>';
   h+='</div>';
   if(s.from)h+='<div style="font-size:10px;color:#c0b8b0;text-align:center;margin-top:10px">'+s.from+' עד '+s.to+'</div>';
   if(o.exportedAt)h+='<div style="font-size:10px;color:#c0b8b0;text-align:center;margin-top:4px">יוצא ב־'+o.exportedAt.slice(0,10)+'</div>';
@@ -6698,10 +6834,17 @@ function applyImport(mode){
     try{localStorage.setItem(k,data[k]);n++;}catch(e){}
   }
   closeImport();
+  // Pictures ride in the file separately and go back into the photo store.
+  var jobs=[];
+  if(o.photos&&typeof o.photos==='object'){
+    Object.keys(o.photos).forEach(function(pk){
+      if(typeof o.photos[pk]==='string')jobs.push(photoPutKeyed(pk,o.photos[pk]));
+    });
+  }
   showToast('✓ יובאו '+n+' פריטים');
   // Half the app caches its data in module variables; a reload is the honest
   // way to make every screen read the new state.
-  setTimeout(function(){location.reload();},800);
+  Promise.all(jobs).then(function(){setTimeout(function(){location.reload();},600);});
 }
 
 function renderBackup(){
@@ -6874,6 +7017,7 @@ function renderReflect(){
   else if(_rfView==='bridge')renderReflectBridge();
   else if(_rfView==='board')renderReflectBoard();
   else if(_rfView==='done')renderReflectDone();
+  hydratePhotos();
   window.scrollTo(0,0);
 }
 
@@ -6894,7 +7038,7 @@ function renderReflectHome(){
   } else {
     h+='<div class="rf-hero-t">סיכמת את היום שלך.</div>';
     h+='<div class="rf-hero-s">'+rfRecap(r)+'</div>';
-    if(r.photo)h+='<img src="'+r.photo+'" style="width:100%;border-radius:18px;margin-top:16px;display:block">';
+    if(r.photo)h+=photoImg(r.photo,'style="width:100%;border-radius:18px;margin-top:16px;display:block"');
     h+='<button onclick="rfResume()" class="rf-ghost" style="margin-top:12px">פתח שוב</button>';
   }
   h+='</div>';
@@ -6914,7 +7058,7 @@ function renderReflectHome(){
       var dt=new Date(p.d+'T12:00:00');
       var dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'][dt.getDay()];
       h+='<button class="rf-day" onclick="openSummary(\''+p.d+'\')">';
-      if(pr.photo)h+='<img class="rf-day-th" src="'+pr.photo+'">';
+      if(pr.photo)h+=photoImg(pr.photo,'class="rf-day-th"');
       else h+='<div class="rf-day-th" style="display:flex;align-items:center;justify-content:center">'+(pr.mood?rfFaceMini(pr.mood):'')+'</div>';
       h+='<div style="flex:1;min-width:0">';
       h+='<div style="font-size:13px;font-weight:800;color:#4a4340">'+dn+' &middot; '+dt.getDate()+'.'+(dt.getMonth()+1)+'</div>';
@@ -7138,7 +7282,7 @@ function renderReflectStep(){
     for(i=0;i<fl.length;i++){
       h+='<div class="rf-flow-row"><div class="rf-flow-box">';
       if(fl[i].p){
-        h+='<div class="rf-flow-imgwrap"><img class="rf-flow-img" src="'+fl[i].p+'">';
+        h+='<div class="rf-flow-imgwrap">'+photoImg(fl[i].p,'class="rf-flow-img"');
         h+='<button class="rf-flow-imgx" onclick="rfFlowPhotoClear('+i+')">&times;</button></div>';
       }
       h+='<div class="rf-flow-line">';
@@ -7178,7 +7322,7 @@ function rfRatingEcho(n){
   return'נראה שהיה יום מיוחד.';
 }
 function rfPhotoHTML(src){
-  if(src)return '<div class="rf-photo-wrap"><img src="'+src+'"><button class="rf-photo-x" onclick="rfPhotoClear()">&times;</button></div>';
+  if(src)return '<div class="rf-photo-wrap">'+photoImg(src,'')+'<button class="rf-photo-x" onclick="rfPhotoClear()">&times;</button></div>';
   return '<button class="rf-photo-drop" onclick="document.getElementById(\'rf-file\').click()" style="width:100%;font-family:inherit">'+
     '<svg viewBox="0 0 24 24"><path d="M3.5 8.5a2 2 0 0 1 2-2h2l1.4-2h6.2l1.4 2h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/><circle cx="12" cy="12.8" r="3.6"/></svg>'+
     '<div style="font-size:13px;color:#a89e97;margin-top:12px;font-weight:700">לצלם או לבחור מהגלריה</div></button>';
@@ -7333,7 +7477,7 @@ var _rfFlowIdx=-1;
 function rfFlowPhoto(i){_rfFlowIdx=i;var f=document.getElementById('rf-fl-file');if(f)f.click();}
 function rfFlowPhotoClear(i){
   var a=rfFlowRead();
-  if(a[i])a[i].p='';
+  if(a[i]){photoDel(a[i].p);a[i].p='';}
   rfSave({flow:a});renderReflectStep();
 }
 function rfFlowPhotoPick(input){
@@ -7351,8 +7495,11 @@ function rfFlowPhotoPick(input){
       if(w>mx){h=Math.round(h*mx/w);w=mx;}
       if(h>mx){w=Math.round(w*mx/h);h=mx;}
       cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
-      if(a[idx])a[idx].p=cv.toDataURL('image/jpeg',0.68);
-      rfSave({flow:a});renderReflectStep();
+      var d=cv.toDataURL('image/jpeg',0.68);
+      photoPut(d).then(function(key){
+        if(a[idx])a[idx].p=key||d;
+        rfSave({flow:a});renderReflectStep();
+      });
     };
     img.src=e.target.result;
   };
@@ -7371,7 +7518,7 @@ function rfTlDel(i){
   var arr=rfArr('dayTimeline').slice();
   arr.splice(i,1);rfSave({dayTimeline:arr});renderReflectStep();
 }
-function rfPhotoClear(){rfSave({photo:'',photoCaption:''});renderReflectStep();}
+function rfPhotoClear(){photoDel(rfVal('photo'));rfSave({photo:'',photoCaption:''});renderReflectStep();}
 function rfPhotoPick(input){
   var file=input.files&&input.files[0];input.value='';
   if(!file)return;
@@ -7383,8 +7530,8 @@ function rfPhotoPick(input){
       if(w>mx){h=Math.round(h*mx/w);w=mx;}
       if(h>mx){w=Math.round(w*mx/h);h=mx;}
       cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
-      rfSave({photo:cv.toDataURL('image/jpeg',0.72)});
-      renderReflectStep();
+      var d=cv.toDataURL('image/jpeg',0.72);
+      photoPut(d).then(function(key){rfSave({photo:key||d});renderReflectStep();});
     };
     img.src=e.target.result;
   };
@@ -7430,7 +7577,7 @@ function renderReflectDone(){
   h+='<div class="rf-q" style="text-align:center">זהו להיום.</div>';
   h+='<div class="rf-sub" style="text-align:center;font-size:14px">עצרת לרגע, הסתכלת על היום שלך — ועכשיו אפשר לשחרר אותו.</div>';
   h+='<div style="margin-top:30px;display:flex;flex-direction:column;gap:14px">';
-  if(r.photo)h+='<img src="'+r.photo+'" style="width:100%;border-radius:20px;display:block">';
+  if(r.photo)h+=photoImg(r.photo,'style="width:100%;border-radius:20px;display:block"');
   if(r.photoCaption)h+='<div style="font-size:12.5px;color:#a89e97;line-height:1.6;text-align:center">'+esc(r.photoCaption)+'</div>';
   if(r.mood||r.dayRating){
     h+='<div style="display:flex;justify-content:center;align-items:center;gap:26px;padding:6px 0">';
@@ -7522,6 +7669,7 @@ function rfDoneBlock(label,text){
   var mn=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   document.getElementById('home-date').textContent=dn[d.getDay()]+', '+d.getDate()+' ב'+mn[d.getMonth()];
   document.getElementById('home-cal').innerHTML=buildHomeCalHTML();
+  migratePhotos();
   ingestStepsFromLink();
   syncStepsFromServer();
   renderHomeToday();
