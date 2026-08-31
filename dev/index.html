@@ -1745,14 +1745,10 @@ function enterModule(mod){
     document.querySelector('.tabs').style.display='none';
     document.getElementById('hdr-date').textContent='';
     document.getElementById('hdr-title').textContent='תכנון זמן';
-    _planView='home';_planStep=0;_planData={};
-    renderPlanning();
-  } else if(mod==='planning'){
-    document.querySelector('.app').style.display='block';
-    document.querySelector('.tabs').style.display='none';
-    document.getElementById('hdr-date').textContent='';
-    document.getElementById('hdr-title').textContent='תכנון זמן';
-    _planStep=0;_planData={intent:'',anchors:[],goal:'',subgoal:'',priorities:[],feeling:'',blocker:'',blockerSolution:'',reminders:[]};
+    // The day arrows belong to the food log, not here.
+    document.getElementById('btnPrev').style.display='none';
+    document.getElementById('btnNext').style.display='none';
+    _planMode='';_planStep=0;_planData={};
     renderPlanning();
   } else if(mod==='game'){
     document.querySelector('.app').style.display='block';
@@ -4354,11 +4350,89 @@ var TASK_PRIOS=[{id:'must',color:'#e08a72',label:'חייב היום'},{id:'shoul
 function loadPlanHistory(){try{var x=localStorage.getItem('plan_history');return x?JSON.parse(x):[];}catch(e){return[];}}
 function savePlanHistory(arr){try{localStorage.setItem('plan_history',JSON.stringify(arr));}catch(e){}}
 
+/* Planning opens on a choice of horizon rather than dropping straight into
+   tomorrow. The daily wizard is the one that exists; the other two are
+   placeholders on purpose, waiting to be specified. */
+var _planMode='';
+
 function renderPlanning(){
   document.getElementById('hdr-title').textContent='תכנון זמן';
+  if(!_planMode)return renderPlanHome();
+  if(_planMode==='weekly')return renderPlanSoon('weekly');
+  if(_planMode==='yearly')return renderPlanSoon('yearly');
   if(_planStep===99)return renderPlanSchedule();
   if(_planStep===-1)return renderPlanHistory();
   renderPlanStep();
+}
+
+var PLAN_MODES=[
+  {id:'daily',t:'תכנון יומי',s:'לתכנן את היום שאחרי — כוונה, מסגרת, עדיפויות',
+   g:'linear-gradient(145deg,#e8f4fd,#d6ebf7)',c:'#3a7ca5',
+   ic:'<path d="M12 4.2v3"/><path d="m6.3 6.5 2.1 2.1"/><path d="m17.7 6.5-2.1 2.1"/><path d="M3.4 15.6h17.2"/><path d="M7.4 15.6a4.6 4.6 0 0 1 9.2 0"/><path d="M5.6 19.4h12.8"/>'},
+  {id:'weekly',t:'תכנון שבועי',s:'לראות את השבוע כולו לפני שהוא מתחיל',
+   g:'linear-gradient(145deg,#f5eefa,#ede4f7)',c:'#a690cf',
+   ic:'<rect x="3.6" y="5" width="16.8" height="15" rx="3"/><path d="M3.6 9.6h16.8"/><path d="M8 3.2v3.4"/><path d="M16 3.2v3.4"/><path d="M7.4 13.6h3"/><path d="M13.6 13.6h3"/>'},
+  {id:'yearly',t:'תכנון שנתי',s:'לאן אתה הולך השנה, ומה יזיז אותך לשם',
+   g:'linear-gradient(145deg,#eaf5ee,#d8f0e0)',c:'#6fb283',
+   ic:'<circle cx="12" cy="12" r="8.6"/><path d="m14.9 9.1-1.7 4.1-4.1 1.7 1.7-4.1Z"/>'}
+];
+
+function renderPlanHome(){
+  var hist=loadPlanHistory(),i,st;
+  // The daily wizard always plans tomorrow, and stamps the moment it was
+  // saved - so "already planned" means one was saved today.
+  var t0=new Date();t0.setHours(0,0,0,0);
+  var plannedToday=false;
+  for(i=0;i<hist.length;i++)if(hist[i].date&&hist[i].date>=t0.getTime()){plannedToday=true;break;}
+
+  var h='<div style="padding-bottom:26px">';
+  h+='<div class="rf-q" style="font-size:21px">על איזה טווח בא לך להסתכל?</div>';
+  h+='<div class="rf-sub" style="margin-bottom:20px">תכנון הוא לא רשימה. זו החלטה מה חשוב, לפני שהזמן מחליט במקומך.</div>';
+
+  for(i=0;i<PLAN_MODES.length;i++){
+    var m=PLAN_MODES[i];
+    if(m.id==='daily')st=plannedToday?'מחר כבר מתוכנן':'מחר עוד לא מתוכנן';
+    else st='עוד לא נבנה';
+    h+='<button onclick="planGo(\''+m.id+'\')" style="width:100%;display:flex;align-items:center;gap:13px;background:'+m.g+';border:none;border-radius:22px;padding:17px 16px;margin-bottom:11px;cursor:pointer;text-align:right;font-family:inherit">';
+    h+='<div style="width:46px;height:46px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:'+m.c+';flex-shrink:0;box-shadow:0 3px 10px rgba(160,140,120,.16)">';
+    h+='<svg viewBox="0 0 24 24" style="width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">'+m.ic+'</svg></div>';
+    h+='<div style="flex:1;min-width:0">';
+    h+='<div style="font-size:15px;font-weight:800;color:#4a4340">'+m.t+'</div>';
+    h+='<div style="font-size:10.5px;color:#8d847d;line-height:1.45;margin-top:3px">'+m.s+'</div>';
+    h+='<div style="font-size:10px;color:'+(m.id==='daily'&&plannedToday?'#4c9a4c':'#b0a79f')+';font-weight:700;margin-top:5px">'+st+'</div>';
+    h+='</div><div style="font-size:15px;color:#c9c0b8;flex-shrink:0">&#8249;</div></button>';
+  }
+
+  if(hist.length){
+    h+='<button onclick="_planMode=\'daily\';_planStep=-1;renderPlanning()" style="width:100%;background:#f5f0eb;border:none;border-radius:12px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:#a89e97;font-family:inherit;margin-top:6px">יומן התכנונים &#8250;</button>';
+  }
+  h+='</div>';
+  document.getElementById('content').innerHTML=h;
+}
+
+function planGo(mode){
+  _planMode=mode;
+  if(mode==='daily'){
+    _planStep=0;
+    _planData={intent:'',anchors:[],goal:'',subgoal:'',priorities:[],feeling:'',blocker:'',blockerSolution:'',reminders:[]};
+  }
+  renderPlanning();window.scrollTo(0,0);
+}
+
+// Named, not hidden: the horizon exists in the app, the screen behind it does
+// not yet, and saying so beats a button that goes nowhere.
+function renderPlanSoon(mode){
+  var m=PLAN_MODES[mode==='weekly'?1:2];
+  var h='<div style="padding-bottom:26px">';
+  h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 18px">&#8250; חזרה</button>';
+  h+='<div style="background:'+m.g+';border-radius:24px;padding:26px 20px;text-align:center">';
+  h+='<div style="width:54px;height:54px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:'+m.c+';margin:0 auto 14px;box-shadow:0 3px 10px rgba(160,140,120,.16)">';
+  h+='<svg viewBox="0 0 24 24" style="width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">'+m.ic+'</svg></div>';
+  h+='<div style="font-size:18px;font-weight:800;color:#4a4340">'+m.t+'</div>';
+  h+='<div style="font-size:12.5px;color:#7d746e;line-height:1.65;margin-top:8px">'+m.s+'.</div>';
+  h+='<div style="font-size:11.5px;color:#a89e97;line-height:1.65;margin-top:16px">המסך הזה עוד לא נבנה. הוא הבא בתור.</div>';
+  h+='</div></div>';
+  document.getElementById('content').innerHTML=h;
 }
 
 function renderPlanStep(){
@@ -4370,7 +4444,7 @@ function renderPlanStep(){
   var h='<div style="padding-bottom:30px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">';
   if(_planStep>0)h+='<button onclick="_planStep--;renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer">&#8249; חזרה</button>';
-  else h+='<button onclick="enterModule(\'home\')" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer">&#8249; בית</button>';
+  else h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer">&#8249; חזרה</button>';
   h+='<button onclick="_planStep=-1;renderPlanning()" style="background:none;border:none;font-size:11px;color:#a89e97;cursor:pointer">יומן &#8250;</button>';
   h+='</div>';
   h+='<div style="height:3px;background:#f0ebe3;border-radius:2px;margin-bottom:22px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4f6ef7,#7c9cf8);border-radius:2px;transition:width .4s"></div></div>';
