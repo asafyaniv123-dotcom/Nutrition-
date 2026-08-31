@@ -333,7 +333,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(74,67,64,.9);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:100;pointer-events:none}
 
 /* HOME SCREEN */
-.home{min-height:100vh;background:linear-gradient(160deg,#f0ebe3 0%,#e8dff5 100%);display:flex;flex-direction:column;align-items:center;padding:60px 20px 40px}
+.home{position:relative;min-height:100vh;background:linear-gradient(160deg,#f0ebe3 0%,#e8dff5 100%);display:flex;flex-direction:column;align-items:center;padding:60px 20px 40px}
 .home-logo{font-size:36px;font-weight:800;background:linear-gradient(135deg,#a690cf,#e08a72);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px;margin-bottom:6px}
 .home-sub{font-size:13px;color:#a89e97;margin-bottom:48px;letter-spacing:.05em}
 .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:380px}
@@ -364,6 +364,33 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .home-card-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .home-card-title{font-size:15px;font-weight:800;color:#4a4340}
 .home-card-sub{font-size:11px;color:#a89e97;line-height:1.4}
+/* The corner menu. Better shows what you chose to track, so the board needs a
+   door to that choice - three lines top-right, where a menu is expected. */
+.home-menu{position:absolute;top:18px;right:18px;width:40px;height:40px;border:none;border-radius:14px;background:rgba(255,255,255,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;box-shadow:0 3px 12px rgba(160,140,120,.14);z-index:3;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.home-menu i{display:block;width:17px;height:2px;border-radius:1px;background:#7a716b}
+.home-menu:active{transform:scale(.94)}
+.areas-back{position:fixed;inset:0;background:rgba(74,67,64,.5);z-index:150;opacity:0;pointer-events:none;transition:opacity .3s}
+.areas-back.on{opacity:1;pointer-events:auto}
+.areas-drawer{position:fixed;top:0;right:0;bottom:0;width:88%;max-width:340px;background:#fbf7f2;z-index:151;transform:translateX(103%);transition:transform .34s cubic-bezier(.32,.72,0,1);display:flex;flex-direction:column;box-shadow:-8px 0 34px rgba(74,67,64,.18)}
+.areas-drawer.on{transform:none}
+.ar-hd{padding:calc(24px + env(safe-area-inset-top)) 20px 10px}
+.ar-title{font-size:19px;font-weight:800;color:#4a4340}
+.ar-note{font-size:11.5px;color:#a89e97;line-height:1.65;margin-top:7px}
+.ar-count{font-size:10.5px;color:#c0b6ae;margin-top:8px;font-weight:700;letter-spacing:.02em}
+#areas-list{flex:1;overflow-y:auto;padding:8px 12px 16px;display:flex;flex-direction:column;gap:5px;-webkit-overflow-scrolling:touch}
+.ar-row{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;border-radius:16px;padding:11px 10px;cursor:pointer;font-family:inherit;text-align:right}
+.ar-row.on{background:#fff;box-shadow:0 2px 10px rgba(200,180,160,.14)}
+.ar-row.fixed{cursor:default}
+.ar-box{flex:0 0 22px;width:22px;height:22px;border-radius:8px;border:1.8px solid #ddd3ca;display:flex;align-items:center;justify-content:center;background:#fff}
+.ar-row.on .ar-box{background:#8fc79e;border-color:#8fc79e}
+.ar-row.fixed .ar-box{background:#c9c1ba;border-color:#c9c1ba}
+.ar-box svg{width:13px;height:13px;fill:none;stroke:#fff;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+.ar-ic{flex:0 0 22px;display:flex;align-items:center}
+.ar-ic svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ar-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ar-t{font-size:13.5px;font-weight:700;color:#4a4340}
+.ar-s{font-size:10.5px;color:#a89e97}
+.ar-done{margin:0 12px calc(16px + env(safe-area-inset-bottom));padding:14px;border:none;border-radius:16px;background:#4a4340;color:#fff;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer}
 .home-card-badge{position:absolute;top:12px;left:12px;background:rgba(166,144,207,.2);border-radius:20px;padding:3px 8px;font-size:9px;font-weight:700;color:#a690cf}
 /* "היום" - the day's macros and water summarised on the home screen, so the
    numbers are readable without entering תזונה first. Same shapes as the
@@ -8909,6 +8936,102 @@ function paintSky(){
 setInterval(paintSky,180000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)paintSky();});
 
+/* ── WHAT YOU TRACK ──
+   Better is not a fixed board of nine tiles. The menu in the corner is the
+   full list of areas, and a tick decides whether an area is on the home
+   screen. Unticking only hides the tile: every meal, workout and note the
+   area holds stays exactly where it is, and ticking it again brings the
+   area back untouched. That is why this is a view setting and not a delete.
+
+   סיום יום is the one area with no tick. The daily reflection is what the
+   app is for, so it is always on the board.
+
+   No stored choice at all means "show everything" - the app someone already
+   knows does not rearrange itself the first time they open this version. */
+var AREAS_KEY='home_areas';
+var HOME_AREAS=[
+  {id:'nutrition',color:'#a690cf',title:'תזונה',sub:'מעקב ארוחות, מאקרו ומים',
+   svg:'<svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 7c0-1 1-1.5 1-2.5S9 3 9 3"/><path d="M13.5 7c0-1 1-1.5 1-2.5s-1-1.5-1-1.5"/></svg>'},
+  {id:'fitness',color:'#e08a72',title:'כושר',sub:'אימונים ומעקב התקדמות',
+   svg:'<svg viewBox="0 0 24 24"><path d="M3 9.5v5"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M21 9.5v5"/><path d="M6.5 12h11"/></svg>'},
+  {id:'hobbies',color:'#6fb283',title:'תחביבים',sub:'מעקב דברים שאתה אוהב',
+   svg:'<svg viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 1.9 1.9 0 0 0 1.5-3.1 1.9 1.9 0 0 1 1.5-3.1h2.1a3 3 0 0 0 2.9-3A8.8 8.8 0 0 0 12 3.2Z"/><circle cx="8.2" cy="10" r=".9"/><circle cx="12" cy="7.6" r=".9"/><circle cx="15.8" cy="10" r=".9"/></svg>'},
+  {id:'endofday',color:'#3a7ca5',title:'סיום יום',sub:'ראיון יומי ושיקוף',fixed:true,
+   svg:'<svg viewBox="0 0 24 24"><path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/></svg>'},
+  {id:'insights',color:'#7a716b',title:'תובנות',sub:'מחשבות, שאלות וגילויים',
+   svg:'<svg viewBox="0 0 24 24"><path d="M9.2 17.6h5.6"/><path d="M10.2 20.4h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.4h5v-.4c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4Z"/></svg>'},
+  {id:'people',color:'#e08a72',title:'האנשים שלי',sub:'אנשים שחשובים לי',
+   svg:'<svg viewBox="0 0 24 24"><circle cx="9.2" cy="8.6" r="3.2"/><path d="M3.6 19.6a5.6 5.6 0 0 1 11.2 0"/><path d="M16.4 6.3a3.2 3.2 0 0 1 0 6.1"/><path d="M17.6 14.6a5.6 5.6 0 0 1 2.8 5"/></svg>'},
+  {id:'goals',color:'#4c9a4c',title:'מטרות',sub:'חלומות והדרך להגשימהם',
+   svg:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/></svg>'},
+  {id:'planning',color:'#3a7ca5',title:'תכנון זמן',sub:'לתכנן את היום שאחרי',
+   svg:'<svg viewBox="0 0 24 24"><rect x="3.6" y="5" width="16.8" height="15" rx="3"/><path d="M3.6 9.6h16.8"/><path d="M8 3.2v3.4"/><path d="M16 3.2v3.4"/></svg>'},
+  {id:'game',color:'#c98b3f',title:'משחק',sub:'החץ &mdash; מי עונה על השאלה',
+   svg:'<svg viewBox="0 0 24 24"><path d="M4 20 18.5 5.5"/><path d="M13.5 5.5h5v5"/><path d="m6.5 13.5 4 4"/></svg>'}
+];
+function areaDef(id){for(var i=0;i<HOME_AREAS.length;i++)if(HOME_AREAS[i].id===id)return HOME_AREAS[i];return null;}
+function areasChosen(){
+  var raw=null;try{raw=localStorage.getItem(AREAS_KEY);}catch(e){}
+  if(raw===null)return null;
+  try{var a=JSON.parse(raw);return Array.isArray(a)?a:null;}catch(e){return null;}
+}
+function areaShown(id){
+  var d=areaDef(id);
+  if(d&&d.fixed)return true;
+  var on=areasChosen();
+  return on?on.indexOf(id)>=0:true;
+}
+function areaToggle(id){
+  var d=areaDef(id),i;
+  if(!d||d.fixed)return;
+  var on=areasChosen();
+  if(!on){on=[];for(i=0;i<HOME_AREAS.length;i++)on.push(HOME_AREAS[i].id);}
+  var k=on.indexOf(id);
+  if(k>=0)on.splice(k,1);else on.push(id);
+  try{localStorage.setItem(AREAS_KEY,JSON.stringify(on));}catch(e){}
+  renderHomeGrid();renderAreasList();
+}
+function renderHomeGrid(){
+  var g=document.getElementById('home-grid');if(!g)return;
+  var h='',i,a;
+  for(i=0;i<HOME_AREAS.length;i++){
+    a=HOME_AREAS[i];
+    if(!areaShown(a.id))continue;
+    h+='<button class="home-card '+a.id+'" data-area="'+a.id+'">'+
+       '<div class="home-card-icon" style="color:'+a.color+'">'+a.svg+'</div>'+
+       '<div class="home-card-title">'+a.title+'</div>'+
+       '<div class="home-card-sub">'+a.sub+'</div>'+
+       '</button>';
+  }
+  g.innerHTML=h;
+}
+var TICK='<svg viewBox="0 0 24 24"><path d="m5 12.4 4.6 4.6L19 7.6"/></svg>';
+function renderAreasList(){
+  var l=document.getElementById('areas-list');if(!l)return;
+  var h='',i,a,on,n=0;
+  for(i=0;i<HOME_AREAS.length;i++){
+    a=HOME_AREAS[i];on=areaShown(a.id);if(on)n++;
+    h+='<button class="ar-row'+(on?' on':'')+(a.fixed?' fixed':'')+'" data-area="'+a.id+'">'+
+       '<span class="ar-box">'+(on?TICK:'')+'</span>'+
+       '<span class="ar-ic" style="color:'+a.color+'">'+a.svg+'</span>'+
+       '<span class="ar-txt"><span class="ar-t">'+a.title+'</span>'+
+       '<span class="ar-s">'+(a.fixed?'מובנה &mdash; תמיד על המסך':a.sub)+'</span></span>'+
+       '</button>';
+  }
+  l.innerHTML=h;
+  var c=document.getElementById('areas-count');
+  if(c)c.textContent=n+' מתוך '+HOME_AREAS.length+' מופיעים ב-Better';
+}
+function openAreas(){
+  renderAreasList();
+  document.getElementById('areas-back').classList.add('on');
+  document.getElementById('areas-drawer').classList.add('on');
+}
+function closeAreas(){
+  document.getElementById('areas-back').classList.remove('on');
+  document.getElementById('areas-drawer').classList.remove('on');
+}
+
 /* ── THE TWO HALVES ──
    Better holds everything you do; Me holds what it added up to. The wordmark
    is the navigation - read left to right the two buttons spell the app. */
@@ -8936,53 +9059,8 @@ function showMain(t){
   home.innerHTML=
     '<div class="home-logo">Better Me</div>'+
     '<div class="home-sub">Become the best version of yourself</div>'+
-    '<div class="home-grid">'+
-      '<button class="home-card nutrition" onclick="enterModule(\'nutrition\')">'+
-        '<div class="home-card-icon" style="color:#a690cf"><svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 7c0-1 1-1.5 1-2.5S9 3 9 3"/><path d="M13.5 7c0-1 1-1.5 1-2.5s-1-1.5-1-1.5"/></svg></div>'+
-        '<div class="home-card-title">תזונה</div>'+
-        '<div class="home-card-sub">מעקב ארוחות, מאקרו ומים</div>'+
-      '</button>'+
-      '<button class="home-card fitness" onclick="enterModule(\'fitness\')">'+
-        '<div class="home-card-icon" style="color:#e08a72"><svg viewBox="0 0 24 24"><path d="M3 9.5v5"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M21 9.5v5"/><path d="M6.5 12h11"/></svg></div>'+
-        '<div class="home-card-title">כושר</div>'+
-        '<div class="home-card-sub">אימונים ומעקב התקדמות</div>'+
-      '</button>'+
-      '<button class="home-card hobbies" onclick="enterModule(\'hobbies\')">'+
-        '<div class="home-card-icon" style="color:#6fb283"><svg viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 1.9 1.9 0 0 0 1.5-3.1 1.9 1.9 0 0 1 1.5-3.1h2.1a3 3 0 0 0 2.9-3A8.8 8.8 0 0 0 12 3.2Z"/><circle cx="8.2" cy="10" r=".9"/><circle cx="12" cy="7.6" r=".9"/><circle cx="15.8" cy="10" r=".9"/></svg></div>'+
-        '<div class="home-card-title">תחביבים</div>'+
-        '<div class="home-card-sub">מעקב דברים שאתה אוהב</div>'+
-      '</button>'+
-      '<button class="home-card endofday" onclick="enterModule(\'endofday\')">'+
-        '<div class="home-card-icon" style="color:#3a7ca5"><svg viewBox="0 0 24 24"><path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/></svg></div>'+
-        '<div class="home-card-title">סיום יום</div>'+
-        '<div class="home-card-sub">ראיון יומי ושיקוף</div>'+
-      '</button>'+
-      '<button class="home-card insights" onclick="enterModule(\'insights\')">'+
-        '<div class="home-card-icon" style="color:#7a716b"><svg viewBox="0 0 24 24"><path d="M9.2 17.6h5.6"/><path d="M10.2 20.4h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.4h5v-.4c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4Z"/></svg></div>'+
-        '<div class="home-card-title">תובנות</div>'+
-        '<div class="home-card-sub">מחשבות, שאלות וגילויים</div>'+
-      '</button>'+
-      '<button class="home-card people" onclick="enterModule(\'people\')">'+
-        '<div class="home-card-icon" style="color:#e08a72"><svg viewBox="0 0 24 24"><circle cx="9.2" cy="8.6" r="3.2"/><path d="M3.6 19.6a5.6 5.6 0 0 1 11.2 0"/><path d="M16.4 6.3a3.2 3.2 0 0 1 0 6.1"/><path d="M17.6 14.6a5.6 5.6 0 0 1 2.8 5"/></svg></div>'+
-        '<div class="home-card-title">האנשים שלי</div>'+
-        '<div class="home-card-sub">אנשים שחשובים לי</div>'+
-      '</button>'+
-      '<button class="home-card goals" onclick="enterModule(\'goals\')">'+
-        '<div class="home-card-icon" style="color:#4c9a4c"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/></svg></div>'+
-        '<div class="home-card-title">מטרות</div>'+
-        '<div class="home-card-sub">חלומות והדרך להגשימהם</div>'+
-      '</button>'+
-      '<button class="home-card planning" onclick="enterModule(\'planning\')">'+
-        '<div class="home-card-icon" style="color:#3a7ca5"><svg viewBox="0 0 24 24"><rect x="3.6" y="5" width="16.8" height="15" rx="3"/><path d="M3.6 9.6h16.8"/><path d="M8 3.2v3.4"/><path d="M16 3.2v3.4"/></svg></div>'+
-        '<div class="home-card-title">תכנון זמן</div>'+
-        '<div class="home-card-sub">לתכנן את היום שאחרי</div>'+
-      '</button>'+
-      '<button class="home-card game" onclick="enterModule(\'game\')">'+
-        '<div class="home-card-icon" style="color:#c98b3f"><svg viewBox="0 0 24 24"><path d="M4 20 18.5 5.5"/><path d="M13.5 5.5h5v5"/><path d="m6.5 13.5 4 4"/></svg></div>'+
-        '<div class="home-card-title">משחק</div>'+
-        '<div class="home-card-sub">החץ &mdash; מי עונה על השאלה</div>'+
-      '</button>'+
-    '</div>'+
+    '<button class="home-menu" id="home-menu-btn" aria-label="מה במעקב"><i></i><i></i><i></i></button>'+
+    '<div class="home-grid" id="home-grid"></div>'+
     '<div id="home-today" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
@@ -9001,6 +9079,32 @@ function showMain(t){
   bar.innerHTML='<button id="tb-better" class="tb on" onclick="showMain(\'better\')">Better</button>'+
                 '<button id="tb-me" class="tb" onclick="showMain(\'me\')">Me</button>';
   document.body.appendChild(bar);
+
+  var back=document.createElement('div');
+  back.id='areas-back';back.className='areas-back';
+  back.addEventListener('click',closeAreas);
+  document.body.appendChild(back);
+
+  var dr=document.createElement('div');
+  dr.id='areas-drawer';dr.className='areas-drawer';
+  dr.innerHTML='<div class="ar-hd"><div class="ar-title">מה במעקב</div><div class="ar-note">סמן את התחומים שיופיעו ב-Better. מה שתוריד רק נעלם מהמסך &mdash; כל מה שכתבת בו נשמר, ואפשר להחזיר אותו מכאן בכל רגע.</div><div class="ar-count" id="areas-count"></div></div>'+
+    '<div id="areas-list"></div>'+
+    '<button class="ar-done" id="areas-done">סיימתי</button>';
+  document.body.appendChild(dr);
+  document.getElementById('areas-done').addEventListener('click',closeAreas);
+  document.getElementById('home-menu-btn').addEventListener('click',openAreas);
+
+  // one delegated handler each, so re-rendering the grid never strands a listener
+  document.getElementById('home-grid').addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-area]');
+    if(b)enterModule(b.getAttribute('data-area'));
+  });
+  document.getElementById('areas-list').addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-area]');
+    if(b)areaToggle(b.getAttribute('data-area'));
+  });
+  renderHomeGrid();
+
   paintSky();
   // Set date
   var d=new Date();
