@@ -230,7 +230,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .wk-chip{background:linear-gradient(135deg,#f0eafa,#e8dff5);border-radius:5px;padding:2px 3px;font-size:8px;line-height:1.25;color:#5f5148;font-weight:700;overflow:hidden;word-break:break-word}
 .wk-task{display:flex;align-items:center;gap:9px;background:#fff;border-radius:13px;padding:11px 12px;margin-bottom:7px;box-shadow:0 3px 10px rgba(200,180,160,.12);touch-action:none;cursor:grab}
 .wk-grip{color:#d8cfc7;font-size:11px;line-height:1;flex-shrink:0;letter-spacing:-3px}
-.wk-ghost{position:fixed;z-index:200;margin:0;pointer-events:none;opacity:.94;transform:rotate(-2deg);box-shadow:0 12px 28px rgba(120,100,85,.32)}
+.wk-ghost{position:fixed;z-index:200;margin:0;pointer-events:none;opacity:.94;transform:rotate(-2deg);box-shadow:0 12px 28px rgba(120,100,85,.32);transition:background .15s}
 .wk-pool{min-height:56px;border-radius:14px;transition:background .15s}
 .wk-pool.hot{background:rgba(166,144,207,.09)}
 .wk-dot{width:15px;height:15px;border-radius:50%;border:none;padding:0;cursor:pointer;flex-shrink:0;box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(0,0,0,.06)}
@@ -267,7 +267,12 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .dp-rail{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:120;display:flex;flex-direction:column;gap:6px;align-items:center;max-height:70vh}
 .dp-rail-add{width:38px;height:38px;border-radius:50%;border:none;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:20px;font-weight:700;cursor:pointer;box-shadow:0 5px 16px rgba(166,144,207,.42);font-family:inherit;line-height:1;flex-shrink:0}
 .dp-rail-chip{width:56px;padding:6px 5px;border-radius:9px;font-size:8.5px;font-weight:700;line-height:1.25;text-align:center;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;touch-action:none;cursor:grab;box-shadow:0 3px 10px rgba(120,100,85,.2)}
-.dp-rail-bar{position:fixed;left:0;right:0;bottom:0;z-index:121;display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(250,247,242,.97);box-shadow:0 -4px 18px rgba(120,100,85,.14)}
+.dp-rail-bar{position:fixed;left:54px;top:50%;transform:translateY(-50%);z-index:121;width:210px;max-width:calc(100vw - 74px);max-height:64vh;overflow-y:auto;padding:12px;border-radius:16px;background:rgba(253,251,248,.98);box-shadow:0 10px 30px rgba(120,100,85,.26)}
+.dp-rail-lib{display:flex;flex-wrap:wrap;gap:6px}
+.dp-rail-libchip{border-radius:8px;padding:6px 9px;font-size:11px;font-weight:700;line-height:1.25;touch-action:none;cursor:grab;max-width:100%;word-break:break-word}
+/* a flick to the left says remove, and the ghost says which kind */
+.wk-ghost.swipe-del{background:linear-gradient(135deg,#fbe4dd,#f4cabc)!important;color:#8c4a36!important;border-right-color:#e08a72!important}
+.wk-ghost.swipe-del::after{content:attr(data-swipe);position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:#a9563c}
 .dp-min{font-size:9.5px;font-weight:800;opacity:.6;margin-left:5px;direction:ltr;display:inline-block}
 /* the five-minute steps an hour opens into while a task is held over it */
 .dp-slot.fine{background:rgba(166,144,207,.07)}
@@ -4679,7 +4684,7 @@ function wkDown(e){
   document.body.appendChild(g);
   el.style.opacity='.3';
   _wkDrag={id:el.getAttribute('data-task'),lib:el.getAttribute('data-lib')||'',g:g,src:el,
-           dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};
+           dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false,sx:e.clientX,sy:e.clientY,mode:'move'};
   window.addEventListener('pointermove',wkMove);
   window.addEventListener('pointerup',wkUp);
   window.addEventListener('pointercancel',wkUp);
@@ -4705,6 +4710,7 @@ function wkMove(e){
   _wkDrag.g.style.left=(e.clientX-_wkDrag.dx)+'px';
   _wkDrag.g.style.top=(e.clientY-_wkDrag.dy)+'px';
   dragEdgeScroll(e.clientX,e.clientY,wkMove);
+  if(!_wkDrag.lib)swipeMark(_wkDrag,swipeArmed(_wkDrag,e),'מחק');
   var hit=wkHitCell(e.clientX,e.clientY),cells=document.querySelectorAll('.wk-cell'),i;
   for(i=0;i<cells.length;i++)cells[i].classList.toggle('hot',cells[i]===hit);
   var p=document.getElementById('wk-pool');
@@ -4720,8 +4726,9 @@ function wkUp(e){
   window.removeEventListener('pointermove',wkMove);
   window.removeEventListener('pointerup',wkUp);
   window.removeEventListener('pointercancel',wkUp);
-  var id=_wkDrag.id,moved=_wkDrag.moved,lib=_wkDrag.lib;
+  var id=_wkDrag.id,moved=_wkDrag.moved,lib=_wkDrag.lib,swiped=_wkDrag.swiping;
   _wkDrag=null;
+  if(swiped&&!lib){wkDel(id);return;}
   if(!moved)return;                          // a tap, not a drop
   if(lib){if(hit)wkFromLib(lib,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));else renderPlanWeek();return;}
   if(hit)wkAssign(id,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));
@@ -5067,8 +5074,7 @@ function renderPlanDay(){
    it out from under a finger mid-drag. */
 var _dpRailOpen=false;
 function dpRail(){
-  var old=document.getElementById('dp-rail');
-  if(old)old.remove();
+  dpRailClear();          // the panel is a sibling, not a child - clear both
   if(_planMode!=='day')return;
   var loose=[],all=dpAll(_dpDate),i;
   for(i=0;i<all.length;i++)if(all[i].hour===null&&all[i].src==='day')loose.push(all[i]);
@@ -5081,15 +5087,33 @@ function dpRail(){
   }
   h+='</div>';
   if(_dpRailOpen){
+    /* Beside the button rather than down at the foot of the screen: the point
+       of the rail is not having to travel, and a panel at the bottom is the
+       same journey again. */
+    var lib=loadTaskLib();
     h+='<div id="dp-rail-bar" class="dp-rail-bar">';
-    h+='<input id="dp-rail-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משימה, ואז גרור לשעה" onkeydown="if(event.key===\'Enter\')dpRailAdd()">';
-    h+='<button onclick="dpRailAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 16px;font-size:18px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
+    h+='<div style="display:flex;gap:7px">';
+    h+='<input id="dp-rail-in" class="mtin" style="flex:1;margin-bottom:0;font-size:13px" placeholder="משימה חדשה" onkeydown="if(event.key===\'Enter\')dpRailAdd()">';
+    h+='<button onclick="dpRailAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 14px;font-size:18px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
+    h+='</div>';
+    if(lib.length){
+      h+='<div style="font-size:9.5px;letter-spacing:.08em;font-weight:700;color:#a89e97;margin:11px 0 7px">משימות חוזרות</div>';
+      h+='<div class="dp-rail-lib">';
+      for(i=0;i<lib.length;i++){
+        var lc=wkColor(lib[i].c);
+        h+='<div class="dp-rail-libchip" data-lib="'+lib[i].id+'" style="background:'+lc.bg+';color:'+lc.tx+'">'+esc(lib[i].w)+'</div>';
+      }
+      h+='</div>';
+      h+='<div style="font-size:9px;color:#c0b8b0;line-height:1.5;margin-top:8px">גרור אחת מהן ישר לשעה</div>';
+    }
     h+='</div>';
   }
   document.body.insertAdjacentHTML('beforeend',h);
   var rail=document.getElementById('dp-rail');
   rail.removeEventListener('pointerdown',dpDown);
   rail.addEventListener('pointerdown',dpDown);
+  var bar=document.getElementById('dp-rail-bar');
+  if(bar){bar.removeEventListener('pointerdown',dpDown);bar.addEventListener('pointerdown',dpDown);}
   if(_dpRailOpen)setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
 }
 function dpRailToggle(){_dpRailOpen=!_dpRailOpen;dpRail();}
@@ -5192,6 +5216,7 @@ function dpDown(e){
   _dpDrag={id:el.getAttribute('data-task'),lib:el.getAttribute('data-lib')||'',g:g,src:el,
            dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false,
            // only a chip already sitting on an hour can be given an end time
+           sx:e.clientX,sy:e.clientY,
            canEnd:el.classList.contains('dp-chip'),mode:'move'};
   window.addEventListener('pointermove',dpMove);
   window.addEventListener('pointerup',dpUp);
@@ -5231,6 +5256,10 @@ function dpMove(e){
     dpCloseFine();_dpDrag.lastHit=null;clearTimeout(_dpDrag.holdT);
   }
   if(_dpDrag.mode==='end'){dpMoveEnd(e);return;}
+  if(!_dpDrag.lib){
+    var f=dpFind(_dpDrag.id);
+    swipeMark(_dpDrag,swipeArmed(_dpDrag,e),(f&&f.src!=='day')?'הסר מהיום':'מחק');
+  }
 
   var hit=dpHitSlot(e.clientX,e.clientY),s=document.querySelectorAll('.dp-slot'),i;
   for(i=0;i<s.length;i++)s[i].classList.toggle('hot',s[i]===hit);
@@ -5326,8 +5355,13 @@ function dpUp(e){
   window.removeEventListener('pointermove',dpMove);
   window.removeEventListener('pointerup',dpUp);
   window.removeEventListener('pointercancel',dpUp);
-  var id=_dpDrag.id,moved=_dpDrag.moved,lib=_dpDrag.lib;
+  var id=_dpDrag.id,moved=_dpDrag.moved,lib=_dpDrag.lib,swiped=_dpDrag.swiping;
   _dpDrag=null;
+  if(swiped&&!lib){
+    var ft=dpFind(id);
+    if(ft&&ft.src==='day')dpDel(id);else dpAssign(id,null,0);
+    return;
+  }
   if(lib){
     if(moved&&fine)dpFromLib(lib,fineH,fineM);
     else if(moved&&hit)dpFromLib(lib,parseInt(hit.getAttribute('data-hour'),10),0);
@@ -5340,6 +5374,23 @@ function dpUp(e){
   else if(hit)dpAssign(id,parseInt(hit.getAttribute('data-hour'),10),0);
   else if(onPool)dpAssign(id,null);
   else renderPlanDay();
+}
+
+/* ── SWIPE LEFT TO REMOVE ──
+   A flick to the left, mostly sideways, is not somebody aiming at a slot.
+   Past the threshold the drag turns into a removal and says which kind it is:
+   a task that belongs to this screen is deleted, one shown here but owned by
+   the week or the month only loses its place - deleting someone else's record
+   from a screen that is merely displaying it would be wrong. */
+var SWIPE_X=62,SWIPE_Y=34;
+function swipeArmed(d,e){
+  return d.mode!=='end'&&(d.sx-e.clientX)>SWIPE_X&&Math.abs(e.clientY-d.sy)<SWIPE_Y;
+}
+function swipeMark(d,on,label){
+  if(d.swiping===on)return;
+  d.swiping=on;
+  d.g.classList.toggle('swipe-del',on);
+  d.g.setAttribute('data-swipe',on?(label||'מחק'):'');
 }
 
 /* ── DRAG-EDGE SCROLLING ──
@@ -5607,7 +5658,7 @@ function moDown(e){
   document.body.appendChild(g);
   el.style.opacity='.3';
   _moDrag={id:el.getAttribute('data-task'),lib:el.getAttribute('data-lib')||'',g:g,src:el,
-           dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};
+           dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false,sx:e.clientX,sy:e.clientY,mode:'move'};
   window.addEventListener('pointermove',moMove);
   window.addEventListener('pointerup',moUp);
   window.addEventListener('pointercancel',moUp);
@@ -5633,6 +5684,7 @@ function moMove(e){
   _moDrag.g.style.left=(e.clientX-_moDrag.dx)+'px';
   _moDrag.g.style.top=(e.clientY-_moDrag.dy)+'px';
   dragEdgeScroll(e.clientX,e.clientY,moMove);
+  if(!_moDrag.lib)swipeMark(_moDrag,swipeArmed(_moDrag,e),'מחק');
   var hit=moHitCell(e.clientX,e.clientY),c=document.querySelectorAll('.mo-cell'),i;
   for(i=0;i<c.length;i++)c[i].classList.toggle('hot',c[i]===hit);
 }
@@ -5646,8 +5698,9 @@ function moUp(e){
   window.removeEventListener('pointermove',moMove);
   window.removeEventListener('pointerup',moUp);
   window.removeEventListener('pointercancel',moUp);
-  var id=_moDrag.id,moved=_moDrag.moved,lib=_moDrag.lib;
+  var id=_moDrag.id,moved=_moDrag.moved,lib=_moDrag.lib,swiped=_moDrag.swiping;
   _moDrag=null;
+  if(swiped&&!lib){moDel(id);return;}
   if(!moved)return;
   if(lib){if(hit)moFromLib(lib,hit.getAttribute('data-date'));else renderPlanMonth();return;}
   if(hit)moAssign(id,hit.getAttribute('data-date'));
