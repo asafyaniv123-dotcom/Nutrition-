@@ -189,6 +189,15 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .rf-card-t{font-size:13px;font-weight:800;color:#4a4340;line-height:1.3}
 .rf-card-s{font-size:9.5px;color:#a89e97;line-height:1.4}
 .rf-card-v{position:absolute;top:9px;left:9px;width:19px;height:19px;border-radius:50%;background:#8fc79e;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1}
+/* the day's anchors, stacked with an arrow between them */
+.rf-flow{display:flex;flex-direction:column}
+.rf-flow-row{display:flex;align-items:center;gap:6px}
+.rf-flow-box{flex:1;min-width:0;background:#fff;border:1.5px solid #e4ddd4;border-radius:14px;padding:13px 14px;font-size:14px;color:#4a4340;font-family:inherit;outline:none;direction:rtl}
+.rf-flow-box:focus{border-color:#a690cf}
+.rf-flow-box::placeholder{color:#c9c0b8}
+.rf-flow-x{background:none;border:none;color:#e0c4bb;font-size:16px;cursor:pointer;padding:4px 2px;flex-shrink:0;font-family:inherit}
+.rf-flow-ar{text-align:center;color:#c9bce0;font-size:15px;padding:5px 0;line-height:1}
+.rf-flow-add{width:100%;background:rgba(166,144,207,.08);border:1.5px dashed #c9bce0;border-radius:14px;padding:11px;font-size:12.5px;font-weight:700;color:#a690cf;cursor:pointer;font-family:inherit;margin-top:12px}
 .interview{padding:20px 16px;min-height:60vh;display:flex;flex-direction:column}
 .q-num{font-size:10px;color:#a89e97;letter-spacing:.1em;margin-bottom:8px}
 .q-text{font-size:20px;font-weight:700;margin-bottom:24px;line-height:1.4}
@@ -6719,6 +6728,7 @@ var RF_STAGE1=[
   {id:'mood',kind:'mood',q:'איך הרגשת היום?'},
   {id:'bodyFeelings',kind:'chips',q:'ואיך הגוף שלך הרגיש היום?',sub:'אפשר לבחור יותר מאחד.',opts:RF_BODY},
   {id:'dayRating',kind:'scale',q:'אם היית צריך לתת ליום הזה ציון — איזה ציון הוא מקבל?'},
+  {id:'flow',kind:'flow',q:'איך זרם היום שלך?',sub:'כמה עוגנים לפי הסדר. זה גם מה שיישאר ממנו בזיכרון.'},
   {id:'plannedVsActual',kind:'ladder',q:'עד כמה היום שלך נראה כמו היום שרצית שיהיה?',opts:RF_PLANNED},
   {id:'moment',kind:'text',q:'מה היה הרגע הכי טוב שלך היום?',ph:'אפילו רגע קטן.'},
   {id:'photo',kind:'photo',q:'איזו תמונה מספרת את היום שלך?',sub:'זה יכול להיות רגע, מקום, אדם, משהו שעשית — או פשוט תמונה שמרגישה כמו היום שעבר עליך.'},
@@ -7087,6 +7097,24 @@ function renderReflectStep(){
     h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
     h+='<button onclick="rfSkip()" class="rf-ghost">אין לי מושג</button>';
   }
+  /* The day as a few anchors in order. Boxes stack rather than sit side by
+     side: the point is that each one is a sentence you will recognise in a
+     year, and three of those do not fit across a phone. */
+  else if(q.kind==='flow'){
+    var fl=rfArr('flow');
+    if(!fl.length)fl=['','',''];
+    h+='<div class="rf-flow">';
+    for(i=0;i<fl.length;i++){
+      h+='<div class="rf-flow-row">';
+      h+='<input class="rf-flow-box" id="rf-fl-'+i+'" value="'+esc(fl[i]||'')+'" placeholder="'+(i===0?'איך התחיל':(i===fl.length-1?'ואיך נגמר':'ואז'))+'">';
+      if(fl.length>1)h+='<button class="rf-flow-x" onclick="rfFlowDel('+i+')">&times;</button>';
+      h+='</div>';
+      if(i<fl.length-1)h+='<div class="rf-flow-ar">&#8595;</div>';
+    }
+    h+='</div>';
+    h+='<button class="rf-flow-add" onclick="rfFlowAdd()">+ עוגן נוסף</button>';
+    h+='<button onclick="rfNext()" class="rf-next">המשך</button>';
+  }
   else if(q.kind==='song'){
     h+='<input id="rf-song" class="rf-in" style="min-height:0" placeholder="שם השיר" value="'+(rfVal('song')?esc(rfVal('song')):'')+'">';
     h+='<input id="rf-artist" class="rf-in" style="min-height:0;margin-top:6px" placeholder="אמן" value="'+(rfVal('songArtist')?esc(rfVal('songArtist')):'')+'">';
@@ -7157,6 +7185,11 @@ function rfCommitText(){
   } else if(q.kind==='clock'){
     var clk=interviewAnswers.timeclock||new Array(25).fill('none');
     rfSave({timeclock:clk.slice(),timeDistribution:rfClockTotals(clk)});
+  } else if(q.kind==='flow'){
+    // empty boxes are scaffolding, not answers
+    var a=rfFlowRead(),keep=[],j;
+    for(j=0;j<a.length;j++)if(a[j])keep.push(a[j]);
+    rfSave({flow:keep});
   }
 }
 function rfStageEnd(){
@@ -7223,6 +7256,22 @@ function rfAddPerson(){
   savePeople(people);
   rfSave({influentialPerson:n.trim()});
   renderReflectStep();
+}
+// The boxes are live inputs, so anything typed has to be read out of the DOM
+// before a re-render replaces them.
+function rfFlowRead(){
+  var out=[],i=0,el;
+  while((el=document.getElementById('rf-fl-'+i))){out.push(el.value.trim());i++;}
+  return out;
+}
+function rfFlowAdd(){
+  var a=rfFlowRead();a.push('');
+  rfSave({flow:a});renderReflectStep();
+  setTimeout(function(){var e=document.getElementById('rf-fl-'+(a.length-1));if(e)e.focus();},40);
+}
+function rfFlowDel(i){
+  var a=rfFlowRead();a.splice(i,1);
+  rfSave({flow:a});renderReflectStep();
 }
 function rfTlAdd(){
   var t=document.getElementById('rf-tl-t'),w=document.getElementById('rf-tl-w');
