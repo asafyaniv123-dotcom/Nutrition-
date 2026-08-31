@@ -135,11 +135,11 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .scan-hd{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:800;color:#4a4340;margin-bottom:11px}
 .scan-x{border:none;background:none;font-size:24px;line-height:1;color:#a89e97;cursor:pointer;padding:0 4px;font-family:inherit}
 .scan-cam{width:100%;aspect-ratio:4/3;background:#2a2522;border-radius:14px;overflow:hidden;position:relative}
-.scan-cam video,.scan-frozen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan-cam video,.scan-frozen{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1c1917}
 .scan-frozen{display:none}
 .scan-frozen.on{display:block}
 /* the band the crop is taken from, so you can see where to hold it */
-.scan-guide{position:absolute;left:4%;right:4%;top:25%;height:50%;border:2px solid rgba(255,255,255,.9);border-radius:10px;box-shadow:0 0 0 2000px rgba(0,0,0,.28);pointer-events:none}
+.scan-guide{position:absolute;left:6%;right:6%;top:32%;height:36%;border:2px dashed rgba(255,255,255,.75);border-radius:10px;pointer-events:none}
 .scan-shot{width:100%;margin-top:10px;border:none;border-radius:13px;padding:14px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer}
 .scan-shot:disabled{opacity:.5}
 .scan-cam video{width:100%;height:100%;object-fit:cover}
@@ -1417,29 +1417,93 @@ function scanShoot(){
   scanMsg('מפענח…');
   scanDecodeFrozen();
 }
-/* One still, tried a few ways. A barcode filling the middle of the frame
-   decodes best from a crop of exactly that band, scaled up so the thin bars
-   land on whole pixels; the whole frame is tried too, in case it was held off
-   to one side. */
+/* One still, tried several ways, cheapest and likeliest first.
+
+   Measured rather than guessed: against blurred, rotated, low-contrast and
+   unevenly lit test frames, every read that succeeded succeeded on the WHOLE
+   frame at its own resolution. The cropped-and-upscaled attempts that used to
+   run first failed on every single case - upscaling a crop with smoothing off
+   turns soft bars into staircases and throws away the sub-pixel edges the
+   decoder measures. So the crops come last, if at all.
+
+   Rotation was the outright failure: a barcode at 90 degrees was never read.
+   ZXing's 1D readers sweep horizontal lines, so a barcode running down the
+   frame is invisible to them - and a phone held in portrait over a packet on
+   a table produces exactly that. The frame is now offered at each quarter
+   turn.
+
+   A grey pass is tried too, stretched to full black-and-white, for the case
+   the tests could not fake: a shiny wrapper under a ceiling light, where the
+   bars are dark grey on light grey rather than black on white. */
+function scanRotate(src,deg){
+  if(!deg)return src;
+  var swap=(deg===90||deg===270);
+  var cv=document.createElement('canvas');
+  cv.width=swap?src.height:src.width;
+  cv.height=swap?src.width:src.height;
+  var x=cv.getContext('2d');
+  x.translate(cv.width/2,cv.height/2);
+  x.rotate(deg*Math.PI/180);
+  x.drawImage(src,-src.width/2,-src.height/2);
+  return cv;
+}
+function scanContrast(src){
+  var cv=document.createElement('canvas');
+  cv.width=src.width;cv.height=src.height;
+  var x=cv.getContext('2d');
+  x.drawImage(src,0,0);
+  var d;
+  try{d=x.getImageData(0,0,cv.width,cv.height);}catch(e){return src;}
+  var a=d.data,i,g,lo=255,hi=0;
+  for(i=0;i<a.length;i+=4){
+    g=(a[i]*299+a[i+1]*587+a[i+2]*114)/1000;
+    a[i]=a[i+1]=a[i+2]=g;
+    if(g<lo)lo=g; if(g>hi)hi=g;
+  }
+  var span=Math.max(1,hi-lo);
+  for(i=0;i<a.length;i+=4){
+    g=(a[i]-lo)/span*255;
+    a[i]=a[i+1]=a[i+2]=g<0?0:(g>255?255:g);
+  }
+  x.putImageData(d,0,0);
+  return cv;
+}
+function scanCrop(src,t){
+  var sw=Math.max(1,Math.floor(src.width*t.w)),sh=Math.max(1,Math.floor(src.height*t.h));
+  var cv=document.createElement('canvas');
+  cv.width=sw;cv.height=sh;
+  cv.getContext('2d').drawImage(src,Math.floor(src.width*t.x),Math.floor(src.height*t.y),sw,sh,0,0,sw,sh);
+  return cv;
+}
 function scanDecodeFrozen(){
   var c=document.getElementById('scan-frozen');
   if(!c)return;
   scanLibLoad().then(function(){
-    var tries=[
-      {x:0.04,y:0.25,w:0.92,h:0.50,scale:2},
-      {x:0.04,y:0.10,w:0.92,h:0.80,scale:2},
-      {x:0.00,y:0.00,w:1.00,h:1.00,scale:1}
+    var plan=[
+      {t:'שלם',        f:function(){return c;}},
+      {t:'רבע סיבוב',  f:function(){return scanRotate(c,90);}},
+      {t:'רבע סיבוב',  f:function(){return scanRotate(c,270);}},
+      {t:'ניגודיות',   f:function(){return scanContrast(c);}},
+      {t:'ניגודיות',   f:function(){return scanContrast(scanRotate(c,90));}},
+      {t:'הפוך',       f:function(){return scanRotate(c,180);}},
+      {t:'הרצועה',     f:function(){return scanCrop(c,{x:0.02,y:0.20,w:0.96,h:0.60});}},
+      {t:'הרצועה',     f:function(){return scanContrast(scanCrop(c,{x:0.02,y:0.20,w:0.96,h:0.60}));}}
     ];
     var i=0;
     function next(){
-      if(i>=tries.length){
-        scanMsg('לא זיהיתי ברקוד. נסה קרוב יותר, ישר, ובאור טוב.');
+      if(i>=plan.length){
+        scanMsg('לא זיהיתי ברקוד. אפשר להקליד את הספרות שמתחת לפסים &mdash; זה תמיד עובד.');
         var b=document.getElementById('scan-shot');
         if(b){b.disabled=false;b.textContent='נסה שוב';b.onclick=function(){this.onclick=scanShoot;scanUnfreeze();};}
+        var f=document.getElementById('scan-code');
+        if(f)f.focus();
         return;
       }
-      var t=tries[i++];
-      scanDecodeRegion(c,t).then(function(txt){
+      var step=plan[i++];
+      scanMsg('מפענח… '+i+'/'+plan.length);
+      var img;
+      try{img=step.f();}catch(e){next();return;}
+      scanDecodeCanvas(img).then(function(txt){
         if(txt){scanCamStop();barcodeLookup(String(txt).trim());}
         else next();
       });
@@ -1449,18 +1513,14 @@ function scanDecodeFrozen(){
     scanMsg('הסורק לא נטען. אפשר להקליד את הספרות למטה.');
   });
 }
-function scanDecodeRegion(src,t){
+function scanDecodeCanvas(cv){
   return new Promise(function(res){
-    var sw=Math.max(1,Math.floor(src.width*t.w)),sh=Math.max(1,Math.floor(src.height*t.h));
-    var cv=document.createElement('canvas');
-    cv.width=Math.floor(sw*t.scale);cv.height=Math.floor(sh*t.scale);
-    var x=cv.getContext('2d');
-    x.imageSmoothingEnabled=false;
-    x.drawImage(src,Math.floor(src.width*t.x),Math.floor(src.height*t.y),sw,sh,0,0,cv.width,cv.height);
-    cv.toBlob(function(b){
-      if(!b){res(null);return;}
-      scanDecodeBlob(new File([b],'frame.png',{type:'image/png'})).then(res);
-    },'image/png');
+    try{
+      cv.toBlob(function(b){
+        if(!b){res(null);return;}
+        scanDecodeBlob(new File([b],'frame.png',{type:'image/png'})).then(res);
+      },'image/png');
+    }catch(e){res(null);}
   });
 }
 function scanDecodeBlob(file){
