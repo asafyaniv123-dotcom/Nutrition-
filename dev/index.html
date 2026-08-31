@@ -392,28 +392,6 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .ar-s{font-size:10.5px;color:#a89e97}
 .ar-done{margin:0 12px calc(16px + env(safe-area-inset-bottom));padding:14px;border:none;border-radius:16px;background:#4a4340;color:#fff;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer}
 .home-card-badge{position:absolute;top:12px;left:12px;background:rgba(166,144,207,.2);border-radius:20px;padding:3px 8px;font-size:9px;font-weight:700;color:#a690cf}
-/* "היום" - the day's macros and water summarised on the home screen, so the
-   numbers are readable without entering תזונה first. Same shapes as the
-   macro card inside the module, just sized for a glance. */
-.ht-card{background:#fff;border-radius:22px;padding:16px 16px 18px;box-shadow:0 4px 16px rgba(200,180,160,.12)}
-.ht-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
-.ht-lbl{font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700}
-.ht-open{background:none;border:none;font-size:10.5px;color:#a690cf;font-weight:700;cursor:pointer;font-family:inherit;padding:0}
-.ht-bars{display:flex;gap:10px;justify-content:center;align-items:flex-end}
-.ht-col{display:flex;flex-direction:column;align-items:center;gap:6px;width:68px}
-.ht-pct{font-size:11px;color:#a89e97;font-weight:600}
-.ht-track{width:34px;height:86px;background:#f2ede6;border-radius:17px;overflow:hidden;position:relative}
-.ht-fill{position:absolute;bottom:0;width:100%;border-radius:17px;transition:height .6s cubic-bezier(.34,1.56,.64,1)}
-.ht-val{font-size:16px;font-weight:700}
-.ht-lb{font-size:11px;color:#a89e97}
-.ht-water{background:linear-gradient(135deg,#e8f4fd,#dbeef9);border-radius:16px;padding:12px 14px;margin-top:14px}
-.ht-whd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.ht-wt{font-size:13px;font-weight:700;color:#3a7ca5}
-.ht-wn{font-size:12px;color:#5b8fa8;font-weight:600}
-.ht-wb{height:6px;background:rgba(255,255,255,.5);border-radius:3px;overflow:hidden;margin-bottom:10px}
-.ht-wf{height:100%;background:linear-gradient(90deg,#74b9e8,#3a7ca5);border-radius:3px;transition:width .5s}
-.ht-wbtns{display:flex;gap:7px}
-.ht-wadd{flex:1;background:#fff;border:none;border-radius:11px;padding:8px;font-size:12px;font-weight:700;color:#3a7ca5;cursor:pointer;font-family:inherit}
 /* ── THE SKY ──
    One fixed layer behind everything, animating transform and opacity only so
    it stays on the compositor. The home and Me sit on it; module screens get
@@ -1889,7 +1867,6 @@ function goHome(){
   document.querySelector('.tabs').style.display='';
   document.getElementById('home-screen').style.display='flex';
   refreshHomeCal();
-  renderHomeToday();
   renderVisionBoard();
   renderTripToggle();
   renderReminders();
@@ -7692,49 +7669,6 @@ function renderGame(){
 }
 window.addEventListener('resize',sizeGameFrame);
 
-// "היום" on the home screen - the same four macro bars and water row the
-// תזונה module shows, read straight off today's record. It always reports
-// today, whatever day the module happens to be parked on.
-function renderHomeToday(){
-  var el=document.getElementById('home-today');
-  if(!el)return;
-  var day=loadDay(todayStr());
-  var kcal=Math.round(day.meals.reduce(function(a,m){return a+(m.kcal||0);},0));
-  var p=r2(day.meals.reduce(function(a,m){return a+(m.p||0);},0));
-  var c=r2(day.meals.reduce(function(a,m){return a+(m.c||0);},0));
-  var f=r2(day.meals.reduce(function(a,m){return a+(m.f||0);},0));
-  var water=day.water||0;
-  var wp=Math.min(100,Math.round(water/TARGETS.water*100));
-  var bars=[
-    {v:kcal,pct:Math.min(100,Math.round(kcal/TARGETS.kcal*100)),lbl:'קק"ל',g:'linear-gradient(180deg,#c9bce0,#a690cf)',col:'#a690cf'},
-    {v:p+'g',pct:Math.min(100,Math.round(p/TARGETS.p*100)),lbl:'חלבון',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:'#e08a72'},
-    {v:c+'g',pct:Math.min(100,Math.round(c/TARGETS.c*100)),lbl:'פחמימה',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:'#8fc79e'},
-    {v:f+'g',pct:Math.min(100,Math.round(f/TARGETS.f*100)),lbl:'שומן',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:'#e8c162'}
-  ];
-  var n=day.meals.length;
-  var h='<div class="ht-card"><div class="ht-hd"><div class="ht-lbl">היום</div>'+
-    '<button class="ht-open" onclick="enterModule(\'nutrition\')">'+
-    (n?n+(n===1?' ארוחה נרשמה':' ארוחות נרשמו'):'עוד לא נרשמה ארוחה')+' &#8249;</button></div><div class="ht-bars">';
-  for(var i=0;i<bars.length;i++){
-    var b=bars[i];
-    h+='<div class="ht-col"><div class="ht-pct">'+b.pct+'%</div>'+
-       '<div class="ht-track"><div class="ht-fill" style="height:'+b.pct+'%;background:'+b.g+'"></div></div>'+
-       '<div class="ht-val" style="color:'+b.col+'">'+b.v+'</div><div class="ht-lb">'+b.lbl+'</div></div>';
-  }
-  h+='</div><div class="ht-water"><div class="ht-whd"><span class="ht-wt">&#x1F4A7; מים</span>'+
-    '<span class="ht-wn">'+water+' / '+TARGETS.water+' מ"ל</span></div>'+
-    '<div class="ht-wb"><div class="ht-wf" style="width:'+wp+'%"></div></div>'+
-    '<div class="ht-wbtns"><button class="ht-wadd" onclick="homeAddWater(250)">+250מ"ל</button>'+
-    '<button class="ht-wadd" onclick="homeAddWater(500)">+500מ"ל</button>'+
-    '<button class="ht-wadd" onclick="homeAddWater(1000)">+1L</button></div></div></div>';
-  el.innerHTML=h;
-}
-function homeAddWater(ml){
-  var k=todayStr(),d=loadDay(k);
-  d.water=(d.water||0)+ml;
-  saveDay(k,d);
-  renderHomeToday();
-}
 
 /* ── BACKUP ──
    Everything the app knows lives in this browser's localStorage and nowhere
@@ -9061,7 +8995,6 @@ function showMain(t){
     '<div class="home-sub">Become the best version of yourself</div>'+
     '<button class="home-menu" id="home-menu-btn" aria-label="מה במעקב"><i></i><i></i><i></i></button>'+
     '<div class="home-grid" id="home-grid"></div>'+
-    '<div id="home-today" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
 
@@ -9116,7 +9049,6 @@ function showMain(t){
   migratePhotos();
   ingestStepsFromLink();
   syncStepsFromServer();
-  renderHomeToday();
   renderVisionBoard();
   renderTripToggle();
   renderReminders();
