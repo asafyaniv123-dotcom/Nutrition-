@@ -207,10 +207,13 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .rf-flow-add{width:100%;background:rgba(166,144,207,.08);border:1.5px dashed #c9bce0;border-radius:14px;padding:11px;font-size:12.5px;font-weight:700;color:#a690cf;cursor:pointer;font-family:inherit;margin-top:12px}
 /* the week: seven day columns, a third of the screen tall, cut into three
    bands. The cells are the drop targets and keep the text visible. */
-.wk-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:5px;margin-right:35px}
-.wk-wrap{display:flex;gap:5px;align-items:stretch}
-.wk-slots{width:30px;flex-shrink:0;display:flex;flex-direction:column}
-.wk-slot-l{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:8px;font-weight:700;color:#b8afa7;letter-spacing:.03em;line-height:1.15}
+.wk-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:5px;margin-right:36px}
+.wk-wrap{display:flex;gap:2px;align-items:stretch}
+.wk-slots{width:34px;flex-shrink:0;display:flex;flex-direction:column}
+.wk-slot-l{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:8px;font-weight:700;color:#b8afa7;letter-spacing:.03em;line-height:1.15;gap:2px}
+.wk-slot-hrs{font-size:7.5px;font-weight:700;color:#cfc6be;direction:ltr;letter-spacing:0}
+/* what the day screen placed, shown here too but marked as belonging there */
+.wk-chip.fromday{border:1px dashed rgba(0,0,0,.14);opacity:.82}
 .wk-hcell{text-align:center;min-width:0;padding:2px 0;border-radius:8px}
 .wk-hcell.today{background:linear-gradient(135deg,#f0eafa,#e8dff5)}
 .wk-dn{font-size:9.5px;font-weight:800;color:#4a4340;line-height:1.15;white-space:nowrap;letter-spacing:-.2px}
@@ -260,6 +263,11 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .dp-ta{width:100%;background:#fff;border:none;border-radius:14px;padding:12px 14px;font-size:12.5px;color:#4a4340;line-height:1.6;font-family:inherit;direction:rtl;outline:none;resize:none;min-height:74px}
 .dp-ta::placeholder{color:#c9c0b8}
 .dp-note-m{font-size:7px;vertical-align:middle;margin-right:5px;opacity:.55}
+/* the rail: add and drag without leaving the hours */
+.dp-rail{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:120;display:flex;flex-direction:column;gap:6px;align-items:center;max-height:70vh}
+.dp-rail-add{width:38px;height:38px;border-radius:50%;border:none;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:20px;font-weight:700;cursor:pointer;box-shadow:0 5px 16px rgba(166,144,207,.42);font-family:inherit;line-height:1;flex-shrink:0}
+.dp-rail-chip{width:56px;padding:6px 5px;border-radius:9px;font-size:8.5px;font-weight:700;line-height:1.25;text-align:center;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;touch-action:none;cursor:grab;box-shadow:0 3px 10px rgba(120,100,85,.2)}
+.dp-rail-bar{position:fixed;left:0;right:0;bottom:0;z-index:121;display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(250,247,242,.97);box-shadow:0 -4px 18px rgba(120,100,85,.14)}
 .dp-min{font-size:9.5px;font-weight:800;opacity:.6;margin-left:5px;direction:ltr;display:inline-block}
 /* the five-minute steps an hour opens into while a task is held over it */
 .dp-slot.fine{background:rgba(166,144,207,.07)}
@@ -1770,6 +1778,7 @@ setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove();},
 var currentModule=null; // null = home, 'nutrition', 'endofday'
 
 function goHome(){
+  dpRailClear();
   currentModule=null;
   document.querySelector('.app').classList.remove('game-mode');
   document.getElementById('btnPrev').style.display='';
@@ -1788,6 +1797,7 @@ function goHome(){
 }
 
 function enterModule(mod){
+  dpRailClear();
   currentModule=mod;
   document.querySelector('.app').classList.remove('game-mode');
   document.getElementById('btnPrev').style.display='';
@@ -4425,7 +4435,20 @@ function savePlanHistory(arr){try{localStorage.setItem('plan_history',JSON.strin
    with a ghost that follows the finger, the same way the vision board works. */
 var _wkSun=null,_wkOpen=-1,_wkDrag=null;
 var WK_DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-var WK_SLOTS=[['m','בוקר'],['n','צהריים'],['e','ערב']];
+var WK_SLOTS=[['m','בוקר','06&ndash;12'],['n','צהריים','12&ndash;17'],['e','ערב','17&ndash;23']];
+// Which band an exact hour from the day grid belongs to.
+function wkSlotForHour(h){return h<12?'m':(h<17?'n':'e');}
+// What the day screen put on this date and hour, so the week can show it too.
+function wkDayItemsIn(date,slot){
+  var dp=loadDPlan(date),out=[],i,it;
+  for(i=0;i<dp.items.length;i++){
+    it=dp.items[i];
+    if(typeof it.h!=='number')continue;
+    if(wkSlotForHour(it.h)!==slot)continue;
+    out.push(it);
+  }
+  return out;
+}
 // Drawn from the palette the rest of the app already uses, so a coloured week
 // still looks like the same app.
 var WK_COLORS=[
@@ -4511,7 +4534,7 @@ function renderPlanWeek(){
   // The band labels sit beside the table, not over it: overlaid they covered
   // whatever was written in the outermost column.
   h+='<div class="wk-wrap"><div class="wk-slots">';
-  for(j=0;j<3;j++)h+='<div class="wk-slot-l">'+WK_SLOTS[j][1]+'</div>';
+  for(j=0;j<3;j++)h+='<div class="wk-slot-l"><span>'+WK_SLOTS[j][1]+'</span><span class="wk-slot-hrs">'+WK_SLOTS[j][2]+'</span></div>';
   h+='</div>';
   h+='<div class="wk-table">';
   h+='<div class="wk-bands"><div class="wk-band-l" style="top:33.333%"></div><div class="wk-band-l" style="top:66.666%"></div></div>';
@@ -4525,6 +4548,12 @@ function renderPlanWeek(){
       for(t=0;t<list.length;t++){
         var cc=wkColor(list[t].c);
         h+='<div class="wk-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(list[t].w)+'</div>';
+      }
+      // and what the day screen placed here, so the week shows the whole picture
+      var dl=wkDayItemsIn(st,WK_SLOTS[j][0]);
+      for(t=0;t<dl.length;t++){
+        var dc=wkColor(dl[t].c);
+        h+='<div class="wk-chip fromday" style="background:'+dc.bg+';color:'+dc.tx+'">'+esc(dl[t].w)+'</div>';
       }
       h+='</div>';
     }
@@ -5020,6 +5049,7 @@ function renderPlanDay(){
   out+='</div>';
 
   document.getElementById('content').innerHTML=out;
+  dpRail();
   // #content survives innerHTML, so the other screen's handler survives with
   // it. Left attached, both drags start at once and fight over the drop.
   var box=document.getElementById('content');
@@ -5027,6 +5057,56 @@ function renderPlanDay(){
   box.removeEventListener('pointerdown',moDown);
   box.removeEventListener('pointerdown',dpDown);
   box.addEventListener('pointerdown',dpDown);
+}
+
+/* ── THE SIDE RAIL ──
+   Writing lives at the bottom of the screen, which means scrolling away from
+   the grid to add anything. This pins a "+" and the unplaced tasks to the edge
+   of the viewport, so a task can be written and dragged onto an hour without
+   ever leaving the hours. It lives outside #content so a re-render cannot take
+   it out from under a finger mid-drag. */
+var _dpRailOpen=false;
+function dpRail(){
+  var old=document.getElementById('dp-rail');
+  if(old)old.remove();
+  if(_planMode!=='day')return;
+  var loose=[],all=dpAll(_dpDate),i;
+  for(i=0;i<all.length;i++)if(all[i].hour===null&&all[i].src==='day')loose.push(all[i]);
+
+  var h='<div id="dp-rail" class="dp-rail">';
+  h+='<button class="dp-rail-add" onclick="dpRailToggle()">'+(_dpRailOpen?'&times;':'+')+'</button>';
+  for(i=0;i<loose.length&&i<5;i++){
+    var c=wkColor(loose[i].c);
+    h+='<div class="dp-rail-chip" data-task="'+loose[i].id+'" style="background:'+c.bg+';color:'+c.tx+'" title="'+esc(loose[i].w)+'">'+esc(loose[i].w)+'</div>';
+  }
+  h+='</div>';
+  if(_dpRailOpen){
+    h+='<div id="dp-rail-bar" class="dp-rail-bar">';
+    h+='<input id="dp-rail-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משימה, ואז גרור לשעה" onkeydown="if(event.key===\'Enter\')dpRailAdd()">';
+    h+='<button onclick="dpRailAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 16px;font-size:18px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
+    h+='</div>';
+  }
+  document.body.insertAdjacentHTML('beforeend',h);
+  var rail=document.getElementById('dp-rail');
+  rail.removeEventListener('pointerdown',dpDown);
+  rail.addEventListener('pointerdown',dpDown);
+  if(_dpRailOpen)setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
+}
+function dpRailToggle(){_dpRailOpen=!_dpRailOpen;dpRail();}
+function dpRailAdd(){
+  var el=document.getElementById('dp-rail-in');
+  if(!el||!el.value.trim())return;
+  var dp=loadDPlan(_dpDate);
+  dp.items.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                 w:el.value.trim(),c:_dpNewColor});
+  saveDPlan(_dpDate,dp);
+  el.value='';
+  renderPlanDay();
+  setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
+}
+function dpRailClear(){
+  var r=document.getElementById('dp-rail');if(r)r.remove();
+  var b=document.getElementById('dp-rail-bar');if(b)b.remove();
 }
 
 function dpTaskHTML(t){
@@ -5046,7 +5126,7 @@ function dpShift(dir){
   var d=new Date(_dpDate+'T12:00:00');d.setDate(d.getDate()+dir);
   _dpDate=wkStamp(d);_dpPick='';renderPlanDay();
 }
-function planOpenDay(date){_planMode='day';_dpDate=date;renderPlanning();window.scrollTo(0,0);}
+function planOpenDay(date){_planMode='day';_dpDate=date;_dpRailOpen=false;renderPlanning();window.scrollTo(0,0);}
 
 /* The deeper answers live in plan_history keyed by the day, the same store
    the planning journal reads, and are written as they are given rather than
@@ -5582,6 +5662,7 @@ var _planMode='';
 
 function renderPlanning(){
   document.getElementById('hdr-title').textContent='תכנון זמן';
+  dpRailClear();                 // the day screen puts it back if it is the one rendering
   if(!_planMode)return renderPlanHome();
   if(_planMode==='weekly')return renderPlanWeek();
   if(_planMode==='day')return renderPlanDay();
