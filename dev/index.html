@@ -243,6 +243,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .dp-slot{flex:1;min-width:0;padding:5px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;transition:background .15s}
 .dp-slot.hot{background:rgba(143,199,158,.22)}
 .dp-chip{border-radius:8px;padding:5px 9px;font-size:11.5px;font-weight:700;line-height:1.3;max-width:100%;word-break:break-word;touch-action:none;cursor:grab}
+.dp-note-m{font-size:7px;vertical-align:middle;margin-right:5px;opacity:.55}
 .interview{padding:20px 16px;min-height:60vh;display:flex;flex-direction:column}
 .q-num{font-size:10px;color:#a89e97;letter-spacing:.1em;margin-bottom:8px}
 .q-text{font-size:20px;font-weight:700;margin-bottom:24px;line-height:1.4}
@@ -4663,14 +4664,15 @@ function wkUp(e){
    day, as an override keyed by task id - and an item written here never
    appears in the week table. So the week stays a week and does not fill up
    with the detail of seven days. */
-var _dpDate='',_dpNewColor='lav',_dpPick='',_dpDrag=null;
+var _dpDate='',_dpNewColor='lav',_dpPick='',_dpDrag=null,_dpDetail='';
+var _planFor='',_planFrom='';
 var DP_FROM=6,DP_TO=23;
 
 function dpKey(date){return 'dplan_'+date;}
 function loadDPlan(date){
   try{var x=localStorage.getItem(dpKey(date));var o=x?JSON.parse(x):null;
-    if(o&&Array.isArray(o.items))return{items:o.items,hours:o.hours||{}};}catch(e){}
-  return{items:[],hours:{}};
+    if(o&&Array.isArray(o.items))return{items:o.items,hours:o.hours||{},notes:o.notes||{}};}catch(e){}
+  return{items:[],hours:{},notes:{}};
 }
 function saveDPlan(date,o){try{localStorage.setItem(dpKey(date),JSON.stringify(o));}catch(e){}}
 
@@ -4685,9 +4687,65 @@ function dpAll(date){
               hour:(typeof hv==='number'?hv:null),src:'week',slot:wkSlotOf(wk.tasks[i])});
   }
   for(i=0;i<dp.items.length;i++)
-    out.push({id:dp.items[i].id,w:dp.items[i].w,c:dp.items[i].c,
+    out.push({id:dp.items[i].id,w:dp.items[i].w,c:dp.items[i].c,n:dp.items[i].n||'',
               hour:(typeof dp.items[i].h==='number'?dp.items[i].h:null),src:'day'});
   return out;
+}
+// A note on a week task lives on the day, like its hour, so the week record
+// is never written from here.
+function dpNoteOf(id){
+  var dp=loadDPlan(_dpDate),i;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id===id)return dp.items[i].n||'';
+  return (dp.notes&&dp.notes[id])||'';
+}
+function dpFind(id){
+  var all=dpAll(_dpDate),i;
+  for(i=0;i<all.length;i++)if(all[i].id===id)return all[i];
+  return null;
+}
+function dpOpenDetail(id){_dpDetail=id;renderDpSheet();}
+function dpCloseDetail(save){
+  if(save&&_dpDetail){
+    var t=document.getElementById('dp-d-title'),n=document.getElementById('dp-d-note');
+    var dp=loadDPlan(_dpDate),i,found=false;
+    for(i=0;i<dp.items.length;i++)if(dp.items[i].id===_dpDetail){
+      if(t&&t.value.trim())dp.items[i].w=t.value.trim();
+      if(n)dp.items[i].n=n.value.trim();
+      found=true;
+    }
+    if(!found){                       // a week task: only the note is ours
+      if(!dp.notes)dp.notes={};
+      if(n)dp.notes[_dpDetail]=n.value.trim();
+    }
+    saveDPlan(_dpDate,dp);
+  }
+  _dpDetail='';
+  var ov=document.getElementById('dp-sheet');
+  if(ov)ov.remove();
+  renderPlanDay();
+}
+function renderDpSheet(){
+  var t=dpFind(_dpDetail);
+  if(!t)return;
+  var note=dpNoteOf(t.id),c=wkColor(t.c);
+  var old=document.getElementById('dp-sheet');if(old)old.remove();
+  var h='<div class="summary-overlay" id="dp-sheet" onclick="if(event.target===this)dpCloseDetail(true)">';
+  h+='<div class="summary-sheet" style="padding-bottom:30px"><div class="summary-pull"></div>';
+  h+='<button class="summary-close" onclick="dpCloseDetail(true)">&times;</button>';
+  h+='<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">';
+  h+='<span style="width:13px;height:13px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span>';
+  h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97">'+(t.hour!==null?dpHH(t.hour):'ללא שעה')+(t.src==='week'?' &middot; מהשבוע':'')+'</div></div>';
+  if(t.src==='day')
+    h+='<input id="dp-d-title" class="mtin" style="font-size:16px;font-weight:800" value="'+esc(t.w)+'">';
+  else
+    h+='<div style="font-size:17px;font-weight:800;color:#4a4340;margin-bottom:12px">'+esc(t.w)+'</div>';
+  h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin:6px 0 8px">פרטים שחשוב לזכור</div>';
+  h+='<textarea id="dp-d-note" class="q-input" style="min-height:120px" placeholder="מה צריך להביא, עם מי, מה להגיד, מה לא לשכוח...">'+esc(note)+'</textarea>';
+  if(t.src==='day')h+='<div style="margin-top:14px">'+wkSwatches("dpSetColor('"+t.id+"','%K%');renderDpSheet()",t.c||'lav')+'</div>';
+  h+='<button onclick="dpCloseDetail(true)" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit;margin-top:18px">שמור</button>';
+  if(t.src==='day')h+='<button onclick="dpCloseDetail(false);dpDel(\''+t.id+'\')" style="width:100%;background:none;border:none;padding:12px;font-size:12px;font-weight:700;color:#e08a72;cursor:pointer;font-family:inherit">מחק</button>';
+  h+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
 }
 function dpAssign(id,hour){
   var dp=loadDPlan(_dpDate),i,found=false;
@@ -4746,7 +4804,8 @@ function renderPlanDay(){
     for(i=0;i<all.length;i++){
       if(all[i].hour!==h)continue;
       var c=wkColor(all[i].c);
-      out+='<div class="dp-chip" data-task="'+all[i].id+'" style="background:'+c.bg+';color:'+c.tx+'">'+esc(all[i].w)+'</div>';
+      var nt=dpNoteOf(all[i].id);
+      out+='<div class="dp-chip" data-task="'+all[i].id+'" style="background:'+c.bg+';color:'+c.tx+'">'+esc(all[i].w)+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
     }
     out+='</div></div>';
   }
@@ -4780,7 +4839,30 @@ function renderPlanDay(){
   out+='<div style="display:flex;gap:8px;margin-top:8px">';
   out+='<input id="dp-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משהו ליום הזה" onkeydown="if(event.key===\'Enter\')dpAdd()">';
   out+='<button onclick="dpAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
-  out+='</div></div></div>';
+  out+='</div></div>';
+
+  // the deep plan for this day, under the hours
+  var dpl=planForDate(_dpDate);
+  out+='<div style="margin-top:24px;background:linear-gradient(150deg,#f5eefa,#eaf1f8);border-radius:22px;padding:18px 16px">';
+  out+='<div style="font-size:14px;font-weight:800;color:#4a4340">תכנון מעמיק</div>';
+  out+='<div style="font-size:11.5px;color:#7d746e;line-height:1.6;margin-top:6px">לא רשימה — הכוונה של היום, המסגרת שלו, ומה עלול להפריע.</div>';
+  if(dpl){
+    if(dpl.intent)out+='<div style="background:#fff;border-radius:14px;padding:12px 14px;margin-top:13px;font-size:12.5px;color:#4a4340;line-height:1.6">'+esc(dpl.intent)+'</div>';
+    if(Array.isArray(dpl.priorities)&&dpl.priorities.length){
+      out+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">';
+      for(i=0;i<dpl.priorities.length;i++){
+        var pv=dpl.priorities[i];
+        out+='<span style="background:#fff;border-radius:10px;padding:5px 10px;font-size:10.5px;font-weight:700;color:#5f5148">'+esc(typeof pv==='string'?pv:(pv&&pv.text)||'')+'</span>';
+      }
+      out+='</div>';
+    }
+    out+='<button onclick="planDeep()" style="width:100%;background:#fff;border:none;border-radius:13px;padding:12px;font-size:12.5px;font-weight:800;cursor:pointer;color:#a690cf;font-family:inherit;margin-top:13px">ערוך את התכנון</button>';
+  } else {
+    out+='<button onclick="planDeep()" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:13px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit;margin-top:14px">התחל תכנון מעמיק</button>';
+  }
+  out+='</div>';
+
+  out+='</div>';
 
   document.getElementById('content').innerHTML=out;
   // #content survives innerHTML, so the other screen's handler survives with
@@ -4809,6 +4891,13 @@ function dpShift(dir){
   _dpDate=wkStamp(d);_dpPick='';renderPlanDay();
 }
 function planOpenDay(date){_planMode='day';_dpDate=date;renderPlanning();window.scrollTo(0,0);}
+// The wizard, opened for the day whose grid it sits under.
+function planDeep(){
+  var prev=planForDate(_dpDate);
+  _planFor=_dpDate;_planFrom='day';_planMode='daily';_planStep=0;
+  _planData=prev?Object.assign({},prev):{intent:'',anchors:[],goal:'',subgoal:'',priorities:[],feeling:'',blocker:'',blockerSolution:'',reminders:[]};
+  renderPlanning();window.scrollTo(0,0);
+}
 
 /* ── the drag ── */
 function dpDown(e){
@@ -4865,7 +4954,7 @@ function dpUp(e){
   window.removeEventListener('pointercancel',dpUp);
   var id=_dpDrag.id,moved=_dpDrag.moved;
   _dpDrag=null;
-  if(!moved)return;
+  if(!moved){dpOpenDetail(id);return;}          // a tap opens the task
   if(hit)dpAssign(id,parseInt(hit.getAttribute('data-hour'),10));
   else if(onPool)dpAssign(id,null);
   else renderPlanDay();
@@ -4935,7 +5024,7 @@ function renderPlanHome(){
 function planGo(mode){
   _planMode=mode;
   if(mode==='daily'){
-    _planStep=0;
+    _planFor='';_planFrom='';_planStep=0;
     _planData={intent:'',anchors:[],goal:'',subgoal:'',priorities:[],feeling:'',blocker:'',blockerSolution:'',reminders:[]};
   }
   renderPlanning();window.scrollTo(0,0);
@@ -4958,15 +5047,18 @@ function renderPlanSoon(mode){
 }
 
 function renderPlanStep(){
-  var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+  // Opened from a day it plans that day; opened from the chooser, tomorrow.
+  var target;
+  if(_planFor)target=new Date(_planFor+'T12:00:00');
+  else{target=new Date();target.setDate(target.getDate()+1);}
   var dayNames=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-  var tName=dayNames[tomorrow.getDay()];
+  var tName=dayNames[target.getDay()];
   var STEPS=7;
   var pct=Math.round((_planStep/STEPS)*100);
   var h='<div style="padding-bottom:30px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">';
   if(_planStep>0)h+='<button onclick="_planStep--;renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer">&#8249; חזרה</button>';
-  else h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer">&#8249; חזרה</button>';
+  else h+='<button onclick="planStepBack()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer">&#8249; חזרה</button>';
   h+='<button onclick="_planStep=-1;renderPlanning()" style="background:none;border:none;font-size:11px;color:#a89e97;cursor:pointer">יומן &#8250;</button>';
   h+='</div>';
   h+='<div style="height:3px;background:#f0ebe3;border-radius:2px;margin-bottom:22px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4f6ef7,#7c9cf8);border-radius:2px;transition:width .4s"></div></div>';
@@ -5421,12 +5513,28 @@ function planBuildTimeline(){
 }
 
 function savePlan(){
-  var hist=loadPlanHistory();
-  hist.unshift(Object.assign({},_planData,{date:Date.now()}));
+  var hist=loadPlanHistory(),out=[],i;
+  var forDate=_planFor||wkStamp(new Date(Date.now()+86400000));
+  // One deep plan per day: saving again replaces that day's rather than
+  // stacking a second copy in the journal.
+  for(i=0;i<hist.length;i++)if(hist[i].forDate!==forDate)out.push(hist[i]);
+  hist=out;
+  hist.unshift(Object.assign({},_planData,{date:Date.now(),forDate:forDate}));
   if(hist.length>30)hist=hist.slice(0,30);
   savePlanHistory(hist);
   showToast('תכנון נשמר &#10003;');
+  if(_planFrom==='day'){_planMode='day';renderPlanning();window.scrollTo(0,0);return;}
   _planStep=-1;renderPlanning();
+}
+// Leaving the wizard goes back where it was opened from.
+function planStepBack(){
+  if(_planFrom==='day'){_planMode='day';renderPlanning();window.scrollTo(0,0);return;}
+  _planMode='';renderPlanning();
+}
+function planForDate(date){
+  var hist=loadPlanHistory(),i;
+  for(i=0;i<hist.length;i++)if(hist[i].forDate===date)return hist[i];
+  return null;
 }
 
 function renderPlanHistory(){
