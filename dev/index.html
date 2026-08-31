@@ -235,6 +235,14 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .wk-swatch{width:22px;height:22px;border-radius:50%;border:none;padding:0;cursor:pointer;transition:transform .15s,box-shadow .15s}
 .wk-swatch.on{transform:scale(1.16);box-shadow:0 0 0 2px #fff,0 0 0 3.5px #4a4340}
 .wk-picker{background:#fff;border-radius:12px;padding:10px 12px;margin:-3px 0 9px;box-shadow:0 3px 10px rgba(200,180,160,.14);display:flex;justify-content:center}
+/* one day, hour by hour */
+.dp-grid{background:#fff;border:1.5px solid #ece5da;border-radius:14px;overflow:hidden}
+.dp-row{display:flex;align-items:stretch;border-top:1px solid #f4efe9;min-height:44px}
+.dp-row:first-child{border-top:none}
+.dp-h{width:46px;flex-shrink:0;font-size:9.5px;color:#a89e97;font-weight:700;padding:6px 4px 0;text-align:center;border-left:1px solid #f4efe9}
+.dp-slot{flex:1;min-width:0;padding:5px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;transition:background .15s}
+.dp-slot.hot{background:rgba(143,199,158,.22)}
+.dp-chip{border-radius:8px;padding:5px 9px;font-size:11.5px;font-weight:700;line-height:1.3;max-width:100%;word-break:break-word;touch-action:none;cursor:grab}
 .interview{padding:20px 16px;min-height:60vh;display:flex;flex-direction:column}
 .q-num{font-size:10px;color:#a89e97;letter-spacing:.1em;margin-bottom:8px}
 .q-text{font-size:20px;font-weight:700;margin-bottom:24px;line-height:1.4}
@@ -4499,6 +4507,11 @@ function renderPlanWeek(){
     h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
     h+='<div style="font-size:12.5px;font-weight:800;color:#4a4340">'+WK_DAYS[_wkOpen]+' &middot; '+wkShort(od)+'</div>';
     h+='<button onclick="wkOpen('+_wkOpen+')" style="background:none;border:none;font-size:11px;color:#a89e97;cursor:pointer;font-family:inherit">סגור</button></div>';
+    h+='<button onclick="planOpenDay(\''+ost+'\')" style="width:100%;display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#e8f4fd,#d6ebf7);border:none;border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;text-align:right;font-family:inherit">';
+    h+='<div style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:#3a7ca5;flex-shrink:0">';
+    h+='<svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 2"/></svg></div>';
+    h+='<div style="flex:1;font-size:12.5px;font-weight:800;color:#2f5a73">תכנן את היום הזה לפי שעות</div>';
+    h+='<div style="font-size:14px;color:#8fbdd8">&#8249;</div></button>';
     var anyDay=false;
     for(j=0;j<3;j++){
       var dl=wkIn(wk.tasks,ost,WK_SLOTS[j][0]);
@@ -4533,6 +4546,7 @@ function renderPlanWeek(){
   h+='</div>';
   document.getElementById('content').innerHTML=h;
   var box=document.getElementById('content');
+  box.removeEventListener('pointerdown',dpDown);
   box.removeEventListener('pointerdown',wkDown);
   box.addEventListener('pointerdown',wkDown);
 }
@@ -4639,6 +4653,224 @@ function wkUp(e){
   else renderPlanWeek();                     // dropped nowhere: put it back
 }
 
+/* ── THE DAY GRID ──
+   One day, hour by hour, reached from a day in the week. Two things land in
+   it: whatever the week put on this date, and items written here for this day
+   only.
+
+   The flow is one way on purpose. A week task keeps living in the week record
+   and is never rewritten from here - the hour it is given is stored on the
+   day, as an override keyed by task id - and an item written here never
+   appears in the week table. So the week stays a week and does not fill up
+   with the detail of seven days. */
+var _dpDate='',_dpNewColor='lav',_dpPick='',_dpDrag=null;
+var DP_FROM=6,DP_TO=23;
+
+function dpKey(date){return 'dplan_'+date;}
+function loadDPlan(date){
+  try{var x=localStorage.getItem(dpKey(date));var o=x?JSON.parse(x):null;
+    if(o&&Array.isArray(o.items))return{items:o.items,hours:o.hours||{}};}catch(e){}
+  return{items:[],hours:{}};
+}
+function saveDPlan(date,o){try{localStorage.setItem(dpKey(date),JSON.stringify(o));}catch(e){}}
+
+// Everything on this day, from both sources, in one shape.
+function dpAll(date){
+  var dp=loadDPlan(date),out=[],i;
+  var wk=loadWeek(weekSunday(new Date(date+'T12:00:00')));
+  for(i=0;i<wk.tasks.length;i++){
+    if(wk.tasks[i].d!==date)continue;
+    var hv=dp.hours[wk.tasks[i].id];
+    out.push({id:wk.tasks[i].id,w:wk.tasks[i].w,c:wk.tasks[i].c,
+              hour:(typeof hv==='number'?hv:null),src:'week',slot:wkSlotOf(wk.tasks[i])});
+  }
+  for(i=0;i<dp.items.length;i++)
+    out.push({id:dp.items[i].id,w:dp.items[i].w,c:dp.items[i].c,
+              hour:(typeof dp.items[i].h==='number'?dp.items[i].h:null),src:'day'});
+  return out;
+}
+function dpAssign(id,hour){
+  var dp=loadDPlan(_dpDate),i,found=false;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id===id){
+    if(hour===null)delete dp.items[i].h;else dp.items[i].h=hour;
+    found=true;
+  }
+  if(!found){                      // a week task: the hour lives on the day
+    if(hour===null)delete dp.hours[id];else dp.hours[id]=hour;
+  }
+  saveDPlan(_dpDate,dp);renderPlanDay();
+}
+function dpAdd(){
+  var el=document.getElementById('dp-in');
+  if(!el||!el.value.trim())return;
+  var dp=loadDPlan(_dpDate);
+  dp.items.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                 w:el.value.trim(),c:_dpNewColor});
+  saveDPlan(_dpDate,dp);renderPlanDay();
+  setTimeout(function(){var e=document.getElementById('dp-in');if(e)e.focus();},40);
+}
+function dpDel(id){
+  var dp=loadDPlan(_dpDate),out=[],i;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id!==id)out.push(dp.items[i]);
+  dp.items=out;saveDPlan(_dpDate,dp);renderPlanDay();
+}
+function dpPick(id){_dpPick=(_dpPick===id?'':id);renderPlanDay();}
+function dpSetColor(id,k){
+  var dp=loadDPlan(_dpDate),i;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id===id)dp.items[i].c=k;
+  saveDPlan(_dpDate,dp);_dpPick='';renderPlanDay();
+}
+function dpHH(h){return (h<10?'0':'')+h+':00';}
+
+function renderPlanDay(){
+  if(!_dpDate)_dpDate=wkStamp(new Date());
+  var d=new Date(_dpDate+'T12:00:00'),all=dpAll(_dpDate),i,h,t;
+  var isToday=_dpDate===wkStamp(new Date());
+
+  var out='<div style="padding-bottom:30px">';
+  out+='<button onclick="_planMode=\'weekly\';renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 12px">&#8250; חזרה לשבוע</button>';
+
+  out+='<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">';
+  out+='<div><div style="font-size:17px;font-weight:800;color:#4a4340">'+WK_DAYS[d.getDay()]+(isToday?' &middot; היום':'')+'</div>';
+  out+='<div style="font-size:11px;color:#a89e97;margin-top:2px">'+wkShort(d)+'</div></div>';
+  out+='<div style="display:flex;gap:6px">';
+  out+='<button onclick="dpShift(-1)" style="background:#fff;border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
+  out+='<button onclick="dpShift(1)" style="background:#fff;border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
+  out+='</div></div>';
+
+  // the hours
+  out+='<div class="dp-grid">';
+  for(h=DP_FROM;h<=DP_TO;h++){
+    out+='<div class="dp-row"><div class="dp-h">'+dpHH(h)+'</div>';
+    out+='<div class="dp-slot" data-hour="'+h+'">';
+    for(i=0;i<all.length;i++){
+      if(all[i].hour!==h)continue;
+      var c=wkColor(all[i].c);
+      out+='<div class="dp-chip" data-task="'+all[i].id+'" style="background:'+c.bg+';color:'+c.tx+'">'+esc(all[i].w)+'</div>';
+    }
+    out+='</div></div>';
+  }
+  out+='</div>';
+
+  // what the week put here, still without an hour
+  var fromWeek=[],mine=[];
+  for(i=0;i<all.length;i++){
+    if(all[i].hour!==null)continue;
+    (all[i].src==='week'?fromWeek:mine).push(all[i]);
+  }
+  if(fromWeek.length){
+    out+='<div style="margin-top:18px">';
+    out+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin-bottom:9px">מהתכנון השבועי</div>';
+    out+='<div id="dp-week" class="wk-pool">';
+    for(i=0;i<fromWeek.length;i++)out+=dpTaskHTML(fromWeek[i]);
+    out+='</div></div>';
+  }
+
+  out+='<div style="margin-top:18px">';
+  out+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin-bottom:9px">רק ליום הזה</div>';
+  out+='<div id="dp-pool" class="wk-pool">';
+  for(i=0;i<mine.length;i++)out+=dpTaskHTML(mine[i]);
+  if(!mine.length)out+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;padding:8px 2px">כתוב למטה, ואז גרור לשעה. מה שנכתב כאן נשאר כאן ולא עולה לטבלה השבועית.</div>';
+  out+='</div>';
+
+  out+='<div style="display:flex;align-items:center;gap:9px;margin-top:12px">';
+  out+='<div style="font-size:10px;color:#a89e97;font-weight:700;flex-shrink:0">צבע</div>';
+  out+=wkSwatches("_dpNewColor='%K%';renderPlanDay()",_dpNewColor);
+  out+='</div>';
+  out+='<div style="display:flex;gap:8px;margin-top:8px">';
+  out+='<input id="dp-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משהו ליום הזה" onkeydown="if(event.key===\'Enter\')dpAdd()">';
+  out+='<button onclick="dpAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
+  out+='</div></div></div>';
+
+  document.getElementById('content').innerHTML=out;
+  // #content survives innerHTML, so the other screen's handler survives with
+  // it. Left attached, both drags start at once and fight over the drop.
+  var box=document.getElementById('content');
+  box.removeEventListener('pointerdown',wkDown);
+  box.removeEventListener('pointerdown',dpDown);
+  box.addEventListener('pointerdown',dpDown);
+}
+
+function dpTaskHTML(t){
+  var c=wkColor(t.c),h='';
+  h+='<div class="wk-task" data-task="'+t.id+'" style="border-right:4px solid '+c.dot+'">';
+  h+='<div class="wk-grip">&#8942;&#8942;</div>';
+  if(t.src==='day')h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="dpPick(\''+t.id+'\')"></button>';
+  else h+='<span class="wk-dot" style="background:'+c.dot+';cursor:default"></span>';
+  h+='<div style="flex:1;min-width:0;font-size:13.5px;color:#4a4340;line-height:1.45">'+esc(t.w)+'</div>';
+  if(t.src==='week')h+='<span style="font-size:9px;color:#c0b8b0;flex-shrink:0">מהשבוע</span>';
+  else h+='<button onclick="dpDel(\''+t.id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
+  h+='</div>';
+  if(_dpPick===t.id)h+='<div class="wk-picker">'+wkSwatches("dpSetColor('"+t.id+"','%K%')",t.c||'lav')+'</div>';
+  return h;
+}
+function dpShift(dir){
+  var d=new Date(_dpDate+'T12:00:00');d.setDate(d.getDate()+dir);
+  _dpDate=wkStamp(d);_dpPick='';renderPlanDay();
+}
+function planOpenDay(date){_planMode='day';_dpDate=date;renderPlanning();window.scrollTo(0,0);}
+
+/* ── the drag ── */
+function dpDown(e){
+  var el=e.target.closest?e.target.closest('[data-task]'):null;
+  if(!el)return;
+  if(e.target.closest('button'))return;
+  var r=el.getBoundingClientRect();
+  var g=el.cloneNode(true);
+  g.className=el.className+' wk-ghost';
+  g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';
+  document.body.appendChild(g);
+  el.style.opacity='.3';
+  _dpDrag={id:el.getAttribute('data-task'),g:g,src:el,
+           dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};
+  window.addEventListener('pointermove',dpMove);
+  window.addEventListener('pointerup',dpUp);
+  window.addEventListener('pointercancel',dpUp);
+  e.preventDefault();
+}
+function dpHitSlot(x,y){
+  var s=document.querySelectorAll('.dp-slot'),i,r;
+  for(i=0;i<s.length;i++){
+    r=s[i].getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return s[i];
+  }
+  return null;
+}
+function dpOverPools(x,y){
+  var ids=['dp-pool','dp-week'],i,el,r;
+  for(i=0;i<ids.length;i++){
+    el=document.getElementById(ids[i]);
+    if(!el)continue;
+    r=el.getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return true;
+  }
+  return false;
+}
+function dpMove(e){
+  if(!_dpDrag)return;
+  _dpDrag.moved=true;
+  _dpDrag.g.style.left=(e.clientX-_dpDrag.dx)+'px';
+  _dpDrag.g.style.top=(e.clientY-_dpDrag.dy)+'px';
+  var hit=dpHitSlot(e.clientX,e.clientY),s=document.querySelectorAll('.dp-slot'),i;
+  for(i=0;i<s.length;i++)s[i].classList.toggle('hot',s[i]===hit);
+}
+function dpUp(e){
+  if(!_dpDrag)return;
+  var hit=dpHitSlot(e.clientX,e.clientY);
+  var onPool=!hit&&dpOverPools(e.clientX,e.clientY);
+  try{_dpDrag.g.remove();}catch(err){}
+  if(_dpDrag.src)_dpDrag.src.style.opacity='';
+  window.removeEventListener('pointermove',dpMove);
+  window.removeEventListener('pointerup',dpUp);
+  window.removeEventListener('pointercancel',dpUp);
+  var id=_dpDrag.id,moved=_dpDrag.moved;
+  _dpDrag=null;
+  if(!moved)return;
+  if(hit)dpAssign(id,parseInt(hit.getAttribute('data-hour'),10));
+  else if(onPool)dpAssign(id,null);
+  else renderPlanDay();
+}
+
 /* Planning opens on a choice of horizon rather than dropping straight into
    tomorrow. The daily wizard is the one that exists; the other two are
    placeholders on purpose, waiting to be specified. */
@@ -4648,6 +4880,7 @@ function renderPlanning(){
   document.getElementById('hdr-title').textContent='תכנון זמן';
   if(!_planMode)return renderPlanHome();
   if(_planMode==='weekly')return renderPlanWeek();
+  if(_planMode==='day')return renderPlanDay();
   if(_planMode==='yearly')return renderPlanSoon('yearly');
   if(_planStep===99)return renderPlanSchedule();
   if(_planStep===-1)return renderPlanHistory();
