@@ -135,6 +135,13 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .scan-hd{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:800;color:#4a4340;margin-bottom:11px}
 .scan-x{border:none;background:none;font-size:24px;line-height:1;color:#a89e97;cursor:pointer;padding:0 4px;font-family:inherit}
 .scan-cam{width:100%;aspect-ratio:4/3;background:#2a2522;border-radius:14px;overflow:hidden;position:relative}
+.scan-cam video,.scan-frozen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan-frozen{display:none}
+.scan-frozen.on{display:block}
+/* the band the crop is taken from, so you can see where to hold it */
+.scan-guide{position:absolute;left:4%;right:4%;top:25%;height:50%;border:2px solid rgba(255,255,255,.9);border-radius:10px;box-shadow:0 0 0 2000px rgba(0,0,0,.28);pointer-events:none}
+.scan-shot{width:100%;margin-top:10px;border:none;border-radius:13px;padding:14px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer}
+.scan-shot:disabled{opacity:.5}
 .scan-cam video{width:100%;height:100%;object-fit:cover}
 .scan-msg{font-size:11.5px;color:#7a716b;text-align:center;line-height:1.6;margin-top:10px;min-height:32px}
 .scan-photo{display:block;margin-top:9px;border:1.5px solid #c9bce0;border-radius:12px;padding:10px;background:#fff;color:#7a6a9c;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;text-align:center}
@@ -1320,54 +1327,151 @@ function scanOpen(){
   d.innerHTML='<div class="scan-sheet">'+
     '<div class="scan-hd"><span>סריקת ברקוד</span>'+
     '<button class="scan-x" onclick="scanClose()">&times;</button></div>'+
-    '<div id="scan-cam" class="scan-cam"></div>'+
+    '<div id="scan-cam" class="scan-cam">'+
+      '<video id="scan-video" playsinline autoplay muted></video>'+
+      '<canvas id="scan-frozen" class="scan-frozen"></canvas>'+
+      '<div class="scan-guide"></div>'+
+    '</div>'+
     '<div class="scan-msg" id="scan-msg">מפעיל מצלמה…</div>'+
+    '<button class="scan-shot" id="scan-shot" onclick="scanShoot()" disabled>סרוק</button>'+
     '<div id="scan-file-host" style="display:none"></div>'+
-    '<label class="scan-photo">צלם את הברקוד'+
-    '<input type="file" accept="image/*" capture="environment" style="display:none" onchange="scanPhoto(this)"></label>'+
+    '<label class="scan-photo">בחר תמונה מהגלריה'+
+    '<input type="file" accept="image/*" style="display:none" onchange="scanPhoto(this)"></label>'+
     '<div class="scan-manual">'+
     '<input class="scan-in" id="scan-code" type="text" inputmode="numeric" placeholder="או הקלד את הספרות שמתחת לפסים">'+
     '<button class="scan-go" onclick="scanTyped()">חפש</button></div>'+
     '</div>';
   document.body.appendChild(d);
   document.body.style.overflow='hidden';
-  scanLibLoad().then(scanStart).catch(function(){
-    scanMsg('לא הצלחתי לטעון את הסורק. אפשר להקליד את הספרות למטה.');
+  scanLibLoad().catch(function(){});
+  scanCamStart();
+}
+/* ── HOLD IT STILL, THEN PRESS ──
+   Reading a barcode out of a live stream frame by frame failed on the phone:
+   the frames a browser hands a scanning loop are small, motion-blurred and
+   auto-exposed for the whole scene rather than for a strip of black and white
+   lines. Freezing first is what the document scanners do, and it is the right
+   shape for this - you get to line the barcode up while the preview is live,
+   and the decoder gets one sharp full-resolution still instead of thirty poor
+   ones a second.
+
+   The camera is driven directly rather than through the library's own
+   scanning loop, so the frame that gets decoded is the sensor's, at whatever
+   resolution the phone will give. */
+var _scanStream=null;
+function scanCamStart(){
+  var v=document.getElementById('scan-video');
+  if(!v)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    scanMsg('הדפדפן הזה לא נותן גישה למצלמה. אפשר לבחור תמונה או להקליד את הספרות.');
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{
+      facingMode:{ideal:'environment'},
+      width:{ideal:1920},height:{ideal:1080},
+      advanced:[{focusMode:'continuous'}]
+    },audio:false})
+    .then(function(st){
+      _scanStream=st;
+      v.srcObject=st;
+      return v.play().catch(function(){});
+    })
+    .then(function(){
+      var b=document.getElementById('scan-shot');
+      if(b)b.disabled=false;
+      scanMsg('החזק את הברקוד בתוך המסגרת, קרוב ומלא רוחב &mdash; ואז לחץ סרוק');
+    })
+    .catch(function(err){
+      var m=String((err&&(err.name+' '+err.message))||err||'');
+      if(/NotAllowed|Permission|Denied/i.test(m))
+        scanMsg('אין הרשאה למצלמה. אפשר לאשר בהגדרות האתר, לבחור תמונה, או להקליד את הספרות.');
+      else if(/NotFound|Requested device|Overconstrained/i.test(m))
+        scanMsg('לא נמצאה מצלמה. אפשר לבחור תמונה או להקליד את הספרות.');
+      else
+        scanMsg('המצלמה לא נפתחה. אפשר לבחור תמונה או להקליד את הספרות.');
+    });
+}
+function scanCamStop(){
+  if(_scanStream){
+    try{_scanStream.getTracks().forEach(function(t){t.stop();});}catch(e){}
+    _scanStream=null;
+  }
+  var v=document.getElementById('scan-video');
+  if(v){try{v.pause();v.srcObject=null;}catch(e){}}
+}
+function scanUnfreeze(){
+  var c=document.getElementById('scan-frozen'),v=document.getElementById('scan-video'),b=document.getElementById('scan-shot');
+  if(c)c.classList.remove('on');
+  if(v)v.style.visibility='';
+  if(b){b.disabled=false;b.textContent='סרוק';}
+  scanMsg('החזק את הברקוד בתוך המסגרת, קרוב ומלא רוחב &mdash; ואז לחץ סרוק');
+}
+function scanShoot(){
+  var v=document.getElementById('scan-video'),c=document.getElementById('scan-frozen'),b=document.getElementById('scan-shot');
+  if(!v||!c||!v.videoWidth){scanMsg('המצלמה עוד לא מוכנה.');return;}
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+  c.classList.add('on');
+  v.style.visibility='hidden';
+  if(b){b.disabled=true;b.textContent='מפענח…';}
+  scanMsg('מפענח…');
+  scanDecodeFrozen();
+}
+/* One still, tried a few ways. A barcode filling the middle of the frame
+   decodes best from a crop of exactly that band, scaled up so the thin bars
+   land on whole pixels; the whole frame is tried too, in case it was held off
+   to one side. */
+function scanDecodeFrozen(){
+  var c=document.getElementById('scan-frozen');
+  if(!c)return;
+  scanLibLoad().then(function(){
+    var tries=[
+      {x:0.04,y:0.25,w:0.92,h:0.50,scale:2},
+      {x:0.04,y:0.10,w:0.92,h:0.80,scale:2},
+      {x:0.00,y:0.00,w:1.00,h:1.00,scale:1}
+    ];
+    var i=0;
+    function next(){
+      if(i>=tries.length){
+        scanMsg('לא זיהיתי ברקוד. נסה קרוב יותר, ישר, ובאור טוב.');
+        var b=document.getElementById('scan-shot');
+        if(b){b.disabled=false;b.textContent='נסה שוב';b.onclick=function(){this.onclick=scanShoot;scanUnfreeze();};}
+        return;
+      }
+      var t=tries[i++];
+      scanDecodeRegion(c,t).then(function(txt){
+        if(txt){scanCamStop();barcodeLookup(String(txt).trim());}
+        else next();
+      });
+    }
+    next();
+  }).catch(function(){
+    scanMsg('הסורק לא נטען. אפשר להקליד את הספרות למטה.');
   });
 }
-function scanStart(){
-  try{
+function scanDecodeRegion(src,t){
+  return new Promise(function(res){
+    var sw=Math.max(1,Math.floor(src.width*t.w)),sh=Math.max(1,Math.floor(src.height*t.h));
+    var cv=document.createElement('canvas');
+    cv.width=Math.floor(sw*t.scale);cv.height=Math.floor(sh*t.scale);
+    var x=cv.getContext('2d');
+    x.imageSmoothingEnabled=false;
+    x.drawImage(src,Math.floor(src.width*t.x),Math.floor(src.height*t.y),sw,sh,0,0,cv.width,cv.height);
+    cv.toBlob(function(b){
+      if(!b){res(null);return;}
+      scanDecodeBlob(new File([b],'frame.png',{type:'image/png'})).then(res);
+    },'image/png');
+  });
+}
+function scanDecodeBlob(file){
+  return new Promise(function(res){
+    var host=document.getElementById('scan-file-host');
+    if(!host||!window.Html5Qrcode){res(null);return;}
     var F=window.Html5QrcodeSupportedFormats;
-    _scanner=new Html5Qrcode('scan-cam',F?{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E]}:undefined);
-  }catch(e){scanMsg('הסורק לא נטען. אפשר להקליד את הספרות למטה.');return;}
-  /* The decoder reads a still EAN-13 without complaint, so anything that
-     fails here fails in the camera, not the maths. Two things starve it:
-     a scan box that crops away a barcode held across the frame, and a video
-     stream too coarse to separate bars a fraction of a millimetre apart.
-     So the box is most of the viewfinder and shaped like a barcode - wide
-     and short - and the stream asks for the highest resolution the phone
-     will give, with the focus left running because a barcode is read from
-     ten centimetres away and a fixed focus at that distance is a blur. */
-  _scanner.start(
-    {facingMode:'environment'},
-    {fps:10,
-     qrbox:function(w,h){return {width:Math.floor(w*0.92),height:Math.floor(Math.min(h*0.55,w*0.55))};},
-     videoConstraints:{facingMode:'environment',
-                       width:{ideal:1920},height:{ideal:1080},
-                       advanced:[{focusMode:'continuous'}]},
-     experimentalFeatures:{useBarCodeDetectorIfSupported:true}},
-    function(txt){scanStop();barcodeLookup(String(txt).trim());},
-    function(){}   // a frame with no barcode in it is the normal case, not an error
-  ).then(function(){
-    scanMsg('כוון את הברקוד למסגרת, קרוב ומלא רוחב');
-  }).catch(function(err){
-    var m=String((err&&err.message)||err||'');
-    if(/NotAllowed|Permission/i.test(m))
-      scanMsg('אין הרשאה למצלמה. אפשר לאשר בהגדרות האתר, או להקליד את הספרות למטה.');
-    else if(/NotFound|Requested device/i.test(m))
-      scanMsg('לא נמצאה מצלמה. אפשר להקליד את הספרות למטה.');
-    else
-      scanMsg('המצלמה לא נפתחה. אפשר להקליד את הספרות למטה.');
+    var q;
+    try{q=new Html5Qrcode('scan-file-host',F?{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.CODE_128]}:undefined);}
+    catch(e){res(null);return;}
+    q.scanFile(file,false).then(function(t){res(t);}).catch(function(){res(null);});
   });
 }
 function scanPhoto(input){
@@ -1376,22 +1480,15 @@ function scanPhoto(input){
   if(!f)return;
   scanMsg('קורא את התמונה…');
   scanLibLoad().then(function(){
-    var host=document.getElementById('scan-file-host');
-    if(!host)return;
-    var F=window.Html5QrcodeSupportedFormats;
-    var q=new Html5Qrcode('scan-file-host',F?{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E]}:undefined);
-    q.scanFile(f,false)
-      .then(function(txt){scanStop();barcodeLookup(String(txt).trim());})
-      .catch(function(){scanMsg('לא זיהיתי ברקוד בתמונה. נסה קרוב יותר וישר, או הקלד את הספרות.');});
+    scanDecodeBlob(f).then(function(txt){
+      if(txt){scanCamStop();barcodeLookup(String(txt).trim());}
+      else scanMsg('לא זיהיתי ברקוד בתמונה. נסה קרוב יותר וישר, או הקלד את הספרות.');
+    });
   }).catch(function(){scanMsg('הסורק לא נטען. אפשר להקליד את הספרות למטה.');});
 }
-function scanStop(){
-  if(!_scanner)return;
-  var s=_scanner;_scanner=null;
-  try{s.stop().then(function(){try{s.clear();}catch(e){}}).catch(function(){});}catch(e){}
-}
+function scanStop(){scanCamStop();}
 function scanClose(){
-  scanStop();
+  scanCamStop();
   var d=document.getElementById('scan-overlay');
   if(d)d.remove();
   document.body.style.overflow='';
@@ -1400,7 +1497,7 @@ function scanTyped(){
   var el=document.getElementById('scan-code');
   var code=el?el.value.replace(/\D/g,''):'';
   if(code.length<6){scanMsg('ברקוד קצר מדי. הקלד את כל הספרות.');return;}
-  scanStop();barcodeLookup(code);
+  scanCamStop();barcodeLookup(code);
 }
 function barcodeLookup(code){
   scanMsg('מחפש '+esc(code)+'…');
