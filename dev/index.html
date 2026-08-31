@@ -1156,7 +1156,8 @@ function saveComposed(arr){try{localStorage.setItem('composed_meals',JSON.string
 function addMealToLib(meal){
   var lib=loadLib();
   if(lib.some(function(m){return m.name===meal.name;})){showToast('כבר קיים בספרייה');return;}
-  lib.push({name:meal.name,kcal:meal.kcal,p:meal.p,c:meal.c,f:meal.f,photo:meal.photo||''});
+  lib.push({name:meal.name,kcal:meal.kcal,p:meal.p,c:meal.c,f:meal.f,photo:meal.photo||'',
+            basis:mealBasis(meal),grams:meal.grams||0});
   lib.sort(function(a,b){return a.name.localeCompare(b.name,'he');});
   saveLibData(lib);showToast('✓ נשמר בספרייה!');
 }
@@ -1174,7 +1175,29 @@ function toggleLib(){libOpen=!libOpen;pendingLib=null;render();}
 function toggleComp(){compOpen=!compOpen;render();}
 function setCompCat(c){compCat=c;render();}
 
-function calcIng(ing){var m=ing.grams/100;return{kcal:Math.round(ing.kcal*m),p:Math.round(ing.p*m*100)/100,c:Math.round(ing.c*m*100)/100,f:Math.round(ing.f*m*100)/100};}
+/* ── WHAT THE NUMBERS ARE FOR ──
+   Two kinds of record live in the food library and their numbers mean
+   different things. One you typed yourself - "סלט של אמא, 320 קק"ל" - and 320
+   is the plate. One comes from the ministry table - "טחינה גולמית, 665" - and
+   665 is a hundred grams of it, which nobody eats.
+
+   Until now the app did not know which it was holding, and guessed differently
+   in two places: adding straight to the day treated every entry as a plate,
+   the recipe builder treated every entry as per-100g. The same record
+   therefore counted twice over if you gave it a weight.
+
+   So a record now says which it is. Anything already saved says nothing, and
+   silence has to keep meaning exactly what it meant before or a year of
+   recipes would quietly change totals - so the old grams path is left intact
+   and only new records carry the label. */
+function mealBasis(m){return (m&&m.basis==='100g')?'100g':'serving';}
+// A serving-based ingredient is counted, not weighed. Anything without the
+// label falls through to the weight path it has always used.
+function calcIng(ing){
+  var m=(ing.basis==='serving')?(parseFloat(ing.qty)||1):((parseFloat(ing.grams)||0)/100);
+  return{kcal:Math.round(ing.kcal*m),p:Math.round(ing.p*m*100)/100,
+         c:Math.round(ing.c*m*100)/100,f:Math.round(ing.f*m*100)/100};
+}
 function calcComposed(meal){
   return meal.ingredients.reduce(function(a,ing){var v=calcIng(ing);return{kcal:a.kcal+v.kcal,p:Math.round((a.p+v.p)*100)/100,c:Math.round((a.c+v.c)*100)/100,f:Math.round((a.f+v.f)*100)/100};}  ,{kcal:0,p:0,c:0,f:0});
 }
@@ -1195,11 +1218,15 @@ function setBuildCat(c){builderCat=c;renderBuilderOverlay();}
 function toggleBuilderPick(){builderPickOpen=!builderPickOpen;renderBuilderOverlay();}
 function builderAddIng(idx){
   var lib=loadLib();var item=lib[idx];if(!item)return;
-  builderIngs.push({name:item.name,kcal:item.kcal,p:item.p,c:item.c,f:item.f,grams:100});
+  var b=mealBasis(item);
+  builderIngs.push(b==='serving'
+    ?{name:item.name,kcal:item.kcal,p:item.p,c:item.c,f:item.f,basis:'serving',qty:1}
+    :{name:item.name,kcal:item.kcal,p:item.p,c:item.c,f:item.f,basis:'100g',grams:100});
   builderPickOpen=false;renderBuilderOverlay();
 }
 function builderUpdateGrams(i,v){
-  if(builderIngs[i])builderIngs[i].grams=parseFloat(v)||0;
+  var ing=builderIngs[i];
+  if(ing){if(ing.basis==='serving')ing.qty=parseFloat(v)||0;else ing.grams=parseFloat(v)||0;}
   var tot=calcBTotal();var el=document.getElementById('builder-total');
   if(el)el.textContent=tot.kcal+' קק"ל · '+tot.p+'ח '+tot.c+'פ '+tot.f+'ש';
 }
@@ -1234,9 +1261,10 @@ function renderBuilderOverlay(){
   h+='</div><div class="builder-section">מרכיבים</div>';
   for(var ii=0;ii<builderIngs.length;ii++){
     var ing=builderIngs[ii];
-    h+='<div class="ing-row"><div style="flex:1"><div class="ing-name">'+esc(ing.name)+'</div><div class="ing-mac">'+ing.kcal+' קק"ל/100g</div></div>';
-    h+='<input class="ing-g" type="number" value="'+ing.grams+'" oninput="builderUpdateGrams('+ii+',this.value)">';
-    h+='<span style="font-size:10px;color:#a89e97">g</span>';
+    var per=(ing.basis==='serving');
+    h+='<div class="ing-row"><div style="flex:1"><div class="ing-name">'+esc(ing.name)+'</div><div class="ing-mac">'+ing.kcal+(per?' קק"ל למנה':' קק"ל/100g')+'</div></div>';
+    h+='<input class="ing-g" type="number" step="'+(per?'0.5':'1')+'" value="'+(per?(ing.qty!==undefined?ing.qty:1):ing.grams)+'" oninput="builderUpdateGrams('+ii+',this.value)">';
+    h+='<span style="font-size:10px;color:#a89e97">'+(per?'מנות':'g')+'</span>';
     h+='<button class="ing-del" onclick="builderRemoveIng('+ii+')">&times;</button></div>';
   }
   h+='<div class="ing-total" id="builder-total">'+tot.kcal+' קק"ל &middot; '+tot.p+'ח '+tot.c+'פ '+tot.f+'ש</div>';
