@@ -137,6 +137,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .scan-cam{width:100%;aspect-ratio:4/3;background:#2a2522;border-radius:14px;overflow:hidden;position:relative}
 .scan-cam video{width:100%;height:100%;object-fit:cover}
 .scan-msg{font-size:11.5px;color:#7a716b;text-align:center;line-height:1.6;margin-top:10px;min-height:32px}
+.scan-photo{display:block;margin-top:9px;border:1.5px solid #c9bce0;border-radius:12px;padding:10px;background:#fff;color:#7a6a9c;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;text-align:center}
 .scan-manual{display:flex;gap:7px;margin-top:10px}
 .scan-in{flex:1;min-width:0;border:1.5px solid #f2ede6;border-radius:11px;padding:10px;font-size:16px;font-family:inherit;outline:none;text-align:center;background:#fff}
 .scan-in:focus{border-color:#c9bce0}
@@ -1321,6 +1322,9 @@ function scanOpen(){
     '<button class="scan-x" onclick="scanClose()">&times;</button></div>'+
     '<div id="scan-cam" class="scan-cam"></div>'+
     '<div class="scan-msg" id="scan-msg">מפעיל מצלמה…</div>'+
+    '<div id="scan-file-host" style="display:none"></div>'+
+    '<label class="scan-photo">צלם את הברקוד'+
+    '<input type="file" accept="image/*" capture="environment" style="display:none" onchange="scanPhoto(this)"></label>'+
     '<div class="scan-manual">'+
     '<input class="scan-in" id="scan-code" type="text" inputmode="numeric" placeholder="או הקלד את הספרות שמתחת לפסים">'+
     '<button class="scan-go" onclick="scanTyped()">חפש</button></div>'+
@@ -1336,11 +1340,26 @@ function scanStart(){
     var F=window.Html5QrcodeSupportedFormats;
     _scanner=new Html5Qrcode('scan-cam',F?{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E]}:undefined);
   }catch(e){scanMsg('הסורק לא נטען. אפשר להקליד את הספרות למטה.');return;}
-  _scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:160}},
+  /* The decoder reads a still EAN-13 without complaint, so anything that
+     fails here fails in the camera, not the maths. Two things starve it:
+     a scan box that crops away a barcode held across the frame, and a video
+     stream too coarse to separate bars a fraction of a millimetre apart.
+     So the box is most of the viewfinder and shaped like a barcode - wide
+     and short - and the stream asks for the highest resolution the phone
+     will give, with the focus left running because a barcode is read from
+     ten centimetres away and a fixed focus at that distance is a blur. */
+  _scanner.start(
+    {facingMode:'environment'},
+    {fps:10,
+     qrbox:function(w,h){return {width:Math.floor(w*0.92),height:Math.floor(Math.min(h*0.55,w*0.55))};},
+     videoConstraints:{facingMode:'environment',
+                       width:{ideal:1920},height:{ideal:1080},
+                       advanced:[{focusMode:'continuous'}]},
+     experimentalFeatures:{useBarCodeDetectorIfSupported:true}},
     function(txt){scanStop();barcodeLookup(String(txt).trim());},
     function(){}   // a frame with no barcode in it is the normal case, not an error
   ).then(function(){
-    scanMsg('כוון את הברקוד למסגרת');
+    scanMsg('כוון את הברקוד למסגרת, קרוב ומלא רוחב');
   }).catch(function(err){
     var m=String((err&&err.message)||err||'');
     if(/NotAllowed|Permission/i.test(m))
@@ -1350,6 +1369,21 @@ function scanStart(){
     else
       scanMsg('המצלמה לא נפתחה. אפשר להקליד את הספרות למטה.');
   });
+}
+function scanPhoto(input){
+  var f=input&&input.files&&input.files[0];
+  input.value='';
+  if(!f)return;
+  scanMsg('קורא את התמונה…');
+  scanLibLoad().then(function(){
+    var host=document.getElementById('scan-file-host');
+    if(!host)return;
+    var F=window.Html5QrcodeSupportedFormats;
+    var q=new Html5Qrcode('scan-file-host',F?{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E]}:undefined);
+    q.scanFile(f,false)
+      .then(function(txt){scanStop();barcodeLookup(String(txt).trim());})
+      .catch(function(){scanMsg('לא זיהיתי ברקוד בתמונה. נסה קרוב יותר וישר, או הקלד את הספרות.');});
+  }).catch(function(){scanMsg('הסורק לא נטען. אפשר להקליד את הספרות למטה.');});
 }
 function scanStop(){
   if(!_scanner)return;
