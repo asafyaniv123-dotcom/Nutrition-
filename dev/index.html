@@ -729,21 +729,25 @@ function profNum(field,el){
    differs by sex (+5 / -161), which is the only reason the field is asked
    for at all.
 
-   Protein is set per kilo of bodyweight and held higher in a deficit, fat
-   takes a quarter of the calories, and carbohydrate gets whatever is left -
-   so the three always add back up to the calorie figure above them.
+   Protein is per kilo of bodyweight rather than a share of the calories,
+   which is the usual way to set it - but the amount per kilo climbs with the
+   activity level, because 2 g/kg for someone who marked 'hardly any' is a
+   figure for an athlete. A deficit adds 0.2 on top, to hold muscle while the
+   calories are down. Fat takes a quarter of the calories and carbohydrate
+   gets whatever is left, so the three add back up to the figure above them.
 
    Nothing here writes anything. The numbers are a recommendation on screen
    until the button is pressed, because these targets are what a year of
    tracking is measured against and they should not move on their own. */
 var ACT_FACTOR={1:1.2,2:1.375,3:1.55,4:1.725,5:1.9};
+var PROT_PER_KG={1:1.2,2:1.5,3:1.7,4:1.9,5:2.0};
 function profileTargets(p){
   var age=profileAge(p.birth),h=parseFloat(p.height),w=parseFloat(p.weight);
   if(age===null||!h||!w||!p.sex||!p.activity||!p.goal)return null;
   var bmr=10*w+6.25*h-5*age+(p.sex==='m'?5:-161);
   var tdee=bmr*(ACT_FACTOR[p.activity]||1.2);
   var kcal=p.goal==='lose'?tdee*0.85:(p.goal==='gain'?tdee*1.10:tdee);
-  var prot=Math.round(w*(p.goal==='lose'?2.0:1.8));
+  var prot=Math.round(w*((PROT_PER_KG[p.activity]||1.5)+(p.goal==='lose'?0.2:0)));
   var fat=Math.round(kcal*0.25/9);
   var carb=Math.round((kcal-prot*4-fat*9)/4);
   if(carb<0)carb=0;
