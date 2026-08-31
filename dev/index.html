@@ -127,6 +127,23 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .pf-goals{display:flex;gap:6px}
 .pf-goal{flex:1;border:1.5px solid #f2ede6;border-radius:14px;padding:11px 6px;background:#fff;font-size:11.5px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit;line-height:1.3}
 .pf-goal.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
+.pf-sexes{display:flex;gap:6px;flex:1;min-width:0}
+.pf-sex{flex:1;border:1.5px solid #f2ede6;border-radius:10px;padding:8px 4px;background:#fff;font-size:12px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit}
+.pf-sex.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
+.pf-bmr{font-size:10.5px;color:#a89e97;font-weight:700;margin-bottom:14px;line-height:1.5}
+.pf-recs{display:flex;gap:7px}
+.pf-rec{flex:1;text-align:center;min-width:0}
+.pf-recv{font-size:17px;font-weight:800;line-height:1.2}
+.pf-recl{font-size:10px;color:#a89e97;margin-top:2px}
+.pf-recc{font-size:9px;color:#c9c1ba;margin-top:5px;font-weight:700}
+.pf-recc.chg{color:#c98b3f}
+.pf-water{margin-top:13px;padding-top:11px;border-top:1px solid #f7f3ee;font-size:11.5px;font-weight:700;color:#3a7ca5}
+.pf-water .chg{color:#c98b3f;font-size:10px;font-weight:700}
+.pf-apply{width:100%;margin-top:14px;border:none;border-radius:14px;padding:13px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
+.pf-hint{font-size:10px;color:#a89e97;text-align:center;margin-top:8px}
+.pf-same{margin-top:14px;font-size:11.5px;color:#6fb283;font-weight:700;text-align:center}
+.pf-reset{width:100%;margin-top:9px;border:1.5px solid #f2ede6;border-radius:14px;padding:10px;background:none;color:#a89e97;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.pf-need{font-size:11.5px;color:#a89e97;line-height:1.6}
 .card{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)}
 .cttl{font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700;margin-bottom:12px}
 .avgbox{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)}
@@ -614,7 +631,25 @@ body.night .me-hero,body.night .me-card{background:rgba(255,255,255,.94)}
   <div class="content" id="content"></div>
 </div>
 <script>
-var TARGETS={kcal:1975,p:155,c:200,f:60,water:3000};
+/* The targets every macro bar in תזונה is measured against. They were a fixed
+   constant; they are now whatever is stored, falling back to that same
+   constant, so an app nobody has configured behaves exactly as before.
+   TARGETS is filled in place rather than reassigned - everything that reads it
+   holds this one object. */
+var TARGETS_DEFAULT={kcal:1975,p:155,c:200,f:60,water:3000};
+var TARGETS_KEY='targets_v1';
+var TARGETS={};
+function targetsAreCustom(){
+  try{return !!localStorage.getItem(TARGETS_KEY);}catch(e){return false;}
+}
+function loadTargets(){
+  var o=null,k;
+  try{o=JSON.parse(localStorage.getItem(TARGETS_KEY)||'null');}catch(e){}
+  for(k in TARGETS_DEFAULT)
+    TARGETS[k]=(o&&typeof o[k]==='number'&&isFinite(o[k])&&o[k]>0)?o[k]:TARGETS_DEFAULT[k];
+}
+loadTargets();
+
 /* ── THE PERSONAL DETAILS ──
    Who the tracking is about, kept in one record inside תזונה: date of birth,
    height, weight, how much you move, and what you are aiming at.
@@ -687,6 +722,49 @@ function profNum(field,el){
   saveProfile(p);
   renderProfile();
 }
+
+/* ── FROM THE DETAILS TO A TARGET ──
+   Mifflin-St Jeor for the resting burn, scaled by how much you move, then
+   moved off maintenance by the goal. The formula carries one constant that
+   differs by sex (+5 / -161), which is the only reason the field is asked
+   for at all.
+
+   Protein is set per kilo of bodyweight and held higher in a deficit, fat
+   takes a quarter of the calories, and carbohydrate gets whatever is left -
+   so the three always add back up to the calorie figure above them.
+
+   Nothing here writes anything. The numbers are a recommendation on screen
+   until the button is pressed, because these targets are what a year of
+   tracking is measured against and they should not move on their own. */
+var ACT_FACTOR={1:1.2,2:1.375,3:1.55,4:1.725,5:1.9};
+function profileTargets(p){
+  var age=profileAge(p.birth),h=parseFloat(p.height),w=parseFloat(p.weight);
+  if(age===null||!h||!w||!p.sex||!p.activity||!p.goal)return null;
+  var bmr=10*w+6.25*h-5*age+(p.sex==='m'?5:-161);
+  var tdee=bmr*(ACT_FACTOR[p.activity]||1.2);
+  var kcal=p.goal==='lose'?tdee*0.85:(p.goal==='gain'?tdee*1.10:tdee);
+  var prot=Math.round(w*(p.goal==='lose'?2.0:1.8));
+  var fat=Math.round(kcal*0.25/9);
+  var carb=Math.round((kcal-prot*4-fat*9)/4);
+  if(carb<0)carb=0;
+  return {bmr:Math.round(bmr),tdee:Math.round(tdee),kcal:Math.round(kcal/5)*5,
+          p:prot,c:carb,f:fat,water:Math.round(w*35/100)*100};
+}
+function targetsMatch(rec){
+  return rec&&rec.kcal===TARGETS.kcal&&rec.p===TARGETS.p&&
+         rec.c===TARGETS.c&&rec.f===TARGETS.f&&rec.water===TARGETS.water;
+}
+function applyTargets(){
+  var t=profileTargets(loadProfile());
+  if(!t)return;
+  try{localStorage.setItem(TARGETS_KEY,JSON.stringify({kcal:t.kcal,p:t.p,c:t.c,f:t.f,water:t.water}));}catch(e){}
+  loadTargets();renderProfile();showToast('היעדים עודכנו');
+}
+function resetTargets(){
+  try{localStorage.removeItem(TARGETS_KEY);}catch(e){}
+  loadTargets();renderProfile();showToast('חזרה ליעדים המקוריים');
+}
+
 function renderProfile(){
   var p=loadProfile(),h='',i;
   var age=profileAge(p.birth),bmi=profileBMI(p);
@@ -695,6 +773,10 @@ function renderProfile(){
   h+='<div class="pf-row"><label class="pf-lbl">תאריך לידה</label>'+
      '<input class="pf-in" type="date" value="'+(p.birth||'')+'" onchange="profSet(\u0027birth\u0027,this.value)">'+
      '<span class="pf-note">'+(age===null?'':age+' שנים')+'</span></div>';
+  h+='<div class="pf-row"><label class="pf-lbl">מין</label><div class="pf-sexes">'+
+     '<button class="pf-sex'+(p.sex==='m'?' on':'')+'" onclick="profSet(\u0027sex\u0027,\u0027m\u0027)">זכר</button>'+
+     '<button class="pf-sex'+(p.sex==='f'?' on':'')+'" onclick="profSet(\u0027sex\u0027,\u0027f\u0027)">נקבה</button>'+
+     '</div><span class="pf-note"></span></div>';
   h+='<div class="pf-row"><label class="pf-lbl">גובה</label>'+
      '<input class="pf-in" type="number" inputmode="decimal" step="0.5" placeholder="0" value="'+(p.height!==undefined?p.height:'')+'" onchange="profNum(\u0027height\u0027,this)">'+
      '<span class="pf-note">ס"מ</span></div>';
@@ -721,6 +803,40 @@ function renderProfile(){
     h+='<button class="pf-goal'+(p.goal===g.v?' on':'')+'" onclick="profSet(\u0027goal\u0027,\u0027'+g.v+'\u0027)">'+g.t+'</button>';
   }
   h+='</div></div>';
+
+  var rec=profileTargets(p);
+  if(rec){
+    var same=targetsMatch(rec);
+    h+='<div class="card"><div class="cttl">יעד מומלץ</div>';
+    h+='<div class="pf-bmr">שריפה במנוחה '+rec.bmr.toLocaleString()+' &middot; עם הפעילות '+rec.tdee.toLocaleString()+' קק"ל ליום</div>';
+    var rows=[
+      {v:rec.kcal.toLocaleString(),l:'קק"ל',cur:TARGETS.kcal.toLocaleString(),col:'#a690cf'},
+      {v:rec.p+'g',l:'חלבון',cur:TARGETS.p+'g',col:'#e08a72'},
+      {v:rec.c+'g',l:'פחמימה',cur:TARGETS.c+'g',col:'#8fc79e'},
+      {v:rec.f+'g',l:'שומן',cur:TARGETS.f+'g',col:'#e8c162'}
+    ];
+    h+='<div class="pf-recs">';
+    for(i=0;i<rows.length;i++){
+      var rw=rows[i],ch=rw.v!==rw.cur;
+      h+='<div class="pf-rec"><div class="pf-recv" style="color:'+rw.col+'">'+rw.v+'</div>'+
+         '<div class="pf-recl">'+rw.l+'</div>'+
+         '<div class="pf-recc'+(ch?' chg':'')+'">'+(ch?'כעת '+rw.cur:'ללא שינוי')+'</div></div>';
+    }
+    h+='</div>';
+    h+='<div class="pf-water">מים '+rec.water.toLocaleString()+' מ"ל'+
+       (rec.water!==TARGETS.water?' <span class="chg">(כעת '+TARGETS.water.toLocaleString()+')</span>':'')+'</div>';
+    if(same)
+      h+='<div class="pf-same">היעדים שלך כבר תואמים את החישוב.</div>';
+    else
+      h+='<button class="pf-apply" onclick="applyTargets()">עדכן את היעדים לפי זה</button>'+
+         '<div class="pf-hint">עד שתלחץ, שום דבר במעקב לא משתנה.</div>';
+    if(targetsAreCustom())
+      h+='<button class="pf-reset" onclick="resetTargets()">חזרה ליעדים המקוריים</button>';
+    h+='</div>';
+  } else {
+    h+='<div class="card"><div class="cttl">יעד מומלץ</div>'+
+       '<div class="pf-need">מלא את כל הפרטים למעלה ואחשב לך יעד קלוריות ומאקרו.</div></div>';
+  }
 
   document.getElementById('content').innerHTML=h;
 }
