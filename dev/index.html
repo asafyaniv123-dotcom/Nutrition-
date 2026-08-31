@@ -1790,7 +1790,7 @@ function enterModule(mod){
     // The day arrows belong to the food log, not here.
     document.getElementById('btnPrev').style.display='none';
     document.getElementById('btnNext').style.display='none';
-    _planMode='';_planStep=0;_planData={};
+    _planMode='';_planStep=0;
     renderPlanning();
   } else if(mod==='game'){
     document.querySelector('.app').style.display='block';
@@ -4376,18 +4376,9 @@ function deleteRecipe(){
 }
 /* ── PLANNING MODULE ── */
 var _planStep=0;
-var _planData={
-  intent:'',dayStart:'07:00',dayEnd:'23:00',
-  anchors:[],tasks:[],
-  goal:'',subgoal:'',feeling:'',
-  blocker:'',blockerSolution:'',reminders:[]
-};
 
 var PLAN_FEELINGS=['רגוע','ממוקד','אנרגטי','מתקדם','נוכח','מאוזן'];
 var PLAN_FEELING_EMOJIS={'רגוע':'&#x1F9D8;','ממוקד':'&#x1F3AF;','אנרגטי':'&#x26A1;','מתקדם':'&#x1F680;','נוכח':'&#x1F33F;','מאוזן':'&#x2696;'};
-var TASK_TYPES=[{id:'focus',emoji:'&#x1F9E0;',label:'מיקוד'},{id:'quick',emoji:'&#x26A1;',label:'מהיר'},{id:'errand',emoji:'&#x1F3C3;',label:'ניידה'},{id:'personal',emoji:'&#x1F9D8;',label:'אישי'}];
-var TASK_DURATIONS=[15,30,45,60,90,120];
-var TASK_PRIOS=[{id:'must',color:'#e08a72',label:'חייב היום'},{id:'should',color:'#e8c162',label:'חשוב'},{id:'maybe',color:'#c0b8b0',label:'אם יישאר זמן'}];
 
 function loadPlanHistory(){try{var x=localStorage.getItem('plan_history');return x?JSON.parse(x):[];}catch(e){return[];}}
 function savePlanHistory(arr){try{localStorage.setItem('plan_history',JSON.stringify(arr));}catch(e){}}
@@ -4668,7 +4659,6 @@ function wkUp(e){
    appears in the week table. So the week stays a week and does not fill up
    with the detail of seven days. */
 var _dpDate='',_dpNewColor='lav',_dpPick='',_dpDrag=null,_dpDetail='';
-var _planFor='',_planFrom='';
 var DP_FROM=6,DP_TO=23;
 
 function dpKey(date){return 'dplan_'+date;}
@@ -5033,9 +5023,8 @@ function renderPlanning(){
   if(_planMode==='weekly')return renderPlanWeek();
   if(_planMode==='day')return renderPlanDay();
   if(_planMode==='yearly')return renderPlanSoon('yearly');
-  if(_planStep===99)return renderPlanSchedule();
   if(_planStep===-1)return renderPlanHistory();
-  renderPlanStep();
+  renderPlanHome();
 }
 
 var PLAN_MODES=[
@@ -5084,14 +5073,9 @@ function renderPlanHome(){
 }
 
 function planGo(mode){
-  _planMode=mode;
-  if(mode==='daily'){
-    _planMode='day';_dpDate=wkStamp(new Date(Date.now()+86400000));renderPlanning();window.scrollTo(0,0);return;
-  }
-  if(false){
-    _planFor='';_planFrom='';_planStep=0;
-    _planData={intent:'',anchors:[],goal:'',subgoal:'',priorities:[],feeling:'',blocker:'',blockerSolution:'',reminders:[]};
-  }
+  // "Daily" is the day screen itself, for tomorrow.
+  if(mode==='daily'){mode='day';_dpDate=wkStamp(new Date(Date.now()+86400000));}
+  _planMode=mode;_planStep=0;
   renderPlanning();window.scrollTo(0,0);
 }
 
@@ -5111,491 +5095,6 @@ function renderPlanSoon(mode){
   document.getElementById('content').innerHTML=h;
 }
 
-function renderPlanStep(){
-  // Opened from a day it plans that day; opened from the chooser, tomorrow.
-  var target;
-  if(_planFor)target=new Date(_planFor+'T12:00:00');
-  else{target=new Date();target.setDate(target.getDate()+1);}
-  var dayNames=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-  var tName=dayNames[target.getDay()];
-  var STEPS=7;
-  var pct=Math.round((_planStep/STEPS)*100);
-  var h='<div style="padding-bottom:30px">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">';
-  if(_planStep>0)h+='<button onclick="_planStep--;renderPlanning()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer">&#8249; חזרה</button>';
-  else h+='<button onclick="planStepBack()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer">&#8249; חזרה</button>';
-  h+='<button onclick="_planStep=-1;renderPlanning()" style="background:none;border:none;font-size:11px;color:#a89e97;cursor:pointer">יומן &#8250;</button>';
-  h+='</div>';
-  h+='<div style="height:3px;background:#f0ebe3;border-radius:2px;margin-bottom:22px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#4f6ef7,#7c9cf8);border-radius:2px;transition:width .4s"></div></div>';
-  h+='<div style="font-size:11px;color:#4f6ef7;font-weight:700;margin-bottom:6px;letter-spacing:.08em">תכנון ל'+tName+'</div>';
-
-  if(_planStep===0){
-    // Intent
-    h+='<div style="font-size:20px;font-weight:800;color:#4a4340;margin-bottom:8px;line-height:1.4">מה חשוב לך שמחר יקרה?</div>';
-    h+='<div style="font-size:12px;color:#a89e97;margin-bottom:16px">לא רשימה — מה על הלב שלך?</div>';
-    h+='<textarea id="plan-inp" class="q-input" rows="3" placeholder="למשל: לסיים את המצגת ולהרגיש שאני בשליטה..." style="min-height:90px;margin-bottom:14px">'+esc(_planData.intent||'')+'</textarea>';
-
-  } else if(_planStep===1){
-    // Day frame
-    h+='<div style="font-size:20px;font-weight:800;color:#4a4340;margin-bottom:16px;line-height:1.4">מה המסגרת של היום?</div>';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
-    h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px">היום מתחיל</div><input id="plan-start" class="mtin" style="margin-bottom:0" type="time" value="'+(_planData.dayStart||'07:00')+'"></div>';
-    h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px">היום נגמר</div><input id="plan-end" class="mtin" style="margin-bottom:0" type="time" value="'+(_planData.dayEnd||'23:00')+'"></div>';
-    h+='</div>';
-    h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:8px">שעות תפוסות (עוגנים)</div>';
-    var anchors=_planData.anchors||[];
-    for(var ai=0;ai<anchors.length;ai++){
-      h+='<div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:0 2px 6px rgba(200,180,160,.08)">';
-      h+='<div style="flex:1;font-size:13px;font-weight:600;color:#4a4340">'+esc(anchors[ai].label)+'</div>';
-      h+='<div style="font-size:11px;color:#4f6ef7;font-weight:700">'+anchors[ai].from+'-'+anchors[ai].to+'</div>';
-      h+='<button onclick="_planData.anchors.splice('+ai+',1);renderPlanning()" style="background:none;border:none;cursor:pointer;color:#f3b9a8;font-size:14px">&times;</button>';
-      h+='</div>';
-    }
-    h+='<div style="background:#f5f0eb;border-radius:14px;padding:12px;margin-bottom:4px">';
-    h+='<div style="display:grid;grid-template-columns:1fr 70px 70px;gap:8px;margin-bottom:8px">';
-    h+='<input id="anc-label" class="mtin" style="margin-bottom:0" placeholder="למשל: עבודה">';
-    h+='<input id="anc-from" class="mtin" style="margin-bottom:0" type="time" value="09:00">';
-    h+='<input id="anc-to" class="mtin" style="margin-bottom:0" type="time" value="17:00">';
-    h+='</div>';
-    h+='<button onclick="planAddAnchor()" style="width:100%;background:linear-gradient(135deg,#7c9cf8,#4f6ef7);border:none;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;color:#fff">+ הוסף עוגן</button>';
-    h+='</div>';
-
-  } else if(_planStep===2){
-    // Tasks
-    h+='<div style="font-size:20px;font-weight:800;color:#4a4340;margin-bottom:8px;line-height:1.4">אילו המשימות של מחר?</div>';
-    h+='<div style="font-size:12px;color:#a89e97;margin-bottom:14px">הוסף משימות אחת אחת</div>';
-    // Existing tasks
-    var tasks=_planData.tasks||[];
-    for(var ti=0;ti<tasks.length;ti++){
-      var tk=tasks[ti];
-      var tt=TASK_TYPES.find(function(t){return t.id===tk.type;})||TASK_TYPES[0];
-      var tp=TASK_PRIOS.find(function(p){return p.id===tk.prio;})||TASK_PRIOS[0];
-      h+='<div style="background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 6px rgba(200,180,160,.08)">';
-      h+='<span style="font-size:14px">'+tt.emoji+'</span>';
-      h+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#4a4340">'+esc(tk.name)+'</div>';
-      h+='<div style="font-size:10px;color:#a89e97">'+tk.duration+'דק &middot; <span style="color:'+tp.color+'">'+tp.label+'</span></div></div>';
-      h+='<button onclick="_planData.tasks.splice('+ti+',1);renderPlanning()" style="background:none;border:none;cursor:pointer;color:#f3b9a8;font-size:14px">&times;</button>';
-      h+='</div>';
-    }
-    // Add task form
-    h+='<div style="background:#f5f0eb;border-radius:14px;padding:12px;margin-bottom:4px">';
-    h+='<input id="task-name" class="mtin" placeholder="שם המשימה..." style="margin-bottom:10px">';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
-    // Duration
-    h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px">זמן משוער</div>';
-    h+='<select id="task-dur" class="mtin" style="margin-bottom:0">';
-    for(var di=0;di<TASK_DURATIONS.length;di++){var dv=TASK_DURATIONS[di];h+='<option value="'+dv+'">'+(dv<60?dv+'דק':(dv/60)+'שעות')+'</option>';}
-    h+='</select></div>';
-    // Priority
-    h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px">עדיפות</div>';
-    h+='<select id="task-prio" class="mtin" style="margin-bottom:0">';
-    for(var pi2=0;pi2<TASK_PRIOS.length;pi2++){var pv=TASK_PRIOS[pi2];h+='<option value="'+pv.id+'">'+pv.label+'</option>';}
-    h+='</select></div>';
-    h+='</div>';
-    // Type chips
-    h+='<div style="display:flex;gap:6px;margin-bottom:10px" id="ttype-btns">';
-    for(var ti2=0;ti2<TASK_TYPES.length;ti2++){
-      var tv=TASK_TYPES[ti2];var isDefFocus=ti2===0;
-      h+='<button id="ttype-'+tv.id+'" data-type="'+tv.id+'" onclick="planSetTaskType(this.getAttribute(\'data-type\'))" style="flex:1;border:1.5px solid '+(isDefFocus?'#4f6ef7':'#e0ebe3')+';border-radius:10px;padding:6px 4px;cursor:pointer;background:'+(isDefFocus?'#e8f0ff':'#fff')+';font-size:10px;font-weight:700;color:'+(isDefFocus?'#4f6ef7':'#4a4340')+'">'+tv.emoji+' '+tv.label+'</button>';
-    }
-    h+='<input id="task-type-val" type="hidden" value="focus">';
-    h+='</div>';
-    h+='<button onclick="planAddTask()" style="width:100%;background:linear-gradient(135deg,#7c9cf8,#4f6ef7);border:none;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;color:#fff">+ הוסף משימה</button>';
-    h+='</div>';
-    // Load check
-    if(tasks.length>0){
-      var freeHrs=planFreeHours();var taskHrs=tasks.reduce(function(a,t){return a+t.duration;},0)/60;
-      var overload=taskHrs>freeHrs;
-      h+='<div style="margin-top:10px;padding:10px 14px;border-radius:12px;background:'+(overload?'rgba(224,138,114,.1)':'rgba(143,199,158,.1)')+';border-right:3px solid '+(overload?'#e08a72':'#8fc79e')+'">';
-      h+='<div style="font-size:11px;font-weight:700;color:'+(overload?'#e08a72':'#4C9A4C')+'">'+'זמן פנוי: '+freeHrs.toFixed(1)+'ש | משימות: '+taskHrs.toFixed(1)+'ש'+(overload?' &#x26A0;':'  &#x2713;')+'</div>';
-      if(overload)h+='<div style="font-size:10px;color:#e08a72;margin-top:3px">היום צפוד מדי. שקול להוריד או לקוצר משימות.</div>';
-      h+='</div>';
-    }
-
-  } else if(_planStep===3){
-    // Goal
-    h+='<div style="font-size:20px;font-weight:800;color:#4a4340;margin-bottom:8px;line-height:1.4">מה המטרה המרכזית של מחר?</div>';
-    h+='<div style="font-size:12px;color:#a89e97;margin-bottom:16px">דבר אחד. אם מחר יהיה מוצלח — מה יגרום לך להרגיש כך?</div>';
-    h+='<input id="plan-inp" class="mtin" value="'+esc(_planData.goal||'')+'" placeholder="למשל: לסיים את המצגת" style="margin-bottom:12px">';
-    h+='<div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px">מה צריך לקרות בדרך?</div>';
-    h+='<input id="plan-inp2" class="mtin" value="'+esc(_planData.subgoal||'')+'" placeholder="למשל: להכין 5 שקפים מרכזיים">';
-
-  } else if(_planStep===4){
-    // Feeling
-    h+='<div style="font-size:20px;font-weight:800;color:#4a4340;margin-bottom:8px;line-height:1.4">איך אתה רוצה להרגיש מחר?</div>';
-    h+='<div style="display:flex;flex-wrap:wrap;gap:10px">';
-    for(var fi=0;fi<PLAN_FEELINGS.length;fi++){
-      var fel=PLAN_FEELINGS[fi];var isOn=(_planData.feeling||'').indexOf(fel)>=0;
-      h+='<button onclick="planToggleFeeling(\''+fel+'\')" style="border:2px solid '+(isOn?'#4f6ef7':'#f0ebe3')+';border-radius:16px;padding:10px 16px;cursor:pointer;background:'+(isOn?'#e8f0ff':'#fff')+';font-size:13px;font-weight:700;color:'+(isOn?'#4f6ef7':'#4a4340')+'">'+PLAN_FEELING_EMOJIS[fel]+' '+fel+'</button>';
-    }
-    h+='</div>';
-
-  } else if(_planStep===5){
-    // Blocker
-    h+='<div style="font-size:20px;font-weight:800;color:#4a4340;margin-bottom:8px;line-height:1.4">מה עלול להפריע?</div>';
-    h+='<div style="font-size:12px;color:#a89e97;margin-bottom:16px">תכנון מוקדם עוזר להימנע</div>';
-    h+='<div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px">מה עלול להפריע?</div>';
-    h+='<input id="plan-inp" class="mtin" value="'+esc(_planData.blocker||'')+'" placeholder="למשל: אני נוטה להימרח בבוקר...">';
-    h+='<div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px;margin-top:12px">מה אפשר לעשות כבר הלילה?</div>';
-    h+='<input id="plan-inp2" class="mtin" value="'+esc(_planData.blockerSolution||'')+'" placeholder="למשל: לשים את הטלפון רחוק...">';
-
-  } else if(_planStep===6){
-    // Reminders
-    h+='<div style="font-size:20px;font-weight:800;color:#4a4340;margin-bottom:8px;line-height:1.4">דברים שאסור לשכוח</div>';
-    h+='<div style="font-size:12px;color:#a89e97;margin-bottom:14px">אנשים, משימות, דברים לבדוק</div>';
-    var rems=_planData.reminders||[];
-    for(var ri=0;ri<rems.length;ri++){
-      h+='<div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px">';
-      h+='<span>&#x1F514;</span><div style="flex:1;font-size:13px;color:#4a4340">'+esc(rems[ri])+'</div>';
-      h+='<button onclick="_planData.reminders.splice('+ri+',1);renderPlanning()" style="background:none;border:none;cursor:pointer;color:#f3b9a8;font-size:14px">&times;</button>';
-      h+='</div>';
-    }
-    h+='<div style="display:flex;gap:8px">';
-    h+='<input id="plan-inp" class="mtin" style="flex:1;margin-bottom:0" placeholder="למשל: להתקשר לדניאל" onkeydown="if(event.key===\'Enter\'){var v=document.getElementById(\'plan-inp\').value.trim();if(v){_planData.reminders.push(v);document.getElementById(\'plan-inp\').value=\'\';renderPlanning();}}">';
-    h+='<button onclick="var v=document.getElementById(\'plan-inp\').value.trim();if(v){_planData.reminders.push(v);renderPlanning();}" style="background:linear-gradient(135deg,#7c9cf8,#4f6ef7);border:none;border-radius:11px;padding:0 16px;font-size:18px;cursor:pointer;color:#fff">+</button>';
-    h+='</div>';
-  }
-
-  h+='<button onclick="planNext()" style="width:100%;background:linear-gradient(135deg,#7c9cf8,#4f6ef7);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;margin-top:20px">';
-  h+=(_planStep>=6?'ראה את התכנון &#8594;':'הבא &#8594;');
-  h+='</button>';
-  if(_planStep===1||_planStep===6)h+='<button onclick="_planStep++;renderPlanning()" style="width:100%;background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;margin-top:10px">דלג</button>';
-  h+='</div>';
-  document.getElementById('content').innerHTML=h;
-  setTimeout(function(){var inp=document.getElementById('plan-inp');if(inp)inp.focus();},60);
-  if(_planStep===2)planHighlightTaskType('focus');
-}
-
-function drawPlanSpiral(){
-  var canvas=document.getElementById('plan-spiral');if(!canvas)return;
-  var ctx=canvas.getContext('2d');
-  var d=_planData;
-  var W=160,H=166,CX=80,CY=83,R_IN=28,R_OUT=68;
-
-  // Build a 24-slot color array from timeline blocks
-  var PLAN_CLR={anchor:'#4f6ef7',focus:'#c9b8f0',quick:'#8fc79e',errand:'#8fc79e',personal:'#f3b9a8',buffer:'#ede8e0',free:'#e8e3db'};
-  var toMin=function(t){if(!t)return 0;var p=t.split(':');return parseInt(p[0])*60+parseInt(p[1]);};
-
-  // Fill slots: for each hour 0-23, decide color from blocks
-  var blocks=planBuildTimeline();
-  var slotColor=new Array(25).fill('none');
-
-  // Map blocks back to hours
-  blocks.forEach(function(bl){
-    if(!bl.time)return;
-    var startM=toMin(bl.time);
-    var dur=bl.duration||60;
-    if(bl.type==='anchor'){
-      dur=toMin(bl.endTime)-startM;
-    } else if(bl.type==='free'){dur=60;}
-    else if(bl.type==='buffer'){dur=10;}
-    var clr=bl.type==='anchor'?'anchor':bl.taskType||bl.type;
-    var endM=startM+dur;
-    for(var m=startM;m<endM;m+=60){
-      var slot=Math.floor(m/60);
-      if(slot>=0&&slot<25)slotColor[slot]=clr;
-    }
-  });
-
-  // Draw background spiral
-  ctx.clearRect(0,0,W,H);
-  ctx.beginPath();
-  for(var t=0;t<=480;t++){
-    var f=t/480;var a=(-90+f*720)*Math.PI/180;var r=R_IN+f*(R_OUT-R_IN);
-    t===0?ctx.moveTo(CX+r*Math.cos(a),CY+r*Math.sin(a)):ctx.lineTo(CX+r*Math.cos(a),CY+r*Math.sin(a));
-  }
-  ctx.strokeStyle='rgba(160,155,150,.15)';ctx.lineWidth=9;ctx.lineCap='round';ctx.stroke();
-
-  // Colored arcs
-  var i=0;
-  while(i<25){
-    if(slotColor[i]==='none'){i++;continue;}
-    var col=slotColor[i],st=i;
-    while(i<25&&slotColor[i]===col)i++;
-    var en=i-1;
-    ctx.beginPath();
-    var steps=Math.max((en-st)*24,1);
-    for(var s=0;s<=steps;s++){
-      var f2=st+(s/steps)*(en-st);
-      var a2=(-90+f2*(720/24))*Math.PI/180;var r2=R_IN+(f2/24)*(R_OUT-R_IN);
-      s===0?ctx.moveTo(CX+r2*Math.cos(a2),CY+r2*Math.sin(a2)):ctx.lineTo(CX+r2*Math.cos(a2),CY+r2*Math.sin(a2));
-    }
-    var fillColor=PLAN_CLR[col]||'#c0b8b0';
-    ctx.strokeStyle=fillColor;ctx.lineWidth=8;ctx.lineCap='round';
-    ctx.shadowColor=fillColor;ctx.shadowBlur=4;ctx.stroke();ctx.shadowBlur=0;
-  }
-
-  // Hour dots 0,6,12,18,24
-  [0,6,12,18,24].forEach(function(h){
-    var ang=(-90+h*(720/24))*Math.PI/180;
-    var r=R_IN+(h/24)*(R_OUT-R_IN)+11;
-    ctx.fillStyle='rgba(140,133,125,.45)';ctx.font='600 7px -apple-system,sans-serif';
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(h,CX+r*Math.cos(ang),CY+r*Math.sin(ang));
-  });
-}
-
-function planFreeHours(){
-  var start=_planData.dayStart||'07:00';var end=_planData.dayEnd||'23:00';
-  var s=parseInt(start.split(':')[0])*60+parseInt(start.split(':')[1]);
-  var e=parseInt(end.split(':')[0])*60+parseInt(end.split(':')[1]);
-  var total=(e-s)/60;
-  var anchored=(_planData.anchors||[]).reduce(function(a,anc){
-    var af=parseInt(anc.from.split(':')[0])*60+parseInt(anc.from.split(':')[1]);
-    var at=parseInt(anc.to.split(':')[0])*60+parseInt(anc.to.split(':')[1]);
-    return a+Math.max(0,(at-af)/60);
-  },0);
-  return Math.max(0,(total-anchored)*0.8); // 20% buffer
-}
-
-function planAddAnchor(){
-  var lbl=document.getElementById('anc-label');
-  var from=document.getElementById('anc-from');
-  var to=document.getElementById('anc-to');
-  if(!lbl||!lbl.value.trim()){showToast('נא הזן שם לעוגן');return;}
-  if(!_planData.anchors)_planData.anchors=[];
-  _planData.anchors.push({
-    label:lbl.value.trim(),
-    from:(from&&from.value)||'09:00',
-    to:(to&&to.value)||'17:00'
-  });
-  showToast('עוגן נוסף &#10003;');
-  renderPlanning();
-}
-
-function planAddTask(){
-  var name=document.getElementById('task-name');
-  if(!name||!name.value.trim()){showToast('נא הזן שם למשימה');return;}
-  var dur=document.getElementById('task-dur');
-  var prio=document.getElementById('task-prio');
-  var type=document.getElementById('task-type-val');
-  if(!_planData.tasks)_planData.tasks=[];
-  _planData.tasks.push({
-    name:name.value.trim(),
-    duration:parseInt((dur&&dur.value)||'30')||30,
-    prio:(prio&&prio.value)||'should',
-    type:(type&&type.value)||'focus',
-    id:Date.now()
-  });
-  showToast('משימה נוספה &#10003;');
-  renderPlanning();
-}
-
-function planSetTaskType(id){
-  var inp=document.getElementById('task-type-val');if(inp)inp.value=id;
-  planHighlightTaskType(id);
-}
-
-function planHighlightTaskType(id){
-  TASK_TYPES.forEach(function(t){
-    var btn=document.getElementById('ttype-'+t.id);
-    if(!btn)return;
-    btn.style.background=t.id===id?'#e8f0ff':'#fff';
-    btn.style.borderColor=t.id===id?'#4f6ef7':'#e0ebe3';
-    btn.style.color=t.id===id?'#4f6ef7':'#4a4340';
-  });
-}
-
-function planToggleFeeling(f){
-  var arr=(_planData.feeling||'')?_planData.feeling.split(',').filter(Boolean):[];
-  var idx=arr.indexOf(f);idx>=0?arr.splice(idx,1):arr.push(f);
-  _planData.feeling=arr.join(',');renderPlanning();
-}
-
-function planNext(){
-  var s=_planStep;
-  if(s===0){var v=document.getElementById('plan-inp');_planData.intent=(v&&v.value.trim())||_planData.intent;}
-  else if(s===1){var ps=document.getElementById('plan-start');var pe=document.getElementById('plan-end');if(ps)_planData.dayStart=ps.value;if(pe)_planData.dayEnd=pe.value;}
-  else if(s===2){/* tasks added live */}
-  else if(s===3){var g=document.getElementById('plan-inp');var sg=document.getElementById('plan-inp2');if(g)_planData.goal=g.value.trim();if(sg)_planData.subgoal=sg.value.trim();}
-  else if(s===4){/* feeling set live */}
-  else if(s===5){var bl=document.getElementById('plan-inp');var bs=document.getElementById('plan-inp2');if(bl)_planData.blocker=bl.value.trim();if(bs)_planData.blockerSolution=bs.value.trim();}
-  else if(s===6){_planStep=99;renderPlanning();return;}
-  _planStep++;renderPlanning();
-}
-
-function renderPlanSchedule(){
-  document.getElementById('hdr-title').textContent='היום שלך למחר';
-  var d=_planData;
-  var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
-  var dayNames=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-  var tName=dayNames[tomorrow.getDay()];
-  var h='<div style="padding-bottom:30px">';
-
-  // Header
-  h+='<div style="background:linear-gradient(135deg,#e8f0ff,#dde8ff);border-radius:20px;padding:18px;margin-bottom:16px;border-right:4px solid #4f6ef7">';
-  h+='<div style="font-size:11px;color:#4f6ef7;font-weight:700;letter-spacing:.1em;margin-bottom:4px">&#x1F5D3; היום שלך ל'+tName+'</div>';
-  if(d.intent)h+='<div style="font-size:15px;font-weight:800;color:#4a4340;line-height:1.5">'+esc(d.intent)+'</div>';
-  if(d.goal)h+='<div style="font-size:12px;color:#4f6ef7;margin-top:6px">&#x1F3AF; '+esc(d.goal)+'</div>';
-  h+='</div>';
-
-  // Build timeline
-  var blocks=planBuildTimeline();
-  h+='<div style="background:#fff;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(200,180,160,.08)">';
-  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:14px;letter-spacing:.1em">לוח הזמן</div>';
-  for(var bi=0;bi<blocks.length;bi++){
-    var bl=blocks[bi];
-    var isAnchor=bl.type==='anchor';var isFree=bl.type==='free';var isBuf=bl.type==='buffer';
-    var tt=TASK_TYPES.find(function(t){return t.id===bl.taskType;})||{emoji:'&#x2022;'};
-    var tp=TASK_PRIOS.find(function(p){return p.id===bl.prio;})||{color:'#a89e97'};
-    h+='<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">';
-    h+='<div style="font-size:9px;color:#a89e97;font-weight:600;width:34px;flex-shrink:0;padding-top:4px">'+bl.time+'</div>';
-    h+='<div style="width:3px;background:'+(isAnchor?'#4f6ef7':isFree?'#ede8e0':isBuf?'#f0eafa':tp.color)+';border-radius:2px;flex-shrink:0;align-self:stretch;min-height:24px"></div>';
-    h+='<div style="flex:1">';
-    if(isAnchor){
-      h+='<div style="font-size:13px;font-weight:700;color:#4f6ef7">'+esc(bl.label)+'</div>';
-      h+='<div style="font-size:10px;color:#7c9cf8">'+bl.time+' - '+bl.endTime+'</div>';
-    } else if(isFree){
-      h+='<div style="font-size:12px;color:#c0b8b0;font-style:italic">&#x1F7E2; זמן חופשי</div>';
-    } else if(isBuf){
-      h+='<div style="font-size:11px;color:#a690cf">&#x2194; זמן מעבר</div>';
-    } else {
-      h+='<div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#4a4340">'+tt.emoji+' '+esc(bl.label)+'</div>';
-      h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+bl.duration+'דק &middot; <span style="color:'+tp.color+'">'+((TASK_PRIOS.find(function(p){return p.id===bl.prio;})||{label:''}).label)+'</span></div>';
-    }
-    h+='</div></div>';
-  }
-  h+='</div>';
-
-  // Priorities
-  if(d.tasks&&d.tasks.length){
-    var musts=d.tasks.filter(function(t){return t.prio==='must';});
-    var shoulds=d.tasks.filter(function(t){return t.prio==='should';});
-    if(musts.length||shoulds.length){
-      h+='<div style="background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(200,180,160,.08)">';
-      h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:10px">סדר עדיפויות</div>';
-      musts.forEach(function(t){h+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f0eb"><span style="color:#e08a72;font-size:12px">&#x1F534;</span><span style="font-size:13px;font-weight:700;color:#4a4340">'+esc(t.name)+'</span></div>';});
-      shoulds.forEach(function(t){h+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f0eb"><span style="color:#e8c162;font-size:12px">&#x1F7E1;</span><span style="font-size:13px;color:#4a4340">'+esc(t.name)+'</span></div>';});
-      h+='</div>';
-    }
-  }
-
-  // Feeling + blocker
-  if(d.feeling){
-    var feels=d.feeling.split(',').filter(Boolean);
-    h+='<div style="background:linear-gradient(135deg,#f0eafa,#e8f0ff);border-radius:14px;padding:12px;margin-bottom:10px;display:flex;align-items:center;gap:8px">';
-    h+='<span style="font-size:11px;color:#a89e97">מטרה:</span>';
-    feels.forEach(function(f){h+='<span style="font-size:13px;font-weight:700;color:#4f6ef7">'+PLAN_FEELING_EMOJIS[f]+' '+f+'</span>';});
-    h+='</div>';
-  }
-  if(d.blocker){
-    h+='<div style="background:linear-gradient(135deg,#fff9f0,#fff5e8);border-radius:14px;padding:12px;margin-bottom:10px;border-right:3px solid #e8c162">';
-    h+='<div style="font-size:10px;color:#b45309;font-weight:700;margin-bottom:3px">&#x26A0; חסם אפשרי</div>';
-    h+='<div style="font-size:12px;color:#4a4340;">'+esc(d.blocker)+'</div>';
-    if(d.blockerSolution)h+='<div style="font-size:11px;color:#8fc79e;font-weight:700;margin-top:4px">&#10003; '+esc(d.blockerSolution)+'</div>';
-    h+='</div>';
-  }
-  if(d.reminders&&d.reminders.length){
-    h+='<div style="background:#fff;border-radius:14px;padding:12px;margin-bottom:14px;box-shadow:0 2px 8px rgba(200,180,160,.08)">';
-    h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:8px">&#x1F514; לא לשכוח</div>';
-    d.reminders.forEach(function(r){h+='<div style="font-size:13px;color:#4a4340;padding:5px 0;border-bottom:1px solid #f5f0eb">'+esc(r)+'</div>';});
-    h+='</div>';
-  }
-
-  // Load check
-  var freeH=planFreeHours();
-  var taskH=(d.tasks||[]).reduce(function(a,t){return a+t.duration;},0)/60;
-  var overload=taskH>freeH;
-  h+='<div style="padding:12px 14px;border-radius:12px;background:'+(overload?'rgba(224,138,114,.08)':'rgba(143,199,158,.08)')+';border:1px solid '+(overload?'#f3b9a8':'#bfe0c7')+';margin-bottom:16px">';
-  h+='<div style="font-size:11px;font-weight:700;color:'+(overload?'#e08a72':'#4C9A4C')+'">'+(overload?'&#x26A0; היום צפוד מדי ('+taskH.toFixed(1)+'ש על '+freeH.toFixed(1)+'ש פנוי)':'&#x2713; היום נראה ריאלי ('+taskH.toFixed(1)+'ש על '+freeH.toFixed(1)+'ש פנוי)')+'</div>';
-  h+='</div>';
-
-  // Spiral
-  h+='<div style="background:#fff;border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px rgba(200,180,160,.08)">';
-  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;letter-spacing:.1em;margin-bottom:12px">איך הזמן מתחלק מחר</div>';
-  h+='<div style="display:flex;align-items:center;gap:16px">';
-  h+='<canvas id="plan-spiral" width="160" height="166" style="display:block;flex-shrink:0"></canvas>';
-  // Legend
-  h+='<div style="display:flex;flex-direction:column;gap:8px;font-size:11px">';
-  h+='<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#4f6ef7;display:inline-block;flex-shrink:0"></span>עוגנים</div>';
-  h+='<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#c9b8f0;display:inline-block;flex-shrink:0"></span>מיקוד</div>';
-  h+='<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#8fc79e;display:inline-block;flex-shrink:0"></span>מהיר / ניידה</div>';
-  h+='<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#f3b9a8;display:inline-block;flex-shrink:0"></span>אישי</div>';
-  h+='<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#e8e3db;display:inline-block;flex-shrink:0"></span>חופשי</div>';
-  h+='</div></div></div>';
-
-  window._planSpiralNeedsDraw=true;
-
-  h+='<div style="text-align:center;font-size:15px;font-weight:700;color:#4a4340;margin-bottom:14px">זה היום שאתה רוצה שיהיה לך? &#x1F31F;</div>';
-  h+='<div style="display:flex;gap:10px">';
-  h+='<button onclick="savePlan()" style="flex:1;background:linear-gradient(135deg,#7c9cf8,#4f6ef7);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;color:#fff">כן, זה זה! &#x1F44A;</button>';
-  h+='<button onclick="_planStep=0;renderPlanning()" style="background:#f0eafa;border:none;border-radius:14px;padding:14px 16px;font-size:12px;font-weight:700;cursor:pointer;color:#4f6ef7">שנה משהו</button>';
-  h+='</div></div>';
-  document.getElementById('content').innerHTML=h;
-  if(window._planSpiralNeedsDraw){window._planSpiralNeedsDraw=false;setTimeout(function(){drawPlanSpiral();},30);}
-}
-
-function planBuildTimeline(){
-  var blocks=[];
-  var d=_planData;
-  var dayStart=d.dayStart||'07:00';
-  var toMin=function(t){var p=t.split(':');return parseInt(p[0])*60+parseInt(p[1]);};
-  var toStr=function(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
-
-  // Sort anchors
-  var anchors=(d.anchors||[]).slice().sort(function(a,b){return toMin(a.from)-toMin(b.from);});
-  // Sort tasks: must first, then focus, then others by duration desc
-  var tasks=(d.tasks||[]).slice().sort(function(a,b){
-    var po={must:0,should:1,maybe:2};var to2={focus:0,quick:2,errand:1,personal:3};
-    return (po[a.prio]||1)*3+(to2[a.taskType]||1)-(po[b.prio]||1)*3-(to2[b.taskType]||1);
-  });
-
-  var cursor=toMin(dayStart);
-  var taskIdx=0;
-
-  // Weave anchors and tasks
-  var allAnchors=anchors.map(function(a){return {s:toMin(a.from),e:toMin(a.to),label:a.label,type:'anchor'};});
-  var ai2=0;
-
-  while(cursor<toMin(d.dayEnd||'23:00')){
-    // Check if next anchor starts
-    if(ai2<allAnchors.length&&cursor>=allAnchors[ai2].s){
-      var anc=allAnchors[ai2];
-      blocks.push({type:'anchor',time:toStr(anc.s),endTime:toStr(anc.e),label:anc.label});
-      cursor=anc.e;ai2++;continue;
-    }
-    // Next anchor start
-    var nextAnchorStart=ai2<allAnchors.length?allAnchors[ai2].s:toMin(d.dayEnd||'23:00');
-    var available=nextAnchorStart-cursor;
-    if(available<=0){cursor=nextAnchorStart;continue;}
-    // Fit tasks
-    if(taskIdx<tasks.length){
-      var tk=tasks[taskIdx];
-      if(tk.duration<=available){
-        blocks.push({type:'task',time:toStr(cursor),label:tk.name,duration:tk.duration,prio:tk.prio,taskType:tk.type});
-        cursor+=tk.duration;
-        // 10min buffer between tasks
-        if(taskIdx<tasks.length-1){blocks.push({type:'buffer',time:toStr(cursor)});cursor+=10;}
-        taskIdx++;
-      } else {cursor=nextAnchorStart;}
-    } else {
-      // Free time
-      if(available>30)blocks.push({type:'free',time:toStr(cursor)});
-      cursor=nextAnchorStart;
-    }
-  }
-  return blocks;
-}
-
-function savePlan(){
-  var hist=loadPlanHistory(),out=[],i;
-  var forDate=_planFor||wkStamp(new Date(Date.now()+86400000));
-  // One deep plan per day: saving again replaces that day's rather than
-  // stacking a second copy in the journal.
-  for(i=0;i<hist.length;i++)if(hist[i].forDate!==forDate)out.push(hist[i]);
-  hist=out;
-  hist.unshift(Object.assign({},_planData,{date:Date.now(),forDate:forDate}));
-  if(hist.length>30)hist=hist.slice(0,30);
-  savePlanHistory(hist);
-  showToast('תכנון נשמר &#10003;');
-  if(_planFrom==='day'){_planMode='day';renderPlanning();window.scrollTo(0,0);return;}
-  _planStep=-1;renderPlanning();
-}
-// Leaving the wizard goes back where it was opened from.
-function planStepBack(){
-  if(_planFrom==='day'){_planMode='day';renderPlanning();window.scrollTo(0,0);return;}
-  _planMode='';renderPlanning();
-}
 function planForDate(date){
   var hist=loadPlanHistory(),i;
   for(i=0;i<hist.length;i++)if(hist[i].forDate===date)return hist[i];
@@ -5606,7 +5105,7 @@ function renderPlanHistory(){
   var hist=loadPlanHistory();
   document.getElementById('hdr-title').textContent='יומן תכנונים';
   var h='<div style="padding-bottom:30px">';
-  h+='<button onclick="_planStep=0;_planData={intent:\'\',dayStart:\'07:00\',dayEnd:\'23:00\',anchors:[],tasks:[],goal:\'\',subgoal:\'\',feeling:\'\',blocker:\'\',blockerSolution:\'\',reminders:[]};renderPlanning()" style="width:100%;background:linear-gradient(135deg,#7c9cf8,#4f6ef7);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;margin-bottom:16px">+ תכנון חדש למחר</button>';
+  h+='<button onclick="planGo(\'daily\')" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;margin-bottom:16px;font-family:inherit">+ תכנון חדש למחר</button>';
   if(hist.length===0){h+='<div style="text-align:center;padding:50px 20px;color:#c0b8b0;font-size:13px">אין עדיין תכנונים</div>';}
   for(var hi5=0;hi5<hist.length;hi5++){
     var p=hist[hi5];var d2=new Date(p.date);
