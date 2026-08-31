@@ -243,6 +243,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .dp-slot{flex:1;min-width:0;padding:5px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;transition:background .15s}
 .dp-slot.hot{background:rgba(143,199,158,.22)}
 .dp-chip{border-radius:8px;padding:5px 9px;font-size:11.5px;font-weight:700;line-height:1.3;max-width:100%;word-break:break-word;touch-action:none;cursor:grab}
+.tl-row{display:flex;align-items:center;gap:8px;background:#fbf7f2;border-radius:12px;padding:9px 11px;margin-bottom:6px;touch-action:none;cursor:grab}
 /* the month as a calendar */
 .mo-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:4px}
 .mo-hd{text-align:center;font-size:9px;font-weight:800;color:#a89e97}
@@ -4543,6 +4544,7 @@ function renderPlanWeek(){
   h+='<div style="font-size:10px;color:#a89e97;font-weight:700;flex-shrink:0">צבע</div>';
   h+=wkSwatches("_wkNewColor='%K%';renderPlanWeek()",_wkNewColor);
   h+='</div>';
+  h+=taskLibHTML();
   h+='<div style="display:flex;gap:8px;margin-top:8px">';
   h+='<input id="wk-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משימה או פגישה" onkeydown="if(event.key===\'Enter\')wkAdd()">';
   h+='<button onclick="wkAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
@@ -4563,6 +4565,7 @@ function wkTaskHTML(t){
   h+='<div class="wk-grip">&#8942;&#8942;</div>';
   h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="wkPick(\''+t.id+'\')"></button>';
   h+='<div style="flex:1;min-width:0;font-size:13.5px;color:#4a4340;line-height:1.45">'+esc(t.w)+'</div>';
+  if(!t.d)h+=taskLibStar(t.w,t.c);
   if(t.d)h+='<button onclick="wkAssign(\''+t.id+'\',\'\',\'\')" style="background:none;border:none;color:#c9bce0;font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>';
   h+='<button onclick="wkDel(\''+t.id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
   h+='</div>';
@@ -4592,6 +4595,15 @@ function wkAssign(id,date,slot){
   for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){wk.tasks[i].d=date||'';wk.tasks[i].s=date?(slot||'m'):'';}
   saveWeek(_wkSun,wk);renderPlanWeek();
 }
+// A shelf task dropped on the week becomes a new week task; the shelf keeps
+// its own copy.
+function wkFromLib(libId,date,slot){
+  var t=taskLibFind(libId);if(!t)return;
+  var wk=loadWeek(_wkSun);
+  wk.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                 w:t.w,d:date||'',s:date?(slot||'m'):'',c:t.c||'lav'});
+  saveWeek(_wkSun,wk);renderPlanWeek();
+}
 function wkDel(id){
   var wk=loadWeek(_wkSun),out=[],i;
   for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id!==id)out.push(wk.tasks[i]);
@@ -4600,7 +4612,7 @@ function wkDel(id){
 
 /* ── the drag ── */
 function wkDown(e){
-  var el=e.target.closest?e.target.closest('[data-task]'):null;
+  var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;      // × and "return" are taps, not drags
   var r=el.getBoundingClientRect();
@@ -4611,7 +4623,7 @@ function wkDown(e){
   g.style.top=r.top+'px';
   document.body.appendChild(g);
   el.style.opacity='.3';
-  _wkDrag={id:el.getAttribute('data-task'),g:g,src:el,
+  _wkDrag={id:el.getAttribute('data-task'),lib:el.getAttribute('data-lib')||'',g:g,src:el,
            dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};
   window.addEventListener('pointermove',wkMove);
   window.addEventListener('pointerup',wkUp);
@@ -4651,9 +4663,10 @@ function wkUp(e){
   window.removeEventListener('pointermove',wkMove);
   window.removeEventListener('pointerup',wkUp);
   window.removeEventListener('pointercancel',wkUp);
-  var id=_wkDrag.id,moved=_wkDrag.moved;
+  var id=_wkDrag.id,moved=_wkDrag.moved,lib=_wkDrag.lib;
   _wkDrag=null;
   if(!moved)return;                          // a tap, not a drop
+  if(lib){if(hit)wkFromLib(lib,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));else renderPlanWeek();return;}
   if(hit)wkAssign(id,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));
   else if(onPool)wkAssign(id,'','');
   else renderPlanWeek();                     // dropped nowhere: put it back
@@ -4753,7 +4766,8 @@ function renderDpSheet(){
   h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin:6px 0 8px">פרטים שחשוב לזכור</div>';
   h+='<textarea id="dp-d-note" class="q-input" style="min-height:120px" placeholder="מה צריך להביא, עם מי, מה להגיד, מה לא לשכוח...">'+esc(note)+'</textarea>';
   if(t.src==='day')h+='<div style="margin-top:14px">'+wkSwatches("dpSetColor('"+t.id+"','%K%');renderDpSheet()",t.c||'lav')+'</div>';
-  h+='<button onclick="dpCloseDetail(true)" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit;margin-top:18px">שמור</button>';
+  h+='<button onclick="taskLibSave(\''+esc(t.w).replace(/'/g,"\\'")+'\',\''+(t.c||'lav')+'\')" style="width:100%;background:#f5f0eb;border:none;border-radius:14px;padding:12px;font-size:12.5px;font-weight:700;cursor:pointer;color:#a89e97;font-family:inherit;margin-top:16px">&#9734; שמור כמשימה חוזרת</button>';
+  h+='<button onclick="dpCloseDetail(true)" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit;margin-top:8px">שמור</button>';
   if(t.src==='day')h+='<button onclick="dpCloseDetail(false);dpDel(\''+t.id+'\')" style="width:100%;background:none;border:none;padding:12px;font-size:12px;font-weight:700;color:#e08a72;cursor:pointer;font-family:inherit">מחק</button>';
   h+='</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
@@ -4777,6 +4791,13 @@ function dpAdd(){
                  w:el.value.trim(),c:_dpNewColor});
   saveDPlan(_dpDate,dp);renderPlanDay();
   setTimeout(function(){var e=document.getElementById('dp-in');if(e)e.focus();},40);
+}
+function dpFromLib(libId,hour){
+  var t=taskLibFind(libId);if(!t)return;
+  var dp=loadDPlan(_dpDate),it={id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:t.w,c:t.c||'lav'};
+  if(typeof hour==='number')it.h=hour;
+  dp.items.push(it);
+  saveDPlan(_dpDate,dp);renderPlanDay();
 }
 function dpDel(id){
   var dp=loadDPlan(_dpDate),out=[],i;
@@ -4847,6 +4868,7 @@ function renderPlanDay(){
   out+='<div style="font-size:10px;color:#a89e97;font-weight:700;flex-shrink:0">צבע</div>';
   out+=wkSwatches("_dpNewColor='%K%';renderPlanDay()",_dpNewColor);
   out+='</div>';
+  out+=taskLibHTML();
   out+='<div style="display:flex;gap:8px;margin-top:8px">';
   out+='<input id="dp-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משהו ליום הזה" onkeydown="if(event.key===\'Enter\')dpAdd()">';
   out+='<button onclick="dpAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
@@ -4972,7 +4994,7 @@ function deepDelRemember(i){
 
 /* ── the drag ── */
 function dpDown(e){
-  var el=e.target.closest?e.target.closest('[data-task]'):null;
+  var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;
   var r=el.getBoundingClientRect();
@@ -4981,7 +5003,7 @@ function dpDown(e){
   g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';
   document.body.appendChild(g);
   el.style.opacity='.3';
-  _dpDrag={id:el.getAttribute('data-task'),g:g,src:el,
+  _dpDrag={id:el.getAttribute('data-task'),lib:el.getAttribute('data-lib')||'',g:g,src:el,
            dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};
   window.addEventListener('pointermove',dpMove);
   window.addEventListener('pointerup',dpUp);
@@ -5023,12 +5045,98 @@ function dpUp(e){
   window.removeEventListener('pointermove',dpMove);
   window.removeEventListener('pointerup',dpUp);
   window.removeEventListener('pointercancel',dpUp);
-  var id=_dpDrag.id,moved=_dpDrag.moved;
+  var id=_dpDrag.id,moved=_dpDrag.moved,lib=_dpDrag.lib;
   _dpDrag=null;
+  if(lib){if(moved&&hit)dpFromLib(lib,parseInt(hit.getAttribute('data-hour'),10));else if(moved&&onPool)dpFromLib(lib,null);else renderPlanDay();return;}
   if(!moved){dpOpenDetail(id);return;}          // a tap opens the task
   if(hit)dpAssign(id,parseInt(hit.getAttribute('data-hour'),10));
   else if(onPool)dpAssign(id,null);
   else renderPlanDay();
+}
+
+/* ── RECURRING TASKS ──
+   A shelf of tasks you keep needing, the way the meal library works: written
+   once, then dragged straight onto a day, an hour or a date. Dragging one
+   makes a copy - the saved task stays on the shelf - so the same shelf serves
+   the day, the week and the month. */
+var _tlOpen=false;
+function loadTaskLib(){
+  try{var x=localStorage.getItem('task_lib');var a=x?JSON.parse(x):null;
+    return Array.isArray(a)?a:[];}catch(e){return[];}
+}
+function saveTaskLib(a){try{localStorage.setItem('task_lib',JSON.stringify(a));}catch(e){}}
+function taskLibFind(id){
+  var l=loadTaskLib(),i;
+  for(i=0;i<l.length;i++)if(l[i].id===id)return l[i];
+  return null;
+}
+function taskLibAdd(text,color){
+  text=(text||'').trim();
+  if(!text)return false;
+  var l=loadTaskLib(),i;
+  for(i=0;i<l.length;i++)if(l[i].w===text)return false;   // already on the shelf
+  l.push({id:'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),w:text,c:color||'lav'});
+  saveTaskLib(l);
+  return true;
+}
+function taskLibAddFromInput(){
+  var el=document.getElementById('tl-in');
+  if(!el||!el.value.trim())return;
+  taskLibAdd(el.value.trim(),'lav');
+  el.value='';
+  planRerender();
+  setTimeout(function(){var e=document.getElementById('tl-in');if(e)e.focus();},40);
+}
+function taskLibSave(text,color){
+  showToast(taskLibAdd(text,color)?'✓ נשמר כמשימה חוזרת':'כבר שמור');
+  planRerender();
+}
+function taskLibDel(id){
+  var l=loadTaskLib(),out=[],i;
+  for(i=0;i<l.length;i++)if(l[i].id!==id)out.push(l[i]);
+  saveTaskLib(out);planRerender();
+}
+function planRerender(){
+  if(_planMode==='weekly')renderPlanWeek();
+  else if(_planMode==='monthly')renderPlanMonth();
+  else if(_planMode==='day')renderPlanDay();
+}
+// The star that puts a task on the shelf, for rows that have room for it.
+function taskLibStar(text,color){
+  return '<button onclick="taskLibSave(\''+esc(text).replace(/'/g,"\\'")+'\',\''+(color||'lav')+'\')" '+
+    'style="background:none;border:none;color:#d8cfc7;font-size:13px;cursor:pointer;flex-shrink:0;font-family:inherit;padding:2px 3px">&#9734;</button>';
+}
+function taskLibHTML(){
+  var l=loadTaskLib(),h='',i,c;
+  h+='<div class="qacard" style="margin-top:16px"><button class="qatog" onclick="_tlOpen=!_tlOpen;planRerender()">';
+  h+='<span class="qalbl">משימות חוזרות'+(l.length?' &middot; '+l.length:'')+'</span>';
+  h+='<span class="qaarro" style="transform:'+(_tlOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
+  if(_tlOpen){
+    h+='<div class="qalist">';
+    if(!l.length)h+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;padding:2px 2px 10px">שמור כאן משימה שחוזרת אצלך, וגרור אותה מכאן במקום לכתוב אותה שוב.</div>';
+    for(i=0;i<l.length;i++){
+      c=wkColor(l[i].c);
+      h+='<div class="tl-row" data-lib="'+l[i].id+'" style="border-right:4px solid '+c.dot+'">';
+      h+='<div class="wk-grip">&#8942;&#8942;</div>';
+      h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="tlPick(\''+l[i].id+'\')"></button>';
+      h+='<div style="flex:1;min-width:0;font-size:13px;color:#4a4340;line-height:1.4">'+esc(l[i].w)+'</div>';
+      h+='<button onclick="taskLibDel(\''+l[i].id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:14px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button></div>';
+      if(_tlPick===l[i].id)h+='<div class="wk-picker">'+wkSwatches("tlSetColor('"+l[i].id+"','%K%')",l[i].c||'lav')+'</div>';
+    }
+    h+='<div style="display:flex;gap:8px;margin-top:8px">';
+    h+='<input id="tl-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משימה שחוזרת אצלך" onkeydown="if(event.key===\'Enter\')taskLibAddFromInput()">';
+    h+='<button onclick="taskLibAddFromInput()" style="background:#f0eafa;border:none;border-radius:11px;padding:0 16px;font-size:18px;font-weight:700;cursor:pointer;color:#a690cf;flex-shrink:0;font-family:inherit">+</button>';
+    h+='</div></div>';
+  }
+  h+='</div>';
+  return h;
+}
+var _tlPick='';
+function tlPick(id){_tlPick=(_tlPick===id?'':id);planRerender();}
+function tlSetColor(id,k){
+  var l=loadTaskLib(),i;
+  for(i=0;i<l.length;i++)if(l[i].id===id)l[i].c=k;
+  saveTaskLib(l);_tlPick='';planRerender();
 }
 
 /* ── MONTHLY PLANNING ──
@@ -5108,6 +5216,7 @@ function renderPlanMonth(){
   h+='<div style="font-size:10px;color:#a89e97;font-weight:700;flex-shrink:0">צבע</div>';
   h+=wkSwatches("_moNewColor='%K%';renderPlanMonth()",_moNewColor);
   h+='</div>';
+  h+=taskLibHTML();
   h+='<div style="display:flex;gap:8px;margin-top:8px">';
   h+='<input id="mo-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משהו לחודש הזה" onkeydown="if(event.key===\'Enter\')moAdd()">';
   h+='<button onclick="moAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
@@ -5127,6 +5236,7 @@ function moTaskHTML(t){
   h+='<div class="wk-grip">&#8942;&#8942;</div>';
   h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="moPick(\''+t.id+'\')"></button>';
   h+='<div style="flex:1;min-width:0;font-size:13.5px;color:#4a4340;line-height:1.45">'+esc(t.w)+'</div>';
+  if(!t.d)h+=taskLibStar(t.w,t.c);
   if(t.d)h+='<button onclick="moAssign(\''+t.id+'\',\'\')" style="background:none;border:none;color:#c9bce0;font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>';
   h+='<button onclick="moDel(\''+t.id+'\')" style="background:none;border:none;color:#e0c4bb;font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
   h+='</div>';
@@ -5150,6 +5260,13 @@ function moAssign(id,date){
   for(i=0;i<mo.tasks.length;i++)if(mo.tasks[i].id===id)mo.tasks[i].d=date||'';
   saveMonth(_moMonth,mo);renderPlanMonth();
 }
+function moFromLib(libId,date){
+  var t=taskLibFind(libId);if(!t)return;
+  var mo=loadMonth(_moMonth);
+  mo.tasks.push({id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                 w:t.w,d:date||'',c:t.c||'lav'});
+  saveMonth(_moMonth,mo);renderPlanMonth();
+}
 function moDel(id){
   var mo=loadMonth(_moMonth),out=[],i;
   for(i=0;i<mo.tasks.length;i++)if(mo.tasks[i].id!==id)out.push(mo.tasks[i]);
@@ -5164,7 +5281,7 @@ function moSetColor(id,k){
 
 /* ── the drag ── */
 function moDown(e){
-  var el=e.target.closest?e.target.closest('[data-task]'):null;
+  var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;
   var r=el.getBoundingClientRect();
@@ -5173,7 +5290,7 @@ function moDown(e){
   g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';
   document.body.appendChild(g);
   el.style.opacity='.3';
-  _moDrag={id:el.getAttribute('data-task'),g:g,src:el,
+  _moDrag={id:el.getAttribute('data-task'),lib:el.getAttribute('data-lib')||'',g:g,src:el,
            dx:e.clientX-r.left,dy:e.clientY-r.top,moved:false};
   window.addEventListener('pointermove',moMove);
   window.addEventListener('pointerup',moUp);
@@ -5211,9 +5328,10 @@ function moUp(e){
   window.removeEventListener('pointermove',moMove);
   window.removeEventListener('pointerup',moUp);
   window.removeEventListener('pointercancel',moUp);
-  var id=_moDrag.id,moved=_moDrag.moved;
+  var id=_moDrag.id,moved=_moDrag.moved,lib=_moDrag.lib;
   _moDrag=null;
   if(!moved)return;
+  if(lib){if(hit)moFromLib(lib,hit.getAttribute('data-date'));else renderPlanMonth();return;}
   if(hit)moAssign(id,hit.getAttribute('data-date'));
   else if(onPool)moAssign(id,'');
   else renderPlanMonth();
