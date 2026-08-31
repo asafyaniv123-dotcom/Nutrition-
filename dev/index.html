@@ -128,6 +128,20 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .pf-goal{flex:1;border:1.5px solid #f2ede6;border-radius:14px;padding:11px 6px;background:#fff;font-size:11.5px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit;line-height:1.3}
 .pf-goal.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
 /* the ministry database - a search card sitting above your own library */
+/* the scanner - a sheet over everything, because a camera needs the screen */
+.scan-btn{width:100%;margin-bottom:8px;border:none;border-radius:12px;padding:11px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer}
+.scan-overlay{position:fixed;inset:0;background:rgba(74,67,64,.72);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px}
+.scan-sheet{width:100%;max-width:400px;background:#fbf7f2;border-radius:20px;padding:14px;box-shadow:0 18px 46px rgba(74,67,64,.32)}
+.scan-hd{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:800;color:#4a4340;margin-bottom:11px}
+.scan-x{border:none;background:none;font-size:24px;line-height:1;color:#a89e97;cursor:pointer;padding:0 4px;font-family:inherit}
+.scan-cam{width:100%;aspect-ratio:4/3;background:#2a2522;border-radius:14px;overflow:hidden;position:relative}
+.scan-cam video{width:100%;height:100%;object-fit:cover}
+.scan-msg{font-size:11.5px;color:#7a716b;text-align:center;line-height:1.6;margin-top:10px;min-height:32px}
+.scan-manual{display:flex;gap:7px;margin-top:10px}
+.scan-in{flex:1;min-width:0;border:1.5px solid #f2ede6;border-radius:11px;padding:10px;font-size:16px;font-family:inherit;outline:none;text-align:center;background:#fff}
+.scan-in:focus{border-color:#c9bce0}
+.scan-go{border:none;border-radius:11px;padding:10px 16px;background:#4a4340;color:#fff;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer}
+.fdb-src{margin-top:8px;font-size:9.5px;color:#c0b6ae;text-align:center;font-weight:700}
 .fdb-in{width:100%;border:1.5px solid #f2ede6;border-radius:12px;padding:10px 12px;font-size:16px;font-family:inherit;outline:none;margin-bottom:8px;background:#fff}
 .fdb-in:focus{border-color:#c9bce0}
 .fdb-msg{font-size:11.5px;color:#a89e97;padding:10px 4px;text-align:center;line-height:1.6}
@@ -1263,6 +1277,134 @@ function foodSearch(q){
   }
   return starts.concat(has).slice(0,40);
 }
+
+/* ── SCANNING A BARCODE ──
+   Safari has no BarcodeDetector and shows no sign of getting one, so the
+   decoding is done in JavaScript by html5-qrcode, vendored into the repo
+   rather than pulled off a CDN: this app is meant to keep working when the
+   network is poor, and a scanner that needs a third party to be up is not a
+   scanner. It is 375KB and loads only when the scan button is pressed.
+
+   The barcode is looked up in Open Food Facts, which carries Israeli
+   supermarket products under their Hebrew names and hands back values per
+   100 g - the same basis as the ministry database and the same "how many
+   grams?" panel. Their licence asks for attribution, so the result says
+   where it came from.
+
+   Typing the digits by hand does the same lookup. That is not a fallback
+   nobody uses: a bad light, a creased wrapper or a refused camera all end
+   there, and the digits are printed under the bars for exactly this reason. */
+var OFF_API='https://world.openfoodfacts.org/api/v2/product/';
+var _scanLib=null,_scanner=null,_fdbScanned=null;
+function scanLibLoad(){
+  if(_scanLib)return _scanLib;
+  _scanLib=new Promise(function(res,rej){
+    if(window.Html5Qrcode){res();return;}
+    var s=document.createElement('script');
+    s.src=appBase()+'vendor/html5-qrcode.min.js';
+    s.onload=function(){window.Html5Qrcode?res():rej(new Error('loaded but empty'));};
+    s.onerror=function(){rej(new Error('script failed'));};
+    document.head.appendChild(s);
+  });
+  return _scanLib;
+}
+function scanMsg(t){
+  var el=document.getElementById('scan-msg');
+  if(el)el.innerHTML=t;
+}
+function scanOpen(){
+  if(document.getElementById('scan-overlay'))return;
+  var d=document.createElement('div');
+  d.id='scan-overlay';d.className='scan-overlay';
+  d.innerHTML='<div class="scan-sheet">'+
+    '<div class="scan-hd"><span>סריקת ברקוד</span>'+
+    '<button class="scan-x" onclick="scanClose()">&times;</button></div>'+
+    '<div id="scan-cam" class="scan-cam"></div>'+
+    '<div class="scan-msg" id="scan-msg">מפעיל מצלמה…</div>'+
+    '<div class="scan-manual">'+
+    '<input class="scan-in" id="scan-code" type="text" inputmode="numeric" placeholder="או הקלד את הספרות שמתחת לפסים">'+
+    '<button class="scan-go" onclick="scanTyped()">חפש</button></div>'+
+    '</div>';
+  document.body.appendChild(d);
+  document.body.style.overflow='hidden';
+  scanLibLoad().then(scanStart).catch(function(){
+    scanMsg('לא הצלחתי לטעון את הסורק. אפשר להקליד את הספרות למטה.');
+  });
+}
+function scanStart(){
+  try{
+    var F=window.Html5QrcodeSupportedFormats;
+    _scanner=new Html5Qrcode('scan-cam',F?{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E]}:undefined);
+  }catch(e){scanMsg('הסורק לא נטען. אפשר להקליד את הספרות למטה.');return;}
+  _scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:160}},
+    function(txt){scanStop();barcodeLookup(String(txt).trim());},
+    function(){}   // a frame with no barcode in it is the normal case, not an error
+  ).then(function(){
+    scanMsg('כוון את הברקוד למסגרת');
+  }).catch(function(err){
+    var m=String((err&&err.message)||err||'');
+    if(/NotAllowed|Permission/i.test(m))
+      scanMsg('אין הרשאה למצלמה. אפשר לאשר בהגדרות האתר, או להקליד את הספרות למטה.');
+    else if(/NotFound|Requested device/i.test(m))
+      scanMsg('לא נמצאה מצלמה. אפשר להקליד את הספרות למטה.');
+    else
+      scanMsg('המצלמה לא נפתחה. אפשר להקליד את הספרות למטה.');
+  });
+}
+function scanStop(){
+  if(!_scanner)return;
+  var s=_scanner;_scanner=null;
+  try{s.stop().then(function(){try{s.clear();}catch(e){}}).catch(function(){});}catch(e){}
+}
+function scanClose(){
+  scanStop();
+  var d=document.getElementById('scan-overlay');
+  if(d)d.remove();
+  document.body.style.overflow='';
+}
+function scanTyped(){
+  var el=document.getElementById('scan-code');
+  var code=el?el.value.replace(/\D/g,''):'';
+  if(code.length<6){scanMsg('ברקוד קצר מדי. הקלד את כל הספרות.');return;}
+  scanStop();barcodeLookup(code);
+}
+function barcodeLookup(code){
+  scanMsg('מחפש '+esc(code)+'…');
+  fetch(OFF_API+encodeURIComponent(code)+'?fields=code,product_name,product_name_he,brands,serving_size,nutriments')
+    .then(function(r){return r.json();})
+    .then(function(j){
+      var p=j&&j.product;
+      if(!p||j.status===0){scanNotFound(code);return;}
+      var n=p.nutriments||{};
+      var k=n['energy-kcal_100g'];
+      if(k===undefined||k===null){scanNotFound(code,true);return;}
+      var name=p.product_name_he||p.product_name||('מוצר '+code);
+      if(p.brands)name+=', '+String(p.brands).split(',')[0].trim();
+      _fdbScanned={
+        id:'off:'+code,n:name,
+        k:Math.round(k),
+        p:Math.round((n.proteins_100g||0)*10)/10,
+        c:Math.round((n.carbohydrates_100g||0)*10)/10,
+        f:Math.round((n.fat_100g||0)*10)/10,
+        off:true
+      };
+      // the label's own serving is the best first answer to "how many grams?"
+      var g=String(p.serving_size||'').match(/([\d.]+)\s*(g|גרם|ג)/i);
+      scanClose();
+      if(!fdbOpen){fdbOpen=true;render();}
+      fdbPick=_fdbScanned.id;
+      fdbGrams=g?Math.round(parseFloat(g[1])):100;
+      fdbPaint();
+      var box=document.getElementById('fdb-body');
+      if(box)box.scrollIntoView({block:'center'});
+    })
+    .catch(function(){scanMsg('החיפוש נכשל. בדוק חיבור ונסה שוב.');});
+}
+function scanNotFound(code,partial){
+  scanMsg((partial?'המוצר קיים אבל בלי ערכים תזונתיים.':'המוצר '+esc(code)+' לא נמצא במאגר.')+
+          '<br>אפשר לחפש אותו בשם, או להוסיף ידנית.');
+}
+
 function fdbToggle(){
   fdbOpen=!fdbOpen;fdbPick=null;
   render();
@@ -1277,6 +1419,7 @@ function fdbSetGrams(v){
   if(el)el.innerHTML=fdbPreviewHTML();
 }
 function fdbFind(id){
+  if(_fdbScanned&&_fdbScanned.id===id)return _fdbScanned;
   if(!_foods)return null;
   for(var i=0;i<_foods.length;i++)if(_foods[i].id===id)return _foods[i];
   return null;
@@ -1329,6 +1472,7 @@ function fdbPaint(){
         '<button class="fdb-back" onclick="fdbBack()">חזרה</button></div>'+
         (inLib?'<div class="fdb-saved">✓ כבר בספרייה שלך</div>'
               :'<button class="fdb-save" onclick="fdbSaveToLib()">שמור בספרייה שלי</button>')+
+        (f.off?'<div class="fdb-src">מקור: Open Food Facts</div>':'')+
         '</div>';
       return;
     }
@@ -1635,7 +1779,9 @@ function renderToday(){
   var lib=loadLib();
   var fdbHTML='<div class="qacard"><button class="qatog" onclick="fdbToggle()"><span class="qalbl">&#x1F50D; מאגר המזון</span><span class="qaarro" style="transform:'+(fdbOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
   if(fdbOpen){
-    fdbHTML+='<div class="qalist"><input class="fdb-in" id="fdb-q" placeholder="חפש מאכל…" value="'+esc(_fdbQ)+'" oninput="fdbType(this.value)"><div id="fdb-body"></div></div>';
+    fdbHTML+='<div class="qalist">'+
+      '<button class="scan-btn" onclick="scanOpen()">&#x1F4F7; סרוק ברקוד</button>'+
+      '<input class="fdb-in" id="fdb-q" placeholder="חפש מאכל…" value="'+esc(_fdbQ)+'" oninput="fdbType(this.value)"><div id="fdb-body"></div></div>';
   }
   fdbHTML+='</div>';
 
