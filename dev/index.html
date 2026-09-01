@@ -6239,7 +6239,7 @@ function renderPlanDay(){
    of the viewport, so a task can be written and dragged onto an hour without
    ever leaving the hours. It lives outside #content so a re-render cannot take
    it out from under a finger mid-drag. */
-var _dpRailOpen=false;
+var _dpRailOpen=false,_dpRailText='',_dpRailWasOpen=false;
 function dpRail(){
   dpRailClear();          // the panel is a sibling, not a child - clear both
   if(_planMode!=='day')return;
@@ -6260,7 +6260,7 @@ function dpRail(){
     var lib=loadTaskLib();
     h+='<div id="dp-rail-bar" class="dp-rail-bar">';
     h+='<div style="display:flex;gap:7px">';
-    h+='<input id="dp-rail-in" class="mtin" style="flex:1;margin-bottom:0;font-size:13px" placeholder="משימה חדשה" onkeydown="if(event.key===\'Enter\')dpRailAdd()">';
+    h+='<input id="dp-rail-in" class="mtin" style="flex:1;margin-bottom:0;font-size:13px" placeholder="משימה חדשה" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">';
     h+='<button onclick="dpRailAdd()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:11px;padding:0 14px;font-size:18px;font-weight:700;cursor:pointer;color:#fff;flex-shrink:0;font-family:inherit">+</button>';
     h+='</div>';
     if(lib.length){
@@ -6281,9 +6281,15 @@ function dpRail(){
   rail.addEventListener('pointerdown',dpDown);
   var bar=document.getElementById('dp-rail-bar');
   if(bar){bar.removeEventListener('pointerdown',dpDown);bar.addEventListener('pointerdown',dpDown);}
-  if(_dpRailOpen)setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
+  if(_dpRailOpen&&!_dpRailWasOpen)
+    setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
+  _dpRailWasOpen=_dpRailOpen;
 }
-function dpRailToggle(){_dpRailOpen=!_dpRailOpen;dpRail();}
+function dpRailToggle(){
+  _dpRailOpen=!_dpRailOpen;
+  if(!_dpRailOpen)_dpRailText='';   // closing it deliberately clears the draft
+  dpRail();
+}
 function dpRailAdd(){
   var el=document.getElementById('dp-rail-in');
   if(!el||!el.value.trim())return;
@@ -6291,7 +6297,7 @@ function dpRailAdd(){
   dp.items.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
                  w:el.value.trim(),c:_dpNewColor});
   saveDPlan(_dpDate,dp);
-  el.value='';
+  el.value='';_dpRailText='';   // or the rebuild puts the draft straight back
   renderPlanDay();
   setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
 }
@@ -6576,9 +6582,18 @@ function trashArm(on,label){
 function trashHide(){if(_trash)_trash.className='swipe-trash';}
 window.addEventListener('pointerup',trashHide,true);
 window.addEventListener('pointercancel',trashHide,true);
-var SWIPE_X=62,SWIPE_Y=34;
+var SWIPE_X=62,SWIPE_Y=34,TRASH_W=56;
+function overTrash(e){
+  var t=document.querySelector('.swipe-trash');
+  if(!t||!t.classList.contains('on')||t.classList.contains('hidden'))return false;
+  return e.clientX<=TRASH_W;
+}
 function swipeArmed(d,e){
-  return d.mode!=='end'&&(d.sx-e.clientX)>SWIPE_X&&Math.abs(e.clientY-d.sy)<SWIPE_Y;
+  if(d.mode==='end')return false;
+  // over the strip is a delete no matter how the finger travelled there
+  if(overTrash(e))return true;
+  // and a flat flick leftwards still is, without having to reach the edge
+  return (d.sx-e.clientX)>SWIPE_X&&Math.abs(e.clientY-d.sy)<SWIPE_Y;
 }
 function swipeMark(d,on,label){
   if(d.swiping===on)return;
