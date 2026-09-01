@@ -376,6 +376,25 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 /* a flick to the left says remove, and the ghost says which kind */
 .wk-ghost.swipe-del{background:linear-gradient(135deg,#fbe4dd,#f4cabc)!important;color:#8c4a36!important;border-right-color:#e08a72!important}
 .wk-ghost.swipe-del::after{content:attr(data-swipe);position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:#a9563c}
+/* the journal - a page, then everything you have already written */
+.jrnl-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.jrnl-nav{background:#fff;border:none;border-radius:11px;width:32px;height:32px;font-size:15px;color:#a89e97;cursor:pointer;box-shadow:0 2px 8px rgba(200,180,160,.16);font-family:inherit;flex-shrink:0}
+.jrnl-nav:disabled{opacity:.3;cursor:default}
+.jrnl-day{font-size:16px;font-weight:800;color:#4a4340}
+.jrnl-date{font-size:11px;color:#a89e97;margin-top:2px}
+.jrnl-paper{position:relative;background:#fff;border-radius:18px;padding:14px;box-shadow:0 4px 16px rgba(200,180,160,.12)}
+.jrnl-text{width:100%;border:none;outline:none;resize:none;background:transparent;font-family:inherit;font-size:14px;line-height:2;color:#4a4340;min-height:230px;direction:rtl}
+.jrnl-saved{position:absolute;left:14px;bottom:10px;font-size:9.5px;font-weight:700;color:#8fc79e;opacity:0;transition:opacity .3s;pointer-events:none}
+.jrnl-today{width:100%;margin-top:9px;border:1.5px solid #ece5da;border-radius:13px;padding:10px;background:none;color:#a89e97;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
+.jrnl-srch{margin:20px 0 10px}
+.jrnl-in{width:100%;border:1.5px solid #ece5da;border-radius:13px;padding:11px 13px;font-size:16px;font-family:inherit;outline:none;background:#fff;direction:rtl}
+.jrnl-in:focus{border-color:#c9bce0}
+.jrnl-lbl{font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin-bottom:9px}
+.jrnl-row{display:block;width:100%;text-align:right;background:#fff;border:none;border-radius:14px;padding:11px 13px;margin-bottom:6px;cursor:pointer;font-family:inherit;box-shadow:0 2px 9px rgba(200,180,160,.1)}
+.jrnl-when{font-size:10.5px;font-weight:800;color:#a690cf;margin-bottom:4px}
+.jrnl-prev{font-size:11.5px;color:#7a716b;line-height:1.7;word-break:break-word}
+.jrnl-hit{background:#f6e6b8;color:#6a5a2a;border-radius:3px;padding:0 2px;font-weight:800}
+.jrnl-empty{font-size:11.5px;color:#c0b6ae;text-align:center;padding:22px 12px;line-height:1.7}
 /* the reminder picker inside a task */
 .dp-rem-row{display:flex;flex-wrap:wrap;gap:6px}
 .dp-rem-b{border:1.5px solid #ece5da;border-radius:11px;padding:8px 11px;background:#fff;font-size:11.5px;font-weight:700;color:#a89e97;cursor:pointer;font-family:inherit}
@@ -452,6 +471,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .home-card.fitness{background:linear-gradient(145deg,#fef0e8,#fae0d0);box-shadow:0 8px 32px rgba(224,138,114,.2)}
 .home-card.hobbies{background:linear-gradient(145deg,#eaf5ee,#d8f0e0);box-shadow:0 8px 32px rgba(143,199,158,.2)}
 .home-card.endofday{background:linear-gradient(145deg,#e8f4fd,#d6ebf7);box-shadow:0 8px 32px rgba(58,124,165,.2)}
+.home-card.journal{background:linear-gradient(145deg,#fbf1e0,#f5e6cd);box-shadow:0 8px 32px rgba(184,121,26,.18)}
 .home-card.insights{background:linear-gradient(145deg,#f0ede8,#e8e4de);box-shadow:0 8px 32px rgba(74,67,64,.15)}
 .home-card.people{background:linear-gradient(145deg,#fef0e8,#fde0d0);box-shadow:0 8px 32px rgba(224,138,114,.2)}
 .home-card.goals{background:linear-gradient(145deg,#e8fef0,#d0fde0);box-shadow:0 8px 32px rgba(76,154,76,.2)}
@@ -2822,6 +2842,7 @@ setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove();},
 var currentModule=null; // null = home, 'nutrition', 'endofday'
 
 function goHome(){
+  jrnlFlush();
   dpRailClear();
   _mainTab='better';showMain('better');
   currentModule=null;
@@ -2841,6 +2862,7 @@ function goHome(){
 }
 
 function enterModule(mod){
+  jrnlFlush();
   dpRailClear();
   _mainTab='better';
   var _me=document.getElementById('me-screen');if(_me)_me.style.display='none';
@@ -2864,6 +2886,15 @@ function enterModule(mod){
     document.getElementById('btnPrev').style.display='none';
     document.getElementById('btnNext').style.display='none';
     curTab='today';interviewStep=-1;interviewAnswers={};enterReflect();
+  } else if(mod==='journal'){
+    document.querySelector('.app').style.display='block';
+    document.querySelector('.tabs').style.display='none';
+    document.getElementById('hdr-date').textContent='';
+    document.getElementById('hdr-title').textContent='יומן';
+    // the arrows step the food log, not this
+    document.getElementById('btnPrev').style.display='none';
+    document.getElementById('btnNext').style.display='none';
+    _jrnlDate=todayStr();_jrnlQ='';renderJournal();
   } else if(mod==='hobbies'){
     document.querySelector('.app').style.display='block';
     document.querySelector('.tabs').style.display='none';
@@ -6281,9 +6312,21 @@ function dpRail(){
   rail.addEventListener('pointerdown',dpDown);
   var bar=document.getElementById('dp-rail-bar');
   if(bar){bar.removeEventListener('pointerdown',dpDown);bar.addEventListener('pointerdown',dpDown);}
+  document.removeEventListener('pointerdown',dpRailOutside,true);
+  if(_dpRailOpen)document.addEventListener('pointerdown',dpRailOutside,true);
   if(_dpRailOpen&&!_dpRailWasOpen)
     setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
   _dpRailWasOpen=_dpRailOpen;
+}
+/* Asked for: a tap anywhere else puts the panel away. It listens only
+   while the panel is open, and ignores taps on the panel, on the rail, or
+   on the button itself - that one already toggles. Capture phase, so it
+   still hears the tap when something below stops it propagating. */
+function dpRailOutside(e){
+  if(!_dpRailOpen)return;
+  var t=e.target;
+  if(t.closest&&(t.closest('#dp-rail-bar')||t.closest('#dp-rail')))return;
+  _dpRailOpen=false;_dpRailText='';dpRail();
 }
 function dpRailToggle(){
   _dpRailOpen=!_dpRailOpen;
@@ -6727,6 +6770,136 @@ function tlSetColor(id,k){
    week ever climbs into the month. */
 var _moMonth=null,_moNewColor='lav',_moPick='',_moDrag=null;
 var MO_NAMES=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+/* ── THE JOURNAL ──
+   A page a day with nothing on it. סיום יום asks questions; this asks
+   nothing, which is the point - some things do not arrive as answers to
+   anything, and having to pick a field to put them in is enough friction to
+   lose them.
+
+   One key per day, written as you type, so nothing is ever lost to a forgotten
+   save. Days you never opened leave no key behind: an empty entry is deleted
+   rather than stored, so the list of past days is the days you actually wrote
+   on and not every day since you installed the app.
+
+   The search is the reason it is worth keeping at all. A year of pages you
+   cannot look through is a drawer, not a journal. */
+var JRNL_PRE='jrnl_';
+var _jrnlDate='',_jrnlQ='',_jrnlSaveT=null;
+function jrnlKey(d){return JRNL_PRE+d;}
+function loadJournal(d){
+  try{return localStorage.getItem(jrnlKey(d))||'';}catch(e){return '';}
+}
+function saveJournal(d,txt){
+  try{
+    if(txt&&txt.trim())localStorage.setItem(jrnlKey(d),txt);
+    else localStorage.removeItem(jrnlKey(d));
+  }catch(e){}
+}
+// every day that has something written on it, newest first
+function journalDays(){
+  var out=[],i,k;
+  try{
+    for(i=0;i<localStorage.length;i++){
+      k=localStorage.key(i);
+      if(k&&k.indexOf(JRNL_PRE)===0){
+        var d=k.slice(JRNL_PRE.length);
+        if(/^\d{4}-\d{2}-\d{2}$/.test(d))out.push(d);
+      }
+    }
+  }catch(e){}
+  out.sort();out.reverse();
+  return out;
+}
+function jrnlType(el){
+  var d=_jrnlDate,v=el.value;
+  clearTimeout(_jrnlSaveT);
+  _jrnlSaveT=setTimeout(function(){
+    saveJournal(d,v);
+    var m=document.getElementById('jrnl-saved');
+    if(m){m.style.opacity='1';setTimeout(function(){m.style.opacity='0';},1400);}
+  },450);
+}
+function jrnlFlush(){
+  clearTimeout(_jrnlSaveT);
+  var el=document.getElementById('jrnl-text');
+  if(el&&_jrnlDate)saveJournal(_jrnlDate,el.value);
+}
+function jrnlGo(d){jrnlFlush();_jrnlDate=d;_jrnlQ='';renderJournal();window.scrollTo(0,0);}
+function jrnlShift(n){
+  jrnlFlush();
+  // noon, like every other date key here, so a timezone cannot shift the day
+  var dt=new Date(_jrnlDate+'T12:00:00');
+  dt.setDate(dt.getDate()+n);
+  _jrnlDate=dt.toISOString().slice(0,10);
+  renderJournal();
+}
+function jrnlSearch(v){
+  _jrnlQ=v;
+  var box=document.getElementById('jrnl-results');
+  if(box)box.innerHTML=jrnlResultsHTML();
+}
+// a window of text around the hit, so a result is recognisable without opening
+function jrnlSnippet(txt,q){
+  var at=txt.toLowerCase().indexOf(q.toLowerCase());
+  if(at<0)return esc(txt.slice(0,90));
+  var from=Math.max(0,at-34),to=Math.min(txt.length,at+q.length+56);
+  return (from>0?'…':'')+esc(txt.slice(from,at))+
+         '<mark class="jrnl-hit">'+esc(txt.substr(at,q.length))+'</mark>'+
+         esc(txt.slice(at+q.length,to))+(to<txt.length?'…':'');
+}
+function jrnlResultsHTML(){
+  var days=journalDays(),i,txt,h='';
+  var q=(_jrnlQ||'').trim();
+  if(!q){
+    if(!days.length)return '<div class="jrnl-empty">עוד לא כתבת כלום. הדף למעלה מחכה.</div>';
+    h+='<div class="jrnl-lbl">'+days.length+' '+(days.length===1?'יום':'ימים')+' שכתבת בהם</div>';
+    for(i=0;i<days.length&&i<60;i++){
+      txt=loadJournal(days[i]);
+      h+=jrnlRow(days[i],esc(txt.slice(0,90))+(txt.length>90?'…':''));
+    }
+    return h;
+  }
+  var hits=[];
+  for(i=0;i<days.length;i++){
+    txt=loadJournal(days[i]);
+    if(txt.toLowerCase().indexOf(q.toLowerCase())>=0)hits.push([days[i],txt]);
+  }
+  if(!hits.length)return '<div class="jrnl-empty">לא מצאתי &quot;'+esc(q)+'&quot; בשום יום.</div>';
+  h+='<div class="jrnl-lbl">'+hits.length+' '+(hits.length===1?'יום':'ימים')+' עם &quot;'+esc(q)+'&quot;</div>';
+  for(i=0;i<hits.length;i++)h+=jrnlRow(hits[i][0],jrnlSnippet(hits[i][1],q));
+  return h;
+}
+function jrnlRow(d,inner){
+  var dt=new Date(d+'T12:00:00');
+  var when=WK_DAYS[dt.getDay()]+' · '+dt.getDate()+'/'+(dt.getMonth()+1)+'/'+String(dt.getFullYear()).slice(2);
+  return '<button class="jrnl-row" onclick="jrnlGo(&quot;'+d+'&quot;)">'+
+         '<div class="jrnl-when">'+when+(d===todayStr()?' · היום':'')+'</div>'+
+         '<div class="jrnl-prev">'+inner+'</div></button>';
+}
+function renderJournal(){
+  if(!_jrnlDate)_jrnlDate=todayStr();
+  var dt=new Date(_jrnlDate+'T12:00:00');
+  var isToday=_jrnlDate===todayStr();
+  var h='';
+  h+='<div class="jrnl-head">';
+  h+='<button class="jrnl-nav" onclick="jrnlShift(-1)">&#8250;</button>';
+  h+='<div style="text-align:center;flex:1;min-width:0">';
+  h+='<div class="jrnl-day">'+WK_DAYS[dt.getDay()]+(isToday?' · היום':'')+'</div>';
+  h+='<div class="jrnl-date">'+dt.getDate()+' ב'+MO_NAMES[dt.getMonth()]+' '+dt.getFullYear()+'</div>';
+  h+='</div>';
+  h+='<button class="jrnl-nav"'+(isToday?' disabled':'')+' onclick="jrnlShift(1)">&#8249;</button>';
+  h+='</div>';
+  h+='<div class="jrnl-paper">';
+  h+='<textarea id="jrnl-text" class="jrnl-text" placeholder="'+(isToday?'מה עובר לך בראש היום?':'מה היה ביום הזה?')+'" oninput="jrnlType(this)">'+esc(loadJournal(_jrnlDate))+'</textarea>';
+  h+='<div class="jrnl-saved" id="jrnl-saved">נשמר</div>';
+  h+='</div>';
+  if(!isToday)h+='<button class="jrnl-today" onclick="jrnlGo(&quot;'+todayStr()+'&quot;)">חזרה להיום</button>';
+  h+='<div class="jrnl-srch"><input class="jrnl-in" id="jrnl-q" type="search" placeholder="חפש מילה בכל מה שכתבת…" value="'+esc(_jrnlQ)+'" oninput="jrnlSearch(this.value)"></div>';
+  h+='<div id="jrnl-results">'+jrnlResultsHTML()+'</div>';
+  document.getElementById('content').innerHTML=h;
+}
+
 
 function moFirst(d){var x=new Date(d);x.setHours(12,0,0,0);x.setDate(1);return x;}
 function moKey(m){return 'mplan_'+m.getFullYear()+'-'+(m.getMonth()<9?'0':'')+(m.getMonth()+1);}
@@ -10026,6 +10199,8 @@ var HOME_AREAS=[
    svg:'<svg viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 1.9 1.9 0 0 0 1.5-3.1 1.9 1.9 0 0 1 1.5-3.1h2.1a3 3 0 0 0 2.9-3A8.8 8.8 0 0 0 12 3.2Z"/><circle cx="8.2" cy="10" r=".9"/><circle cx="12" cy="7.6" r=".9"/><circle cx="15.8" cy="10" r=".9"/></svg>'},
   {id:'endofday',color:'#3a7ca5',title:'סיום יום',sub:'ראיון יומי ושיקוף',fixed:true,
    svg:'<svg viewBox="0 0 24 24"><path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/></svg>'},
+  {id:'journal',color:'#b8791a',title:'יומן',sub:'לכתוב כל יום מה שבא',
+   svg:'<svg viewBox="0 0 24 24"><path d="M5.5 4.2h10a3 3 0 0 1 3 3v12.6H8.5a3 3 0 0 1-3-3Z"/><path d="M5.5 16.8h13"/><path d="M9 8.4h6"/><path d="M9 11.8h4"/></svg>'},
   {id:'insights',color:'#7a716b',title:'תובנות',sub:'מחשבות, שאלות וגילויים',
    svg:'<svg viewBox="0 0 24 24"><path d="M9.2 17.6h5.6"/><path d="M10.2 20.4h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.4h5v-.4c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4Z"/></svg>'},
   {id:'people',color:'#e08a72',title:'האנשים שלי',sub:'אנשים שחשובים לי',
