@@ -5757,6 +5757,8 @@ function renderPlanWeek(){
   box.removeEventListener('pointerdown',dpDown);
   box.removeEventListener('pointerdown',moDown);
   box.removeEventListener('pointerdown',wkDown);
+  box.removeEventListener('pointerdown',daySwipeDown);
+  box.removeEventListener('pointerup',daySwipeUp);
   box.addEventListener('pointerdown',wkDown);
 }
 
@@ -6175,6 +6177,58 @@ function dpHitFine(x,y){
   return null;
 }
 
+/* ── SWIPING BETWEEN DAYS ──
+   The arrows still work; this is the gesture people reach for first.
+
+   It has to stay out of the way of three things that already live on this
+   screen: dragging a task, swiping a task left to delete it, and scrolling
+   the hours. So it only listens to a gesture that starts on the background -
+   not on a chip, not on the rail - and only acts when the movement is clearly
+   sideways and clearly further than a wobble. Anything vertical is the page
+   scrolling and is left alone.
+
+   Direction follows the arrows above the grid rather than a convention: ›
+   points right and means the day before, so dragging rightwards brings the
+   previous day in behind your finger. */
+var DAY_SWIPE_X=64, DAY_SWIPE_Y=44;
+var _daySwipe=null;
+// #content outlives whatever was rendered into it, so a handler left on it
+// follows you to the next screen. Rather than chase every teardown site,
+// the gesture asks whether the day planner is what is actually in front of
+// you before it does anything.
+function onDayScreen(){return currentModule==='planning'&&_planMode==='day';}
+function daySwipeDown(e){
+  if(!onDayScreen()||_dpDrag)return;                       // a task is being dragged
+  var t=e.target;
+  if(t.closest&&(t.closest('[data-task]')||t.closest('[data-lib]')||
+                 t.closest('button')||t.closest('input')||t.closest('textarea')))return;
+  _daySwipe={x:e.clientX,y:e.clientY,t:Date.now()};
+}
+function daySwipeUp(e){
+  var s=_daySwipe;_daySwipe=null;
+  if(!s||_dpDrag||!onDayScreen())return;
+  var dx=e.clientX-s.x, dy=e.clientY-s.y;
+  if(Math.abs(dx)<DAY_SWIPE_X)return;      // not far enough to mean it
+  if(Math.abs(dy)>DAY_SWIPE_Y)return;      // that was a scroll
+  if(Math.abs(dx)<Math.abs(dy)*1.6)return; // and it has to be mostly sideways
+  if(Date.now()-s.t>900)return;            // a slow drag is not a flick
+  dpShift(dx>0?-1:1);
+  daySwipeHint(dx>0?-1:1);
+}
+// a short slide in the direction travelled, so the day visibly changes rather
+// than the screen just being different
+function daySwipeHint(dir){
+  var g=document.getElementById('content');
+  if(!g)return;
+  g.style.transition='none';
+  g.style.transform='translateX('+(dir<0?-18:18)+'px)';
+  g.style.opacity='.55';
+  requestAnimationFrame(function(){
+    g.style.transition='transform .22s ease,opacity .22s ease';
+    g.style.transform='';g.style.opacity='';
+  });
+}
+
 function renderPlanDay(){
   if(!_dpDate)_dpDate=wkStamp(new Date());
   var d=new Date(_dpDate+'T12:00:00'),all=dpAll(_dpDate),i,h,t;
@@ -6185,7 +6239,7 @@ function renderPlanDay(){
 
   out+='<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">';
   out+='<div><div style="font-size:17px;font-weight:800;color:#4a4340">'+WK_DAYS[d.getDay()]+(isToday?' &middot; היום':'')+'</div>';
-  out+='<div style="font-size:11px;color:#a89e97;margin-top:2px">'+wkShort(d)+'</div></div>';
+  out+='<div style="font-size:11px;color:#a89e97;margin-top:2px">'+wkShort(d)+' &middot; <span style="font-size:9.5px;color:#c0b6ae">החלק להחלפת יום</span></div></div>';
   out+='<div style="display:flex;gap:6px">';
   out+='<button onclick="dpShift(-1)" style="background:#fff;border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
   out+='<button onclick="dpShift(1)" style="background:#fff;border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
@@ -6311,6 +6365,10 @@ function renderPlanDay(){
   box.removeEventListener('pointerdown',moDown);
   box.removeEventListener('pointerdown',dpDown);
   box.addEventListener('pointerdown',dpDown);
+  box.removeEventListener('pointerdown',daySwipeDown);
+  box.removeEventListener('pointerup',daySwipeUp);
+  box.addEventListener('pointerdown',daySwipeDown);
+  box.addEventListener('pointerup',daySwipeUp);
 }
 
 /* ── THE SIDE RAIL ──
