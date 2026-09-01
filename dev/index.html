@@ -2962,6 +2962,7 @@ function goHome(){
 
 function enterModule(mod){
   jrnlFlush();
+  setTimeout(function(){areaSplash(mod);},0);   // after the screen behind it is built
   dpRailClear();
   _mainTab='better';
   var _me=document.getElementById('me-screen');if(_me)_me.style.display='none';
@@ -3012,7 +3013,6 @@ function enterModule(mod){
     document.getElementById('btnNext').style.display='none';
     _planMode='';_planStep=0;
     renderPlanning();
-    planSplash();
   } else if(mod==='game'){
     document.querySelector('.app').style.display='block';
     document.querySelector('.app').classList.add('game-mode');
@@ -7377,16 +7377,39 @@ var _planMode='';
    It fires on entering the area, not on every render inside it: seeing it
    again each time you came back from a day would turn a nice moment into
    an obstacle. */
-function planSplash(){
+/* Every area opens on the reason you came to it, in that area's own colour
+   and with the icon off the tile you just pressed - so the splash is visibly
+   the card you tapped, opening. The lines are the same voice throughout:
+   first person plural, present tense, one thing to do. */
+var AREA_SPLASH={
+  planning: {t:'let&rsquo;s plan our time wisely', a:'#E2924C', b:'#B85A28'},
+  nutrition:{t:'let&rsquo;s fuel this body well',  a:'#a88fd4', b:'#6f56a8'},
+  fitness:  {t:'let&rsquo;s build something stronger', a:'#ec9b81', b:'#c2593b'},
+  endofday: {t:'let&rsquo;s close this day honestly', a:'#5b9cc4', b:'#2b5f83'},
+  hobbies:  {t:'let&rsquo;s keep doing what we love', a:'#7cc294', b:'#3d8a5c'},
+  insights: {t:'let&rsquo;s keep what we noticed', a:'#9c918a', b:'#5f554f'},
+  people:   {t:'let&rsquo;s be there for them',    a:'#eda694', b:'#c4634a'},
+  goals:    {t:'let&rsquo;s remember where we&rsquo;re going', a:'#6ab86a', b:'#2f7a35'},
+  journal:  {t:'let&rsquo;s write what&rsquo;s on our mind', a:'#d9a548', b:'#96601a'},
+  game:     {t:'let&rsquo;s play a little',        a:'#dbab6a', b:'#a06c26'}
+};
+function areaSplash(id){
+  var cfg=AREA_SPLASH[id];
+  if(!cfg)return;
+  var def=areaDef(id);
   var old=document.getElementById('plan-splash');
   if(old)old.remove();
   var d=document.createElement('div');
   d.id='plan-splash';d.className='plan-splash';
-  var words=['let&rsquo;s','plan','our','time','wisely'],wi,ws='';
+  d.style.background='radial-gradient(120% 62% at 50% 4%,rgba(255,255,255,.30),transparent 60%),'+
+                     'linear-gradient(160deg,'+cfg.a+' 0%,'+cfg.b+' 100%)';
+  var words=cfg.t.split(' '),wi,ws='';
   for(wi=0;wi<words.length;wi++)
     ws+='<span class="ps-w" style="animation-delay:'+(0.14+wi*0.09).toFixed(2)+'s">'+words[wi]+'</span> ';
-  d.innerHTML='<div class="ps-glow"></div><div class="ps-in">'+
-    '<svg class="ps-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3 1.9"/></svg>'+
+  // the icon off the tile that was just pressed
+  var ico=(def&&def.svg)?def.svg.replace('<svg ','<svg class="ps-ic" '):
+          '<svg class="ps-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3 1.9"/></svg>';
+  d.innerHTML='<div class="ps-glow"></div><div class="ps-in">'+ico+
     '<div class="ps-line">'+ws+'</div></div>';
   var go=function(){
     d.classList.add('out');
