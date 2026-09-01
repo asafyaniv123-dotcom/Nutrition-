@@ -427,6 +427,17 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .ps-w{display:inline-block;opacity:0;animation:ps-word .62s cubic-bezier(.2,.9,.3,1) both}
 @keyframes ps-word{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.plan-splash,.ps-in,.ps-ic,.ps-w,.ps-glow{animation:none}.ps-w{opacity:1}.plan-splash.out{animation:ps-fade .3s reverse forwards}}
+/* the backup, handed over without asking the browser to navigate anywhere */
+.bk-ov{position:fixed;inset:0;z-index:420;background:rgba(74,67,64,.62);display:flex;align-items:flex-end;justify-content:center;padding:0}
+.bk-sheet{width:100%;max-width:480px;background:#fbf7f2;border-radius:22px 22px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto}
+.bk-hd{display:flex;align-items:baseline;justify-content:space-between;font-size:17px;font-weight:800;color:#4a4340}
+.bk-kb{font-size:11px;font-weight:700;color:#a89e97}
+.bk-sub{font-size:11.5px;color:#a89e97;line-height:1.65;margin:7px 0 14px}
+.bk-share{width:100%;border:none;border-radius:14px;padding:14px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer}
+.bk-copy{width:100%;margin-top:8px;border:1.5px solid #ece5da;border-radius:14px;padding:13px;background:#fff;color:#7a716b;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
+.bk-or{font-size:10px;color:#c0b6ae;margin:14px 0 6px;font-weight:700}
+.bk-txt{width:100%;height:110px;border:1.5px solid #ece5da;border-radius:12px;padding:9px;font-size:10px;font-family:ui-monospace,Menlo,monospace;color:#a89e97;background:#fff;resize:none;direction:ltr;outline:none}
+.bk-close{width:100%;margin-top:10px;border:none;background:none;padding:11px;color:#a89e97;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .plan-undo{position:fixed;left:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:130;border:none;border-radius:14px;padding:10px 15px;background:rgba(74,67,64,.92);color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(74,67,64,.3)}
 .plan-undo:active{transform:scale(.96)}
 .dp-slot.hot{background:rgba(143,199,158,.22)}
@@ -10022,34 +10033,107 @@ function buildBackup(){
   });
 }
 
+/* ── GETTING THE BACKUP OUT ──
+   This produced a blank white screen on the phone, and both reasons were
+   avoidable.
+
+   iOS ignores the download attribute on a link. Instead of saving the file it
+   navigates to the blob: URL, tries to display application/json, and shows
+   nothing - then the code revoked the blob a second later, killing even that.
+
+   And the share sheet never got its chance: buildBackup() is asynchronous
+   because it reads the photos out of IndexedDB, and iOS only allows
+   navigator.share from inside a user gesture. By the time the backup was
+   ready the tap had expired, share was refused, and it fell through to the
+   link that does not work.
+
+   So the file is never handed to the browser to navigate to. A panel opens
+   with the backup already built, and the buttons in it are each a fresh tap:
+   share, or copy the whole thing to the clipboard and paste it into a note.
+   Copying is the one route that works on every phone with no permissions and
+   no file handling at all, which is what a backup needs to be. */
+var _backupText='',_backupName='';
 function exportData(){
   showToast('מכין גיבוי…');
-  buildBackup().then(exportDeliver);
+  buildBackup().then(function(text){
+    _backupText=text;
+    _backupName='better-me-'+todayStr()+'.json';
+    try{localStorage.setItem('last_export',new Date().toISOString());}catch(e){}
+    renderBackup();
+    exportPanel();
+  },function(){showToast('לא הצלחתי להכין את הגיבוי');});
 }
-function exportDeliver(text){
-  var name='better-me-'+todayStr()+'.json';
-  var blob=new Blob([text],{type:'application/json'});
-  var kb=Math.max(1,Math.round(blob.size/1024));
+function exportKB(){return Math.max(1,Math.round(new Blob([_backupText]).size/1024));}
+function exportPanel(){
+  var old=document.getElementById('bk-panel');if(old)old.remove();
+  var h='<div class="bk-ov" id="bk-panel" onclick="if(event.target===this)exportClose()">'+
+    '<div class="bk-sheet">'+
+    '<div class="bk-hd">הגיבוי מוכן<span class="bk-kb">'+exportKB()+'KB</span></div>'+
+    '<div class="bk-sub">שמור אותו במקום שישרוד את הטלפון &mdash; iCloud, מייל לעצמך, או הודעה שמורה.</div>'+
+    '<button class="bk-share" onclick="exportShare()">שתף / שמור קובץ</button>'+
+    '<button class="bk-copy" id="bk-copy" onclick="exportCopy()">העתק הכל</button>'+
+    '<div class="bk-or">או סמן והעתק ידנית:</div>'+
+    '<textarea class="bk-txt" id="bk-txt" readonly onclick="this.select()">'+esc(_backupText)+'</textarea>'+
+    '<button class="bk-close" onclick="exportClose()">סגור</button>'+
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+  document.body.style.overflow='hidden';
+}
+function exportClose(){
+  var p=document.getElementById('bk-panel');if(p)p.remove();
+  document.body.style.overflow='';
+}
+// called from a button, so the gesture is fresh and iOS will allow it
+function exportShare(){
+  var blob=new Blob([_backupText],{type:'application/json'});
   var file=null;
-  try{file=new File([blob],name,{type:'application/json'});}catch(e){}
-  try{localStorage.setItem('last_export',new Date().toISOString());}catch(e){}
-
-  // The share sheet is the only reliable way to save a file out of a web app
-  // on iOS; a download link is the fallback everywhere else.
-  if(file&&navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({files:[file],title:'גיבוי Better Me'}).then(function(){
-      renderBackup();showToast('✓ הגיבוי נשמר · '+kb+'KB');
-    },function(){});
+  try{file=new File([blob],_backupName,{type:'application/json'});}catch(e){}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:'גיבוי Better Me'})
+      .then(function(){showToast('✓ נשמר');},function(){});
     return;
   }
+  if(navigator.share){
+    // no file sharing here, but the text itself is the backup
+    navigator.share({title:_backupName,text:_backupText}).then(function(){},function(){});
+    return;
+  }
+  // desktop: a link does what a link should
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url;a.download=name;a.style.display='none';
+  a.href=url;a.download=_backupName;a.style.display='none';
   document.body.appendChild(a);a.click();
-  setTimeout(function(){try{URL.revokeObjectURL(url);a.remove();}catch(e){}},1000);
-  renderBackup();showToast('✓ הגיבוי ירד · '+kb+'KB');
+  setTimeout(function(){try{URL.revokeObjectURL(url);a.remove();}catch(e){}},4000);
+  showToast('✓ ירד');
 }
-
+function exportCopy(){
+  var done=function(){
+    exportCopyMark(true);
+    showToast('✓ הועתק · הדבק בפתק או בהודעה');
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(_backupText).then(done,exportCopyFallback);
+    return;
+  }
+  exportCopyFallback();
+}
+function exportCopyMark(ok){
+  var b=document.getElementById('bk-copy');
+  if(!b)return;
+  b.textContent=ok?'✓ הועתק':'סמן והעתק ידנית';
+  setTimeout(function(){var x=document.getElementById('bk-copy');if(x)x.textContent='העתק הכל';},2600);
+}
+function exportCopyFallback(){
+  var t=document.getElementById('bk-txt');
+  if(!t)return;
+  t.focus();t.select();
+  try{t.setSelectionRange(0,999999);}catch(e){}   // iOS needs the range spelled out
+  var ok=false;
+  try{ok=document.execCommand('copy');}catch(e){}
+  // selected either way, so there is always something to do next
+  exportCopyMark(ok);
+  showToast(ok?'✓ הועתק':'הטקסט מסומן — העתק ידנית');
+}
 var _pendingImport=null;
 
 function importPick(){var i=document.getElementById('backup-file');if(i)i.click();}
