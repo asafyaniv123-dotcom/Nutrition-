@@ -163,6 +163,27 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .say-amt{width:58px;border:1.5px solid #f2ede6;border-radius:9px;padding:6px;font-size:14px;font-weight:800;text-align:center;outline:none;font-family:inherit;color:#4a4340}
 .say-unit{border:1.5px solid #f2ede6;border-radius:9px;padding:6px 4px;font-size:11.5px;font-weight:700;color:#7a716b;font-family:inherit;background:#fff;outline:none}
 .say-kcal{margin-right:auto;font-size:11.5px;font-weight:800;color:#a690cf;white-space:nowrap}
+/* a parsed item: the answer, the amount, and the rest behind a tap */
+.sr{background:#fff;border-radius:14px;padding:10px 11px;margin-top:8px;box-shadow:0 2px 9px rgba(200,180,160,.1)}
+.sr.miss{background:#fdf7f5}
+.sr-top{display:flex;align-items:center;gap:8px}
+.sr-x{border:none;background:none;color:#d8cfc6;font-size:17px;line-height:1;cursor:pointer;padding:0 2px;font-family:inherit;flex-shrink:0}
+.sr-name{flex:1;min-width:0;display:flex;align-items:center;gap:6px;border:none;background:none;padding:0;text-align:right;font-family:inherit;font-size:12.5px;font-weight:800;color:#4a4340;line-height:1.35;cursor:pointer}
+.sr.miss .sr-name{color:#c2664a}
+.sr-chev{font-size:11px;color:#c9c1ba;flex-shrink:0}
+.sr-find{font-size:9.5px;font-weight:700;color:#c2664a;border:1.5px dashed #f0d6cc;border-radius:8px;padding:2px 7px;flex-shrink:0}
+.sr-k{font-size:13px;font-weight:800;color:#a690cf;flex-shrink:0;min-width:34px;text-align:left}
+.sr-amt{display:flex;align-items:center;gap:6px;margin-top:8px}
+.sr-in{width:56px;border:1.5px solid #f2ede6;border-radius:9px;padding:6px;font-size:14px;font-weight:800;text-align:center;outline:none;font-family:inherit;color:#4a4340}
+.sr-u{border:1.5px solid #f2ede6;border-radius:9px;padding:6px 4px;font-size:11.5px;font-weight:700;color:#7a716b;font-family:inherit;background:#fff;outline:none}
+.sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
+.sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
+.sr-said{font-size:10px;color:#c0b6ae;margin-bottom:6px}
+.sr-w{display:flex;align-items:center;gap:5px;margin-bottom:7px;font-size:10.5px;color:#a89e97;font-weight:700}
+.sr-win{width:52px;border:1.5px solid #f2ede6;border-radius:8px;padding:4px;font-size:12px;font-weight:800;text-align:center;outline:none;font-family:inherit;color:#4a4340}
+.sr-alts{display:flex;flex-wrap:wrap;gap:4px}
+.sr-alt{border:1.5px solid #f2ede6;border-radius:9px;padding:5px 8px;background:#fdfbf9;font-size:10px;font-weight:700;color:#a89e97;cursor:pointer;font-family:inherit;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-other{width:100%;margin-top:7px;border:none;background:none;padding:4px;font-size:10px;font-weight:700;color:#a690cf;cursor:pointer;font-family:inherit}
 .say-tot{margin-top:12px;padding:10px;border-radius:11px;background:#faf7f3;font-size:12.5px;font-weight:700;color:#7a716b;text-align:center}
 .say-add{width:100%;margin-top:9px;border:none;border-radius:13px;padding:13px;background:linear-gradient(135deg,#bfe0c7,#8fc79e);color:#fff;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
 .say-note{margin-top:9px;font-size:9.5px;color:#c0b6ae;text-align:center;line-height:1.6}
@@ -2090,7 +2111,7 @@ function sayGo(){
                :'לא הצלחתי לקרוא את זה. נסה לנסח אחרת, או חפש ידנית.';
         sayPaint();return;
       }
-      _sayItems=j.items.map(sayResolve);
+      _sayItems=j.items.map(sayResolve);_sayRow=-1;
       sayPaint();
     })
     .catch(function(){_sayBusy=false;_sayErr='אין חיבור כרגע.';sayPaint();});
@@ -2164,7 +2185,7 @@ function saySetAmount(i,v){
   var el=document.getElementById('say-tot');
   if(el)el.innerHTML=sayTotalHTML();
   var one=document.getElementById('say-k-'+i);
-  if(one){var a=sayAmount(_sayItems[i]);one.textContent=a?a.kcal+' קק"ל':'';}
+  if(one){var a=sayAmount(_sayItems[i]);one.textContent=a?a.kcal:'';}
 }
 // swapping in a runner-up puts the one it replaces back among them, so the
 // choice can be walked back as easily as it was made
@@ -2189,7 +2210,7 @@ function saySetWeight(i,v){
   if(row.food)saveFoodUnit(row.food.n,row.unit,g);   // told once, remembered
   var one=document.getElementById('say-k-'+i);
   var a=sayAmount(row);
-  if(one&&a)one.textContent=a.kcal+' קק"ל';
+  if(one&&a)one.textContent=a.kcal;
   var t=document.getElementById('say-tot');
   if(t)t.innerHTML=sayTotalHTML();
 }
@@ -2245,52 +2266,70 @@ function sayAdd(){
   showToast('✓ '+n+' '+(n===1?'פריט נוסף':'פריטים נוספו'));
   _sayOpen=false;_sayItems=null;render();
 }
+/* ── ONE LINE EACH ──
+   Every row was showing five things at once: what it matched, what you said,
+   three alternatives, the amount, and what one of them weighs. Four of those
+   are corrections, and the ordinary case is reading the line and pressing
+   add. So a row is the answer and the amount, and everything you might want
+   to overrule opens when you tap it. */
+var _sayRow=-1;
+function sayExpand(i){_sayRow=(_sayRow===i)?-1:i;sayPaint();}
 function sayPaint(){
   var el=document.getElementById('say-body');
   if(!el)return;
   if(_sayBusy){el.innerHTML='<div class="say-msg">קורא מה כתבת…</div>';return;}
   if(_sayErr){el.innerHTML='<div class="say-msg">'+esc(_sayErr)+'</div>';return;}
   if(!_sayItems){el.innerHTML='';return;}
-  var h='',i,row,a;
+  var h='',i,row,a,open;
   for(i=0;i<_sayItems.length;i++){
-    row=_sayItems[i];a=sayAmount(row);
-    h+='<div class="say-row">';
-    h+='<button class="say-x" onclick="sayDrop('+i+')">&times;</button>';
-    h+='<div class="say-main">';
+    row=_sayItems[i];a=sayAmount(row);open=(_sayRow===i);
+    h+='<div class="sr'+(open?' open':'')+(row.food?'':' miss')+'">';
+
+    // the line you read
+    h+='<div class="sr-top">';
+    h+='<button class="sr-x" onclick="sayDrop('+i+')">&times;</button>';
     if(row.food){
-      // tapping the name goes back to the search with what you said,
-      // because the match is a guess and you are the one who knows
-      h+='<button class="say-pick" onclick="sayLookup('+i+')">'+esc(row.food.n)+' <span class="say-swap">החלף</span></button>';
-      if(foodKey(row.food.n)!==foodKey(row.q))
-        h+='<div class="say-said">אמרת: '+esc(row.q)+'</div>';
-      if(row.alts&&row.alts.length){
-        h+='<div class="say-alts">';
-        for(var ai=0;ai<row.alts.length;ai++)
-          h+='<button class="say-alt" onclick="sayUseAlt('+i+','+ai+')">'+esc(row.alts[ai].n.slice(0,26))+'</button>';
-        h+='</div>';
-      }
+      h+='<button class="sr-name" onclick="sayExpand('+i+')">'+esc(row.food.n)+
+         '<span class="sr-chev">'+(open?'&#8963;':'&#8964;')+'</span></button>';
+      h+='<span class="sr-k" id="say-k-'+i+'">'+(a?a.kcal:'')+'</span>';
     } else {
-      h+='<div class="say-name say-miss">'+esc(row.q)+'</div>';
-      h+='<button class="say-find" onclick="sayLookup('+i+')">לא מצאתי &mdash; חפש ידנית</button>';
+      h+='<button class="sr-name" onclick="sayLookup('+i+')">'+esc(row.q)+
+         '<span class="sr-find">חפש</span></button>';
     }
+    h+='</div>';
+
     if(row.food){
-      h+='<div class="say-ctl">';
-      h+='<input class="say-amt" type="number" inputmode="decimal" step="'+(row.unit==='g'?'1':'0.5')+'" value="'+row.amount+'" oninput="saySetAmount('+i+',this.value)">';
-      h+='<select class="say-unit" onchange="saySetUnit('+i+',this.value)">';
+      // the amount, always - it is the one thing people do change
+      h+='<div class="sr-amt">';
+      h+='<input class="sr-in" type="number" inputmode="decimal" step="'+(row.unit==='g'?'1':'0.5')+'" value="'+row.amount+'" oninput="saySetAmount('+i+',this.value)">';
+      h+='<select class="sr-u" onchange="saySetUnit('+i+',this.value)">';
       for(var u=0;u<FOOD_UNITS.length;u++)
         h+='<option value="'+FOOD_UNITS[u].k+'"'+(row.unit===FOOD_UNITS[u].k?' selected':'')+'>'+FOOD_UNITS[u].t+'</option>';
-      h+='</select>';
-      h+='<span class="say-kcal" id="say-k-'+i+'">'+(a?a.kcal+' קק"ל':'')+'</span>';
-      h+='</div>';
-      if(row.unit!=='g')
-        h+='<div class="say-w">'+unitDef(row.unit).one+' = '+
-           '<input class="say-win" type="number" inputmode="decimal" value="'+row.g+'" oninput="saySetWeight('+i+',this.value)"> גרם</div>';
+      h+='</select><span class="sr-kl">קק"ל</span></div>';
+
+      // and the rest only when asked for
+      if(open){
+        h+='<div class="sr-more">';
+        if(foodKey(row.food.n)!==foodKey(row.q))
+          h+='<div class="sr-said">אמרת: '+esc(row.q)+'</div>';
+        if(row.unit!=='g')
+          h+='<div class="sr-w">'+unitDef(row.unit).one+' = '+
+             '<input class="sr-win" type="number" inputmode="decimal" value="'+row.g+'" oninput="saySetWeight('+i+',this.value)"> גרם</div>';
+        if(row.alts&&row.alts.length){
+          h+='<div class="sr-alts">';
+          for(var ai=0;ai<row.alts.length;ai++)
+            h+='<button class="sr-alt" onclick="sayUseAlt('+i+','+ai+')">'+esc(row.alts[ai].n.slice(0,30))+'</button>';
+          h+='</div>';
+        }
+        h+='<button class="sr-other" onclick="sayLookup('+i+')">משהו אחר לגמרי…</button>';
+        h+='</div>';
+      }
     }
-    h+='</div></div>';
+    h+='</div>';
   }
   h+='<div class="say-tot" id="say-tot">'+sayTotalHTML()+'</div>';
   h+='<button class="say-add" onclick="sayAdd()">הוסף הכל ליום ✓</button>';
-  h+='<div class="say-note">המספרים מגיעים מהמאגר שלנו, לא מהמודל. הוא רק פירק את המשפט.</div>';
+  h+='<div class="say-note">המספרים מהמאגר שלנו. הקש על שורה כדי לשנות.</div>';
   el.innerHTML=h;
 }
 
