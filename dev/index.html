@@ -128,6 +128,18 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .pf-goal{flex:1 1 calc(50% - 3px);min-width:0;border:1.5px solid #f2ede6;border-radius:14px;padding:11px 6px;background:#fff;font-size:11.5px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit;line-height:1.3}
 .pf-goaln{font-size:10.5px;color:#a89e97;line-height:1.6;margin-top:9px}
 .pf-goal.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
+/* ── ONE WAY IN ──
+   Five ways of adding food had grown five cards, all of them saying "add"
+   and none of them saying which held what. One card now, the ways in a row
+   across it, one body underneath. */
+.aw-card{background:rgba(255,255,255,.72);border-radius:20px;padding:10px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12)}
+.aw-row{display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.aw-b{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px solid transparent;border-radius:13px;padding:8px 9px;background:none;cursor:pointer;font-family:inherit;min-width:56px}
+.aw-b.on{border-color:#c9bce0;background:linear-gradient(135deg,#f7f2fb,#efe7f7)}
+.aw-ic{font-size:16px;line-height:1}
+.aw-t{font-size:10px;font-weight:700;color:#a89e97;white-space:nowrap}
+.aw-b.on .aw-t{color:#6b5a92}
+.aw-body{margin-top:10px;padding-top:10px;border-top:1px solid #f0ebe3}
 /* saying what you ate, in a sentence */
 .say-in{width:100%;min-height:76px;border:1.5px solid #ece5da;border-radius:13px;padding:11px 13px;font-size:16px;font-family:inherit;outline:none;background:#fff;direction:rtl;resize:none;line-height:1.6}
 .say-in:focus{border-color:#c9bce0}
@@ -1999,15 +2011,48 @@ function scanNotFound(code,partial){
    It also means very little leaves the phone: a few words, no history, no
    profile, no preferences. */
 var _sayOpen=false,_sayBusy=false,_sayItems=null,_sayErr='';
-function sayToggle(){
-  _sayOpen=!_sayOpen;
-  if(!_sayOpen){_sayItems=null;_sayErr='';}
+/* '' is closed. Only one way is open at a time - they are alternatives, not
+   a list, and two open at once was most of what made this sprawl. */
+var _addMode='';
+var ADD_WAYS=[
+  {k:'say', ic:'&#x1F4AC;', t:'משפט'},
+  {k:'find',ic:'&#x1F50D;', t:'חיפוש'},
+  {k:'scan',ic:'&#x1F4F7;', t:'ברקוד'},
+  {k:'lib', ic:'&#x1F4DA;', t:'שלי'},
+  {k:'comp',ic:'&#x1F37D;', t:'מתכונים'},
+  {k:'man', ic:'&#x270E;',  t:'ידני'}
+];
+function addSetMode(k){
+  // the scanner is a screen of its own, not a panel - it opens over
+  if(k==='scan'){scanOpen();return;}
+  _addMode=(_addMode===k)?'':k;
+  _sayOpen=(_addMode==='say');
+  fdbOpen=(_addMode==='find');
+  libOpen=(_addMode==='lib');
+  compOpen=(_addMode==='comp');
+  manOpen=(_addMode==='man');
+  if(_addMode!=='say'){_sayItems=null;_sayErr='';}
+  if(_addMode!=='find')pendingLib=null;
   render();
-  if(_sayOpen){
-    foodsLoad(function(){});                 // the tables will be needed in a moment
+  if(_addMode==='find'){
+    foodsLoad(fdbPaint);
+    setTimeout(function(){var e=document.getElementById('fdb-q');if(e)e.focus();},60);
+  }
+  if(_addMode==='say'){
+    foodsLoad(function(){});
     setTimeout(function(){var e=document.getElementById('say-in');if(e)e.focus();},60);
   }
 }
+function addWaysHTML(){
+  var h='<div class="aw-row">',i,w;
+  for(i=0;i<ADD_WAYS.length;i++){
+    w=ADD_WAYS[i];
+    h+='<button class="aw-b'+(_addMode===w.k?' on':'')+'" onclick="addSetMode(&quot;'+w.k+'&quot;)">'+
+       '<span class="aw-ic">'+w.ic+'</span><span class="aw-t">'+w.t+'</span></button>';
+  }
+  return h+'</div>';
+}
+function sayToggle(){addSetMode('say');}
 function sayGo(){
   var el=document.getElementById('say-in');
   var text=el?el.value.trim():'';
@@ -2225,11 +2270,7 @@ function sayPaint(){
   el.innerHTML=h;
 }
 
-function fdbToggle(){
-  fdbOpen=!fdbOpen;fdbPick=null;
-  render();
-  if(fdbOpen)foodsLoad(fdbPaint);
-}
+function fdbToggle(){fdbPick=null;addSetMode('find');}
 function fdbType(v){_fdbQ=v;fdbPick=null;fdbPaint();}
 function fdbSelect(id){
   fdbPick=id;
@@ -2624,7 +2665,8 @@ function renderToday(){
   stepsHTML+='</button>';
 
   var compMeals=loadComposed();
-  var compHTML='<div class="qacard"><button class="qatog" onclick="toggleComp()"><span class="qalbl">&#x1F37D; ארוחות לפי סוג</span><span class="qaarro" style="transform:'+(compOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
+  var compHTML='';
+  if(_addMode==='comp')compHTML='<div class="aw-body">';
   if(compOpen){
     compHTML+='<div class="qalist"><div class="cat-tabs">';
     for(var ci=0;ci<CATS.length;ci++)compHTML+='<button class="cat-tab'+(compCat===CATS[ci][0]?' on':'')+'" onclick="setCompCat(\''+CATS[ci][0]+'\')">'+CATS[ci][1]+'</button>';
@@ -2634,31 +2676,26 @@ function renderToday(){
     for(var mi=0;mi<catMeals.length;mi++){var cm=catMeals[mi];var ct=calcComposed(cm);compHTML+='<div class="comp-meal"><div class="comp-meal-info"><div class="comp-meal-name">'+esc(cm.name)+'</div><div class="comp-meal-mac">'+ct.kcal+' קק"ל &middot; '+ct.p+'ח '+ct.c+'פ '+ct.f+'ש</div></div><button class="comp-add-btn" onclick="addComposedToDay('+cm.id+')">הוסף</button><button class="comp-del-btn" onclick="deleteComposed('+cm.id+')">&times;</button></div>';}
     compHTML+='<button class="new-comp-btn" onclick="openBuilder(\''+compCat+'\')">+ בנאי ארוחה חדשה</button></div>';
   }
-  compHTML+='</div>';
+  if(_addMode==='comp')compHTML+='</div>';
 
   var lib=loadLib();
-  var sayHTML='<div class="qacard"><button class="qatog" onclick="sayToggle()">'+
-    '<span class="qalbl">&#x1F4AC; תגיד מה אכלת</span>'+
-    '<span class="qaarro" style="transform:'+(_sayOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
-  if(_sayOpen){
-    sayHTML+='<div class="qalist">'+
+  var sayHTML='';
+  if(_addMode==='say'){
+    sayHTML='<div class="aw-body">'+
       '<textarea class="say-in" id="say-in" placeholder="אכלתי 2 ביצים ופרוסת לחם עם גבינה…"></textarea>'+
       '<button class="say-go" onclick="sayGo()">פרק לי את זה</button>'+
       '<div id="say-body"></div></div>';
   }
-  sayHTML+='</div>';
 
-  var fdbHTML='<div class="qacard"><button class="qatog" onclick="fdbToggle()"><span class="qalbl">&#x1F50D; מאגר המזון</span><span class="qaarro" style="transform:'+(fdbOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
-  if(fdbOpen){
-    fdbHTML+='<div class="qalist">'+
-      '<button class="scan-btn" onclick="scanOpen()">&#x1F4F7; סרוק ברקוד</button>'+
+  var fdbHTML='';
+  if(_addMode==='find'){
+    fdbHTML='<div class="aw-body">'+
       '<input class="fdb-in" id="fdb-q" placeholder="חפש מאכל…" value="'+esc(_fdbQ)+'" oninput="fdbType(this.value)"><div id="fdb-body"></div></div>';
   }
-  fdbHTML+='</div>';
 
-  var libHTML='<div class="qacard"><button class="qatog" onclick="toggleLib()"><span class="qalbl">&#x1F4DA; הספרייה שלי</span><span class="qaarro" style="transform:'+(libOpen?'rotate(180deg)':'rotate(0deg)')+'">&#8963;</span></button>';
-  if(libOpen){
-    libHTML+='<div class="qalist">';
+  var libHTML='';
+  if(_addMode==='lib'){
+    libHTML+='<div class="aw-body">';
     if(lib.length===0)libHTML+='<div style="font-size:12px;color:#a89e97;padding:8px;text-align:center">עדיין לא שמרת מוצרים</div>';
     for(var li=0;li<lib.length;li++){
       var lm=lib[li];var isSel=pendingLib===lm.name;
@@ -2679,12 +2716,11 @@ function renderToday(){
     }
     libHTML+='</div>';
   }
-  libHTML+='</div>';
 
-  var manHTML='<button class="mtbtn '+(manOpen?'op':'cl')+'" onclick="toggleMan()">'+(manOpen?'&#x2715; סגור':'+ הוספה ידנית')+'</button>';
-  if(manOpen)manHTML+='<div class="mtform"><input id="mn" class="mtin" placeholder="שם הארוחה"><div class="mtgr"><div><div class="mtfl" style="color:#a690cf">קק"ל</div><input id="mk" class="mtnm" type="number" placeholder="0"></div><div><div class="mtfl" style="color:#e08a72">חלבון</div><input id="mp" class="mtnm" type="number" placeholder="0"></div><div><div class="mtfl" style="color:#8fc79e">פחמימה</div><input id="mc" class="mtnm" type="number" placeholder="0"></div><div><div class="mtfl" style="color:#e8c162">שומן</div><input id="mf" class="mtnm" type="number" placeholder="0"></div></div>'
+  var manHTML='';
+  if(manOpen)manHTML+='<div class="aw-body"><div class="mtform"><input id="mn" class="mtin" placeholder="שם הארוחה"><div class="mtgr"><div><div class="mtfl" style="color:#a690cf">קק"ל</div><input id="mk" class="mtnm" type="number" placeholder="0"></div><div><div class="mtfl" style="color:#e08a72">חלבון</div><input id="mp" class="mtnm" type="number" placeholder="0"></div><div><div class="mtfl" style="color:#8fc79e">פחמימה</div><input id="mc" class="mtnm" type="number" placeholder="0"></div><div><div class="mtfl" style="color:#e8c162">שומן</div><input id="mf" class="mtnm" type="number" placeholder="0"></div></div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div id="meal-photo-prev" style="display:none"><img id="meal-photo-img" style="width:44px;height:44px;object-fit:cover;border-radius:8px"></div><button onclick="document.getElementById(\'meal-photo-inp\').click()" style="background:#f5f0eb;border:1.5px dashed #c9bce0;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#a89e97">&#x1F4F7; תמונה</button><input id="meal-photo-inp" type="file" accept="image/*" style="display:none" onchange="handleMealPhoto(this)"><button onclick="clearMealPhoto()" id="meal-photo-clear" style="display:none;background:none;border:none;cursor:pointer;color:#f3b9a8;font-size:16px">&times;</button></div>'
-    +'<button id="save-lib-btn" class="lib-save-btn'+(saveToLib?' saved':'')+'" onclick="toggleSaveToLib()">'+(saveToLib?'✓ ישמר לספרייה':'שמור לספרייה')+'</button><button class="addbtn" onclick="addManual()">הוסף &#10003;</button></div>';
+    +'<button id="save-lib-btn" class="lib-save-btn'+(saveToLib?' saved':'')+'" onclick="toggleSaveToLib()">'+(saveToLib?'✓ ישמר לספרייה':'שמור לספרייה')+'</button><button class="addbtn" onclick="addManual()">הוסף &#10003;</button></div></div>';
 
   var logHTML='';
   if(day.meals.length>0){
@@ -2693,7 +2729,13 @@ function renderToday(){
     logHTML+='</div>';
   }
 
-  document.getElementById('content').innerHTML=macroHTML+pillsHTML+waterHTML+stepsHTML+compHTML+sayHTML+fdbHTML+libHTML+manHTML+logHTML;
+  /* One card holding all the ways in, with the ways as a row across the top.
+     Only one body is ever non-empty, so this concatenation is really a
+     switch - and the panel exists only when something is chosen, so a closed
+     card is one line rather than five headings. */
+  var addHTML='<div class="aw-card">'+addWaysHTML()+
+              compHTML+sayHTML+fdbHTML+libHTML+manHTML+'</div>';
+  document.getElementById('content').innerHTML=macroHTML+pillsHTML+waterHTML+stepsHTML+addHTML+logHTML;
   if(fdbOpen)fdbPaint();
   if(_sayOpen)sayPaint();
   animateBars();
