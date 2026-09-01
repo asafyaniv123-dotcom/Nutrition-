@@ -332,6 +332,16 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .dp-nlane{flex:0 0 34%;max-width:34%;min-width:0;padding-right:6px;border-right:1px solid #f4efe9}
 .dp-nline{font-size:9px;color:#a89e97;line-height:1.45;padding-bottom:3px;margin-bottom:3px;border-bottom:1px solid #f0ebe3;word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 /* the undo, only while a plan is on screen */
+/* the beat before the planner */
+.plan-splash{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(120% 70% at 50% 12%,rgba(201,188,224,.45),transparent 62%),linear-gradient(165deg,#f6f1fb 0%,#eee7f7 45%,#e7eff8 100%);animation:ps-in .34s ease-out}
+.plan-splash.out{animation:ps-out .4s ease-in forwards;pointer-events:none}
+@keyframes ps-in{from{opacity:0}to{opacity:1}}
+@keyframes ps-out{from{opacity:1}to{opacity:0}}
+.ps-in{display:flex;flex-direction:column;align-items:center;gap:16px;animation:ps-rise .5s cubic-bezier(.2,.8,.3,1)}
+@keyframes ps-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.ps-ic{width:42px;height:42px;fill:none;stroke:#a690cf;stroke-width:1.5;stroke-linecap:round;opacity:.85}
+.ps-line{font-size:19px;font-weight:800;color:#6b5a92;letter-spacing:.01em;text-align:center;line-height:1.45;direction:ltr}
+@media (prefers-reduced-motion:reduce){.plan-splash,.ps-in{animation:none}}
 .plan-undo{position:fixed;left:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:130;border:none;border-radius:14px;padding:10px 15px;background:rgba(74,67,64,.92);color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(74,67,64,.3)}
 .plan-undo:active{transform:scale(.96)}
 .dp-slot.hot{background:rgba(143,199,158,.22)}
@@ -2915,6 +2925,7 @@ var currentModule=null; // null = home, 'nutrition', 'endofday'
 
 function goHome(){
   jrnlFlush();
+  var _ps=document.getElementById('plan-splash');if(_ps)_ps.remove();
   var _pu=document.getElementById('plan-undo');if(_pu)_pu.remove();
   dpRailClear();
   _mainTab='better';showMain('better');
@@ -2987,6 +2998,7 @@ function enterModule(mod){
     document.getElementById('btnNext').style.display='none';
     _planMode='';_planStep=0;
     renderPlanning();
+    planSplash();
   } else if(mod==='game'){
     document.querySelector('.app').style.display='block';
     document.querySelector('.app').classList.add('game-mode');
@@ -7342,6 +7354,31 @@ function moUp(e){
    placeholders on purpose, waiting to be specified. */
 var _planMode='';
 
+/* ── THE WAY IN ──
+   A beat before the planner, saying what you came here to do. It clears
+   itself after a second and a half and goes on any touch, so it is never
+   something to get past - and the screen behind it is already built and
+   ready, so the wait is the point rather than a cover for one.
+
+   It fires on entering the area, not on every render inside it: seeing it
+   again each time you came back from a day would turn a nice moment into
+   an obstacle. */
+function planSplash(){
+  var old=document.getElementById('plan-splash');
+  if(old)old.remove();
+  var d=document.createElement('div');
+  d.id='plan-splash';d.className='plan-splash';
+  d.innerHTML='<div class="ps-in">'+
+    '<svg class="ps-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3 1.9"/></svg>'+
+    '<div class="ps-line">let&rsquo;s plan our time wisely</div></div>';
+  var go=function(){
+    d.classList.add('out');
+    setTimeout(function(){if(d.parentElement)d.remove();},420);
+  };
+  d.addEventListener('pointerdown',go);
+  document.body.appendChild(d);
+  setTimeout(go,1500);
+}
 function renderPlanning(){
   document.getElementById('hdr-title').textContent='תכנון זמן';
   dpRailClear();                 // the day screen puts it back if it is the one rendering
