@@ -124,8 +124,9 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .pf-act.on .pf-actn{background:#a690cf;color:#fff}
 .pf-actt{font-size:12.5px;font-weight:800;color:#4a4340}
 .pf-acts2{font-size:10.5px;color:#a89e97;margin-right:auto;text-align:left}
-.pf-goals{display:flex;gap:6px}
-.pf-goal{flex:1;border:1.5px solid #f2ede6;border-radius:14px;padding:11px 6px;background:#fff;font-size:11.5px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit;line-height:1.3}
+.pf-goals{display:flex;flex-wrap:wrap;gap:6px}
+.pf-goal{flex:1 1 calc(50% - 3px);min-width:0;border:1.5px solid #f2ede6;border-radius:14px;padding:11px 6px;background:#fff;font-size:11.5px;font-weight:800;color:#a89e97;cursor:pointer;font-family:inherit;line-height:1.3}
+.pf-goaln{font-size:10.5px;color:#a89e97;line-height:1.6;margin-top:9px}
 .pf-goal.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
 /* the ministry database - a search card sitting above your own library */
 /* the scanner - a sheet over everything, because a camera needs the screen */
@@ -744,11 +745,20 @@ var ACT_LEVELS=[
   {v:4,t:'גבוהה',s:'5&ndash;6 אימונים בשבוע'},
   {v:5,t:'מאוד גבוהה',s:'כל יום, או עבודה פיזית'}
 ];
+/* Each goal is two numbers: how far off maintenance the calories sit, and
+   how much protein per kilo is added on top of the activity level's own
+   figure. חיטוב is the interesting one - it is not a smaller version of
+   losing weight. Recomposition means eating around maintenance and holding
+   protein high, so the body has the material to build with while the fat
+   comes off; a large deficit is what stops that working. So it carries the
+   smallest calorie cut of the three and the largest protein bonus. */
 var GOALS=[
-  {v:'lose',t:'ירידה במשקל'},
-  {v:'keep',t:'שמירה על המשקל'},
-  {v:'gain',t:'עלייה במסה'}
+  {v:'lose',  t:'ירידה במשקל',   k:0.85, p:0.2, n:'גירעון של 15% &mdash; ירידה יציבה'},
+  {v:'recomp',t:'חיטוב',         k:0.95, p:0.4, n:'קרוב לתחזוקה, חלבון גבוה &mdash; לרדת אחוז שומן בלי לאבד מסה'},
+  {v:'keep',  t:'שמירה על המשקל',k:1.00, p:0,   n:'בדיוק מה שאתה שורף'},
+  {v:'gain',  t:'עלייה במסה',    k:1.10, p:0.1, n:'עודף של 10% לבנייה'}
 ];
+function goalDef(v){for(var i=0;i<GOALS.length;i++)if(GOALS[i].v===v)return GOALS[i];return null;}
 function loadProfile(){
   try{var o=JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}');return o&&typeof o==='object'?o:{};}
   catch(e){return {};}
@@ -821,8 +831,10 @@ function profileTargets(p){
   if(age===null||!h||!w||!p.sex||!p.activity||!p.goal)return null;
   var bmr=10*w+6.25*h-5*age+(p.sex==='m'?5:-161);
   var tdee=bmr*(ACT_FACTOR[p.activity]||1.2);
-  var kcal=p.goal==='lose'?tdee*0.85:(p.goal==='gain'?tdee*1.10:tdee);
-  var prot=Math.round(w*((PROT_PER_KG[p.activity]||1.5)+(p.goal==='lose'?0.2:0)));
+  var g=goalDef(p.goal);
+  if(!g)return null;
+  var kcal=tdee*g.k;
+  var prot=Math.round(w*((PROT_PER_KG[p.activity]||1.5)+g.p));
   var fat=Math.round(kcal*0.25/9);
   var carb=Math.round((kcal-prot*4-fat*9)/4);
   if(carb<0)carb=0;
@@ -881,7 +893,10 @@ function renderProfile(){
     var g=GOALS[i];
     h+='<button class="pf-goal'+(p.goal===g.v?' on':'')+'" onclick="profSet(\u0027goal\u0027,\u0027'+g.v+'\u0027)">'+g.t+'</button>';
   }
-  h+='</div></div>';
+  h+='</div>';
+  var gd=goalDef(p.goal);
+  if(gd)h+='<div class="pf-goaln">'+gd.n+'</div>';
+  h+='</div>';
 
   var rec=profileTargets(p);
   if(rec){
