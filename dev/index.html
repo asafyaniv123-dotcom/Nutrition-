@@ -465,6 +465,39 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .home{position:relative;min-height:100vh;background:linear-gradient(160deg,#f0ebe3 0%,#e8dff5 100%);display:flex;flex-direction:column;align-items:center;padding:60px 20px 40px}
 .home-logo{font-size:36px;font-weight:800;background:linear-gradient(135deg,#a690cf,#e08a72);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px;margin-bottom:6px}
 .home-sub{font-size:13px;color:#a89e97;margin-bottom:48px;letter-spacing:.05em}
+/* "היום" - the first thing on the board, and the way into תכנון זמן */
+.td-card{display:block;width:100%;text-align:right;border:none;cursor:pointer;font-family:inherit;background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:22px;padding:14px 15px 12px;box-shadow:0 6px 22px rgba(160,140,120,.14)}
+.td-card:active{transform:scale(.995)}
+.td-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.td-word{font-size:16px;font-weight:800;color:#4a4340;flex-shrink:0}
+.td-when{font-size:10.5px;color:#a89e97;font-weight:700;text-align:left;min-width:0}
+.td-clock{font-size:12.5px;font-weight:800;color:#a690cf;margin-right:5px;direction:ltr;display:inline-block}
+/* the day, and where in it you are */
+.td-bar{position:relative;height:4px;border-radius:2px;background:#ece5da;margin-bottom:12px}
+.td-fill{position:absolute;top:0;right:0;height:100%;border-radius:2px;background:linear-gradient(270deg,#c9bce0,#a690cf)}
+.td-dot{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;background:#a690cf;transform:translate(50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.9)}
+.td-cols{display:flex;gap:10px;min-height:16vh;max-height:22vh}
+.td-col{flex:1 1 50%;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.td-notes{border-left:1px solid #ece5da;padding-left:9px;order:2}
+.td-sched{padding-left:2px;order:1}
+.td-lbl{font-size:8.5px;letter-spacing:.12em;font-weight:800;color:#c0b6ae;margin-bottom:6px;position:sticky;top:0;background:rgba(255,255,255,.86)}
+.td-row{display:flex;align-items:baseline;gap:5px;margin-bottom:5px;line-height:1.35}
+.td-dotc{width:6px;height:6px;border-radius:50%;flex-shrink:0;align-self:center}
+.td-time{font-size:9.5px;font-weight:800;color:#a89e97;direction:ltr;flex-shrink:0}
+.td-name{font-size:11px;font-weight:700;color:#4a4340;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.td-row.past{opacity:.42}
+.td-row.now .td-name{color:#6b5a92}
+.td-row.now .td-time{color:#a690cf}
+.td-note{font-size:10px;color:#7a716b;line-height:1.55;margin-bottom:7px;word-break:break-word}
+.td-nt{display:block;font-size:9.5px;font-weight:800;color:#a89e97}
+.td-none{font-size:10px;color:#c9c1b8;line-height:1.6}
+body.night .td-card{background:rgba(40,35,58,.55)}
+body.night .td-word,body.night .td-name{color:#e6e0f2}
+body.night .td-note{color:#bfb6d2}
+body.night .td-bar{background:rgba(255,255,255,.16)}
+body.night .td-notes{border-left-color:rgba(255,255,255,.14)}
+body.night .td-lbl{background:transparent}
+.td-wrap{width:100%;max-width:380px;margin-bottom:20px}
 .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:380px}
 .home-card{border-radius:28px;padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;border:none;text-align:center;transition:transform .15s,box-shadow .15s;position:relative;overflow:hidden}
 .home-card:active{transform:scale(.97)}
@@ -2868,6 +2901,7 @@ function goHome(){
   document.querySelector('.tabs').style.display='';
   document.getElementById('home-screen').style.display='flex';
   refreshHomeCal();
+  renderHomeToday();
   renderVisionBoard();
   renderTripToggle();
   renderReminders();
@@ -10290,6 +10324,96 @@ function closeAreas(){
   document.getElementById('areas-drawer').classList.remove('on');
 }
 
+
+/* ── TODAY, AT THE TOP ──
+   The first thing on the board: what day it is, what time it is, how much of
+   the day has gone, and the two things you would otherwise open the planner
+   to see - what is scheduled, and what you told yourself not to forget.
+
+   The bar is the day from 06:00 to midnight, which is the range the planner
+   draws, so the marker sits where it would sit on that grid. Before six it
+   reads empty rather than negative.
+
+   Everything here is read-only on purpose. It is a glance, not a screen: the
+   whole card is a way into תכנון זמן, and anything you want to change you
+   change there, where there is room to do it. */
+function nowTodayHM(){
+  var n=new Date();
+  return (n.getHours()<10?'0':'')+n.getHours()+':'+(n.getMinutes()<10?'0':'')+n.getMinutes();
+}
+function todayNotes(date){
+  var dp=loadDPlan(date),out=[],i,t;
+  var all=dpAll(date);
+  for(i=0;i<all.length;i++){
+    t=all[i];
+    var n='';
+    if(t.src==='day'){
+      for(var j=0;j<dp.items.length;j++)if(dp.items[j].id===t.id)n=dp.items[j].n||'';
+    } else n=(dp.notes&&dp.notes[t.id])||'';
+    if(n&&n.trim())out.push({w:t.w,n:n.trim(),c:t.c,hour:t.hour,min:t.min||0});
+  }
+  out.sort(function(a,b){
+    if(a.hour===null)return 1;
+    if(b.hour===null)return -1;
+    return (a.hour*60+a.min)-(b.hour*60+b.min);
+  });
+  return out;
+}
+function renderHomeToday(){
+  var el=document.getElementById('home-today');
+  if(!el)return;
+  var date=todayStr(),d=new Date();
+  var mins=d.getHours()*60+d.getMinutes();
+  var from=DP_FROM*60,to=(DP_TO+1)*60;
+  var pct=Math.max(0,Math.min(100,(mins-from)/(to-from)*100));
+
+  var all=dpAll(date),timed=[],i;
+  for(i=0;i<all.length;i++)if(all[i].hour!==null)timed.push(all[i]);
+  timed.sort(function(a,b){return (a.hour*60+(a.min||0))-(b.hour*60+(b.min||0));});
+  var notes=todayNotes(date);
+
+  var h='<button class="td-card" onclick="enterModule(&quot;planning&quot;)">';
+  h+='<div class="td-top">';
+  h+='<div class="td-word">היום</div>';
+  h+='<div class="td-when">'+WK_DAYS[d.getDay()]+', '+d.getDate()+' ב'+MO_NAMES[d.getMonth()]+
+     ' <span class="td-clock">'+nowTodayHM()+'</span></div>';
+  h+='</div>';
+  h+='<div class="td-bar"><div class="td-fill" style="width:'+pct.toFixed(1)+'%"></div>'+
+     '<div class="td-dot" style="right:'+pct.toFixed(1)+'%"></div></div>';
+
+  h+='<div class="td-cols">';
+  // right: the schedule
+  h+='<div class="td-col td-sched"><div class="td-lbl">הלו&quot;ז</div>';
+  if(!timed.length)h+='<div class="td-none">אין עדיין שעות ליום הזה</div>';
+  for(i=0;i<timed.length;i++){
+    var t=timed[i],c=wkColor(t.c);
+    var start=t.hour*60+(t.min||0);
+    var over=(t.end?t.end:start+1)<=mins;
+    var now=!over&&start<=mins;
+    h+='<div class="td-row'+(over?' past':'')+(now?' now':'')+'">'+
+       '<span class="td-dotc" style="background:'+c.dot+'"></span>'+
+       '<span class="td-time">'+dpHM(t.hour,t.min||0)+'</span>'+
+       '<span class="td-name">'+esc(t.w)+'</span></div>';
+  }
+  h+='</div>';
+  // left: what you said not to forget
+  h+='<div class="td-col td-notes"><div class="td-lbl">לזכור</div>';
+  if(!notes.length)h+='<div class="td-none">שום דבר שרשמת לזכור</div>';
+  for(i=0;i<notes.length;i++){
+    h+='<div class="td-note"><span class="td-nt">'+esc(notes[i].w)+'</span>'+
+       esc(notes[i].n.replace(/\s+/g,' ').slice(0,90))+(notes[i].n.length>90?'…':'')+'</div>';
+  }
+  h+='</div>';
+  h+='</div></button>';
+  el.innerHTML=h;
+}
+// the clock and the marker have to move on their own, and catch up after the
+// phone has been in a pocket
+setInterval(function(){if(!currentModule&&_mainTab==='better')renderHomeToday();},30000);
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&!currentModule&&_mainTab==='better')renderHomeToday();
+});
+
 /* ── THE TWO HALVES ──
    Better holds everything you do; Me holds what it added up to. The wordmark
    is the navigation - read left to right the two buttons spell the app. */
@@ -10315,6 +10439,7 @@ function showMain(t){
   home.id='home-screen';
   home.className='home';
   home.innerHTML=
+    '<div id="home-today" class="td-wrap"></div>'+
     '<div class="home-logo">Better Me</div>'+
     '<div class="home-sub">Become the best version of yourself</div>'+
     '<button class="home-menu" id="home-menu-btn" aria-label="מה במעקב"><i></i><i></i><i></i></button>'+
@@ -10361,6 +10486,7 @@ function showMain(t){
     if(b)areaToggle(b.getAttribute('data-area'));
   });
   renderHomeGrid();
+  renderHomeToday();
 
   paintSky();
   // Set date
