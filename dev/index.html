@@ -1455,20 +1455,46 @@ function unitsRowHTML(name,cur,onPick){
 var _foods=null,_foodsState='idle';
 var fdbOpen=false,fdbPick=null,fdbGrams=100,_fdbQ='';
 var _fdbUnit={k:'g',g:1};   // what the number in the box is counting
+/* Two sources, loaded together and searched as one.
+   The ministry table is strong on generic foods and cooked dishes - חזה עוף,
+   מרק עדשים - and thin on what is on a supermarket shelf. Open Food Facts is
+   the other way round: branded, barcoded, and often with the packet's own
+   serving size, which is what lets a thing be counted in ones rather than
+   weighed.
+
+   The products file is allowed to be missing. It is a large download that
+   can be regenerated at any time, and an app that refuses to search because
+   the second file is not there would be worse than one that searches the
+   first. */
+var FOOD_FILES=['data/foods.json','data/foods.off.json'];
 function foodsLoad(then){
   if(_foodsState==='ready'){then();return;}
   if(_foodsState==='loading')return;
   _foodsState='loading';fdbPaint();
-  fetch(appBase()+'data/foods.json')
-    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
-    .then(function(d){
-      _foods=(d&&d.foods)||[];
+  var base=appBase();
+  Promise.all(FOOD_FILES.map(function(f,idx){
+    return fetch(base+f)
+      .then(function(r){return r.ok?r.json():null;})
+      .catch(function(){return null;})
+      .then(function(d){
+        // the first file is the one we cannot do without
+        if(!d&&idx===0)throw new Error('no base table');
+        return (d&&d.foods)||[];
+      });
+  })).then(function(sets){
+    var all=[],seen=Object.create(null),i,j,f,key;
+    for(i=0;i<sets.length;i++)for(j=0;j<sets[i].length;j++){
+      f=sets[i][j];
       // matching ignores the punctuation Hebrew food names are inconsistent
       // about, so קוטג' and קוטג׳ and קוטג all find each other
-      for(var i=0;i<_foods.length;i++)_foods[i].s=foodKey(_foods[i].n);
-      _foodsState='ready';then();
-    })
-    .catch(function(){_foodsState='error';fdbPaint();});
+      f.s=foodKey(f.n);
+      key=f.s+'|'+f.k;
+      if(seen[key])continue;      // the same product from both files
+      seen[key]=1;all.push(f);
+    }
+    _foods=all;
+    _foodsState='ready';then();
+  }).catch(function(){_foodsState='error';fdbPaint();});
 }
 function foodKey(s){
   return String(s).replace(/['’׳"“”״,.\-]/g,'').replace(/\s+/g,' ').trim();
@@ -1938,6 +1964,11 @@ function fdbSelect(id){
   fdbPick=id;
   var f=fdbFind(id);
   _fdbUnit=f?foodUnitOf(f.n):{k:'g',g:1};
+  // a packet that declares what one of it weighs should be counted in ones,
+  // unless you have already told the app otherwise for this food
+  if(f&&f.u>0&&_fdbUnit.k==='g'&&!loadFoodUnits()[foodKey(f.n)]){
+    _fdbUnit={k:'unit',g:f.u};
+  }
   // grams open at 100, anything counted opens at one of it
   fdbGrams=(_fdbUnit.k==='g')?100:1;
   fdbPaint();
@@ -2029,7 +2060,8 @@ function fdbPaint(){
         '<button class="fdb-back" onclick="fdbBack()">חזרה</button></div>'+
         (inLib?'<div class="fdb-saved">✓ כבר בספרייה שלך</div>'
               :'<button class="fdb-save" onclick="fdbSaveToLib()">שמור בספרייה שלי</button>')+
-        (f.off?'<div class="fdb-src">מקור: Open Food Facts</div>':'')+
+        (f.off?'<div class="fdb-src">מקור: Open Food Facts</div>'
+              :'<div class="fdb-src">מקור: מאגר התזונה הלאומי</div>')+
         '</div>';
       return;
     }

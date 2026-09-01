@@ -46,3 +46,34 @@ exposes.
 Barcodes are looked up in Open Food Facts (`world.openfoodfacts.org/api/v2`),
 which is CORS-open so the page calls it directly. Their data is ODbL: the
 confirm panel credits them on every scanned result.
+
+## fetch-off-il.mjs
+
+Adds the Israeli products from Open Food Facts to `data/foods.off.json`, which
+the app loads alongside the ministry table and searches as one list.
+
+```
+node tools/fetch-off-il.mjs      # run again any time; it only adds
+```
+
+The ministry table is strong on generic foods and cooked dishes and thin on
+what is on a shelf. This is the other way round: branded, barcoded, and
+sometimes with the packet's own weight, which is what lets a thing be counted
+in units instead of weighed.
+
+Two endpoints, because neither is enough alone:
+
+- `search.openfoodfacts.org` is fast and hands over the whole country in 36
+  pages, but returns no serving size and no Hebrew-specific name field.
+- the legacy `cgi/search.pl` returns both and throttles so hard it stops
+  answering around page 11 - about 500 products - however patiently it is
+  asked. It runs second and layers what it gives over the fast set.
+
+The file is rewritten after every page and anything already in it is kept, so
+a run that dies half way is still worth having and running again only adds.
+
+**Licence.** Open Food Facts is ODbL: free to use, commercially included, but
+it asks for attribution and puts share-alike obligations on a database derived
+from it - which `foods.off.json` is. Every result from it is credited in the
+app. Calling their API live, as the barcode scanner does, does not create a
+derived database; shipping this file does. Worth settling before the App Store.
