@@ -391,6 +391,12 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .ppl-sorts{display:flex;flex-wrap:wrap;gap:6px}
 .ppl-sort{border:1.5px solid #f2ede6;border-radius:11px;padding:7px 11px;background:#fff;font-size:11px;font-weight:700;color:#a89e97;cursor:pointer;font-family:inherit}
 .ppl-sort.on{border-color:#e08a72;background:linear-gradient(135deg,#fdf0eb,#fae2d8);color:#c2664a}
+.ppl-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ppl-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;border:none;border-radius:20px;background:linear-gradient(145deg,#fdf0eb,#fae2d8);box-shadow:0 4px 16px rgba(224,138,114,.16);cursor:pointer;font-family:inherit;padding:14px 10px}
+.ppl-tile:active{transform:scale(.97)}
+.ppl-tname{font-size:13.5px;font-weight:800;color:#4a4340;text-align:center;line-height:1.3}
+.ppl-tn{font-size:10px;font-weight:700;color:#c2664a}
+.ppl-back{background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 6px;display:block}
 .ppl-grp{font-size:10px;letter-spacing:.1em;font-weight:800;color:#c2664a;margin:14px 2px 7px}
 .ppl-grp:first-child{margin-top:0}
 .ppl-place{color:#c2a08f}
@@ -4653,6 +4659,8 @@ function deleteHabit(idx){
   renderHabits();
 }
 
+var _habitEdit=false;
+function toggleHabitEdit(){_habitEdit=!_habitEdit;renderHabits();}
 function focusNewHabit(){
   var el=document.getElementById('new-habit-inp');
   if(!el)return;
@@ -4720,19 +4728,31 @@ function renderHabits(){
   }
 
   // ── TABLE: rows=days, cols=habits ──
-  h+='<div style="background:#fff;border-radius:20px;padding:12px 8px 8px;box-shadow:0 4px 16px rgba(200,180,160,.1);margin-bottom:14px">';
-  h+='<table style="border-collapse:collapse;width:100%">';
+  /* One habit should not be stretched across the whole screen. The table
+     is sized by its columns and centred; past about six habits it stops
+     fitting and the card scrolls sideways rather than squeezing the boxes
+     down to nothing. */
+  h+='<div style="background:#fff;border-radius:20px;padding:12px 8px 8px;box-shadow:0 4px 16px rgba(200,180,160,.1);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding:0 4px">';
+  h+='<button onclick="toggleHabitEdit()" title="עריכת התחביבים" style="border:none;background:'+(_habitEdit?'#f5ece4':'none')+';border-radius:10px;padding:5px 8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;color:'+(_habitEdit?'#c2664a':'#c0b6ae')+';font-size:10.5px;font-weight:700">';
+  h+='<svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20.5h4L19 9.5a2.1 2.1 0 0 0-3-3L5 17.5Z"/><path d="M14.5 8l3 3"/></svg>';
+  h+=(_habitEdit?'סיימתי':'')+'</button>';
+  h+='<div style="font-size:9px;color:#c9c1b8;font-weight:700">'+(_habitEdit?'לחץ על ה-&#x2715; כדי להסיר':'')+'</div>';
+  h+='</div>';
+  h+='<table style="border-collapse:collapse;width:auto;margin:0 auto">';
 
   // Habit name headers
   h+='<thead><tr>';
   h+='<th style="font-size:9px;color:#a89e97;font-weight:700;text-align:center;padding:0 2px 12px;width:26px"></th>';
   h+='<th style="font-size:9px;color:#a89e97;font-weight:700;text-align:right;padding:0 4px 12px 2px;width:46px">יום</th>';
   for(var hi=0;hi<habits.length;hi++){
-    h+='<th style="text-align:center;padding:0 4px 12px;border-right:'+(hi<habits.length-1?'1.5px solid #f0ebe3':'none')+'">';
+    h+='<th style="text-align:center;padding:0 3px 12px;width:64px;border-right:'+(hi<habits.length-1?'1.5px solid #f0ebe3':'none')+'">';
     h+='<div style="display:inline-flex;flex-direction:column;align-items:center;gap:4px">';
-    h+='<div style="background:linear-gradient(135deg,#f0eafa,#eaf5ee);border:1.5px solid #c9bce0;border-radius:12px;padding:6px 10px;min-width:56px;max-width:72px;position:relative">';
-    h+='<div style="font-size:12px;font-weight:700;color:#4a4340;text-align:center;white-space:normal;word-break:break-word;line-height:1.3">'+esc(habits[hi])+'</div>';
-    h+='<button onclick="deleteHabit('+hi+')" style="position:absolute;top:-7px;left:-7px;background:#fff;border:1px solid #f3b9a8;border-radius:50%;width:16px;height:16px;cursor:pointer;color:#e08a72;font-size:10px;line-height:14px;padding:0;display:flex;align-items:center;justify-content:center">&#x2715;</button>';
+    h+='<div style="background:linear-gradient(135deg,#f0eafa,#eaf5ee);border:1.5px solid #c9bce0;border-radius:12px;padding:6px 8px;width:58px;position:relative;box-sizing:border-box">';
+    h+='<div style="font-size:11.5px;font-weight:700;color:#4a4340;text-align:center;white-space:normal;word-break:break-word;line-height:1.3">'+esc(habits[hi])+'</div>';
+    // the cross is a thing you go looking for, not a thing that follows you
+    if(_habitEdit)
+      h+='<button onclick="event.stopPropagation();deleteHabit('+hi+')" style="position:absolute;top:-7px;left:-7px;background:#fff;border:1px solid #f3b9a8;border-radius:50%;width:16px;height:16px;cursor:pointer;color:#e08a72;font-size:10px;line-height:14px;padding:0;display:flex;align-items:center;justify-content:center">&#x2715;</button>';
     h+='</div>';
     h+='</div></th>';
   }
@@ -4763,7 +4783,7 @@ function renderHabits(){
       var done=!!log[habits[hi2]+'__'+d];
       var borderCol=done?'#6db88a':(isToday?'#a690cf':(isFuture?'#e8e4de':'#ccc7c0'));
       var bgCol=done?'rgba(143,199,158,.12)':'transparent';
-      h+='<td style="text-align:center;padding:3px 4px;border-right:'+(hi2<habits.length-1?'1.5px solid #f0ebe3':'none')+'">';
+      h+='<td style="text-align:center;padding:3px 3px;width:64px;border-right:'+(hi2<habits.length-1?'1.5px solid #f0ebe3':'none')+'">';
       if(!isFuture){
         var cellId='hc-'+hi2+'-'+d;
         h+='<div id="'+cellId+'" onclick="toggleHabitAnim(\''+hi2+'\','+d+',\''+cellId+'\')" style="width:28px;height:28px;border-radius:5px;background:'+bgCol+';border:2px solid '+borderCol+';margin:0 auto;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s">';
@@ -7692,7 +7712,7 @@ var CONTACT_TYPES=['הודעה','שיחה','פגישה','וידאו','אחר'];
    it always was: the small grey line under the name saying what they are to
    you. חדר כושר / אורון / מאמן בחדר כושר - the place, the person, the role. */
 var PEOPLE_PLACES=['חדר כושר','עבודה','משפחה','לימודים','שכונה','צבא','חברים','אונליין'];
-var _pplSort='recent',_pplQ='';
+var _pplSort='recent',_pplQ='',_pplPlace='';
 var PPL_SORTS=[
   {v:'recent', t:'הכי מזמן'},
   {v:'name',   t:'לפי שם'},
@@ -7731,7 +7751,28 @@ function pplOrdered(people){
     });
   return out;
 }
-function pplSetSort(v){_pplSort=v;renderPeople();}
+/* Sorted by place, the screen is a set of doors rather than one long run
+   of names under headings. A place you know twelve people from is a place
+   you want to walk into, not scroll past - and the tiles say how many are
+   behind each one before you open it. */
+function pplPlaces(people){
+  var map={},order=[],i,pl;
+  for(i=0;i<people.length;i++){
+    if(!pplMatch(people[i],_pplQ))continue;
+    pl=people[i].place||'ללא מקום';
+    if(!map[pl]){map[pl]=0;order.push(pl);}
+    map[pl]++;
+  }
+  order.sort(function(a,b){
+    if(a==='ללא מקום')return 1;
+    if(b==='ללא מקום')return -1;
+    return b>a?-1:(b<a?1:0);
+  });
+  return order.map(function(k){return {name:k,n:map[k]};});
+}
+function pplOpenPlace(pl){_pplPlace=pl;renderPeople();}
+function pplBackToPlaces(){_pplPlace='';renderPeople();}
+function pplSetSort(v){_pplSort=v;_pplPlace='';renderPeople();}
 function pplSearch(v){
   _pplQ=v;
   var box=document.getElementById('ppl-list');
@@ -7833,18 +7874,32 @@ function renderPeopleHome(){
   document.getElementById('content').innerHTML=h;
 }
 
+function pplPlacesHTML(people){
+  var pl=pplPlaces(people),h='',i;
+  if(!pl.length)return '<div class="ppl-none">'+(_pplQ?'לא מצאתי אף אחד כזה.':'עוד אין כאן אף אחד.')+'</div>';
+  h+='<div class="ppl-tiles">';
+  for(i=0;i<pl.length;i++)
+    h+='<button class="ppl-tile" onclick="pplOpenPlace(&quot;'+esc(pl[i].name)+'&quot;)">'+
+       '<span class="ppl-tname">'+esc(pl[i].name)+'</span>'+
+       '<span class="ppl-tn">'+pl[i].n+'</span></button>';
+  h+='</div>';
+  return h;
+}
 function pplListHTML(people){
+  if(_pplSort==='place'&&!_pplPlace)return pplPlacesHTML(people);
   var rows=pplOrdered(people),h='',i,lastPlace=null;
+  if(_pplSort==='place'&&_pplPlace){
+    rows=rows.filter(function(r){return (r.p.place||'ללא מקום')===_pplPlace;});
+    h+='<button class="ppl-back" onclick="pplBackToPlaces()">&#8250; כל המקומות</button>';
+    h+='<div class="ppl-grp">'+esc(_pplPlace)+'</div>';
+  }
   if(!rows.length)
     return '<div class="ppl-none">'+(_pplQ?'לא מצאתי אף אחד כזה.':'עוד אין כאן אף אחד.')+'</div>';
   for(i=0;i<rows.length;i++){
     var p=rows[i].p,pi=rows[i].i;
     // grouped only when that is what you asked for; a heading over a list
     // sorted by something else would be lying about the order
-    if(_pplSort==='place'){
-      var pl=p.place||'ללא מקום';
-      if(pl!==lastPlace){h+='<div class="ppl-grp">'+esc(pl)+'</div>';lastPlace=pl;}
-    }
+
     var days=daysSince(p.lastContact);
     var mems=p.memories||[];
     var lastMem=mems.length?mems[mems.length-1]:null;
