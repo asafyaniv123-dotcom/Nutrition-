@@ -360,11 +360,14 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
    this day: the original stays where it is, and a red bin would say otherwise.
    It stays under the drag ghost and never takes a pointer event, so the drop
    targets underneath it still work exactly as before. */
-.swipe-trash{position:fixed;left:0;top:0;bottom:0;width:68px;z-index:190;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;transform:translateX(-100%);transition:transform .18s ease,background .15s;background:linear-gradient(90deg,rgba(193,74,50,.88),rgba(193,74,50,.30))}
+.swipe-trash{position:fixed;left:0;top:0;bottom:0;width:56px;z-index:190;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;transform:translateX(-100%);transition:transform .18s ease,background .15s,opacity .15s;background:linear-gradient(90deg,rgba(176,96,78,.62),rgba(176,96,78,.14))}
 .swipe-trash.on{transform:none}
-.swipe-trash.hot{background:linear-gradient(90deg,#c14a32,#d4674a)}
-.swipe-trash.keep{background:linear-gradient(90deg,rgba(184,121,26,.86),rgba(184,121,26,.28))}
-.swipe-trash.keep.hot{background:linear-gradient(90deg,#b8791a,#d09a3c)}
+.swipe-trash.hot{background:linear-gradient(90deg,rgba(176,80,58,.92),rgba(198,110,86,.55))}
+/* the minute steps open across the same strip of screen; a bin floating
+   over the times you are trying to press is worse than no bin at all */
+.swipe-trash.hidden{opacity:0}
+.swipe-trash.keep{background:linear-gradient(90deg,rgba(170,124,48,.62),rgba(170,124,48,.14))}
+.swipe-trash.keep.hot{background:linear-gradient(90deg,rgba(172,118,30,.92),rgba(198,152,62,.55))}
 .swipe-trash svg{width:27px;height:27px;fill:none;stroke:#fff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.9;transition:transform .18s,opacity .18s}
 .swipe-trash.hot svg{transform:scale(1.2);opacity:1}
 .swipe-trash b{font-size:10px;font-weight:800;color:#fff;opacity:0;transition:opacity .15s;text-align:center;line-height:1.3;padding:0 4px}
@@ -373,6 +376,12 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 /* a flick to the left says remove, and the ghost says which kind */
 .wk-ghost.swipe-del{background:linear-gradient(135deg,#fbe4dd,#f4cabc)!important;color:#8c4a36!important;border-right-color:#e08a72!important}
 .wk-ghost.swipe-del::after{content:attr(data-swipe);position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:#a9563c}
+/* the reminder picker inside a task */
+.dp-rem-row{display:flex;flex-wrap:wrap;gap:6px}
+.dp-rem-b{border:1.5px solid #ece5da;border-radius:11px;padding:8px 11px;background:#fff;font-size:11.5px;font-weight:700;color:#a89e97;cursor:pointer;font-family:inherit}
+.dp-rem-b.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
+.dp-rem-at{margin-top:9px;font-size:11px;font-weight:700;color:#6fb283}
+.dp-rem-ask{width:100%;margin-top:9px;border:1.5px dashed #ddd3ca;border-radius:12px;padding:9px;background:none;color:#a89e97;font-size:10.5px;font-weight:700;font-family:inherit;cursor:pointer;line-height:1.5}
 .dp-min{font-size:9.5px;font-weight:800;opacity:.6;margin-left:5px;direction:ltr;display:inline-block}
 /* the five-minute steps an hour opens into while a task is held over it */
 .dp-slot.fine{background:rgba(166,144,207,.07)}
@@ -527,6 +536,7 @@ body.night .me-hero,body.night .me-card{background:rgba(255,255,255,.94)}
 /* ── THE TWO HALVES ── */
 /* ltr on purpose: read left to right the two buttons spell the app's name, so
    Better must sit left of Me even though everything around them is rtl */
+body.sheet-open .tabbar{display:none}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:140;direction:ltr;display:flex;gap:8px;padding:8px 16px max(24px,calc(env(safe-area-inset-bottom) + 10px));background:rgba(250,246,241,.94);backdrop-filter:blur(12px);border-top:1px solid rgba(190,175,160,.22)}
 .tb{flex:1;background:none;border:none;border-radius:14px;padding:11px 6px;font-family:inherit;font-size:15px;font-weight:800;letter-spacing:-.2px;color:#b9b0a8;cursor:pointer;transition:color .2s,background .2s;direction:ltr}
 .tb.on{color:#fff;background:linear-gradient(135deg,#c9bce0,#a690cf);box-shadow:0 4px 14px rgba(166,144,207,.32)}
@@ -5799,13 +5809,14 @@ function wkUp(e){
    appears in the week table. So the week stays a week and does not fill up
    with the detail of seven days. */
 var _dpDate='',_dpNewColor='lav',_dpPick='',_dpDrag=null,_dpDetail='';
+var DP_ROW_H=44;   // one hour of the grid, in pixels - see .dp-row min-height
 var DP_FROM=6,DP_TO=23;
 
 function dpKey(date){return 'dplan_'+date;}
 function loadDPlan(date){
   try{var x=localStorage.getItem(dpKey(date));var o=x?JSON.parse(x):null;
-    if(o&&Array.isArray(o.items))return{items:o.items,hours:o.hours||{},mins:o.mins||{},ends:o.ends||{},notes:o.notes||{}};}catch(e){}
-  return{items:[],hours:{},mins:{},ends:{},notes:{}};
+    if(o&&Array.isArray(o.items))return{items:o.items,hours:o.hours||{},mins:o.mins||{},ends:o.ends||{},notes:o.notes||{},rem:o.rem||{}};}catch(e){}
+  return{items:[],hours:{},mins:{},ends:{},notes:{},rem:{}};
 }
 function saveDPlan(date,o){try{localStorage.setItem(dpKey(date),JSON.stringify(o));}catch(e){}}
 
@@ -5843,6 +5854,74 @@ function dpFind(id){
   for(i=0;i<all.length;i++)if(all[i].id===id)return all[i];
   return null;
 }
+/* ── A REMINDER ON A TASK ──
+   Stored as minutes before the task rather than a clock time, so moving the
+   task to a different hour carries its reminder with it instead of leaving a
+   stale alarm behind. The absolute moment is worked out at check time from
+   the same dpAll() the grid is drawn from, which means the reminder can never
+   disagree with what is on screen.
+
+   Like the hour and the note, a reminder on a week or month task lives on the
+   day record. The week is still never written from here.
+
+   A fired reminder is recorded per date and id, so a phone left open all
+   evening does not get the same nudge every twenty seconds, and a task whose
+   time is moved forward can legitimately fire again. */
+var DP_REM_CHOICES=[
+  {m:0,  t:'בזמן'},
+  {m:5,  t:'5 דק׳ לפני'},
+  {m:10, t:'10 דק׳ לפני'},
+  {m:15, t:'רבע שעה'},
+  {m:30, t:'חצי שעה'},
+  {m:60, t:'שעה לפני'}
+];
+function dpRemOf(id,date){
+  var dp=loadDPlan(date||_dpDate);
+  if(!dp.rem)return null;
+  var v=dp.rem[id];
+  return (typeof v==='number')?v:null;
+}
+function dpSetRem(id,m){
+  var dp=loadDPlan(_dpDate);
+  if(!dp.rem)dp.rem={};
+  if(m===null||dpRemOf(id)===m)delete dp.rem[id];
+  else dp.rem[id]=m;
+  saveDPlan(_dpDate,dp);
+  renderDpSheet();
+}
+function dpRemFiredKey(date,id){return 'dprem_'+date+'_'+id;}
+function dpRemCheck(){
+  var date=todayStr(),dp=loadDPlan(date);
+  if(!dp.rem)return;
+  var all=dpAll(date),i,t,off,due,now=nowHHMM();
+  for(i=0;i<all.length;i++){
+    t=all[i];
+    if(t.hour===null)continue;
+    off=dp.rem[t.id];
+    if(typeof off!=='number')continue;
+    due=t.hour*60+(t.min||0)-off;
+    if(due<0)continue;
+    var hh=Math.floor(due/60),mm=due%60;
+    var at=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+    if(now<at)continue;
+    // more than two hours late is a phone that was off, not a reminder
+    var lateBy=(parseInt(now.slice(0,2),10)*60+parseInt(now.slice(3),10))-due;
+    if(lateBy>120)continue;
+    var k=dpRemFiredKey(date,t.id);
+    var was=null;try{was=localStorage.getItem(k);}catch(e){}
+    if(was===String(due))continue;
+    try{localStorage.setItem(k,String(due));}catch(e){}
+    dpRemFire(t,off);
+  }
+}
+function dpRemFire(t,off){
+  var when=dpHM(t.hour,t.min||0);
+  var body=off?(t.w+' &mdash; בעוד '+off+' דק׳ ('+when+')'):(t.w+' &mdash; עכשיו ('+when+')');
+  var plain=body.replace(/&mdash;/g,'—');
+  sumRemShowOS('תכנון זמן',plain);
+  if(!document.hidden)showToast('⏰ '+t.w);
+}
+setInterval(dpRemCheck,20000);
 function dpOpenDetail(id){_dpDetail=id;renderDpSheet();}
 function dpCloseDetail(save){
   if(save&&_dpDetail){
@@ -5860,9 +5939,29 @@ function dpCloseDetail(save){
     saveDPlan(_dpDate,dp);
   }
   _dpDetail='';
+  document.body.classList.remove('sheet-open');
   var ov=document.getElementById('dp-sheet');
   if(ov)ov.remove();
   renderPlanDay();
+}
+function dpRemHTML(t){
+  var h='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin:18px 0 8px">תזכורת</div>';
+  if(t.hour===null)
+    return h+'<div style="font-size:11.5px;color:#c0b6ae;line-height:1.6">גרור את המשימה לשעה כדי שאפשר יהיה להזכיר לך עליה.</div>';
+  var cur=dpRemOf(t.id),i,o;
+  h+='<div class="dp-rem-row">';
+  for(i=0;i<DP_REM_CHOICES.length;i++){
+    o=DP_REM_CHOICES[i];
+    h+='<button class="dp-rem-b'+(cur===o.m?' on':'')+'" onclick="dpSetRem(&quot;'+t.id+'&quot;,'+o.m+')">'+o.t+'</button>';
+  }
+  h+='</div>';
+  if(cur!==null){
+    var due=t.hour*60+(t.min||0)-cur;
+    h+='<div class="dp-rem-at">אזכיר לך ב-'+dpFmt(due<0?0:due)+'</div>';
+    if(('Notification' in window)&&Notification.permission!=='granted')
+      h+='<button class="dp-rem-ask" onclick="sumRemAsk()">אשר התראות כדי שזה יגיע גם כשהאפליקציה סגורה</button>';
+  }
+  return h;
 }
 function renderDpSheet(){
   var t=dpFind(_dpDetail);
@@ -5870,7 +5969,10 @@ function renderDpSheet(){
   var note=dpNoteOf(t.id),c=wkColor(t.c);
   var old=document.getElementById('dp-sheet');if(old)old.remove();
   var h='<div class="summary-overlay" id="dp-sheet" onclick="if(event.target===this)dpCloseDetail(true)">';
-  h+='<div class="summary-sheet" style="padding-bottom:30px"><div class="summary-pull"></div>';
+  // the Better/Me bar is hidden while this is open, so the sheet only has
+  // to clear the home indicator - 104px of padding pushed the save button
+  // back off the bottom of the screen it had just been rescued from
+  h+='<div class="summary-sheet" style="padding-bottom:calc(30px + env(safe-area-inset-bottom))"><div class="summary-pull"></div>';
   h+='<button class="summary-close" onclick="dpCloseDetail(true)">&times;</button>';
   h+='<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">';
   h+='<span style="width:13px;height:13px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span>';
@@ -5882,11 +5984,13 @@ function renderDpSheet(){
   h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:#a89e97;margin:6px 0 8px">פרטים שחשוב לזכור</div>';
   h+='<textarea id="dp-d-note" class="q-input" style="min-height:120px" placeholder="מה צריך להביא, עם מי, מה להגיד, מה לא לשכוח...">'+esc(note)+'</textarea>';
   if(t.src==='day')h+='<div style="margin-top:14px">'+wkSwatches("dpSetColor('"+t.id+"','%K%');renderDpSheet()",t.c||'lav')+'</div>';
+  h+=dpRemHTML(t);
   h+='<button onclick="taskLibSave(\''+esc(t.w).replace(/'/g,"\\'")+'\',\''+(t.c||'lav')+'\')" style="width:100%;background:#f5f0eb;border:none;border-radius:14px;padding:12px;font-size:12.5px;font-weight:700;cursor:pointer;color:#a89e97;font-family:inherit;margin-top:16px">&#9734; שמור כמשימה חוזרת</button>';
   h+='<button onclick="dpCloseDetail(true)" style="width:100%;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;color:#fff;font-family:inherit;margin-top:8px">שמור</button>';
   if(t.src==='day')h+='<button onclick="dpCloseDetail(false);dpDel(\''+t.id+'\')" style="width:100%;background:none;border:none;padding:12px;font-size:12px;font-weight:700;color:#e08a72;cursor:pointer;font-family:inherit">מחק</button>';
   h+='</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
+  document.body.classList.add('sheet-open');
 }
 function dpAssign(id,hour,min){
   min=min||0;
@@ -5937,7 +6041,12 @@ function dpHM(h,m){return (h<10?'0':'')+h+':'+((m||0)<10?'0':'')+(m||0);}
    does not. Injected straight into the row rather than re-rendered, so the
    drag in progress is left alone. */
 var DP_HOLD=650;
+function trashDuck(on){
+  var t=document.getElementById('swipe-trash-el')||document.querySelector('.swipe-trash');
+  if(t)t.classList.toggle('hidden',!!on);
+}
 function dpOpenFine(slotEl){
+  trashDuck(true);
   if(!slotEl||slotEl.querySelector('.dp-fine'))return;
   var hour=parseInt(slotEl.getAttribute('data-hour'),10),m;
   var h='<div class="dp-fine">';
@@ -5948,6 +6057,7 @@ function dpOpenFine(slotEl){
   slotEl.classList.add('fine');
 }
 function dpCloseFine(){
+  trashDuck(false);
   var f=document.querySelectorAll('.dp-fine'),i;
   for(i=0;i<f.length;i++){
     if(f[i].parentElement)f[i].parentElement.classList.remove('fine');
@@ -6017,7 +6127,8 @@ function renderPlanDay(){
       if(lastH<=ct.hour||h<=ct.hour||h>lastH)continue;
       var cc=wkColor(ct.c);
       // no text here: it is the same task, already named in the hour it starts
-      out+='<div class="dp-cont'+(h===lastH?' tail':'')+'" style="background:'+cc.bg+'"></div>';
+      var tailH=(h===lastH)?Math.max(10,Math.round((ct.end-lastH*60)/60*DP_ROW_H)):0;
+      out+='<div class="dp-cont'+(h===lastH?' tail':'')+'" style="background:'+cc.bg+(tailH?';min-height:'+tailH+'px':'')+'"></div>';
     }
 
     // within an hour, earlier minutes first
@@ -6028,7 +6139,11 @@ function renderPlanDay(){
       var c=wkColor(inHour[i].c);
       var nt=dpNoteOf(inHour[i].id);
       var runsOn=inHour[i].end&&Math.floor((inHour[i].end-1)/60)>h;
-      out+='<div class="dp-chip'+(runsOn?' head':'')+'" data-task="'+inHour[i].id+'" style="background:'+c.bg+';color:'+c.tx+'">';
+      /* An hour is 44px of screen, so a task at :30 sits half way down it
+         and one at :45 three quarters. Without this everything inside an
+         hour stacked at the top and 09:05 looked the same as 09:55. */
+      var offTop=Math.round((inHour[i].min||0)/60*DP_ROW_H);
+      out+='<div class="dp-chip'+(runsOn?' head':'')+'" data-task="'+inHour[i].id+'" style="background:'+c.bg+';color:'+c.tx+(offTop?';margin-top:'+offTop+'px':'')+'">';
       if(inHour[i].end)out+='<span class="dp-min">'+dpFmt(dpMins(inHour[i]))+'&ndash;'+dpFmt(inHour[i].end)+'</span>';
       else if(inHour[i].min)out+='<span class="dp-min">'+dpHM(h,inHour[i].min)+'</span>';
       out+=esc(inHour[i].w)+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
