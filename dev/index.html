@@ -332,16 +332,30 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .dp-nlane{flex:0 0 34%;max-width:34%;min-width:0;padding-right:6px;border-right:1px solid #f4efe9}
 .dp-nline{font-size:9px;color:#a89e97;line-height:1.45;padding-bottom:3px;margin-bottom:3px;border-bottom:1px solid #f0ebe3;word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 /* the undo, only while a plan is on screen */
-/* the beat before the planner */
-.plan-splash{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(120% 70% at 50% 12%,rgba(201,188,224,.45),transparent 62%),linear-gradient(165deg,#f6f1fb 0%,#eee7f7 45%,#e7eff8 100%);animation:ps-in .34s ease-out}
-.plan-splash.out{animation:ps-out .4s ease-in forwards;pointer-events:none}
-@keyframes ps-in{from{opacity:0}to{opacity:1}}
-@keyframes ps-out{from{opacity:1}to{opacity:0}}
-.ps-in{display:flex;flex-direction:column;align-items:center;gap:16px;animation:ps-rise .5s cubic-bezier(.2,.8,.3,1)}
-@keyframes ps-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.ps-ic{width:42px;height:42px;fill:none;stroke:#a690cf;stroke-width:1.5;stroke-linecap:round;opacity:.85}
-.ps-line{font-size:19px;font-weight:800;color:#6b5a92;letter-spacing:.01em;text-align:center;line-height:1.45;direction:ltr}
-@media (prefers-reduced-motion:reduce){.plan-splash,.ps-in{animation:none}}
+/* ── THE BEAT BEFORE THE PLANNER ──
+   The app's own opening colour, so entering a module feels like part of the
+   same thing rather than a different app. It leaves by closing to a point:
+   the orange contracts through the middle of the screen and the planner is
+   simply there behind it, which reads as an opening rather than a curtain
+   being pulled off something. */
+.plan-splash{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;background:radial-gradient(120% 62% at 50% 4%,rgba(255,226,181,.42),transparent 60%),linear-gradient(160deg,#E2924C 0%,#D97D3D 32%,#C96A2E 65%,#B85A28 100%);clip-path:circle(150% at 50% 50%);animation:ps-fade .3s ease-out}
+@keyframes ps-fade{from{opacity:0}to{opacity:1}}
+/* closing to a point, while what is on it pushes toward you and goes */
+.plan-splash.out{animation:ps-iris .72s cubic-bezier(.65,0,.35,1) forwards;pointer-events:none}
+@keyframes ps-iris{from{clip-path:circle(150% at 50% 50%)}to{clip-path:circle(0% at 50% 50%)}}
+.plan-splash.out .ps-in{animation:ps-leave .5s cubic-bezier(.4,0,1,1) forwards}
+@keyframes ps-leave{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.35)}}
+/* a slow breath of light behind the words */
+.ps-glow{position:absolute;width:min(78vw,420px);height:min(78vw,420px);border-radius:50%;background:radial-gradient(circle,rgba(255,232,196,.5),transparent 66%);animation:ps-breathe 3.4s ease-in-out infinite}
+@keyframes ps-breathe{0%,100%{transform:scale(.92);opacity:.75}50%{transform:scale(1.08);opacity:1}}
+.ps-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:22px}
+.ps-ic{width:60px;height:60px;fill:none;stroke:rgba(255,244,230,.95);stroke-width:1.3;stroke-linecap:round;animation:ps-icon .8s cubic-bezier(.2,.9,.3,1) both}
+@keyframes ps-icon{from{opacity:0;transform:scale(.6) rotate(-28deg)}to{opacity:1;transform:none}}
+.ps-line{font-size:clamp(30px,9.2vw,44px);font-weight:800;color:#fff9f2;letter-spacing:-.012em;text-align:center;line-height:1.18;direction:ltr;text-shadow:0 2px 18px rgba(120,52,14,.34);max-width:9ch}
+/* one word at a time, so the sentence lands rather than appears */
+.ps-w{display:inline-block;opacity:0;animation:ps-word .62s cubic-bezier(.2,.9,.3,1) both}
+@keyframes ps-word{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.plan-splash,.ps-in,.ps-ic,.ps-w,.ps-glow{animation:none}.ps-w{opacity:1}.plan-splash.out{animation:ps-fade .3s reverse forwards}}
 .plan-undo{position:fixed;left:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:130;border:none;border-radius:14px;padding:10px 15px;background:rgba(74,67,64,.92);color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(74,67,64,.3)}
 .plan-undo:active{transform:scale(.96)}
 .dp-slot.hot{background:rgba(143,199,158,.22)}
@@ -7368,16 +7382,19 @@ function planSplash(){
   if(old)old.remove();
   var d=document.createElement('div');
   d.id='plan-splash';d.className='plan-splash';
-  d.innerHTML='<div class="ps-in">'+
+  var words=['let&rsquo;s','plan','our','time','wisely'],wi,ws='';
+  for(wi=0;wi<words.length;wi++)
+    ws+='<span class="ps-w" style="animation-delay:'+(0.14+wi*0.09).toFixed(2)+'s">'+words[wi]+'</span> ';
+  d.innerHTML='<div class="ps-glow"></div><div class="ps-in">'+
     '<svg class="ps-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3 1.9"/></svg>'+
-    '<div class="ps-line">let&rsquo;s plan our time wisely</div></div>';
+    '<div class="ps-line">'+ws+'</div></div>';
   var go=function(){
     d.classList.add('out');
-    setTimeout(function(){if(d.parentElement)d.remove();},420);
+    setTimeout(function(){if(d.parentElement)d.remove();},760);
   };
   d.addEventListener('pointerdown',go);
   document.body.appendChild(d);
-  setTimeout(go,1500);
+  setTimeout(go,1900);
 }
 function renderPlanning(){
   document.getElementById('hdr-title').textContent='תכנון זמן';
