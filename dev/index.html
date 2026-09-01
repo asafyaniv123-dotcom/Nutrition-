@@ -159,6 +159,13 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .fdb-rn{flex:1;min-width:0;font-size:12px;font-weight:700;color:#4a4340;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fdb-rk{font-size:12.5px;font-weight:800;color:#a690cf;flex-shrink:0}
 .fdb-ru{font-size:8.5px;color:#c0b6ae;font-weight:700;margin-right:2px}
+/* choosing how a food is counted */
+.fu-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.fu-b{border:1.5px solid #f2ede6;border-radius:10px;padding:6px 10px;background:#fff;font-size:11px;font-weight:700;color:#a89e97;cursor:pointer;font-family:inherit}
+.fu-b.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7);color:#6b5a92}
+.fu-w{margin-top:8px;font-size:10.5px;color:#a89e97;font-weight:700;display:flex;align-items:center;gap:5px}
+.fu-win{width:56px;border:1.5px solid #f2ede6;border-radius:8px;padding:5px;font-size:13px;font-weight:800;text-align:center;outline:none;font-family:inherit;color:#4a4340}
+.fu-win:focus{border-color:#c9bce0}
 .fdb-conf{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(200,180,160,.14)}
 .fdb-cname{font-size:13.5px;font-weight:800;color:#4a4340;line-height:1.4}
 .fdb-c100{font-size:10.5px;color:#a89e97;margin-top:4px}
@@ -1378,8 +1385,76 @@ function cancelLib(){pendingLib=null;render();}
 function appBase(){
   return location.pathname.replace(/[^\/]*$/,'').replace(/(^|\/)dev\/$/,'$1');
 }
+/* ── HOW YOU COUNT A FOOD ──
+   Everything here is stored per 100 g, which is the right way to store it and
+   the wrong way to be asked about it. Nobody weighs a bread roll. Asking
+   "how many grams?" about a thing that comes in ones makes you guess a number
+   you do not know, and a guessed 80 is worse than a counted 1.
+
+   So the food keeps its per-100g values and you pick how to count it. A unit
+   is just a weight with a name: one roll is 80g, a spoon is 15g, and the
+   arithmetic underneath never changes.
+
+   The choice is remembered per food. You tell the app once that your roll is
+   80 grams, and from then on that food opens asking how many rolls. That is
+   the whole point - it has to stop asking. */
+var FOOD_UNITS=[
+  {k:'g',    t:'גרם',  one:'גרם',   many:'גרם',   g:1,   fixed:true},
+  {k:'unit', t:'יחידה',one:'יחידה', many:'יחידות',g:100},
+  {k:'slice',t:'פרוסה',one:'פרוסה', many:'פרוסות',g:30},
+  {k:'cup',  t:'כוס',  one:'כוס',   many:'כוסות', g:240},
+  {k:'tbsp', t:'כף',   one:'כף',    many:'כפות',  g:15},
+  {k:'tsp',  t:'כפית', one:'כפית',  many:'כפיות', g:5}
+];
+var FOOD_UNITS_KEY='food_units';
+function unitDef(k){for(var i=0;i<FOOD_UNITS.length;i++)if(FOOD_UNITS[i].k===k)return FOOD_UNITS[i];return FOOD_UNITS[0];}
+function loadFoodUnits(){
+  try{var o=JSON.parse(localStorage.getItem(FOOD_UNITS_KEY)||'{}');return (o&&typeof o==='object')?o:{};}
+  catch(e){return {};}
+}
+/* A roll does not stop weighing 80 grams because you looked at grams for a
+   moment, and a slice of it is not 80 either. So the record keeps the chosen
+   way of counting AND a weight per kind of unit: switch to grams and back and
+   the 80 is still there, switch to slices and it asks about slices. */
+function foodUnitRec(name){
+  var r=loadFoodUnits()[foodKey(name)];
+  if(!r||typeof r!=='object')return {k:'g',w:{}};
+  return {k:(r.k&&unitDef(r.k))?r.k:'g',w:(r.w&&typeof r.w==='object')?r.w:{}};
+}
+function unitWeightFor(name,k){
+  if(k==='g')return 1;
+  var w=foodUnitRec(name).w[k];
+  return (typeof w==='number'&&w>0)?w:unitDef(k).g;
+}
+function foodUnitOf(name){
+  var rec=foodUnitRec(name);
+  return {k:rec.k,g:unitWeightFor(name,rec.k)};
+}
+function saveFoodUnit(name,k,g){
+  var all=loadFoodUnits(),key=foodKey(name),rec=foodUnitRec(name);
+  rec.k=k;
+  if(k!=='g'&&g>0)rec.w[k]=g;
+  all[key]={k:rec.k,w:rec.w};
+  try{localStorage.setItem(FOOD_UNITS_KEY,JSON.stringify(all));}catch(e){}
+}
+// "2 יחידות" reads better than "2 יחידה"
+function unitLabel(k,n){
+  var d=unitDef(k);
+  if(d.k==='g')return 'גרם';
+  return (Math.abs(n)===1)?d.one:d.many;
+}
+function unitsRowHTML(name,cur,onPick){
+  var h='<div class="fu-row">',i,u;
+  for(i=0;i<FOOD_UNITS.length;i++){
+    u=FOOD_UNITS[i];
+    h+='<button class="fu-b'+(cur.k===u.k?' on':'')+'" onclick="'+onPick.replace('%K%',u.k)+'">'+u.t+'</button>';
+  }
+  return h+'</div>';
+}
+
 var _foods=null,_foodsState='idle';
 var fdbOpen=false,fdbPick=null,fdbGrams=100,_fdbQ='';
+var _fdbUnit={k:'g',g:1};   // what the number in the box is counting
 function foodsLoad(then){
   if(_foodsState==='ready'){then();return;}
   if(_foodsState==='loading')return;
@@ -1834,7 +1909,14 @@ function barcodeLookup(code){
       scanClose();
       if(!fdbOpen){fdbOpen=true;render();}
       fdbPick=_fdbScanned.id;
-      fdbGrams=g?Math.round(parseFloat(g[1])):100;
+      var known=foodUnitOf(_fdbScanned.n);
+      if(known.k!=='g'){_fdbUnit=known;fdbGrams=1;}
+      else if(g){
+        // the packet says what one of it weighs, so count in ones
+        _fdbUnit={k:'unit',g:Math.round(parseFloat(g[1]))};
+        saveFoodUnit(_fdbScanned.n,'unit',_fdbUnit.g);
+        fdbGrams=1;
+      } else {_fdbUnit={k:'g',g:1};fdbGrams=100;}
       fdbPaint();
       var box=document.getElementById('fdb-body');
       if(box)box.scrollIntoView({block:'center'});
@@ -1852,7 +1934,35 @@ function fdbToggle(){
   if(fdbOpen)foodsLoad(fdbPaint);
 }
 function fdbType(v){_fdbQ=v;fdbPick=null;fdbPaint();}
-function fdbSelect(id){fdbPick=id;fdbGrams=100;fdbPaint();}
+function fdbSelect(id){
+  fdbPick=id;
+  var f=fdbFind(id);
+  _fdbUnit=f?foodUnitOf(f.n):{k:'g',g:1};
+  // grams open at 100, anything counted opens at one of it
+  fdbGrams=(_fdbUnit.k==='g')?100:1;
+  fdbPaint();
+}
+function fdbSetUnit(k){
+  var f=fdbFind(fdbPick);if(!f)return;
+  var prev=_fdbUnit;
+  // keep the same real weight when swapping units, so the numbers below
+  // do not jump about while you are only changing how you say it
+  var grams=fdbGrams*prev.g;
+  _fdbUnit={k:k,g:unitWeightFor(f.n,k)};
+  fdbGrams=(k==='g')?Math.round(grams):Math.round(grams/_fdbUnit.g*10)/10;
+  if(!fdbGrams)fdbGrams=(k==='g')?100:1;
+  saveFoodUnit(f.n,k,_fdbUnit.g);
+  fdbPaint();
+}
+function fdbSetUnitGrams(v){
+  var f=fdbFind(fdbPick);if(!f)return;
+  var g=parseFloat(v);
+  if(!(g>0))return;
+  _fdbUnit={k:_fdbUnit.k,g:g};
+  saveFoodUnit(f.n,_fdbUnit.k,g);
+  var el=document.getElementById('fdb-preview');
+  if(el)el.innerHTML=fdbPreviewHTML();
+}
 function fdbBack(){fdbPick=null;fdbPaint();}
 function fdbSetGrams(v){
   fdbGrams=parseFloat(v)||0;
@@ -1865,8 +1975,9 @@ function fdbFind(id){
   for(var i=0;i<_foods.length;i++)if(_foods[i].id===id)return _foods[i];
   return null;
 }
-function fdbAmount(f,g){
-  var m=(g||0)/100;
+function fdbAmount(f,n){
+  var g=(n||0)*(_fdbUnit.g||1);
+  var m=g/100;
   return {kcal:Math.round(f.k*m),p:Math.round(f.p*m*10)/10,
           c:Math.round(f.c*m*10)/10,f:Math.round(f.f*m*10)/10};
 }
@@ -1879,7 +1990,8 @@ function fdbAdd(){
   var f=fdbFind(fdbPick);if(!f||!fdbGrams)return;
   var a=fdbAmount(f,fdbGrams);
   var day=loadDay(curDate);
-  day.meals.push({name:f.n+' ('+fdbGrams+'g)',kcal:a.kcal,p:a.p,c:a.c,f:a.f,
+  var howMuch=(_fdbUnit.k==='g')?(fdbGrams+'g'):(fdbGrams+' '+unitLabel(_fdbUnit.k,fdbGrams));
+  day.meals.push({name:f.n+' ('+howMuch+')',kcal:a.kcal,p:a.p,c:a.c,f:a.f,
                   id:Date.now(),time:fmtTime()});
   saveDay(curDate,day);
   showToast('✓ נוסף ליום');
@@ -1904,9 +2016,13 @@ function fdbPaint(){
       el.innerHTML='<div class="fdb-conf">'+
         '<div class="fdb-cname">'+esc(f.n)+'</div>'+
         '<div class="fdb-c100">'+f.k+' קק"ל ל-100 גרם &middot; '+f.p+'ח '+f.c+'פ '+f.f+'ש</div>'+
-        '<div class="fdb-grow"><span class="fdb-glbl">כמה גרם?</span>'+
-        '<input class="fdb-gin" id="fdb-grams" type="number" inputmode="decimal" value="'+fdbGrams+'" oninput="fdbSetGrams(this.value)">'+
-        '<span class="fdb-gu">g</span></div>'+
+        unitsRowHTML(f.n,_fdbUnit,'fdbSetUnit(&quot;%K%&quot;)')+
+        '<div class="fdb-grow"><span class="fdb-glbl">'+(_fdbUnit.k==='g'?'כמה גרם?':'כמה '+unitDef(_fdbUnit.k).many+'?')+'</span>'+
+        '<input class="fdb-gin" id="fdb-grams" type="number" inputmode="decimal" step="'+(_fdbUnit.k==='g'?'1':'0.5')+'" value="'+fdbGrams+'" oninput="fdbSetGrams(this.value)">'+
+        '<span class="fdb-gu">'+(_fdbUnit.k==='g'?'g':unitLabel(_fdbUnit.k,fdbGrams))+'</span></div>'+
+        (_fdbUnit.k==='g'?'':
+          '<div class="fu-w">'+unitDef(_fdbUnit.k).one+' אחת שוקלת '+
+          '<input class="fu-win" type="number" inputmode="decimal" value="'+_fdbUnit.g+'" oninput="fdbSetUnitGrams(this.value)"> גרם</div>')+
         '<div class="fdb-preview" id="fdb-preview">'+fdbPreviewHTML()+'</div>'+
         '<div class="fdb-btns">'+
         '<button class="fdb-add" onclick="fdbAdd()">הוסף ליום ✓</button>'+
