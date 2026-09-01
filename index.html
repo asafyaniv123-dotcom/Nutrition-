@@ -437,6 +437,16 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .bk-copy{width:100%;margin-top:8px;border:1.5px solid #ece5da;border-radius:14px;padding:13px;background:#fff;color:#7a716b;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
 .bk-or{font-size:10px;color:#c0b6ae;margin:14px 0 6px;font-weight:700}
 .bk-txt{width:100%;height:110px;border:1.5px solid #ece5da;border-radius:12px;padding:9px;font-size:10px;font-family:ui-monospace,Menlo,monospace;color:#a89e97;background:#fff;resize:none;direction:ltr;outline:none}
+.bk-lock{margin-top:14px;padding-top:12px;border-top:1px solid #ece5da}
+.bk-lockttl{font-size:12.5px;font-weight:800;color:#4a4340}
+.bk-locksub{font-size:10.5px;color:#a89e97;line-height:1.65;margin:5px 0 9px}
+.bk-lockrow{display:flex;gap:7px}
+.bk-pass{flex:1;min-width:0;border:1.5px solid #ece5da;border-radius:12px;padding:11px;font-size:16px;font-family:inherit;outline:none;background:#fff;direction:ltr;text-align:right}
+.bk-pass:focus{border-color:#c9bce0}
+.bk-lockbtn{border:none;border-radius:12px;padding:11px 18px;background:#4a4340;color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;flex-shrink:0}
+.bk-lockmsg{font-size:11.5px;color:#6fb283;font-weight:700;line-height:1.6}
+.bk-unlock{width:100%;margin-top:8px;border:none;background:none;padding:8px;color:#a89e97;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer}
+.bk-err{font-size:11.5px;color:#c2664a;font-weight:700;min-height:18px;margin:7px 0}
 .bk-full{width:100%;margin-top:7px;border:1.5px dashed #ddd3ca;border-radius:13px;padding:11px;background:none;color:#a89e97;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
 .bk-close{width:100%;margin-top:10px;border:none;background:none;padding:11px;color:#a89e97;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .plan-undo{position:fixed;left:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:130;border:none;border-radius:14px;padding:10px 15px;background:rgba(74,67,64,.92);color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(74,67,64,.3)}
@@ -10050,7 +10060,7 @@ var _backupText='',_backupName='',_photoInfo={n:0,kb:0};
 function exportData(){
   showToast('מכין גיבוי…');
   buildBackup(false).then(function(text){
-    _backupText=text;
+    _backupText=text;_bkPlain=text;
     _backupName='better-me-'+todayStr()+'.json';
     try{localStorage.setItem('last_export',new Date().toISOString());}catch(e){}
     renderBackup();
@@ -10083,6 +10093,7 @@ function exportPanel(){
     '<div class="bk-or">או סמן והעתק ידנית:</div>'+
     '<textarea class="bk-txt" id="bk-txt" readonly onclick="this.select()">'+esc(_backupText)+'</textarea>'+
     '<div id="bk-photos"></div>'+
+    exportLockedHTML()+
     '<button class="bk-close" onclick="exportClose()">סגור</button>'+
     '</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
@@ -10151,6 +10162,137 @@ function exportCopyFallback(){
   exportCopyMark(ok);
   showToast(ok?'✓ הועתק':'הטקסט מסומן — העתק ידנית');
 }
+/* ── LOCKING THE BACKUP ──
+   A backup is every meal, every journal entry and every weight you have
+   recorded, sitting in a mailbox as plain text. A password turns it into
+   something nobody can read without it - including me, including anyone who
+   gets into the mailbox, and including you if you forget it. That last one is
+   not a caveat, it is the deal, and the panel says so before you use it.
+
+   Standard parts, no invention: PBKDF2-SHA256 at 250,000 iterations to turn
+   the password into a key, AES-GCM to encrypt with it. Both come with the
+   browser. A fresh random salt and IV every time, so the same data and the
+   same password never produce the same file twice, and GCM's tag means a
+   file that has been altered fails to open rather than opening wrong.
+
+   The envelope stays readable on purpose - which algorithm, how many
+   iterations, the salt. None of that helps anyone without the password, and
+   it means a backup can still be opened in ten years by someone who has only
+   the file. */
+var BK_ITER=250000;
+function bkB64(buf){
+  var b=new Uint8Array(buf),s='',i;
+  for(i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);
+  return btoa(s);
+}
+function bkUnB64(s){
+  var bin=atob(s),b=new Uint8Array(bin.length),i;
+  for(i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);
+  return b;
+}
+function bkKey(pass,salt,use){
+  var enc=new TextEncoder();
+  return crypto.subtle.importKey('raw',enc.encode(pass),'PBKDF2',false,['deriveKey'])
+    .then(function(base){
+      return crypto.subtle.deriveKey(
+        {name:'PBKDF2',salt:salt,iterations:BK_ITER,hash:'SHA-256'},
+        base,{name:'AES-GCM',length:256},false,[use]);
+    });
+}
+function backupEncrypt(text,pass){
+  var salt=crypto.getRandomValues(new Uint8Array(16));
+  var iv=crypto.getRandomValues(new Uint8Array(12));
+  return bkKey(pass,salt,'encrypt').then(function(key){
+    return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(text));
+  }).then(function(ct){
+    return JSON.stringify({
+      app:'better-me',enc:1,v:1,
+      kdf:'PBKDF2-SHA256',iter:BK_ITER,
+      salt:bkB64(salt),iv:bkB64(iv),ct:bkB64(ct),
+      note:'AES-GCM. Import this in the app and give the password.'
+    });
+  });
+}
+function backupDecrypt(o,pass){
+  var salt=bkUnB64(o.salt),iv=bkUnB64(o.iv),ct=bkUnB64(o.ct);
+  return bkKey(pass,salt,'decrypt').then(function(key){
+    return crypto.subtle.decrypt({name:'AES-GCM',iv:iv},key,ct);
+  }).then(function(pt){
+    return new TextDecoder().decode(pt);
+  });
+}
+// what the export panel does with a password
+var _bkPlain='';
+function exportLock(){
+  var el=document.getElementById('bk-pass');
+  var pass=el?el.value:'';
+  if(pass.length<4){showToast('סיסמה של 4 תווים לפחות');return;}
+  if(!_bkPlain)_bkPlain=_backupText;
+  showToast('מצפין…');
+  backupEncrypt(_bkPlain,pass).then(function(locked){
+    _backupText=locked;
+    _backupName='better-me-'+todayStr()+'.locked.json';
+    exportPanel();
+    var m=document.getElementById('bk-lockmsg');
+    if(m)m.innerHTML='&#128274; הגיבוי מוצפן. בלי הסיסמה אי אפשר לפתוח אותו &mdash; גם לא אני.';
+    showToast('✓ הוצפן');
+  },function(){showToast('ההצפנה נכשלה');});
+}
+function exportUnlock(){
+  if(!_bkPlain)return;
+  _backupText=_bkPlain;
+  _backupName='better-me-'+todayStr()+'.json';
+  exportPanel();
+  showToast('חזרנו לגיבוי רגיל');
+}
+function exportLockedHTML(){
+  var locked=_backupText.indexOf('"enc":1')>=0;
+  if(locked)
+    return '<div class="bk-lock"><div id="bk-lockmsg" class="bk-lockmsg">'+
+           '&#128274; הגיבוי מוצפן. בלי הסיסמה אי אפשר לפתוח אותו &mdash; גם לא אני.</div>'+
+           '<button class="bk-unlock" onclick="exportUnlock()">בטל הצפנה</button></div>';
+  return '<div class="bk-lock">'+
+    '<div class="bk-lockttl">&#128274; להצפין בסיסמה?</div>'+
+    '<div class="bk-locksub">בלי הסיסמה הגיבוי לא ניתן לפתיחה. אם תשכח אותה, הוא אבוד &mdash; '+
+    'אין דרך לשחזר אותו, לא דרכי ולא דרך אף אחד.</div>'+
+    '<div class="bk-lockrow">'+
+    '<input class="bk-pass" id="bk-pass" type="password" placeholder="סיסמה" autocomplete="new-password">'+
+    '<button class="bk-lockbtn" onclick="exportLock()">הצפן</button>'+
+    '</div></div>';
+}
+// and what the import side does when it meets one
+var _bkLocked=null;
+function importUnlock(){
+  var el=document.getElementById('imp-pass');
+  var pass=el?el.value:'';
+  if(!pass){showToast('הזן את הסיסמה');return;}
+  showToast('מפענח…');
+  backupDecrypt(_bkLocked,pass).then(function(text){
+    var o=null;
+    try{o=JSON.parse(text);}catch(e){}
+    if(!o||o.app!=='better-me'||!o.data){showToast('נפתח אבל לא נראה כמו גיבוי');return;}
+    _bkLocked=null;_pendingImport=o;renderImportSheet();
+  },function(){
+    // GCM fails the same way for a wrong password and a damaged file
+    var m=document.getElementById('imp-err');
+    if(m)m.textContent='הסיסמה לא מתאימה, או שהקובץ נפגם.';
+  });
+}
+function importCancel(){var e=document.getElementById('imp-sheet');if(e)e.remove();_bkLocked=null;}
+function renderUnlockSheet(){
+  var old=document.getElementById('imp-sheet');if(old)old.remove();
+  var h='<div class="bk-ov" id="imp-sheet" onclick="if(event.target===this)this.remove()">'+
+    '<div class="bk-sheet">'+
+    '<div class="bk-hd">&#128274; הגיבוי נעול</div>'+
+    '<div class="bk-sub">הזן את הסיסמה שבחרת כשייצאת אותו.</div>'+
+    '<input class="bk-pass" id="imp-pass" type="password" placeholder="סיסמה" style="width:100%" autocomplete="current-password">'+
+    '<div class="bk-err" id="imp-err"></div>'+
+    '<button class="bk-share" onclick="importUnlock()">פתח</button>'+
+    '<button class="bk-close" onclick="importCancel()">ביטול</button>'+
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
 var _pendingImport=null;
 
 function importPick(){var i=document.getElementById('backup-file');if(i)i.click();}
@@ -10164,6 +10306,9 @@ function importChosen(input){
   r.onload=function(){
     var o=null;
     try{o=JSON.parse(r.result);}catch(e){}
+    if(o&&o.app==='better-me'&&o.enc&&o.ct&&o.salt&&o.iv){
+      _bkLocked=o;renderUnlockSheet();return;
+    }
     if(!o||o.app!=='better-me'||!o.data||typeof o.data!=='object'){
       showToast('הקובץ לא נראה כמו גיבוי של האפליקציה');return;
     }
