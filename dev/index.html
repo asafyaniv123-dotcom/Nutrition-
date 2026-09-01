@@ -384,6 +384,17 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 /* a flick to the left says remove, and the ghost says which kind */
 .wk-ghost.swipe-del{background:linear-gradient(135deg,#fbe4dd,#f4cabc)!important;color:#8c4a36!important;border-right-color:#e08a72!important}
 .wk-ghost.swipe-del::after{content:attr(data-swipe);position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:#a9563c}
+/* finding a person: search, sort, and grouping by where you know them */
+.ppl-find{margin-bottom:14px}
+.ppl-in{width:100%;border:1.5px solid #ece5da;border-radius:13px;padding:11px 13px;font-size:16px;font-family:inherit;outline:none;background:#fff;direction:rtl;margin-bottom:8px}
+.ppl-in:focus{border-color:#f3b9a8}
+.ppl-sorts{display:flex;flex-wrap:wrap;gap:6px}
+.ppl-sort{border:1.5px solid #f2ede6;border-radius:11px;padding:7px 11px;background:#fff;font-size:11px;font-weight:700;color:#a89e97;cursor:pointer;font-family:inherit}
+.ppl-sort.on{border-color:#e08a72;background:linear-gradient(135deg,#fdf0eb,#fae2d8);color:#c2664a}
+.ppl-grp{font-size:10px;letter-spacing:.1em;font-weight:800;color:#c2664a;margin:14px 2px 7px}
+.ppl-grp:first-child{margin-top:0}
+.ppl-place{color:#c2a08f}
+.ppl-none{font-size:12px;color:#c0b6ae;text-align:center;padding:26px 12px;line-height:1.7}
 /* the journal - a page, then everything you have already written */
 .jrnl-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .jrnl-nav{background:#fff;border:none;border-radius:11px;width:32px;height:32px;font-size:15px;color:#a89e97;cursor:pointer;box-shadow:0 2px 8px rgba(200,180,160,.16);font-family:inherit;flex-shrink:0}
@@ -7665,6 +7676,77 @@ var MEMORY_TYPES=[
 ];
 var CONTACT_TYPES=['הודעה','שיחה','פגישה','וידאו','אחר'];
 
+
+/* ── FINDING A PERSON ──
+   The list was one long column in the order people happened to be added,
+   which works for five and stops working somewhere around fifteen.
+
+   Three ways in now. Search, because sometimes you know exactly who. Sorting,
+   because sometimes you want the person you have not spoken to in longest.
+   And grouping by where you know them from, because that is how people are
+   actually filed in your head - you do not think "who was that", you think
+   "the one from the gym".
+
+   Where they are from is a field of its own rather than something buried in
+   the relationship line, so it can be grouped on. The relationship stays what
+   it always was: the small grey line under the name saying what they are to
+   you. חדר כושר / אורון / מאמן בחדר כושר - the place, the person, the role. */
+var PEOPLE_PLACES=['חדר כושר','עבודה','משפחה','לימודים','שכונה','צבא','חברים','אונליין'];
+var _pplSort='recent',_pplQ='';
+var PPL_SORTS=[
+  {v:'recent', t:'הכי מזמן'},
+  {v:'name',   t:'לפי שם'},
+  {v:'place',  t:'לפי מקום'},
+  {v:'added',  t:'לפי הוספה'}
+];
+function pplKey(s){return String(s||'').replace(/['’׳"״,.\-]/g,'').replace(/\s+/g,' ').trim().toLowerCase();}
+function pplMatch(p,q){
+  if(!q)return true;
+  q=pplKey(q);
+  return pplKey(p.name).indexOf(q)>=0||
+         pplKey(p.relationship).indexOf(q)>=0||
+         pplKey(p.place).indexOf(q)>=0||
+         pplKey(p.currentUpdate).indexOf(q)>=0;
+}
+// the list, filtered and ordered, with its original index kept so every
+// existing onclick that addresses people by position still lands right
+function pplOrdered(people){
+  var out=[],i;
+  for(i=0;i<people.length;i++)if(pplMatch(people[i],_pplQ))out.push({p:people[i],i:i});
+  if(_pplSort==='name')
+    out.sort(function(a,b){return String(a.p.name||'').localeCompare(String(b.p.name||''),'he');});
+  else if(_pplSort==='place')
+    out.sort(function(a,b){
+      var ap=a.p.place||'',bp=b.p.place||'';
+      if(ap===bp)return String(a.p.name||'').localeCompare(String(b.p.name||''),'he');
+      if(!ap)return 1;            // people with no place sit at the end
+      if(!bp)return -1;
+      return ap.localeCompare(bp,'he');
+    });
+  else if(_pplSort==='recent')
+    out.sort(function(a,b){
+      // longest since you spoke first; never-spoken counts as longest of all
+      var av=a.p.lastContact||0,bv=b.p.lastContact||0;
+      return av-bv;
+    });
+  return out;
+}
+function pplSetSort(v){_pplSort=v;renderPeople();}
+function pplSearch(v){
+  _pplQ=v;
+  var box=document.getElementById('ppl-list');
+  if(box)box.innerHTML=pplListHTML(loadPeople());
+}
+function pplBarHTML(people){
+  var h='<div class="ppl-find">';
+  h+='<input class="ppl-in" id="ppl-q" type="search" placeholder="חפש שם, מקום או תפקיד…" value="'+esc(_pplQ)+'" oninput="pplSearch(this.value)">';
+  h+='<div class="ppl-sorts">';
+  for(var i=0;i<PPL_SORTS.length;i++)
+    h+='<button class="ppl-sort'+(_pplSort===PPL_SORTS[i].v?' on':'')+'" onclick="pplSetSort(&quot;'+PPL_SORTS[i].v+'&quot;)">'+PPL_SORTS[i].t+'</button>';
+  h+='</div></div>';
+  return h;
+}
+
 function loadPeople(){try{var x=localStorage.getItem('people_v2');return x?JSON.parse(x):[];}catch(e){return[];}}
 function savePeople(arr){try{localStorage.setItem('people_v2',JSON.stringify(arr));}catch(e){}}
 
@@ -7742,30 +7824,48 @@ function renderPeopleHome(){
       h+='</div>';
     }
 
-    // People list
-    for(var pi=0;pi<people.length;pi++){
-      var p=people[pi];
-      var days=daysSince(p.lastContact);
-      var mems=p.memories||[];
-      var lastMem=mems.length?mems[mems.length-1]:null;
-      h+='<div onclick="_personIdx='+pi+';_peopleView=\'person\';renderPeople()" style="background:#fff;border-radius:20px;padding:16px;margin-bottom:10px;cursor:pointer;box-shadow:0 2px 10px rgba(200,180,160,.1);display:flex;gap:14px;align-items:flex-start">';
-      h+=personAvatar(p,48);
-      h+='<div style="flex:1;min-width:0">';
-      h+='<div style="display:flex;justify-content:space-between;align-items:flex-start">';
-      h+='<div><div style="font-size:15px;font-weight:800;color:#4a4340">'+esc(p.name)+'</div>';
-      h+='<div style="font-size:11px;color:#a89e97;margin-top:1px">'+esc(p.relationship||'')+'</div></div>';
-      if(days!==null)h+='<div style="font-size:10px;color:#c0b8b0;white-space:nowrap">'+days+' ימים</div>';
-      h+='</div>';
-      if(p.currentUpdate)h+='<div style="font-size:12px;color:#6a6360;margin-top:6px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(p.currentUpdate)+'</div>';
-      else if(lastMem)h+='<div style="font-size:11px;color:#a89e97;margin-top:5px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(lastMem.content.substring(0,60))+'...</div>';
-      h+='</div></div>';
-    }
+    // People list, behind the search and sort bar
+    h+=pplBarHTML(people);
+    h+='<div id="ppl-list">'+pplListHTML(people)+'</div>';
     h+='<button onclick="_peopleView=\'edit-person\';_personIdx=-1;renderPeople()" style="width:100%;background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:16px;padding:13px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;margin-top:6px">+ הוסף אדם</button>';
   }
   h+='</div>';
   document.getElementById('content').innerHTML=h;
 }
 
+function pplListHTML(people){
+  var rows=pplOrdered(people),h='',i,lastPlace=null;
+  if(!rows.length)
+    return '<div class="ppl-none">'+(_pplQ?'לא מצאתי אף אחד כזה.':'עוד אין כאן אף אחד.')+'</div>';
+  for(i=0;i<rows.length;i++){
+    var p=rows[i].p,pi=rows[i].i;
+    // grouped only when that is what you asked for; a heading over a list
+    // sorted by something else would be lying about the order
+    if(_pplSort==='place'){
+      var pl=p.place||'ללא מקום';
+      if(pl!==lastPlace){h+='<div class="ppl-grp">'+esc(pl)+'</div>';lastPlace=pl;}
+    }
+    var days=daysSince(p.lastContact);
+    var mems=p.memories||[];
+    var lastMem=mems.length?mems[mems.length-1]:null;
+    h+='<div onclick="_personIdx='+pi+';_peopleView=&quot;person&quot;;renderPeople()" style="background:#fff;border-radius:20px;padding:16px;margin-bottom:10px;cursor:pointer;box-shadow:0 2px 10px rgba(200,180,160,.1);display:flex;gap:14px;align-items:flex-start">';
+    h+=personAvatar(p,48);
+    h+='<div style="flex:1;min-width:0">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:flex-start">';
+    h+='<div style="min-width:0"><div style="font-size:15px;font-weight:800;color:#4a4340">'+esc(p.name)+'</div>';
+    var sub=[];
+    if(p.relationship)sub.push(esc(p.relationship));
+    if(p.place&&_pplSort!=='place')sub.push('<span class="ppl-place">'+esc(p.place)+'</span>');
+    h+='<div style="font-size:11px;color:#a89e97;margin-top:1px">'+sub.join(' &middot; ')+'</div></div>';
+    if(days!==null)h+='<div style="font-size:10px;color:#c0b8b0;white-space:nowrap">'+days+' ימים</div>';
+    else h+='<div style="font-size:10px;color:#d8cfc6;white-space:nowrap">&mdash;</div>';
+    h+='</div>';
+    if(p.currentUpdate)h+='<div style="font-size:12px;color:#6a6360;margin-top:6px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(p.currentUpdate)+'</div>';
+    else if(lastMem)h+='<div style="font-size:11px;color:#a89e97;margin-top:5px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(lastMem.content.substring(0,60))+'...</div>';
+    h+='</div></div>';
+  }
+  return h;
+}
 function personAvatar(p,size){
   var bg='#f3b9a8';
   var initials=(p.name||'?').charAt(0);
@@ -7939,7 +8039,7 @@ function deletePersonDate(di){
 
 function renderEditPerson(){
   var people=loadPeople();
-  var p=_personIdx>=0?people[_personIdx]:{name:'',relationship:'',whatTheyMean:'',whatILove:'',currentUpdate:'',toAsk:'',contactFreq:'monthly',lastContact:null,avatar:'',memories:[],importantDates:[]};
+  var p=_personIdx>=0?people[_personIdx]:{name:'',relationship:'',place:'',whatTheyMean:'',whatILove:'',currentUpdate:'',toAsk:'',contactFreq:'monthly',lastContact:null,avatar:'',memories:[],importantDates:[]};
   document.getElementById('hdr-title').textContent=_personIdx>=0?'עריכת פרטים':'אדם חדש';
   var h='<div style="padding-bottom:30px">';
   h+='<button onclick="_peopleView=\''+(_personIdx>=0?'person':'home')+'\';renderPeople()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;margin-bottom:14px;display:block">&#8249; חזרה</button>';
@@ -7959,6 +8059,14 @@ function renderEditPerson(){
     h+='<button onclick="document.getElementById(\'ep-rel\').value=\''+rt+'\'" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSel?'linear-gradient(135deg,#f3b9a8,#e08a72)':'#f5f0eb')+';color:'+(isSel?'#fff':'#6a6360')+'">'+rt+'</button>';
   }
   h+='</div><input id="ep-rel" class="mtin" value="'+esc(p.relationship||'')+'" placeholder="או כתוב בעצמך..."></div>';
+  // where you know them from - its own field, so the list can group on it
+  h+='<div style="margin-bottom:12px"><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:6px">מאיפה אתם מכירים</div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">';
+  for(var qi=0;qi<PEOPLE_PLACES.length;qi++){
+    var qp=PEOPLE_PLACES[qi],qsel=p.place===qp;
+    h+='<button type="button" onclick="document.getElementById(&quot;ep-place&quot;).value=&quot;'+qp+'&quot;" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(qsel?'linear-gradient(135deg,#f3b9a8,#e08a72)':'#f5f0eb')+';color:'+(qsel?'#fff':'#6a6360')+'">'+qp+'</button>';
+  }
+  h+='</div><input id="ep-place" class="mtin" value="'+esc(p.place||'')+'" placeholder="או כתוב בעצמך..."></div>';
   h+=pfield('מה הוא/היא בשבילי','ep-mean',p.whatTheyMean,'',true);
   h+=pfield('מה אני אוהב בו/בה','ep-love',p.whatILove,'',true);
   h+=pfield('מה קורה עכשיו','ep-update',p.currentUpdate,'',true);
@@ -8040,6 +8148,7 @@ function savePersonEdit(){
   var updated=Object.assign({},existing,{
     name:name.value.trim(),
     relationship:(document.getElementById('ep-rel')||{}).value||'',
+    place:(document.getElementById('ep-place')||{}).value||'',
     whatTheyMean:(document.getElementById('ep-mean')||{}).value||'',
     whatILove:(document.getElementById('ep-love')||{}).value||'',
     currentUpdate:(document.getElementById('ep-update')||{}).value||'',
