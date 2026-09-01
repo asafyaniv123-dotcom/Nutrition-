@@ -106,7 +106,10 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
     if (url.pathname === '/health') {
-      return json({ ok: true, configured: !!env.VAPID_JWK, time: new Date().toISOString() });
+      // booleans only - never the values themselves
+      // booleans only, never the values - enough to tell a missing key from a
+      // broken one without publishing anything about either
+      return json({ ok: true, configured: !!env.VAPID_JWK, ai: !!env.AI_KEY, time: new Date().toISOString() });
     }
 
     if (url.pathname === '/subscribe' && req.method === 'POST') {
