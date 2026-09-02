@@ -137,33 +137,18 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .gp-n{font-size:9.5px;font-weight:800;color:#c0b6ae;flex-shrink:0}
 .gp.on .gp-n{color:#a690cf}
 /* the body, with the muscle laid over it */
-.mu-art{position:relative;width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#faf6f1;overflow:hidden;display:block}
-.mu-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:2px}
-.mu-on{filter:none}
-.mu-art.none{display:flex;align-items:center;justify-content:center;font-size:17px}
+/* a muscle card carries no picture, so its name gets the room */
+.gp.bare{padding:12px 13px}
+.gp.bare .gp-t{font-size:13px}
 .eq-art{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#faf6f1;display:flex;align-items:center;justify-content:center}
 .eq-art svg{width:22px;height:22px;fill:none;stroke:#7a716b;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .eq-art b{font-size:15px;font-weight:800;color:#a89e97}
-.gp-cred{font-size:8.5px;color:#c8bfb6;margin:10px 2px 0;direction:ltr;text-align:right}
 .ex-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .ex-chip{border:none;border-radius:10px;padding:6px 10px;font-size:11.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f5f0eb;color:#6a6360;display:flex;align-items:center;gap:5px}
 .ex-chip b{font-size:9.5px;color:#c0b6ae;font-weight:800}
 .ex-chip.on{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
 .ex-chip.on b{color:rgba(255,255,255,.8)}
 .ex-list{display:flex;flex-direction:column;gap:6px}
-/* the two positions, swapped by an animation rather than by a timer - the
-   browser does it on the compositor and it costs nothing */
-.ex-art{position:relative;width:100%;height:104px;margin-bottom:6px;background:#fff;border-radius:10px;overflow:hidden}
-.ex-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4px}
-.ex-art-a{animation:ex-swap 1.6s steps(1,end) infinite}
-.ex-art-b{animation:ex-swap 1.6s steps(1,end) infinite;animation-delay:.8s}
-@keyframes ex-swap{0%,49.9%{opacity:1}50%,100%{opacity:0}}
-.ex-art-c{position:absolute;bottom:2px;left:4px;font-size:7.5px;color:#c8bfb6;direction:ltr;letter-spacing:.02em}
-@media (prefers-reduced-motion:reduce){
-  .ex-art-a,.ex-art-b{animation:none}
-  .ex-art-b{opacity:0}
-}
-.ex-row.art{padding-top:8px}
 .ex-row{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:none;border-radius:13px;padding:10px 12px;background:#fff;cursor:pointer;font-family:inherit;text-align:right;box-shadow:0 2px 8px rgba(200,180,160,.1)}
 .ex-n{font-size:13.5px;font-weight:800;color:#4a4340}
 .ex-meta{font-size:10px;color:#a89e97}
@@ -6211,7 +6196,7 @@ function exOpen(){
   // cached exLoad called back immediately, ex-body did not exist yet, and
   // the list came up empty on every open after the first.
   exSheet();
-  muLoad(function(){exLoad(function(){exPaint();});});
+  exLoad(function(){exPaint();});
 }
 function exClose(){
   var o=document.getElementById('ex-ov');if(o)o.remove();
@@ -6255,17 +6240,16 @@ function _exPaintBody(){
     function card(k,art){
       var n=count(k);
       if(!n)return '';
-      return '<button class="gp'+(_exFilter===k?' on':'')+'" onclick="exSetFilter(&quot;'+esc(k)+'&quot;)">'+
+      return '<button class="gp'+(art?'':' bare')+(_exFilter===k?' on':'')+'" onclick="exSetFilter(&quot;'+esc(k)+'&quot;)">'+
         art+'<span class="gp-t">'+esc(k)+'</span><span class="gp-n">'+n+'</span></button>';
     }
     if(_exTab==='muscle'){
       for(var si=0;si<MU_SECTIONS.length;si++){
         var sec=MU_SECTIONS[si],inner='';
-        for(var mi=0;mi<sec.m.length;mi++)inner+=card(sec.m[mi],muArtHTML(sec.m[mi]));
+        for(var mi=0;mi<sec.m.length;mi++)inner+=card(sec.m[mi],'');
         if(!inner)continue;
         h+='<div class="gp-h">'+sec.t+'</div><div class="gp-grid">'+inner+'</div>';
       }
-      h+='<div class="gp-cred">שרטוטי השרירים: wger &middot; CC BY-SA</div>';
     } else {
       var eq=_exDB.equipment||[],eh='';
       for(var qi=0;qi<eq.length;qi++)eh+=card(eq[qi],eqArtHTML(eq[qi]));
@@ -6279,8 +6263,7 @@ function _exPaintBody(){
     h+='<div class="ex-list">';
     for(var j=0;j<list.length;j++){
       var e=list[j];
-      h+='<button class="ex-row'+(e.art?' art':'')+'" onclick="exDetailOpen('+j+')">'+
-         exArtHTML(e)+
+      h+='<button class="ex-row" onclick="exDetailOpen('+j+')">'+
          '<span class="ex-n">'+esc(e.n)+'</span>'+
          '<span class="ex-meta">'+esc(e.m.join(' · '))+' &middot; '+esc(e.q.join(', '))+'</span>'+
          (e.en?'<span class="ex-en">'+esc(e.en)+'</span>':'')+
@@ -6308,14 +6291,6 @@ function exChooseOwn(){
 }
 /* Open the library and do something with what comes back. Everywhere that
    wants an exercise name goes through here, so they all get the same list. */
-/* Two drawings - the relaxed position and the tensed one - swapped every
-   second. That is what a GIF of an exercise is doing, and two SVGs of 32KB
-   do it sharper than a GIF and smaller than a video.
-
-   They are Everkinetic's, CC-BY-SA 4.0, which requires the credit that sits
-   under them. Only 29 of the 97 have one: the matching refused everything it
-   was not sure of, because a picture of the wrong exercise is worse than no
-   picture - you would follow it. */
 /* ── THE GROUPS, AS A GRID WITH PICTURES ──
    A row of word-chips makes you read fifteen labels to find one. Hevy shows a
    card per group with the muscle drawn and highlighted, split into upper body,
@@ -6335,25 +6310,6 @@ var MU_SECTIONS=[
   {t:'פלג גוף תחתון',m:['ארבע ראשי','ירך אחורית','ישבן','תאומים']},
   {t:'מרכז הגוף ואחר',m:['בטן','אלכסונים','גב תחתון','אירובי']}
 ];
-var _muMap=null;
-function muLoad(cb){
-  if(_muMap)return cb&&cb();
-  fetch(appBase()+'assets/mu/map.json').then(function(r){return r.json();}).then(function(j){
-    _muMap=j;cb&&cb();
-  },function(){_muMap={};cb&&cb();});
-}
-/* The body, with the muscle laid over it. Two images rather than one file per
-   muscle: fifteen copies of a 350KB body would be five megabytes to say the
-   same thing fifteen times. */
-function muArtHTML(name){
-  var m=_muMap&&_muMap[name];
-  if(!m)return '<span class="mu-art none">'+(name==='אירובי'?'&#127939;':'&#9679;')+'</span>';
-  var b=appBase()+'assets/mu/';
-  return '<span class="mu-art">'+
-    '<img class="mu-body" src="'+b+'body-'+m.s+'.svg" alt="">'+
-    '<img class="mu-on" src="'+b+m.f+'" alt="">'+
-    '</span>';
-}
 /* Equipment, drawn. Line work in the app's own weight rather than photographs
    of gym kit, which would be a fourth licence to keep track of. */
 var EQ_ICONS={
@@ -6515,13 +6471,6 @@ function exDetailChoose(){
   _exDetail=null;
   exClose();
   if(_exPick)_exPick(e.n,e);
-}
-function exArtHTML(e){
-  if(!e||!e.art)return '';
-  return '<div class="ex-art">'+
-    '<img class="ex-art-a" src="'+appBase()+'assets/ex/'+e.id+'-a.svg" alt="">'+
-    '<img class="ex-art-b" src="'+appBase()+'assets/ex/'+e.id+'-b.svg" alt="">'+
-    '<span class="ex-art-c">Everkinetic &middot; CC BY-SA</span></div>';
 }
 function exPickInto(fn){_exPick=fn;exOpen();}
 // the template editor's end of it: show the choice, and keep it where the
