@@ -4470,6 +4470,93 @@ function goHome(){
   renderBackup();
 }
 
+/* ── WHERE YOU STAND TODAY ──
+   One object, one shape, everything a glance needs: what you have eaten
+   against what you were aiming for, how much water and how many steps, what
+   is next on the day's plan, and whether the day has been closed.
+
+   It exists because a lock screen widget is exactly this and nothing else -
+   a picture of where you stand. iOS will not give a web app one, so the
+   widget itself waits for the native build; but the awkward half is not the
+   Swift, it is deciding what a glance should contain and digging it out of
+   six different records. That part is here and does not need Xcode.
+
+   Two rules it keeps, both for the reader's sake rather than ours:
+
+   Every field is always present. A widget refreshing on a lock screen has
+   nowhere to show an error, so a missing key is worse than a zero - it wants
+   to draw a ring at 0% and move on, not decide what undefined means.
+
+   The shape is versioned. Native code compiled months ago will still be
+   reading this after the web app has moved on, so v tells it whether it is
+   looking at something it understands. */
+var DAY_STATE_V=1;
+function todayState(dateStr){
+  var d=dateStr||todayStr();
+  var day=loadDay(d)||{meals:[],water:0};
+  var meals=day.meals||[];
+  function sum(k){
+    var t=0,i;
+    for(i=0;i<meals.length;i++)t+=(meals[i][k]||0);
+    return t;
+  }
+  var kcal=Math.round(sum('kcal'));
+  var p=Math.round(sum('p')*10)/10;
+  var c=Math.round(sum('c')*10)/10;
+  var f=Math.round(sum('f')*10)/10;
+  var water=day.water||0;
+  // a target of zero would divide by nothing; treat it as "no target set"
+  function pct(v,t){return (t>0)?Math.min(999,Math.round(v/t*100)):0;}
+
+  /* The next thing on the clock, and how much of the day is left to do. An
+     item without an hour is on the list but not on the clock, so it cannot be
+     "next" - it is only counted. */
+  var items=[],next=null,later=0,past=0;
+  try{items=dpAll(d)||[];}catch(e){}
+  var now=new Date(),nowMin=(d===todayStr())?(now.getHours()*60+now.getMinutes()):0;
+  var timed=items.filter(function(t){return typeof t.hour==='number';})
+                 .sort(function(a,b){return (a.hour*60+(a.min||0))-(b.hour*60+(b.min||0));});
+  for(var i=0;i<timed.length;i++){
+    var st=timed[i].hour*60+(timed[i].min||0);
+    if(st>=nowMin){
+      later++;
+      if(!next)next={what:timed[i].w||'',hour:timed[i].hour,min:timed[i].min||0,
+                     at:dpHM(timed[i].hour,timed[i].min||0),
+                     inMin:(d===todayStr())?Math.max(0,st-nowMin):null};
+    } else past++;
+  }
+
+  var sum1=loadSummary(d);
+  var vl=(typeof loadVlog==='function')?loadVlog(d):null;
+
+  return {
+    v:DAY_STATE_V,
+    date:d,
+    isToday:d===todayStr(),
+    at:new Date().toISOString(),
+    nutrition:{
+      kcal:kcal, p:p, c:c, f:f,
+      target:{kcal:TARGETS.kcal||0,p:TARGETS.p||0,c:TARGETS.c||0,f:TARGETS.f||0},
+      pct:{kcal:pct(kcal,TARGETS.kcal),p:pct(p,TARGETS.p),
+           c:pct(c,TARGETS.c),f:pct(f,TARGETS.f)},
+      meals:meals.length,
+      left:Math.max(0,(TARGETS.kcal||0)-kcal)
+    },
+    water:{ml:water,target:TARGETS.water||0,pct:pct(water,TARGETS.water)},
+    steps:{n:(typeof stepsOf==='function')?stepsOf(d):0},
+    plan:{total:timed.length,done:past,left:later,next:next,
+          unscheduled:items.length-timed.length},
+    reflection:{done:!!(sum1&&sum1.done),started:!!sum1,vlog:!!(vl&&vl.k)},
+    greeting:(typeof greetText==='function')?greetText().text:''
+  };
+}
+/* The bridge a native widget would read. Capacitor writes this string into a
+   shared App Group container; the Swift side decodes it and draws. Kept here
+   so the web app and the widget can never disagree about the shape - there is
+   only one place it is built. */
+function todayStateJSON(dateStr){
+  try{return JSON.stringify(todayState(dateStr));}catch(e){return '';}
+}
 /* ── OPENING SOMEWHERE OTHER THAN HOME ──
    The app is one page and has never had an address for anything inside it.
    That is fine while the only way in is the icon, and it is what stops a home
