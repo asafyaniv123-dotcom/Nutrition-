@@ -550,6 +550,11 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .ppl-tile:active{transform:scale(.97)}
 .ppl-tname{font-size:13.5px;font-weight:800;color:#4a4340;text-align:center;line-height:1.3}
 .ppl-tn{font-size:10px;font-weight:700;color:#c2664a}
+/* faces overlapping slightly, the way a group of people stands */
+.ppl-tfaces{display:flex;direction:ltr}
+.ppl-tf{margin-left:-8px;display:block}
+.ppl-tf:first-child{margin-left:0}
+.ppl-tf img,.ppl-tf>div{border:2px solid #fdf0eb}
 .ppl-back{background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 6px;display:block}
 .ppl-grp{font-size:10px;letter-spacing:.1em;font-weight:800;color:#c2664a;margin:14px 2px 7px}
 .ppl-grp:first-child{margin-top:0}
@@ -729,20 +734,28 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .vl-sheet{width:100%;max-width:480px;background:#15131a;border-radius:22px 22px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));max-height:96vh;overflow-y:auto}
 .vl-hd{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;color:#f0ece6;margin-bottom:10px}
 .vl-x{background:none;border:none;color:#8d8792;font-size:22px;line-height:1;cursor:pointer;font-family:inherit;padding:0 4px}
-.vl-stage{position:relative;width:100%;aspect-ratio:3/4;max-height:56vh;background:#000;border-radius:16px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+/* the shape comes from the chosen frame, set in vlogSetOrient. touch-action
+   none so a pinch reaches the page instead of zooming the whole app. */
+/* Driven by height, not width. With width:100% and a height cap, a portrait
+   aspect-ratio cannot win - the box keeps the full width and simply loses
+   the height it asked for, which is how a 9:16 frame came out landscape.
+   Given a height and told to take its width from the ratio, it is portrait.
+   touch-action:none so a pinch reaches the canvas instead of zooming the app. */
+.vl-stage{position:relative;height:58vh;max-width:100%;aspect-ratio:9/16;background:#000;border-radius:16px;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none;margin:0 auto}
 /* contain, not cover. The recording is the whole frame; a preview cropped to
    fill a 3:4 box would have you framing yourself against something the file
    does not contain - and on a wide camera it looks zoomed in besides. */
 /* the canvas is the picture being recorded; the video element only ever
    plays a finished clip back */
-.vl-canvas{max-width:100%;max-height:100%;display:block;background:#000}
+.vl-canvas{width:100%;height:100%;display:block;background:#000}
+.vl-canvas.mirror{transform:scaleX(-1)}
 .vl-video{width:100%;height:100%;object-fit:contain;background:#000}
 /* the correction control, at the foot of the frame so it does not crowd the
    two at the top */
-.vl-fix{position:absolute;bottom:10px;left:10px;height:34px;padding:0 11px;border-radius:17px;background:rgba(0,0,0,.5);border:none;display:none;align-items:center;gap:6px;cursor:pointer;color:#fff}
-.vl-fix.on{display:flex}
-.vl-fix svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.vl-fix b{font-size:10.5px;font-weight:800;font-family:inherit}
+/* the zoom readout: quiet at 1x, lit past it, and a tap puts it back */
+.vl-zoom{position:absolute;bottom:10px;left:10px;min-width:44px;height:32px;padding:0 10px;border-radius:16px;background:rgba(0,0,0,.42);border:none;display:none;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-family:inherit;font-size:11.5px;font-weight:800}
+.vl-zoom.live{display:flex}
+.vl-zoom.on{background:rgba(255,255,255,.92);color:#2a2438}
 .vl-flip{position:absolute;top:10px;left:10px;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);border:none;display:none;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .vl-flip.on{display:flex}
 .vl-flip svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -1454,7 +1467,7 @@ var VL_SIZES={portrait:[720,1280],landscape:[1280,720]};
 
 function vlogOpen(d){
   _vlDate=d||todayStr();
-  _vlBlob=null;_vlSec=0;
+  _vlBlob=null;_vlSec=0;_vlZoom=1;
   vlogSheet();
   var have=loadVlog(_vlDate);
   if(have&&have.k)vlogShowSaved(have);
@@ -1474,7 +1487,7 @@ function vlogSheet(){
     '<path d="M20.4 4.6v4.2h-4.2"/><path d="M20.4 14.6a8.6 8.6 0 0 1-14.2 3.2l-2.6-2.4"/>'+
     '<path d="M3.6 19.4v-4.2h4.2"/></svg></button>'+
     '<button class="vl-orient" id="vl-orient" onclick="vlogToggleOrient()" aria-label="לאורך או לרוחב"></button>'+
-    '<button class="vl-fix" id="vl-fix" onclick="vlogCycleFix()" aria-label="כיוון התמונה"></button>'+
+    '<button class="vl-zoom" id="vl-zoom" onclick="vlogZoomReset()" aria-label="אפס זום">1×</button>'+
     '<div class="vl-ring" id="vl-ringwrap">'+
     '<svg viewBox="0 0 72 72"><circle class="vl-ring-bg" cx="36" cy="36" r="32"/>'+
     '<circle class="vl-ring-fg" id="vl-ring" cx="36" cy="36" r="32"/></svg>'+
@@ -1503,6 +1516,20 @@ function vlogSetOrient(o){
   _vlOrient=o;
   var c=document.getElementById('vl-canvas');
   if(c){c.width=VL_SIZES[o][0];c.height=VL_SIZES[o][1];}
+  /* And the box it sits in takes the same shape. Which side drives it
+     depends on the shape: a tall frame is limited by the height available
+     and takes its width from the ratio; a wide one is limited by the width.
+     Set the wrong one and the ratio silently loses - which is how a 9:16
+     frame came out at 1.42 and a 16:9 one at 1.42 as well. */
+  var st=document.querySelector('.vl-stage');
+  if(st){
+    st.style.aspectRatio=VL_SIZES[o][0]+' / '+VL_SIZES[o][1];
+    var tall=VL_SIZES[o][1]>VL_SIZES[o][0];
+    st.style.height=tall?'58vh':'auto';
+    st.style.width=tall?'auto':'100%';
+    st.style.maxWidth='100%';
+    st.style.maxHeight='58vh';
+  }
   var p=document.getElementById('vl-orient');
   if(p)p.innerHTML=vlogOrientLabel();
 }
@@ -1515,57 +1542,93 @@ function vlogOrientLabel(){
 }
 function vlogToggleOrient(){
   vlogSetOrient(_vlOrient==='portrait'?'landscape':'portrait');
+  vlogReshape();
 }
-/* Cover, not contain: the chosen frame is filled edge to edge and the
-   overflow is cropped evenly. That is what turns a landscape sensor into a
-   real portrait clip rather than a wide strip with black above and below. */
+/* The camera was opened for the old shape, so ask it again for the new one -
+   a landscape frame fed a portrait sensor crops to fill, which is the zoom
+   all over again.
+
+   Turning the frame twice in quick succession used to leave the camera on
+   the wrong shape: opening one takes a moment (play() is slow), and a second
+   turn arriving while the first was still in flight was simply dropped. It
+   is remembered now and run when the first finishes. */
+var _vlWantShape=false;
+function vlogReshape(){
+  if(!_vlCamV)return;
+  if(_vlFlipping){_vlWantShape=true;return;}
+  _vlFlipping=true;
+  var done=function(){
+    _vlFlipping=false;
+    if(_vlWantShape){_vlWantShape=false;vlogReshape();}
+  };
+  vlogGetCam().then(done,done);
+}
+/* Cover, like a camera app: the frame is filled edge to edge and any overflow
+   is cropped evenly. This is safe now that the camera is asked for the shape
+   we actually want - a source that already matches the frame loses nothing to
+   a cover fit, because there is no overflow to crop. */
 function vlogPaint(){
   _vlRAF=requestAnimationFrame(vlogPaint);
   var c=document.getElementById('vl-canvas'),v=_vlSrcV;
   if(!c||!v||!v.videoWidth)return;
   var x=c.getContext('2d'),sw=v.videoWidth,sh=v.videoHeight;
-  // fit, never fill: min keeps the whole frame, max would cut its sides off
-  var k=Math.min(c.width/sw,c.height/sh),dw=sw*k,dh=sh*k;
-  var t=vlogFix();
+  var k=Math.max(c.width/sw,c.height/sh)*_vlZoom,dw=sw*k,dh=sh*k;
   x.fillStyle='#000';x.fillRect(0,0,c.width,c.height);
-  x.save();
-  x.translate(c.width/2,c.height/2);
-  // the correction is applied HERE, to the canvas, so the clip that gets
-  // saved is the picture you were looking at - not a CSS trick over the top
-  // of it that the file never sees
-  if(t&2)x.rotate(Math.PI);
-  if(t&1)x.scale(-1,1);
-  try{x.drawImage(v,-dw/2,-dh/2,dw,dh);}catch(e){}
-  x.restore();
+  try{x.drawImage(v,(c.width-dw)/2,(c.height-dh)/2,dw,dh);}catch(e){}
 }
-/* ── 2. which way round ──
-   Twice I guessed what "upside down" meant - mirrored, or turned over - and
-   twice guessing was the wrong move, because it depends on the phone and on
-   which way a person expects to see themselves. So it is a button now, and
-   what it is set to is remembered per camera.
+/* ── ZOOM ──
+   Pinch the picture, at any time, recording or not. It is done here rather
+   than by asking the camera to zoom, which means it works on every phone
+   whatever the lens can do, it can change mid-clip without touching the
+   stream the recorder is reading, and what is recorded is what you framed.
 
-   0 as it comes, 1 mirrored, 2 turned over, 3 both. The front camera starts
-   mirrored because that is how you are used to seeing your own face; the
-   back camera starts as it comes, because it is pointed at the world and the
-   world is not mirrored. */
-var VL_FIX_KEY='vlog_fix';
-var VL_FIX_NAMES=['רגיל','מראה','הפוך','מראה + הפוך'];
-function vlogFixAll(){
-  try{var o=JSON.parse(localStorage.getItem(VL_FIX_KEY));if(o)return o;}catch(e){}
-  return {user:1,environment:0};
+   The cost is honest: past about 2x this is enlargement, not a longer lens,
+   so it softens the way cropping always does. */
+var _vlZoom=1,_vlPinch=null,_vlPts=null;
+function vlogZoomSet(z){
+  _vlZoom=Math.max(1,Math.min(4,z));
+  var e=document.getElementById('vl-zoom');
+  if(e){
+    e.textContent=(Math.round(_vlZoom*10)/10)+'×';
+    if(_vlZoom>1.02)e.classList.add('on'); else e.classList.remove('on');
+  }
 }
-function vlogFix(){var a=vlogFixAll();var v=a[_vlFacing];return typeof v==='number'?v:(_vlFacing==='user'?1:0);}
-function vlogCycleFix(){
-  var a=vlogFixAll();
-  a[_vlFacing]=(vlogFix()+1)%4;
-  try{localStorage.setItem(VL_FIX_KEY,JSON.stringify(a));}catch(e){}
-  vlogFixLabel();
-}
-function vlogFixLabel(){
-  var b=document.getElementById('vl-fix');
-  if(b)b.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 3.4v17.2"/>'+
-    '<path d="M8.6 7.2 12 3.4l3.4 3.8"/><path d="M15.4 16.8 12 20.6l-3.4-3.8"/></svg>'+
-    '<b>'+VL_FIX_NAMES[vlogFix()]+'</b>';
+function vlogZoomReset(){vlogZoomSet(1);}
+function vlogPinchInit(){
+  var st=document.querySelector('.vl-stage');
+  if(!st||st.getAttribute('data-pinch')==='1')return;
+  st.setAttribute('data-pinch','1');
+  _vlPts={};
+  function dist(){
+    var k=Object.keys(_vlPts);
+    if(k.length<2)return 0;
+    var a=_vlPts[k[0]],b=_vlPts[k[1]];
+    return Math.sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y));
+  }
+  st.addEventListener('pointerdown',function(e){
+    _vlPts[e.pointerId]={x:e.clientX,y:e.clientY};
+    if(Object.keys(_vlPts).length===2)_vlPinch={d:dist(),z:_vlZoom};
+  });
+  st.addEventListener('pointermove',function(e){
+    if(!_vlPts[e.pointerId])return;
+    _vlPts[e.pointerId]={x:e.clientX,y:e.clientY};
+    if(_vlPinch&&Object.keys(_vlPts).length===2){
+      e.preventDefault();
+      var d=dist();
+      if(_vlPinch.d>4)vlogZoomSet(_vlPinch.z*(d/_vlPinch.d));
+    }
+  });
+  function up(e){
+    delete _vlPts[e.pointerId];
+    if(Object.keys(_vlPts).length<2)_vlPinch=null;
+  }
+  st.addEventListener('pointerup',up);
+  st.addEventListener('pointercancel',up);
+  // a mouse has no second finger; a wheel is the nearest thing to a pinch
+  st.addEventListener('wheel',function(e){
+    e.preventDefault();
+    vlogZoomSet(_vlZoom*(e.deltaY<0?1.09:0.92));
+  },{passive:false});
 }
 function vlogPaintStop(){
   if(_vlRAF){cancelAnimationFrame(_vlRAF);_vlRAF=0;}
@@ -1595,7 +1658,11 @@ function vlogStartCam(){
 function vlogGetCam(){
   var wantAudio=!_vlAudio;
   return navigator.mediaDevices.getUserMedia({
-    video:{facingMode:_vlFacing,width:{ideal:1280},height:{ideal:1280}},
+    // the shape that was chosen, not a square - see below
+    video:{facingMode:_vlFacing,
+           width:{ideal:VL_SIZES[_vlOrient][0]},
+           height:{ideal:VL_SIZES[_vlOrient][1]},
+           aspectRatio:{ideal:VL_SIZES[_vlOrient][0]/VL_SIZES[_vlOrient][1]}},
     audio:wantAudio
   }).then(function(s){
     var old=_vlCamV;
@@ -1612,15 +1679,21 @@ function vlogGetCam(){
 }
 // The live view is the canvas, and the canvas is already the finished
 // picture - correction included - so nothing is laid over it.
+/* The front camera is shown mirrored and saved unmirrored, which is what an
+   iPhone does and what people are used to: you frame yourself in a mirror,
+   and the clip comes out the way others see you. That is the whole of it now
+   - the four-way correction control is gone, because it was four answers to
+   a question that has one. */
 function vlogLive(){
   var c=document.getElementById('vl-canvas'),v=document.getElementById('vl-video');
-  if(c)c.style.display='block';
+  if(c){c.style.display='block';c.classList.toggle('mirror',_vlFacing==='user');}
   if(v)v.style.display='none';
   vlogSetOrient(_vlOrient);
   vlogPaintStop();vlogPaint();
+  vlogPinchInit();
+  vlogZoomSet(_vlZoom);
   var o=document.getElementById('vl-orient');if(o)o.classList.add('on');
-  var fx=document.getElementById('vl-fix');if(fx)fx.classList.add('on');
-  vlogFixLabel();
+  var z=document.getElementById('vl-zoom');if(z)z.classList.add('live');
 }
 /* Switching cameras. The canvas is painted throughout, so mid-clip this does
    not even pause the recording - the picture simply becomes the other camera
@@ -1631,8 +1704,8 @@ function vlogFlip(){
   var was=_vlFacing;
   _vlFacing=(_vlFacing==='user')?'environment':'user';
   vlogGetCam().then(function(){
-    // each camera remembers its own correction
-    vlogFixLabel();
+    var c=document.getElementById('vl-canvas');
+    if(c)c.classList.toggle('mirror',_vlFacing==='user');
     _vlFlipping=false;
   },function(){
     // refused, or there is nothing to switch to: go back rather than go dark
@@ -1675,7 +1748,7 @@ function vlogFallback(why){
   vlogRing(false);
   var fb=document.getElementById('vl-flip');if(fb)fb.classList.remove('on');
   var fo=document.getElementById('vl-orient');if(fo)fo.classList.remove('on');
-  var fx2=document.getElementById('vl-fix');if(fx2)fx2.classList.remove('on');
+  var z2=document.getElementById('vl-zoom');if(z2)z2.classList.remove('live');
   var fc=document.getElementById('vl-canvas');if(fc)fc.style.display='none';
   var fv=document.getElementById('vl-video');if(fv)fv.style.display='block';
   vlogMsg((why?why+'<br>':'')+'אפשר להקליט במצלמה של הטלפון, עד '+VLOG_MAX+' שניות.');
@@ -1773,7 +1846,8 @@ function vlogSetSrc(url){
   var b=document.getElementById('vl-flip');if(b)b.classList.remove('on');
   var o=document.getElementById('vl-orient');
   if(o){o.classList.remove('on');o.classList.remove('locked');}
-  var fx=document.getElementById('vl-fix');if(fx)fx.classList.remove('on');
+  var z=document.getElementById('vl-zoom');
+  if(z){z.classList.remove('live');z.classList.remove('on');}
 }
 function vlogPreview(){
   vlogRing(false);
@@ -9205,19 +9279,21 @@ function pplOrdered(people){
    you want to walk into, not scroll past - and the tiles say how many are
    behind each one before you open it. */
 function pplPlaces(people){
-  var map={},order=[],i,pl;
+  var map={},faces={},order=[],i,pl;
   for(i=0;i<people.length;i++){
     if(!pplMatch(people[i],_pplQ))continue;
     pl=people[i].place||'ללא מקום';
-    if(!map[pl]){map[pl]=0;order.push(pl);}
+    if(!map[pl]){map[pl]=0;faces[pl]=[];order.push(pl);}
     map[pl]++;
+    // the first few of them, to show on the tile
+    if(faces[pl].length<3)faces[pl].push(people[i]);
   }
   order.sort(function(a,b){
     if(a==='ללא מקום')return 1;
     if(b==='ללא מקום')return -1;
     return b>a?-1:(b<a?1:0);
   });
-  return order.map(function(k){return {name:k,n:map[k]};});
+  return order.map(function(k){return {name:k,n:map[k],who:faces[k]};});
 }
 function pplOpenPlace(pl){_pplPlace=pl;renderPeople();}
 function pplBackToPlaces(){_pplPlace='';renderPeople();}
@@ -9328,10 +9404,17 @@ function pplPlacesHTML(people){
   var pl=pplPlaces(people),h='',i;
   if(!pl.length)return '<div class="ppl-none">'+(_pplQ?'לא מצאתי אף אחד כזה.':'עוד אין כאן אף אחד.')+'</div>';
   h+='<div class="ppl-tiles">';
-  for(i=0;i<pl.length;i++)
+  // A place is the people in it, so the tile shows them - up to three faces
+  // overlapping, which is enough to recognise a group by.
+  for(i=0;i<pl.length;i++){
+    var fh='',who=pl[i].who||[];
+    for(var fi=0;fi<who.length;fi++)
+      fh+='<span class="ppl-tf">'+personAvatar(who[fi],26)+'</span>';
     h+='<button class="ppl-tile" onclick="pplOpenPlace(&quot;'+esc(pl[i].name)+'&quot;)">'+
+       '<span class="ppl-tfaces">'+fh+'</span>'+
        '<span class="ppl-tname">'+esc(pl[i].name)+'</span>'+
        '<span class="ppl-tn">'+pl[i].n+'</span></button>';
+  }
   h+='</div>';
   return h;
 }
