@@ -61,6 +61,31 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
    tapping the card goes there. */
 /* what you did last time, and whether today beat it */
 /* choosing an exercise */
+/* building a routine: a block per exercise, a row per set */
+.tpl-t{font-size:16px;font-weight:800;color:#4a4340;margin-bottom:12px}
+.tpl-name{width:100%;border:none;border-bottom:2px solid #ece5da;background:none;padding:8px 2px;font-size:17px;font-weight:800;font-family:inherit;color:#4a4340;outline:none;margin-bottom:18px;text-align:right}
+.tpl-name:focus{border-bottom-color:#a690cf}
+.tb{background:#fff;border-radius:18px;padding:12px 12px 8px;margin-bottom:10px;box-shadow:0 2px 10px rgba(200,180,160,.1)}
+.tb-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.tb-n{font-size:14px;font-weight:800;color:#4a4340;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tb-tools{display:flex;gap:2px;flex-shrink:0}
+.tb-tools button{border:none;background:none;color:#c0b6ae;font-size:15px;cursor:pointer;padding:2px 6px;font-family:inherit}
+.tb-cols,.tb-row{display:grid;grid-template-columns:34px 1fr 1fr 30px;gap:7px;align-items:center}
+.tb-cols{margin-bottom:5px}
+.tb-cols span{font-size:9px;font-weight:800;color:#c0b6ae;text-align:center;letter-spacing:.04em}
+.tb-row{margin-bottom:6px}
+.tb-i{font-size:12px;font-weight:800;color:#a89e97;text-align:center;background:#f5f0eb;border-radius:8px;padding:8px 0}
+.tb-in{width:100%;border:1.5px solid #ece5da;border-radius:9px;padding:8px 4px;font-size:15px;font-weight:700;font-family:inherit;color:#4a4340;background:#fff;outline:none;text-align:center;direction:ltr}
+.tb-in:focus{border-color:#a690cf}
+.tb-x{border:none;background:none;color:#e0b0a0;font-size:15px;cursor:pointer;font-family:inherit;padding:0}
+.tb-x:disabled{opacity:.25;cursor:default}
+.tb-add{width:100%;border:none;border-radius:10px;padding:9px;margin-top:4px;background:#f7f3ee;color:#a89e97;font-size:11.5px;font-weight:800;font-family:inherit;cursor:pointer}
+.tpl-addex{width:100%;border:none;border-radius:15px;padding:14px;margin-bottom:16px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer}
+.tpl-empty{font-size:11.5px;color:#a89e97;text-align:center;padding:22px 12px;line-height:1.6}
+.tpl-btns{display:flex;gap:8px}
+.tpl-save{flex:1;border:none;border-radius:14px;padding:13px;background:linear-gradient(135deg,#bfe0c7,#8fc79e);color:#fff;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer}
+.tpl-cancel{border:none;border-radius:14px;padding:13px 16px;background:#f5f0eb;color:#a89e97;font-size:13px;font-family:inherit;cursor:pointer}
+.tpl-del{border:none;border-radius:14px;padding:13px 12px;background:rgba(243,185,168,.2);color:#e08a72;font-size:12px;font-family:inherit;cursor:pointer}
 .fit-pick{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid #ece5da;border-radius:12px;padding:12px 13px;background:#fff;font-family:inherit;font-size:13.5px;font-weight:700;color:#4a4340;cursor:pointer;text-align:right}
 .fit-pick-c{color:#d8cfc7;font-size:15px}
 .ex-ov{position:fixed;inset:0;z-index:440;background:rgba(74,67,64,.62);display:flex;align-items:flex-end;justify-content:center}
@@ -4939,7 +4964,9 @@ function renderCoachPlan(){
       h+='<div style="background:#fbf7f2;border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">';
       h+='<div><div style="font-size:12.5px;font-weight:700;color:#4a4340">'+esc(ex.name)+'</div>';
       if(ex.note)h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+esc(ex.note)+'</div>';
-      h+='</div><div style="font-size:11px;font-weight:700;color:#a690cf;flex-shrink:0">'+ex.sets+' &#215; '+esc(ex.reps)+'</div></div>';
+      // the planned rows, not a single sets-by-reps figure
+      var _pl=tplRows(ex);
+      h+='</div><div style="font-size:11px;font-weight:700;color:#a690cf;flex-shrink:0">'+_pl.length+' &#215; '+esc(String((_pl[0]&&_pl[0].r)||''))+'</div></div>';
     });
     h+='</div>';
   });
@@ -5821,41 +5848,136 @@ function logProgEntry(progIdx,exIdx){
   renderViewProgram();
 }
 
-function renderFitEditTemplate(){
+/* ── BUILDING A ROUTINE ──
+   A template used to be "3 sets of 10" - one number for all of them. Which is
+   not how anyone trains: the first set is lighter, the last one is where you
+   push, and a plan that cannot say so is a plan you have to remember around.
+
+   So an exercise is a block with a row per set, weight and reps in each. Add a
+   set to that exercise, add an exercise to the routine, and both appear where
+   you put them.
+
+   Old templates still open. Anything without rows gets them made from the
+   sets-and-reps it does have, so nothing that already exists has to be
+   rebuilt by hand. */
+var _tpl=null;      // the routine being edited, held here rather than re-read
+function tplRows(ex){
+  if(ex.plan&&ex.plan.length)return ex.plan;
+  // the old shape: n sets of the same reps, weight unknown
+  var n=Math.max(1,parseInt(ex.sets,10)||3),r=parseInt(ex.reps,10)||10,out=[],i;
+  for(i=0;i<n;i++)out.push({w:'',r:r});
+  return out;
+}
+function tplLoad(){
   var templates=loadTemplates();
-  var t=_fitEditIdx>=0?templates[_fitEditIdx]:{name:'',exercises:[]};
-  var h='<div style="padding-bottom:20px">';
-  h+='<div style="font-size:16px;font-weight:800;color:#4a4340;margin-bottom:14px">'+(_fitEditIdx>=0?'עריכת תבנית':'תבנית חדשה')+'</div>';
-  h+='<div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px">שם התבנית</div>';
-  h+='<input id="fit-tpl-name" class="mtin" value="'+esc(t.name)+'" placeholder="למשל: דחיקה עליונה">';
-  h+='<div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:8px;margin-top:4px">תרגילים</div>';
-  for(var ei=0;ei<t.exercises.length;ei++){
-    var ex=t.exercises[ei];
-    h+='<div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:0 2px 8px rgba(200,180,160,.08)">';
-    h+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#4a4340">'+esc(ex.name)+'</div>';
-    h+='<div style="font-size:10px;color:#a89e97">'+ex.sets+' סטים &middot; '+ex.reps+' חזרות</div></div>';
-    h+='<button onclick="removeFitExercise('+ei+')" style="background:none;border:none;cursor:pointer;color:#f3b9a8;font-size:16px;padding:2px 6px">&times;</button>';
+  var t=(_fitEditIdx>=0&&templates[_fitEditIdx])?templates[_fitEditIdx]:{name:'',exercises:[]};
+  _tpl={name:t.name||'',exercises:(t.exercises||[]).map(function(ex){
+    return {name:ex.name,plan:tplRows(ex).map(function(s){return {w:s.w,r:s.r};})};
+  })};
+}
+/* Typed values go straight into the object without redrawing - a redraw on
+   every keystroke takes the keyboard down and puts the caret back at the
+   start, which on a phone makes the thing unusable. Only adding or removing
+   a row redraws. */
+function tplSet(ei,si,k,v){
+  if(!_tpl||!_tpl.exercises[ei])return;
+  var row=_tpl.exercises[ei].plan[si];
+  if(!row)return;
+  row[k]=(v===''?'':(parseFloat(v)||0));
+}
+function tplName(v){if(_tpl)_tpl.name=v;}
+function tplAddSet(ei){
+  var ex=_tpl&&_tpl.exercises[ei];
+  if(!ex)return;
+  // a new set starts where the last one left off, which is what you meant
+  var last=ex.plan[ex.plan.length-1];
+  ex.plan.push(last?{w:last.w,r:last.r}:{w:'',r:10});
+  renderFitness();
+}
+function tplDropSet(ei,si){
+  var ex=_tpl&&_tpl.exercises[ei];
+  if(!ex||ex.plan.length<=1)return;   // an exercise with no sets is not an exercise
+  ex.plan.splice(si,1);
+  renderFitness();
+}
+function tplDropEx(ei){
+  if(!_tpl)return;
+  _tpl.exercises.splice(ei,1);
+  renderFitness();
+}
+function tplMoveEx(ei,d){
+  if(!_tpl)return;
+  var to=ei+d;
+  if(to<0||to>=_tpl.exercises.length)return;
+  var x=_tpl.exercises.splice(ei,1)[0];
+  _tpl.exercises.splice(to,0,x);
+  renderFitness();
+}
+function tplAddExercise(){
+  exPickInto(function(name){
+    if(!_tpl)return;
+    _tpl.exercises.push({name:name,plan:[{w:'',r:10}]});
+    renderFitness();
+    setTimeout(function(){
+      var els=document.querySelectorAll('.tb');
+      if(els.length)els[els.length-1].scrollIntoView({block:'center',behavior:'smooth'});
+    },60);
+  });
+}
+function tplBlockHTML(ex,ei){
+  var h='<div class="tb">';
+  h+='<div class="tb-hd"><span class="tb-n">'+esc(ex.name)+'</span>';
+  h+='<span class="tb-tools">';
+  if(ei>0)h+='<button onclick="tplMoveEx('+ei+',-1)" aria-label="למעלה">&#8963;</button>';
+  h+='<button onclick="tplDropEx('+ei+')" aria-label="הסר">&times;</button>';
+  h+='</span></div>';
+  h+='<div class="tb-cols"><span>סט</span><span>ק"ג</span><span>חזרות</span><span></span></div>';
+  for(var si=0;si<ex.plan.length;si++){
+    var s=ex.plan[si];
+    h+='<div class="tb-row">';
+    h+='<span class="tb-i">'+(si+1)+'</span>';
+    h+='<input class="tb-in" type="number" inputmode="decimal" step="0.5" placeholder="&ndash;" value="'+(s.w===''||s.w===undefined?'':s.w)+'" oninput="tplSet('+ei+','+si+',&quot;w&quot;,this.value)">';
+    h+='<input class="tb-in" type="number" inputmode="numeric" placeholder="&ndash;" value="'+(s.r===''||s.r===undefined?'':s.r)+'" oninput="tplSet('+ei+','+si+',&quot;r&quot;,this.value)">';
+    h+='<button class="tb-x" onclick="tplDropSet('+ei+','+si+')"'+(ex.plan.length<=1?' disabled':'')+'>&times;</button>';
     h+='</div>';
   }
-  // Add exercise form
-  h+='<div style="background:#fff;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 2px 8px rgba(200,180,160,.08)">';
-  h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:8px">הוסף תרגיל</div>';
-  /* The name used to be typed, which meant last week's לחיצת חזה and this
-     week's did not always match - and the previous-time line is worth
-     nothing when they do not. Picked from the library they always do. */
-  h+='<button class="fit-pick" onclick="exPickInto(fitExPicked)">'+
-     '<span id="fit-ex-shown">בחר תרגיל מהרשימה</span><span class="fit-pick-c">&#8249;</span></button>';
-  h+='<input id="fit-ex-name" class="mtin" placeholder="או הקלד שם" style="margin-top:8px">';
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
-  h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">סטים</div><input id="fit-ex-sets" class="mtnm" type="number" value="3" style="width:100%;padding:8px;border-radius:8px"></div>';
-  h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">חזרות</div><input id="fit-ex-reps" class="mtnm" type="number" value="10" style="width:100%;padding:8px;border-radius:8px"></div>';
-  h+='</div>';
-  h+='<button onclick="addFitExercise()" style="width:100%;background:linear-gradient(135deg,#f0eafa,#e8dff5);border:none;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;color:#a690cf">+ הוסף תרגיל</button>';
-  h+='</div>';
-  h+='<div style="display:flex;gap:8px">';
-  h+='<button onclick="saveFitTemplate()" style="flex:1;background:linear-gradient(135deg,#bfe0c7,#8fc79e);border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:#fff">שמור</button>';
-  h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:#f5f0eb;border:none;border-radius:14px;padding:13px 16px;font-size:13px;cursor:pointer;color:#a89e97">ביטול</button>';
-  if(_fitEditIdx>=0)h+='<button onclick="deleteFitTemplate('+_fitEditIdx+')" style="background:rgba(243,185,168,.2);border:none;border-radius:14px;padding:13px 12px;font-size:12px;cursor:pointer;color:#e08a72">מחק</button>';
+  h+='<button class="tb-add" onclick="tplAddSet('+ei+')">+ הוסף סט</button>';
+  return h+'</div>';
+}
+function tplSave(){
+  if(!_tpl)return;
+  var name=(_tpl.name||'').trim();
+  if(!name){showToast('תן שם לתבנית');return;}
+  if(!_tpl.exercises.length){showToast('הוסף לפחות תרגיל אחד');return;}
+  var templates=loadTemplates();
+  /* Kept in both shapes on purpose: plan is what this screen reads, and sets
+     and reps are what the older screens still expect. Dropping them would
+     have quietly emptied the programme views. */
+  var t={name:name,exercises:_tpl.exercises.map(function(ex){
+    var plan=ex.plan.map(function(s){return {w:(s.w===''?0:s.w),r:(s.r===''?0:s.r)};});
+    var reps=plan.length?plan[plan.length-1].r:10;
+    return {name:ex.name,plan:plan,sets:plan.length,reps:reps};
+  })};
+  if(_fitEditIdx>=0)templates[_fitEditIdx]=t;
+  else {templates.push(t);_fitEditIdx=templates.length-1;}
+  saveTemplates(templates);
+  _tpl=null;
+  showToast('נשמר &#10003;');
+  _fitView='home';renderFitness();
+}
+function tplCancel(){_tpl=null;_fitView='home';renderFitness();}
+function renderFitEditTemplate(){
+  if(!_tpl)tplLoad();
+  var h='<div style="padding-bottom:30px">';
+  h+='<div class="tpl-t">'+(_fitEditIdx>=0?'עריכת תבנית':'תבנית חדשה')+'</div>';
+  h+='<input class="tpl-name" value="'+esc(_tpl.name)+'" placeholder="שם התבנית — למשל דחיפה" oninput="tplName(this.value)">';
+  for(var ei=0;ei<_tpl.exercises.length;ei++)h+=tplBlockHTML(_tpl.exercises[ei],ei);
+  if(!_tpl.exercises.length)h+='<div class="tpl-empty">עוד אין תרגילים. הוסף את הראשון.</div>';
+  h+='<button class="tpl-addex" onclick="tplAddExercise()">+ הוסף תרגיל</button>';
+  h+='<div class="tpl-btns">';
+  h+='<button class="tpl-save" onclick="tplSave()">שמור</button>';
+  h+='<button class="tpl-cancel" onclick="tplCancel()">ביטול</button>';
+  if(_fitEditIdx>=0)h+='<button class="tpl-del" onclick="deleteFitTemplate('+_fitEditIdx+')">מחק</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
 }
@@ -5908,7 +6030,12 @@ function startWorkout(tplIdx){
   _fitWorkout={
     templateIdx:tplIdx,name:t.name,startTime:Date.now(),
     exercises:t.exercises.map(function(ex){
-      return{name:ex.name,targetSets:ex.sets,targetReps:ex.reps,sets:[]};
+      // the planned rows come with it, so each set's boxes open on what you
+      // meant to lift rather than on nothing
+      var plan=tplRows(ex);
+      return{name:ex.name,targetSets:plan.length,
+             targetReps:(plan[0]&&plan[0].r)||ex.reps||10,
+             plan:plan,sets:[]};
     }),
     currentEx:0
   };
@@ -5964,8 +6091,13 @@ function exPrevHTML(ex){
 }
 // what to put in the boxes before you touch them: the same set, last time
 function exPrefill(ex){
-  var prev=exLastTime(ex.name);
   var n=ex.sets.length;
+  /* What the routine says for this set comes first: you wrote it more
+     recently than you lifted last week, so it is the better guess at what
+     you are about to do. */
+  if(ex.plan&&ex.plan[n]&&(ex.plan[n].w!==''||ex.plan[n].r!==''))
+    return {w:ex.plan[n].w||'',r:ex.plan[n].r||''};
+  var prev=exLastTime(ex.name);
   if(prev&&prev.sets[n])return {w:prev.sets[n].weight,r:prev.sets[n].reps};
   if(prev&&prev.sets.length)return {w:prev.sets[prev.sets.length-1].weight,r:prev.sets[prev.sets.length-1].reps};
   return {w:'',r:''};
