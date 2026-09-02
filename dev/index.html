@@ -4470,6 +4470,52 @@ function goHome(){
   renderBackup();
 }
 
+/* ── OPENING SOMEWHERE OTHER THAN HOME ──
+   The app is one page and has never had an address for anything inside it.
+   That is fine while the only way in is the icon, and it is what stops a home
+   screen tile from doing anything more useful than the icon already does.
+
+   So: ?go=nutrition opens תזונה, ?go=day opens today's plan, and so on. iOS
+   cannot give a web app a real widget - no manifest widgets member, no Live
+   Activities, nothing on the lock screen - but it can put a Shortcut on the
+   home screen that opens a URL, and with these that Shortcut lands on the
+   screen you wanted instead of the front door.
+
+   It is also the piece a native widget would need later: a widget is a
+   picture plus a destination to tap through to, and these are the
+   destinations. */
+var GO_ROUTES={
+  nutrition:function(){enterModule('nutrition');},
+  food:     function(){enterModule('nutrition');},
+  fitness:  function(){enterModule('fitness');},
+  steps:    function(){goSteps();},
+  plan:     function(){enterModule('planning');},
+  day:      function(){enterModule('planning');setTimeout(function(){planGo('day');},420);},
+  week:     function(){enterModule('planning');setTimeout(function(){planGo('weekly');},420);},
+  endofday: function(){enterModule('endofday');},
+  vlog:     function(){vlogOpen();},
+  journal:  function(){enterModule('journal');},
+  people:   function(){enterModule('people');},
+  hobbies:  function(){enterModule('hobbies');},
+  insights: function(){enterModule('insights');},
+  goals:    function(){enterModule('goals');},
+  me:       function(){showMain('me');}
+};
+function goParam(){
+  var m=/[?&]go=([a-z]+)/i.exec(location.search)||/#go=([a-z]+)/i.exec(location.hash);
+  return m?m[1].toLowerCase():'';
+}
+/* The address is spent on arrival. Leaving ?go= in the bar means every later
+   reload - and iOS reloads a web app whenever it feels like reclaiming the
+   memory - drops you back into תזונה instead of where you were. */
+function goRoute(){
+  var k=goParam();
+  if(!k||!GO_ROUTES[k])return;
+  try{history.replaceState(null,'',location.pathname);}catch(e){}
+  setTimeout(function(){
+    try{GO_ROUTES[k]();window.scrollTo(0,0);}catch(e){}
+  },60);
+}
 function enterModule(mod){
   jrnlFlush();
   setTimeout(function(){areaSplash(mod);},0);   // after the screen behind it is built
@@ -12940,6 +12986,7 @@ function showMain(t){
   renderHomeGrid();
   renderHomeToday();
   renderGreeting();
+  goRoute();   // ?go=nutrition and friends, once the home screen exists
 
   paintSky();
   // Set date
