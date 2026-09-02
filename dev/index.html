@@ -71,6 +71,23 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .ex-tabs{display:flex;gap:6px;margin:12px 0 10px}
 .ex-tab{flex:1;border:none;border-radius:11px;padding:9px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;background:#f0ebe3;color:#a89e97}
 .ex-tab.on{background:linear-gradient(135deg,#f3b9a8,#e08a72);color:#fff}
+/* a group is a card with a picture, in sections */
+.gp-h{font-size:10px;font-weight:800;color:#a89e97;letter-spacing:.08em;margin:14px 2px 8px}
+.gp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gp{display:flex;align-items:center;gap:10px;border:1.5px solid transparent;border-radius:15px;padding:8px 10px;background:#fff;cursor:pointer;font-family:inherit;text-align:right;box-shadow:0 2px 8px rgba(200,180,160,.1);min-width:0}
+.gp.on{border-color:#a690cf;background:linear-gradient(135deg,#f7f2fb,#efe7f7)}
+.gp-t{flex:1;min-width:0;font-size:12px;font-weight:800;color:#4a4340;line-height:1.25;overflow:hidden;text-overflow:ellipsis}
+.gp-n{font-size:9.5px;font-weight:800;color:#c0b6ae;flex-shrink:0}
+.gp.on .gp-n{color:#a690cf}
+/* the body, with the muscle laid over it */
+.mu-art{position:relative;width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#faf6f1;overflow:hidden;display:block}
+.mu-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:2px}
+.mu-on{filter:none}
+.mu-art.none{display:flex;align-items:center;justify-content:center;font-size:17px}
+.eq-art{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#faf6f1;display:flex;align-items:center;justify-content:center}
+.eq-art svg{width:22px;height:22px;fill:none;stroke:#7a716b;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.eq-art b{font-size:15px;font-weight:800;color:#a89e97}
+.gp-cred{font-size:8.5px;color:#c8bfb6;margin:10px 2px 0;direction:ltr;text-align:right}
 .ex-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .ex-chip{border:none;border-radius:10px;padding:6px 10px;font-size:11.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f5f0eb;color:#6a6360;display:flex;align-items:center;gap:5px}
 .ex-chip b{font-size:9.5px;color:#c0b6ae;font-weight:800}
@@ -6030,7 +6047,7 @@ function exOpen(){
   // cached exLoad called back immediately, ex-body did not exist yet, and
   // the list came up empty on every open after the first.
   exSheet();
-  exLoad(function(){exPaint();});
+  muLoad(function(){exLoad(function(){exPaint();});});
 }
 function exClose(){
   var o=document.getElementById('ex-ov');if(o)o.remove();
@@ -6062,18 +6079,32 @@ function _exPaintBody(){
        '<button class="ex-tab'+(_exTab==='muscle'?' on':'')+'" onclick="exSetTab(&quot;muscle&quot;)">לפי שריר</button>'+
        '<button class="ex-tab'+(_exTab==='equip'?' on':'')+'" onclick="exSetTab(&quot;equip&quot;)">לפי ציוד</button>'+
        '</div>';
-    var keys=(_exTab==='muscle')?(_exDB.muscles||[]):(_exDB.equipment||[]);
-    h+='<div class="ex-chips">';
-    for(var i=0;i<keys.length;i++){
-      // a group with nothing in it is a dead end, so it is not offered
-      var n=exAll().filter(function(e){
-        return (_exTab==='muscle'?e.m:e.q).indexOf(keys[i])>=0;
+    /* Cards with a picture, in sections, rather than fifteen word-chips in a
+       row - you find יד אחורית by seeing an arm, not by reading labels. */
+    function count(k){
+      return exAll().filter(function(e){
+        return (_exTab==='muscle'?e.m:e.q).indexOf(k)>=0;
       }).length;
-      if(!n)continue;
-      h+='<button class="ex-chip'+(_exFilter===keys[i]?' on':'')+'" onclick="exSetFilter(&quot;'+esc(keys[i])+'&quot;)">'+
-         esc(keys[i])+'<b>'+n+'</b></button>';
     }
-    h+='</div>';
+    function card(k,art){
+      var n=count(k);
+      if(!n)return '';
+      return '<button class="gp'+(_exFilter===k?' on':'')+'" onclick="exSetFilter(&quot;'+esc(k)+'&quot;)">'+
+        art+'<span class="gp-t">'+esc(k)+'</span><span class="gp-n">'+n+'</span></button>';
+    }
+    if(_exTab==='muscle'){
+      for(var si=0;si<MU_SECTIONS.length;si++){
+        var sec=MU_SECTIONS[si],inner='';
+        for(var mi=0;mi<sec.m.length;mi++)inner+=card(sec.m[mi],muArtHTML(sec.m[mi]));
+        if(!inner)continue;
+        h+='<div class="gp-h">'+sec.t+'</div><div class="gp-grid">'+inner+'</div>';
+      }
+      h+='<div class="gp-cred">שרטוטי השרירים: wger &middot; CC BY-SA</div>';
+    } else {
+      var eq=_exDB.equipment||[],eh='';
+      for(var qi=0;qi<eq.length;qi++)eh+=card(eq[qi],eqArtHTML(eq[qi]));
+      h+='<div class="gp-grid">'+eh+'</div>';
+    }
   }
   var list=exList();
   if(!list.length){
@@ -6119,6 +6150,66 @@ function exChooseOwn(){
    under them. Only 29 of the 97 have one: the matching refused everything it
    was not sure of, because a picture of the wrong exercise is worse than no
    picture - you would follow it. */
+/* ── THE GROUPS, AS A GRID WITH PICTURES ──
+   A row of word-chips makes you read fifteen labels to find one. Hevy shows a
+   card per group with the muscle drawn and highlighted, split into upper body,
+   lower body and everything else - and you find יד אחורית by seeing an arm,
+   not by reading.
+
+   The diagrams are wger's (CC-BY-SA 3.0): one drawing of the muscular system
+   for the front and one for the back, plus a small overlay per muscle. The
+   bodies are 300-400KB each and every overlay is about 3KB, which is the right
+   way round - the expensive part is fetched once and shared by all of them.
+
+   Equipment gets drawn here instead. A barbell is four rectangles and a line;
+   sourcing photographs of gym kit would mean another licence to keep track of
+   for something a few paths do better at this size. */
+var MU_SECTIONS=[
+  {t:'פלג גוף עליון',m:['חזה','גב','גב רחב','טרפז','כתפיים','יד קדמית','יד אחורית','אמה']},
+  {t:'פלג גוף תחתון',m:['ארבע ראשי','ירך אחורית','ישבן','תאומים']},
+  {t:'מרכז הגוף ואחר',m:['בטן','אלכסונים','גב תחתון','אירובי']}
+];
+var _muMap=null;
+function muLoad(cb){
+  if(_muMap)return cb&&cb();
+  fetch(appBase()+'assets/mu/map.json').then(function(r){return r.json();}).then(function(j){
+    _muMap=j;cb&&cb();
+  },function(){_muMap={};cb&&cb();});
+}
+/* The body, with the muscle laid over it. Two images rather than one file per
+   muscle: fifteen copies of a 350KB body would be five megabytes to say the
+   same thing fifteen times. */
+function muArtHTML(name){
+  var m=_muMap&&_muMap[name];
+  if(!m)return '<span class="mu-art none">'+(name==='אירובי'?'&#127939;':'&#9679;')+'</span>';
+  var b=appBase()+'assets/mu/';
+  return '<span class="mu-art">'+
+    '<img class="mu-body" src="'+b+'body-'+m.s+'.svg" alt="">'+
+    '<img class="mu-on" src="'+b+m.f+'" alt="">'+
+    '</span>';
+}
+/* Equipment, drawn. Line work in the app's own weight rather than photographs
+   of gym kit, which would be a fourth licence to keep track of. */
+var EQ_ICONS={
+  'מוט':'<path d="M3 12h18"/><rect x="4" y="8.5" width="2.6" height="7" rx="1"/><rect x="17.4" y="8.5" width="2.6" height="7" rx="1"/><rect x="7.2" y="10" width="1.8" height="4" rx=".8"/><rect x="15" y="10" width="1.8" height="4" rx=".8"/>',
+  'משקולות יד':'<path d="M7.5 12h9"/><rect x="3.2" y="8" width="3" height="8" rx="1.2"/><rect x="17.8" y="8" width="3" height="8" rx="1.2"/><rect x="6.6" y="9.6" width="1.6" height="4.8" rx=".7"/><rect x="15.8" y="9.6" width="1.6" height="4.8" rx=".7"/>',
+  'קטלבל':'<path d="M9 7.4a3 3 0 0 1 6 0"/><path d="M8.6 8.2C6.6 9.6 5.4 12 5.4 14.4a4.4 4.4 0 0 0 4.4 4.4h4.4a4.4 4.4 0 0 0 4.4-4.4c0-2.4-1.2-4.8-3.2-6.2Z"/>',
+  'פולי':'<rect x="4" y="3.4" width="16" height="3" rx="1"/><path d="M12 6.4v6"/><circle cx="12" cy="14.4" r="2"/><path d="M8 20.6h8"/><path d="M12 16.4v4.2"/>',
+  'מכונה':'<rect x="3.4" y="4" width="4" height="16" rx="1.2"/><rect x="16.6" y="4" width="4" height="16" rx="1.2"/><path d="M7.4 9h9.2"/><path d="M7.4 14h9.2"/>',
+  'משקל גוף':'<circle cx="12" cy="5" r="2.2"/><path d="M12 7.4v6.4"/><path d="M8 10.2h8"/><path d="m12 13.8-2.6 6.4"/><path d="m12 13.8 2.6 6.4"/>',
+  'מתח':'<path d="M3.4 5h17.2"/><path d="M8 5v3.4"/><path d="M16 5v3.4"/><circle cx="12" cy="11" r="1.8"/><path d="M12 12.8v4"/><path d="m12 16.8-2 3.4"/><path d="m12 16.8 2 3.4"/>',
+  'ספסל':'<rect x="3.4" y="8.6" width="17.2" height="3" rx="1.2"/><path d="M6.4 11.6v7"/><path d="M17.6 11.6v7"/>',
+  'ספסל משופע':'<path d="m3.6 15.4 14-7.2"/><path d="M4.6 15.8v3.4"/><path d="M16.4 9.6v9.6"/>',
+  'גומייה':'<path d="M5 6.6c6 3 8 5.4 8 10.8"/><path d="M9 6.6c6 3 8 5.4 8 10.8"/>',
+  'מזרן':'<rect x="2.6" y="8" width="18.8" height="8" rx="2"/><path d="M7.4 8v8"/><path d="M12 8v8"/><path d="M16.6 8v8"/>',
+  'כדור פיזיו':'<circle cx="12" cy="12" r="8.4"/><path d="M3.8 12h16.4"/><path d="M12 3.6a13 13 0 0 1 0 16.8"/>',
+  'מכשיר אירובי':'<path d="M4 18.4h16"/><path d="m6 18.4 2.6-8.8h6.8L18 18.4"/><circle cx="8.6" cy="6.4" r="1.8"/>'
+};
+function eqArtHTML(name){
+  var p=EQ_ICONS[name];
+  return '<span class="eq-art">'+(p?
+    '<svg viewBox="0 0 24 24">'+p+'</svg>':'<b>'+esc(name.charAt(0))+'</b>')+'</span>';
+}
 function exArtHTML(e){
   if(!e||!e.art)return '';
   return '<div class="ex-art">'+
