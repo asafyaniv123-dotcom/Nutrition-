@@ -2328,10 +2328,34 @@ function foodsLoad(then){
    obviously the right answer. Words, then - and it fails precisely when
    someone describes a food properly, which is the whole point of letting
    them type a sentence. */
+/* Grammar and quantity are in the sentence but never in the food. No row of
+   a food table is called "של" or "גרם" or "25", so requiring those words
+   finds nothing - and counting one as a word found is how a boiled egg beat
+   a protein shake: "של" from "שייק חלבון 25 גרם של מולר" scored a point
+   inside "מבושל", and the egg's shorter name did the rest. */
+var FOOD_STOP=('של עם ללא בלי על את אני זה היה הוא גרם גר מל ליטר קג כף כפית כוס יחידה יחידות מנה מנות')
+  .split(' ').reduce(function(m,w){m[w]=1;return m;},{});
+function foodStop(w){return FOOD_STOP[w]===1||/^[0-9]+(\.[0-9]+)?%?$/.test(w);}
 function foodTokens(q){
   var t=foodKey(q).split(' '),out=[],i;
+  for(i=0;i<t.length;i++)if(t[i].length>=2&&!foodStop(t[i]))out.push(t[i]);
+  if(out.length)return out;
+  // a sentence of nothing but grammar and numbers: use it as typed
   for(i=0;i<t.length;i++)if(t[i].length>=2)out.push(t[i]);
   return out.length?out:[foodKey(q)];
+}
+/* A short word has to sit at the start of a word in the name to count. Hebrew
+   glues its prefixes on - בשוקולד is שוקולד - so a long word is allowed to
+   match anywhere, where a chance collision is unlikely. It is the two and
+   three letter ones that land inside other words and mean nothing. */
+function foodHas(name,tok){
+  if(tok.length>3)return name.indexOf(tok)>=0;
+  var at=name.indexOf(tok);
+  while(at>=0){
+    if(at===0||name.charAt(at-1)===' ')return true;
+    at=name.indexOf(tok,at+1);
+  }
+  return false;
 }
 function foodKey(s){
   return String(s).replace(/['’׳"“”״,.\-]/g,'').replace(/\s+/g,' ').trim();
@@ -2349,7 +2373,7 @@ function foodSearch(q){
     if(at===0){starts.push(f);continue;}
     if(at>0){phrase.push(f);continue;}
     all=true;
-    for(j=0;j<toks.length;j++)if(f.s.indexOf(toks[j])<0){all=false;break;}
+    for(j=0;j<toks.length;j++)if(!foodHas(f.s,toks[j])){all=false;break;}
     if(all)words.push(f);
   }
   // the shortest name is usually the plainest version of the thing
@@ -2958,11 +2982,14 @@ function sayScore(f,q,toks){
      misses it is not the food however many of the others it happens to
      contain. Past that, every word found counts, and more of them beats a
      shorter name. */
-  var i,longest=toks[0];
-  for(i=1;i<toks.length;i++)if(toks[i].length>longest.length)longest=toks[i];
-  if(f.s.indexOf(longest)<0)return -1;
+  var i,gate=arguments.length>3?arguments[3]:null;
+  if(!gate){
+    gate=toks[0];
+    for(i=1;i<toks.length;i++)if(toks[i].length>gate.length)gate=toks[i];
+  }
+  if(f.s.indexOf(gate)<0)return -1;
   var hits=0;
-  for(i=0;i<toks.length;i++)if(f.s.indexOf(toks[i])>=0)hits++;
+  for(i=0;i<toks.length;i++)if(foodHas(f.s,toks[i]))hits++;
   var score=hits*4000+(1000-f.s.length);
   var at=f.s.indexOf(toks[0]);
   if(at===0)score+=500;
@@ -2980,15 +3007,39 @@ function sayScore(f,q,toks){
    switches. That is faster than being right most of the time and hiding it
    when you are not, and it keeps the promise the whole feature rests on: you
    can see what was chosen and you can change it. */
+/* Which word has to be there. Hebrew names the thing first and describes it
+   afterwards - ביצה מבושלת, חזה עוף, לחם מלא - so the first word is the food
+   and the rest is about it. Insisting on the longest word instead made
+   ביצה מבושלת gate on מבושלת and come back with boiled leek: a perfect match
+   on the cooking and none at all on the food.
+
+   So the first word is tried first, and only if nothing in the tables has it
+   does the longest word get a turn - which still rescues a sentence opening
+   with a word the tables have never heard of. */
 function sayResolve(it){
   var q=foodKey(it.food),toks=foodTokens(it.food),ranked=[],i,score;
-  if(_foods)for(i=0;i<_foods.length;i++){
-    score=sayScore(_foods[i],q,toks);
-    if(score>=0)ranked.push({f:_foods[i],s:score});
+  function rank(gate){
+    var out=[];
+    if(_foods)for(var j=0;j<_foods.length;j++){
+      var sc=sayScore(_foods[j],q,toks,gate);
+      if(sc>=0)out.push({f:_foods[j],s:sc});
+    }
+    return out;
   }
+  ranked=rank(toks[0]);
+  if(!ranked.length)ranked=rank(null);
   ranked.sort(function(a,b){return b.s-a.s;});
   var best=ranked.length?ranked[0].f:null;
-  var alts=ranked.slice(1,4).map(function(r){return r.f;});
+  /* Naming three or more things and matching only one of them is not a near
+     miss, it is a different food. Better to say nothing was found - the panel
+     already offers adding it by hand - than to hand back something confident
+     and wrong. */
+  if(best&&toks.length>=3){
+    var got=0;
+    for(i=0;i<toks.length;i++)if(foodHas(best.s,toks[i]))got++;
+    if(got<2){best=null;ranked=[];}
+  }
+  var alts=best?ranked.slice(1,4).map(function(r){return r.f;}):[];
   var unit=it.unit||'unit';
   var g=(unit==='g')?1:unitWeightFor(best?best.n:it.food,unit);
   // a product that declares its own packet weight knows better than a default
