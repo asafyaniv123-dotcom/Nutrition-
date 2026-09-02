@@ -365,13 +365,14 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .wk-slot-l{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:8px;font-weight:700;color:#b8afa7;letter-spacing:.03em;line-height:1.15;gap:2px}
 .wk-slot-hrs{font-size:7.5px;font-weight:700;color:#cfc6be;direction:ltr;letter-spacing:0}
 /* what the day screen placed, shown here too but marked as belonging there */
-.wk-chip .wk-t{display:block;font-size:7px;font-weight:800;opacity:.72;direction:ltr;text-align:right}
-/* one task across several bands: three pieces, one shape. The negative
-   margins reach over the cell padding and the band line between them, so
-   the colour runs unbroken from the named head to the tail. */
-.wk-chip.head{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:-5px;padding-bottom:6px}
-.wk-chip.tail{flex:1;min-height:14px;padding:0;margin:-5px 0;border-radius:0}
-.wk-chip.tail.last{margin-bottom:-3px;border-bottom-left-radius:5px;border-bottom-right-radius:5px}
+.wk-t{display:block;font-size:7px;font-weight:800;opacity:.72;direction:ltr;text-align:right}
+/* the hour lane: blocks placed by the clock inside the band, with anything
+   hourless floating above them */
+.wk-timed{position:absolute;top:0;bottom:0;left:2px;right:2px;z-index:1;pointer-events:none}
+.wk-blk{position:absolute;left:0;right:0;min-height:16px;border-radius:5px;padding:1px 3px;font-size:8px;line-height:1.2;font-weight:700;overflow:hidden;word-break:break-word;border:1px dashed rgba(0,0,0,.14);opacity:.86}
+.wk-blk.ct{border-top-left-radius:0;border-top-right-radius:0;border-top:none}
+.wk-blk.cb{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:none}
+.wk-free{position:absolute;top:3px;left:2px;right:2px;z-index:3;display:flex;flex-direction:column;gap:2px}
 /* the panel for the day you tapped, with a notch pointing at its column */
 .wk-open{position:relative;margin-top:20px;background:rgba(255,255,255,.72);border-radius:16px;padding:14px 12px;box-shadow:0 4px 16px rgba(200,180,160,.14)}
 .wk-point{position:absolute;top:-9px;width:18px;height:18px;background:rgba(255,255,255,.72);transform:rotate(45deg);border-radius:3px}
@@ -381,13 +382,13 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .wk-dn{font-size:9.5px;font-weight:800;color:#4a4340;line-height:1.15;white-space:nowrap;letter-spacing:-.2px}
 .wk-dd{font-size:8.5px;color:#a89e97;line-height:1.2;white-space:nowrap}
 .wk-table{flex:1;min-width:0;position:relative;height:34vh;min-height:250px;background:#fff;border:1.5px solid #ece5da;border-radius:14px;overflow:hidden}
-.wk-bands{position:absolute;inset:0;pointer-events:none;z-index:2}
+.wk-bands{position:absolute;inset:0;pointer-events:none;z-index:0}
 .wk-band-l{position:absolute;right:0;left:0;height:1px;background:#ece5da}
 .wk-cols{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));z-index:1}
 .wk-col{display:flex;flex-direction:column;min-width:0;border-left:1px solid #f4efe9}
 .wk-col:last-child{border-left:none}
 .wk-col.today{background:rgba(166,144,207,.06)}
-.wk-cell{flex:1;min-height:0;padding:3px 2px;display:flex;flex-direction:column;gap:2px;overflow:visible;cursor:pointer;transition:background .15s}
+.wk-cell{flex:1;min-height:0;position:relative;overflow:visible;cursor:pointer;transition:background .15s}
 .wk-cell.hot{background:rgba(143,199,158,.22)}
 .wk-chip{background:linear-gradient(135deg,#f0eafa,#e8dff5);border-radius:5px;padding:2px 3px;font-size:8px;line-height:1.25;color:#5f5148;font-weight:700;overflow:hidden;word-break:break-word}
 .wk-task{display:flex;align-items:center;gap:9px;background:#fff;border-radius:13px;padding:11px 12px;margin-bottom:7px;box-shadow:0 3px 10px rgba(200,180,160,.12);touch-action:none;cursor:grab}
@@ -6233,35 +6234,61 @@ function savePlanHistory(arr){try{localStorage.setItem('plan_history',JSON.strin
    with a ghost that follows the finger, the same way the vision board works. */
 var _wkSun=null,_wkOpen=-1,_wkDrag=null;
 var WK_DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-var WK_SLOTS=[['m','בוקר','06&ndash;12'],['n','צהריים','12&ndash;17'],['e','ערב','17&ndash;23']];
+/* key, name, label, and the hours the band actually covers - the last two
+   are what let a task be placed inside a band rather than dropped at the
+   top of it. */
+var WK_SLOTS=[['m','בוקר','06&ndash;12',6,12],['n','צהריים','12&ndash;17',12,17],['e','ערב','17&ndash;23',17,23]];
 // Which band an exact hour from the day grid belongs to.
 function wkSlotForHour(h){return h<12?'m':(h<17?'n':'e');}
 // What the day screen put on this date and hour, so the week can show it too.
-/* Everything the day screen placed on this date that falls in this band -
-   its own tasks and the week's own, once they have been given an hour.
+/* Everything the day screen placed on this date, cut down to the part of it
+   that falls inside this band.
 
-   A task is reported in every band it touches, not only the one it starts
-   in, so something running from noon to five appears at noon and again in
-   the evening band as a tail. Without that a long task simply vanished from
-   the hours it actually occupies, which is the opposite of what a week view
-   is for. */
+   A band is a stretch of hours, not a shelf. Ten in a morning that runs
+   06-12 belongs two thirds of the way down it, not at the top, and a task
+   running until seven belongs in all three bands - filling the two it
+   crosses and stopping a third of the way down the last. So every piece
+   comes back with where it starts and how tall it is as a percentage of its
+   own band. That is also what closes the gap: two pieces of one task now
+   meet exactly on the line between two bands, because both are measured
+   from the same clock instead of being stacked and hoped for. */
+function wkBandRange(slot){
+  for(var i=0;i<WK_SLOTS.length;i++)
+    if(WK_SLOTS[i][0]===slot)return [WK_SLOTS[i][3]*60,WK_SLOTS[i][4]*60];
+  return [0,1440];
+}
 function wkDayItemsIn(date,slot){
-  var all=dpAll(date),out=[],i,t,startSlot,endSlot,si,ei,ss;
+  var all=dpAll(date),out=[],i,t,r=wkBandRange(slot),span=r[1]-r[0];
+  var d0=WK_SLOTS[0][3]*60,d1=WK_SLOTS[WK_SLOTS.length-1][4]*60;
   for(i=0;i<all.length;i++){
     t=all[i];
     if(t.hour===null)continue;
-    startSlot=wkSlotForHour(t.hour);
-    si=wkSlotIndex(startSlot);
-    ss=wkSlotIndex(slot);
-    if(t.end){
-      endSlot=wkSlotForHour(Math.floor((t.end-1)/60));
-      ei=wkSlotIndex(endSlot);
-    } else ei=si;
-    if(ss<si||ss>ei)continue;
-    out.push({id:t.id,w:t.w,c:t.c,h:t.hour,mn:t.min||0,e:t.end||0,
-              tail:(ss>si),src:t.src});
+    var s0=t.hour*60+(t.min||0);
+    // an hour with no end still needs a height, or it cannot be seen
+    var e0=(t.end&&t.end>s0)?t.end:s0+30;
+    // the grid only draws 06:00-23:00; anything outside it pins to the edge
+    // rather than disappearing
+    if(s0<d0){e0=Math.max(e0,d0+30);s0=d0;}
+    if(s0>=d1){s0=d1-30;e0=d1;}
+    if(e0>d1)e0=d1;
+    if(e0<=r[0]||s0>=r[1])continue;
+    var cs=Math.max(s0,r[0]),ce=Math.min(e0,r[1]);
+    out.push({id:t.id,w:t.w,c:t.c,h:t.hour,mn:t.min||0,e:t.end||0,src:t.src,
+              top:(cs-r[0])/span*100,hgt:(ce-cs)/span*100,
+              ct:(s0<r[0]),cb:(e0>r[1])});
   }
-  out.sort(function(a,b){return (a.h*60+a.mn)-(b.h*60+b.mn);});
+  out.sort(function(a,b){return a.top-b.top;});
+  return out;
+}
+/* A week task that has been given an hour is drawn by that hour, in its
+   place. The grid was listing it a second time as an hourless chip at the
+   top of the band, so one task showed twice in one column - once floating,
+   once where it really is. The day panel below still lists everything. */
+function wkGridIn(tasks,date,slot){
+  var all=dpAll(date),timed={},out=[],i;
+  for(i=0;i<all.length;i++)if(all[i].hour!==null)timed[all[i].id]=1;
+  for(i=0;i<tasks.length;i++)
+    if(tasks[i].d===date&&wkSlotOf(tasks[i])===slot&&!timed[tasks[i].id])out.push(tasks[i]);
   return out;
 }
 function wkSlotIndex(k){
@@ -6362,30 +6389,40 @@ function renderPlanWeek(){
     var dt=wkDateOf(_wkSun,i),st=wkStamp(dt);
     h+='<div class="wk-col'+(st===today?' today':'')+'">';
     for(j=0;j<3;j++){
-      var list=wkIn(wk.tasks,st,WK_SLOTS[j][0]);
       h+='<div class="wk-cell" data-date="'+st+'" data-slot="'+WK_SLOTS[j][0]+'" onclick="wkOpen('+i+')">';
-      for(t=0;t<list.length;t++){
-        var cc=wkColor(list[t].c);
-        h+='<div class="wk-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(list[t].w)+'</div>';
-      }
-      // and what the day screen placed here, so the week shows the whole picture
-      var dl=wkDayItemsIn(st,WK_SLOTS[j][0]);
-      for(t=0;t<dl.length;t++){
-        var dc=wkColor(dl[t].c);
-        /* A task that crosses a band is drawn as one shape in three pieces:
-           the named head loses its bottom corners, the middles are square,
-           and the last piece gets the bottom back. Negative margins carry
-           each piece over the cell padding and the band line so the colour
-           is unbroken - it should read as one block crossing the lines, not
-           as three chips that happen to match. */
-        var runsOn=dl[t].e&&wkSlotIndex(wkSlotForHour(Math.floor((dl[t].e-1)/60)))>wkSlotIndex(WK_SLOTS[j][0]);
-        if(dl[t].tail){
-          h+='<div class="wk-chip tail'+(runsOn?'':' last')+'" style="background:'+dc.bg+'"></div>';
-          continue;
+      // things put in this band without an hour: they float at the top
+      var list=wkGridIn(wk.tasks,st,WK_SLOTS[j][0]);
+      if(list.length){
+        h+='<div class="wk-free">';
+        for(t=0;t<list.length;t++){
+          var cc=wkColor(list[t].c);
+          h+='<div class="wk-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(list[t].w)+'</div>';
         }
-        h+='<div class="wk-chip fromday'+(runsOn?' head':'')+'" style="background:'+dc.bg+';color:'+dc.tx+'">'+
-           '<span class="wk-t">'+dpHM(dl[t].h,dl[t].mn)+(dl[t].e?'&ndash;'+dpFmt(dl[t].e):'')+'</span>'+
-           esc(dl[t].w)+'</div>';
+        h+='</div>';
+      }
+      // and things with an hour: placed by the clock, with two pixels of
+      // overhang carrying the colour over the line into the next band
+      var dl=wkDayItemsIn(st,WK_SLOTS[j][0]);
+      if(dl.length){
+        h+='<div class="wk-timed">';
+        for(t=0;t<dl.length;t++){
+          var p=dl[t],dc=wkColor(p.c),up=p.ct?2:0,dn=p.cb?2:0;
+          h+='<div class="wk-blk'+(p.ct?' ct':'')+(p.cb?' cb':'')+'" style="'+
+             'top:calc('+p.top.toFixed(2)+'% - '+up+'px);'+
+             'height:calc('+p.hgt.toFixed(2)+'% + '+(up+dn)+'px);'+
+             'background:'+dc.bg+';color:'+dc.tx+'">';
+          /* Only the piece that starts the task says what it is - and a short
+             one says only its name. Half an hour is a few pixels tall here, so
+             printing the times as well left the name cut off, which is the one
+             thing a week view has to show. Where it starts is already said by
+             where the block sits; the exact times are a tap away. */
+          if(!p.ct){
+            if(p.hgt<22)h+=esc(p.w);
+            else h+='<span class="wk-t">'+dpHM(p.h,p.mn)+(p.e?'&ndash;'+dpFmt(p.e):'')+'</span>'+esc(p.w);
+          }
+          h+='</div>';
+        }
+        h+='</div>';
       }
       h+='</div>';
     }
