@@ -366,8 +366,12 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .wk-slot-hrs{font-size:7.5px;font-weight:700;color:#cfc6be;direction:ltr;letter-spacing:0}
 /* what the day screen placed, shown here too but marked as belonging there */
 .wk-chip .wk-t{display:block;font-size:7px;font-weight:800;opacity:.72;direction:ltr;text-align:right}
-/* a task carrying on into the next band: colour only, no words */
-.wk-chip.tail{min-height:9px;padding:0;opacity:.45;border-radius:3px}
+/* one task across several bands: three pieces, one shape. The negative
+   margins reach over the cell padding and the band line between them, so
+   the colour runs unbroken from the named head to the tail. */
+.wk-chip.head{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:-5px;padding-bottom:6px}
+.wk-chip.tail{flex:1;min-height:14px;padding:0;margin:-5px 0;border-radius:0}
+.wk-chip.tail.last{margin-bottom:-3px;border-bottom-left-radius:5px;border-bottom-right-radius:5px}
 /* the panel for the day you tapped, with a notch pointing at its column */
 .wk-open{position:relative;margin-top:20px;background:rgba(255,255,255,.72);border-radius:16px;padding:14px 12px;box-shadow:0 4px 16px rgba(200,180,160,.14)}
 .wk-point{position:absolute;top:-9px;width:18px;height:18px;background:rgba(255,255,255,.72);transform:rotate(45deg);border-radius:3px}
@@ -383,7 +387,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .wk-col{display:flex;flex-direction:column;min-width:0;border-left:1px solid #f4efe9}
 .wk-col:last-child{border-left:none}
 .wk-col.today{background:rgba(166,144,207,.06)}
-.wk-cell{flex:1;min-height:0;padding:3px 2px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer;transition:background .15s}
+.wk-cell{flex:1;min-height:0;padding:3px 2px;display:flex;flex-direction:column;gap:2px;overflow:visible;cursor:pointer;transition:background .15s}
 .wk-cell.hot{background:rgba(143,199,158,.22)}
 .wk-chip{background:linear-gradient(135deg,#f0eafa,#e8dff5);border-radius:5px;padding:2px 3px;font-size:8px;line-height:1.25;color:#5f5148;font-weight:700;overflow:hidden;word-break:break-word}
 .wk-task{display:flex;align-items:center;gap:9px;background:#fff;border-radius:13px;padding:11px 12px;margin-bottom:7px;box-shadow:0 3px 10px rgba(200,180,160,.12);touch-action:none;cursor:grab}
@@ -6368,13 +6372,18 @@ function renderPlanWeek(){
       var dl=wkDayItemsIn(st,WK_SLOTS[j][0]);
       for(t=0;t<dl.length;t++){
         var dc=wkColor(dl[t].c);
+        /* A task that crosses a band is drawn as one shape in three pieces:
+           the named head loses its bottom corners, the middles are square,
+           and the last piece gets the bottom back. Negative margins carry
+           each piece over the cell padding and the band line so the colour
+           is unbroken - it should read as one block crossing the lines, not
+           as three chips that happen to match. */
+        var runsOn=dl[t].e&&wkSlotIndex(wkSlotForHour(Math.floor((dl[t].e-1)/60)))>wkSlotIndex(WK_SLOTS[j][0]);
         if(dl[t].tail){
-          // no name and no time: it is the same task, already named where
-          // it starts, and only the colour has to carry down
-          h+='<div class="wk-chip tail" style="background:'+dc.bg+'"></div>';
+          h+='<div class="wk-chip tail'+(runsOn?'':' last')+'" style="background:'+dc.bg+'"></div>';
           continue;
         }
-        h+='<div class="wk-chip fromday" style="background:'+dc.bg+';color:'+dc.tx+'">'+
+        h+='<div class="wk-chip fromday'+(runsOn?' head':'')+'" style="background:'+dc.bg+';color:'+dc.tx+'">'+
            '<span class="wk-t">'+dpHM(dl[t].h,dl[t].mn)+(dl[t].e?'&ndash;'+dpFmt(dl[t].e):'')+'</span>'+
            esc(dl[t].w)+'</div>';
       }
@@ -6921,14 +6930,14 @@ var _daySwipe=null;
 // you before it does anything.
 function onPlanScreen(){
   return currentModule==='planning'&&
-         (_planMode==='day'||_planMode==='week'||_planMode==='month');
+         (_planMode==='day'||_planMode==='weekly'||_planMode==='monthly');
 }
 function onDayScreen(){return onPlanScreen();}
 // each horizon steps by its own unit
 function planStep(dir){
   if(_planMode==='day')dpShift(dir);
-  else if(_planMode==='week')wkShift(dir);
-  else if(_planMode==='month')moShift(dir);
+  else if(_planMode==='weekly')wkShift(dir);
+  else if(_planMode==='monthly')moShift(dir);
 }
 function daySwipeDown(e){
   if(!onDayScreen()||_dpDrag)return;                       // a task is being dragged
@@ -6990,8 +6999,8 @@ function planUndo(){
   }catch(e){}
   renderPlanUndo();
   if(_planMode==='day')renderPlanDay();
-  else if(_planMode==='week')renderPlanWeek();
-  else if(_planMode==='month')renderPlanMonth();
+  else if(_planMode==='weekly')renderPlanWeek();
+  else if(_planMode==='monthly')renderPlanMonth();
   else renderPlanning();
   showToast('בוטל');
 }
