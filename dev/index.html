@@ -77,6 +77,19 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .ex-chip.on{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
 .ex-chip.on b{color:rgba(255,255,255,.8)}
 .ex-list{display:flex;flex-direction:column;gap:6px}
+/* the two positions, swapped by an animation rather than by a timer - the
+   browser does it on the compositor and it costs nothing */
+.ex-art{position:relative;width:100%;height:104px;margin-bottom:6px;background:#fff;border-radius:10px;overflow:hidden}
+.ex-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4px}
+.ex-art-a{animation:ex-swap 1.6s steps(1,end) infinite}
+.ex-art-b{animation:ex-swap 1.6s steps(1,end) infinite;animation-delay:.8s}
+@keyframes ex-swap{0%,49.9%{opacity:1}50%,100%{opacity:0}}
+.ex-art-c{position:absolute;bottom:2px;left:4px;font-size:7.5px;color:#c8bfb6;direction:ltr;letter-spacing:.02em}
+@media (prefers-reduced-motion:reduce){
+  .ex-art-a,.ex-art-b{animation:none}
+  .ex-art-b{opacity:0}
+}
+.ex-row.art{padding-top:8px}
 .ex-row{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:none;border-radius:13px;padding:10px 12px;background:#fff;cursor:pointer;font-family:inherit;text-align:right;box-shadow:0 2px 8px rgba(200,180,160,.1)}
 .ex-n{font-size:13.5px;font-weight:800;color:#4a4340}
 .ex-meta{font-size:10px;color:#a89e97}
@@ -6069,7 +6082,8 @@ function _exPaintBody(){
     h+='<div class="ex-list">';
     for(var j=0;j<list.length;j++){
       var e=list[j];
-      h+='<button class="ex-row" onclick="exChoose('+j+')">'+
+      h+='<button class="ex-row'+(e.art?' art':'')+'" onclick="exChoose('+j+')">'+
+         exArtHTML(e)+
          '<span class="ex-n">'+esc(e.n)+'</span>'+
          '<span class="ex-meta">'+esc(e.m.join(' · '))+' &middot; '+esc(e.q.join(', '))+'</span>'+
          (e.en?'<span class="ex-en">'+esc(e.en)+'</span>':'')+
@@ -6097,6 +6111,21 @@ function exChooseOwn(){
 }
 /* Open the library and do something with what comes back. Everywhere that
    wants an exercise name goes through here, so they all get the same list. */
+/* Two drawings - the relaxed position and the tensed one - swapped every
+   second. That is what a GIF of an exercise is doing, and two SVGs of 32KB
+   do it sharper than a GIF and smaller than a video.
+
+   They are Everkinetic's, CC-BY-SA 4.0, which requires the credit that sits
+   under them. Only 29 of the 97 have one: the matching refused everything it
+   was not sure of, because a picture of the wrong exercise is worse than no
+   picture - you would follow it. */
+function exArtHTML(e){
+  if(!e||!e.art)return '';
+  return '<div class="ex-art">'+
+    '<img class="ex-art-a" src="'+appBase()+'assets/ex/'+e.id+'-a.svg" alt="">'+
+    '<img class="ex-art-b" src="'+appBase()+'assets/ex/'+e.id+'-b.svg" alt="">'+
+    '<span class="ex-art-c">Everkinetic &middot; CC BY-SA</span></div>';
+}
 function exPickInto(fn){_exPick=fn;exOpen();}
 // the template editor's end of it: show the choice, and keep it where the
 // existing save code already looks for it
