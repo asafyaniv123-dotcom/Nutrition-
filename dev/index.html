@@ -553,6 +553,12 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .ppl-back{background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;font-family:inherit;padding:0 0 6px;display:block}
 .ppl-grp{font-size:10px;letter-spacing:.1em;font-weight:800;color:#c2664a;margin:14px 2px 7px}
 .ppl-grp:first-child{margin-top:0}
+.ep-av{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.ep-av-img{width:76px;height:76px;border-radius:50%;object-fit:cover;flex-shrink:0;box-shadow:0 3px 12px rgba(200,180,160,.22)}
+.ep-av-none{width:76px;height:76px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#f3b9a8,#e08a72);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:#fff}
+.ep-av-btns{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.ep-av-b{border:1.5px solid #ece5da;border-radius:12px;padding:9px 14px;font-size:12px;font-weight:800;color:#6a6360;background:#fff;cursor:pointer;font-family:inherit}
+.ep-av-x{border:none;background:none;padding:2px 4px;font-size:11px;font-weight:700;color:#c08a7a;cursor:pointer;font-family:inherit}
 .ppl-place{color:#c2a08f}
 .ppl-none{font-size:12px;color:#c0b6ae;text-align:center;padding:26px 12px;line-height:1.7}
 /* the journal - a page, then everything you have already written */
@@ -9238,10 +9244,11 @@ function daysSince(ts){if(!ts)return null;return Math.floor((Date.now()-ts)/(100
 
 function renderPeople(){
   document.getElementById('hdr-title').textContent='האנשים שלי';
-  if(_peopleView==='person')return renderPersonPage();
-  if(_peopleView==='edit-person')return renderEditPerson();
-  if(_peopleView==='add-memory')return renderAddMemory();
-  renderPeopleHome();
+  if(_peopleView==='person')renderPersonPage();
+  else if(_peopleView==='edit-person')renderEditPerson();
+  else if(_peopleView==='add-memory')renderAddMemory();
+  else renderPeopleHome();
+  hydratePhotos();
 }
 
 function renderPeopleHome(){
@@ -9364,10 +9371,82 @@ function pplListHTML(people){
   }
   return h;
 }
+/* ── A FACE ON THE NAME ──
+   A list of names is a list of names. A list of faces is the people.
+
+   The picture goes to IndexedDB like every other photo in the app, and the
+   record keeps only the key - an avatar as a data URI inside people_v2 would
+   put a few hundred kilobytes of image into localStorage per person, which is
+   how the day photos filled it up before they were moved out.
+
+   Nothing is written until you save. The picked image is held here as a data
+   URI and only becomes a stored blob at the moment the person is saved, so
+   backing out of the form leaves nothing behind. null means untouched, ''
+   means take the picture off, anything else is a new one waiting. */
+var _epAvatar=null;
+function epReset(){_epAvatar=null;}
+function epCurrentRef(){
+  if(_epAvatar!==null)return _epAvatar;
+  var people=loadPeople();
+  return (_personIdx>=0&&people[_personIdx]&&people[_personIdx].avatar)||'';
+}
+function epPhotoPick(input){
+  var f=input&&input.files&&input.files[0];
+  if(input)input.value='';
+  if(!f)return;
+  showToast('מכין&hellip;');
+  // 360px is more than a 48px circle can ever show, even on a dense screen
+  vbScale(f,function(d){
+    if(!d){showToast('לא הצלחתי לקרוא את התמונה');return;}
+    _epAvatar=d;
+    epPaintAvatar();
+  },360);
+}
+function epPhotoClear(){_epAvatar='';epPaintAvatar();}
+function epPaintAvatar(){
+  var box=document.getElementById('ep-av');
+  if(!box)return;
+  box.innerHTML=epAvatarInner();
+  hydratePhotos(box);
+}
+function epAvatarInner(){
+  var ref=epCurrentRef(),nm='';
+  var people=loadPeople();
+  if(_personIdx>=0&&people[_personIdx])nm=people[_personIdx].name||'';
+  var face=ref
+    ? photoImg(ref,'class="ep-av-img"')
+    : '<div class="ep-av-none">'+esc((nm||'?').charAt(0))+'</div>';
+  return face+
+    '<div class="ep-av-btns">'+
+    '<label class="ep-av-b">'+(ref?'החלף תמונה':'הוסף תמונה')+
+    '<input type="file" accept="image/*" style="display:none" onchange="epPhotoPick(this)"></label>'+
+    (ref?'<button type="button" class="ep-av-x" onclick="epPhotoClear()">הסר</button>':'')+
+    '</div>';
+}
+function epAvatarHTML(){
+  return '<div class="ep-av" id="ep-av">'+epAvatarInner()+'</div>';
+}
+/* Called when the person is saved. The blob is written first, because if that
+   fails there is no point recording a key that points at nothing - and the
+   picture it replaces is only deleted once the new one is safely in. */
+function epCommitAvatar(existing,cb){
+  var oldRef=existing.avatar||'';
+  if(_epAvatar===null)return cb(oldRef);
+  if(_epAvatar===''){
+    if(isPhotoKey(oldRef))photoDel(oldRef);
+    return cb('');
+  }
+  photoPut(_epAvatar).then(function(key){
+    if(!key){showToast('התמונה לא נשמרה, השאר את הקודמת');return cb(oldRef);}
+    if(isPhotoKey(oldRef)&&oldRef!==key)photoDel(oldRef);
+    cb(key);
+  },function(){cb(oldRef);});
+}
 function personAvatar(p,size){
-  var bg='#f3b9a8';
   var initials=(p.name||'?').charAt(0);
-  if(p.avatar)return '<img src="'+p.avatar+'" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex-shrink:0">';
+  // photoImg tells a stored key from a picture written before the store
+  // existed, and hands the first one to hydratePhotos to fill in
+  if(p.avatar)return photoImg(p.avatar,'style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex-shrink:0"');
   return '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:linear-gradient(135deg,#f3b9a8,#e08a72);display:flex;align-items:center;justify-content:center;font-size:'+(size*0.38)+'px;font-weight:800;color:#fff;flex-shrink:0">'+initials+'</div>';
 }
 
@@ -9537,10 +9616,12 @@ function deletePersonDate(di){
 
 function renderEditPerson(){
   var people=loadPeople();
-  var p=_personIdx>=0?people[_personIdx]:{name:'',relationship:'',place:'',whatTheyMean:'',whatILove:'',currentUpdate:'',toAsk:'',contactFreq:'monthly',lastContact:null,avatar:'',memories:[],importantDates:[]};
+  // an index past the end of the list gives undefined, and the whole form
+  // then dies on the first field rather than opening blank
+  var p=(_personIdx>=0&&people[_personIdx])?people[_personIdx]:{name:'',relationship:'',place:'',whatTheyMean:'',whatILove:'',currentUpdate:'',toAsk:'',contactFreq:'monthly',lastContact:null,avatar:'',memories:[],importantDates:[]};
   document.getElementById('hdr-title').textContent=_personIdx>=0?'עריכת פרטים':'אדם חדש';
   var h='<div style="padding-bottom:30px">';
-  h+='<button onclick="_peopleView=\''+(_personIdx>=0?'person':'home')+'\';renderPeople()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;margin-bottom:14px;display:block">&#8249; חזרה</button>';
+  h+='<button onclick="epReset();_peopleView=\''+(_personIdx>=0?'person':'home')+'\';renderPeople()" style="background:none;border:none;font-size:12px;color:#a89e97;cursor:pointer;margin-bottom:14px;display:block">&#8249; חזרה</button>';
 
   function pfield(lbl,id,val,ph,isArea){
     var s='<div style="margin-bottom:12px"><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:4px">'+lbl+'</div>';
@@ -9548,6 +9629,7 @@ function renderEditPerson(){
     else s+='<input id="'+id+'" class="mtin" value="'+esc(val||'')+'" placeholder="'+(ph||'')+'">';
     return s+'</div>';
   }
+  h+=epAvatarHTML();
   h+=pfield('שם','ep-name',p.name,'שם האדם');
   // Relationship
   h+='<div style="margin-bottom:12px"><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:6px">סוג הקשר</div>';
@@ -9658,15 +9740,23 @@ function savePersonEdit(){
     updated.importantDates=(updated.importantDates||[]).concat(window._pendingDates);
     window._pendingDates=[];
   }
-  if(_personIdx>=0)people[_personIdx]=updated;
-  else{people.push(updated);_personIdx=people.length-1;}
-  savePeople(people);
-  showToast('נשמר &#10003;');
-  _peopleView='person';renderPeople();
+  epCommitAvatar(existing,function(ref){
+    updated.avatar=ref;
+    if(_personIdx>=0)people[_personIdx]=updated;
+    else{people.push(updated);_personIdx=people.length-1;}
+    savePeople(people);
+    epReset();
+    showToast('נשמר &#10003;');
+    _peopleView='person';renderPeople();
+  });
 }
 
 function deletePerson(){
-  var people=loadPeople();people.splice(_personIdx,1);savePeople(people);
+  var people=loadPeople();
+  // otherwise the picture outlives the person, in a store nothing lists
+  var gone=people[_personIdx];
+  if(gone&&isPhotoKey(gone.avatar))photoDel(gone.avatar);
+  people.splice(_personIdx,1);savePeople(people);
   _personIdx=-1;_peopleView='home';renderPeople();
 }
 var INSIGHTS_CATS=[
@@ -10678,12 +10768,12 @@ function vbSaveText(){
 
 // Fit the photo inside VB_MAX and re-encode as JPEG - a 4MB camera shot comes
 // out around 60KB, which is what lets a boardful of them live in localStorage.
-function vbScale(file,cb){
+function vbScale(file,cb,max){
   var reader=new FileReader();
   reader.onload=function(e){
     var img=new Image();
     img.onload=function(){
-      var s=Math.min(1,VB_MAX/Math.max(img.width,img.height));
+      var s=Math.min(1,(max||VB_MAX)/Math.max(img.width,img.height));
       var cv=document.createElement('canvas');
       cv.width=Math.max(1,Math.round(img.width*s));
       cv.height=Math.max(1,Math.round(img.height*s));
