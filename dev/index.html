@@ -679,6 +679,39 @@ body.night .td-lbl{background:transparent}
 .trip-toggle-track.on .trip-toggle-thumb{right:calc(100% - 27px)}
 /* The icon sits in a white disc rather than being a bare glyph - it gives every
    card the same optical weight whatever the icon, which emoji never did. */
+/* the vlog button, on the corner of the day's icon */
+.vlog-dot{position:absolute;top:21px;left:calc(50% - 31px);width:26px;height:26px;border-radius:50%;background:#3a7ca5;box-shadow:0 3px 9px rgba(29,74,102,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;transition:transform .15s}
+.vlog-dot:active{transform:scale(.88)}
+.vlog-dot svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+/* a filled ring says the day already has one */
+.vlog-dot.has{background:#2b5f83;box-shadow:0 0 0 3px rgba(58,124,165,.28),0 3px 9px rgba(29,74,102,.4)}
+/* the recorder */
+.vl-ov{position:fixed;inset:0;z-index:460;background:rgba(28,26,32,.88);display:flex;align-items:flex-end;justify-content:center}
+.vl-sheet{width:100%;max-width:480px;background:#15131a;border-radius:22px 22px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));max-height:96vh;overflow-y:auto}
+.vl-hd{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;color:#f0ece6;margin-bottom:10px}
+.vl-x{background:none;border:none;color:#8d8792;font-size:22px;line-height:1;cursor:pointer;font-family:inherit;padding:0 4px}
+.vl-stage{position:relative;width:100%;aspect-ratio:3/4;max-height:56vh;background:#000;border-radius:16px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.vl-video{width:100%;height:100%;object-fit:cover;background:#000}
+/* the countdown: a ring that empties, so the time left is a shape not a number
+   you have to read */
+.vl-ring{position:absolute;top:10px;right:10px;width:44px;height:44px;display:none;align-items:center;justify-content:center;pointer-events:none}
+.vl-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.vl-ring-bg{fill:rgba(0,0,0,.45);stroke:rgba(255,255,255,.25);stroke-width:5}
+.vl-ring-fg{fill:none;stroke:#e06a6a;stroke-width:5;stroke-linecap:round;stroke-dasharray:201.06;stroke-dashoffset:0;transition:stroke-dashoffset .1s linear}
+.vl-ring span{position:relative;font-size:13px;font-weight:800;color:#fff}
+.vl-msg{font-size:11.5px;color:#a9a2b3;line-height:1.6;text-align:center;margin:11px 4px 0;min-height:19px}
+.vl-actions{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px}
+/* the shutter: a ring with a dot, the dot turning into a square while running */
+.vl-shot{width:62px;height:62px;border-radius:50%;background:none;border:3px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.vl-shot span{width:44px;height:44px;border-radius:50%;background:#e06a6a;transition:border-radius .18s,width .18s,height .18s;display:block}
+.vl-shot.rec span{width:24px;height:24px;border-radius:6px}
+.vl-btn{width:100%;border:none;border-radius:14px;padding:14px;background:linear-gradient(135deg,#5b9cc4,#3a7ca5);color:#fff;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;text-align:center;display:block}
+.vl-flat{width:100%;border:none;background:none;padding:11px;color:#a9a2b3;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.vl-del{color:#e08a8a}
+/* and the clip where it ends up: inside the day's summary */
+.vl-inline{margin-bottom:12px}
+.vl-inline-v{width:100%;max-height:300px;border-radius:16px;background:#000;display:block}
+.vl-inline-c{font-size:9px;color:#a89e97;letter-spacing:.08em;margin-top:5px;text-align:center}
 .home-card-icon{width:46px;height:46px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(160,140,120,.16)}
 .home-card-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .home-card-title{font-size:15px;font-weight:800;color:#4a4340}
@@ -1234,7 +1267,9 @@ function photoAll(){
     return new Promise(function(res){
       var out={},rq;
       try{rq=st.openCursor();}catch(e){return res(out);}
-      rq.onsuccess=function(){var c=rq.result;if(!c)return res(out);out[c.key]=c.value;c.continue();};
+      // only the pictures: a video Blob would stringify to "{}" in a backup
+      rq.onsuccess=function(){var c=rq.result;if(!c)return res(out);
+        if(typeof c.value==='string')out[c.key]=c.value;c.continue();};
       rq.onerror=function(){res(out);};
     });
   });
@@ -1258,6 +1293,325 @@ function hydratePhotos(root){
     var k=el.getAttribute('data-photo');
     el.removeAttribute('data-photo');
     photoGet(k).then(function(d){if(d)el.src=d;});
+  })(els[i]);
+}
+
+/* ── VLOG ──
+   Thirty seconds of you, talking, kept with the day it belongs to.
+
+   Writing about a day and saying it out loud are not the same act. The
+   written summary asks you to shape the day into sentences; a clip catches
+   the tone of voice, which is often the part you would not have written
+   down. So this is not another field in the interview - it is one button on
+   the way in, and the clip lands in that day's summary beside everything
+   else.
+
+   Thirty seconds is the whole design. It is short enough that recording one
+   is never a project, and short enough that a year of them is a few hundred
+   megabytes rather than tens of gigabytes. The cap is enforced by the app,
+   not by asking you to watch a clock: recording stops itself.
+
+   The video is a Blob in the same IndexedDB store the photos use, under a
+   key beginning with 'v'. Blobs go in whole - base64 would cost a third
+   again in size and a visible pause on the phone for something the app only
+   ever hands straight back to a <video> element. */
+var VLOG_MAX=30;
+function vlogKey(d){return 'vlog_'+d;}
+function loadVlog(d){try{var x=localStorage.getItem(vlogKey(d));return x?JSON.parse(x):null;}catch(e){return null;}}
+/* A vlog gets its own record rather than a field on the summary. A summary
+   record means "this day has been reflected on" - the evening reminder goes
+   quiet when one exists - and a clip recorded at noon must not be taken for
+   an evening that has already been closed. */
+function saveVlog(d,v){try{localStorage.setItem(vlogKey(d),JSON.stringify(v));}catch(e){}}
+function clearVlog(d){
+  var v=loadVlog(d);
+  if(v&&v.k)photoDel(v.k);
+  try{localStorage.removeItem(vlogKey(d));}catch(e){}
+}
+function vlogPut(blob){
+  var key='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  return idbStore('readwrite').then(function(st){
+    if(!st)return null;
+    return new Promise(function(res){
+      var rq;
+      try{rq=st.put(blob,key);}catch(e){return res(null);}
+      rq.onsuccess=function(){res(key);};
+      rq.onerror=function(){res(null);};
+    });
+  });
+}
+// The browser will only take some containers, and which ones differs by phone.
+function vlogMime(){
+  var want=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'],i;
+  if(!window.MediaRecorder||!MediaRecorder.isTypeSupported)return '';
+  for(i=0;i<want.length;i++)if(MediaRecorder.isTypeSupported(want[i]))return want[i];
+  return '';
+}
+function vlogCanRecord(){
+  return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder);
+}
+function vlogSecs(v){return v&&v.sec?Math.round(v.sec):0;}
+// A short clip rounded to megabytes reads as "0MB", which looks like a failure.
+function vlogSize(b){
+  return b<1024*1024?Math.max(1,Math.round(b/1024))+'KB'
+                    :Math.round(b/1024/1024*10)/10+'MB';
+}
+
+var _vlDate='',_vlStream=null,_vlRec=null,_vlChunks=[],_vlTimer=null,_vlEnd=0,
+    _vlBlob=null,_vlURL='',_vlSec=0,_vlStarted=0;
+var VL_RING=201.06;   // 2 * PI * 32, the countdown circle
+
+function vlogOpen(d){
+  _vlDate=d||todayStr();
+  _vlBlob=null;_vlSec=0;
+  vlogSheet();
+  var have=loadVlog(_vlDate);
+  if(have&&have.k)vlogShowSaved(have);
+  else vlogStartCam();
+}
+function vlogSheet(){
+  var old=document.getElementById('vl-ov');if(old)old.remove();
+  var h='<div class="vl-ov" id="vl-ov">'+
+    '<div class="vl-sheet">'+
+    '<div class="vl-hd"><span id="vl-title">ולוג יומי</span>'+
+    '<button class="vl-x" onclick="vlogClose()">&times;</button></div>'+
+    '<div class="vl-stage">'+
+    '<video id="vl-video" class="vl-video" playsinline webkit-playsinline muted></video>'+
+    '<div class="vl-ring" id="vl-ringwrap">'+
+    '<svg viewBox="0 0 72 72"><circle class="vl-ring-bg" cx="36" cy="36" r="32"/>'+
+    '<circle class="vl-ring-fg" id="vl-ring" cx="36" cy="36" r="32"/></svg>'+
+    '<span id="vl-count">'+VLOG_MAX+'</span></div>'+
+    '</div>'+
+    '<div class="vl-msg" id="vl-msg"></div>'+
+    '<div class="vl-actions" id="vl-actions"></div>'+
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+  document.body.style.overflow='hidden';
+}
+function vlogMsg(t){var e=document.getElementById('vl-msg');if(e)e.innerHTML=t||'';}
+function vlogActions(h){var e=document.getElementById('vl-actions');if(e)e.innerHTML=h;}
+function vlogRing(on,frac){
+  var w=document.getElementById('vl-ringwrap');if(!w)return;
+  w.style.display=on?'flex':'none';
+  var r=document.getElementById('vl-ring');
+  if(r)r.style.strokeDashoffset=(1-(frac===undefined?1:frac))*VL_RING;
+}
+
+function vlogStartCam(){
+  document.getElementById('vl-title').textContent='ולוג יומי';
+  vlogRing(false);
+  vlogActions('');
+  if(!vlogCanRecord())return vlogFallback('ההקלטה בתוך האפליקציה לא נתמכת בדפדפן הזה.');
+  vlogMsg('מפעיל מצלמה&hellip;');
+  navigator.mediaDevices.getUserMedia({
+    video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}},
+    audio:true
+  }).then(function(s){
+    _vlStream=s;
+    var v=document.getElementById('vl-video');
+    if(!v){vlogCamOff();return;}
+    v.srcObject=s;v.muted=true;v.controls=false;
+    v.play().catch(function(){});
+    vlogMsg('עד '+VLOG_MAX+' שניות. ההקלטה נעצרת לבד.');
+    vlogActions('<button class="vl-shot" onclick="vlogRecord()" aria-label="התחל הקלטה"><span></span></button>');
+  },function(err){
+    var n=err&&err.name;
+    vlogFallback(n==='NotAllowedError'?'אין הרשאה למצלמה. אפשר לאשר אותה בהגדרות האתר.':
+                 n==='NotFoundError'?'לא נמצאה מצלמה במכשיר.':
+                 'המצלמה לא נפתחה.');
+  });
+}
+/* Where the app cannot drive the camera itself, the phone's own recorder can
+   still be asked for a clip. It has no thirty second limit of its own, so the
+   length is checked after the fact and a long clip is refused rather than
+   quietly kept - the cap is the point. */
+function vlogFallback(why){
+  vlogCamOff();
+  vlogRing(false);
+  vlogMsg((why?why+'<br>':'')+'אפשר להקליט במצלמה של הטלפון, עד '+VLOG_MAX+' שניות.');
+  vlogActions('<label class="vl-btn">הקלט במצלמת הטלפון'+
+    '<input type="file" accept="video/*" capture="user" style="display:none" onchange="vlogPicked(this)"></label>'+
+    '<button class="vl-flat" onclick="vlogClose()">בטל</button>');
+}
+function vlogPicked(inp){
+  var f=inp&&inp.files&&inp.files[0];
+  inp.value='';
+  if(!f)return;
+  var url=URL.createObjectURL(f),probe=document.createElement('video');
+  probe.preload='metadata';
+  probe.onloadedmetadata=function(){
+    var sec=probe.duration;URL.revokeObjectURL(url);
+    if(!(sec>0)||sec>VLOG_MAX+0.6){
+      vlogMsg('הסרטון באורך '+(sec>0?Math.round(sec):'?')+' שניות. הגבול הוא '+VLOG_MAX+'.');
+      return;
+    }
+    _vlBlob=f;_vlSec=sec;vlogPreview();
+  };
+  probe.onerror=function(){URL.revokeObjectURL(url);vlogMsg('לא הצלחתי לקרוא את הסרטון.');};
+  probe.src=url;
+}
+
+function vlogRecord(){
+  if(!_vlStream)return;
+  _vlChunks=[];
+  var mt=vlogMime(),opt={videoBitsPerSecond:1200000,audioBitsPerSecond:96000};
+  if(mt)opt.mimeType=mt;
+  try{_vlRec=new MediaRecorder(_vlStream,opt);}
+  catch(e){
+    try{_vlRec=new MediaRecorder(_vlStream);}
+    catch(e2){return vlogFallback('ההקלטה לא נתמכת בדפדפן הזה.');}
+  }
+  _vlRec.ondataavailable=function(e){if(e.data&&e.data.size)_vlChunks.push(e.data);};
+  _vlRec.onstop=vlogStopped;
+  try{_vlRec.start(250);}catch(e3){return vlogFallback('ההקלטה לא התחילה.');}
+  _vlStarted=Date.now();_vlEnd=_vlStarted+VLOG_MAX*1000;
+  vlogMsg('מקליט&hellip;');
+  vlogRing(true,1);
+  vlogActions('<button class="vl-shot rec" onclick="vlogStop()" aria-label="עצור"><span></span></button>');
+  _vlTimer=setInterval(vlogTick,100);
+  vlogTick();
+}
+function vlogTick(){
+  var left=Math.max(0,(_vlEnd-Date.now())/1000);
+  vlogRing(true,left/VLOG_MAX);
+  var n=document.getElementById('vl-count');
+  if(n)n.textContent=Math.ceil(left);
+  if(left<=0)vlogStop();
+}
+function vlogStop(){
+  if(_vlTimer){clearInterval(_vlTimer);_vlTimer=null;}
+  if(_vlRec&&_vlRec.state!=='inactive'){try{_vlRec.stop();}catch(e){}}
+}
+function vlogStopped(){
+  _vlSec=(Date.now()-_vlStarted)/1000;
+  var mt=(_vlRec&&_vlRec.mimeType)||vlogMime()||'video/mp4';
+  _vlBlob=_vlChunks.length?new Blob(_vlChunks,{type:mt}):null;
+  _vlChunks=[];
+  vlogCamOff();
+  if(!_vlBlob){vlogMsg('לא נקלט כלום. אפשר לנסות שוב.');return vlogStartCam();}
+  vlogPreview();
+}
+// The live stream is let go the moment it is not needed - a camera light that
+// stays on after you have finished is its own kind of alarm.
+function vlogCamOff(){
+  if(_vlTimer){clearInterval(_vlTimer);_vlTimer=null;}
+  if(_vlStream){
+    try{_vlStream.getTracks().forEach(function(t){t.stop();});}catch(e){}
+    _vlStream=null;
+  }
+  var v=document.getElementById('vl-video');
+  if(v){try{v.srcObject=null;}catch(e){}}
+}
+function vlogSetSrc(url){
+  var v=document.getElementById('vl-video');
+  if(!v)return;
+  try{v.srcObject=null;}catch(e){}
+  v.muted=false;v.controls=true;v.src=url;
+}
+function vlogPreview(){
+  vlogRing(false);
+  if(_vlURL)URL.revokeObjectURL(_vlURL);
+  _vlURL=URL.createObjectURL(_vlBlob);
+  vlogSetSrc(_vlURL);
+  vlogMsg(Math.round(_vlSec)+' שניות &middot; '+vlogSize(_vlBlob.size));
+  vlogActions('<button class="vl-btn" onclick="vlogSave()">שמור ליום הזה</button>'+
+              '<button class="vl-flat" onclick="vlogRetake()">הקלט שוב</button>');
+}
+function vlogRetake(){
+  if(_vlURL){URL.revokeObjectURL(_vlURL);_vlURL='';}
+  _vlBlob=null;_vlSec=0;
+  var v=document.getElementById('vl-video');
+  if(v){v.removeAttribute('src');v.controls=false;v.load();}
+  vlogStartCam();
+}
+function vlogSave(){
+  if(!_vlBlob)return;
+  var prev=loadVlog(_vlDate),d=_vlDate,sec=_vlSec,size=_vlBlob.size;
+  vlogMsg('שומר&hellip;');
+  vlogActions('');
+  vlogPut(_vlBlob).then(function(key){
+    if(!key){
+      vlogMsg('לא הצלחתי לשמור את הסרטון על המכשיר.');
+      vlogActions('<button class="vl-flat" onclick="vlogRetake()">נסה שוב</button>');
+      return;
+    }
+    saveVlog(d,{k:key,at:new Date().toISOString(),sec:sec,size:size});
+    if(prev&&prev.k&&prev.k!==key)photoDel(prev.k);
+    _vlBlob=null;
+    showToast('✓ נשמר בסיכום היום');
+    vlogClose();
+    renderHomeGrid();
+  });
+}
+// An already-saved clip: watch it, replace it, or take it out.
+function vlogShowSaved(v){
+  document.getElementById('vl-title').textContent='הוולוג של היום';
+  vlogRing(false);
+  vlogMsg('טוען&hellip;');
+  vlogActions('');
+  photoGet(v.k).then(function(b){
+    if(!b){
+      vlogMsg('הסרטון לא נמצא על המכשיר. אפשר להקליט חדש.');
+      vlogActions('<button class="vl-btn" onclick="vlogRetake()">הקלט ולוג</button>');
+      return;
+    }
+    if(_vlURL)URL.revokeObjectURL(_vlURL);
+    _vlURL=URL.createObjectURL(b);
+    vlogSetSrc(_vlURL);
+    vlogMsg(vlogSecs(v)+' שניות &middot; '+fmtDate(_vlDate));
+    vlogActions('<button class="vl-btn" onclick="vlogRetake()">הקלט במקומו</button>'+
+                '<button class="vl-flat vl-del" onclick="vlogDelete()">מחק</button>');
+  });
+}
+function vlogDelete(){
+  var a=document.getElementById('vl-actions');
+  if(a&&a.getAttribute('data-armed')!=='1'){
+    a.setAttribute('data-armed','1');
+    vlogMsg('הסרטון יימחק מהמכשיר ולא יהיה אפשר לשחזר אותו.');
+    a.innerHTML='<button class="vl-flat vl-del" onclick="vlogDelete()">כן, מחק</button>'+
+                '<button class="vl-flat" onclick="vlogShowSaved(loadVlog(_vlDate))">בטל</button>';
+    return;
+  }
+  clearVlog(_vlDate);
+  showToast('נמחק');
+  vlogClose();
+  renderHomeGrid();
+}
+function vlogClose(){
+  vlogStop();
+  vlogCamOff();
+  if(_vlURL){URL.revokeObjectURL(_vlURL);_vlURL='';}
+  _vlBlob=null;_vlChunks=[];
+  var o=document.getElementById('vl-ov');if(o)o.remove();
+  document.body.style.overflow='';
+}
+// The button itself, sitting on the corner of the day's icon. A filled dot
+// says today already has one.
+function vlogDotHTML(){
+  var has=!!loadVlog(todayStr());
+  return '<span class="vlog-dot'+(has?' has':'')+'" role="button" tabindex="0" '+
+    'aria-label="ולוג יומי" onclick="event.stopPropagation();vlogOpen()">'+
+    '<svg viewBox="0 0 24 24"><path d="M15.2 9.6 20.4 6.6v10.8l-5.2-3"/>'+
+    '<rect x="3.6" y="6" width="11.6" height="12" rx="2.6"/></svg></span>';
+}
+// A clip is far too big to travel inside a pasteable backup, so it is left out
+// of the photo sweep rather than silently turning into "{}" in the file.
+function vlogPlayerHTML(v){
+  return '<div class="vl-inline"><video class="vl-inline-v" controls playsinline webkit-playsinline '+
+    'data-vlog="'+esc(v.k)+'"></video>'+
+    '<div class="vl-inline-c">&#9679; ולוג &middot; '+vlogSecs(v)+' שניות</div></div>';
+}
+function hydrateVlogs(root){
+  var els=(root||document).querySelectorAll('video[data-vlog]'),i;
+  for(i=0;i<els.length;i++)(function(el){
+    var k=el.getAttribute('data-vlog');
+    el.removeAttribute('data-vlog');
+    photoGet(k).then(function(b){
+      if(!b)return;
+      var u=URL.createObjectURL(b);
+      el.src=u;
+      el.addEventListener('emptied',function(){try{URL.revokeObjectURL(u);}catch(e){}});
+    });
   })(els[i]);
 }
 
@@ -3456,7 +3810,12 @@ function renderDay(){
 }
 
 function renderSummaryOverlay(dateStr){
-  var sum=loadSummary(dateStr);if(!sum)return;
+  /* A day can have a clip and no written summary - the button records one
+     without asking you to sit through the interview first. So the sheet
+     opens for either, and the sections with nothing behind them stay shut. */
+  var vlg=loadVlog(dateStr);
+  var sum=loadSummary(dateStr);if(!sum&&!vlg)return;
+  if(!sum)sum={date:dateStr};
   var old=document.getElementById('sum-overlay');if(old)old.remove();
   var flowStops=parseFlow(sum.flow);
   var div=document.createElement('div');div.id='sum-overlay';div.className='summary-overlay';
@@ -3465,7 +3824,12 @@ function renderSummaryOverlay(dateStr){
   h+='<div style="background:linear-gradient(135deg,#f0ebe3,#e8dff5);border-radius:22px;padding:20px;margin-bottom:14px">';
   h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;margin-bottom:5px">סיכום יום</div>';
   h+='<div style="font-size:20px;font-weight:700;margin-bottom:10px">'+fmtDate(dateStr)+'</div>';
-  h+='<div style="display:flex;gap:20px"><div style="text-align:center"><div style="font-size:18px">'+starsHTML(sum.mood,5)+'</div><div style="font-size:9px;color:#a89e97">מזג</div></div><div style="text-align:center"><div style="font-size:18px">'+starsHTML(sum.body,5)+'</div><div style="font-size:9px;color:#a89e97">גוף</div></div></div></div>';
+  // Five grey stars on a day nobody rated reads as "you scored zero", which is
+  // the opposite of true. No rating, no row.
+  if(sum.mood!==undefined||sum.body!==undefined)
+    h+='<div style="display:flex;gap:20px"><div style="text-align:center"><div style="font-size:18px">'+starsHTML(sum.mood,5)+'</div><div style="font-size:9px;color:#a89e97">מזג</div></div><div style="text-align:center"><div style="font-size:18px">'+starsHTML(sum.body,5)+'</div><div style="font-size:9px;color:#a89e97">גוף</div></div></div>';
+  h+='</div>';
+  if(vlg&&vlg.k)h+=vlogPlayerHTML(vlg);
   if(sum.photo){
     h+=photoImg(sum.photo,'style="width:100%;max-height:260px;object-fit:contain;border-radius:16px;margin-bottom:'+(sum.photoCaption?'6px':'12px')+'"');
     if(sum.photoCaption)h+='<div style="font-size:12px;color:#6a6360;text-align:center;font-style:italic;margin-bottom:12px;line-height:1.5">'+esc(sum.photoCaption)+'</div>';
@@ -3481,12 +3845,14 @@ function renderSummaryOverlay(dateStr){
     }
     h+='</div>';
   }
+  if(sum.kcal!==undefined){
   var kp=Math.min(100,Math.round(sum.kcal/TARGETS.kcal*100)),pp2=Math.min(100,Math.round(sum.p/TARGETS.p*100)),cp3=Math.min(100,Math.round(sum.c/TARGETS.c*100)),fp2=Math.min(100,Math.round(sum.f/TARGETS.f*100));
   h+='<div style="background:#fff;border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 4px 14px rgba(200,180,160,.1)"><div style="font-size:9px;color:#a89e97;margin-bottom:10px">תזונה יומית</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
   var smb=[{v:sum.kcal,pct:kp,lbl:'קק"ל',g:'linear-gradient(180deg,#c9bce0,#a690cf)',col:'#a690cf'},{v:sum.p+'g',pct:pp2,lbl:'חלבון',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:'#e08a72'},{v:sum.c+'g',pct:cp3,lbl:'פחמימה',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:'#8fc79e'},{v:sum.f+'g',pct:fp2,lbl:'שומן',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:'#e8c162'}];
   for(var bi2=0;bi2<smb.length;bi2++){var sb=smb[bi2];h+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:24px;height:68px;background:#f2ede6;border-radius:12px;overflow:hidden;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+sb.pct+'%;background:'+sb.g+'"></div></div><div style="font-size:10.5px;font-weight:700">'+sb.v+'</div><div style="font-size:9px;color:#a89e97">'+sb.lbl+'</div></div>';}
   if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; מים</span><div style="flex:1;height:6px;background:#f2ede6;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,#3a7ca5)"></div></div><span style="font-size:10px;color:#5b8fa8">'+sum.water+'מ"ל</span></div>';}
   h+='</div>';
+  }
   if(sum.workout||sum.steps){h+='<div style="background:#fff;border-radius:18px;padding:13px;margin-bottom:12px;box-shadow:0 4px 14px rgba(200,180,160,.1)">';if(sum.workout)h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:'+(sum.steps?'10px':'0')+'"><span style="font-size:22px">&#x1F3CB;&#xFE0F;</span><div><div style="font-size:9px;color:#a89e97">פעילות גופנית</div><div style="font-size:13px;font-weight:600;margin-top:2px">'+esc(sum.workout)+'</div></div></div>';if(sum.steps)h+='<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">&#x1F463;</span><div><div style="font-size:9px;color:#a89e97">צעדים</div><div style="font-size:18px;font-weight:700;color:#8fc79e">'+sum.steps.toLocaleString()+'</div></div></div>';h+='</div>';}
   if(sum.song)h+='<div style="background:linear-gradient(135deg,#e8e0f5,#dff0e3);border-radius:18px;padding:14px;margin-bottom:12px;display:flex;align-items:center;gap:14px"><span style="font-size:28px">&#x1F3B5;</span><div><div style="font-size:9px;color:#8fc79e;letter-spacing:.1em">שיר של היום</div><div style="font-size:15px;font-weight:700;margin-top:2px">'+esc(sum.song)+'</div></div></div>';
   // Timeclock in summary — canvas-based spiral
@@ -3515,6 +3881,7 @@ function renderSummaryOverlay(dateStr){
   if(sum.quote)h+='<div style="border-right:3px solid #a690cf;padding:10px 14px;background:rgba(201,188,224,.09);border-radius:0 14px 14px 0;margin-bottom:12px"><div style="font-size:9px;color:#a89e97;margin-bottom:5px">משפט שתפס</div><div style="font-size:13px;line-height:1.7;font-style:italic">&#8220;'+esc(sum.quote)+'&#8221;</div></div>';
   h+='<div style="text-align:center;font-size:10px;color:#a89e97;margin-top:8px">&#x1F331; יום מוצלח</div></div>';
   div.innerHTML=h;document.body.appendChild(div);
+  hydratePhotos(div);hydrateVlogs(div);
   if(window._sumClockNeedsDraw){window._sumClockNeedsDraw=false;setTimeout(function(){drawSumClock(window._sumClockData);},30);}
 }
 
@@ -11614,6 +11981,7 @@ function renderHomeGrid(){
     a=HOME_AREAS[i];
     if(!areaShown(a.id))continue;
     h+='<button class="home-card '+a.id+'" data-area="'+a.id+'">'+
+       (a.id==='endofday'?vlogDotHTML():'')+
        '<div class="home-card-icon" style="color:'+a.color+'">'+a.svg+'</div>'+
        '<div class="home-card-title">'+a.title+'</div>'+
        '<div class="home-card-sub">'+a.sub+'</div>'+
