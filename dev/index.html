@@ -1517,25 +1517,38 @@ function vlogRing(on,frac){
 /* Portrait or landscape. It cannot change while a clip is running: the
    encoder is built around one frame size, and resizing the canvas underneath
    it produces a file that no player will scrub properly. */
-function vlogSetOrient(o){
+/* The recorded frame is the camera's own frame. Whatever it hands over is
+   what gets drawn, at its own shape, so at 1x there is nothing cropped and
+   nothing added - the picture is what the lens sees, which is what opening a
+   camera is supposed to look like. The long edge is capped so a 4K phone
+   does not write a 4K clip for a thirty second note to yourself. */
+var VL_CAP=1280;
+function vlogAdoptShape(){
+  // never mid-clip: the encoder is built around one frame size
   if(_vlRec&&_vlRec.state==='recording')return;
-  _vlOrient=o;
-  var c=document.getElementById('vl-canvas');
-  if(c){c.width=VL_SIZES[o][0];c.height=VL_SIZES[o][1];}
-  /* And the box it sits in takes the same shape. Which side drives it
-     depends on the shape: a tall frame is limited by the height available
-     and takes its width from the ratio; a wide one is limited by the width.
-     Set the wrong one and the ratio silently loses - which is how a 9:16
-     frame came out at 1.42 and a 16:9 one at 1.42 as well. */
+  var c=document.getElementById('vl-canvas'),v=_vlSrcV;
+  if(!c||!v||!v.videoWidth)return;
+  var sw=v.videoWidth,sh=v.videoHeight;
+  var k=Math.min(1,VL_CAP/Math.max(sw,sh));
+  var w=Math.max(2,Math.round(sw*k/2)*2),h=Math.max(2,Math.round(sh*k/2)*2);
+  if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
   var st=document.querySelector('.vl-stage');
   if(st){
-    st.style.aspectRatio=VL_SIZES[o][0]+' / '+VL_SIZES[o][1];
-    var tall=VL_SIZES[o][1]>VL_SIZES[o][0];
+    st.style.aspectRatio=w+' / '+h;
+    var tall=h>w;
     st.style.height=tall?'58vh':'auto';
     st.style.width=tall?'auto':'100%';
     st.style.maxWidth='100%';
     st.style.maxHeight='58vh';
   }
+}
+function vlogSetOrient(o){
+  if(_vlRec&&_vlRec.state==='recording')return;
+  _vlOrient=o;
+  /* The frame is not set here any more - vlogAdoptShape takes it from the
+     camera. Setting it to the preset first meant a visible flash through the
+     wrong shape before the right one arrived a moment later. All this does
+     now is record which shape to ask for. */
   var p=document.getElementById('vl-orient');
   if(p)p.innerHTML=vlogOrientLabel();
 }
@@ -1565,14 +1578,17 @@ function vlogReshape(){
   _vlFlipping=true;
   var done=function(){
     _vlFlipping=false;
+    // the new stream may be a different shape; the frame follows it
+    setTimeout(vlogAdoptShape,120);
     if(_vlWantShape){_vlWantShape=false;vlogReshape();}
   };
   vlogGetCam().then(done,done);
 }
-/* Cover, like a camera app: the frame is filled edge to edge and any overflow
-   is cropped evenly. This is safe now that the camera is asked for the shape
-   we actually want - a source that already matches the frame loses nothing to
-   a cover fit, because there is no overflow to crop. */
+/* At zoom 1 this is an exact 1:1 copy, because the frame was taken from the
+   source in vlogAdoptShape - max() of two equal numbers is that number, and
+   nothing is cropped. It only has work to do when the two differ, which is
+   when the other camera arrives mid-clip and the frame cannot follow it; then
+   filling the frame beats black bars down the sides. */
 function vlogPaint(){
   _vlRAF=requestAnimationFrame(vlogPaint);
   var c=document.getElementById('vl-canvas'),v=_vlSrcV;
@@ -1664,11 +1680,11 @@ function vlogStartCam(){
 function vlogGetCam(){
   var wantAudio=!_vlAudio;
   return navigator.mediaDevices.getUserMedia({
-    // the shape that was chosen, not a square - see below
+    // A preference, not a demand: no aspectRatio, which a phone honours by
+    // cropping its own sensor. Whatever shape comes back is the shape used.
     video:{facingMode:_vlFacing,
            width:{ideal:VL_SIZES[_vlOrient][0]},
-           height:{ideal:VL_SIZES[_vlOrient][1]},
-           aspectRatio:{ideal:VL_SIZES[_vlOrient][0]/VL_SIZES[_vlOrient][1]}},
+           height:{ideal:VL_SIZES[_vlOrient][1]}},
     audio:wantAudio
   }).then(function(s){
     var old=_vlCamV;
@@ -1695,6 +1711,12 @@ function vlogLive(){
   if(c){c.style.display='block';c.classList.toggle('mirror',_vlFacing==='user');}
   if(v)v.style.display='none';
   vlogSetOrient(_vlOrient);
+  vlogAdoptShape();
+  // dimensions can arrive a beat after play() resolves
+  var tries=0,iv=setInterval(function(){
+    vlogAdoptShape();
+    if(++tries>20||(_vlSrcV&&_vlSrcV.videoWidth))clearInterval(iv);
+  },100);
   vlogPaintStop();vlogPaint();
   vlogPinchInit();
   vlogZoomSet(_vlZoom);
@@ -1712,6 +1734,7 @@ function vlogFlip(){
   vlogGetCam().then(function(){
     var c=document.getElementById('vl-canvas');
     if(c)c.classList.toggle('mirror',_vlFacing==='user');
+    setTimeout(vlogAdoptShape,120);
     _vlFlipping=false;
   },function(){
     // refused, or there is nothing to switch to: go back rather than go dark
@@ -1782,6 +1805,7 @@ function vlogPicked(inp){
 
 function vlogRecord(){
   if(!_vlCamV)return;
+  vlogAdoptShape();   // last chance to match the frame to the camera
   // the recorder is handed the canvas, so swapping cameras later is invisible
   _vlOut=vlogOutStream();
   if(!_vlOut)return vlogFallback('הדפדפן הזה לא מאפשר להקליט מהתצוגה.');
