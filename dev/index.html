@@ -680,9 +680,9 @@ body.night .td-lbl{background:transparent}
 /* The icon sits in a white disc rather than being a bare glyph - it gives every
    card the same optical weight whatever the icon, which emoji never did. */
 /* the vlog button, on the corner of the day's icon */
-.vlog-dot{position:absolute;top:21px;left:calc(50% - 31px);width:26px;height:26px;border-radius:50%;background:#3a7ca5;box-shadow:0 3px 9px rgba(29,74,102,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;transition:transform .15s}
+.vlog-dot{position:absolute;top:12px;left:12px;width:44px;height:44px;border-radius:50%;background:#3a7ca5;box-shadow:0 4px 12px rgba(29,74,102,.34);display:flex;align-items:center;justify-content:center;cursor:pointer;border:2.5px solid #fff;transition:transform .15s}
 .vlog-dot:active{transform:scale(.88)}
-.vlog-dot svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.vlog-dot svg{width:21px;height:21px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 /* a filled ring says the day already has one */
 .vlog-dot.has{background:#2b5f83;box-shadow:0 0 0 3px rgba(58,124,165,.28),0 3px 9px rgba(29,74,102,.4)}
 /* the recorder */
@@ -691,7 +691,18 @@ body.night .td-lbl{background:transparent}
 .vl-hd{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;color:#f0ece6;margin-bottom:10px}
 .vl-x{background:none;border:none;color:#8d8792;font-size:22px;line-height:1;cursor:pointer;font-family:inherit;padding:0 4px}
 .vl-stage{position:relative;width:100%;aspect-ratio:3/4;max-height:56vh;background:#000;border-radius:16px;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.vl-video{width:100%;height:100%;object-fit:cover;background:#000}
+/* contain, not cover. The recording is the whole frame; a preview cropped to
+   fill a 3:4 box would have you framing yourself against something the file
+   does not contain - and on a wide camera it looks zoomed in besides. */
+.vl-video{width:100%;height:100%;object-fit:contain;background:#000}
+/* A front camera is shown mirrored because that is what a person expects to
+   see of themselves. Only the preview: playback is never flipped, or text
+   behind you would come out backwards. */
+.vl-video.mirror{transform:scaleX(-1)}
+.vl-flip{position:absolute;top:10px;left:10px;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);border:none;display:none;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.vl-flip.on{display:flex}
+.vl-flip svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.vl-flip:active{transform:scale(.9)}
 /* the countdown: a ring that empties, so the time left is a shape not a number
    you have to read */
 .vl-ring{position:absolute;top:10px;right:10px;width:44px;height:44px;display:none;align-items:center;justify-content:center;pointer-events:none}
@@ -1358,7 +1369,7 @@ function vlogSize(b){
 }
 
 var _vlDate='',_vlStream=null,_vlRec=null,_vlChunks=[],_vlTimer=null,_vlEnd=0,
-    _vlBlob=null,_vlURL='',_vlSec=0,_vlStarted=0;
+    _vlBlob=null,_vlURL='',_vlSec=0,_vlStarted=0,_vlFacing='user',_vlCams=0;
 var VL_RING=201.06;   // 2 * PI * 32, the countdown circle
 
 function vlogOpen(d){
@@ -1377,6 +1388,10 @@ function vlogSheet(){
     '<button class="vl-x" onclick="vlogClose()">&times;</button></div>'+
     '<div class="vl-stage">'+
     '<video id="vl-video" class="vl-video" playsinline webkit-playsinline muted></video>'+
+    '<button class="vl-flip" id="vl-flip" onclick="vlogFlip()" aria-label="החלף מצלמה">'+
+    '<svg viewBox="0 0 24 24"><path d="M3.6 9.4a8.6 8.6 0 0 1 14.2-3.2l2.6 2.4"/>'+
+    '<path d="M20.4 4.6v4.2h-4.2"/><path d="M20.4 14.6a8.6 8.6 0 0 1-14.2 3.2l-2.6-2.4"/>'+
+    '<path d="M3.6 19.4v-4.2h4.2"/></svg></button>'+
     '<div class="vl-ring" id="vl-ringwrap">'+
     '<svg viewBox="0 0 72 72"><circle class="vl-ring-bg" cx="36" cy="36" r="32"/>'+
     '<circle class="vl-ring-fg" id="vl-ring" cx="36" cy="36" r="32"/></svg>'+
@@ -1404,14 +1419,16 @@ function vlogStartCam(){
   if(!vlogCanRecord())return vlogFallback('ההקלטה בתוך האפליקציה לא נתמכת בדפדפן הזה.');
   vlogMsg('מפעיל מצלמה&hellip;');
   navigator.mediaDevices.getUserMedia({
-    video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}},
+    video:{facingMode:_vlFacing,width:{ideal:720},height:{ideal:1280}},
     audio:true
   }).then(function(s){
     _vlStream=s;
     var v=document.getElementById('vl-video');
     if(!v){vlogCamOff();return;}
     v.srcObject=s;v.muted=true;v.controls=false;
+    v.classList.toggle('mirror',_vlFacing==='user');
     v.play().catch(function(){});
+    vlogCountCams();
     vlogMsg('עד '+VLOG_MAX+' שניות. ההקלטה נעצרת לבד.');
     vlogActions('<button class="vl-shot" onclick="vlogRecord()" aria-label="התחל הקלטה"><span></span></button>');
   },function(err){
@@ -1428,6 +1445,7 @@ function vlogStartCam(){
 function vlogFallback(why){
   vlogCamOff();
   vlogRing(false);
+  var fb=document.getElementById('vl-flip');if(fb)fb.classList.remove('on');
   vlogMsg((why?why+'<br>':'')+'אפשר להקליט במצלמה של הטלפון, עד '+VLOG_MAX+' שניות.');
   vlogActions('<label class="vl-btn">הקלט במצלמת הטלפון'+
     '<input type="file" accept="video/*" capture="user" style="display:none" onchange="vlogPicked(this)"></label>'+
@@ -1471,6 +1489,28 @@ function vlogRecord(){
   _vlTimer=setInterval(vlogTick,100);
   vlogTick();
 }
+/* The button only appears where there is a second camera to switch to. The
+   list is only trustworthy once permission has been given, so it is counted
+   after the stream opens rather than before. */
+function vlogCountCams(){
+  var b=document.getElementById('vl-flip');
+  if(!b)return;
+  if(_vlCams>1){b.classList.add('on');return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices)return;
+  navigator.mediaDevices.enumerateDevices().then(function(ds){
+    _vlCams=ds.filter(function(d){return d.kind==='videoinput';}).length;
+    var e=document.getElementById('vl-flip');
+    if(e&&_vlCams>1)e.classList.add('on');
+  },function(){});
+}
+function vlogFlip(){
+  // mid-recording the recorder is bound to this stream; swapping it would
+  // end the clip, so the button is inert until you stop
+  if(_vlRec&&_vlRec.state==='recording')return;
+  _vlFacing=(_vlFacing==='user')?'environment':'user';
+  vlogCamOff();
+  vlogStartCam();
+}
 function vlogTick(){
   var left=Math.max(0,(_vlEnd-Date.now())/1000);
   vlogRing(true,left/VLOG_MAX);
@@ -1506,7 +1546,10 @@ function vlogSetSrc(url){
   var v=document.getElementById('vl-video');
   if(!v)return;
   try{v.srcObject=null;}catch(e){}
+  v.classList.remove('mirror');
   v.muted=false;v.controls=true;v.src=url;
+  var b=document.getElementById('vl-flip');
+  if(b)b.classList.remove('on');
 }
 function vlogPreview(){
   vlogRing(false);
