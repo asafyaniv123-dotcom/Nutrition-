@@ -698,10 +698,12 @@ body.night .td-lbl{background:transparent}
    plays a finished clip back */
 .vl-canvas{max-width:100%;max-height:100%;display:block;background:#000}
 .vl-video{width:100%;height:100%;object-fit:contain;background:#000}
-/* A front camera is shown mirrored because that is what a person expects to
-   see of themselves. Only the preview: playback is never flipped, or text
-   behind you would come out backwards. */
-.vl-video.mirror{transform:scaleX(-1)}
+/* the correction control, at the foot of the frame so it does not crowd the
+   two at the top */
+.vl-fix{position:absolute;bottom:10px;left:10px;height:34px;padding:0 11px;border-radius:17px;background:rgba(0,0,0,.5);border:none;display:none;align-items:center;gap:6px;cursor:pointer;color:#fff}
+.vl-fix.on{display:flex}
+.vl-fix svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.vl-fix b{font-size:10.5px;font-weight:800;font-family:inherit}
 .vl-flip{position:absolute;top:10px;left:10px;width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);border:none;display:none;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .vl-flip.on{display:flex}
 .vl-flip svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -1428,6 +1430,7 @@ function vlogSheet(){
     '<path d="M20.4 4.6v4.2h-4.2"/><path d="M20.4 14.6a8.6 8.6 0 0 1-14.2 3.2l-2.6-2.4"/>'+
     '<path d="M3.6 19.4v-4.2h4.2"/></svg></button>'+
     '<button class="vl-orient" id="vl-orient" onclick="vlogToggleOrient()" aria-label="לאורך או לרוחב"></button>'+
+    '<button class="vl-fix" id="vl-fix" onclick="vlogCycleFix()" aria-label="כיוון התמונה"></button>'+
     '<div class="vl-ring" id="vl-ringwrap">'+
     '<svg viewBox="0 0 72 72"><circle class="vl-ring-bg" cx="36" cy="36" r="32"/>'+
     '<circle class="vl-ring-fg" id="vl-ring" cx="36" cy="36" r="32"/></svg>'+
@@ -1477,8 +1480,48 @@ function vlogPaint(){
   var c=document.getElementById('vl-canvas'),v=_vlSrcV;
   if(!c||!v||!v.videoWidth)return;
   var x=c.getContext('2d'),sw=v.videoWidth,sh=v.videoHeight;
-  var k=Math.max(c.width/sw,c.height/sh),dw=sw*k,dh=sh*k;
-  try{x.drawImage(v,(c.width-dw)/2,(c.height-dh)/2,dw,dh);}catch(e){}
+  // fit, never fill: min keeps the whole frame, max would cut its sides off
+  var k=Math.min(c.width/sw,c.height/sh),dw=sw*k,dh=sh*k;
+  var t=vlogFix();
+  x.fillStyle='#000';x.fillRect(0,0,c.width,c.height);
+  x.save();
+  x.translate(c.width/2,c.height/2);
+  // the correction is applied HERE, to the canvas, so the clip that gets
+  // saved is the picture you were looking at - not a CSS trick over the top
+  // of it that the file never sees
+  if(t&2)x.rotate(Math.PI);
+  if(t&1)x.scale(-1,1);
+  try{x.drawImage(v,-dw/2,-dh/2,dw,dh);}catch(e){}
+  x.restore();
+}
+/* ── 2. which way round ──
+   Twice I guessed what "upside down" meant - mirrored, or turned over - and
+   twice guessing was the wrong move, because it depends on the phone and on
+   which way a person expects to see themselves. So it is a button now, and
+   what it is set to is remembered per camera.
+
+   0 as it comes, 1 mirrored, 2 turned over, 3 both. The front camera starts
+   mirrored because that is how you are used to seeing your own face; the
+   back camera starts as it comes, because it is pointed at the world and the
+   world is not mirrored. */
+var VL_FIX_KEY='vlog_fix';
+var VL_FIX_NAMES=['רגיל','מראה','הפוך','מראה + הפוך'];
+function vlogFixAll(){
+  try{var o=JSON.parse(localStorage.getItem(VL_FIX_KEY));if(o)return o;}catch(e){}
+  return {user:1,environment:0};
+}
+function vlogFix(){var a=vlogFixAll();var v=a[_vlFacing];return typeof v==='number'?v:(_vlFacing==='user'?1:0);}
+function vlogCycleFix(){
+  var a=vlogFixAll();
+  a[_vlFacing]=(vlogFix()+1)%4;
+  try{localStorage.setItem(VL_FIX_KEY,JSON.stringify(a));}catch(e){}
+  vlogFixLabel();
+}
+function vlogFixLabel(){
+  var b=document.getElementById('vl-fix');
+  if(b)b.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 3.4v17.2"/>'+
+    '<path d="M8.6 7.2 12 3.4l3.4 3.8"/><path d="M15.4 16.8 12 20.6l-3.4-3.8"/></svg>'+
+    '<b>'+VL_FIX_NAMES[vlogFix()]+'</b>';
 }
 function vlogPaintStop(){
   if(_vlRAF){cancelAnimationFrame(_vlRAF);_vlRAF=0;}
@@ -1523,15 +1566,17 @@ function vlogGetCam(){
     return v.play().catch(function(){});
   });
 }
-// The live view is the canvas, mirrored for the front camera only.
+// The live view is the canvas, and the canvas is already the finished
+// picture - correction included - so nothing is laid over it.
 function vlogLive(){
   var c=document.getElementById('vl-canvas'),v=document.getElementById('vl-video');
-  if(c){c.style.display='block';c.classList.toggle('mirror',_vlFacing==='user');}
+  if(c)c.style.display='block';
   if(v)v.style.display='none';
   vlogSetOrient(_vlOrient);
   vlogPaintStop();vlogPaint();
-  var o=document.getElementById('vl-orient');
-  if(o)o.classList.add('on');
+  var o=document.getElementById('vl-orient');if(o)o.classList.add('on');
+  var fx=document.getElementById('vl-fix');if(fx)fx.classList.add('on');
+  vlogFixLabel();
 }
 /* Switching cameras. The canvas is painted throughout, so mid-clip this does
    not even pause the recording - the picture simply becomes the other camera
@@ -1542,8 +1587,8 @@ function vlogFlip(){
   var was=_vlFacing;
   _vlFacing=(_vlFacing==='user')?'environment':'user';
   vlogGetCam().then(function(){
-    var c=document.getElementById('vl-canvas');
-    if(c)c.classList.toggle('mirror',_vlFacing==='user');
+    // each camera remembers its own correction
+    vlogFixLabel();
     _vlFlipping=false;
   },function(){
     // refused, or there is nothing to switch to: go back rather than go dark
@@ -1586,6 +1631,7 @@ function vlogFallback(why){
   vlogRing(false);
   var fb=document.getElementById('vl-flip');if(fb)fb.classList.remove('on');
   var fo=document.getElementById('vl-orient');if(fo)fo.classList.remove('on');
+  var fx2=document.getElementById('vl-fix');if(fx2)fx2.classList.remove('on');
   var fc=document.getElementById('vl-canvas');if(fc)fc.style.display='none';
   var fv=document.getElementById('vl-video');if(fv)fv.style.display='block';
   vlogMsg((why?why+'<br>':'')+'אפשר להקליט במצלמה של הטלפון, עד '+VLOG_MAX+' שניות.');
@@ -1677,13 +1723,13 @@ function vlogSetSrc(url){
   var v=document.getElementById('vl-video');
   if(!v)return;
   try{v.srcObject=null;}catch(e){}
-  v.classList.remove('mirror');
   v.style.display='block';
   v.muted=false;v.controls=true;v.src=url;
   var c=document.getElementById('vl-canvas');if(c)c.style.display='none';
   var b=document.getElementById('vl-flip');if(b)b.classList.remove('on');
   var o=document.getElementById('vl-orient');
   if(o){o.classList.remove('on');o.classList.remove('locked');}
+  var fx=document.getElementById('vl-fix');if(fx)fx.classList.remove('on');
 }
 function vlogPreview(){
   vlogRing(false);
