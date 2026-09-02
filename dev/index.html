@@ -1652,7 +1652,11 @@ var _vlDate='',_vlRec=null,_vlChunks=[],_vlTimer=null,_vlEnd=0,
     _vlSrcV=null,_vlCamV=null,_vlAudio=null,_vlRAF=0,_vlFlipping=false,
     _vlOrient='portrait',_vlOut=null;
 var VL_RING=201.06;   // 2 * PI * 32, the countdown circle
-var VL_SIZES={portrait:[720,1280],landscape:[1280,720]};
+/* What to ask the camera for. It is only a preference - the shape that
+   comes back is what gets used - but asking for 720 got 720, and then the
+   clip was 720 however high the bitrate went. Ask for the full sensor and
+   let vlogAdoptShape take whatever arrives. */
+var VL_SIZES={portrait:[1080,1920],landscape:[1920,1080]};
 
 function vlogOpen(d){
   _vlDate=d||todayStr();
@@ -1705,7 +1709,12 @@ function vlogRing(on,frac){
    nothing added - the picture is what the lens sees, which is what opening a
    camera is supposed to look like. The long edge is capped so a 4K phone
    does not write a 4K clip for a thirty second note to yourself. */
-var VL_CAP=1280;
+/* 1280 was throwing away a third of a modern phone camera before anything
+   was encoded: 1080x1920 in, 720x1280 out, resampled on every frame. 1920
+   lets the common case - a phone shooting portrait - pass through the canvas
+   untouched, which is the single biggest thing that makes a canvas pipeline
+   look worse than the camera it is reading. */
+var VL_CAP=1920;
 function vlogAdoptShape(){
   // never mid-clip: the encoder is built around one frame size
   if(_vlRec&&_vlRec.state==='recording')return;
@@ -1777,6 +1786,9 @@ function vlogPaint(){
   var c=document.getElementById('vl-canvas'),v=_vlSrcV;
   if(!c||!v||!v.videoWidth)return;
   var x=c.getContext('2d'),sw=v.videoWidth,sh=v.videoHeight;
+  // only matters when zoomed or when the shapes differ, but it costs nothing
+  x.imageSmoothingEnabled=true;
+  try{x.imageSmoothingQuality='high';}catch(e){}
   var k=Math.max(c.width/sw,c.height/sh)*_vlZoom,dw=sw*k,dh=sh*k;
   x.fillStyle='#000';x.fillRect(0,0,c.width,c.height);
   try{x.drawImage(v,(c.width-dw)/2,(c.height-dh)/2,dw,dh);}catch(e){}
@@ -1868,7 +1880,22 @@ function vlogGetCam(){
     video:{facingMode:_vlFacing,
            width:{ideal:VL_SIZES[_vlOrient][0]},
            height:{ideal:VL_SIZES[_vlOrient][1]}},
-    audio:wantAudio
+    /* Plain audio:true is not neutral. The browser turns on echo
+       cancellation, noise suppression and automatic gain by default, all of
+       them tuned for a video call: gain pumps the level up and down between
+       sentences, suppression eats the room and leaves the voice sounding
+       like it is underwater. Fine for a meeting, wrong for a recording, and
+       the whole of why this sounded odd.
+
+       All three off. Chrome will not release automatic gain unless echo
+       cancellation goes with it, so they have to be turned off together. */
+    audio:wantAudio?{
+      echoCancellation:false,
+      noiseSuppression:false,
+      autoGainControl:false,
+      channelCount:{ideal:1},
+      sampleRate:{ideal:48000}
+    }:false
   }).then(function(s){
     var old=_vlCamV;
     _vlCamV=s.getVideoTracks()[0]||null;
@@ -1993,7 +2020,21 @@ function vlogRecord(){
   _vlOut=vlogOutStream();
   if(!_vlOut)return vlogFallback('הדפדפן הזה לא מאפשר להקליט מהתצוגה.');
   _vlChunks=[];
-  var mt=vlogMime(),opt={videoBitsPerSecond:1200000,audioBitsPerSecond:96000};
+  /* 1.2 Mbps was the other half of it. That is a fine number for 360p and
+     visibly blocky at 720p the moment anything moves - and a face talking is
+     the worst case for a low bitrate, because the whole frame changes with
+     every expression.
+
+     Scaled to the frame instead of fixed, at about 0.07 bits per pixel per
+     frame: near 1.9 Mbps at 720p and 4.3 at 1080p, which is the range
+     Instagram encodes a story at. Half of what a generous factor would give
+     and hard to tell apart on a phone screen - and the difference is 16MB a
+     clip against 27, which over a year of daily clips is the difference
+     between filling the phone and not. */
+  var _c=document.getElementById('vl-canvas');
+  var _px=(_c?_c.width*_c.height:720*1280);
+  var _vbps=Math.max(1200000,Math.min(5000000,Math.round(_px*30*0.07)));
+  var mt=vlogMime(),opt={videoBitsPerSecond:_vbps,audioBitsPerSecond:128000};
   if(mt)opt.mimeType=mt;
   try{_vlRec=new MediaRecorder(_vlOut,opt);}
   catch(e){
