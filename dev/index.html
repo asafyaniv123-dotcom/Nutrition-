@@ -867,6 +867,12 @@ body.sheet-open .tabbar{display:none}
 .me-range{display:flex;gap:5px;background:rgba(255,255,255,.6);border-radius:13px;padding:4px;margin-bottom:14px}
 .me-rb{flex:1;border:none;border-radius:10px;padding:8px 4px;font-family:inherit;font-size:11.5px;font-weight:700;color:#a89e97;background:none;cursor:pointer}
 .me-rb.on{background:#fff;color:#4a4340;box-shadow:0 2px 7px rgba(200,180,160,.2)}
+.snd-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:none;padding:4px 2px;cursor:pointer;font-family:inherit}
+.snd-t{font-size:13px;font-weight:700;color:#6a6360}
+.snd-sw{width:46px;height:26px;border-radius:13px;background:#e0dbd5;position:relative;flex-shrink:0;transition:background .25s}
+.snd-sw.on{background:linear-gradient(135deg,#c9bce0,#a690cf)}
+.snd-sw i{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:right .25s}
+.snd-sw.on i{right:calc(100% - 23px)}
 .me-slot{margin-bottom:12px}
 .me-hero{background:#fff;border-radius:22px;padding:20px;text-align:center;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12)}
 .me-hero-n{font-size:40px;font-weight:800;color:#7c5cc4;line-height:1}
@@ -4272,7 +4278,75 @@ function renderSummaryOverlay(dateStr){
 
 document.getElementById('btnPrev').onclick=function(){goDay(-1);};
 document.getElementById('btnNext').onclick=function(){goDay(1);};
+/* ── SOUND ──
+   One thing to know before reading this: a browser will not let a page make
+   a noise until the person has touched it. That is not a setting anyone can
+   turn off - it is there so a page cannot ambush you - and it applies to a
+   PWA on the home screen exactly as it does to a tab.
+
+   So an opening sound cannot simply be played on load. What it can do is
+   try, and if the browser refuses, wait for the first touch - but only while
+   the splash is still up. A chime that arrives a minute later, out of
+   nowhere, is worse than no chime at all.
+
+   In practice a phone that is resuming the app rather than starting it cold
+   never reloaded the page, so the permission is still there and the sound
+   plays on open. A cold start plays it on the first touch, which is usually
+   within the second. */
+var SND_KEY='sound_on',SND_OPEN='open.mp3';
+function sndOn(){try{return localStorage.getItem(SND_KEY)!=='0';}catch(e){return true;}}
+function sndSet(on){try{localStorage.setItem(SND_KEY,on?'1':'0');}catch(e){}}
+function sndToggle(){
+  sndSet(!sndOn());
+  if(sndOn())sndPlay(SND_OPEN,0.5);
+  renderMe();
+}
+var _sndEls={};
+function sndEl(name){
+  if(_sndEls[name])return _sndEls[name];
+  var a=new Audio(appBase()+'assets/'+name);
+  a.preload='auto';
+  _sndEls[name]=a;
+  return a;
+}
+/* Always returns a promise, and a rejection here is ordinary - a missing file
+   or a browser that is not ready to make noise both land in the same place,
+   and neither is worth an error on screen. */
+function sndPlay(name,vol){
+  if(!sndOn())return Promise.reject();
+  var a;
+  try{a=sndEl(name);}catch(e){return Promise.reject();}
+  try{a.currentTime=0;}catch(e){}
+  a.volume=(vol===undefined?0.7:vol);
+  var p;
+  try{p=a.play();}catch(e){return Promise.reject();}
+  return (p&&p.then)?p:Promise.resolve();
+}
+function sndOpening(){
+  if(!sndOn())return;
+  sndPlay(SND_OPEN).catch(function(){
+    // refused for want of a gesture: take the first one, but not for long
+    var done=false;
+    function go(){
+      if(done)return;
+      done=true;
+      clearTimeout(t);
+      document.removeEventListener('pointerdown',go,true);
+      document.removeEventListener('touchstart',go,true);
+      sndPlay(SND_OPEN).catch(function(){});
+    }
+    function drop(){
+      done=true;
+      document.removeEventListener('pointerdown',go,true);
+      document.removeEventListener('touchstart',go,true);
+    }
+    var t=setTimeout(drop,3200);   // the splash is gone by then
+    document.addEventListener('pointerdown',go,true);
+    document.addEventListener('touchstart',go,true);
+  });
+}
 setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove();},3100);
+sndOpening();
 var currentModule=null; // null = home, 'nutrition', 'endofday'
 
 function goHome(){
@@ -6243,6 +6317,10 @@ function sumRemShowOS(title,body){
 
 function sumRemBanner(msg){
   var old=document.getElementById('sumrem-banner');if(old)old.remove();
+  /* A push notification's sound belongs to the operating system - neither
+     iOS nor Android lets a web app choose it. This banner is the app's own,
+     so this one it can sound. */
+  sndPlay(SND_OPEN,0.45).catch(function(){});
   var d=document.createElement('div');
   d.id='sumrem-banner';
   d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:900;display:flex;justify-content:center;padding:10px 12px;pointer-events:none';
@@ -12219,6 +12297,10 @@ function renderMe(){
   h+='<div class="me-hero"><div class="me-hero-n">'+done+'</div>';
   h+='<div class="me-hero-l">ימים שסיכמת מתוך '+_meRange+'</div></div>';
 
+  h+=meCard('snd','צלילים','צליל פתיחה והתראות בתוך האפליקציה',
+    '<button class="snd-row" onclick="sndToggle()">'+
+    '<span class="snd-t">'+(sndOn()?'מופעל':'מושתק')+'</span>'+
+    '<span class="snd-sw'+(sndOn()?' on':'')+'"><i></i></span></button>');
   h+='<div id="home-cal" class="me-slot"></div>';
   h+='<div id="home-vision" class="me-slot"></div>';
   h+='<div class="me-range">';
