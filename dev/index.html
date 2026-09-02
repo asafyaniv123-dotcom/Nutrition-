@@ -365,6 +365,12 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .wk-slot-l{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:8px;font-weight:700;color:#b8afa7;letter-spacing:.03em;line-height:1.15;gap:2px}
 .wk-slot-hrs{font-size:7.5px;font-weight:700;color:#cfc6be;direction:ltr;letter-spacing:0}
 /* what the day screen placed, shown here too but marked as belonging there */
+.wk-chip .wk-t{display:block;font-size:7px;font-weight:800;opacity:.72;direction:ltr;text-align:right}
+/* a task carrying on into the next band: colour only, no words */
+.wk-chip.tail{min-height:9px;padding:0;opacity:.45;border-radius:3px}
+/* the panel for the day you tapped, with a notch pointing at its column */
+.wk-open{position:relative;margin-top:20px;background:rgba(255,255,255,.72);border-radius:16px;padding:14px 12px;box-shadow:0 4px 16px rgba(200,180,160,.14)}
+.wk-point{position:absolute;top:-9px;width:18px;height:18px;background:rgba(255,255,255,.72);transform:rotate(45deg);border-radius:3px}
 .wk-chip.fromday{border:1px dashed rgba(0,0,0,.14);opacity:.82}
 .wk-hcell{text-align:center;min-width:0;padding:2px 0;border-radius:8px}
 .wk-hcell.today{background:linear-gradient(135deg,#f0eafa,#e8dff5)}
@@ -485,17 +491,21 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
    this day: the original stays where it is, and a red bin would say otherwise.
    It stays under the drag ghost and never takes a pointer event, so the drop
    targets underneath it still work exactly as before. */
-.swipe-trash{position:fixed;left:0;top:0;bottom:0;width:56px;z-index:190;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;transform:translateX(-100%);transition:transform .18s ease,background .15s,opacity .15s;background:linear-gradient(90deg,rgba(176,96,78,.62),rgba(176,96,78,.14))}
-.swipe-trash.on{transform:none}
-.swipe-trash.hot{background:linear-gradient(90deg,rgba(176,80,58,.92),rgba(198,110,86,.55))}
+/* A full-height bar down the edge of a planning screen is a lot of red for
+   something you mostly are not doing. A dot is a target: big enough to hit
+   with a thumb, small enough to ignore. */
+.swipe-trash{position:fixed;left:14px;top:50%;width:72px;height:72px;border-radius:50%;z-index:190;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transform:translate(-140%,-50%) scale(.8);transition:transform .2s cubic-bezier(.2,.9,.3,1),background .15s,opacity .15s,box-shadow .15s;background:rgba(176,96,78,.72);box-shadow:0 6px 18px rgba(140,70,52,.28)}
+.swipe-trash.on{transform:translate(0,-50%) scale(1)}
+.swipe-trash.hot{background:#b0503a;box-shadow:0 8px 26px rgba(140,70,52,.45)}
+.swipe-trash.on.hot{transform:translate(0,-50%) scale(1.12)}
 /* the minute steps open across the same strip of screen; a bin floating
    over the times you are trying to press is worse than no bin at all */
 .swipe-trash.hidden{opacity:0}
-.swipe-trash.keep{background:linear-gradient(90deg,rgba(170,124,48,.62),rgba(170,124,48,.14))}
-.swipe-trash.keep.hot{background:linear-gradient(90deg,rgba(172,118,30,.92),rgba(198,152,62,.55))}
-.swipe-trash svg{width:27px;height:27px;fill:none;stroke:#fff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.9;transition:transform .18s,opacity .18s}
+.swipe-trash.keep{background:rgba(170,124,48,.72)}
+.swipe-trash.keep.hot{background:#aa7c30}
+.swipe-trash svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.9;transition:transform .18s,opacity .18s}
 .swipe-trash.hot svg{transform:scale(1.2);opacity:1}
-.swipe-trash b{font-size:10px;font-weight:800;color:#fff;opacity:0;transition:opacity .15s;text-align:center;line-height:1.3;padding:0 4px}
+.swipe-trash b{font-size:9px;font-weight:800;color:#fff;opacity:0;transition:opacity .15s;text-align:center;line-height:1.2;padding:0 3px}
 .swipe-trash.hot b{opacity:1}
 @media (prefers-reduced-motion:reduce){.swipe-trash,.swipe-trash svg{transition:none}}
 /* a flick to the left says remove, and the ghost says which kind */
@@ -6223,15 +6233,36 @@ var WK_SLOTS=[['m','בוקר','06&ndash;12'],['n','צהריים','12&ndash;17'],
 // Which band an exact hour from the day grid belongs to.
 function wkSlotForHour(h){return h<12?'m':(h<17?'n':'e');}
 // What the day screen put on this date and hour, so the week can show it too.
+/* Everything the day screen placed on this date that falls in this band -
+   its own tasks and the week's own, once they have been given an hour.
+
+   A task is reported in every band it touches, not only the one it starts
+   in, so something running from noon to five appears at noon and again in
+   the evening band as a tail. Without that a long task simply vanished from
+   the hours it actually occupies, which is the opposite of what a week view
+   is for. */
 function wkDayItemsIn(date,slot){
-  var dp=loadDPlan(date),out=[],i,it;
-  for(i=0;i<dp.items.length;i++){
-    it=dp.items[i];
-    if(typeof it.h!=='number')continue;
-    if(wkSlotForHour(it.h)!==slot)continue;
-    out.push(it);
+  var all=dpAll(date),out=[],i,t,startSlot,endSlot,si,ei,ss;
+  for(i=0;i<all.length;i++){
+    t=all[i];
+    if(t.hour===null)continue;
+    startSlot=wkSlotForHour(t.hour);
+    si=wkSlotIndex(startSlot);
+    ss=wkSlotIndex(slot);
+    if(t.end){
+      endSlot=wkSlotForHour(Math.floor((t.end-1)/60));
+      ei=wkSlotIndex(endSlot);
+    } else ei=si;
+    if(ss<si||ss>ei)continue;
+    out.push({id:t.id,w:t.w,c:t.c,h:t.hour,mn:t.min||0,e:t.end||0,
+              tail:(ss>si),src:t.src});
   }
+  out.sort(function(a,b){return (a.h*60+a.mn)-(b.h*60+b.mn);});
   return out;
+}
+function wkSlotIndex(k){
+  for(var i=0;i<WK_SLOTS.length;i++)if(WK_SLOTS[i][0]===k)return i;
+  return 0;
 }
 // Drawn from the palette the rest of the app already uses, so a coloured week
 // still looks like the same app.
@@ -6301,7 +6332,7 @@ function renderPlanWeek(){
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
   h+='<button onclick="wkShift(1)" style="background:#fff;border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
   h+='<div style="text-align:center"><div style="font-size:14px;font-weight:800;color:#4a4340">'+(thisWeek?'השבוע':'שבוע של '+wkShort(_wkSun))+'</div>';
-  h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+wkShort(_wkSun)+' &ndash; '+wkShort(wkDateOf(_wkSun,6))+'</div></div>';
+  h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+wkShort(_wkSun)+' &ndash; '+wkShort(wkDateOf(_wkSun,6))+' &middot; <span style="font-size:9px;color:#c0b6ae">החלק להחלפת שבוע</span></div></div>';
   h+='<button onclick="wkShift(-1)" style="background:#fff;border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:#a89e97;cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
   h+='</div>';
 
@@ -6337,7 +6368,15 @@ function renderPlanWeek(){
       var dl=wkDayItemsIn(st,WK_SLOTS[j][0]);
       for(t=0;t<dl.length;t++){
         var dc=wkColor(dl[t].c);
-        h+='<div class="wk-chip fromday" style="background:'+dc.bg+';color:'+dc.tx+'">'+esc(dl[t].w)+'</div>';
+        if(dl[t].tail){
+          // no name and no time: it is the same task, already named where
+          // it starts, and only the colour has to carry down
+          h+='<div class="wk-chip tail" style="background:'+dc.bg+'"></div>';
+          continue;
+        }
+        h+='<div class="wk-chip fromday" style="background:'+dc.bg+';color:'+dc.tx+'">'+
+           '<span class="wk-t">'+dpHM(dl[t].h,dl[t].mn)+(dl[t].e?'&ndash;'+dpFmt(dl[t].e):'')+'</span>'+
+           esc(dl[t].w)+'</div>';
       }
       h+='</div>';
     }
@@ -6348,7 +6387,12 @@ function renderPlanWeek(){
   // the open day, in full
   if(_wkOpen>=0){
     var od=wkDateOf(_wkSun,_wkOpen),ost=wkStamp(od);
-    h+='<div style="margin-top:16px">';
+    /* The panel cannot sit under a column three fingers wide, so it points
+       at one instead: a notch above it, lined up with the middle of the day
+       that was tapped. In RTL the first column is the rightmost, so the
+       arithmetic runs from the right. */
+    h+='<div class="wk-open">';
+    h+='<div class="wk-point" id="wk-point"></div>';
     h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
     h+='<div style="font-size:12.5px;font-weight:800;color:#4a4340">'+WK_DAYS[_wkOpen]+' &middot; '+wkShort(od)+'</div>';
     h+='<button onclick="wkOpen('+_wkOpen+')" style="background:none;border:none;font-size:11px;color:#a89e97;cursor:pointer;font-family:inherit">סגור</button></div>';
@@ -6391,12 +6435,15 @@ function renderPlanWeek(){
 
   h+='</div>';
   document.getElementById('content').innerHTML=h;
+  wkPlacePoint();
   var box=document.getElementById('content');
   box.removeEventListener('pointerdown',dpDown);
   box.removeEventListener('pointerdown',moDown);
   box.removeEventListener('pointerdown',wkDown);
   box.removeEventListener('pointerdown',daySwipeDown);
   box.removeEventListener('pointerup',daySwipeUp);
+  box.addEventListener('pointerdown',daySwipeDown);
+  box.addEventListener('pointerup',daySwipeUp);
   box.addEventListener('pointerdown',wkDown);
 }
 
@@ -6423,6 +6470,21 @@ function wkSetColor(id,k){
 
 function wkShift(dir){_wkSun=wkDateOf(_wkSun,dir*7);_wkOpen=-1;renderPlanWeek();}
 function wkOpen(i){_wkOpen=_wkOpen===i?-1:i;renderPlanWeek();}
+/* The notch is lined up by measuring, not by arithmetic: the band labels
+   sit beside the table, so the seven columns do not start where the panel
+   does and a seventh of its width points at the wrong day. */
+function wkPlacePoint(){
+  var p=document.getElementById('wk-point');
+  if(!p||_wkOpen<0)return;
+  var panel=p.parentElement;
+  var col=document.querySelectorAll('.wk-col')[_wkOpen];
+  if(!col||!panel)return;
+  var cr=col.getBoundingClientRect(), pr=panel.getBoundingClientRect();
+  var fromRight=pr.right-(cr.left+cr.width/2);
+  // keep it on the panel even when the first or last day is open
+  fromRight=Math.max(16,Math.min(pr.width-16,fromRight));
+  p.style.right=(fromRight-9)+'px';
+}
 function wkAdd(){
   var el=document.getElementById('wk-in');
   if(!el||!el.value.trim())return;
@@ -6857,7 +6919,17 @@ var _daySwipe=null;
 // follows you to the next screen. Rather than chase every teardown site,
 // the gesture asks whether the day planner is what is actually in front of
 // you before it does anything.
-function onDayScreen(){return currentModule==='planning'&&_planMode==='day';}
+function onPlanScreen(){
+  return currentModule==='planning'&&
+         (_planMode==='day'||_planMode==='week'||_planMode==='month');
+}
+function onDayScreen(){return onPlanScreen();}
+// each horizon steps by its own unit
+function planStep(dir){
+  if(_planMode==='day')dpShift(dir);
+  else if(_planMode==='week')wkShift(dir);
+  else if(_planMode==='month')moShift(dir);
+}
 function daySwipeDown(e){
   if(!onDayScreen()||_dpDrag)return;                       // a task is being dragged
   var t=e.target;
@@ -6873,7 +6945,7 @@ function daySwipeUp(e){
   if(Math.abs(dy)>DAY_SWIPE_Y)return;      // that was a scroll
   if(Math.abs(dx)<Math.abs(dy)*1.6)return; // and it has to be mostly sideways
   if(Date.now()-s.t>900)return;            // a slow drag is not a flick
-  dpShift(dx>0?-1:1);
+  planStep(dx>0?-1:1);
   daySwipeHint(dx>0?-1:1);
 }
 // a short slide in the direction travelled, so the day visibly changes rather
@@ -7471,7 +7543,12 @@ var SWIPE_X=62,SWIPE_Y=34,TRASH_W=56;
 function overTrash(e){
   var t=document.querySelector('.swipe-trash');
   if(!t||!t.classList.contains('on')||t.classList.contains('hidden'))return false;
-  return e.clientX<=TRASH_W;
+  // anywhere on the dot, plus a ring of slack around it - a thumb is wider
+  // than what it is aiming at
+  var r=t.getBoundingClientRect();
+  var cx=r.left+r.width/2, cy=r.top+r.height/2;
+  var dx=e.clientX-cx, dy=e.clientY-cy;
+  return Math.sqrt(dx*dx+dy*dy)<=(r.width/2+26);
 }
 function swipeArmed(d,e){
   if(d.mode==='end')return false;
