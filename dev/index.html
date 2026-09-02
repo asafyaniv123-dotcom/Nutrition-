@@ -198,6 +198,10 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .sr-amt{display:flex;align-items:center;gap:6px;margin-top:8px}
 .sr-in{width:56px;border:1.5px solid #f2ede6;border-radius:9px;padding:6px;font-size:14px;font-weight:800;text-align:center;outline:none;font-family:inherit;color:#4a4340}
 .sr-u{border:1.5px solid #f2ede6;border-radius:9px;padding:6px 4px;font-size:11.5px;font-weight:700;color:#7a716b;font-family:inherit;background:#fff;outline:none}
+.sr-g{border:none;border-radius:9px;padding:4px 9px;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer;background:#f0ebe3;color:#7a716b;white-space:nowrap}
+/* a weight nobody has ever confirmed for this food, marked as such */
+.sr-g.guess{background:rgba(232,193,98,.22);color:#9a7420}
+.sr-warn{font-size:10.5px;line-height:1.6;color:#9a7420;background:rgba(232,193,98,.14);border-radius:10px;padding:8px 10px;margin-bottom:8px}
 .sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
 .sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
 .sr-said{font-size:10px;color:#c0b6ae;margin-bottom:6px}
@@ -3042,9 +3046,16 @@ function sayResolve(it){
   var alts=best?ranked.slice(1,4).map(function(r){return r.f;}):[];
   var unit=it.unit||'unit';
   var g=(unit==='g')?1:unitWeightFor(best?best.n:it.food,unit);
-  // a product that declares its own packet weight knows better than a default
-  if(best&&best.u>0&&unit==='unit')g=best.u;
-  return {q:it.food,amount:it.amount,unit:unit,g:g,food:best,alts:alts};
+  /* Where the weight came from matters as much as the weight. A packet that
+     declares 350ml is a fact; a weight you set once is a memory; anything
+     else is a house default that has never seen this food. The third kind
+     used to look exactly like the first two, which is how one 350ml shake
+     was logged as 100g and reported a third of its protein. */
+  var src='guess';
+  if(unit==='g')src='exact';
+  else if(best&&best.u>0&&unit==='unit'){g=best.u;src='packet';}
+  else if(foodUnitRec(best?best.n:it.food).w[unit]>0)src='learned';
+  return {q:it.food,amount:it.amount,unit:unit,g:g,food:best,alts:alts,gsrc:src};
 }
 function sayAmount(row){
   if(!row.food)return null;
@@ -3188,13 +3199,25 @@ function sayPaint(){
       h+='<select class="sr-u" onchange="saySetUnit('+i+',this.value)">';
       for(var u=0;u<FOOD_UNITS.length;u++)
         h+='<option value="'+FOOD_UNITS[u].k+'"'+(row.unit===FOOD_UNITS[u].k?' selected':'')+'>'+FOOD_UNITS[u].t+'</option>';
-      h+='</select><span class="sr-kl">קק"ל</span></div>';
+      h+='</select><span class="sr-kl">קק"ל</span>';
+      /* And what one of them weighs, on the line rather than hidden behind a
+         tap - it is the number that decides everything else, and when it is a
+         guess it says so and opens for correcting. */
+      if(row.unit!=='g'){
+        var gw=Math.round(row.amount*row.g);
+        h+='<button class="sr-g'+(row.gsrc==='guess'?' guess':'')+'" onclick="sayExpand('+i+')">'+
+           (row.gsrc==='guess'?'~':'')+gw+' גרם'+(row.gsrc==='guess'?' ?':'')+'</button>';
+      }
+      h+='</div>';
 
       // and the rest only when asked for
       if(open){
         h+='<div class="sr-more">';
         if(foodKey(row.food.n)!==foodKey(row.q))
           h+='<div class="sr-said">אמרת: '+esc(row.q)+'</div>';
+        if(row.unit!=='g'&&row.gsrc==='guess')
+          h+='<div class="sr-warn">לא ידוע כמה שוקלת יחידה אחת מהמוצר הזה. '+
+             'המספר למטה הוא ברירת מחדל &mdash; תקן אותו והוא ייזכר.</div>';
         if(row.unit!=='g')
           h+='<div class="sr-w">'+unitDef(row.unit).one+' = '+
              '<input class="sr-win" type="number" inputmode="decimal" value="'+row.g+'" oninput="saySetWeight('+i+',this.value)"> גרם</div>';

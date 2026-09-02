@@ -63,9 +63,23 @@ function shape(p){
   const brand=String(p.brands||'').split(',')[0].trim();
   if(brand&&name.toLowerCase().indexOf(brand.toLowerCase())<0)name+=', '+brand;
   const o={id:'off:'+p.code,n:name,k:Math.round(k),p:r1(pr),c:r1(ca),f:r1(fa),off:1};
-  // a declared serving is what lets a thing be counted in ones rather than weighed
-  const m=String(p.serving_size||'').match(/([\d.]+)\s*(g|gr|גרם|ג)\b/i);
+  /* A declared serving is what lets a thing be counted in ones rather than
+     weighed. This used to accept grams only - and a drink states its serving
+     in millilitres, so every shake, milk and yoghurt lost it. A 350ml protein
+     shake arrived in the app as 100g, which is the whole reason it showed
+     7.2g of protein where the bottle says 25. Millilitres are taken as grams:
+     for a drink the two are within a few percent, and a few percent is
+     nothing beside being out by a factor of three and a half.
+
+     And where nothing is declared but the package holds one portion, the
+     package is the serving - nobody drinks a third of a 350ml bottle. Over a
+     litre it is no longer one sitting, so it is left alone. */
+  const m=String(p.serving_size||'').match(/([\d.]+)\s*(ml|מ"ל|מל|g|gr|גרם|ג)\b/i);
   if(m){const g=Math.round(parseFloat(m[1]));if(g>0&&g<2000)o.u=g;}
+  if(!o.u){
+    const q=num(p.product_quantity);
+    if(q&&q>=20&&q<=1000)o.u=Math.round(q);
+  }
   return o;
 }
 
@@ -124,7 +138,7 @@ let lp=1,added=0;
 while(lp<=200){
   const url=LEGACY+'?action=process&tagtype_0=countries&tag_contains_0=contains&tag_0=israel'+
             '&json=1&page_size=50&page='+lp+
-            '&fields=code,product_name,product_name_he,brands,serving_size,nutriments';
+            '&fields=code,product_name,product_name_he,brands,serving_size,product_quantity,nutriments';
   const j=await grab(url);
   if(!j){process.stdout.write('\nthey stopped answering at page '+lp+' - keeping what we have\n');break;}
   const hits=j.products||[];
