@@ -60,6 +60,30 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
    the number is written by whatever source was connected under כושר, and
    tapping the card goes there. */
 /* what you did last time, and whether today beat it */
+/* choosing an exercise */
+.fit-pick{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid #ece5da;border-radius:12px;padding:12px 13px;background:#fff;font-family:inherit;font-size:13.5px;font-weight:700;color:#4a4340;cursor:pointer;text-align:right}
+.fit-pick-c{color:#d8cfc7;font-size:15px}
+.ex-ov{position:fixed;inset:0;z-index:440;background:rgba(74,67,64,.62);display:flex;align-items:flex-end;justify-content:center}
+.ex-sheet{width:100%;max-width:480px;background:#fbf7f2;border-radius:22px 22px 0 0;padding:16px 14px calc(18px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
+.ex-hd{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:#4a4340;margin-bottom:10px}
+.ex-x{background:none;border:none;font-size:22px;line-height:1;color:#c0b6ae;cursor:pointer;font-family:inherit;padding:0 4px}
+.ex-q{width:100%;border:1.5px solid #ece5da;border-radius:12px;padding:11px 12px;font-size:14px;font-family:inherit;color:#4a4340;background:#fff;outline:none;text-align:right}
+.ex-tabs{display:flex;gap:6px;margin:12px 0 10px}
+.ex-tab{flex:1;border:none;border-radius:11px;padding:9px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;background:#f0ebe3;color:#a89e97}
+.ex-tab.on{background:linear-gradient(135deg,#f3b9a8,#e08a72);color:#fff}
+.ex-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.ex-chip{border:none;border-radius:10px;padding:6px 10px;font-size:11.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f5f0eb;color:#6a6360;display:flex;align-items:center;gap:5px}
+.ex-chip b{font-size:9.5px;color:#c0b6ae;font-weight:800}
+.ex-chip.on{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
+.ex-chip.on b{color:rgba(255,255,255,.8)}
+.ex-list{display:flex;flex-direction:column;gap:6px}
+.ex-row{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:none;border-radius:13px;padding:10px 12px;background:#fff;cursor:pointer;font-family:inherit;text-align:right;box-shadow:0 2px 8px rgba(200,180,160,.1)}
+.ex-n{font-size:13.5px;font-weight:800;color:#4a4340}
+.ex-meta{font-size:10px;color:#a89e97}
+.ex-en{font-size:9.5px;color:#c8bfb6;direction:ltr}
+.ex-none{font-size:12px;color:#a89e97;padding:18px 4px;text-align:center;line-height:1.6}
+.ex-own{display:flex;gap:7px;margin-top:14px;padding-top:12px;border-top:1px solid #f0ebe3}
+.ex-add{border:none;border-radius:12px;padding:0 16px;background:linear-gradient(135deg,#f3b9a8,#e08a72);color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer}
 .fw-prev{background:#faf6f1;border-radius:12px;padding:9px 11px;margin-bottom:12px}
 .fw-prev.none{font-size:10.5px;color:#a89e97;line-height:1.6}
 .fw-prev-t{font-size:9px;font-weight:800;color:#a89e97;letter-spacing:.06em;margin-bottom:6px}
@@ -5754,7 +5778,12 @@ function renderFitEditTemplate(){
   // Add exercise form
   h+='<div style="background:#fff;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 2px 8px rgba(200,180,160,.08)">';
   h+='<div style="font-size:10px;color:#a89e97;font-weight:700;margin-bottom:8px">הוסף תרגיל</div>';
-  h+='<input id="fit-ex-name" class="mtin" placeholder="שם התרגיל (למשל: סקוואט)">';
+  /* The name used to be typed, which meant last week's לחיצת חזה and this
+     week's did not always match - and the previous-time line is worth
+     nothing when they do not. Picked from the library they always do. */
+  h+='<button class="fit-pick" onclick="exPickInto(fitExPicked)">'+
+     '<span id="fit-ex-shown">בחר תרגיל מהרשימה</span><span class="fit-pick-c">&#8249;</span></button>';
+  h+='<input id="fit-ex-name" class="mtin" placeholder="או הקלד שם" style="margin-top:8px">';
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
   h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">סטים</div><input id="fit-ex-sets" class="mtnm" type="number" value="3" style="width:100%;padding:8px;border-radius:8px"></div>';
   h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">חזרות</div><input id="fit-ex-reps" class="mtnm" type="number" value="10" style="width:100%;padding:8px;border-radius:8px"></div>';
@@ -5942,6 +5971,140 @@ function restTick(){
   }
   var n=document.getElementById('fw-rest-n');
   if(n)n.textContent=Math.floor(left/60)+':'+(left%60<10?'0':'')+(left%60);
+}
+/* ── THE EXERCISE LIBRARY ──
+   Until now an exercise was whatever you typed, which meant "לחיצת חזה" and
+   "לחיצת חזה " and "בנץ" were three different exercises as far as the app was
+   concerned - and the previous-time line we just built is worth nothing if
+   last week's name does not match this week's.
+
+   So: a list, found the way Hevy lets you find one - by the muscle it works,
+   by the equipment in front of you, or by typing. The English name is carried
+   alongside because half the gym says it that way, and searching either finds
+   the same row. */
+var _exDB=null,_exState='idle',_exTab='muscle',_exFilter='',_exQ='',_exPick=null;
+function exLoad(cb){
+  if(_exState==='ready')return cb&&cb();
+  if(_exState==='loading'){setTimeout(function(){exLoad(cb);},120);return;}
+  _exState='loading';
+  fetch(appBase()+'data/exercises.json').then(function(r){return r.json();}).then(function(j){
+    _exDB=j;_exState='ready';cb&&cb();
+  },function(){_exState='idle';cb&&cb();});
+}
+function exAll(){return (_exDB&&_exDB.exercises)||[];}
+// what you type finds the Hebrew or the English, whichever you happen to know
+function exMatch(e,q){
+  if(!q)return true;
+  q=q.toLowerCase();
+  return e.n.toLowerCase().indexOf(q)>=0||(e.en||'').toLowerCase().indexOf(q)>=0;
+}
+function exList(){
+  var all=exAll(),out=[],i,e;
+  for(i=0;i<all.length;i++){
+    e=all[i];
+    if(!exMatch(e,_exQ))continue;
+    if(_exQ){out.push(e);continue;}                 // typing overrides the tabs
+    if(_exTab==='muscle'&&_exFilter&&e.m.indexOf(_exFilter)<0)continue;
+    if(_exTab==='equip'&&_exFilter&&e.q.indexOf(_exFilter)<0)continue;
+    out.push(e);
+  }
+  return out;
+}
+function exOpen(){
+  _exQ='';_exFilter='';_exTab='muscle';
+  // the sheet has to exist before anything can be painted into it. Loading
+  // first only worked while the file was still being fetched; once it was
+  // cached exLoad called back immediately, ex-body did not exist yet, and
+  // the list came up empty on every open after the first.
+  exSheet();
+  exLoad(function(){exPaint();});
+}
+function exClose(){
+  var o=document.getElementById('ex-ov');if(o)o.remove();
+  document.body.style.overflow='';
+}
+function exSetTab(t){_exTab=t;_exFilter='';_exPaintBody();}
+function exSetFilter(f){_exFilter=(_exFilter===f)?'':f;_exPaintBody();}
+function exSearch(v){_exQ=v;_exPaintBody();}
+function exSheet(){
+  var old=document.getElementById('ex-ov');if(old)old.remove();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="ex-ov" id="ex-ov" onclick="if(event.target===this)exClose()">'+
+    '<div class="ex-sheet">'+
+    '<div class="ex-hd"><span>בחר תרגיל</span>'+
+    '<button class="ex-x" onclick="exClose()">&times;</button></div>'+
+    '<input class="ex-q" id="ex-q" placeholder="חפש בעברית או באנגלית" oninput="exSearch(this.value)">'+
+    '<div id="ex-body"></div>'+
+    '</div></div>');
+  document.body.style.overflow='hidden';
+}
+function exPaint(){_exPaintBody();}
+function _exPaintBody(){
+  var el=document.getElementById('ex-body');
+  if(!el)return;
+  if(_exState!=='ready'){el.innerHTML='<div class="ex-none">טוען&hellip;</div>';return;}
+  var h='';
+  if(!_exQ){
+    h+='<div class="ex-tabs">'+
+       '<button class="ex-tab'+(_exTab==='muscle'?' on':'')+'" onclick="exSetTab(&quot;muscle&quot;)">לפי שריר</button>'+
+       '<button class="ex-tab'+(_exTab==='equip'?' on':'')+'" onclick="exSetTab(&quot;equip&quot;)">לפי ציוד</button>'+
+       '</div>';
+    var keys=(_exTab==='muscle')?(_exDB.muscles||[]):(_exDB.equipment||[]);
+    h+='<div class="ex-chips">';
+    for(var i=0;i<keys.length;i++){
+      // a group with nothing in it is a dead end, so it is not offered
+      var n=exAll().filter(function(e){
+        return (_exTab==='muscle'?e.m:e.q).indexOf(keys[i])>=0;
+      }).length;
+      if(!n)continue;
+      h+='<button class="ex-chip'+(_exFilter===keys[i]?' on':'')+'" onclick="exSetFilter(&quot;'+esc(keys[i])+'&quot;)">'+
+         esc(keys[i])+'<b>'+n+'</b></button>';
+    }
+    h+='</div>';
+  }
+  var list=exList();
+  if(!list.length){
+    h+='<div class="ex-none">לא מצאתי. אפשר גם להקליד שם משלך למטה.</div>';
+  } else {
+    h+='<div class="ex-list">';
+    for(var j=0;j<list.length;j++){
+      var e=list[j];
+      h+='<button class="ex-row" onclick="exChoose('+j+')">'+
+         '<span class="ex-n">'+esc(e.n)+'</span>'+
+         '<span class="ex-meta">'+esc(e.m.join(' · '))+' &middot; '+esc(e.q.join(', '))+'</span>'+
+         (e.en?'<span class="ex-en">'+esc(e.en)+'</span>':'')+
+         '</button>';
+    }
+    h+='</div>';
+  }
+  // whatever the library does not have, you can still name yourself
+  h+='<div class="ex-own"><input class="ex-q" id="ex-own" placeholder="או תרגיל משלך&hellip;">'+
+     '<button class="ex-add" onclick="exChooseOwn()">הוסף</button></div>';
+  el.innerHTML=h;
+}
+function exChoose(i){
+  var e=exList()[i];
+  if(!e)return;
+  exClose();
+  if(_exPick)_exPick(e.n,e);
+}
+function exChooseOwn(){
+  var el=document.getElementById('ex-own');
+  var v=el&&el.value.trim();
+  if(!v)return;
+  exClose();
+  if(_exPick)_exPick(v,null);
+}
+/* Open the library and do something with what comes back. Everywhere that
+   wants an exercise name goes through here, so they all get the same list. */
+function exPickInto(fn){_exPick=fn;exOpen();}
+// the template editor's end of it: show the choice, and keep it where the
+// existing save code already looks for it
+function fitExPicked(name){
+  var shown=document.getElementById('fit-ex-shown');
+  if(shown)shown.textContent=name;
+  var inp=document.getElementById('fit-ex-name');
+  if(inp)inp.value=name;
 }
 function renderFitWorkout(){
   if(!_fitWorkout){_fitView='home';renderFitness();return;}
