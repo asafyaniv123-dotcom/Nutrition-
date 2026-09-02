@@ -694,6 +694,9 @@ body.night .td-lbl{background:transparent}
 /* contain, not cover. The recording is the whole frame; a preview cropped to
    fill a 3:4 box would have you framing yourself against something the file
    does not contain - and on a wide camera it looks zoomed in besides. */
+/* the canvas is the picture being recorded; the video element only ever
+   plays a finished clip back */
+.vl-canvas{max-width:100%;max-height:100%;display:block;background:#000}
 .vl-video{width:100%;height:100%;object-fit:contain;background:#000}
 /* A front camera is shown mirrored because that is what a person expects to
    see of themselves. Only the preview: playback is never flipped, or text
@@ -703,6 +706,13 @@ body.night .td-lbl{background:transparent}
 .vl-flip.on{display:flex}
 .vl-flip svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .vl-flip:active{transform:scale(.9)}
+/* portrait or landscape, chosen before the clip starts and fixed while it
+   runs - the encoder is built around one frame size */
+.vl-orient{position:absolute;top:10px;left:56px;height:38px;padding:0 11px;border-radius:19px;background:rgba(0,0,0,.5);border:none;display:none;align-items:center;gap:6px;cursor:pointer;color:#fff}
+.vl-orient.on{display:flex}
+.vl-orient.locked{opacity:.4;pointer-events:none}
+.vl-orient svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:1.9}
+.vl-orient b{font-size:10.5px;font-weight:800;font-family:inherit}
 /* the countdown: a ring that empties, so the time left is a shape not a number
    you have to read */
 .vl-ring{position:absolute;top:10px;right:10px;width:44px;height:44px;display:none;align-items:center;justify-content:center;pointer-events:none}
@@ -1359,7 +1369,13 @@ function vlogMime(){
   return '';
 }
 function vlogCanRecord(){
-  return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder);
+  return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&
+            window.MediaRecorder&&vlogCanCanvas());
+}
+// Without a canvas stream there is nothing to record but the camera itself,
+// and neither the mid-clip switch nor the chosen shape can be offered.
+function vlogCanCanvas(){
+  try{return !!document.createElement('canvas').captureStream;}catch(e){return false;}
 }
 function vlogSecs(v){return v&&v.sec?Math.round(v.sec):0;}
 // A short clip rounded to megabytes reads as "0MB", which looks like a failure.
@@ -1368,9 +1384,27 @@ function vlogSize(b){
                     :Math.round(b/1024/1024*10)/10+'MB';
 }
 
-var _vlDate='',_vlStream=null,_vlRec=null,_vlChunks=[],_vlTimer=null,_vlEnd=0,
-    _vlBlob=null,_vlURL='',_vlSec=0,_vlStarted=0,_vlFacing='user',_vlCams=0;
+/* ── THE CANVAS IN THE MIDDLE ──
+   The recorder does not read the camera. It reads a canvas, and the camera is
+   painted onto that canvas thirty times a second.
+
+   That one indirection buys the two things a phone camera will not give
+   directly. Switching cameras mid-clip: a MediaRecorder is bound to the stream
+   it started with, so handing it a different camera ends the recording - but
+   the canvas never changes identity, only what is drawn into it, so the
+   recorder notices nothing and the clip runs straight through the switch. And
+   shape: the camera hands over whatever it feels like, usually landscape even
+   when the phone is upright, and the canvas is the only place a frame can be
+   made portrait for real rather than merely looked at through a portrait hole.
+
+   It also makes the preview honest, because the preview IS the canvas. What
+   you are looking at is the file. */
+var _vlDate='',_vlRec=null,_vlChunks=[],_vlTimer=null,_vlEnd=0,
+    _vlBlob=null,_vlURL='',_vlSec=0,_vlStarted=0,_vlFacing='user',_vlCams=0,
+    _vlSrcV=null,_vlCamV=null,_vlAudio=null,_vlRAF=0,_vlFlipping=false,
+    _vlOrient='portrait',_vlOut=null;
 var VL_RING=201.06;   // 2 * PI * 32, the countdown circle
+var VL_SIZES={portrait:[720,1280],landscape:[1280,720]};
 
 function vlogOpen(d){
   _vlDate=d||todayStr();
@@ -1387,11 +1421,13 @@ function vlogSheet(){
     '<div class="vl-hd"><span id="vl-title">ולוג יומי</span>'+
     '<button class="vl-x" onclick="vlogClose()">&times;</button></div>'+
     '<div class="vl-stage">'+
-    '<video id="vl-video" class="vl-video" playsinline webkit-playsinline muted></video>'+
+    '<canvas id="vl-canvas" class="vl-canvas"></canvas>'+
+    '<video id="vl-video" class="vl-video" playsinline webkit-playsinline muted style="display:none"></video>'+
     '<button class="vl-flip" id="vl-flip" onclick="vlogFlip()" aria-label="החלף מצלמה">'+
     '<svg viewBox="0 0 24 24"><path d="M3.6 9.4a8.6 8.6 0 0 1 14.2-3.2l2.6 2.4"/>'+
     '<path d="M20.4 4.6v4.2h-4.2"/><path d="M20.4 14.6a8.6 8.6 0 0 1-14.2 3.2l-2.6-2.4"/>'+
     '<path d="M3.6 19.4v-4.2h4.2"/></svg></button>'+
+    '<button class="vl-orient" id="vl-orient" onclick="vlogToggleOrient()" aria-label="לאורך או לרוחב"></button>'+
     '<div class="vl-ring" id="vl-ringwrap">'+
     '<svg viewBox="0 0 72 72"><circle class="vl-ring-bg" cx="36" cy="36" r="32"/>'+
     '<circle class="vl-ring-fg" id="vl-ring" cx="36" cy="36" r="32"/></svg>'+
@@ -1412,22 +1448,50 @@ function vlogRing(on,frac){
   if(r)r.style.strokeDashoffset=(1-(frac===undefined?1:frac))*VL_RING;
 }
 
+/* Portrait or landscape. It cannot change while a clip is running: the
+   encoder is built around one frame size, and resizing the canvas underneath
+   it produces a file that no player will scrub properly. */
+function vlogSetOrient(o){
+  if(_vlRec&&_vlRec.state==='recording')return;
+  _vlOrient=o;
+  var c=document.getElementById('vl-canvas');
+  if(c){c.width=VL_SIZES[o][0];c.height=VL_SIZES[o][1];}
+  var p=document.getElementById('vl-orient');
+  if(p)p.innerHTML=vlogOrientLabel();
+}
+function vlogOrientLabel(){
+  var land=_vlOrient==='landscape';
+  return '<svg viewBox="0 0 24 24">'+
+    (land?'<rect x="2.6" y="6.4" width="18.8" height="11.2" rx="2"/>'
+         :'<rect x="6.4" y="2.6" width="11.2" height="18.8" rx="2"/>')+
+    '</svg><b>'+(land?'לרוחב':'לאורך')+'</b>';
+}
+function vlogToggleOrient(){
+  vlogSetOrient(_vlOrient==='portrait'?'landscape':'portrait');
+}
+/* Cover, not contain: the chosen frame is filled edge to edge and the
+   overflow is cropped evenly. That is what turns a landscape sensor into a
+   real portrait clip rather than a wide strip with black above and below. */
+function vlogPaint(){
+  _vlRAF=requestAnimationFrame(vlogPaint);
+  var c=document.getElementById('vl-canvas'),v=_vlSrcV;
+  if(!c||!v||!v.videoWidth)return;
+  var x=c.getContext('2d'),sw=v.videoWidth,sh=v.videoHeight;
+  var k=Math.max(c.width/sw,c.height/sh),dw=sw*k,dh=sh*k;
+  try{x.drawImage(v,(c.width-dw)/2,(c.height-dh)/2,dw,dh);}catch(e){}
+}
+function vlogPaintStop(){
+  if(_vlRAF){cancelAnimationFrame(_vlRAF);_vlRAF=0;}
+}
+
 function vlogStartCam(){
   document.getElementById('vl-title').textContent='ולוג יומי';
   vlogRing(false);
   vlogActions('');
   if(!vlogCanRecord())return vlogFallback('ההקלטה בתוך האפליקציה לא נתמכת בדפדפן הזה.');
   vlogMsg('מפעיל מצלמה&hellip;');
-  navigator.mediaDevices.getUserMedia({
-    video:{facingMode:_vlFacing,width:{ideal:720},height:{ideal:1280}},
-    audio:true
-  }).then(function(s){
-    _vlStream=s;
-    var v=document.getElementById('vl-video');
-    if(!v){vlogCamOff();return;}
-    v.srcObject=s;v.muted=true;v.controls=false;
-    v.classList.toggle('mirror',_vlFacing==='user');
-    v.play().catch(function(){});
+  vlogGetCam().then(function(){
+    vlogLive();
     vlogCountCams();
     vlogMsg('עד '+VLOG_MAX+' שניות. ההקלטה נעצרת לבד.');
     vlogActions('<button class="vl-shot" onclick="vlogRecord()" aria-label="התחל הקלטה"><span></span></button>');
@@ -1438,6 +1502,81 @@ function vlogStartCam(){
                  'המצלמה לא נפתחה.');
   });
 }
+/* Opening one camera. The microphone is asked for once and kept across a
+   switch - a cut in the sound is far more noticeable than a cut in the
+   picture, and a microphone has no side to be on. */
+function vlogGetCam(){
+  var wantAudio=!_vlAudio;
+  return navigator.mediaDevices.getUserMedia({
+    video:{facingMode:_vlFacing,width:{ideal:1280},height:{ideal:1280}},
+    audio:wantAudio
+  }).then(function(s){
+    var old=_vlCamV;
+    _vlCamV=s.getVideoTracks()[0]||null;
+    if(wantAudio)_vlAudio=s.getAudioTracks()[0]||null;
+    if(old){try{old.stop();}catch(e){}}
+    var v=_vlSrcV||(_vlSrcV=document.createElement('video'));
+    v.playsInline=true;v.setAttribute('playsinline','');v.muted=true;
+    var ms=new MediaStream();
+    if(_vlCamV)ms.addTrack(_vlCamV);
+    v.srcObject=ms;
+    return v.play().catch(function(){});
+  });
+}
+// The live view is the canvas, mirrored for the front camera only.
+function vlogLive(){
+  var c=document.getElementById('vl-canvas'),v=document.getElementById('vl-video');
+  if(c){c.style.display='block';c.classList.toggle('mirror',_vlFacing==='user');}
+  if(v)v.style.display='none';
+  vlogSetOrient(_vlOrient);
+  vlogPaintStop();vlogPaint();
+  var o=document.getElementById('vl-orient');
+  if(o)o.classList.add('on');
+}
+/* Switching cameras. The canvas is painted throughout, so mid-clip this does
+   not even pause the recording - the picture simply becomes the other camera
+   between one frame and the next. */
+function vlogFlip(){
+  if(_vlFlipping)return;
+  _vlFlipping=true;
+  var was=_vlFacing;
+  _vlFacing=(_vlFacing==='user')?'environment':'user';
+  vlogGetCam().then(function(){
+    var c=document.getElementById('vl-canvas');
+    if(c)c.classList.toggle('mirror',_vlFacing==='user');
+    _vlFlipping=false;
+  },function(){
+    // refused, or there is nothing to switch to: go back rather than go dark
+    _vlFacing=was;
+    vlogGetCam().then(function(){_vlFlipping=false;},function(){_vlFlipping=false;});
+    showToast('לא הצלחתי להחליף מצלמה');
+  });
+}
+/* The switch only appears where there is a second camera to switch to. The
+   device list is only trustworthy once permission has been given, so it is
+   counted after the stream opens rather than before. */
+function vlogCountCams(){
+  var b=document.getElementById('vl-flip');
+  if(!b)return;
+  if(_vlCams>1){b.classList.add('on');return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices)return;
+  navigator.mediaDevices.enumerateDevices().then(function(ds){
+    _vlCams=ds.filter(function(d){return d.kind==='videoinput';}).length;
+    var e=document.getElementById('vl-flip');
+    if(e&&_vlCams>1)e.classList.add('on');
+  },function(){});
+}
+// What the recorder is handed: the canvas's own stream, plus the microphone.
+function vlogOutStream(){
+  var c=document.getElementById('vl-canvas');
+  if(!c||!c.captureStream)return null;
+  var out=new MediaStream(),vt;
+  try{vt=c.captureStream(30).getVideoTracks();}catch(e){return null;}
+  if(!vt.length)return null;
+  out.addTrack(vt[0]);
+  if(_vlAudio)out.addTrack(_vlAudio);
+  return out;
+}
 /* Where the app cannot drive the camera itself, the phone's own recorder can
    still be asked for a clip. It has no thirty second limit of its own, so the
    length is checked after the fact and a long clip is refused rather than
@@ -1446,6 +1585,9 @@ function vlogFallback(why){
   vlogCamOff();
   vlogRing(false);
   var fb=document.getElementById('vl-flip');if(fb)fb.classList.remove('on');
+  var fo=document.getElementById('vl-orient');if(fo)fo.classList.remove('on');
+  var fc=document.getElementById('vl-canvas');if(fc)fc.style.display='none';
+  var fv=document.getElementById('vl-video');if(fv)fv.style.display='block';
   vlogMsg((why?why+'<br>':'')+'אפשר להקליט במצלמה של הטלפון, עד '+VLOG_MAX+' שניות.');
   vlogActions('<label class="vl-btn">הקלט במצלמת הטלפון'+
     '<input type="file" accept="video/*" capture="user" style="display:none" onchange="vlogPicked(this)"></label>'+
@@ -1470,13 +1612,16 @@ function vlogPicked(inp){
 }
 
 function vlogRecord(){
-  if(!_vlStream)return;
+  if(!_vlCamV)return;
+  // the recorder is handed the canvas, so swapping cameras later is invisible
+  _vlOut=vlogOutStream();
+  if(!_vlOut)return vlogFallback('הדפדפן הזה לא מאפשר להקליט מהתצוגה.');
   _vlChunks=[];
   var mt=vlogMime(),opt={videoBitsPerSecond:1200000,audioBitsPerSecond:96000};
   if(mt)opt.mimeType=mt;
-  try{_vlRec=new MediaRecorder(_vlStream,opt);}
+  try{_vlRec=new MediaRecorder(_vlOut,opt);}
   catch(e){
-    try{_vlRec=new MediaRecorder(_vlStream);}
+    try{_vlRec=new MediaRecorder(_vlOut);}
     catch(e2){return vlogFallback('ההקלטה לא נתמכת בדפדפן הזה.');}
   }
   _vlRec.ondataavailable=function(e){if(e.data&&e.data.size)_vlChunks.push(e.data);};
@@ -1485,31 +1630,11 @@ function vlogRecord(){
   _vlStarted=Date.now();_vlEnd=_vlStarted+VLOG_MAX*1000;
   vlogMsg('מקליט&hellip;');
   vlogRing(true,1);
+  // the frame size is fixed for the length of a clip; the camera is not
+  var ob=document.getElementById('vl-orient');if(ob)ob.classList.add('locked');
   vlogActions('<button class="vl-shot rec" onclick="vlogStop()" aria-label="עצור"><span></span></button>');
   _vlTimer=setInterval(vlogTick,100);
   vlogTick();
-}
-/* The button only appears where there is a second camera to switch to. The
-   list is only trustworthy once permission has been given, so it is counted
-   after the stream opens rather than before. */
-function vlogCountCams(){
-  var b=document.getElementById('vl-flip');
-  if(!b)return;
-  if(_vlCams>1){b.classList.add('on');return;}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices)return;
-  navigator.mediaDevices.enumerateDevices().then(function(ds){
-    _vlCams=ds.filter(function(d){return d.kind==='videoinput';}).length;
-    var e=document.getElementById('vl-flip');
-    if(e&&_vlCams>1)e.classList.add('on');
-  },function(){});
-}
-function vlogFlip(){
-  // mid-recording the recorder is bound to this stream; swapping it would
-  // end the clip, so the button is inert until you stop
-  if(_vlRec&&_vlRec.state==='recording')return;
-  _vlFacing=(_vlFacing==='user')?'environment':'user';
-  vlogCamOff();
-  vlogStartCam();
 }
 function vlogTick(){
   var left=Math.max(0,(_vlEnd-Date.now())/1000);
@@ -1518,6 +1643,13 @@ function vlogTick(){
   if(n)n.textContent=Math.ceil(left);
   if(left<=0)vlogStop();
 }
+/* Leaving the page stops the painting, and a stopped canvas records a frozen
+   frame for as long as you let it. Better to end the clip on the last thing
+   actually seen than to keep a countdown running over a still. */
+function vlogVisChange(){
+  if(document.visibilityState==='hidden'&&_vlRec&&_vlRec.state==='recording')vlogStop();
+}
+document.addEventListener('visibilitychange',vlogVisChange);
 function vlogStop(){
   if(_vlTimer){clearInterval(_vlTimer);_vlTimer=null;}
   if(_vlRec&&_vlRec.state!=='inactive'){try{_vlRec.stop();}catch(e){}}
@@ -1535,21 +1667,23 @@ function vlogStopped(){
 // stays on after you have finished is its own kind of alarm.
 function vlogCamOff(){
   if(_vlTimer){clearInterval(_vlTimer);_vlTimer=null;}
-  if(_vlStream){
-    try{_vlStream.getTracks().forEach(function(t){t.stop();});}catch(e){}
-    _vlStream=null;
-  }
-  var v=document.getElementById('vl-video');
-  if(v){try{v.srcObject=null;}catch(e){}}
+  vlogPaintStop();
+  if(_vlCamV){try{_vlCamV.stop();}catch(e){}_vlCamV=null;}
+  if(_vlAudio){try{_vlAudio.stop();}catch(e){}_vlAudio=null;}
+  if(_vlOut){try{_vlOut.getTracks().forEach(function(t){t.stop();});}catch(e){}_vlOut=null;}
+  if(_vlSrcV){try{_vlSrcV.srcObject=null;}catch(e){}_vlSrcV=null;}
 }
 function vlogSetSrc(url){
   var v=document.getElementById('vl-video');
   if(!v)return;
   try{v.srcObject=null;}catch(e){}
   v.classList.remove('mirror');
+  v.style.display='block';
   v.muted=false;v.controls=true;v.src=url;
-  var b=document.getElementById('vl-flip');
-  if(b)b.classList.remove('on');
+  var c=document.getElementById('vl-canvas');if(c)c.style.display='none';
+  var b=document.getElementById('vl-flip');if(b)b.classList.remove('on');
+  var o=document.getElementById('vl-orient');
+  if(o){o.classList.remove('on');o.classList.remove('locked');}
 }
 function vlogPreview(){
   vlogRing(false);
@@ -1564,7 +1698,7 @@ function vlogRetake(){
   if(_vlURL){URL.revokeObjectURL(_vlURL);_vlURL='';}
   _vlBlob=null;_vlSec=0;
   var v=document.getElementById('vl-video');
-  if(v){v.removeAttribute('src');v.controls=false;v.load();}
+  if(v){v.removeAttribute('src');v.controls=false;v.load();v.style.display='none';}
   vlogStartCam();
 }
 function vlogSave(){
