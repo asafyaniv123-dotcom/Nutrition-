@@ -23,6 +23,7 @@
  * it makes the thing searchable both ways.
  */
 import fs from 'fs';
+import {HOWTO} from './exercise-howto.mjs';
 
 const M={
   chest:'חזה', back:'גב', lats:'גב רחב', traps:'טרפז', shoulders:'כתפיים',
@@ -152,6 +153,10 @@ const RAW=[
 const list=RAW.map(function(r,i){
   const o={id:'x'+(i+1),n:r[0],m:[r[1]],q:r[2]};
   if(r[3])o.en=r[3];
+  /* How it is done and what goes wrong. Not every exercise has it yet - a
+     screen that says nothing is better than one that says something vague. */
+  const hw=HOWTO[r[0]];
+  if(hw){o.s=hw.s;o.k=hw.m;}
   return o;
 });
 
@@ -173,7 +178,8 @@ fs.writeFileSync('data/exercises.json',JSON.stringify({
   exercises:list
 }));
 const byM={};for(const e of list)byM[e.m[0]]=(byM[e.m[0]]||0)+1;
-console.log('exercises: '+list.length);
+const withHow=list.filter(e=>e.s).length;
+console.log('exercises: '+list.length+'   with instructions: '+withHow);
 console.log('all in Hebrew: '+list.every(e=>/[֐-׿]/.test(e.n)));
 console.log('by muscle: '+Object.entries(byM).map(([k,v])=>k+' '+v).join(', '));
 console.log('data/exercises.json: '+fs.statSync('data/exercises.json').size+' bytes');

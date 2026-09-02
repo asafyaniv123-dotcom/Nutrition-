@@ -72,6 +72,38 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .ex-tab{flex:1;border:none;border-radius:11px;padding:9px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;background:#f0ebe3;color:#a89e97}
 .ex-tab.on{background:linear-gradient(135deg,#f3b9a8,#e08a72);color:#fff}
 /* a group is a card with a picture, in sections */
+/* one exercise: where you stand, and how it is done */
+.xd-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px}
+.xd-name{font-size:16px;font-weight:800;color:#4a4340}
+.xd-back{border:none;background:none;font-size:11.5px;font-weight:700;color:#a89e97;cursor:pointer;font-family:inherit;padding:2px 0}
+.xd-meta{font-size:10.5px;color:#a89e97;margin-bottom:14px}
+.xd-en{color:#c8bfb6;direction:ltr}
+.xd-now{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.xd-cell{background:#fff;border-radius:14px;padding:11px 12px;display:flex;flex-direction:column;gap:2px;box-shadow:0 2px 8px rgba(200,180,160,.1)}
+.xd-k{font-size:9.5px;font-weight:800;color:#a89e97;letter-spacing:.05em}
+.xd-v{font-size:21px;font-weight:800;color:#4a4340;direction:ltr;text-align:right}
+.xd-s{font-size:9.5px;color:#c0b6ae}
+.xd-say{font-size:11.5px;line-height:1.6;border-radius:12px;padding:9px 11px;margin-bottom:10px;font-weight:700}
+.xd-say.best{background:rgba(143,199,158,.18);color:#3f7a52}
+.xd-say.up{background:rgba(143,199,158,.14);color:#4a7a58}
+.xd-say.down{background:rgba(232,193,98,.16);color:#8a6a1e}
+.xd-bars{display:flex;align-items:flex-end;gap:4px;height:56px;padding:0 2px;direction:ltr}
+.xd-bar{flex:1;background:#e6ddf2;border-radius:3px 3px 0 0;min-height:6px}
+.xd-bar.now{background:linear-gradient(180deg,#c9bce0,#a690cf)}
+.xd-bars-l{font-size:9px;color:#c0b6ae;margin:5px 2px 12px;text-align:center}
+.xd-since{font-size:11px;color:#a89e97;line-height:1.6;margin-bottom:4px}
+.xd-h{font-size:10px;font-weight:800;color:#a89e97;letter-spacing:.08em;margin:16px 2px 8px}
+.xd-h.warn{color:#c08a3a}
+.xd-log{display:flex;flex-direction:column;gap:5px}
+.xd-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:#fff;border-radius:11px;padding:8px 11px}
+.xd-when{font-size:10px;color:#a89e97;flex-shrink:0}
+.xd-sets{font-size:11.5px;font-weight:700;color:#4a4340;direction:ltr;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xd-steps,.xd-miss{margin:0;padding-right:18px;display:flex;flex-direction:column;gap:6px}
+.xd-steps li,.xd-miss li{font-size:12.5px;line-height:1.65;color:#4a4340}
+.xd-miss li{color:#8a6a3a}
+.xd-none{font-size:11.5px;color:#a89e97;line-height:1.7;background:#faf6f1;border-radius:12px;padding:12px}
+.xd-none.small{font-size:11px;margin-top:14px}
+.xd-pick{width:100%;margin-top:18px;border:none;border-radius:14px;padding:14px;background:linear-gradient(135deg,#f3b9a8,#e08a72);color:#fff;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer}
 .gp-h{font-size:10px;font-weight:800;color:#a89e97;letter-spacing:.08em;margin:14px 2px 8px}
 .gp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .gp{display:flex;align-items:center;gap:10px;border:1.5px solid transparent;border-radius:15px;padding:8px 10px;background:#fff;cursor:pointer;font-family:inherit;text-align:right;box-shadow:0 2px 8px rgba(200,180,160,.1);min-width:0}
@@ -6041,7 +6073,7 @@ function exList(){
   return out;
 }
 function exOpen(){
-  _exQ='';_exFilter='';_exTab='muscle';
+  _exQ='';_exFilter='';_exTab='muscle';_exDetail=null;
   // the sheet has to exist before anything can be painted into it. Loading
   // first only worked while the file was still being fetched; once it was
   // cached exLoad called back immediately, ex-body did not exist yet, and
@@ -6073,6 +6105,8 @@ function _exPaintBody(){
   var el=document.getElementById('ex-body');
   if(!el)return;
   if(_exState!=='ready'){el.innerHTML='<div class="ex-none">טוען&hellip;</div>';return;}
+  // one exercise open takes the whole sheet: it is a page, not a row
+  if(_exDetail){el.innerHTML=exDetailHTML(_exDetail);return;}
   var h='';
   if(!_exQ){
     h+='<div class="ex-tabs">'+
@@ -6113,7 +6147,7 @@ function _exPaintBody(){
     h+='<div class="ex-list">';
     for(var j=0;j<list.length;j++){
       var e=list[j];
-      h+='<button class="ex-row'+(e.art?' art':'')+'" onclick="exChoose('+j+')">'+
+      h+='<button class="ex-row'+(e.art?' art':'')+'" onclick="exDetailOpen('+j+')">'+
          exArtHTML(e)+
          '<span class="ex-n">'+esc(e.n)+'</span>'+
          '<span class="ex-meta">'+esc(e.m.join(' · '))+' &middot; '+esc(e.q.join(', '))+'</span>'+
@@ -6209,6 +6243,146 @@ function eqArtHTML(name){
   var p=EQ_ICONS[name];
   return '<span class="eq-art">'+(p?
     '<svg viewBox="0 0 24 24">'+p+'</svg>':'<b>'+esc(name.charAt(0))+'</b>')+'</span>';
+}
+/* ── ONE EXERCISE ──
+   Two questions, one screen. Where do I stand on this compared with before,
+   and how is it meant to be done.
+
+   The first is the reason to write any of it down. A log you never read back
+   is a diary; the number that matters is not what you lifted today but
+   whether it is more than last time, and whether last time was more than the
+   time before. So the screen leads with the best set ever, the last session,
+   and the distance between them.
+
+   The second is the part no amount of logging gives you. Every exercise here
+   that has it says how it is done in four lines and what goes wrong in three
+   - and the mistakes are the half worth reading, because the steps you can
+   guess and the mistakes you cannot. */
+var _exDetail=null;
+function exSessions(name){
+  var log=loadWorkoutLog(),out=[],i,j;
+  for(i=0;i<log.length;i++){
+    var exs=log[i].exercises||[];
+    for(j=0;j<exs.length;j++){
+      if(exs[j].name!==name||!(exs[j].sets||[]).length)continue;
+      var sets=exs[j].sets;
+      var top=sets[0],vol=0;
+      for(var k=0;k<sets.length;k++){
+        vol+=(sets[k].weight||0)*(sets[k].reps||0);
+        // the heaviest set, and on a tie the one with more reps
+        if((sets[k].weight||0)>(top.weight||0)||
+           ((sets[k].weight||0)===(top.weight||0)&&(sets[k].reps||0)>(top.reps||0)))top=sets[k];
+      }
+      out.push({date:log[i].date,sets:sets,top:top,vol:Math.round(vol)});
+    }
+  }
+  out.sort(function(a,b){return a.date-b.date;});
+  return out;
+}
+/* Comparing two sets by weight alone calls 60x5 an improvement on 55x12,
+   which nobody believes. Weight times reps is crude but it moves in the right
+   direction for both, and it is what "am I stronger than last month" means
+   when the reps were not identical. */
+function exWork(s){return (s.weight||0)*(s.reps||0);}
+function exStand(name){
+  var ss=exSessions(name);
+  if(!ss.length)return null;
+  var last=ss[ss.length-1],first=ss[0];
+  var best=ss[0];
+  for(var i=1;i<ss.length;i++)if(exWork(ss[i].top)>exWork(best.top))best=ss[i];
+  var prev=ss.length>1?ss[ss.length-2]:null;
+  return {n:ss.length,sessions:ss,last:last,first:first,best:best,prev:prev,
+          isBest:best===last,
+          delta:prev?exWork(last.top)-exWork(prev.top):0};
+}
+function setLabel(s){return (s.weight?s.weight+'×':'')+(s.reps||0);}
+/* A line per session, scaled to the best one. Not a chart with axes - the
+   question is "is it going up", and twelve bars answer that faster than
+   numbers on a grid. */
+function exBarsHTML(st){
+  var ss=st.sessions.slice(-12),max=1,i;
+  for(i=0;i<ss.length;i++)max=Math.max(max,exWork(ss[i].top));
+  var h='<div class="xd-bars">';
+  for(i=0;i<ss.length;i++){
+    var w=exWork(ss[i].top),pc=Math.round(w/max*100);
+    var isLast=i===ss.length-1;
+    h+='<span class="xd-bar'+(isLast?' now':'')+'" style="height:'+Math.max(6,pc)+'%" '+
+       'title="'+setLabel(ss[i].top)+'"></span>';
+  }
+  return h+'</div><div class="xd-bars-l">'+ss.length+' אימונים אחרונים</div>';
+}
+function exDetailHTML(e){
+  var st=exStand(e.n);
+  var h='<div class="xd">';
+  h+='<div class="xd-hd"><button class="xd-back" onclick="exDetailClose()">&#8250; לרשימה</button>'+
+     '<span class="xd-name">'+esc(e.n)+'</span></div>';
+  h+='<div class="xd-meta">'+esc(e.m.join(' · '))+' &middot; '+esc(e.q.join(', '))+
+     (e.en?' &middot; <span class="xd-en">'+esc(e.en)+'</span>':'')+'</div>';
+
+  // ── where you stand ──
+  if(!st){
+    h+='<div class="xd-none">עוד לא רשמת את התרגיל הזה. אחרי האימון הראשון יופיע כאן איפה אתה עומד.</div>';
+  } else {
+    h+='<div class="xd-now">';
+    h+='<div class="xd-cell"><span class="xd-k">הכי טוב</span><span class="xd-v">'+setLabel(st.best.top)+'</span>'+
+       '<span class="xd-s">'+agoText(st.best.date)+'</span></div>';
+    h+='<div class="xd-cell"><span class="xd-k">בפעם האחרונה</span><span class="xd-v">'+setLabel(st.last.top)+'</span>'+
+       '<span class="xd-s">'+agoText(st.last.date)+'</span></div>';
+    h+='</div>';
+    if(st.isBest&&st.n>1)
+      h+='<div class="xd-say best">האימון האחרון הוא הטוב ביותר שלך בתרגיל הזה.</div>';
+    else if(st.prev&&st.delta>0)
+      h+='<div class="xd-say up">עלית מ־'+setLabel(st.prev.top)+' ל־'+setLabel(st.last.top)+' מאז הפעם הקודמת.</div>';
+    else if(st.prev&&st.delta<0)
+      h+='<div class="xd-say down">בפעם הקודמת עשית '+setLabel(st.prev.top)+'. יום פחות טוב זה חלק מזה.</div>';
+    if(st.n>1)h+=exBarsHTML(st);
+    if(st.n>2){
+      var g=exWork(st.last.top)-exWork(st.first.top);
+      h+='<div class="xd-since">מאז '+agoText(st.first.date)+', כשהתחלת ב־'+setLabel(st.first.top)+
+         ': '+(g>0?'עלייה':(g<0?'ירידה':'ללא שינוי'))+'</div>';
+    }
+    // the sessions themselves, most recent first
+    h+='<div class="xd-h">האימונים</div><div class="xd-log">';
+    var ss=st.sessions.slice().reverse().slice(0,8);
+    for(var i=0;i<ss.length;i++){
+      h+='<div class="xd-row"><span class="xd-when">'+agoText(ss[i].date)+'</span>'+
+         '<span class="xd-sets">'+ss[i].sets.map(setLabel).join(' · ')+'</span></div>';
+    }
+    h+='</div>';
+  }
+
+  // ── how it is done ──
+  if(e.s&&e.s.length){
+    h+='<div class="xd-h">איך מבצעים</div><ol class="xd-steps">';
+    for(var j=0;j<e.s.length;j++)h+='<li>'+esc(e.s[j])+'</li>';
+    h+='</ol>';
+  }
+  if(e.k&&e.k.length){
+    h+='<div class="xd-h warn">טעויות נפוצות</div><ul class="xd-miss">';
+    for(var m=0;m<e.k.length;m++)h+='<li>'+esc(e.k[m])+'</li>';
+    h+='</ul>';
+  }
+  if(!(e.s&&e.s.length))
+    h+='<div class="xd-none small">ההסבר לתרגיל הזה עוד לא נכתב.</div>';
+
+  h+='<button class="xd-pick" onclick="exDetailChoose()">בחר את התרגיל הזה</button>';
+  return h+'</div>';
+}
+function exDetailOpen(i){
+  _exDetail=exList()[i];
+  if(!_exDetail)return;
+  _exPaintBody();
+  var b=document.getElementById('ex-body');
+  if(b)b.scrollIntoView({block:'start'});
+  var sh=document.querySelector('.ex-sheet');
+  if(sh)sh.scrollTop=0;
+}
+function exDetailClose(){_exDetail=null;_exPaintBody();}
+function exDetailChoose(){
+  var e=_exDetail;
+  _exDetail=null;
+  exClose();
+  if(_exPick)_exPick(e.n,e);
 }
 function exArtHTML(e){
   if(!e||!e.art)return '';
