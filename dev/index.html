@@ -26,6 +26,9 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .tab{flex:1;padding:7px 4px;border:none;border-radius:11px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:#a89e97;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .tab.on{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
 .content{padding:14px 14px 0}
+/* the floating button needs somewhere to float that is not on top of the
+   last thing you ate */
+#content.has-fab{padding-bottom:96px}
 /* The game is a whole page of its own - dark, full-bleed, with its own CSS
    reset - so it runs inside an iframe instead of fighting the app's styles. */
 .app.game-mode{padding-bottom:0}
@@ -133,13 +136,32 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
    and none of them saying which held what. One card now, the ways in a row
    across it, one body underneath. */
 .aw-card{background:rgba(255,255,255,.72);border-radius:20px;padding:10px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12)}
-.aw-row{display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
-.aw-b{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px solid transparent;border-radius:13px;padding:8px 9px;background:none;cursor:pointer;font-family:inherit;min-width:56px}
-.aw-b.on{border-color:#c9bce0;background:linear-gradient(135deg,#f7f2fb,#efe7f7)}
-.aw-ic{font-size:16px;line-height:1}
-.aw-t{font-size:10px;font-weight:700;color:#a89e97;white-space:nowrap}
-.aw-b.on .aw-t{color:#6b5a92}
-.aw-body{margin-top:10px;padding-top:10px;border-top:1px solid #f0ebe3}
+/* the open panel says which way you took, and how to put it away */
+.aw-hd{display:flex;align-items:center;gap:8px;padding:2px 4px 9px}
+.aw-hic{font-size:15px;line-height:1}
+.aw-ht{flex:1;font-size:13px;font-weight:800;color:#4a4340}
+.aw-x{border:none;background:none;font-size:20px;line-height:1;color:#c0b6ae;cursor:pointer;font-family:inherit;padding:0 4px}
+.aw-body{margin-top:0;padding-top:10px;border-top:1px solid #f0ebe3}
+/* the button, and the six that fan out of it */
+.fab-wrap{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));width:0;height:0;z-index:150}
+.fab-b{position:absolute;left:-29px;top:-29px;width:58px;height:58px;border-radius:50%;border:none;background:linear-gradient(135deg,#c9bce0,#a690cf);box-shadow:0 6px 20px rgba(120,96,168,.42);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:transform .24s cubic-bezier(.2,.9,.3,1)}
+.fab-b svg{width:25px;height:25px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round}
+.fab-wrap.open .fab-b{transform:rotate(135deg)}
+.fab-b:active{transform:scale(.92)}
+.fab-wrap.open .fab-b:active{transform:rotate(135deg) scale(.92)}
+/* each one travels out to its own place on the arc, a beat after the one
+   before it, so the six read as a fan opening rather than six things
+   appearing at once */
+/* Name inside the disc, under the icon. Hung underneath as a caption it
+   landed on the neighbouring disc; set beside the icon as a pill it needed
+   more width than the screen has. */
+.fab-i{position:absolute;left:-27px;top:-27px;width:54px;height:54px;border-radius:50%;border:none;background:#fff;box-shadow:0 4px 14px rgba(150,128,104,.28);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;padding:0;font-family:inherit;opacity:0;pointer-events:none;transform:translate(0,0) scale(.3);transition:transform .3s cubic-bezier(.2,.9,.3,1),opacity .16s}
+.fab-wrap.open .fab-i{opacity:1;pointer-events:auto;transform:translate(var(--x),var(--y)) scale(1);transition-delay:var(--d)}
+.fab-ic{font-size:17px;line-height:1}
+.fab-t{font-size:8.5px;font-weight:800;color:#6b5a92;line-height:1;white-space:nowrap}
+.fab-scrim{position:fixed;inset:0;z-index:149;background:rgba(74,67,64,.3);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .22s}
+body.night .fab-i{background:#2a2438}
+body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 /* saying what you ate, in a sentence */
 .say-in{width:100%;min-height:76px;border:1.5px solid #ece5da;border-radius:13px;padding:11px 13px;font-size:16px;font-family:inherit;outline:none;background:#fff;direction:rtl;resize:none;line-height:1.6}
 .say-in:focus{border-color:#c9bce0}
@@ -2697,6 +2719,7 @@ var ADD_WAYS=[
   {k:'man', ic:'&#x270E;',  t:'ידני'}
 ];
 function addSetMode(k){
+  _fabOpen=false;
   // the scanner is a screen of its own, not a panel - it opens over
   if(k==='scan'){scanOpen();return;}
   _addMode=(_addMode===k)?'':k;
@@ -2717,14 +2740,70 @@ function addSetMode(k){
     setTimeout(function(){var e=document.getElementById('say-in');if(e)e.focus();},60);
   }
 }
-function addWaysHTML(){
-  var h='<div class="aw-row">',i,w;
-  for(i=0;i<ADD_WAYS.length;i++){
+/* ── THE WAY IN ──
+   Six ways to record a meal used to sit as a row of six across the top of a
+   card, permanently, whether you were adding anything or not. Six choices is
+   a lot to look at while reading what you already ate.
+
+   They live behind one button now, at the foot of the screen where a thumb
+   rests, and fan out in an arc when it is pressed. Closed, the screen is the
+   day. Open, it is the six ways in and nothing else - a scrim behind them,
+   so a tap anywhere closes it again.
+
+   The first way sits on the right, because that is where reading starts
+   here. */
+var _fabOpen=false;
+/* Six pills side by side need 480px of width; a phone has 375. Six discs of
+   54px on an arc of this radius sit 64px apart along it, which clears. So
+   the name goes inside the disc with the icon, not on a tag beside it. */
+var FAB_R=142, FAB_A0=25, FAB_A1=155;   // radius, and the sweep in degrees
+function fabToggle(){_fabOpen=!_fabOpen;fabPaint();}
+function fabClose(){if(!_fabOpen)return;_fabOpen=false;fabPaint();}
+function fabPick(k){
+  _fabOpen=false;
+  addSetMode(k);            // renders the screen, panel and all
+  // and put the panel where it can be seen, rather than under the thumb
+  setTimeout(function(){
+    var p=document.querySelector('.aw-card');
+    if(p&&p.scrollIntoView)p.scrollIntoView({block:'center',behavior:'smooth'});
+  },60);
+}
+function fabPaint(){
+  var w=document.getElementById('add-fab');
+  if(w)w.className='fab-wrap'+(_fabOpen?' open':'');
+  // the scrim is a sibling, not a child, so it is switched by hand
+  var sc=document.querySelector('.fab-scrim');
+  if(sc){sc.style.opacity=_fabOpen?'1':'0';sc.style.pointerEvents=_fabOpen?'auto':'none';}
+}
+function addFabHTML(){
+  var n=ADD_WAYS.length,h='',i,w,a,x,y;
+  h+='<div class="fab-scrim" onclick="fabClose()"></div>';
+  h+='<div class="fab-wrap" id="add-fab">';
+  for(i=0;i<n;i++){
     w=ADD_WAYS[i];
-    h+='<button class="aw-b'+(_addMode===w.k?' on':'')+'" onclick="addSetMode(&quot;'+w.k+'&quot;)">'+
-       '<span class="aw-ic">'+w.ic+'</span><span class="aw-t">'+w.t+'</span></button>';
+    a=(FAB_A0+(FAB_A1-FAB_A0)/(n-1)*i)*Math.PI/180;
+    x=Math.round(Math.cos(a)*FAB_R);
+    y=Math.round(-Math.sin(a)*FAB_R);
+    h+='<button class="fab-i" style="--x:'+x+'px;--y:'+y+'px;--d:'+(i*26)+'ms" '+
+       'onclick="fabPick(&quot;'+w.k+'&quot;)">'+
+       '<span class="fab-ic">'+w.ic+'</span>'+
+       '<span class="fab-t">'+w.t+'</span></button>';
   }
-  return h+'</div>';
+  h+='<button class="fab-b" onclick="fabToggle()" aria-label="הוסף ארוחה">'+
+     '<svg viewBox="0 0 24 24"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg></button>';
+  h+='</div>';
+  return h;
+}
+/* The panel only exists once a way has been chosen. A card with a heading
+   and nothing under it is a card that has to be read and then dismissed. */
+function addPanelHTML(inner){
+  var i,w=null;
+  for(i=0;i<ADD_WAYS.length;i++)if(ADD_WAYS[i].k===_addMode)w=ADD_WAYS[i];
+  if(!_addMode||!w||!inner)return '';
+  return '<div class="aw-card"><div class="aw-hd">'+
+    '<span class="aw-hic">'+w.ic+'</span><span class="aw-ht">'+w.t+'</span>'+
+    '<button class="aw-x" onclick="addSetMode(&quot;'+_addMode+'&quot;)" aria-label="סגור">&times;</button>'+
+    '</div>'+inner+'</div>';
 }
 function sayToggle(){addSetMode('say');}
 function sayGo(){
@@ -3355,21 +3434,6 @@ function renderToday(){
 
   var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; מים</span><span class="wn">'+water+' / '+TARGETS.water+' מ"ל</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+250מ"ל</button><button class="wadd" onclick="addWater(500)">+500מ"ל</button><button class="wadd" onclick="addWater(1000)">+1L</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
 
-  // Steps for the day being viewed, not for today - this view walks back
-  // through the week with the arrows like everything else on it.
-  var stRec=loadSteps(curDate),stV=stRec?stRec.v:0;
-  var stepsHTML='<button class="scard" onclick="goSteps()"><div class="shd">'+
-    '<span class="st">&#x1F463; צעדים</span>'+
-    '<span class="sn">'+(stRec?(STEPS_SRC_NAMES[stRec.src]||''):'')+'</span></div>';
-  if(stV>0){
-    stepsHTML+='<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">'+
-      '<span class="sv">'+stV.toLocaleString()+'</span>'+
-      '<span class="sk">&#8776; '+Math.round(stV*0.04).toLocaleString()+' קק&quot;ל נשרפו</span></div>';
-  } else {
-    stepsHTML+='<div class="sempty">עוד לא נרשמו צעדים ליום הזה<br>חבר שעון או הזן ידנית &#8249;</div>';
-  }
-  stepsHTML+='</button>';
-
   var compMeals=loadComposed();
   var compHTML='';
   if(_addMode==='comp')compHTML='<div class="aw-body">';
@@ -3435,13 +3499,15 @@ function renderToday(){
     logHTML+='</div>';
   }
 
-  /* One card holding all the ways in, with the ways as a row across the top.
-     Only one body is ever non-empty, so this concatenation is really a
-     switch - and the panel exists only when something is chosen, so a closed
-     card is one line rather than five headings. */
-  var addHTML='<div class="aw-card">'+addWaysHTML()+
-              compHTML+sayHTML+fdbHTML+libHTML+manHTML+'</div>';
-  document.getElementById('content').innerHTML=macroHTML+pillsHTML+waterHTML+stepsHTML+addHTML+logHTML;
+  /* Only one body is ever non-empty, so this concatenation is really a
+     switch. Nothing at all is drawn until a way has been chosen. */
+  var addHTML=addPanelHTML(compHTML+sayHTML+fdbHTML+libHTML+manHTML);
+  /* Steps moved out to כושר, where they were already shown at the top of the
+     screen. Two cards for one number, on two screens, and the one here was
+     only ever a link to the one there. */
+  var _c=document.getElementById('content');
+  _c.classList.add('has-fab');
+  _c.innerHTML=macroHTML+pillsHTML+waterHTML+addHTML+logHTML+addFabHTML();
   if(fdbOpen)fdbPaint();
   if(_sayOpen)sayPaint();
   animateBars();
