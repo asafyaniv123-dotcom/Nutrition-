@@ -59,6 +59,23 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 /* Steps, mirroring the water card that sits right above it. Read-only here -
    the number is written by whatever source was connected under כושר, and
    tapping the card goes there. */
+/* what you did last time, and whether today beat it */
+.fw-prev{background:#faf6f1;border-radius:12px;padding:9px 11px;margin-bottom:12px}
+.fw-prev.none{font-size:10.5px;color:#a89e97;line-height:1.6}
+.fw-prev-t{font-size:9px;font-weight:800;color:#a89e97;letter-spacing:.06em;margin-bottom:6px}
+.fw-prev-s{display:flex;flex-wrap:wrap;gap:5px}
+.fw-ps{font-size:11.5px;font-weight:800;color:#7a716b;background:#fff;border-radius:8px;padding:3px 8px;direction:ltr}
+.fw-ps.same{color:#4a4340}
+.fw-ps.beat{background:linear-gradient(135deg,#bfe0c7,#8fc79e);color:#fff}
+/* how long to rest */
+.fw-restset{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.fw-restset>span{font-size:10px;font-weight:800;color:#a89e97}
+.fw-rb{border:none;border-radius:9px;padding:5px 10px;font-size:10.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f5f0eb;color:#a89e97}
+.fw-rb.on{background:linear-gradient(135deg,#f3b9a8,#e08a72);color:#fff}
+/* the countdown, over everything, skippable */
+.fw-rest{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));z-index:200;display:flex;align-items:center;gap:12px;background:rgba(74,67,64,.94);color:#fff;border-radius:18px;padding:10px 14px;box-shadow:0 8px 26px rgba(74,67,64,.34)}
+.fw-rest-n{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;direction:ltr;min-width:52px;text-align:center}
+.fw-rest-x{border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:10px;padding:6px 11px;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer}
 .scard{display:block;width:100%;text-align:right;font-family:inherit;border:none;cursor:pointer;background:linear-gradient(135deg,#eaf5ee,#dcf0e3);border-radius:20px;padding:14px 16px;margin-bottom:12px}
 .shd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .st{font-size:13px;font-weight:700;color:#4c9a4c}
@@ -5807,6 +5824,125 @@ function startWorkout(tplIdx){
   _fitView='workout';renderFitness();
 }
 
+/* ── WHAT YOU DID LAST TIME ──
+   The one thing Hevy has that we did not, and the thing every review of it
+   names first: while you are standing there with the bar, it shows you what
+   you lifted last time on that exact exercise. Everything else follows from
+   it - if the app knows last week's sets it can also fill the boxes in for
+   you, and then logging a set is a tap rather than typing two numbers with
+   chalk on your hands.
+
+   The log already holds all of it. Nothing new is stored; this is a question
+   nobody had asked of it yet. */
+function exLastTime(name){
+  var log=loadWorkoutLog(),i,j;
+  for(i=log.length-1;i>=0;i--){
+    var exs=log[i].exercises||[];
+    for(j=0;j<exs.length;j++){
+      if(exs[j].name===name&&exs[j].sets&&exs[j].sets.length)
+        return {date:log[i].date,sets:exs[j].sets,workout:log[i].name};
+    }
+  }
+  return null;
+}
+// "לפני 3 ימים" reads better than a date you have to work out
+function agoText(ms){
+  var d=Math.floor((Date.now()-ms)/86400000);
+  if(d<=0)return 'היום';
+  if(d===1)return 'אתמול';
+  if(d<7)return 'לפני '+d+' ימים';
+  if(d<14)return 'לפני שבוע';
+  if(d<31)return 'לפני '+Math.round(d/7)+' שבועות';
+  return 'לפני '+Math.round(d/30)+' חודשים';
+}
+/* The line above the boxes: what the same set number was last time, and
+   whether what you have just done beats it. A number to beat is the whole
+   point of writing any of this down. */
+function exPrevHTML(ex){
+  var prev=exLastTime(ex.name);
+  if(!prev)return '<div class="fw-prev none">הפעם הראשונה שאתה עושה את זה &mdash; מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.</div>';
+  var h='<div class="fw-prev"><div class="fw-prev-t">בפעם הקודמת &middot; '+agoText(prev.date)+'</div><div class="fw-prev-s">';
+  for(var i=0;i<prev.sets.length;i++){
+    var s=prev.sets[i],mine=ex.sets[i];
+    var better=mine&&((mine.weight>s.weight)||(mine.weight===s.weight&&mine.reps>s.reps));
+    var same=mine&&mine.weight===s.weight&&mine.reps===s.reps;
+    h+='<span class="fw-ps'+(better?' beat':(same?' same':''))+'">'+
+       (s.weight?s.weight+'&times;':'')+s.reps+'</span>';
+  }
+  return h+'</div></div>';
+}
+// what to put in the boxes before you touch them: the same set, last time
+function exPrefill(ex){
+  var prev=exLastTime(ex.name);
+  var n=ex.sets.length;
+  if(prev&&prev.sets[n])return {w:prev.sets[n].weight,r:prev.sets[n].reps};
+  if(prev&&prev.sets.length)return {w:prev.sets[prev.sets.length-1].weight,r:prev.sets[prev.sets.length-1].reps};
+  return {w:'',r:''};
+}
+
+/* ── THE REST TIMER ──
+   Starts itself when a set goes in, because that is the moment rest begins
+   and reaching for a phone to start a timer is the moment you forget to. It
+   counts down in the corner, it can be skipped, and it makes a noise at zero
+   so you can put the phone down and not watch it.
+
+   The sound is built rather than loaded: two short tones from the oscillator
+   the game already uses. A file would have to be fetched, and this needs to
+   work in a basement gym with no signal. */
+var REST_KEY='fit_rest',_restEnd=0,_restIv=null;
+function restLen(){
+  try{var v=parseInt(localStorage.getItem(REST_KEY),10);if(v>=0&&v<=600)return v;}catch(e){}
+  return 90;
+}
+function restSet(n){
+  try{localStorage.setItem(REST_KEY,String(n));}catch(e){}
+  // redraw so the chosen length shows as chosen; only the workout screen
+  // has these buttons, so only it needs redrawing
+  if(typeof _fitView!=='undefined'&&_fitView==='workout')renderFitness();
+}
+function restBeep(){
+  if(typeof sndOn==='function'&&!sndOn())return;
+  try{
+    var C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+    var a=new C();
+    [0,0.18].forEach(function(off,i){
+      var o=a.createOscillator(),g=a.createGain();
+      o.type='sine';o.frequency.value=i?880:660;
+      g.gain.setValueAtTime(0.0001,a.currentTime+off);
+      g.gain.exponentialRampToValueAtTime(0.25,a.currentTime+off+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+off+0.15);
+      o.connect(g);g.connect(a.destination);
+      o.start(a.currentTime+off);o.stop(a.currentTime+off+0.2);
+    });
+    setTimeout(function(){try{a.close();}catch(e){}},900);
+  }catch(e){}
+}
+function restStart(){
+  var n=restLen();
+  if(!n)return;                       // set to zero means the user turned it off
+  _restEnd=Date.now()+n*1000;
+  if(_restIv)clearInterval(_restIv);
+  _restIv=setInterval(restTick,250);
+  restTick();
+}
+function restStop(){
+  if(_restIv){clearInterval(_restIv);_restIv=null;}
+  _restEnd=0;
+  var el=document.getElementById('fw-rest');if(el)el.remove();
+}
+function restTick(){
+  var left=Math.ceil((_restEnd-Date.now())/1000);
+  if(left<=0){restBeep();restStop();return;}
+  var el=document.getElementById('fw-rest');
+  if(!el){
+    document.body.insertAdjacentHTML('beforeend',
+      '<div class="fw-rest" id="fw-rest"><span class="fw-rest-n" id="fw-rest-n"></span>'+
+      '<button class="fw-rest-x" onclick="restStop()">דלג</button></div>');
+    el=document.getElementById('fw-rest');
+  }
+  var n=document.getElementById('fw-rest-n');
+  if(n)n.textContent=Math.floor(left/60)+':'+(left%60<10?'0':'')+(left%60);
+}
 function renderFitWorkout(){
   if(!_fitWorkout){_fitView='home';renderFitness();return;}
   var w=_fitWorkout;
@@ -5838,7 +5974,8 @@ function renderFitWorkout(){
   h+='<div style="font-size:17px;font-weight:800;color:#4a4340">'+esc(ex.name)+'</div>';
   if(curPR>0)h+='<div style="font-size:10px;color:#e8c162;font-weight:700">PR: '+curPR+'kg</div>';
   h+='</div>';
-  h+='<div style="font-size:11px;color:#a89e97;margin-bottom:14px">'+ex.targetSets+' סטים &#215; '+ex.targetReps+' חזרות</div>';
+  h+='<div style="font-size:11px;color:#a89e97;margin-bottom:10px">'+ex.targetSets+' סטים &#215; '+ex.targetReps+' חזרות</div>';
+  h+=exPrevHTML(ex);
 
   // Sets log
   for(var si=0;si<ex.sets.length;si++){
@@ -5852,14 +5989,23 @@ function renderFitWorkout(){
   }
 
   // Add set
+  /* The boxes open holding what you did on this same set last time, so the
+     ordinary case - do it again - is one tap and nothing typed. */
+  var pf=exPrefill(ex);
   h+='<div style="margin-top:12px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">';
-  h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">משקל (kg)</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="0" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
-  h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">חזרות</div><input id="fit-r" class="mtnm" type="number" placeholder="'+ex.targetReps+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
+  h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">משקל (kg)</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="0" value="'+pf.w+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
+  h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">חזרות</div><input id="fit-r" class="mtnm" type="number" placeholder="'+ex.targetReps+'" value="'+pf.r+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   h+='<div><div style="font-size:9px;color:#a89e97;font-weight:700;margin-bottom:3px">RPE</div><input id="fit-rpe" class="mtnm" type="number" step="0.5" min="1" max="10" placeholder="רשות" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   h+='</div>';
   h+='<button onclick="logSet()" style="width:100%;background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:13px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:#fff">הוסף סט</button>';
   h+='</div></div>';
 
+  // how long the rest is, set where you are already standing
+  h+='<div class="fw-restset"><span>מנוחה</span>';
+  [0,60,90,120,180].forEach(function(n){
+    h+='<button class="fw-rb'+(restLen()===n?' on':'')+'" onclick="restSet('+n+')">'+(n?n+'ש':'כבוי')+'</button>';
+  });
+  h+='</div>';
   // Nav buttons
   h+='<div style="display:flex;gap:8px">';
   if(w.currentEx>0)h+='<button onclick="_fitWorkout.currentEx--;renderFitness()" style="flex:1;background:#f5f0eb;border:none;border-radius:14px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:#a89e97">&#8249; אחור</button>';
@@ -5880,6 +6026,7 @@ function logSet(){
   if(!reps)return;
   var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
   ex.sets.push({weight:weight,reps:reps,rpe:rpe});
+  restStart();   // rest begins the moment the set ends, not when you remember
   // Update PR
   if(weight>0){
     var prs=loadPRs();var key=ex.name;
@@ -5906,6 +6053,7 @@ function finishWorkout(){
     })
   };
   log.push(entry);saveWorkoutLog(log);
+  restStop();
   _fitWorkout=null;
   _fitView='summary';
   _fitSummaryEntry=entry;
