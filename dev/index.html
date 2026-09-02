@@ -653,6 +653,17 @@ body.night .td-note{color:#bfb6d2}
 body.night .td-bar{background:rgba(255,255,255,.16)}
 body.night .td-notes{border-left-color:rgba(255,255,255,.14)}
 body.night .td-lbl{background:transparent}
+/* the greeting: the first thing on the screen, quiet enough to live above
+   the day without competing with it */
+.greet-wrap{width:100%;max-width:380px;margin-bottom:9px}
+.greet-line{width:100%;background:none;border:none;padding:2px 4px;font-family:inherit;text-align:right;cursor:pointer;display:flex;align-items:baseline;gap:8px}
+.greet-w{font-size:17px;font-weight:800;color:#4a4340;letter-spacing:-.2px}
+.greet-add{font-size:10.5px;font-weight:700;color:#b8afa7;border-bottom:1px dashed #d8cfc7}
+.greet-edit{display:flex;gap:7px;align-items:center;padding:0 2px}
+.greet-in{flex:1;min-width:0;border:1.5px solid #ece5da;border-radius:12px;padding:9px 11px;font-size:14px;font-weight:700;font-family:inherit;color:#4a4340;background:#fff;outline:none;text-align:right}
+.greet-ok{border:none;border-radius:12px;padding:10px 15px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer}
+body.night .greet-w{color:#e6e0f2}
+body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .td-wrap{width:100%;max-width:380px;margin-bottom:20px}
 .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:380px}
 .home-card{border-radius:28px;padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;border:none;text-align:center;transition:transform .15s,box-shadow .15s;position:relative;overflow:hidden}
@@ -1004,6 +1015,8 @@ var GOALS=[
   {v:'gain',  t:'עלייה במסה',    k:1.10, p:0.1, n:'עודף של 10% לבנייה'}
 ];
 function goalDef(v){for(var i=0;i<GOALS.length;i++)if(GOALS[i].v===v)return GOALS[i];return null;}
+// the greeting reads it too, so both places stay in step
+function profName(v){greetSetName(v);renderGreeting();}
 function loadProfile(){
   try{var o=JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}');return o&&typeof o==='object'?o:{};}
   catch(e){return {};}
@@ -1106,6 +1119,9 @@ function renderProfile(){
   var age=profileAge(p.birth),bmi=profileBMI(p);
 
   h+='<div class="card"><div class="cttl">פרטים אישיים</div>';
+  h+='<div class="pf-row"><label class="pf-lbl">שם</label>'+
+     '<input class="pf-in" type="text" maxlength="24" placeholder="השם שלך" value="'+esc(p.name||'')+'" onchange="profName(this.value)">'+
+     '<span class="pf-note">לברכה בבית</span></div>';
   h+='<div class="pf-row"><label class="pf-lbl">תאריך לידה</label>'+
      '<input class="pf-in" type="date" value="'+(p.birth||'')+'" onchange="profSet(\u0027birth\u0027,this.value)">'+
      '<span class="pf-note">'+(age===null?'':age+' שנים')+'</span></div>';
@@ -12274,7 +12290,108 @@ function todayNotes(date){
   });
   return out;
 }
+/* ── THE GREETING ──
+   The first line on the screen, before the day's plan.
+
+   It changes with the hour, and it changes with the day. A greeting that
+   said the same four words every morning would stop being read within a
+   week - the eye learns it and skips it. Seven per part of the day, chosen
+   by the date, means a full week passes before one comes round again, and
+   the one you get is the same all day rather than shuffling under you every
+   time the screen redraws.
+
+   The name is optional. Without one the greeting still works - it just
+   greets the morning instead of the person - and the line invites you to
+   add it. Tapping the greeting is how you set or change it, because that is
+   where you are looking when you notice it is missing or wrong. */
+var GREET_NAME_KEY='greet_name';
+function greetName(){
+  try{
+    var n=localStorage.getItem(GREET_NAME_KEY);
+    if(n&&n.trim())return n.trim();
+  }catch(e){}
+  var p=loadProfile();
+  return (p&&p.name&&String(p.name).trim())?String(p.name).trim():'';
+}
+function greetSetName(v){
+  v=(v||'').trim().slice(0,24);
+  try{localStorage.setItem(GREET_NAME_KEY,v);}catch(e){}
+  var p=loadProfile();p.name=v;saveProfile(p);
+}
+var GREETS={
+  morning:[
+    'בוקר טוב','בוקר נפלא','בוקר אור','בוקר מלא באנרגיה',
+    'יום חדש מתחיל','בוקר בהיר','שיהיה בוקר מצוין'
+  ],
+  noon:[
+    'צהריים טובים','צהריים נעימים','המשך יום טוב','חצי יום מאחוריך',
+    'צהריים מוארים','שיהיה המשך יום מצוין','אמצע היום'
+  ],
+  evening:[
+    'ערב טוב','ערב נעים','ערב שקט','סוף יום טוב',
+    'ערב רגוע','שיהיה ערב נעים','ערב מואר'
+  ],
+  night:[
+    'לילה טוב','לילה שקט','לילה רגוע','זמן לנוח',
+    'מנוחה נעימה','שינה טובה','לילה שקט ומנוחה'
+  ]
+};
+var GREET_ICON={morning:'☀️',noon:'',evening:'🌙',night:'🌙'};
+function greetPart(h){
+  // every band stated at both ends. Written as bare upper bounds the small
+  // hours fell through to the first one that matched - two in the morning
+  // was being wished a good afternoon.
+  if(h>=5&&h<12)return 'morning';
+  if(h>=12&&h<17)return 'noon';
+  if(h>=17&&h<22)return 'evening';
+  return 'night';
+}
+/* Which day it is, counted from a fixed point rather than from the year, so
+   the phrase changes on the last day of December like any other day. The
+   night hours before dawn belong to the evening that led into them: at two
+   in the morning you have not started a new day yet. */
+function greetIndex(d){
+  var t=new Date(d.getTime());
+  if(t.getHours()<5)t.setDate(t.getDate()-1);
+  return Math.floor(t.getTime()/86400000+t.getTimezoneOffset()/-1440);
+}
+function greetText(now){
+  var d=now||new Date(),part=greetPart(d.getHours()),list=GREETS[part];
+  var w=list[((greetIndex(d)%list.length)+list.length)%list.length];
+  var n=greetName(),ic=GREET_ICON[part];
+  return {text:w+(n?', '+n:''),icon:ic,named:!!n};
+}
+function renderGreeting(){
+  var el=document.getElementById('home-greet');
+  if(!el)return;
+  if(el.getAttribute('data-editing')==='1')return;   // don't yank the field away
+  var g=greetText();
+  el.innerHTML='<button class="greet-line" onclick="greetEdit()">'+
+    '<span class="greet-w">'+esc(g.text)+(g.icon?' '+g.icon:'')+'</span>'+
+    (g.named?'':'<span class="greet-add">מי אתה?</span>')+
+    '</button>';
+}
+function greetEdit(){
+  var el=document.getElementById('home-greet');
+  if(!el)return;
+  el.setAttribute('data-editing','1');
+  el.innerHTML='<div class="greet-edit">'+
+    '<input id="greet-in" class="greet-in" type="text" maxlength="24" placeholder="השם שלך" value="'+esc(greetName())+'">'+
+    '<button class="greet-ok" onclick="greetSave()">שמור</button></div>';
+  var i=document.getElementById('greet-in');
+  if(i){i.focus();i.select();
+    i.addEventListener('keydown',function(e){if(e.key==='Enter')greetSave();});
+  }
+}
+function greetSave(){
+  var i=document.getElementById('greet-in');
+  greetSetName(i?i.value:'');
+  var el=document.getElementById('home-greet');
+  if(el)el.removeAttribute('data-editing');
+  renderGreeting();
+}
 function renderHomeToday(){
+  renderGreeting();
   var el=document.getElementById('home-today');
   if(!el)return;
   var date=todayStr(),d=new Date();
@@ -12354,6 +12471,7 @@ function showMain(t){
   home.id='home-screen';
   home.className='home';
   home.innerHTML=
+    '<div id="home-greet" class="greet-wrap"></div>'+
     '<div id="home-today" class="td-wrap"></div>'+
     '<div class="home-logo">Better Me</div>'+
     '<div class="home-sub">Become the best version of yourself</div>'+
@@ -12402,6 +12520,7 @@ function showMain(t){
   });
   renderHomeGrid();
   renderHomeToday();
+  renderGreeting();
 
   paintSky();
   // Set date
