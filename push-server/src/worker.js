@@ -244,6 +244,17 @@ export default {
         '- unit: one of g, unit, slice, cup, tbsp, tsp. Use "unit" for whole things\n' +
         '  (an egg, an apple, a roll) and "g" only when grams are actually stated.\n' +
         '- Split "לחם עם גבינה" into two items. Keep "סלט יווני" as one.\n' +
+        /* A brand split off into its own item is how "שייק חלבון של מולר" lost
+           the word that identified it and came back as another company's
+           powder - the app never had "מולר" to search with. */
+        '- A brand belongs to the food it names. "שייק חלבון של מולר" is ONE item,\n' +
+        '  food "שייק חלבון מולר". Never return a brand as an item of its own.\n' +
+        /* "25 גרם" in that sentence is what the label advertises, not what was
+           eaten. Reading it as a portion logs a quarter of a shake. */
+        '- A number inside a product name is part of the name, not an amount:\n' +
+        '  in "שייק חלבון 25 גרם של מולר" the 25 g is the protein the product\n' +
+        '  advertises, so amount is 1 and unit is "unit". Use a number as the\n' +
+        '  amount only when it says how much was actually eaten.\n' +
         '- Never return calories, protein, carbohydrate or fat. You do not know them.\n' +
         '- No prose, no markdown fence, JSON only.';
 
@@ -259,6 +270,7 @@ export default {
           body: JSON.stringify({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 600,
+            temperature: 0,
             system: SYSTEM,
             messages: [{ role: 'user', content: text }],
           }),
@@ -292,6 +304,123 @@ export default {
         .slice(0, 20);
 
       return json({ ok: true, items });
+    }
+
+    /* ── /match ──────────────────────────────────────────────────────────
+       Which row of the app's own food tables a written food is, and how much
+       one of them weighs.
+
+       This is the half a keyword search cannot do, and the reason the
+       nutrition area could not be trusted. "שייק חלבון של מולר" has to find a
+       row filed as "יוגורט 25 גרם חלבון נטול לקטוז, מולר": the user says
+       shake, the table says yogurt, and מולר, Muller and Müller are three
+       different strings to a string comparison. No amount of tuning gets
+       there. A model reads past all of it at once.
+
+       The second half matters as much. 82% of the rows carry no serving size
+       at all - none of the 3,623 ministry rows do - so a container was being
+       assumed to be 100 g, which is how a 200 g pot of yogurt at 12.5 g
+       protein per 100 g was logged as 12.5 g instead of 25. Nothing can fill
+       that in from the tables, because the fact is not in them. Knowing that
+       a pot of protein yogurt is 200 g is ordinary world knowledge.
+
+       What this must never do is supply a nutrition value. It returns an
+       INDEX into the list the app sent, and a weight in grams; every calorie
+       and every gram of protein still comes from the app's own tables. That
+       is structural rather than a promise in a prompt - there is no field in
+       this reply that could carry a macro, so a hallucinated one has nowhere
+       to go. The app also shows which row was chosen, so the choice stays
+       checkable.
+
+       Secrets: AI_KEY. Optional: MATCH_DAILY_CAP (default 200/IP/day). */
+    if (url.pathname === '/match' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'matching is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const q = String((b && b.q) || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      if (q.length < 2) return json({ error: 'nothing to match' }, 400);
+
+      // the app sends its own candidate rows; anything else is not answerable
+      const cands = (Array.isArray(b && b.cands) ? b.cands : [])
+        .map((c) => String(c || '').replace(/\s+/g, ' ').trim().slice(0, 120))
+        .filter(Boolean)
+        .slice(0, 80);
+      if (!cands.length) return json({ error: 'no candidates' }, 400);
+
+      const cap = Number(env.MATCH_DAILY_CAP || 200);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'mq:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const SYSTEM =
+        'You match a written food to one row of a food table, and say what one\n' +
+        'serving of it weighs. Hebrew or English.\n' +
+        'Reply with JSON only: {"pick":0,"grams":200,"sure":true}\n' +
+        '- pick: the 0-based index of the row that is the food. -1 if none of\n' +
+        '  them is that food. Do not pick a near miss to avoid answering -1.\n' +
+        '- A row is the food even when it is filed under another word: a\n' +
+        '  "שייק חלבון" sold as "יוגורט ... חלבון" is the same product.\n' +
+        '- The brand must agree. מולר, Muller and Müller are one brand; Yoplait\n' +
+        '  is not. If a brand is named and no row carries it, prefer -1 over a\n' +
+        '  row from a different company.\n' +
+        '- grams: what ONE of the unit the user means weighs - a pot, a bottle,\n' +
+        '  a slice, a scoop. Use the packaged size when the row names one\n' +
+        '  ("350 מל" is 350). null if you genuinely do not know.\n' +
+        '- sure: false if you are guessing at either field.\n' +
+        '- Never return calories, protein, carbohydrate or fat. You do not know\n' +
+        '  them and they are not wanted; the app has them already.\n' +
+        '- No prose, no markdown fence, JSON only.';
+
+      const list = cands.map((n, i) => i + '. ' + n).join('\n');
+      const unitWord = String((b && b.unit) || 'unit').slice(0, 12);
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 200,
+            temperature: 0,
+            system: SYSTEM,
+            messages: [{
+              role: 'user',
+              content: 'FOOD: ' + q + '\nUNIT THE USER MEANS: ' + unitWord + '\nROWS:\n' + list,
+            }],
+          }),
+        });
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+
+      let out;
+      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
+      const raw = ((out.content || []).find((c) => c.type === 'text') || {}).text || '';
+      const m = raw.match(/\{[\s\S]*\}/);
+      let parsed;
+      try { parsed = JSON.parse(m ? m[0] : raw); } catch { return json({ error: 'unreadable' }, 502); }
+
+      /* Range checks, not a formality: an index outside the list would read a
+         row that was never sent, and a silly weight is the difference between
+         a meal and a week of them. */
+      let pick = Number(parsed && parsed.pick);
+      if (!Number.isInteger(pick) || pick < 0 || pick >= cands.length) pick = -1;
+
+      let grams = Number(parsed && parsed.grams);
+      if (!Number.isFinite(grams) || grams <= 0 || grams > 5000) grams = null;
+
+      // note: no nutrition field exists in this reply, by design
+      return json({ ok: true, pick, grams, sure: parsed && parsed.sure !== false });
     }
 
     return json({ error: 'not found' }, 404);

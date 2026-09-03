@@ -361,6 +361,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .sr-warn{font-size:10.5px;line-height:1.6;color:#9a7420;background:rgba(232,193,98,.14);border-radius:10px;padding:8px 10px;margin-bottom:8px}
 .sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
 .sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
+.sr-src{font-size:10px;color:#a89e97;line-height:1.6;margin-bottom:7px}
 .sr-said{font-size:10px;color:#c0b6ae;margin-bottom:6px}
 .sr-w{display:flex;align-items:center;gap:5px;margin-bottom:7px;font-size:10.5px;color:#a89e97;font-weight:700}
 .sr-win{width:52px;border:1.5px solid #f2ede6;border-radius:8px;padding:4px;font-size:12px;font-weight:800;text-align:center;outline:none;font-family:inherit;color:#4a4340}
@@ -3183,10 +3184,139 @@ function sayGo(){
                :'לא הצלחתי לקרוא את זה. נסה לנסח אחרת, או חפש ידנית.';
         sayPaint();return;
       }
-      _sayItems=j.items.map(sayResolve);_sayRow=-1;
-      sayPaint();
+      /* The rows have to be resolved against the server before the panel can
+         paint, so the message stays up while that happens. The food tables
+         also have to be in memory by now - the candidate list is built from
+         them - so this waits on the same load the panel already started. */
+      _sayBusy=true;sayPaint();
+      foodsLoad(function(){
+        sayResolveAll(j.items,function(rows){
+          _sayBusy=false;_sayItems=rows;_sayRow=-1;
+          sayPaint();
+        });
+      });
     })
     .catch(function(){_sayBusy=false;_sayErr='אין חיבור כרגע.';sayPaint();});
+}
+/* ── ASKING THE SERVER WHICH ROW THIS IS ──
+   The local scorer below is a string comparison, and a string comparison was
+   never going to get from "שייק חלבון של מולר" to a row filed as "יוגורט 25
+   גרם חלבון נטול לקטוז, מולר". Not one word the user typed is a word the
+   table uses, and מולר, Muller and Müller are three different strings. It
+   answered with another company's protein powder, and nothing on the screen
+   said so.
+
+   So the shortlist is built here - generously, on ANY word rather than the
+   first one, which is the gate that used to throw away every Muller row - and
+   the server picks from it. The reply is an index into the list we sent plus
+   a weight in grams. It cannot contain a calorie or a gram of protein; those
+   still come from our own tables, so a wrong answer is a wrong ROW, which is
+   visible and one tap from being fixed, rather than a wrong number, which is
+   not. */
+function sayCandidates(q,n){
+  var toks=foodTokens(q),out=[],i,j,hits;
+  if(!_foods)return [];
+  for(i=0;i<_foods.length;i++){
+    hits=0;
+    for(j=0;j<toks.length;j++)if(foodHas(_foods[i].s,toks[j]))hits++;
+    if(hits)out.push({f:_foods[i],h:hits});
+  }
+  // most words matched first, then the plainest name
+  out.sort(function(a,b){return b.h-a.h||a.f.s.length-b.f.s.length;});
+  return out.slice(0,n||60).map(function(x){return x.f;});
+}
+/* A name that declares "25 גרם חלבון" is telling you what the whole pot
+   holds, and the row already says how much protein is in 100 g. The pot's
+   weight is then arithmetic rather than anybody's estimate:
+       grams = declared / per100 * 100
+   It applies to two rows in the whole database, so it is not the answer to
+   the portion problem - but where it applies it is exact, and it is how the
+   one product this was reported against gets 200 g instead of the 100 g the
+   row wrongly claims. */
+function deriveGrams(f){
+  if(!f||!(f.p>0))return 0;
+  var m=String(f.n).match(/(\d+(?:\.\d+)?)\s*(?:גרם|גר'?|g)\s*(?:חלבון|protein)/i);
+  if(!m)return 0;
+  var g=Math.round(Number(m[1])/f.p*100);
+  return (g>=20&&g<=2000)?g:0;
+}
+/* Repeat foods are most foods, so an answer is kept. It also means the app
+   still resolves a food you have logged before with no network at all. */
+var MATCH_KEY='food_match';
+function matchCache(){
+  try{var o=JSON.parse(localStorage.getItem(MATCH_KEY)||'{}');return (o&&typeof o==='object')?o:{};}
+  catch(e){return {};}
+}
+function matchCachePut(q,v){
+  try{
+    var all=matchCache(),keys=Object.keys(all);
+    // keep it from growing without limit; oldest out first
+    if(keys.length>400)for(var i=0;i<80;i++)delete all[keys[i]];
+    all[foodKey(q)]=v;
+    localStorage.setItem(MATCH_KEY,JSON.stringify(all));
+  }catch(e){}
+}
+function matchCacheGet(q){
+  var v=matchCache()[foodKey(q)];
+  return (v&&typeof v==='object'&&typeof v.n==='string')?v:null;
+}
+/* One row, resolved against the server, falling back to the local scorer
+   whenever there is no answer - no network, no key, over the daily cap. The
+   fallback is the old behaviour exactly, so the feature degrades to what the
+   app did before rather than to an error. */
+function sayResolveAI(it,done){
+  var local=sayResolve(it);
+  var q=it.food;
+  var hit=matchCacheGet(q);
+  if(hit){done(sayApplyMatch(local,hit.n,hit.g,hit.s));return;}
+  if(!SYNC_SERVER){done(local);return;}
+  var cands=sayCandidates(q,60);
+  if(!cands.length){done(local);return;}
+  var names=cands.map(function(c){return c.n;});
+  var t=setTimeout(function(){t=0;done(local);},9000);   // never hang the panel
+  fetch(SYNC_SERVER+'/match',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({q:q,unit:it.unit||'unit',cands:names})
+  }).then(function(r){return r.json();})
+    .then(function(j){
+      if(!t)return; clearTimeout(t); t=0;
+      if(!j||!j.ok||j.pick<0||!cands[j.pick]){done(local);return;}
+      var f=cands[j.pick];
+      matchCachePut(q,{n:f.n,g:j.grams||0,s:!!j.sure});
+      done(sayApplyMatch(local,f.n,j.grams||0,!!j.sure));
+    })
+    .catch(function(){ if(t){clearTimeout(t);t=0;done(local);} });
+}
+/* Which weight to believe, best evidence first. The order matters more than
+   any single source: a weight you set yourself is a decision, a declared
+   claim is arithmetic, a packet size is a fact printed on the product, and
+   the model's number is an estimate that says so. The old code had only the
+   last two and showed them identically. */
+function sayApplyMatch(local,name,aiGrams,sure){
+  var f=null,i;
+  for(i=0;i<_foods.length;i++)if(_foods[i].n===name){f=_foods[i];break;}
+  if(!f)return local;
+  local.food=f;
+  local.alts=sayCandidates(local.q,4).filter(function(x){return x.n!==name;}).slice(0,3);
+  if(local.unit==='g'){local.g=1;local.gsrc='exact';return local;}
+  var learned=foodUnitRec(f.n).w[local.unit];
+  if(learned>0){local.g=learned;local.gsrc='learned';return local;}
+  var der=deriveGrams(f);
+  if(der>0&&local.unit==='unit'){local.g=der;local.gsrc='derived';return local;}
+  if(f.u>0&&local.unit==='unit'){local.g=f.u;local.gsrc='packet';return local;}
+  if(aiGrams>0){local.g=aiGrams;local.gsrc=sure?'ai':'guess';return local;}
+  return local;
+}
+// every row, in parallel, and the panel paints once they are all in
+function sayResolveAll(items,done){
+  var out=new Array(items.length),left=items.length;
+  if(!left){done([]);return;}
+  items.forEach(function(it,i){
+    sayResolveAI(it,function(row){
+      out[i]=row;
+      if(--left===0)done(out);
+    });
+  });
 }
 /* Matching a word to a row of a food table is a guess, and the honest way to
    handle a guess is to make it visible and easy to overrule - which is why
@@ -3277,6 +3407,12 @@ function sayResolve(it){
   else if(foodUnitRec(best?best.n:it.food).w[unit]>0)src='learned';
   return {q:it.food,amount:it.amount,unit:unit,g:g,food:best,alts:alts,gsrc:src};
 }
+var GSRC_SAY={
+  learned:'המשקל ששמרת בפעם הקודמת.',
+  derived:'חושב מהחלבון שהמוצר מצהיר עליו ומהערך ל־100 גרם — לא הערכה.',
+  packet:'הגודל שמוצהר על האריזה.',
+  ai:'הערכה של גודל המנה. תקן אם צריך, וזה ייזכר.'
+};
 function sayAmount(row){
   if(!row.food)return null;
   var grams=row.amount*(row.unit==='g'?1:row.g);
@@ -3435,6 +3571,8 @@ function sayPaint(){
         h+='<div class="sr-more">';
         if(foodKey(row.food.n)!==foodKey(row.q))
           h+='<div class="sr-said">אמרת: '+esc(row.q)+'</div>';
+        if(row.unit!=='g'&&GSRC_SAY[row.gsrc])
+          h+='<div class="sr-src">'+GSRC_SAY[row.gsrc]+'</div>';
         if(row.unit!=='g'&&row.gsrc==='guess')
           h+='<div class="sr-warn">לא ידוע כמה שוקלת יחידה אחת מהמוצר הזה. '+
              'המספר למטה הוא ברירת מחדל &mdash; תקן אותו והוא ייזכר.</div>';
