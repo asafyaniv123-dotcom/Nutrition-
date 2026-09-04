@@ -614,6 +614,149 @@ export default {
       });
     }
 
+    /* ── /estimate ───────────────────────────────────────────────────────
+       Nutrition values for a food the tables do not have.
+
+       Everything else in this area is built on the model not being allowed
+       to produce a nutrition number. This is the deliberate exception, and
+       it exists because the alternative is worse: a plate of shawarma, a
+       dish at a friend's house, half the things anyone actually eats are not
+       in a national food table, and a day's log that silently omits them is
+       not more accurate than one containing an estimate - it is just wrong
+       in a way nobody can see.
+
+       So the estimate is allowed, and the entire job of this endpoint is to
+       make sure it never afterwards looks like a measurement. It returns
+       what it assumed, in words, and how sure it is; the app stores the
+       values with a flag and shows them differently everywhere they appear.
+       An estimate you can see is an estimate you can correct.
+
+       It is asked for a range as well as a figure, because the width of the
+       range is the honest part - "a pita with shawarma" is 600-900 kcal
+       depending on the shop, and a model that answers 743 is not more
+       accurate than one that says 600-900, only more convincing.
+
+       Secrets: AI_KEY. Optional: EST_DAILY_CAP (default 120/IP/day). */
+    if (url.pathname === '/estimate' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'estimating is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const food = String((b && b.food) || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+      if (food.length < 2) return json({ error: 'nothing to estimate' }, 400);
+
+      const cap = Number(env.EST_DAILY_CAP || 120);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'eq:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const SYSTEM =
+        'You give nutrition values for a described food, for a food-logging app.\n' +
+        'Hebrew or English in, JSON only out:\n' +
+        '{"per100":{"kcal":0,"p":0,"c":0,"f":0},"serving_g":0,"kcal_low":0,\n' +
+        ' "kcal_high":0,"confidence":"high|medium|low","assumed":"","ok":true}\n' +
+        '\n' +
+        '- per100: energy in kcal and protein/carbohydrate/fat in grams, per 100g\n' +
+        '  of the food AS EATEN - cooked if it is eaten cooked, dressed if it is\n' +
+        '  served dressed.\n' +
+        '- serving_g: what one normal portion of it weighs, in grams. If the user\n' +
+        '  named a size ("a large one", "250ml"), use that.\n' +
+        '- kcal_low / kcal_high: an honest range for ONE SERVING, not for 100g.\n' +
+        '  A pita with shawarma is 600-900 depending on the shop. Do not narrow a\n' +
+        '  range to look confident - the width is the useful part.\n' +
+        '- assumed: one short sentence, in the language they wrote in, naming what\n' +
+        '  you took the food to be and the portion you assumed. This is shown to\n' +
+        '  the user and is how they know what to correct.\n' +
+        '- confidence: high for a plain single ingredient, low for a described\n' +
+        '  dish that varies a lot or a brand you do not know.\n' +
+        '- Keep the four macros roughly consistent with the energy: protein and\n' +
+        '  carbohydrate are about 4 kcal per gram, fat about 9.\n' +
+        '- If it is too vague to estimate at all - "food", "something nice" - set\n' +
+        '  ok:false and say why in assumed. Do not guess at nothing.\n' +
+        '- Never invent a specific brand\u2019s published figures. If a brand is named\n' +
+        '  and you do not know it, estimate the generic food and say so in assumed.\n' +
+        /* It named a city for a restaurant it was asked about, and named the
+           wrong one. The assumed line exists to say what food and what portion
+           were taken - anything else in it is a confident detail the user has
+           no reason to doubt and no way to check. */
+        '- In assumed, describe only the food and the portion. Do not state\n' +
+        '  facts about a named restaurant, shop or brand - not its location, not\n' +
+        '  its recipe, not its portion size - unless the user told you.\n' +
+        '- Write it entirely in the one language the user wrote in. No stray\n' +
+        '  words or characters from another script.\n' +
+        '- No prose, no markdown fence, JSON only.';
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 500,
+            temperature: 0,
+            system: SYSTEM,
+            messages: [{ role: 'user', content: food }],
+          }),
+        });
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+
+      let out;
+      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
+      const rawTxt = ((out.content || []).find((c) => c.type === 'text') || {}).text || '';
+      const m = rawTxt.match(/\{[\s\S]*\}/);
+      let p;
+      try { p = JSON.parse(m ? m[0] : rawTxt); } catch { return json({ error: 'unreadable' }, 502); }
+
+      if (p && p.ok === false)
+        return json({ ok: false, why: String(p.assumed || '').slice(0, 200) });
+
+      const num = (v, hi) => {
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 && n <= hi ? Math.round(n * 10) / 10 : 0;
+      };
+      const per100 = {
+        kcal: num(p && p.per100 && p.per100.kcal, 900),
+        p: num(p && p.per100 && p.per100.p, 100),
+        c: num(p && p.per100 && p.per100.c, 100),
+        f: num(p && p.per100 && p.per100.f, 100),
+      };
+      if (!per100.kcal) return json({ error: 'no usable answer' }, 502);
+
+      /* The same Atwater check the food tables get. A reply whose macros do
+         not add up to its own calorie figure is not a near miss, it is a
+         number that came from somewhere else, and it would sit in the log
+         looking exactly like the ones that do add up. */
+      const calc = 4 * per100.p + 4 * per100.c + 9 * per100.f;
+      const consistent = calc > 0 && Math.abs(calc - per100.kcal) / per100.kcal <= 0.35;
+
+      let serving = Number(p && p.serving_g);
+      if (!Number.isFinite(serving) || serving <= 0 || serving > 3000) serving = 0;
+
+      const conf = ['high', 'medium', 'low'].includes(p && p.confidence) ? p.confidence : 'low';
+
+      return json({
+        ok: true,
+        per100,
+        serving_g: serving,
+        kcal_low: num(p && p.kcal_low, 6000),
+        kcal_high: num(p && p.kcal_high, 6000),
+        confidence: consistent ? conf : 'low',
+        consistent,
+        assumed: String((p && p.assumed) || '').slice(0, 240),
+      });
+    }
+
     return json({ error: 'not found' }, 404);
   },
 

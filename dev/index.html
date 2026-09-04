@@ -361,6 +361,24 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .sr-warn{font-size:10.5px;line-height:1.6;color:#9a7420;background:rgba(232,193,98,.14);border-radius:10px;padding:8px 10px;margin-bottom:8px}
 .sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
 .sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
+/* הערכה */
+.est-go{width:100%;background:none;border:1.5px dashed #e0d8ce;border-radius:13px;padding:11px;margin-top:10px;font-family:inherit;font-size:11.5px;font-weight:700;color:#a89e97;cursor:pointer}
+.est-w{font-size:11.5px;color:#a690cf;padding:10px 2px}
+.est-err{font-size:11.5px;color:#c98b8b;padding:10px 2px;line-height:1.6}
+.est-card{background:#fffaf2;border:1.5px solid #f0e2c8;border-radius:16px;padding:13px;margin-top:11px}
+.est-hd{display:flex;align-items:center;gap:7px;margin-bottom:9px}
+.est-tag{background:#e8c162;color:#fff;font-size:9.5px;font-weight:800;border-radius:6px;padding:3px 8px}
+.est-conf{flex:1;font-size:10px;color:#a89e97;font-weight:700}
+.est-x{background:none;border:none;font-size:19px;line-height:1;color:#d8cfc7;cursor:pointer;font-family:inherit;padding:0 2px}
+.est-name{width:100%;border:1.5px solid #f0ebe3;border-radius:10px;padding:9px 10px;font-family:inherit;font-size:13px;font-weight:700;color:#4a4340;background:#fff}
+.est-as{font-size:10.5px;color:#a89e97;line-height:1.6;margin-top:7px}
+.est-grow{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11px;color:#a89e97;font-weight:700}
+.est-g{width:74px;border:1.5px solid #f0ebe3;border-radius:9px;padding:7px 9px;font-family:inherit;font-size:13px;font-weight:800;color:#4a4340;background:#fff}
+.est-nums{display:flex;flex-wrap:wrap;gap:11px;margin-top:10px;font-size:11.5px;color:#6a6360}
+.est-nums b{font-size:15px;color:#4a4340}
+.est-range{font-size:10px;color:#a89e97;line-height:1.6;margin-top:9px}
+.est-add{width:100%;border:none;border-radius:12px;padding:11px;margin-top:11px;background:linear-gradient(135deg,#f0cf8a,#e8c162);color:#fff;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.log-est{display:inline-block;background:#f7ecd2;color:#a8842e;font-size:8.5px;font-weight:800;border-radius:5px;padding:2px 5px;margin-right:6px;vertical-align:middle}
 /* שאלה על התזונה */
 .ask-bar{width:100%;display:flex;align-items:center;gap:9px;background:#fff;border:none;border-radius:18px;padding:13px 15px;margin-bottom:12px;box-shadow:0 3px 12px rgba(200,180,160,.11);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:#a89e97;text-align:right}
 .ask-q{flex-shrink:0;width:23px;height:23px;border-radius:50%;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
@@ -3915,8 +3933,15 @@ function fdbPaint(){
   }
 
   if(aiOn&&_fdbAIBusy)h+='<div class="fdb-ai-w">מחפש גם לפי המשמעות…</div>';
-  if(!h)h='<div class="fdb-msg">'+(_fdbAIBusy?'מחפש…':'לא נמצא. נסה מילה אחרת.')+'</div>';
-  el.innerHTML=h;
+  var card=estCardHTML();
+  if(!h&&!card)h='<div class="fdb-msg">'+(_fdbAIBusy?'מחפש…':'לא נמצא במאגר.')+'</div>';
+  /* The tables do not have most cooked food, so a search that finds nothing
+     is the ordinary case rather than a failure, and it used to be a dead end
+     - the food simply could not be logged. */
+  if(!_est&&!_estBusy&&_fdbQ.length>=2)
+    h+='<button class="est-go" onclick="estAsk(&quot;'+esc(_fdbQ).replace(/"/g,'&quot;')+'&quot;)">'+
+       (rest.length||(_fdbAI&&_fdbAI.length)?'לא זה? ':'')+'תן ל-AI להעריך את &rlm;"'+esc(_fdbQ)+'"</button>';
+  el.innerHTML=h+card;
 }
 
 /* ── ASKING ABOUT YOUR OWN EATING ─────────────────────────────────────────
@@ -4093,6 +4118,104 @@ function askBarHTML(){
     '<div id="ask-body">'+'</div>'+
     '<div class="ask-note">התשובות מחושבות מהרישומים שלך ומטבלאות האפליקציה בלבד.</div>'+
     '</div>';
+}
+/* ── AN ESTIMATE, WHEN THE TABLES HAVE NOTHING ────────────────────────────
+   Everywhere else here the model is forbidden from producing a nutrition
+   number. This is the exception, and it is worth being clear about why it is
+   allowed rather than pretending it is consistent.
+
+   Half of what anyone eats is not in a national food table. A plate at a
+   friend's house, a dish from the place on the corner, whatever was cooked
+   on Friday. Until now those could not be logged at all - and a day that
+   silently leaves out lunch is not more accurate than one holding an
+   estimate of it, it is simply wrong in a way nothing on the screen admits.
+
+   So the estimate is allowed and the whole of the work is making sure it can
+   never afterwards be mistaken for a measurement. It arrives with what was
+   assumed, in words, and a range rather than a single figure - the width of
+   the range is the honest part, since a pita with shawarma is 600 to 900
+   depending on the shop and answering 743 is not more accurate, only more
+   convincing. It is stored with a flag, and the flag is shown: in the day's
+   log an estimated meal carries a mark, so a week of records never quietly
+   becomes half measurement and half guess. */
+var _est=null,_estBusy=false,_estErr='';
+
+function estAsk(q){
+  var food=String(q||'').trim();
+  if(food.length<2)return;
+  if(!SYNC_SERVER){_estErr='ההערכה דורשת חיבור לשרת.';fdbPaint();return;}
+  _est=null;_estErr='';_estBusy=true;fdbPaint();
+  fetch(SYNC_SERVER+'/estimate',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({food:food})
+  }).then(function(r){return r.json();})
+    .then(function(j){
+      _estBusy=false;
+      if(!j||j.error){
+        _estErr=(j&&j.error==='too many for today')?'הגעת למכסה היומית של ההערכות.'
+               :'לא הצלחתי להעריך את זה.';
+        fdbPaint();return;
+      }
+      if(j.ok===false){_estErr=j.why||'זה כללי מדי כדי להעריך.';fdbPaint();return;}
+      _est={name:food,per100:j.per100,g:j.serving_g||100,
+            low:j.kcal_low,high:j.kcal_high,conf:j.confidence,
+            assumed:j.assumed||'',consistent:j.consistent!==false};
+      fdbPaint();
+    })
+    .catch(function(){_estBusy=false;_estErr='אין חיבור כרגע.';fdbPaint();});
+}
+function estSetGrams(v){
+  if(!_est)return;
+  var g=parseFloat(v);
+  _est.g=(isFinite(g)&&g>0&&g<=5000)?g:0;
+  var box=document.getElementById('est-nums');
+  if(box)box.innerHTML=estNumsHTML();
+}
+function estSetName(v){if(_est)_est.name=String(v||'').slice(0,80);}
+function estAmount(){
+  if(!_est)return {kcal:0,p:0,c:0,f:0};
+  var m=(_est.g||0)/100,q=_est.per100;
+  return {kcal:Math.round(q.kcal*m),p:Math.round(q.p*m*10)/10,
+          c:Math.round(q.c*m*10)/10,f:Math.round(q.f*m*10)/10};
+}
+function estNumsHTML(){
+  var a=estAmount();
+  return '<span><b>'+a.kcal+'</b> קק"ל</span>'+
+         '<span>'+a.p+' חלבון</span><span>'+a.c+' פחמ\'</span><span>'+a.f+' שומן</span>';
+}
+function estClose(){_est=null;_estErr='';_estBusy=false;fdbPaint();}
+/* Added with the flag on it. Everything downstream - the log, the day total,
+   a summary - can then tell the two apart, which is the only thing that makes
+   allowing the estimate at all defensible. */
+function estAdd(){
+  if(!_est||!_est.g)return;
+  var a=estAmount();
+  var day=loadDay(curDate);
+  day.meals.push({name:_est.name+' ('+_est.g+'g)',kcal:a.kcal,p:a.p,c:a.c,f:a.f,
+                  est:1,id:Date.now(),time:fmtTime()});
+  saveDay(curDate,day);
+  showToast('✓ נוסף כהערכה');
+  _est=null;_fdbQ='';_estErr='';render();
+}
+function estCardHTML(){
+  if(_estBusy)return '<div class="est-w">מעריך…</div>';
+  if(_estErr)return '<div class="est-err">'+esc(_estErr)+'</div>';
+  if(!_est)return '';
+  var CONF={high:'הערכה טובה',medium:'הערכה סבירה',low:'הערכה גסה'};
+  var h='<div class="est-card">';
+  h+='<div class="est-hd"><span class="est-tag">הערכה</span>'+
+     '<span class="est-conf">'+(CONF[_est.conf]||CONF.low)+'</span>'+
+     '<button class="est-x" onclick="estClose()">&times;</button></div>';
+  h+='<input class="est-name" value="'+esc(_est.name)+'" oninput="estSetName(this.value)">';
+  if(_est.assumed)h+='<div class="est-as">'+esc(_est.assumed)+'</div>';
+  h+='<div class="est-grow"><span>כמות</span>'+
+     '<input class="est-g" type="number" inputmode="decimal" value="'+_est.g+'" oninput="estSetGrams(this.value)"><span>גרם</span></div>';
+  h+='<div class="est-nums" id="est-nums">'+estNumsHTML()+'</div>';
+  if(_est.high>_est.low&&_est.high>0)
+    h+='<div class="est-range">מנה כזאת נעה בין '+_est.low+' ל־'+_est.high+' קק"ל. תקן את הכמות אם היא לא מדויקת.</div>';
+  h+='<button class="est-add" onclick="estAdd()">הוסף ליום כהערכה</button>';
+  h+='</div>';
+  return h;
 }
 function toggleLib(){libOpen=!libOpen;pendingLib=null;render();}
 function toggleComp(){compOpen=!compOpen;render();}
@@ -4414,7 +4537,7 @@ function renderToday(){
   var logHTML='';
   if(day.meals.length>0){
     logHTML='<div class="log-card"><div class="log-title">ארוחות היום</div>';
-    for(var mi2=0;mi2<day.meals.length;mi2++){var m=day.meals[mi2];logHTML+='<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+'</div><div class="log-time">'+m.time+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:#a89e97">'+m.p+'p '+m.c+'c '+m.f+'f</div><div class="log-kcal">'+m.kcal+'</div><button class="log-del" onclick="deleteMeal('+m.id+')">&times;</button></div></div>';}
+    for(var mi2=0;mi2<day.meals.length;mi2++){var m=day.meals[mi2];logHTML+='<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+(m.est?'<span class="log-est">הערכה</span>':'')+'</div><div class="log-time">'+m.time+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:#a89e97">'+m.p+'p '+m.c+'c '+m.f+'f</div><div class="log-kcal">'+m.kcal+'</div><button class="log-del" onclick="deleteMeal('+m.id+')">&times;</button></div></div>';}
     logHTML+='</div>';
   }
 
