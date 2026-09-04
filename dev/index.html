@@ -361,6 +361,11 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .sr-warn{font-size:10.5px;line-height:1.6;color:#9a7420;background:rgba(232,193,98,.14);border-radius:10px;padding:8px 10px;margin-bottom:8px}
 .sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
 .sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
+/* הערכה בתוך שורה של משפט */
+.sr-estall{width:100%;border:1.5px solid #f0e2c8;background:#fffaf2;border-radius:11px;padding:9px;margin-bottom:6px;font-family:inherit;font-size:11px;font-weight:800;color:#a8842e;cursor:pointer}
+.sr-est{flex-shrink:0;border:1.5px solid #f0e2c8;background:#fffaf2;border-radius:9px;padding:5px 11px;font-family:inherit;font-size:10.5px;font-weight:800;color:#a8842e;cursor:pointer}
+.sr-esting{flex-shrink:0;font-size:10px;color:#c0b8b0;padding:0 6px}
+.sr-esttag{display:inline-block;background:#f7ecd2;color:#a8842e;font-size:8.5px;font-weight:800;border-radius:5px;padding:2px 5px;margin-right:6px;vertical-align:middle}
 /* הערכה */
 .est-go{width:100%;background:none;border:1.5px dashed #e0d8ce;border-radius:13px;padding:11px;margin-top:10px;font-family:inherit;font-size:11.5px;font-weight:700;color:#a89e97;cursor:pointer}
 .est-w{font-size:11.5px;color:#a690cf;padding:10px 2px}
@@ -3607,6 +3612,43 @@ function sayTotalHTML(){
          '<span><b>'+t.f+'</b> גרם שומן</span>'+
          '</div>';
 }
+/* ── ESTIMATING ONE LINE OF A SENTENCE ──
+   The estimate was only reachable from the search panel, which is the wrong
+   place for it: writing the sentence is the fast way in, and a sentence
+   naming three things where one of them is not in the tables was a dead end
+   for the whole sentence. You could search for the missing one, but that
+   means leaving the panel and losing the other two.
+
+   So it fills the row where it stands. The other rows keep their matched
+   values, the estimated one is marked as estimated, and one press still adds
+   all of them to the day. */
+function sayEstimate(i){
+  var row=_sayItems&&_sayItems[i];
+  if(!row)return;
+  if(!SYNC_SERVER){showToast('ההערכה דורשת חיבור לשרת');return;}
+  row.esting=true;sayPaint();
+  fetch(SYNC_SERVER+'/estimate',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({food:row.q})
+  }).then(function(r){return r.json();})
+    .then(function(j){
+      row.esting=false;
+      if(!j||j.error||j.ok===false){
+        showToast(j&&j.why?j.why:'לא הצלחתי להעריך את זה');
+        sayPaint();return;
+      }
+      /* A synthetic row, shaped exactly like one out of the tables so that
+         everything downstream keeps working - but carrying est so it can
+         never be mistaken for one. */
+      row.food={n:row.q,k:j.per100.kcal,p:j.per100.p,c:j.per100.c,f:j.per100.f,est:1};
+      row.est=1;row.assumed=j.assumed||'';
+      row.alts=[];
+      if(row.unit==='g'){row.g=1;row.gsrc='exact';}
+      else{row.g=j.serving_g>0?j.serving_g:100;row.gsrc='ai';}
+      sayPaint();
+    })
+    .catch(function(){row.esting=false;showToast('אין חיבור כרגע');sayPaint();});
+}
 function sayAdd(){
   if(!_sayItems)return;
   var day=loadDay(curDate),i,row,a,n=0;
@@ -3614,8 +3656,11 @@ function sayAdd(){
     row=_sayItems[i];a=sayAmount(row);
     if(!a||!row.amount)continue;
     var how=(row.unit==='g')?(row.amount+'g'):(row.amount+' '+unitLabel(row.unit,row.amount));
-    day.meals.push({name:row.food.n+' ('+how+')',kcal:a.kcal,p:a.p,c:a.c,f:a.f,
-                    id:Date.now()+i,time:fmtTime()});
+    var rec={name:row.food.n+' ('+how+')',kcal:a.kcal,p:a.p,c:a.c,f:a.f,
+             id:Date.now()+i,time:fmtTime()};
+    // carried through, or the log would show it as a measured value
+    if(row.est)rec.est=1;
+    day.meals.push(rec);
     n++;
   }
   if(!n){showToast('אין מה להוסיף');return;}
@@ -3647,11 +3692,14 @@ function sayPaint(){
     h+='<button class="sr-x" onclick="sayDrop('+i+')">&times;</button>';
     if(row.food){
       h+='<button class="sr-name" onclick="sayExpand('+i+')">'+esc(row.food.n)+
+         (row.est?'<span class="sr-esttag">הערכה</span>':'')+
          '<span class="sr-chev">'+(open?'&#8963;':'&#8964;')+'</span></button>';
       h+='<span class="sr-k" id="say-k-'+i+'">'+(a?a.kcal:'')+'</span>';
     } else {
       h+='<button class="sr-name" onclick="sayLookup('+i+')">'+esc(row.q)+
          '<span class="sr-find">חפש</span></button>';
+      h+=row.esting?'<span class="sr-esting">מעריך…</span>'
+                   :'<button class="sr-est" onclick="sayEstimate('+i+')">הערך</button>';
     }
     h+='</div>';
 
@@ -3678,6 +3726,8 @@ function sayPaint(){
         h+='<div class="sr-more">';
         if(foodKey(row.food.n)!==foodKey(row.q))
           h+='<div class="sr-said">אמרת: '+esc(row.q)+'</div>';
+        if(row.est&&row.assumed)
+          h+='<div class="sr-src">'+esc(row.assumed)+'</div>';
         if(row.unit!=='g'&&GSRC_SAY[row.gsrc])
           h+='<div class="sr-src">'+GSRC_SAY[row.gsrc]+'</div>';
         if(row.unit!=='g'&&row.gsrc==='guess')
@@ -3692,6 +3742,14 @@ function sayPaint(){
             h+='<button class="sr-alt" onclick="sayUseAlt('+i+','+ai+')">'+esc(row.alts[ai].n.slice(0,30))+'</button>';
           h+='</div>';
         }
+        /* The matcher nearly always returns something - it offered a frozen
+           vegetable mix for a grandmother’s quiche - so a row with no match at
+           all is rare, and putting the estimate only there made it almost
+           unreachable. The place you actually want it is here: the match came
+           back wrong and none of the alternatives are it either. */
+        if(!row.est)
+          h+='<button class="sr-estall" onclick="sayEstimate('+i+')">'+
+             (row.esting?'מעריך…':'תן ל-AI להעריך את מה שכתבתי')+'</button>';
         h+='<button class="sr-other" onclick="sayLookup('+i+')">משהו אחר לגמרי…</button>';
         h+='</div>';
       }
