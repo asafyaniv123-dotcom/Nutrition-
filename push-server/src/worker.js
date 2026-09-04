@@ -348,6 +348,10 @@ export default {
         .slice(0, 80);
       if (!cands.length) return json({ error: 'no candidates' }, 400);
 
+      // how many rows to name back: one to log a food, a handful to search
+      let want = Number(b && b.n);
+      if (!Number.isInteger(want) || want < 1 || want > 8) want = 1;
+
       const cap = Number(env.MATCH_DAILY_CAP || 200);
       const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
       const day = new Date().toISOString().slice(0, 10);
@@ -359,18 +363,37 @@ export default {
       const SYSTEM =
         'You match a written food to one row of a food table, and say what one\n' +
         'serving of it weighs. Hebrew or English.\n' +
-        'Reply with JSON only: {"pick":0,"grams":200,"sure":true}\n' +
-        '- pick: the 0-based index of the row that is the food. -1 if none of\n' +
-        '  them is that food. Do not pick a near miss to avoid answering -1.\n' +
+        'Reply with JSON only:\n' +
+        '{"picks":[0,4],"grams":200,"sure":true,"terms":["",""]}\n' +
+        '- picks: 0-based indexes of the rows that are this food, best first,\n' +
+        '  at most the number asked for. [] if none of them is. Do not pad the\n' +
+        '  list with near misses - two right answers beat five vague ones.\n' +
+        /* The tables carry Hebrew and Latin names side by side and a written
+           food arrives in whichever language the person thinks in. Matching
+           across that is most of the value here and costs nothing extra. */
+        '- The query and the rows may be in different languages or scripts.\n' +
+        '  Match on what the food IS: "protein yogurt muller" and "יוגורט\n' +
+        '  חלבון מולר" are the same request, and either should find a row\n' +
+        '  written in either language.\n' +
         '- A row is the food even when it is filed under another word: a\n' +
         '  "שייק חלבון" sold as "יוגורט ... חלבון" is the same product.\n' +
         '- The brand must agree. מולר, Muller and Müller are one brand; Yoplait\n' +
         '  is not. If a brand is named and no row carries it, prefer -1 over a\n' +
         '  row from a different company.\n' +
-        '- grams: what ONE of the unit the user means weighs - a pot, a bottle,\n' +
+        '- grams: for the FIRST pick, what ONE of the unit the user means\n' +
+        '  weighs - a pot, a bottle,\n' +
         '  a slice, a scoop. Use the packaged size when the row names one\n' +
         '  ("350 מל" is 350). null if you genuinely do not know.\n' +
         '- sure: false if you are guessing at either field.\n' +
+        /* The rows offered are whatever a string match could reach, so a query
+           in another language arrives with a shortlist that never contained
+           the answer. Naming the words the table itself would use lets the app
+           go and look again with those - the one thing the model knows here
+           that a string comparison cannot work out. */
+        '- terms: 2-4 words, in the language and script the ROWS are written\n' +
+        '  in, that would find this food in a plain text search of that table.\n' +
+        '  For "protein yogurt muller" against Hebrew rows: ["יוגורט","חלבון",\n' +
+        '  "מולר"]. Give these even when you also picked rows.\n' +
         '- Never return calories, protein, carbohydrate or fat. You do not know\n' +
         '  them and they are not wanted; the app has them already.\n' +
         '- No prose, no markdown fence, JSON only.';
@@ -394,7 +417,8 @@ export default {
             system: SYSTEM,
             messages: [{
               role: 'user',
-              content: 'FOOD: ' + q + '\nUNIT THE USER MEANS: ' + unitWord + '\nROWS:\n' + list,
+              content: 'FOOD: ' + q + '\nUNIT THE USER MEANS: ' + unitWord +
+                       '\nHOW MANY TO NAME: ' + want + '\nROWS:\n' + list,
             }],
           }),
         });
@@ -413,14 +437,24 @@ export default {
       /* Range checks, not a formality: an index outside the list would read a
          row that was never sent, and a silly weight is the difference between
          a meal and a week of them. */
-      let pick = Number(parsed && parsed.pick);
-      if (!Number.isInteger(pick) || pick < 0 || pick >= cands.length) pick = -1;
+      const seen = new Set();
+      const picks = (Array.isArray(parsed && parsed.picks) ? parsed.picks : [parsed && parsed.pick])
+        .map((x) => Number(x))
+        .filter((x) => Number.isInteger(x) && x >= 0 && x < cands.length)
+        .filter((x) => (seen.has(x) ? false : (seen.add(x), true)))
+        .slice(0, want);
+      const pick = picks.length ? picks[0] : -1;
 
       let grams = Number(parsed && parsed.grams);
       if (!Number.isFinite(grams) || grams <= 0 || grams > 5000) grams = null;
 
+      const terms = (Array.isArray(parsed && parsed.terms) ? parsed.terms : [])
+        .map((t) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 40))
+        .filter(Boolean)
+        .slice(0, 4);
+
       // note: no nutrition field exists in this reply, by design
-      return json({ ok: true, pick, grams, sure: parsed && parsed.sure !== false });
+      return json({ ok: true, pick, picks, grams, terms, sure: parsed && parsed.sure !== false });
     }
 
     return json({ error: 'not found' }, 404);

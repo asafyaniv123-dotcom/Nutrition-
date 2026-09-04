@@ -401,6 +401,10 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .fdb-src{margin-top:8px;font-size:9.5px;color:#c0b6ae;text-align:center;font-weight:700}
 .fdb-in{width:100%;border:1.5px solid #f2ede6;border-radius:12px;padding:10px 12px;font-size:16px;font-family:inherit;outline:none;margin-bottom:8px;background:#fff}
 .fdb-in:focus{border-color:#c9bce0}
+.fdb-ai-h{font-size:9.5px;font-weight:800;color:#a690cf;letter-spacing:.07em;margin:2px 2px 6px}
+.fdb-ai-h.plain{color:#c0b8b0;margin-top:12px}
+.fdb-row.ai{border-right:3px solid #c9bce0}
+.fdb-ai-w{font-size:10px;color:#c0b8b0;padding:8px 2px 0}
 .fdb-msg{font-size:11.5px;color:#a89e97;padding:10px 4px;text-align:center;line-height:1.6}
 .fdb-list{max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:3px}
 .fdb-row{display:flex;align-items:center;gap:8px;width:100%;border:none;background:#fff;border-radius:11px;padding:9px 10px;cursor:pointer;font-family:inherit;text-align:right;box-shadow:0 1px 5px rgba(200,180,160,.1)}
@@ -3598,7 +3602,92 @@ function sayPaint(){
 }
 
 function fdbToggle(){fdbPick=null;addSetMode('find');}
-function fdbType(v){_fdbQ=v;fdbPick=null;fdbPaint();}
+/* ── THE SEARCH LINE ──
+   foodSearch below requires every word typed to appear in the stored name.
+   That is why this box returned nothing at all for "שייק חלבון מולר": the row
+   is filed as "יוגורט 25 גרם חלבון נטול לקטוז, מולר", so "שייק" is absent and
+   the record is discarded before anything is scored. It also means the box
+   only ever worked in the language a row happens to be written in - the
+   tables carry both Hebrew and Latin names, and "protein yogurt muller"
+   found nothing whatsoever.
+
+   So the typed words still search instantly and locally, and a moment after
+   typing stops the same shortlist goes to the server, which names the rows
+   that ARE the food in any language. Those appear above the literal matches
+   and say where they came from. Nothing blocks: the local list is on screen
+   the whole time, and if the request fails or there is no network the box
+   behaves exactly as it did before.
+
+   The language handling is free here rather than a feature to build later -
+   a model reading "protein yogurt muller" against a Hebrew row needs no
+   dictionary, no translation table and no second index. */
+var _fdbAI=null,_fdbAIQ='',_fdbAIBusy=false,_fdbTimer=0;
+function fdbType(v){
+  _fdbQ=v;fdbPick=null;
+  if(_fdbTimer){clearTimeout(_fdbTimer);_fdbTimer=0;}
+  var q=String(v||'').trim();
+  if(foodKey(q)!==foodKey(_fdbAIQ)){_fdbAI=null;_fdbAIBusy=false;}
+  fdbPaint();
+  // a request per keystroke would be absurd; this waits for a pause
+  if(q.length>=2&&SYNC_SERVER)_fdbTimer=setTimeout(function(){fdbAIGo(q);},650);
+}
+function fdbAskMatch(q,cands,done){
+  fetch(SYNC_SERVER+'/match',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({q:q,unit:'unit',n:5,cands:cands.map(function(c){return c.n;})})
+  }).then(function(r){return r.json();}).then(done).catch(function(){done(null);});
+}
+/* The shortlist is built by string matching, so a query in another language
+   arrives with a list that never contained the answer - the model can only
+   choose badly from it. "protein yogurt muller" reached three wrong yogurts
+   for exactly that reason: no Hebrew Muller row shares a character with the
+   words typed.
+
+   So the reply also names the words the table itself would use. When those
+   words find rows the first search never looked at, the question is asked
+   once more with them. Two round trips, only when the model names something
+   new - which for a query in the language the rows are already written in is
+   almost never. It is also the whole of what another language needs: no
+   dictionary, no translation table, no second index. */
+function fdbAIGo(q){
+  _fdbTimer=0;
+  if(!_foods||foodKey(q)!==foodKey(_fdbQ))return;
+  var cached=matchCacheGet('s:'+q);
+  if(cached&&cached.list){_fdbAIQ=q;_fdbAI=cached.list;_fdbAIBusy=false;fdbPaint();return;}
+  var cands=sayCandidates(q,60);
+  if(!cands.length&&!SYNC_SERVER){_fdbAI=null;fdbPaint();return;}
+  _fdbAIQ=q;_fdbAIBusy=true;fdbPaint();
+
+  function finish(names){
+    if(foodKey(q)!==foodKey(_fdbQ))return;
+    _fdbAIBusy=false;_fdbAI=names;
+    matchCachePut('s:'+q,{n:q,list:names});
+    fdbPaint();
+  }
+  function namesFrom(j,list){
+    var picks=(j&&j.ok&&j.picks)?j.picks:[];
+    return picks.map(function(i){return list[i]&&list[i].n;}).filter(Boolean);
+  }
+
+  fdbAskMatch(q,cands,function(j){
+    if(foodKey(q)!==foodKey(_fdbQ))return;
+    var terms=(j&&j.terms)||[];
+    // does the table's own wording reach anything we never sent?
+    var extra=[],have={},i,k;
+    for(i=0;i<cands.length;i++)have[cands[i].n]=1;
+    for(i=0;i<terms.length;i++){
+      var more=sayCandidates(terms[i],25);
+      for(k=0;k<more.length;k++)if(!have[more[k].n]){have[more[k].n]=1;extra.push(more[k]);}
+    }
+    if(!extra.length){finish(namesFrom(j,cands));return;}
+    var merged=extra.concat(cands).slice(0,60);
+    fdbAskMatch(q,merged,function(j2){
+      if(foodKey(q)!==foodKey(_fdbQ))return;
+      var n2=namesFrom(j2,merged);
+      finish(n2.length?n2:namesFrom(j,cands));
+    });
+  });
+}
 function fdbSelect(id){
   fdbPick=id;
   var f=fdbFind(id);
@@ -3706,15 +3795,43 @@ function fdbPaint(){
     }
   }
   if(!_fdbQ){el.innerHTML='<div class="fdb-msg">'+_foods.length.toLocaleString()+' מאכלים ממאגר משרד הבריאות. הקלד כדי לחפש.</div>';return;}
-  var res=foodSearch(_fdbQ);
-  if(!res.length){el.innerHTML='<div class="fdb-msg">לא נמצא. נסה מילה אחרת.</div>';return;}
-  var h='<div class="fdb-list">',i;
-  for(i=0;i<res.length;i++){
-    h+='<button class="fdb-row" onclick="fdbSelect(\u0027'+res[i].id+'\u0027)">'+
-       '<span class="fdb-rn">'+esc(res[i].n)+'</span>'+
-       '<span class="fdb-rk">'+res[i].k+'<span class="fdb-ru">/100g</span></span></button>';
+  var res=foodSearch(_fdbQ),i,f;
+  var h='',shown={};
+
+  /* What the server understood the words to mean, first - it is the answer
+     when the two disagree, and when they agree it costs one label. */
+  var aiOn=(foodKey(_fdbAIQ)===foodKey(_fdbQ));
+  if(aiOn&&_fdbAI&&_fdbAI.length){
+    h+='<div class="fdb-ai-h">התאמות לפי המשמעות</div><div class="fdb-list">';
+    for(i=0;i<_fdbAI.length;i++){
+      f=null;
+      for(var j=0;j<_foods.length;j++)if(_foods[j].n===_fdbAI[i]){f=_foods[j];break;}
+      if(!f)continue;
+      shown[f.id]=1;
+      h+='<button class="fdb-row ai" onclick="fdbSelect(\u0027'+f.id+'\u0027)">'+
+         '<span class="fdb-rn">'+esc(f.n)+'</span>'+
+         '<span class="fdb-rk">'+f.k+'<span class="fdb-ru">/100g</span></span></button>';
+    }
+    h+='</div>';
   }
-  el.innerHTML=h+'</div>';
+
+  var rest=[];
+  for(i=0;i<res.length;i++)if(!shown[res[i].id])rest.push(res[i]);
+
+  if(rest.length){
+    if(h)h+='<div class="fdb-ai-h plain">מכילים את מה שכתבת</div>';
+    h+='<div class="fdb-list">';
+    for(i=0;i<rest.length;i++){
+      h+='<button class="fdb-row" onclick="fdbSelect(\u0027'+rest[i].id+'\u0027)">'+
+         '<span class="fdb-rn">'+esc(rest[i].n)+'</span>'+
+         '<span class="fdb-rk">'+rest[i].k+'<span class="fdb-ru">/100g</span></span></button>';
+    }
+    h+='</div>';
+  }
+
+  if(aiOn&&_fdbAIBusy)h+='<div class="fdb-ai-w">מחפש גם לפי המשמעות…</div>';
+  if(!h)h='<div class="fdb-msg">'+(_fdbAIBusy?'מחפש…':'לא נמצא. נסה מילה אחרת.')+'</div>';
+  el.innerHTML=h;
 }
 
 function toggleLib(){libOpen=!libOpen;pendingLib=null;render();}
