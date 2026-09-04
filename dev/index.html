@@ -361,6 +361,23 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .sr-warn{font-size:10.5px;line-height:1.6;color:#9a7420;background:rgba(232,193,98,.14);border-radius:10px;padding:8px 10px;margin-bottom:8px}
 .sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
 .sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
+/* שאלה על התזונה */
+.ask-bar{width:100%;display:flex;align-items:center;gap:9px;background:#fff;border:none;border-radius:18px;padding:13px 15px;margin-bottom:12px;box-shadow:0 3px 12px rgba(200,180,160,.11);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:#a89e97;text-align:right}
+.ask-q{flex-shrink:0;width:23px;height:23px;border-radius:50%;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.ask-card{background:#fff;border-radius:20px;padding:15px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.13)}
+.ask-hd{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:800;color:#4a4340;margin-bottom:11px}
+.ask-x{background:none;border:none;font-size:20px;line-height:1;color:#c0b6ae;cursor:pointer;font-family:inherit;padding:0 2px}
+.ask-row{display:flex;gap:7px}
+.ask-in{flex:1;min-width:0;border:1.5px solid #f0ebe3;border-radius:12px;padding:11px 12px;font-family:inherit;font-size:13px;color:#4a4340;background:#fbf7f2}
+.ask-in:focus{outline:none;border-color:#c9bce0;background:#fff}
+.ask-go{flex-shrink:0;border:none;border-radius:12px;padding:11px 17px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.ask-tr{margin-top:11px;display:flex;flex-direction:column;gap:3px}
+.ask-tr div{font-size:9.5px;color:#c0b8b0}
+.ask-tr div:before{content:'\2713 ';color:#bfe0c7}
+.ask-w{font-size:11.5px;color:#a690cf;margin-top:9px}
+.ask-err{font-size:12px;color:#c98b8b;margin-top:9px;line-height:1.6}
+.ask-a{font-size:13px;color:#4a4340;line-height:1.75;margin-top:10px;background:#fbf7f2;border-radius:13px;padding:12px}
+.ask-note{font-size:9.5px;color:#c0b8b0;margin-top:10px;line-height:1.5}
 /* חיתוך */
 .crop-ov{position:fixed;inset:0;z-index:600;background:#2a2422;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;direction:rtl}
 .crop-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px}
@@ -3902,6 +3919,181 @@ function fdbPaint(){
   el.innerHTML=h;
 }
 
+/* ── ASKING ABOUT YOUR OWN EATING ─────────────────────────────────────────
+   The loop lives here rather than on the server, and that is the whole
+   design. The server holds one turn: it takes the conversation, and the
+   model either answers or says which figure it needs. The going and getting
+   happens on this device, against localStorage, and only the answer to that
+   specific question is sent back.
+
+   So a week of meals is never uploaded. "How much protein have I had today"
+   sends the day's four totals and nothing else - not yesterday, not the
+   meal names from last month, not the targets unless it asks for those too.
+
+   And the model may not produce a nutrition number of its own: every figure
+   it says has to have come out of one of these four functions, which read
+   the app's own tables and the user's own log. That is the same rule the
+   matching follows, for the same reason - a made-up number is indis-
+   tinguishable from a real one once it is on the screen. */
+var _askQ='',_askBusy=false,_askAns='',_askErr='',_askTrace=[],_askOpen=false;
+
+function askDateArg(v){
+  var t=String(v||'').trim().toLowerCase();
+  if(!t||t==='today'||t==='היום')return todayStr();
+  if(t==='yesterday'||t==='אתמול'){
+    var d=new Date();d.setDate(d.getDate()-1);return dtStamp(d);
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(t)?t:todayStr();
+}
+function askDayTotals(d){
+  var day=loadDay(d),m=day.meals||[],i,t={kcal:0,p:0,c:0,f:0};
+  for(i=0;i<m.length;i++){
+    t.kcal+=(m[i].kcal||0);t.p+=(m[i].p||0);t.c+=(m[i].c||0);t.f+=(m[i].f||0);
+  }
+  return {date:d,kcal:Math.round(t.kcal),protein_g:Math.round(t.p*10)/10,
+          carbs_g:Math.round(t.c*10)/10,fat_g:Math.round(t.f*10)/10,
+          water_ml:day.water||0,meals_logged:m.length};
+}
+var ASK_TOOLS={
+  get_day:function(inp){
+    var d=askDateArg(inp&&inp.date),day=loadDay(d),out=askDayTotals(d);
+    out.meals=(day.meals||[]).map(function(m){
+      return {name:m.name,time:m.time||'',kcal:m.kcal||0,
+              protein_g:m.p||0,carbs_g:m.c||0,fat_g:m.f||0};
+    });
+    return out;
+  },
+  get_range:function(inp){
+    var from=askDateArg(inp&&inp.from),to=askDateArg(inp&&inp.to);
+    if(from>to){var t=from;from=to;to=t;}
+    var out=[],d=new Date(from+'T12:00:00'),end=new Date(to+'T12:00:00'),n=0;
+    while(d<=end&&n<62){out.push(askDayTotals(dtStamp(d)));d.setDate(d.getDate()+1);n++;}
+    return {days:out};
+  },
+  get_targets:function(){
+    loadTargets();
+    return {kcal:TARGETS.kcal,protein_g:TARGETS.p,carbs_g:TARGETS.c,
+            fat_g:TARGETS.f,water_ml:TARGETS.water};
+  },
+  search_food:function(inp){
+    var q=String((inp&&inp.query)||'').trim();
+    if(!q||!_foods)return {rows:[],note:'the food tables are not loaded'};
+    var cands=sayCandidates(q,8);
+    return {basis:'per 100g',rows:cands.map(function(f){
+      return {name:f.n,kcal:f.k,protein_g:f.p,carbs_g:f.c,fat_g:f.f,
+              serving_g:f.u>0?f.u:null};
+    })};
+  }
+};
+// what it looked up, in words, so an answer can be checked rather than believed
+function askSay(name,inp){
+  if(name==='get_day')return 'קרא את היום '+askDateArg(inp&&inp.date);
+  if(name==='get_range')return 'קרא '+askDateArg(inp&&inp.from)+' עד '+askDateArg(inp&&inp.to);
+  if(name==='get_targets')return 'קרא את היעדים שלך';
+  if(name==='search_food')return 'חיפש במאגר: '+String((inp&&inp.query)||'');
+  return name;
+}
+
+function askGo(){
+  var el=document.getElementById('ask-in');
+  var q=el?el.value.trim():'';
+  if(q.length<2){_askErr='כתוב שאלה.';askPaint();return;}
+  if(!SYNC_SERVER){_askErr='השאלות דורשות חיבור לשרת.';askPaint();return;}
+  _askQ=q;_askBusy=true;_askErr='';_askAns='';_askTrace=[];
+  askPaint();
+  foodsLoad(function(){
+    askTurn([{role:'user',content:q}],0);
+  });
+}
+/* One turn, then the next. Six is generous - a real question settles in two
+   or three - but it has to stop somewhere, because a model that keeps asking
+   for one more day would otherwise walk through the whole year. */
+function askTurn(messages,depth){
+  if(depth>=6){
+    _askBusy=false;
+    _askErr='לא הצלחתי לסגור את זה. נסה לשאול יותר ממוקד.';
+    askPaint();return;
+  }
+  fetch(SYNC_SERVER+'/ask',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages:messages})
+  }).then(function(r){return r.json();})
+    .then(function(j){
+      if(!j||!j.ok){
+        _askBusy=false;
+        _askErr=(j&&j.error==='too many for today')?'הגעת למכסה היומית של השאלות.'
+               :'לא הצלחתי לענות כרגע.';
+        askPaint();return;
+      }
+      var content=j.content||[],uses=[],text='',i;
+      for(i=0;i<content.length;i++){
+        if(content[i].type==='text')text+=content[i].text;
+        else if(content[i].type==='tool_use')uses.push(content[i]);
+      }
+      if(!uses.length){
+        _askBusy=false;
+        _askAns=text.trim()||'לא קיבלתי תשובה.';
+        askPaint();return;
+      }
+      // it asked for something: fetch it here, on the phone, and send back
+      var results=[];
+      for(i=0;i<uses.length;i++){
+        var u=uses[i],val;
+        try{
+          val=ASK_TOOLS[u.name]?ASK_TOOLS[u.name](u.input||{}):{error:'unknown tool'};
+        }catch(e){val={error:'could not read that'};}
+        _askTrace.push(askSay(u.name,u.input||{}));
+        results.push({type:'tool_result',tool_use_id:u.id,content:JSON.stringify(val)});
+      }
+      askPaint();
+      var next=messages.concat([{role:'assistant',content:content},
+                                {role:'user',content:results}]);
+      askTurn(next,depth+1);
+    })
+    .catch(function(){_askBusy=false;_askErr='אין חיבור כרגע.';askPaint();});
+}
+function askToggle(){
+  _askOpen=!_askOpen;
+  if(!_askOpen){_askAns='';_askErr='';_askTrace=[];_askQ='';}
+  render();
+  if(_askOpen)setTimeout(function(){var e=document.getElementById('ask-in');if(e)e.focus();},60);
+}
+function askPaint(){
+  var el=document.getElementById('ask-body');
+  if(!el)return;
+  var h='';
+  if(_askTrace.length){
+    h+='<div class="ask-tr">';
+    for(var i=0;i<_askTrace.length;i++)h+='<div>'+esc(_askTrace[i])+'</div>';
+    h+='</div>';
+  }
+  if(_askBusy)h+='<div class="ask-w">בודק בנתונים שלך…</div>';
+  if(_askErr)h+='<div class="ask-err">'+esc(_askErr)+'</div>';
+  if(_askAns)h+='<div class="ask-a">'+askFmt(_askAns)+'</div>';
+  el.innerHTML=h;
+}
+/* The model marks emphasis **like this**, and escaping it renders literal
+   asterisks. Bold and line breaks are the only two it actually produces;
+   everything else stays escaped, so the answer can never carry markup of its
+   own into the page. */
+function askFmt(t){
+  return esc(t).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+}
+function askBarHTML(){
+  if(!_askOpen)
+    return '<button class="ask-bar" onclick="askToggle()">'+
+           '<span class="ask-q">?</span><span>שאל שאלה על התזונה שלך</span></button>';
+  return '<div class="ask-card">'+
+    '<div class="ask-hd"><span>שאל על התזונה שלך</span>'+
+    '<button class="ask-x" onclick="askToggle()">&times;</button></div>'+
+    '<div class="ask-row">'+
+    '<input class="ask-in" id="ask-in" placeholder="כמה חלבון נשאר לי היום?" '+
+    'value="'+esc(_askQ)+'" onkeydown="if(event.key===&quot;Enter&quot;)askGo()">'+
+    '<button class="ask-go" onclick="askGo()">שאל</button></div>'+
+    '<div id="ask-body">'+'</div>'+
+    '<div class="ask-note">התשובות מחושבות מהרישומים שלך ומטבלאות האפליקציה בלבד.</div>'+
+    '</div>';
+}
 function toggleLib(){libOpen=!libOpen;pendingLib=null;render();}
 function toggleComp(){compOpen=!compOpen;render();}
 function setCompCat(c){compCat=c;render();}
@@ -4234,7 +4426,8 @@ function renderToday(){
      only ever a link to the one there. */
   var _c=document.getElementById('content');
   _c.classList.add('has-fab');
-  _c.innerHTML=macroHTML+pillsHTML+waterHTML+addHTML+logHTML+addFabHTML();
+  _c.innerHTML=macroHTML+pillsHTML+waterHTML+askBarHTML()+addHTML+logHTML+addFabHTML();
+  if(_askOpen)askPaint();
   if(fdbOpen)fdbPaint();
   if(_sayOpen)sayPaint();
   animateBars();

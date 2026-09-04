@@ -457,6 +457,163 @@ export default {
       return json({ ok: true, pick, picks, grams, terms, sure: parsed && parsed.sure !== false });
     }
 
+    /* ── /ask ────────────────────────────────────────────────────────────
+       A question about your own eating, answered from your own records.
+
+       The loop does NOT run here. This endpoint is one turn of it: the app
+       sends the conversation so far, the model either answers or asks for
+       something, and the app goes and gets it. That is deliberate rather
+       than convenient - the food log lives on the phone, and doing it this
+       way means it stays there. Nothing is sent except the specific figures
+       the model asked for, one question at a time, and this worker keeps
+       none of it.
+
+       The same rule as everywhere else in the nutrition area applies and is
+       worth restating because it is the whole basis for trusting an answer:
+       the model may not produce a nutrition number of its own. Every figure
+       it says has to have come back from a tool, which means out of the
+       app's own tables and the user's own log. Asked something the tools
+       cannot answer, it says so - that is a better outcome than a confident
+       average invented on the spot, which is exactly what this feature would
+       otherwise be very good at producing.
+
+       Secrets: AI_KEY. Optional: ASK_DAILY_CAP (default 120/IP/day). */
+    if (url.pathname === '/ask' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'asking is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const messages = Array.isArray(b && b.messages) ? b.messages : [];
+      if (!messages.length) return json({ error: 'nothing to ask' }, 400);
+      if (messages.length > 24) return json({ error: 'too long' }, 400);
+      // one turn is small; a large body here is not a question, it is misuse
+      if (JSON.stringify(messages).length > 60000) return json({ error: 'too long' }, 400);
+
+      const cap = Number(env.ASK_DAILY_CAP || 120);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'aq:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      /* The tools are defined here rather than accepted from the client, so
+         this cannot be driven as a general purpose model endpoint. */
+      const TOOLS = [
+        {
+          name: 'get_day',
+          description:
+            "One day of the user's own food log: what they ate, and the totals " +
+            'for energy, protein, carbohydrate, fat and water. Use this for any ' +
+            'question about a particular day, including today.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              date: { type: 'string', description: 'YYYY-MM-DD, or "today" / "yesterday".' },
+            },
+            required: ['date'],
+          },
+        },
+        {
+          name: 'get_range',
+          description:
+            'Daily totals across a span of dates, for questions about a week, a ' +
+            'month, an average or a trend. Returns one row per day.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              from: { type: 'string', description: 'YYYY-MM-DD' },
+              to: { type: 'string', description: 'YYYY-MM-DD' },
+            },
+            required: ['from', 'to'],
+          },
+        },
+        {
+          name: 'get_targets',
+          description:
+            "The user's own daily goals for energy, protein, carbohydrate, fat " +
+            'and water. Needed for anything phrased as how much is left, whether ' +
+            'they are on track, or how much more they should eat.',
+          input_schema: { type: 'object', properties: {}, required: [] },
+        },
+        {
+          name: 'search_food',
+          description:
+            'Look a food up in the app tables. Returns rows with energy and ' +
+            'macros per 100g, and a serving weight where one is known. Use it ' +
+            'for anything about a food the user has not eaten yet.',
+          input_schema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query'],
+          },
+        },
+      ];
+
+      const SYSTEM =
+        "You answer questions about the user's own nutrition, in the language they\n" +
+        'asked in. Hebrew unless they write otherwise.\n' +
+        '\n' +
+        'THE ONE RULE: every number you state must have come back from a tool in\n' +
+        'this conversation. You do not know how much protein is in anything and you\n' +
+        'do not know what they ate - the tools do. Never estimate a calorie or a\n' +
+        'macro from your own knowledge, never round a figure into a nicer one, and\n' +
+        'never fill a gap with what is typical. If the tools cannot answer, say\n' +
+        'plainly what is missing.\n' +
+        '\n' +
+        'Look things up before answering. A question about today needs get_day; one\n' +
+        'about what is left needs get_targets as well; one about a week needs\n' +
+        'get_range. Call several if several are needed, and call search_food for a\n' +
+        'food they are asking about rather than one they ate.\n' +
+        '\n' +
+        'Then answer the question that was asked and stop. Give the number first,\n' +
+        'in a sentence, with the figures it came from. No preamble, no restating\n' +
+        'the question, no lecture about nutrition, no advice that was not asked\n' +
+        'for. Two or three sentences is almost always right. Do not recommend\n' +
+        'changes to how they eat unless they asked what to do.\n' +
+        'Never give medical advice; for anything clinical say it is a question for\n' +
+        'a dietitian or a doctor.';
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 900,
+            temperature: 0,
+            system: SYSTEM,
+            tools: TOOLS,
+            messages,
+          }),
+        });
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) {
+        let detail = '';
+        try { detail = (await r.text()).slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, detail }, 502);
+      }
+
+      let out;
+      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
+
+      /* The content array goes back untouched: the app has to append it to the
+         conversation verbatim, tool_use blocks and all, or the next turn is
+         not a valid exchange. */
+      return json({
+        ok: true,
+        stop_reason: out.stop_reason || '',
+        content: Array.isArray(out.content) ? out.content : [],
+      });
+    }
+
     return json({ error: 'not found' }, 404);
   },
 
