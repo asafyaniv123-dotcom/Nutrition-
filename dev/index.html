@@ -361,6 +361,11 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .sr-warn{font-size:10.5px;line-height:1.6;color:#9a7420;background:rgba(232,193,98,.14);border-radius:10px;padding:8px 10px;margin-bottom:8px}
 .sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
 .sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
+/* פירוק בתוך שורה של משפט */
+.sr-anall{width:100%;background:linear-gradient(135deg,#f7f2fb,#efe7f7);border:1.5px solid #ddd0ee;border-radius:11px;padding:9px;margin-bottom:6px;font-family:inherit;font-size:11px;font-weight:800;color:#7a689e;cursor:pointer}
+.sr-parts{margin:7px 0 4px;border-top:1px solid #f5f0eb;padding-top:6px}
+.sr-parts div{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:#6a6360;padding:2px 0}
+.sr-parts i{font-style:normal;background:#f7ecd2;color:#a8842e;font-size:8px;font-weight:800;border-radius:4px;padding:1px 4px}
 /* פירוק מעמיק */
 .an-go{width:100%;background:linear-gradient(135deg,#f7f2fb,#efe7f7);border:1.5px solid #ddd0ee;border-radius:13px;padding:11px;margin-top:7px;font-family:inherit;font-size:11.5px;font-weight:800;color:#7a689e;cursor:pointer;line-height:1.5}
 .an-dish{font-size:14px;font-weight:800;color:#4a4340}
@@ -3750,6 +3755,15 @@ function sayPaint(){
           h+='<div class="sr-said">אמרת: '+esc(row.q)+'</div>';
         if(row.est&&row.assumed)
           h+='<div class="sr-src">'+esc(row.assumed)+'</div>';
+        if(row.parts&&row.parts.length){
+          h+='<div class="sr-parts">';
+          for(var pi=0;pi<row.parts.length;pi++){
+            var pp=row.parts[pi];
+            h+='<div><span>'+esc(pp.label)+(pp.src==='ai'?' <i>הערכה</i>':'')+'</span>'+
+               '<span>'+pp.g+'g &middot; '+pp.kcal+'</span></div>';
+          }
+          h+='</div><div class="sr-src">'+row.measured+'% מהקלוריות מערכים מדודים במאגר.</div>';
+        }
         if(row.unit!=='g'&&GSRC_SAY[row.gsrc])
           h+='<div class="sr-src">'+GSRC_SAY[row.gsrc]+'</div>';
         if(row.unit!=='g'&&row.gsrc==='guess')
@@ -3769,9 +3783,12 @@ function sayPaint(){
            all is rare, and putting the estimate only there made it almost
            unreachable. The place you actually want it is here: the match came
            back wrong and none of the alternatives are it either. */
-        if(!row.est)
+        if(!row.est){
           h+='<button class="sr-estall" onclick="sayEstimate('+i+')">'+
-             (row.esting?'מעריך…':'תן ל-AI להעריך את מה שכתבתי')+'</button>';
+             (row.esting?'מעריך…':'הערכה מהירה של מה שכתבתי')+'</button>';
+          h+='<button class="sr-anall" onclick="sayAnalyze('+i+')">'+
+             (row.esting?'מפרק…':'פירוק מעמיק — לפי מרכיבים מהמאגר')+'</button>';
+        }
         h+='<button class="sr-other" onclick="sayLookup('+i+')">משהו אחר לגמרי…</button>';
         h+='</div>';
       }
@@ -4339,12 +4356,44 @@ function anStart(q){
   _an=null;_anErr='';_anBusy=true;_anTrace=[];
   anPaint();
   foodsLoad(function(){
-    anTurn([{role:'user',content:food}],0,food);
+    anTurn([{role:'user',content:food}],0,food,null);
   });
 }
-function anTurn(messages,depth,dish){
+/* The same breakdown, run for one line of a written sentence. It hands the
+   finished parts back through a callback instead of into the search panel's
+   card, because the sentence has its own row to fill and the other lines of
+   it have to keep their own values. */
+function sayAnalyze(i){
+  var row=_sayItems&&_sayItems[i];
+  if(!row)return;
+  if(!SYNC_SERVER){showToast('הפירוק דורש חיבור לשרת');return;}
+  row.esting=true;_anTrace=[];sayPaint();
+  foodsLoad(function(){
+    anTurn([{role:'user',content:row.q}],0,row.q,function(res,err){
+      row.esting=false;
+      if(!res){showToast(err||'לא הצלחתי לפרק את זה');sayPaint();return;}
+      var t=res.tot;
+      if(!t.g||!t.kcal){showToast('הפירוק חזר ריק');sayPaint();return;}
+      /* Stored per 100g like any table row, so the amount box and everything
+         downstream keep working unchanged; the row's weight is the dish. */
+      row.food={n:res.dish,est:1,
+                k:Math.round(t.kcal/t.g*100),
+                p:Math.round(t.p/t.g*1000)/10,
+                c:Math.round(t.c/t.g*1000)/10,
+                f:Math.round(t.f/t.g*1000)/10};
+      row.est=1;row.parts=res.parts;row.measured=res.measured;
+      row.assumed=res.assumed;row.alts=[];
+      if(row.unit==='g'){row.g=1;row.gsrc='exact';}
+      else{row.g=t.g;row.gsrc='ai';}
+      sayPaint();
+    });
+  });
+}
+function anTurn(messages,depth,dish,cb){
   if(depth>=8){
-    _anBusy=false;_anErr='הניתוח לא הסתיים. נסה לתאר את המנה בקצרה.';anPaint();return;
+    _anBusy=false;_anErr='הניתוח לא הסתיים. נסה לתאר את המנה בקצרה.';
+    if(cb)cb(null,'הפירוק לא הסתיים');else anPaint();
+    return;
   }
   fetch(SYNC_SERVER+'/analyze',{
     method:'POST',headers:{'Content-Type':'application/json'},
@@ -4353,21 +4402,36 @@ function anTurn(messages,depth,dish){
     .then(function(j){
       if(!j||!j.ok){
         _anBusy=false;
-        _anErr=(j&&j.error==='too many for today')?'הגעת למכסה היומית של הניתוחים.'
+        var m1=(j&&j.error==='too many for today')?'הגעת למכסה היומית של הניתוחים.'
               :'לא הצלחתי לנתח את זה.';
-        anPaint();return;
+        _anErr=m1;
+        if(cb)cb(null,m1);else anPaint();
+        return;
       }
       var content=j.content||[],uses=[],i;
       for(i=0;i<content.length;i++)if(content[i].type==='tool_use')uses.push(content[i]);
+      /* A turn that answers in prose instead of calling a tool is not a
+         failure, it is the model thinking out loud - and treating it as one
+         was giving up on the whole dish on the first turn. It gets told to
+         get on with it, and only a second refusal in a row ends it. */
       if(!uses.length){
-        _anBusy=false;
-        _anErr='לא קיבלתי פירוק. נסה לנסח אחרת.';
-        anPaint();return;
+        if(depth<6){
+          anTurn(messages.concat([
+            {role:'assistant',content:content.length?content:[{type:'text',text:'...'}]},
+            {role:'user',content:'Use the tools. Call search_food for the next '+
+                                 'ingredient, or submit if every part has been '+
+                                 'looked up. Do not reply in prose.'}
+          ]),depth+1,dish,cb);
+          return;
+        }
+        _anBusy=false;_anErr='לא קיבלתי פירוק. נסה לנסח אחרת.';
+        if(cb)cb(null,_anErr);else anPaint();
+        return;
       }
       var results=[],done=false;
       for(i=0;i<uses.length;i++){
         var u=uses[i];
-        if(u.name==='submit'){anFinish(u.input||{},dish);done=true;break;}
+        if(u.name==='submit'){anFinish(u.input||{},dish,cb);done=true;break;}
         var q=String((u.input&&u.input.query)||'');
         var rows=sayCandidates(q,6).map(function(f){
           return {name:f.n,kcal:f.k,protein_g:f.p,carbs_g:f.c,fat_g:f.f};
@@ -4384,17 +4448,20 @@ function anTurn(messages,depth,dish){
                       content:JSON.stringify(payload)});
       }
       if(done)return;
-      anPaint();
+      if(cb)sayPaint();else anPaint();
       anTurn(messages.concat([{role:'assistant',content:content},
-                              {role:'user',content:results}]),depth+1,dish);
+                              {role:'user',content:results}]),depth+1,dish,cb);
     })
-    .catch(function(){_anBusy=false;_anErr='אין חיבור כרגע.';anPaint();});
+    .catch(function(){
+      _anBusy=false;_anErr='אין חיבור כרגע.';
+      if(cb)cb(null,'אין חיבור כרגע');else anPaint();
+    });
 }
 /* The arithmetic. Every part that names a real row is priced from that row's
    measured values; a part the model had to supply itself is kept separate and
    counted, so the split between the two is a fact on the screen rather than
    something to take on trust. */
-function anFinish(inp,dish){
+function anFinish(inp,dish,cb){
   var parts=Array.isArray(inp.parts)?inp.parts:[],out=[],i;
   for(i=0;i<parts.length;i++){
     var p=parts[i],g=Number(p.grams);
@@ -4412,7 +4479,9 @@ function anFinish(inp,dish){
     // own is dropped rather than guessed at
   }
   if(!out.length){
-    _anBusy=false;_anErr='לא הצלחתי לפרק את המנה לרכיבים.';anPaint();return;
+    _anBusy=false;_anErr='לא הצלחתי לפרק את המנה לרכיבים.';
+    if(cb)cb(null,_anErr);else anPaint();
+    return;
   }
   var tot={kcal:0,p:0,c:0,f:0,g:0},fromDb=0;
   for(i=0;i<out.length;i++){
@@ -4425,13 +4494,15 @@ function anFinish(inp,dish){
     if(out[i].src==='db')fromDb+=out[i].kcal;
   }
   _anBusy=false;
-  _an={dish:String(inp.dish||dish||'').slice(0,60)||dish,
+  var built={dish:String(inp.dish||dish||'').slice(0,60)||dish,
        assumed:String(inp.assumed||'').slice(0,240),
        conf:['high','medium','low'].indexOf(inp.confidence)>=0?inp.confidence:'low',
        parts:out,
        tot:{kcal:Math.round(tot.kcal),p:Math.round(tot.p*10)/10,
             c:Math.round(tot.c*10)/10,f:Math.round(tot.f*10)/10,g:Math.round(tot.g)},
        measured:tot.kcal>0?Math.round(fromDb/tot.kcal*100):0};
+  if(cb){cb(built,null);return;}
+  _an=built;
   anPaint();
 }
 function anSetGrams(i,v){
