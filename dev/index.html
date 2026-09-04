@@ -440,6 +440,8 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .ch-nw{top:-7px;left:-7px}.ch-ne{top:-7px;right:-7px}
 .ch-sw{bottom:-7px;left:-7px}.ch-se{bottom:-7px;right:-7px}
 .crop-hint{font-size:11px;color:#a49a92;text-align:center;line-height:1.6;max-width:300px}
+.crop-n{position:absolute;top:-2px;right:16px;font-size:11.5px;font-weight:800;color:#a49a92}
+.crop-stop{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom));left:0;right:0;margin:0 auto;display:block;width:88px;border:none;background:none;font-family:inherit;font-size:10.5px;font-weight:700;color:#7d746e;cursor:pointer}
 .crop-bot{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom));left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 18px}
 .crop-x,.crop-ok{border:none;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;border-radius:13px;padding:12px 22px}
 .crop-x{background:none;color:#b9b0a8}
@@ -6599,17 +6601,34 @@ function saveOutfits(a){try{localStorage.setItem(CLOSET_FIT_KEY,JSON.stringify(a
 
 var _closetSel={}, _closetView='home', _closetBusy=false;
 
+/* The picker's own "Done" belongs to the phone, not to this app, and cannot
+   be removed - but it only has to be pressed once. The whole selection comes
+   in together and is cropped one photo after another, so choosing six shirts
+   is one trip to the photo library rather than six. */
+var _cropQ=[],_cropQi=0,_cropQcat='';
 function closetAdd(input,cat){
-  var file=input.files&&input.files[0];
+  var files=input.files?Array.prototype.slice.call(input.files):[];
   input.value='';
-  if(!file)return;
-  _closetBusy=true;renderCloset();
+  if(!files.length)return;
+  _cropQ=files.slice(0,20);_cropQi=0;_cropQcat=cat;
+  cropNext();
+}
+function cropNext(){
+  if(_cropQi>=_cropQ.length){
+    _cropQ=[];_cropQi=0;
+    _closetBusy=false;
+    cropClose();
+    renderCloset();
+    return;
+  }
+  var file=_cropQ[_cropQi];
+  _closetBusy=true;
   var reader=new FileReader();
-  reader.onerror=function(){_closetBusy=false;showToast('לא הצלחתי לקרוא את התמונה');renderCloset();};
+  reader.onerror=function(){_cropQi++;showToast('לא הצלחתי לקרוא תמונה אחת');cropNext();};
   reader.onload=function(e){
     var img=new Image();
-    img.onerror=function(){_closetBusy=false;showToast('לא הצלחתי לקרוא את התמונה');renderCloset();};
-    img.onload=function(){cropOpen(img,cat);};
+    img.onerror=function(){_cropQi++;showToast('לא הצלחתי לקרוא תמונה אחת');cropNext();};
+    img.onload=function(){cropOpen(img,_cropQcat);};
     img.src=e.target.result;
   };
   reader.readAsDataURL(file);
@@ -6670,6 +6689,8 @@ function cropPaint(){
   var c=_crop,old=document.getElementById('crop-ov');
   var h='<div class="crop-ov" id="crop-ov">';
   h+='<div class="crop-top">';
+  if(_cropQ.length>1)
+    h+='<div class="crop-n">'+(_cropQi+1)+' מתוך '+_cropQ.length+'</div>';
   h+='<div class="crop-modes">';
   h+='<button class="crop-m'+(c.mode==='rect'?' on':'')+'" onclick="cropMode(&quot;rect&quot;)">4 פאות</button>';
   h+='<button class="crop-m'+(c.mode==='free'?' on':'')+'" onclick="cropMode(&quot;free&quot;)">חופשי</button>';
@@ -6698,10 +6719,13 @@ function cropPaint(){
   /* All three within reach of a thumb, instead of two of them in the far
      top corners of a phone held in one hand. */
   h+='<div class="crop-bot">';
-  h+='<button class="crop-x" onclick="cropCancel()">ביטול</button>';
+  h+='<button class="crop-x" onclick="cropCancel()">'+
+     (_cropQ.length>1?'דלג':'ביטול')+'</button>';
   h+='<button class="crop-rs" onclick="cropReset()">אפס</button>';
   h+='<button class="crop-ok" onclick="cropApply()">שמור</button>';
   h+='</div>';
+  if(_cropQ.length>1)
+    h+='<button class="crop-stop" onclick="cropSkipAll()">עצור הכל</button>';
   h+='</div>';
 
   if(old)old.outerHTML=h; else document.body.insertAdjacentHTML('beforeend',h);
@@ -6810,11 +6834,18 @@ function cropDrawPath(){
   x.closePath();
   x.strokeStyle='#fff';x.lineWidth=2;x.setLineDash([6,4]);x.stroke();
 }
+/* Cancel drops THIS photo and moves on. Abandoning the other five because
+   one of them was a bad shot would be its own annoyance. */
 function cropCancel(){
-  var cat=_crop?_crop.cat:'';
   cropClose();
-  _closetBusy=false;
-  if(cat)renderCloset();
+  if(_cropQi<_cropQ.length-1){_cropQi++;cropNext();return;}
+  _cropQ=[];_cropQi=0;_closetBusy=false;
+  renderCloset();
+}
+function cropSkipAll(){
+  cropClose();
+  _cropQ=[];_cropQi=0;_closetBusy=false;
+  renderCloset();
 }
 /* Squaring happens here, after the cut rather than before it, so that the
    crop is what gets squared. Doing it the other way round would mean
@@ -6865,17 +6896,21 @@ function cropApply(){
     data=out.toDataURL('image/jpeg',0.82);
   }
   cropClose();
-  closetStore(data,cat);
+  closetStore(data,cat,function(){
+    _cropQi++;
+    cropNext();
+  });
 }
 // everything after the picture is decided, shared by both modes
-function closetStore(data,cat){
+function closetStore(data,cat,then){
   photoPut(data).then(function(ref){
     var items=loadCloset();
     items.push({id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
                 cat:cat,ref:ref||data,ts:Date.now()});
     saveCloset(items);
-    _closetBusy=false;
     _closetSel[cat]=closetOf(cat).length-1;
+    if(then){then();return;}
+    _closetBusy=false;
     renderCloset();
   });
 }
@@ -6964,7 +6999,7 @@ function closetRowHTML(cat){
      (list.length>1?'<span class="cl-rn">'+(sel+1)+'/'+list.length+'</span>':'')+'</div>';
   if(!list.length){
     h+='<label class="cl-empty" style="height:'+cat.h+'px">+ '+cat.one+
-       '<input type="file" accept="image/*" style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
+       '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
     return h+'</div>';
   }
   h+='<button class="cl-arw" onclick="closetStep(&quot;'+cat.k+'&quot;,-1)" aria-label="הקודם">&#8249;</button>';
@@ -6979,7 +7014,7 @@ function closetRowHTML(cat){
     h+='</span>';
   }
   h+='<label class="cl-add" style="width:'+cat.h+'px;height:'+cat.h+'px">+'+
-     '<input type="file" accept="image/*" style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
+     '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
   h+='</div>';
   h+='<button class="cl-arw" onclick="closetStep(&quot;'+cat.k+'&quot;,1)" aria-label="הבא">&#8250;</button>';
   return h+'</div>';
