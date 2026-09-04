@@ -757,6 +757,174 @@ export default {
       });
     }
 
+    /* ── /analyze ────────────────────────────────────────────────────────
+       A dish the tables do not have, worked out from the things they do.
+
+       /estimate answers a composite dish in one guess, and a guess at a whole
+       dish is the least accurate thing a model can be asked for: "a pita with
+       shawarma" is 600 to 900 kcal and no amount of thinking narrows that,
+       because the number depends on the shop.
+
+       Its parts are a different question. Chicken thigh, pita bread, tahini,
+       olive oil, salad - every one of those IS in the ministry tables, with a
+       real measured value behind it. What is actually unknown is how much of
+       each went in, and that is world knowledge, which is what a model is
+       good for.
+
+       So this splits the work at that line. The model breaks the dish into
+       parts, looks each one up in OUR tables, and returns the row it chose
+       and how many grams. It does not return a single nutrition figure -
+       there is no field for one. The app multiplies the real per-100g values
+       by the grams and adds them up, so the arithmetic happens on the phone
+       against measured data, and the only thing estimated is the recipe.
+
+       That is what makes this more accurate rather than merely longer: most
+       of the answer stops being a guess. A part it genuinely cannot find is
+       allowed to carry its own values, and is marked so it can be seen.
+
+       Secrets: AI_KEY. Optional: ANALYZE_DAILY_CAP (default 80/IP/day). */
+    if (url.pathname === '/analyze' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'analysis is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const messages = Array.isArray(b && b.messages) ? b.messages : [];
+      if (!messages.length) return json({ error: 'nothing to analyse' }, 400);
+      if (messages.length > 20) return json({ error: 'too long' }, 400);
+      if (JSON.stringify(messages).length > 60000) return json({ error: 'too long' }, 400);
+
+      const cap = Number(env.ANALYZE_DAILY_CAP || 80);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'nq:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const TOOLS = [
+        {
+          name: 'search_food',
+          description:
+            "Search the app's own food tables - the Israeli ministry of health " +
+            'database and Open Food Facts. Returns rows with measured energy and ' +
+            'macros per 100g. Search for ONE ingredient at a time, in Hebrew, and ' +
+            'use the plainest word for it: "עוף", "פיתה", "טחינה", "שמן זית".',
+          input_schema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query'],
+          },
+        },
+        {
+          name: 'submit',
+          description:
+            'Give the finished breakdown. Call this once, when every part has ' +
+            'been looked up. Do not call it before searching.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              parts: {
+                type: 'array',
+                description: 'One entry per ingredient.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    row: {
+                      type: 'string',
+                      description:
+                        'The name of the table row you are using, copied EXACTLY ' +
+                        'as search_food returned it. Leave empty only if nothing ' +
+                        'in the tables is this ingredient.',
+                    },
+                    label: { type: 'string', description: 'What this part is, in Hebrew.' },
+                    grams: { type: 'number', description: 'How much of it is in one serving.' },
+                    per100: {
+                      type: 'object',
+                      description:
+                        'ONLY when row is empty because the tables do not have it. ' +
+                        'Your own values per 100g.',
+                      properties: {
+                        kcal: { type: 'number' }, p: { type: 'number' },
+                        c: { type: 'number' }, f: { type: 'number' },
+                      },
+                    },
+                  },
+                  required: ['label', 'grams'],
+                },
+              },
+              dish: { type: 'string', description: 'A short name for the whole dish, in Hebrew.' },
+              assumed: {
+                type: 'string',
+                description:
+                  'One or two sentences: what you took the dish to be and what ' +
+                  'portion. This is shown to the user.',
+              },
+              confidence: { type: 'string', description: 'high, medium or low.' },
+            },
+            required: ['parts', 'dish', 'assumed', 'confidence'],
+          },
+        },
+      ];
+
+      const SYSTEM =
+        'You work out what is in a described dish, so that a food app can price it\n' +
+        'from its own measured tables rather than from your guess.\n' +
+        '\n' +
+        'Method, in order:\n' +
+        '1. Decide what the dish is and what one normal serving of it weighs.\n' +
+        '2. Break it into its real ingredients, as cooked and served. A pita with\n' +
+        '   shawarma is bread, meat, tahini, oil and salad - not "shawarma".\n' +
+        '3. search_food for EACH ingredient separately and pick the row that is\n' +
+        '   actually that ingredient. Search again with a different word if the\n' +
+        '   first search misses.\n' +
+        '4. Give each part its weight in grams for ONE serving. These should add\n' +
+        '   up to about the serving weight you decided in step 1.\n' +
+        '5. Call submit once.\n' +
+        '\n' +
+        'Rules that matter:\n' +
+        '- Copy the row name EXACTLY as search_food gave it. A name that does not\n' +
+        '  match a row is dropped, and the part is lost from the dish.\n' +
+        '- Prefer a plain ingredient row over a branded product.\n' +
+        '- Cooking oil and dressings are the most commonly forgotten part of a\n' +
+        '  dish and often a third of its energy. Include them.\n' +
+        '- Weights are per serving, not per 100g.\n' +
+        '- Use your own per100 values ONLY for a part genuinely not in the\n' +
+        '  tables, and then leave row empty. Prefer a table row every time.\n' +
+        '- You never state a figure for the whole dish. The app adds it up.';
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 1500,
+            temperature: 0,
+            system: SYSTEM,
+            tools: TOOLS,
+            messages,
+          }),
+        });
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+
+      let out;
+      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
+
+      return json({
+        ok: true,
+        stop_reason: out.stop_reason || '',
+        content: Array.isArray(out.content) ? out.content : [],
+      });
+    }
+
     return json({ error: 'not found' }, 404);
   },
 

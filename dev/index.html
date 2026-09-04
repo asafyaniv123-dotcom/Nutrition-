@@ -361,6 +361,17 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .sr-warn{font-size:10.5px;line-height:1.6;color:#9a7420;background:rgba(232,193,98,.14);border-radius:10px;padding:8px 10px;margin-bottom:8px}
 .sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
 .sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
+/* פירוק מעמיק */
+.an-go{width:100%;background:linear-gradient(135deg,#f7f2fb,#efe7f7);border:1.5px solid #ddd0ee;border-radius:13px;padding:11px;margin-top:7px;font-family:inherit;font-size:11.5px;font-weight:800;color:#7a689e;cursor:pointer;line-height:1.5}
+.an-dish{font-size:14px;font-weight:800;color:#4a4340}
+.an-parts{margin-top:11px;border-top:1px solid #f2ead9;padding-top:9px}
+.an-row{display:flex;align-items:center;gap:8px;padding:5px 0}
+.an-row+.an-row{border-top:1px solid #faf4e8}
+.an-lab{flex:1;min-width:0;font-size:11.5px;color:#4a4340;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-lab i{font-style:normal;background:#f7ecd2;color:#a8842e;font-size:8px;font-weight:800;border-radius:4px;padding:1px 4px;margin-right:5px}
+.an-g-in{flex-shrink:0;width:58px;border:1.5px solid #f0ebe3;border-radius:8px;padding:5px 7px;font-family:inherit;font-size:12px;font-weight:700;color:#4a4340;background:#fff;text-align:center}
+.an-k{flex-shrink:0;width:44px;text-align:left;font-size:11.5px;font-weight:800;color:#a89e97}
+.an-g{color:#a89e97}
 /* הערכה בתוך שורה של משפט */
 .sr-estall{width:100%;border:1.5px solid #f0e2c8;background:#fffaf2;border-radius:11px;padding:9px;margin-bottom:6px;font-family:inherit;font-size:11px;font-weight:800;color:#a8842e;cursor:pointer}
 .sr-est{flex-shrink:0;border:1.5px solid #f0e2c8;background:#fffaf2;border-radius:9px;padding:5px 11px;font-family:inherit;font-size:10.5px;font-weight:800;color:#a8842e;cursor:pointer}
@@ -2694,8 +2705,19 @@ function foodHas(name,tok){
   }
   return false;
 }
+/* Hebrew writes the same word two ways. The tables have עגבניה and a person
+   types עגבנייה; both are correct and neither contains the other, so a plain
+   substring match finds nothing at all - 193 rows in the tables mention
+   tomato and a search for עגבנייה returned none of them.
+
+   Doubled yod and vav are the whole of the difference in nearly every case,
+   so both sides collapse to the short spelling before anything is compared.
+   It only ever makes matching more permissive: the key is never displayed
+   and never stored as a name, it exists to be compared. */
 function foodKey(s){
-  return String(s).replace(/['’׳"“”״,.\-]/g,'').replace(/\s+/g,' ').trim();
+  return String(s).replace(/['’׳"“”״,.\-]/g,'')
+                  .replace(/יי/g,'י').replace(/וו/g,'ו')
+                  .replace(/\s+/g,' ').trim();
 }
 /* Typing more words should narrow, not find nothing. Every word has to
    appear somewhere in the name; the phrase as written first, because when it
@@ -3996,10 +4018,16 @@ function fdbPaint(){
   /* The tables do not have most cooked food, so a search that finds nothing
      is the ordinary case rather than a failure, and it used to be a dead end
      - the food simply could not be logged. */
-  if(!_est&&!_estBusy&&_fdbQ.length>=2)
-    h+='<button class="est-go" onclick="estAsk(&quot;'+esc(_fdbQ).replace(/"/g,'&quot;')+'&quot;)">'+
-       (rest.length||(_fdbAI&&_fdbAI.length)?'לא זה? ':'')+'תן ל-AI להעריך את &rlm;"'+esc(_fdbQ)+'"</button>';
-  el.innerHTML=h+card;
+  var anCard=anCardHTML();
+  if(!_est&&!_estBusy&&!_an&&!_anBusy&&_fdbQ.length>=2){
+    var q=esc(_fdbQ).replace(/"/g,'&quot;');
+    h+='<button class="est-go" onclick="estAsk(&quot;'+q+'&quot;)">'+
+       (rest.length||(_fdbAI&&_fdbAI.length)?'לא זה? ':'')+'הערכה מהירה של &rlm;"'+esc(_fdbQ)+'"</button>';
+    /* The slow one, said plainly, because it costs a few seconds and several
+       lookups and is worth it only for something actually composite. */
+    h+='<button class="an-go" onclick="anStart(&quot;'+q+'&quot;)">פירוק מעמיק &mdash; מפרק למרכיבים ומתמחר כל אחד מהמאגר</button>';
+  }
+  el.innerHTML=h+card+anCard;
 }
 
 /* ── ASKING ABOUT YOUR OWN EATING ─────────────────────────────────────────
@@ -4274,6 +4302,216 @@ function estCardHTML(){
   h+='<button class="est-add" onclick="estAdd()">הוסף ליום כהערכה</button>';
   h+='</div>';
   return h;
+}
+/* ── WORKING OUT A DISH FROM ITS PARTS ────────────────────────────────────
+   The deep version of an estimate, and it is more accurate for a reason
+   worth stating: it asks the model a different question.
+
+   Guessing a whole dish is the least accurate thing it can be asked. A pita
+   with shawarma is 600 to 900 kcal and no amount of thinking narrows that,
+   because the answer depends on the shop.
+
+   Its parts are not like that. Chicken, pita, tahini, oil, salad - every one
+   of those is in the ministry tables with a real measured value. What is
+   actually unknown is how much of each went in, and THAT is the thing a
+   model knows and a table does not.
+
+   So the model returns which row and how many grams, and nothing else. The
+   sum is computed here, from the tables, so most of the answer stops being a
+   guess and the part that remains one is visible: you can read the
+   breakdown, see that it thought 90g of meat, and change it.
+
+   The lookups run on this device, like the other loops - the tables are
+   already loaded here, and it saves shipping 6,894 rows to a server. */
+var _an=null,_anBusy=false,_anErr='',_anTrace=[];
+
+function anFindRow(name){
+  if(!_foods||!name)return null;
+  var key=foodKey(name),i;
+  for(i=0;i<_foods.length;i++)if(_foods[i].s===key)return _foods[i];
+  for(i=0;i<_foods.length;i++)if(_foods[i].n===name)return _foods[i];
+  return null;
+}
+function anStart(q){
+  var food=String(q||'').trim();
+  if(food.length<2)return;
+  if(!SYNC_SERVER){_anErr='הניתוח דורש חיבור לשרת.';anPaint();return;}
+  _an=null;_anErr='';_anBusy=true;_anTrace=[];
+  anPaint();
+  foodsLoad(function(){
+    anTurn([{role:'user',content:food}],0,food);
+  });
+}
+function anTurn(messages,depth,dish){
+  if(depth>=8){
+    _anBusy=false;_anErr='הניתוח לא הסתיים. נסה לתאר את המנה בקצרה.';anPaint();return;
+  }
+  fetch(SYNC_SERVER+'/analyze',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages:messages})
+  }).then(function(r){return r.json();})
+    .then(function(j){
+      if(!j||!j.ok){
+        _anBusy=false;
+        _anErr=(j&&j.error==='too many for today')?'הגעת למכסה היומית של הניתוחים.'
+              :'לא הצלחתי לנתח את זה.';
+        anPaint();return;
+      }
+      var content=j.content||[],uses=[],i;
+      for(i=0;i<content.length;i++)if(content[i].type==='tool_use')uses.push(content[i]);
+      if(!uses.length){
+        _anBusy=false;
+        _anErr='לא קיבלתי פירוק. נסה לנסח אחרת.';
+        anPaint();return;
+      }
+      var results=[],done=false;
+      for(i=0;i<uses.length;i++){
+        var u=uses[i];
+        if(u.name==='submit'){anFinish(u.input||{},dish);done=true;break;}
+        var q=String((u.input&&u.input.query)||'');
+        var rows=sayCandidates(q,6).map(function(f){
+          return {name:f.n,kcal:f.k,protein_g:f.p,carbs_g:f.c,fat_g:f.f};
+        });
+        _anTrace.push(q);
+        /* An empty result with nothing said about it reads as "try again", and
+           it did: five searches for the same tomato, spelled five ways, eating
+           the turn limit. Saying so once ends it. */
+        var payload={basis:'per 100g',rows:rows};
+        if(!rows.length)payload.note='Nothing in the tables matches that word. '+
+          'Try ONE different word for it, and if that is empty too, give the part '+
+          'your own per100 values with row empty. Do not search for it again.';
+        results.push({type:'tool_result',tool_use_id:u.id,
+                      content:JSON.stringify(payload)});
+      }
+      if(done)return;
+      anPaint();
+      anTurn(messages.concat([{role:'assistant',content:content},
+                              {role:'user',content:results}]),depth+1,dish);
+    })
+    .catch(function(){_anBusy=false;_anErr='אין חיבור כרגע.';anPaint();});
+}
+/* The arithmetic. Every part that names a real row is priced from that row's
+   measured values; a part the model had to supply itself is kept separate and
+   counted, so the split between the two is a fact on the screen rather than
+   something to take on trust. */
+function anFinish(inp,dish){
+  var parts=Array.isArray(inp.parts)?inp.parts:[],out=[],i;
+  for(i=0;i<parts.length;i++){
+    var p=parts[i],g=Number(p.grams);
+    if(!isFinite(g)||g<=0||g>3000)continue;
+    var row=anFindRow(p.row);
+    if(row){
+      out.push({label:String(p.label||row.n).slice(0,40),g:g,src:'db',rowName:row.n,
+                k:row.k,p:row.p,c:row.c,f:row.f});
+    }else if(p.per100&&isFinite(Number(p.per100.kcal))&&Number(p.per100.kcal)>0){
+      out.push({label:String(p.label||'').slice(0,40),g:g,src:'ai',rowName:'',
+                k:Number(p.per100.kcal)||0,p:Number(p.per100.p)||0,
+                c:Number(p.per100.c)||0,f:Number(p.per100.f)||0});
+    }
+    // a part naming a row that does not exist and carrying no values of its
+    // own is dropped rather than guessed at
+  }
+  if(!out.length){
+    _anBusy=false;_anErr='לא הצלחתי לפרק את המנה לרכיבים.';anPaint();return;
+  }
+  var tot={kcal:0,p:0,c:0,f:0,g:0},fromDb=0;
+  for(i=0;i<out.length;i++){
+    var m=out[i].g/100;
+    out[i].kcal=Math.round(out[i].k*m);
+    out[i].pg=Math.round(out[i].p*m*10)/10;
+    out[i].cg=Math.round(out[i].c*m*10)/10;
+    out[i].fg=Math.round(out[i].f*m*10)/10;
+    tot.kcal+=out[i].kcal;tot.p+=out[i].pg;tot.c+=out[i].cg;tot.f+=out[i].fg;tot.g+=out[i].g;
+    if(out[i].src==='db')fromDb+=out[i].kcal;
+  }
+  _anBusy=false;
+  _an={dish:String(inp.dish||dish||'').slice(0,60)||dish,
+       assumed:String(inp.assumed||'').slice(0,240),
+       conf:['high','medium','low'].indexOf(inp.confidence)>=0?inp.confidence:'low',
+       parts:out,
+       tot:{kcal:Math.round(tot.kcal),p:Math.round(tot.p*10)/10,
+            c:Math.round(tot.c*10)/10,f:Math.round(tot.f*10)/10,g:Math.round(tot.g)},
+       measured:tot.kcal>0?Math.round(fromDb/tot.kcal*100):0};
+  anPaint();
+}
+function anSetGrams(i,v){
+  if(!_an||!_an.parts[i])return;
+  var g=parseFloat(v);
+  _an.parts[i].g=(isFinite(g)&&g>=0&&g<=3000)?g:0;
+  anRecalc();
+  var el=document.getElementById('an-tot');
+  if(el)el.innerHTML=anTotHTML();
+  var pk=document.getElementById('an-k-'+i);
+  if(pk)pk.textContent=_an.parts[i].kcal;
+}
+function anRecalc(){
+  if(!_an)return;
+  var t={kcal:0,p:0,c:0,f:0,g:0},db=0,i;
+  for(i=0;i<_an.parts.length;i++){
+    var q=_an.parts[i],m=q.g/100;
+    q.kcal=Math.round(q.k*m);q.pg=Math.round(q.p*m*10)/10;
+    q.cg=Math.round(q.c*m*10)/10;q.fg=Math.round(q.f*m*10)/10;
+    t.kcal+=q.kcal;t.p+=q.pg;t.c+=q.cg;t.f+=q.fg;t.g+=q.g;
+    if(q.src==='db')db+=q.kcal;
+  }
+  _an.tot={kcal:Math.round(t.kcal),p:Math.round(t.p*10)/10,
+           c:Math.round(t.c*10)/10,f:Math.round(t.f*10)/10,g:Math.round(t.g)};
+  _an.measured=t.kcal>0?Math.round(db/t.kcal*100):0;
+}
+function anClose(){_an=null;_anErr='';_anBusy=false;_anTrace=[];anPaint();}
+function anAdd(){
+  if(!_an)return;
+  var day=loadDay(curDate),t=_an.tot;
+  day.meals.push({name:_an.dish+' ('+t.g+'g)',kcal:t.kcal,p:t.p,c:t.c,f:t.f,
+                  est:1,id:Date.now(),time:fmtTime()});
+  saveDay(curDate,day);
+  showToast('✓ נוסף — ' + _an.measured + '% מהמאגר');
+  _an=null;_fdbQ='';render();
+}
+function anTotHTML(){
+  if(!_an)return '';
+  var t=_an.tot;
+  return '<span><b>'+t.kcal+'</b> קק"ל</span><span>'+t.p+' חלבון</span>'+
+         '<span>'+t.c+' פחמ\'</span><span>'+t.f+' שומן</span><span class="an-g">'+t.g+' גרם</span>';
+}
+function anCardHTML(){
+  if(_anBusy){
+    var h='<div class="est-w">מפרק את המנה לרכיבים…</div>';
+    if(_anTrace.length)h+='<div class="ask-tr">'+_anTrace.map(function(q){
+      return '<div>חיפש במאגר: '+esc(q)+'</div>';}).join('')+'</div>';
+    return h;
+  }
+  if(_anErr)return '<div class="est-err">'+esc(_anErr)+'</div>';
+  if(!_an)return '';
+  var CONF={high:'פירוק בטוח',medium:'פירוק סביר',low:'פירוק גס'};
+  var h='<div class="est-card">';
+  h+='<div class="est-hd"><span class="est-tag">פירוק</span>'+
+     '<span class="est-conf">'+(CONF[_an.conf]||CONF.low)+' &middot; '+_an.measured+'% מהמאגר</span>'+
+     '<button class="est-x" onclick="anClose()">&times;</button></div>';
+  h+='<div class="an-dish">'+esc(_an.dish)+'</div>';
+  if(_an.assumed)h+='<div class="est-as">'+esc(_an.assumed)+'</div>';
+  h+='<div class="an-parts">';
+  for(var i=0;i<_an.parts.length;i++){
+    var p=_an.parts[i];
+    h+='<div class="an-row">';
+    h+='<span class="an-lab'+(p.src==='ai'?' ai':'')+'">'+esc(p.label)+
+       (p.src==='ai'?'<i>הערכה</i>':'')+'</span>';
+    h+='<input class="an-g-in" type="number" inputmode="decimal" value="'+p.g+'" oninput="anSetGrams('+i+',this.value)">';
+    h+='<span class="an-k" id="an-k-'+i+'">'+p.kcal+'</span>';
+    h+='</div>';
+  }
+  h+='</div>';
+  h+='<div class="est-nums" id="an-tot">'+anTotHTML()+'</div>';
+  h+='<div class="est-range">כל רכיב מתומחר מהערכים המדודים במאגר. מה שהוערך מסומן. תקן כמות וההכל מתעדכן.</div>';
+  h+='<button class="est-add" onclick="anAdd()">הוסף ליום</button>';
+  h+='</div>';
+  return h;
+}
+function anPaint(){
+  // it can be open from either panel
+  if(fdbOpen)fdbPaint();
+  var el=document.getElementById('an-body');
+  if(el)el.innerHTML=anCardHTML();
 }
 function toggleLib(){libOpen=!libOpen;pendingLib=null;render();}
 function toggleComp(){compOpen=!compOpen;render();}
