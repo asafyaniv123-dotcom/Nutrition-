@@ -4995,10 +4995,13 @@ function goHome(){
   var _ps=document.getElementById('plan-splash');if(_ps)_ps.remove();
   var _pu=document.getElementById('plan-undo');if(_pu)_pu.remove();
   dpRailClear();
-  _mainTab='better';showMain('better');
+  /* Cleared before showMain rather than after it. That order was already
+     wrong - the tab bar was being lit while the module still looked open,
+     which is why it needed a second correction underneath - and with the
+     guard above it would now be worse than wrong: showMain would see a live
+     module and call goHome straight back. */
   currentModule=null;
-  // showMain ran while the module was still set, so the bar is a step behind
-  tbSync();
+  _mainTab='better';showMain('better');
   document.querySelector('.app').classList.remove('game-mode');
   document.getElementById('btnPrev').style.display='';
   document.getElementById('btnNext').style.display='';
@@ -15163,7 +15166,18 @@ document.addEventListener('visibilitychange',function(){
    is the navigation - read left to right the two buttons spell the app. */
 var _mainTab='better';
 function showMain(t){
+  // which tab we were on BEFORE this call - the test below is about the
+  // press being a repeat, so it has to read the old value, not the new one
+  var was=_mainTab;
   _mainTab=t;
+  /* Pressing the tab you are already on goes back to its root. Inside an
+     area, Better had nothing left to do: it hid Me, which was already
+     hidden, and showed the app, which was already showing - so the button
+     did nothing at all, in every area, not only the journal. It was possible
+     to miss because Better used to light up when pressed; now that the bar
+     works out its own state, it correctly refuses to light while an area is
+     open, and a button that neither moves nor lights reads as broken. */
+  if(t==='better'&&was==='better'&&currentModule){goHome();return;}
   var me=document.getElementById('me-screen'),home=document.getElementById('home-screen'),app=document.querySelector('.app');
   if(t==='me'){
     dpRailClear();
