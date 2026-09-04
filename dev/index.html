@@ -440,6 +440,12 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .ch-nw{top:-7px;left:-7px}.ch-ne{top:-7px;right:-7px}
 .ch-sw{bottom:-7px;left:-7px}.ch-se{bottom:-7px;right:-7px}
 .crop-hint{font-size:11px;color:#a49a92;text-align:center;line-height:1.6;max-width:300px}
+/* the batch, as pictures */
+.crop-strip{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:320px}
+.crop-th{width:34px;height:34px;border-radius:7px;overflow:hidden;border:2px solid transparent;opacity:.4;transition:opacity .15s,border-color .15s}
+.crop-th img{width:100%;height:100%;object-fit:cover;display:block}
+.crop-th.done{opacity:.75;border-color:rgba(143,199,158,.7)}
+.crop-th.now{opacity:1;border-color:#c9bce0;transform:scale(1.08)}
 .crop-n{position:absolute;top:-2px;right:16px;font-size:11.5px;font-weight:800;color:#a49a92}
 .crop-stop{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom));left:0;right:0;margin:0 auto;display:block;width:88px;border:none;background:none;font-family:inherit;font-size:10.5px;font-weight:700;color:#7d746e;cursor:pointer}
 .crop-bot{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom));left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 18px}
@@ -448,9 +454,23 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .crop-ok{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
 .crop-rs{border:1px solid rgba(255,255,255,.18);background:none;border-radius:11px;padding:10px 18px;font-family:inherit;font-size:11.5px;font-weight:800;color:#a49a92;cursor:pointer}
 /* הארון שלי */
-.cl-mirror{background:#fff;border-radius:20px;padding:10px 8px;margin-bottom:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
+.cl-mirror{position:relative;background:#fff;border-radius:20px;padding:10px 8px;margin-bottom:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
+/* the marked place. It sits behind the clothes, so it shows in the gaps
+   between rows and down either side of whatever is currently in it. */
+/* Not the middle of the card: the middle of the TRACK. Each row spends 75px
+   on its right for the label and an arrow and 20px on its left for the other
+   arrow, so the strip is centred 27.5px left of the card. Those are fixed
+   widths, so the offset is exact at any screen size. */
+.cl-line{position:absolute;top:8px;bottom:8px;left:calc(50% - 27.5px);width:2px;margin-left:-1px;
+  background:linear-gradient(180deg,rgba(166,144,207,.15),rgba(166,144,207,.5) 12%,rgba(166,144,207,.5) 88%,rgba(166,144,207,.15));
+  border-radius:2px;pointer-events:none;z-index:0}
+.cl-line:before,.cl-line:after{content:'';position:absolute;left:-3px;width:8px;height:8px;
+  border-radius:50%;background:#a690cf}
+.cl-line:before{top:-3px}.cl-line:after{bottom:-3px}
+/* half the track either side, so the first and last garment can reach it */
+.cl-pad{flex-shrink:0;width:calc(50% - 26px);pointer-events:none}
 .cl-mirror.side{padding:8px}
-.cl-row{display:flex;align-items:center;gap:3px}
+.cl-row{position:relative;z-index:1;display:flex;align-items:center;gap:3px}
 .cl-row+.cl-row{margin-top:5px;border-top:1px solid #f7f2ec;padding-top:5px}
 .cl-lab{flex-shrink:0;width:52px;text-align:right;padding-left:2px}
 .cl-rt{display:block;font-size:10px;font-weight:800;color:#4a4340;line-height:1.2}
@@ -6613,8 +6633,23 @@ function closetAdd(input,cat){
   _cropQ=files.slice(0,20);_cropQi=0;_cropQcat=cat;
   cropNext();
 }
+/* Object URLs, made once per batch and released when it ends - a data URI
+   per thumbnail would mean reading every file up front, which is the whole
+   batch in memory before the first crop. */
+var _cropThumbs=[];
+function cropThumb(i){
+  if(_cropThumbs[i])return _cropThumbs[i];
+  try{_cropThumbs[i]=URL.createObjectURL(_cropQ[i]);}catch(e){_cropThumbs[i]='';}
+  return _cropThumbs[i];
+}
+function cropThumbsFree(){
+  for(var i=0;i<_cropThumbs.length;i++)
+    if(_cropThumbs[i]){try{URL.revokeObjectURL(_cropThumbs[i]);}catch(e){}}
+  _cropThumbs=[];
+}
 function cropNext(){
   if(_cropQi>=_cropQ.length){
+    cropThumbsFree();
     _cropQ=[];_cropQi=0;
     _closetBusy=false;
     cropClose();
@@ -6713,6 +6748,17 @@ function cropPaint(){
     h+='<canvas class="crop-can" id="crop-can" width="'+c.vw+'" height="'+c.vh+'"></canvas>';
   }
   h+='</div>';
+  /* Which photo of the batch you are on, as pictures rather than a number.
+     A count tells you there are four; the strip tells you which four, and
+     that the shirt you are worried about is still coming. */
+  if(_cropQ.length>1){
+    h+='<div class="crop-strip">';
+    for(var qi=0;qi<_cropQ.length;qi++){
+      var st=qi<_cropQi?' done':(qi===_cropQi?' now':'');
+      h+='<span class="crop-th'+st+'"><img src="'+cropThumb(qi)+'"></span>';
+    }
+    h+='</div>';
+  }
   h+='<div class="crop-hint">'+(c.mode==='rect'
       ?'גרור צד או פינה. גרירה באמצע מזיזה את המסגרת.'
       :'סמן עם האצבע סביב הבגד. מה שמחוץ לקו יימחק.')+'</div>';
@@ -6839,11 +6885,13 @@ function cropDrawPath(){
 function cropCancel(){
   cropClose();
   if(_cropQi<_cropQ.length-1){_cropQi++;cropNext();return;}
+  cropThumbsFree();
   _cropQ=[];_cropQi=0;_closetBusy=false;
   renderCloset();
 }
 function cropSkipAll(){
   cropClose();
+  cropThumbsFree();
   _cropQ=[];_cropQi=0;_closetBusy=false;
   renderCloset();
 }
@@ -6929,9 +6977,18 @@ function closetStep(cat,d){
   if(!n)return;
   var cur=_closetSel[cat]||0;
   _closetSel[cat]=(cur+d+n)%n;
-  renderCloset();
+  // scroll to it rather than redraw: a repaint mid-gesture loses the strip's
+  // position and fights the momentum the finger already gave it
+  clCentre(cat,_closetSel[cat],true);
+  var el=document.getElementById('cl-tr-'+cat);
+  if(el)setTimeout(function(){clMarkNearest(el,true);},260);
 }
-function closetPick(cat,i){_closetSel[cat]=i;renderCloset();}
+function closetPick(cat,i){
+  _closetSel[cat]=i;
+  clCentre(cat,i,true);
+  var el=document.getElementById('cl-tr-'+cat);
+  if(el)setTimeout(function(){clMarkNearest(el,true);},260);
+}
 /* Rolling every row at once. It is the fastest way to see combinations you
    would not have put together, which is most of why a wardrobe screen is
    worth having at all. */
@@ -6996,14 +7053,16 @@ function closetRowHTML(cat){
   if(sel>=list.length)sel=Math.max(0,list.length-1);
   h+='<div class="cl-row">';
   h+='<div class="cl-lab"><span class="cl-rt">'+cat.t+'</span>'+
-     (list.length>1?'<span class="cl-rn">'+(sel+1)+'/'+list.length+'</span>':'')+'</div>';
+     (list.length>1?'<span class="cl-rn" id="cl-n-'+cat.k+'">'+(sel+1)+'/'+list.length+'</span>':'')+'</div>';
   if(!list.length){
     h+='<label class="cl-empty" style="height:'+cat.h+'px">+ '+cat.one+
        '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
     return h+'</div>';
   }
   h+='<button class="cl-arw" onclick="closetStep(&quot;'+cat.k+'&quot;,-1)" aria-label="הקודם">&#8249;</button>';
-  h+='<div class="cl-track" style="height:'+(cat.h+6)+'px">';
+  h+='<div class="cl-track" id="cl-tr-'+cat.k+'" data-cat="'+cat.k+'" onscroll="clScroll(this)" style="height:'+(cat.h+6)+'px">';
+  // without these the first and last garment can never reach the middle
+  h+='<span class="cl-pad"></span>';
   for(i=0;i<list.length;i++){
     var on=(i===sel);
     h+='<span class="cl-cell">';
@@ -7015,11 +7074,74 @@ function closetRowHTML(cat){
   }
   h+='<label class="cl-add" style="width:'+cat.h+'px;height:'+cat.h+'px">+'+
      '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
+  h+='<span class="cl-pad"></span>';
   h+='</div>';
   h+='<button class="cl-arw" onclick="closetStep(&quot;'+cat.k+'&quot;,1)" aria-label="הבא">&#8250;</button>';
   return h+'</div>';
 }
 
+/* ── WHAT IS UNDER THE LINE IS WHAT YOU ARE WEARING ──
+   Choosing used to mean tapping a garment, which works but is not what a
+   row of clothes on a rail is. There is a marked place down the middle of
+   the screen now and you roll the row until the thing you want is in it -
+   so the outfit is read straight down the line, and picking is one gesture
+   per row rather than a tap and a look.
+
+   Everything here compares screen rectangles rather than doing arithmetic on
+   scrollLeft, because this app is RTL and scrollLeft in a right-to-left box
+   is one of the few places browsers still disagree with each other. */
+var _clScrollT=0;
+function clScroll(el){
+  if(_clScrollT)clearTimeout(_clScrollT);
+  // during the drag only the highlight moves; the state settles when it stops
+  clMarkNearest(el,false);
+  _clScrollT=setTimeout(function(){_clScrollT=0;clMarkNearest(el,true);},110);
+}
+function clNearest(el){
+  var cells=el.querySelectorAll('.cl-cell'),i,best=-1,bd=1e9;
+  var mid=el.getBoundingClientRect();
+  mid=mid.left+mid.width/2;
+  for(i=0;i<cells.length;i++){
+    var r=cells[i].getBoundingClientRect();
+    var d=Math.abs(r.left+r.width/2-mid);
+    if(d<bd){bd=d;best=i;}
+  }
+  return best;
+}
+function clMarkNearest(el,commit){
+  var cat=el.getAttribute('data-cat'),idx=clNearest(el);
+  if(idx<0)return;
+  var cells=el.querySelectorAll('.cl-cell'),i;
+  for(i=0;i<cells.length;i++){
+    var b=cells[i].querySelector('.cl-it');
+    if(b)b.className='cl-it'+(i===idx?' on':'');
+    var x=cells[i].querySelector('.cl-x');
+    if(x)x.style.display=(i===idx)?'':'none';
+  }
+  if(commit&&_closetSel[cat]!==idx){
+    _closetSel[cat]=idx;
+    var lab=document.getElementById('cl-n-'+cat);
+    if(lab)lab.textContent=(idx+1)+'/'+cells.length;
+  }
+}
+// bring a garment into the marked place, which is what picking one now means
+function clCentre(cat,idx,smooth){
+  var el=document.getElementById('cl-tr-'+cat);
+  if(!el)return;
+  var cells=el.querySelectorAll('.cl-cell');
+  if(!cells[idx])return;
+  try{cells[idx].scrollIntoView({inline:'center',block:'nearest',
+                                behavior:smooth?'smooth':'auto'});}
+  catch(e){cells[idx].scrollIntoView();}
+}
+// after any full repaint, put every row back where its selection says
+function clCentreAll(smooth){
+  var cats=CLOSET_CATS.concat([CLOSET_SIDE]),i;
+  for(i=0;i<cats.length;i++){
+    var k=cats[i].k;
+    if(closetOf(k).length)clCentre(k,_closetSel[k]||0,smooth);
+  }
+}
 function renderCloset(){
   document.getElementById('hdr-title').textContent='הארון שלי';
   var h='<div style="padding-bottom:24px">';
@@ -7063,7 +7185,7 @@ function renderCloset(){
 
   // the body column, in the order it is worn, in one frame so that rolling
   // any row shows you what it did to the rest
-  h+='<div class="cl-mirror">';
+  h+='<div class="cl-mirror"><span class="cl-line"></span>';
   for(var i=0;i<CLOSET_CATS.length;i++)h+=closetRowHTML(CLOSET_CATS[i]);
   h+='</div>';
 
@@ -7082,6 +7204,8 @@ function renderCloset(){
   document.getElementById('content').innerHTML=h+'</div>';
   // the pictures live in IndexedDB; the markup ships placeholders
   hydratePhotos();
+  // a fresh strip starts at its beginning, not at whatever is being worn
+  clCentreAll(false);
 }
 
 function startFitEdit(idx){
