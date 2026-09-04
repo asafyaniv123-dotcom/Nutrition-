@@ -361,6 +361,31 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .sr-warn{font-size:10.5px;line-height:1.6;color:#9a7420;background:rgba(232,193,98,.14);border-radius:10px;padding:8px 10px;margin-bottom:8px}
 .sr-kl{font-size:10px;color:#c0b6ae;font-weight:700;margin-right:auto}
 .sr-more{margin-top:9px;padding-top:9px;border-top:1px solid #f4efe9}
+/* חיתוך */
+.crop-ov{position:fixed;inset:0;z-index:600;background:#2a2422;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;direction:rtl}
+.crop-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px}
+.crop-x,.crop-ok{border:none;background:none;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;padding:8px 6px}
+.crop-x{color:#b9b0a8}
+.crop-ok{color:#c9bce0}
+.crop-modes{display:flex;gap:4px;background:rgba(255,255,255,.09);border-radius:11px;padding:3px}
+.crop-m{border:none;background:none;border-radius:9px;padding:6px 13px;font-family:inherit;font-size:11.5px;font-weight:800;color:#a49a92;cursor:pointer}
+.crop-m.on{background:#fff;color:#4a4340}
+.crop-stage{position:relative;flex-shrink:0;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden;border-radius:6px}
+.crop-img{width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none}
+.crop-can{position:absolute;inset:0;pointer-events:none}
+.crop-shade{position:absolute;background:rgba(40,34,32,.55);pointer-events:none}
+.crop-box{position:absolute;border:1.5px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,0)}
+.ch{position:absolute;background:#fff;border-radius:2px}
+.ch-n,.ch-s{left:50%;width:30px;height:5px;margin-left:-15px;border-radius:3px}
+.ch-n{top:-3px}.ch-s{bottom:-3px}
+.ch-w,.ch-e{top:50%;width:5px;height:30px;margin-top:-15px;border-radius:3px}
+.ch-w{right:auto;left:-3px}.ch-e{left:auto;right:-3px}
+.ch-nw,.ch-ne,.ch-sw,.ch-se{width:13px;height:13px;border-radius:3px}
+.ch-nw{top:-6px;left:-6px}.ch-ne{top:-6px;right:-6px}
+.ch-sw{bottom:-6px;left:-6px}.ch-se{bottom:-6px;right:-6px}
+.crop-hint{font-size:11px;color:#a49a92;text-align:center;line-height:1.6;max-width:300px}
+.crop-bot{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom))}
+.crop-rs{border:1px solid rgba(255,255,255,.18);background:none;border-radius:11px;padding:8px 18px;font-family:inherit;font-size:11.5px;font-weight:800;color:#a49a92;cursor:pointer}
 /* הארון שלי */
 .cl-mirror{background:#fff;border-radius:20px;padding:10px 8px;margin-bottom:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
 .cl-mirror.side{padding:8px}
@@ -5885,47 +5910,265 @@ function saveOutfits(a){try{localStorage.setItem(CLOSET_FIT_KEY,JSON.stringify(a
 
 var _closetSel={}, _closetView='home', _closetBusy=false;
 
-/* Squared to one canvas, fitted rather than filled. The white ground is the
-   card colour, so a garment shot against a wall sits on the shelf without a
-   visible box around it. */
-function closetNormalise(file,done){
-  var reader=new FileReader();
-  reader.onerror=function(){done(null);};
-  reader.onload=function(e){
-    var img=new Image();
-    img.onerror=function(){done(null);};
-    img.onload=function(){
-      var S=512,c=document.createElement('canvas');
-      c.width=S;c.height=S;
-      var x=c.getContext('2d');
-      x.fillStyle='#ffffff';x.fillRect(0,0,S,S);
-      // contain, never cover: sleeves and laces are the point
-      var k=Math.min(S/img.width,S/img.height),w=img.width*k,hh=img.height*k;
-      x.imageSmoothingEnabled=true;
-      try{x.imageSmoothingQuality='high';}catch(_e){}
-      x.drawImage(img,(S-w)/2,(S-hh)/2,w,hh);
-      done(c.toDataURL('image/jpeg',0.82));
-    };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
 function closetAdd(input,cat){
   var file=input.files&&input.files[0];
   input.value='';
   if(!file)return;
   _closetBusy=true;renderCloset();
-  closetNormalise(file,function(data){
-    if(!data){_closetBusy=false;showToast('לא הצלחתי לקרוא את התמונה');renderCloset();return;}
-    photoPut(data).then(function(ref){
-      var items=loadCloset();
-      items.push({id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-                  cat:cat,ref:ref||data,ts:Date.now()});
-      saveCloset(items);
-      _closetBusy=false;
-      _closetSel[cat]=closetOf(cat).length-1;    // land on what was just added
-      renderCloset();
-    });
+  var reader=new FileReader();
+  reader.onerror=function(){_closetBusy=false;showToast('לא הצלחתי לקרוא את התמונה');renderCloset();};
+  reader.onload=function(e){
+    var img=new Image();
+    img.onerror=function(){_closetBusy=false;showToast('לא הצלחתי לקרוא את התמונה');renderCloset();};
+    img.onload=function(){cropOpen(img,cat);};
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+/* ── CUTTING THE PICTURE DOWN ─────────────────────────────────────────────
+   Two ways, because a garment needs both.
+
+   פאות is the ordinary rectangle: drag any of the four sides or the corners,
+   drag the middle to move it. It is what you want when the photo is simply
+   too wide, or the garment is sitting in one half of the frame.
+
+   חופשי draws round the thing with a finger and throws away everything
+   outside the line. That one earns its place here specifically: clothes are
+   photographed on beds and floors and the background comes with them, and a
+   stack of five rectangles of somebody's duvet does not read as an outfit.
+   Cut out, each piece keeps only its own shape and the column looks like
+   clothes.
+
+   Which is also why the two modes save differently. A rectangle is still a
+   rectangle, so it stays a JPEG on white. A free cut has an outside, and the
+   outside has to be genuinely absent rather than painted white, or every
+   garment sits in a pale box on top of the one below it - so that one is a
+   PNG that keeps its transparency. */
+var _crop=null;   // {img,cat,mode,box,path,vw,vh,drag}
+
+function cropOpen(img,cat){
+  // fit the picture into what is left of the screen once the bar is allowed for
+  var maxW=Math.min(window.innerWidth-24,520),
+      maxH=window.innerHeight-190;
+  var k=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);
+  var vw=Math.round(img.naturalWidth*k),vh=Math.round(img.naturalHeight*k);
+  _crop={img:img,cat:cat,mode:'rect',vw:vw,vh:vh,drag:null,
+         box:{x:Math.round(vw*0.08),y:Math.round(vh*0.08),
+              w:Math.round(vw*0.84),h:Math.round(vh*0.84)},
+         path:[]};
+  document.body.style.overflow='hidden';
+  cropPaint();
+}
+function cropClose(){
+  _crop=null;
+  var o=document.getElementById('crop-ov');if(o)o.remove();
+  document.body.style.overflow='';
+}
+function cropMode(m){
+  if(!_crop)return;
+  _crop.mode=m;_crop.path=[];
+  cropPaint();
+}
+function cropReset(){
+  if(!_crop)return;
+  _crop.path=[];
+  _crop.box={x:Math.round(_crop.vw*0.08),y:Math.round(_crop.vh*0.08),
+             w:Math.round(_crop.vw*0.84),h:Math.round(_crop.vh*0.84)};
+  cropPaint();
+}
+function cropPaint(){
+  if(!_crop)return;
+  var c=_crop,old=document.getElementById('crop-ov');
+  var h='<div class="crop-ov" id="crop-ov">';
+  h+='<div class="crop-top">';
+  h+='<button class="crop-x" onclick="cropCancel()">ביטול</button>';
+  h+='<div class="crop-modes">';
+  h+='<button class="crop-m'+(c.mode==='rect'?' on':'')+'" onclick="cropMode(&quot;rect&quot;)">4 פאות</button>';
+  h+='<button class="crop-m'+(c.mode==='free'?' on':'')+'" onclick="cropMode(&quot;free&quot;)">חופשי</button>';
+  h+='</div>';
+  h+='<button class="crop-ok" onclick="cropApply()">שמור</button>';
+  h+='</div>';
+
+  h+='<div class="crop-stage" id="crop-stage" style="width:'+c.vw+'px;height:'+c.vh+'px">';
+  h+='<img class="crop-img" src="'+c.img.src+'" draggable="false">';
+  if(c.mode==='rect'){
+    var b=c.box;
+    h+='<div class="crop-shade" style="top:0;left:0;right:0;height:'+b.y+'px"></div>';
+    h+='<div class="crop-shade" style="top:'+(b.y+b.h)+'px;left:0;right:0;bottom:0"></div>';
+    h+='<div class="crop-shade" style="top:'+b.y+'px;left:0;width:'+b.x+'px;height:'+b.h+'px"></div>';
+    h+='<div class="crop-shade" style="top:'+b.y+'px;left:'+(b.x+b.w)+'px;right:0;height:'+b.h+'px"></div>';
+    h+='<div class="crop-box" id="crop-box" style="left:'+b.x+'px;top:'+b.y+'px;width:'+b.w+'px;height:'+b.h+'px">';
+    var hs=['n','s','w','e','nw','ne','sw','se'];
+    for(var i=0;i<hs.length;i++)h+='<i class="ch ch-'+hs[i]+'" data-h="'+hs[i]+'"></i>';
+    h+='</div>';
+  } else {
+    h+='<canvas class="crop-can" id="crop-can" width="'+c.vw+'" height="'+c.vh+'"></canvas>';
+  }
+  h+='</div>';
+  h+='<div class="crop-hint">'+(c.mode==='rect'
+      ?'גרור את הצדדים או הפינות. גרירה באמצע מזיזה את המסגרת.'
+      :'סמן עם האצבע סביב הבגד. מה שמחוץ לקו יימחק.')+'</div>';
+  h+='<div class="crop-bot"><button class="crop-rs" onclick="cropReset()">אפס</button></div>';
+  h+='</div>';
+
+  if(old)old.outerHTML=h; else document.body.insertAdjacentHTML('beforeend',h);
+  cropBind();
+  if(c.mode==='free')cropDrawPath();
+}
+function cropBind(){
+  var c=_crop;if(!c)return;
+  var stage=document.getElementById('crop-stage');
+  if(!stage)return;
+  var pt=function(e){
+    var r=stage.getBoundingClientRect();
+    return {x:Math.max(0,Math.min(c.vw,e.clientX-r.left)),
+            y:Math.max(0,Math.min(c.vh,e.clientY-r.top))};
+  };
+  stage.onpointerdown=function(e){
+    if(!_crop)return;
+    var p=pt(e);
+    if(c.mode==='free'){
+      c.path=[p];c.drag={kind:'free'};
+    } else {
+      var hnd=e.target&&e.target.getAttribute?e.target.getAttribute('data-h'):null;
+      var b=c.box;
+      if(hnd)c.drag={kind:'h',h:hnd,b:{x:b.x,y:b.y,w:b.w,h:b.h},p:p};
+      else if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h)
+        c.drag={kind:'move',b:{x:b.x,y:b.y,w:b.w,h:b.h},p:p};
+      else return;
+    }
+    try{stage.setPointerCapture(e.pointerId);}catch(_e){}
+    e.preventDefault();
+  };
+  stage.onpointermove=function(e){
+    if(!_crop||!c.drag)return;
+    var p=pt(e);
+    if(c.drag.kind==='free'){
+      c.path.push(p);cropDrawPath();e.preventDefault();return;
+    }
+    var d=c.drag,b=d.b,dx=p.x-d.p.x,dy=p.y-d.p.y,MIN=28;
+    if(d.kind==='move'){
+      c.box.x=Math.max(0,Math.min(c.vw-b.w,b.x+dx));
+      c.box.y=Math.max(0,Math.min(c.vh-b.h,b.y+dy));
+    } else {
+      var x1=b.x,y1=b.y,x2=b.x+b.w,y2=b.y+b.h,k=d.h;
+      if(k.indexOf('w')>=0)x1=Math.max(0,Math.min(x2-MIN,b.x+dx));
+      if(k.indexOf('e')>=0)x2=Math.min(c.vw,Math.max(x1+MIN,b.x+b.w+dx));
+      if(k.indexOf('n')>=0)y1=Math.max(0,Math.min(y2-MIN,b.y+dy));
+      if(k.indexOf('s')>=0)y2=Math.min(c.vh,Math.max(y1+MIN,b.y+b.h+dy));
+      c.box={x:x1,y:y1,w:x2-x1,h:y2-y1};
+    }
+    cropBoxPaint();
+    e.preventDefault();
+  };
+  stage.onpointerup=stage.onpointercancel=function(){
+    if(!_crop)return;
+    _crop.drag=null;
+  };
+}
+/* Moving a rectangle should not rebuild the screen on every pointer event -
+   that drops frames and loses the pointer capture with it. */
+function cropBoxPaint(){
+  var c=_crop;if(!c)return;
+  var b=c.box,box=document.getElementById('crop-box');
+  if(box){box.style.left=b.x+'px';box.style.top=b.y+'px';box.style.width=b.w+'px';box.style.height=b.h+'px';}
+  var sh=document.querySelectorAll('#crop-stage .crop-shade');
+  if(sh.length===4){
+    sh[0].style.height=b.y+'px';
+    sh[1].style.top=(b.y+b.h)+'px';
+    sh[2].style.top=b.y+'px';sh[2].style.width=b.x+'px';sh[2].style.height=b.h+'px';
+    sh[3].style.top=b.y+'px';sh[3].style.left=(b.x+b.w)+'px';sh[3].style.height=b.h+'px';
+  }
+}
+function cropDrawPath(){
+  var c=_crop;if(!c)return;
+  var cv=document.getElementById('crop-can');if(!cv)return;
+  var x=cv.getContext('2d');
+  x.clearRect(0,0,cv.width,cv.height);
+  if(c.path.length<2)return;
+  // everything outside the line dimmed, so what you are keeping is obvious
+  x.save();
+  x.beginPath();
+  x.rect(0,0,cv.width,cv.height);
+  x.moveTo(c.path[0].x,c.path[0].y);
+  for(var i=1;i<c.path.length;i++)x.lineTo(c.path[i].x,c.path[i].y);
+  x.closePath();
+  x.fillStyle='rgba(40,34,32,.55)';
+  try{x.fill('evenodd');}catch(_e){x.fill();}
+  x.restore();
+  x.beginPath();
+  x.moveTo(c.path[0].x,c.path[0].y);
+  for(var j=1;j<c.path.length;j++)x.lineTo(c.path[j].x,c.path[j].y);
+  x.closePath();
+  x.strokeStyle='#fff';x.lineWidth=2;x.setLineDash([6,4]);x.stroke();
+}
+function cropCancel(){
+  var cat=_crop?_crop.cat:'';
+  cropClose();
+  _closetBusy=false;
+  if(cat)renderCloset();
+}
+/* Squaring happens here, after the cut rather than before it, so that the
+   crop is what gets squared. Doing it the other way round would mean
+   cropping a picture that had already had white added around it. */
+function cropApply(){
+  var c=_crop;if(!c)return;
+  var img=c.img,cat=c.cat;
+  var sx=img.naturalWidth/c.vw, sy=img.naturalHeight/c.vh;
+  var S=512,out=document.createElement('canvas');
+  out.width=S;out.height=S;
+  var g=out.getContext('2d');
+  g.imageSmoothingEnabled=true;
+  try{g.imageSmoothingQuality='high';}catch(_e){}
+
+  var data;
+  if(c.mode==='free'&&c.path.length>2){
+    // bounding box of the drawn shape, in the picture's own pixels
+    var mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9,i;
+    for(i=0;i<c.path.length;i++){
+      if(c.path[i].x<mnx)mnx=c.path[i].x;
+      if(c.path[i].x>mxx)mxx=c.path[i].x;
+      if(c.path[i].y<mny)mny=c.path[i].y;
+      if(c.path[i].y>mxy)mxy=c.path[i].y;
+    }
+    var bw=Math.max(8,(mxx-mnx))*sx, bh=Math.max(8,(mxy-mny))*sy;
+    var cut=document.createElement('canvas');
+    cut.width=Math.round(bw);cut.height=Math.round(bh);
+    var q=cut.getContext('2d');
+    q.drawImage(img,Math.round(mnx*sx),Math.round(mny*sy),Math.round(bw),Math.round(bh),
+                0,0,Math.round(bw),Math.round(bh));
+    // keep only what is inside the line
+    q.globalCompositeOperation='destination-in';
+    q.beginPath();
+    q.moveTo((c.path[0].x-mnx)*sx,(c.path[0].y-mny)*sy);
+    for(i=1;i<c.path.length;i++)q.lineTo((c.path[i].x-mnx)*sx,(c.path[i].y-mny)*sy);
+    q.closePath();
+    q.fill();
+    var k=Math.min(S/cut.width,S/cut.height);
+    g.drawImage(cut,(S-cut.width*k)/2,(S-cut.height*k)/2,cut.width*k,cut.height*k);
+    data=out.toDataURL('image/png');          // the outside must stay absent
+  } else {
+    var b=c.box;
+    var rw=Math.max(1,Math.round(b.w*sx)), rh=Math.max(1,Math.round(b.h*sy));
+    g.fillStyle='#ffffff';g.fillRect(0,0,S,S);
+    var kk=Math.min(S/rw,S/rh);
+    g.drawImage(img,Math.round(b.x*sx),Math.round(b.y*sy),rw,rh,
+                (S-rw*kk)/2,(S-rh*kk)/2,rw*kk,rh*kk);
+    data=out.toDataURL('image/jpeg',0.82);
+  }
+  cropClose();
+  closetStore(data,cat);
+}
+// everything after the picture is decided, shared by both modes
+function closetStore(data,cat){
+  photoPut(data).then(function(ref){
+    var items=loadCloset();
+    items.push({id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                cat:cat,ref:ref||data,ts:Date.now()});
+    saveCloset(items);
+    _closetBusy=false;
+    _closetSel[cat]=closetOf(cat).length-1;
+    renderCloset();
   });
 }
 function closetRemove(cat,idx){
