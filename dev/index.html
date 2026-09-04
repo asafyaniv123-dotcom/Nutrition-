@@ -1082,6 +1082,13 @@ body.sheet-open .tabbar{display:none}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:140;direction:ltr;display:flex;gap:8px;padding:8px 16px max(24px,calc(env(safe-area-inset-bottom) + 10px));background:rgba(250,246,241,.94);backdrop-filter:blur(12px);border-top:1px solid rgba(190,175,160,.22)}
 .tb{flex:1;background:none;border:none;border-radius:14px;padding:11px 6px;font-family:inherit;font-size:15px;font-weight:800;letter-spacing:-.2px;color:#b9b0a8;cursor:pointer;transition:color .2s,background .2s;direction:ltr}
 .tb.on{color:#fff;background:linear-gradient(135deg,#c9bce0,#a690cf);box-shadow:0 4px 14px rgba(166,144,207,.32)}
+/* the journal, between the two - lifted so it reads as its own thing rather
+   than a third tab squeezed in */
+.tb-j{flex:0 0 auto;width:52px;height:52px;margin-top:-13px;border:none;border-radius:50%;background:#fff;color:#a690cf;cursor:pointer;font-family:inherit;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(166,144,207,.22);border:1.5px solid rgba(166,144,207,.2);transition:background .2s,color .2s,transform .15s}
+.tb-j svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tb-j.on{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;border-color:transparent;box-shadow:0 5px 16px rgba(166,144,207,.4)}
+.tb-j:active{transform:scale(.94)}
+body.night .tb-j{background:rgba(255,255,255,.07);color:#8f86ae;border-color:rgba(255,255,255,.1)}
 .app,.home{padding-bottom:118px}
 .me-screen{display:none;min-height:100vh;background:linear-gradient(165deg,#f4efe8 0%,#eee7f2 100%);padding:34px 16px 122px}
 .me-wrap{max-width:480px;margin:0 auto}
@@ -4965,6 +4972,8 @@ function goHome(){
   dpRailClear();
   _mainTab='better';showMain('better');
   currentModule=null;
+  // showMain ran while the module was still set, so the bar is a step behind
+  tbSync();
   document.querySelector('.app').classList.remove('game-mode');
   document.getElementById('btnPrev').style.display='';
   document.getElementById('btnNext').style.display='';
@@ -5120,8 +5129,8 @@ function enterModule(mod){
   dpRailClear();
   _mainTab='better';
   var _me=document.getElementById('me-screen');if(_me)_me.style.display='none';
-  var _tb=document.getElementById('tb-better');if(_tb){_tb.className='tb on';document.getElementById('tb-me').className='tb';}
   currentModule=mod;
+  tbSync();
   document.querySelector('.app').classList.remove('game-mode');
   document.getElementById('btnPrev').style.display='';
   document.getElementById('btnNext').style.display='';
@@ -14921,10 +14930,26 @@ function showMain(t){
     me.style.display='none';
     if(currentModule)app.style.display='block';else home.style.display='flex';
   }
-  var b=document.getElementById('tb-better'),m=document.getElementById('tb-me');
-  if(b)b.className='tb'+(t==='better'?' on':'');
-  if(m)m.className='tb'+(t==='me'?' on':'');
+  tbSync();
 }
+function openJournalTab(){
+  // already there: a second press goes back rather than doing nothing
+  if(_mainTab==='better'&&currentModule==='journal'){goHome();return;}
+  enterModule('journal');
+}
+/* Three things share one bar now, so which is lit is worked out in one place
+   from the actual state rather than set by hand at each call site - two of
+   them were already being assigned in two different functions. */
+function tbSync(){
+  var b=document.getElementById('tb-better'),
+      m=document.getElementById('tb-me'),
+      j=document.getElementById('tb-jrnl');
+  var inJ=(_mainTab==='better'&&currentModule==='journal');
+  if(b)b.className='tb'+(_mainTab==='better'&&!inJ?' on':'');
+  if(m)m.className='tb'+(_mainTab==='me'?' on':'');
+  if(j)j.className='tb-j'+(inJ?' on':'');
+}
+
 // Build home screen DOM
 (function(){
   var home=document.createElement('div');
@@ -14951,8 +14976,14 @@ function showMain(t){
 
   var bar=document.createElement('div');
   bar.className='tabbar';
-  bar.innerHTML='<button id="tb-better" class="tb on" onclick="showMain(\'better\')">Better</button>'+
-                '<button id="tb-me" class="tb" onclick="showMain(\'me\')">Me</button>';
+  /* The journal sits between the two rather than inside either, because it
+     belongs to neither: it is not a thing you track about yourself and not a
+     setting, it is the writing, and it is the one thing worth reaching
+     without going home first. */
+  bar.innerHTML='<button id="tb-better" class="tb on" onclick="showMain(&quot;better&quot;)">Better</button>'+
+                '<button id="tb-jrnl" class="tb-j" onclick="openJournalTab()" aria-label="יומן">'+
+                '<svg viewBox="0 0 24 24"><path d="M5.5 4.2h10a3 3 0 0 1 3 3v12.6H8.5a3 3 0 0 1-3-3Z"/><path d="M5.5 16.8h13"/><path d="M9 8.4h6"/><path d="M9 11.8h4"/></svg></button>'+
+                '<button id="tb-me" class="tb" onclick="showMain(&quot;me&quot;)">Me</button>';
   document.body.appendChild(bar);
 
   var back=document.createElement('div');
