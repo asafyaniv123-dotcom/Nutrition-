@@ -455,18 +455,27 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .crop-rs{border:1px solid rgba(255,255,255,.18);background:none;border-radius:11px;padding:10px 18px;font-family:inherit;font-size:11.5px;font-weight:800;color:#a49a92;cursor:pointer}
 /* הארון שלי */
 .cl-mirror{position:relative;background:#fff;border-radius:20px;padding:10px 8px;margin-bottom:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
-/* the marked place. It sits behind the clothes, so it shows in the gaps
-   between rows and down either side of whatever is currently in it. */
-/* Not the middle of the card: the middle of the TRACK. Each row spends 75px
-   on its right for the label and an arrow and 20px on its left for the other
-   arrow, so the strip is centred 27.5px left of the card. Those are fixed
-   widths, so the offset is exact at any screen size. */
-.cl-line{position:absolute;top:8px;bottom:8px;left:calc(50% - 27.5px);width:2px;margin-left:-1px;
-  background:linear-gradient(180deg,rgba(166,144,207,.15),rgba(166,144,207,.5) 12%,rgba(166,144,207,.5) 88%,rgba(166,144,207,.15));
-  border-radius:2px;pointer-events:none;z-index:0}
-.cl-line:before,.cl-line:after{content:'';position:absolute;left:-3px;width:8px;height:8px;
-  border-radius:50%;background:#a690cf}
-.cl-line:before{top:-3px}.cl-line:after{bottom:-3px}
+/* The place a garment is brought to, drawn as the two edges it sits between
+   rather than as a line through the middle of it. One per row, and each is
+   as wide as that row's clothes, so the brackets actually hug what is in
+   them - a dress and a pair of socks do not want the same slot.
+
+   Not centred on the card: on the TRACK. Every row spends 75px on its right
+   for the label and an arrow, and 20px on its left for the other, so the
+   strip sits 27.5px left of the card's middle. Fixed widths, so the offset
+   is exact at any screen size. */
+.cl-zone{position:absolute;top:1px;bottom:1px;left:calc(50% - 27.5px);
+  transform:translateX(-50%);pointer-events:none;z-index:2;
+  border-left:2px solid rgba(166,144,207,.75);border-right:2px solid rgba(166,144,207,.75);
+  border-radius:3px}
+.cl-zone:before,.cl-zone:after{content:'';position:absolute;left:-2px;right:-2px;height:2px;
+  background:rgba(166,144,207,.75)}
+.cl-zone:before{top:-1px;clip-path:polygon(0 0,22% 0,22% 100%,0 100%,0 0,100% 0,100% 100%,78% 100%,78% 0,100% 0)}
+.cl-zone:after{bottom:-1px;clip-path:polygon(0 0,22% 0,22% 100%,0 100%,0 0,100% 0,100% 100%,78% 100%,78% 0,100% 0)}
+/* a row a one-piece has made irrelevant */
+.cl-row.off{opacity:.32;pointer-events:none;filter:grayscale(.6)}
+.cl-none{display:flex;align-items:center;justify-content:center;font-family:inherit;
+  font-size:11px;font-weight:800;color:#c0b8b0;border-style:dashed!important}
 /* half the track either side, so the first and last garment can reach it */
 .cl-pad{flex-shrink:0;width:calc(50% - 26px);pointer-events:none}
 .cl-mirror.side{padding:8px}
@@ -6607,10 +6616,27 @@ var CLOSET_KEY='closet_items', CLOSET_FIT_KEY='closet_outfits', CLOSET_WORN='wor
 var CLOSET_CATS=[
   {k:'hat',   t:'כובע',     h:44, one:'כובע'},
   {k:'top',   t:'חולצות',   h:76, one:'חולצה'},
+  /* A dress is not a sixth kind of clothing, it is a top that also does the
+     job of the trousers - which is why it belongs between them and why the
+     row cancels them rather than competing with them. Same for a jumpsuit or
+     anything else worn in one piece, so the row is named for the idea rather
+     than for dresses alone. It starts on ללא and stays out of the way until
+     something is put in it. */
+  {k:'dress', t:'שמלה',     h:118,one:'שמלה', solo:true},
   {k:'bottom',t:'מכנסיים',  h:86, one:'מכנסיים'},
   {k:'socks', t:'גרביים',   h:38, one:'גרביים'},
   {k:'shoes', t:'נעליים',   h:48, one:'נעליים'}
 ];
+// which rows a one-piece silences
+var CLOSET_SOLO_HIDES=['top','bottom'];
+function closetSoloOn(){
+  var list=closetOf('dress');
+  return list.length>0&&(_closetSel.dress||0)>0;
+}
+function closetSoloItem(){
+  var list=closetOf('dress'),sel=(_closetSel.dress||0)-1;
+  return (sel>=0&&list[sel])?list[sel]:null;
+}
 var CLOSET_SIDE={k:'jewel',t:'תכשיטים',h:46,one:'תכשיט'};
 function closetCat(k){
   for(var i=0;i<CLOSET_CATS.length;i++)if(CLOSET_CATS[i].k===k)return CLOSET_CATS[i];
@@ -6979,26 +7005,26 @@ function closetRemove(cat,idx){
   var all=loadCloset().filter(function(x){return x.id!==it.id;});
   saveCloset(all);
   if(isPhotoKey(it.ref))photoDel(it.ref);
-  var n=closetOf(cat).length;
-  if(_closetSel[cat]>=n)_closetSel[cat]=n-1;
+  /* The one-piece row has an extra position at the front for ללא, so its
+     valid range is 0..n rather than 0..n-1 and removing the last garment
+     should land on ללא, not on -1. */
+  var n=closetOf(cat).length,def=closetCat(cat),top=def.solo?n:n-1;
+  if((_closetSel[cat]||0)>top)_closetSel[cat]=Math.max(0,top);
   renderCloset();
 }
 function closetStep(cat,d){
   var n=closetOf(cat).length;
   if(!n)return;
-  var cur=_closetSel[cat]||0;
-  _closetSel[cat]=(cur+d+n)%n;
-  // scroll to it rather than redraw: a repaint mid-gesture loses the strip's
-  // position and fights the momentum the finger already gave it
-  clCentre(cat,_closetSel[cat],true);
-  var el=document.getElementById('cl-tr-'+cat);
-  if(el)setTimeout(function(){clMarkNearest(el,true);},260);
+  // ללא is a position on the one-piece row, so it has one more stop than it
+  // has garments
+  var stops=closetCat(cat).solo?n+1:n;
+  var cur=_closetSel[cat]||0,next=(cur+d+stops)%stops;
+  clCentre(cat,next,true);   // locks the row first, so its own scroll cannot undo this
+  clSelect(cat,next);
 }
 function closetPick(cat,i){
-  _closetSel[cat]=i;
   clCentre(cat,i,true);
-  var el=document.getElementById('cl-tr-'+cat);
-  if(el)setTimeout(function(){clMarkNearest(el,true);},260);
+  clSelect(cat,i);
 }
 /* Rolling every row at once. It is the fastest way to see combinations you
    would not have put together, which is most of why a wardrobe screen is
@@ -7007,15 +7033,26 @@ function closetShuffle(){
   var cats=CLOSET_CATS.concat([CLOSET_SIDE]);
   for(var i=0;i<cats.length;i++){
     var n=closetOf(cats[i].k).length;
-    if(n)_closetSel[cats[i].k]=Math.floor(Math.random()*n);
+    if(!n)continue;
+    // the one-piece row can also roll to ללא, which is a real outcome
+    _closetSel[cats[i].k]=cats[i].solo
+      ?Math.floor(Math.random()*(n+1))
+      :Math.floor(Math.random()*n);
   }
   renderCloset();
 }
 function closetCurrent(){
-  var out={},cats=CLOSET_CATS.concat([CLOSET_SIDE]),i;
+  var out={},cats=CLOSET_CATS.concat([CLOSET_SIDE]),i,solo=closetSoloOn();
   for(i=0;i<cats.length;i++){
-    var list=closetOf(cats[i].k),sel=_closetSel[cats[i].k]||0;
-    if(list.length&&list[sel])out[cats[i].k]=list[sel].id;
+    var k=cats[i].k;
+    if(solo&&CLOSET_SOLO_HIDES.indexOf(k)>=0)continue;   // the dress covers these
+    if(cats[i].solo){
+      var d=closetSoloItem();
+      if(d)out.dress=d.id;
+      continue;
+    }
+    var list=closetOf(k),sel=_closetSel[k]||0;
+    if(list.length&&list[sel])out[k]=list[sel].id;
   }
   return out;
 }
@@ -7036,7 +7073,8 @@ function closetWearOutfit(id){
   for(i=0;i<cats.length;i++){
     var k=cats[i].k,list=closetOf(k),j;
     _closetSel[k]=0;
-    for(j=0;j<list.length;j++)if(list[j].id===o.items[k])_closetSel[k]=j;
+    for(j=0;j<list.length;j++)
+      if(list[j].id===o.items[k])_closetSel[k]=cats[i].solo?j+1:j;
   }
   _closetView='home';renderCloset();
 }
@@ -7083,8 +7121,16 @@ function closetWearCounts(){
 }
 function closetPickedHTML(){
   var cats=CLOSET_CATS.concat([CLOSET_SIDE]),i,shown=[];
+  var solo=closetSoloOn();
   for(i=0;i<cats.length;i++){
-    var list=closetOf(cats[i].k),sel=_closetSel[cats[i].k]||0;
+    var k=cats[i].k;
+    if(solo&&CLOSET_SOLO_HIDES.indexOf(k)>=0)continue;
+    if(cats[i].solo){
+      var dr=closetSoloItem();
+      if(dr)shown.push({cat:cats[i],it:dr});
+      continue;
+    }
+    var list=closetOf(k),sel=_closetSel[k]||0;
     if(list.length&&list[sel])shown.push({cat:cats[i],it:list[sel]});
   }
   if(!shown.length)return '';
@@ -7111,25 +7157,37 @@ function closetPickedPaint(){
 }
 function closetRowHTML(cat){
   var list=closetOf(cat.k),sel=_closetSel[cat.k]||0,i,h='';
-  if(sel>=list.length)sel=Math.max(0,list.length-1);
-  h+='<div class="cl-row">';
+  var solo=!!cat.solo;
+  // on the one-piece row index 0 is ללא, so the garments start at 1
+  var maxSel=solo?list.length:Math.max(0,list.length-1);
+  if(sel>maxSel)sel=maxSel;
+  var off=(!solo&&CLOSET_SOLO_HIDES.indexOf(cat.k)>=0&&closetSoloOn());
+  h+='<div class="cl-row'+(off?' off':'')+'">';
   h+='<div class="cl-lab"><span class="cl-rt">'+cat.t+'</span>'+
-     (list.length>1?'<span class="cl-rn" id="cl-n-'+cat.k+'">'+(sel+1)+'/'+list.length+'</span>':'')+'</div>';
+     (list.length>1?'<span class="cl-rn" id="cl-n-'+cat.k+'">'+
+        (solo?(sel===0?'ללא':sel+'/'+list.length):(sel+1)+'/'+list.length)+'</span>':'')+'</div>';
   if(!list.length){
-    h+='<label class="cl-empty" style="height:'+cat.h+'px">+ '+cat.one+
+    h+='<label class="cl-empty" style="height:'+(solo?52:cat.h)+'px">+ '+cat.one+
        '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
     return h+'</div>';
   }
+  h+='<span class="cl-zone" style="width:'+(cat.h+12)+'px"></span>';
   h+='<button class="cl-arw" onclick="closetStep(&quot;'+cat.k+'&quot;,-1)" aria-label="הקודם">&#8249;</button>';
   h+='<div class="cl-track" id="cl-tr-'+cat.k+'" data-cat="'+cat.k+'" onscroll="clScroll(this)" style="height:'+(cat.h+6)+'px">';
   // without these the first and last garment can never reach the middle
   h+='<span class="cl-pad"></span>';
-  for(i=0;i<list.length;i++){
-    var on=(i===sel);
+  if(solo){
     h+='<span class="cl-cell">';
-    h+='<button class="cl-it'+(on?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,'+i+')" style="width:'+cat.h+'px;height:'+cat.h+'px">'+
+    h+='<button class="cl-it cl-none'+(sel===0?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,0)" '+
+       'style="width:'+cat.h+'px;height:'+cat.h+'px">ללא</button>';
+    h+='</span>';
+  }
+  for(i=0;i<list.length;i++){
+    var at=solo?i+1:i;
+    var on=(at===sel);
+    h+='<span class="cl-cell">';
+    h+='<button class="cl-it'+(on?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,'+at+')" style="width:'+cat.h+'px;height:'+cat.h+'px">'+
        photoImg(list[i].ref,'class="cl-img"')+'</button>';
-    // removing lives on the piece itself, and only on the one you are wearing
     if(on)h+='<button class="cl-x" onclick="closetRemove(&quot;'+cat.k+'&quot;,'+i+')" aria-label="הסר">&times;</button>';
     h+='</span>';
   }
@@ -7151,12 +7209,48 @@ function closetRowHTML(cat){
    Everything here compares screen rectangles rather than doing arithmetic on
    scrollLeft, because this app is RTL and scrollLeft in a right-to-left box
    is one of the few places browsers still disagree with each other. */
-var _clScrollT=0;
+/* Choosing had two owners - the finger, through the scroll handler, and the
+   arrows and taps, which set the index and then scrolled to it. They fought:
+   an arrow set the index, started a smooth scroll, and a timer 260ms later
+   re-read the position, found the scroll still in flight, and wrote the OLD
+   index back. On the dress row that meant the dress could never be put on at
+   all, because every attempt was undone before it took effect.
+
+   So the position decides only while the finger is driving. A deliberate
+   choice sets the index, paints from it, and locks the row until its scroll
+   has actually arrived. */
+var _clScrollT=0,_clLock={};
 function clScroll(el){
   if(_clScrollT)clearTimeout(_clScrollT);
-  // during the drag only the highlight moves; the state settles when it stops
   clMarkNearest(el,false);
   _clScrollT=setTimeout(function(){_clScrollT=0;clMarkNearest(el,true);},110);
+}
+// paint a row for a given index, without asking where it happens to be
+function clPaintRow(el,idx){
+  var cells=el.querySelectorAll('.cl-cell'),cat=el.getAttribute('data-cat'),i;
+  for(i=0;i<cells.length;i++){
+    var b=cells[i].querySelector('.cl-it');
+    if(b)b.className='cl-it'+(b.classList.contains('cl-none')?' cl-none':'')+(i===idx?' on':'');
+    var x=cells[i].querySelector('.cl-x');
+    if(x)x.style.display=(i===idx)?'':'none';
+  }
+  var def=closetCat(cat),lab=document.getElementById('cl-n-'+cat);
+  if(lab)lab.textContent=def.solo
+    ?(idx===0?'ללא':idx+'/'+(cells.length-1))
+    :(idx+1)+'/'+cells.length;
+}
+/* The single place a selection changes. Everything that used to set
+   _closetSel and then repaint by hand goes through here. */
+function clSelect(cat,idx){
+  if(_closetSel[cat]===idx)return;
+  var wasSolo=closetSoloOn();
+  _closetSel[cat]=idx;
+  var el=document.getElementById('cl-tr-'+cat);
+  if(el)clPaintRow(el,idx);
+  /* Putting a one-piece on, or taking it off, changes which OTHER rows apply,
+     and that cannot be done by touching this row's classes. */
+  if(closetCat(cat).solo&&wasSolo!==closetSoloOn()){renderCloset();return;}
+  closetPickedPaint();
 }
 function clNearest(el){
   var cells=el.querySelectorAll('.cl-cell'),i,best=-1,bd=1e9;
@@ -7172,24 +7266,22 @@ function clNearest(el){
 function clMarkNearest(el,commit){
   var cat=el.getAttribute('data-cat'),idx=clNearest(el);
   if(idx<0)return;
-  var cells=el.querySelectorAll('.cl-cell'),i;
-  for(i=0;i<cells.length;i++){
-    var b=cells[i].querySelector('.cl-it');
-    if(b)b.className='cl-it'+(i===idx?' on':'');
-    var x=cells[i].querySelector('.cl-x');
-    if(x)x.style.display=(i===idx)?'':'none';
+  /* A scroll this app started is still travelling towards a decision already
+     made; where it is halfway there is not a choice. */
+  var want=_closetSel[cat]||0;
+  if(_clLock[cat]){
+    clPaintRow(el,want);
+    if(idx===want||Date.now()-_clLock[cat]>1200)delete _clLock[cat];
+    return;
   }
-  if(commit&&_closetSel[cat]!==idx){
-    _closetSel[cat]=idx;
-    var lab=document.getElementById('cl-n-'+cat);
-    if(lab)lab.textContent=(idx+1)+'/'+cells.length;
-    closetPickedPaint();
-  }
+  clPaintRow(el,idx);
+  if(commit)clSelect(cat,idx);
 }
 // bring a garment into the marked place, which is what picking one now means
 function clCentre(cat,idx,smooth){
   var el=document.getElementById('cl-tr-'+cat);
   if(!el)return;
+  _clLock[cat]=Date.now();
   var cells=el.querySelectorAll('.cl-cell');
   if(!cells[idx])return;
   try{cells[idx].scrollIntoView({inline:'center',block:'nearest',
@@ -7199,6 +7291,7 @@ function clCentre(cat,idx,smooth){
 // after any full repaint, put every row back where its selection says
 function clCentreAll(smooth){
   var cats=CLOSET_CATS.concat([CLOSET_SIDE]),i;
+  _clLock={};   // the rows are being rebuilt; nothing is in flight
   for(i=0;i<cats.length;i++){
     var k=cats[i].k;
     if(closetOf(k).length)clCentre(k,_closetSel[k]||0,smooth);
@@ -7247,7 +7340,7 @@ function renderCloset(){
 
   // the body column, in the order it is worn, in one frame so that rolling
   // any row shows you what it did to the rest
-  h+='<div class="cl-mirror"><span class="cl-line"></span>';
+  h+='<div class="cl-mirror">';
   for(var i=0;i<CLOSET_CATS.length;i++)h+=closetRowHTML(CLOSET_CATS[i]);
   h+='</div>';
 
