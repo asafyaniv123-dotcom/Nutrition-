@@ -5416,136 +5416,47 @@ function ingestStepsFromLink(){
   showToast('✓ נקלטו '+n.toLocaleString()+' צעדים');
 }
 
-function renderFitHome(){
-  var templates=loadTemplates();
-  var log=loadWorkoutLog();
-  var lastWorkout=log.length>0?log[log.length-1]:null;
-  var fitMode=loadFitMode(); // 'solo' | 'coach' | null
+/* ── STARTING SOMETHING ──
+   First on the screen, because opening this area and being unable to see how
+   to begin is the whole complaint. A new workout, then the routines already
+   built, each one tap from running. Everything that describes or measures
+   training comes after the thing that starts it. */
+function fitStartCardHTML(templates){
+  var h='<div style="background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<button onclick="startEmptyWorkout()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:16px;padding:16px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;color:#fff;box-shadow:0 4px 14px rgba(224,138,114,.3)">';
+  h+='<span style="font-size:18px;line-height:1">+</span>אימון חדש</button>';
 
-  var h='<div style="padding-bottom:20px">';
-
-  /* The goal sits at the top because every piece of advice the app gives
-     is read against it - the same session means different things when you
-     are chasing a heavier bar and when you are chasing more reps. */
-  var _fg=fitGoal();
-  h+='<div class="fg"><div class="fg-hd"><span class="fg-k">המטרה שלי</span>'+
-     '<span class="fg-r">'+_fg.lo+'&ndash;'+_fg.hi+' חזרות</span></div>';
-  h+='<div class="fg-row">';
-  for(var _gi=0;_gi<FIT_GOALS.length;_gi++){
-    var _G=FIT_GOALS[_gi];
-    h+='<button class="fg-b'+(_G.v===_fg.v?' on':'')+'" onclick="fitGoalSet(&quot;'+_G.v+'&quot;)">'+_G.t+'</button>';
-  }
-  h+='</div><div class="fg-n">'+esc(_fg.n)+'</div></div>';
-
-  // Steps sit above everything else here: it is the one number that moves
-  // every day, with or without a workout.
-  var stToday=stepsOf(todayStr()),stSrc=loadStepsSrc();
-  h+='<button onclick="_fitView=\'steps\';renderFitness()" style="width:100%;display:flex;align-items:center;gap:13px;background:#fff;border:none;border-radius:20px;padding:15px 16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12);cursor:pointer;text-align:right;font-family:inherit">';
-  h+='<div style="width:42px;height:42px;border-radius:15px;background:linear-gradient(145deg,#eaf5ee,#d8f0e0);display:flex;align-items:center;justify-content:center;color:#6fb283;flex-shrink:0">';
-  h+='<svg viewBox="0 0 24 24" style="width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M8.4 14.8c-1.7-1-2.3-3.3-1.4-5.1l1.2-2.3c1-1.8 3.2-2.4 4.9-1.4 1.7 1 2.3 3.3 1.4 5.1l-1.2 2.3c-1 1.8-3.2 2.4-4.9 1.4Z"/><path d="M8.7 17.8c-1.2-.7-1.6-2.2-1-3.4"/><path d="M17 19.6c-1.2-.7-1.6-2.2-1-3.4"/><path d="M16.7 16.2c-1.7-1-2.3-3.3-1.4-5.1"/></svg></div>';
-  h+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#4a4340">צעדים</div>';
-  h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">'+(stToday?stToday.toLocaleString()+' היום':'עוד לא נרשמו היום')+(stSrc.kind==='shortcut'?' &middot; מסונכרן':'')+'</div></div>';
-  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
-
-  // Mode selector — always show if no mode chosen yet
-  if(!fitMode){
-    h+='<div style="background:#fff;border-radius:22px;padding:22px 18px;margin-bottom:16px;box-shadow:0 4px 20px rgba(200,180,160,.12);text-align:center">';
-    h+='<div style="font-size:22px;margin-bottom:10px">&#x1F3CB;&#xFE0F;</div>';
-    h+='<div style="font-size:17px;font-weight:800;color:#4a4340;margin-bottom:6px">איך תרצה להתאמן?</div>';
-    h+='<div style="font-size:12px;color:#a89e97;margin-bottom:20px">בחר את הדרך שמתאימה לך</div>';
-    h+='<div style="display:flex;gap:12px">';
-    h+='<button onclick="saveFitMode(\'coach\');_fitView=\'coach-q\';renderFitness()" style="flex:1;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:16px;padding:16px 10px;cursor:pointer;color:#fff">';
-    h+='<div style="font-size:22px;margin-bottom:6px">&#x1F9D1;&#x200D;&#x1F3EB;</div>';
-    h+='<div style="font-size:13px;font-weight:800">מאמן אישי</div>';
-    h+='<div style="font-size:10px;opacity:.8;margin-top:3px">תוכנית אימון אישית</div>';
-    h+='</button>';
-    h+='<button onclick="saveFitMode(\'solo\');renderFitness()" style="flex:1;background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:16px;padding:16px 10px;cursor:pointer;color:#fff">';
-    h+='<div style="font-size:22px;margin-bottom:6px">&#x1F4AA;</div>';
-    h+='<div style="font-size:13px;font-weight:800">מתאמן לבד</div>';
-    h+='<div style="font-size:10px;opacity:.8;margin-top:3px">אני בונה את התוכנית</div>';
-    h+='</button>';
-    h+='</div></div>';
-    document.getElementById('content').innerHTML=h+'</div>';
-    return;
-  }
-
-  // Coach mode header
-  if(fitMode==='coach'){
-    var plan=loadCoachPlan();
-    if(plan){
-      h+='<div style="background:linear-gradient(135deg,#f0eafa,#e8dff5);border-radius:18px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">';
-      h+='<div style="font-size:28px">&#x1F9D1;&#x200D;&#x1F3EB;</div>';
-      h+='<div style="flex:1"><div style="font-size:13px;font-weight:800;color:#4a4340">תוכנית אישית פעילה</div>';
-      h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+plan.daysPerWeek+' ימי אימון בשבוע &middot; '+plan.equipment+'</div></div>';
-      h+='<button onclick="_fitView=\'coach-plan\';renderFitness()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff">צפה</button>';
+  if(templates.length){
+    h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.08em;font-weight:800;margin:16px 2px 9px">האימונים שלי</div>';
+    for(var i=0;i<templates.length;i++){
+      var t=templates[i];
+      h+='<div style="background:#fbf7f2;border-radius:14px;padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:9px">';
+      h+='<button onclick="startWorkout('+i+')" style="flex:1;background:none;border:none;padding:0;text-align:right;cursor:pointer;font-family:inherit;min-width:0">';
+      h+='<div style="font-size:14px;font-weight:800;color:#4a4340">'+esc(t.name)+'</div>';
+      h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+t.exercises.length+' תרגילים</div></button>';
+      h+='<button onclick="startFitEdit('+i+')" style="background:#f0eafa;border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#a690cf;font-family:inherit">ערוך</button>';
+      h+='<button onclick="startWorkout('+i+')" style="background:linear-gradient(135deg,#bfe0c7,#8fc79e);border:none;border-radius:9px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit">התחל</button>';
       h+='</div>';
-    } else {
-      h+='<button onclick="_fitView=\'coach-q\';renderFitness()" style="width:100%;background:linear-gradient(135deg,#f0eafa,#e8dff5);border:1.5px dashed #a690cf;border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:#a690cf;margin-bottom:14px">&#x1F9D1;&#x200D;&#x1F3EB; בנה תוכנית אישית</button>';
     }
+  } else {
+    h+='<div style="text-align:center;padding:16px 6px 6px;font-size:11.5px;color:#c0b8b0;line-height:1.6">אין עדיין אימונים שמורים.<br>סיים אימון חדש ושמור אותו, או בנה אחד מראש.</div>';
   }
+  h+='<button onclick="startFitEdit(-1)" style="width:100%;background:none;border:1.5px dashed #e0d8ce;border-radius:13px;padding:10px;margin-top:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;color:#a89e97">+ בנה אימון מראש</button>';
+  return h+'</div>';
+}
 
-  // Switch mode button
-  h+='<div style="text-align:left;margin-bottom:12px">';
-  h+='<button onclick="saveFitMode(null);saveCoachPlan(null);renderFitness()" style="background:none;border:none;font-size:11px;color:#a89e97;cursor:pointer">שנה מוד &#8250;</button>';
-  h+='</div>';
-
-  // Stats strip
-  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">';
-  h+='<div style="background:#fff;border-radius:16px;padding:12px 8px;text-align:center;box-shadow:0 2px 10px rgba(200,180,160,.1)"><div style="font-size:20px;font-weight:800;color:#e08a72">'+log.length+'</div><div style="font-size:9px;color:#a89e97;margin-top:2px">אימונים</div></div>';
-  h+='<div style="background:#fff;border-radius:16px;padding:12px 8px;text-align:center;box-shadow:0 2px 10px rgba(200,180,160,.1)"><div style="font-size:20px;font-weight:800;color:#a690cf">'+Object.keys(loadPRs()).length+'</div><div style="font-size:9px;color:#a89e97;margin-top:2px">PR שיאים</div></div>';
-  h+='<div style="background:#fff;border-radius:16px;padding:12px 8px;text-align:center;box-shadow:0 2px 10px rgba(200,180,160,.1)"><div style="font-size:20px;font-weight:800;color:#8fc79e">'+templates.length+'</div><div style="font-size:9px;color:#a89e97;margin-top:2px">תבניות</div></div>';
-  h+='</div>';
-
-  // Templates
-  h+='<div style="background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700">תבניות אימון</div>';
-  h+='<button onclick="startFitEdit(-1)" style="background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff">+ חדשה</button>';
-  h+='</div>';
-  if(templates.length===0){
-    h+='<div style="text-align:center;padding:20px;font-size:12px;color:#c0b8b0">צור תבנית אימון ראשונה</div>';
-  }
-  for(var ti=0;ti<templates.length;ti++){
-    var t=templates[ti];
-    h+='<div style="background:#fbf7f2;border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">';
-    h+='<div style="flex:1">';
-    h+='<div style="font-size:14px;font-weight:700;color:#4a4340">'+esc(t.name)+'</div>';
-    h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+t.exercises.length+' תרגילים</div>';
-    h+='</div>';
-    h+='<button onclick="startFitEdit('+ti+')" style="background:#f0eafa;border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#a690cf">ערוך</button>';
-    h+='<button onclick="startWorkout('+ti+')" style="background:linear-gradient(135deg,#bfe0c7,#8fc79e);border:none;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff">התחל!</button>';
-    h+='</div>';
-  }
-  h+='</div>';
-
-  // Last workout
-  if(lastWorkout){
-    var d=new Date(lastWorkout.date);
-    var totalVol=lastWorkout.exercises.reduce(function(a,ex){return a+ex.sets.reduce(function(b,s){return b+(s.weight||0)*(s.reps||0);},0);},0);
-    h+='<div style="background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
-    h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700;margin-bottom:10px">אימון אחרון</div>';
-    h+='<div style="font-size:15px;font-weight:700;color:#4a4340;margin-bottom:3px">'+esc(lastWorkout.name)+'</div>';
-    h+='<div style="font-size:11px;color:#a89e97;margin-bottom:10px">'+d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+' &middot; '+lastWorkout.exercises.length+' תרגילים &middot; '+totalVol.toLocaleString()+' ק"ג נפח</div>';
-    h+='<div style="display:flex;gap:8px">';
-    h+='<button onclick="_fitView=\'history\';renderFitness()" style="flex:1;background:#f5f0eb;border:none;border-radius:10px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;color:#a89e97">כל האימונים &#8250;</button>';
-    h+='<button onclick="_fitView=\'progress\';_fitProgressEx=\'\';renderFitness()" style="flex:1;background:linear-gradient(135deg,#f0eafa,#e8dff5);border:none;border-radius:10px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;color:#a690cf">גרף התקדמות &#8250;</button>';
-    h+='</div>';
-    h+='</div>';
-  }
-
-  // ── BIWEEKLY PLANNER CARD ──
+/* ── לוח זמנים ──
+   The two-week grid, which used to sit unnamed near the bottom under a
+   calendar emoji. It is a schedule, so it is called one. */
+function fitScheduleCardHTML(){
   var weekPlan=loadWeekPlan();
-  h+='<div style="background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700">&#x1F4C5; יומן האימונים</div>';
-  h+='<button onclick="_fitView=\'weekly-plan\';renderFitness()" style="background:linear-gradient(135deg,#bfe0c7,#8fc79e);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff">ערוך</button>';
-  h+='</div>';
-
-  // 2-week grid: week 1 row then week 2 row
   var DAY_LABELS=['א','ב','ג','ד','ה','ו','ש'];
-  var today2=new Date();var todayDow=today2.getDay();
-  // show week starting Sunday
-  h+='<div style="margin-bottom:8px">';
+  var today=new Date(),todayDow=today.getDay();
+  var h='<div style="background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  h+='<div style="font-size:13px;font-weight:800;color:#4a4340">לוח זמנים</div>';
+  h+='<button onclick="_fitView=\'weekly-plan\';renderFitness()" style="background:linear-gradient(135deg,#bfe0c7,#8fc79e);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit">ערוך</button>';
+  h+='</div>';
   for(var w=0;w<2;w++){
     h+='<div style="display:flex;gap:4px;margin-bottom:6px">';
     for(var dw=0;dw<7;dw++){
@@ -5562,42 +5473,197 @@ function renderFitHome(){
     h+='</div>';
     if(w===0)h+='<div style="font-size:8px;color:#c0b8b0;text-align:center;margin-bottom:4px">שבוע ראשון &nbsp;|&nbsp; שבוע שני</div>';
   }
-  h+='</div>';
-
-  // Legend strip
-  h+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-  for(var ti=0;ti<WORKOUT_TYPES.length;ti++){
-    var wt=WORKOUT_TYPES[ti];
+  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">';
+  for(var li=0;li<WORKOUT_TYPES.length;li++){
+    var wt=WORKOUT_TYPES[li];
     h+='<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#6a6360"><span style="font-size:12px">'+wt.emoji+'</span>'+wt.label+'</div>';
   }
   h+='</div>';
-  h+='</div>';
+  return h+'</div>';
+}
 
-  // ── PROGRAM TRACKING ──
+/* ── ההתקדמות שלי ──
+   The answer to the question this area exists for: where the weight is now
+   against where it was, and what to do about it next time. Both numbers
+   already existed - one was buried in a graph screen and the other only
+   appeared once, on the summary at the end of a session, and was gone the
+   moment it was dismissed. Neither is any use there. They belong on the
+   screen you open before training, which is when the question gets asked. */
+function fitProgressCardHTML(log){
+  var seen={},rows=[],i,j;
+  // most recently trained first, which is the order they matter in
+  for(i=log.length-1;i>=0&&rows.length<8;i--){
+    var exs=log[i].exercises||[];
+    for(j=0;j<exs.length&&rows.length<8;j++){
+      var nm=exs[j].name;
+      if(seen[nm]||!(exs[j].sets||[]).length)continue;
+      seen[nm]=1;
+      var st=exStand(nm);
+      if(!st)continue;
+      rows.push({name:nm,st:st,adv:nextAdvice(nm,st.last.sets)});
+    }
+  }
+  var h='<div style="background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div style="font-size:13px;font-weight:800;color:#4a4340;margin-bottom:2px">ההתקדמות שלי</div>';
+
+  if(!rows.length){
+    h+='<div style="font-size:11.5px;color:#c0b8b0;line-height:1.6;margin-top:8px">אחרי האימון הראשון יופיע כאן, לכל תרגיל, המשקל הנוכחי מול הקודם וההמלצה לפעם הבאה.</div>';
+    return h+'</div>';
+  }
+
+  var g=fitGoal();
+  h+='<div style="font-size:10px;color:#a89e97;margin-bottom:12px">לפי המטרה: '+esc(g.t)+' &middot; '+g.lo+'&ndash;'+g.hi+' חזרות</div>';
+
+  for(i=0;i<rows.length;i++){
+    var r=rows[i],st=r.st,top=st.last.top;
+    var dir=st.delta>0?'up':(st.delta<0?'down':'same');
+    var col=dir==='up'?'#3f7a52':(dir==='down'?'#8a6a1e':'#a89e97');
+    var arrow=dir==='up'?'&#9650;':(dir==='down'?'&#9660;':'&#8226;');
+    h+='<div style="border-right:3px solid '+(r.adv?(r.adv.dir==='up'?'#8fc79e':r.adv.dir==='down'?'#e8c162':'#c9bce0'):'#e0dbd5')+';padding:0 11px 0 0;margin-bottom:13px">';
+    h+='<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">';
+    h+='<div style="font-size:13px;font-weight:800;color:#4a4340;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.name)+'</div>';
+    if(st.isBest)h+='<div style="font-size:9px;font-weight:800;color:#e8c162;flex-shrink:0">&#9733; שיא</div>';
+    h+='</div>';
+    // where it stands: now, against last time, against the best ever
+    h+='<div style="font-size:11px;color:#6a6360;margin-top:3px">'+
+       '<b style="color:#4a4340">'+(top.weight||0)+' ק"ג</b> &times; '+(top.reps||0)+
+       (st.prev?' <span style="color:'+col+'">'+arrow+' '+(st.delta>0?'+':'')+Math.round(st.delta)+' נפח מול הפעם הקודמת</span>':' <span style="color:#c0b8b0">פעם ראשונה</span>')+
+       '</div>';
+    if(!st.isBest)
+      h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">הכי טוב שלך: '+(st.best.top.weight||0)+' ק"ג &times; '+(st.best.top.reps||0)+'</div>';
+    if(r.adv){
+      h+='<div style="font-size:12px;font-weight:800;color:'+(r.adv.dir==='up'?'#3f7a52':r.adv.dir==='down'?'#8a6a1e':'#4a4340')+';margin-top:5px">'+esc(r.adv.t)+'</div>';
+      h+='<div style="font-size:10px;color:#a89e97;line-height:1.55;margin-top:1px">'+esc(r.adv.why)+'</div>';
+    }
+    h+='</div>';
+  }
+
+  h+='<div style="display:flex;gap:8px;margin-top:2px">';
+  h+='<button onclick="_fitView=\'history\';renderFitness()" style="flex:1;background:#f5f0eb;border:none;border-radius:10px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;color:#a89e97;font-family:inherit">כל האימונים &#8250;</button>';
+  h+='<button onclick="_fitView=\'progress\';_fitProgressEx=\'\';renderFitness()" style="flex:1;background:linear-gradient(135deg,#f0eafa,#e8dff5);border:none;border-radius:10px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;color:#a690cf;font-family:inherit">גרף התקדמות &#8250;</button>';
+  h+='</div>';
+  return h+'</div>';
+}
+
+function renderFitHome(){
+  var templates=loadTemplates();
+  var log=loadWorkoutLog();
+  var fitMode=loadFitMode(); // 'solo' | 'coach' | null
+
+  var h='<div style="padding-bottom:20px">';
+
+  // Mode selector - nothing else belongs on the screen until this is answered
+  if(!fitMode){
+    h+='<div style="background:#fff;border-radius:22px;padding:22px 18px;margin-bottom:16px;box-shadow:0 4px 20px rgba(200,180,160,.12);text-align:center">';
+    h+='<div style="font-size:22px;margin-bottom:10px">&#x1F3CB;&#xFE0F;</div>';
+    h+='<div style="font-size:17px;font-weight:800;color:#4a4340;margin-bottom:6px">איך תרצה להתאמן?</div>';
+    h+='<div style="font-size:12px;color:#a89e97;margin-bottom:20px">בחר את הדרך שמתאימה לך</div>';
+    h+='<div style="display:flex;gap:12px">';
+    h+='<button onclick="saveFitMode(\'coach\');_fitView=\'coach-q\';renderFitness()" style="flex:1;background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:16px;padding:16px 10px;cursor:pointer;color:#fff;font-family:inherit">';
+    h+='<div style="font-size:22px;margin-bottom:6px">&#x1F9D1;&#x200D;&#x1F3EB;</div>';
+    h+='<div style="font-size:13px;font-weight:800">מאמן אישי</div>';
+    h+='<div style="font-size:10px;opacity:.8;margin-top:3px">תוכנית אימון אישית</div>';
+    h+='</button>';
+    h+='<button onclick="saveFitMode(\'solo\');renderFitness()" style="flex:1;background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:16px;padding:16px 10px;cursor:pointer;color:#fff;font-family:inherit">';
+    h+='<div style="font-size:22px;margin-bottom:6px">&#x1F4AA;</div>';
+    h+='<div style="font-size:13px;font-weight:800">מתאמן לבד</div>';
+    h+='<div style="font-size:10px;opacity:.8;margin-top:3px">אני בונה את התוכנית</div>';
+    h+='</button>';
+    h+='</div></div>';
+    document.getElementById('content').innerHTML=h+'</div>';
+    return;
+  }
+
+  /* 1. starting a workout */
+  h+=fitStartCardHTML(templates);
+
+  if(fitMode==='coach'){
+    var plan=loadCoachPlan();
+    if(plan){
+      h+='<div style="background:linear-gradient(135deg,#f0eafa,#e8dff5);border-radius:18px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">';
+      h+='<div style="font-size:28px">&#x1F9D1;&#x200D;&#x1F3EB;</div>';
+      h+='<div style="flex:1"><div style="font-size:13px;font-weight:800;color:#4a4340">תוכנית אישית פעילה</div>';
+      h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+plan.daysPerWeek+' ימי אימון בשבוע &middot; '+plan.equipment+'</div></div>';
+      h+='<button onclick="_fitView=\'coach-plan\';renderFitness()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit">צפה</button>';
+      h+='</div>';
+    } else {
+      h+='<button onclick="_fitView=\'coach-q\';renderFitness()" style="width:100%;background:linear-gradient(135deg,#f0eafa,#e8dff5);border:1.5px dashed #a690cf;border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:#a690cf;margin-bottom:12px;font-family:inherit">&#x1F9D1;&#x200D;&#x1F3EB; בנה תוכנית אישית</button>';
+    }
+  }
+
+  /* 2. the schedule */
+  h+=fitScheduleCardHTML();
+
+  /* 3. how it is going */
+  h+=fitProgressCardHTML(log);
+
+  // Steps: the one number that moves every day, workout or not
+  var stToday=stepsOf(todayStr()),stSrc=loadStepsSrc();
+  h+='<button onclick="_fitView=\'steps\';renderFitness()" style="width:100%;display:flex;align-items:center;gap:13px;background:#fff;border:none;border-radius:20px;padding:15px 16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12);cursor:pointer;text-align:right;font-family:inherit">';
+  h+='<div style="width:42px;height:42px;border-radius:15px;background:linear-gradient(145deg,#eaf5ee,#d8f0e0);display:flex;align-items:center;justify-content:center;color:#6fb283;flex-shrink:0">';
+  h+='<svg viewBox="0 0 24 24" style="width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M8.4 14.8c-1.7-1-2.3-3.3-1.4-5.1l1.2-2.3c1-1.8 3.2-2.4 4.9-1.4 1.7 1 2.3 3.3 1.4 5.1l-1.2 2.3c-1 1.8-3.2 2.4-4.9 1.4Z"/><path d="M8.7 17.8c-1.2-.7-1.6-2.2-1-3.4"/><path d="M17 19.6c-1.2-.7-1.6-2.2-1-3.4"/><path d="M16.7 16.2c-1.7-1-2.3-3.3-1.4-5.1"/></svg></div>';
+  h+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#4a4340">צעדים</div>';
+  h+='<div style="font-size:10.5px;color:#a89e97;margin-top:2px">'+(stToday?stToday.toLocaleString()+' היום':'עוד לא נרשמו היום')+(stSrc.kind==='shortcut'?' &middot; מסונכרן':'')+'</div></div>';
+  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
+
+  // Programs brought in from a gym
   var progs=loadPrograms();
   h+='<div style="background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  h+='<div style="font-size:10px;color:#a89e97;letter-spacing:.1em;font-weight:700">&#x1F4CB; מעקב תוכניות</div>';
-  h+='<button onclick="startProgramWizard()" style="background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff">+ תוכנית</button>';
+  h+='<div style="font-size:13px;font-weight:800;color:#4a4340">מעקב תוכניות</div>';
+  h+='<button onclick="startProgramWizard()" style="background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit">+ תוכנית</button>';
   h+='</div>';
-  if(progs.length===0){
-    h+='<div style="text-align:center;padding:16px;font-size:12px;color:#c0b8b0">הוסף תוכנית מחדר כושר</div>';
-  }
+  if(progs.length===0)
+    h+='<div style="text-align:center;padding:10px;font-size:12px;color:#c0b8b0">הוסף תוכנית מחדר כושר</div>';
   for(var pi=0;pi<progs.length;pi++){
     var prog=progs[pi];
     h+='<div style="background:#fbf7f2;border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">';
     h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#4a4340">'+esc(prog.name)+'</div>';
     h+='<div style="font-size:10px;color:#a89e97;margin-top:2px">'+prog.exercises.length+' תרגילים</div></div>';
-    h+='<button onclick="_fitView=\'view-program\';_fitProgIdx='+pi+';renderFitness()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff">עקב</button>';
-    h+='<button onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()" style="background:#f0eafa;border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#a690cf">ערוך</button>';
+    h+='<button onclick="_fitView=\'view-program\';_fitProgIdx='+pi+';renderFitness()" style="background:linear-gradient(135deg,#c9bce0,#a690cf);border:none;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:#fff;font-family:inherit">עקב</button>';
+    h+='<button onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()" style="background:#f0eafa;border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#a690cf;font-family:inherit">ערוך</button>';
     h+='</div>';
   }
+  h+='</div>';
+
+  /* 4. the goal, at the bottom. It is a setting - it decides how the advice
+        above reads, but it is answered once and then left alone, and it was
+        taking the top of the screen from the workouts. */
+  var fg=fitGoal();
+  h+='<div class="fg"><div class="fg-hd"><span class="fg-k">המטרה שלי</span>'+
+     '<span class="fg-r">'+fg.lo+'&ndash;'+fg.hi+' חזרות</span></div>';
+  h+='<div class="fg-row">';
+  for(var gi=0;gi<FIT_GOALS.length;gi++){
+    var G=FIT_GOALS[gi];
+    h+='<button class="fg-b'+(G.v===fg.v?' on':'')+'" onclick="fitGoalSet(&quot;'+G.v+'&quot;)">'+G.t+'</button>';
+  }
+  h+='</div><div class="fg-n">'+esc(fg.n)+'</div></div>';
+
+  h+='<div style="text-align:left;margin-top:2px">';
+  h+='<button onclick="saveFitMode(null);saveCoachPlan(null);renderFitness()" style="background:none;border:none;font-size:11px;color:#a89e97;cursor:pointer;font-family:inherit">שנה מוד &#8250;</button>';
   h+='</div>';
 
   h+='</div>';
   document.getElementById('content').innerHTML=h;
 }
 
+/* A workout that does not come from a saved routine. Hevy calls it an empty
+   workout and it is the common case for anyone who trains without writing it
+   down first: you turn up, you do things, you want them recorded. It starts
+   with nothing in it and the picker opens straight away. */
+function startEmptyWorkout(){
+  _fitWorkout={templateIdx:-1,name:'אימון חדש',startTime:Date.now(),exercises:[],currentEx:0};
+  _fitView='workout';renderFitness();
+  workoutAddExercise();
+}
+function workoutAddExercise(){
+  exPickInto(function(name){
+    if(!_fitWorkout)return;
+    _fitWorkout.exercises.push({name:name,targetSets:3,targetReps:10,plan:[],sets:[]});
+    _fitWorkout.currentEx=_fitWorkout.exercises.length-1;
+    renderFitness();
+  });
+}
 function startFitEdit(idx){
   _fitEditIdx=idx;_fitView='editTemplate';renderFitness();
 }
@@ -7023,6 +7089,20 @@ function fitCasePaint(){
 function renderFitWorkout(){
   if(!_fitWorkout){_fitView='home';renderFitness();return;}
   var w=_fitWorkout;
+  /* An empty workout is a real state now, so the view cannot assume there is
+     a current exercise - reading .name off undefined would take the whole
+     screen down on the first render. */
+  if(!w.exercises.length){
+    document.getElementById('content').innerHTML=
+      '<div style="padding-bottom:20px">'+
+      '<div style="background:#fff;border-radius:20px;padding:28px 18px;text-align:center;box-shadow:0 4px 16px rgba(200,180,160,.1)">'+
+      '<div style="font-size:15px;font-weight:800;color:#4a4340;margin-bottom:6px">אימון חדש</div>'+
+      '<div style="font-size:12px;color:#a89e97;line-height:1.6;margin-bottom:18px">הוסף את התרגיל הראשון וההקלטה מתחילה.</div>'+
+      '<button onclick="workoutAddExercise()" style="width:100%;background:linear-gradient(135deg,#f3b9a8,#e08a72);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;color:#fff">+ הוסף תרגיל</button>'+
+      '<button onclick="_fitWorkout=null;_fitView=&quot;home&quot;;renderFitness()" style="width:100%;background:none;border:none;padding:12px 0 0;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;color:#a89e97">ביטול</button>'+
+      '</div></div>';
+    return;
+  }
   var ex=w.exercises[w.currentEx];
   var prs=loadPRs();
   var elapsed=Math.floor((Date.now()-w.startTime)/60000);
@@ -7041,6 +7121,8 @@ function renderFitWorkout(){
     var isCur=ei===w.currentEx;
     h+='<button onclick="_fitWorkout.currentEx='+ei+';renderFitness()" style="flex-shrink:0;border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isCur?'linear-gradient(135deg,#f3b9a8,#e08a72)':(done?'#bfe0c7':'#f5f0eb'))+';color:'+(isCur||done?'#fff':'#a89e97')+'">'+esc(w.exercises[ei].name)+'</button>';
   }
+  // adding one mid-session: the plan meets the gym more often than not
+  h+='<button onclick="workoutAddExercise()" style="flex-shrink:0;border:1.5px dashed #e0d8ce;background:none;border-radius:10px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;color:#a89e97;font-family:inherit">+</button>';
   h+='</div>';
 
   // Current exercise
