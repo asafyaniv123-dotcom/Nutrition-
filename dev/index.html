@@ -485,6 +485,17 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-x{position:absolute;top:-5px;left:-5px;width:17px;height:17px;border:none;border-radius:50%;background:#e0d8ce;color:#fff;font-size:12px;line-height:17px;padding:0;cursor:pointer;font-family:inherit}
 .cl-add,.cl-empty{flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px dashed #e0d8ce;border-radius:11px;color:#c0b8b0;font-size:14px;font-weight:800;cursor:pointer;background:none}
 .cl-empty{flex:1;font-size:11px}
+/* what is on the line, big enough to judge */
+.cl-pick{background:#fff;border-radius:20px;padding:14px 12px 12px;margin-top:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
+.cl-pick-h{font-size:11px;font-weight:800;color:#4a4340;margin-bottom:11px;padding:0 2px}
+.cl-pick-row{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.cl-pick-row::-webkit-scrollbar{display:none}
+.cl-pick-i{flex-shrink:0;width:74px;text-align:center}
+.cl-pick-ph{width:74px;height:74px;border-radius:14px;overflow:hidden;border:2px solid #f2ede6;background:#fff}
+.cl-pick-t{font-size:9.5px;color:#a89e97;font-weight:700;margin-top:5px}
+.cl-pick-n{font-size:10px;font-weight:800;color:#c0b8b0;margin-top:2px}
+.cl-pick-n.on{color:#a690cf}
+.cl-pick-f{font-size:9.5px;color:#c0b8b0;margin-top:10px;padding:0 2px;line-height:1.5}
 .cl-acts{display:flex;gap:8px;margin-top:11px}
 .cl-b1,.cl-b2,.cl-b3{flex:1;border:none;border-radius:14px;padding:12px;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer}
 .cl-b1{background:#f5f0eb;color:#a89e97}
@@ -7041,13 +7052,63 @@ function closetWoreToday(){
   if(!Object.keys(cur).length){showToast('בחר קודם לוק');return;}
   try{localStorage.setItem(CLOSET_WORN+todayStr(),JSON.stringify({items:cur,ts:Date.now()}));}catch(e){}
   showToast('✓ נרשם מה לבשת היום');
-  renderCloset();
+  renderCloset();   // the counts below have just changed
 }
 function closetWornOn(d){
   try{var o=JSON.parse(localStorage.getItem(CLOSET_WORN+d)||'null');return (o&&o.items)?o:null;}
   catch(e){return null;}
 }
 
+/* ── WHAT IS ON THE LINE, LARGER ──────────────────────────────────────────
+   The rails are small on purpose - five of them and the jewellery have to
+   fit on one screen, or rolling a row tells you nothing about the outfit.
+   But small is no way to look at the thing you have just built, so the
+   chosen pieces are repeated at the bottom at a size you can actually judge.
+
+   And under each one, how often it has been worn this month. That number is
+   the reason a wardrobe app is worth anything: it is the shirt you reach for
+   nine times out of ten and the jacket you have not touched since you bought
+   it, and neither of those is visible from owning the clothes. It is read
+   back out of the worn records, so it is true from whenever you started
+   pressing the button rather than from when this was written. */
+function closetWearCounts(){
+  var out={},d=new Date(),i;
+  for(i=0;i<30;i++){
+    var rec=closetWornOn(dtStamp(d));
+    if(rec&&rec.items)for(var k in rec.items)
+      if(rec.items.hasOwnProperty(k))out[rec.items[k]]=(out[rec.items[k]]||0)+1;
+    d.setDate(d.getDate()-1);
+  }
+  return out;
+}
+function closetPickedHTML(){
+  var cats=CLOSET_CATS.concat([CLOSET_SIDE]),i,shown=[];
+  for(i=0;i<cats.length;i++){
+    var list=closetOf(cats[i].k),sel=_closetSel[cats[i].k]||0;
+    if(list.length&&list[sel])shown.push({cat:cats[i],it:list[sel]});
+  }
+  if(!shown.length)return '';
+  var counts=closetWearCounts();
+  var h='<div class="cl-pick"><div class="cl-pick-h">מה שבחרת</div><div class="cl-pick-row">';
+  for(i=0;i<shown.length;i++){
+    var n=counts[shown[i].it.id]||0;
+    h+='<div class="cl-pick-i">';
+    h+='<div class="cl-pick-ph">'+photoImg(shown[i].it.ref,'class="cl-img"')+'</div>';
+    h+='<div class="cl-pick-t">'+shown[i].cat.one+'</div>';
+    h+='<div class="cl-pick-n'+(n?' on':'')+'">'+
+       (n?n+(n===1?' פעם':' פעמים'):'עוד לא')+'</div>';
+    h+='</div>';
+  }
+  h+='</div><div class="cl-pick-f">כמה פעמים לבשת כל פריט ב-30 הימים האחרונים</div></div>';
+  return h;
+}
+// the strip commits its choice without a full repaint, so this follows it
+function closetPickedPaint(){
+  var el=document.getElementById('cl-picked');
+  if(!el)return;
+  el.innerHTML=closetPickedHTML();
+  hydratePhotos(el);
+}
 function closetRowHTML(cat){
   var list=closetOf(cat.k),sel=_closetSel[cat.k]||0,i,h='';
   if(sel>=list.length)sel=Math.max(0,list.length-1);
@@ -7122,6 +7183,7 @@ function clMarkNearest(el,commit){
     _closetSel[cat]=idx;
     var lab=document.getElementById('cl-n-'+cat);
     if(lab)lab.textContent=(idx+1)+'/'+cells.length;
+    closetPickedPaint();
   }
 }
 // bring a garment into the marked place, which is what picking one now means
@@ -7191,6 +7253,8 @@ function renderCloset(){
 
   // jewellery is not part of that column, so it gets its own box
   h+='<div class="cl-mirror side">'+closetRowHTML(CLOSET_SIDE)+'</div>';
+
+  h+='<div id="cl-picked">'+closetPickedHTML()+'</div>';
 
   h+='<div class="cl-acts">';
   h+='<button class="cl-b1" onclick="closetShuffle()">&#127922; גלגל הכל</button>';
