@@ -9594,7 +9594,7 @@ function renderHabits(){
     h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">';
     h+='<div onclick="toggleGoal('+gi+')" style="width:13px;height:13px;border-radius:3px;border:1.5px solid '+(goals[gi].done?'var(--green-500)':'var(--violet-300)')+';background:'+(goals[gi].done?'var(--green-500)':'transparent')+';cursor:pointer;flex-shrink:0"></div>';
     h+='<div style="font-size:11px;color:'+(goals[gi].done?'var(--muted)':'var(--ink)')+';'+(goals[gi].done?'text-decoration:line-through;':'')+';flex:1;line-height:1.3">'+esc(goals[gi].text)+'</div>';
-    h+='<button onclick="deleteGoal('+gi+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:12px;padding:0;flex-shrink:0">&times;</button>';
+    h+='<button onclick="deleteHabitGoal('+gi+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:12px;padding:0;flex-shrink:0">&times;</button>';
     h+='</div>';
   }
   h+='<input id="new-goal-inp" placeholder="הוסף..." style="width:100%;border:none;border-bottom:1px solid var(--line);font-size:11px;padding:4px 0;outline:none;margin-top:2px;background:transparent;direction:rtl" onkeydown="if(event.key===\'Enter\')addGoal()">';
@@ -9716,7 +9716,7 @@ function addGoal(){
 function toggleGoal(idx){
   var goals=loadHabitGoals();if(goals[idx])goals[idx].done=!goals[idx].done;saveHabitGoals(goals);renderHabits();
 }
-function deleteGoal(idx){
+function deleteHabitGoal(idx){
   var goals=loadHabitGoals();goals.splice(idx,1);saveHabitGoals(goals);renderHabits();
 }
 
@@ -15842,6 +15842,42 @@ function applyImport(mode){
   Promise.all(jobs).then(function(){setTimeout(function(){location.reload();},600);});
 }
 
+/* ── KEEPING THE DATA ──
+   The backup section above says it: everything this app knows lives in one
+   browser on one device. What it does not say is that by default the browser
+   is allowed to throw it away. Storage from an ordinary web page is classed
+   as evictable, and under storage pressure iOS and Android may clear it with
+   no warning and nothing to recover from.
+
+   navigator.storage.persist() asks for it to be kept instead. It is a
+   request, not a guarantee - the browser decides, on engagement, and an app
+   installed to the home screen generally qualifies. Asked once a load, and
+   only when it has not already been granted.
+
+   The answer belongs on the backup card, not in a popup: the honest response
+   to "not persisted" is to export, and that button is already there. */
+var _persisted=null;      // true, false, or null for 'not answered / unsupported'
+function askPersist(){
+  try{
+    if(!navigator.storage||!navigator.storage.persist)return;
+    navigator.storage.persisted().then(function(already){
+      if(already){_persisted=true;renderBackup();return null;}
+      return navigator.storage.persist().then(function(granted){
+        _persisted=!!granted;renderBackup();
+      });
+    }).catch(function(){});
+  }catch(e){}
+}
+
+/* Whole days since an ISO timestamp, or -1 if there never was one. */
+function backupAgeDays(iso){
+  if(!iso)return -1;
+  var t=new Date(iso).getTime();
+  if(!t)return -1;
+  return Math.floor((Date.now()-t)/86400000);
+}
+var BACKUP_STALE_DAYS=14;
+
 function renderBackup(){
   var el=document.getElementById('home-backup');if(!el)return;
   var last='';try{last=localStorage.getItem('last_export')||'';}catch(e){}
@@ -15850,7 +15886,14 @@ function renderBackup(){
   h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">';
   h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;font-weight:700">גיבוי</div>';
   h+='<div style="font-size:10px;color:var(--muted-soft)">'+n+' פריטים</div></div>';
-  h+='<div style="font-size:10.5px;color:'+(last?'var(--muted)':'var(--terra-500)')+';line-height:1.6;margin-bottom:12px">'+(last?'ייצוא אחרון '+stepsAgo(last):'כל הנתונים קיימים רק במכשיר הזה — עוד לא יצא גיבוי.')+'</div>';
+  var age=backupAgeDays(last), stale=(age<0||age>=BACKUP_STALE_DAYS);
+  var line=last?('ייצוא אחרון '+stepsAgo(last)):'כל הנתונים קיימים רק במכשיר הזה — עוד לא יצא גיבוי.';
+  h+='<div style="font-size:10.5px;color:'+(stale?'var(--terra-500)':'var(--muted)')+';line-height:1.6">'+line+'</div>';
+  // Only worth saying when it is not true. Granted is the quiet case.
+  if(_persisted===false){
+    h+='<div style="font-size:10.5px;color:var(--terra-700);line-height:1.6;margin-top:4px">המכשיר רשאי למחוק את הנתונים כשנגמר לו המקום. גיבוי הוא הביטוח היחיד.</div>';
+  }
+  h+='<div style="height:12px"></div>';
   h+='<div style="display:flex;gap:8px">';
   h+='<button onclick="exportData()" style="flex:1;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:11px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">ייצוא</button>';
   h+='<button onclick="importPick()" style="flex:1;background:var(--surface);border:none;border-radius:12px;padding:11px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit">ייבוא</button></div>';
@@ -17554,6 +17597,7 @@ function tbSync(){
   renderSumRem();
   renderBookWidget();
   renderBackup();
+  askPersist();
   // Hide app initially
   document.querySelector('.app').style.display='none';
 })();
