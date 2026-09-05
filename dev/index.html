@@ -453,6 +453,36 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .crop-x{background:none;color:#b9b0a8}
 .crop-ok{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
 .crop-rs{border:1px solid rgba(255,255,255,.18);background:none;border-radius:11px;padding:10px 18px;font-family:inherit;font-size:11.5px;font-weight:800;color:#a49a92;cursor:pointer}
+/* מפת הכוכבים — צד הכתיבה */
+.cm-wrap.text{height:auto;min-height:0;padding-bottom:24px}
+.cx-tabs{display:flex;gap:3px;background:#f0ebe3;border-radius:11px;padding:3px}
+.cx-tab{border:none;background:none;border-radius:9px;padding:7px 14px;font-family:inherit;font-size:11.5px;font-weight:800;color:#a89e97;cursor:pointer}
+.cx-tab.on{background:#fff;color:#4a4340;box-shadow:0 1px 4px rgba(200,180,160,.2)}
+.cx-body{padding-top:4px}
+.cx-sec{background:#fff;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
+.cx-lab{font-size:9.5px;font-weight:800;color:#a89e97;letter-spacing:.09em;margin-bottom:9px}
+.cx-lab2{margin:0 2px 9px}
+.cx-big{width:100%;border:none;border-bottom:1.5px solid #f0ebe3;background:none;padding:8px 2px;font-family:inherit;font-size:17px;font-weight:800;color:#4a4340;outline:none}
+.cx-big:focus{border-bottom-color:#a690cf}
+.cx-why{width:100%;border:none;background:none;padding:9px 2px 2px;font-family:inherit;font-size:12px;color:#a89e97;outline:none;font-style:italic}
+.cx-date{font-size:10px;color:#c0b8b0;margin-top:6px}
+.cx-none{font-size:11.5px;color:#c0b8b0;line-height:1.65;background:#fff;border-radius:16px;padding:14px;margin-bottom:10px}
+.cx-m{background:#fff;border-radius:18px;padding:12px;margin-bottom:9px;box-shadow:0 3px 12px rgba(200,180,160,.11)}
+.cx-m.done{background:linear-gradient(135deg,#f6fbf7,#eef7f1)}
+.cx-mrow,.cx-srow{display:flex;align-items:center;gap:8px}
+.cx-srow{padding:4px 0}
+.cx-tick{flex-shrink:0;width:23px;height:23px;border-radius:8px;border:1.5px solid #e0d8ce;background:none;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center}
+.cx-tick.sm{width:19px;height:19px;border-radius:6px;font-size:11px}
+.cx-tick.on{background:linear-gradient(135deg,#bfe0c7,#8fc79e);border-color:transparent}
+.cx-mt{flex:1;min-width:0;border:none;background:none;font-family:inherit;font-size:14px;font-weight:800;color:#4a4340;outline:none;padding:6px 0}
+.cx-st{flex:1;min-width:0;border:none;background:none;font-family:inherit;font-size:12.5px;color:#4a4340;outline:none;padding:5px 0}
+.cx-st.done{color:#a89e97;text-decoration:line-through}
+.cx-mt:focus,.cx-st:focus{border-bottom:1.5px solid #c9bce0}
+.cx-del{flex-shrink:0;background:none;border:none;font-size:17px;line-height:1;color:#e0d8ce;cursor:pointer;font-family:inherit;padding:0 3px}
+.cx-steps{margin:6px 0 2px;padding-right:10px;border-right:2px solid #f2ede6}
+.cx-adds{background:none;border:none;font-family:inherit;font-size:11px;font-weight:800;color:#a690cf;cursor:pointer;padding:6px 2px 2px}
+.cx-addm{width:100%;border:1.5px dashed #ddd3e8;background:none;border-radius:14px;padding:12px;margin-top:4px;font-family:inherit;font-size:12.5px;font-weight:800;color:#a690cf;cursor:pointer}
+.cx-note{font-size:10px;color:#c0b8b0;line-height:1.6;margin-top:12px;padding:0 2px}
 /* מפת הכוכבים */
 .cm-go{width:100%;margin-top:9px;border:none;border-radius:11px;padding:9px;background:linear-gradient(135deg,#2f2b46,#413a63);color:#e9e2ff;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
 .cm-wrap{display:flex;flex-direction:column;height:calc(100vh - 190px);min-height:420px}
@@ -12510,6 +12540,152 @@ function cmLayout(g){
           vb:[minx-padX,miny-padT,(maxx-minx)+padX*2,(maxy-miny)+padT+padB]};
 }
 
+/* ── WRITING IT DOWN ──────────────────────────────────────────────────────
+   The constellation is for looking at what you are doing. This is for
+   deciding it, and they are the same data seen twice.
+
+   Writing came second here and should have come first: the map could only
+   be filled through prompt() dialogs, one line at a time, which is no way to
+   think a goal through. Breaking something big into middle-sized pieces and
+   those into small ones is an outline, and an outline wants to be a page you
+   can see all of and rewrite in place.
+
+   So: a text side where the whole shape is visible and editable, a star side
+   where it is a sky, and one switch between them. Nothing is duplicated -
+   both read and write the same goal.
+
+   Text fields save on blur rather than on every keystroke. Saving per
+   keystroke means re-rendering per keystroke, which takes the caret away
+   from whoever is typing - the classic way this kind of editor breaks. */
+var _cmView='text';
+
+function cmSwitch(v){_cmView=v;cmRender();}
+
+function cmTextHTML(g){
+  var ms=cmMilestones(g),i,j,h='';
+
+  h+='<div class="cx-sec"><div class="cx-lab">המטרה הגדולה</div>';
+  h+='<input class="cx-big" value="'+esc(g.title||'')+'" placeholder="מה אתה רוצה להשיג?" onchange="cmSetTitle(this.value)">';
+  h+='<input class="cx-why" value="'+esc(g.why||'')+'" placeholder="ולמה זה חשוב לך?" onchange="cmSetWhy(this.value)">';
+  if(g.targetDate)h+='<div class="cx-date">יעד: '+esc(g.targetDate)+'</div>';
+  h+='</div>';
+
+  h+='<div class="cx-lab cx-lab2">מטרות בדרך</div>';
+  if(!ms.length)
+    h+='<div class="cx-none">פרק את המטרה הגדולה לכמה מטרות בינוניות. כל אחת מהן היא כוכב במפה.</div>';
+
+  for(i=0;i<ms.length;i++){
+    var st=ms[i].steps||[],mDone=cmMileDone(ms[i]);
+    h+='<div class="cx-m'+(mDone?' done':'')+'">';
+    h+='<div class="cx-mrow">';
+    h+='<button class="cx-tick'+(mDone?' on':'')+'" onclick="cmToggleMile('+i+')">'+(mDone?'&#10003;':'')+'</button>';
+    h+='<input class="cx-mt" value="'+esc(ms[i].text||'')+'" placeholder="מטרה בינונית" onchange="cmSetMile('+i+',this.value)">';
+    h+='<button class="cx-del" onclick="cmDelMile('+i+')" aria-label="מחק">&times;</button>';
+    h+='</div>';
+    if(st.length){
+      h+='<div class="cx-steps">';
+      for(j=0;j<st.length;j++){
+        h+='<div class="cx-srow">';
+        h+='<button class="cx-tick sm'+(st[j].done?' on':'')+'" onclick="cmToggleStep('+i+','+j+')">'+(st[j].done?'&#10003;':'')+'</button>';
+        h+='<input class="cx-st'+(st[j].done?' done':'')+'" value="'+esc(st[j].text||'')+'" placeholder="צעד קטן" onchange="cmSetStep('+i+','+j+',this.value)">';
+        h+='<button class="cx-del" onclick="cmDelStep('+i+','+j+')" aria-label="מחק">&times;</button>';
+        h+='</div>';
+      }
+      h+='</div>';
+    }
+    h+='<button class="cx-adds" onclick="cmAddStep('+i+')">+ צעד קטן</button>';
+    h+='</div>';
+  }
+  h+='<button class="cx-addm" onclick="cmAddMile()">+ מטרה בדרך</button>';
+  // the counting rule is not obvious and people will wonder
+  h+='<div class="cx-note">מטרה בינונית שיש לה צעדים מסומנת לבד כשכל הצעדים שלה נעשו. אחת בלי צעדים — מסמנים ידנית.</div>';
+  return h;
+}
+
+function cmGoal(){var goals=loadGoals();return {goals:goals,g:goals[_cmGoal]};}
+function cmSetTitle(v){var o=cmGoal();if(!o.g)return;o.g.title=String(v||'').trim();saveGoals(o.goals);cmHead();}
+function cmSetWhy(v){var o=cmGoal();if(!o.g)return;o.g.why=String(v||'').trim();saveGoals(o.goals);}
+function cmSetMile(i,v){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g);if(!ms[i])return;
+  ms[i].text=String(v||'').trim();saveGoals(o.goals);
+}
+function cmSetStep(i,j,v){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g);if(!ms[i]||!ms[i].steps[j])return;
+  ms[i].steps[j].text=String(v||'').trim();saveGoals(o.goals);
+}
+function cmToggleMile(i){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g),m=ms[i];if(!m)return;
+  /* Ticking a milestone that has steps has to mean something for the steps,
+     or the two would disagree with each other on screen. It marks them all,
+     which is what "this is done" means. */
+  if(m.steps&&m.steps.length){
+    var all=cmMileDone(m),k;
+    for(k=0;k<m.steps.length;k++)m.steps[k].done=!all;
+  } else m.done=!m.done;
+  saveGoals(o.goals);
+  if(cmMileDone(m))cmCheer(cmGoalPct(o.g)===100?2:1);
+  cmRender();
+}
+function cmToggleStep(i,j){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g);if(!ms[i]||!ms[i].steps[j])return;
+  ms[i].steps[j].done=!ms[i].steps[j].done;
+  saveGoals(o.goals);
+  if(ms[i].steps[j].done&&cmMileDone(ms[i]))cmCheer(cmGoalPct(o.g)===100?2:1);
+  cmRender();
+}
+function cmDelMile(i){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g);if(!ms[i])return;
+  var st=(ms[i].steps||[]).length;
+  if(!confirm('למחוק את "'+(ms[i].text||'המטרה')+'"'+(st?' ואת '+st+' הצעדים שלה':'')+'?'))return;
+  ms.splice(i,1);saveGoals(o.goals);
+  if(_cmFocus===i)_cmFocus=-1;else if(_cmFocus>i)_cmFocus--;
+  cmRender();
+}
+function cmDelStep(i,j){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g);if(!ms[i])return;
+  ms[i].steps.splice(j,1);saveGoals(o.goals);cmRender();
+}
+/* Adding writes an empty row and puts the caret in it, rather than asking in
+   a dialog box. You are writing an outline; the place to type is the outline. */
+function cmAddMile(){
+  var o=cmGoal();if(!o.g)return;
+  if(!o.g.subs)o.g.subs=[];
+  o.g.subs.push({id:'m'+Date.now().toString(36),text:'',done:false,steps:[]});
+  saveGoals(o.goals);
+  _cmView='text';cmRender();
+  cmFocusLast('.cx-mt');
+}
+function cmAddStep(mi){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g);if(!ms[mi])return;
+  ms[mi].steps.push({id:'s'+Date.now().toString(36),text:'',done:false,active:false});
+  saveGoals(o.goals);
+  _cmView='text';cmRender();
+  var rows=document.querySelectorAll('.cx-m')[mi];
+  if(rows){
+    var ins=rows.querySelectorAll('.cx-st');
+    if(ins.length)cmCaret(ins[ins.length-1]);
+  }
+}
+function cmFocusLast(sel){
+  var els=document.querySelectorAll(sel);
+  if(els.length)cmCaret(els[els.length-1]);
+}
+function cmCaret(el){
+  setTimeout(function(){try{el.focus();el.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}},40);
+}
+// the percentage in the header moves without redrawing what is being typed in
+function cmHead(){
+  var o=cmGoal();if(!o.g)return;
+  var el=document.querySelector('.cm-pct');
+  if(el)el.textContent=cmGoalPct(o.g)+'%';
+}
 function cmOpen(idx){
   _cmGoal=idx;_cmFocus=-1;_cmCam={x:0,y:0,s:1};
   _goalsView='map';renderGoals();
@@ -12519,14 +12695,25 @@ function cmClose(){_goalsView='view-goal';renderGoals();}
 function cmRender(){
   var goals=loadGoals(),g=goals[_cmGoal];
   if(!g){_goalsView='home';renderGoals();return;}
-  var L=cmLayout(g),i,pct=cmGoalPct(g);
-  var h='<div class="cm-wrap">';
+  var pct=cmGoalPct(g);
 
+  var h='<div class="cm-wrap'+(_cmView==='text'?' text':'')+'">';
   h+='<div class="cm-top">';
   h+='<button class="cm-back" onclick="cmClose()">&#8249; חזרה</button>';
+  h+='<div class="cx-tabs">'+
+     '<button class="cx-tab'+(_cmView==='text'?' on':'')+'" onclick="cmSwitch(&quot;text&quot;)">כתיבה</button>'+
+     '<button class="cx-tab'+(_cmView==='stars'?' on':'')+'" onclick="cmSwitch(&quot;stars&quot;)">&#10022; כוכבים</button>'+
+     '</div>';
   h+='<div class="cm-pct">'+pct+'%</div>';
   h+='</div>';
 
+  if(_cmView==='text'){
+    h+='<div class="cx-body">'+cmTextHTML(g)+'</div></div>';
+    document.getElementById('content').innerHTML=h;
+    return;
+  }
+
+  var L=cmLayout(g),i;
   h+='<div class="cm-sky" id="cm-sky">';
   h+='<svg id="cm-svg" viewBox="'+L.vb.join(' ')+'" preserveAspectRatio="xMidYMid meet">';
   h+='<defs>'+
@@ -12626,22 +12813,6 @@ function cmFocus(i){_cmFocus=i;cmRender();}
 function cmCheer(level){
   _cmCelebrate=level;
   setTimeout(function(){_cmCelebrate=0;if(_goalsView==='map')cmRender();},1900);
-}
-function cmAddStep(mi){
-  var t=prompt('מה הצעד?');
-  if(!t||!t.trim())return;
-  var goals=loadGoals(),g=goals[_cmGoal],ms=cmMilestones(g);
-  if(!ms[mi])return;
-  ms[mi].steps.push({id:'s'+Date.now().toString(36),text:t.trim(),done:false,active:false});
-  saveGoals(goals);cmRender();
-}
-function cmAddMile(){
-  var t=prompt('מה אבן הדרך?');
-  if(!t||!t.trim())return;
-  var goals=loadGoals(),g=goals[_cmGoal];
-  if(!g.subs)g.subs=[];
-  g.subs.push({id:'m'+Date.now().toString(36),text:t.trim(),done:false,steps:[]});
-  saveGoals(goals);cmRender();
 }
 
 /* ── PAN AND PINCH ──
