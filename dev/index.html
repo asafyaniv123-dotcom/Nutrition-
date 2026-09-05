@@ -515,6 +515,12 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cx-mt:focus,.cx-st:focus{border-bottom:1.5px solid #c9bce0}
 .cx-del{flex-shrink:0;background:none;border:none;font-size:17px;line-height:1;color:#e0d8ce;cursor:pointer;font-family:inherit;padding:0 3px}
 .cx-steps{margin:6px 0 2px;padding-right:10px;border-right:2px solid #f2ede6}
+.cx-note-b{flex-shrink:0;background:none;border:none;font-size:13px;line-height:1;color:#ddd3e8;cursor:pointer;font-family:inherit;padding:0 3px}
+.cx-note-b.has{color:#a690cf}
+.cx-note{width:100%;border:none;background:#faf7f2;border-radius:11px;padding:10px 11px;margin:2px 0 6px;
+  font-family:inherit;font-size:12px;line-height:1.65;color:#6a6360;outline:none;resize:none;min-height:56px;
+  direction:rtl;overflow:hidden}
+.cx-note:focus{background:#fff;box-shadow:inset 0 0 0 1.5px #ddd0ee}
 .cx-adds{background:none;border:none;font-family:inherit;font-size:11px;font-weight:800;color:#a690cf;cursor:pointer;padding:6px 2px 2px}
 .cx-addm{width:100%;border:1.5px dashed #ddd3e8;background:none;border-radius:14px;padding:12px;margin-top:4px;font-family:inherit;font-size:12.5px;font-weight:800;color:#a690cf;cursor:pointer}
 .cx-note{font-size:10px;color:#c0b8b0;line-height:1.6;margin-top:12px;padding:0 2px}
@@ -540,7 +546,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
    towards the north star as the work happens. */
 
 /* threads: thick and bright up to the goal, fine down to the steps */
-.cm-th{transition:stroke .45s,filter .45s}
+.cm-th{fill:none;transition:stroke .45s,filter .45s}
 .th-m{stroke:rgba(174,186,255,.4)}
 .th-s{stroke:rgba(190,178,232,.2)}
 .cm-th.on{stroke:rgba(255,214,120,.9);filter:drop-shadow(0 0 5px rgba(255,201,84,.7))}
@@ -563,13 +569,18 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cm-pulse{fill:none;stroke:rgba(255,214,130,.65);stroke-width:1.4;transform-origin:center;
   transform-box:fill-box;animation:cmRipple 3.4s ease-out infinite;pointer-events:none}
 .cm-pulse.p2{animation-delay:1.7s}
+.cm-hasnote{fill:#8fe0c7;stroke:rgba(16,12,32,.7);stroke-width:1;pointer-events:none}
 .cm-hit{fill:transparent;cursor:pointer}
 .cm-n{cursor:pointer;transition:opacity .3s}
 .cm-n.dim{opacity:.2}
 /* the label sizes carry the hierarchy too: named, titled, noted */
-.cm-t{fill:#b9b0d8;font-size:15px;font-weight:600;font-family:inherit;pointer-events:none}
-.cm-m .cm-t{fill:#dde4ff;font-size:20px;font-weight:800}
-.cm-g .cm-t{font-size:28px;fill:#fff;font-weight:800}
+/* Labels sat on top of a glowing star on a dark sky and the glow ate the
+   thin strokes of Hebrew. A dark outline drawn UNDER the letters fixes it
+   without a box behind the text, which would have covered the sky. */
+.cm-t{fill:#d6cfee;font-size:16px;font-weight:700;font-family:inherit;pointer-events:none;
+  paint-order:stroke fill;stroke:rgba(16,12,32,.85);stroke-width:4px;stroke-linejoin:round}
+.cm-m .cm-t{fill:#e6ebff;font-size:21px;font-weight:800;stroke-width:5px}
+.cm-g .cm-t{font-size:29px;fill:#fff;font-weight:800;stroke-width:6px}
 .cm-n.on .cm-t{fill:#ffeec2}
 /* the step you said you are on next */
 .cm-n.act .cm-star{stroke:#8fe0c7;stroke-width:1.8}
@@ -12564,6 +12575,27 @@ function cmGoalPct(g){
    steps fan out beneath it. The whole thing is measured afterwards and the
    viewBox fitted to it, so a goal with two milestones and one with nine both
    arrive filling the screen instead of one being a speck. */
+/* A thread bows rather than running straight. Straight lines from one hub
+   read as a diagram - spokes on a wheel - and the moment a star is dragged
+   somewhere unexpected they cross each other at hard angles. A curve absorbs
+   that: it bends out of the way, it shows which end is the parent because it
+   leans, and it looks like something strung between two points rather than
+   drawn between them.
+
+   The bow is perpendicular to the line and proportional to its length, so a
+   short thread to a nearby step curves as gently as a long one to a distant
+   milestone curves hard. */
+function cmCurve(x1,y1,x2,y2){
+  var dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy)||1;
+  var bow=len*0.15;
+  var mx=(x1+x2)/2,my=(y1+y2)/2;
+  var cx=mx-(dy/len)*bow, cy=my+(dx/len)*bow;
+  return 'M'+x1.toFixed(1)+' '+y1.toFixed(1)+' Q'+cx.toFixed(1)+' '+cy.toFixed(1)+' '+x2.toFixed(1)+' '+y2.toFixed(1);
+}
+// a star that has been moved keeps where it was put
+function cmPos(o,dx,dy){
+  return (o&&o.pos&&isFinite(o.pos.x))?{x:o.pos.x,y:o.pos.y}:{x:dx,y:dy};
+}
 function cmLayout(g){
   var ms=cmMilestones(g),n=ms.length,i,j;
   var nodes=[],links=[];
@@ -12574,8 +12606,9 @@ function cmLayout(g){
   var mileY=goalY+330;
   for(i=0;i<n;i++){
     var t=(n===1)?0.5:i/(n-1);
-    var mx=cx+(spread/2)-spread*t;                 // t=0 sits on the right
-    var my=mileY-Math.sin(t*Math.PI)*54;           // a shallow arc, not a row
+    var dmx=cx+(spread/2)-spread*t;                // t=0 sits on the right
+    var dmy=mileY-Math.sin(t*Math.PI)*54;          // a shallow arc, not a row
+    var mp=cmPos(ms[i],dmx,dmy),mx=mp.x,my=mp.y;
     var mDone=cmMileDone(ms[i]);
     // how full the ring around it is drawn: steps done over steps there are
     var mst=ms[i].steps||[];
@@ -12588,9 +12621,10 @@ function cmLayout(g){
       var u=(st.length===1)?0.5:j/(st.length-1);
       var a=Math.PI*(0.18+0.64*u);
       var R=(st.length>4?235:195);   // wide enough that adjacent labels clear
-      var sx=mx+Math.cos(a)*R;
-      var sy=my+Math.sin(a)*R;
-      nodes.push({k:'s',i:i,j:j,x:sx,y:sy,r:9,t:st[j].text,lit:!!st[j].done,act:!!st[j].active});
+      var dsx=mx+Math.cos(a)*R;
+      var dsy=my+Math.sin(a)*R;
+      var sp=cmPos(st[j],dsx,dsy),sx=sp.x,sy=sp.y;
+      nodes.push({k:'s',i:i,j:j,x:sx,y:sy,r:9,t:st[j].text,lit:!!st[j].done,act:!!st[j].active,note:!!(st[j].note&&String(st[j].note).trim())});
       links.push({x1:mx,y1:my,x2:sx,y2:sy,lit:!!st[j].done,w:1.1,lvl:'s'});
     }
   }
@@ -12800,8 +12834,16 @@ function cmTextHTML(g){
         h+='<div class="cx-srow">';
         h+='<button class="cx-tick sm'+(st[j].done?' on':'')+'" onclick="cmToggleStep('+i+','+j+')">'+(st[j].done?'&#10003;':'')+'</button>';
         h+='<input class="cx-st'+(st[j].done?' done':'')+'" value="'+esc(st[j].text||'')+'" placeholder="צעד קטן" onchange="cmSetStep('+i+','+j+',this.value)">';
+        h+='<button class="cx-note-b'+(st[j].note?' has':'')+'" onclick="cmNoteToggle('+i+','+j+')" aria-label="הערה">&#9998;</button>';
         h+='<button class="cx-del" onclick="cmDelStep('+i+','+j+')" aria-label="מחק">&times;</button>';
         h+='</div>';
+        /* A step's title has to stay short enough to be a star label, so
+           anything longer than that needed somewhere else to live - what the
+           step actually involves, why it matters, what you decided last time. */
+        if(st[j].note!==undefined||_cmNote===i+':'+j)
+          h+='<textarea class="cx-note" placeholder="מה בדיוק צריך לקרות כאן?" '+
+             'oninput="cmGrowNote(this)" onchange="cmSetNote('+i+','+j+',this.value)">'+
+             esc(st[j].note||'')+'</textarea>';
       }
       h+='</div>';
     }
@@ -12822,6 +12864,27 @@ function cmSetMile(i,v){
   var ms=cmMilestones(o.g);if(!ms[i])return;
   ms[i].text=String(v||'').trim();saveGoals(o.goals);
 }
+var _cmNote='';
+function cmNoteToggle(i,j){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g),st=ms[i]&&ms[i].steps[j];
+  if(!st)return;
+  // an empty note that is closed again is removed rather than kept as ''
+  if(st.note!==undefined&&!String(st.note).trim()){delete st.note;_cmNote='';saveGoals(o.goals);cmRender();return;}
+  if(st.note===undefined){st.note='';_cmNote=i+':'+j;saveGoals(o.goals);cmRender();
+    setTimeout(function(){var t=document.querySelectorAll('.cx-note');if(t.length)cmCaret(t[t.length-1]);},60);
+    return;}
+  _cmNote='';cmRender();
+}
+function cmSetNote(i,j,v){
+  var o=cmGoal();if(!o.g)return;
+  var ms=cmMilestones(o.g),st=ms[i]&&ms[i].steps[j];
+  if(!st)return;
+  var t=String(v||'').trim();
+  if(t)st.note=t; else delete st.note;
+  saveGoals(o.goals);
+}
+function cmGrowNote(el){el.style.height='auto';el.style.height=Math.max(56,el.scrollHeight)+'px';}
 function cmSetStep(i,j,v){
   var o=cmGoal();if(!o.g)return;
   var ms=cmMilestones(o.g);if(!ms[i]||!ms[i].steps[j])return;
@@ -12941,7 +13004,7 @@ function cmRender(){
   // threads first, so the stars sit on top of them
   for(i=0;i<L.links.length;i++){
     var k=L.links[i];
-    h+='<line class="cm-th th-'+(k.lvl||'s')+(k.lit?' on':'')+'" x1="'+k.x1+'" y1="'+k.y1+'" x2="'+k.x2+'" y2="'+k.y2+'" stroke-width="'+k.w+'"/>';
+    h+='<path class="cm-th th-'+(k.lvl||'s')+(k.lit?' on':'')+'" d="'+cmCurve(k.x1,k.y1,k.x2,k.y2)+'" stroke-width="'+k.w+'"/>';
   }
   for(i=0;i<L.nodes.length;i++){
     var p=L.nodes[i];
@@ -12951,7 +13014,7 @@ function cmRender(){
     var call=(p.k==='g')?'cmTap(&quot;g&quot;,-1)'
             :(p.k==='m')?('cmTap(&quot;m&quot;,'+p.i+')')
             :('cmTap(&quot;s&quot;,'+p.i+','+p.j+')');
-    h+='<g class="'+cls+'" data-i="'+p.i+'" onclick="'+call+'">';
+    h+='<g class="'+cls+'" data-i="'+p.i+'"'+(p.k==='s'?' data-j="'+p.j+'"':'')+' onclick="'+call+'">';
     h+='<circle class="cm-halo" cx="'+p.x+'" cy="'+p.y+'" r="'+(p.r*2.6)+'" fill="url(#'+(p.k==='g'||p.lit?'cmGlowOn':'cmGlow')+')"/>';
     /* Two rings that keep travelling outwards from the north star. It is the
        one node on the map that is a destination rather than a task, so it is
@@ -12980,6 +13043,8 @@ function cmRender(){
        steps have nothing under them, so their labels hang below as usual. */
     var ly=(p.k==='m')?(p.y-p.r-14):(p.y+p.r+26);
     h+='<text class="cm-t" x="'+p.x+'" y="'+ly+'" text-anchor="middle">'+esc(cmClip(p.t,p.k))+'</text>';
+    // there is more written about this one than fits on a label
+    if(p.note)h+='<circle class="cm-hasnote" cx="'+(p.x+p.r+5)+'" cy="'+(p.y-p.r-3)+'" r="3.4"/>';
     h+='</g>';
   }
   if(_cmLoose){
@@ -13010,14 +13075,17 @@ function cmRender(){
   cmBind();
 }
 // a five-pointed star, drawn rather than a font glyph so it scales cleanly
-function cmStarPath(cx,cy,r){
+function cmStarPoints(cx,cy,r){
   var pts=[],i,a,rr;
   for(i=0;i<10;i++){
     a=(Math.PI/5)*i-Math.PI/2;
     rr=(i%2===0)?r:r*0.42;
     pts.push((cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1));
   }
-  return '<polygon class="cm-star" points="'+pts.join(' ')+'"/>';
+  return pts.join(' ');
+}
+function cmStarPath(cx,cy,r){
+  return '<polygon class="cm-star" points="'+cmStarPoints(cx,cy,r)+'"/>';
 }
 function cmClip(t,k){
   var max=(k==='g')?26:(k==='m'?20:16);
@@ -13079,7 +13147,7 @@ function cmCheer(level){
    being made with a finger rather than a menu, and it is worth the extra
    gesture precisely because it is the step where you decide what this thing
    is part of. */
-var _cmLoose=null, _cmLP=null, _cmWire=null;
+var _cmLoose=null, _cmLP=null, _cmWire=null, _cmMove=null;
 
 // SVG user units to screen pixels, through the viewBox AND the camera
 function cmToScreen(x,y){
@@ -13099,6 +13167,60 @@ function cmToUser(cx,cy){
   return {x:r.x,y:r.y};
 }
 
+/* Moving a star. The gesture set on the sky now has four members and they
+   are told apart by what was under the finger and what it did next:
+
+     down on empty sky, then move   pan the map
+     down on a star, then move      move that star
+     down on a milestone, then hold sprout a step from it
+     down and up without moving     tap it
+
+   A moved star keeps its position, and everything hanging off it follows,
+   because the threads are computed from wherever the nodes actually are. */
+function cmNodeAt(el){
+  var g=el&&el.closest?el.closest('.cm-n'):null;
+  if(!g||g.classList.contains('cm-loose'))return null;
+  var k=g.classList.contains('cm-g')?'g':(g.classList.contains('cm-m')?'m':'s');
+  if(k==='g')return null;                       // the north star stays put
+  return {k:k,i:Number(g.getAttribute('data-i')),j:Number(g.getAttribute('data-j'))};
+}
+function cmObjAt(n){
+  var o=cmGoal();if(!o.g||!n)return null;
+  var ms=cmMilestones(o.g);
+  if(n.k==='m')return ms[n.i]||null;
+  return (ms[n.i]&&ms[n.i].steps[n.j])||null;
+}
+function cmDragMove(cx,cy){
+  if(!_cmMove)return;
+  var u=cmToUser(cx,cy);
+  _cmMove.obj.pos={x:u.x-_cmMove.ox,y:u.y-_cmMove.oy};
+  cmRedrawGeometry();
+}
+/* Redraw the shapes without rebuilding the screen: a full render during a
+   drag would replace the element the pointer is captured on and the drag
+   would end mid-gesture. */
+function cmRedrawGeometry(){
+  // the goal being dragged, not a fresh copy that has not been moved
+  var g=(_cmMove&&_cmMove.g)||cmGoal().g;
+  if(!g)return;
+  var L=cmLayout(g),paths=document.querySelectorAll('#cm-cam path.cm-th:not(.wire)'),i;
+  for(i=0;i<L.links.length&&i<paths.length;i++)
+    paths[i].setAttribute('d',cmCurve(L.links[i].x1,L.links[i].y1,L.links[i].x2,L.links[i].y2));
+  for(i=0;i<L.nodes.length;i++){
+    var p=L.nodes[i];
+    var sel=p.k==='g'?'.cm-g':(p.k==='m'?'.cm-m[data-i="'+p.i+'"]':'.cm-s[data-i="'+p.i+'"][data-j="'+p.j+'"]');
+    var el=document.querySelector('#cm-cam '+sel);
+    if(!el)continue;
+    var star=el.querySelector('.cm-star');
+    if(star)star.setAttribute('points',cmStarPoints(p.x,p.y,p.r));
+    var cs=el.querySelectorAll('circle');
+    for(var c=0;c<cs.length;c++){cs[c].setAttribute('cx',p.x);cs[c].setAttribute('cy',p.y);}
+    var ring=el.querySelector('.cm-ring');
+    if(ring)ring.setAttribute('transform','rotate(-90 '+p.x+' '+p.y+')');
+    var t=el.querySelector('.cm-t');
+    if(t){t.setAttribute('x',p.x);t.setAttribute('y',(p.k==='m')?(p.y-p.r-14):(p.y+p.r+26));}
+  }
+}
 function cmLongPress(mi){
   var o=cmGoal();if(!o.g)return;
   var ms=cmMilestones(o.g);if(!ms[mi])return;
@@ -13191,7 +13313,15 @@ function cmBind(){
   sky.onpointerdown=function(e){
     var nm=document.getElementById('cm-name');
     if(nm&&e.target!==nm){nm._commit&&nm._commit();return;}
-    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    /* Forget any finger we never saw lift. A pointerup can go missing - the
+       element is re-rendered under it, the browser cancels the sequence, a
+       capture is lost - and one lost lift used to leave a phantom pointer in
+       here forever, which silently disabled every gesture that asks for a
+       single finger. Dragging a star simply stopped working with nothing on
+       screen to say why. */
+    var nowT=Date.now(),pid;
+    for(pid in pts)if(pts[pid]&&nowT-(pts[pid].t||0)>4000)delete pts[pid];
+    pts[e.pointerId]={x:e.clientX,y:e.clientY,t:nowT};
     var ids=Object.keys(pts);
     // a finger that came down on the loose star is pulling a thread, not panning
     var onLoose=e.target&&e.target.closest&&e.target.closest('.cm-loose');
@@ -13200,6 +13330,25 @@ function cmBind(){
       cmWireDraw(e.clientX,e.clientY);
       try{sky.setPointerCapture(e.pointerId);}catch(_e){}
       e.preventDefault();return;
+    }
+    // a finger on a star may be about to move it
+    var nd=cmNodeAt(e.target);
+    if(nd&&ids.length===1){
+      /* ONE array for the whole gesture. loadGoals re-parses the JSON on
+         every call, so grabbing the object from one parse, moving it, and
+         then saving a different parse threw the move away every time - the
+         star followed the finger on screen and snapped back on release. */
+      var o0=cmGoal(),ms0=o0.g?cmMilestones(o0.g):null;
+      var obj=ms0?(nd.k==='m'?ms0[nd.i]:(ms0[nd.i]&&ms0[nd.i].steps[nd.j])):null;
+      if(obj){
+        var L0=cmLayout(o0.g),f=null,q;
+        for(q=0;q<L0.nodes.length;q++){
+          var nn=L0.nodes[q];
+          if(nn.k===nd.k&&nn.i===nd.i&&(nd.k!=='s'||nn.j===nd.j))f=nn;
+        }
+        var u0=cmToUser(e.clientX,e.clientY);
+        _cmMove={obj:obj,goals:o0.goals,g:o0.g,ox:f?(u0.x-f.x):0,oy:f?(u0.y-f.y):0,moved:false};
+      }
     }
     // holding a milestone grows a branch out of it
     var mEl=e.target&&e.target.closest&&e.target.closest('.cm-m');
@@ -13220,9 +13369,19 @@ function cmBind(){
   };
   sky.onpointermove=function(e){
     if(!pts[e.pointerId])return;
-    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    pts[e.pointerId]={x:e.clientX,y:e.clientY,t:Date.now()};
     var ids=Object.keys(pts);
     if(_cmWire){cmWireDraw(e.clientX,e.clientY);e.preventDefault();return;}
+    if(_cmMove&&ids.length===1){
+      if(!_cmMove.moved){
+        var d0=Math.abs(e.clientX-(_cmLP?_cmLP.x:e.clientX))+Math.abs(e.clientY-(_cmLP?_cmLP.y:e.clientY));
+        _cmMove.moved=true;
+        if(_cmLP){clearTimeout(_cmLP.t);_cmLP=null;}
+        _cmDrag=null;                       // it is the star moving, not the map
+      }
+      cmDragMove(e.clientX,e.clientY);
+      e.preventDefault();return;
+    }
     // a press that moved was a drag, not a hold
     if(_cmLP&&(Math.abs(e.clientX-_cmLP.x)+Math.abs(e.clientY-_cmLP.y)>8)){
       clearTimeout(_cmLP.t);_cmLP=null;
@@ -13245,6 +13404,16 @@ function cmBind(){
   };
   sky.onpointerup=sky.onpointercancel=function(e){
     if(_cmLP){clearTimeout(_cmLP.t);_cmLP=null;}
+    if(_cmMove){
+      var moved=_cmMove.moved;
+      if(moved){
+        saveGoals(_cmMove.goals);           // the array the move was made in
+        _cmDrag={moved:true};                // and this was not a tap
+        setTimeout(function(){_cmDrag=null;},0);
+      }
+      _cmMove=null;
+      if(moved){delete pts[e.pointerId];return;}
+    }
     if(_cmWire){
       _cmWire=null;
       var w=document.getElementById('cm-wire');if(w)w.remove();
@@ -13272,12 +13441,11 @@ function cmWireDraw(cx,cy){
   var u=cmToUser(cx,cy);
   var w=document.getElementById('cm-wire');
   if(!w){
-    w=document.createElementNS('http://www.w3.org/2000/svg','line');
+    w=document.createElementNS('http://www.w3.org/2000/svg','path');
     w.setAttribute('id','cm-wire');w.setAttribute('class','cm-th wire');
     cam.appendChild(w);
   }
-  w.setAttribute('x1',_cmLoose.x);w.setAttribute('y1',_cmLoose.y);
-  w.setAttribute('x2',u.x);w.setAttribute('y2',u.y);
+  w.setAttribute('d',cmCurve(_cmLoose.x,_cmLoose.y,u.x,u.y));
 }
 // how many screen pixels one viewBox unit is worth right now
 function cmScale(){
