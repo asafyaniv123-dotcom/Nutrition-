@@ -17686,32 +17686,43 @@ function streakNow(){
 /* The longest one ever, which is the number worth keeping when the current
    run breaks - it says the thing you are capable of, not the thing you are
    in the middle of. */
-function streakBest(){
-  var d=new Date(),cur=0,best=0,i;
-  for(i=0;i<400;i++){
-    if(didSomething(dtStamp(d))){cur++;if(cur>best)best=cur;}
+var STREAK_WINDOW=400;
+function streakStats(){
+  var d=new Date(),cur=0,best=0,total=0,i;
+  for(i=0;i<STREAK_WINDOW;i++){
+    if(didSomething(dtStamp(d))){cur++;total++;if(cur>best)best=cur;}
     else cur=0;
     d.setDate(d.getDate()-1);
   }
-  return best;
+  return{best:best,total:total};
 }
+function streakBest(){return streakStats().best;}
 function streakHTML(){
-  var s=streakNow();
-  if(!s.n)return '';
-  var best=streakBest();
+  var s=streakNow(),st=streakStats();
+  if(!s.n){
+    /* The run broke. Show what cannot break instead - and never a zero, and
+       never the word "רצף", which here would only name the thing that ended. */
+    if(!st.total)return '';
+    return '<button class="stk" onclick="streakOpen()">'+
+      '<span class="stk-f">&#9898;</span>'+
+      '<span class="stk-n">'+st.total+'</span>'+
+      '<span class="stk-w">'+(st.total===1?'יום שרשמת בו':'ימים שרשמת בהם')+'</span>'+
+      (st.best>1?'<span class="stk-b">שיא '+st.best+'</span>':'')+
+      '</button>';
+  }
   var word=s.n===1?'יום':'ימים';
   return '<button class="stk'+(s.today?' on':'')+'" onclick="streakOpen()">'+
     '<span class="stk-f">'+(s.today?'&#128293;':'&#9898;')+'</span>'+
     '<span class="stk-n">'+s.n+'</span>'+
     '<span class="stk-w">'+word+' ברצף'+(!s.today?' &middot; היום עוד פתוח':'')+'</span>'+
-    (best>s.n?'<span class="stk-b">שיא '+best+'</span>':'')+
+    (st.best>s.n?'<span class="stk-b">שיא '+st.best+'</span>':'')+
     '</button>';
 }
 /* The last two weeks as dots, and what counts. Tapping the streak should
    explain it rather than just being a number that appeared. */
 function streakOpen(){
   var old=document.getElementById('stk-ov');if(old)old.remove();
-  var s=streakNow(),best=streakBest();
+  var s=streakNow(),stats=streakStats(),best=stats.best;
   var days='',d=new Date(),i,names=['א','ב','ג','ד','ה','ו','ש'];
   var cells=[];
   for(i=0;i<14;i++){
@@ -17723,13 +17734,15 @@ function streakOpen(){
   days=cells.join('');
   var h='<div class="stk-ov" id="stk-ov" onclick="if(event.target===this)streakClose()">'+
     '<div class="stk-sheet">'+
-    '<div class="stk-hd"><span>'+s.n+' '+(s.n===1?'יום':'ימים')+' ברצף</span>'+
+    '<div class="stk-hd"><span>'+(s.n?s.n+' '+(s.n===1?'יום':'ימים')+' ברצף'
+                                     :stats.total+(stats.total===1?' יום שרשמת בו':' ימים שרשמת בהם'))+'</span>'+
     '<button class="stk-x" onclick="streakClose()">&times;</button></div>'+
     '<div class="stk-row">'+days+'</div>'+
     '<div class="stk-note">יום נספר כשרשמת בו משהו — ארוחה, אימון, שורה ביומן, מים, צעדים, ולוג או סיכום יום. '+
     'לא מספיק לפתוח את האפליקציה.</div>'+
     (best>s.n?'<div class="stk-best">הרצף הארוך ביותר שלך: '+best+' ימים.</div>':'')+
-    (!s.today?'<div class="stk-today">היום עוד לא נספר. כל דבר שתרשום היום ימשיך את הרצף.</div>':'')+
+    (!s.today?'<div class="stk-today">'+(s.n?'היום עוד לא נספר. כל דבר שתרשום היום ימשיך את הרצף.'
+                                            :'כל דבר שתרשום היום מתחיל רצף חדש. מה שכבר רשמת נשאר.')+'</div>':'')+
     '</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
