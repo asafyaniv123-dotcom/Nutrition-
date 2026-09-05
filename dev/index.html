@@ -16369,6 +16369,89 @@ function renderReflect(){
 }
 
 /* ── module home ── */
+/* The weekday array is written out inline in three places; the week card needs
+   it a fourth time, which is enough to give it a name. */
+var RF_DAYNAMES=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+function dayName(iso){
+  var dt=new Date(iso+'T12:00:00');
+  return isNaN(dt)?'':RF_DAYNAMES[dt.getDay()];
+}
+
+/* ── THE WEEK, READ BACK ──
+   The day summary already exists and is the spine of this app. What was
+   missing is the thing a week actually is: not seven days stacked, but the
+   few sentences you wrote across them, in one place, where you can see them
+   together.
+
+   So the moments lead. The numbers come after, quietly, because a week that
+   opens with "5/7" is a scorecard and a week that opens with what you noticed
+   is a week. And it follows the same rule as the day sheet: a section with
+   nothing behind it does not appear. Five grey stars on a week nobody rated
+   reads as a zero, which is the opposite of true.
+
+   Deliberately not here: a streak, a percentage, or any red. The point of
+   this card is to be worth opening on a week that went badly. */
+function weekCardHTML(){
+  var days=[],i,d,r;
+  for(i=6;i>=0;i--){d=dayAdd(todayStr(),-i);days.push({d:d,r:loadSummary(d)||null});}
+  var filled=[];
+  for(i=0;i<days.length;i++)if(days[i].r)filled.push(days[i]);
+  if(!filled.length)return "";        // nothing written yet: say nothing
+
+  var h='<div style="background:var(--card);border-radius:22px;padding:18px 16px;margin:20px 0 4px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">';
+  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">השבוע שלך</div>';
+  h+='<div style="font-size:10.5px;color:var(--muted-soft)">'+filled.length+' מתוך 7 ימים</div></div>';
+
+  /* the arc: one dot a day, coloured by how the day felt, hollow if unwritten.
+     Seven dots is not a chart and is not pretending to be one - it is the
+     shape of the week at a glance. */
+  h+='<div style="display:flex;gap:6px;margin-bottom:16px">';
+  for(i=0;i<days.length;i++){
+    var rec=days[i].r,mood=rec&&rec.mood?Math.max(1,Math.min(5,rec.mood)):0;
+    var col=mood?RF_MOODS[mood-1].c:"transparent";
+    var bd=mood?"transparent":"var(--line-strong)";
+    h+='<div title="'+dayName(days[i].d)+'" style="flex:1;height:26px;border-radius:8px;background:'+col+';border:1.5px solid '+bd+'"></div>';
+  }
+  h+='</div>';
+
+  /* what you wrote, verbatim and in your own words - the reason to open this */
+  var notes=[];
+  for(i=filled.length-1;i>=0&&notes.length<3;i--){
+    var rr=filled[i].r,txt=(rr.moment||rr.proudOf||rr.quote||"").trim();
+    if(txt)notes.push({d:filled[i].d,t:txt});
+  }
+  if(notes.length){
+    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:8px">מה שכתבת</div>';
+    for(i=0;i<notes.length;i++){
+      var t=notes[i].t;if(t.length>140)t=t.slice(0,138)+"…";
+      h+='<div style="border-inline-start:2px solid var(--violet-100);padding-inline-start:10px;margin-bottom:10px">'+
+         '<div style="font-size:12px;color:var(--ink-soft);line-height:1.65">'+esc(t)+'</div>'+
+         '<div style="font-size:9.5px;color:var(--muted-soft);margin-top:3px">'+dayName(notes[i].d)+'</div></div>';
+    }
+  }
+
+  /* the numbers, last and quiet, and only the ones that exist */
+  var moods=[],bodies=[],workouts=0,stepSum=0,stepDays=0;
+  for(i=0;i<filled.length;i++){
+    var f=filled[i].r;
+    if(f.mood)moods.push(f.mood);
+    if(f.body)bodies.push(f.body);
+    if(f.workout)workouts++;
+    var st=stepsOf(filled[i].d);
+    if(st>0){stepSum+=st;stepDays++;}
+  }
+  var bits=[],avg=function(a){var t=0,j;for(j=0;j<a.length;j++)t+=a[j];return t/a.length;};
+  if(moods.length)bits.push('מזג '+avg(moods).toFixed(1));
+  if(bodies.length)bits.push('גוף '+avg(bodies).toFixed(1));
+  if(workouts)bits.push(workouts+(workouts===1?" אימון":" אימונים"));
+  if(stepDays)bits.push(Math.round(stepSum/stepDays).toLocaleString()+' צעדים ביום');
+  if(bits.length)
+    h+='<div style="font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums">'+bits.join(' · ')+'</div>';
+
+  return h+'</div>';
+}
+
 function renderReflectHome(){
   var today=todayStr(),r=rfRec(today);
   var h='<div style="padding-bottom:24px">';
@@ -16391,6 +16474,8 @@ function renderReflectHome(){
   h+='</div>';
 
   h+='<button class="rf-secs-b" onclick="rfSecsOpen()">'+rfSecsLabel()+'</button>';
+
+  h+=weekCardHTML();
 
   var prev=[],i,d,s;
   for(i=1;i<=60;i++){
