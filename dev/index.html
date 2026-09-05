@@ -5924,6 +5924,12 @@ function renderSummaryOverlay(dateStr){
     window._sumClockNeedsDraw=true;
   }
   if(sum.differently&&sumSecOn('think'))h+='<div class="sm-sec sm-quiet"><div class="sm-lab" style="color:var(--terra-500)">הייתי עושה אחרת</div><div class="sm-body">'+esc(sum.differently)+'</div></div>';
+  if((sum.grateful||sum.gratefulOverlooked)&&sumSecOn('grateful')){
+    h+='<div class="sm-sec sm-quiet"><div class="sm-lab" style="color:var(--amber-700)">הכרת תודה</div>';
+    if(sum.grateful)h+='<div class="sm-txt">'+esc(sum.grateful)+'</div>';
+    if(sum.gratefulOverlooked)h+='<div class="sm-txt" style="opacity:.8;margin-top:6px">'+esc(sum.gratefulOverlooked)+'</div>';
+    h+='</div>';
+  }
   if(sum.quote)h+='<div style="border-right:3px solid var(--violet-500);padding:10px 14px;background:rgba(201,188,224,.09);border-radius:0 14px 14px 0;margin-bottom:12px"><div style="font-size:9px;color:var(--muted);margin-bottom:5px">משפט שתפס</div><div style="font-size:13px;line-height:1.7;font-style:italic">&#8220;'+esc(sum.quote)+'&#8221;</div></div>';
   h+='<div style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px">&#x1F331; יום מוצלח</div></div>';
   div.innerHTML=h;document.body.appendChild(div);
@@ -16181,7 +16187,8 @@ var RF_STAGE1=[
   {id:'plannedVsActual',kind:'ladder',q:'עד כמה היום שלך נראה כמו היום שרצית שיהיה?',opts:RF_PLANNED},
   {id:'moment',kind:'text',q:'מה היה הרגע הכי טוב שלך היום?',ph:'אפילו רגע קטן.'},
   {id:'photo',kind:'photo',q:'איזו תמונה מספרת את היום שלך?',sub:'זה יכול להיות רגע, מקום, אדם, משהו שעשית — או פשוט תמונה שמרגישה כמו היום שעבר עליך.'},
-  {id:'takeawayForTomorrow',kind:'text',q:'מה אתה לוקח מהיום הזה למחר?',ph:'מחשבה, כוונה, או משהו קטן.'}
+  {id:'takeawayForTomorrow',kind:'text',q:'מה אתה לוקח מהיום הזה למחר?',ph:'מחשבה, כוונה, או משהו קטן.'},
+  {id:'grateful',kind:'text',q:'על מה אתה אסיר תודה היום?',ph:'דבר אחד. אפילו קטן מאוד.'}
 ];
 
 /* The deep pass is a board, not a queue: fifteen questions laid out like the
@@ -16202,7 +16209,8 @@ var RF_STAGE2=[
   {id:'song',kind:'song',t:'השיר של היום',s:'מה התאים למה שעבר',ic:'note',g:'lav',q:'מה השיר של היום שלך?',sub:'איזה שיר הכי מתאים למה שעבר עליך היום?'},
   {id:'quote',kind:'text',t:'משפט שלקחת',s:'משהו שנשאר',ic:'quote',g:'amb',q:'יש משפט שלקחת איתך היום?',sub:'משהו ששמעת, קראת או חשבת ולא עזב אותך.',ph:'משפט, מחשבה, רגע...'},
   {id:'differently',kind:'text',t:'מה היית משנה',s:'רגע אחד אחורה',ic:'undo',g:'gry',q:'אם היית יכול לחזור לרגע אחד היום — מה היית עושה אחרת?',sub:'לא כדי לשפוט את היום. רק כדי להבין אותו טוב יותר.'},
-  {id:'endOfDayMood',kind:'mood',t:'איך אתה עכשיו',s:'ברגע הזה',ic:'face',g:'ter',q:'איך אתה מרגיש עכשיו, ברגע הזה?'}
+  {id:'endOfDayMood',kind:'mood',t:'איך אתה עכשיו',s:'ברגע הזה',ic:'face',g:'ter',q:'איך אתה מרגיש עכשיו, ברגע הזה?'},
+  {id:'gratefulOverlooked',kind:'text',t:'מה שמובן מאליו',s:'ולא באמת',ic:'bowl',g:'amb',q:'מה היה שם היום שאתה בדרך כלל לא שם לב אליו — ובלעדיו היום היה נראה אחרת?',ph:'משהו שתמיד שם.'}
 ];
 
 var RF_GRAD={
@@ -16214,6 +16222,7 @@ var RF_GRAD={
   gry:['linear-gradient(145deg,#f0ede8,#e8e4de)','#7a716b']
 };
 var RF_ICONS={
+  bowl:'<path d="M3.9 12.4a8.1 8.1 0 0 0 16.2 0Z"/><path d="M12 3.2v5.6"/><path d="M9.3 6.1 12 3.2l2.7 2.9"/>',
   spark:'<path d="M12 3.4l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9Z"/>',
   medal:'<circle cx="12" cy="14.6" r="5.4"/><path d="M8.4 9.6 6.2 3.6h11.6l-2.2 6"/>',
   sun:'<circle cx="12" cy="12" r="4.2"/><path d="M12 3.2v2.2"/><path d="M12 18.6v2.2"/><path d="M3.2 12h2.2"/><path d="M18.6 12h2.2"/><path d="m5.9 5.9 1.6 1.6"/><path d="m16.5 16.5 1.6 1.6"/><path d="m18.1 5.9-1.6 1.6"/><path d="m7.5 16.5-1.6 1.6"/>',
@@ -16279,7 +16288,9 @@ var SUM_SECS=[
   {k:'time',   t:'לאן הלך הזמן',  d:'חלוקת השעות', ids:['timeclock']},
   {k:'energy', t:'אנרגיה',        d:'מה מילא אותך ומה רוקן', ids:['energyGivers','energyDrainers']},
   {k:'people', t:'אנשים',         d:'מי השפיע על היום', ids:['influentialPerson']},
-  {k:'song',   t:'השיר של היום',  d:'', ids:['song']}
+  {k:'song',   t:'השיר של היום',  d:'', ids:['song']},
+  {k:'grateful',t:'הכרת תודה',    d:'על מה היית אסיר תודה, ומה היה מובן מאליו',
+   ids:['grateful','gratefulOverlooked']}
 ];
 function sumSecsOn(){
   var raw=null;try{raw=localStorage.getItem(SUM_SECS_KEY);}catch(e){}
@@ -16428,6 +16439,22 @@ function weekCardHTML(){
       h+='<div style="border-inline-start:2px solid var(--violet-100);padding-inline-start:10px;margin-bottom:10px">'+
          '<div style="font-size:12px;color:var(--ink-soft);line-height:1.65">'+esc(t)+'</div>'+
          '<div style="font-size:9.5px;color:var(--muted-soft);margin-top:3px">'+dayName(notes[i].d)+'</div></div>';
+    }
+  }
+
+  /* gratitude gets its own list. Folded into "what you wrote" it would be
+     buried among the moments, and a week of these read together is the point. */
+  var thanks=[];
+  for(i=filled.length-1;i>=0&&thanks.length<3;i--){
+    var gr=(filled[i].r.grateful||filled[i].r.gratefulOverlooked||"").trim();
+    if(gr)thanks.push({d:filled[i].d,t:gr});
+  }
+  if(thanks.length){
+    h+='<div style="font-size:10px;color:var(--amber-700);letter-spacing:.08em;font-weight:700;margin:14px 0 8px">הכרת תודה</div>';
+    for(i=0;i<thanks.length;i++){
+      var tg=thanks[i].t;if(tg.length>120)tg=tg.slice(0,118)+"…";
+      h+='<div style="font-size:12px;color:var(--ink-soft);line-height:1.65;margin-bottom:7px">'+
+         esc(tg)+'<span style="font-size:9.5px;color:var(--muted-soft)"> · '+dayName(thanks[i].d)+'</span></div>';
     }
   }
 
