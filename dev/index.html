@@ -5899,6 +5899,11 @@ function renderSummaryOverlay(dateStr){
   if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; מים</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+sum.water+'מ"ל</span></div>';}
   h+='</div>';
   }
+  if(sum.workoutDone!==undefined&&sumSecOn('fit')){
+    var wp=plannedWorkoutFor(dateStr);
+    h+='<div class="sm-sec sm-quiet"><div class="sm-lab">'+(wp?esc(wp.label):'אימון')+' מתוכנן</div>'+
+       '<div class="sm-txt">'+(sum.workoutDone?'בוצע':'לא יצא הפעם')+'</div></div>';
+  }
   if((sum.workout||sum.steps)&&sumSecOn('fit')){h+='<div class="sm-sec">';if(sum.workout)h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:'+(sum.steps?'10px':'0')+'"><span style="font-size:22px">&#x1F3CB;&#xFE0F;</span><div><div style="font-size:9px;color:var(--muted)">פעילות גופנית</div><div style="font-size:13px;font-weight:600;margin-top:2px">'+esc(sum.workout)+'</div></div></div>';if(sum.steps)h+='<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">&#x1F463;</span><div><div style="font-size:9px;color:var(--muted)">צעדים</div><div style="font-size:18px;font-weight:700;color:var(--green-500)">'+sum.steps.toLocaleString()+'</div></div></div>';h+='</div>';}
   if(sum.song&&sumSecOn('song'))h+='<div class="sm-sec sm-song"><span style="font-size:26px">&#x1F3B5;</span><div><div class="sm-lab">השיר של היום</div><div style="font-size:15px;font-weight:800;color:var(--ink);margin-top:2px">'+esc(sum.song)+'</div></div></div>';
   // Timeclock in summary — canvas-based spiral
@@ -7925,6 +7930,39 @@ function loadWeekPlan(){try{var x=localStorage.getItem('fit_week_plan');return x
 function saveWeekPlan(obj){try{localStorage.setItem('fit_week_plan',JSON.stringify(obj));}catch(e){}}
 
 var _editWeekDay='w0d0';
+
+/* ── WHAT TODAY WAS SUPPOSED TO BE ──
+   The schedule already knows: fit_week_plan holds a type per weekday. Nothing
+   ever asked it anything, so the evening had no idea a workout had been
+   planned and the schedule had no idea whether one happened.
+
+   Worth knowing about the grid: it is two weeks wide, but week 0 is always
+   "this week" - isToday is (w===0 && dw===today), and nothing ever rotates.
+   So the second week is a plan for a next week that never arrives. Only w0 is
+   real, and only w0 is read here. */
+function plannedWorkoutFor(dateStr){
+  var dt=new Date(dateStr+"T12:00:00");
+  if(isNaN(dt))return null;
+  var plan=loadWeekPlan(),entry=plan["w0d"+dt.getDay()];
+  if(!entry||!entry.type||entry.type==="rest")return null;
+  var t=null;
+  for(var i=0;i<WORKOUT_TYPES.length;i++)if(WORKOUT_TYPES[i].id===entry.type)t=WORKOUT_TYPES[i];
+  if(!t)return null;
+  return{type:entry.type,label:entry.label||t.label,emoji:t.emoji,color:t.color};
+}
+
+/* If a session was already recorded there is nothing to ask - the app knows. */
+function workoutLoggedOn(dateStr){
+  var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
+  for(var i=log.length-1;i>=0;i--){
+    var dt=new Date(log[i].date);
+    if(!isFinite(dt))continue;
+    var m=String(dt.getMonth()+1),d=String(dt.getDate());
+    var iso=dt.getFullYear()+"-"+(m.length<2?"0"+m:m)+"-"+(d.length<2?"0"+d:d);
+    if(iso===dateStr)return log[i].name||"אימון";
+  }
+  return null;
+}
 
 function renderWeeklyPlan(){
   document.getElementById('hdr-title').textContent='יומן אימונים';
@@ -16185,6 +16223,10 @@ var RF_STAGE1=[
   {id:'dayRating',kind:'scale',q:'אם היית צריך לתת ליום הזה ציון — איזה ציון הוא מקבל?'},
   {id:'flow',kind:'flow',q:'איך זרם היום שלך?',sub:'כמה עוגנים לפי הסדר. זה גם מה שיישאר ממנו בזיכרון.'},
   {id:'plannedVsActual',kind:'ladder',q:'עד כמה היום שלך נראה כמו היום שרצית שיהיה?',opts:RF_PLANNED},
+  /* Only ever reaches the queue on a day the schedule planned something and
+     nothing was recorded - see rfSteps. The text names the type, so it is a
+     yes/no about one specific thing rather than a general audit. */
+  {id:'workoutDone',kind:'branch',q:'היום היה מתוכנן אימון. יצא לך?'},
   {id:'moment',kind:'text',q:'מה היה הרגע הכי טוב שלך היום?',ph:'אפילו רגע קטן.'},
   {id:'photo',kind:'photo',q:'איזו תמונה מספרת את היום שלך?',sub:'זה יכול להיות רגע, מקום, אדם, משהו שעשית — או פשוט תמונה שמרגישה כמו היום שעבר עליך.'},
   {id:'takeawayForTomorrow',kind:'text',q:'מה אתה לוקח מהיום הזה למחר?',ph:'מחשבה, כוונה, או משהו קטן.'},
@@ -16281,7 +16323,7 @@ var SUM_SECS=[
    ids:['moment','impactfulMoment','proudOf']},
   {k:'photo',  t:'תמונת היום',    d:'התמונה שמספרת את היום', ids:['photo']},
   {k:'food',   t:'סיכום תזונה',   d:'קלוריות, מאקרו ומים של אותו יום', auto:true},
-  {k:'fit',    t:'כושר וצעדים',   d:'פעילות גופנית וספירת צעדים', ids:['steps'], auto:true},
+  {k:'fit',    t:'כושר וצעדים',   d:'פעילות גופנית וספירת צעדים', ids:['steps','workoutDone'], auto:true},
   {k:'think',  t:'תובנות ומחשבות',d:'משפט שלקחת, מחשבה שחזרה, מה היית משנה',
    ids:['quote','recurringThought','differently','takeawayForTomorrow']},
   {k:'flow',   t:'זרימת היום',    d:'עוגנים לפי הסדר וציר היום', ids:['flow','dayTimeline']},
@@ -16331,7 +16373,23 @@ function sumHiddenIds(){
 function rfSteps(){
   var all=_rfStage===2?RF_STAGE2:RF_STAGE1;
   var hide=sumHiddenIds(),out=[],i;
-  for(i=0;i<all.length;i++)if(!hide[all[i].id])out.push(all[i]);
+  /* The workout question is the one step that is not always worth asking. On a
+     rest day there is nothing to ask, and when a session is already recorded
+     the answer is known - asking anyway would be the app pretending not to
+     know something it does. */
+  var planned=null,logged=null;
+  try{planned=plannedWorkoutFor(todayStr());logged=workoutLoggedOn(todayStr());}catch(e){}
+  for(i=0;i<all.length;i++){
+    if(hide[all[i].id])continue;
+    if(all[i].id==='workoutDone'){
+      if(!planned||logged)continue;
+      var w={},k;for(k in all[i])w[k]=all[i][k];
+      w.q='היום היה מתוכנן '+(planned.label||'אימון')+'. יצא לך?';
+      out.push(w);
+      continue;
+    }
+    out.push(all[i]);
+  }
   return out.length?out:all;
 }
 
@@ -16680,7 +16738,7 @@ function renderReflectStep(){
     h+='<button class="rf-rung'+(cur===true?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',true)">כן</button>';
     h+='<button class="rf-rung'+(cur===false?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',false)">לא</button>';
     h+='</div>';
-    if(cur===true){
+    if(cur===true&&q.follow){
       h+='<div class="rf-sub" style="margin-top:26px;font-weight:700;color:var(--ink);font-size:15px">'+q.follow+'</div>';
       h+='<div style="margin-top:14px">'+rfChipsHTML(q.listId,q.opts,rfArr(q.listId))+'</div>';
       h+='<textarea class="rf-in" id="rf-note" style="min-height:64px;margin-top:16px" placeholder="'+(q.ph||'')+'">'+(rfVal(q.note)?esc(rfVal(q.note)):'')+'</textarea>';
@@ -16918,7 +16976,9 @@ function rfToggleChip(id,val){
 // "No" is an answer, so it moves on by itself; "yes" opens the follow-up.
 function rfPickBranch(id,yes){
   var p={};p[id]=yes;rfSave(p);
-  if(!yes)rfAutoAdvance();else renderReflectStep();
+  var q=null,st=rfSteps(),i;
+  for(i=0;i<st.length;i++)if(st[i].id===id)q=st[i];
+  if(!yes||!q||!q.follow)rfAutoAdvance();else renderReflectStep();
 }
 function rfPickPerson(name){rfSave({influentialPerson:name});renderReflectStep();}
 function rfAddPerson(){
