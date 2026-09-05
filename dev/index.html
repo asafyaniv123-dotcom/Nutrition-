@@ -453,6 +453,44 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .crop-x{background:none;color:#b9b0a8}
 .crop-ok{background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff}
 .crop-rs{border:1px solid rgba(255,255,255,.18);background:none;border-radius:11px;padding:10px 18px;font-family:inherit;font-size:11.5px;font-weight:800;color:#a49a92;cursor:pointer}
+/* מפת הכוכבים */
+.cm-go{width:100%;margin-top:9px;border:none;border-radius:11px;padding:9px;background:linear-gradient(135deg,#2f2b46,#413a63);color:#e9e2ff;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
+.cm-wrap{display:flex;flex-direction:column;height:calc(100vh - 190px);min-height:420px}
+.cm-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cm-back{background:none;border:none;font-family:inherit;font-size:12px;font-weight:700;color:#a89e97;cursor:pointer;padding:0}
+.cm-pct{font-size:13px;font-weight:800;color:#a690cf}
+.cm-sky{flex:1;position:relative;border-radius:22px;overflow:hidden;touch-action:none;
+  background:radial-gradient(120% 90% at 50% 0%,#3b3560 0%,#241f3d 45%,#181430 100%);
+  box-shadow:inset 0 0 60px rgba(0,0,0,.45)}
+.cm-sky svg{width:100%;height:100%;display:block}
+.cm-th{stroke:rgba(190,178,232,.22);transition:stroke .45s,filter .45s}
+.cm-th.on{stroke:rgba(255,214,120,.85);filter:drop-shadow(0 0 4px rgba(255,201,84,.65))}
+.cm-star{fill:#6f6699;stroke:rgba(203,185,245,.55);stroke-width:1;transition:fill .4s,stroke .4s,filter .4s}
+.cm-n.on .cm-star{fill:#ffe07a;stroke:#fff5cf;filter:drop-shadow(0 0 7px rgba(255,206,90,.9))}
+.cm-g .cm-star{fill:#8f83c4;stroke:#d8ccff;stroke-width:1.4}
+.cm-g.on .cm-star{fill:#ffe9a3;stroke:#fff}
+.cm-halo{opacity:.5;transition:opacity .4s}
+.cm-n.on .cm-halo{opacity:1}
+.cm-hit{fill:transparent;cursor:pointer}
+.cm-n{cursor:pointer;transition:opacity .3s}
+.cm-n.dim{opacity:.2}
+.cm-t{fill:#cfc6ea;font-size:19px;font-weight:700;font-family:inherit;pointer-events:none}
+.cm-n.on .cm-t{fill:#ffeec2}
+.cm-g .cm-t{font-size:25px;fill:#fff;font-weight:800}
+/* the step you said you are on next */
+.cm-n.act .cm-star{stroke:#8fe0c7;stroke-width:1.8}
+/* finishing something */
+@keyframes cmPulse{0%{transform:scale(1)}45%{transform:scale(1.5)}100%{transform:scale(1)}}
+.cm-n.on .cm-halo{animation:cmPulse 1s ease-out}
+@keyframes cmCheer{0%{opacity:0;transform:translateY(8px)}18%{opacity:1;transform:none}
+  78%{opacity:1}100%{opacity:0}}
+.cm-cheer{position:absolute;left:0;right:0;top:16px;text-align:center;font-size:13px;font-weight:800;
+  color:#ffe6a6;text-shadow:0 2px 12px rgba(0,0,0,.7);animation:cmCheer 1.9s ease-out forwards;pointer-events:none}
+.cm-bar{padding-top:10px}
+.cm-hint{font-size:10.5px;color:#a89e97;line-height:1.55;margin-bottom:8px;text-align:center}
+.cm-foc{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border-radius:12px;padding:9px 12px;margin-bottom:8px;font-size:12.5px;font-weight:800;color:#4a4340;box-shadow:0 2px 8px rgba(200,180,160,.1)}
+.cm-x{background:none;border:none;font-size:19px;line-height:1;color:#c0b6ae;cursor:pointer;font-family:inherit;padding:0 2px}
+.cm-add{width:100%;border:none;border-radius:14px;padding:12px;background:linear-gradient(135deg,#c9bce0,#a690cf);color:#fff;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
 /* הארון שלי */
 .cl-mirror{position:relative;background:#fff;border-radius:20px;padding:10px 8px;margin-bottom:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
 /* The place a garment is brought to, drawn as the two edges it sits between
@@ -12367,9 +12405,313 @@ function renderGoals(){
   if(_goalsView==='view-goal')return renderViewGoal();
   if(_goalsView==='edit-goal')return renderEditGoal();
   if(_goalsView==='add-sub')return renderAddSub();
+  if(_goalsView==='map')return cmRender();
   renderGoalsHome();
 }
 
+/* ── מפת הכוכבים ──────────────────────────────────────────────────────────
+   A goal drawn as a constellation: the goal itself as the north star, its
+   milestones as the stars below it, and the steps of each milestone as the
+   small stars around it. Threads between them light up as things get done.
+
+   THE DATA. The app already had goals two levels deep - a goal and a flat
+   list of subs - and this needs three. So a sub IS a milestone, and gains a
+   steps array:
+
+     Goal      {id,title,why,horizon,targetDate, subs:Milestone[]}
+     Milestone {id,text,done, steps:Step[]}
+     Step      {id,text,done,active}
+
+   A milestone saved before today simply has no steps, which reads as a
+   milestone with none - so every goal already written keeps working and
+   nothing had to be migrated. Milestones are addressed by index rather than
+   id because that is what the existing array supports; ids are written on
+   new items so the model is honest going forward.
+
+   THE STACK. No canvas, no React, no animation library. SVG because the
+   labels have to be real text (Hebrew, selectable, and it is RTL), because
+   hit-testing a circle is free, and because the whole map is one element the
+   browser can transform for pan and zoom without anything re-rendering.
+   Completion states are CSS classes, so the glow and the pulse are the
+   compositor's problem rather than JavaScript's. */
+
+var _cmGoal=-1, _cmFocus=-1, _cmCam={x:0,y:0,s:1}, _cmDrag=null, _cmPinch=null, _cmCelebrate=0;
+
+function cmMilestones(g){
+  var subs=(g&&g.subs)||[],i;
+  for(i=0;i<subs.length;i++)if(!subs[i].steps)subs[i].steps=[];
+  return subs;
+}
+function cmStepsDone(m){
+  var st=m.steps||[],n=0,i;
+  for(i=0;i<st.length;i++)if(st[i].done)n++;
+  return n;
+}
+/* A milestone with steps is finished when its steps are; one without is
+   finished when it is ticked. Two rules rather than one, because the second
+   is every milestone that existed before this screen did. */
+function cmMileDone(m){
+  return (m.steps&&m.steps.length)?cmStepsDone(m)===m.steps.length:!!m.done;
+}
+function cmGoalPct(g){
+  var ms=cmMilestones(g),i,tot=0,got=0;
+  for(i=0;i<ms.length;i++){
+    var st=ms[i].steps||[];
+    if(st.length){tot+=st.length;got+=cmStepsDone(ms[i]);}
+    else{tot+=1;if(ms[i].done)got+=1;}
+  }
+  return tot?Math.round(got/tot*100):0;
+}
+
+/* ── LAYOUT ──
+   Milestones spread along a shallow arc under the goal, first on the RIGHT
+   because the app is Hebrew and that is where reading starts. Each one's
+   steps fan out beneath it. The whole thing is measured afterwards and the
+   viewBox fitted to it, so a goal with two milestones and one with nine both
+   arrive filling the screen instead of one being a speck. */
+function cmLayout(g){
+  var ms=cmMilestones(g),n=ms.length,i,j;
+  var nodes=[],links=[];
+  var cx=0,goalY=0;
+  nodes.push({k:'g',i:-1,x:cx,y:goalY,r:30,t:g.title,lit:cmGoalPct(g)===100});
+
+  var spread=Math.max(230,Math.min(300,760/Math.max(1,n-1)))*(n-1);
+  var mileY=goalY+330;
+  for(i=0;i<n;i++){
+    var t=(n===1)?0.5:i/(n-1);
+    var mx=cx+(spread/2)-spread*t;                 // t=0 sits on the right
+    var my=mileY-Math.sin(t*Math.PI)*54;           // a shallow arc, not a row
+    var mDone=cmMileDone(ms[i]);
+    nodes.push({k:'m',i:i,x:mx,y:my,r:19,t:ms[i].text,lit:mDone});
+    links.push({x1:cx,y1:goalY,x2:mx,y2:my,lit:mDone,w:2.4});
+
+    var st=ms[i].steps||[];
+    for(j=0;j<st.length;j++){
+      var u=(st.length===1)?0.5:j/(st.length-1);
+      var a=Math.PI*(0.18+0.64*u);
+      var R=(st.length>4?235:195);   // wide enough that adjacent labels clear
+      var sx=mx+Math.cos(a)*R;
+      var sy=my+Math.sin(a)*R;
+      nodes.push({k:'s',i:i,j:j,x:sx,y:sy,r:11,t:st[j].text,lit:!!st[j].done,act:!!st[j].active});
+      links.push({x1:mx,y1:my,x2:sx,y2:sy,lit:!!st[j].done,w:1.3});
+    }
+  }
+  // fit the box to whatever was drawn, with room for the labels
+  var minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  for(i=0;i<nodes.length;i++){
+    var p=nodes[i];
+    if(p.x-p.r<minx)minx=p.x-p.r;
+    if(p.x+p.r>maxx)maxx=p.x+p.r;
+    if(p.y-p.r<miny)miny=p.y-p.r;
+    if(p.y+p.r>maxy)maxy=p.y+p.r;
+  }
+  var padX=210,padT=90,padB=120;
+  return {nodes:nodes,links:links,
+          vb:[minx-padX,miny-padT,(maxx-minx)+padX*2,(maxy-miny)+padT+padB]};
+}
+
+function cmOpen(idx){
+  _cmGoal=idx;_cmFocus=-1;_cmCam={x:0,y:0,s:1};
+  _goalsView='map';renderGoals();
+}
+function cmClose(){_goalsView='view-goal';renderGoals();}
+
+function cmRender(){
+  var goals=loadGoals(),g=goals[_cmGoal];
+  if(!g){_goalsView='home';renderGoals();return;}
+  var L=cmLayout(g),i,pct=cmGoalPct(g);
+  var h='<div class="cm-wrap">';
+
+  h+='<div class="cm-top">';
+  h+='<button class="cm-back" onclick="cmClose()">&#8249; חזרה</button>';
+  h+='<div class="cm-pct">'+pct+'%</div>';
+  h+='</div>';
+
+  h+='<div class="cm-sky" id="cm-sky">';
+  h+='<svg id="cm-svg" viewBox="'+L.vb.join(' ')+'" preserveAspectRatio="xMidYMid meet">';
+  h+='<defs>'+
+     '<radialGradient id="cmGlow"><stop offset="0%" stop-color="#fff" stop-opacity=".95"/>'+
+     '<stop offset="45%" stop-color="#cbb9f5" stop-opacity=".45"/>'+
+     '<stop offset="100%" stop-color="#cbb9f5" stop-opacity="0"/></radialGradient>'+
+     '<radialGradient id="cmGlowOn"><stop offset="0%" stop-color="#fff" stop-opacity="1"/>'+
+     '<stop offset="40%" stop-color="#ffe9a8" stop-opacity=".7"/>'+
+     '<stop offset="100%" stop-color="#ffcf5c" stop-opacity="0"/></radialGradient>'+
+     '</defs>';
+  h+='<g id="cm-cam">';
+
+  // threads first, so the stars sit on top of them
+  for(i=0;i<L.links.length;i++){
+    var k=L.links[i];
+    h+='<line class="cm-th'+(k.lit?' on':'')+'" x1="'+k.x1+'" y1="'+k.y1+'" x2="'+k.x2+'" y2="'+k.y2+'" stroke-width="'+k.w+'"/>';
+  }
+  for(i=0;i<L.nodes.length;i++){
+    var p=L.nodes[i];
+    var dim=(_cmFocus>=0&&p.k!=='g'&&p.i!==_cmFocus);
+    var cls='cm-n cm-'+p.k+(p.lit?' on':'')+(dim?' dim':'')+(p.act?' act':'');
+    // built plainly: the three shapes of this call are worth seeing at a glance
+    var call=(p.k==='g')?'cmTap(&quot;g&quot;,-1)'
+            :(p.k==='m')?('cmTap(&quot;m&quot;,'+p.i+')')
+            :('cmTap(&quot;s&quot;,'+p.i+','+p.j+')');
+    h+='<g class="'+cls+'" onclick="'+call+'">';
+    h+='<circle class="cm-halo" cx="'+p.x+'" cy="'+p.y+'" r="'+(p.r*2.6)+'" fill="url(#'+(p.lit?'cmGlowOn':'cmGlow')+')"/>';
+    h+=cmStarPath(p.x,p.y,p.r);
+    // a generous invisible target: the drawn star is small, the finger is not
+    h+='<circle class="cm-hit" cx="'+p.x+'" cy="'+p.y+'" r="'+Math.max(30,p.r*1.9)+'"/>';
+    /* A milestone's label goes ABOVE it, because directly below it is where
+       its own steps fan out - the two were landing on each other. Goals and
+       steps have nothing under them, so their labels hang below as usual. */
+    var ly=(p.k==='m')?(p.y-p.r-14):(p.y+p.r+26);
+    h+='<text class="cm-t" x="'+p.x+'" y="'+ly+'" text-anchor="middle">'+esc(cmClip(p.t,p.k))+'</text>';
+    h+='</g>';
+  }
+  h+='</g></svg>';
+  if(_cmCelebrate)h+='<div class="cm-cheer">'+esc(_cmCelebrate===2?'המטרה הושלמה':'אבן דרך הושלמה')+'</div>';
+  h+='</div>';
+
+  h+='<div class="cm-bar">';
+  if(_cmFocus>=0){
+    var mm=cmMilestones(g)[_cmFocus];
+    h+='<div class="cm-foc"><span>'+esc(mm?mm.text:'')+'</span>'+
+       '<button class="cm-x" onclick="cmFocus(-1)">&times;</button></div>';
+    h+='<button class="cm-add" onclick="cmAddStep('+_cmFocus+')">+ הוסף צעד</button>';
+  } else {
+    h+='<div class="cm-hint">גע בכוכב כדי לסמן שהוא נעשה. גע באבן דרך כדי להתמקד בה.</div>';
+    h+='<button class="cm-add" onclick="cmAddMile()">+ הוסף אבן דרך</button>';
+  }
+  h+='</div></div>';
+
+  document.getElementById('content').innerHTML=h;
+  cmBind();
+}
+// a five-pointed star, drawn rather than a font glyph so it scales cleanly
+function cmStarPath(cx,cy,r){
+  var pts=[],i,a,rr;
+  for(i=0;i<10;i++){
+    a=(Math.PI/5)*i-Math.PI/2;
+    rr=(i%2===0)?r:r*0.42;
+    pts.push((cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1));
+  }
+  return '<polygon class="cm-star" points="'+pts.join(' ')+'"/>';
+}
+function cmClip(t,k){
+  var max=(k==='g')?26:(k==='m'?20:16);
+  t=String(t||'');
+  return t.length>max?t.slice(0,max-1)+'…':t;
+}
+
+/* ── TAPPING ── */
+function cmTap(kind,i,j){
+  if(_cmDrag&&_cmDrag.moved)return;      // that was a pan, not a tap
+  var goals=loadGoals(),g=goals[_cmGoal];
+  if(!g)return;
+  if(kind==='g'){cmFocus(-1);return;}
+  if(kind==='m'){
+    var ms=cmMilestones(g);
+    // a milestone with no steps is a thing you tick; one with steps is a place
+    if(!(ms[i].steps&&ms[i].steps.length)){
+      ms[i].done=!ms[i].done;
+      saveGoals(goals);
+      if(ms[i].done)cmCheer(cmGoalPct(g)===100?2:1);
+      cmRender();return;
+    }
+    cmFocus(_cmFocus===i?-1:i);return;
+  }
+  var m=cmMilestones(g)[i],st=m.steps[j];
+  st.done=!st.done;
+  saveGoals(goals);
+  if(st.done&&cmMileDone(m))cmCheer(cmGoalPct(g)===100?2:1);
+  cmRender();
+}
+function cmFocus(i){_cmFocus=i;cmRender();}
+function cmCheer(level){
+  _cmCelebrate=level;
+  setTimeout(function(){_cmCelebrate=0;if(_goalsView==='map')cmRender();},1900);
+}
+function cmAddStep(mi){
+  var t=prompt('מה הצעד?');
+  if(!t||!t.trim())return;
+  var goals=loadGoals(),g=goals[_cmGoal],ms=cmMilestones(g);
+  if(!ms[mi])return;
+  ms[mi].steps.push({id:'s'+Date.now().toString(36),text:t.trim(),done:false,active:false});
+  saveGoals(goals);cmRender();
+}
+function cmAddMile(){
+  var t=prompt('מה אבן הדרך?');
+  if(!t||!t.trim())return;
+  var goals=loadGoals(),g=goals[_cmGoal];
+  if(!g.subs)g.subs=[];
+  g.subs.push({id:'m'+Date.now().toString(36),text:t.trim(),done:false,steps:[]});
+  saveGoals(goals);cmRender();
+}
+
+/* ── PAN AND PINCH ──
+   The camera is one transform on one group. Nothing re-renders while a
+   finger is down - the map can hold a hundred stars and still move at the
+   refresh rate, because the browser is moving one element. */
+function cmBind(){
+  var sky=document.getElementById('cm-sky');
+  if(!sky)return;
+  var pts={};
+  function apply(){
+    var cam=document.getElementById('cm-cam');
+    if(cam)cam.setAttribute('transform','translate('+_cmCam.x+' '+_cmCam.y+') scale('+_cmCam.s+')');
+  }
+  function mid(a,b){return {x:(a.x+b.x)/2,y:(a.y+b.y)/2};}
+  function dist(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);}
+  sky.onpointerdown=function(e){
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(pts);
+    if(ids.length===1){
+      _cmDrag={x:e.clientX,y:e.clientY,cx:_cmCam.x,cy:_cmCam.y,moved:false};
+    } else if(ids.length===2){
+      var a=pts[ids[0]],b=pts[ids[1]];
+      _cmPinch={d:dist(a,b),s:_cmCam.s,m:mid(a,b),cx:_cmCam.x,cy:_cmCam.y};
+      _cmDrag=null;
+    }
+    try{sky.setPointerCapture(e.pointerId);}catch(_e){}
+  };
+  sky.onpointermove=function(e){
+    if(!pts[e.pointerId])return;
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(pts);
+    if(ids.length>=2&&_cmPinch){
+      var a=pts[ids[0]],b=pts[ids[1]];
+      var k=dist(a,b)/(_cmPinch.d||1);
+      _cmCam.s=Math.max(0.5,Math.min(3.2,_cmPinch.s*k));
+      apply();e.preventDefault();return;
+    }
+    if(_cmDrag){
+      var dx=e.clientX-_cmDrag.x,dy=e.clientY-_cmDrag.y;
+      if(Math.abs(dx)+Math.abs(dy)>6)_cmDrag.moved=true;
+      // in viewBox units, so dragging tracks the finger at any zoom
+      var sc=cmScale();
+      _cmCam.x=_cmDrag.cx+dx/sc;
+      _cmCam.y=_cmDrag.cy+dy/sc;
+      apply();e.preventDefault();
+    }
+  };
+  sky.onpointerup=sky.onpointercancel=function(e){
+    delete pts[e.pointerId];
+    if(Object.keys(pts).length<2)_cmPinch=null;
+    if(!Object.keys(pts).length){
+      // let the click through first, then forget it was a drag
+      setTimeout(function(){_cmDrag=null;},0);
+    }
+  };
+  sky.onwheel=function(e){
+    _cmCam.s=Math.max(0.5,Math.min(3.2,_cmCam.s*(e.deltaY<0?1.1:0.9)));
+    apply();e.preventDefault();
+  };
+  apply();
+}
+// how many screen pixels one viewBox unit is worth right now
+function cmScale(){
+  var svg=document.getElementById('cm-svg');
+  if(!svg)return 1;
+  var vb=svg.getAttribute('viewBox').split(' ');
+  var r=svg.getBoundingClientRect();
+  return Math.min(r.width/Number(vb[2]),r.height/Number(vb[3]))*_cmCam.s;
+}
 function renderGoalsHome(){
   var goals=loadGoals();
   var h='<div style="padding-bottom:30px">';
@@ -12407,6 +12749,7 @@ function renderGoalsHome(){
         // Next action
         var nextSub=subs.find(function(s){return !s.done;});
         if(nextSub)h+='<div style="margin-top:8px;font-size:11px;color:#6a6360;background:#f5f0eb;border-radius:8px;padding:5px 10px">צעד הבא: '+esc(nextSub.text)+'</div>';
+        h+='<button class="cm-go" onclick="event.stopPropagation();cmOpen('+gidx+')">&#10022; מפת הכוכבים</button>';
         h+='</div>';
       }
     }
