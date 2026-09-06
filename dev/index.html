@@ -12967,9 +12967,19 @@ function moTasksOn(date){
   return out;
 }
 
+var MO_CELL_MAX=3;
+function moWeekTasksOn(date,cache){
+  var sun=weekSunday(new Date(date+"T12:00:00")),k=wkStamp(sun);
+  if(!cache[k])cache[k]=loadWeek(sun);
+  var tasks=(cache[k]&&cache[k].tasks)||[],out=[],i;
+  for(i=0;i<tasks.length;i++)if(wkCoversDay(tasks[i],date))out.push(tasks[i]);
+  return out;
+}
+
 function renderPlanMonth(){
   if(!_moMonth)_moMonth=moFirst(new Date());
   var mo=loadMonth(_moMonth),i,t;
+  var wkCache={};                       // one loadWeek per week the month touches
   var year=_moMonth.getFullYear(),mi=_moMonth.getMonth();
   var first=new Date(year,mi,1,12),days=new Date(year,mi+1,0).getDate();
   var lead=first.getDay(),today=wkStamp(new Date());
@@ -12995,14 +13005,33 @@ function renderPlanMonth(){
     var st=year+'-'+(mi<9?'0':'')+(mi+1)+'-'+(i<10?'0':'')+i;
     h+='<div class="mo-cell'+(st===today?' today':'')+'" data-date="'+st+'" onclick="planOpenDay(\''+st+'\')">';
     h+='<div class="mo-n">'+i+'</div>';
+    var shown=0;
     for(t=0;t<mo.tasks.length;t++){
       if(mo.tasks[t].d!==st)continue;
+      if(shown>=MO_CELL_MAX)break;
       var cc=wkColor(mo.tasks[t].c);
       h+='<div class="mo-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(mo.tasks[t].w)+'</div>';
+      shown++;
     }
+    /* the week's tasks come after the month's and read quieter: this screen is
+       the month's plan, and the week is context on it rather than a second
+       list competing with it */
+    var wt=moWeekTasksOn(st,wkCache),extra=0;
+    for(t=0;t<wt.length;t++){
+      if(shown>=MO_CELL_MAX){extra=wt.length-t;break;}
+      var wc=wkColor(wt[t].c);
+      h+='<div class="mo-chip" style="background:var(--card);color:'+wc.tx+
+         ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+'</div>';
+      shown++;
+    }
+    if(extra>0)h+='<div style="font-size:7px;color:var(--muted-soft);font-weight:700;padding-inline-start:2px">+'+extra+'</div>';
     h+='</div>';
   }
   h+='</div>';
+  h+='<div style="display:flex;justify-content:center;gap:12px;margin-top:8px;font-size:8.5px;color:var(--muted-soft)">'+
+     '<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,var(--violet-100),var(--violet-200))"></span>מהחודש</span>'+
+     '<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:3px;background:var(--card);border-inline-start:2.5px solid var(--violet-500)"></span>מהשבוע</span>'+
+     '</div>';
   h+='<div style="font-size:9.5px;color:var(--muted-soft);text-align:center;margin-top:8px">לחיצה על יום פותחת את התכנון שלו</div>';
 
   var pool=[];
