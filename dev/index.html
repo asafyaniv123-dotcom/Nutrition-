@@ -6493,6 +6493,7 @@ function renderFitness(){
   else if(_fitView==='view-program')renderViewProgram();
   else if(_fitView==='weekly-plan')renderWeeklyPlan();
   else if(_fitView==='edit-week-day')renderEditWeekDay();
+  else if(_fitView==='stats')document.getElementById('content').innerHTML=renderFitStats();
   else if(_fitView==='steps')renderFitSteps();
   else if(_fitView==='steps-setup')renderFitStepsSetup();
 }
@@ -6533,6 +6534,183 @@ function stepsTrendHTML(){
        word+(flat?'':' ב־'+Math.abs(Math.round(rate.over)).toLocaleString()+' צעדים')+' ב־'+rate.days+' ימים</div>';
   }else{
     h+='<div style="font-size:11px;color:var(--muted-soft);line-height:1.6;margin-top:8px">עוד כמה ימים ויהיה כאן קו.</div>';
+  }
+  return h+'</div>';
+}
+
+/* ── THE NUMBERS ──
+   Everything here was already being recorded and nothing was ever added up.
+   Each set has carried a weight, a rep count and an RPE since the workout
+   screen was built, and the exercise database knows which muscle each
+   movement works. What was missing is the week: this app could tell you what
+   you lifted on Tuesday and not whether you are training more than you were
+   a month ago.
+
+   Three numbers, because they are the three the evidence actually supports:
+   volume, sets per muscle per week, and an estimated one-rep max. Session by
+   session none of them mean much - volume swings with how much time you had.
+   Week over week they do. */
+
+/* Epley. Honest only in the range it was fitted for, so a set of twenty is
+   not turned into a strength claim - above twelve reps the formula drifts
+   badly and this returns nothing rather than a confident wrong number. */
+function e1rm(weight,reps){
+  var w=+weight||0,r=+reps||0;
+  if(w<=0||r<1||r>12)return 0;
+  if(r===1)return w;
+  return w*(1+r/30);
+}
+
+/* The back is one muscle group for the purpose of a weekly set count; the
+   database splits it four ways because that is how you FIND an exercise, not
+   how you dose one. Cardio is left out of the band entirely - the range below
+   is about growing a muscle and says nothing about a run. */
+var MUSCLE_ROLLUP={"גב רחב":"גב","טרפז":"גב","גב תחתון":"גב","אלכסונים":"ליבה","בטן":"ליבה"};
+var SETS_BAND={lo:10,hi:20};
+function muscleGroupOf(exName){
+  var all=exAll(),i;
+  for(i=0;i<all.length;i++)if(all[i].n===exName){
+    var m=(all[i].m&&all[i].m[0])||"";
+    return MUSCLE_ROLLUP[m]||m||"אחר";
+  }
+  return "אחר";
+}
+
+/* The week runs Sunday to Saturday, in app days - so a session finished at
+   one in the morning lands in the week it belonged to. */
+function weekStartOf(dayKey){
+  var d=new Date(dayKey+"T12:00:00");
+  if(isNaN(d))return dayKey;
+  d.setDate(d.getDate()-d.getDay());
+  return dayStr(d);
+}
+
+/* weeksAgo 0 = this week. Everything is counted from the log, nothing new is
+   stored, so this is true from the first workout ever recorded. */
+function fitWeekStats(weeksAgo){
+  var start=weekStartOf(dayShift(-7*(weeksAgo||0))),end=dayShift(6,new Date(start+"T12:00:00"));
+  var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
+  var out={start:start,end:end,sessions:0,sets:0,reps:0,vol:0,byMuscle:{},minutes:0};
+  for(var i=0;i<log.length;i++){
+    var k=appDayOf(log[i].date);
+    if(!k||k<start||k>end)continue;
+    out.sessions++;
+    out.minutes+=(+log[i].duration||0);
+    var exs=log[i].exercises||[];
+    for(var j=0;j<exs.length;j++){
+      var g=muscleGroupOf(exs[j].name),st=exs[j].sets||[];
+      for(var q=0;q<st.length;q++){
+        if(!((+st[q].reps||0)>0))continue;      // an empty row is not a set
+        out.sets++;
+        out.reps+=(+st[q].reps||0);
+        out.vol+=(+st[q].weight||0)*(+st[q].reps||0);
+        out.byMuscle[g]=(out.byMuscle[g]||0)+1;
+      }
+    }
+  }
+  out.vol=Math.round(out.vol);
+  return out;
+}
+
+/* The heaviest honest single from every lift you have done, best first. */
+function fitBestLifts(limit){
+  var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
+  var best={},i,j,q;
+  for(i=0;i<log.length;i++){
+    var exs=log[i].exercises||[];
+    for(j=0;j<exs.length;j++){
+      var st=exs[j].sets||[];
+      for(q=0;q<st.length;q++){
+        var v=e1rm(st[q].weight,st[q].reps);
+        if(v>0&&(!best[exs[j].name]||v>best[exs[j].name].v))
+          best[exs[j].name]={v:v,w:+st[q].weight,r:+st[q].reps,d:appDayOf(log[i].date)};
+      }
+    }
+  }
+  var rows=[];for(var k in best)if(best.hasOwnProperty(k))rows.push({name:k,e:best[k]});
+  rows.sort(function(a,b){return b.e.v-a.e.v;});
+  return rows.slice(0,limit||5);
+}
+
+function renderFitStats(){
+  document.getElementById('hdr-title').textContent='המספרים שלי';
+  /* the exercise database is fetched, and without it every set lands in
+     "אחר" - so ask for it and draw again once it is here */
+  if(!exAll().length){exLoad(function(){if(_fitView==="stats")renderFitness();});}
+
+  var now=fitWeekStats(0),prev=fitWeekStats(1);
+  var h='<div style="padding-bottom:24px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">המספרים שלי</div>';
+  h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;color:var(--ink-soft);cursor:pointer;font-family:inherit">חזרה</button>';
+  h+='</div>';
+
+  if(!now.sessions&&!prev.sessions){
+    h+='<div style="background:var(--card);border-radius:20px;padding:24px 18px;text-align:center;box-shadow:0 4px 16px rgba(200,180,160,.1)">'+
+       '<div style="font-size:12px;color:var(--muted-soft);line-height:1.7">אחרי האימון הראשון יופיעו כאן המספרים — כמה הרמת, אילו שרירים עבדו, ולאן זה זז משבוע לשבוע.</div></div>';
+    return h+'</div>';
+  }
+
+  /* ── this week against last ── */
+  function delta(a,b,unit){
+    if(!b)return '';
+    var d=a-b;if(!d)return '<span style="color:var(--muted-soft)">ללא שינוי</span>';
+    var up=d>0;
+    return '<span style="color:'+(up?'var(--green-700)':'var(--muted)')+'">'+(up?'+':'')+
+      (unit==='%'?Math.round(d/b*100)+'%':Math.round(d).toLocaleString())+'</span>';
+  }
+  h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:12px">השבוע &middot; מול שבוע שעבר</div>';
+  var rows=[[now.sessions+(now.sessions===1?' אימון':' אימונים'),delta(now.sessions,prev.sessions)],
+            [now.sets+' סטים',delta(now.sets,prev.sets)],
+            [now.vol.toLocaleString()+' ק״ג נפח',delta(now.vol,prev.vol,'%')]];
+  for(var r=0;r<rows.length;r++){
+    h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(r<2?'8px':'0')+';font-variant-numeric:tabular-nums">'+
+       '<div style="font-size:13px;font-weight:700;color:var(--ink)">'+rows[r][0]+'</div>'+
+       '<div style="font-size:11.5px;font-weight:700">'+rows[r][1]+'</div></div>';
+  }
+  h+='</div>';
+
+  /* ── sets per muscle, against the range the evidence gives ── */
+  var ms=[],k;
+  for(k in now.byMuscle)if(now.byMuscle.hasOwnProperty(k))ms.push([k,now.byMuscle[k]]);
+  ms.sort(function(a,b){return b[1]-a[1];});
+  if(ms.length){
+    h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:12px">סטים לפי שריר &middot; השבוע</div>';
+    for(var i2=0;i2<ms.length;i2++){
+      var nm=ms[i2][0],ct=ms[i2][1];
+      var isCardio=(nm==="אירובי"||nm==="אחר");
+      var pct=Math.min(100,ct/SETS_BAND.hi*100);
+      var inBand=!isCardio&&ct>=SETS_BAND.lo;
+      h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">';
+      h+='<div style="width:64px;font-size:11px;color:var(--ink-soft);flex-shrink:0">'+esc(nm)+'</div>';
+      h+='<div style="flex:1;height:8px;border-radius:4px;background:var(--surface);overflow:hidden;position:relative">'+
+         '<div style="height:100%;width:'+pct+'%;border-radius:4px;background:'+(inBand?'var(--green-500)':'var(--violet-300)')+'"></div></div>';
+      h+='<div style="width:22px;text-align:left;font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums">'+ct+'</div>';
+      h+='</div>';
+    }
+    h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">מי שמתאמן כדי לגדול נמצא בדרך כלל בין '+SETS_BAND.lo+' ל־'+SETS_BAND.hi+' סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.</div>';
+    if(now.byMuscle['אחר'])
+      h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:6px">&ldquo;אחר&rdquo; הם תרגילים שהקלדת בעצמך — לספרייה אין להם שריר. בחירה מהספרייה תשבץ אותם.</div>';
+    h+='</div>';
+  }
+
+  /* ── the strongest single from each lift ── */
+  var lifts=fitBestLifts(5);
+  if(lifts.length){
+    h+='<div style="background:var(--card);border-radius:20px;padding:16px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:4px">הכי חזק</div>';
+    h+='<div style="font-size:10px;color:var(--muted-soft);margin-bottom:12px">חזרה אחת מקסימלית, מוערכת מהסט הכי טוב שרשמת</div>';
+    for(var L=0;L<lifts.length;L++){
+      var li=lifts[L];
+      h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(L<lifts.length-1?'8px':'0')+'">';
+      h+='<div style="font-size:12.5px;color:var(--ink);font-weight:600">'+esc(li.name)+'</div>';
+      h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+
+         Math.round(li.e.v)+' ק״ג <span style="color:var(--muted-soft)">&middot; '+li.e.w+'×'+li.e.r+'</span></div>';
+      h+='</div>';
+    }
+    h+='</div>';
   }
   return h+'</div>';
 }
@@ -7086,6 +7264,11 @@ function renderFitHome(){
   /* 4. and whether it is working at all - the long arc, which is the only
      place the answer actually lives */
   h+=weightCardHTML();
+
+  h+='<button onclick="_fitView=\'stats\';renderFitness()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:none;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1);cursor:pointer;font-family:inherit">'+
+     '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:var(--ink)">המספרים שלי</div>'+
+     '<div style="font-size:10.5px;color:var(--muted);margin-top:2px">נפח, סטים לפי שריר, והכי חזק</div></div>'+
+     '<div style="font-size:14px;color:var(--muted-soft)">&#8249;</div></button>';
 
   // Steps: the one number that moves every day, workout or not
   var stToday=stepsOf(todayStr()),stSrc=loadStepsSrc();
