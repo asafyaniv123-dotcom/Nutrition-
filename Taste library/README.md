@@ -64,3 +64,6 @@ with the project.
   accounts, so this is about arriving rather than signing in.
 - **own photos/alpine-meadow-morning.jpg** — Asaf's own photograph, the first
   thing here that is material rather than reference.
+- **neumorphic-calendar.jpg** — soft extruded and pressed-in controls, all one
+  colour. The first entry that contradicts the glass ones; the note keeps the
+  contradiction open rather than settling it.
