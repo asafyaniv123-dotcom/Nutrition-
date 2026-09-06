@@ -1929,7 +1929,37 @@ var pendingLib=null,toastTimer,saveToLib=false;
 var builderCat='breakfast',builderName='',builderIngs=[],builderPickOpen=false;
 var interviewStep=-1,interviewAnswers={},calMonth=new Date();
 
-function todayStr(){var d=new Date();return d.toISOString().slice(0,10);}
+/* ── WHAT DAY IT IS ──
+   This used to be toISOString().slice(0,10), which is the UTC date. At UTC+3
+   that means everything recorded between midnight and three in the morning
+   was filed under the previous day, and travelling the other way it is worse:
+   in New York an evening reflection lands on tomorrow. The app already
+   contradicted itself about this - dtStamp, fmtDate and the schedule card all
+   read the LOCAL date, and only storage was UTC.
+
+   So: the local date, with the day deliberately ending at four in the morning
+   rather than at midnight. Something written at one in the morning belongs to
+   the day that just ended, which is when it was lived and what the person
+   writing it means. Four is a decision, not an accident - it does not move
+   with the season or the country, which is exactly what was wrong before. */
+var DAY_ENDS_AT=4;
+function appNow(){return appDayShift(new Date());}
+function appDayShift(d){var x=new Date(d.getTime());x.setHours(x.getHours()-DAY_ENDS_AT);return x;}
+/* any timestamp -> the app day it belongs to */
+function appDayOf(d){var x=(d instanceof Date)?d:new Date(d);return isFinite(x)?dayStr(appDayShift(x)):'';}
+/* any Date -> its LOCAL calendar date. Never toISOString, which is UTC. */
+function dayStr(d){
+  var m=String(d.getMonth()+1),dd=String(d.getDate());
+  return d.getFullYear()+"-"+(m.length<2?"0"+m:m)+"-"+(dd.length<2?"0"+dd:dd);
+}
+function todayStr(){return dayStr(appNow());}
+/* Shift a Date by whole days and read it back as a day key, without ever
+   letting a timezone move it. */
+function dayShift(n,from){
+  var d=from?new Date(from.getTime()):appNow();
+  d.setDate(d.getDate()+n);
+  return dayStr(d);
+}
 function fmtDate(s){
   var d=new Date(s+'T12:00:00');
   var dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -5516,7 +5546,7 @@ function renderHistory(){
   var histTab=window._histTab||'intake';
   var days=[];
   for(var i=6;i>=0;i--){
-    var d=new Date();d.setDate(d.getDate()-i);var s=d.toISOString().slice(0,10);
+    var s=dayShift(-i);
     var day=loadDay(s);var sum=loadSummary(s);
     var kcal=Math.round(day.meals.reduce(function(a,m){return a+(m.kcal||0);},0));
     var p=Math.round(day.meals.reduce(function(a,m){return a+(m.p||0);},0));
@@ -5899,6 +5929,11 @@ function renderSummaryOverlay(dateStr){
   if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; מים</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+sum.water+'מ"ל</span></div>';}
   h+='</div>';
   }
+  if(sum.workoutDone!==undefined&&sumSecOn('fit')){
+    var wp=plannedWorkoutFor(dateStr);
+    h+='<div class="sm-sec sm-quiet"><div class="sm-lab">'+(wp?esc(wp.label):'אימון')+' מתוכנן</div>'+
+       '<div class="sm-txt">'+(sum.workoutDone?'בוצע':'לא יצא הפעם')+'</div></div>';
+  }
   if((sum.workout||sum.steps)&&sumSecOn('fit')){h+='<div class="sm-sec">';if(sum.workout)h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:'+(sum.steps?'10px':'0')+'"><span style="font-size:22px">&#x1F3CB;&#xFE0F;</span><div><div style="font-size:9px;color:var(--muted)">פעילות גופנית</div><div style="font-size:13px;font-weight:600;margin-top:2px">'+esc(sum.workout)+'</div></div></div>';if(sum.steps)h+='<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">&#x1F463;</span><div><div style="font-size:9px;color:var(--muted)">צעדים</div><div style="font-size:18px;font-weight:700;color:var(--green-500)">'+sum.steps.toLocaleString()+'</div></div></div>';h+='</div>';}
   if(sum.song&&sumSecOn('song'))h+='<div class="sm-sec sm-song"><span style="font-size:26px">&#x1F3B5;</span><div><div class="sm-lab">השיר של היום</div><div style="font-size:15px;font-weight:800;color:var(--ink);margin-top:2px">'+esc(sum.song)+'</div></div></div>';
   // Timeclock in summary — canvas-based spiral
@@ -5924,6 +5959,12 @@ function renderSummaryOverlay(dateStr){
     window._sumClockNeedsDraw=true;
   }
   if(sum.differently&&sumSecOn('think'))h+='<div class="sm-sec sm-quiet"><div class="sm-lab" style="color:var(--terra-500)">הייתי עושה אחרת</div><div class="sm-body">'+esc(sum.differently)+'</div></div>';
+  if((sum.grateful||sum.gratefulOverlooked)&&sumSecOn('grateful')){
+    h+='<div class="sm-sec sm-quiet"><div class="sm-lab" style="color:var(--amber-700)">הכרת תודה</div>';
+    if(sum.grateful)h+='<div class="sm-txt">'+esc(sum.grateful)+'</div>';
+    if(sum.gratefulOverlooked)h+='<div class="sm-txt" style="opacity:.8;margin-top:6px">'+esc(sum.gratefulOverlooked)+'</div>';
+    h+='</div>';
+  }
   if(sum.quote)h+='<div style="border-right:3px solid var(--violet-500);padding:10px 14px;background:rgba(201,188,224,.09);border-radius:0 14px 14px 0;margin-bottom:12px"><div style="font-size:9px;color:var(--muted);margin-bottom:5px">משפט שתפס</div><div style="font-size:13px;line-height:1.7;font-style:italic">&#8220;'+esc(sum.quote)+'&#8221;</div></div>';
   h+='<div style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px">&#x1F331; יום מוצלח</div></div>';
   div.innerHTML=h;document.body.appendChild(div);
@@ -6452,6 +6493,9 @@ function renderFitness(){
   else if(_fitView==='view-program')renderViewProgram();
   else if(_fitView==='weekly-plan')renderWeeklyPlan();
   else if(_fitView==='edit-week-day')renderEditWeekDay();
+  else if(_fitView==='start')document.getElementById('content').innerHTML=renderFitStart();
+  else if(_fitView==='weights')document.getElementById('content').innerHTML=renderFitWeights();
+  else if(_fitView==='stats')document.getElementById('content').innerHTML=renderFitStats();
   else if(_fitView==='steps')renderFitSteps();
   else if(_fitView==='steps-setup')renderFitStepsSetup();
 }
@@ -6470,6 +6514,404 @@ function stepsAgo(iso){
   if(hr<24)return'לפני '+hr+' שע׳';
   return'לפני '+Math.round(hr/24)+' ימים';
 }
+function stepsTrendHTML(){
+  var pts=[],i,d,r;
+  for(i=89;i>=0;i--){
+    d=dayAdd(todayStr(),-i);
+    r=loadSteps(d);
+    if(r&&typeof r.v==='number'&&r.v>0)pts.push({d:d,v:r.v});
+  }
+  if(pts.length<2)return'';
+  var ser=ewma(pts,EWMA_ALPHA),rate=trendRate(ser,30);
+  var h='<div style="background:var(--card);border-radius:22px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
+  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">לאן זה הולך</div>';
+  h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+Math.round(ser[ser.length-1].t).toLocaleString()+' ביום</div></div>';
+  h+=trendChartHTML(ser,{color:PAL.green500});
+  if(rate&&ser.length>=TREND_MIN_DAYS){
+    var up=rate.over>0,flat=Math.abs(rate.perDay*30)<300;
+    var tone=flat?'var(--muted)':(up?'var(--green-700)':'var(--terra-700)');
+    var word=flat?'יציב':(up?'עולה':'יורד');
+    h+='<div style="font-size:11.5px;color:'+tone+';font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums">'+
+       word+(flat?'':' ב־'+Math.abs(Math.round(rate.over)).toLocaleString()+' צעדים')+' ב־'+rate.days+' ימים</div>';
+  }else{
+    h+='<div style="font-size:11px;color:var(--muted-soft);line-height:1.6;margin-top:8px">עוד כמה ימים ויהיה כאן קו.</div>';
+  }
+  return h+'</div>';
+}
+
+/* ── THE NUMBERS ──
+   Everything here was already being recorded and nothing was ever added up.
+   Each set has carried a weight, a rep count and an RPE since the workout
+   screen was built, and the exercise database knows which muscle each
+   movement works. What was missing is the week: this app could tell you what
+   you lifted on Tuesday and not whether you are training more than you were
+   a month ago.
+
+   Three numbers, because they are the three the evidence actually supports:
+   volume, sets per muscle per week, and an estimated one-rep max. Session by
+   session none of them mean much - volume swings with how much time you had.
+   Week over week they do. */
+
+/* Epley. Honest only in the range it was fitted for, so a set of twenty is
+   not turned into a strength claim - above twelve reps the formula drifts
+   badly and this returns nothing rather than a confident wrong number. */
+function e1rm(weight,reps){
+  var w=+weight||0,r=+reps||0;
+  if(w<=0||r<1||r>12)return 0;
+  if(r===1)return w;
+  return w*(1+r/30);
+}
+
+/* The back is one muscle group for the purpose of a weekly set count; the
+   database splits it four ways because that is how you FIND an exercise, not
+   how you dose one. Cardio is left out of the band entirely - the range below
+   is about growing a muscle and says nothing about a run. */
+var MUSCLE_ROLLUP={"גב רחב":"גב","טרפז":"גב","גב תחתון":"גב","אלכסונים":"ליבה","בטן":"ליבה"};
+var SETS_BAND={lo:10,hi:20};
+function muscleGroupOf(exName){
+  var all=exAll(),i;
+  for(i=0;i<all.length;i++)if(all[i].n===exName){
+    var m=(all[i].m&&all[i].m[0])||"";
+    return MUSCLE_ROLLUP[m]||m||"אחר";
+  }
+  return "אחר";
+}
+
+/* The week runs Sunday to Saturday, in app days - so a session finished at
+   one in the morning lands in the week it belonged to. */
+function weekStartOf(dayKey){
+  var d=new Date(dayKey+"T12:00:00");
+  if(isNaN(d))return dayKey;
+  d.setDate(d.getDate()-d.getDay());
+  return dayStr(d);
+}
+
+/* weeksAgo 0 = this week. Everything is counted from the log, nothing new is
+   stored, so this is true from the first workout ever recorded. */
+function fitWeekStats(weeksAgo){
+  var start=weekStartOf(dayShift(-7*(weeksAgo||0))),end=dayShift(6,new Date(start+"T12:00:00"));
+  var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
+  var out={start:start,end:end,sessions:0,sets:0,reps:0,vol:0,byMuscle:{},minutes:0};
+  for(var i=0;i<log.length;i++){
+    var k=appDayOf(log[i].date);
+    if(!k||k<start||k>end)continue;
+    out.sessions++;
+    out.minutes+=(+log[i].duration||0);
+    var exs=log[i].exercises||[];
+    for(var j=0;j<exs.length;j++){
+      var g=muscleGroupOf(exs[j].name),st=exs[j].sets||[];
+      for(var q=0;q<st.length;q++){
+        if(!((+st[q].reps||0)>0))continue;      // an empty row is not a set
+        out.sets++;
+        out.reps+=(+st[q].reps||0);
+        out.vol+=(+st[q].weight||0)*(+st[q].reps||0);
+        out.byMuscle[g]=(out.byMuscle[g]||0)+1;
+      }
+    }
+  }
+  out.vol=Math.round(out.vol);
+  return out;
+}
+
+/* The heaviest honest single from every lift you have done, best first. */
+function fitBestLifts(limit){
+  var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
+  var best={},i,j,q;
+  for(i=0;i<log.length;i++){
+    var exs=log[i].exercises||[];
+    for(j=0;j<exs.length;j++){
+      var st=exs[j].sets||[];
+      for(q=0;q<st.length;q++){
+        var v=e1rm(st[q].weight,st[q].reps);
+        if(v>0&&(!best[exs[j].name]||v>best[exs[j].name].v))
+          best[exs[j].name]={v:v,w:+st[q].weight,r:+st[q].reps,d:appDayOf(log[i].date)};
+      }
+    }
+  }
+  var rows=[];for(var k in best)if(best.hasOwnProperty(k))rows.push({name:k,e:best[k]});
+  rows.sort(function(a,b){return b.e.v-a.e.v;});
+  return rows.slice(0,limit||5);
+}
+
+/* ── מעקב משקלים ──
+   What you are lifting on each exercise right now, in one list.
+
+   Two things feed it and they must not fight. A finished workout is the
+   truth: it is what actually happened, on a date. A number typed here is
+   also truth - you moved up between sessions, or the machine at the new gym
+   is numbered differently - but it is truth about a moment, not a session.
+
+   So both are kept with their date and the later one wins. Type 82.5 today
+   and it shows 82.5; log a session tomorrow at 85 and it shows 85 without
+   anyone clearing anything. The manual number is never silently overwritten
+   by an OLDER session, which is the failure that would make this untrustworthy
+   the first time you scrolled back through history. */
+var FIT_WEIGHTS_KEY='fit_weights';
+function loadExWeights(){
+  try{var x=localStorage.getItem(FIT_WEIGHTS_KEY);var o=x?JSON.parse(x):null;
+      if(o&&typeof o==='object')return o;}catch(e){}
+  return {};
+}
+function saveExWeights(o){try{localStorage.setItem(FIT_WEIGHTS_KEY,JSON.stringify(o));}catch(e){}}
+
+/* {w, at, manual} - or null when this exercise has never been given a weight */
+function currentWeightFor(name){
+  var manual=loadExWeights()[name]||null;
+  var ss=[];try{ss=exSessions(name)||[];}catch(e){}
+  var last=null;
+  if(ss.length){
+    var t=ss[ss.length-1];
+    var w=(t.top&&+t.top.weight)||0;
+    if(w>0)last={w:w,at:appDayOf(t.date),manual:false,reps:(t.top&&+t.top.reps)||0};
+  }
+  if(manual&&manual.w>0&&(!last||manual.at>=last.at))
+    return {w:+manual.w,at:manual.at,manual:true,reps:0};
+  return last;
+}
+function setExerciseWeight(name,kg){
+  var w=parseFloat(kg);
+  if(!(w>0&&w<1000))return false;
+  var o=loadExWeights();
+  o[name]={w:Math.round(w*100)/100,at:todayStr()};
+  saveExWeights(o);
+  return true;
+}
+
+function exWeightEdit(name){
+  var cur=currentWeightFor(name);
+  var v=prompt('משקל נוכחי ל'+name+' (ק״ג)',cur?String(cur.w):'');
+  if(v===null)return;
+  if(v.trim()===''){var o=loadExWeights();delete o[name];saveExWeights(o);renderFitness();return;}
+  if(setExerciseWeight(name,v))renderFitness();
+  else showToast('משקל לא תקין');
+}
+
+/* Same shape as the area cards on the home screen, because it is the same
+   idea: pick a place to be. The gradients reuse RF_GRAD so a colour changed
+   once changes here too. */
+var FIT_AREAS=[
+  {id:'start',t:'אימון חדש',s:'להתחיל עכשיו',g:'ter',ic:'<path d="M6.5 9v6"/><path d="M17.5 9v6"/><path d="M3.5 10.5v3"/><path d="M20.5 10.5v3"/><path d="M6.5 12h11"/>'},
+  {id:'weights',t:'מעקב משקלים',s:'כמה אתה מרים בכל תרגיל',g:'lav',ic:'<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h9"/>'},
+  {id:'weekly-plan',t:'לוז האימונים',s:'מה עושים ומתי',g:'blu',ic:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17"/><path d="M8.5 3v4"/><path d="M15.5 3v4"/>'},
+  {id:'stats',t:'המספרים שלי',s:'נפח, שרירים, והכי חזק',g:'grn',ic:'<path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-5"/>'},
+  {id:'steps',t:'צעדים',s:'הדבר שזז כל יום',g:'grn',ic:'<path d="M8 4.5c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9S5.8 13.9 5.8 12.7c0-1.8-1-3.1-1-5.1C4.8 5.7 6.4 4.5 8 4.5Z"/><path d="M16.4 9c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9s-1.9-.7-1.9-1.9c0-1.8-1-3.1-1-5.1 0-1.9 1.6-3.1 3.2-3.1Z"/>'},
+  {id:'history',t:'היסטוריה',s:'כל אימון שרשמת',g:'gry',ic:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.8"/>'},
+];
+function fitAreaGridHTML(){
+  var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">',i,a,gr;
+  for(i=0;i<FIT_AREAS.length;i++){
+    a=FIT_AREAS[i];
+    gr=RF_GRAD[a.g]||RF_GRAD.gry;
+    h+='<button onclick="_fitView=\''+a.id+'\';renderFitness()" '+
+       'style="background:'+gr[0]+';border:none;border-radius:22px;padding:18px 14px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;font-family:inherit;text-align:center">'+
+       '<div style="width:40px;height:40px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center">'+
+       '<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:'+gr[1]+';stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">'+a.ic+'</svg></div>'+
+       '<div style="font-size:13px;font-weight:800;color:var(--ink)">'+a.t+'</div>'+
+       '<div style="font-size:10px;color:var(--muted);line-height:1.35">'+a.s+'</div>'+
+       '</button>';
+  }
+  return h+'</div>';
+}
+
+/* ── אימון חדש ──
+   Everything that used to sit at the top of כושר: the way in to a session,
+   the coach plan when there is one, and the programs brought in from a gym.
+   Moved here whole. */
+function renderFitStart(){
+  document.getElementById('hdr-title').textContent='אימון חדש';
+  var templates=loadTemplates();
+  var log=loadWorkoutLog();
+  var fitMode=loadFitMode();
+  var h='<div style="padding-bottom:24px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">אימון חדש</div>';
+  h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;color:var(--ink-soft);cursor:pointer;font-family:inherit">חזרה</button>';
+  h+='</div>';
+  /* 1. starting a workout */
+  h+=fitStartCardHTML(templates);
+
+  if(fitMode==='coach'){
+    var plan=loadCoachPlan();
+    if(plan){
+      h+='<div style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border-radius:18px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">';
+      h+='<div style="font-size:28px">&#x1F9D1;&#x200D;&#x1F3EB;</div>';
+      h+='<div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--ink)">תוכנית אישית פעילה</div>';
+      h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+plan.daysPerWeek+' ימי אימון בשבוע &middot; '+plan.equipment+'</div></div>';
+      h+='<button onclick="_fitView=\'coach-plan\';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">צפה</button>';
+      h+='</div>';
+    } else {
+      h+='<button onclick="_fitView=\'coach-q\';renderFitness()" style="width:100%;background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--violet-500);margin-bottom:12px;font-family:inherit">&#x1F9D1;&#x200D;&#x1F3EB; בנה תוכנית אישית</button>';
+    }
+  }
+
+
+
+
+
+  // Steps: the one number that moves every day, workout or not
+  var stToday=stepsOf(todayStr()),stSrc=loadStepsSrc();
+  h+='<button onclick="_fitView=\'steps\';renderFitness()" style="width:100%;display:flex;align-items:center;gap:13px;background:var(--card);border:none;border-radius:20px;padding:15px 16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12);cursor:pointer;text-align:right;font-family:inherit">';
+  h+='<div style="width:42px;height:42px;border-radius:15px;background:linear-gradient(145deg,var(--green-50),var(--green-100));display:flex;align-items:center;justify-content:center;color:var(--green-600);flex-shrink:0">';
+  h+='<svg viewBox="0 0 24 24" style="width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M8.4 14.8c-1.7-1-2.3-3.3-1.4-5.1l1.2-2.3c1-1.8 3.2-2.4 4.9-1.4 1.7 1 2.3 3.3 1.4 5.1l-1.2 2.3c-1 1.8-3.2 2.4-4.9 1.4Z"/><path d="M8.7 17.8c-1.2-.7-1.6-2.2-1-3.4"/><path d="M17 19.6c-1.2-.7-1.6-2.2-1-3.4"/><path d="M16.7 16.2c-1.7-1-2.3-3.3-1.4-5.1"/></svg></div>';
+  h+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:var(--ink)">צעדים</div>';
+  h+='<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+(stToday?stToday.toLocaleString()+' היום':'עוד לא נרשמו היום')+(stSrc.kind==='shortcut'?' &middot; מסונכרן':'')+'</div></div>';
+  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
+
+  // Programs brought in from a gym
+  var progs=loadPrograms();
+  h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">מעקב תוכניות</div>';
+  h+='<button onclick="startProgramWizard()" style="background:linear-gradient(135deg,var(--terra-200),var(--terra-500));border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">+ תוכנית</button>';
+  h+='</div>';
+  if(progs.length===0)
+    h+='<div style="text-align:center;padding:10px;font-size:12px;color:var(--muted-soft)">הוסף תוכנית מחדר כושר</div>';
+  for(var pi=0;pi<progs.length;pi++){
+    var prog=progs[pi];
+    h+='<div style="background:var(--panel);border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">';
+    h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(prog.name)+'</div>';
+    h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+prog.exercises.length+' תרגילים</div></div>';
+    h+='<button onclick="_fitView=\'view-program\';_fitProgIdx='+pi+';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">עקב</button>';
+    h+='<button onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()" style="background:var(--violet-100);border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">ערוך</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+
+  return h+'</div>';
+}
+
+function renderFitWeights(){
+  document.getElementById('hdr-title').textContent='מעקב משקלים';
+  var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
+  /* every exercise ever logged, plus any given a weight by hand */
+  var names={},i,j;
+  for(i=0;i<log.length;i++)for(j=0;j<(log[i].exercises||[]).length;j++)names[log[i].exercises[j].name]=1;
+  var manual=loadExWeights();for(var k in manual)if(manual.hasOwnProperty(k))names[k]=1;
+  var list=Object.keys(names).sort();
+
+  var h='<div style="padding-bottom:24px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">מעקב משקלים</div>';
+  h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;color:var(--ink-soft);cursor:pointer;font-family:inherit">חזרה</button>';
+  h+='</div>';
+
+  if(!list.length){
+    h+='<div style="background:var(--card);border-radius:20px;padding:24px 18px;text-align:center;box-shadow:0 4px 16px rgba(200,180,160,.1)">'+
+       '<div style="font-size:12px;color:var(--muted-soft);line-height:1.7">אחרי האימון הראשון יופיע כאן כל תרגיל עם המשקל שאתה עובד איתו. אפשר יהיה גם להקליד אותו ידנית.</div></div>';
+    return h+'</div>';
+  }
+
+  h+='<div style="background:var(--card);border-radius:20px;padding:8px 4px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  for(i=0;i<list.length;i++){
+    var nm=list[i],cw=currentWeightFor(nm);
+    h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;'+(i<list.length-1?'border-bottom:1px solid var(--line);':'')+'">';
+    h+='<button onclick="_fitProgressEx=\''+esc(nm).replace(/'/g,"&#39;")+'\';_fitView=\'progress\';renderFitness()" '+
+       'style="flex:1;min-width:0;text-align:right;background:none;border:none;padding:0;cursor:pointer;font-family:inherit">'+
+       '<div style="font-size:12.5px;color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</div>'+
+       (cw?'<div style="font-size:9.5px;color:var(--muted-soft);margin-top:2px">'+(cw.manual?'הוקלד':'מהאימון')+' &middot; '+fmtDate(cw.at)+'</div>':'')+
+       '</button>';
+    h+='<button onclick="exWeightEdit(\''+esc(nm).replace(/'/g,"&#39;")+'\')" style="background:var(--surface);border:none;border-radius:12px;padding:7px 12px;cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums">'+
+       (cw?'<span style="font-size:13px;font-weight:800;color:var(--ink)">'+cw.w+'</span><span style="font-size:9.5px;color:var(--muted)"> ק״ג</span>'
+          :'<span style="font-size:11px;color:var(--muted-soft)">הוסף</span>')+'</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+  h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-bottom:14px">המספר מתעדכן לבד מכל אימון שתסיים. אפשר גם להקליד אותו — והאימון הבא יעדכן מעליו.</div>';
+
+  /* the advice about what to do next time belongs with the weights, not on a
+     hub you pass through */
+  h+=fitProgressCardHTML(log);
+  return h+'</div>';
+}
+
+function renderFitStats(){
+  document.getElementById('hdr-title').textContent='המספרים שלי';
+  /* the exercise database is fetched, and without it every set lands in
+     "אחר" - so ask for it and draw again once it is here */
+  if(!exAll().length){exLoad(function(){if(_fitView==="stats")renderFitness();});}
+
+  var now=fitWeekStats(0),prev=fitWeekStats(1);
+  /* body weight is a number about the same question, and the hub is a list of
+     doors rather than a place to read anything */
+  var bodyCard=weightCardHTML();
+  var h='<div style="padding-bottom:24px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">המספרים שלי</div>';
+  h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;color:var(--ink-soft);cursor:pointer;font-family:inherit">חזרה</button>';
+  h+='</div>';
+  h+=bodyCard;
+
+  if(!now.sessions&&!prev.sessions){
+    h+='<div style="background:var(--card);border-radius:20px;padding:24px 18px;text-align:center;box-shadow:0 4px 16px rgba(200,180,160,.1)">'+
+       '<div style="font-size:12px;color:var(--muted-soft);line-height:1.7">אחרי האימון הראשון יופיעו כאן המספרים — כמה הרמת, אילו שרירים עבדו, ולאן זה זז משבוע לשבוע.</div></div>';
+    return h+'</div>';
+  }
+
+  /* ── this week against last ── */
+  function delta(a,b,unit){
+    if(!b)return '';
+    var d=a-b;if(!d)return '<span style="color:var(--muted-soft)">ללא שינוי</span>';
+    var up=d>0;
+    return '<span style="color:'+(up?'var(--green-700)':'var(--muted)')+'">'+(up?'+':'')+
+      (unit==='%'?Math.round(d/b*100)+'%':Math.round(d).toLocaleString())+'</span>';
+  }
+  h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:12px">השבוע &middot; מול שבוע שעבר</div>';
+  var rows=[[now.sessions+(now.sessions===1?' אימון':' אימונים'),delta(now.sessions,prev.sessions)],
+            [now.sets+' סטים',delta(now.sets,prev.sets)],
+            [now.vol.toLocaleString()+' ק״ג נפח',delta(now.vol,prev.vol,'%')]];
+  for(var r=0;r<rows.length;r++){
+    h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(r<2?'8px':'0')+';font-variant-numeric:tabular-nums">'+
+       '<div style="font-size:13px;font-weight:700;color:var(--ink)">'+rows[r][0]+'</div>'+
+       '<div style="font-size:11.5px;font-weight:700">'+rows[r][1]+'</div></div>';
+  }
+  h+='</div>';
+
+  /* ── sets per muscle, against the range the evidence gives ── */
+  var ms=[],k;
+  for(k in now.byMuscle)if(now.byMuscle.hasOwnProperty(k))ms.push([k,now.byMuscle[k]]);
+  ms.sort(function(a,b){return b[1]-a[1];});
+  if(ms.length){
+    h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:12px">סטים לפי שריר &middot; השבוע</div>';
+    for(var i2=0;i2<ms.length;i2++){
+      var nm=ms[i2][0],ct=ms[i2][1];
+      var isCardio=(nm==="אירובי"||nm==="אחר");
+      var pct=Math.min(100,ct/SETS_BAND.hi*100);
+      var inBand=!isCardio&&ct>=SETS_BAND.lo;
+      h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">';
+      h+='<div style="width:64px;font-size:11px;color:var(--ink-soft);flex-shrink:0">'+esc(nm)+'</div>';
+      h+='<div style="flex:1;height:8px;border-radius:4px;background:var(--surface);overflow:hidden;position:relative">'+
+         '<div style="height:100%;width:'+pct+'%;border-radius:4px;background:'+(inBand?'var(--green-500)':'var(--violet-300)')+'"></div></div>';
+      h+='<div style="width:22px;text-align:left;font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums">'+ct+'</div>';
+      h+='</div>';
+    }
+    h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">מי שמתאמן כדי לגדול נמצא בדרך כלל בין '+SETS_BAND.lo+' ל־'+SETS_BAND.hi+' סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.</div>';
+    if(now.byMuscle['אחר'])
+      h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:6px">&ldquo;אחר&rdquo; הם תרגילים שהקלדת בעצמך — לספרייה אין להם שריר. בחירה מהספרייה תשבץ אותם.</div>';
+    h+='</div>';
+  }
+
+  /* ── the strongest single from each lift ── */
+  var lifts=fitBestLifts(5);
+  if(lifts.length){
+    h+='<div style="background:var(--card);border-radius:20px;padding:16px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:4px">הכי חזק</div>';
+    h+='<div style="font-size:10px;color:var(--muted-soft);margin-bottom:12px">חזרה אחת מקסימלית, מוערכת מהסט הכי טוב שרשמת</div>';
+    for(var L=0;L<lifts.length;L++){
+      var li=lifts[L];
+      h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(L<lifts.length-1?'8px':'0')+'">';
+      h+='<div style="font-size:12.5px;color:var(--ink);font-weight:600">'+esc(li.name)+'</div>';
+      h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+
+         Math.round(li.e.v)+' ק״ג <span style="color:var(--muted-soft)">&middot; '+li.e.w+'×'+li.e.r+'</span></div>';
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+  return h+'</div>';
+}
+
 function renderFitSteps(){
   document.getElementById('hdr-title').textContent='צעדים';
   var src=loadStepsSrc(),today=todayStr(),rec=loadSteps(today),v=rec?rec.v:0;
@@ -6485,12 +6927,14 @@ function renderFitSteps(){
   else h+='<div style="font-size:10px;color:var(--muted-soft);margin-top:8px">עוד לא נרשם היום</div>';
   h+='</div>';
 
+  h+=stepsTrendHTML();
+
   // Last seven days, so a missing day is visible at a glance.
-  var days=[],maxV=1,i,d,k;
+  var days=[],maxV=1,i,k;
   for(i=6;i>=0;i--){
-    d=new Date();d.setDate(d.getDate()-i);k=d.toISOString().slice(0,10);
+    k=dayShift(-i);
     var dv=stepsOf(k);if(dv>maxV)maxV=dv;
-    days.push({k:k,v:dv,dow:['א','ב','ג','ד','ה','ו','ש'][d.getDay()]});
+    days.push({k:k,v:dv,dow:['א','ב','ג','ד','ה','ו','ש'][new Date(k+'T12:00:00').getDay()]});
   }
   h+='<div class="card"><div class="cttl">שבעת הימים האחרונים</div>';
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:5px">';
@@ -6657,43 +7101,6 @@ function fitStartCardHTML(templates){
   return h+'</div>';
 }
 
-/* ── לוח זמנים ──
-   The two-week grid, which used to sit unnamed near the bottom under a
-   calendar emoji. It is a schedule, so it is called one. */
-function fitScheduleCardHTML(){
-  var weekPlan=loadWeekPlan();
-  var DAY_LABELS=['א','ב','ג','ד','ה','ו','ש'];
-  var today=new Date(),todayDow=today.getDay();
-  var h='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">לוח זמנים</div>';
-  h+='<button onclick="_fitView=\'weekly-plan\';renderFitness()" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">ערוך</button>';
-  h+='</div>';
-  for(var w=0;w<2;w++){
-    h+='<div style="display:flex;gap:4px;margin-bottom:6px">';
-    for(var dw=0;dw<7;dw++){
-      var dayKey='w'+w+'d'+dw;
-      var entry=weekPlan[dayKey]||{type:'rest'};
-      var isToday=(w===0&&dw===todayDow);
-      var typeInfo=WORKOUT_TYPES.find(function(t){return t.id===entry.type;})||WORKOUT_TYPES[0];
-      h+='<div onclick="_editWeekDay=\''+dayKey+'\';_fitView=\'edit-week-day\';renderFitness()" style="flex:1;cursor:pointer;border-radius:10px;padding:6px 2px;text-align:center;background:'+(isToday?'linear-gradient(135deg,var(--indigo-50),var(--indigo-100))':entry.type==='rest'?'var(--surface)':'var(--card)')+';border:2px solid '+(isToday?'var(--indigo-500)':entry.type!=='rest'?typeInfo.color+'44':'var(--line)')+';">';
-      h+='<div style="font-size:16px;line-height:1.2">'+typeInfo.emoji+'</div>';
-      h+='<div style="font-size:8px;color:'+(isToday?'var(--indigo-500)':'var(--muted)')+';font-weight:'+(isToday?'800':'600')+';margin-top:2px">'+DAY_LABELS[dw]+'</div>';
-      if(entry.label)h+='<div style="font-size:7px;color:'+typeInfo.color+';font-weight:700;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;padding:0 2px">'+esc(entry.label)+'</div>';
-      h+='</div>';
-    }
-    h+='</div>';
-    if(w===0)h+='<div style="font-size:8px;color:var(--muted-soft);text-align:center;margin-bottom:4px">שבוע ראשון &nbsp;|&nbsp; שבוע שני</div>';
-  }
-  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">';
-  for(var li=0;li<WORKOUT_TYPES.length;li++){
-    var wt=WORKOUT_TYPES[li];
-    h+='<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--ink-soft)"><span style="font-size:12px">'+wt.emoji+'</span>'+wt.label+'</div>';
-  }
-  h+='</div>';
-  return h+'</div>';
-}
-
 /* ── ההתקדמות שלי ──
    The answer to the question this area exists for: where the weight is now
    against where it was, and what to do about it next time. Both numbers
@@ -6701,6 +7108,211 @@ function fitScheduleCardHTML(){
    appeared once, on the summary at the end of a session, and was gone the
    moment it was dismissed. Neither is any use there. They belong on the
    screen you open before training, which is when the question gets asked. */
+/* ── THE LINE THAT SHOWS IT IS WORKING ──
+   The question this whole area exists to answer is "is any of this doing
+   anything", and the honest answer takes weeks to arrive. That gap is where
+   people quit - not because nothing is happening, but because a bathroom
+   scale cannot show it. A day of hydration and glycogen moves the number by
+   about a kilo, and real progress moves it by fifty grams. Plotted raw, a
+   month of genuine work looks like noise.
+
+   So the raw readings stay on the chart as faint dots - nothing is hidden -
+   and an exponentially weighted moving average is drawn through them. That
+   is the Hacker's Diet method, and it is what MacroFactor is built on.
+
+   Measured over 3,000 simulated months at realistic noise: the slope of this
+   line is typically within 140g of the truth where the difference between
+   two scale readings is off by 560g, and one month in twenty-five the two raw
+   readings say you gained when you actually lost. This line never did. */
+var EWMA_ALPHA=0.1;          // the Hacker's Diet value: a ~6.6 day half-life
+/* Under two weeks a slope is mostly noise. The chart still draws - watching it
+   fill in is most of the point - but no verdict is offered, because "steady"
+   is a claim and in week one the truthful answer is that nobody knows yet. */
+var TREND_MIN_DAYS=14;
+
+/* The app shifts dates inline with setDate in a dozen places; the trend needs
+   it often enough to be worth a name. */
+function dayAdd(iso,n){
+  var d=new Date(iso+"T00:00:00");
+  if(isNaN(d))return iso;
+  d.setDate(d.getDate()+n);
+  var m=String(d.getMonth()+1),dd=String(d.getDate());
+  return d.getFullYear()+"-"+(m.length<2?"0"+m:m)+"-"+(dd.length<2?"0"+dd:dd);
+}
+
+/* points: [{d:"YYYY-MM-DD", v:number}], any order.
+   Walks EVERY calendar day from the first reading to the last, so a fortnight
+   of silence occupies a fortnight of chart instead of collapsing into one
+   step. A day without a reading carries the trend forward and is marked
+   imputed - marked rather than hidden, so the chart can draw it faintly and
+   never imply a weigh-in that never happened.
+
+   Seeded with the mean of the first few readings, not the first one. A single
+   reading carries a full day of noise, and seeding on it leaves the start of
+   the line unsmoothed while the end is smoothed - which puts that noise
+   straight into the number a person reads. */
+function ewma(points,alpha,seedN){
+  if(!points||!points.length)return[];
+  var a=(typeof alpha==="number"&&alpha>0&&alpha<=1)?alpha:EWMA_ALPHA;
+  var n0=(typeof seedN==="number"&&seedN>0)?seedN:7;
+  var by={},keys=[],i,p;
+  for(i=0;i<points.length;i++){
+    p=points[i];
+    if(!p||!p.d||typeof p.v!=="number"||!isFinite(p.v))continue;
+    if(!(p.d in by))keys.push(p.d);
+    by[p.d]=p.v;                       // last write for a day wins
+  }
+  if(!keys.length)return[];
+  keys.sort();
+  var seed=0,m=Math.min(n0,keys.length);
+  for(i=0;i<m;i++)seed+=by[keys[i]];
+  seed/=m;
+  var out=[],t=seed,cur=keys[0],last=keys[keys.length-1],guard=0,has;
+  while(cur<=last&&guard++<20000){
+    has=(cur in by);
+    if(has)t=t+a*(by[cur]-t);
+    out.push({d:cur,v:has?by[cur]:null,t:t,imputed:!has});
+    cur=dayAdd(cur,1);
+  }
+  return out;
+}
+
+/* The number a person reads, as a least-squares slope over the smoothed line
+   rather than the difference between its two ends.
+   A moving average trails a moving series by a roughly constant lag, and a
+   constant lag shifts a line without tilting it - so the slope survives it
+   while a two-point difference does not. That is what lets a short window be
+   honest instead of reporting the smoother catching up with itself. */
+function trendRate(series,windowDays){
+  if(!series||series.length<4)return null;
+  var n=Math.min(windowDays,series.length);
+  if(n<4)return null;
+  var seg=series.slice(series.length-n),sx=0,sy=0,sxx=0,sxy=0,i;
+  for(i=0;i<n;i++){sx+=i;sy+=seg[i].t;sxx+=i*i;sxy+=i*seg[i].t;}
+  var den=n*sxx-sx*sx;
+  if(!den)return null;
+  var slope=(n*sxy-sx*sy)/den;
+  return{perDay:slope,over:slope*(n-1),days:n,covered:series.length>=windowDays};
+}
+
+/* ── WEIGHT AS A SERIES ──
+   The profile has carried a single weight since the beginning, overwritten on
+   every edit - enough for a BMI and a calorie target, and no use at all for a
+   line. This keeps one number per day beside it. profileBMI and the target
+   calculation still read the profile field, so a weigh-in writes both and
+   nothing that already worked changes. */
+var WEIGHTS_KEY='weights';
+function loadWeights(){
+  try{var x=localStorage.getItem(WEIGHTS_KEY);var o=x?JSON.parse(x):null;if(o&&typeof o==='object')return o;}catch(e){}
+  /* Seed from the profile so the number already on file is not lost and the
+     chart is not empty on the first day. */
+  var o2={},p=loadProfile(),w=parseFloat(p&&p.weight);
+  if(w>20&&w<400)o2[todayStr()]=w;
+  return o2;
+}
+function saveWeights(o){try{localStorage.setItem(WEIGHTS_KEY,JSON.stringify(o));}catch(e){}}
+function logWeight(kg,dateStr){
+  var w=parseFloat(kg);
+  if(!(w>20&&w<400))return false;
+  w=Math.round(w*10)/10;
+  var o=loadWeights();o[dateStr||todayStr()]=w;saveWeights(o);
+  profSet('weight',String(w));   // BMI and the target still read this
+  return true;
+}
+
+/* ── THE CHART ──
+   Raw readings as faint dots, the trend as the one solid line, and nothing
+   else: no gridlines, no axis furniture, no second scale. The dots are the
+   noise shown honestly; the line is the answer.
+   var() does not resolve inside an SVG presentation attribute, so colours
+   here come from PAL, which reads the same tokens at startup. */
+function trendChartHTML(series,opts){
+  opts=opts||{};
+  var W=300,H=104,PADX=4,PADY=10;
+  if(!series||series.length<2)return "";
+  var vals=[],i;
+  for(i=0;i<series.length;i++){if(series[i].v!=null)vals.push(series[i].v);vals.push(series[i].t);}
+  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+  if(hi-lo<0.6){var mid=(hi+lo)/2;lo=mid-0.3;hi=mid+0.3;}   // never magnify a flat line
+  var xp=function(i){return PADX+(W-2*PADX)*(series.length<2?0:i/(series.length-1));};
+  var yp=function(v){return PADY+(H-2*PADY)*(1-(v-lo)/(hi-lo));};
+  /* mark each day as carried if it sits inside a run of 3+ missing days */
+  var carried=[],run=0;
+  for(i=0;i<series.length;i++){
+    if(series[i].imputed){run++;}else{
+      if(run>=3)for(var b=i-run;b<i;b++)carried[b]=1;
+      run=0;
+    }
+  }
+  if(run>=3)for(i=series.length-run;i<series.length;i++)carried[i]=1;
+
+  /* one path per stretch, so a carried stretch can be drawn faint while the
+     line still joins up - the trend is continuous even when the scale was not */
+  var segs=[],curSeg=null,dots="";
+  for(i=0;i<series.length;i++){
+    var isC=!!carried[i];
+    if(!curSeg||curSeg.c!==isC){
+      if(curSeg)curSeg.d+="L"+xp(i).toFixed(1)+" "+yp(series[i].t).toFixed(1);  // join to the next
+      curSeg={c:isC,d:"M"+xp(i).toFixed(1)+" "+yp(series[i].t).toFixed(1)};
+      segs.push(curSeg);
+    }else{
+      curSeg.d+="L"+xp(i).toFixed(1)+" "+yp(series[i].t).toFixed(1);
+    }
+    if(series[i].v!=null)dots+='<circle cx="'+xp(i).toFixed(1)+'" cy="'+yp(series[i].v).toFixed(1)+'" r="1.9" fill="'+PAL.mutedSoft+'" opacity=".7"/>';
+  }
+  var col=opts.color||PAL.violet500,paths="";
+  for(i=0;i<segs.length;i++){
+    paths+='<path d="'+segs[i].d+'" fill="none" stroke="'+col+'" stroke-width="2" '+
+            'stroke-linecap="round" stroke-linejoin="round"'+
+            (segs[i].c?' opacity=".28" stroke-dasharray="3 3"':'')+'/>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:'+H+'px;display:block;overflow:visible">'+
+    dots+paths+
+    '</svg>';
+}
+
+/* ── THE CARD ── */
+function weightCardHTML(){
+  var o=loadWeights(),pts=[],k;
+  for(k in o)if(o.hasOwnProperty(k)&&typeof o[k]==="number")pts.push({d:k,v:o[k]});
+  var h='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
+  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">המשקל שלי</div>';
+
+  if(pts.length<2){
+    h+='</div><div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;margin-bottom:10px">שקילה אחת ביום, באותה שעה. אחרי כשבוע יופיע כאן קו שמראה לאן זה הולך — משקל יומי בודד הוא בעיקר מים.</div>';
+  }else{
+    var ser=ewma(pts,EWMA_ALPHA),r=trendRate(ser,30);
+    var lastT=ser[ser.length-1].t;
+    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+lastT.toFixed(1)+' ק״ג</div></div>';
+    h+=trendChartHTML(ser,{});
+    if(r&&ser.length>=TREND_MIN_DAYS){
+      var up=r.over>0,flat=Math.abs(r.over)<0.15;
+      var word=flat?"יציב":(up?"עלייה":"ירידה");
+      var tone=flat?"var(--muted)":(up?"var(--terra-700)":"var(--green-700)");
+      h+='<div style="font-size:11.5px;color:'+tone+';font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums">'+
+         word+(flat?"":" "+Math.abs(r.over).toFixed(1)+" ק״ג")+' ב־'+r.days+' ימים'+'</div>';
+      if(!r.covered)h+='<div style="font-size:10.5px;color:var(--muted-soft);margin-top:2px">מבוסס על מה שיש עד כה</div>';
+    }else{
+      var left=TREND_MIN_DAYS-ser.length;
+      h+='<div style="font-size:11px;color:var(--muted-soft);line-height:1.6;margin-top:8px">'+
+         'עוד '+left+' '+(left===1?'יום':'ימים')+' ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.</div>';
+    }
+  }
+
+  h+='<div style="display:flex;gap:8px;margin-top:12px">';
+  h+='<input id="weigh-in" type="number" inputmode="decimal" step="0.1" placeholder="משקל היום" '+
+     'style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-family:inherit;text-align:center">';
+  h+='<button onclick="weighInSubmit()" style="background:var(--violet-100);border:none;border-radius:12px;padding:10px 16px;font-size:12.5px;font-weight:700;color:var(--violet-700);cursor:pointer;font-family:inherit">רישום</button>';
+  h+='</div>';
+  return h+'</div>';
+}
+function weighInSubmit(){
+  var el=document.getElementById('weigh-in');if(!el)return;
+  if(logWeight(el.value)){el.value="";renderFitness();}
+  else showToast('משקל לא תקין');
+}
+
 function fitProgressCardHTML(log){
   var seen={},rows=[],i,j;
   // most recently trained first, which is the order they matter in
@@ -6786,58 +7398,15 @@ function renderFitHome(){
     return;
   }
 
-  /* 1. starting a workout */
-  h+=fitStartCardHTML(templates);
+  /* ── the areas ──
+     כושר used to be one screen with nine things stacked on it: start a
+     workout, the schedule, what to lift next, body weight, the numbers,
+     steps, programs, the goal. Each was fine and together they were a wall.
 
-  if(fitMode==='coach'){
-    var plan=loadCoachPlan();
-    if(plan){
-      h+='<div style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border-radius:18px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">';
-      h+='<div style="font-size:28px">&#x1F9D1;&#x200D;&#x1F3EB;</div>';
-      h+='<div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--ink)">תוכנית אישית פעילה</div>';
-      h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+plan.daysPerWeek+' ימי אימון בשבוע &middot; '+plan.equipment+'</div></div>';
-      h+='<button onclick="_fitView=\'coach-plan\';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">צפה</button>';
-      h+='</div>';
-    } else {
-      h+='<button onclick="_fitView=\'coach-q\';renderFitness()" style="width:100%;background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--violet-500);margin-bottom:12px;font-family:inherit">&#x1F9D1;&#x200D;&#x1F3EB; בנה תוכנית אישית</button>';
-    }
-  }
-
-  /* 2. the schedule */
-  h+=fitScheduleCardHTML();
-
-  /* 3. how it is going */
-  h+=fitProgressCardHTML(log);
-
-  // Steps: the one number that moves every day, workout or not
-  var stToday=stepsOf(todayStr()),stSrc=loadStepsSrc();
-  h+='<button onclick="_fitView=\'steps\';renderFitness()" style="width:100%;display:flex;align-items:center;gap:13px;background:var(--card);border:none;border-radius:20px;padding:15px 16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.12);cursor:pointer;text-align:right;font-family:inherit">';
-  h+='<div style="width:42px;height:42px;border-radius:15px;background:linear-gradient(145deg,var(--green-50),var(--green-100));display:flex;align-items:center;justify-content:center;color:var(--green-600);flex-shrink:0">';
-  h+='<svg viewBox="0 0 24 24" style="width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M8.4 14.8c-1.7-1-2.3-3.3-1.4-5.1l1.2-2.3c1-1.8 3.2-2.4 4.9-1.4 1.7 1 2.3 3.3 1.4 5.1l-1.2 2.3c-1 1.8-3.2 2.4-4.9 1.4Z"/><path d="M8.7 17.8c-1.2-.7-1.6-2.2-1-3.4"/><path d="M17 19.6c-1.2-.7-1.6-2.2-1-3.4"/><path d="M16.7 16.2c-1.7-1-2.3-3.3-1.4-5.1"/></svg></div>';
-  h+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:var(--ink)">צעדים</div>';
-  h+='<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+(stToday?stToday.toLocaleString()+' היום':'עוד לא נרשמו היום')+(stSrc.kind==='shortcut'?' &middot; מסונכרן':'')+'</div></div>';
-  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
-
-  // Programs brought in from a gym
-  var progs=loadPrograms();
-  h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">מעקב תוכניות</div>';
-  h+='<button onclick="startProgramWizard()" style="background:linear-gradient(135deg,var(--terra-200),var(--terra-500));border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">+ תוכנית</button>';
-  h+='</div>';
-  if(progs.length===0)
-    h+='<div style="text-align:center;padding:10px;font-size:12px;color:var(--muted-soft)">הוסף תוכנית מחדר כושר</div>';
-  for(var pi=0;pi<progs.length;pi++){
-    var prog=progs[pi];
-    h+='<div style="background:var(--panel);border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">';
-    h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(prog.name)+'</div>';
-    h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+prog.exercises.length+' תרגילים</div></div>';
-    h+='<button onclick="_fitView=\'view-program\';_fitProgIdx='+pi+';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">עקב</button>';
-    h+='<button onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()" style="background:var(--violet-100);border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">ערוך</button>';
-    h+='</div>';
-  }
-  h+='</div>';
-
+     So the entry is a set of doors, in the same shape the app already uses
+     for its areas on the home screen, and each thing lives behind the one
+     that names it. Nothing was deleted - it moved. */
+  h+=fitAreaGridHTML();
   /* 4. the goal, at the bottom. It is a setting - it decides how the advice
         above reads, but it is answered once and then left alone, and it was
         taking the top of the screen from the workouts. */
@@ -7683,8 +8252,37 @@ function saveWeekPlan(obj){try{localStorage.setItem('fit_week_plan',JSON.stringi
 
 var _editWeekDay='w0d0';
 
+/* ── WHAT TODAY WAS SUPPOSED TO BE ──
+   The schedule already knows: fit_week_plan holds a type per weekday. Nothing
+   ever asked it anything, so the evening had no idea a workout had been
+   planned and the schedule had no idea whether one happened.
+
+   Worth knowing about the grid: it is two weeks wide, but week 0 is always
+   "this week" - isToday is (w===0 && dw===today), and nothing ever rotates.
+   So the second week is a plan for a next week that never arrives. Only w0 is
+   real, and only w0 is read here. */
+function plannedWorkoutFor(dateStr){
+  var dt=new Date(dateStr+"T12:00:00");
+  if(isNaN(dt))return null;
+  var plan=loadWeekPlan(),entry=plan["w0d"+dt.getDay()];
+  if(!entry||!entry.type||entry.type==="rest")return null;
+  var t=null;
+  for(var i=0;i<WORKOUT_TYPES.length;i++)if(WORKOUT_TYPES[i].id===entry.type)t=WORKOUT_TYPES[i];
+  if(!t)return null;
+  return{type:entry.type,label:entry.label||t.label,emoji:t.emoji,color:t.color};
+}
+
+/* If a session was already recorded there is nothing to ask - the app knows. */
+function workoutLoggedOn(dateStr){
+  var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
+  for(var i=log.length-1;i>=0;i--){
+    if(appDayOf(log[i].date)===dateStr)return log[i].name||"אימון";
+  }
+  return null;
+}
+
 function renderWeeklyPlan(){
-  document.getElementById('hdr-title').textContent='יומן אימונים';
+  document.getElementById('hdr-title').textContent='לוז האימונים';
   var weekPlan=loadWeekPlan();
   var DAY_NAMES=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   var h='<div style="padding-bottom:20px">';
@@ -10601,14 +11199,14 @@ function weekSunday(d){
   x.setDate(x.getDate()-x.getDay());
   return x;
 }
-function wkKey(sun){return 'wplan_'+sun.toISOString().slice(0,10);}
+function wkKey(sun){return 'wplan_'+dayStr(sun);}
 function loadWeek(sun){
   try{var x=localStorage.getItem(wkKey(sun));var o=x?JSON.parse(x):null;
     return(o&&Array.isArray(o.tasks))?o:{tasks:[]};}catch(e){return{tasks:[]};}
 }
 function saveWeek(sun,o){planPush(wkKey(sun));try{localStorage.setItem(wkKey(sun),JSON.stringify(o));}catch(e){}}
 function wkDateOf(sun,i){var d=new Date(sun);d.setDate(d.getDate()+i);return d;}
-function wkStamp(d){return d.toISOString().slice(0,10);}
+function wkStamp(d){return dayStr(d);}
 function wkShort(d){
   var dd=d.getDate(),mm=d.getMonth()+1;
   return (dd<10?'0':'')+dd+'/'+(mm<10?'0':'')+mm;
@@ -12066,7 +12664,7 @@ function jrnlShift(n){
   // noon, like every other date key here, so a timezone cannot shift the day
   var dt=new Date(_jrnlDate+'T12:00:00');
   dt.setDate(dt.getDate()+n);
-  _jrnlDate=dt.toISOString().slice(0,10);
+  _jrnlDate=dayStr(dt);
   renderJournal();
 }
 function jrnlSearch(v){
@@ -14667,7 +15265,7 @@ function finishBook(){
     lib.unshift({
       title:book.title,cover:book.cover||'',
       totalPages:book.total||book.page,
-      finishedDate:new Date().toISOString().slice(0,10),
+      finishedDate:todayStr(),
       quotes:quotes.slice()
     });
     saveBookLibrary(lib);
@@ -14930,7 +15528,7 @@ function renderTrip(){
     h+='</div></div>';
     document.getElementById('content').innerHTML=h;
     // Set today's date
-    document.getElementById('stop-date').value=new Date().toISOString().slice(0,10);
+    document.getElementById('stop-date').value=todayStr();
   }
 }
 
@@ -15942,9 +16540,14 @@ var RF_STAGE1=[
   {id:'dayRating',kind:'scale',q:'אם היית צריך לתת ליום הזה ציון — איזה ציון הוא מקבל?'},
   {id:'flow',kind:'flow',q:'איך זרם היום שלך?',sub:'כמה עוגנים לפי הסדר. זה גם מה שיישאר ממנו בזיכרון.'},
   {id:'plannedVsActual',kind:'ladder',q:'עד כמה היום שלך נראה כמו היום שרצית שיהיה?',opts:RF_PLANNED},
+  /* Only ever reaches the queue on a day the schedule planned something and
+     nothing was recorded - see rfSteps. The text names the type, so it is a
+     yes/no about one specific thing rather than a general audit. */
+  {id:'workoutDone',kind:'branch',q:'היום היה מתוכנן אימון. יצא לך?'},
   {id:'moment',kind:'text',q:'מה היה הרגע הכי טוב שלך היום?',ph:'אפילו רגע קטן.'},
   {id:'photo',kind:'photo',q:'איזו תמונה מספרת את היום שלך?',sub:'זה יכול להיות רגע, מקום, אדם, משהו שעשית — או פשוט תמונה שמרגישה כמו היום שעבר עליך.'},
-  {id:'takeawayForTomorrow',kind:'text',q:'מה אתה לוקח מהיום הזה למחר?',ph:'מחשבה, כוונה, או משהו קטן.'}
+  {id:'takeawayForTomorrow',kind:'text',q:'מה אתה לוקח מהיום הזה למחר?',ph:'מחשבה, כוונה, או משהו קטן.'},
+  {id:'grateful',kind:'text',q:'על מה אתה אסיר תודה היום?',ph:'דבר אחד. אפילו קטן מאוד.'}
 ];
 
 /* The deep pass is a board, not a queue: fifteen questions laid out like the
@@ -15965,7 +16568,8 @@ var RF_STAGE2=[
   {id:'song',kind:'song',t:'השיר של היום',s:'מה התאים למה שעבר',ic:'note',g:'lav',q:'מה השיר של היום שלך?',sub:'איזה שיר הכי מתאים למה שעבר עליך היום?'},
   {id:'quote',kind:'text',t:'משפט שלקחת',s:'משהו שנשאר',ic:'quote',g:'amb',q:'יש משפט שלקחת איתך היום?',sub:'משהו ששמעת, קראת או חשבת ולא עזב אותך.',ph:'משפט, מחשבה, רגע...'},
   {id:'differently',kind:'text',t:'מה היית משנה',s:'רגע אחד אחורה',ic:'undo',g:'gry',q:'אם היית יכול לחזור לרגע אחד היום — מה היית עושה אחרת?',sub:'לא כדי לשפוט את היום. רק כדי להבין אותו טוב יותר.'},
-  {id:'endOfDayMood',kind:'mood',t:'איך אתה עכשיו',s:'ברגע הזה',ic:'face',g:'ter',q:'איך אתה מרגיש עכשיו, ברגע הזה?'}
+  {id:'endOfDayMood',kind:'mood',t:'איך אתה עכשיו',s:'ברגע הזה',ic:'face',g:'ter',q:'איך אתה מרגיש עכשיו, ברגע הזה?'},
+  {id:'gratefulOverlooked',kind:'text',t:'מה שמובן מאליו',s:'ולא באמת',ic:'bowl',g:'amb',q:'מה היה שם היום שאתה בדרך כלל לא שם לב אליו — ובלעדיו היום היה נראה אחרת?',ph:'משהו שתמיד שם.'}
 ];
 
 var RF_GRAD={
@@ -15977,6 +16581,7 @@ var RF_GRAD={
   gry:['linear-gradient(145deg,#f0ede8,#e8e4de)','#7a716b']
 };
 var RF_ICONS={
+  bowl:'<path d="M3.9 12.4a8.1 8.1 0 0 0 16.2 0Z"/><path d="M12 3.2v5.6"/><path d="M9.3 6.1 12 3.2l2.7 2.9"/>',
   spark:'<path d="M12 3.4l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9Z"/>',
   medal:'<circle cx="12" cy="14.6" r="5.4"/><path d="M8.4 9.6 6.2 3.6h11.6l-2.2 6"/>',
   sun:'<circle cx="12" cy="12" r="4.2"/><path d="M12 3.2v2.2"/><path d="M12 18.6v2.2"/><path d="M3.2 12h2.2"/><path d="M18.6 12h2.2"/><path d="m5.9 5.9 1.6 1.6"/><path d="m16.5 16.5 1.6 1.6"/><path d="m18.1 5.9-1.6 1.6"/><path d="m7.5 16.5-1.6 1.6"/>',
@@ -16035,14 +16640,16 @@ var SUM_SECS=[
    ids:['moment','impactfulMoment','proudOf']},
   {k:'photo',  t:'תמונת היום',    d:'התמונה שמספרת את היום', ids:['photo']},
   {k:'food',   t:'סיכום תזונה',   d:'קלוריות, מאקרו ומים של אותו יום', auto:true},
-  {k:'fit',    t:'כושר וצעדים',   d:'פעילות גופנית וספירת צעדים', ids:['steps'], auto:true},
+  {k:'fit',    t:'כושר וצעדים',   d:'פעילות גופנית וספירת צעדים', ids:['steps','workoutDone'], auto:true},
   {k:'think',  t:'תובנות ומחשבות',d:'משפט שלקחת, מחשבה שחזרה, מה היית משנה',
    ids:['quote','recurringThought','differently','takeawayForTomorrow']},
   {k:'flow',   t:'זרימת היום',    d:'עוגנים לפי הסדר וציר היום', ids:['flow','dayTimeline']},
   {k:'time',   t:'לאן הלך הזמן',  d:'חלוקת השעות', ids:['timeclock']},
   {k:'energy', t:'אנרגיה',        d:'מה מילא אותך ומה רוקן', ids:['energyGivers','energyDrainers']},
   {k:'people', t:'אנשים',         d:'מי השפיע על היום', ids:['influentialPerson']},
-  {k:'song',   t:'השיר של היום',  d:'', ids:['song']}
+  {k:'song',   t:'השיר של היום',  d:'', ids:['song']},
+  {k:'grateful',t:'הכרת תודה',    d:'על מה היית אסיר תודה, ומה היה מובן מאליו',
+   ids:['grateful','gratefulOverlooked']}
 ];
 function sumSecsOn(){
   var raw=null;try{raw=localStorage.getItem(SUM_SECS_KEY);}catch(e){}
@@ -16083,7 +16690,23 @@ function sumHiddenIds(){
 function rfSteps(){
   var all=_rfStage===2?RF_STAGE2:RF_STAGE1;
   var hide=sumHiddenIds(),out=[],i;
-  for(i=0;i<all.length;i++)if(!hide[all[i].id])out.push(all[i]);
+  /* The workout question is the one step that is not always worth asking. On a
+     rest day there is nothing to ask, and when a session is already recorded
+     the answer is known - asking anyway would be the app pretending not to
+     know something it does. */
+  var planned=null,logged=null;
+  try{planned=plannedWorkoutFor(todayStr());logged=workoutLoggedOn(todayStr());}catch(e){}
+  for(i=0;i<all.length;i++){
+    if(hide[all[i].id])continue;
+    if(all[i].id==='workoutDone'){
+      if(!planned||logged)continue;
+      var w={},k;for(k in all[i])w[k]=all[i][k];
+      w.q='היום היה מתוכנן '+(planned.label||'אימון')+'. יצא לך?';
+      out.push(w);
+      continue;
+    }
+    out.push(all[i]);
+  }
   return out.length?out:all;
 }
 
@@ -16132,6 +16755,105 @@ function renderReflect(){
 }
 
 /* ── module home ── */
+/* The weekday array is written out inline in three places; the week card needs
+   it a fourth time, which is enough to give it a name. */
+var RF_DAYNAMES=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+function dayName(iso){
+  var dt=new Date(iso+'T12:00:00');
+  return isNaN(dt)?'':RF_DAYNAMES[dt.getDay()];
+}
+
+/* ── THE WEEK, READ BACK ──
+   The day summary already exists and is the spine of this app. What was
+   missing is the thing a week actually is: not seven days stacked, but the
+   few sentences you wrote across them, in one place, where you can see them
+   together.
+
+   So the moments lead. The numbers come after, quietly, because a week that
+   opens with "5/7" is a scorecard and a week that opens with what you noticed
+   is a week. And it follows the same rule as the day sheet: a section with
+   nothing behind it does not appear. Five grey stars on a week nobody rated
+   reads as a zero, which is the opposite of true.
+
+   Deliberately not here: a streak, a percentage, or any red. The point of
+   this card is to be worth opening on a week that went badly. */
+function weekCardHTML(){
+  var days=[],i,d,r;
+  for(i=6;i>=0;i--){d=dayAdd(todayStr(),-i);days.push({d:d,r:loadSummary(d)||null});}
+  var filled=[];
+  for(i=0;i<days.length;i++)if(days[i].r)filled.push(days[i]);
+  if(!filled.length)return "";        // nothing written yet: say nothing
+
+  var h='<div style="background:var(--card);border-radius:22px;padding:18px 16px;margin:20px 0 4px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">';
+  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">השבוע שלך</div>';
+  h+='<div style="font-size:10.5px;color:var(--muted-soft)">'+filled.length+' מתוך 7 ימים</div></div>';
+
+  /* the arc: one dot a day, coloured by how the day felt, hollow if unwritten.
+     Seven dots is not a chart and is not pretending to be one - it is the
+     shape of the week at a glance. */
+  h+='<div style="display:flex;gap:6px;margin-bottom:16px">';
+  for(i=0;i<days.length;i++){
+    var rec=days[i].r,mood=rec&&rec.mood?Math.max(1,Math.min(5,rec.mood)):0;
+    var col=mood?RF_MOODS[mood-1].c:"transparent";
+    var bd=mood?"transparent":"var(--line-strong)";
+    h+='<div title="'+dayName(days[i].d)+'" style="flex:1;height:26px;border-radius:8px;background:'+col+';border:1.5px solid '+bd+'"></div>';
+  }
+  h+='</div>';
+
+  /* what you wrote, verbatim and in your own words - the reason to open this */
+  var notes=[];
+  for(i=filled.length-1;i>=0&&notes.length<3;i--){
+    var rr=filled[i].r,txt=(rr.moment||rr.proudOf||rr.quote||"").trim();
+    if(txt)notes.push({d:filled[i].d,t:txt});
+  }
+  if(notes.length){
+    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:8px">מה שכתבת</div>';
+    for(i=0;i<notes.length;i++){
+      var t=notes[i].t;if(t.length>140)t=t.slice(0,138)+"…";
+      h+='<div style="border-inline-start:2px solid var(--violet-100);padding-inline-start:10px;margin-bottom:10px">'+
+         '<div style="font-size:12px;color:var(--ink-soft);line-height:1.65">'+esc(t)+'</div>'+
+         '<div style="font-size:9.5px;color:var(--muted-soft);margin-top:3px">'+dayName(notes[i].d)+'</div></div>';
+    }
+  }
+
+  /* gratitude gets its own list. Folded into "what you wrote" it would be
+     buried among the moments, and a week of these read together is the point. */
+  var thanks=[];
+  for(i=filled.length-1;i>=0&&thanks.length<3;i--){
+    var gr=(filled[i].r.grateful||filled[i].r.gratefulOverlooked||"").trim();
+    if(gr)thanks.push({d:filled[i].d,t:gr});
+  }
+  if(thanks.length){
+    h+='<div style="font-size:10px;color:var(--amber-700);letter-spacing:.08em;font-weight:700;margin:14px 0 8px">הכרת תודה</div>';
+    for(i=0;i<thanks.length;i++){
+      var tg=thanks[i].t;if(tg.length>120)tg=tg.slice(0,118)+"…";
+      h+='<div style="font-size:12px;color:var(--ink-soft);line-height:1.65;margin-bottom:7px">'+
+         esc(tg)+'<span style="font-size:9.5px;color:var(--muted-soft)"> · '+dayName(thanks[i].d)+'</span></div>';
+    }
+  }
+
+  /* the numbers, last and quiet, and only the ones that exist */
+  var moods=[],bodies=[],workouts=0,stepSum=0,stepDays=0;
+  for(i=0;i<filled.length;i++){
+    var f=filled[i].r;
+    if(f.mood)moods.push(f.mood);
+    if(f.body)bodies.push(f.body);
+    if(f.workout)workouts++;
+    var st=stepsOf(filled[i].d);
+    if(st>0){stepSum+=st;stepDays++;}
+  }
+  var bits=[],avg=function(a){var t=0,j;for(j=0;j<a.length;j++)t+=a[j];return t/a.length;};
+  if(moods.length)bits.push('מזג '+avg(moods).toFixed(1));
+  if(bodies.length)bits.push('גוף '+avg(bodies).toFixed(1));
+  if(workouts)bits.push(workouts+(workouts===1?" אימון":" אימונים"));
+  if(stepDays)bits.push(Math.round(stepSum/stepDays).toLocaleString()+' צעדים ביום');
+  if(bits.length)
+    h+='<div style="font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums">'+bits.join(' · ')+'</div>';
+
+  return h+'</div>';
+}
+
 function renderReflectHome(){
   var today=todayStr(),r=rfRec(today);
   var h='<div style="padding-bottom:24px">';
@@ -16155,10 +16877,11 @@ function renderReflectHome(){
 
   h+='<button class="rf-secs-b" onclick="rfSecsOpen()">'+rfSecsLabel()+'</button>';
 
+  h+=weekCardHTML();
+
   var prev=[],i,d,s;
   for(i=1;i<=60;i++){
-    d=new Date();d.setDate(d.getDate()-i);
-    s=d.toISOString().slice(0,10);
+    s=dayShift(-i);
     var rec=rfRec(s);
     if(rec)prev.push({d:s,r:rec});
     if(prev.length>=20)break;
@@ -16331,7 +17054,7 @@ function renderReflectStep(){
     h+='<button class="rf-rung'+(cur===true?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',true)">כן</button>';
     h+='<button class="rf-rung'+(cur===false?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',false)">לא</button>';
     h+='</div>';
-    if(cur===true){
+    if(cur===true&&q.follow){
       h+='<div class="rf-sub" style="margin-top:26px;font-weight:700;color:var(--ink);font-size:15px">'+q.follow+'</div>';
       h+='<div style="margin-top:14px">'+rfChipsHTML(q.listId,q.opts,rfArr(q.listId))+'</div>';
       h+='<textarea class="rf-in" id="rf-note" style="min-height:64px;margin-top:16px" placeholder="'+(q.ph||'')+'">'+(rfVal(q.note)?esc(rfVal(q.note)):'')+'</textarea>';
@@ -16569,7 +17292,9 @@ function rfToggleChip(id,val){
 // "No" is an answer, so it moves on by itself; "yes" opens the follow-up.
 function rfPickBranch(id,yes){
   var p={};p[id]=yes;rfSave(p);
-  if(!yes)rfAutoAdvance();else renderReflectStep();
+  var q=null,st=rfSteps(),i;
+  for(i=0;i<st.length;i++)if(st[i].id===id)q=st[i];
+  if(!yes||!q||!q.follow)rfAutoAdvance();else renderReflectStep();
 }
 function rfPickPerson(name){rfSave({influentialPerson:name});renderReflectStep();}
 function rfAddPerson(){
@@ -16757,8 +17482,7 @@ var _meRange=14;
 function meDayList(n){
   var out=[],i,d,s;
   for(i=n-1;i>=0;i--){
-    d=new Date();d.setDate(d.getDate()-i);
-    s=d.toISOString().slice(0,10);
+    s=dayShift(-i);d=new Date(s+'T12:00:00');
     out.push({date:s,d:d,sum:loadSummary(s),day:loadDay(s),steps:stepsOf(s)});
   }
   return out;
@@ -17308,15 +18032,13 @@ function workoutDays(){
   var m={},log=[];
   try{log=loadWorkoutLog()||[];}catch(e){}
   for(var i=0;i<log.length;i++){
-    var dt=new Date(log[i].date);
-    if(isFinite(dt))m[dtStamp(dt)]=1;
+    var k=appDayOf(log[i].date);
+    if(k)m[k]=1;
   }
   _stkWorkoutDays=m;
   return m;
 }
-function dtStamp(d){
-  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
-}
+function dtStamp(d){return dayStr(d);}
 function didSomething(d){return dayHadActivity(d)||workoutDays()[d]===1;}
 
 /* Today not being done yet must not read as a broken streak - at nine in the
@@ -17324,7 +18046,7 @@ function didSomething(d){return dayHadActivity(d)||workoutDays()[d]===1;}
    unless today already has something, and today only ever adds. */
 function streakNow(){
   _stkWorkoutDays=null;                       // recount, a workout may have just landed
-  var today=todayStr(),n=0,d=new Date(),i;
+  var today=todayStr(),n=0,d=appNow(),i;
   var todayDone=didSomething(today);
   if(!todayDone)d.setDate(d.getDate()-1);     // yesterday is the last day that could have been missed
   for(i=0;i<400;i++){
@@ -17337,32 +18059,43 @@ function streakNow(){
 /* The longest one ever, which is the number worth keeping when the current
    run breaks - it says the thing you are capable of, not the thing you are
    in the middle of. */
-function streakBest(){
-  var d=new Date(),cur=0,best=0,i;
-  for(i=0;i<400;i++){
-    if(didSomething(dtStamp(d))){cur++;if(cur>best)best=cur;}
+var STREAK_WINDOW=400;
+function streakStats(){
+  var d=appNow(),cur=0,best=0,total=0,i;
+  for(i=0;i<STREAK_WINDOW;i++){
+    if(didSomething(dtStamp(d))){cur++;total++;if(cur>best)best=cur;}
     else cur=0;
     d.setDate(d.getDate()-1);
   }
-  return best;
+  return{best:best,total:total};
 }
+function streakBest(){return streakStats().best;}
 function streakHTML(){
-  var s=streakNow();
-  if(!s.n)return '';
-  var best=streakBest();
+  var s=streakNow(),st=streakStats();
+  if(!s.n){
+    /* The run broke. Show what cannot break instead - and never a zero, and
+       never the word "רצף", which here would only name the thing that ended. */
+    if(!st.total)return '';
+    return '<button class="stk" onclick="streakOpen()">'+
+      '<span class="stk-f">&#9898;</span>'+
+      '<span class="stk-n">'+st.total+'</span>'+
+      '<span class="stk-w">'+(st.total===1?'יום שרשמת בו':'ימים שרשמת בהם')+'</span>'+
+      (st.best>1?'<span class="stk-b">שיא '+st.best+'</span>':'')+
+      '</button>';
+  }
   var word=s.n===1?'יום':'ימים';
   return '<button class="stk'+(s.today?' on':'')+'" onclick="streakOpen()">'+
     '<span class="stk-f">'+(s.today?'&#128293;':'&#9898;')+'</span>'+
     '<span class="stk-n">'+s.n+'</span>'+
     '<span class="stk-w">'+word+' ברצף'+(!s.today?' &middot; היום עוד פתוח':'')+'</span>'+
-    (best>s.n?'<span class="stk-b">שיא '+best+'</span>':'')+
+    (st.best>s.n?'<span class="stk-b">שיא '+st.best+'</span>':'')+
     '</button>';
 }
 /* The last two weeks as dots, and what counts. Tapping the streak should
    explain it rather than just being a number that appeared. */
 function streakOpen(){
   var old=document.getElementById('stk-ov');if(old)old.remove();
-  var s=streakNow(),best=streakBest();
+  var s=streakNow(),stats=streakStats(),best=stats.best;
   var days='',d=new Date(),i,names=['א','ב','ג','ד','ה','ו','ש'];
   var cells=[];
   for(i=0;i<14;i++){
@@ -17374,13 +18107,15 @@ function streakOpen(){
   days=cells.join('');
   var h='<div class="stk-ov" id="stk-ov" onclick="if(event.target===this)streakClose()">'+
     '<div class="stk-sheet">'+
-    '<div class="stk-hd"><span>'+s.n+' '+(s.n===1?'יום':'ימים')+' ברצף</span>'+
+    '<div class="stk-hd"><span>'+(s.n?s.n+' '+(s.n===1?'יום':'ימים')+' ברצף'
+                                     :stats.total+(stats.total===1?' יום שרשמת בו':' ימים שרשמת בהם'))+'</span>'+
     '<button class="stk-x" onclick="streakClose()">&times;</button></div>'+
     '<div class="stk-row">'+days+'</div>'+
     '<div class="stk-note">יום נספר כשרשמת בו משהו — ארוחה, אימון, שורה ביומן, מים, צעדים, ולוג או סיכום יום. '+
     'לא מספיק לפתוח את האפליקציה.</div>'+
     (best>s.n?'<div class="stk-best">הרצף הארוך ביותר שלך: '+best+' ימים.</div>':'')+
-    (!s.today?'<div class="stk-today">היום עוד לא נספר. כל דבר שתרשום היום ימשיך את הרצף.</div>':'')+
+    (!s.today?'<div class="stk-today">'+(s.n?'היום עוד לא נספר. כל דבר שתרשום היום ימשיך את הרצף.'
+                                            :'כל דבר שתרשום היום מתחיל רצף חדש. מה שכבר רשמת נשאר.')+'</div>':'')+
     '</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
