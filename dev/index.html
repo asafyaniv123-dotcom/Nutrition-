@@ -1929,7 +1929,37 @@ var pendingLib=null,toastTimer,saveToLib=false;
 var builderCat='breakfast',builderName='',builderIngs=[],builderPickOpen=false;
 var interviewStep=-1,interviewAnswers={},calMonth=new Date();
 
-function todayStr(){var d=new Date();return d.toISOString().slice(0,10);}
+/* ── WHAT DAY IT IS ──
+   This used to be toISOString().slice(0,10), which is the UTC date. At UTC+3
+   that means everything recorded between midnight and three in the morning
+   was filed under the previous day, and travelling the other way it is worse:
+   in New York an evening reflection lands on tomorrow. The app already
+   contradicted itself about this - dtStamp, fmtDate and the schedule card all
+   read the LOCAL date, and only storage was UTC.
+
+   So: the local date, with the day deliberately ending at four in the morning
+   rather than at midnight. Something written at one in the morning belongs to
+   the day that just ended, which is when it was lived and what the person
+   writing it means. Four is a decision, not an accident - it does not move
+   with the season or the country, which is exactly what was wrong before. */
+var DAY_ENDS_AT=4;
+function appNow(){return appDayShift(new Date());}
+function appDayShift(d){var x=new Date(d.getTime());x.setHours(x.getHours()-DAY_ENDS_AT);return x;}
+/* any timestamp -> the app day it belongs to */
+function appDayOf(d){var x=(d instanceof Date)?d:new Date(d);return isFinite(x)?dayStr(appDayShift(x)):'';}
+/* any Date -> its LOCAL calendar date. Never toISOString, which is UTC. */
+function dayStr(d){
+  var m=String(d.getMonth()+1),dd=String(d.getDate());
+  return d.getFullYear()+"-"+(m.length<2?"0"+m:m)+"-"+(dd.length<2?"0"+dd:dd);
+}
+function todayStr(){return dayStr(appNow());}
+/* Shift a Date by whole days and read it back as a day key, without ever
+   letting a timezone move it. */
+function dayShift(n,from){
+  var d=from?new Date(from.getTime()):appNow();
+  d.setDate(d.getDate()+n);
+  return dayStr(d);
+}
 function fmtDate(s){
   var d=new Date(s+'T12:00:00');
   var dn=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -5516,7 +5546,7 @@ function renderHistory(){
   var histTab=window._histTab||'intake';
   var days=[];
   for(var i=6;i>=0;i--){
-    var d=new Date();d.setDate(d.getDate()-i);var s=d.toISOString().slice(0,10);
+    var s=dayShift(-i);
     var day=loadDay(s);var sum=loadSummary(s);
     var kcal=Math.round(day.meals.reduce(function(a,m){return a+(m.kcal||0);},0));
     var p=Math.round(day.meals.reduce(function(a,m){return a+(m.p||0);},0));
@@ -6527,7 +6557,7 @@ function renderFitSteps(){
   // Last seven days, so a missing day is visible at a glance.
   var days=[],maxV=1,i,d,k;
   for(i=6;i>=0;i--){
-    d=new Date();d.setDate(d.getDate()-i);k=d.toISOString().slice(0,10);
+    k=dayShift(-i);
     var dv=stepsOf(k);if(dv>maxV)maxV=dv;
     days.push({k:k,v:dv,dow:['א','ב','ג','ד','ה','ו','ש'][d.getDay()]});
   }
@@ -7955,11 +7985,7 @@ function plannedWorkoutFor(dateStr){
 function workoutLoggedOn(dateStr){
   var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
   for(var i=log.length-1;i>=0;i--){
-    var dt=new Date(log[i].date);
-    if(!isFinite(dt))continue;
-    var m=String(dt.getMonth()+1),d=String(dt.getDate());
-    var iso=dt.getFullYear()+"-"+(m.length<2?"0"+m:m)+"-"+(d.length<2?"0"+d:d);
-    if(iso===dateStr)return log[i].name||"אימון";
+    if(appDayOf(log[i].date)===dateStr)return log[i].name||"אימון";
   }
   return null;
 }
@@ -10882,14 +10908,14 @@ function weekSunday(d){
   x.setDate(x.getDate()-x.getDay());
   return x;
 }
-function wkKey(sun){return 'wplan_'+sun.toISOString().slice(0,10);}
+function wkKey(sun){return 'wplan_'+dayStr(sun);}
 function loadWeek(sun){
   try{var x=localStorage.getItem(wkKey(sun));var o=x?JSON.parse(x):null;
     return(o&&Array.isArray(o.tasks))?o:{tasks:[]};}catch(e){return{tasks:[]};}
 }
 function saveWeek(sun,o){planPush(wkKey(sun));try{localStorage.setItem(wkKey(sun),JSON.stringify(o));}catch(e){}}
 function wkDateOf(sun,i){var d=new Date(sun);d.setDate(d.getDate()+i);return d;}
-function wkStamp(d){return d.toISOString().slice(0,10);}
+function wkStamp(d){return dayStr(d);}
 function wkShort(d){
   var dd=d.getDate(),mm=d.getMonth()+1;
   return (dd<10?'0':'')+dd+'/'+(mm<10?'0':'')+mm;
@@ -12347,7 +12373,7 @@ function jrnlShift(n){
   // noon, like every other date key here, so a timezone cannot shift the day
   var dt=new Date(_jrnlDate+'T12:00:00');
   dt.setDate(dt.getDate()+n);
-  _jrnlDate=dt.toISOString().slice(0,10);
+  _jrnlDate=dayStr(dt);
   renderJournal();
 }
 function jrnlSearch(v){
@@ -14948,7 +14974,7 @@ function finishBook(){
     lib.unshift({
       title:book.title,cover:book.cover||'',
       totalPages:book.total||book.page,
-      finishedDate:new Date().toISOString().slice(0,10),
+      finishedDate:todayStr(),
       quotes:quotes.slice()
     });
     saveBookLibrary(lib);
@@ -15211,7 +15237,7 @@ function renderTrip(){
     h+='</div></div>';
     document.getElementById('content').innerHTML=h;
     // Set today's date
-    document.getElementById('stop-date').value=new Date().toISOString().slice(0,10);
+    document.getElementById('stop-date').value=todayStr();
   }
 }
 
@@ -16564,8 +16590,7 @@ function renderReflectHome(){
 
   var prev=[],i,d,s;
   for(i=1;i<=60;i++){
-    d=new Date();d.setDate(d.getDate()-i);
-    s=d.toISOString().slice(0,10);
+    s=dayShift(-i);
     var rec=rfRec(s);
     if(rec)prev.push({d:s,r:rec});
     if(prev.length>=20)break;
@@ -17166,8 +17191,7 @@ var _meRange=14;
 function meDayList(n){
   var out=[],i,d,s;
   for(i=n-1;i>=0;i--){
-    d=new Date();d.setDate(d.getDate()-i);
-    s=d.toISOString().slice(0,10);
+    s=dayShift(-i);d=new Date(s+'T12:00:00');
     out.push({date:s,d:d,sum:loadSummary(s),day:loadDay(s),steps:stepsOf(s)});
   }
   return out;
@@ -17717,15 +17741,13 @@ function workoutDays(){
   var m={},log=[];
   try{log=loadWorkoutLog()||[];}catch(e){}
   for(var i=0;i<log.length;i++){
-    var dt=new Date(log[i].date);
-    if(isFinite(dt))m[dtStamp(dt)]=1;
+    var k=appDayOf(log[i].date);
+    if(k)m[k]=1;
   }
   _stkWorkoutDays=m;
   return m;
 }
-function dtStamp(d){
-  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
-}
+function dtStamp(d){return dayStr(d);}
 function didSomething(d){return dayHadActivity(d)||workoutDays()[d]===1;}
 
 /* Today not being done yet must not read as a broken streak - at nine in the
@@ -17733,7 +17755,7 @@ function didSomething(d){return dayHadActivity(d)||workoutDays()[d]===1;}
    unless today already has something, and today only ever adds. */
 function streakNow(){
   _stkWorkoutDays=null;                       // recount, a workout may have just landed
-  var today=todayStr(),n=0,d=new Date(),i;
+  var today=todayStr(),n=0,d=appNow(),i;
   var todayDone=didSomething(today);
   if(!todayDone)d.setDate(d.getDate()-1);     // yesterday is the last day that could have been missed
   for(i=0;i<400;i++){
@@ -17748,7 +17770,7 @@ function streakNow(){
    in the middle of. */
 var STREAK_WINDOW=400;
 function streakStats(){
-  var d=new Date(),cur=0,best=0,total=0,i;
+  var d=appNow(),cur=0,best=0,total=0,i;
   for(i=0;i<STREAK_WINDOW;i++){
     if(didSomething(dtStamp(d))){cur++;total++;if(cur>best)best=cur;}
     else cur=0;
