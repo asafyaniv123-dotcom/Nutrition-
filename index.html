@@ -1062,6 +1062,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .mo-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:4px}
 .mo-hd{text-align:center;font-size:9px;font-weight:800;color:var(--muted)}
 .mo-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.mo-open{outline:2px solid var(--violet-500);outline-offset:-1px}
 .mo-cell{min-height:54px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:9px;padding:3px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer;transition:background .15s,border-color .15s}
 .mo-cell.mo-blank{background:none;border-color:transparent;cursor:default}
 .mo-cell.today{border-color:var(--violet-500)}
@@ -11160,7 +11161,7 @@ function wkGridIn(tasks,date,slot){
   var all=dpAll(date),timed={},out=[],i;
   for(i=0;i<all.length;i++)if(all[i].hour!==null)timed[all[i].id]=1;
   for(i=0;i<tasks.length;i++)
-    if(tasks[i].d===date&&wkSlotOf(tasks[i])===slot&&!timed[tasks[i].id])out.push(tasks[i]);
+    if(wkOnDay(tasks[i],date)&&wkSlotOf(tasks[i])===slot&&!timed[tasks[i].id])out.push(tasks[i]);
   return out;
 }
 // Drawn from the palette the rest of the app already uses, so a coloured week
@@ -11213,20 +11214,122 @@ function wkShort(d){
 }
 // A task placed on a day before the bands existed sits in the morning.
 function wkSlotOf(t){return t.s==='n'||t.s==='e'?t.s:'m';}
+
+/* ── כל כמה ימים ──
+   A task used to be one day: t.d was a single date, so "every other day"
+   meant writing it three times and dragging it three times.
+
+   t.ev is how many days apart it repeats, anchored on the day it was placed.
+   The anchor is the real task - it drags, it deletes, it carries the colour.
+   The days after it are echoes: drawn lighter, and deliberately without a
+   data-task attribute, because the drag system finds tasks by that id and two
+   elements claiming the same one is how a list starts swapping the wrong rows.
+
+   Both the week grid and the day panel ask through here, so a task cannot
+   appear in one and not the other. */
+function wkDayIndex(dateStr){
+  var d=new Date(dateStr+"T12:00:00");
+  return isNaN(d)?null:Math.round(d.getTime()/86400000);
+}
+function wkCoversDay(t,date){
+  if(!t||!t.d)return false;
+  var a=wkDayIndex(t.d),b=wkDayIndex(date);
+  if(a===null||b===null)return false;
+  var len=wkLenOf(t);
+  if(len>1)return b>=a&&b<a+len;          // every day the bar reaches
+  if(t.d===date)return true;
+  var ev=+t.ev||0;
+  if(ev<1)return false;
+  if(b<=a)return false;
+  return (b-a)%ev===0;
+}
+/* Chips only. A span is drawn once as a bar across the grid, so it never also
+   claims a cell - not even on the day it starts. */
+function wkOnDay(t,date){
+  return wkCoversDay(t,date)&&wkLenOf(t)<2;
+}
+/* true when the task lands here by repetition rather than by being placed */
+function wkIsEcho(t,date){return !!t&&t.d!==date&&wkOnDay(t,date);}
+
+/* ── משימה שנמשכת כמה ימים ──
+   A holiday from Sunday to Tuesday is one thing, not three. t.len is how many
+   days it covers counting its own, so len 3 starting Sunday ends Tuesday.
+
+   It is drawn as a single thin bar laid ACROSS the grid rather than as a chip
+   in each day, and the days it passes over keep their own colour - the point
+   is a line travelling over them, not three cells filled in. That is also why
+   it cannot live inside a .wk-cell: a cell is one day wide, and this is the
+   one thing on this screen that is not.
+
+   The bar sits at the bottom of its band so the chips that float at the top
+   of a cell keep their place. */
+var WK_MAX_LEN=7;
+function wkLenOf(t){var n=+((t&&t.len)||1);return n>1?Math.min(n,WK_MAX_LEN):1;}
+/* which column a date is in this week, or -1 */
+function wkColIndex(date){
+  var a=wkDayIndex(wkStamp(_wkSun)),b=wkDayIndex(date);
+  if(a===null||b===null)return -1;
+  var i=b-a;
+  return (i>=0&&i<7)?i:-1;
+}
+function wkSetLen(id,n){
+  var wk=loadWeek(_wkSun),i;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){
+    if(+n>1)wk.tasks[i].len=Math.min(+n,WK_MAX_LEN); else delete wk.tasks[i].len;
+  }
+  saveWeek(_wkSun,wk);renderPlanWeek();
+}
+
+/* One absolutely positioned bar per multi-day task, over the whole table.
+   inset-inline-start rather than left: the week reads right to left, so the
+   logical property is the one that puts Sunday where Sunday is. */
+function wkSpanBarsHTML(tasks){
+  var h="",i,t,ci,len,band,BANDS={m:0,n:1,e:2};
+  for(i=0;i<tasks.length;i++){
+    t=tasks[i];
+    len=wkLenOf(t);
+    if(len<2||!t.d)continue;
+    ci=wkColIndex(t.d);
+    if(ci<0)continue;
+    if(ci+len>7)len=7-ci;                    // a week is as long as a week
+    if(len<2)continue;
+    band=BANDS[wkSlotOf(t)]||0;
+    var c=wkColor(t.c);
+    h+='<div style="position:absolute;z-index:4;pointer-events:none;'+
+       'inset-inline-start:calc('+(ci*100/7)+'% + 3px);'+
+       'inline-size:calc('+(len*100/7)+'% - 6px);'+
+       'top:calc('+(band*100/3)+'% + '+(100/3)+'% - 19px);'+
+       'height:9px;border-radius:5px;background:'+c.dot+';opacity:.85;'+
+       'display:flex;align-items:center;justify-content:center;overflow:visible">'+
+       '<span style="font-size:7.5px;font-weight:700;color:var(--white);white-space:nowrap;padding:0 4px;overflow:hidden">'+esc(t.w)+'</span>'+
+       '<div data-stretch="'+t.id+'" style="position:absolute;inset-inline-end:-7px;top:-7px;width:22px;height:22px;'+
+       'pointer-events:auto;cursor:ew-resize;touch-action:none;display:flex;align-items:center;justify-content:center">'+
+       '<div style="width:9px;height:9px;border-radius:50%;background:var(--card);border:2px solid '+c.dot+'"></div></div>'+
+       /* the other end removes it. Undo is one tap away - planPush snapshots
+          before every save - so this can be immediate the way the other
+          deletes in this app are. */
+       '<button onclick="wkDel(\''+t.id+'\')" style="position:absolute;inset-inline-start:-6px;top:-7px;width:22px;height:22px;'+
+       'pointer-events:auto;cursor:pointer;background:none;border:none;padding:0;'+
+       'display:flex;align-items:center;justify-content:center;font-family:inherit">'+
+       '<span style="width:14px;height:14px;border-radius:50%;background:var(--card);border:1.5px solid '+c.dot+';'+
+       'color:'+c.dot+';font-size:10px;line-height:11px;font-weight:700">&times;</span></button>'+
+       '</div>';
+  }
+  return h;
+}
 function wkIn(tasks,date,slot){
   var out=[],i;
   for(i=0;i<tasks.length;i++)
-    if(tasks[i].d===date&&wkSlotOf(tasks[i])===slot)out.push(tasks[i]);
+    if(wkCoversDay(tasks[i],date)&&wkSlotOf(tasks[i])===slot)out.push(tasks[i]);
   return out;
 }
 
-function renderPlanWeek(){
+function planWeekHTML(){
   if(!_wkSun)_wkSun=weekSunday(new Date());
   var wk=loadWeek(_wkSun),i,j,t;
   var today=wkStamp(new Date()),thisWeek=wkStamp(weekSunday(new Date()))===wkStamp(_wkSun);
 
   var h='<div style="padding-bottom:30px">';
-  h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0 0 12px">&#8250; חזרה</button>';
 
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
   h+='<button onclick="wkShift(1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
@@ -11252,6 +11355,7 @@ function renderPlanWeek(){
   h+='</div>';
   h+='<div class="wk-table">';
   h+='<div class="wk-bands"><div class="wk-band-l" style="top:33.333%"></div><div class="wk-band-l" style="top:66.666%"></div></div>';
+  h+=wkSpanBarsHTML(wk.tasks);
   h+='<div class="wk-cols">';
   for(i=0;i<7;i++){
     var dt=wkDateOf(_wkSun,i),st=wkStamp(dt);
@@ -11263,8 +11367,16 @@ function renderPlanWeek(){
       if(list.length){
         h+='<div class="wk-free">';
         for(t=0;t<list.length;t++){
-          var cc=wkColor(list[t].c);
-          h+='<div class="wk-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(list[t].w)+'</div>';
+          var cc=wkColor(list[t].c),ech=wkIsEcho(list[t],st);
+          h+='<div class="wk-chip" style="position:relative;background:'+cc.bg+';color:'+cc.tx+(ech?';opacity:.55':'')+'">'+
+             (ech?'<span style="opacity:.7">&#8635; </span>':'')+esc(list[t].w)+
+             /* the same grab point a bar has, so a one-day task can become a
+                longer one without first being something else */
+             (ech?'':'<div data-stretch="'+list[t].id+'" style="position:absolute;inset-inline-end:-6px;top:50%;margin-top:-11px;'+
+                   'width:22px;height:22px;pointer-events:auto;cursor:ew-resize;touch-action:none;'+
+                   'display:flex;align-items:center;justify-content:center">'+
+                   '<div style="width:7px;height:7px;border-radius:50%;background:var(--card);border:2px solid '+cc.dot+'"></div></div>')+
+             '</div>';
         }
         h+='</div>';
       }
@@ -11321,7 +11433,7 @@ function renderPlanWeek(){
       if(!dl.length)continue;
       anyDay=true;
       h+='<div style="font-size:9.5px;letter-spacing:.1em;font-weight:700;color:var(--muted);margin:10px 0 7px">'+WK_SLOTS[j][1]+'</div>';
-      for(t=0;t<dl.length;t++)h+=wkTaskHTML(dl[t]);
+      for(t=0;t<dl.length;t++)h+=wkTaskHTML(dl[t],ost);
     }
     if(!anyDay)h+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;padding:4px 2px">אין כאן כלום עדיין. גרור לכאן משימה מלמטה.</div>';
     h+='</div>';
@@ -11348,31 +11460,62 @@ function renderPlanWeek(){
   h+='</div></div>';
 
   h+='</div>';
-  document.getElementById('content').innerHTML=h;
-  wkPlacePoint();
-  var box=document.getElementById('content');
-  box.removeEventListener('pointerdown',dpDown);
-  box.removeEventListener('pointerdown',moDown);
-  box.removeEventListener('pointerdown',wkDown);
-  box.removeEventListener('pointerdown',daySwipeDown);
-  box.removeEventListener('pointerup',daySwipeUp);
-  box.addEventListener('pointerdown',daySwipeDown);
-  box.addEventListener('pointerup',daySwipeUp);
-  box.addEventListener('pointerdown',wkDown);
+  return h;
 }
 
-function wkTaskHTML(t){
-  var c=wkColor(t.c);
-  var h='<div class="wk-task" data-task="'+t.id+'" style="border-right:4px solid '+c.dot+'">';
-  h+='<div class="wk-grip">&#8942;&#8942;</div>';
-  h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="wkPick(\''+t.id+'\')"></button>';
+/* Short intervals only. 'Every 9 days' is a calendar's problem, not a week's. */
+var WK_EVERY=[[0,'פעם אחת'],[2,'כל יומיים'],[3,'כל 3 ימים'],[7,'כל שבוע']];
+var _wkEvery='';
+function wkEveryOpen(id){_wkEvery=(_wkEvery===id?'':id);_wkPick='';renderPlanWeek();}
+function wkSetEvery(id,n){
+  var wk=loadWeek(_wkSun),i;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){
+    if(+n>0)wk.tasks[i].ev=+n; else delete wk.tasks[i].ev;
+  }
+  saveWeek(_wkSun,wk);_wkEvery='';renderPlanWeek();
+}
+
+function wkTaskHTML(t,onDate){
+  var c=wkColor(t.c),echo=onDate?wkIsEcho(t,onDate):false;
+  /* An echo carries no data-task: the drag system finds tasks by that id, and
+     two elements claiming one id is how a list starts moving the wrong row. */
+  var h='<div class="wk-task"'+(echo?'':' data-task="'+t.id+'"')+
+        ' style="border-right:4px solid '+c.dot+(echo?';opacity:.55':'')+'">';
+  h+=echo?'<div class="wk-grip" style="opacity:.35">&#8635;</div>':'<div class="wk-grip">&#8942;&#8942;</div>';
+  h+='<button class="wk-dot" style="background:'+c.dot+'"'+(echo?'':' onclick="wkPick(\''+t.id+'\')"')+'></button>';
   h+='<div style="flex:1;min-width:0;font-size:13.5px;color:var(--ink);line-height:1.45">'+esc(t.w)+'</div>';
+  if(echo)return h+'</div>';                       // an echo is a reminder, not a handle
+  if(t.d){
+    var _L=wkLenOf(t);
+    h+='<span style="display:inline-flex;align-items:center;gap:2px;flex-shrink:0">'+
+       '<button onclick="wkSetLen(\''+t.id+'\','+(_L-1)+')" '+(_L<2?'disabled ':'')+
+       'style="background:none;border:none;color:'+(_L>1?'var(--muted)':'var(--line-strong)')+
+       ';font-size:14px;cursor:'+(_L>1?'pointer':'default')+';font-family:inherit;padding:0 3px">&minus;</button>'+
+       '<span style="font-size:10px;font-weight:700;color:'+(_L>1?c.dot:'var(--muted-soft)')+';min-width:26px;text-align:center">'+
+       (_L>1?_L+' ימים':'יום')+'</span>'+
+       '<button onclick="wkSetLen(\''+t.id+'\','+(_L+1)+')" '+(_L>=WK_MAX_LEN?'disabled ':'')+
+       'style="background:none;border:none;color:'+(_L<WK_MAX_LEN?'var(--muted)':'var(--line-strong)')+
+       ';font-size:14px;cursor:'+(_L<WK_MAX_LEN?'pointer':'default')+';font-family:inherit;padding:0 3px">+</button>'+
+       '</span>';
+  }
+  if(t.d)h+='<button onclick="wkEveryOpen(\''+t.id+'\')" style="background:none;border:none;color:'+
+            (+t.ev>0?c.dot:'var(--muted-soft)')+';font-size:12px;cursor:pointer;flex-shrink:0;font-family:inherit" '+
+            'title="כל כמה ימים">&#8635;'+(+t.ev>0?'<span style="font-size:9px;font-weight:700"> '+t.ev+'</span>':'')+'</button>';
   if(!t.d)h+=taskLibStar(t.w,t.c);
   if(t.d)h+='<button onclick="wkAssign(\''+t.id+'\',\'\',\'\')" style="background:none;border:none;color:var(--violet-300);font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>';
   h+='<button onclick="wkDel(\''+t.id+'\')" style="background:none;border:none;color:var(--terra-100);font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
   h+='</div>';
   // The palette opens under the task it belongs to, leaving its text in view.
   if(_wkPick===t.id)h+='<div class="wk-picker">'+wkSwatches("wkSetColor('"+t.id+"','%K%')",t.c||'lav')+'</div>';
+  if(_wkEvery===t.id){
+    h+='<div class="wk-picker" style="display:flex;gap:6px;flex-wrap:wrap">';
+    for(var E=0;E<WK_EVERY.length;E++){
+      var opt=WK_EVERY[E],on=(+t.ev||0)===opt[0];
+      h+='<button onclick="wkSetEvery(\''+t.id+'\','+opt[0]+')" style="background:'+(on?c.dot:'var(--surface)')+
+         ';color:'+(on?'var(--white)':'var(--ink-soft)')+';border:none;border-radius:11px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">'+opt[1]+'</button>';
+    }
+    h+='</div>';
+  }
   return h;
 }
 function wkPick(id){_wkPick=(_wkPick===id?'':id);renderPlanWeek();}
@@ -11408,6 +11551,8 @@ function wkAdd(){
   setTimeout(function(){var e=document.getElementById('wk-in');if(e)e.focus();},40);
 }
 function wkAssign(id,date,slot){
+  /* a task with no day cannot repeat from one */
+  if(!date){var _w=loadWeek(_wkSun),_i;for(_i=0;_i<_w.tasks.length;_i++)if(_w.tasks[_i].id===id){delete _w.tasks[_i].ev;delete _w.tasks[_i].len;}saveWeek(_wkSun,_w);}
   var wk=loadWeek(_wkSun),i;
   for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){wk.tasks[i].d=date||'';wk.tasks[i].s=date?(slot||'m'):'';}
   saveWeek(_wkSun,wk);renderPlanWeek();
@@ -11429,6 +11574,24 @@ function wkDel(id){
 
 /* ── the drag ── */
 function wkDown(e){
+  if(e.target.closest&&!e.target.closest('#plan-sec-week'))return;   // not this panel's drag
+  /* A pull on the end of a bar is a stretch, not a move. Checked first,
+     because the handle sits inside the thing that would otherwise be dragged. */
+  var gh=e.target.closest?e.target.closest('[data-stretch]'):null;
+  if(gh){
+    var sid=gh.getAttribute('data-stretch'),wk=loadWeek(_wkSun),st=null,q;
+    for(q=0;q<wk.tasks.length;q++)if(wk.tasks[q].id===sid)st=wk.tasks[q];
+    if(!st||!st.d)return;
+    var c0=wkColIndex(st.d);
+    if(c0<0)return;
+    _wkDrag={mode:'stretch',id:sid,c0:c0,len:wkLenOf(st)};
+    window.addEventListener('pointermove',wkMove);
+    window.addEventListener('pointerup',wkUp);
+    window.addEventListener('pointercancel',wkUp);
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;      // × and "return" are taps, not drags
@@ -11448,6 +11611,29 @@ function wkDown(e){
   window.addEventListener('pointercancel',wkUp);
   e.preventDefault();
 }
+function wkColAt(x){
+  var cols=document.querySelectorAll('.wk-col'),i,r;
+  for(i=0;i<cols.length;i++){
+    r=cols[i].getBoundingClientRect();
+    if(x>=r.left&&x<=r.right)return i;
+  }
+  return -1;
+}
+/* Write the length straight through and redraw. Saving on every change rather
+   than only at the end means letting go anywhere - off the grid, off the
+   screen, mid-scroll - leaves the task the length it looked like it was. */
+function wkStretchTo(id,len){
+  var wk=loadWeek(_wkSun),i,ch=false;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){
+    var cur=wkLenOf(wk.tasks[i]);
+    if(cur===len)break;
+    if(len>1)wk.tasks[i].len=len; else delete wk.tasks[i].len;
+    ch=true;
+  }
+  if(ch){saveWeek(_wkSun,wk);renderPlanWeek();}
+  return ch;
+}
+
 function wkHitCell(x,y){
   var cells=document.querySelectorAll('.wk-cell'),i,r;
   for(i=0;i<cells.length;i++){
@@ -11464,6 +11650,23 @@ function wkOverPool(x,y){
 }
 function wkMove(e){
   if(!_wkDrag)return;
+  if(_wkDrag.mode==='stretch'){
+    var ci=wkColAt(e.clientX);
+    if(ci<0){
+      /* past the edge of the grid. The last column is the far end of the week,
+         whichever side of the screen that happens to be in this direction. */
+      var cols=document.querySelectorAll('.wk-col');
+      if(!cols.length)return;
+      var first=cols[0].getBoundingClientRect(),last=cols[cols.length-1].getBoundingClientRect();
+      var farEnd=(last.left+last.width/2)<(first.left+first.width/2)
+                 ? e.clientX<last.left : e.clientX>last.right;
+      ci=farEnd?cols.length-1:_wkDrag.c0;
+    }
+    if(ci<_wkDrag.c0)ci=_wkDrag.c0;                 // never shorter than its own day
+    var L=Math.min(ci-_wkDrag.c0+1,7-_wkDrag.c0,WK_MAX_LEN);
+    if(L!==_wkDrag.len&&wkStretchTo(_wkDrag.id,L))_wkDrag.len=L;
+    return;
+  }
   _wkDrag.moved=true;
   _wkDrag.g.style.left=(e.clientX-_wkDrag.dx)+'px';
   _wkDrag.g.style.top=(e.clientY-_wkDrag.dy)+'px';
@@ -11476,6 +11679,13 @@ function wkMove(e){
 }
 function wkUp(e){
   if(!_wkDrag)return;
+  if(_wkDrag.mode==='stretch'){
+    window.removeEventListener('pointermove',wkMove);
+    window.removeEventListener('pointerup',wkUp);
+    window.removeEventListener('pointercancel',wkUp);
+    _wkDrag=null;
+    return;                                   // already saved on the way
+  }
   dragScrollStop();
   var hit=wkHitCell(e.clientX,e.clientY);
   var onPool=!hit&&wkOverPool(e.clientX,e.clientY);
@@ -11521,7 +11731,7 @@ function dpAll(date){
   var dp=loadDPlan(date),out=[],i;
   var wk=loadWeek(weekSunday(new Date(date+'T12:00:00')));
   for(i=0;i<wk.tasks.length;i++){
-    if(wk.tasks[i].d!==date)continue;
+    if(!wkCoversDay(wk.tasks[i],date))continue;
     var hv=dp.hours[wk.tasks[i].id];
     out.push({id:wk.tasks[i].id,w:wk.tasks[i].w,c:wk.tasks[i].c,
               hour:(typeof hv==='number'?hv:null),min:dp.mins[wk.tasks[i].id]||0,end:dp.ends[wk.tasks[i].id]||0,src:'week',slot:wkSlotOf(wk.tasks[i])});
@@ -11941,13 +12151,12 @@ function dpNotesFor(date,hour){
   return out;
 }
 
-function renderPlanDay(){
+function planDayHTML(){
   if(!_dpDate)_dpDate=wkStamp(new Date());
   var d=new Date(_dpDate+'T12:00:00'),all=dpAll(_dpDate),i,h,t;
   var isToday=_dpDate===wkStamp(new Date());
 
   var out='<div style="padding-bottom:30px">';
-  out+='<button onclick="_planMode=\'weekly\';renderPlanning()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0 0 12px">&#8250; חזרה לשבוע</button>';
 
   out+='<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">';
   out+='<div><div style="font-size:17px;font-weight:800;color:var(--ink)">'+WK_DAYS[d.getDay()]+(isToday?' &middot; היום':'')+'</div>';
@@ -12077,19 +12286,7 @@ function renderPlanDay(){
 
   out+='</div>';
 
-  document.getElementById('content').innerHTML=out;
-  dpRail();
-  // #content survives innerHTML, so the other screen's handler survives with
-  // it. Left attached, both drags start at once and fight over the drop.
-  var box=document.getElementById('content');
-  box.removeEventListener('pointerdown',wkDown);
-  box.removeEventListener('pointerdown',moDown);
-  box.removeEventListener('pointerdown',dpDown);
-  box.addEventListener('pointerdown',dpDown);
-  box.removeEventListener('pointerdown',daySwipeDown);
-  box.removeEventListener('pointerup',daySwipeUp);
-  box.addEventListener('pointerdown',daySwipeDown);
-  box.addEventListener('pointerup',daySwipeUp);
+  return out;
 }
 
 /* ── THE SIDE RAIL ──
@@ -12194,7 +12391,13 @@ function dpShift(dir){
   var d=new Date(_dpDate+'T12:00:00');d.setDate(d.getDate()+dir);
   _dpDate=wkStamp(d);_dpPick='';renderPlanDay();
 }
-function planOpenDay(date){_planMode='day';_dpDate=date;_dpRailOpen=false;renderPlanning();window.scrollTo(0,0);}
+function planOpenDay(date){
+  _dpDate=date;_dpRailOpen=false;
+  planSecsGet().day=true;planSecsSave();
+  renderPlanning();
+  var el=document.getElementById('plan-sec-day');
+  if(el)el.scrollIntoView({block:'start'});
+}
 
 /* The deeper answers live in plan_history keyed by the day, the same store
    the planning journal reads, and are written as they are given rather than
@@ -12248,6 +12451,7 @@ function deepDelRemember(i){
 
 /* ── the drag ── */
 function dpDown(e){
+  if(e.target.closest&&!e.target.closest('#plan-sec-day'))return;   // not this panel's drag
   var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;
@@ -12748,15 +12952,114 @@ function moTasksOn(date){
   return out;
 }
 
-function renderPlanMonth(){
+var MO_CELL_MAX=3;
+/* Whether a covered day is the first of a span, the last, or in the middle.
+   The month grid wraps every seven days, so a span crossing a Saturday is
+   two runs of cells rather than one - which is exactly what a calendar does
+   and why the answer is per-cell rather than one bar drawn over the grid. */
+function wkSpanEdge(t,date){
+  var len=wkLenOf(t);
+  if(len<2)return{first:true,last:true};
+  var a=wkDayIndex(t.d),b=wkDayIndex(date);
+  if(a===null||b===null)return{first:true,last:true};
+  var dow=new Date(date+"T12:00:00").getDay();
+  return{first:(b===a)||dow===0,last:(b===a+len-1)||dow===6};
+}
+
+/* What the day plan itself holds for a date - the things typed into the day
+   rather than pushed down from a week or a month. dpAll would answer this too
+   but it reloads the week and the month on every call, and a month grid asks
+   thirty-one times. */
+function moDayItemsOn(date){
+  var dp=null;try{dp=loadDPlan(date);}catch(e){}
+  return (dp&&dp.items)||[];
+}
+
+/* Tapping a day used to jump to the day screen, which meant leaving the month
+   to add one line and coming back to see where it landed. The week already
+   solved this: the day opens underneath, and the grid stays on screen above
+   it. Same idea here.
+
+   The full day screen is still one tap away for the things this panel does
+   not do - hours, notes, the rail - because a panel that tried to be that
+   would just be the day screen in a worse place. */
+var _moOpen='';
+function moOpenDay(date){_moOpen=(_moOpen===date?'':date);renderPlanMonth();}
+var MO_DBL_MS=380,_moTapAt=0,_moTapDate='';
+function moCellTap(date){
+  var now=Date.now();
+  if(_moTapDate===date&&(now-_moTapAt)<MO_DBL_MS){
+    _moTapAt=0;_moTapDate='';
+    _moOpen=date;                    // the first tap may have closed it
+    planOpenDay(date);               // opens the day panel and scrolls to it
+    return;
+  }
+  _moTapAt=now;_moTapDate=date;
+  moOpenDay(date);
+}
+function moDayAdd(){
+  var el=document.getElementById('mo-day-in');
+  if(!el||!el.value.trim()||!_moOpen)return;
+  var dp=loadDPlan(_moOpen);
+  dp.items.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                 w:el.value.trim(),c:_moNewColor||'lav'});
+  saveDPlan(_moOpen,dp);
+  renderPlanMonth();
+  setTimeout(function(){var e=document.getElementById('mo-day-in');if(e)e.focus();},40);
+}
+/* only the day's own items can be removed here - a week or month task is not
+   this day's to delete, and deleting it from here would take it off the other
+   days it belongs to without saying so */
+function moDayDel(id){
+  if(!_moOpen)return;
+  var dp=loadDPlan(_moOpen),out=[],i;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id!==id)out.push(dp.items[i]);
+  dp.items=out;saveDPlan(_moOpen,dp);renderPlanMonth();
+}
+function moDayPanelHTML(){
+  if(!_moOpen)return '';
+  var all=dpAll(_moOpen),i,h='';
+  h+='<div style="background:var(--card);border-radius:18px;padding:14px;margin-top:14px;box-shadow:0 4px 18px rgba(200,180,160,.12)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
+  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">'+fmtDate(_moOpen)+'</div>';
+  h+='<button onclick="moOpenDay(\''+_moOpen+'\')" style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">סגור</button></div>';
+  if(!all.length)h+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;margin-bottom:10px">אין כאן כלום עדיין.</div>';
+  for(i=0;i<all.length;i++){
+    var it=all[i],c=wkColor(it.c);
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--line)">';
+    h+='<span style="width:7px;height:7px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span>';
+    h+='<span style="flex:1;min-width:0;font-size:12.5px;color:var(--ink)">'+esc(it.w)+'</span>';
+    if(it.hour!==null&&it.hour!==undefined)
+      h+='<span style="font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums">'+(it.hour<10?'0':'')+it.hour+':'+(it.min<10?'0':'')+(it.min||0)+'</span>';
+    h+='<span style="font-size:9px;color:var(--muted-soft);flex-shrink:0">'+(it.src==='week'?'מהשבוע':it.src==='month'?'מהחודש':'')+'</span>';
+    if(it.src==='day')h+='<button onclick="moDayDel(\''+it.id+'\')" style="background:none;border:none;color:var(--terra-100);font-size:15px;cursor:pointer;font-family:inherit;padding:0 2px">&times;</button>';
+    h+='</div>';
+  }
+  h+='<div style="display:flex;gap:8px;margin-top:12px">';
+  h+='<input id="mo-day-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משהו ליום הזה" onkeydown="if(event.key===&quot;Enter&quot;)moDayAdd()">';
+  h+='<button onclick="moDayAdd()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:0 15px;font-size:17px;color:var(--white);cursor:pointer;font-family:inherit">+</button>';
+  h+='</div>';
+  h+='<button onclick="planOpenDay(\''+_moOpen+'\')" style="width:100%;margin-top:10px;background:var(--surface);border:none;border-radius:12px;padding:9px;font-size:11.5px;color:var(--ink-soft);cursor:pointer;font-family:inherit">לתכנן את היום הזה לפי שעות &#8249;</button>';
+  return h+'</div>';
+}
+
+function moWeekTasksOn(date,cache){
+  var sun=weekSunday(new Date(date+"T12:00:00")),k=wkStamp(sun);
+  if(!cache[k])cache[k]=loadWeek(sun);
+  var tasks=(cache[k]&&cache[k].tasks)||[],out=[],i;
+  for(i=0;i<tasks.length;i++)if(wkCoversDay(tasks[i],date))out.push(tasks[i]);
+  return out;
+}
+
+function planMonthHTML(){
   if(!_moMonth)_moMonth=moFirst(new Date());
   var mo=loadMonth(_moMonth),i,t;
+  var wkCache={};                       // one loadWeek per week the month touches
   var year=_moMonth.getFullYear(),mi=_moMonth.getMonth();
   var first=new Date(year,mi,1,12),days=new Date(year,mi+1,0).getDate();
   var lead=first.getDay(),today=wkStamp(new Date());
 
   var h='<div style="padding-bottom:30px">';
-  h+='<button onclick="_planMode=\'\';renderPlanning()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0 0 12px">&#8250; חזרה</button>';
 
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
   h+='<button onclick="moShift(1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
@@ -12774,17 +13077,61 @@ function renderPlanMonth(){
   for(i=0;i<lead;i++)h+='<div class="mo-cell mo-blank"></div>';
   for(i=1;i<=days;i++){
     var st=year+'-'+(mi<9?'0':'')+(mi+1)+'-'+(i<10?'0':'')+i;
-    h+='<div class="mo-cell'+(st===today?' today':'')+'" data-date="'+st+'" onclick="planOpenDay(\''+st+'\')">';
+    h+='<div class="mo-cell'+(st===today?' today':'')+(st===_moOpen?' mo-open':'')+'" data-date="'+st+'" onclick="moCellTap(\''+st+'\')">';
     h+='<div class="mo-n">'+i+'</div>';
+    var shown=0;
     for(t=0;t<mo.tasks.length;t++){
       if(mo.tasks[t].d!==st)continue;
+      if(shown>=MO_CELL_MAX)break;
       var cc=wkColor(mo.tasks[t].c);
       h+='<div class="mo-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(mo.tasks[t].w)+'</div>';
+      shown++;
     }
+    /* the week's tasks come after the month's and read quieter: this screen is
+       the month's plan, and the week is context on it rather than a second
+       list competing with it */
+    var wt=moWeekTasksOn(st,wkCache),extra=0;
+    for(t=0;t<wt.length;t++){
+      if(shown>=MO_CELL_MAX){extra=wt.length-t;break;}
+      var wc=wkColor(wt[t].c),sp=wkLenOf(wt[t])>1,ed=wkSpanEdge(wt[t],st);
+      if(sp){
+        /* a run of days reads as one bar. The cell has 3px of padding and the
+           grid 3px of gap, so a segment that continues bleeds 6px into the
+           join and the two halves meet with no seam. Only the first segment
+           of a run carries the words. */
+        h+='<div class="mo-chip" style="background:'+wc.dot+';color:var(--white);opacity:.9;'+
+           'border-start-start-radius:'+(ed.first?'4px':'0')+';border-end-start-radius:'+(ed.first?'4px':'0')+';'+
+           'border-start-end-radius:'+(ed.last?'4px':'0')+';border-end-end-radius:'+(ed.last?'4px':'0')+';'+
+           (ed.first?'':'margin-inline-start:-6px;')+(ed.last?'':'margin-inline-end:-6px;')+
+           'white-space:nowrap;overflow:hidden">'+(ed.first?esc(wt[t].w):'&nbsp;')+'</div>';
+      }else{
+        h+='<div class="mo-chip" style="background:var(--card);color:'+wc.tx+
+           ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+'</div>';
+      }
+      shown++;
+    }
+    /* and what was written straight into that day, which until now only the
+       day screen knew about */
+    var di=moDayItemsOn(st);
+    for(t=0;t<di.length;t++){
+      if(shown>=MO_CELL_MAX){extra+=di.length-t;break;}
+      var dc=wkColor(di[t].c);
+      h+='<div class="mo-chip" style="background:var(--card);color:'+dc.tx+
+         ';border:1px dashed '+dc.dot+';opacity:.9">'+esc(di[t].w)+'</div>';
+      shown++;
+    }
+    if(extra>0)h+='<div style="font-size:7px;color:var(--muted-soft);font-weight:700;padding-inline-start:2px">+'+extra+'</div>';
     h+='</div>';
   }
   h+='</div>';
-  h+='<div style="font-size:9.5px;color:var(--muted-soft);text-align:center;margin-top:8px">לחיצה על יום פותחת את התכנון שלו</div>';
+  h+='<div style="display:flex;justify-content:center;gap:10px;margin-top:8px;font-size:8.5px;color:var(--muted-soft);flex-wrap:wrap">'+
+     '<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,var(--violet-100),var(--violet-200))"></span>מהחודש</span>'+
+     '<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:3px;background:var(--card);border-inline-start:2.5px solid var(--violet-500)"></span>מהשבוע</span>'+
+     '<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:3px;background:var(--card);border:1px dashed var(--violet-500)"></span>מהיום</span>'+
+     '</div>';
+  h+='<div style="font-size:9.5px;color:var(--muted-soft);text-align:center;margin-top:8px">לחיצה על יום פותחת אותו כאן &middot; לחיצה כפולה יורדת ללוח היומי שלו</div>';
+
+  h+=moDayPanelHTML();
 
   var pool=[];
   for(t=0;t<mo.tasks.length;t++)if(!mo.tasks[t].d)pool.push(mo.tasks[t]);
@@ -12805,12 +13152,7 @@ function renderPlanMonth(){
   h+='<button onclick="moAdd()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:var(--white);flex-shrink:0;font-family:inherit">+</button>';
   h+='</div></div></div>';
 
-  document.getElementById('content').innerHTML=h;
-  var box=document.getElementById('content');
-  box.removeEventListener('pointerdown',wkDown);
-  box.removeEventListener('pointerdown',dpDown);
-  box.removeEventListener('pointerdown',moDown);
-  box.addEventListener('pointerdown',moDown);
+  return h;
 }
 
 function moTaskHTML(t){
@@ -12864,6 +13206,7 @@ function moSetColor(id,k){
 
 /* ── the drag ── */
 function moDown(e){
+  if(e.target.closest&&!e.target.closest('#plan-sec-month'))return;   // not this panel's drag
   var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;
@@ -12981,68 +13324,89 @@ function areaSplash(id){
   document.body.appendChild(d);
   setTimeout(go,1900);
 }
+/* ── THE THREE HORIZONS, ON ONE PAGE ──
+   A month, a week and a day used to be three screens, so deciding anything
+   meant holding one of them in your head while looking at another. They are
+   panels now: a chevron opens each, more than one can be open at a time, and
+   what is open is remembered.
+
+   Every mutation in this area calls renderPlanWeek or renderPlanMonth or
+   renderPlanDay - fifty-seven places between them - so those names still exist
+   and now redraw the whole page. Nothing had to be hunted down and changed.
+
+   The three used to be mutually exclusive because each carries its own drag
+   and all three looked for the same [data-task]. They are fenced to their own
+   panels now; see the guard at the top of each handler. */
+var PLAN_SECS_KEY='plan_secs';
+var _planSecs=null;
+function planSecsGet(){
+  if(_planSecs)return _planSecs;
+  try{
+    var x=localStorage.getItem(PLAN_SECS_KEY),o=x?JSON.parse(x):null;
+    if(o&&typeof o==='object'){_planSecs=o;return o;}
+  }catch(e){}
+  _planSecs={week:true,month:false,day:false};   // the middle horizon first
+  return _planSecs;
+}
+function planSecsSave(){
+  try{localStorage.setItem(PLAN_SECS_KEY,JSON.stringify(planSecsGet()));}catch(e){}
+}
+function planSecToggle(k){
+  var o=planSecsGet();o[k]=!o[k];planSecsSave();renderPlanning();
+}
+function planSecHeadHTML(k,title,sub,open){
+  return '<button onclick="planSecToggle(\''+k+'\')" style="width:100%;display:flex;align-items:center;gap:10px;'+
+    'background:var(--card);border:none;border-radius:16px;padding:13px 15px;cursor:pointer;font-family:inherit;'+
+    'box-shadow:0 2px 10px rgba(200,180,160,.08);margin-bottom:'+(open?'10px':'8px')+'">'+
+    '<span style="flex:1;text-align:right">'+
+      '<span style="display:block;font-size:13.5px;font-weight:800;color:var(--ink)">'+title+'</span>'+
+      '<span style="display:block;font-size:10px;color:var(--muted);margin-top:2px">'+sub+'</span>'+
+    '</span>'+
+    '<span style="font-size:13px;color:var(--muted-soft);display:inline-block;transform:rotate('+(open?'180deg':'0deg')+');transition:transform .18s">&#9662;</span>'+
+    '</button>';
+}
 function renderPlanning(){
   document.getElementById('hdr-title').textContent='תכנון זמן';
-  dpRailClear();                 // the day screen puts it back if it is the one rendering
-  if(!_planMode)return renderPlanHome();
-  if(_planMode==='weekly')return renderPlanWeek();
-  if(_planMode==='day')return renderPlanDay();
-  if(_planMode==='monthly')return renderPlanMonth();
+  dpRailClear();
   if(_planStep===-1)return renderPlanHistory();
-  renderPlanHome();
-}
+  var o=planSecsGet();
+  if(!_dpDate)_dpDate=todayStr();
+  var h='<div style="padding-bottom:30px">';
+  h+='<div style="font-size:11.5px;color:var(--muted);line-height:1.65;margin:2px 2px 14px">תכנון הוא לא רשימה. זו החלטה מה חשוב, לפני שהזמן מחליט במקומך.</div>';
 
-var PLAN_MODES=[
-  {id:'daily',t:'תכנון יומי',s:'לתכנן את היום שאחרי — כוונה, מסגרת, עדיפויות',
-   g:'linear-gradient(145deg,var(--water-100),#d6ebf7)',c:PAL.water500,
-   ic:'<path d="M12 4.2v3"/><path d="m6.3 6.5 2.1 2.1"/><path d="m17.7 6.5-2.1 2.1"/><path d="M3.4 15.6h17.2"/><path d="M7.4 15.6a4.6 4.6 0 0 1 9.2 0"/><path d="M5.6 19.4h12.8"/>'},
-  {id:'weekly',t:'תכנון שבועי',s:'לראות את השבוע כולו לפני שהוא מתחיל',
-   g:'linear-gradient(145deg,#f5eefa,#ede4f7)',c:PAL.violet500,
-   ic:'<rect x="3.6" y="5" width="16.8" height="15" rx="3"/><path d="M3.6 9.6h16.8"/><path d="M8 3.2v3.4"/><path d="M16 3.2v3.4"/><path d="M7.4 13.6h3"/><path d="M13.6 13.6h3"/>'},
-  {id:'monthly',t:'תכנון חודשי',s:'מה החודש הזה צריך להחזיק, ומתי',
-   g:'linear-gradient(145deg,var(--green-50),var(--green-100))',c:PAL.green600,
-   ic:'<circle cx="12" cy="12" r="8.6"/><path d="m14.9 9.1-1.7 4.1-4.1 1.7 1.7-4.1Z"/>'}
-];
+  h+=planSecHeadHTML('month','החודש','מה החודש צריך להחזיק, ומתי',o.month);
+  if(o.month)h+='<div id="plan-sec-month">'+planMonthHTML()+'</div>';
 
-function renderPlanHome(){
-  var hist=loadPlanHistory(),i,st;
-  // The daily wizard always plans tomorrow, and stamps the moment it was
-  // saved - so "already planned" means one was saved today.
-  var t0=new Date();t0.setHours(0,0,0,0);
-  var plannedToday=false;
-  for(i=0;i<hist.length;i++)if(hist[i].date&&hist[i].date>=t0.getTime()){plannedToday=true;break;}
+  h+=planSecHeadHTML('week','השבוע','לראות אותו כולו לפני שהוא מתחיל',o.week);
+  if(o.week)h+='<div id="plan-sec-week">'+planWeekHTML()+'</div>';
 
-  var h='<div style="padding-bottom:26px">';
-  h+='<div class="rf-q" style="font-size:21px">על איזה טווח בא לך להסתכל?</div>';
-  h+='<div class="rf-sub" style="margin-bottom:20px">תכנון הוא לא רשימה. זו החלטה מה חשוב, לפני שהזמן מחליט במקומך.</div>';
+  h+=planSecHeadHTML('day','היום',fmtDate(_dpDate),o.day);
+  if(o.day)h+='<div id="plan-sec-day">'+planDayHTML()+'</div>';
 
-  for(i=0;i<PLAN_MODES.length;i++){
-    var m=PLAN_MODES[i];
-    // Each card says where that horizon actually stands.
-    if(m.id==='daily')st=plannedToday?'מחר כבר מתוכנן':'מחר עוד לא מתוכנן';
-    else if(m.id==='weekly'){
-      var wt=loadWeek(weekSunday(new Date())).tasks.length;
-      st=wt?wt+' בשבוע הזה':'השבוע עוד ריק';
-    } else {
-      var mt=loadMonth(moFirst(new Date())).tasks.length;
-      st=mt?mt+' בחודש הזה':'החודש עוד ריק';
-    }
-    h+='<button onclick="planGo(\''+m.id+'\')" style="width:100%;display:flex;align-items:center;gap:13px;background:'+m.g+';border:none;border-radius:22px;padding:17px 16px;margin-bottom:11px;cursor:pointer;text-align:right;font-family:inherit">';
-    h+='<div style="width:46px;height:46px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;color:'+m.c+';flex-shrink:0;box-shadow:0 3px 10px rgba(160,140,120,.16)">';
-    h+='<svg viewBox="0 0 24 24" style="width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">'+m.ic+'</svg></div>';
-    h+='<div style="flex:1;min-width:0">';
-    h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+m.t+'</div>';
-    h+='<div style="font-size:10.5px;color:#8d847d;line-height:1.45;margin-top:3px">'+m.s+'</div>';
-    h+='<div style="font-size:10px;color:'+(m.id==='daily'&&plannedToday?'var(--green-700)':'#b0a79f')+';font-weight:700;margin-top:5px">'+st+'</div>';
-    h+='</div><div style="font-size:15px;color:#c9c0b8;flex-shrink:0">&#8249;</div></button>';
-  }
-
-  if(hist.length){
-    h+='<button onclick="_planMode=\'daily\';_planStep=-1;renderPlanning()" style="width:100%;background:var(--surface);border:none;border-radius:12px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;margin-top:6px">יומן התכנונים &#8250;</button>';
-  }
   h+='</div>';
   document.getElementById('content').innerHTML=h;
+
+  /* the after-steps each screen used to run for itself */
+  if(o.week)wkPlacePoint();
+  if(o.day)dpRail();
+
+  /* all three attached at once now, each fenced to its own panel */
+  var box=document.getElementById('content');
+  box.removeEventListener('pointerdown',wkDown);
+  box.removeEventListener('pointerdown',dpDown);
+  box.removeEventListener('pointerdown',moDown);
+  box.removeEventListener('pointerdown',daySwipeDown);
+  box.removeEventListener('pointerup',daySwipeUp);
+  box.addEventListener('pointerdown',daySwipeDown);
+  box.addEventListener('pointerup',daySwipeUp);
+  box.addEventListener('pointerdown',wkDown);
+  box.addEventListener('pointerdown',dpDown);
+  box.addEventListener('pointerdown',moDown);
 }
+/* Fifty-seven call sites redraw through these three names. They are the page. */
+function renderPlanWeek(){renderPlanning();}
+function renderPlanMonth(){renderPlanning();}
+function renderPlanDay(){renderPlanning();}
 
 function planGo(mode){
   // "Daily" is the day screen itself, for tomorrow.
