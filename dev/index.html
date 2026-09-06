@@ -11230,17 +11230,22 @@ function wkDayIndex(dateStr){
   var d=new Date(dateStr+"T12:00:00");
   return isNaN(d)?null:Math.round(d.getTime()/86400000);
 }
-function wkOnDay(t,date){
+function wkCoversDay(t,date){
   if(!t||!t.d)return false;
-  /* a multi-day task is drawn as one bar across the grid, so it never claims a
-     cell - not even on the day it starts */
-  if(wkLenOf(t)>1)return false;
+  var a=wkDayIndex(t.d),b=wkDayIndex(date);
+  if(a===null||b===null)return false;
+  var len=wkLenOf(t);
+  if(len>1)return b>=a&&b<a+len;          // every day the bar reaches
   if(t.d===date)return true;
   var ev=+t.ev||0;
   if(ev<1)return false;
-  var a=wkDayIndex(t.d),b=wkDayIndex(date);
-  if(a===null||b===null||b<=a)return false;
+  if(b<=a)return false;
   return (b-a)%ev===0;
+}
+/* Chips only. A span is drawn once as a bar across the grid, so it never also
+   claims a cell - not even on the day it starts. */
+function wkOnDay(t,date){
+  return wkCoversDay(t,date)&&wkLenOf(t)<2;
 }
 /* true when the task lands here by repetition rather than by being placed */
 function wkIsEcho(t,date){return !!t&&t.d!==date&&wkOnDay(t,date);}
@@ -11299,6 +11304,14 @@ function wkSpanBarsHTML(tasks){
        '<div data-stretch="'+t.id+'" style="position:absolute;inset-inline-end:-7px;top:-7px;width:22px;height:22px;'+
        'pointer-events:auto;cursor:ew-resize;touch-action:none;display:flex;align-items:center;justify-content:center">'+
        '<div style="width:9px;height:9px;border-radius:50%;background:var(--card);border:2px solid '+c.dot+'"></div></div>'+
+       /* the other end removes it. Undo is one tap away - planPush snapshots
+          before every save - so this can be immediate the way the other
+          deletes in this app are. */
+       '<button onclick="wkDel(\''+t.id+'\')" style="position:absolute;inset-inline-start:-6px;top:-7px;width:22px;height:22px;'+
+       'pointer-events:auto;cursor:pointer;background:none;border:none;padding:0;'+
+       'display:flex;align-items:center;justify-content:center;font-family:inherit">'+
+       '<span style="width:14px;height:14px;border-radius:50%;background:var(--card);border:1.5px solid '+c.dot+';'+
+       'color:'+c.dot+';font-size:10px;line-height:11px;font-weight:700">&times;</span></button>'+
        '</div>';
   }
   return h;
@@ -11306,7 +11319,7 @@ function wkSpanBarsHTML(tasks){
 function wkIn(tasks,date,slot){
   var out=[],i;
   for(i=0;i<tasks.length;i++)
-    if(wkOnDay(tasks[i],date)&&wkSlotOf(tasks[i])===slot)out.push(tasks[i]);
+    if(wkCoversDay(tasks[i],date)&&wkSlotOf(tasks[i])===slot)out.push(tasks[i]);
   return out;
 }
 
@@ -11727,7 +11740,7 @@ function dpAll(date){
   var dp=loadDPlan(date),out=[],i;
   var wk=loadWeek(weekSunday(new Date(date+'T12:00:00')));
   for(i=0;i<wk.tasks.length;i++){
-    if(wk.tasks[i].d!==date)continue;
+    if(!wkCoversDay(wk.tasks[i],date))continue;
     var hv=dp.hours[wk.tasks[i].id];
     out.push({id:wk.tasks[i].id,w:wk.tasks[i].w,c:wk.tasks[i].c,
               hour:(typeof hv==='number'?hv:null),min:dp.mins[wk.tasks[i].id]||0,end:dp.ends[wk.tasks[i].id]||0,src:'week',slot:wkSlotOf(wk.tasks[i])});
