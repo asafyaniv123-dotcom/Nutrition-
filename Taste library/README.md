@@ -70,3 +70,29 @@ with the project.
 - **rocker-switch-toggle.mov** (+ `-frames.jpg`) — a paddle switch that seesaws
   instead of sliding, and turns green at the halfway point rather than at the
   end. The midpoint trick is the part worth taking.
+- **dallo-stones-dashboard.jpg** — a colourless interface with all the colour in
+  the content, in earth tones the app already has tokens for. Also the third
+  reference to point at light-as-realism.
+
+## What is emerging
+
+Seven entries in, three things have been said more than once. None of them is a
+decision yet — this is a record of what keeps recurring, not a plan.
+
+**1. The interface is grey; colour belongs to the content.** Said twice as *"the
+colours are too strong"* about tinted controls, then approved as *"yes to these
+colours"* about coloured objects on a colourless interface. The rule is about
+*where* colour sits, not how much of it there is.
+
+**2. Realism comes from light.** A light edge and inner glow on the glass, a
+highlight travelling across metal on the rocker switch, gloss on the stones —
+three separate references, one mechanism. Never texture, never heavier shadows.
+
+**3. Soft matte depth is winning over glass, on count.** Three neumorphic
+references against three glass ones, but the glass ones came with reservations
+and the matte ones did not. The split that keeps both: **photograph and glass at
+the door, flat and soft depth inside.**
+
+And one thing that has quietly resolved itself: the warm/cool tension flagged
+three times. The palette he approved is the warm half of the app's existing
+tokens — sage, terracotta, dusty pink, cream. Nothing has to be travelled to.
