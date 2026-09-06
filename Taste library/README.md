@@ -47,3 +47,9 @@ That is fine for screenshots of other people's apps and public links. It is not
 the place for anything personal. If it should be private instead, one line in
 `.gitignore` keeps it on this machine only — at the cost of it not travelling
 with the project.
+
+## What is in here so far
+
+- **liquid-glass-ui-kit.jpg** — translucent pastel controls on a flat grey
+  ground. The buttons, and behind them the requirement they serve: an app with
+  this many areas has to stay quiet or it starts to weigh on you.
