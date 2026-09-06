@@ -11232,6 +11232,9 @@ function wkDayIndex(dateStr){
 }
 function wkOnDay(t,date){
   if(!t||!t.d)return false;
+  /* a multi-day task is drawn as one bar across the grid, so it never claims a
+     cell - not even on the day it starts */
+  if(wkLenOf(t)>1)return false;
   if(t.d===date)return true;
   var ev=+t.ev||0;
   if(ev<1)return false;
@@ -11241,6 +11244,62 @@ function wkOnDay(t,date){
 }
 /* true when the task lands here by repetition rather than by being placed */
 function wkIsEcho(t,date){return !!t&&t.d!==date&&wkOnDay(t,date);}
+
+/* ── משימה שנמשכת כמה ימים ──
+   A holiday from Sunday to Tuesday is one thing, not three. t.len is how many
+   days it covers counting its own, so len 3 starting Sunday ends Tuesday.
+
+   It is drawn as a single thin bar laid ACROSS the grid rather than as a chip
+   in each day, and the days it passes over keep their own colour - the point
+   is a line travelling over them, not three cells filled in. That is also why
+   it cannot live inside a .wk-cell: a cell is one day wide, and this is the
+   one thing on this screen that is not.
+
+   The bar sits at the bottom of its band so the chips that float at the top
+   of a cell keep their place. */
+var WK_MAX_LEN=7;
+function wkLenOf(t){var n=+((t&&t.len)||1);return n>1?Math.min(n,WK_MAX_LEN):1;}
+/* which column a date is in this week, or -1 */
+function wkColIndex(date){
+  var a=wkDayIndex(wkStamp(_wkSun)),b=wkDayIndex(date);
+  if(a===null||b===null)return -1;
+  var i=b-a;
+  return (i>=0&&i<7)?i:-1;
+}
+function wkSetLen(id,n){
+  var wk=loadWeek(_wkSun),i;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){
+    if(+n>1)wk.tasks[i].len=Math.min(+n,WK_MAX_LEN); else delete wk.tasks[i].len;
+  }
+  saveWeek(_wkSun,wk);renderPlanWeek();
+}
+
+/* One absolutely positioned bar per multi-day task, over the whole table.
+   inset-inline-start rather than left: the week reads right to left, so the
+   logical property is the one that puts Sunday where Sunday is. */
+function wkSpanBarsHTML(tasks){
+  var h="",i,t,ci,len,band,BANDS={m:0,n:1,e:2};
+  for(i=0;i<tasks.length;i++){
+    t=tasks[i];
+    len=wkLenOf(t);
+    if(len<2||!t.d)continue;
+    ci=wkColIndex(t.d);
+    if(ci<0)continue;
+    if(ci+len>7)len=7-ci;                    // a week is as long as a week
+    if(len<2)continue;
+    band=BANDS[wkSlotOf(t)]||0;
+    var c=wkColor(t.c);
+    h+='<div style="position:absolute;z-index:4;pointer-events:none;'+
+       'inset-inline-start:calc('+(ci*100/7)+'% + 3px);'+
+       'inline-size:calc('+(len*100/7)+'% - 6px);'+
+       'top:calc('+(band*100/3)+'% + '+(100/3)+'% - 19px);'+
+       'height:9px;border-radius:5px;background:'+c.dot+';opacity:.85;'+
+       'display:flex;align-items:center;justify-content:center;overflow:hidden">'+
+       '<span style="font-size:7.5px;font-weight:700;color:var(--white);white-space:nowrap;padding:0 4px">'+esc(t.w)+'</span>'+
+       '</div>';
+  }
+  return h;
+}
 function wkIn(tasks,date,slot){
   var out=[],i;
   for(i=0;i<tasks.length;i++)
@@ -11280,6 +11339,7 @@ function renderPlanWeek(){
   h+='</div>';
   h+='<div class="wk-table">';
   h+='<div class="wk-bands"><div class="wk-band-l" style="top:33.333%"></div><div class="wk-band-l" style="top:66.666%"></div></div>';
+  h+=wkSpanBarsHTML(wk.tasks);
   h+='<div class="wk-cols">';
   for(i=0;i<7;i++){
     var dt=wkDateOf(_wkSun,i),st=wkStamp(dt);
@@ -11412,6 +11472,19 @@ function wkTaskHTML(t,onDate){
   h+='<button class="wk-dot" style="background:'+c.dot+'"'+(echo?'':' onclick="wkPick(\''+t.id+'\')"')+'></button>';
   h+='<div style="flex:1;min-width:0;font-size:13.5px;color:var(--ink);line-height:1.45">'+esc(t.w)+'</div>';
   if(echo)return h+'</div>';                       // an echo is a reminder, not a handle
+  if(t.d){
+    var _L=wkLenOf(t);
+    h+='<span style="display:inline-flex;align-items:center;gap:2px;flex-shrink:0">'+
+       '<button onclick="wkSetLen(\''+t.id+'\','+(_L-1)+')" '+(_L<2?'disabled ':'')+
+       'style="background:none;border:none;color:'+(_L>1?'var(--muted)':'var(--line-strong)')+
+       ';font-size:14px;cursor:'+(_L>1?'pointer':'default')+';font-family:inherit;padding:0 3px">&minus;</button>'+
+       '<span style="font-size:10px;font-weight:700;color:'+(_L>1?c.dot:'var(--muted-soft)')+';min-width:26px;text-align:center">'+
+       (_L>1?_L+' ימים':'יום')+'</span>'+
+       '<button onclick="wkSetLen(\''+t.id+'\','+(_L+1)+')" '+(_L>=WK_MAX_LEN?'disabled ':'')+
+       'style="background:none;border:none;color:'+(_L<WK_MAX_LEN?'var(--muted)':'var(--line-strong)')+
+       ';font-size:14px;cursor:'+(_L<WK_MAX_LEN?'pointer':'default')+';font-family:inherit;padding:0 3px">+</button>'+
+       '</span>';
+  }
   if(t.d)h+='<button onclick="wkEveryOpen(\''+t.id+'\')" style="background:none;border:none;color:'+
             (+t.ev>0?c.dot:'var(--muted-soft)')+';font-size:12px;cursor:pointer;flex-shrink:0;font-family:inherit" '+
             'title="כל כמה ימים">&#8635;'+(+t.ev>0?'<span style="font-size:9px;font-weight:700"> '+t.ev+'</span>':'')+'</button>';
@@ -11466,7 +11539,7 @@ function wkAdd(){
 }
 function wkAssign(id,date,slot){
   /* a task with no day cannot repeat from one */
-  if(!date){var _w=loadWeek(_wkSun),_i;for(_i=0;_i<_w.tasks.length;_i++)if(_w.tasks[_i].id===id)delete _w.tasks[_i].ev;saveWeek(_wkSun,_w);}
+  if(!date){var _w=loadWeek(_wkSun),_i;for(_i=0;_i<_w.tasks.length;_i++)if(_w.tasks[_i].id===id){delete _w.tasks[_i].ev;delete _w.tasks[_i].len;}saveWeek(_wkSun,_w);}
   var wk=loadWeek(_wkSun),i;
   for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){wk.tasks[i].d=date||'';wk.tasks[i].s=date?(slot||'m'):'';}
   saveWeek(_wkSun,wk);renderPlanWeek();
