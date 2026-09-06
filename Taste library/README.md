@@ -53,3 +53,6 @@ with the project.
 - **liquid-glass-ui-kit.jpg** — translucent pastel controls on a flat grey
   ground. The buttons, and behind them the requirement they serve: an app with
   this many areas has to stay quiet or it starts to weigh on you.
+- **liquid-glass-panel.jpg** — the same kit as a whole panel over a blurred
+  photograph. Same liking, plus a standing note that the colours are too strong:
+  the structure of the palette, not its saturation.
