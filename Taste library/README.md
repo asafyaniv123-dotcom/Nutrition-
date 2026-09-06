@@ -59,3 +59,8 @@ with the project.
 - **activity-picker-arc.jpg** — activities on a curved picker, chosen by
   bringing one to the centre. Also where the "small pleasant click" idea is
   written down, along with why it is native work.
+- **glass-login-over-landscape.jpg** — a frosted card over a photograph, sent as
+  the idea for the way into the app. Note also records that the app has no
+  accounts, so this is about arriving rather than signing in.
+- **own photos/alpine-meadow-morning.jpg** — Asaf's own photograph, the first
+  thing here that is material rather than reference.
