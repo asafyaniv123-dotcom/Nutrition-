@@ -56,3 +56,6 @@ with the project.
 - **liquid-glass-panel.jpg** — the same kit as a whole panel over a blurred
   photograph. Same liking, plus a standing note that the colours are too strong:
   the structure of the palette, not its saturation.
+- **activity-picker-arc.jpg** — activities on a curved picker, chosen by
+  bringing one to the centre. Also where the "small pleasant click" idea is
+  written down, along with why it is native work.
