@@ -11294,8 +11294,11 @@ function wkSpanBarsHTML(tasks){
        'inline-size:calc('+(len*100/7)+'% - 6px);'+
        'top:calc('+(band*100/3)+'% + '+(100/3)+'% - 19px);'+
        'height:9px;border-radius:5px;background:'+c.dot+';opacity:.85;'+
-       'display:flex;align-items:center;justify-content:center;overflow:hidden">'+
-       '<span style="font-size:7.5px;font-weight:700;color:var(--white);white-space:nowrap;padding:0 4px">'+esc(t.w)+'</span>'+
+       'display:flex;align-items:center;justify-content:center;overflow:visible">'+
+       '<span style="font-size:7.5px;font-weight:700;color:var(--white);white-space:nowrap;padding:0 4px;overflow:hidden">'+esc(t.w)+'</span>'+
+       '<div data-stretch="'+t.id+'" style="position:absolute;inset-inline-end:-7px;top:-7px;width:22px;height:22px;'+
+       'pointer-events:auto;cursor:ew-resize;touch-action:none;display:flex;align-items:center;justify-content:center">'+
+       '<div style="width:9px;height:9px;border-radius:50%;background:var(--card);border:2px solid '+c.dot+'"></div></div>'+
        '</div>';
   }
   return h;
@@ -11352,8 +11355,15 @@ function renderPlanWeek(){
         h+='<div class="wk-free">';
         for(t=0;t<list.length;t++){
           var cc=wkColor(list[t].c),ech=wkIsEcho(list[t],st);
-          h+='<div class="wk-chip" style="background:'+cc.bg+';color:'+cc.tx+(ech?';opacity:.55':'')+'">'+
-             (ech?'<span style="opacity:.7">&#8635; </span>':'')+esc(list[t].w)+'</div>';
+          h+='<div class="wk-chip" style="position:relative;background:'+cc.bg+';color:'+cc.tx+(ech?';opacity:.55':'')+'">'+
+             (ech?'<span style="opacity:.7">&#8635; </span>':'')+esc(list[t].w)+
+             /* the same grab point a bar has, so a one-day task can become a
+                longer one without first being something else */
+             (ech?'':'<div data-stretch="'+list[t].id+'" style="position:absolute;inset-inline-end:-6px;top:50%;margin-top:-11px;'+
+                   'width:22px;height:22px;pointer-events:auto;cursor:ew-resize;touch-action:none;'+
+                   'display:flex;align-items:center;justify-content:center">'+
+                   '<div style="width:7px;height:7px;border-radius:50%;background:var(--card);border:2px solid '+cc.dot+'"></div></div>')+
+             '</div>';
         }
         h+='</div>';
       }
@@ -11561,6 +11571,23 @@ function wkDel(id){
 
 /* ── the drag ── */
 function wkDown(e){
+  /* A pull on the end of a bar is a stretch, not a move. Checked first,
+     because the handle sits inside the thing that would otherwise be dragged. */
+  var gh=e.target.closest?e.target.closest('[data-stretch]'):null;
+  if(gh){
+    var sid=gh.getAttribute('data-stretch'),wk=loadWeek(_wkSun),st=null,q;
+    for(q=0;q<wk.tasks.length;q++)if(wk.tasks[q].id===sid)st=wk.tasks[q];
+    if(!st||!st.d)return;
+    var c0=wkColIndex(st.d);
+    if(c0<0)return;
+    _wkDrag={mode:'stretch',id:sid,c0:c0,len:wkLenOf(st)};
+    window.addEventListener('pointermove',wkMove);
+    window.addEventListener('pointerup',wkUp);
+    window.addEventListener('pointercancel',wkUp);
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;      // × and "return" are taps, not drags
@@ -11580,6 +11607,29 @@ function wkDown(e){
   window.addEventListener('pointercancel',wkUp);
   e.preventDefault();
 }
+function wkColAt(x){
+  var cols=document.querySelectorAll('.wk-col'),i,r;
+  for(i=0;i<cols.length;i++){
+    r=cols[i].getBoundingClientRect();
+    if(x>=r.left&&x<=r.right)return i;
+  }
+  return -1;
+}
+/* Write the length straight through and redraw. Saving on every change rather
+   than only at the end means letting go anywhere - off the grid, off the
+   screen, mid-scroll - leaves the task the length it looked like it was. */
+function wkStretchTo(id,len){
+  var wk=loadWeek(_wkSun),i,ch=false;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){
+    var cur=wkLenOf(wk.tasks[i]);
+    if(cur===len)break;
+    if(len>1)wk.tasks[i].len=len; else delete wk.tasks[i].len;
+    ch=true;
+  }
+  if(ch){saveWeek(_wkSun,wk);renderPlanWeek();}
+  return ch;
+}
+
 function wkHitCell(x,y){
   var cells=document.querySelectorAll('.wk-cell'),i,r;
   for(i=0;i<cells.length;i++){
@@ -11596,6 +11646,23 @@ function wkOverPool(x,y){
 }
 function wkMove(e){
   if(!_wkDrag)return;
+  if(_wkDrag.mode==='stretch'){
+    var ci=wkColAt(e.clientX);
+    if(ci<0){
+      /* past the edge of the grid. The last column is the far end of the week,
+         whichever side of the screen that happens to be in this direction. */
+      var cols=document.querySelectorAll('.wk-col');
+      if(!cols.length)return;
+      var first=cols[0].getBoundingClientRect(),last=cols[cols.length-1].getBoundingClientRect();
+      var farEnd=(last.left+last.width/2)<(first.left+first.width/2)
+                 ? e.clientX<last.left : e.clientX>last.right;
+      ci=farEnd?cols.length-1:_wkDrag.c0;
+    }
+    if(ci<_wkDrag.c0)ci=_wkDrag.c0;                 // never shorter than its own day
+    var L=Math.min(ci-_wkDrag.c0+1,7-_wkDrag.c0,WK_MAX_LEN);
+    if(L!==_wkDrag.len&&wkStretchTo(_wkDrag.id,L))_wkDrag.len=L;
+    return;
+  }
   _wkDrag.moved=true;
   _wkDrag.g.style.left=(e.clientX-_wkDrag.dx)+'px';
   _wkDrag.g.style.top=(e.clientY-_wkDrag.dy)+'px';
@@ -11608,6 +11675,13 @@ function wkMove(e){
 }
 function wkUp(e){
   if(!_wkDrag)return;
+  if(_wkDrag.mode==='stretch'){
+    window.removeEventListener('pointermove',wkMove);
+    window.removeEventListener('pointerup',wkUp);
+    window.removeEventListener('pointercancel',wkUp);
+    _wkDrag=null;
+    return;                                   // already saved on the way
+  }
   dragScrollStop();
   var hit=wkHitCell(e.clientX,e.clientY);
   var onPool=!hit&&wkOverPool(e.clientX,e.clientY);
