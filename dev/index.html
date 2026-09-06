@@ -11160,7 +11160,7 @@ function wkGridIn(tasks,date,slot){
   var all=dpAll(date),timed={},out=[],i;
   for(i=0;i<all.length;i++)if(all[i].hour!==null)timed[all[i].id]=1;
   for(i=0;i<tasks.length;i++)
-    if(tasks[i].d===date&&wkSlotOf(tasks[i])===slot&&!timed[tasks[i].id])out.push(tasks[i]);
+    if(wkOnDay(tasks[i],date)&&wkSlotOf(tasks[i])===slot&&!timed[tasks[i].id])out.push(tasks[i]);
   return out;
 }
 // Drawn from the palette the rest of the app already uses, so a coloured week
@@ -11213,10 +11213,38 @@ function wkShort(d){
 }
 // A task placed on a day before the bands existed sits in the morning.
 function wkSlotOf(t){return t.s==='n'||t.s==='e'?t.s:'m';}
+
+/* ── כל כמה ימים ──
+   A task used to be one day: t.d was a single date, so "every other day"
+   meant writing it three times and dragging it three times.
+
+   t.ev is how many days apart it repeats, anchored on the day it was placed.
+   The anchor is the real task - it drags, it deletes, it carries the colour.
+   The days after it are echoes: drawn lighter, and deliberately without a
+   data-task attribute, because the drag system finds tasks by that id and two
+   elements claiming the same one is how a list starts swapping the wrong rows.
+
+   Both the week grid and the day panel ask through here, so a task cannot
+   appear in one and not the other. */
+function wkDayIndex(dateStr){
+  var d=new Date(dateStr+"T12:00:00");
+  return isNaN(d)?null:Math.round(d.getTime()/86400000);
+}
+function wkOnDay(t,date){
+  if(!t||!t.d)return false;
+  if(t.d===date)return true;
+  var ev=+t.ev||0;
+  if(ev<1)return false;
+  var a=wkDayIndex(t.d),b=wkDayIndex(date);
+  if(a===null||b===null||b<=a)return false;
+  return (b-a)%ev===0;
+}
+/* true when the task lands here by repetition rather than by being placed */
+function wkIsEcho(t,date){return !!t&&t.d!==date&&wkOnDay(t,date);}
 function wkIn(tasks,date,slot){
   var out=[],i;
   for(i=0;i<tasks.length;i++)
-    if(tasks[i].d===date&&wkSlotOf(tasks[i])===slot)out.push(tasks[i]);
+    if(wkOnDay(tasks[i],date)&&wkSlotOf(tasks[i])===slot)out.push(tasks[i]);
   return out;
 }
 
@@ -11263,8 +11291,9 @@ function renderPlanWeek(){
       if(list.length){
         h+='<div class="wk-free">';
         for(t=0;t<list.length;t++){
-          var cc=wkColor(list[t].c);
-          h+='<div class="wk-chip" style="background:'+cc.bg+';color:'+cc.tx+'">'+esc(list[t].w)+'</div>';
+          var cc=wkColor(list[t].c),ech=wkIsEcho(list[t],st);
+          h+='<div class="wk-chip" style="background:'+cc.bg+';color:'+cc.tx+(ech?';opacity:.55':'')+'">'+
+             (ech?'<span style="opacity:.7">&#8635; </span>':'')+esc(list[t].w)+'</div>';
         }
         h+='</div>';
       }
@@ -11321,7 +11350,7 @@ function renderPlanWeek(){
       if(!dl.length)continue;
       anyDay=true;
       h+='<div style="font-size:9.5px;letter-spacing:.1em;font-weight:700;color:var(--muted);margin:10px 0 7px">'+WK_SLOTS[j][1]+'</div>';
-      for(t=0;t<dl.length;t++)h+=wkTaskHTML(dl[t]);
+      for(t=0;t<dl.length;t++)h+=wkTaskHTML(dl[t],ost);
     }
     if(!anyDay)h+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;padding:4px 2px">אין כאן כלום עדיין. גרור לכאן משימה מלמטה.</div>';
     h+='</div>';
@@ -11361,18 +11390,46 @@ function renderPlanWeek(){
   box.addEventListener('pointerdown',wkDown);
 }
 
-function wkTaskHTML(t){
-  var c=wkColor(t.c);
-  var h='<div class="wk-task" data-task="'+t.id+'" style="border-right:4px solid '+c.dot+'">';
-  h+='<div class="wk-grip">&#8942;&#8942;</div>';
-  h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="wkPick(\''+t.id+'\')"></button>';
+/* Short intervals only. 'Every 9 days' is a calendar's problem, not a week's. */
+var WK_EVERY=[[0,'פעם אחת'],[2,'כל יומיים'],[3,'כל 3 ימים'],[7,'כל שבוע']];
+var _wkEvery='';
+function wkEveryOpen(id){_wkEvery=(_wkEvery===id?'':id);_wkPick='';renderPlanWeek();}
+function wkSetEvery(id,n){
+  var wk=loadWeek(_wkSun),i;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){
+    if(+n>0)wk.tasks[i].ev=+n; else delete wk.tasks[i].ev;
+  }
+  saveWeek(_wkSun,wk);_wkEvery='';renderPlanWeek();
+}
+
+function wkTaskHTML(t,onDate){
+  var c=wkColor(t.c),echo=onDate?wkIsEcho(t,onDate):false;
+  /* An echo carries no data-task: the drag system finds tasks by that id, and
+     two elements claiming one id is how a list starts moving the wrong row. */
+  var h='<div class="wk-task"'+(echo?'':' data-task="'+t.id+'"')+
+        ' style="border-right:4px solid '+c.dot+(echo?';opacity:.55':'')+'">';
+  h+=echo?'<div class="wk-grip" style="opacity:.35">&#8635;</div>':'<div class="wk-grip">&#8942;&#8942;</div>';
+  h+='<button class="wk-dot" style="background:'+c.dot+'"'+(echo?'':' onclick="wkPick(\''+t.id+'\')"')+'></button>';
   h+='<div style="flex:1;min-width:0;font-size:13.5px;color:var(--ink);line-height:1.45">'+esc(t.w)+'</div>';
+  if(echo)return h+'</div>';                       // an echo is a reminder, not a handle
+  if(t.d)h+='<button onclick="wkEveryOpen(\''+t.id+'\')" style="background:none;border:none;color:'+
+            (+t.ev>0?c.dot:'var(--muted-soft)')+';font-size:12px;cursor:pointer;flex-shrink:0;font-family:inherit" '+
+            'title="כל כמה ימים">&#8635;'+(+t.ev>0?'<span style="font-size:9px;font-weight:700"> '+t.ev+'</span>':'')+'</button>';
   if(!t.d)h+=taskLibStar(t.w,t.c);
   if(t.d)h+='<button onclick="wkAssign(\''+t.id+'\',\'\',\'\')" style="background:none;border:none;color:var(--violet-300);font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">החזר</button>';
   h+='<button onclick="wkDel(\''+t.id+'\')" style="background:none;border:none;color:var(--terra-100);font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
   h+='</div>';
   // The palette opens under the task it belongs to, leaving its text in view.
   if(_wkPick===t.id)h+='<div class="wk-picker">'+wkSwatches("wkSetColor('"+t.id+"','%K%')",t.c||'lav')+'</div>';
+  if(_wkEvery===t.id){
+    h+='<div class="wk-picker" style="display:flex;gap:6px;flex-wrap:wrap">';
+    for(var E=0;E<WK_EVERY.length;E++){
+      var opt=WK_EVERY[E],on=(+t.ev||0)===opt[0];
+      h+='<button onclick="wkSetEvery(\''+t.id+'\','+opt[0]+')" style="background:'+(on?c.dot:'var(--surface)')+
+         ';color:'+(on?'var(--white)':'var(--ink-soft)')+';border:none;border-radius:11px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">'+opt[1]+'</button>';
+    }
+    h+='</div>';
+  }
   return h;
 }
 function wkPick(id){_wkPick=(_wkPick===id?'':id);renderPlanWeek();}
@@ -11408,6 +11465,8 @@ function wkAdd(){
   setTimeout(function(){var e=document.getElementById('wk-in');if(e)e.focus();},40);
 }
 function wkAssign(id,date,slot){
+  /* a task with no day cannot repeat from one */
+  if(!date){var _w=loadWeek(_wkSun),_i;for(_i=0;_i<_w.tasks.length;_i++)if(_w.tasks[_i].id===id)delete _w.tasks[_i].ev;saveWeek(_wkSun,_w);}
   var wk=loadWeek(_wkSun),i;
   for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){wk.tasks[i].d=date||'';wk.tasks[i].s=date?(slot||'m'):'';}
   saveWeek(_wkSun,wk);renderPlanWeek();
