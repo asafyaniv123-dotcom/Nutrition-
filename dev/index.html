@@ -1062,6 +1062,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .mo-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:4px}
 .mo-hd{text-align:center;font-size:9px;font-weight:800;color:var(--muted)}
 .mo-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.mo-open{outline:2px solid var(--violet-500);outline-offset:-1px}
 .mo-cell{min-height:54px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:9px;padding:3px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer;transition:background .15s,border-color .15s}
 .mo-cell.mo-blank{background:none;border-color:transparent;cursor:default}
 .mo-cell.today{border-color:var(--violet-500)}
@@ -12968,6 +12969,84 @@ function moTasksOn(date){
 }
 
 var MO_CELL_MAX=3;
+/* Whether a covered day is the first of a span, the last, or in the middle.
+   The month grid wraps every seven days, so a span crossing a Saturday is
+   two runs of cells rather than one - which is exactly what a calendar does
+   and why the answer is per-cell rather than one bar drawn over the grid. */
+function wkSpanEdge(t,date){
+  var len=wkLenOf(t);
+  if(len<2)return{first:true,last:true};
+  var a=wkDayIndex(t.d),b=wkDayIndex(date);
+  if(a===null||b===null)return{first:true,last:true};
+  var dow=new Date(date+"T12:00:00").getDay();
+  return{first:(b===a)||dow===0,last:(b===a+len-1)||dow===6};
+}
+
+/* What the day plan itself holds for a date - the things typed into the day
+   rather than pushed down from a week or a month. dpAll would answer this too
+   but it reloads the week and the month on every call, and a month grid asks
+   thirty-one times. */
+function moDayItemsOn(date){
+  var dp=null;try{dp=loadDPlan(date);}catch(e){}
+  return (dp&&dp.items)||[];
+}
+
+/* Tapping a day used to jump to the day screen, which meant leaving the month
+   to add one line and coming back to see where it landed. The week already
+   solved this: the day opens underneath, and the grid stays on screen above
+   it. Same idea here.
+
+   The full day screen is still one tap away for the things this panel does
+   not do - hours, notes, the rail - because a panel that tried to be that
+   would just be the day screen in a worse place. */
+var _moOpen='';
+function moOpenDay(date){_moOpen=(_moOpen===date?'':date);renderPlanMonth();}
+function moDayAdd(){
+  var el=document.getElementById('mo-day-in');
+  if(!el||!el.value.trim()||!_moOpen)return;
+  var dp=loadDPlan(_moOpen);
+  dp.items.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                 w:el.value.trim(),c:_moNewColor||'lav'});
+  saveDPlan(_moOpen,dp);
+  renderPlanMonth();
+  setTimeout(function(){var e=document.getElementById('mo-day-in');if(e)e.focus();},40);
+}
+/* only the day's own items can be removed here - a week or month task is not
+   this day's to delete, and deleting it from here would take it off the other
+   days it belongs to without saying so */
+function moDayDel(id){
+  if(!_moOpen)return;
+  var dp=loadDPlan(_moOpen),out=[],i;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id!==id)out.push(dp.items[i]);
+  dp.items=out;saveDPlan(_moOpen,dp);renderPlanMonth();
+}
+function moDayPanelHTML(){
+  if(!_moOpen)return '';
+  var all=dpAll(_moOpen),i,h='';
+  h+='<div style="background:var(--card);border-radius:18px;padding:14px;margin-top:14px;box-shadow:0 4px 18px rgba(200,180,160,.12)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
+  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">'+fmtDate(_moOpen)+'</div>';
+  h+='<button onclick="moOpenDay(\''+_moOpen+'\')" style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">סגור</button></div>';
+  if(!all.length)h+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;margin-bottom:10px">אין כאן כלום עדיין.</div>';
+  for(i=0;i<all.length;i++){
+    var it=all[i],c=wkColor(it.c);
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--line)">';
+    h+='<span style="width:7px;height:7px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span>';
+    h+='<span style="flex:1;min-width:0;font-size:12.5px;color:var(--ink)">'+esc(it.w)+'</span>';
+    if(it.hour!==null&&it.hour!==undefined)
+      h+='<span style="font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums">'+(it.hour<10?'0':'')+it.hour+':'+(it.min<10?'0':'')+(it.min||0)+'</span>';
+    h+='<span style="font-size:9px;color:var(--muted-soft);flex-shrink:0">'+(it.src==='week'?'מהשבוע':it.src==='month'?'מהחודש':'')+'</span>';
+    if(it.src==='day')h+='<button onclick="moDayDel(\''+it.id+'\')" style="background:none;border:none;color:var(--terra-100);font-size:15px;cursor:pointer;font-family:inherit;padding:0 2px">&times;</button>';
+    h+='</div>';
+  }
+  h+='<div style="display:flex;gap:8px;margin-top:12px">';
+  h+='<input id="mo-day-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="משהו ליום הזה" onkeydown="if(event.key===&quot;Enter&quot;)moDayAdd()">';
+  h+='<button onclick="moDayAdd()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:0 15px;font-size:17px;color:var(--white);cursor:pointer;font-family:inherit">+</button>';
+  h+='</div>';
+  h+='<button onclick="planOpenDay(\''+_moOpen+'\')" style="width:100%;margin-top:10px;background:var(--surface);border:none;border-radius:12px;padding:9px;font-size:11.5px;color:var(--ink-soft);cursor:pointer;font-family:inherit">לתכנן את היום הזה לפי שעות &#8249;</button>';
+  return h+'</div>';
+}
+
 function moWeekTasksOn(date,cache){
   var sun=weekSunday(new Date(date+"T12:00:00")),k=wkStamp(sun);
   if(!cache[k])cache[k]=loadWeek(sun);
@@ -13003,7 +13082,7 @@ function renderPlanMonth(){
   for(i=0;i<lead;i++)h+='<div class="mo-cell mo-blank"></div>';
   for(i=1;i<=days;i++){
     var st=year+'-'+(mi<9?'0':'')+(mi+1)+'-'+(i<10?'0':'')+i;
-    h+='<div class="mo-cell'+(st===today?' today':'')+'" data-date="'+st+'" onclick="planOpenDay(\''+st+'\')">';
+    h+='<div class="mo-cell'+(st===today?' today':'')+(st===_moOpen?' mo-open':'')+'" data-date="'+st+'" onclick="moOpenDay(\''+st+'\')">';
     h+='<div class="mo-n">'+i+'</div>';
     var shown=0;
     for(t=0;t<mo.tasks.length;t++){
@@ -13019,20 +13098,45 @@ function renderPlanMonth(){
     var wt=moWeekTasksOn(st,wkCache),extra=0;
     for(t=0;t<wt.length;t++){
       if(shown>=MO_CELL_MAX){extra=wt.length-t;break;}
-      var wc=wkColor(wt[t].c);
-      h+='<div class="mo-chip" style="background:var(--card);color:'+wc.tx+
-         ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+'</div>';
+      var wc=wkColor(wt[t].c),sp=wkLenOf(wt[t])>1,ed=wkSpanEdge(wt[t],st);
+      if(sp){
+        /* a run of days reads as one bar. The cell has 3px of padding and the
+           grid 3px of gap, so a segment that continues bleeds 6px into the
+           join and the two halves meet with no seam. Only the first segment
+           of a run carries the words. */
+        h+='<div class="mo-chip" style="background:'+wc.dot+';color:var(--white);opacity:.9;'+
+           'border-start-start-radius:'+(ed.first?'4px':'0')+';border-end-start-radius:'+(ed.first?'4px':'0')+';'+
+           'border-start-end-radius:'+(ed.last?'4px':'0')+';border-end-end-radius:'+(ed.last?'4px':'0')+';'+
+           (ed.first?'':'margin-inline-start:-6px;')+(ed.last?'':'margin-inline-end:-6px;')+
+           'white-space:nowrap;overflow:hidden">'+(ed.first?esc(wt[t].w):'&nbsp;')+'</div>';
+      }else{
+        h+='<div class="mo-chip" style="background:var(--card);color:'+wc.tx+
+           ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+'</div>';
+      }
+      shown++;
+    }
+    /* and what was written straight into that day, which until now only the
+       day screen knew about */
+    var di=moDayItemsOn(st);
+    for(t=0;t<di.length;t++){
+      if(shown>=MO_CELL_MAX){extra+=di.length-t;break;}
+      var dc=wkColor(di[t].c);
+      h+='<div class="mo-chip" style="background:var(--card);color:'+dc.tx+
+         ';border:1px dashed '+dc.dot+';opacity:.9">'+esc(di[t].w)+'</div>';
       shown++;
     }
     if(extra>0)h+='<div style="font-size:7px;color:var(--muted-soft);font-weight:700;padding-inline-start:2px">+'+extra+'</div>';
     h+='</div>';
   }
   h+='</div>';
-  h+='<div style="display:flex;justify-content:center;gap:12px;margin-top:8px;font-size:8.5px;color:var(--muted-soft)">'+
+  h+='<div style="display:flex;justify-content:center;gap:10px;margin-top:8px;font-size:8.5px;color:var(--muted-soft);flex-wrap:wrap">'+
      '<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,var(--violet-100),var(--violet-200))"></span>מהחודש</span>'+
      '<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:3px;background:var(--card);border-inline-start:2.5px solid var(--violet-500)"></span>מהשבוע</span>'+
+     '<span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:3px;background:var(--card);border:1px dashed var(--violet-500)"></span>מהיום</span>'+
      '</div>';
   h+='<div style="font-size:9.5px;color:var(--muted-soft);text-align:center;margin-top:8px">לחיצה על יום פותחת את התכנון שלו</div>';
+
+  h+=moDayPanelHTML();
 
   var pool=[];
   for(t=0;t<mo.tasks.length;t++)if(!mo.tasks[t].d)pool.push(mo.tasks[t]);
