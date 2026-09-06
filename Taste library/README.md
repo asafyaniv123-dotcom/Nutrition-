@@ -67,3 +67,6 @@ with the project.
 - **neumorphic-calendar.jpg** — soft extruded and pressed-in controls, all one
   colour. The first entry that contradicts the glass ones; the note keeps the
   contradiction open rather than settling it.
+- **rocker-switch-toggle.mov** (+ `-frames.jpg`) — a paddle switch that seesaws
+  instead of sliding, and turns green at the halfway point rather than at the
+  end. The midpoint trick is the part worth taking.
