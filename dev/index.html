@@ -6923,10 +6923,10 @@ function stepsAgo(iso){
   if(!iso)return'';
   var m=Math.round((Date.now()-new Date(iso).getTime())/60000);
   if(m<1)return''+_t('עכשיו')+'';
-  if(m<60)return_t('לפני {n} דק׳',{n:m});
+  if(m<60)return _t('לפני {n} דק׳',{n:m});
   var hr=Math.round(m/60);
-  if(hr<24)return_t('לפני {n} שע׳',{n:hr});
-  return_t('לפני {n} ימים',{n:Math.round(hr/24)});
+  if(hr<24)return _t('לפני {n} שע׳',{n:hr});
+  return _t('לפני {n} ימים',{n:Math.round(hr/24)});
 }
 function stepsTrendHTML(){
   var pts=[],i,d,r;
@@ -9362,11 +9362,17 @@ function exPrevHTML(ex){
 // what to put in the boxes before you touch them: the same set, last time
 function exPrefill(ex){
   var n=ex.sets.length;
-  /* What the routine says for this set comes first: you wrote it more
-     recently than you lifted last week, so it is the better guess at what
-     you are about to do. */
-  if(ex.plan&&ex.plan[n]&&(ex.plan[n].w!==''||ex.plan[n].r!==''))
-    return {w:ex.plan[n].w||'',r:ex.plan[n].r||''};
+  /* A RAMP means it: a plan reading 60, 70, 80 is describing this set, not the
+     one before it, so it wins. A flat plan of 3x10 says nothing that the set
+     you just did does not say better - so "differs from its own first row" is
+     the test, rather than "exists". */
+  var p=ex.plan&&ex.plan[n], p0=ex.plan&&ex.plan[0];
+  var ramps=!!(p&&p0&&(p.w!==p0.w||p.r!==p0.r));
+  if(p&&(p.w!==''||p.r!=='')&&(ramps||n===0))
+    return {w:p.w||'',r:p.r||''};
+  /* Otherwise: what you actually did on the first set today. It is the most
+     recent evidence there is, and it beats last week by a week. */
+  if(n>0&&ex.sets[0])return {w:ex.sets[0].weight,r:ex.sets[0].reps};
   var prev=exLastTime(ex.name);
   if(prev&&prev.sets[n])return {w:prev.sets[n].weight,r:prev.sets[n].reps};
   if(prev&&prev.sets.length)return {w:prev.sets[prev.sets.length-1].weight,r:prev.sets[prev.sets.length-1].reps};
@@ -10212,13 +10218,52 @@ function finishWorkout(){
 }
 
 var _fitSummaryEntry=null;
+/* Any workout in the log can be opened, not only the one just finished. */
+function fitOpenSummary(i){
+  var log=loadWorkoutLog();
+  if(!log[i])return;
+  _fitSummaryEntry=log[i];
+  _fitView='summary';
+  renderFitness();
+}
+/* Pressing "finish" by accident used to be final. This puts the session back
+   the way it was and takes the entry out of the log, so finishing again writes
+   one record rather than two.
+
+   plan and superset grouping are not stored with a finished workout, so they
+   come back empty - the sets, the warm-ups and the elapsed time are what
+   matter, and losing a plan row is recoverable by looking at it. */
+function fitReopenWorkout(i){
+  var log=loadWorkoutLog();
+  var e=log[i];
+  if(!e)return;
+  log.splice(i,1);
+  saveWorkoutLog(log);
+  _fitWorkout={
+    templateIdx:-1,name:e.name,
+    startTime:Date.now()-(e.duration||0)*60000,
+    exercises:(e.exercises||[]).map(function(ex){
+      return {name:ex.name,targetSets:ex.targetSets,targetReps:ex.targetReps,
+              plan:[],sets:(ex.sets||[]).slice(),warm:(ex.warm||[]).slice(),ss:null};
+    }),
+    currentEx:0
+  };
+  _fitSummaryEntry=null;
+  _fitView='workout';
+  renderFitness();
+}
 
 function renderFitSummary(){
   var entry=_fitSummaryEntry;
   if(!entry){_fitView='home';renderFitness();return;}
   var log=loadWorkoutLog();
+  /* Was written assuming the entry is the last one in the log, which is only
+     true right after finishing. Now that any past workout can be opened, find
+     where this one actually sits and look back from there. */
+  var at=log.length-1,j;
+  for(j=0;j<log.length;j++)if(log[j].date===entry.date&&log[j].name===entry.name){at=j;break;}
   var prev=null;
-  for(var i=log.length-2;i>=0;i--){if(log[i].name===entry.name){prev=log[i];break;}}
+  for(var i=at-1;i>=0;i--){if(log[i].name===entry.name){prev=log[i];break;}}
   var prs=loadPRs();
 
   // RPE color by spec: <6 green, 6-7.4 amber, 7.5-8.9 orange, ≥9 coral, null gray
@@ -10388,6 +10433,14 @@ function renderFitSummary(){
     }
     h+='</div>';
   }
+  /* The way back from an accidental finish. */
+  (function(){
+    var log=loadWorkoutLog(),at=-1,k;
+    for(k=0;k<log.length;k++)if(log[k]===entry||(log[k].date===entry.date&&log[k].name===entry.name)){at=k;break;}
+    if(at<0)return;
+    h+='<button onclick="fitReopenWorkout('+at+')" style="width:100%;min-height:44px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:14px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--ink-soft);margin-bottom:10px">'+
+      _t('פתח מחדש והמשך לערוך')+'</button>';
+  })();
   // Action buttons
   h+='<div style="display:flex;gap:10px">';
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="flex:1;background:var(--surface);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">'+_t('חזרה')+' &#8249;</button>';
@@ -10408,7 +10461,7 @@ function renderFitHistory(){
   for(var i=log.length-1;i>=0;i--){
     var entry=log[i];var d=new Date(entry.date);
     var vol=entry.exercises.reduce(function(a,ex){return a+ex.sets.reduce(function(b,s){return b+(s.weight||0)*(s.reps||0);},0);},0);
-    h+='<div style="background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(200,180,160,.1)">';
+    h+='<div onclick="fitOpenSummary('+i+')" style="background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(200,180,160,.1);cursor:pointer">';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
     h+='<div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(entry.name)+'</div>';
     h+='<div style="font-size:10px;color:var(--muted)">'+d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+'</div>';

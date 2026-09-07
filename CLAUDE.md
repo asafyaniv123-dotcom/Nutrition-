@@ -57,6 +57,12 @@ A reversal test proves a transform is lossless, not that it is *right*: it
 cannot see a string that was translated but is used as a lookup key, and it
 cannot see a `var` read before its own line assigns it. Both of those shipped.
 
+**Parsing is not running.** `return''+_t('x')+''` rewritten to `return_t('x')`
+parses perfectly — it is a call to an undefined function, not a return — and
+throws only when that branch executes. It shipped, and driving the screens is
+what found it. When a replacement removes the text right after a keyword, put
+the space back.
+
 Two traps specific to this file. **Write patch scripts as files**, never as
 `node -e` — the shell eats backslashes and returns confidently wrong results.
 And **`{ … }` blocks overlap `style="…"` attributes**, so an edit reached
