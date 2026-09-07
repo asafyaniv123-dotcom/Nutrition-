@@ -10320,8 +10320,11 @@ function renderFitWorkout(){
   } else {
     h+='<button onclick="finishWorkout()" style="flex:1;background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('סיים אימון')+' &#10003;</button>';
   }
-  h+='</div></div>';
+  h+='</div>';
+  h+=fitPhotoBlockHTML(w.photo,'fitLivePhoto','fitLiveClearPhoto');
+  h+='</div>';
   document.getElementById('content').innerHTML=h;
+  hydratePhotos();
   plateHint();   // the boxes open prefilled, so the line has something to say already
 }
 
@@ -10375,7 +10378,7 @@ function finishWorkout(){
   var w=_fitWorkout;
   var log=loadWorkoutLog();
   var entry={
-    date:Date.now(),name:w.name,
+    date:Date.now(),name:w.name,photo:w.photo||undefined,
     duration:Math.floor((Date.now()-w.startTime)/60000),
     exercises:w.exercises.map(function(ex){
       /* Kept, but in their own field - every reader of .sets stays correct. */
@@ -10430,37 +10433,71 @@ function fitReopenWorkout(i){
 /* Find this workout in the log by the two things that identify it. The summary
    already does exactly this to find the previous session, and for the same
    reason: the entry in hand is not always the last one any more. */
-function fitPhotoOn(entry){
-  var log=loadWorkoutLog(),j;
-  for(j=0;j<log.length;j++)if(log[j].date===entry.date&&log[j].name===entry.name)return{log:log,i:j};
-  return null;
-}
-function fitAddPhoto(input){
+/* Read the file, cap the long edge, keep the aspect, store it, hand back a
+   key. The two screens differ only in where they put that key. */
+function fitPhotoCapture(input,done){
   var file=input&&input.files&&input.files[0];
-  if(!file||!_fitSummaryEntry)return;
+  if(!file)return;
   var reader=new FileReader();
   reader.onload=function(e){
     var img=new Image();
     img.onload=function(){
-      /* Long edge capped, aspect kept - a workout photo is a place, and a
-         square crop throws away the half that says where you were. */
       var max=1000,sc=Math.min(1,max/Math.max(img.width,img.height));
       var c=document.createElement('canvas');
       c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
       photoPut(c.toDataURL('image/jpeg',0.75)).then(function(key){
         if(!key){showToast(''+_t('לא הצלחתי לשמור את התמונה')+'');return;}
-        var f=fitPhotoOn(_fitSummaryEntry);
-        if(!f)return;
-        f.log[f.i].photo=key;
-        _fitSummaryEntry.photo=key;
-        saveWorkoutLog(f.log);
-        renderFitSummary();
+        done(key);
       });
     };
     img.src=e.target.result;
   };
   reader.readAsDataURL(file);
+}
+/* The same block on both screens, so a photo looks the same wherever it was
+   added. The empty state offers and does not ask - there is no reason a
+   workout should have a picture. */
+function fitPhotoBlockHTML(photo,addFn,clearFn){
+  if(photo)
+    return '<div style="position:relative;margin-bottom:14px">'+
+      photoImg(photo,'style="width:100%;border-radius:18px;display:block"')+
+      '<button onclick="'+clearFn+'()" aria-label="'+_t("הסר תמונה")+'" '+
+      'style="position:absolute;top:8px;inset-inline-end:8px;background:rgba(0,0,0,.45);border:none;'+
+      'border-radius:50%;width:30px;height:30px;font-size:16px;color:#fff;cursor:pointer;line-height:1">&times;</button></div>';
+  return '<label style="display:block;text-align:center;background:var(--surface);border:1.5px dashed var(--line-strong);'+
+    'border-radius:16px;padding:14px;margin-bottom:14px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer">'+
+    '&#128247; '+_t('הוסף תמונה לאימון')+
+    '<input type="file" accept="image/*" onchange="'+addFn+'(this)" style="display:none"></label>';
+}
+/* Mid-session. fitwSave persists _fitWorkout whole, so this survives the app
+   being closed without a line of new storage code. */
+function fitLivePhoto(input){
+  if(!_fitWorkout)return;
+  fitPhotoCapture(input,function(key){
+    _fitWorkout.photo=key;fitwSave();renderFitness();
+  });
+}
+function fitLiveClearPhoto(){
+  if(!_fitWorkout)return;
+  delete _fitWorkout.photo;fitwSave();renderFitness();
+}
+
+function fitPhotoOn(entry){
+  var log=loadWorkoutLog(),j;
+  for(j=0;j<log.length;j++)if(log[j].date===entry.date&&log[j].name===entry.name)return{log:log,i:j};
+  return null;
+}
+function fitAddPhoto(input){
+  if(!_fitSummaryEntry)return;
+  fitPhotoCapture(input,function(key){
+    var f=fitPhotoOn(_fitSummaryEntry);
+    if(!f)return;
+    f.log[f.i].photo=key;
+    _fitSummaryEntry.photo=key;
+    saveWorkoutLog(f.log);
+    renderFitSummary();
+  });
 }
 function fitClearPhoto(){
   if(!_fitSummaryEntry)return;
@@ -10663,18 +10700,7 @@ function renderFitSummary(){
   /* The photo sits last, under the numbers: it is the thing you keep, not the
      thing you read. An empty state that says nothing is better than one that
      asks - there is no reason a workout should have a picture. */
-  if(entry.photo){
-    h+='<div style="position:relative;margin-bottom:14px">'+
-       photoImg(entry.photo,'style="width:100%;border-radius:18px;display:block"')+
-       '<button onclick="fitClearPhoto()" aria-label="'+_t("הסר תמונה")+'" '+
-       'style="position:absolute;top:8px;inset-inline-end:8px;background:rgba(0,0,0,.45);border:none;'+
-       'border-radius:50%;width:30px;height:30px;font-size:16px;color:#fff;cursor:pointer;line-height:1">&times;</button></div>';
-  }else{
-    h+='<label style="display:block;text-align:center;background:var(--surface);border:1.5px dashed var(--line-strong);'+
-       'border-radius:16px;padding:14px;margin-bottom:14px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer">'+
-       '&#128247; '+_t('הוסף תמונה לאימון')+
-       '<input type="file" accept="image/*" onchange="fitAddPhoto(this)" style="display:none"></label>';
-  }
+  h+=fitPhotoBlockHTML(entry.photo,'fitAddPhoto','fitClearPhoto');
 
   // Action buttons
   h+='<div style="display:flex;gap:10px">';
