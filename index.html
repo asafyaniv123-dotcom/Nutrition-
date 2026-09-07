@@ -1121,7 +1121,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 /* the month as a calendar */
 .mo-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:4px}
 .mo-hd{text-align:center;font-size:9px;font-weight:800;color:var(--muted)}
-.mo-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.mo-grid{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .mo-open{outline:2px solid var(--violet-500);outline-offset:-1px}
 .mo-cell{min-height:54px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:9px;padding:3px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer;transition:background .15s,border-color .15s}
 .mo-cell.mo-blank{background:none;border-color:transparent;cursor:default}
@@ -1129,6 +1129,29 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .mo-cell.hot{border-color:var(--green-500);background:var(--green-50)}
 .mo-n{font-size:9px;font-weight:700;color:#b8afa7;line-height:1}
 .mo-chip{border-radius:4px;padding:2px 3px;font-size:7.5px;line-height:1.2;font-weight:700;overflow:hidden;word-break:break-word}
+/* ── A RUN ACROSS DAYS ──
+   The per-day chip stays in the flow so the cell reserves the right height in
+   the right order, but it paints nothing: the visible bar is drawn over the
+   grid instead, where no cell can clip it and the words have the whole run to
+   sit in. */
+.mo-chip.mo-seg{background:transparent!important;color:transparent!important}
+.mo-spans{position:absolute;inset:0;pointer-events:none;z-index:5}
+.mo-span{position:absolute;height:14px}
+/* The name sits above the rail. On a 3px rail at 7.5px type there is nowhere
+   else for it to go that does not either cross the letters or need a backing
+   behind them, and a backing would put back the weight the rail removes. */
+.mo-span-t{position:absolute;inset-inline:1px;top:0;font-size:7.5px;font-weight:700;
+  line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo-span-r{position:absolute;inset-inline:3px;bottom:2px;height:2.5px;border-radius:2px}
+/* The ends, so the first and last day are read rather than inferred. */
+.mo-span-d{position:absolute;bottom:0;width:6.5px;height:6.5px;border-radius:50%}
+.mo-span-d.s{inset-inline-start:0}
+.mo-span-d.e{inset-inline-end:0}
+/* The layer ignores the pointer so taps reach the days underneath; the handle
+   is the one thing on it that does not. The pad is invisible and three times
+   the dot, because a 6.5px target is not a target. */
+.mo-span-d.grab{pointer-events:auto;cursor:ew-resize;touch-action:none}
+.mo-span-d.grab::after{content:'';position:absolute;inset:-8px}
 .dp-q{font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.4;margin-bottom:9px}
 .dp-ta{width:100%;background:var(--card);border:none;border-radius:14px;padding:12px 14px;font-size:12.5px;color:var(--ink);line-height:1.6;font-family:inherit;unicode-bidi:plaintext;outline:none;resize:none;min-height:74px}
 .dp-ta::placeholder{color:#c9c0b8}
@@ -2184,9 +2207,9 @@ function dayShift(n,from){
 }
 function fmtDate(s){
   var d=new Date(s+'T12:00:00');
-  var dn=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
-  var mn=['ינואר',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'','דצמבר'];
-  return dn[d.getDay()]+', '+d.getDate()+' '+_t('ב')+''+mn[d.getMonth()];
+  var dn=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
+  var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
+  return dn[d.getDay()]+', '+_t('{d} ב{m}',{d:d.getDate(),m:mn[d.getMonth()]});
 }
 function fmtTime(){var d=new Date();return d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
 function showToast(msg){
@@ -4096,7 +4119,7 @@ function sayResolveAll(items,done){
    means by default (dried, powdered, frozen, tinned) is pushed down unless
    the word was actually said. And a name that begins with the word as a
    whole word, rather than as the start of a longer one, is preferred. */
-var SAY_DERIVED=['מיובש',''+_t('מיובשת')+'',''+_t('אבקה')+'',''+_t('אבקת')+'',''+_t('מרוכז')+'',''+_t('מרוכזת')+'',''+_t('קפוא')+'',''+_t('קפואה')+'',''+_t('משומר')+'',''+_t('משומרת')+'',''+_t('תחליף')+'',''+_t('לא מבושל')+'','לא מבושלת'];
+var SAY_DERIVED=['מיובש','מיובשת','אבקה','אבקת','מרוכז','מרוכזת','קפוא','קפואה','משומר','משומרת','תחליף','לא מבושל','לא מבושלת'];
 function sayScore(f,q,toks){
   toks=toks||foodTokens(q);
   /* The longest word carries the meaning - ריקוטה, not 5% - so a name that
@@ -5872,7 +5895,7 @@ function renderHistory(){
       });
       s+='</svg>';return s;
     }
-    var mn3=['ינואר',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'','דצמבר'];
+    var mn3=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
     chartCard='<div class="card"><div class="cttl">'+_t('גרעון מצטבר')+' &mdash; '+mn3[mo2]+' '+y2+'</div>';
     if(cp2.length>0){
       chartCard+=makeSVGMo(cp2,[{v:3500,col:PAL.terra500,lbl:''+_t('~0.5קג')+''},{v:7000,col:PAL.terra500,lbl:''+_t('~1קג')+''}],maxC,160);
@@ -5891,8 +5914,8 @@ function renderHistory(){
 }
 
 function buildHomeCalHTML(){
-  var mn=['ינואר',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'','דצמבר'];
-  var dn=['א',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'','ש'];
+  var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
+  var dn=[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''];
   var y=calMonth.getFullYear(),mo=calMonth.getMonth();
   var first=new Date(y,mo,1),last=new Date(y,mo+1,0);
   var remData=loadReminders();
@@ -5964,9 +5987,9 @@ function openCalDay(ds){
   var sum=loadSummary(ds);
   var calRems=loadCalReminders(ds);
   var d=new Date(ds+'T12:00:00');
-  var dn=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
-  var mn=['ינואר',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'','דצמבר'];
-  var dateLabel=dn[d.getDay()]+', '+d.getDate()+' '+_t('ב')+''+mn[d.getMonth()];
+  var dn=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
+  var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
+  var dateLabel=dn[d.getDay()]+', '+_t('{d} ב{m}',{d:d.getDate(),m:mn[d.getMonth()]});
 
   // Auto scope label
   var today=todayStr();
@@ -6118,8 +6141,8 @@ function toggleCalRem(tab,idx,ds){
 }
 
 function renderDay(){
-  var mn=['ינואר',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'','דצמבר'];
-  var dn=['א',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'','ש'];
+  var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
+  var dn=[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''];
   var y=calMonth.getFullYear(),mo=calMonth.getMonth();
   var first=new Date(y,mo,1),last=new Date(y,mo+1,0);
   var html='<div class="cal-card"><div class="cal-hd"><button class="cal-nav" onclick="calPrev()">&#8250;</button><div class="cal-mn">'+mn[mo]+' '+y+'</div><button class="cal-nav" onclick="calNext()">&#8249;</button></div><div class="cal-grid">';
@@ -6605,15 +6628,15 @@ var _coachStep=0;
 
 var COACH_QUESTIONS=[
   {id:'experience',q:''+_t('האם אי פעם אימנת בחדר כושר?')+'',type:'choice',
-   options:['כן, אני מנוסה',''+_t('כן, אני מתאמן באופן סדיר')+'','לא, אני חדש']},
+   options:[''+_t('כן, אני מנוסה')+'',''+_t('כן, אני מתאמן באופן סדיר')+'',''+_t('לא, אני חדש')+'']},
   {id:'equipment',q:''+_t('איזה ציוד יש לך גישה?')+'',type:'choice',
-   options:['חדר כושר מלא',''+_t('משקולות יד ביתי')+'',''+_t('עניבות/TRX בלבד')+'','בלי ציוד כלל']},
+   options:[''+_t('חדר כושר מלא')+'',''+_t('משקולות יד ביתי')+'',''+_t('עניבות/TRX בלבד')+'',''+_t('בלי ציוד כלל')+'']},
   {id:'days',q:''+_t('כמה פעמים בשבוע תוכל להתאמן?')+'',type:'choice',
    options:['2-3','3-4','4-5','5+']},
   {id:'goal',q:''+_t('מה המטרה עיקרית שלך?')+'',type:'choice',
-   options:['בניית שריר',''+_t('ירידת שומן')+'',''+_t('שיפור כוח כללי')+'','כושר ובריאות']},
+   options:[''+_t('בניית שריר')+'',''+_t('ירידת שומן')+'',''+_t('שיפור כוח כללי')+'',''+_t('כושר ובריאות')+'']},
   {id:'session',q:''+_t('כמה זמן יש לך לכל אימון?')+'',type:'choice',
-   options:['30-45 דקות',''+_t('45-60 דקות')+'',''+_t('60-75 דקות')+'','75+ דקות']},
+   options:[''+_t('30-45 דקות')+'',''+_t('45-60 דקות')+'',''+_t('60-75 דקות')+'',''+_t('75+ דקות')+'']},
   {id:'limit',q:''+_t('יש איזשהו מגבלה פיזית?')+'',type:'text',placeholder:''+_t('למשל: כאב גב, ברך... (או לא אם אין)')+''}
 ];
 
@@ -7404,7 +7427,7 @@ function renderFitSteps(){
   for(i=6;i>=0;i--){
     k=dayShift(-i);
     var dv=stepsOf(k);if(dv>maxV)maxV=dv;
-    days.push({k:k,v:dv,dow:['א',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'','ש'][new Date(k+'T12:00:00').getDay()]});
+    days.push({k:k,v:dv,dow:[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''][new Date(k+'T12:00:00').getDay()]});
   }
   h+='<div class="card"><div class="cttl">'+_t('שבעת הימים האחרונים')+'</div>';
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:5px">';
@@ -7481,7 +7504,7 @@ function renderFitStepsSetup(){
   h+='</div>';
 
   h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.65;margin-bottom:13px">'+_t('השעון והאפליקציות שלך כותבים אל הבריאות בלאו הכי, אז זה החיבור היחיד שצריך לעשות:')+'</div>';
-  var feeds=['שעון גארמין',''+_t('אפל וואטש')+'',''+_t('פיטביט')+'','האייפון עצמו'];
+  var feeds=[''+_t('שעון גארמין')+'',''+_t('אפל וואטש')+'',''+_t('פיטביט')+'',''+_t('האייפון עצמו')+''];
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
   for(var fi=0;fi<feeds.length;fi++)h+='<span style="background:var(--surface);border-radius:10px;padding:5px 10px;font-size:10.5px;font-weight:700;color:var(--muted)">'+feeds[fi]+'</span>';
   h+='</div>';
@@ -8754,7 +8777,7 @@ function workoutLoggedOn(dateStr){
 function renderWeeklyPlan(){
   document.getElementById('hdr-title').textContent=''+_t('לוז האימונים')+'';
   var weekPlan=loadWeekPlan();
-  var DAY_NAMES=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
+  var DAY_NAMES=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
   var h='<div style="padding-bottom:20px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
   h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('תכנון דו שבועי')+'</div>';
@@ -8790,7 +8813,7 @@ function renderEditWeekDay(){
   var entry=weekPlan[_editWeekDay]||{type:'rest',label:'',note:''};
   var dayIdx=parseInt(_editWeekDay.charAt(3));
   var weekIdx=parseInt(_editWeekDay.charAt(1));
-  var DAY_NAMES=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
+  var DAY_NAMES=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
   var title=DAY_NAMES[dayIdx]+' '+_t('(שבוע')+' '+(weekIdx+1)+')';
   document.getElementById('hdr-title').textContent=title;
 
@@ -8877,7 +8900,7 @@ var WIZ_GOALS=[
   {id:'cardio',e:'&#x1F3C3;',label:''+_t('שיפור כושר')+''},
   {id:'mobility',e:'&#x1F9D8;',label:''+_t('תנועה / בריאות')+''}
 ];
-var WIZ_NAME_OPTS=['תוכנית כוח',''+_t('תוכנית מסה')+'',''+_t('תוכנית חיטוב')+'',''+_t('תוכנית כללית')+'','התוכנית שלי'];
+var WIZ_NAME_OPTS=['תוכנית כוח','תוכנית מסה','תוכנית חיטוב','תוכנית כללית','התוכנית שלי'];
 var WIZ_SETS=[1,2,3,4,5,6];
 var WIZ_REPS=[5,6,8,10,12,15,20];
 var WIZ_REST=[30,60,90,120,180];
@@ -8903,7 +8926,7 @@ function renderEditProgram(){
     h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
     for(var ni=0;ni<WIZ_NAME_OPTS.length;ni++){
       var isSel=_wiz.prog.name===WIZ_NAME_OPTS[ni];
-      h+=wizChip(WIZ_NAME_OPTS[ni],'_wiz.prog.name=\''+WIZ_NAME_OPTS[ni]+'\';_wiz.step=1;renderFitness()',isSel);
+      h+=wizChip(_t(WIZ_NAME_OPTS[ni]),'_wiz.prog.name=\''+WIZ_NAME_OPTS[ni]+'\';_wiz.step=1;renderFitness()',isSel);
     }
     h+='</div>';
     h+='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+_t('או שם מותאם אישית:')+'</div>';
@@ -9029,7 +9052,7 @@ function renderEditProgram(){
       h+='<button onclick="var v=parseFloat(document.getElementById(\'wiz-w-inp\').value)||0;_wiz.curEx.baseWeight=v;_wiz.exStep=3;renderFitness()" style="width:100%;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הבא')+' &#8594;</button>';
     } else if(exs===3){
       h+=wizQ(''+_t('כמה זמן מנוחה בין סטים?')+'');
-      var restLabels=['30שני',''+_t('60שני')+'',''+_t('90שני')+'',''+_t('2 דק')+'','3 דק'];
+      var restLabels=['30שני',''+_t('60שני')+'',''+_t('90שני')+'',''+_t('2 דק')+'',''+_t('3 דק')+''];
       h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
       for(var ri3=0;ri3<WIZ_REST.length;ri3++){
         var rv2=WIZ_REST[ri3];var isSel7=_wiz.curEx.rest===rv2;
@@ -9588,7 +9611,7 @@ function _exPaintBody(){
       var n=count(k);
       if(!n)return '';
       return '<button class="gp'+(art?'':' bare')+(_exFilter===k?' on':'')+'" onclick="exSetFilter(&quot;'+esc(k)+'&quot;)">'+
-        art+'<span class="gp-t">'+esc(k)+'</span><span class="gp-n">'+n+'</span></button>';
+        art+'<span class="gp-t">'+esc(_t(k))+'</span><span class="gp-n">'+n+'</span></button>';
     }
     if(_exTab==='muscle'){
       for(var si=0;si<MU_SECTIONS.length;si++){
@@ -9647,9 +9670,9 @@ function exChooseOwn(){
    sourcing photographs of gym kit would mean another licence to keep track of
    for something a few paths do better at this size. */
 var MU_SECTIONS=[
-  {t:''+_t('פלג גוף עליון')+'',m:['חזה',''+_t('גב')+'',''+_t('גב רחב')+'',''+_t('טרפז')+'',''+_t('כתפיים')+'',''+_t('יד קדמית')+'',''+_t('יד אחורית')+'','אמה']},
-  {t:''+_t('פלג גוף תחתון')+'',m:['ארבע ראשי',''+_t('ירך אחורית')+'',''+_t('ישבן')+'','תאומים']},
-  {t:''+_t('מרכז הגוף ואחר')+'',m:['בטן',''+_t('אלכסונים')+'',''+_t('גב תחתון')+'','אירובי']}
+  {t:'פלג גוף עליון',m:['חזה','גב','גב רחב','טרפז','כתפיים','יד קדמית','יד אחורית','אמה']},
+  {t:'פלג גוף תחתון',m:['ארבע ראשי','ירך אחורית','ישבן','תאומים']},
+  {t:'מרכז הגוף ואחר',m:['בטן','אלכסונים','גב תחתון','אירובי']}
 ];
 /* Equipment, drawn. Line work in the app's own weight rather than photographs
    of gym kit, which would be a fourth licence to keep track of. */
@@ -10407,7 +10430,7 @@ function renderFitSummary(){
   h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed">';
   h+='<colgroup><col style="width:36%"><col style="width:14%"><col style="width:20%"><col style="width:18%"><col style="width:12%"></colgroup>';
   h+='<thead><tr>';
-  ['תרגיל',''+_t('סט')+'',''+_t('משקל')+'',''+_t('חזרות')+'',''].forEach(function(lbl,i){
+  [''+_t('תרגיל')+'',''+_t('סט')+'',''+_t('משקל')+'',''+_t('חזרות')+'',''].forEach(function(lbl,i){
     var align=i===0?'right':'center';
     h+='<th style="font-size:10px;font-weight:600;color:var(--ink-strong);text-align:'+align+';padding:0 3px 8px;border-bottom:2px solid var(--ink-strong)">'+lbl+'</th>';
   });
@@ -10691,7 +10714,7 @@ function renderFitProgress(){
 }
 
 /* ── HABIT TRACKER ── */
-function loadHabits(){try{var x=localStorage.getItem('habits_list');return x?JSON.parse(x):['שתיית מים',''+_t('אימון')+'','קריאה'];}catch(e){return[];}}
+function loadHabits(){try{var x=localStorage.getItem('habits_list');return x?JSON.parse(x):[''+_t('שתיית מים')+'',''+_t('אימון')+'',''+_t('קריאה')+''];}catch(e){return[];}}
 function saveHabits(arr){try{localStorage.setItem('habits_list',JSON.stringify(arr));}catch(e){}}
 function loadHabitLog(){try{var x=localStorage.getItem('habits_log');return x?JSON.parse(x):{};}catch(e){return{};}}
 function saveHabitLog(obj){try{localStorage.setItem('habits_log',JSON.stringify(obj));}catch(e){}}
@@ -10761,7 +10784,7 @@ function renderHabits(){
   var y=now.getFullYear(),mo=now.getMonth();
   var daysInMonth=new Date(y,mo+1,0).getDate();
   var todayD=now.getDate();
-  var mn=['ינואר',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'','דצמבר'];
+  var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
   var dayNames=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
   var h='';
 
@@ -11696,7 +11719,7 @@ function deleteRecipe(){
 /* ── PLANNING MODULE ── */
 var _planStep=0;
 
-var PLAN_FEELINGS=['רגוע',''+_t('ממוקד')+'',''+_t('אנרגטי')+'',''+_t('מתקדם')+'',''+_t('נוכח')+'','מאוזן'];
+var PLAN_FEELINGS=['רגוע','ממוקד','אנרגטי','מתקדם','נוכח','מאוזן'];
 var PLAN_FEELING_EMOJIS={'רגוע':'&#x1F9D8;','ממוקד':'&#x1F3AF;','אנרגטי':'&#x26A1;','מתקדם':'&#x1F680;','נוכח':'&#x1F33F;','מאוזן':'&#x2696;'};
 
 function loadPlanHistory(){try{var x=localStorage.getItem('plan_history');return x?JSON.parse(x):[];}catch(e){return[];}}
@@ -11712,7 +11735,7 @@ function savePlanHistory(arr){try{localStorage.setItem('plan_history',JSON.strin
    HTML5 drag-and-drop does nothing on iOS Safari, so this is pointer events
    with a ghost that follows the finger, the same way the vision board works. */
 var _wkSun=null,_wkOpen=-1,_wkDrag=null;
-var WK_DAYS=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
+var WK_DAYS=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
 /* key, name, label, and the hours the band actually covers - the last two
    are what let a task be placed inside a band rather than dropped at the
    top of it. */
@@ -12924,7 +12947,7 @@ function planDayHTML(){
   out+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
   for(i=0;i<PLAN_FEELINGS.length;i++){
     var fl=PLAN_FEELINGS[i],on=feels.indexOf(fl)>=0;
-    out+='<button onclick="deepToggleFeeling(\''+fl+'\')" style="border:2px solid '+(on?'var(--violet-500)':'#eee7f5')+';border-radius:16px;padding:9px 14px;cursor:pointer;background:'+(on?'var(--card)':'rgba(255,255,255,.6)')+';font-size:12.5px;font-weight:700;color:'+(on?'#7d63b8':'#8d847d')+';font-family:inherit">'+PLAN_FEELING_EMOJIS[fl]+' '+fl+'</button>';
+    out+='<button onclick="deepToggleFeeling(\''+fl+'\')" style="border:2px solid '+(on?'var(--violet-500)':'#eee7f5')+';border-radius:16px;padding:9px 14px;cursor:pointer;background:'+(on?'var(--card)':'rgba(255,255,255,.6)')+';font-size:12.5px;font-weight:700;color:'+(on?'#7d63b8':'#8d847d')+';font-family:inherit">'+PLAN_FEELING_EMOJIS[fl]+' '+_t(fl)+'</button>';
   }
   out+='</div>';
 
@@ -13466,7 +13489,7 @@ function tlSetColor(id,k){
    is stored on the day, never written back. Nothing written on a day or in a
    week ever climbs into the month. */
 var _moMonth=null,_moNewColor='lav',_moPick='',_moDrag=null;
-var MO_NAMES=['ינואר',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'','דצמבר'];
+var MO_NAMES=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
 
 /* ── THE JOURNAL ──
    A page a day with nothing on it. סיום יום asks questions; this asks
@@ -13583,7 +13606,7 @@ function renderJournal(){
   h+='<button class="jrnl-nav" onclick="jrnlShift(-1)">&#8250;</button>';
   h+='<div style="text-align:center;flex:1;min-width:0">';
   h+='<div class="jrnl-day">'+WK_DAYS[dt.getDay()]+(isToday?' '+_t('· היום')+'':'')+'</div>';
-  h+='<div class="jrnl-date">'+dt.getDate()+' '+_t('ב')+''+MO_NAMES[dt.getMonth()]+' '+dt.getFullYear()+'</div>';
+  h+='<div class="jrnl-date">'+_t('{d} ב{m}',{d:dt.getDate(),m:MO_NAMES[dt.getMonth()]})+' '+dt.getFullYear()+'</div>';
   h+='</div>';
   h+='<button class="jrnl-nav"'+(isToday?' disabled':'')+' onclick="jrnlShift(1)">&#8249;</button>';
   h+='</div>';
@@ -13711,6 +13734,83 @@ function moWeekTasksOn(date,cache){
   return out;
 }
 
+/* One bar per run per grid row. Measured rather than computed: the rows are
+   content-sized, so only the cells themselves know where they are. */
+var _moSpanIv=null;
+window.addEventListener('resize',function(){
+  if(_moSpanIv)clearTimeout(_moSpanIv);
+  _moSpanIv=setTimeout(moPlaceSpans,120);   // no-ops on its own when the grid is gone
+});
+function moPlaceSpans(){
+  var grid=document.querySelector('#plan-sec-month .mo-grid');
+  if(!grid)return;
+  var old=grid.querySelector('.mo-spans');
+  if(old)old.remove();
+  var segs=grid.querySelectorAll('.mo-seg');
+  if(!segs.length)return;
+
+  var layer=document.createElement('div');
+  layer.className='mo-spans';
+  var gb=grid.getBoundingClientRect();
+
+  /* Group by run, then by row - a run that crosses a Saturday breaks there,
+     and that break is the calendar's, not a rendering artefact. */
+  var runs={},i,el,id,r,row;
+  for(i=0;i<segs.length;i++){
+    el=segs[i];id=el.getAttribute('data-span');
+    r=el.getBoundingClientRect();
+    row=Math.round(r.top-gb.top);
+    if(!runs[id])runs[id]={};
+    if(!runs[id][row])runs[id][row]=[];
+    runs[id][row].push({el:el,r:r});
+  }
+
+  for(id in runs)for(row in runs[id]){
+    var list=runs[id][row],a=list[0].r,b=list[0].r,j,top=list[0].r.top;
+    for(j=1;j<list.length;j++){
+      if(list[j].r.left<a.left)a=list[j].r;
+      if(list[j].r.right>b.right)b=list[j].r;
+      /* Cells hold different amounts, so the placeholder sits at a different
+         height in each one. Take the LOWEST of them: any higher and the bar
+         rides up over a day number in whichever cell had the most in it. */
+      if(list[j].r.top>top)top=list[j].r.top;
+    }
+    var first=null;
+    for(j=0;j<list.length;j++)if(list[j].el.getAttribute('data-spanfirst'))first=list[j].el;
+    var src=first||list[0].el;
+    var col=src.getAttribute('data-spancol');
+    var bar=document.createElement('div');
+    bar.className='mo-span';
+    bar.style.left=(a.left-gb.left)+'px';
+    bar.style.width=(b.right-a.left)+'px';
+    bar.style.top=(top-gb.top)+'px';
+    /* Only the row that starts the run says what it is; a continuation with
+       the words repeated reads as two things happening. */
+    if(first){
+      var lbl=document.createElement('div');
+      lbl.className='mo-span-t';
+      lbl.style.color=col;
+      lbl.textContent=src.getAttribute('data-spanw');
+      bar.appendChild(lbl);
+    }
+    var rail=document.createElement('div');
+    rail.className='mo-span-r';rail.style.background=col;
+    bar.appendChild(rail);
+    var ds=document.createElement('div');ds.className='mo-span-d s';ds.style.background=col;
+    var de=document.createElement('div');de.className='mo-span-d e mo-grab-e';de.style.background=col;
+    /* Only the row that ends the run can be dragged - a continuation's far end
+       is a row break, not the end of anything. */
+    var lastSeg=list[list.length-1].el;
+    de.classList.add('grab');
+    de.setAttribute('data-mostretch',id);
+    de.setAttribute('data-mosun',lastSeg.getAttribute('data-spansun')||'');
+    de.setAttribute('data-mostart',lastSeg.getAttribute('data-spanstart')||'');
+    bar.appendChild(ds);bar.appendChild(de);
+    layer.appendChild(bar);
+  }
+  grid.appendChild(layer);
+}
+
 function planMonthHTML(){
   if(!_moMonth)_moMonth=moFirst(new Date());
   var mo=loadMonth(_moMonth),i,t;
@@ -13730,7 +13830,7 @@ function planMonthHTML(){
 
   h+='<div class="mo-head">';
   // single letters: "ראש" and "שלי" are worse than no abbreviation at all
-  for(i=0;i<7;i++)h+='<div class="mo-hd">'+['א',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'','ש'][i]+'</div>';
+  for(i=0;i<7;i++)h+='<div class="mo-hd">'+[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''][i]+'</div>';
   h+='</div>';
 
   h+='<div class="mo-grid">';
@@ -13759,14 +13859,23 @@ function planMonthHTML(){
            grid 3px of gap, so a segment that continues bleeds 6px into the
            join and the two halves meet with no seam. Only the first segment
            of a run carries the words. */
-        h+='<div class="mo-chip" style="background:'+wc.dot+';color:var(--white);opacity:.9;'+
-           'border-start-start-radius:'+(ed.first?'4px':'0')+';border-end-start-radius:'+(ed.first?'4px':'0')+';'+
-           'border-start-end-radius:'+(ed.last?'4px':'0')+';border-end-end-radius:'+(ed.last?'4px':'0')+';'+
-           (ed.first?'':'margin-inline-start:-6px;')+(ed.last?'':'margin-inline-end:-6px;')+
-           'white-space:nowrap;overflow:hidden">'+(ed.first?esc(wt[t].w):'&nbsp;')+'</div>';
+        /* Invisible, but it still holds the row open. Everything the bar needs
+           is on the element, so placing it is a read of the DOM rather than a
+           second walk of the data. */
+        h+='<div class="mo-chip mo-seg" data-span="'+esc(wt[t].id)+'"'+
+           ' data-spanfirst="'+(ed.first?'1':'')+'" data-spancol="'+wc.dot+'"'+
+           ' data-spanw="'+esc(wt[t].w)+'" data-spansun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
+           ' data-spanstart="'+esc(wt[t].d)+'">&nbsp;</div>';
       }else{
-        h+='<div class="mo-chip" style="background:var(--card);color:'+wc.tx+
-           ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+'</div>';
+        /* The same grab point a run has, so a one-day task can become a longer
+           one without first having to be one somewhere else. */
+        h+='<div class="mo-chip" style="position:relative;background:var(--card);color:'+wc.tx+
+           ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+
+           '<div data-mostretch="'+esc(wt[t].id)+'" data-mostart="'+esc(wt[t].d)+'"'+
+           ' data-mosun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
+           ' style="position:absolute;inset-inline-end:-2px;top:50%;margin-top:-8px;width:16px;height:16px;'+
+           'pointer-events:auto;cursor:ew-resize;touch-action:none;display:flex;align-items:center;justify-content:center">'+
+           '<div style="width:5px;height:5px;border-radius:50%;background:'+wc.dot+'"></div></div></div>';
       }
       shown++;
     }
@@ -13865,8 +13974,21 @@ function moSetColor(id,k){
 }
 
 /* ── the drag ── */
+var _moStretch=null;
 function moDown(e){
   if(e.target.closest&&!e.target.closest('#plan-sec-month'))return;   // not this panel's drag
+  var gh=e.target.closest?e.target.closest('[data-mostretch]'):null;
+  if(gh){
+    var sd=gh.getAttribute('data-mostart'),sn=gh.getAttribute('data-mosun');
+    if(!sd||!sn)return;
+    _moStretch={id:gh.getAttribute('data-mostretch'),sun:sn,start:sd,
+                dow:new Date(sd+'T12:00:00').getDay()};
+    window.addEventListener('pointermove',moMove);
+    window.addEventListener('pointerup',moUp);
+    window.addEventListener('pointercancel',moUp);
+    e.preventDefault();e.stopPropagation();
+    return;
+  }
   var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;
@@ -13884,6 +14006,22 @@ function moDown(e){
   window.addEventListener('pointercancel',moUp);
   e.preventDefault();
 }
+/* Straight through and redraw, the way the week does it: saving on every
+   change rather than only at the end means letting go anywhere leaves the task
+   the length it looked like it was. */
+function moStretchTo(sun,id,len){
+  var d=new Date(sun+'T12:00:00'),wk=loadWeek(d),i,ch=false;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){
+    var cur=wkLenOf(wk.tasks[i]);
+    if(cur===len)return false;
+    if(len>1)wk.tasks[i].len=len; else delete wk.tasks[i].len;
+    ch=true;
+  }
+  if(!ch)return false;
+  saveWeek(d,wk);
+  renderPlanning();
+  return true;
+}
 function moHitCell(x,y){
   var c=document.querySelectorAll('.mo-cell[data-date]'),i,r;
   for(i=0;i<c.length;i++){
@@ -13899,6 +14037,19 @@ function moOverPool(x,y){
   return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
 }
 function moMove(e){
+  if(_moStretch){
+    var cell=moHitCell(e.clientX,e.clientY);
+    if(!cell)return;
+    var to=cell.getAttribute('data-date');
+    var diff=Math.round((new Date(to+'T12:00:00')-new Date(_moStretch.start+'T12:00:00'))/86400000);
+    if(diff<0)diff=0;
+    /* len is week-relative and the task lives in one week's record, so the run
+       stops at its own Saturday rather than pretending to continue. */
+    var max=Math.min(6-_moStretch.dow,WK_MAX_LEN-1);
+    if(diff>max)diff=max;
+    moStretchTo(_moStretch.sun,_moStretch.id,diff+1);
+    return;
+  }
   if(!_moDrag)return;
   _moDrag.moved=true;
   _moDrag.g.style.left=(e.clientX-_moDrag.dx)+'px';
@@ -13909,6 +14060,13 @@ function moMove(e){
   for(i=0;i<c.length;i++)c[i].classList.toggle('hot',c[i]===hit);
 }
 function moUp(e){
+  if(_moStretch){
+    _moStretch=null;
+    window.removeEventListener('pointermove',moMove);
+    window.removeEventListener('pointerup',moUp);
+    window.removeEventListener('pointercancel',moUp);
+    return;
+  }
   if(!_moDrag)return;
   dragScrollStop();
   var hit=moHitCell(e.clientX,e.clientY);
@@ -14046,6 +14204,16 @@ function renderPlanning(){
   document.getElementById('content').innerHTML=h;
 
   /* the after-steps each screen used to run for itself */
+  if(o.month){
+    /* Placed straight away so nothing flashes, then again once the layout has
+       actually settled. Measured: the first pass reads the cells 9px higher
+       than they end up, because the web font has not arrived and the rows are
+       content-sized - so the bar lands on the day numbers. Re-placing is
+       idempotent; it removes its own layer first. */
+    moPlaceSpans();
+    requestAnimationFrame(moPlaceSpans);
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moPlaceSpans);
+  }
   if(o.week)wkPlacePoint();
   if(o.day){dpRail();dpNowLine();dpNowStart();}
 
@@ -14305,7 +14473,7 @@ var GW_STEPS=[
   {k:'miles', n:''+_t('הנדסה לאחור')+'',
    q:''+_t('אילו שלוש תחנות מרכזיות אתה חייב לעבור בדרך?')+'',
    sub:''+_t('שלוש, לא עשר. אלה השלבים הגדולים — הצעדים הקטנים יבואו אחר כך.')+'',
-   three:true, ph:['למשל: לבנות בסיס אירובי',''+_t('למשל: להגיע ל־7 ק״מ')+'','למשל: לרוץ מרוץ ניסיון']},
+   three:true, ph:[''+_t('למשל: לבנות בסיס אירובי')+'',''+_t('למשל: להגיע ל־7 ק״מ')+'',''+_t('למשל: לרוץ מרוץ ניסיון')+'']},
   {k:'first', n:''+_t('הצעד הראשון')+'',
    q:''+_t('מה הפעולה הקטנה ביותר שתוכל לעשות עוד היום?')+'',
    sub:''+_t('משהו שאפשר לסיים היום. ניצחון קטן אחד מדליק את הכוכב הראשון.')+'',
@@ -15203,7 +15371,7 @@ function renderViewGoal(){
 function renderAddSub(){
   var goals=loadGoals();var g=goals[_goalIdx];
   if(!g){_goalsView='view-goal';renderGoals();return;}
-  var lv=['monthly','weekly','daily'];var lvLabels=['חודשית',''+_t('שבועית')+'','יומית'];
+  var lv=['monthly','weekly','daily'];var lvLabels=[''+_t('חודשית')+'',''+_t('שבועית')+'',''+_t('יומית')+''];
   var lvColors=[PAL.violet500,PAL.green500,PAL.terra500];
   var li=lv.indexOf(_subLevel);var color=lvColors[li]||PAL.violet500;
   document.getElementById('hdr-title').textContent=''+_t('מטרה')+' '+lvLabels[li];
@@ -15315,8 +15483,8 @@ var _personIdx=-1;
 var _memoryIdx=-1;
 
 var RELATIONSHIP_TYPES=[
-  'חבר קרוב',''+_t('חברה')+'',''+_t('בן משפחה')+'',''+_t('בת משפחה')+'',''+_t('בן זוג')+'',''+_t('בת זוג')+'',
-  ''+_t('אח')+'',''+_t('אחות')+'',''+_t('אבא')+'',''+_t('אמא')+'',''+_t('סבא')+'',''+_t('סבתא')+'',''+_t('קולגה')+'','אחר'
+  'חבר קרוב','חברה','בן משפחה','בת משפחה','בן זוג','בת זוג',
+  'אח','אחות','אבא','אמא','סבא','סבתא','קולגה','אחר'
 ];
 var MEMORY_TYPES=[
   {id:'note',label:''+_t('הערה')+''},
@@ -15325,7 +15493,7 @@ var MEMORY_TYPES=[
   {id:'conversation',label:''+_t('שיחה')+''},
   {id:'important',label:''+_t('חשוב')+''}
 ];
-var CONTACT_TYPES=['הודעה',''+_t('שיחה')+'',''+_t('פגישה')+'',''+_t('וידאו')+'','אחר'];
+var CONTACT_TYPES=[''+_t('הודעה')+'',''+_t('שיחה')+'',''+_t('פגישה')+'',''+_t('וידאו')+'',''+_t('אחר')+''];
 
 
 /* ── FINDING A PERSON ──
@@ -15342,7 +15510,7 @@ var CONTACT_TYPES=['הודעה',''+_t('שיחה')+'',''+_t('פגישה')+'',''+_
    the relationship line, so it can be grouped on. The relationship stays what
    it always was: the small grey line under the name saying what they are to
    you. חדר כושר / אורון / מאמן בחדר כושר - the place, the person, the role. */
-var PEOPLE_PLACES=['חדר כושר',''+_t('עבודה')+'',''+_t('משפחה')+'',''+_t('לימודים')+'',''+_t('שכונה')+'',''+_t('צבא')+'',''+_t('חברים')+'','אונליין'];
+var PEOPLE_PLACES=['חדר כושר','עבודה','משפחה','לימודים','שכונה','צבא','חברים','אונליין'];
 var _pplSort='recent',_pplQ='',_pplPlace='';
 var PPL_SORTS=[
   {v:'recent', t:''+_t('הכי מזמן')+''},
@@ -15827,7 +15995,7 @@ function renderEditPerson(){
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">';
   for(var ri=0;ri<RELATIONSHIP_TYPES.length;ri++){
     var rt=RELATIONSHIP_TYPES[ri];var isSel=p.relationship===rt;
-    h+='<button onclick="document.getElementById(\'ep-rel\').value=\''+rt+'\'" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSel?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':'var(--surface)')+';color:'+(isSel?'var(--white)':'var(--ink-soft)')+'">'+rt+'</button>';
+    h+='<button onclick="document.getElementById(\'ep-rel\').value=\''+rt+'\'" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSel?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':'var(--surface)')+';color:'+(isSel?'var(--white)':'var(--ink-soft)')+'">'+_t(rt)+'</button>';
   }
   h+='</div><input id="ep-rel" class="mtin" value="'+esc(p.relationship||'')+'" placeholder="או כתוב בעצמך..."></div>';
   // where you know them from - its own field, so the list can group on it
@@ -15835,7 +16003,7 @@ function renderEditPerson(){
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">';
   for(var qi=0;qi<PEOPLE_PLACES.length;qi++){
     var qp=PEOPLE_PLACES[qi],qsel=p.place===qp;
-    h+='<button type="button" onclick="document.getElementById(&quot;ep-place&quot;).value=&quot;'+qp+'&quot;" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(qsel?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':'var(--surface)')+';color:'+(qsel?'var(--white)':'var(--ink-soft)')+'">'+qp+'</button>';
+    h+='<button type="button" onclick="document.getElementById(&quot;ep-place&quot;).value=&quot;'+qp+'&quot;" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(qsel?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':'var(--surface)')+';color:'+(qsel?'var(--white)':'var(--ink-soft)')+'">'+_t(qp)+'</button>';
   }
   h+='</div><input id="ep-place" class="mtin" value="'+esc(p.place||'')+'" placeholder="או כתוב בעצמך..."></div>';
   h+=pfield(''+_t('מה הוא/היא בשבילי')+'','ep-mean',p.whatTheyMean,'',true);
@@ -15952,19 +16120,19 @@ function deletePerson(){
 }
 var INSIGHTS_CATS=[
   {id:'self',title:''+_t('אני')+'',color:PAL.violet500,bg:PAL.violet100,
-   questions:['מי אני',''+_t('מה אני באמת רוצה')+'',''+_t('מה חשוב לי')+'',''+_t('הערכים שלי')+'',''+_t('החוזקות שלי')+'',''+_t('החולשות שלי')+'',''+_t('הפחדים שלי')+'',''+_t('הדפוסים שלי')+'',''+_t('דברים שאני משקר לעצמי')+'','דברים שאני מגלה על עצמי']},
+   questions:[''+_t('מי אני')+'',''+_t('מה אני באמת רוצה')+'',''+_t('מה חשוב לי')+'',''+_t('הערכים שלי')+'',''+_t('החוזקות שלי')+'',''+_t('החולשות שלי')+'',''+_t('הפחדים שלי')+'',''+_t('הדפוסים שלי')+'',''+_t('דברים שאני משקר לעצמי')+'',''+_t('דברים שאני מגלה על עצמי')+'']},
   {id:'emotions',title:''+_t('רגשות ותודעה')+'',color:PAL.terra500,bg:'#fff0eb',
-   questions:['פחד',''+_t('עצב')+'',''+_t('כעס')+'',''+_t('שמחה')+'',''+_t('אהבה')+'',''+_t('בדידות')+'',''+_t('קנאה')+'',''+_t('ביטחון עצמי')+'',''+_t('מחשבות')+'','איך אני מתמודד עם רגשות']},
+   questions:[''+_t('פחד')+'',''+_t('עצב')+'',''+_t('כעס')+'',''+_t('שמחה')+'',''+_t('אהבה')+'',''+_t('בדידות')+'',''+_t('קנאה')+'',''+_t('ביטחון עצמי')+'',''+_t('מחשבות')+'',''+_t('איך אני מתמודד עם רגשות')+'']},
   {id:'people',title:''+_t('אנשים')+'',color:PAL.green500,bg:'#eef5ee',
-   questions:['אנשים באופן כללי',''+_t('חברות')+'',''+_t('אהבה וזוגיות')+'',''+_t('משפחה')+'',''+_t('אמון')+'',''+_t('גבולות')+'',''+_t('קונפליקטים')+'',''+_t('נתינה וקבלה')+'',''+_t('ציפיות מאנשים')+'','להיפרד מאנשים']},
+   questions:[''+_t('אנשים באופן כללי')+'',''+_t('חברות')+'',''+_t('אהבה וזוגיות')+'',''+_t('משפחה')+'',''+_t('אמון')+'',''+_t('גבולות')+'',''+_t('קונפליקטים')+'',''+_t('נתינה וקבלה')+'',''+_t('ציפיות מאנשים')+'',''+_t('להיפרד מאנשים')+'']},
   {id:'life',title:''+_t('החיים')+'',color:PAL.indigo500,bg:PAL.indigo50,
-   questions:['זמן',''+_t('משמעות')+'',''+_t('אושר')+'',''+_t('סבל')+'',''+_t('שינוי')+'',''+_t('בחירה וחופש')+'',''+_t('מזל')+'',''+_t('מוות')+'',''+_t('חרטה')+'','מה הופך חיים לטובים']},
+   questions:[''+_t('זמן')+'',''+_t('משמעות')+'',''+_t('אושר')+'',''+_t('סבל')+'',''+_t('שינוי')+'',''+_t('בחירה וחופש')+'',''+_t('מזל')+'',''+_t('מוות')+'',''+_t('חרטה')+'',''+_t('מה הופך חיים לטובים')+'']},
   {id:'success',title:''+_t('הצלחה ועשייה')+'',color:PAL.amber500,bg:'#fef9e7',
-   questions:['עבודה',''+_t('כסף')+'',''+_t('שאפתנות')+'',''+_t('כישלון')+'',''+_t('הצלחה')+'',''+_t('משמעת')+'',''+_t('מוטיבציה')+'',''+_t('יצירתיות')+'',''+_t('השוואה לאחרים')+'','מה באמת שווה את המאמץ']},
+   questions:[''+_t('עבודה')+'',''+_t('כסף')+'',''+_t('שאפתנות')+'',''+_t('כישלון')+'',''+_t('הצלחה')+'',''+_t('משמעת')+'',''+_t('מוטיבציה')+'',''+_t('יצירתיות')+'',''+_t('השוואה לאחרים')+'',''+_t('מה באמת שווה את המאמץ')+'']},
   {id:'world',title:''+_t('העולם')+'',color:PAL.green700,bg:'#eef5ee',
-   questions:['החברה',''+_t('מוסר')+'',''+_t('כוח')+'',''+_t('פוליטיקה')+'',''+_t('תרבות')+'',''+_t('טכנולוגיה')+'',''+_t('טבע')+'',''+_t('אמונות של אנשים')+'',''+_t('איך העולם באמת עובד')+'','דברים שאני לא מבין']},
+   questions:[''+_t('החברה')+'',''+_t('מוסר')+'',''+_t('כוח')+'',''+_t('פוליטיקה')+'',''+_t('תרבות')+'',''+_t('טכנולוגיה')+'',''+_t('טבע')+'',''+_t('אמונות של אנשים')+'',''+_t('איך העולם באמת עובד')+'',''+_t('דברים שאני לא מבין')+'']},
   {id:'notebook',title:''+_t('בסוף המחברת')+'',color:'#9A9184',bg:PAL.surface,
-   questions:['תובנות שאני רוצה לזכור',''+_t('דברים ששיניתי בהם את דעתי')+'',''+_t('סתירות שמצאתי בעצמי')+'',''+_t('שאלות שאין לי עליהן תשובה')+'','דברים שאני רוצה לבדוק בחיים']}
+   questions:[''+_t('תובנות שאני רוצה לזכור')+'',''+_t('דברים ששיניתי בהם את דעתי')+'',''+_t('סתירות שמצאתי בעצמי')+'',''+_t('שאלות שאין לי עליהן תשובה')+'',''+_t('דברים שאני רוצה לבדוק בחיים')+'']}
 ];
 
 var _insView='home';
@@ -17554,15 +17722,15 @@ var RF_MOODS=[
   {v:5,l:''+_t('מצוין')+'',c:'#6faf85'}
 ];
 var RF_MOUTHS=['M8.6 16.4q3.4-3.2 6.8 0','M8.6 15.8q3.4-1.7 6.8 0','M8.6 15.3h6.8','M8.6 14.8q3.4 1.7 6.8 0','M8.6 14.2q3.4 3.2 6.8 0'];
-var RF_BODY=['אנרגטי',''+_t('עייף')+'',''+_t('רגוע')+'',''+_t('מתוח')+'',''+_t('כבד')+'',''+_t('חזק')+'','כאוב'];
-var RF_PLANNED=['בכלל לא',''+_t('קצת')+'',''+_t('חלקית')+'',''+_t('די הרבה')+'','לגמרי'];
-var RF_ENERGY=['אנשים',''+_t('עבודה')+'',''+_t('יצירה')+'',''+_t('אימון')+'',''+_t('מנוחה')+'',''+_t('טבע')+'',''+_t('מוזיקה')+'',''+_t('זמן לבד')+'','משהו אחר'];
+var RF_BODY=[''+_t('אנרגטי')+'',''+_t('עייף')+'',''+_t('רגוע')+'',''+_t('מתוח')+'',''+_t('כבד')+'',''+_t('חזק')+'',''+_t('כאוב')+''];
+var RF_PLANNED=[''+_t('בכלל לא')+'',''+_t('קצת')+'',''+_t('חלקית')+'',''+_t('די הרבה')+'',''+_t('לגמרי')+''];
+var RF_ENERGY=[''+_t('אנשים')+'',''+_t('עבודה')+'',''+_t('יצירה')+'',''+_t('אימון')+'',''+_t('מנוחה')+'',''+_t('טבע')+'',''+_t('מוזיקה')+'',''+_t('זמן לבד')+'',''+_t('משהו אחר')+''];
 // What drains is not the mirror of what fills, so it gets its own list.
-var RF_DRAIN=['עבודה',''+_t('אנשים')+'',''+_t('מסכים')+'',''+_t('חוסר שינה')+'',''+_t('התנגשויות')+'',''+_t('דברים שנדחו')+'',''+_t('רעש')+'',''+_t('דאגות')+'','משהו אחר'];
-var RF_PROC=['לא היה לי כוח',''+_t('לא היה לי זמן')+'',''+_t('שכחתי')+'',''+_t('פחדתי להתחיל')+'',''+_t('לא ידעתי מאיפה להתחיל')+'',''+_t('משהו אחר היה חשוב יותר')+'','אחר'];
-var RF_SELFCARE=['אימון',''+_t('זמן לבד')+'',''+_t('מוזיקה')+'',''+_t('לצאת החוצה')+'',''+_t('לדבר עם מישהו')+'',''+_t('לישון מספיק')+'',''+_t('לאכול משהו טוב')+'',''+_t('יצירה')+'','כלום מיוחד'];
-var RF_IMPACT=['לטובה',''+_t('לרעה')+'','גם וגם'];
-var RF_PARTS=['בוקר',''+_t('צהריים')+'',''+_t('אחה״צ')+'',''+_t('ערב')+'','לילה'];
+var RF_DRAIN=[''+_t('עבודה')+'',''+_t('אנשים')+'',''+_t('מסכים')+'',''+_t('חוסר שינה')+'',''+_t('התנגשויות')+'',''+_t('דברים שנדחו')+'',''+_t('רעש')+'',''+_t('דאגות')+'',''+_t('משהו אחר')+''];
+var RF_PROC=[''+_t('לא היה לי כוח')+'',''+_t('לא היה לי זמן')+'',''+_t('שכחתי')+'',''+_t('פחדתי להתחיל')+'',''+_t('לא ידעתי מאיפה להתחיל')+'',''+_t('משהו אחר היה חשוב יותר')+'',''+_t('אחר')+''];
+var RF_SELFCARE=[''+_t('אימון')+'',''+_t('זמן לבד')+'',''+_t('מוזיקה')+'',''+_t('לצאת החוצה')+'',''+_t('לדבר עם מישהו')+'',''+_t('לישון מספיק')+'',''+_t('לאכול משהו טוב')+'',''+_t('יצירה')+'',''+_t('כלום מיוחד')+''];
+var RF_IMPACT=['לטובה','לרעה','גם וגם'];
+var RF_PARTS=[''+_t('בוקר')+'',''+_t('צהריים')+'',''+_t('אחה״צ')+'',''+_t('ערב')+'',''+_t('לילה')+''];
 
 var RF_STAGE1=[
   {id:'mood',kind:'mood',q:''+_t('איך הרגשת היום?')+''},
@@ -17787,7 +17955,7 @@ function renderReflect(){
 /* ── module home ── */
 /* The weekday array is written out inline in three places; the week card needs
    it a fourth time, which is enough to give it a name. */
-var RF_DAYNAMES=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
+var RF_DAYNAMES=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
 function dayName(iso){
   var dt=new Date(iso+'T12:00:00');
   return isNaN(dt)?'':RF_DAYNAMES[dt.getDay()];
@@ -17921,7 +18089,7 @@ function renderReflectHome(){
     for(i=0;i<prev.length;i++){
       var p=prev[i],pr=p.r;
       var dt=new Date(p.d+'T12:00:00');
-      var dn=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'][dt.getDay()];
+      var dn=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''][dt.getDay()];
       h+='<button class="rf-day" onclick="openSummary(\''+p.d+'\')">';
       if(pr.photo)h+=photoImg(pr.photo,'class="rf-day-th"');
       else h+='<div class="rf-day-th" style="display:flex;align-items:center;justify-content:center">'+(pr.mood?rfFaceMini(pr.mood):'')+'</div>';
@@ -18105,7 +18273,7 @@ function renderReflectStep(){
     if(sel){
       h+='<div class="rf-sub" style="margin-top:26px;font-weight:700;color:var(--ink);font-size:15px">'+_t('איך הוא השפיע עליך היום?')+'</div>';
       h+='<div class="rf-ladder" style="margin-top:14px">';
-      for(i=0;i<RF_IMPACT.length;i++)h+='<button class="rf-rung'+(rfVal('influentialPersonImpact')===RF_IMPACT[i]?' on':'')+'" onclick="rfSave({influentialPersonImpact:\''+RF_IMPACT[i]+'\'});renderReflectStep()">'+RF_IMPACT[i]+'</button>';
+      for(i=0;i<RF_IMPACT.length;i++)h+='<button class="rf-rung'+(rfVal('influentialPersonImpact')===RF_IMPACT[i]?' on':'')+'" onclick="rfSave({influentialPersonImpact:\''+RF_IMPACT[i]+'\'});renderReflectStep()">'+_t(RF_IMPACT[i])+'</button>';
       h+='</div>';
     }
     h+='<button onclick="rfNext()" class="rf-next">'+_t('המשך')+'</button>';
@@ -18517,7 +18685,7 @@ function meDayList(n){
   }
   return out;
 }
-function meDow(d){return ['א',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'','ש'][d.getDay()];}
+function meDow(d){return [''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''][d.getDay()];}
 function meAvg(a){var i,t=0;if(!a.length)return null;for(i=0;i<a.length;i++)t+=a[i];return t/a.length;}
 
 /* A line over time. One series, so no legend - the title names it. Points are
@@ -19134,7 +19302,7 @@ function streakHTML(){
 function streakOpen(){
   var old=document.getElementById('stk-ov');if(old)old.remove();
   var s=streakNow(),stats=streakStats(),best=stats.best;
-  var days='',d=new Date(),i,names=['א',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'','ש'];
+  var days='',d=new Date(),i,names=[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''];
   var cells=[];
   for(i=0;i<14;i++){
     var st=dtStamp(d),on=didSomething(st);
@@ -19204,7 +19372,7 @@ function renderHomeToday(){
   var h='<button class="td-card" onclick="enterModule(&quot;planning&quot;)">';
   h+='<div class="td-top">';
   h+='<div class="td-word">'+_t('היום')+'</div>';
-  h+='<div class="td-when">'+WK_DAYS[d.getDay()]+', '+d.getDate()+' '+_t('ב')+''+MO_NAMES[d.getMonth()]+
+  h+='<div class="td-when">'+WK_DAYS[d.getDay()]+', '+_t('{d} ב{m}',{d:d.getDate(),m:MO_NAMES[d.getMonth()]})+
      ' <span class="td-clock">'+nowTodayHM()+'</span></div>';
   h+='</div>';
   h+='<div class="td-bar"><div class="td-fill" style="width:'+pct.toFixed(1)+'%"></div>'+
@@ -19356,9 +19524,9 @@ function tbSync(){
   paintSky();
   // Set date
   var d=new Date();
-  var dn=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
-  var mn=['ינואר',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'','דצמבר'];
-  document.getElementById('home-date').textContent=dn[d.getDay()]+', '+d.getDate()+' '+_t('ב')+''+mn[d.getMonth()];
+  var dn=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
+  var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
+  document.getElementById('home-date').textContent=dn[d.getDay()]+', '+_t('{d} ב{m}',{d:d.getDate(),m:mn[d.getMonth()]});
   var _hc=document.getElementById('home-cal');
   if(_hc){_hc.innerHTML=buildHomeCalHTML();hydratePhotos(_hc);}
   migratePhotos();
