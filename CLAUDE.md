@@ -72,8 +72,9 @@ through both gets applied twice.
 `<script id="game-src">` — a standalone document with its own `:root`. Every
 pass should assert it comes through byte-identical.
 
-**The open work is written down** in `I18N.md` and `UX-AUDIT.md`, including what
-was deliberately left alone and why.
+**The open work is written down.** `TODO.md` holds what Asaf has asked for and
+is not built yet; `I18N.md` and `UX-AUDIT.md` hold the internationalisation and
+UX work, including what was deliberately left alone and why.
 
 **Three checks are tools rather than prose**, and all should only ever go down:
 
