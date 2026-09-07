@@ -24,3 +24,11 @@ value falls back to the Hebrew, so a partial translation is a working app.
   lookup keys, 24 as object keys, 8 in comparisons — those are data, not text,
   and translating them would break the program. The rest sit mid-tag across a
   concatenation. See `I18N.md`.
+
+## Why this sits at the repo root
+
+`appBase()` strips `dev/` on purpose, so both published copies of the app read
+one `data/` directory — the same way they already share `exercises.json` and
+`assets/`. A release copies only `dev/index.html` and `dev/sw.js`, so putting
+these under `dev/` would have meant the stable app could never see them, and
+the two copies could drift on the words themselves.
