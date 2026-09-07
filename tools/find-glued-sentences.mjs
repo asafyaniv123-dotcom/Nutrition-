@@ -54,6 +54,12 @@ for (const m of app.matchAll(/_t\((['"])((?:(?!\1).)*)\1/g)) {
 const hits = [];
 let m;
 while ((m = re.exec(app)) !== null) {
+  /* Rewind so every _t gets a turn as the left half of a pair.
+     Without this a match CONSUMES its text even when the filters below throw it
+     away, so a real glued sentence sitting after a false one on the same line
+     is never examined. That is what hid "עברו {n} ימים": the ternary before it
+     matched first, was correctly discarded, and took the real pair with it. */
+  re.lastIndex = m.index + 1;
   const between = m[3];
   if (!/\+/.test(between)) continue;
   if (/<\/?[a-z]/i.test(between)) continue;         // separated by markup, not one sentence
