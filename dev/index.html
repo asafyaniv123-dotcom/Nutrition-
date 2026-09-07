@@ -1147,6 +1147,11 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .mo-span-d{position:absolute;bottom:0;width:6.5px;height:6.5px;border-radius:50%}
 .mo-span-d.s{inset-inline-start:0}
 .mo-span-d.e{inset-inline-end:0}
+/* The layer ignores the pointer so taps reach the days underneath; the handle
+   is the one thing on it that does not. The pad is invisible and three times
+   the dot, because a 6.5px target is not a target. */
+.mo-span-d.grab{pointer-events:auto;cursor:ew-resize;touch-action:none}
+.mo-span-d.grab::after{content:'';position:absolute;inset:-8px}
 .dp-q{font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.4;margin-bottom:9px}
 .dp-ta{width:100%;background:var(--card);border:none;border-radius:14px;padding:12px 14px;font-size:12.5px;color:var(--ink);line-height:1.6;font-family:inherit;unicode-bidi:plaintext;outline:none;resize:none;min-height:74px}
 .dp-ta::placeholder{color:#c9c0b8}
@@ -13792,7 +13797,14 @@ function moPlaceSpans(){
     rail.className='mo-span-r';rail.style.background=col;
     bar.appendChild(rail);
     var ds=document.createElement('div');ds.className='mo-span-d s';ds.style.background=col;
-    var de=document.createElement('div');de.className='mo-span-d e';de.style.background=col;
+    var de=document.createElement('div');de.className='mo-span-d e mo-grab-e';de.style.background=col;
+    /* Only the row that ends the run can be dragged - a continuation's far end
+       is a row break, not the end of anything. */
+    var lastSeg=list[list.length-1].el;
+    de.classList.add('grab');
+    de.setAttribute('data-mostretch',id);
+    de.setAttribute('data-mosun',lastSeg.getAttribute('data-spansun')||'');
+    de.setAttribute('data-mostart',lastSeg.getAttribute('data-spanstart')||'');
     bar.appendChild(ds);bar.appendChild(de);
     layer.appendChild(bar);
   }
@@ -13852,10 +13864,18 @@ function planMonthHTML(){
            second walk of the data. */
         h+='<div class="mo-chip mo-seg" data-span="'+esc(wt[t].id)+'"'+
            ' data-spanfirst="'+(ed.first?'1':'')+'" data-spancol="'+wc.dot+'"'+
-           ' data-spanw="'+esc(wt[t].w)+'">&nbsp;</div>';
+           ' data-spanw="'+esc(wt[t].w)+'" data-spansun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
+           ' data-spanstart="'+esc(wt[t].d)+'">&nbsp;</div>';
       }else{
-        h+='<div class="mo-chip" style="background:var(--card);color:'+wc.tx+
-           ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+'</div>';
+        /* The same grab point a run has, so a one-day task can become a longer
+           one without first having to be one somewhere else. */
+        h+='<div class="mo-chip" style="position:relative;background:var(--card);color:'+wc.tx+
+           ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+
+           '<div data-mostretch="'+esc(wt[t].id)+'" data-mostart="'+esc(wt[t].d)+'"'+
+           ' data-mosun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
+           ' style="position:absolute;inset-inline-end:-2px;top:50%;margin-top:-8px;width:16px;height:16px;'+
+           'pointer-events:auto;cursor:ew-resize;touch-action:none;display:flex;align-items:center;justify-content:center">'+
+           '<div style="width:5px;height:5px;border-radius:50%;background:'+wc.dot+'"></div></div></div>';
       }
       shown++;
     }
@@ -13954,8 +13974,21 @@ function moSetColor(id,k){
 }
 
 /* ── the drag ── */
+var _moStretch=null;
 function moDown(e){
   if(e.target.closest&&!e.target.closest('#plan-sec-month'))return;   // not this panel's drag
+  var gh=e.target.closest?e.target.closest('[data-mostretch]'):null;
+  if(gh){
+    var sd=gh.getAttribute('data-mostart'),sn=gh.getAttribute('data-mosun');
+    if(!sd||!sn)return;
+    _moStretch={id:gh.getAttribute('data-mostretch'),sun:sn,start:sd,
+                dow:new Date(sd+'T12:00:00').getDay()};
+    window.addEventListener('pointermove',moMove);
+    window.addEventListener('pointerup',moUp);
+    window.addEventListener('pointercancel',moUp);
+    e.preventDefault();e.stopPropagation();
+    return;
+  }
   var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;
@@ -13973,6 +14006,22 @@ function moDown(e){
   window.addEventListener('pointercancel',moUp);
   e.preventDefault();
 }
+/* Straight through and redraw, the way the week does it: saving on every
+   change rather than only at the end means letting go anywhere leaves the task
+   the length it looked like it was. */
+function moStretchTo(sun,id,len){
+  var d=new Date(sun+'T12:00:00'),wk=loadWeek(d),i,ch=false;
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){
+    var cur=wkLenOf(wk.tasks[i]);
+    if(cur===len)return false;
+    if(len>1)wk.tasks[i].len=len; else delete wk.tasks[i].len;
+    ch=true;
+  }
+  if(!ch)return false;
+  saveWeek(d,wk);
+  renderPlanning();
+  return true;
+}
 function moHitCell(x,y){
   var c=document.querySelectorAll('.mo-cell[data-date]'),i,r;
   for(i=0;i<c.length;i++){
@@ -13988,6 +14037,19 @@ function moOverPool(x,y){
   return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
 }
 function moMove(e){
+  if(_moStretch){
+    var cell=moHitCell(e.clientX,e.clientY);
+    if(!cell)return;
+    var to=cell.getAttribute('data-date');
+    var diff=Math.round((new Date(to+'T12:00:00')-new Date(_moStretch.start+'T12:00:00'))/86400000);
+    if(diff<0)diff=0;
+    /* len is week-relative and the task lives in one week's record, so the run
+       stops at its own Saturday rather than pretending to continue. */
+    var max=Math.min(6-_moStretch.dow,WK_MAX_LEN-1);
+    if(diff>max)diff=max;
+    moStretchTo(_moStretch.sun,_moStretch.id,diff+1);
+    return;
+  }
   if(!_moDrag)return;
   _moDrag.moved=true;
   _moDrag.g.style.left=(e.clientX-_moDrag.dx)+'px';
@@ -13998,6 +14060,13 @@ function moMove(e){
   for(i=0;i<c.length;i++)c[i].classList.toggle('hot',c[i]===hit);
 }
 function moUp(e){
+  if(_moStretch){
+    _moStretch=null;
+    window.removeEventListener('pointermove',moMove);
+    window.removeEventListener('pointerup',moUp);
+    window.removeEventListener('pointercancel',moUp);
+    return;
+  }
   if(!_moDrag)return;
   dragScrollStop();
   var hit=moHitCell(e.clientX,e.clientY);

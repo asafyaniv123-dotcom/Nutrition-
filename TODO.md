@@ -33,7 +33,7 @@ on the same dead variable: `planRerender()` (seven call sites, no `else`,
 repainted nothing) and `dpRail()`, the loose-task rail, which simply never
 appeared.
 
-### 3. Stretched tasks in the monthly view — display done, dragging still open
+### 3. ~~Stretched tasks in the monthly view~~ — done
 
 **Done: no breaks, and the text is no longer cut.**
 
@@ -50,10 +50,13 @@ they are what reserves the right height in the right place, but they are now
 invisible placeholders and one continuous bar is drawn over the grid on top of
 them.
 
-**Still open: stretching a task from the monthly view itself.** The weekly view
-has a drag handle; the month has none, so a run can be *seen* there but only
-*made* in the week. That is an interaction, not a rendering fix, and it is the
-half that is left.
+**Also done: stretching from the monthly view itself.** The far dot is the
+handle — it already marks the end of the run, which is the thing being moved.
+A one-day task gets the same grab point on its chip, so this is not a one-way
+door: shorten a run to a single day and there is still something to pull.
+
+A run stops at its own Saturday. `len` is week-relative and the task lives in
+one week's record, so the drag clamps there rather than pretending otherwise.
 
 One caveat worth writing down: the bar is split per grid row, so a run crossing
 a Saturday would break where the calendar breaks. That path is unexercised —
