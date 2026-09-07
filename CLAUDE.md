@@ -30,6 +30,45 @@ the `/dev/` path:
 colour) and are *not* copied by a release - that difference is what makes the
 phone install them as two separate icons.
 
+## How we work
+
+**Don't stop to ask permission for ordinary work.** Edit, run, test, commit,
+push. Releasing is included: `./release.sh --go` once a change is verified and
+worth shipping. Ask only when the answer would genuinely change what gets
+built, or before something destructive.
+
+**Done means proven, not asserted.** The checks that have actually caught bugs
+here, in the order they earn their keep:
+
+1. **Reverse the change and diff it.** If undoing a mechanical pass does not
+   return the original byte for byte, the pass is wrong. This caught ten
+   corrupted declarations in the direction pass.
+2. **Measure the result in the browser, on every screen, not one.** Geometry
+   beats `getComputedStyle`, which reports `text-align` as the keyword that was
+   written — so `start` and `right` read as different while painting the same.
+3. **Walk the real path.** Type into the actual boxes, press the actual button,
+   reload the actual page. Calling the function from the console has produced
+   false passes here more than once.
+4. **Assert a new global is free before adding it** — free means nothing
+   *shadows* it, not that nothing declares it. `t` is bound as a local in 74
+   places in this file.
+
+A reversal test proves a transform is lossless, not that it is *right*: it
+cannot see a string that was translated but is used as a lookup key, and it
+cannot see a `var` read before its own line assigns it. Both of those shipped.
+
+Two traps specific to this file. **Write patch scripts as files**, never as
+`node -e` — the shell eats backslashes and returns confidently wrong results.
+And **`{ … }` blocks overlap `style="…"` attributes**, so an edit reached
+through both gets applied twice.
+
+**Never touch:** `index.html` (release only), and the game inside
+`<script id="game-src">` — a standalone document with its own `:root`. Every
+pass should assert it comes through byte-identical.
+
+**The open work is written down** in `I18N.md` and `UX-AUDIT.md`, including what
+was deliberately left alone and why.
+
 ## Layout
 
 - `index.html` - the whole app: markup, CSS and JS in one file.
