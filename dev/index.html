@@ -698,6 +698,18 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cm-x{background:none;border:none;font-size:19px;line-height:1;color:var(--muted-soft);cursor:pointer;font-family:inherit;padding:0 2px}
 .cm-add{width:100%;border:none;border-radius:14px;padding:12px;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white);font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
 /* הארון שלי */
+/* ── SEASONS ──
+   A filter that is generous by default: "all year" is lit until you narrow it,
+   and narrowing still shows every untagged garment. */
+.cl-seasons{display:flex;gap:6px;overflow-x:auto;padding:0 2px 10px;-webkit-overflow-scrolling:touch}
+.cl-season{flex:0 0 auto;background:var(--card);border:1.5px solid var(--line);border-radius:999px;
+  padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--muted);font-family:inherit;cursor:pointer;white-space:nowrap}
+.cl-season.on{background:var(--violet-100);border-color:var(--violet-300);color:var(--violet-700)}
+/* On a garment: four small marks, none lit meaning any season. */
+.cl-iseasons{display:flex;gap:3px;justify-content:center;margin-top:4px}
+.cl-iseason{background:none;border:none;padding:1px;font-size:11px;line-height:1;cursor:pointer;
+  opacity:.28;filter:grayscale(1);transition:opacity .12s,filter .12s}
+.cl-iseason.on{opacity:1;filter:none}
 .cl-mirror{position:relative;background:var(--card);border-radius:20px;padding:10px 8px;margin-bottom:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
 /* The place a garment is brought to, drawn as the two edges it sits between
    rather than as a line through the middle of it. One per row, and each is
@@ -8066,8 +8078,68 @@ function loadCloset(){
   catch(e){return [];}
 }
 function saveCloset(a){try{localStorage.setItem(CLOSET_KEY,JSON.stringify(a));}catch(e){}}
+/* Keys are ASCII and get stored; the Hebrew is a label and is translated where
+   it is shown, never here - these values end up on a garment. */
+var CLOSET_SEASONS=[
+  {k:'w',ic:'\u2744\uFE0F',t:'חורף'},
+  {k:'p',ic:'\uD83C\uDF38',t:'אביב'},
+  {k:'s',ic:'\u2600\uFE0F',t:'קיץ'},
+  {k:'a',ic:'\uD83C\uDF42',t:'סתיו'}
+];
+var _closetSeason='';   // '' is everything
+
+/* Generous on purpose: a season shows what was tagged for it AND everything
+   untagged, because an untagged garment is an all-year garment. */
+function closetInSeason(x){
+  if(!_closetSeason)return true;
+  var a=x&&x.seasons;
+  if(!Array.isArray(a)||!a.length)return true;
+  return a.indexOf(_closetSeason)>=0;
+}
 function closetOf(cat){
-  return loadCloset().filter(function(x){return x.cat===cat;});
+  return loadCloset().filter(function(x){return x.cat===cat&&closetInSeason(x);});
+}
+/* _closetSel holds an INDEX into the list above, so narrowing it would leave
+   every strip pointing at a different garment. */
+function closetSeasonSet(k){
+  _closetSeason=(_closetSeason===k)?'':k;
+  _closetSel={};
+  renderCloset();
+}
+function closetSeasonToggle(id,k){
+  var items=loadCloset(),i;
+  for(i=0;i<items.length;i++)if(items[i].id===id){
+    var a=Array.isArray(items[i].seasons)?items[i].seasons.slice():[];
+    var at=a.indexOf(k);
+    if(at>=0)a.splice(at,1); else a.push(k);
+    if(a.length)items[i].seasons=a; else delete items[i].seasons;
+    saveCloset(items);
+    break;
+  }
+  renderCloset();
+}
+function closetSeasonsHTML(){
+  var h='<div class="cl-seasons">',i;
+  h+='<button class="cl-season'+(_closetSeason?'':' on')+'" onclick="closetSeasonSet(\'\')">'+_t('כל השנה')+'</button>';
+  for(i=0;i<CLOSET_SEASONS.length;i++){
+    var sn=CLOSET_SEASONS[i];
+    h+='<button class="cl-season'+(_closetSeason===sn.k?' on':'')+'" onclick="closetSeasonSet(\''+sn.k+'\')">'+
+       sn.ic+' '+_t(sn.t)+'</button>';
+  }
+  return h+'</div>';
+}
+/* On the item itself, because that is the only place you know which garment you
+   are talking about. Untagged shows nothing lit, which reads correctly as
+   "any season". */
+function closetItemSeasonsHTML(it){
+  var a=Array.isArray(it.seasons)?it.seasons:[],h='<div class="cl-iseasons">',i;
+  for(i=0;i<CLOSET_SEASONS.length;i++){
+    var sn=CLOSET_SEASONS[i];
+    h+='<button class="cl-iseason'+(a.indexOf(sn.k)>=0?' on':'')+'" '+
+       'onclick="closetSeasonToggle(\''+it.id+'\',\''+sn.k+'\')" '+
+       'aria-label="'+_t(sn.t)+'">'+sn.ic+'</button>';
+  }
+  return h+'</div>';
 }
 function loadOutfits(){
   try{var a=JSON.parse(localStorage.getItem(CLOSET_FIT_KEY)||'[]');return Array.isArray(a)?a:[];}
@@ -8560,6 +8632,7 @@ function closetPickedHTML(){
     h+='<div class="cl-pick-i">';
     h+='<div class="cl-pick-ph">'+photoImg(shown[i].it.ref,'class="cl-img"')+'</div>';
     h+='<div class="cl-pick-t">'+shown[i].cat.one+'</div>';
+    h+=closetItemSeasonsHTML(shown[i].it);
     h+='<div class="cl-pick-n'+(n?' on':'')+'">'+
        (n?n+(n===1?' '+_t('פעם')+'':' '+_t('פעמים')+''):''+_t('עוד לא')+'')+'</div>';
     h+='</div>';
@@ -8762,6 +8835,8 @@ function renderCloset(){
   h+='<div class="cl-mirror">';
   for(var i=0;i<CLOSET_CATS.length;i++)h+=closetRowHTML(CLOSET_CATS[i]);
   h+='</div>';
+
+  h+=closetSeasonsHTML();
 
   // jewellery is not part of that column, so it gets its own box
   h+='<div class="cl-mirror side">'+closetRowHTML(CLOSET_SIDE)+'</div>';
