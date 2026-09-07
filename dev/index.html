@@ -2229,7 +2229,24 @@ function fmtDate(s){
   var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
   return dn[d.getDay()]+', '+_t('{d} ב{m}',{d:d.getDate(),m:mn[d.getMonth()]});
 }
-function fmtTime(){var d=new Date();return d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();}
+/* What a meal's time is STORED as: zero-padded 24-hour, the one form that
+   sorts, compares and survives a change of locale. Never shown raw - fmtClock
+   turns it into whatever the reader's language writes. */
+function fmtTime(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+/* A stored HH:MM, written the way the reader's locale writes a time - so 17:32
+   in Hebrew and 5:32 PM in American English. Anything it cannot parse comes back
+   untouched, which is what keeps older records readable: they were stored
+   without the padded hour and still split into the same two numbers. */
+function fmtClock(hhmm){
+  if(!hhmm)return '';
+  var p=String(hhmm).split(':'),h=parseInt(p[0],10),m=parseInt(p[1],10);
+  if(isNaN(h)||isNaN(m)||p.length<2)return String(hhmm);
+  /* timeStyle is 'what this locale does' rather than a shape imposed on it:
+     Hebrew writes 9:05, British English 09:05, American English 9:05 AM. Naming
+     the parts instead forces one of those on all of them - hour:'2-digit' had
+     American English printing 05:32 PM, which nobody writes. */
+  return dfmt(new Date(2000,0,1,h,m),{timeStyle:'short'});
+}
 function showToast(msg){
   var old=document.querySelector('.toast');if(old)old.remove();
   var t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);
@@ -5568,7 +5585,7 @@ function renderToday(){
   var logHTML='';
   if(day.meals.length>0){
     logHTML='<div class="log-card"><div class="log-title">'+_t('ארוחות היום')+'</div>';
-    for(var mi2=0;mi2<day.meals.length;mi2++){var m=day.meals[mi2];logHTML+='<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+(m.est?'<span class="log-est">'+_t('הערכה')+'</span>':'')+'</div><div class="log-time">'+m.time+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:var(--muted)">'+m.p+'p '+m.c+'c '+m.f+'f</div><div class="log-kcal">'+m.kcal+'</div><button class="log-del" onclick="deleteMeal('+m.id+')">&times;</button></div></div>';}
+    for(var mi2=0;mi2<day.meals.length;mi2++){var m=day.meals[mi2];logHTML+='<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+(m.est?'<span class="log-est">'+_t('הערכה')+'</span>':'')+'</div><div class="log-time">'+fmtClock(m.time)+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:var(--muted)">'+m.p+'p '+m.c+'c '+m.f+'f</div><div class="log-kcal">'+m.kcal+'</div><button class="log-del" onclick="deleteMeal('+m.id+')">&times;</button></div></div>';}
     logHTML+='</div>';
   }
 
@@ -6047,7 +6064,7 @@ function openCalDay(ds){
       h+='</div>';
       h+='<span style="font-size:15px;width:20px;text-align:center;flex-shrink:0">'+t.sym+'</span>';
       h+='<div style="flex:1"><div style="font-size:13px;color:'+(isDone?'var(--muted)':'var(--ink)')+';'+(isDone?'text-decoration:line-through;':'')+'">'+esc(r.item.text)+'</div>';
-      h+='<div style="font-size:9px;color:var(--muted);margin-top:2px">'+t.label+(r.item.time?' &middot; '+r.item.time:'')+'</div></div>';
+      h+='<div style="font-size:9px;color:var(--muted);margin-top:2px">'+t.label+(r.item.time?' &middot; '+fmtClock(r.item.time):'')+'</div></div>';
       h+='<button onclick="deleteCalRem(\''+r.tab+'\','+r.idx+',\''+ds+'\')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px;padding:2px">&times;</button>';
       h+='</div>';
     });
@@ -11398,7 +11415,7 @@ function renderReminders(){
       if(item.date){var dd=new Date(item.date+'T12:00:00');dateStr=(dd.getDate()<10?'0':'')+dd.getDate()+'/'+(dd.getMonth()<9?'0':'')+(dd.getMonth()+1);}
       h+='<div style="flex:1;min-width:0">';
       h+='<div style="font-size:13px;'+bjTextStyle(status)+'line-height:1.4">'+esc(item.text)+'</div>';
-      if(dateStr||item.time)h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+(dateStr?'<span style="font-weight:700;color:var(--violet-500)">'+dateStr+'</span>':'')+(dateStr&&item.time?' &middot; ':'')+( item.time||'')+'</div>';
+      if(dateStr||item.time)h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+(dateStr?'<span style="font-weight:700;color:var(--violet-500)">'+dateStr+'</span>':'')+(dateStr&&item.time?' &middot; ':'')+fmtClock(item.time||'')+'</div>';
       h+='</div>';
       // Delete
       h+='<button onclick="deleteReminder('+ri+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px;padding:0 2px;flex-shrink:0">&times;</button>';
