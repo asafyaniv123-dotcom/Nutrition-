@@ -52,6 +52,18 @@ while ((m = re.exec(app)) !== null) {
   /* An object key whose value is an array or object leaves "m:[" rather than
      "m:" - same shape, one character further along. */
   if (/:[[{]$/.test(bare)) continue;
+
+  /* An ARGUMENT LIST is the last shape that looks glued from outside:
+     inputRow(label, id, value, placeholder) puts two _t calls either side of
+     real identifiers, so every test above lets it through.
+
+     What separates it from a sentence is the COMMA. A glued sentence is pure
+     concatenation and never contains one at the top level, so anything left
+     after the bracketed groups and string literals are removed means these are
+     arguments rather than prose. */
+  const noGroups = between.replace(/\([^()]*\)/g, '').replace(/\[[^\][]*\]/g, '');
+  if (/,/.test(noGroups.replace(/(['"])(?:(?!\1).)*\1/g, ''))) continue;
+
   const line = app.slice(0, m.index).split(LF).length;
   hits.push({ line, a: m[2], between: between.trim(), b: m[5] });
   re.lastIndex = m.index + 1;                        // allow overlapping chains
