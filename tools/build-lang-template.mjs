@@ -34,11 +34,32 @@ while ((m = CALL.exec(app))) keys.add(m[2]);
    _t(variable) is exactly the guess this whole exercise exists to avoid. */
 const VIA_VARIABLE = ['SAY_DERIVED_NONE', 'PLAN_FEELINGS', 'RELATIONSHIP_TYPES',
                       'PEOPLE_PLACES', 'RF_IMPACT', 'WIZ_NAME_OPTS'];
+/* Bracket-matched rather than cut at the next "];", which is fragile for a
+   multi-line collection: indexOf can run past the end of the declaration and
+   let the regex pick fragments out of unrelated code.
+
+   No such fragment was actually found - I went looking for one after deciding
+   that קל, אמן and רשות were substrings of קלה, מתאמן and דורשות, and they are
+   not. All three are real keys written with DOUBLE quotes, which is why
+   grep "_t('קל')" found nothing and I drew the wrong conclusion. The bracket
+   matching stays because the old cut was fragile on its own terms, and it is
+   worth saying that it fixed nothing. */
+function arrayAt(from) {
+  let depth = 0, q = null;
+  for (let i = from; i < app.length; i++) {
+    const c = app[i];
+    if (q) { if (c === '\\') i++; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'") { q = c; continue; }
+    if (c === '[') depth++;
+    else if (c === ']' && !--depth) return app.slice(from, i + 1);
+  }
+  return '';
+}
 for (const name of VIA_VARIABLE) {
   const at = app.indexOf('var ' + name + '=[');
   if (at < 0) continue;
-  const end = app.indexOf('];', at);
-  for (const k of app.slice(at, end).matchAll(/(['"])([^'"]*[֐-׿][^'"]*)\1/g)) keys.add(k[2]);
+  const body = arrayAt(app.indexOf('[', at));
+  for (const k of body.matchAll(/(['"])([^'"]*[֐-׿][^'"]*)\1/g)) keys.add(k[2]);
 }
 /* and the muscle names, which the browser's cards translate one by one */
 const mu = app.indexOf('var MU_SECTIONS=[');
