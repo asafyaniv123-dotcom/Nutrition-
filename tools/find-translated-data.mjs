@@ -20,6 +20,20 @@
  * It cannot see everything - a translated string handed to a function that
  * compares it three calls later is invisible here. It catches the shapes that
  * are visible at the call site, which is where both known bugs lived.
+ *
+ * A SECOND pass catches the shape the first one structurally cannot: the _t
+ * sits in a declaration and the comparison happens thousands of lines away.
+ *
+ *   MU_SECTIONS  the browse-by-muscle list, whose values are matched against
+ *                the exercise database with e.m.indexOf(_exFilter) - so in any
+ *                language but Hebrew every muscle filter returned nothing
+ *   SAY_DERIVED  words like "dried" and "powder", searched for inside Hebrew
+ *                food names to push derived products down the ranking
+ *   PLAN_FEELINGS  compared against the feelings already saved on a day
+ *
+ * None of the three is visible at its own call site. The declaration looks
+ * exactly like a list of labels, because that is what it is - until you read
+ * who consumes it.
  */
 import fs from 'fs';
 
@@ -70,6 +84,104 @@ while ((m = CALL.exec(app)) !== null) {
     }
   }
 }
+
+/* ── second pass: a translated collection whose values reach a comparison ──
+   Every collection in this file is declared on one line, so finding them needs
+   no brace matching. What matters is the consumer: reading an element and
+   handing it to indexOf, ===, or an object index means the value is being
+   matched against something, and something is always untranslated data. */
+const DECL = /\bvar\s+([A-Za-z_$][\w$]*)\s*=\s*[\[{]/g;
+
+/* The declaration is found by matching brackets, not by taking a line: the two
+   collections that motivated this pass are both written across several lines,
+   and the first version of it missed them both for exactly that reason. */
+function spanOf(from) {
+  const open = app[from], close = open === '[' ? ']' : '}';
+  let depth = 0, q = null;
+  for (let i = from; i < app.length; i++) {
+    const c = app[i];
+    if (q) { if (c === '\\') i++; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'") { q = c; continue; }
+    if (c === open) depth++;
+    else if (c === close && !--depth) return app.slice(from, i + 1);
+  }
+  return '';
+}
+
+while ((m = DECL.exec(app))) {
+  const name = m[1], at = m.index + m[0].length - 1;
+  const body = spanOf(at);
+  if (!body || !/_t\(/.test(body)) continue;
+  const rest = app.slice(0, m.index) + app.slice(at + body.length);
+
+  /* Where to look for the comparison. Reading the collection directly can be
+     matched anywhere; a value read into a VARIABLE can only be trusted inside
+     the function that read it - loop variables are named i and x everywhere,
+     and searching the whole file for them finds every function in the app.
+     So each indirect name carries the window it is allowed to be seen in. */
+  const probes = [{ re: name + '\\s*\\[[^\\]]{0,24}\\]', from: 0, to: rest.length }];
+  const READ = new RegExp('\\b(\\w+)\\s*=\\s*' + name + '\\s*\\[', 'g');
+  let r;
+  while ((r = READ.exec(rest))) {
+    const stop = rest.indexOf(LF + 'function ', r.index);
+    probes.push({ re: '\\b' + r[1] + '\\b', from: r.index, to: stop < 0 ? rest.length : stop });
+  }
+  /* A collection of objects is reached through its members, not its index: the
+     muscle filter walks MU_SECTIONS, then reads sec.m[j] off each section. The
+     member names come from the declaration, so only the keys this collection
+     actually defines are followed. */
+  const keys = new Set([...body.matchAll(/\b(\w+)\s*:\s*\[/g)].map(x => x[1]));
+  if (keys.size) {
+    /* Only where this collection is actually being walked. `.m[` on its own
+       matches half the file; inside the loop that reads MU_SECTIONS it can only
+       be MU_SECTIONS. The window runs from the mention to the next function. */
+    const WALK = new RegExp('\\b' + name + '\\b', 'g');
+    while ((r = WALK.exec(rest))) {
+      const stop = rest.indexOf(LF + 'function ', r.index);
+      const to = stop < 0 ? rest.length : stop;
+      for (const k of keys) {
+        probes.push({ re: '\\w+\\.' + k + '\\s*\\[[^\\]]{0,24}\\]', from: r.index, to });
+        const MEMB = new RegExp('\\b(\\w+)\\s*=\\s*\\w+\\.' + k + '\\s*\\[', 'g');
+        MEMB.lastIndex = r.index;
+        let q;
+        while ((q = MEMB.exec(rest)) && q.index < to)
+          probes.push({ re: '\\b' + q[1] + '\\b', from: q.index, to });
+      }
+    }
+  }
+
+  const USES = [
+    { why: 'collection searched for in data', pat: p => '\\.(?:indexOf|includes|lastIndexOf)\\s*\\(\\s*(?:' + p + ')\\s*\\)' },
+    { why: 'collection compared',             pat: p => '(?:' + p + ')\\s*[=!]==|[=!]==\\s*(?:' + p + ')(?![\\w$])' },
+    /* The last one a regex can reach. MU_SECTIONS travels collection -> member
+       -> function argument -> an onclick attribute -> a global -> indexOf: five
+       hops, and following them is dataflow analysis, not pattern matching. What
+       IS visible is the first hop, so a value handed straight to a function is
+       reported as a candidate to read rather than a finding. Being told where to
+       look is the whole job here; the tool does not pretend to conclude. */
+    { why: 'collection handed to a function - read the callee', pat: p => '\\b\\w+\\s*\\(\\s*(?:' + p + ')\\s*[,)]' },
+  ];
+  let why = '';
+  for (const u of USES) {
+    for (const p of probes)
+      if (new RegExp(u.pat(p.re)).test(rest.slice(p.from, p.to))) { why = u.why; break; }
+    if (why) break;
+  }
+  if (why)
+    hits.push({ line: app.slice(0, m.index).split(LF).length, why, key: name, ctx: 'var ' + name + ' = [ … _t(…) … ]' });
+}
+
+/* And the mirror of a lookup index: a table whose keys stayed Hebrew - rightly,
+   they are data - while its values were translated. Reading one hands back a
+   translated string that the next line compares against a Hebrew literal. */
+const ROLLUP = /\bvar\s+([A-Za-z_$][\w$]*)\s*=\s*\{[^\n]*?["'][֐-׿][^"']*["']\s*:\s*(?:''\s*\+\s*)?_t\(/g;
+while ((m = ROLLUP.exec(app)))
+  hits.push({
+    line: app.slice(0, m.index).split(LF).length,
+    why: 'hebrew keys, translated values',
+    key: m[1],
+    ctx: 'var ' + m[1] + ' = { "…": _t(…) }',
+  });
 
 console.log('translated strings used as data: ' + hits.length);
 if (!hits.length) {
