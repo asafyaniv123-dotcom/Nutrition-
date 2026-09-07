@@ -98,7 +98,7 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-se
 .hdr-nav{display:flex;justify-content:space-between;align-items:center;gap:6px}
 .nav-arrow{background:var(--card);border:none;border-radius:12px;width:34px;height:34px;flex-shrink:0;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(200,180,160,.2)}
 .tabs{display:flex;gap:4px;background:rgba(255,255,255,.6);border-radius:14px;padding:4px;flex:1;min-width:0}
-.tab{flex:1;padding:7px 4px;border:none;border-radius:11px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tab{flex:1;min-height:44px;padding:7px 4px;border:none;border-radius:11px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .tab.on{background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white)}
 .content{padding:14px 14px 0}
 /* the floating button needs somewhere to float that is not on top of the
@@ -1051,7 +1051,14 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .wk-picker{background:var(--card);border-radius:12px;padding:10px 12px;margin:-3px 0 9px;box-shadow:0 3px 10px rgba(200,180,160,.14);display:flex;justify-content:center}
 /* one day, hour by hour */
 .dp-grid{background:var(--card);border:1.5px solid var(--line-strong);border-radius:14px;overflow:hidden}
-.dp-row{display:flex;align-items:stretch;border-top:1px solid var(--line);min-height:44px}
+.dp-row{display:flex;align-items:stretch;border-top:1px solid var(--line);min-height:44px;position:relative}
+/* ── NOW ──
+   A hairline across the hour you are in, on today only. It sits above the
+   slots so a task cannot hide it, and takes no pointer events so it cannot
+   swallow a tap meant for the hour underneath. The dot on the leading edge is
+   what makes it read as a time rather than as a border. */
+.dp-now{position:absolute;inset-inline:0;height:0;border-top:1.5px solid var(--terra-500);z-index:3;pointer-events:none}
+.dp-now::before{content:'';position:absolute;inset-inline-start:-3px;top:-4px;width:7px;height:7px;border-radius:50%;background:var(--terra-500)}
 .dp-row:first-child{border-top:none}
 .dp-h{width:46px;flex-shrink:0;font-size:9.5px;color:var(--muted);font-weight:700;padding:6px 4px 0;text-align:center;border-inline-end:1px solid var(--line)}
 .dp-slot{flex:1;min-width:0;padding:5px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;transition:background .15s}
@@ -1349,7 +1356,7 @@ body.night .td-lbl{background:transparent}
 /* the greeting: the first thing on the screen, quiet enough to live above
    the day without competing with it */
 /* days in a row, beside the greeting */
-.stk{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:20px;padding:5px 11px 5px 9px;margin:7px 2px 0;background:var(--line);cursor:pointer;font-family:inherit}
+.stk{display:inline-flex;min-height:44px;align-items:center;gap:6px;border:none;border-radius:20px;padding:5px 11px 5px 9px;margin:7px 2px 0;background:var(--line);cursor:pointer;font-family:inherit}
 .stk.on{background:linear-gradient(135deg,#fde4cf,#fbd0ae)}
 .stk-f{font-size:13px;line-height:1}
 .stk-n{font-size:15px;font-weight:800;color:var(--ink);line-height:1}
@@ -1892,7 +1899,7 @@ function renderProfile(){
      '<span class="pf-note">'+_t('ס"מ')+'</span></div>';
   h+='<div class="pf-row"><label class="pf-lbl">'+_t('משקל')+'</label>'+
      '<input class="pf-in" type="number" inputmode="decimal" step="0.1" placeholder="0" value="'+(p.weight!==undefined?p.weight:'')+'" onchange="profNum(\u0027weight\u0027,this)">'+
-     '<span class="pf-note">'+_t('ק"ג')+'</span></div>';
+     '<span class="pf-note">'+weightUnit()+'</span></div>';
   if(bmi!==null)
     h+='<div class="pf-derived">BMI '+bmi+'</div>';
   h+='</div>';
@@ -1921,7 +1928,7 @@ function renderProfile(){
   if(rec){
     var same=targetsMatch(rec);
     h+='<div class="card"><div class="cttl">'+_t('יעד מומלץ')+'</div>';
-    h+='<div class="pf-bmr">'+_t('שריפה במנוחה')+' '+nfmt(rec.bmr)+' &middot; '+_t('עם הפעילות')+' '+nfmt(rec.tdee)+' '+_t('קק"ל ליום')+'</div>';
+    h+='<div class="pf-bmr">'+_t('שריפה במנוחה')+' '+nfmt(rec.bmr)+' &middot; '+_t('עם הפעילות {n} קק"ל ליום',{n:nfmt(rec.tdee)})+'</div>';
     var rows=[
       {v:nfmt(rec.kcal),l:''+_t('קק"ל')+'',cur:nfmt(TARGETS.kcal),col:PAL.violet500},
       {v:rec.p+'g',l:''+_t('חלבון')+'',cur:TARGETS.p+'g',col:PAL.terra500},
@@ -1936,7 +1943,7 @@ function renderProfile(){
          '<div class="pf-recc'+(ch?' chg':'')+'">'+(ch?''+_t('כעת')+' '+rw.cur:''+_t('ללא שינוי')+'')+'</div></div>';
     }
     h+='</div>';
-    h+='<div class="pf-water">'+_t('מים')+' '+nfmt(rec.water)+' '+_t('מ"ל')+''+
+    h+='<div class="pf-water">'+_t('מים {n}',{n:fmtVolume(rec.water)})+
        (rec.water!==TARGETS.water?' <span class="chg">'+_t('(כעת')+' '+nfmt(TARGETS.water)+')</span>':'')+'</div>';
     if(same)
       h+='<div class="pf-same">'+_t('היעדים שלך כבר תואמים את החישוב.')+'</div>';
@@ -2022,8 +2029,41 @@ var interviewStep=-1,interviewAnswers={},calMonth=new Date();
    already does, so adding a language does not grow the file for anyone who is
    not reading it. */
 var LANG_KEY='app_lang';
-var _lang=null;
-function _t(str){ var d=_lang; return (d&&d[str])||str; }
+/* Hebrew's own dictionary, and the only entries in it are counted sentences.
+   Everything else falls back to the key, which IS the Hebrew - that is the
+   whole point of the scheme. But a counted sentence has more than one Hebrew
+   form, and no key can hold two, so those live here.
+
+   CLDR gives Hebrew three categories: one, two, other. The "two" form is the
+   reason this is better than the ternary it replaced - that could only say
+   "2 ימים", never "יומיים". */
+var HE={
+  'לפני {n} ימים':{one:'אתמול',two:'לפני יומיים',other:'לפני {n} ימים'},
+  'לפני {n} שבועות':{one:'לפני שבוע',two:'לפני שבועיים',other:'לפני {n} שבועות'},
+  'לפני {n} חודשים':{one:'לפני חודש',two:'לפני חודשיים',other:'לפני {n} חודשים'},
+  'עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.':{
+    one:'עוד יום ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',
+    two:'עוד יומיים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',
+    other:'עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.'}
+};
+var _lang=HE;
+function _t(str,vars){
+  var d=_lang, v=d&&d[str];
+  /* A dictionary entry may be an object of plural categories rather than a
+     string. Intl.PluralRules picks the right one for the language actually in
+     use - "one"/"other" in English, six categories in Arabic - so nothing here
+     has to know any language's grammar. */
+  if(v&&typeof v==='object'){
+    var cat='other';
+    try{cat=new Intl.PluralRules(APP_LOCALE).select((vars&&vars.n)||0);}catch(e){}
+    v=v[cat]||v.other;
+  }
+  var out=(typeof v==='string'&&v)||str;
+  /* Holes are filled last, so the Hebrew source works with no dictionary at
+     all: "לפני {n} ימים" with no translation still reads "לפני 3 ימים". */
+  if(vars)out=out.replace(/\{(\w+)\}/g,function(m,k){return vars[k]!=null?vars[k]:m;});
+  return out;
+}
 /* Only languages that actually have a file are offered. A code with no
    dictionary would fall back to Hebrew everywhere, which looks like a bug
    rather than like a missing translation. */
@@ -2066,7 +2106,7 @@ function langSet(code){
   langLoad(code,function(){langRepaint();});
 }
 function langLoad(code,cb){
-  if(!code||code==='he'){_lang=null;cb&&cb();return;}
+  if(!code||code==='he'){_lang=HE;cb&&cb();return;}
   fetch(appBase()+'data/lang/'+code+'.json')
     .then(function(r){return r.json();})
     .then(function(j){_lang=j;cb&&cb();},function(){_lang=null;cb&&cb();});
@@ -2108,6 +2148,15 @@ var KG_PER_LB=0.45359237;
 function weightUnit(){return APP_UNITS==='imperial'?'lb':''+_t('ק"ג')+'';}
 function toDisplayWeight(kg){return APP_UNITS==='imperial'?(+kg||0)/KG_PER_LB:(+kg||0);}
 function fromDisplayWeight(v){return APP_UNITS==='imperial'?(+v||0)*KG_PER_LB:(+v||0);}
+/* Volume, alongside weight. Stored in millilitres always; only the display
+   converts, so no saved number changes meaning when the preference flips. */
+var ML_PER_FLOZ=29.5735;
+function volumeUnit(){return APP_UNITS==='imperial'?'fl oz':_t('מ"ל');}
+function toDisplayVolume(ml){return APP_UNITS==='imperial'?(+ml||0)/ML_PER_FLOZ:(+ml||0);}
+function fmtVolume(ml){
+  /* Whole fluid ounces: a tenth of one is below what anyone pours. */
+  return nfmt(toDisplayVolume(ml),{maximumFractionDigits:APP_UNITS==='imperial'?0:0})+' '+volumeUnit();
+}
 function fmtWeight(kg){
   var v=toDisplayWeight(kg);
   /* Do not round here - a stored 62.75 must not become 62.8 just by being
@@ -2570,7 +2619,7 @@ function vlogStartCam(){
   vlogGetCam().then(function(){
     vlogLive();
     vlogCountCams();
-    vlogMsg(''+_t('עד')+' '+VLOG_MAX+' '+_t('שניות. ההקלטה נעצרת לבד.')+'');
+    vlogMsg(_t('עד {n} שניות. ההקלטה נעצרת לבד.',{n:VLOG_MAX}));
     vlogActions('<button class="vl-shot" onclick="vlogRecord()" aria-label="התחל הקלטה"><span></span></button>');
   },function(err){
     var n=err&&err.name;
@@ -2700,7 +2749,7 @@ function vlogFallback(why){
   var z2=document.getElementById('vl-zoom');if(z2)z2.classList.remove('live');
   var fc=document.getElementById('vl-canvas');if(fc)fc.style.display='none';
   var fv=document.getElementById('vl-video');if(fv)fv.style.display='block';
-  vlogMsg((why?why+'<br>':'')+''+_t('אפשר להקליט במצלמה של הטלפון, עד')+' '+VLOG_MAX+' '+_t('שניות.')+'');
+  vlogMsg((why?why+'<br>':'')+''+_t('אפשר להקליט במצלמה של הטלפון, עד {n} שניות.',{n:VLOG_MAX}));
   vlogActions('<label class="vl-btn">'+_t('הקלט במצלמת הטלפון')+''+
     '<input type="file" accept="video/*" capture="user" style="display:none" onchange="vlogPicked(this)"></label>'+
     '<button class="vl-flat" onclick="vlogClose()">'+_t('בטל')+'</button>');
@@ -2714,7 +2763,7 @@ function vlogPicked(inp){
   probe.onloadedmetadata=function(){
     var sec=probe.duration;URL.revokeObjectURL(url);
     if(!(sec>0)||sec>VLOG_MAX+0.6){
-      vlogMsg(''+_t('הסרטון באורך')+' '+(sec>0?Math.round(sec):'?')+' '+_t('שניות. הגבול הוא')+' '+VLOG_MAX+'.');
+      vlogMsg(_t('הסרטון באורך {n} שניות. הגבול הוא {max}.',{n:(sec>0?Math.round(sec):'?'),max:VLOG_MAX}));
       return;
     }
     _vlBlob=f;_vlSec=sec;vlogPreview();
@@ -3302,7 +3351,7 @@ function foodHas(name,tok){
    and never stored as a name, it exists to be compared. */
 function foodKey(s){
   return String(s).replace(/['’׳"“”״,.\-]/g,'')
-                  .replace(/יי/g,''+_t('י')+'').replace(/וו/g,''+_t('ו')+'')
+                  .replace(/יי/g,'י').replace(/וו/g,'ו')
                   .replace(/\s+/g,' ').trim();
 }
 /* Typing more words should narrow, not find nothing. Every word has to
@@ -4552,7 +4601,7 @@ function fdbPaint(){
       var inLib=loadLib().some(function(m){return m.name===f.n;});
       el.innerHTML='<div class="fdb-conf">'+
         '<div class="fdb-cname">'+esc(f.n)+'</div>'+
-        '<div class="fdb-c100">'+f.k+' '+_t('קק"ל ל-100 גרם')+' &middot; '+f.p+''+_t('ח')+' '+f.c+''+_t('פ')+' '+f.f+''+_t('ש')+'</div>'+
+        '<div class="fdb-c100">'+f.k+' '+_t('קק"ל ל-100 גרם')+' &middot; '+_t('{p}ח {c}פ {f}ש',{p:f.p,c:f.c,f:f.f})+'</div>'+
         unitsRowHTML(f.n,_fdbUnit,'fdbSetUnit(&quot;%K%&quot;)')+
         '<div class="fdb-grow"><span class="fdb-glbl">'+(_fdbUnit.k==='g'?''+_t('כמה גרם?')+'':''+_t('כמה')+' '+unitDef(_fdbUnit.k).many+'?')+'</span>'+
         '<input class="fdb-gin" id="fdb-grams" type="number" inputmode="decimal" step="'+(_fdbUnit.k==='g'?'1':'0.5')+'" value="'+fdbGrams+'" oninput="fdbSetGrams(this.value)">'+
@@ -4694,7 +4743,7 @@ var ASK_TOOLS={
 // what it looked up, in words, so an answer can be checked rather than believed
 function askSay(name,inp){
   if(name==='get_day')return ''+_t('קרא את היום')+' '+askDateArg(inp&&inp.date);
-  if(name==='get_range')return ''+_t('קרא')+' '+askDateArg(inp&&inp.from)+' '+_t('עד')+' '+askDateArg(inp&&inp.to);
+  if(name==='get_range')return ''+_t('קרא {from} עד {to}',{from:askDateArg(inp&&inp.from),to:askDateArg(inp&&inp.to)});
   if(name==='get_targets')return ''+_t('קרא את היעדים שלך')+'';
   if(name==='search_food')return ''+_t('חיפש במאגר:')+' '+String((inp&&inp.query)||'');
   return name;
@@ -4893,7 +4942,7 @@ function estCardHTML(){
      '<input class="est-g" type="number" inputmode="decimal" value="'+_est.g+'" oninput="estSetGrams(this.value)"><span>גרם</span></div>';
   h+='<div class="est-nums" id="est-nums">'+estNumsHTML()+'</div>';
   if(_est.high>_est.low&&_est.high>0)
-    h+='<div class="est-range">'+_t('מנה כזאת נעה בין')+' '+_est.low+' '+_t('ל־')+''+_est.high+' '+_t('קק"ל. תקן את הכמות אם היא לא מדויקת.')+'</div>';
+    h+='<div class="est-range">'+_t('מנה כזאת נעה בין {a} ל־{b} קק"ל. תקן את הכמות אם היא לא מדויקת.',{a:_est.low,b:_est.high})+'</div>';
   h+='<button class="est-add" onclick="estAdd()">'+_t('הוסף ליום כהערכה')+'</button>';
   h+='</div>';
   return h;
@@ -5114,7 +5163,7 @@ function anAdd(){
   day.meals.push({name:_an.dish+' ('+t.g+'g)',kcal:t.kcal,p:t.p,c:t.c,f:t.f,
                   est:1,id:Date.now(),time:fmtTime()});
   saveDay(curDate,day);
-  showToast(''+_t('✓ נוסף —')+' ' + _an.measured + ''+_t('% מהמאגר')+'');
+  showToast(_t('✓ נוסף — {n}% מהמאגר',{n:_an.measured}));
   _an=null;_fdbQ='';render();
 }
 function anTotHTML(){
@@ -5217,7 +5266,7 @@ function builderUpdateGrams(i,v){
   var ing=builderIngs[i];
   if(ing){if(ing.basis==='serving')ing.qty=parseFloat(v)||0;else ing.grams=parseFloat(v)||0;}
   var tot=calcBTotal();var el=document.getElementById('builder-total');
-  if(el)el.textContent=tot.kcal+' '+_t('קק"ל ·')+' '+tot.p+''+_t('ח')+' '+tot.c+''+_t('פ')+' '+tot.f+''+_t('ש')+'';
+  if(el)el.textContent=tot.kcal+' '+_t('קק"ל ·')+' '+_t('{p}ח {c}פ {f}ש',{p:tot.p,c:tot.c,f:tot.f})+'';
 }
 function calcBTotal(){
   return builderIngs.reduce(function(a,ing){var v=calcIng(ing);return{kcal:a.kcal+v.kcal,p:Math.round((a.p+v.p)*100)/100,c:Math.round((a.c+v.c)*100)/100,f:Math.round((a.f+v.f)*100)/100};}  ,{kcal:0,p:0,c:0,f:0});
@@ -5256,7 +5305,7 @@ function renderBuilderOverlay(){
     h+='<span style="font-size:10px;color:var(--muted)">'+(per?''+_t('מנות')+'':'g')+'</span>';
     h+='<button class="ing-del" onclick="builderRemoveIng('+ii+')">&times;</button></div>';
   }
-  h+='<div class="ing-total" id="builder-total">'+tot.kcal+' '+_t('קק"ל')+' &middot; '+tot.p+''+_t('ח')+' '+tot.c+''+_t('פ')+' '+tot.f+''+_t('ש')+'</div>';
+  h+='<div class="ing-total" id="builder-total">'+tot.kcal+' '+_t('קק"ל')+' &middot; '+_t('{p}ח {c}פ {f}ש',{p:tot.p,c:tot.c,f:tot.f})+'</div>';
   h+='<button onclick="toggleBuilderPick()" style="width:100%;background:'+(builderPickOpen?'var(--violet-100)':'rgba(201,188,224,.12)')+';border:1.5px dashed var(--violet-500);border-radius:11px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-500);margin-bottom:8px">+ הוסף מרכיב מהספרייה</button>';
   if(builderPickOpen){
     h+='<div class="lib-pick-list">';
@@ -5415,7 +5464,7 @@ function renderToday(){
 
   var pillsHTML='<div class="pills"><div class="pill"><div class="pill-val" style="color:var(--violet-500)">'+(TARGETS.kcal-kcal)+'</div><div class="pill-lbl">'+_t('קק"ל נותרו')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--terra-500)">'+r2(TARGETS.p-p)+'g</div><div class="pill-lbl">'+_t('חלבון נותר')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--amber-500)">'+r2(TARGETS.f-f)+'g</div><div class="pill-lbl">'+_t('שומן נותר')+'</div></div></div>';
 
-  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; מים</span><span class="wn">'+water+' / '+TARGETS.water+' '+_t('מ"ל')+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+250מ"ל</button><button class="wadd" onclick="addWater(500)">+500מ"ל</button><button class="wadd" onclick="addWater(1000)">+1L</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
+  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; מים</span><span class="wn">'+nfmt(toDisplayVolume(water),{maximumFractionDigits:0})+' / '+fmtVolume(TARGETS.water)+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+250מ"ל</button><button class="wadd" onclick="addWater(500)">+500מ"ל</button><button class="wadd" onclick="addWater(1000)">+1L</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
 
   var compMeals=loadComposed();
   var compHTML='';
@@ -5426,7 +5475,7 @@ function renderToday(){
     compHTML+='</div>';
     var catMeals=compMeals.filter(function(m){return m.category===compCat;});
     if(catMeals.length===0)compHTML+='<div style="font-size:12px;color:var(--muted);padding:8px;text-align:center">'+_t('עדיין לא נשמרו ארוחות כאן')+'</div>';
-    for(var mi=0;mi<catMeals.length;mi++){var cm=catMeals[mi];var ct=calcComposed(cm);compHTML+='<div class="comp-meal"><div class="comp-meal-info"><div class="comp-meal-name">'+esc(cm.name)+'</div><div class="comp-meal-mac">'+ct.kcal+' '+_t('קק"ל')+' &middot; '+ct.p+''+_t('ח')+' '+ct.c+''+_t('פ')+' '+ct.f+''+_t('ש')+'</div></div><button class="comp-add-btn" onclick="addComposedToDay('+cm.id+')">הוסף</button><button class="comp-del-btn" onclick="deleteComposed('+cm.id+')">&times;</button></div>';}
+    for(var mi=0;mi<catMeals.length;mi++){var cm=catMeals[mi];var ct=calcComposed(cm);compHTML+='<div class="comp-meal"><div class="comp-meal-info"><div class="comp-meal-name">'+esc(cm.name)+'</div><div class="comp-meal-mac">'+ct.kcal+' '+_t('קק"ל')+' &middot; '+_t('{p}ח {c}פ {f}ש',{p:ct.p,c:ct.c,f:ct.f})+'</div></div><button class="comp-add-btn" onclick="addComposedToDay('+cm.id+')">הוסף</button><button class="comp-del-btn" onclick="deleteComposed('+cm.id+')">&times;</button></div>';}
     compHTML+='<button class="new-comp-btn" onclick="openBuilder(\''+compCat+'\')">+ בנאי ארוחה חדשה</button></div>';
   }
   if(_addMode==='comp')compHTML+='</div>';
@@ -5459,7 +5508,7 @@ function renderToday(){
       if(pm){
         var per100=mealBasis(pm)==='100g';
         libHTML+='<div class="confirm-card" id="lib-confirm"><div class="confirm-name">'+esc(pm.name)+'</div>'+
-          '<div class="confirm-mac">'+pm.kcal+' '+_t('קק"ל')+''+(per100?' '+_t('ל-100 גרם')+'':'')+' &middot; '+pm.p+'p &middot; '+pm.c+'c &middot; '+pm.f+'f</div>';
+          '<div class="confirm-mac">'+pm.kcal+' '+(per100?_t('קק"ל ל-100 גרם'):_t('קק"ל'))+' &middot; '+pm.p+'p &middot; '+pm.c+'c &middot; '+pm.f+'f</div>';
         if(per100)libHTML+='<div class="fdb-grow"><span class="fdb-glbl">'+_t('כמה גרם?')+'</span>'+
           '<input class="fdb-gin" type="number" inputmode="decimal" value="'+libGrams+'" oninput="libSetGrams(this.value)">'+
           '<span class="fdb-gu">g</span></div>'+
@@ -5672,7 +5721,7 @@ function removeFlowStop(idx){
 
 function renderInterview(){
   var q=QUESTIONS[interviewStep];
-  var html='<div class="interview"><div class="q-num">'+_t('שאלה')+' '+(interviewStep+1)+' '+_t('מתוך')+' '+QUESTIONS.length+'</div><div class="q-text">'+q.text+'</div>';
+  var html='<div class="interview"><div class="q-num">'+_t('שאלה {n} מתוך {t}',{n:interviewStep+1,t:QUESTIONS.length})+'</div><div class="q-text">'+q.text+'</div>';
   if(q.type==='stars'){var cur=interviewAnswers[q.id]||0;html+='<div class="stars-row">';for(var i=1;i<=5;i++)html+='<button class="star-btn'+(i<=cur?' sel':'')+'" onclick="starSelect('+i+')">&#9733;</button>';html+='</div>';}
   else if(q.type==='text'){html+='<textarea id="q-inp" class="q-input" placeholder="'+(q.placeholder||'')+'" rows="3">'+(interviewAnswers[q.id]||'')+'</textarea>';}
   else if(q.type==='timeclock'){
@@ -5837,7 +5886,7 @@ function renderHistory(){
     chartCard+='</div>';
   }
   var avgHTML='';
-  if(active.length>0){var avgK=Math.round(active.reduce(function(a,d){return a+d.kcal;},0)/active.length);var avgP=Math.round(active.reduce(function(a,d){return a+d.p;},0)/active.length);var inT=active.filter(function(d){return d.kcal<=TARGETS.kcal;}).length;avgHTML='<div class="avgbox"><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:10px;letter-spacing:.1em">'+_t('ממוצעים (')+''+active.length+' '+_t('ימים)')+'</div><div class="avgin"><div style="text-align:center"><div class="avgv" style="color:var(--violet-500)">'+avgK+'</div><div class="avgl">'+_t('קק"ל')+'</div></div><div style="text-align:center"><div class="avgv" style="color:var(--terra-500)">'+avgP+'g</div><div class="avgl">'+_t('חלבון')+'</div></div><div style="text-align:center"><div class="avgv" style="color:var(--green-500)">'+inT+'/'+active.length+'</div><div class="avgl">'+_t('ביעד')+'</div></div></div></div>';}
+  if(active.length>0){var avgK=Math.round(active.reduce(function(a,d){return a+d.kcal;},0)/active.length);var avgP=Math.round(active.reduce(function(a,d){return a+d.p;},0)/active.length);var inT=active.filter(function(d){return d.kcal<=TARGETS.kcal;}).length;avgHTML='<div class="avgbox"><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:10px;letter-spacing:.1em">'+_t('ממוצעים ({n} ימים)',{n:active.length})+'</div><div class="avgin"><div style="text-align:center"><div class="avgv" style="color:var(--violet-500)">'+avgK+'</div><div class="avgl">'+_t('קק"ל')+'</div></div><div style="text-align:center"><div class="avgv" style="color:var(--terra-500)">'+avgP+'g</div><div class="avgl">'+_t('חלבון')+'</div></div><div style="text-align:center"><div class="avgv" style="color:var(--green-500)">'+inT+'/'+active.length+'</div><div class="avgl">'+_t('ביעד')+'</div></div></div></div>';}
   document.getElementById('content').innerHTML=tabHTML+chartCard+avgHTML;
 }
 
@@ -6132,7 +6181,7 @@ function renderSummaryOverlay(dateStr){
   h+='<div class="sm-sec"><div class="sm-lab">'+_t('תזונה')+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
   var smb=[{v:sum.kcal,pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:sum.p+'g',pct:pp2,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:sum.c+'g',pct:cp3,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:sum.f+'g',pct:fp2,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
   for(var bi2=0;bi2<smb.length;bi2++){var sb=smb[bi2];h+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:24px;height:68px;background:var(--line);border-radius:12px;overflow:hidden;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+sb.pct+'%;background:'+sb.g+'"></div></div><div style="font-size:10.5px;font-weight:700">'+sb.v+'</div><div style="font-size:9px;color:var(--muted)">'+sb.lbl+'</div></div>';}
-  if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; מים</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+sum.water+''+_t('מ"ל')+'</span></div>';}
+  if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; מים</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+fmtVolume(sum.water)+'</span></div>';}
   h+='</div>';
   }
   if(sum.workoutDone!==undefined&&sumSecOn('fit')){
@@ -6464,7 +6513,7 @@ function enterModule(mod){
     // The day arrows belong to the food log, not here.
     document.getElementById('btnPrev').style.display='none';
     document.getElementById('btnNext').style.display='none';
-    _planMode='';_planStep=0;
+    _planStep=0;
     renderPlanning();
   } else if(mod==='game'){
     document.querySelector('.app').style.display='block';
@@ -6571,7 +6620,7 @@ var COACH_QUESTIONS=[
 function renderCoachQuestionnaire(){
   var q=COACH_QUESTIONS[_coachStep];
   var h='<div style="padding:20px 0">';
-  h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:8px">'+_t('שאלה')+' '+(_coachStep+1)+' '+_t('מתוך')+' '+COACH_QUESTIONS.length+'</div>';
+  h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:8px">'+_t('שאלה {n} מתוך {t}',{n:_coachStep+1,t:COACH_QUESTIONS.length})+'</div>';
   h+='<div style="font-size:20px;font-weight:800;color:var(--ink);margin-bottom:24px;line-height:1.4">'+q.q+'</div>';
   if(q.type==='choice'){
     h+='<div style="display:flex;flex-direction:column;gap:10px">';
@@ -6690,6 +6739,46 @@ var _fitWorkout=null; // active workout state
    across exercises: warm-ups come first, so the flag turns itself off as soon
    as a working set goes in, and nobody has to remember to switch it back. */
 var _fitWarm=false;
+/* Which logged set is open for correction, or -1. Kept out of _fitWorkout on
+   purpose: it is a state of the screen, not of the workout, and it must not
+   survive being saved and restored. */
+var _editSet=-1;
+/* A converted weight is a long float - 30.86471670588286 lb - and nobody can
+   edit that. Round it the way fmtWeight rounds it, so the box holds the number
+   that was on the row a moment ago. */
+function edWeightVal(kg){
+  var v=toDisplayWeight(kg),d=APP_UNITS==="imperial"?1:2;
+  return Math.round(v*Math.pow(10,d))/Math.pow(10,d);
+}
+function editSet(i){_editSet=(_editSet===i?-1:i);renderFitness();}
+function cancelEditSet(){_editSet=-1;renderFitness();}
+function saveEditSet(){
+  if(!_fitWorkout||_editSet<0)return;
+  var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
+  var st=ex.sets[_editSet];
+  if(!st){_editSet=-1;renderFitness();return;}
+  var w=document.getElementById('ed-w'),r=document.getElementById('ed-r');
+  var reps=parseInt(r?r.value:0,10)||0;
+  if(!reps){cancelEditSet();return;}          // a set with no reps is not a set
+  /* The box shows the display unit, so convert back before storing. */
+  st.weight=fromDisplayWeight(parseFloat(w?w.value:0)||0);
+  st.reps=reps;
+  _editSet=-1;
+  renderFitness();
+}
+/* Removing a workout from the log. Asks first, because there is no undo and
+   the whole session goes at once. */
+function deleteWorkout(i){
+  var log=loadWorkoutLog();
+  var e=log[i];
+  if(!e)return;
+  if(!confirm(_t('למחוק את האימון {name}? אי אפשר לבטל.',{name:e.name})))return;
+  log.splice(i,1);
+  saveWorkoutLog(log);
+  if(_fitSummaryEntry===e)_fitSummaryEntry=null;
+  _fitView='history';
+  renderFitness();
+}
 
 /* ── WHAT GOES ON THE BAR ──
    Everything here works in the DISPLAY unit, not in kilograms, because plates
@@ -6890,10 +6979,10 @@ function stepsAgo(iso){
   if(!iso)return'';
   var m=Math.round((Date.now()-new Date(iso).getTime())/60000);
   if(m<1)return''+_t('עכשיו')+'';
-  if(m<60)return''+_t('לפני')+' '+m+' '+_t('דק׳')+'';
+  if(m<60)return _t('לפני {n} דק׳',{n:m});
   var hr=Math.round(m/60);
-  if(hr<24)return''+_t('לפני')+' '+hr+' '+_t('שע׳')+'';
-  return''+_t('לפני')+' '+Math.round(hr/24)+' '+_t('ימים')+'';
+  if(hr<24)return _t('לפני {n} שע׳',{n:hr});
+  return _t('לפני {n} ימים',{n:Math.round(hr/24)});
 }
 function stepsTrendHTML(){
   var pts=[],i,d,r;
@@ -6914,7 +7003,7 @@ function stepsTrendHTML(){
     var tone=flat?'var(--muted)':(up?'var(--green-700)':'var(--terra-700)');
     var word=flat?''+_t('יציב')+'':(up?''+_t('עולה')+'':''+_t('יורד')+'');
     h+='<div style="font-size:11.5px;color:'+tone+';font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums">'+
-       word+(flat?'':' '+_t('ב־')+''+nfmt(Math.abs(Math.round(rate.over)))+' '+_t('צעדים')+'')+' '+_t('ב־')+''+rate.days+' '+_t('ימים')+'</div>';
+       word+(flat?'':' '+_t('ב־{n} צעדים',{n:nfmt(Math.abs(Math.round(rate.over)))}))+' '+_t('ב־{n} ימים',{n:rate.days})+'</div>';
   }else{
     h+='<div style="font-size:11px;color:var(--muted-soft);line-height:1.6;margin-top:8px">'+_t('עוד כמה ימים ויהיה כאן קו.')+'</div>';
   }
@@ -7061,7 +7150,7 @@ function setExerciseWeight(name,kg){
 
 function exWeightEdit(name){
   var cur=currentWeightFor(name);
-  var v=prompt(''+_t('משקל נוכחי ל')+''+name+' '+_t('(ק״ג)')+'',cur?String(cur.w):'');
+  var v=prompt(_t('משקל נוכחי ל{name} ({unit})',{name:name,unit:weightUnit()}),cur?String(cur.w):'');
   if(v===null)return;
   if(v.trim()===''){var o=loadExWeights();delete o[name];saveExWeights(o);renderFitness();return;}
   if(setExerciseWeight(name,v))renderFitness();
@@ -7193,7 +7282,7 @@ function renderFitWeights(){
        (cw?'<div style="font-size:9.5px;color:var(--muted-soft);margin-top:2px">'+(cw.manual?''+_t('הוקלד')+'':''+_t('מהאימון')+'')+' &middot; '+fmtDate(cw.at)+'</div>':'')+
        '</button>';
     h+='<button onclick="exWeightEdit(\''+esc(nm).replace(/'/g,"&#39;")+'\')" style="background:var(--surface);border:none;border-radius:12px;padding:7px 12px;cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums">'+
-       (cw?'<span style="font-size:13px;font-weight:800;color:var(--ink)">'+cw.w+'</span><span style="font-size:9.5px;color:var(--muted)"> '+_t('ק״ג')+'</span>'
+       (cw?'<span style="font-size:13px;font-weight:800;color:var(--ink)">'+cw.w+'</span><span style="font-size:9.5px;color:var(--muted)"> '+weightUnit()+'</span>'
           :'<span style="font-size:11px;color:var(--muted-soft)">'+_t('הוסף')+'</span>')+'</button>';
     h+='</div>';
   }
@@ -7241,7 +7330,7 @@ function renderFitStats(){
   h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:12px">'+_t('השבוע')+' &middot; '+_t('מול שבוע שעבר')+'</div>';
   var rows=[[now.sessions+(now.sessions===1?' '+_t('אימון')+'':' '+_t('אימונים')+''),delta(now.sessions,prev.sessions)],
             [now.sets+' '+_t('סטים')+'',delta(now.sets,prev.sets)],
-            [nfmt(now.vol)+' '+_t('ק״ג נפח')+'',delta(now.vol,prev.vol,'%')]];
+            [nfmt(now.vol)+' '+_t('{u} נפח',{u:weightUnit()})+'',delta(now.vol,prev.vol,'%')]];
   for(var r=0;r<rows.length;r++){
     h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(r<2?'8px':'0')+';font-variant-numeric:tabular-nums">'+
        '<div style="font-size:13px;font-weight:700;color:var(--ink)">'+rows[r][0]+'</div>'+
@@ -7268,7 +7357,7 @@ function renderFitStats(){
       h+='<div style="width:22px;text-align:end;font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums">'+ct+'</div>';
       h+='</div>';
     }
-    h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">'+_t('מי שמתאמן כדי לגדול נמצא בדרך כלל בין')+' '+SETS_BAND.lo+' '+_t('ל־')+''+SETS_BAND.hi+' '+_t('סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.')+'</div>';
+    h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">'+_t('מי שמתאמן כדי לגדול נמצא בדרך כלל בין {lo} ל־{hi} סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.',{lo:SETS_BAND.lo,hi:SETS_BAND.hi})+'</div>';
     if(now.byMuscle['אחר'])
       h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:6px">&ldquo;'+_t('אחר')+'&rdquo; '+_t('הם תרגילים שהקלדת בעצמך — לספרייה אין להם שריר. בחירה מהספרייה תשבץ אותם.')+'</div>';
     h+='</div>';
@@ -7285,7 +7374,7 @@ function renderFitStats(){
       h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(L<lifts.length-1?'8px':'0')+'">';
       h+='<div style="font-size:12.5px;color:var(--ink);font-weight:600">'+esc(li.name)+'</div>';
       h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+
-         Math.round(li.e.v)+' '+_t('ק״ג')+' <span style="color:var(--muted-soft)">&middot; '+li.e.w+'×'+li.e.r+'</span></div>';
+         Math.round(li.e.v)+' '+weightUnit()+' <span style="color:var(--muted-soft)">&middot; '+li.e.w+'×'+li.e.r+'</span></div>';
       h+='</div>';
     }
     h+='</div>';
@@ -7450,7 +7539,7 @@ function ingestStepsFromLink(){
   saveSteps(d,n,'shortcut');
   var s=loadStepsSrc();s.kind='shortcut';s.last=new Date().toISOString();saveStepsSrc(s);
   try{history.replaceState(null,'',location.pathname+location.search);}catch(e){location.hash='';}
-  showToast(''+_t('✓ נקלטו')+' '+nfmt(n)+' '+_t('צעדים')+'');
+  showToast(''+_t('✓ נקלטו {n} צעדים',{n:nfmt(n)}));
 }
 
 /* ── STARTING SOMETHING ──
@@ -7665,7 +7754,7 @@ function weightCardHTML(){
   }else{
     var ser=ewma(pts,EWMA_ALPHA),r=trendRate(ser,30);
     var lastT=ser[ser.length-1].t;
-    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+lastT.toFixed(1)+' '+_t('ק״ג')+'</div></div>';
+    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+lastT.toFixed(1)+' '+weightUnit()+'</div></div>';
     h+=trendChartHTML(ser,{});
     if(r&&ser.length>=TREND_MIN_DAYS){
       var up=r.over>0,flat=Math.abs(r.over)<0.15;
@@ -7677,7 +7766,7 @@ function weightCardHTML(){
     }else{
       var left=TREND_MIN_DAYS-ser.length;
       h+='<div style="font-size:11px;color:var(--muted-soft);line-height:1.6;margin-top:8px">'+
-         ''+_t('עוד')+' '+left+' '+(left===1?''+_t('יום')+'':''+_t('ימים')+'')+' '+_t('ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.')+'</div>';
+         ''+_t('עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',{n:left})+'</div>';
     }
   }
 
@@ -8674,7 +8763,7 @@ function renderWeeklyPlan(){
 
   for(var w=0;w<2;w++){
     h+='<div style="background:var(--card);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(200,180,160,.1)">';
-    h+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px">'+_t('שבוע')+' '+(w===0?''+_t('ראשון')+'':''+_t('שני')+'')+'</div>';
+    h+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px">'+(w===0?_t('שבוע ראשון'):_t('שבוע שני'))+'</div>';
     for(var dw=0;dw<7;dw++){
       var dayKey='w'+w+'d'+dw;
       var entry=weekPlan[dayKey]||{type:'rest'};
@@ -8897,7 +8986,7 @@ function renderEditProgram(){
       }
       h+='</div>';
     }
-    h+=wizQ(''+_t('איזה תרגיל')+' '+(curDay.exercises.length===0?''+_t('ראשון')+'':''+_t('נוסף')+'')+' '+_t('נוסיף?')+'');
+    h+=wizQ(''+(curDay.exercises.length===0?_t('איזה תרגיל ראשון נוסיף?'):_t('איזה תרגיל נוסף נוסיף?'))+'');
     h+='<input id="wiz-ex-inp" class="mtin" value="'+esc(_wiz.curEx.name)+'" placeholder="שם התרגיל... (Bench Press, Squat...)" onkeydown="if(event.key===\'Enter\'){var v=this.value.trim();if(v){_wiz.curEx.name=v;_wiz.step=6;_wiz.exStep=0;renderFitness();}}">';
     h+='<div style="display:flex;gap:8px;margin-top:10px">';
     h+='<button onclick="var v=document.getElementById(\'wiz-ex-inp\').value.trim();if(v){_wiz.curEx.name=v;_wiz.step=6;_wiz.exStep=0;renderFitness();}" style="flex:1;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הבא: פרטי התרגיל')+' &#8594;</button>';
@@ -8907,7 +8996,7 @@ function renderEditProgram(){
       h+='<div style="text-align:center;margin-top:16px">';
       h+='<div style="font-size:11px;color:var(--muted);margin-bottom:8px">'+_t('או לחץ כאן אם סיימת')+'</div>';
       var moreDays=_wiz.curDayIdx<_wiz.prog.daysPerWeek;
-      h+='<button onclick="'+( moreDays?'_wiz.step=4;':'_wiz.step=7;')+'renderFitness()" style="background:var(--violet-100);border:none;border-radius:12px;padding:11px 20px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-500)">'+( moreDays?''+_t('סיימת אימון')+' '+String.fromCharCode(65+_wiz.days.length-1)+' '+_t('— עבור לאימון')+' '+String.fromCharCode(65+_wiz.days.length)+' &#8594;':''+_t('סיימת! שמור תוכנית')+' &#10003;')+'</button>';
+      h+='<button onclick="'+( moreDays?'_wiz.step=4;':'_wiz.step=7;')+'renderFitness()" style="background:var(--violet-100);border:none;border-radius:12px;padding:11px 20px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-500)">'+( moreDays?''+_t('סיימת אימון {a} — עבור לאימון {b}',{a:String.fromCharCode(65+_wiz.days.length-1),b:String.fromCharCode(65+_wiz.days.length)})+' &#8594;':''+_t('סיימת! שמור תוכנית')+' &#10003;')+'</button>';
       h+='</div>';
     }
 
@@ -9109,7 +9198,7 @@ function logProgEntry(progIdx,exIdx){
   saveProgLog(prog.id,ex.name,log);
   // Check PR
   var prevPR=log.slice(0,-1).reduce(function(m,e){return Math.max(m,e.weight);},0);
-  if(weight>prevPR&&prevPR>0)showToast('&#9733; '+_t('PR חדש!')+' '+weight+''+_t('kg ב')+''+ex.name);
+  if(weight>prevPR&&prevPR>0)showToast('&#9733; '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:ex.name}));
   else showToast(''+_t('✓ נרשם!')+'');
   renderViewProgram();
 }
@@ -9297,12 +9386,18 @@ function agoText(ms){
   /* NaN loses every comparison below and falls through to "months", so a
      missing date printed itself as "לפני NaN חודשים". Say nothing instead. */
   if(!isFinite(d))return '';
-  if(d<=0)return ''+_t('היום')+'';
-  if(d===1)return ''+_t('אתמול')+'';
-  if(d<7)return ''+_t('לפני')+' '+d+' '+_t('ימים')+'';
-  if(d<14)return ''+_t('לפני שבוע')+'';
-  if(d<31)return ''+_t('לפני')+' '+Math.round(d/7)+' '+_t('שבועות')+'';
-  return ''+_t('לפני')+' '+Math.round(d/30)+' '+_t('חודשים')+'';
+  if(d<=0)return _t('היום');
+  if(d===1)return _t('אתמול');
+  /* Whole sentences with a hole, because English puts "ago" at the other end
+     and no translation of the word "לפני" alone can move it. */
+  if(d<7)return _t('לפני {n} ימים',{n:d});
+  if(d<14)return _t('לפני שבוע');
+  if(d<31)return _t('לפני {n} שבועות',{n:Math.round(d/7)});
+  var mo=Math.round(d/30);
+  /* 31 days rounded to 1 printed "לפני 1 חודשים" - wrong in Hebrew before it
+     was ever a translation problem. */
+  if(mo<=1)return _t('לפני חודש');
+  return _t('לפני {n} חודשים',{n:mo});
 }
 /* The line above the boxes: what the same set number was last time, and
    whether what you have just done beats it. A number to beat is the whole
@@ -9323,11 +9418,17 @@ function exPrevHTML(ex){
 // what to put in the boxes before you touch them: the same set, last time
 function exPrefill(ex){
   var n=ex.sets.length;
-  /* What the routine says for this set comes first: you wrote it more
-     recently than you lifted last week, so it is the better guess at what
-     you are about to do. */
-  if(ex.plan&&ex.plan[n]&&(ex.plan[n].w!==''||ex.plan[n].r!==''))
-    return {w:ex.plan[n].w||'',r:ex.plan[n].r||''};
+  /* A RAMP means it: a plan reading 60, 70, 80 is describing this set, not the
+     one before it, so it wins. A flat plan of 3x10 says nothing that the set
+     you just did does not say better - so "differs from its own first row" is
+     the test, rather than "exists". */
+  var p=ex.plan&&ex.plan[n], p0=ex.plan&&ex.plan[0];
+  var ramps=!!(p&&p0&&(p.w!==p0.w||p.r!==p0.r));
+  if(p&&(p.w!==''||p.r!=='')&&(ramps||n===0))
+    return {w:p.w||'',r:p.r||''};
+  /* Otherwise: what you actually did on the first set today. It is the most
+     recent evidence there is, and it beats last week by a week. */
+  if(n>0&&ex.sets[0])return {w:ex.sets[0].weight,r:ex.sets[0].reps};
   var prev=exLastTime(ex.name);
   if(prev&&prev.sets[n])return {w:prev.sets[n].weight,r:prev.sets[n].reps};
   if(prev&&prev.sets.length)return {w:prev.sets[prev.sets.length-1].weight,r:prev.sets[prev.sets.length-1].reps};
@@ -9660,13 +9761,13 @@ function exDetailHTML(e){
     if(st.isBest&&st.n>1)
       h+='<div class="xd-say best">'+_t('האימון האחרון הוא הטוב ביותר שלך בתרגיל הזה.')+'</div>';
     else if(st.prev&&st.delta>0)
-      h+='<div class="xd-say up">'+_t('עלית מ־')+''+setLabel(st.prev.top)+' '+_t('ל־')+''+setLabel(st.last.top)+' '+_t('מאז הפעם הקודמת.')+'</div>';
+      h+='<div class="xd-say up">'+_t('עלית מ־{a} ל־{b} מאז הפעם הקודמת.',{a:setLabel(st.prev.top),b:setLabel(st.last.top)})+'</div>';
     else if(st.prev&&st.delta<0)
-      h+='<div class="xd-say down">'+_t('בפעם הקודמת עשית')+' '+setLabel(st.prev.top)+''+_t('. יום פחות טוב זה חלק מזה.')+'</div>';
+      h+='<div class="xd-say down">'+_t('בפעם הקודמת עשית {s}. יום פחות טוב זה חלק מזה.',{s:setLabel(st.prev.top)})+'</div>';
     if(st.n>1)h+=exBarsHTML(st);
     if(st.n>2){
       var g=exWork(st.last.top)-exWork(st.first.top);
-      h+='<div class="xd-since">'+_t('מאז')+' '+agoText(st.first.date)+''+_t(', כשהתחלת ב־')+''+setLabel(st.first.top)+
+      h+='<div class="xd-since">'+_t('מאז {when}, כשהתחלת ב־',{when:agoText(st.first.date)})+''+setLabel(st.first.top)+
          ': '+(g>0?''+_t('עלייה')+'':(g<0?''+_t('ירידה')+'':''+_t('ללא שינוי')+''))+'</div>';
     }
     // the sessions themselves, most recent first
@@ -9775,9 +9876,9 @@ function exAltRank(want,cand,freeEquip){
   for(i=0;i<want.q.length;i++)if(cand.q.indexOf(want.q[i])>=0)sharedQ++;
   s+=freeEquip?(-sharedQ*22):(sharedQ*14);
   // a machine is the answer when the free weights are busy, so it is not penalised
-  if(cand.q.indexOf(''+_t('מכונה')+'')>=0||cand.q.indexOf(''+_t('פולי')+'')>=0)s+=8;
+  if(cand.q.indexOf('מכונה')>=0||cand.q.indexOf('פולי')>=0)s+=8;
   // bodyweight always works, and always beats waiting
-  if(cand.q.indexOf(''+_t('משקל גוף')+'')>=0)s+=6;
+  if(cand.q.indexOf('משקל גוף')>=0)s+=6;
   return s;
 }
 function exAlternatives(name,n,freeEquip){
@@ -9797,9 +9898,9 @@ function exAltWhy(want,cand){
   for(i=0;i<want.q.length;i++)if(cand.q.indexOf(want.q[i])>=0)shared++;
   if(!shared)return ''+_t('ציוד אחר לגמרי —')+' '+cand.q.join(', ');
   if(shared===want.q.length)return ''+_t('אותו ציוד, תנועה קרובה')+'';
-  if(cand.q.indexOf(''+_t('מכונה')+'')>=0)return ''+_t('מכונה ייעודית — כמעט תמיד פנויה')+'';
-  if(cand.q.indexOf(''+_t('פולי')+'')>=0)return ''+_t('בפולי, מתח קבוע לאורך התנועה')+'';
-  if(cand.q.indexOf(''+_t('משקל גוף')+'')>=0)return ''+_t('בלי ציוד בכלל')+'';
+  if(cand.q.indexOf('מכונה')>=0)return ''+_t('מכונה ייעודית — כמעט תמיד פנויה')+'';
+  if(cand.q.indexOf('פולי')>=0)return ''+_t('בפולי, מתח קבוע לאורך התנועה')+'';
+  if(cand.q.indexOf('משקל גוף')>=0)return ''+_t('בלי ציוד בכלל')+'';
   return ''+_t('אותו שריר, ציוד אחר')+'';
 }
 
@@ -9889,18 +9990,18 @@ function nextAdvice(exName,sets){
   var step=small?Math.max(1.25,g.step/2):g.step;
   if(allOver&&w>0)
     return {dir:'up',w:w+step,
-      t:''+_t('העלה ל־')+''+(w+step)+' '+_t('ק"ג')+'',
-      why:''+_t('השלמת')+' '+g.hi+''+_t('+ חזרות בכל הסטים במשקל')+' '+w+'.'};
+      t:_t('העלה ל־{w}',{w:fmtWeight(w+step)}),
+      why:''+_t('השלמת {hi}+ חזרות בכל הסטים במשקל {w}.',{hi:g.hi,w:fmtWeight(w)})};
   if(allOver)
     return {dir:'up',w:0,t:''+_t('הוסף חזרות או משקל')+'',
       why:''+_t('עברת את הטווח בכל הסטים במשקל הגוף.')+''};
   if(allUnder&&w>0)
     return {dir:'down',w:Math.max(0,w-step),
-      t:''+_t('רד ל־')+''+Math.max(0,w-step)+' '+_t('ק"ג')+'',
-      why:''+_t('לא הגעת ל־')+''+g.lo+' '+_t('חזרות באף סט. המשקל גבוה מדי כרגע.')+''};
+      t:_t('רד ל־{w}',{w:fmtWeight(Math.max(0,w-step))}),
+      why:''+_t('לא הגעת ל־{lo} חזרות באף סט. המשקל גבוה מדי כרגע.',{lo:g.lo})};
   return {dir:'hold',w:w,
     t:''+_t('אותו משקל שוב')+'',
-    why:''+_t('אתה בתוך הטווח. חזור על')+' '+fmtWeight(w)+' '+_t('ונסה להוסיף חזרה.')+''};
+    why:''+_t('אתה בתוך הטווח. חזור על {w} ונסה להוסיף חזרה.',{w:fmtWeight(w)})};
 }
 /* The session as a whole: how much work, and whether it was more than the
    one before it. Volume is a blunt number but it is the one that answers
@@ -10055,9 +10156,21 @@ function renderFitWorkout(){
     var s=ex.sets[si];var isNewPR=s.weight>curPR;
     h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--surface)">';
     h+='<div style="font-size:11px;color:var(--muted);width:32px">'+_t('סט')+' '+(si+1)+'</div>';
-    h+='<div style="font-size:14px;font-weight:700;color:var(--ink);flex:1">'+fmtWeight(s.weight)+' &times; '+s.reps+'</div>';
-    if(isNewPR)h+='<div style="font-size:9px;font-weight:700;color:var(--amber-500);background:#fef9e7;border-radius:6px;padding:2px 6px">PR &#9733;</div>';
-    h+='<button onclick="removeSet('+si+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px;padding:2px">&times;</button>';
+    if(si===_editSet){
+      /* The boxes open on what is already there, in the unit on screen. */
+      h+='<input id="ed-w" class="mtnm" type="number" step="0.5" value="'+edWeightVal(s.weight)+'" style="width:72px;padding:7px;border-radius:9px;font-size:15px;font-weight:700">';
+      h+='<span style="font-size:12px;color:var(--muted)">&times;</span>';
+      h+='<input id="ed-r" class="mtnm" type="number" value="'+s.reps+'" style="width:58px;padding:7px;border-radius:9px;font-size:15px;font-weight:700">';
+      h+='<button onclick="saveEditSet()" style="min-height:36px;padding:0 12px;border:none;border-radius:9px;background:var(--green-500);color:var(--white);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">'+_t('שמור')+'</button>';
+      h+='<button onclick="cancelEditSet()" style="min-height:36px;padding:0 10px;border:none;border-radius:9px;background:var(--surface);color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">'+_t('ביטול')+'</button>';
+    } else {
+      /* Tapping the numbers is how you correct them - there is nowhere else on
+         this row for an edit affordance to live, and the numbers are what you
+         are looking at when you notice the mistake. */
+      h+='<button onclick="editSet('+si+')" style="flex:1;text-align:start;background:none;border:none;padding:0;font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer">'+fmtWeight(s.weight)+' &times; '+s.reps+'</button>';
+      if(isNewPR)h+='<div style="font-size:9px;font-weight:700;color:var(--amber-500);background:#fef9e7;border-radius:6px;padding:2px 6px">PR &#9733;</div>';
+      h+='<button onclick="removeSet('+si+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px;padding:2px">&times;</button>';
+    }
     h+='</div>';
   }
 
@@ -10140,7 +10253,7 @@ function logSet(){
   // Update PR
   if(weight>0){
     var prs=loadPRs();var key=ex.name;
-    if(weight>(prs[key]||0)){prs[key]=weight;savePRs(prs);showToast('&#9733; '+_t('PR חדש!')+' '+weight+''+_t('kg ב')+''+key);}
+    if(weight>(prs[key]||0)){prs[key]=weight;savePRs(prs);showToast('&#9733; '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:key}));}
   }
   renderFitness();
 }
@@ -10173,13 +10286,52 @@ function finishWorkout(){
 }
 
 var _fitSummaryEntry=null;
+/* Any workout in the log can be opened, not only the one just finished. */
+function fitOpenSummary(i){
+  var log=loadWorkoutLog();
+  if(!log[i])return;
+  _fitSummaryEntry=log[i];
+  _fitView='summary';
+  renderFitness();
+}
+/* Pressing "finish" by accident used to be final. This puts the session back
+   the way it was and takes the entry out of the log, so finishing again writes
+   one record rather than two.
+
+   plan and superset grouping are not stored with a finished workout, so they
+   come back empty - the sets, the warm-ups and the elapsed time are what
+   matter, and losing a plan row is recoverable by looking at it. */
+function fitReopenWorkout(i){
+  var log=loadWorkoutLog();
+  var e=log[i];
+  if(!e)return;
+  log.splice(i,1);
+  saveWorkoutLog(log);
+  _fitWorkout={
+    templateIdx:-1,name:e.name,
+    startTime:Date.now()-(e.duration||0)*60000,
+    exercises:(e.exercises||[]).map(function(ex){
+      return {name:ex.name,targetSets:ex.targetSets,targetReps:ex.targetReps,
+              plan:[],sets:(ex.sets||[]).slice(),warm:(ex.warm||[]).slice(),ss:null};
+    }),
+    currentEx:0
+  };
+  _fitSummaryEntry=null;
+  _fitView='workout';
+  renderFitness();
+}
 
 function renderFitSummary(){
   var entry=_fitSummaryEntry;
   if(!entry){_fitView='home';renderFitness();return;}
   var log=loadWorkoutLog();
+  /* Was written assuming the entry is the last one in the log, which is only
+     true right after finishing. Now that any past workout can be opened, find
+     where this one actually sits and look back from there. */
+  var at=log.length-1,j;
+  for(j=0;j<log.length;j++)if(log[j].date===entry.date&&log[j].name===entry.name){at=j;break;}
   var prev=null;
-  for(var i=log.length-2;i>=0;i--){if(log[i].name===entry.name){prev=log[i];break;}}
+  for(var i=at-1;i>=0;i--){if(log[i].name===entry.name){prev=log[i];break;}}
   var prs=loadPRs();
 
   // RPE color by spec: <6 green, 6-7.4 amber, 7.5-8.9 orange, ≥9 coral, null gray
@@ -10217,7 +10369,7 @@ function renderFitSummary(){
 
   // 4.1 Hero stats
   h+='<div style="display:flex;gap:10px;margin-bottom:16px">';
-  [{num:totalSets,lbl:''+_t('סטים')+''},{num:avgRPE!==null?effortFromRPE(avgRPE):''+_t('לא דורג')+'',lbl:(effortScale()==='rir'?_t('RIR ממוצע'):_t('RPE ממוצע'))},{num:totalVol>0?Math.round(totalVol):0,lbl:''+_t('ק"ג נפח')+''}].forEach(function(s){
+  [{num:totalSets,lbl:''+_t('סטים')+''},{num:avgRPE!==null?effortFromRPE(avgRPE):''+_t('לא דורג')+'',lbl:(effortScale()==='rir'?_t('RIR ממוצע'):_t('RPE ממוצע'))},{num:totalVol>0?Math.round(totalVol):0,lbl:''+_t('{u} נפח',{u:weightUnit()})+''}].forEach(function(s){
     h+='<div style="flex:1;background:var(--card);border-radius:20px;padding:14px 8px;text-align:center;box-shadow:0 2px 10px rgba(58,53,48,.06)">';
     h+='<div style="font-size:20px;font-weight:800;color:var(--ink-strong)">'+s.num+'</div>';
     h+='<div style="font-size:10px;color:#9A9184;margin-top:3px">'+s.lbl+'</div></div>';
@@ -10313,7 +10465,7 @@ function renderFitSummary(){
     var curMax=ex.sets.length?Math.max.apply(null,ex.sets.map(function(s){return s.weight||0;})):0;
     var allGood=ex.sets.length&&ex.sets.every(function(s){return s.reps>=(ex.targetReps||10);});
     var nextW=Math.round((curMax+2.5)*2)/2;
-    var suggestion=curMax===0?''+_t('התמקד על טכניקה')+'':allGood?''+_t('נסה')+' '+fmtWeight(nextW)+'':''+_t('הישאר על')+' '+curMax+' '+_t('ק"ג, ישימות על טכניקה')+'';
+    var suggestion=curMax===0?''+_t('התמקד על טכניקה')+'':allGood?''+_t('נסה')+' '+fmtWeight(nextW)+'':''+_t('הישאר על {w}, ישימות על טכניקה',{w:fmtWeight(curMax)})+'';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-strong);gap:10px">';
     h+='<span style="font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden;text-overflow:ellipsis">'+esc(ex.name)+'</span>';
     h+='<span style="font-size:11px;color:#9A9184;text-align:start">'+suggestion+'</span></div>';
@@ -10326,7 +10478,7 @@ function renderFitSummary(){
     return v>best.vol?{name:ex.name,vol:v}:best;
   },{name:'',vol:0});
   h+='<div style="background:#D6ECE8;color:#2E6B62;border-radius:16px;padding:16px;font-size:13px;line-height:1.7;margin-bottom:16px">';
-  if(bestEx.name)h+='<div style="margin-bottom:6px"><b style="font-weight:800">'+_t('הבולט ביותר:')+'</b> '+esc(bestEx.name)+' '+_t('עם')+' '+nfmt(Math.round(bestEx.vol))+' '+_t('ק"ג נפח.')+'</div>';
+  if(bestEx.name)h+='<div style="margin-bottom:6px"><b style="font-weight:800">'+_t('הבולט ביותר:')+'</b> '+esc(bestEx.name)+' '+_t('עם')+' '+nfmt(Math.round(bestEx.vol))+' '+_t('{u} נפח.',{u:weightUnit()})+'</div>';
   h+='<div><b style="font-weight:800">'+_t('סה"כ:')+'</b> '+totalSets+' '+_t('סטים')+''+(avgRPE!==null?''+_t(', RPE ממוצע')+' '+avgRPE+'. '+(avgRPE>=9?''+_t('עומס כבד — שים לב להתאוששות.')+'':avgRPE>=7.5?''+_t('אימון טוב — באזור העלייה.')+'':''+_t('אימון נוח. אפשר להעלות במשקל.')+''):'.')+' '+_t('אין דיווח כאב.')+'</div>';
   h+='</div>';
 
@@ -10349,6 +10501,14 @@ function renderFitSummary(){
     }
     h+='</div>';
   }
+  /* The way back from an accidental finish. */
+  (function(){
+    var log=loadWorkoutLog(),at=-1,k;
+    for(k=0;k<log.length;k++)if(log[k]===entry||(log[k].date===entry.date&&log[k].name===entry.name)){at=k;break;}
+    if(at<0)return;
+    h+='<button onclick="fitReopenWorkout('+at+')" style="width:100%;min-height:44px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:14px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--ink-soft);margin-bottom:10px">'+
+      _t('פתח מחדש והמשך לערוך')+'</button>';
+  })();
   // Action buttons
   h+='<div style="display:flex;gap:10px">';
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="flex:1;background:var(--surface);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">'+_t('חזרה')+' &#8249;</button>';
@@ -10369,15 +10529,17 @@ function renderFitHistory(){
   for(var i=log.length-1;i>=0;i--){
     var entry=log[i];var d=new Date(entry.date);
     var vol=entry.exercises.reduce(function(a,ex){return a+ex.sets.reduce(function(b,s){return b+(s.weight||0)*(s.reps||0);},0);},0);
-    h+='<div style="background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(200,180,160,.1)">';
+    h+='<div onclick="fitOpenSummary('+i+')" style="background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(200,180,160,.1);cursor:pointer">';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
     h+='<div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(entry.name)+'</div>';
+    /* stopPropagation because the card itself opens the summary. */
+    h+='<button onclick="event.stopPropagation();deleteWorkout('+i+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px;min-height:44px;min-width:34px;padding:0;margin-inline-start:auto">&times;</button>';
     h+='<div style="font-size:10px;color:var(--muted)">'+d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+'</div>';
     h+='</div>';
     h+='<div style="display:flex;gap:14px;font-size:11px;color:var(--muted)">';
     h+='<span>'+entry.exercises.length+' '+_t('תרגילים')+'</span>';
     h+='<span>'+entry.duration+' '+_t('דק')+'</span>';
-    h+='<span style="color:var(--terra-500);font-weight:700">'+nfmt(vol)+' '+_t('kg נפח')+'</span>';
+    h+='<span style="color:var(--terra-500);font-weight:700">'+nfmt(vol)+' '+_t('{u} נפח',{u:weightUnit()})+'</span>';
     h+='</div>';
     h+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">';
     for(var ei=0;ei<entry.exercises.length;ei++){
@@ -11723,11 +11885,31 @@ function wkSetLen(id,n){
   saveWeek(_wkSun,wk);renderPlanWeek();
 }
 
+/* A bar is 9px tall and wants 2px of air under it. */
+var WK_SPAN_H=11;
+/* Which stretched tasks land in each band, in draw order, so a bar can be
+   told its row and the chips below can be told how many rows to clear. */
+function wkSpanRows(tasks){
+  var rows={m:[],n:[],e:[]},i,t,len,ci;
+  for(i=0;i<tasks.length;i++){
+    t=tasks[i];
+    len=wkLenOf(t);
+    if(len<2||!t.d)continue;
+    ci=wkColIndex(t.d);
+    if(ci<0)continue;
+    if(ci+len>7)len=7-ci;
+    if(len<2)continue;
+    (rows[wkSlotOf(t)]||rows.m).push(t.id);
+  }
+  return rows;
+}
+
 /* One absolutely positioned bar per multi-day task, over the whole table.
    inset-inline-start rather than left: the week reads right to left, so the
    logical property is the one that puts Sunday where Sunday is. */
 function wkSpanBarsHTML(tasks){
   var h="",i,t,ci,len,band,BANDS={m:0,n:1,e:2};
+  var rows=wkSpanRows(tasks);
   for(i=0;i<tasks.length;i++){
     t=tasks[i];
     len=wkLenOf(t);
@@ -11737,11 +11919,15 @@ function wkSpanBarsHTML(tasks){
     if(ci+len>7)len=7-ci;                    // a week is as long as a week
     if(len<2)continue;
     band=BANDS[wkSlotOf(t)]||0;
+    /* Top of the band, one row down for each bar already there - so two spans
+       in the same band sit under each other rather than on each other. */
+    var slot=wkSlotOf(t), stack=rows[slot]?rows[slot].indexOf(t.id):0;
+    if(stack<0)stack=0;
     var c=wkColor(t.c);
     h+='<div style="position:absolute;z-index:4;pointer-events:none;'+
        'inset-inline-start:calc('+(ci*100/7)+'% + 3px);'+
        'inline-size:calc('+(len*100/7)+'% - 6px);'+
-       'top:calc('+(band*100/3)+'% + '+(100/3)+'% - 19px);'+
+       'top:calc('+(band*100/3)+'% + '+(3+stack*WK_SPAN_H)+'px);'+
        'height:9px;border-radius:5px;background:'+c.dot+';opacity:.85;'+
        'display:flex;align-items:center;justify-content:center;overflow:visible">'+
        '<span style="font-size:7.5px;font-weight:700;color:var(--white);white-space:nowrap;padding:0 4px;overflow:hidden">'+esc(t.w)+'</span>'+
@@ -11798,6 +11984,7 @@ function planWeekHTML(){
   h+='</div>';
   h+='<div class="wk-table">';
   h+='<div class="wk-bands"><div class="wk-band-l" style="top:33.333%"></div><div class="wk-band-l" style="top:66.666%"></div></div>';
+  var spanRows=wkSpanRows(wk.tasks);
   h+=wkSpanBarsHTML(wk.tasks);
   h+='<div class="wk-cols">';
   for(i=0;i<7;i++){
@@ -11808,7 +11995,11 @@ function planWeekHTML(){
       // things put in this band without an hour: they float at the top
       var list=wkGridIn(wk.tasks,st,WK_SLOTS[j][0]);
       if(list.length){
-        h+='<div class="wk-free">';
+        /* Clear the rows the stretched bars occupy in this band. Reserved in
+           every column, not only the ones a bar crosses, so the chips line up
+           across the week instead of stepping up and down. */
+        var _pad=(spanRows[WK_SLOTS[j][0]]||[]).length*WK_SPAN_H;
+        h+='<div class="wk-free"'+(_pad?' style="padding-top:'+_pad+'px"':'')+'>';
         for(t=0;t<list.length;t++){
           var cc=wkColor(list[t].c),ech=wkIsEcho(list[t],st);
           h+='<div class="wk-chip" style="position:relative;background:'+cc.bg+';color:'+cc.tx+(ech?';opacity:.55':'')+'">'+
@@ -12270,7 +12461,7 @@ function dpRemCheck(){
 }
 function dpRemFire(t,off){
   var when=dpHM(t.hour,t.min||0);
-  var body=off?(t.w+' &mdash; '+_t('בעוד')+' '+off+' '+_t('דק׳ (')+''+when+')'):(t.w+' &mdash; '+_t('עכשיו (')+''+when+')');
+  var body=off?(t.w+' &mdash; '+_t('בעוד {n} דק׳ ({when})',{n:off,when:when})):(t.w+' &mdash; '+_t('עכשיו (')+''+when+')');
   var plain=body.replace(/&mdash;/g,'—');
   sumRemShowOS(''+_t('תכנון זמן')+'',plain);
   if(!document.hidden)showToast('⏰ '+t.w);
@@ -12486,23 +12677,27 @@ var _daySwipe=null;
 // follows you to the next screen. Rather than chase every teardown site,
 // the gesture asks whether the day planner is what is actually in front of
 // you before it does anything.
-function onPlanScreen(){
-  return currentModule==='planning'&&
-         (_planMode==='day'||_planMode==='weekly'||_planMode==='monthly');
-}
+function onPlanScreen(){return currentModule==='planning';}
 function onDayScreen(){return onPlanScreen();}
+/* All three horizons are on one page, so which one a swipe means is a question
+   about where the finger started - not about a mode. */
+function planSectionAt(el){
+  var sec=el&&el.closest&&el.closest('#plan-sec-day,#plan-sec-week,#plan-sec-month');
+  if(!sec)return '';
+  return sec.id==='plan-sec-day'?'day':sec.id==='plan-sec-week'?'weekly':'monthly';
+}
 // each horizon steps by its own unit
-function planStep(dir){
-  if(_planMode==='day')dpShift(dir);
-  else if(_planMode==='weekly')wkShift(dir);
-  else if(_planMode==='monthly')moShift(dir);
+function planStep(dir,where){
+  if(where==='day')dpShift(dir);
+  else if(where==='weekly')wkShift(dir);
+  else if(where==='monthly')moShift(dir);
 }
 function daySwipeDown(e){
   if(!onDayScreen()||_dpDrag)return;                       // a task is being dragged
   var t=e.target;
   if(t.closest&&(t.closest('[data-task]')||t.closest('[data-lib]')||
                  t.closest('button')||t.closest('input')||t.closest('textarea')))return;
-  _daySwipe={x:e.clientX,y:e.clientY,t:Date.now()};
+  _daySwipe={x:e.clientX,y:e.clientY,t:Date.now(),where:planSectionAt(t)};
 }
 function daySwipeUp(e){
   var s=_daySwipe;_daySwipe=null;
@@ -12512,7 +12707,8 @@ function daySwipeUp(e){
   if(Math.abs(dy)>DAY_SWIPE_Y)return;      // that was a scroll
   if(Math.abs(dx)<Math.abs(dy)*1.6)return; // and it has to be mostly sideways
   if(Date.now()-s.t>900)return;            // a slow drag is not a flick
-  planStep(dx>0?-1:1);
+  if(!s.where)return;                      // began outside all three panels
+  planStep(dx>0?-1:1,s.where);
   daySwipeHint(dx>0?-1:1);
 }
 // a short slide in the direction travelled, so the day visibly changes rather
@@ -12556,10 +12752,7 @@ function planUndo(){
     else localStorage.setItem(u.k,u.v);
   }catch(e){}
   renderPlanUndo();
-  if(_planMode==='day')renderPlanDay();
-  else if(_planMode==='weekly')renderPlanWeek();
-  else if(_planMode==='monthly')renderPlanMonth();
-  else renderPlanning();
+  renderPlanning();
   showToast(''+_t('בוטל')+'');
 }
 function renderPlanUndo(){
@@ -12594,6 +12787,32 @@ function dpNotesFor(date,hour){
   return out;
 }
 
+/* Where the line goes: the hour's row, offset by the minutes into it. Returns
+   nothing at all when today is not what is on screen, or when the hour is
+   outside the range the grid draws. */
+function dpNowLine(){
+  var old=document.querySelector('.dp-now');
+  if(old)old.remove();
+  if(_dpDate!==wkStamp(new Date()))return;
+  var now=new Date(),hr=now.getHours();
+  if(hr<DP_FROM||hr>DP_TO)return;
+  var row=document.querySelector('.dp-row[data-hrow="'+hr+'"]');
+  if(!row)return;
+  var el=document.createElement('div');
+  el.className='dp-now';
+  el.style.top=(now.getMinutes()/60*100)+'%';
+  row.appendChild(el);
+}
+var _dpNowIv=null;
+/* Every minute, and only while the line is actually on screen - the interval
+   takes itself down as soon as the element it maintains is gone. */
+function dpNowStart(){
+  if(_dpNowIv)clearInterval(_dpNowIv);
+  _dpNowIv=setInterval(function(){
+    if(!document.querySelector('.dp-row')){clearInterval(_dpNowIv);_dpNowIv=null;return;}
+    dpNowLine();
+  },60000);
+}
 function planDayHTML(){
   if(!_dpDate)_dpDate=wkStamp(new Date());
   var d=new Date(_dpDate+'T12:00:00'),all=dpAll(_dpDate),i,h,t;
@@ -12698,7 +12917,7 @@ function planDayHTML(){
   var feels=(dpl.feeling||'');
   out+='<div style="margin-top:24px;background:linear-gradient(150deg,var(--violet-50),#eaf1f8);border-radius:22px;padding:18px 16px">';
 
-  out+='<div class="dp-q">'+_t('מה חשוב לך ש')+''+(when==='מחר'?''+_t('מחר')+'':when.replace(''+_t('ביום')+' ',''+_t('ביום')+' '))+' '+_t('יקרה?')+'</div>';
+  out+='<div class="dp-q">'+_t('מה חשוב לך ש{when} יקרה?',{when:(when==='מחר'?_t('מחר'):when.replace('ביום ',_t('ביום')+' '))})+'</div>';
   out+='<textarea id="dp-intent" class="dp-ta" onblur="deepSaveText()" placeholder="לא רשימה — מה על הלב שלך?">'+esc(dpl.intent||'')+'</textarea>';
 
   out+='<div class="dp-q" style="margin-top:20px">'+_t('איך אני רוצה להרגיש')+' '+when+'?</div>';
@@ -12741,7 +12960,7 @@ function planDayHTML(){
 var _dpRailOpen=false,_dpRailText='',_dpRailWasOpen=false;
 function dpRail(){
   dpRailClear();          // the panel is a sibling, not a child - clear both
-  if(_planMode!=='day')return;
+  if(!planSecsGet().day)return;   // the rail belongs to the day panel, so it follows it open and shut
   var loose=[],all=dpAll(_dpDate),i;
   for(i=0;i<all.length;i++)if(all[i].hour===null&&all[i].src==='day')loose.push(all[i]);
 
@@ -13196,11 +13415,9 @@ function taskLibDel(id){
   for(i=0;i<l.length;i++)if(l[i].id!==id)out.push(l[i]);
   saveTaskLib(out);planRerender();
 }
-function planRerender(){
-  if(_planMode==='weekly')renderPlanWeek();
-  else if(_planMode==='monthly')renderPlanMonth();
-  else if(_planMode==='day')renderPlanDay();
-}
+/* Used to dispatch on _planMode and had no else, so with that variable dead it
+   did nothing at all - seven call sites silently not refreshing. */
+function planRerender(){renderPlanning();}
 // The star that puts a task on the shelf, for rows that have room for it.
 function taskLibStar(text,color){
   return '<button onclick="taskLibSave(\''+esc(text).replace(/'/g,"\\'")+'\',\''+(color||'lav')+'\')" '+
@@ -13507,7 +13724,7 @@ function planMonthHTML(){
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
   h+='<button onclick="moShift(1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
   h+='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:var(--ink)">'+MO_NAMES[mi]+' '+year+'</div>';
-  h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+mo.tasks.filter(function(x){return x.d;}).length+' '+_t('מתוך')+' '+mo.tasks.length+' '+_t('משובצים')+'</div></div>';
+  h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+mo.tasks.filter(function(x){return x.d;}).length+' '+_t('מתוך {n} משובצים',{n:mo.tasks.length})+'</div></div>';
   h+='<button onclick="moShift(-1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
   h+='</div>';
 
@@ -13714,7 +13931,6 @@ function moUp(e){
 /* Planning opens on a choice of horizon rather than dropping straight into
    tomorrow. The daily wizard is the one that exists; the other two are
    placeholders on purpose, waiting to be specified. */
-var _planMode='';
 
 /* ── THE WAY IN ──
    A beat before the planner, saying what you came here to do. It clears
@@ -13831,7 +14047,7 @@ function renderPlanning(){
 
   /* the after-steps each screen used to run for itself */
   if(o.week)wkPlacePoint();
-  if(o.day)dpRail();
+  if(o.day){dpRail();dpNowLine();dpNowStart();}
 
   /* all three attached at once now, each fenced to its own panel */
   var box=document.getElementById('content');
@@ -13854,7 +14070,13 @@ function renderPlanDay(){renderPlanning();}
 function planGo(mode){
   // "Daily" is the day screen itself, for tomorrow.
   if(mode==='daily'){mode='day';_dpDate=wkStamp(new Date(Date.now()+86400000));}
-  _planMode=mode;_planStep=0;
+  /* Opening the panel is what these shortcuts were always for. Setting a mode
+     nothing reads only looked like it worked because the panel it wanted
+     happened to be open already. */
+  var o=planSecsGet();
+  o[mode==='weekly'?'week':mode==='monthly'?'month':'day']=true;
+  planSecsSave();
+  _planStep=0;
   renderPlanning();window.scrollTo(0,0);
 }
 
@@ -14334,7 +14556,8 @@ function cmDelMile(i){
   var o=cmGoal();if(!o.g)return;
   var ms=cmMilestones(o.g);if(!ms[i])return;
   var st=(ms[i].steps||[]).length;
-  if(!confirm(''+_t('למחוק את "')+''+(ms[i].text||''+_t('המטרה')+'')+'"'+(st?' '+_t('ואת')+' '+st+' '+_t('הצעדים שלה')+'':'')+'?'))return;
+  if(!confirm(''+(st?_t('למחוק את "{name}" ואת {n} הצעדים שלה?',{name:ms[i].text||_t('המטרה'),n:st})
+      :_t('למחוק את "{name}"?',{name:ms[i].text||_t('המטרה')}))))return;
   ms.splice(i,1);saveGoals(o.goals);
   if(_cmFocus===i)_cmFocus=-1;else if(_cmFocus>i)_cmFocus--;
   cmRender();
@@ -15440,7 +15663,7 @@ function renderPersonPage(){
   h+='<div style="flex:1">';
   h+='<div style="font-size:20px;font-weight:800;color:var(--ink)">'+esc(p.name)+'</div>';
   h+='<div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(p.relationship||'')+'</div>';
-  if(days!==null)h+='<div style="font-size:11px;color:var(--terra-500);margin-top:6px">'+_t('דיברנו לפני')+' '+days+' '+_t('ימים')+'</div>';
+  if(days!==null)h+='<div style="font-size:11px;color:var(--terra-500);margin-top:6px">'+_t('דיברנו')+' '+_t('לפני {n} ימים',{n:days})+'</div>';
   h+='</div>';
   h+='<button onclick="_peopleView=\'edit-person\';renderPeople()" style="background:rgba(255,255,255,.7);border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--ink-soft)">'+_t('ערוך')+'</button>';
   h+='</div>';
@@ -16930,7 +17153,7 @@ function exportData(){
 function exportKB(t){return Math.max(1,Math.round(new Blob([t||_backupText]).size/1024));}
 function exportPhotosHTML(){
   if(!_photoInfo.n)return '';
-  return '<div class="bk-or">'+_t('התמונות שלך (')+''+_photoInfo.n+', '+_photoInfo.kb+''+_t('KB) לא נכללות למעלה')+' &mdash; '+
+  return '<div class="bk-or">'+_t('התמונות שלך ({n}, {kb}KB) לא נכללות למעלה',{n:_photoInfo.n,kb:_photoInfo.kb})+' &mdash; '+
          ''+_t('הן גדולות מדי להדבקה, וצריכות להישמר כקובץ.')+'</div>'+
          '<button class="bk-full" onclick="exportFull()">'+_t('גיבוי מלא עם התמונות')+'</button>';
 }
@@ -17205,7 +17428,7 @@ function renderImportSheet(){
   if(o.exportedAt)h+='<div style="font-size:10px;color:var(--muted-soft);text-align:center;margin-top:4px">'+_t('יוצא ב־')+''+o.exportedAt.slice(0,10)+'</div>';
   h+='</div>';
 
-  h+='<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px">'+_t('במכשיר הזה יש כרגע')+' '+mine+' '+_t('פריטים.')+'</div>';
+  h+='<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px">'+_t('במכשיר הזה יש כרגע {n} פריטים.',{n:mine})+'</div>';
 
   h+='<button onclick="applyImport(\'merge\')" style="width:100%;background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;color:var(--white);font-family:inherit;margin-bottom:8px">'+_t('מיזוג')+'</button>';
   h+='<div style="font-size:10.5px;color:var(--muted);line-height:1.6;margin-bottom:16px">'+_t('מוסיף רק מה שחסר. שום דבר שקיים כאן לא נדרס. זו הבחירה הבטוחה.')+'</div>';
@@ -17241,7 +17464,7 @@ function applyImport(mode){
       if(typeof o.photos[pk]==='string')jobs.push(photoPutKeyed(pk,o.photos[pk]));
     });
   }
-  showToast(''+_t('✓ יובאו')+' '+n+' '+_t('פריטים')+'');
+  showToast(''+_t('✓ יובאו {n} פריטים',{n:n}));
   // Half the app caches its data in module variables; a reload is the honest
   // way to make every screen read the new state.
   Promise.all(jobs).then(function(){setTimeout(function(){location.reload();},600);});
@@ -17508,7 +17731,7 @@ function rfSteps(){
     if(all[i].id==='workoutDone'){
       if(!planned||logged)continue;
       var w={},k;for(k in all[i])w[k]=all[i][k];
-      w.q=''+_t('היום היה מתוכנן')+' '+(planned.label||''+_t('אימון')+'')+''+_t('. יצא לך?')+'';
+      w.q=''+_t('היום היה מתוכנן {what}. יצא לך?',{what:planned.label||_t('אימון')});
       out.push(w);
       continue;
     }
@@ -18399,7 +18622,7 @@ function renderMe(){
   var ratings=[];
   for(i=0;i<rows.length;i++)if(rows[i].sum&&rows[i].sum.dayRating)ratings.push(rows[i].sum.dayRating);
   h+=meCard('rating',''+_t('ציון היום')+'',
-    ratings.length?(''+_t('ממוצע')+' '+meAvg(ratings).toFixed(1)+' '+_t('מתוך 10')+''):'',
+    ratings.length?(''+_t('ממוצע {n} מתוך 10',{n:meAvg(ratings).toFixed(1)})):'',
     meLine('rating',rows,function(x){return x.sum&&x.sum.dayRating?x.sum.dayRating:null;},ME_C[0],function(v){return String(v);}));
 
   h+=meCard('steps',''+_t('צעדים')+'','',
@@ -18469,8 +18692,8 @@ function meInsights(rows){
     var a=meAvg(withW),b=meAvg(noW),diff=a-b;
     cards+=meInsight(
       diff>=0?''+_t('ימים שהתאמנת בהם טובים יותר')+'':''+_t('ימים שהתאמנת בהם לא יצאו טובים יותר')+'',
-      ''+_t('ציון ממוצע')+' '+a.toFixed(1)+' '+_t('לעומת')+' '+b.toFixed(1)+' '+_t('בלי אימון')+'',
-      withW.length+' '+_t('ימים עם אימון,')+' '+noW.length+' '+_t('בלי')+'',
+      _t('ציון ממוצע {a} לעומת {b} בלי אימון',{a:a.toFixed(1),b:b.toFixed(1)}),
+      withW.length+' '+_t('ימים עם אימון, {n} בלי',{n:noW.length}),
       diff>=0?ME_C[2]:ME_C[1]);
   }
   var top=Object.keys(givers).sort(function(x,y){return givers[y]-givers[x];})[0];
@@ -18689,7 +18912,7 @@ function renderAreasList(){
   }
   l.innerHTML=h;
   var c=document.getElementById('areas-count');
-  if(c)c.textContent=n+' '+_t('מתוך')+' '+HOME_AREAS.length+' '+_t('מופיעים ב-Better')+'';
+  if(c)c.textContent=n+' '+_t('מתוך {n} מופיעים ב-Better',{n:HOME_AREAS.length});
 }
 function openAreas(){
   renderAreasList();
@@ -18928,7 +19151,7 @@ function streakOpen(){
     '<div class="stk-row">'+days+'</div>'+
     '<div class="stk-note">'+_t('יום נספר כשרשמת בו משהו — ארוחה, אימון, שורה ביומן, מים, צעדים, ולוג או סיכום יום.')+' '+
     ''+_t('לא מספיק לפתוח את האפליקציה.')+'</div>'+
-    (best>s.n?'<div class="stk-best">'+_t('הרצף הארוך ביותר שלך:')+' '+best+' '+_t('ימים.')+'</div>':'')+
+    (best>s.n?'<div class="stk-best">'+_t('הרצף הארוך ביותר שלך: {n} ימים.',{n:best})+'</div>':'')+
     (!s.today?'<div class="stk-today">'+(s.n?''+_t('היום עוד לא נספר. כל דבר שתרשום היום ימשיך את הרצף.')+''
                                             :''+_t('כל דבר שתרשום היום מתחיל רצף חדש. מה שכבר רשמת נשאר.')+'')+'</div>':'')+
     '</div></div>';
@@ -19153,7 +19376,7 @@ function tbSync(){
     try{
       var n=rescueNaNDay();
       if(n)setTimeout(function(){
-        showToast(_t('שוחזרו')+' '+n+' '+_t('פריטים שנשמרו בתאריך שגוי'));
+        showToast(_t('שוחזרו {n} פריטים שנשמרו בתאריך שגוי',{n:n}));
       },1200);
     }catch(e){}
   })();
