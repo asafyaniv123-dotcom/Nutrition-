@@ -33,7 +33,17 @@ Verified afterwards: the three padded controls cover no other control. The
 grown ones intersect only `.fab-scrim`, a full-screen overlay that covers
 everything by design.
 
-## Still measured, still open
+## The last two, and the decision they needed
 
-Height remains the failing dimension on `.tab` and `.stk`. Both need a layout
-decision rather than a padding one.
+`.tab` (61 x 27) and `.stk` (174 x 25) had neighbours touching on both axes, so
+an invisible pad would have covered the control beside them. The only way up
+was to make the elements taller and let their rows reflow — a visible change,
+which is why it was held back as a decision rather than done with the rest.
+
+Both now reach **44px**. The tab strip went from about 35px tall to 52.
+
+It reads better, not merely bigger: the tabs are now the same height as the day
+arrows beside them, which they never were. The row is balanced where it used to
+be mismatched.
+
+**Every measured tap target in the app is now at or above 44px.**
