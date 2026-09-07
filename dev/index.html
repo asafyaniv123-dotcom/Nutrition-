@@ -6732,6 +6732,46 @@ var _fitWorkout=null; // active workout state
    across exercises: warm-ups come first, so the flag turns itself off as soon
    as a working set goes in, and nobody has to remember to switch it back. */
 var _fitWarm=false;
+/* Which logged set is open for correction, or -1. Kept out of _fitWorkout on
+   purpose: it is a state of the screen, not of the workout, and it must not
+   survive being saved and restored. */
+var _editSet=-1;
+/* A converted weight is a long float - 30.86471670588286 lb - and nobody can
+   edit that. Round it the way fmtWeight rounds it, so the box holds the number
+   that was on the row a moment ago. */
+function edWeightVal(kg){
+  var v=toDisplayWeight(kg),d=APP_UNITS==="imperial"?1:2;
+  return Math.round(v*Math.pow(10,d))/Math.pow(10,d);
+}
+function editSet(i){_editSet=(_editSet===i?-1:i);renderFitness();}
+function cancelEditSet(){_editSet=-1;renderFitness();}
+function saveEditSet(){
+  if(!_fitWorkout||_editSet<0)return;
+  var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
+  var st=ex.sets[_editSet];
+  if(!st){_editSet=-1;renderFitness();return;}
+  var w=document.getElementById('ed-w'),r=document.getElementById('ed-r');
+  var reps=parseInt(r?r.value:0,10)||0;
+  if(!reps){cancelEditSet();return;}          // a set with no reps is not a set
+  /* The box shows the display unit, so convert back before storing. */
+  st.weight=fromDisplayWeight(parseFloat(w?w.value:0)||0);
+  st.reps=reps;
+  _editSet=-1;
+  renderFitness();
+}
+/* Removing a workout from the log. Asks first, because there is no undo and
+   the whole session goes at once. */
+function deleteWorkout(i){
+  var log=loadWorkoutLog();
+  var e=log[i];
+  if(!e)return;
+  if(!confirm(_t('למחוק את האימון {name}? אי אפשר לבטל.',{name:e.name})))return;
+  log.splice(i,1);
+  saveWorkoutLog(log);
+  if(_fitSummaryEntry===e)_fitSummaryEntry=null;
+  _fitView='history';
+  renderFitness();
+}
 
 /* ── WHAT GOES ON THE BAR ──
    Everything here works in the DISPLAY unit, not in kilograms, because plates
@@ -10109,9 +10149,21 @@ function renderFitWorkout(){
     var s=ex.sets[si];var isNewPR=s.weight>curPR;
     h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--surface)">';
     h+='<div style="font-size:11px;color:var(--muted);width:32px">'+_t('סט')+' '+(si+1)+'</div>';
-    h+='<div style="font-size:14px;font-weight:700;color:var(--ink);flex:1">'+fmtWeight(s.weight)+' &times; '+s.reps+'</div>';
-    if(isNewPR)h+='<div style="font-size:9px;font-weight:700;color:var(--amber-500);background:#fef9e7;border-radius:6px;padding:2px 6px">PR &#9733;</div>';
-    h+='<button onclick="removeSet('+si+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px;padding:2px">&times;</button>';
+    if(si===_editSet){
+      /* The boxes open on what is already there, in the unit on screen. */
+      h+='<input id="ed-w" class="mtnm" type="number" step="0.5" value="'+edWeightVal(s.weight)+'" style="width:72px;padding:7px;border-radius:9px;font-size:15px;font-weight:700">';
+      h+='<span style="font-size:12px;color:var(--muted)">&times;</span>';
+      h+='<input id="ed-r" class="mtnm" type="number" value="'+s.reps+'" style="width:58px;padding:7px;border-radius:9px;font-size:15px;font-weight:700">';
+      h+='<button onclick="saveEditSet()" style="min-height:36px;padding:0 12px;border:none;border-radius:9px;background:var(--green-500);color:var(--white);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">'+_t('שמור')+'</button>';
+      h+='<button onclick="cancelEditSet()" style="min-height:36px;padding:0 10px;border:none;border-radius:9px;background:var(--surface);color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">'+_t('ביטול')+'</button>';
+    } else {
+      /* Tapping the numbers is how you correct them - there is nowhere else on
+         this row for an edit affordance to live, and the numbers are what you
+         are looking at when you notice the mistake. */
+      h+='<button onclick="editSet('+si+')" style="flex:1;text-align:start;background:none;border:none;padding:0;font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer">'+fmtWeight(s.weight)+' &times; '+s.reps+'</button>';
+      if(isNewPR)h+='<div style="font-size:9px;font-weight:700;color:var(--amber-500);background:#fef9e7;border-radius:6px;padding:2px 6px">PR &#9733;</div>';
+      h+='<button onclick="removeSet('+si+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px;padding:2px">&times;</button>';
+    }
     h+='</div>';
   }
 
@@ -10473,6 +10525,8 @@ function renderFitHistory(){
     h+='<div onclick="fitOpenSummary('+i+')" style="background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(200,180,160,.1);cursor:pointer">';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
     h+='<div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(entry.name)+'</div>';
+    /* stopPropagation because the card itself opens the summary. */
+    h+='<button onclick="event.stopPropagation();deleteWorkout('+i+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px;min-height:44px;min-width:34px;padding:0;margin-inline-start:auto">&times;</button>';
     h+='<div style="font-size:10px;color:var(--muted)">'+d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+'</div>';
     h+='</div>';
     h+='<div style="display:flex;gap:14px;font-size:11px;color:var(--muted)">';
