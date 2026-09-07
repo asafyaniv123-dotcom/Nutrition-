@@ -1,0 +1,108 @@
+<!doctype html><meta charset="utf-8"><title>audit</title>
+<style>
+  body{margin:0;background:#151515;color:#ddd;font:12.5px ui-monospace,monospace}
+  #out{padding:10px;white-space:pre-wrap;line-height:1.6}
+  iframe{width:390px;height:844px;border:1px solid #333;background:#fff;margin:6px}
+  .ok{color:#8f8}.bad{color:#f88}.warn{color:#fd7}
+</style>
+<div id="out">idle</div>
+<iframe id="f" src="/dev/index.html"></iframe>
+<script>
+/* Two questions in one sweep, because a background tab throttles every timer
+   and a second pass costs minutes.
+
+   1. What still breaks when the document flips to LTR? After the direction
+      pass most of the inline axis is logical, so anything that hangs off a
+      390px phone in LTR but not in RTL is a physical pin that survived.
+   2. Which controls are too small to hit? The research on this is blunt:
+      fitness apps are used sweaty and one-handed, and 44-48px is the floor.
+      Measure what the app actually renders rather than reading the CSS. */
+const MODULES = ['nutrition','fitness','planning','journal','goals',
+                 'people','hobbies','insights','trip','endofday'];
+const W = 390, MIN_TAP = 44;
+const out = document.getElementById('out');
+const win = () => document.getElementById('f').contentWindow;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const say = t => { out.textContent = t; };
+
+function scan(w) {
+  const over = [], small = [];
+  const seenTap = new Set();
+  const rec = el => {
+    const cs = w.getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) {
+      const id = el.tagName + '.' + String(el.className || '').split(' ')[0].slice(0, 24);
+      const right = Math.round(r.right - W), left = Math.round(r.left);
+      if (right > 2 || left < -2) over.push(id + '|' + (right > 2 ? '+' + right : '') + (left < -2 ? '@' + left : ''));
+
+      const tappable = el.tagName === 'BUTTON' || el.tagName === 'A' ||
+                       el.tagName === 'INPUT' || el.tagName === 'SELECT' ||
+                       el.hasAttribute('onclick') || cs.cursor === 'pointer';
+      if (tappable && !seenTap.has(id)) {
+        const wpx = Math.round(r.width), hpx = Math.round(r.height);
+        if (hpx < MIN_TAP || wpx < MIN_TAP) { small.push(id + '|' + wpx + 'x' + hpx); seenTap.add(id); }
+      }
+    }
+    for (const c of el.children) rec(c);
+  };
+  rec(w.document.body);
+  return { over, small };
+}
+
+async function visit(w, m) {
+  try { w.goHome(); } catch (e) {}
+  await wait(120);
+  if (m !== 'home') { try { w.enterModule(m); } catch (e) { return null; } }
+  await wait(700);
+  return scan(w);
+}
+
+async function run() {
+  const w = win();
+  const screens = ['home', ...MODULES];
+  const rtl = {}, ltr = {}, taps = {};
+
+  w.document.documentElement.setAttribute('dir', 'rtl');
+  for (const m of screens) { say('rtl: ' + m); const r = await visit(w, m); if (r) { rtl[m] = r.over; taps[m] = r.small; } }
+
+  w.document.documentElement.setAttribute('dir', 'ltr');
+  for (const m of screens) { say('ltr: ' + m); const r = await visit(w, m); if (r) ltr[m] = r.over; }
+
+  w.document.documentElement.setAttribute('dir', 'rtl');
+  try { w.goHome(); } catch (e) {}
+
+  let t = 'WHAT BREAKS IN LTR (boxes off a 390px phone in LTR but not RTL)\n';
+  let newTotal = 0;
+  for (const m of screens) {
+    if (!rtl[m] || !ltr[m]) continue;
+    const seen = new Set(rtl[m]);
+    const fresh = ltr[m].filter(x => !seen.has(x));
+    newTotal += fresh.length;
+    if (fresh.length) {
+      t += '  ' + m + '  (' + fresh.length + ')\n';
+      const uniq = [...new Set(fresh)];
+      for (const f of uniq.slice(0, 8)) t += '      ' + f + '\n';
+    }
+  }
+  if (!newTotal) t += '  nothing — the app mirrors cleanly\n';
+
+  t += '\nTAP TARGETS UNDER ' + MIN_TAP + 'px (measured in RTL, one line per distinct class)\n';
+  let tapTotal = 0;
+  for (const m of screens) {
+    const list = [...new Set(taps[m] || [])];
+    if (!list.length) continue;
+    tapTotal += list.length;
+    t += '  ' + m + '  (' + list.length + ')\n';
+    for (const x of list.slice(0, 10)) t += '      ' + x + '\n';
+  }
+  if (!tapTotal) t += '  none\n';
+
+  t += '\nsummary: ' + newTotal + ' LTR-only overflows, ' + tapTotal + ' undersized tap targets';
+  out.textContent = t;
+  window.__audit = t;
+  document.title = 'audit done';
+}
+window.run = run;
+</script>
