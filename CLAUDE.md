@@ -75,15 +75,20 @@ pass should assert it comes through byte-identical.
 **The open work is written down** in `I18N.md` and `UX-AUDIT.md`, including what
 was deliberately left alone and why.
 
-**Two checks are tools rather than prose**, and both should only ever go down:
+**Three checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs    # sentences built from fragments
     node tools/find-translated-data.mjs    # _t() results used as data, not shown
     node tools/find-units-in-strings.mjs   # kg or ml welded into a sentence
 
-The second exits non-zero when it finds anything. Both accept a file path, so
-they can be pointed at an older revision — which is how they were shown to
-actually detect the bugs they claim to.
+The last two exit non-zero when they find anything. All three take a file path,
+so they can be pointed at an older revision — which is how each was shown to
+actually detect the bugs it claims to, rather than being trusted because it
+reported nothing.
+
+That matters more than it sounds. The units check exists because a commit
+asserted the job was done, having searched only for the Latin `kg` while every
+Hebrew `ק"ג` went past — and the app spells that two ways.
 
 ## Layout
 
