@@ -6597,6 +6597,45 @@ var _fitWarm=false;
    reserve. Stored as RPE always, because the field already holds history and
    every reader of it - the colour dots, the average, the summary sentence -
    keeps working with no change at all. */
+/* ── SUPERSETS ──
+   ex.ss is a group id shared by adjacent exercises. Adjacent is the whole
+   trick: "the next one in this group" is then i+1 rather than a search, and a
+   group can never be interleaved with something outside it. */
+function ssGroup(i){
+  var exs=_fitWorkout?_fitWorkout.exercises:[];
+  var g=exs[i]&&exs[i].ss;
+  if(g==null)return [i];
+  var out=[],j;
+  for(j=0;j<exs.length;j++)if(exs[j].ss===g)out.push(j);
+  return out;
+}
+function ssNextIn(i){
+  var g=ssGroup(i),at=g.indexOf(i);
+  return at>=0&&at<g.length-1?g[at+1]:null;
+}
+function ssIsLastIn(i){ return ssNextIn(i)===null; }
+function ssLabel(i){
+  var g=ssGroup(i);
+  if(g.length<2)return '';
+  return 'A'.charCodeAt ? String.fromCharCode(65+g.indexOf(i))+'/'+g.length : '';
+}
+/* Joining always links this exercise to the one after it, because that is the
+   only pairing that keeps a group adjacent. */
+function ssJoin(i){
+  if(!_fitWorkout)return;
+  var exs=_fitWorkout.exercises;
+  if(i<0||i>=exs.length-1)return;
+  if(exs[i].ss!=null&&exs[i].ss===exs[i+1].ss){
+    /* already linked - break the pair, and drop a group of one */
+    var g=exs[i].ss;
+    exs[i+1].ss=null;
+    if(ssGroup(i).length<2)exs[i].ss=null;
+  } else {
+    var id=exs[i].ss!=null?exs[i].ss:(Date.now()%100000);
+    exs[i].ss=id; exs[i+1].ss=id;
+  }
+  renderFitness();
+}
 var EFFORT_KEY='fit_effort';
 function effortScale(){
   try{var v=localStorage.getItem(EFFORT_KEY);if(v==='rir'||v==='rpe')return v;}catch(e){}
@@ -7679,7 +7718,7 @@ function startEmptyWorkout(){
 function workoutAddExercise(){
   exPickInto(function(name){
     if(!_fitWorkout)return;
-    _fitWorkout.exercises.push({name:name,targetSets:3,targetReps:10,plan:[],sets:[],warm:[]});
+    _fitWorkout.exercises.push({name:name,targetSets:3,targetReps:10,plan:[],sets:[],warm:[],ss:null});
     _fitWorkout.currentEx=_fitWorkout.exercises.length-1;
     renderFitness();
   });
@@ -9121,7 +9160,7 @@ function startWorkout(tplIdx){
       var plan=tplRows(ex);
       return{name:ex.name,targetSets:plan.length,
              targetReps:(plan[0]&&plan[0].r)||ex.reps||10,
-             plan:plan,sets:[],warm:[]};
+             plan:plan,sets:[],warm:[],ss:null};
     }),
     currentEx:0
   };
@@ -9880,9 +9919,21 @@ function renderFitWorkout(){
   h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
   h+='<div style="font-size:17px;font-weight:800;color:var(--ink)">'+esc(ex.name)+'</div>';
-  if(curPR>0)h+='<div style="font-size:10px;color:var(--amber-500);font-weight:700">PR: '+curPR+'kg</div>';
+  if(curPR>0)h+='<div style="font-size:10px;color:var(--amber-500);font-weight:700">PR: '+fmtWeight(curPR)+'</div>';
   h+='</div>';
   h+='<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+ex.targetSets+' '+_t('סטים')+' &#215; '+ex.targetReps+' '+_t('חזרות')+'</div>';
+  /* The link is always to the NEXT exercise, so there is nothing to choose
+     and no way to build a group that is not adjacent. */
+  (function(){
+    var i=_fitWorkout.currentEx, exs=_fitWorkout.exercises;
+    var lbl=ssLabel(i);
+    if(lbl)h+='<div style="display:inline-block;font-size:10px;font-weight:800;color:var(--violet-700);background:var(--violet-50);border-radius:7px;padding:2px 8px;margin-bottom:9px">'+_t('סופרסט')+' '+lbl+'</div>';
+    if(i<exs.length-1){
+      var joined=exs[i].ss!=null&&exs[i].ss===exs[i+1].ss;
+      h+='<div><button onclick="ssJoin('+i+')" style="background:none;border:none;padding:0 0 9px;margin:0;font:inherit;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px">'+
+        (joined?_t('פרק את הסופרסט'):_t('סופרסט עם')+' '+esc(exs[i+1].name))+'</button></div>';
+    }
+  })();
   h+=exPrevHTML(ex);
 
   // Warm-up rows come first, because that is the order they happen in, and
@@ -9972,7 +10023,17 @@ function logSet(){
     return;
   }
   ex.sets.push({weight:weight,reps:reps,rpe:rpe});
-  restStart();   // rest begins the moment the set ends, not when you remember
+  /* Inside a superset there is no rest until the last exercise of the pair,
+     and after it the sequence goes back to the top rather than leaving you
+     wherever the last set happened to land. */
+  var _i=_fitWorkout.currentEx, _nx=ssNextIn(_i);
+  if(_nx!==null){
+    _fitWorkout.currentEx=_nx;
+  } else {
+    restStart();   // rest begins the moment the set ends, not when you remember
+    var _g=ssGroup(_i);
+    if(_g.length>1)_fitWorkout.currentEx=_g[0];
+  }
   // Update PR
   if(weight>0){
     var prs=loadPRs();var key=ex.name;
