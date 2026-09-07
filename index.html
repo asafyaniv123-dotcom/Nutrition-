@@ -2084,6 +2084,7 @@ var HE={
   'עברו {n} ימים':{one:'עבר יום',two:'עברו יומיים',other:'עברו {n} ימים'},
   'בעוד {n} ימים':{one:'מחר',two:'בעוד יומיים',other:'בעוד {n} ימים'},
   'ממוצע ליום, על פני {n} ימים':{one:'ממוצע ליום, על פני יום',two:'ממוצע ליום, על פני יומיים',other:'ממוצע ליום, על פני {n} ימים'},
+  '{n} ימים ברצף':{one:'יום אחד ברצף',two:'יומיים ברצף',other:'{n} ימים ברצף'},
   'עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.':{
     one:'עוד יום ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',
     two:'עוד יומיים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',
@@ -2142,6 +2143,10 @@ function langOn(fn){_langRebuilds.push(fn);fn();}
 function langRepaint(){
   /* Rebuild before painting: the paint reads these. */
   for(var _i=0;_i<_langRebuilds.length;_i++){try{_langRebuilds[_i]();}catch(e){}}
+  /* The tab bar and the date under it live outside every screen, so no screen
+     redraws them. Without this the home date stayed in the old language while
+     everything above it turned over. */
+  try{if(typeof homeDatePaint==="function")homeDatePaint();}catch(e){}
   try{
     if(_mainTab==='me'){renderMe();return;}
     if(currentModule==='fitness'){renderFitness();return;}
@@ -19537,11 +19542,11 @@ function streakHTML(){
       (st.best>1?'<span class="stk-b">'+_t('שיא')+' '+st.best+'</span>':'')+
       '</button>';
   }
-  var word=s.n===1?''+_t('יום')+'':''+_t('ימים')+'';
+  var word=_t('{n} ימים ברצף',{n:s.n});
   return '<button class="stk'+(s.today?' on':'')+'" onclick="streakOpen()">'+
     '<span class="stk-f">'+(s.today?'&#128293;':'&#9898;')+'</span>'+
     '<span class="stk-n">'+s.n+'</span>'+
-    '<span class="stk-w">'+word+' '+_t('ברצף')+''+(!s.today?' &middot; '+_t('היום עוד פתוח')+'':'')+'</span>'+
+    '<span class="stk-w">'+word+''+(!s.today?' &middot; '+_t('היום עוד פתוח')+'':'')+'</span>'+
     (st.best>s.n?'<span class="stk-b">'+_t('שיא')+' '+st.best+'</span>':'')+
     '</button>';
 }
@@ -19561,7 +19566,7 @@ function streakOpen(){
   days=cells.join('');
   var h='<div class="stk-ov" id="stk-ov" onclick="if(event.target===this)streakClose()">'+
     '<div class="stk-sheet">'+
-    '<div class="stk-hd"><span>'+(s.n?s.n+' '+(s.n===1?''+_t('יום')+'':''+_t('ימים')+'')+' '+_t('ברצף')+''
+    '<div class="stk-hd"><span>'+(s.n?_t('{n} ימים ברצף',{n:s.n})
                                      :stats.total+(stats.total===1?' '+_t('יום שרשמת בו')+'':' '+_t('ימים שרשמת בהם')+''))+'</span>'+
     '<button class="stk-x" onclick="streakClose()">&times;</button></div>'+
     '<div class="stk-row">'+days+'</div>'+
@@ -19695,6 +19700,16 @@ function openJournalTab(){
 /* Three things share one bar now, so which is lit is worked out in one place
    from the actual state rather than set by hand at each call site - two of
    them were already being assigned in two different functions. */
+/* The date under the tab bar lives outside every screen, so no screen
+   redraws it. Named and called from langRepaint, it turns over with the rest. */
+function homeDatePaint(){
+  var el=document.getElementById("home-date");
+  if(!el)return;
+  var d=new Date();
+  var dn=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
+  var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
+  el.textContent=dn[d.getDay()]+', '+_t('{d} ב{m}',{d:d.getDate(),m:mn[d.getMonth()]});
+}
 function tbSync(){
   var b=document.getElementById('tb-better'),
       m=document.getElementById('tb-me'),
@@ -19771,10 +19786,7 @@ function tbSync(){
 
   paintSky();
   // Set date
-  var d=new Date();
-  var dn=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
-  var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
-  document.getElementById('home-date').textContent=dn[d.getDay()]+', '+_t('{d} ב{m}',{d:d.getDate(),m:mn[d.getMonth()]});
+  homeDatePaint();
   var _hc=document.getElementById('home-cal');
   if(_hc){_hc.innerHTML=buildHomeCalHTML();hydratePhotos(_hc);}
   migratePhotos();
