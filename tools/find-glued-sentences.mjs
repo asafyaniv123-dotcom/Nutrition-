@@ -20,6 +20,37 @@ const app = s.slice(0, gs) + s.slice(ge);
    another _t call - all inside one expression (no semicolons or line breaks). */
 const re = /_t\((['"])((?:(?!\1).)*)\1\)((?:[^;\n]{0,70}?))_t\((['"])((?:(?!\4).)*)\4\)/g;
 
+/* ── a fragment that needs no partner to be one ──
+   The pair rule above needs two _t() calls with something between them, so it
+   cannot see a single fragment glued to a number: _t('(כעת') + ' ' + n + ')'.
+   What gives those away is the punctuation itself. A key that opens a bracket
+   and never closes it, or carries one lone quote, is half of something - you
+   cannot hand it to a translator and expect a sentence back.
+
+   Balanced punctuation is left alone: "(כשל)" is a complete parenthetical and
+   "יעד:" is an ordinary label. Only the unbalanced ones are fragments.
+
+   And a digit welded to a Hebrew letter - 60שני, ~1קג - is the same bug at
+   word level, where the number was meant to be a placeholder. */
+const LONE = [];
+for (const m of app.matchAll(/_t\((['"])((?:(?!\1).)*)\1/g)) {
+  const key = m[2];
+  const opens = (key.match(/\(/g) || []).length, closes = (key.match(/\)/g) || []).length;
+  /* A quote between two Hebrew letters is a GERSHAYIM - the abbreviation mark
+     inside קק"ל, ק"ג, מ"ל - not an opening quotation mark. Counting it as one
+     made the first version of this rule fire 44 times, nearly all of them on
+     the app's own units. */
+  const quotes = (key.replace(/(?<=[֐-׿])["׳״](?=[֐-׿])/g, '').match(/["]/g) || []).length;
+  /* Likewise the maqaf: ל־100 is Hebrew punctuation joining a word to a number,
+     not a placeholder that got welded shut. */
+  const welded = key.replace(/[־–-]/g, ' ');
+  let why = '';
+  if (opens !== closes) why = 'an unclosed bracket';
+  else if (quotes % 2) why = 'one lone quote';
+  else if (/\d[֐-׿]|[֐-׿]\d/.test(welded)) why = 'a number welded to a word';
+  if (why) LONE.push({ line: app.slice(0, m.index).split(LF).length, key, why });
+}
+
 const hits = [];
 let m;
 while ((m = re.exec(app)) !== null) {
@@ -70,6 +101,12 @@ while ((m = re.exec(app)) !== null) {
 }
 
 /* group by line so a three-part sentence shows as one finding */
+if (LONE.length) {
+  console.log('');
+  console.log('fragments that are one on their own: ' + LONE.length);
+  for (const f of LONE) console.log('    line ' + String(f.line).padStart(6) + '  ' + f.why + '  ' + JSON.stringify(f.key));
+}
+
 const byLine = {};
 for (const h of hits) (byLine[h.line] = byLine[h.line] || []).push(h);
 
