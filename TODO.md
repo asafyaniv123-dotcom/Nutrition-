@@ -84,3 +84,83 @@ at 374, zero overlapping pairs.
 An item here is a description of the problem, not a design. Where the fix is
 obvious it says so; where it is not, the first job is to look at what is
 actually happening before deciding.
+
+## The closet (2026-09-07)
+
+Four things, and they are not the same size at all. Two are close, one is a
+design pass, one is genuinely hard.
+
+### 1. Seasons — the small one
+
+> לחלק את הארון לפי עונות (חורף, קיץ, סתיו, אביב)
+
+A field per garment and a filter over it. Nothing in the app stores a season
+today — the only mention of the word is a comment. Two decisions to make when
+building it rather than now:
+
+- **A garment can belong to more than one season.** A plain tee is summer and
+  a layer in winter, so this is a set and not a single choice.
+- **A season is not a date.** The app should not decide it is winter and hide
+  half the wardrobe; the season filters what you are *looking at*, and the
+  current one is a sensible default rather than a rule.
+
+### 2. Share the look — mostly plumbing that exists
+
+> אפשרות לשתף את הלוק הנבחר ברשתות או בהודעות או בווצאפ לחבר
+
+`navigator.canShare({files:[file]})` is already used to share a backup, so the
+hard half — handing a real file to the OS share sheet, which is what puts
+WhatsApp and Messages in the list — is proven in this app on this phone.
+
+What is missing is the picture. There is nothing to share until the look can be
+drawn to a canvas as one image, which means **this depends on item 3** and
+should be built immediately after it, reusing the same layout code.
+
+### 3. The look summary — a design pass, buildable now
+
+> סיכום של הלוק כמו בתמונה בפינטרס
+
+Fully analysed in `Taste library/screenshots/selected-look-flat-lay.md`. Short
+version: a saved look renders today as `.cl-fit-row`, a horizontal row of
+equal-sized thumbnails in category order. That is a list, not a look.
+
+**Build the arrangement first, without cut-outs.** Size and place each photo by
+category — top wide and high, trousers tall and centred, shoes small and low,
+accessories in their own column — so the composition carries the body even while
+every photo is still a rectangle. If that reads as an outfit, item 4 was never
+the point. If it does not, we will know exactly what is missing.
+
+### 4. Cutting the garment out — the hard one
+
+> אפשרות להעלות צילומים ולחתוך בצורה מדוייקת באופן חופשי את הבגד, AI שמזהה את
+> הבגד ומוריד את הרקע שלו. במידה והבגד נחתך שתהיה אפשרות לעשות מחיקה באופן ידני
+> ותיקונים.
+
+Three parts, and the middle one is the problem.
+
+**Free-hand cropping** is buildable today. The app already runs a crop flow
+(`_cropQ`, `cropNext`, `cropThumb`) and already paints to canvas in several
+places; a lasso is a path on a canvas and a clip.
+
+**Manual erase and repair** is the same machinery — a brush over the alpha
+channel — and is genuinely needed whatever the automatic step turns out to be,
+because no cut-out is right every time. Worth building **before** the automatic
+step rather than after: with the eraser in place, an imperfect automatic result
+becomes a starting point instead of a failure.
+
+**Automatic background removal is not currently possible in this app**, and the
+reason is worth writing down rather than discovering later:
+
+- There is no browser API for it. Safari and Chrome do not expose one.
+- On-device segmentation needs a real model. The usable ones are 5–25 MB of
+  WASM plus weights, downloaded to a phone, for an app that is one HTML file.
+- **The app's only AI call does not work.** `fetch('https://api.anthropic.com/v1/messages')`
+  in the workout-plan builder sends `Content-Type` and nothing else — no
+  `x-api-key`, no `anthropic-version`, and there are zero occurrences of any of
+  those headers anywhere in the file. It cannot succeed, and a browser cannot
+  call that endpoint directly anyway. Its `.catch` shows *שגיאה בבניית התוכנית*,
+  which is what that feature has always done.
+
+So the honest order is: **crop → erase → then decide about automatic.** By the
+time the first two are built we will also know whether the arrangement in item 3
+needs cut-outs at all, which is the question that decides how much this is worth.
