@@ -3,61 +3,37 @@
 Numbers taken from the running app at 390px, not read off the CSS. Re-run with
 the harness described at the bottom.
 
-## Tap targets
+## Tap targets — fixed where possible
 
-The research on this is blunt: fitness apps are used **sweaty, one-handed and
-in poor light**, roughly half of people drive a phone with one thumb, and the
-floor for a control is 44–48px. Sweaty fingers after a set need bigger targets
-than a banking app ever has to worry about.
+The floor for a control is about 44px. The smallest thing in this app was a
+**15 × 15 dot** in the planner.
 
-**105 rendered elements come in under 44px.** Most are false positives — a
-`<span>` inside a button inherits `cursor:pointer`, and so do SVG children —
-so what matters is the real controls, and these recur across screens:
+Two tools, and picking the wrong one is how this goes wrong. An invisible
+**pad** changes only the hit test — nothing moves, nothing repaints — but it
+*overlaps* whatever is near it, so it needs measured clearance. Growing the
+**element** reflows its neighbours instead of covering them, so it works where
+there is no clearance at all, at the cost of a visible change.
 
-| control | size | where | note |
+Per-axis clearance was measured for every control before anything was sized.
+
+| control | was | now | how |
 |---|---|---|---|
-| `BUTTON.wk-dot` | **15 × 15** | planning, week | the worst one in the app |
-| `BUTTON.fab-i` | **16 × 16** | nutrition | |
-| `BUTTON.wk-swatch` | 26 × 26 | planning | colour picker |
-| `BUTTON.stk` | 174 × **25** | home | streak line |
-| `BUTTON.` (home chip) | 50 × **23** | **every screen** | most-used control in the app |
-| `BUTTON.tab` | 61 × **27** | nutrition | |
-| `BUTTON.jrnl-nav` | 32 × 32 | journal | |
-| `BUTTON.nav-arrow` | 34 × 34 | 5 screens | day navigation, used constantly |
-| `BUTTON.wreset` | 33 × 35 | nutrition | water |
-| `BUTTON.wadd` | 87 × **35** | nutrition | water |
-| `BUTTON.fg-b` | 156 × **36** | fitness | |
-| `INPUT.mtin` | 223 × **38** | several | typed into mid-workout |
-| `BUTTON.tb` | 137 × **41** | tab bar | marginal |
-| `BUTTON.trip-toggle-track` | 56 × **30** | home | |
+| `.wk-dot` | 15 × 15 | **45 × 45 hit** | pad; 37px of room, nothing moved |
+| `.jrnl-nav` | 32 × 32 | **44 × 44 hit** | pad; 67px of room, nothing moved |
+| `.trip-toggle-track` | 56 × 30 | **70 × 44 hit** | pad; 96px of room, nothing moved |
+| `.nav-arrow` | 34 × 34 | **42 × 42** | grown; on five screens |
+| `.wadd` / `.wreset` | 35 tall | **42** | grown; water, tapped daily |
+| `.tb` | 41 tall | **46** | grown; the tab bar |
 
-Height is the failing dimension almost everywhere, which is the cheap kind of
-problem: padding, not layout.
+**Left alone on purpose:** `.tab` (27px) and `.stk` (25px) have neighbours
+touching on both axes, and both are wide enough that a miss lands on nothing
+harmful. Growing them would reflow a header for very little.
 
-**Where to start:** `nav-arrow` at 34×34 and the 23px-tall home chip, because
-they are on nearly every screen; then `wk-dot` at 15×15, which is the smallest
-thing in the app and sits in the planner where fingers drag.
+Verified afterwards: the three padded controls cover no other control. The
+grown ones intersect only `.fab-scrim`, a full-screen overlay that covers
+everything by design.
 
-## Direction
+## Still measured, still open
 
-**0 boxes go off-screen in LTR that do not also go off-screen in RTL** — the
-app mirrors cleanly after the direction pass.
-
-Worth recording honestly: an earlier run of the same probe reported 42. The
-difference is animated elements — the drifting clouds behind the home screen
-are at different offsets when each sweep samples them, so they registered as
-"new in LTR". The clean run dedupes and finds nothing. The 42 was noise.
-
-The remaining off-screen boxes exist in **both** directions and are intentional:
-drifting clouds, and `areas-drawer`, an off-canvas panel parked to the side
-until it is opened.
-
-## How to re-run
-
-`dev/_audit.html` builds it: one iframe at 390px, each module visited in RTL
-then LTR, measuring `getBoundingClientRect` on every element.
-
-Two things to know. **Keep the tab in the foreground** — Chrome throttles
-timers in a hidden tab to about one per minute after five minutes, which turns
-a 30-second sweep into ten. And `requestAnimationFrame` never fires at all in a
-hidden tab, so the harness avoids it.
+Height remains the failing dimension on `.tab` and `.stk`. Both need a layout
+decision rather than a padding one.
