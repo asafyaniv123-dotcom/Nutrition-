@@ -76,16 +76,25 @@ pass should assert it comes through byte-identical.
 is not built yet; `I18N.md` and `UX-AUDIT.md` hold the internationalisation and
 UX work, including what was deliberately left alone and why.
 
-**Three checks are tools rather than prose**, and all should only ever go down:
+**Four checks are tools rather than prose**, and all should only ever go down:
 
-    node tools/find-glued-sentences.mjs    # sentences built from fragments
-    node tools/find-translated-data.mjs    # _t() results used as data, not shown
-    node tools/find-units-in-strings.mjs   # kg or ml welded into a sentence
+    node tools/find-glued-sentences.mjs        # sentences built from fragments
+    node tools/find-translated-data.mjs        # _t() results used as data, not shown
+    node tools/find-units-in-strings.mjs       # kg or ml welded into a sentence
+    node tools/build-lang-template.mjs --check # the template still matches the app
 
-The last two exit non-zero when they find anything. All three take a file path,
+They exit non-zero when they find anything. The first three take a file path,
 so they can be pointed at an older revision — which is how each was shown to
 actually detect the bugs it claims to, rather than being trusted because it
 reported nothing.
+
+**A tool that has never caught anything has not been tested.** Twice now a
+detector was written, reported zero, and was believed — and both times it was
+missing the very bugs it had been written for. `find-translated-data.mjs`
+initially caught **none** of the three collections that motivated its second
+pass, because two are declared across several lines and the third is reached
+through a member rather than an index. So: after writing a check, run it against
+a revision that has the bug, and record both numbers.
 
 That matters more than it sounds. The units check exists because a commit
 asserted the job was done, having searched only for the Latin `kg` while every
