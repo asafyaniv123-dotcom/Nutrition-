@@ -2022,7 +2022,24 @@ var interviewStep=-1,interviewAnswers={},calMonth=new Date();
    already does, so adding a language does not grow the file for anyone who is
    not reading it. */
 var LANG_KEY='app_lang';
-var _lang=null;
+/* Hebrew's own dictionary, and the only entries in it are counted sentences.
+   Everything else falls back to the key, which IS the Hebrew - that is the
+   whole point of the scheme. But a counted sentence has more than one Hebrew
+   form, and no key can hold two, so those live here.
+
+   CLDR gives Hebrew three categories: one, two, other. The "two" form is the
+   reason this is better than the ternary it replaced - that could only say
+   "2 ימים", never "יומיים". */
+var HE={
+  'לפני {n} ימים':{one:'אתמול',two:'לפני יומיים',other:'לפני {n} ימים'},
+  'לפני {n} שבועות':{one:'לפני שבוע',two:'לפני שבועיים',other:'לפני {n} שבועות'},
+  'לפני {n} חודשים':{one:'לפני חודש',two:'לפני חודשיים',other:'לפני {n} חודשים'},
+  'עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.':{
+    one:'עוד יום ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',
+    two:'עוד יומיים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',
+    other:'עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.'}
+};
+var _lang=HE;
 function _t(str,vars){
   var d=_lang, v=d&&d[str];
   /* A dictionary entry may be an object of plural categories rather than a
@@ -2082,7 +2099,7 @@ function langSet(code){
   langLoad(code,function(){langRepaint();});
 }
 function langLoad(code,cb){
-  if(!code||code==='he'){_lang=null;cb&&cb();return;}
+  if(!code||code==='he'){_lang=HE;cb&&cb();return;}
   fetch(appBase()+'data/lang/'+code+'.json')
     .then(function(r){return r.json();})
     .then(function(j){_lang=j;cb&&cb();},function(){_lang=null;cb&&cb();});
@@ -2716,7 +2733,7 @@ function vlogFallback(why){
   var z2=document.getElementById('vl-zoom');if(z2)z2.classList.remove('live');
   var fc=document.getElementById('vl-canvas');if(fc)fc.style.display='none';
   var fv=document.getElementById('vl-video');if(fv)fv.style.display='block';
-  vlogMsg((why?why+'<br>':'')+''+_t('אפשר להקליט במצלמה של הטלפון, עד')+' '+VLOG_MAX+' '+_t('שניות.')+'');
+  vlogMsg((why?why+'<br>':'')+''+_t('אפשר להקליט במצלמה של הטלפון, עד {n} שניות.',{n:VLOG_MAX}));
   vlogActions('<label class="vl-btn">'+_t('הקלט במצלמת הטלפון')+''+
     '<input type="file" accept="video/*" capture="user" style="display:none" onchange="vlogPicked(this)"></label>'+
     '<button class="vl-flat" onclick="vlogClose()">'+_t('בטל')+'</button>');
@@ -4909,7 +4926,7 @@ function estCardHTML(){
      '<input class="est-g" type="number" inputmode="decimal" value="'+_est.g+'" oninput="estSetGrams(this.value)"><span>גרם</span></div>';
   h+='<div class="est-nums" id="est-nums">'+estNumsHTML()+'</div>';
   if(_est.high>_est.low&&_est.high>0)
-    h+='<div class="est-range">'+_t('מנה כזאת נעה בין')+' '+_est.low+' '+_t('ל־')+''+_est.high+' '+_t('קק"ל. תקן את הכמות אם היא לא מדויקת.')+'</div>';
+    h+='<div class="est-range">'+_t('מנה כזאת נעה בין {a} ל־{b} קק"ל. תקן את הכמות אם היא לא מדויקת.',{a:_est.low,b:_est.high})+'</div>';
   h+='<button class="est-add" onclick="estAdd()">'+_t('הוסף ליום כהערכה')+'</button>';
   h+='</div>';
   return h;
@@ -7284,7 +7301,7 @@ function renderFitStats(){
       h+='<div style="width:22px;text-align:end;font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums">'+ct+'</div>';
       h+='</div>';
     }
-    h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">'+_t('מי שמתאמן כדי לגדול נמצא בדרך כלל בין')+' '+SETS_BAND.lo+' '+_t('ל־')+''+SETS_BAND.hi+' '+_t('סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.')+'</div>';
+    h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">'+_t('מי שמתאמן כדי לגדול נמצא בדרך כלל בין {lo} ל־{hi} סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.',{lo:SETS_BAND.lo,hi:SETS_BAND.hi})+'</div>';
     if(now.byMuscle['אחר'])
       h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:6px">&ldquo;'+_t('אחר')+'&rdquo; '+_t('הם תרגילים שהקלדת בעצמך — לספרייה אין להם שריר. בחירה מהספרייה תשבץ אותם.')+'</div>';
     h+='</div>';
@@ -7466,7 +7483,7 @@ function ingestStepsFromLink(){
   saveSteps(d,n,'shortcut');
   var s=loadStepsSrc();s.kind='shortcut';s.last=new Date().toISOString();saveStepsSrc(s);
   try{history.replaceState(null,'',location.pathname+location.search);}catch(e){location.hash='';}
-  showToast(''+_t('✓ נקלטו')+' '+nfmt(n)+' '+_t('צעדים')+'');
+  showToast(''+_t('✓ נקלטו {n} צעדים',{n:nfmt(n)}));
 }
 
 /* ── STARTING SOMETHING ──
@@ -7693,7 +7710,7 @@ function weightCardHTML(){
     }else{
       var left=TREND_MIN_DAYS-ser.length;
       h+='<div style="font-size:11px;color:var(--muted-soft);line-height:1.6;margin-top:8px">'+
-         ''+_t('עוד')+' '+left+' '+(left===1?''+_t('יום')+'':''+_t('ימים')+'')+' '+_t('ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.')+'</div>';
+         ''+_t('עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',{n:left})+'</div>';
     }
   }
 
@@ -9125,7 +9142,7 @@ function logProgEntry(progIdx,exIdx){
   saveProgLog(prog.id,ex.name,log);
   // Check PR
   var prevPR=log.slice(0,-1).reduce(function(m,e){return Math.max(m,e.weight);},0);
-  if(weight>prevPR&&prevPR>0)showToast('&#9733; '+_t('PR חדש!')+' '+weight+''+_t('kg ב')+''+ex.name);
+  if(weight>prevPR&&prevPR>0)showToast('&#9733; '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:ex.name}));
   else showToast(''+_t('✓ נרשם!')+'');
   renderViewProgram();
 }
@@ -10162,7 +10179,7 @@ function logSet(){
   // Update PR
   if(weight>0){
     var prs=loadPRs();var key=ex.name;
-    if(weight>(prs[key]||0)){prs[key]=weight;savePRs(prs);showToast('&#9733; '+_t('PR חדש!')+' '+weight+''+_t('kg ב')+''+key);}
+    if(weight>(prs[key]||0)){prs[key]=weight;savePRs(prs);showToast('&#9733; '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:key}));}
   }
   renderFitness();
 }
@@ -10399,7 +10416,7 @@ function renderFitHistory(){
     h+='<div style="display:flex;gap:14px;font-size:11px;color:var(--muted)">';
     h+='<span>'+entry.exercises.length+' '+_t('תרגילים')+'</span>';
     h+='<span>'+entry.duration+' '+_t('דק')+'</span>';
-    h+='<span style="color:var(--terra-500);font-weight:700">'+nfmt(vol)+' '+_t('kg נפח')+'</span>';
+    h+='<span style="color:var(--terra-500);font-weight:700">'+nfmt(vol)+' '+_t('{u} נפח',{u:weightUnit()})+'</span>';
     h+='</div>';
     h+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">';
     for(var ei=0;ei<entry.exercises.length;ei++){
