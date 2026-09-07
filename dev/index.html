@@ -2730,7 +2730,7 @@ function vlogPicked(inp){
   probe.onloadedmetadata=function(){
     var sec=probe.duration;URL.revokeObjectURL(url);
     if(!(sec>0)||sec>VLOG_MAX+0.6){
-      vlogMsg(''+_t('הסרטון באורך')+' '+(sec>0?Math.round(sec):'?')+' '+_t('שניות. הגבול הוא')+' '+VLOG_MAX+'.');
+      vlogMsg(_t('הסרטון באורך {n} שניות. הגבול הוא {max}.',{n:(sec>0?Math.round(sec):'?'),max:VLOG_MAX}));
       return;
     }
     _vlBlob=f;_vlSec=sec;vlogPreview();
@@ -3318,7 +3318,7 @@ function foodHas(name,tok){
    and never stored as a name, it exists to be compared. */
 function foodKey(s){
   return String(s).replace(/['’׳"“”״,.\-]/g,'')
-                  .replace(/יי/g,''+_t('י')+'').replace(/וו/g,''+_t('ו')+'')
+                  .replace(/יי/g,'י').replace(/וו/g,'ו')
                   .replace(/\s+/g,' ').trim();
 }
 /* Typing more words should narrow, not find nothing. Every word has to
@@ -5130,7 +5130,7 @@ function anAdd(){
   day.meals.push({name:_an.dish+' ('+t.g+'g)',kcal:t.kcal,p:t.p,c:t.c,f:t.f,
                   est:1,id:Date.now(),time:fmtTime()});
   saveDay(curDate,day);
-  showToast(''+_t('✓ נוסף —')+' ' + _an.measured + ''+_t('% מהמאגר')+'');
+  showToast(_t('✓ נוסף — {n}% מהמאגר',{n:_an.measured}));
   _an=null;_fdbQ='';render();
 }
 function anTotHTML(){
@@ -6906,10 +6906,10 @@ function stepsAgo(iso){
   if(!iso)return'';
   var m=Math.round((Date.now()-new Date(iso).getTime())/60000);
   if(m<1)return''+_t('עכשיו')+'';
-  if(m<60)return''+_t('לפני')+' '+m+' '+_t('דק׳')+'';
+  if(m<60)return_t('לפני {n} דק׳',{n:m});
   var hr=Math.round(m/60);
-  if(hr<24)return''+_t('לפני')+' '+hr+' '+_t('שע׳')+'';
-  return''+_t('לפני')+' '+Math.round(hr/24)+' '+_t('ימים')+'';
+  if(hr<24)return_t('לפני {n} שע׳',{n:hr});
+  return_t('לפני {n} ימים',{n:Math.round(hr/24)});
 }
 function stepsTrendHTML(){
   var pts=[],i,d,r;
@@ -7077,7 +7077,7 @@ function setExerciseWeight(name,kg){
 
 function exWeightEdit(name){
   var cur=currentWeightFor(name);
-  var v=prompt(''+_t('משקל נוכחי ל')+''+name+' '+_t('(ק״ג)')+'',cur?String(cur.w):'');
+  var v=prompt(_t('משקל נוכחי ל{name} ({unit})',{name:name,unit:weightUnit()}),cur?String(cur.w):'');
   if(v===null)return;
   if(v.trim()===''){var o=loadExWeights();delete o[name];saveExWeights(o);renderFitness();return;}
   if(setExerciseWeight(name,v))renderFitness();
@@ -9682,7 +9682,7 @@ function exDetailHTML(e){
     if(st.isBest&&st.n>1)
       h+='<div class="xd-say best">'+_t('האימון האחרון הוא הטוב ביותר שלך בתרגיל הזה.')+'</div>';
     else if(st.prev&&st.delta>0)
-      h+='<div class="xd-say up">'+_t('עלית מ־')+''+setLabel(st.prev.top)+' '+_t('ל־')+''+setLabel(st.last.top)+' '+_t('מאז הפעם הקודמת.')+'</div>';
+      h+='<div class="xd-say up">'+_t('עלית מ־{a} ל־{b} מאז הפעם הקודמת.',{a:setLabel(st.prev.top),b:setLabel(st.last.top)})+'</div>';
     else if(st.prev&&st.delta<0)
       h+='<div class="xd-say down">'+_t('בפעם הקודמת עשית')+' '+setLabel(st.prev.top)+''+_t('. יום פחות טוב זה חלק מזה.')+'</div>';
     if(st.n>1)h+=exBarsHTML(st);
@@ -9797,9 +9797,9 @@ function exAltRank(want,cand,freeEquip){
   for(i=0;i<want.q.length;i++)if(cand.q.indexOf(want.q[i])>=0)sharedQ++;
   s+=freeEquip?(-sharedQ*22):(sharedQ*14);
   // a machine is the answer when the free weights are busy, so it is not penalised
-  if(cand.q.indexOf(''+_t('מכונה')+'')>=0||cand.q.indexOf(''+_t('פולי')+'')>=0)s+=8;
+  if(cand.q.indexOf('מכונה')>=0||cand.q.indexOf('פולי')>=0)s+=8;
   // bodyweight always works, and always beats waiting
-  if(cand.q.indexOf(''+_t('משקל גוף')+'')>=0)s+=6;
+  if(cand.q.indexOf('משקל גוף')>=0)s+=6;
   return s;
 }
 function exAlternatives(name,n,freeEquip){
@@ -9819,9 +9819,9 @@ function exAltWhy(want,cand){
   for(i=0;i<want.q.length;i++)if(cand.q.indexOf(want.q[i])>=0)shared++;
   if(!shared)return ''+_t('ציוד אחר לגמרי —')+' '+cand.q.join(', ');
   if(shared===want.q.length)return ''+_t('אותו ציוד, תנועה קרובה')+'';
-  if(cand.q.indexOf(''+_t('מכונה')+'')>=0)return ''+_t('מכונה ייעודית — כמעט תמיד פנויה')+'';
-  if(cand.q.indexOf(''+_t('פולי')+'')>=0)return ''+_t('בפולי, מתח קבוע לאורך התנועה')+'';
-  if(cand.q.indexOf(''+_t('משקל גוף')+'')>=0)return ''+_t('בלי ציוד בכלל')+'';
+  if(cand.q.indexOf('מכונה')>=0)return ''+_t('מכונה ייעודית — כמעט תמיד פנויה')+'';
+  if(cand.q.indexOf('פולי')>=0)return ''+_t('בפולי, מתח קבוע לאורך התנועה')+'';
+  if(cand.q.indexOf('משקל גוף')>=0)return ''+_t('בלי ציוד בכלל')+'';
   return ''+_t('אותו שריר, ציוד אחר')+'';
 }
 
@@ -12720,7 +12720,7 @@ function planDayHTML(){
   var feels=(dpl.feeling||'');
   out+='<div style="margin-top:24px;background:linear-gradient(150deg,var(--violet-50),#eaf1f8);border-radius:22px;padding:18px 16px">';
 
-  out+='<div class="dp-q">'+_t('מה חשוב לך ש')+''+(when==='מחר'?''+_t('מחר')+'':when.replace(''+_t('ביום')+' ',''+_t('ביום')+' '))+' '+_t('יקרה?')+'</div>';
+  out+='<div class="dp-q">'+_t('מה חשוב לך ש')+''+(when==='מחר'?''+_t('מחר')+'':when.replace('ביום ',''+_t('ביום')+' '))+' '+_t('יקרה?')+'</div>';
   out+='<textarea id="dp-intent" class="dp-ta" onblur="deepSaveText()" placeholder="לא רשימה — מה על הלב שלך?">'+esc(dpl.intent||'')+'</textarea>';
 
   out+='<div class="dp-q" style="margin-top:20px">'+_t('איך אני רוצה להרגיש')+' '+when+'?</div>';
@@ -18491,7 +18491,7 @@ function meInsights(rows){
     var a=meAvg(withW),b=meAvg(noW),diff=a-b;
     cards+=meInsight(
       diff>=0?''+_t('ימים שהתאמנת בהם טובים יותר')+'':''+_t('ימים שהתאמנת בהם לא יצאו טובים יותר')+'',
-      ''+_t('ציון ממוצע')+' '+a.toFixed(1)+' '+_t('לעומת')+' '+b.toFixed(1)+' '+_t('בלי אימון')+'',
+      _t('ציון ממוצע {a} לעומת {b} בלי אימון',{a:a.toFixed(1),b:b.toFixed(1)}),
       withW.length+' '+_t('ימים עם אימון,')+' '+noW.length+' '+_t('בלי')+'',
       diff>=0?ME_C[2]:ME_C[1]);
   }
