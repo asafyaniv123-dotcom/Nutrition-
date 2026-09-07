@@ -50,6 +50,30 @@ const app = s.slice(0, gs) + ' '.repeat(ge - gs) + s.slice(ge);
 /* A _t call, with whatever immediately precedes and follows it. */
 const CALL = /_t\((['"])((?:(?!\1).)*)\1(?:\s*,[^)]*)?\)/g;
 
+/* "return [" ends in a word character and so looks exactly like "foo[" - but a
+   keyword is not an object, and the bracket after one opens a literal. Missing
+   this is how the discriminator below flagged the weekday initials it had just
+   been taught to leave alone. */
+const KEYWORD_BRACKET = /\b(?:return|typeof|new|case|of|in|delete|void|await|yield)\s*\[\s*(?:''\+)?$/;
+
+/* For the closing-bracket shape the opener has to be found first: walk back to
+   the '[' that matches, then ask the same one-character question of it. */
+function openerIsIndex(at) {
+  let depth = 0;
+  for (let i = at; i >= 0 && at - i < 4000; i--) {
+    const c = app[i];
+    if (c === ']') depth++;
+    else if (c === '[') {
+      if (depth) { depth--; continue; }
+      const before = app.slice(Math.max(0, i - 12), i);
+      if (KEYWORD_BRACKET.test(before + '[')) return false;   // the same keyword trap
+      return /[\w$)\]]$/.test(before.replace(/\s+$/, ''));
+    }
+    else if (c === LF && !depth) return false;      // a literal, spread over lines
+  }
+  return false;
+}
+
 const SHAPES = [
   { why: 'search needle',   before: /\.(indexOf|lastIndexOf|includes|search|startsWith|endsWith)\(\s*(''\+)?$/ },
   { why: 'split separator', before: /\.split\(\s*(''\+)?$/ },
@@ -61,8 +85,14 @@ const SHAPES = [
   { why: 'replacement value', before: /\/[gimsuy]*\s*,\s*(''\+)?$/ },
   { why: 'compared',        before: /[=!]==?\s*(''\+)?$/ },
   { why: 'compared',        after:  /^(\+'')?\s*[=!]==?/ },
-  { why: 'lookup index',    before: /\[\s*(''\+)?$/ },
-  { why: 'lookup index',    after:  /^(\+'')?\s*\]/ },
+  /* A bracket against a quote is either obj['שם'] or the first element of
+     ['שם', …], and telling them apart is the whole of this file's history: not
+     telling them apart is what left Sunday and Saturday untranslated while
+     Monday through Friday were fine. What separates them is one character. A
+     lookup's '[' follows the thing being indexed - a name, a ')' or a ']'. An
+     array literal's '[' follows '=', '(', ',', '[', ':' or 'return'. */
+  { why: 'lookup index',    before: /[\w$)\]]\s*\[\s*(''\+)?$/, unless: KEYWORD_BRACKET },
+  { why: 'lookup index',    after:  /^(\+'')?\s*\]/, andBefore: openerIsIndex },
   { why: 'storage key',     before: /(getItem|setItem|removeItem)\(\s*(''\+)?$/ },
   { why: 'element id',      before: /(getElementById|querySelector|querySelectorAll)\(\s*(''\+)?$/ },
 ];
@@ -73,7 +103,9 @@ while ((m = CALL.exec(app)) !== null) {
   const before = app.slice(Math.max(0, m.index - 40), m.index);
   const after = app.slice(m.index + m[0].length, m.index + m[0].length + 24);
   for (const sh of SHAPES) {
-    if ((sh.before && sh.before.test(before)) || (sh.after && sh.after.test(after))) {
+    if (sh.unless && sh.unless.test(before)) continue;
+    const fires = (sh.before && sh.before.test(before)) || (sh.after && sh.after.test(after));
+    if (fires && (!sh.andBefore || sh.andBefore(m.index))) {
       hits.push({
         line: app.slice(0, m.index).split(LF).length,
         why: sh.why,
