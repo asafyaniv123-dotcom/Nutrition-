@@ -4736,7 +4736,7 @@ var ASK_TOOLS={
 // what it looked up, in words, so an answer can be checked rather than believed
 function askSay(name,inp){
   if(name==='get_day')return ''+_t('קרא את היום')+' '+askDateArg(inp&&inp.date);
-  if(name==='get_range')return ''+_t('קרא')+' '+askDateArg(inp&&inp.from)+' '+_t('עד')+' '+askDateArg(inp&&inp.to);
+  if(name==='get_range')return ''+_t('קרא {from} עד {to}',{from:askDateArg(inp&&inp.from),to:askDateArg(inp&&inp.to)});
   if(name==='get_targets')return ''+_t('קרא את היעדים שלך')+'';
   if(name==='search_food')return ''+_t('חיפש במאגר:')+' '+String((inp&&inp.query)||'');
   return name;
@@ -5501,7 +5501,7 @@ function renderToday(){
       if(pm){
         var per100=mealBasis(pm)==='100g';
         libHTML+='<div class="confirm-card" id="lib-confirm"><div class="confirm-name">'+esc(pm.name)+'</div>'+
-          '<div class="confirm-mac">'+pm.kcal+' '+_t('קק"ל')+''+(per100?' '+_t('ל-100 גרם')+'':'')+' &middot; '+pm.p+'p &middot; '+pm.c+'c &middot; '+pm.f+'f</div>';
+          '<div class="confirm-mac">'+pm.kcal+' '+(per100?_t('קק"ל ל-100 גרם'):_t('קק"ל'))+' &middot; '+pm.p+'p &middot; '+pm.c+'c &middot; '+pm.f+'f</div>';
         if(per100)libHTML+='<div class="fdb-grow"><span class="fdb-glbl">'+_t('כמה גרם?')+'</span>'+
           '<input class="fdb-gin" type="number" inputmode="decimal" value="'+libGrams+'" oninput="libSetGrams(this.value)">'+
           '<span class="fdb-gu">g</span></div>'+
@@ -6996,7 +6996,7 @@ function stepsTrendHTML(){
     var tone=flat?'var(--muted)':(up?'var(--green-700)':'var(--terra-700)');
     var word=flat?''+_t('יציב')+'':(up?''+_t('עולה')+'':''+_t('יורד')+'');
     h+='<div style="font-size:11.5px;color:'+tone+';font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums">'+
-       word+(flat?'':' '+_t('ב־{n} צעדים',{n:nfmt(Math.abs(Math.round(rate.over)))}))+' '+_t('ב־')+''+rate.days+' '+_t('ימים')+'</div>';
+       word+(flat?'':' '+_t('ב־{n} צעדים',{n:nfmt(Math.abs(Math.round(rate.over)))}))+' '+_t('ב־{n} ימים',{n:rate.days})+'</div>';
   }else{
     h+='<div style="font-size:11px;color:var(--muted-soft);line-height:1.6;margin-top:8px">'+_t('עוד כמה ימים ויהיה כאן קו.')+'</div>';
   }
@@ -8756,7 +8756,7 @@ function renderWeeklyPlan(){
 
   for(var w=0;w<2;w++){
     h+='<div style="background:var(--card);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(200,180,160,.1)">';
-    h+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px">'+_t('שבוע')+' '+(w===0?''+_t('ראשון')+'':''+_t('שני')+'')+'</div>';
+    h+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px">'+(w===0?_t('שבוע ראשון'):_t('שבוע שני'))+'</div>';
     for(var dw=0;dw<7;dw++){
       var dayKey='w'+w+'d'+dw;
       var entry=weekPlan[dayKey]||{type:'rest'};
@@ -8979,7 +8979,7 @@ function renderEditProgram(){
       }
       h+='</div>';
     }
-    h+=wizQ(''+_t('איזה תרגיל')+' '+(curDay.exercises.length===0?''+_t('ראשון')+'':''+_t('נוסף')+'')+' '+_t('נוסיף?')+'');
+    h+=wizQ(''+(curDay.exercises.length===0?_t('איזה תרגיל ראשון נוסיף?'):_t('איזה תרגיל נוסף נוסיף?'))+'');
     h+='<input id="wiz-ex-inp" class="mtin" value="'+esc(_wiz.curEx.name)+'" placeholder="שם התרגיל... (Bench Press, Squat...)" onkeydown="if(event.key===\'Enter\'){var v=this.value.trim();if(v){_wiz.curEx.name=v;_wiz.step=6;_wiz.exStep=0;renderFitness();}}">';
     h+='<div style="display:flex;gap:8px;margin-top:10px">';
     h+='<button onclick="var v=document.getElementById(\'wiz-ex-inp\').value.trim();if(v){_wiz.curEx.name=v;_wiz.step=6;_wiz.exStep=0;renderFitness();}" style="flex:1;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הבא: פרטי התרגיל')+' &#8594;</button>';
@@ -12853,7 +12853,7 @@ function planDayHTML(){
   var feels=(dpl.feeling||'');
   out+='<div style="margin-top:24px;background:linear-gradient(150deg,var(--violet-50),#eaf1f8);border-radius:22px;padding:18px 16px">';
 
-  out+='<div class="dp-q">'+_t('מה חשוב לך ש')+''+(when==='מחר'?''+_t('מחר')+'':when.replace('ביום ',''+_t('ביום')+' '))+' '+_t('יקרה?')+'</div>';
+  out+='<div class="dp-q">'+_t('מה חשוב לך ש{when} יקרה?',{when:(when==='מחר'?_t('מחר'):when.replace('ביום ',_t('ביום')+' '))})+'</div>';
   out+='<textarea id="dp-intent" class="dp-ta" onblur="deepSaveText()" placeholder="לא רשימה — מה על הלב שלך?">'+esc(dpl.intent||'')+'</textarea>';
 
   out+='<div class="dp-q" style="margin-top:20px">'+_t('איך אני רוצה להרגיש')+' '+when+'?</div>';
@@ -14489,7 +14489,8 @@ function cmDelMile(i){
   var o=cmGoal();if(!o.g)return;
   var ms=cmMilestones(o.g);if(!ms[i])return;
   var st=(ms[i].steps||[]).length;
-  if(!confirm(''+_t('למחוק את "')+''+(ms[i].text||''+_t('המטרה')+'')+'"'+(st?' '+_t('ואת')+' '+st+' '+_t('הצעדים שלה')+'':'')+'?'))return;
+  if(!confirm(''+(st?_t('למחוק את "{name}" ואת {n} הצעדים שלה?',{name:ms[i].text||_t('המטרה'),n:st})
+      :_t('למחוק את "{name}"?',{name:ms[i].text||_t('המטרה')}))))return;
   ms.splice(i,1);saveGoals(o.goals);
   if(_cmFocus===i)_cmFocus=-1;else if(_cmFocus>i)_cmFocus--;
   cmRender();
@@ -17085,7 +17086,7 @@ function exportData(){
 function exportKB(t){return Math.max(1,Math.round(new Blob([t||_backupText]).size/1024));}
 function exportPhotosHTML(){
   if(!_photoInfo.n)return '';
-  return '<div class="bk-or">'+_t('התמונות שלך (')+''+_photoInfo.n+', '+_photoInfo.kb+''+_t('KB) לא נכללות למעלה')+' &mdash; '+
+  return '<div class="bk-or">'+_t('התמונות שלך ({n}, {kb}KB) לא נכללות למעלה',{n:_photoInfo.n,kb:_photoInfo.kb})+' &mdash; '+
          ''+_t('הן גדולות מדי להדבקה, וצריכות להישמר כקובץ.')+'</div>'+
          '<button class="bk-full" onclick="exportFull()">'+_t('גיבוי מלא עם התמונות')+'</button>';
 }
@@ -17360,7 +17361,7 @@ function renderImportSheet(){
   if(o.exportedAt)h+='<div style="font-size:10px;color:var(--muted-soft);text-align:center;margin-top:4px">'+_t('יוצא ב־')+''+o.exportedAt.slice(0,10)+'</div>';
   h+='</div>';
 
-  h+='<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px">'+_t('במכשיר הזה יש כרגע')+' '+mine+' '+_t('פריטים.')+'</div>';
+  h+='<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px">'+_t('במכשיר הזה יש כרגע {n} פריטים.',{n:mine})+'</div>';
 
   h+='<button onclick="applyImport(\'merge\')" style="width:100%;background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;color:var(--white);font-family:inherit;margin-bottom:8px">'+_t('מיזוג')+'</button>';
   h+='<div style="font-size:10.5px;color:var(--muted);line-height:1.6;margin-bottom:16px">'+_t('מוסיף רק מה שחסר. שום דבר שקיים כאן לא נדרס. זו הבחירה הבטוחה.')+'</div>';
@@ -17396,7 +17397,7 @@ function applyImport(mode){
       if(typeof o.photos[pk]==='string')jobs.push(photoPutKeyed(pk,o.photos[pk]));
     });
   }
-  showToast(''+_t('✓ יובאו')+' '+n+' '+_t('פריטים')+'');
+  showToast(''+_t('✓ יובאו {n} פריטים',{n:n}));
   // Half the app caches its data in module variables; a reload is the honest
   // way to make every screen read the new state.
   Promise.all(jobs).then(function(){setTimeout(function(){location.reload();},600);});
@@ -17663,7 +17664,7 @@ function rfSteps(){
     if(all[i].id==='workoutDone'){
       if(!planned||logged)continue;
       var w={},k;for(k in all[i])w[k]=all[i][k];
-      w.q=''+_t('היום היה מתוכנן')+' '+(planned.label||''+_t('אימון')+'')+''+_t('. יצא לך?')+'';
+      w.q=''+_t('היום היה מתוכנן {what}. יצא לך?',{what:planned.label||_t('אימון')});
       out.push(w);
       continue;
     }
@@ -18554,7 +18555,7 @@ function renderMe(){
   var ratings=[];
   for(i=0;i<rows.length;i++)if(rows[i].sum&&rows[i].sum.dayRating)ratings.push(rows[i].sum.dayRating);
   h+=meCard('rating',''+_t('ציון היום')+'',
-    ratings.length?(''+_t('ממוצע')+' '+meAvg(ratings).toFixed(1)+' '+_t('מתוך 10')+''):'',
+    ratings.length?(''+_t('ממוצע {n} מתוך 10',{n:meAvg(ratings).toFixed(1)})):'',
     meLine('rating',rows,function(x){return x.sum&&x.sum.dayRating?x.sum.dayRating:null;},ME_C[0],function(v){return String(v);}));
 
   h+=meCard('steps',''+_t('צעדים')+'','',
@@ -18625,7 +18626,7 @@ function meInsights(rows){
     cards+=meInsight(
       diff>=0?''+_t('ימים שהתאמנת בהם טובים יותר')+'':''+_t('ימים שהתאמנת בהם לא יצאו טובים יותר')+'',
       _t('ציון ממוצע {a} לעומת {b} בלי אימון',{a:a.toFixed(1),b:b.toFixed(1)}),
-      withW.length+' '+_t('ימים עם אימון,')+' '+noW.length+' '+_t('בלי')+'',
+      withW.length+' '+_t('ימים עם אימון, {n} בלי',{n:noW.length}),
       diff>=0?ME_C[2]:ME_C[1]);
   }
   var top=Object.keys(givers).sort(function(x,y){return givers[y]-givers[x];})[0];
@@ -18844,7 +18845,7 @@ function renderAreasList(){
   }
   l.innerHTML=h;
   var c=document.getElementById('areas-count');
-  if(c)c.textContent=n+' '+_t('מתוך')+' '+HOME_AREAS.length+' '+_t('מופיעים ב-Better')+'';
+  if(c)c.textContent=n+' '+_t('מתוך {n} מופיעים ב-Better',{n:HOME_AREAS.length});
 }
 function openAreas(){
   renderAreasList();
@@ -19083,7 +19084,7 @@ function streakOpen(){
     '<div class="stk-row">'+days+'</div>'+
     '<div class="stk-note">'+_t('יום נספר כשרשמת בו משהו — ארוחה, אימון, שורה ביומן, מים, צעדים, ולוג או סיכום יום.')+' '+
     ''+_t('לא מספיק לפתוח את האפליקציה.')+'</div>'+
-    (best>s.n?'<div class="stk-best">'+_t('הרצף הארוך ביותר שלך:')+' '+best+' '+_t('ימים.')+'</div>':'')+
+    (best>s.n?'<div class="stk-best">'+_t('הרצף הארוך ביותר שלך: {n} ימים.',{n:best})+'</div>':'')+
     (!s.today?'<div class="stk-today">'+(s.n?''+_t('היום עוד לא נספר. כל דבר שתרשום היום ימשיך את הרצף.')+''
                                             :''+_t('כל דבר שתרשום היום מתחיל רצף חדש. מה שכבר רשמת נשאר.')+'')+'</div>':'')+
     '</div></div>';
@@ -19308,7 +19309,7 @@ function tbSync(){
     try{
       var n=rescueNaNDay();
       if(n)setTimeout(function(){
-        showToast(_t('שוחזרו')+' '+n+' '+_t('פריטים שנשמרו בתאריך שגוי'));
+        showToast(_t('שוחזרו {n} פריטים שנשמרו בתאריך שגוי',{n:n}));
       },1200);
     }catch(e){}
   })();
