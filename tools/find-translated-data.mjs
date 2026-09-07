@@ -77,6 +77,15 @@ function openerIsIndex(at) {
 const SHAPES = [
   { why: 'search needle',   before: /\.(indexOf|lastIndexOf|includes|search|startsWith|endsWith)\(\s*(''\+)?$/ },
   { why: 'split separator', before: /\.split\(\s*(''\+)?$/ },
+  /* FOOD_STOP was the mirror of that one and slipped straight past: the
+     translated string is the SUBJECT of .split(), not its argument, so nothing
+     named split sits before it. A sentence of Hebrew stop words was split into
+     a lookup set and asked about words taken from Hebrew food names, which in
+     any other language matched nothing at all. */
+  /* Only whitespace and closing parens may stand between the call and the dot.
+     A looser gap let `_t(…):when.replace(` match, where the .replace belongs to
+     `when` on the other side of a ternary and not to the translated string. */
+  { why: 'the subject of a text operation', after: /^(\+'')?[\s)]*\.\s*(split|indexOf|includes|match|test|replace|startsWith|endsWith)\s*\(/ },
   { why: 'replace target',  before: /\.replace\(\s*(''\+)?$/ },
   /* The foodKey bug was this shape and the first version of this tool missed
      it: with a regex as the first argument, the translated string is the
