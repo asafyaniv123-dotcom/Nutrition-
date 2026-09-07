@@ -8778,6 +8778,17 @@ function plannedWorkoutFor(dateStr){
   return{type:entry.type,label:entry.label||t.label,emoji:t.emoji,color:t.color};
 }
 
+/* Did you train that day? A logged session is a record and outranks a memory,
+   but a session done and not logged still counts - the reflection asked, and
+   what you answered is evidence too. The old sum.workout is read last and only
+   for days written by the interview, which no longer runs but whose summaries
+   are still on the phone. */
+function trainedOn(dateStr,sum){
+  if(dateStr&&workoutLoggedOn(dateStr))return true;
+  if(sum&&sum.workoutDone===true)return true;
+  return !!(sum&&sum.workout&&String(sum.workout).trim());
+}
+
 /* If a session was already recorded there is nothing to ask - the app knows. */
 function workoutLoggedOn(dateStr){
   var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
@@ -18050,7 +18061,7 @@ function weekCardHTML(){
     var f=filled[i].r;
     if(f.mood)moods.push(f.mood);
     if(f.body)bodies.push(f.body);
-    if(f.workout)workouts++;
+    if(trainedOn(filled[i].d,f))workouts++;
     var st=stepsOf(filled[i].d);
     if(st>0){stepSum+=st;stepDays++;}
   }
@@ -18863,7 +18874,7 @@ function meInsights(rows){
   for(i=0;i<rows.length;i++){
     r=rows[i].sum;
     if(!r||!r.dayRating)continue;
-    var trained=!!(r.workout&&String(r.workout).trim());
+    var trained=trainedOn(rows[i].date,r);
     (trained?withW:noW).push(r.dayRating);
     if(r.mood){byMood[r.mood]=byMood[r.mood]||[];byMood[r.mood].push(r.dayRating);}
     if(Array.isArray(r.energyGivers))r.energyGivers.forEach(function(g){givers[g]=(givers[g]||0)+1;});
