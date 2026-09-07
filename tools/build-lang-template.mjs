@@ -69,6 +69,12 @@ if (mu >= 0) {
     for (const w of k[1].matchAll(/(['"])([^'"]*[֐-׿][^'"]*)\1/g)) keys.add(w[2]);
 }
 
+/* The five words written into the document's own markup carry their key in a
+   data-t attribute instead of a _t call, because nothing renders them and so
+   there is no call site to put one in. They are still keys, and a language file
+   that misses them shows Hebrew tabs, so the check has to know about them. */
+for (const m of app.matchAll(/\bdata-t="([^"]+)"/g)) keys.add(m[1]);
+
 /* Plurals: Hebrew has one/two/other, and the target locale decides its own. */
 const HE_AT = app.indexOf('var HE={');
 const heBlock = HE_AT < 0 ? '' : app.slice(HE_AT, app.indexOf('\n};', HE_AT));

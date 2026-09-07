@@ -72,6 +72,13 @@ while ((m = re.exec(app)) !== null) {
      A real glued sentence has a VALUE interpolated between the fragments. So
      strip the string literals out of the gap; what remains must still contain
      an identifier. */
+  /* A fragment that ends in a full stop is a finished SENTENCE, and nothing is
+     glued to it - what follows is the next sentence, not the rest of this one.
+     Three complete sentences concatenated with spaces look exactly like a glued
+     pair from the gap alone, which is what this tells apart. A real fragment
+     stops mid-clause: ", RPE ממוצע" opens with a comma and closes on nothing. */
+  if (/[.!?]["'׳״)\]]?\s*$/.test(m[2])) continue;
+
   const bare = between.replace(/(['"])(?:(?!\1).)*\1/g, '').replace(/[\s+,]/g, '');
   if (!/[A-Za-z_$]/.test(bare)) continue;
   if (/^[[\]{}:()]*$/.test(bare)) continue;
