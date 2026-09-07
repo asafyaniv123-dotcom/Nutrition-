@@ -10422,6 +10422,51 @@ function fitReopenWorkout(i){
   renderFitness();
 }
 
+/* Find this workout in the log by the two things that identify it. The summary
+   already does exactly this to find the previous session, and for the same
+   reason: the entry in hand is not always the last one any more. */
+function fitPhotoOn(entry){
+  var log=loadWorkoutLog(),j;
+  for(j=0;j<log.length;j++)if(log[j].date===entry.date&&log[j].name===entry.name)return{log:log,i:j};
+  return null;
+}
+function fitAddPhoto(input){
+  var file=input&&input.files&&input.files[0];
+  if(!file||!_fitSummaryEntry)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      /* Long edge capped, aspect kept - a workout photo is a place, and a
+         square crop throws away the half that says where you were. */
+      var max=1000,sc=Math.min(1,max/Math.max(img.width,img.height));
+      var c=document.createElement('canvas');
+      c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      photoPut(c.toDataURL('image/jpeg',0.75)).then(function(key){
+        if(!key){showToast(''+_t('לא הצלחתי לשמור את התמונה')+'');return;}
+        var f=fitPhotoOn(_fitSummaryEntry);
+        if(!f)return;
+        f.log[f.i].photo=key;
+        _fitSummaryEntry.photo=key;
+        saveWorkoutLog(f.log);
+        renderFitSummary();
+      });
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function fitClearPhoto(){
+  if(!_fitSummaryEntry)return;
+  var f=fitPhotoOn(_fitSummaryEntry);
+  if(!f)return;
+  delete f.log[f.i].photo;
+  delete _fitSummaryEntry.photo;
+  saveWorkoutLog(f.log);
+  renderFitSummary();
+}
+
 function renderFitSummary(){
   var entry=_fitSummaryEntry;
   if(!entry){_fitView='home';renderFitness();return;}
@@ -10610,6 +10655,22 @@ function renderFitSummary(){
     h+='<button onclick="fitReopenWorkout('+at+')" style="width:100%;min-height:44px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:14px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--ink-soft);margin-bottom:10px">'+
       _t('פתח מחדש והמשך לערוך')+'</button>';
   })();
+  /* The photo sits last, under the numbers: it is the thing you keep, not the
+     thing you read. An empty state that says nothing is better than one that
+     asks - there is no reason a workout should have a picture. */
+  if(entry.photo){
+    h+='<div style="position:relative;margin-bottom:14px">'+
+       photoImg(entry.photo,'style="width:100%;border-radius:18px;display:block"')+
+       '<button onclick="fitClearPhoto()" aria-label="'+_t("הסר תמונה")+'" '+
+       'style="position:absolute;top:8px;inset-inline-end:8px;background:rgba(0,0,0,.45);border:none;'+
+       'border-radius:50%;width:30px;height:30px;font-size:16px;color:#fff;cursor:pointer;line-height:1">&times;</button></div>';
+  }else{
+    h+='<label style="display:block;text-align:center;background:var(--surface);border:1.5px dashed var(--line-strong);'+
+       'border-radius:16px;padding:14px;margin-bottom:14px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer">'+
+       '&#128247; '+_t('הוסף תמונה לאימון')+
+       '<input type="file" accept="image/*" onchange="fitAddPhoto(this)" style="display:none"></label>';
+  }
+
   // Action buttons
   h+='<div style="display:flex;gap:10px">';
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="flex:1;background:var(--surface);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">'+_t('חזרה')+' &#8249;</button>';
@@ -10617,6 +10678,7 @@ function renderFitSummary(){
   h+='</div>';
   h+='</div>';
   document.getElementById('content').innerHTML=h;
+  hydratePhotos();
 }
 
 function renderFitHistory(){
