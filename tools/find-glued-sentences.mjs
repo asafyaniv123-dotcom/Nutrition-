@@ -49,6 +49,9 @@ while ((m = re.exec(app)) !== null) {
      value leaves "tot.p" or "ms[i].text||". A leading or trailing colon is the
      tell. */
   if (/:$/.test(bare) || /^:/.test(bare)) continue;
+  /* An object key whose value is an array or object leaves "m:[" rather than
+     "m:" - same shape, one character further along. */
+  if (/:[[{]$/.test(bare)) continue;
   const line = app.slice(0, m.index).split(LF).length;
   hits.push({ line, a: m[2], between: between.trim(), b: m[5] });
   re.lastIndex = m.index + 1;                        // allow overlapping chains
