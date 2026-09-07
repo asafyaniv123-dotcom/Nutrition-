@@ -6506,7 +6506,7 @@ function enterModule(mod){
     // The day arrows belong to the food log, not here.
     document.getElementById('btnPrev').style.display='none';
     document.getElementById('btnNext').style.display='none';
-    _planMode='';_planStep=0;
+    _planStep=0;
     renderPlanning();
   } else if(mod==='game'){
     document.querySelector('.app').style.display='block';
@@ -12641,23 +12641,27 @@ var _daySwipe=null;
 // follows you to the next screen. Rather than chase every teardown site,
 // the gesture asks whether the day planner is what is actually in front of
 // you before it does anything.
-function onPlanScreen(){
-  return currentModule==='planning'&&
-         (_planMode==='day'||_planMode==='weekly'||_planMode==='monthly');
-}
+function onPlanScreen(){return currentModule==='planning';}
 function onDayScreen(){return onPlanScreen();}
+/* All three horizons are on one page, so which one a swipe means is a question
+   about where the finger started - not about a mode. */
+function planSectionAt(el){
+  var sec=el&&el.closest&&el.closest('#plan-sec-day,#plan-sec-week,#plan-sec-month');
+  if(!sec)return '';
+  return sec.id==='plan-sec-day'?'day':sec.id==='plan-sec-week'?'weekly':'monthly';
+}
 // each horizon steps by its own unit
-function planStep(dir){
-  if(_planMode==='day')dpShift(dir);
-  else if(_planMode==='weekly')wkShift(dir);
-  else if(_planMode==='monthly')moShift(dir);
+function planStep(dir,where){
+  if(where==='day')dpShift(dir);
+  else if(where==='weekly')wkShift(dir);
+  else if(where==='monthly')moShift(dir);
 }
 function daySwipeDown(e){
   if(!onDayScreen()||_dpDrag)return;                       // a task is being dragged
   var t=e.target;
   if(t.closest&&(t.closest('[data-task]')||t.closest('[data-lib]')||
                  t.closest('button')||t.closest('input')||t.closest('textarea')))return;
-  _daySwipe={x:e.clientX,y:e.clientY,t:Date.now()};
+  _daySwipe={x:e.clientX,y:e.clientY,t:Date.now(),where:planSectionAt(t)};
 }
 function daySwipeUp(e){
   var s=_daySwipe;_daySwipe=null;
@@ -12667,7 +12671,8 @@ function daySwipeUp(e){
   if(Math.abs(dy)>DAY_SWIPE_Y)return;      // that was a scroll
   if(Math.abs(dx)<Math.abs(dy)*1.6)return; // and it has to be mostly sideways
   if(Date.now()-s.t>900)return;            // a slow drag is not a flick
-  planStep(dx>0?-1:1);
+  if(!s.where)return;                      // began outside all three panels
+  planStep(dx>0?-1:1,s.where);
   daySwipeHint(dx>0?-1:1);
 }
 // a short slide in the direction travelled, so the day visibly changes rather
@@ -12711,10 +12716,7 @@ function planUndo(){
     else localStorage.setItem(u.k,u.v);
   }catch(e){}
   renderPlanUndo();
-  if(_planMode==='day')renderPlanDay();
-  else if(_planMode==='weekly')renderPlanWeek();
-  else if(_planMode==='monthly')renderPlanMonth();
-  else renderPlanning();
+  renderPlanning();
   showToast(''+_t('בוטל')+'');
 }
 function renderPlanUndo(){
@@ -12896,7 +12898,7 @@ function planDayHTML(){
 var _dpRailOpen=false,_dpRailText='',_dpRailWasOpen=false;
 function dpRail(){
   dpRailClear();          // the panel is a sibling, not a child - clear both
-  if(_planMode!=='day')return;
+  if(!planSecsGet().day)return;   // the rail belongs to the day panel, so it follows it open and shut
   var loose=[],all=dpAll(_dpDate),i;
   for(i=0;i<all.length;i++)if(all[i].hour===null&&all[i].src==='day')loose.push(all[i]);
 
@@ -13351,11 +13353,9 @@ function taskLibDel(id){
   for(i=0;i<l.length;i++)if(l[i].id!==id)out.push(l[i]);
   saveTaskLib(out);planRerender();
 }
-function planRerender(){
-  if(_planMode==='weekly')renderPlanWeek();
-  else if(_planMode==='monthly')renderPlanMonth();
-  else if(_planMode==='day')renderPlanDay();
-}
+/* Used to dispatch on _planMode and had no else, so with that variable dead it
+   did nothing at all - seven call sites silently not refreshing. */
+function planRerender(){renderPlanning();}
 // The star that puts a task on the shelf, for rows that have room for it.
 function taskLibStar(text,color){
   return '<button onclick="taskLibSave(\''+esc(text).replace(/'/g,"\\'")+'\',\''+(color||'lav')+'\')" '+
@@ -13869,7 +13869,6 @@ function moUp(e){
 /* Planning opens on a choice of horizon rather than dropping straight into
    tomorrow. The daily wizard is the one that exists; the other two are
    placeholders on purpose, waiting to be specified. */
-var _planMode='';
 
 /* ── THE WAY IN ──
    A beat before the planner, saying what you came here to do. It clears
@@ -14009,7 +14008,13 @@ function renderPlanDay(){renderPlanning();}
 function planGo(mode){
   // "Daily" is the day screen itself, for tomorrow.
   if(mode==='daily'){mode='day';_dpDate=wkStamp(new Date(Date.now()+86400000));}
-  _planMode=mode;_planStep=0;
+  /* Opening the panel is what these shortcuts were always for. Setting a mode
+     nothing reads only looked like it worked because the panel it wanted
+     happened to be open already. */
+  var o=planSecsGet();
+  o[mode==='weekly'?'week':mode==='monthly'?'month':'day']=true;
+  planSecsSave();
+  _planStep=0;
   renderPlanning();window.scrollTo(0,0);
 }
 

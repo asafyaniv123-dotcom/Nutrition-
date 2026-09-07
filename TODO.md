@@ -19,14 +19,18 @@ rows.
 Only on today. On any other day there is no "now" to point at, and a line
 there would be a lie.
 
-### 2. The weekly view will not swipe between weeks
+### 2. ~~The weekly view will not swipe between weeks~~ — done
 
-Sliding left or right does not move to the previous or next week. This is a
-**bug**, not a missing feature — the gesture is expected and does nothing.
+It was worse than reported: dead on all three horizons, and dead only *some*
+of the time, which is why it read as flaky rather than broken.
 
-Worth checking against the day-drag system already on that screen: a task can
-be dragged across days there, so a horizontal swipe on the background may be
-being swallowed by the same pointer handling.
+`_planMode` stopped describing anything when the accordion put all three
+panels on one page. The only thing still setting it is `planGo(mode)`,
+reachable from two deep-link shortcuts — so arrive that way and the swipe
+works, open planning normally and it does not. Two other features were riding
+on the same dead variable: `planRerender()` (seven call sites, no `else`,
+repainted nothing) and `dpRail()`, the loose-task rail, which simply never
+appeared.
 
 ### 3. Stretched tasks in the monthly view
 
