@@ -6556,6 +6556,17 @@ function savePRs(obj){try{localStorage.setItem('fit_prs',JSON.stringify(obj));}c
 var _fitView='home'; // 'home' | 'editTemplate' | 'workout' | 'history' | 'progress'
 var _fitEditIdx=-1;  // template being edited (-1 = new)
 var _fitWorkout=null; // active workout state
+/* Whether the next set being typed is a warm-up. Deliberately not sticky
+   across exercises: warm-ups come first, so the flag turns itself off as soon
+   as a working set goes in, and nobody has to remember to switch it back. */
+var _fitWarm=false;
+function toggleWarm(){_fitWarm=!_fitWarm;renderFitness();}
+function removeWarm(idx){
+  if(!_fitWorkout)return;
+  var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
+  (ex.warm||[]).splice(idx,1);
+  renderFitness();
+}
 
 /* ── SURVIVING THE GYM ──
    The session in progress is written on every render, because every mutation
@@ -7558,7 +7569,7 @@ function startEmptyWorkout(){
 function workoutAddExercise(){
   exPickInto(function(name){
     if(!_fitWorkout)return;
-    _fitWorkout.exercises.push({name:name,targetSets:3,targetReps:10,plan:[],sets:[]});
+    _fitWorkout.exercises.push({name:name,targetSets:3,targetReps:10,plan:[],sets:[],warm:[]});
     _fitWorkout.currentEx=_fitWorkout.exercises.length-1;
     renderFitness();
   });
@@ -9000,7 +9011,7 @@ function startWorkout(tplIdx){
       var plan=tplRows(ex);
       return{name:ex.name,targetSets:plan.length,
              targetReps:(plan[0]&&plan[0].r)||ex.reps||10,
-             plan:plan,sets:[]};
+             plan:plan,sets:[],warm:[]};
     }),
     currentEx:0
   };
@@ -9761,6 +9772,17 @@ function renderFitWorkout(){
   h+='<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+ex.targetSets+' '+_t('סטים')+' &#215; '+ex.targetReps+' '+_t('חזרות')+'</div>';
   h+=exPrevHTML(ex);
 
+  // Warm-up rows come first, because that is the order they happen in, and
+  // they are drawn quieter so the working sets still read as the real list.
+  var _wu=ex.warm||[];
+  for(var wi=0;wi<_wu.length;wi++){
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;opacity:.55">';
+    h+='<div style="font-size:10px;color:var(--muted);width:32px">'+_t('חימום')+'</div>';
+    h+='<div style="font-size:12.5px;font-weight:700;color:var(--muted);flex:1">'+fmtWeight(_wu[wi].weight)+' &times; '+_wu[wi].reps+'</div>';
+    h+='<button onclick="removeWarm('+wi+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:13px;padding:2px">&times;</button>';
+    h+='</div>';
+  }
+
   // Sets log
   for(var si=0;si<ex.sets.length;si++){
     var s=ex.sets[si];var isNewPR=s.weight>curPR;
@@ -9781,7 +9803,12 @@ function renderFitWorkout(){
   h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('חזרות')+'</div><input id="fit-r" class="mtnm" type="number" placeholder="'+ex.targetReps+'" value="'+pf.r+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">RPE</div><input id="fit-rpe" class="mtnm" type="number" step="0.5" min="1" max="10" placeholder="רשות" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   h+='</div>';
-  h+='<button onclick="logSet()" style="width:100%;background:linear-gradient(135deg,var(--terra-200),var(--terra-500));border:none;border-radius:13px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הוסף סט')+'</button>';
+  /* The toggle sits on the button it changes rather than up with the boxes,
+     because the decision is made at the moment of pressing, not before. */
+  h+='<div style="display:flex;gap:8px">';
+  h+='<button onclick="toggleWarm()" style="flex:0 0 auto;min-height:46px;padding:0 15px;border-radius:13px;border:1.5px solid '+(_fitWarm?'var(--amber-500)':'var(--line-strong)')+';background:'+(_fitWarm?'#fdf6e3':'var(--card)')+';font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;color:'+(_fitWarm?'var(--amber-700)':'var(--muted)')+'">'+_t('חימום')+'</button>';
+  h+='<button onclick="logSet()" style="flex:1;min-height:46px;background:'+(_fitWarm?'linear-gradient(135deg,var(--amber-500),var(--amber-700))':'linear-gradient(135deg,var(--terra-200),var(--terra-500))')+';border:none;border-radius:13px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+(_fitWarm?_t('הוסף חימום'):_t('הוסף סט'))+'</button>';
+  h+='</div>';
   h+='</div></div>';
 
   // the one button for when the plan meets the gym
@@ -9811,6 +9838,17 @@ function logSet(){
   var rpe=rpeInp&&rpeInp.value?parseFloat(rpeInp.value):null;
   if(!reps)return;
   var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
+  if(_fitWarm){
+    /* A warm-up is not work. It goes in its own list, so volume, e1RM and the
+       PR check below never see it, and it turns the mode off on its way past -
+       the set after a warm-up is nearly always the real one. */
+    if(!ex.warm)ex.warm=[];
+    ex.warm.push({weight:weight,reps:reps});
+    _fitWarm=false;
+    restStart();
+    renderFitness();
+    return;
+  }
   ex.sets.push({weight:weight,reps:reps,rpe:rpe});
   restStart();   // rest begins the moment the set ends, not when you remember
   // Update PR
@@ -9835,7 +9873,9 @@ function finishWorkout(){
     date:Date.now(),name:w.name,
     duration:Math.floor((Date.now()-w.startTime)/60000),
     exercises:w.exercises.map(function(ex){
-      return{name:ex.name,targetSets:ex.targetSets,targetReps:ex.targetReps,sets:ex.sets.slice()};
+      /* Kept, but in their own field - every reader of .sets stays correct. */
+      return{name:ex.name,targetSets:ex.targetSets,targetReps:ex.targetReps,
+             sets:ex.sets.slice(),warm:(ex.warm||[]).slice()};
     })
   };
   log.push(entry);saveWorkoutLog(log);
