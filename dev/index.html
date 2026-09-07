@@ -6376,6 +6376,9 @@ function enterModule(mod){
     _insView='home';_insCat=null;_insQ=null;
     renderInsights();
   } else if(mod==='fitness'){
+    /* Reopening the app mid-workout should put you back in the workout, not
+       on the hub asking you to start one. */
+    if(!_fitWorkout&&fitwRestore())_fitView='workout';
     document.querySelector('.app').style.display='block';
     document.querySelector('.tabs').style.display='none';
     document.getElementById('hdr-date').textContent='';
@@ -6553,9 +6556,48 @@ function savePRs(obj){try{localStorage.setItem('fit_prs',JSON.stringify(obj));}c
 var _fitView='home'; // 'home' | 'editTemplate' | 'workout' | 'history' | 'progress'
 var _fitEditIdx=-1;  // template being edited (-1 = new)
 var _fitWorkout=null; // active workout state
+
+/* ── SURVIVING THE GYM ──
+   The session in progress is written on every render, because every mutation
+   already ends in renderFitness() and there is no cheaper moment that is also
+   reliable. Writing whole is fine: a session is a few kilobytes, and a partial
+   write would be worse than a slightly wasteful one.
+
+   The rest countdown goes with it as an absolute end time rather than as
+   seconds remaining, so it recovers correctly no matter how long the app was
+   away - which matters because iOS suspends a web app entirely and no timer
+   runs while it is gone. What cannot be recovered is the beep at zero; if the
+   rest already ended while the app was away, it simply comes back finished. */
+var FITW_KEY='fit_active';
+var FITW_MAX_AGE=12*60*60*1000;   // nothing that calls itself a workout runs longer
+function fitwSave(){
+  try{
+    if(!_fitWorkout){localStorage.removeItem(FITW_KEY);return;}
+    localStorage.setItem(FITW_KEY,JSON.stringify({
+      w:_fitWorkout, view:_fitView, restEnd:_restEnd||0, saved:Date.now()
+    }));
+  }catch(e){}
+}
+function fitwClear(){ _fitWorkout=null; try{localStorage.removeItem(FITW_KEY);}catch(e){} }
+function fitwRestore(){
+  var o=null;
+  try{o=JSON.parse(localStorage.getItem(FITW_KEY)||'null');}catch(e){}
+  if(!o||!o.w||!o.w.exercises)return false;
+  if(Date.now()-(o.saved||0)>FITW_MAX_AGE){fitwClear();return false;}
+  _fitWorkout=o.w;
+  /* Pick the countdown back up only if there is still time on it. */
+  if(o.restEnd&&o.restEnd>Date.now()){
+    _restEnd=o.restEnd;
+    if(_restIv)clearInterval(_restIv);
+    _restIv=setInterval(restTick,250);
+    restTick();
+  }
+  return true;
+}
 var _fitHistExercise=null; // which exercise to show progress for
 
 function renderFitness(){
+  fitwSave();   // every mutation ends here, so this is the one place that catches them all
   document.getElementById('hdr-title').textContent=''+_t('כושר')+'';
   if(_fitView==='home')renderFitHome();
   else if(_fitView==='editTemplate')renderFitEditTemplate();
@@ -9682,7 +9724,7 @@ function renderFitWorkout(){
       '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px">'+_t('אימון חדש')+'</div>'+
       '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:18px">'+_t('הוסף את התרגיל הראשון וההקלטה מתחילה.')+'</div>'+
       '<button onclick="workoutAddExercise()" style="width:100%;background:linear-gradient(135deg,var(--terra-200),var(--terra-500));border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;color:var(--white)">'+_t('+ הוסף תרגיל')+'</button>'+
-      '<button onclick="_fitWorkout=null;_fitView=&quot;home&quot;;renderFitness()" style="width:100%;background:none;border:none;padding:12px 0 0;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--muted)">'+_t('ביטול')+'</button>'+
+      '<button onclick="fitwClear();_fitView=&quot;home&quot;;renderFitness()" style="width:100%;background:none;border:none;padding:12px 0 0;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--muted)">'+_t('ביטול')+'</button>'+
       '</div></div>';
     return;
   }
@@ -9798,7 +9840,7 @@ function finishWorkout(){
   };
   log.push(entry);saveWorkoutLog(log);
   restStop();
-  _fitWorkout=null;
+  fitwClear();
   _fitView='summary';
   _fitSummaryEntry=entry;
   renderFitness();
