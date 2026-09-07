@@ -69,6 +69,15 @@ pass should assert it comes through byte-identical.
 **The open work is written down** in `I18N.md` and `UX-AUDIT.md`, including what
 was deliberately left alone and why.
 
+**Two checks are tools rather than prose**, and both should only ever go down:
+
+    node tools/find-glued-sentences.mjs    # sentences built from fragments
+    node tools/find-translated-data.mjs    # _t() results used as data, not shown
+
+The second exits non-zero when it finds anything. Both accept a file path, so
+they can be pointed at an older revision — which is how they were shown to
+actually detect the bugs they claim to.
+
 ## Layout
 
 - `index.html` - the whole app: markup, CSS and JS in one file.
