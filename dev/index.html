@@ -2062,6 +2062,11 @@ var HE={
   'לפני {n} ימים':{one:'אתמול',two:'לפני יומיים',other:'לפני {n} ימים'},
   'לפני {n} שבועות':{one:'לפני שבוע',two:'לפני שבועיים',other:'לפני {n} שבועות'},
   'לפני {n} חודשים':{one:'לפני חודש',two:'לפני חודשיים',other:'לפני {n} חודשים'},
+  'יציב ב־{n} ימים':{one:'יציב כבר יום',two:'יציב כבר יומיים',other:'יציב ב־{n} ימים'},
+  'עלייה של {w} ב־{n} ימים':{one:'עלייה של {w} מאתמול',two:'עלייה של {w} ביומיים',other:'עלייה של {w} ב־{n} ימים'},
+  'ירידה של {w} ב־{n} ימים':{one:'ירידה של {w} מאתמול',two:'ירידה של {w} ביומיים',other:'ירידה של {w} ב־{n} ימים'},
+  'עלייה של {s} צעדים ב־{n} ימים':{one:'עלייה של {s} צעדים מאתמול',two:'עלייה של {s} צעדים ביומיים',other:'עלייה של {s} צעדים ב־{n} ימים'},
+  'ירידה של {s} צעדים ב־{n} ימים':{one:'ירידה של {s} צעדים מאתמול',two:'ירידה של {s} צעדים ביומיים',other:'ירידה של {s} צעדים ב־{n} ימים'},
   'עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.':{
     one:'עוד יום ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',
     two:'עוד יומיים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.',
@@ -7023,8 +7028,11 @@ function stepsTrendHTML(){
     var up=rate.over>0,flat=Math.abs(rate.perDay*30)<300;
     var tone=flat?'var(--muted)':(up?'var(--green-700)':'var(--terra-700)');
     var word=flat?''+_t('יציב')+'':(up?''+_t('עולה')+'':''+_t('יורד')+'');
+    var saysS=flat?_t('יציב ב־{n} ימים',{n:rate.days})
+                  :(up?_t('עלייה של {s} צעדים ב־{n} ימים',{s:nfmt(Math.abs(Math.round(rate.over))),n:rate.days})
+                      :_t('ירידה של {s} צעדים ב־{n} ימים',{s:nfmt(Math.abs(Math.round(rate.over))),n:rate.days}));
     h+='<div style="font-size:11.5px;color:'+tone+';font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums">'+
-       word+(flat?'':' '+_t('ב־{n} צעדים',{n:nfmt(Math.abs(Math.round(rate.over)))}))+' '+_t('ב־{n} ימים',{n:rate.days})+'</div>';
+       saysS+'</div>';
   }else{
     h+='<div style="font-size:11px;color:var(--muted-soft);line-height:1.6;margin-top:8px">'+_t('עוד כמה ימים ויהיה כאן קו.')+'</div>';
   }
@@ -7794,10 +7802,15 @@ function weightCardHTML(){
     h+=trendChartHTML(ser,{});
     if(r&&ser.length>=TREND_MIN_DAYS){
       var up=r.over>0,flat=Math.abs(r.over)<0.15;
-      var word=flat?""+_t("יציב")+"":(up?""+_t("עלייה")+"":""+_t("ירידה")+"");
       var tone=flat?"var(--muted)":(up?"var(--terra-700)":"var(--green-700)");
+      /* One key per direction, each a whole sentence with its own plural forms.
+         The weight goes through fmtWeight so it carries the unit the reader
+         actually chose - the old line said ק״ג over a number in pounds. */
+      var says=flat?_t('יציב ב־{n} ימים',{n:r.days})
+                   :(up?_t('עלייה של {w} ב־{n} ימים',{w:fmtWeight(Math.abs(r.over)),n:r.days})
+                       :_t('ירידה של {w} ב־{n} ימים',{w:fmtWeight(Math.abs(r.over)),n:r.days}));
       h+='<div style="font-size:11.5px;color:'+tone+';font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums">'+
-         word+(flat?"":" "+Math.abs(r.over).toFixed(1)+" "+_t("ק״ג")+"")+' '+_t('ב־')+''+r.days+' '+_t('ימים')+''+'</div>';
+         says+'</div>';
       if(!r.covered)h+='<div style="font-size:10.5px;color:var(--muted-soft);margin-top:2px">'+_t('מבוסס על מה שיש עד כה')+'</div>';
     }else{
       var left=TREND_MIN_DAYS-ser.length;

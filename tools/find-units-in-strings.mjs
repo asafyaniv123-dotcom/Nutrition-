@@ -31,14 +31,33 @@ const app = s.slice(0, gs) + s.slice(ge);
 const UNITS = ['ק"ג', String.fromCharCode(1511, 1524, 1490), 'kg', 'lb', 'מ"ל', 'ml'];
 const ALLOWED = ['ק"ג', String.fromCharCode(1511, 1524, 1490), 'מ"ל'];
 
+/* A bare unit as its own key was allowed on the reasoning that a unit standing
+   alone is not a sentence. That is true of the key and false of the code: the
+   weight card's verdict was
+       word + " " + n.toFixed(1) + " " + _t("ק״ג") + " " + _t("ב־") + days + …
+   which is the glued-unit bug exactly, assembled at run time instead of being
+   written out. So the exemption now has a condition — the unit may stand alone
+   only if it is not being welded to something else. */
+function gluedAt(i) {
+  /* The extraction pass wraps every call as ''+_t(x)+'', so those empty strings
+     are punctuation, not content, and have to come off before the question can
+     be asked. Without that, weightUnit() - whose entire job is to return the
+     unit, correctly and alone - reads as glued. */
+  const before = app.slice(Math.max(0, i - 40), i).replace(/''\s*\+\s*$/, '').replace(/\s+$/, '');
+  const rest = app.slice(i).replace(/^_t\([^)]*\)/, '').replace(/^\s*\+\s*''/, '').replace(/^\s+/, '');
+  /* Joined to something on either side that is not just the wrapper. */
+  return /\+$/.test(before) || /^\+/.test(rest);
+}
+
 const found = new Map();
 for (const m of app.matchAll(/_t\((['"])(.*?)\1\s*[,)]/g)) {
   const key = m[2];
-  if (ALLOWED.indexOf(key) >= 0) continue;
+  const bare = ALLOWED.indexOf(key) >= 0;
+  if (bare && !gluedAt(m.index)) continue;
   const hit = UNITS.filter(u => key.includes(u));
   if (!hit.length) continue;
   const line = app.slice(0, m.index).split(LF).length;
-  if (!found.has(key)) found.set(key, { line, units: hit, n: 0 });
+  if (!found.has(key)) found.set(key, { line, units: hit, n: 0, glued: bare });
   found.get(key).n++;
 }
 
