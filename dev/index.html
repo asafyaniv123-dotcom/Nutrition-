@@ -1978,6 +1978,10 @@ var QUESTIONS=[
 
 function r2(v){return Math.round(v*100)/100;}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+/* Must be assigned before curDate below, which calls todayStr() ->
+   appDayShift() -> DAY_ENDS_AT. appDayShift is hoisted; this value is not, and
+   an undefined here made every date NaN. */
+var DAY_ENDS_AT=4;
 var curDate=todayStr(),curTab='today',manOpen=false,libOpen=false,compOpen=false,compCat='breakfast';
 var pendingLib=null,toastTimer,saveToLib=false;
 var builderCat='breakfast',builderName='',builderIngs=[],builderPickOpen=false;
@@ -2112,7 +2116,6 @@ function fmtWeight(kg){
   return nfmt(v,{maximumFractionDigits:APP_UNITS==='imperial'?1:2})+' '+weightUnit();
 }
 
-var DAY_ENDS_AT=4;
 function appNow(){return appDayShift(new Date());}
 function appDayShift(d){var x=new Date(d.getTime());x.setHours(x.getHours()-DAY_ENDS_AT);return x;}
 /* any timestamp -> the app day it belongs to */
@@ -2144,6 +2147,39 @@ function showToast(msg){
 }
 function starsHTML(n,max){var s='';for(var i=1;i<=max;i++)s+='<span style="color:'+(i<=n?'var(--amber-500)':'var(--line)')+'">&#9733;</span>';return s;}
 
+/* ── RESCUING WHAT THE NaN BUG SWALLOWED ──
+   curDate initialised before DAY_ENDS_AT was assigned, so every date came out
+   NaN-NaN-NaN and food was written to day_NaN-NaN-NaN. It was read back from
+   the same wrong key, which is why a session looked normal and only the
+   history was empty. Anything still under that key is real, so it is moved
+   into today rather than left where nothing will ever look again.
+
+   Runs once and removes the key, so a second load does nothing. */
+var NAN_DAY_KEY='day_NaN-NaN-NaN';
+function rescueNaNDay(){
+  var raw=null;
+  try{raw=localStorage.getItem(NAN_DAY_KEY);}catch(e){return 0;}
+  if(!raw)return 0;
+  var lost=null;
+  try{lost=JSON.parse(raw);}catch(e){}
+  var meals=(lost&&lost.meals)||[];
+  if(!meals.length){try{localStorage.removeItem(NAN_DAY_KEY);}catch(e){}return 0;}
+  var today=loadDay(todayStr());
+  /* Do not duplicate anything already there - the same session may have
+     written to both keys around a release. */
+  var seen={};
+  (today.meals||[]).forEach(function(m){seen[m.name+'|'+m.kcal+'|'+(m.t||'')]=1;});
+  var added=0;
+  meals.forEach(function(m){
+    var k=m.name+'|'+m.kcal+'|'+(m.t||'');
+    if(seen[k])return;
+    today.meals.push(m);seen[k]=1;added++;
+  });
+  if(lost&&lost.water&&!today.water)today.water=lost.water;
+  saveDay(todayStr(),today);
+  try{localStorage.removeItem(NAN_DAY_KEY);}catch(e){}
+  return added;
+}
 function loadDay(d){try{var x=localStorage.getItem('day_'+d);return x?JSON.parse(x):{meals:[],water:0};}catch(e){return{meals:[],water:0};}}
 function saveDay(d,data){try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}}
 /* ── PHOTO STORE ──
@@ -19112,6 +19148,15 @@ function tbSync(){
   renderBookWidget();
   renderBackup();
   askPersist();
+  /* Anything the NaN bug swallowed, moved somewhere it can be seen again. */
+  (function(){
+    try{
+      var n=rescueNaNDay();
+      if(n)setTimeout(function(){
+        showToast(_t('שוחזרו')+' '+n+' '+_t('פריטים שנשמרו בתאריך שגוי'));
+      },1200);
+    }catch(e){}
+  })();
   /* The stored language, applied before the first paint. Direction is set
      synchronously because it costs nothing; the words arrive when the fetch
      does, and repaint themselves. */
