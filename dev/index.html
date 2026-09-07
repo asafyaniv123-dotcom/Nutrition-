@@ -1051,7 +1051,14 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .wk-picker{background:var(--card);border-radius:12px;padding:10px 12px;margin:-3px 0 9px;box-shadow:0 3px 10px rgba(200,180,160,.14);display:flex;justify-content:center}
 /* one day, hour by hour */
 .dp-grid{background:var(--card);border:1.5px solid var(--line-strong);border-radius:14px;overflow:hidden}
-.dp-row{display:flex;align-items:stretch;border-top:1px solid var(--line);min-height:44px}
+.dp-row{display:flex;align-items:stretch;border-top:1px solid var(--line);min-height:44px;position:relative}
+/* ── NOW ──
+   A hairline across the hour you are in, on today only. It sits above the
+   slots so a task cannot hide it, and takes no pointer events so it cannot
+   swallow a tap meant for the hour underneath. The dot on the leading edge is
+   what makes it read as a time rather than as a border. */
+.dp-now{position:absolute;inset-inline:0;height:0;border-top:1.5px solid var(--terra-500);z-index:3;pointer-events:none}
+.dp-now::before{content:'';position:absolute;inset-inline-start:-3px;top:-4px;width:7px;height:7px;border-radius:50%;background:var(--terra-500)}
 .dp-row:first-child{border-top:none}
 .dp-h{width:46px;flex-shrink:0;font-size:9.5px;color:var(--muted);font-weight:700;padding:6px 4px 0;text-align:center;border-inline-end:1px solid var(--line)}
 .dp-slot{flex:1;min-width:0;padding:5px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;transition:background .15s}
@@ -12751,6 +12758,32 @@ function dpNotesFor(date,hour){
   return out;
 }
 
+/* Where the line goes: the hour's row, offset by the minutes into it. Returns
+   nothing at all when today is not what is on screen, or when the hour is
+   outside the range the grid draws. */
+function dpNowLine(){
+  var old=document.querySelector('.dp-now');
+  if(old)old.remove();
+  if(_dpDate!==wkStamp(new Date()))return;
+  var now=new Date(),hr=now.getHours();
+  if(hr<DP_FROM||hr>DP_TO)return;
+  var row=document.querySelector('.dp-row[data-hrow="'+hr+'"]');
+  if(!row)return;
+  var el=document.createElement('div');
+  el.className='dp-now';
+  el.style.top=(now.getMinutes()/60*100)+'%';
+  row.appendChild(el);
+}
+var _dpNowIv=null;
+/* Every minute, and only while the line is actually on screen - the interval
+   takes itself down as soon as the element it maintains is gone. */
+function dpNowStart(){
+  if(_dpNowIv)clearInterval(_dpNowIv);
+  _dpNowIv=setInterval(function(){
+    if(!document.querySelector('.dp-row')){clearInterval(_dpNowIv);_dpNowIv=null;return;}
+    dpNowLine();
+  },60000);
+}
 function planDayHTML(){
   if(!_dpDate)_dpDate=wkStamp(new Date());
   var d=new Date(_dpDate+'T12:00:00'),all=dpAll(_dpDate),i,h,t;
@@ -13985,7 +14018,7 @@ function renderPlanning(){
 
   /* the after-steps each screen used to run for itself */
   if(o.week)wkPlacePoint();
-  if(o.day)dpRail();
+  if(o.day){dpRail();dpNowLine();dpNowStart();}
 
   /* all three attached at once now, each fenced to its own panel */
   var box=document.getElementById('content');

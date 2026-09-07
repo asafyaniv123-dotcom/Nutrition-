@@ -10,14 +10,15 @@ section — git already keeps that.
 
 Four items, all in תכנון זמן.
 
-### 1. A "now" line in the daily view
+### 1. ~~A "now" line in the daily view~~ — done
 
-When the day being shown **is today**, draw a thin horizontal rule across the
-grid at the current hour, so the current moment is visible without counting
-rows.
+A hairline at the current hour, offset by the minutes into it, with a dot on
+the leading edge so it reads as a time rather than as a border. Only on today.
 
-Only on today. On any other day there is no "now" to point at, and a line
-there would be a lie.
+It repositions itself every minute rather than only at render: a line saying
+14:00 at twenty past is worse than no line, because it looks authoritative.
+One style write on one element, and the interval takes itself down when the
+grid is gone.
 
 ### 2. ~~The weekly view will not swipe between weeks~~ — done
 
