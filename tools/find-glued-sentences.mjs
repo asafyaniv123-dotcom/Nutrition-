@@ -10,7 +10,9 @@
 import fs from 'fs';
 
 const CR = String.fromCharCode(13), LF = String.fromCharCode(10);
-const s = fs.readFileSync('dev/index.html', 'utf8').split(CR + LF).join(LF);
+/* Takes a path so it can be pointed at an older revision. */
+const FILE = process.argv[2] || 'dev/index.html';
+const s = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
 const gs = s.indexOf('id="game-src"'), ge = s.indexOf('</script>', gs);
 const app = s.slice(0, gs) + s.slice(ge);
 
