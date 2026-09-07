@@ -18076,6 +18076,112 @@ function weekCardHTML(){
   return h+'</div>';
 }
 
+/* Under this many written days there is no month to summarise, and a card
+   built from four entries mostly reports the twenty-six that are missing. */
+var MONTH_MIN_DAYS=8;
+
+/* One entry from each third of the month, so re-reading covers the distance
+   rather than repeating the week card. Falls back through the fields in the
+   order the week card uses them. */
+function monthPick(filled,field){
+  var out=[],seen={},third=Math.ceil(filled.length/3),b,i,txt;
+  var textOf=function(x){
+    return (field?(x.r[field]||'')
+                 :(x.r.moment||x.r.proudOf||x.r.quote||'')).trim();
+  };
+  /* one from each third, newest first inside the third */
+  for(b=0;b<3;b++){
+    for(i=Math.min(filled.length,(b+1)*third)-1;i>=b*third;i--){
+      txt=textOf(filled[i]);
+      if(txt&&!seen[filled[i].d]){seen[filled[i].d]=1;out.push({d:filled[i].d,t:txt});break;}
+    }
+  }
+  /* Spread is the aim, not a quota. A month whose writing all falls in one week
+     would otherwise show a single line while two more sat unread, so the rest
+     are filled in from wherever they are. */
+  for(i=filled.length-1;i>=0&&out.length<3;i--){
+    txt=textOf(filled[i]);
+    if(txt&&!seen[filled[i].d]){seen[filled[i].d]=1;out.push({d:filled[i].d,t:txt});}
+  }
+  out.sort(function(a,b2){return a.d<b2.d?-1:a.d>b2.d?1:0;});
+  return out;
+}
+
+/* Thirty days back. Everything here is read from what is already stored - no
+   new record, no new writing to do - so the card costs the user nothing and
+   appears the moment there is enough of a month to show. */
+function monthCardHTML(){
+  var days=[],i,d;
+  for(i=29;i>=0;i--){d=dayAdd(todayStr(),-i);days.push({d:d,r:loadSummary(d)||null});}
+  var filled=[];
+  for(i=0;i<days.length;i++)if(days[i].r)filled.push(days[i]);
+  if(filled.length<MONTH_MIN_DAYS)return "";
+
+  var h='<div style="background:var(--card);border-radius:22px;padding:18px 16px;margin:12px 0 4px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">';
+  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">'+_t('החודש שלך')+'</div>';
+  h+='<div style="font-size:10.5px;color:var(--muted-soft)">'+_t('{n} ימים כתובים',{n:filled.length})+'</div></div>';
+
+  /* Mood as a line. Thirty bars would be a texture rather than a shape, and the
+     engine that smooths weight has no opinion about what it is smoothing. */
+  var mp=[];
+  for(i=0;i<filled.length;i++)if(filled[i].r.mood)mp.push({d:filled[i].d,v:filled[i].r.mood});
+  if(mp.length>=2){
+    var mser=ewma(mp,EWMA_ALPHA),mrate=trendRate(mser,30);
+    h+=trendChartHTML(mser,{color:PAL.violet500});
+    if(mrate&&mser.length>=TREND_MIN_DAYS){
+      /* A mood scale runs 1..5, so a tenth of a point over a month is nothing;
+         the threshold is what keeps this from calling noise a direction. */
+      var flat=Math.abs(mrate.over)<0.4;
+      var up=mrate.over>0;
+      h+='<div style="font-size:11.5px;font-weight:700;margin-top:8px;color:'+
+         (flat?'var(--muted)':(up?'var(--green-700)':'var(--muted)'))+'">'+
+         (flat?_t('מזג האוויר הפנימי שלך יציב החודש.')
+              :(up?_t('הימים שלך נעשו טובים יותר לאורך החודש.')
+                  :_t('החודש היה כבד יותר מהתחלתו.')))+'</div>';
+    }
+  }
+
+  /* what you wrote, spread across the month */
+  var notes=monthPick(filled,null);
+  if(notes.length){
+    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin:16px 0 8px">'+_t('מה שכתבת')+'</div>';
+    for(i=0;i<notes.length;i++){
+      var t=notes[i].t;if(t.length>140)t=t.slice(0,138)+"…";
+      h+='<div style="border-inline-start:2px solid var(--violet-100);padding-inline-start:10px;margin-bottom:10px">'+
+         '<div style="font-size:12px;color:var(--ink-soft);line-height:1.65">'+esc(t)+'</div>'+
+         '<div style="font-size:9.5px;color:var(--muted-soft);margin-top:3px">'+fmtDate(notes[i].d)+'</div></div>';
+    }
+  }
+
+  /* and gratitude on its own, for the same reason the week keeps it apart:
+     a month of these read together is the thing, not a line in a list */
+  var thanks=monthPick(filled,'grateful');
+  if(thanks.length){
+    h+='<div style="font-size:10px;color:var(--amber-700);letter-spacing:.08em;font-weight:700;margin:14px 0 8px">'+_t('הכרת תודה')+'</div>';
+    for(i=0;i<thanks.length;i++){
+      var tg=thanks[i].t;if(tg.length>120)tg=tg.slice(0,118)+"…";
+      h+='<div style="font-size:12px;color:var(--ink-soft);line-height:1.65;margin-bottom:7px">'+
+         esc(tg)+'<span style="font-size:9.5px;color:var(--muted-soft)"> · '+fmtDate(thanks[i].d)+'</span></div>';
+    }
+  }
+
+  /* the numbers, last and quiet, and only the ones that exist */
+  var workouts=0,stepSum=0,stepDays=0,st;
+  for(i=0;i<filled.length;i++){
+    if(trainedOn(filled[i].d,filled[i].r))workouts++;
+    st=stepsOf(filled[i].d);
+    if(st>0){stepSum+=st;stepDays++;}
+  }
+  var bits=[];
+  if(workouts)bits.push(_t('{n} אימונים',{n:workouts}));
+  if(stepDays)bits.push(nfmt(Math.round(stepSum/stepDays))+' '+_t('צעדים ביום'));
+  if(bits.length)
+    h+='<div style="font-size:11px;color:var(--muted);margin-top:12px;font-variant-numeric:tabular-nums">'+bits.join(' · ')+'</div>';
+
+  return h+'</div>';
+}
+
 function renderReflectHome(){
   var today=todayStr(),r=rfRec(today);
   var h='<div style="padding-bottom:24px">';
@@ -18100,6 +18206,7 @@ function renderReflectHome(){
   h+='<button class="rf-secs-b" onclick="rfSecsOpen()">'+rfSecsLabel()+'</button>';
 
   h+=weekCardHTML();
+  h+=monthCardHTML();
 
   var prev=[],i,d,s;
   for(i=1;i<=60;i++){
