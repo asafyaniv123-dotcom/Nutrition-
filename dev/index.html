@@ -2023,7 +2023,23 @@ var interviewStep=-1,interviewAnswers={},calMonth=new Date();
    not reading it. */
 var LANG_KEY='app_lang';
 var _lang=null;
-function _t(str){ var d=_lang; return (d&&d[str])||str; }
+function _t(str,vars){
+  var d=_lang, v=d&&d[str];
+  /* A dictionary entry may be an object of plural categories rather than a
+     string. Intl.PluralRules picks the right one for the language actually in
+     use - "one"/"other" in English, six categories in Arabic - so nothing here
+     has to know any language's grammar. */
+  if(v&&typeof v==='object'){
+    var cat='other';
+    try{cat=new Intl.PluralRules(APP_LOCALE).select((vars&&vars.n)||0);}catch(e){}
+    v=v[cat]||v.other;
+  }
+  var out=(typeof v==='string'&&v)||str;
+  /* Holes are filled last, so the Hebrew source works with no dictionary at
+     all: "לפני {n} ימים" with no translation still reads "לפני 3 ימים". */
+  if(vars)out=out.replace(/\{(\w+)\}/g,function(m,k){return vars[k]!=null?vars[k]:m;});
+  return out;
+}
 /* Only languages that actually have a file are offered. A code with no
    dictionary would fall back to Hebrew everywhere, which looks like a bug
    rather than like a missing translation. */
@@ -9297,12 +9313,18 @@ function agoText(ms){
   /* NaN loses every comparison below and falls through to "months", so a
      missing date printed itself as "לפני NaN חודשים". Say nothing instead. */
   if(!isFinite(d))return '';
-  if(d<=0)return ''+_t('היום')+'';
-  if(d===1)return ''+_t('אתמול')+'';
-  if(d<7)return ''+_t('לפני')+' '+d+' '+_t('ימים')+'';
-  if(d<14)return ''+_t('לפני שבוע')+'';
-  if(d<31)return ''+_t('לפני')+' '+Math.round(d/7)+' '+_t('שבועות')+'';
-  return ''+_t('לפני')+' '+Math.round(d/30)+' '+_t('חודשים')+'';
+  if(d<=0)return _t('היום');
+  if(d===1)return _t('אתמול');
+  /* Whole sentences with a hole, because English puts "ago" at the other end
+     and no translation of the word "לפני" alone can move it. */
+  if(d<7)return _t('לפני {n} ימים',{n:d});
+  if(d<14)return _t('לפני שבוע');
+  if(d<31)return _t('לפני {n} שבועות',{n:Math.round(d/7)});
+  var mo=Math.round(d/30);
+  /* 31 days rounded to 1 printed "לפני 1 חודשים" - wrong in Hebrew before it
+     was ever a translation problem. */
+  if(mo<=1)return _t('לפני חודש');
+  return _t('לפני {n} חודשים',{n:mo});
 }
 /* The line above the boxes: what the same set number was last time, and
    whether what you have just done beats it. A number to beat is the whole
