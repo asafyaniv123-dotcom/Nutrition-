@@ -1121,7 +1121,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 /* the month as a calendar */
 .mo-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:4px}
 .mo-hd{text-align:center;font-size:9px;font-weight:800;color:var(--muted)}
-.mo-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.mo-grid{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .mo-open{outline:2px solid var(--violet-500);outline-offset:-1px}
 .mo-cell{min-height:54px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:9px;padding:3px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer;transition:background .15s,border-color .15s}
 .mo-cell.mo-blank{background:none;border-color:transparent;cursor:default}
@@ -1129,6 +1129,16 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .mo-cell.hot{border-color:var(--green-500);background:var(--green-50)}
 .mo-n{font-size:9px;font-weight:700;color:#b8afa7;line-height:1}
 .mo-chip{border-radius:4px;padding:2px 3px;font-size:7.5px;line-height:1.2;font-weight:700;overflow:hidden;word-break:break-word}
+/* ── A RUN ACROSS DAYS ──
+   The per-day chip stays in the flow so the cell reserves the right height in
+   the right order, but it paints nothing: the visible bar is drawn over the
+   grid instead, where no cell can clip it and the words have the whole run to
+   sit in. */
+.mo-chip.mo-seg{background:transparent!important;color:transparent!important}
+.mo-spans{position:absolute;inset:0;pointer-events:none;z-index:5}
+.mo-span{position:absolute;height:13px;border-radius:4px;display:flex;align-items:center;
+  padding:0 4px;font-size:7.5px;font-weight:700;color:var(--white);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dp-q{font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.4;margin-bottom:9px}
 .dp-ta{width:100%;background:var(--card);border:none;border-radius:14px;padding:12px 14px;font-size:12.5px;color:var(--ink);line-height:1.6;font-family:inherit;unicode-bidi:plaintext;outline:none;resize:none;min-height:74px}
 .dp-ta::placeholder{color:#c9c0b8}
@@ -13711,6 +13721,55 @@ function moWeekTasksOn(date,cache){
   return out;
 }
 
+/* One bar per run per grid row. Measured rather than computed: the rows are
+   content-sized, so only the cells themselves know where they are. */
+function moPlaceSpans(){
+  var grid=document.querySelector('#plan-sec-month .mo-grid');
+  if(!grid)return;
+  var old=grid.querySelector('.mo-spans');
+  if(old)old.remove();
+  var segs=grid.querySelectorAll('.mo-seg');
+  if(!segs.length)return;
+
+  var layer=document.createElement('div');
+  layer.className='mo-spans';
+  var gb=grid.getBoundingClientRect();
+
+  /* Group by run, then by row - a run that crosses a Saturday breaks there,
+     and that break is the calendar's, not a rendering artefact. */
+  var runs={},i,el,id,r,row;
+  for(i=0;i<segs.length;i++){
+    el=segs[i];id=el.getAttribute('data-span');
+    r=el.getBoundingClientRect();
+    row=Math.round(r.top-gb.top);
+    if(!runs[id])runs[id]={};
+    if(!runs[id][row])runs[id][row]=[];
+    runs[id][row].push({el:el,r:r});
+  }
+
+  for(id in runs)for(row in runs[id]){
+    var list=runs[id][row],a=list[0].r,b=list[0].r,j;
+    for(j=1;j<list.length;j++){
+      if(list[j].r.left<a.left)a=list[j].r;
+      if(list[j].r.right>b.right)b=list[j].r;
+    }
+    var first=null;
+    for(j=0;j<list.length;j++)if(list[j].el.getAttribute('data-spanfirst'))first=list[j].el;
+    var src=first||list[0].el;
+    var bar=document.createElement('div');
+    bar.className='mo-span';
+    bar.style.background=src.getAttribute('data-spancol');
+    bar.style.left=(a.left-gb.left)+'px';
+    bar.style.width=(b.right-a.left)+'px';
+    bar.style.top=(a.top-gb.top)+'px';
+    /* Only the row that starts the run says what it is; a continuation with
+       the words repeated reads as two things happening. */
+    bar.textContent=first?src.getAttribute('data-spanw'):'';
+    layer.appendChild(bar);
+  }
+  grid.appendChild(layer);
+}
+
 function planMonthHTML(){
   if(!_moMonth)_moMonth=moFirst(new Date());
   var mo=loadMonth(_moMonth),i,t;
@@ -13759,11 +13818,12 @@ function planMonthHTML(){
            grid 3px of gap, so a segment that continues bleeds 6px into the
            join and the two halves meet with no seam. Only the first segment
            of a run carries the words. */
-        h+='<div class="mo-chip" style="background:'+wc.dot+';color:var(--white);opacity:.9;'+
-           'border-start-start-radius:'+(ed.first?'4px':'0')+';border-end-start-radius:'+(ed.first?'4px':'0')+';'+
-           'border-start-end-radius:'+(ed.last?'4px':'0')+';border-end-end-radius:'+(ed.last?'4px':'0')+';'+
-           (ed.first?'':'margin-inline-start:-6px;')+(ed.last?'':'margin-inline-end:-6px;')+
-           'white-space:nowrap;overflow:hidden">'+(ed.first?esc(wt[t].w):'&nbsp;')+'</div>';
+        /* Invisible, but it still holds the row open. Everything the bar needs
+           is on the element, so placing it is a read of the DOM rather than a
+           second walk of the data. */
+        h+='<div class="mo-chip mo-seg" data-span="'+esc(wt[t].id)+'"'+
+           ' data-spanfirst="'+(ed.first?'1':'')+'" data-spancol="'+wc.dot+'"'+
+           ' data-spanw="'+esc(wt[t].w)+'">&nbsp;</div>';
       }else{
         h+='<div class="mo-chip" style="background:var(--card);color:'+wc.tx+
            ';border-inline-start:2.5px solid '+wc.dot+';opacity:.85;padding-inline-start:3px">'+esc(wt[t].w)+'</div>';
@@ -14046,6 +14106,7 @@ function renderPlanning(){
   document.getElementById('content').innerHTML=h;
 
   /* the after-steps each screen used to run for itself */
+  if(o.month)moPlaceSpans();
   if(o.week)wkPlacePoint();
   if(o.day){dpRail();dpNowLine();dpNowStart();}
 

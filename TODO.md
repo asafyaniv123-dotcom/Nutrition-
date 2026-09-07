@@ -33,16 +33,32 @@ on the same dead variable: `planRerender()` (seven call sites, no `else`,
 repainted nothing) and `dpRail()`, the loose-task rail, which simply never
 appeared.
 
-### 3. Stretched tasks in the monthly view
+### 3. Stretched tasks in the monthly view — display done, dragging still open
 
-A task can already be stretched across several days in the weekly view. The
-monthly view should be able to do it too.
+**Done: no breaks, and the text is no longer cut.**
 
-And in the monthly view specifically:
+The month was already drawing one chip per day, each bleeding -6px into the
+join so a run would read as one bar. It never could: `.mo-cell` is
+`overflow:hidden`, so the bleed is laid out and then clipped away.
+`getBoundingClientRect` said the segments touched; the paint said otherwise,
+and the paint is what you see. The same clip cut the words, because only the
+first segment carries them and it is one seventh of the grid wide —
+*"חופשה משפחתית בצפון"* became *"חופשה משפח"*.
 
-- **no breaks between days** — a task spanning Sunday to Tuesday should read as
-  one continuous bar, not three separate marks
-- **the text must not be cut** — it is being clipped now
+Neither could be fixed from inside the cell. The per-day chips stay, because
+they are what reserves the right height in the right place, but they are now
+invisible placeholders and one continuous bar is drawn over the grid on top of
+them.
+
+**Still open: stretching a task from the monthly view itself.** The weekly view
+has a drag handle; the month has none, so a run can be *seen* there but only
+*made* in the week. That is an interaction, not a rendering fix, and it is the
+half that is left.
+
+One caveat worth writing down: the bar is split per grid row, so a run crossing
+a Saturday would break where the calendar breaks. That path is unexercised —
+`wkDayIndex` is week-relative, so a week task cannot currently extend past its
+own Saturday. The code is defensive, not tested.
 
 ### 4. ~~Stretched bars collide with the day's other tasks~~ — done
 
