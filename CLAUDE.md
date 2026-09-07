@@ -76,6 +76,46 @@ pass should assert it comes through byte-identical.
 is not built yet; `I18N.md` and `UX-AUDIT.md` hold the internationalisation and
 UX work, including what was deliberately left alone and why.
 
+## Every change ships its languages
+
+**The app is meant to be international** — Hebrew, English, German, Spanish,
+Japanese, French, Italian, Portuguese, Simplified and Traditional Chinese,
+Arabic. Not a Hebrew app with translations bolted on. That is a rule about how
+we work, not a phase that ends:
+
+**A change that adds a string is not done until every shipped language answers
+it.** `data/lang/*.json` are the languages a person can actually pick, so a key
+one of them is missing is a Hebrew word on their screen. The check enforces it:
+
+    node tools/build-lang-template.mjs          # regenerate, and name what is new
+    node tools/build-lang-template.mjs --check  # fails on a stale template OR a gap
+
+So the loop for any user-facing text is: edit `dev/index.html`, regenerate,
+answer the new keys everywhere, re-check until it is quiet.
+
+**Write English as the original, not as a translation of the Hebrew.** The
+reader has never seen the app and does not know what *סיום יום* is meant to be.
+Every other language is written from the English, because a Japanese translator
+does not read Hebrew — which makes English the pivot and worth more care than
+the rest.
+
+**Four rules the key set has to keep**, each learned from a bug that shipped:
+
+1. **One key, one meaning.** `ש` was Saturday, fat *and* seconds. Saturday is S
+   and fat is F; no dictionary can say both.
+2. **A sentence is one key.** Never assemble one from fragments — `_t('(כעת') +
+   n + ')'` hands over half a parenthesis. `find-glued-sentences.mjs` catches
+   both the pair shape and the lone fragment.
+3. **A list that is compared or stored is data.** Translate it at the point of
+   display, never in the declaration. `find-translated-data.mjs` is the check,
+   and it has caught fourteen collections that looked exactly like labels.
+4. **A unit comes from `fmtWeight` / `weightUnit`**, never welded into a
+   sentence — otherwise an imperial reader is shown pounds labelled in
+   kilograms, which shipped.
+
+Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
+translation falls back to readable text rather than to `fitness.set.add`.
+
 **Four checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments

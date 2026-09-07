@@ -61,15 +61,47 @@ const P = 'data/lang/_template.json';
 const next = JSON.stringify(out, null, 1) + LF;
 const prev = fs.existsSync(P) ? fs.readFileSync(P, 'utf8').split(CR + LF).join(LF) : '';
 
+/* Every language the app actually offers, so a change cannot quietly ship a
+   screen that is English everywhere except the four words somebody just added.
+   A file that exists is a language a person can pick, and every key it is
+   missing is a Hebrew word on their screen. */
+function shipped() {
+  return fs.readdirSync('data/lang')
+    .filter(f => f.endsWith('.json') && f !== '_template.json')
+    .map(f => ({ code: f.replace(/\.json$/, ''), path: 'data/lang/' + f }));
+}
+function gaps() {
+  const out = [];
+  for (const { code, path } of shipped()) {
+    let d = {};
+    try { d = JSON.parse(fs.readFileSync(path, 'utf8')); } catch (e) { out.push({ code, unreadable: true }); continue; }
+    const missing = [...keys].filter(k => !(k in d));
+    const stale = Object.keys(d).filter(k => !keys.has(k));
+    if (missing.length || stale.length) out.push({ code, missing, stale });
+  }
+  return out;
+}
+
 if (process.argv.includes('--check')) {
-  if (next === prev) { console.log('template is current: ' + keys.size + ' keys'); process.exit(0); }
-  const had = new Set(Object.keys(prev ? JSON.parse(prev) : {}));
-  const added = [...keys].filter(k => !had.has(k));
-  const gone = [...had].filter(k => !keys.has(k));
-  console.log('template is STALE: +' + added.length + ' -' + gone.length);
-  for (const k of added.slice(0, 12)) console.log('  + ' + JSON.stringify(k));
-  for (const k of gone.slice(0, 12)) console.log('  - ' + JSON.stringify(k));
-  process.exit(1);
+  let bad = false;
+  if (next !== prev) {
+    const had = new Set(Object.keys(prev ? JSON.parse(prev) : {}));
+    const added = [...keys].filter(k => !had.has(k));
+    const gone = [...had].filter(k => !keys.has(k));
+    console.log('template is STALE: +' + added.length + ' -' + gone.length);
+    for (const k of added.slice(0, 12)) console.log('  + ' + JSON.stringify(k));
+    for (const k of gone.slice(0, 12)) console.log('  - ' + JSON.stringify(k));
+    bad = true;
+  } else {
+    console.log('template is current: ' + keys.size + ' keys');
+  }
+  for (const g of gaps()) {
+    bad = true;
+    if (g.unreadable) { console.log(g.code + '.json will not parse'); continue; }
+    console.log(g.code + '.json: ' + g.missing.length + ' unanswered, ' + g.stale.length + ' no longer asked for');
+    for (const k of g.missing.slice(0, 8)) console.log('  ? ' + JSON.stringify(k));
+  }
+  process.exit(bad ? 1 : 0);
 }
 
 fs.writeFileSync(P, next);
