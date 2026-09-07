@@ -44,13 +44,19 @@ And in the monthly view specifically:
   one continuous bar, not three separate marks
 - **the text must not be cut** — it is being clipped now
 
-### 4. Stretched bars collide with the day's other tasks
+### 4. ~~Stretched bars collide with the day's other tasks~~ — done
 
-In the **weekly** view the stretched bar cuts through tasks that are already
-there.
+The bar was positioned 19px up from the **bottom** of its band, straight
+through whatever chips were there, and nothing reserved space for it — so it
+was always going to overlap and only looked right when the band was empty.
 
-Fix: put stretched tasks along the **top** of the day cells, in their own band,
-so the day's ordinary tasks keep the space below and nothing overlaps.
+Now each bar sits at the top of its band, several in one band stack rather
+than pile up, and the chips in that band get a matching padding. The count is
+per band across the whole week, not per cell: a bar spans days, so the row it
+occupies has to be clear in every column it crosses.
+
+Measured with two spans and two chips in one band: bars at 352 and 363, chips
+at 374, zero overlapping pairs.
 
 ---
 

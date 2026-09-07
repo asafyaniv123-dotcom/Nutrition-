@@ -11885,11 +11885,31 @@ function wkSetLen(id,n){
   saveWeek(_wkSun,wk);renderPlanWeek();
 }
 
+/* A bar is 9px tall and wants 2px of air under it. */
+var WK_SPAN_H=11;
+/* Which stretched tasks land in each band, in draw order, so a bar can be
+   told its row and the chips below can be told how many rows to clear. */
+function wkSpanRows(tasks){
+  var rows={m:[],n:[],e:[]},i,t,len,ci;
+  for(i=0;i<tasks.length;i++){
+    t=tasks[i];
+    len=wkLenOf(t);
+    if(len<2||!t.d)continue;
+    ci=wkColIndex(t.d);
+    if(ci<0)continue;
+    if(ci+len>7)len=7-ci;
+    if(len<2)continue;
+    (rows[wkSlotOf(t)]||rows.m).push(t.id);
+  }
+  return rows;
+}
+
 /* One absolutely positioned bar per multi-day task, over the whole table.
    inset-inline-start rather than left: the week reads right to left, so the
    logical property is the one that puts Sunday where Sunday is. */
 function wkSpanBarsHTML(tasks){
   var h="",i,t,ci,len,band,BANDS={m:0,n:1,e:2};
+  var rows=wkSpanRows(tasks);
   for(i=0;i<tasks.length;i++){
     t=tasks[i];
     len=wkLenOf(t);
@@ -11899,11 +11919,15 @@ function wkSpanBarsHTML(tasks){
     if(ci+len>7)len=7-ci;                    // a week is as long as a week
     if(len<2)continue;
     band=BANDS[wkSlotOf(t)]||0;
+    /* Top of the band, one row down for each bar already there - so two spans
+       in the same band sit under each other rather than on each other. */
+    var slot=wkSlotOf(t), stack=rows[slot]?rows[slot].indexOf(t.id):0;
+    if(stack<0)stack=0;
     var c=wkColor(t.c);
     h+='<div style="position:absolute;z-index:4;pointer-events:none;'+
        'inset-inline-start:calc('+(ci*100/7)+'% + 3px);'+
        'inline-size:calc('+(len*100/7)+'% - 6px);'+
-       'top:calc('+(band*100/3)+'% + '+(100/3)+'% - 19px);'+
+       'top:calc('+(band*100/3)+'% + '+(3+stack*WK_SPAN_H)+'px);'+
        'height:9px;border-radius:5px;background:'+c.dot+';opacity:.85;'+
        'display:flex;align-items:center;justify-content:center;overflow:visible">'+
        '<span style="font-size:7.5px;font-weight:700;color:var(--white);white-space:nowrap;padding:0 4px;overflow:hidden">'+esc(t.w)+'</span>'+
@@ -11960,6 +11984,7 @@ function planWeekHTML(){
   h+='</div>';
   h+='<div class="wk-table">';
   h+='<div class="wk-bands"><div class="wk-band-l" style="top:33.333%"></div><div class="wk-band-l" style="top:66.666%"></div></div>';
+  var spanRows=wkSpanRows(wk.tasks);
   h+=wkSpanBarsHTML(wk.tasks);
   h+='<div class="wk-cols">';
   for(i=0;i<7;i++){
@@ -11970,7 +11995,11 @@ function planWeekHTML(){
       // things put in this band without an hour: they float at the top
       var list=wkGridIn(wk.tasks,st,WK_SLOTS[j][0]);
       if(list.length){
-        h+='<div class="wk-free">';
+        /* Clear the rows the stretched bars occupy in this band. Reserved in
+           every column, not only the ones a bar crosses, so the chips line up
+           across the week instead of stepping up and down. */
+        var _pad=(spanRows[WK_SLOTS[j][0]]||[]).length*WK_SPAN_H;
+        h+='<div class="wk-free"'+(_pad?' style="padding-top:'+_pad+'px"':'')+'>';
         for(t=0;t<list.length;t++){
           var cc=wkColor(list[t].c),ech=wkIsEcho(list[t],st);
           h+='<div class="wk-chip" style="position:relative;background:'+cc.bg+';color:'+cc.tx+(ech?';opacity:.55':'')+'">'+
