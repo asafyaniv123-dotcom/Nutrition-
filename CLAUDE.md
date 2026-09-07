@@ -79,6 +79,7 @@ was deliberately left alone and why.
 
     node tools/find-glued-sentences.mjs    # sentences built from fragments
     node tools/find-translated-data.mjs    # _t() results used as data, not shown
+    node tools/find-units-in-strings.mjs   # kg or ml welded into a sentence
 
 The second exits non-zero when it finds anything. Both accept a file path, so
 they can be pointed at an older revision — which is how they were shown to

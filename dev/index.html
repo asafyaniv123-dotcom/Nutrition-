@@ -1892,7 +1892,7 @@ function renderProfile(){
      '<span class="pf-note">'+_t('ס"מ')+'</span></div>';
   h+='<div class="pf-row"><label class="pf-lbl">'+_t('משקל')+'</label>'+
      '<input class="pf-in" type="number" inputmode="decimal" step="0.1" placeholder="0" value="'+(p.weight!==undefined?p.weight:'')+'" onchange="profNum(\u0027weight\u0027,this)">'+
-     '<span class="pf-note">'+_t('ק"ג')+'</span></div>';
+     '<span class="pf-note">'+weightUnit()+'</span></div>';
   if(bmi!==null)
     h+='<div class="pf-derived">BMI '+bmi+'</div>';
   h+='</div>';
@@ -1936,7 +1936,7 @@ function renderProfile(){
          '<div class="pf-recc'+(ch?' chg':'')+'">'+(ch?''+_t('כעת')+' '+rw.cur:''+_t('ללא שינוי')+'')+'</div></div>';
     }
     h+='</div>';
-    h+='<div class="pf-water">'+_t('מים {n} מ"ל',{n:nfmt(rec.water)})+
+    h+='<div class="pf-water">'+_t('מים {n}',{n:fmtVolume(rec.water)})+
        (rec.water!==TARGETS.water?' <span class="chg">'+_t('(כעת')+' '+nfmt(TARGETS.water)+')</span>':'')+'</div>';
     if(same)
       h+='<div class="pf-same">'+_t('היעדים שלך כבר תואמים את החישוב.')+'</div>';
@@ -2141,6 +2141,15 @@ var KG_PER_LB=0.45359237;
 function weightUnit(){return APP_UNITS==='imperial'?'lb':''+_t('ק"ג')+'';}
 function toDisplayWeight(kg){return APP_UNITS==='imperial'?(+kg||0)/KG_PER_LB:(+kg||0);}
 function fromDisplayWeight(v){return APP_UNITS==='imperial'?(+v||0)*KG_PER_LB:(+v||0);}
+/* Volume, alongside weight. Stored in millilitres always; only the display
+   converts, so no saved number changes meaning when the preference flips. */
+var ML_PER_FLOZ=29.5735;
+function volumeUnit(){return APP_UNITS==='imperial'?'fl oz':_t('מ"ל');}
+function toDisplayVolume(ml){return APP_UNITS==='imperial'?(+ml||0)/ML_PER_FLOZ:(+ml||0);}
+function fmtVolume(ml){
+  /* Whole fluid ounces: a tenth of one is below what anyone pours. */
+  return nfmt(toDisplayVolume(ml),{maximumFractionDigits:APP_UNITS==='imperial'?0:0})+' '+volumeUnit();
+}
 function fmtWeight(kg){
   var v=toDisplayWeight(kg);
   /* Do not round here - a stored 62.75 must not become 62.8 just by being
@@ -5448,7 +5457,7 @@ function renderToday(){
 
   var pillsHTML='<div class="pills"><div class="pill"><div class="pill-val" style="color:var(--violet-500)">'+(TARGETS.kcal-kcal)+'</div><div class="pill-lbl">'+_t('קק"ל נותרו')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--terra-500)">'+r2(TARGETS.p-p)+'g</div><div class="pill-lbl">'+_t('חלבון נותר')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--amber-500)">'+r2(TARGETS.f-f)+'g</div><div class="pill-lbl">'+_t('שומן נותר')+'</div></div></div>';
 
-  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; מים</span><span class="wn">'+water+' / '+TARGETS.water+' '+_t('מ"ל')+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+250מ"ל</button><button class="wadd" onclick="addWater(500)">+500מ"ל</button><button class="wadd" onclick="addWater(1000)">+1L</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
+  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; מים</span><span class="wn">'+nfmt(toDisplayVolume(water),{maximumFractionDigits:0})+' / '+fmtVolume(TARGETS.water)+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+250מ"ל</button><button class="wadd" onclick="addWater(500)">+500מ"ל</button><button class="wadd" onclick="addWater(1000)">+1L</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
 
   var compMeals=loadComposed();
   var compHTML='';
@@ -6165,7 +6174,7 @@ function renderSummaryOverlay(dateStr){
   h+='<div class="sm-sec"><div class="sm-lab">'+_t('תזונה')+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
   var smb=[{v:sum.kcal,pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:sum.p+'g',pct:pp2,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:sum.c+'g',pct:cp3,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:sum.f+'g',pct:fp2,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
   for(var bi2=0;bi2<smb.length;bi2++){var sb=smb[bi2];h+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:24px;height:68px;background:var(--line);border-radius:12px;overflow:hidden;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+sb.pct+'%;background:'+sb.g+'"></div></div><div style="font-size:10.5px;font-weight:700">'+sb.v+'</div><div style="font-size:9px;color:var(--muted)">'+sb.lbl+'</div></div>';}
-  if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; מים</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+sum.water+''+_t('מ"ל')+'</span></div>';}
+  if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; מים</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+fmtVolume(sum.water)+'</span></div>';}
   h+='</div>';
   }
   if(sum.workoutDone!==undefined&&sumSecOn('fit')){
@@ -7226,7 +7235,7 @@ function renderFitWeights(){
        (cw?'<div style="font-size:9.5px;color:var(--muted-soft);margin-top:2px">'+(cw.manual?''+_t('הוקלד')+'':''+_t('מהאימון')+'')+' &middot; '+fmtDate(cw.at)+'</div>':'')+
        '</button>';
     h+='<button onclick="exWeightEdit(\''+esc(nm).replace(/'/g,"&#39;")+'\')" style="background:var(--surface);border:none;border-radius:12px;padding:7px 12px;cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums">'+
-       (cw?'<span style="font-size:13px;font-weight:800;color:var(--ink)">'+cw.w+'</span><span style="font-size:9.5px;color:var(--muted)"> '+_t('ק״ג')+'</span>'
+       (cw?'<span style="font-size:13px;font-weight:800;color:var(--ink)">'+cw.w+'</span><span style="font-size:9.5px;color:var(--muted)"> '+weightUnit()+'</span>'
           :'<span style="font-size:11px;color:var(--muted-soft)">'+_t('הוסף')+'</span>')+'</button>';
     h+='</div>';
   }
@@ -7274,7 +7283,7 @@ function renderFitStats(){
   h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:12px">'+_t('השבוע')+' &middot; '+_t('מול שבוע שעבר')+'</div>';
   var rows=[[now.sessions+(now.sessions===1?' '+_t('אימון')+'':' '+_t('אימונים')+''),delta(now.sessions,prev.sessions)],
             [now.sets+' '+_t('סטים')+'',delta(now.sets,prev.sets)],
-            [nfmt(now.vol)+' '+_t('ק״ג נפח')+'',delta(now.vol,prev.vol,'%')]];
+            [nfmt(now.vol)+' '+_t('{u} נפח',{u:weightUnit()})+'',delta(now.vol,prev.vol,'%')]];
   for(var r=0;r<rows.length;r++){
     h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(r<2?'8px':'0')+';font-variant-numeric:tabular-nums">'+
        '<div style="font-size:13px;font-weight:700;color:var(--ink)">'+rows[r][0]+'</div>'+
@@ -7318,7 +7327,7 @@ function renderFitStats(){
       h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(L<lifts.length-1?'8px':'0')+'">';
       h+='<div style="font-size:12.5px;color:var(--ink);font-weight:600">'+esc(li.name)+'</div>';
       h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+
-         Math.round(li.e.v)+' '+_t('ק״ג')+' <span style="color:var(--muted-soft)">&middot; '+li.e.w+'×'+li.e.r+'</span></div>';
+         Math.round(li.e.v)+' '+weightUnit()+' <span style="color:var(--muted-soft)">&middot; '+li.e.w+'×'+li.e.r+'</span></div>';
       h+='</div>';
     }
     h+='</div>';
@@ -7698,7 +7707,7 @@ function weightCardHTML(){
   }else{
     var ser=ewma(pts,EWMA_ALPHA),r=trendRate(ser,30);
     var lastT=ser[ser.length-1].t;
-    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+lastT.toFixed(1)+' '+_t('ק״ג')+'</div></div>';
+    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+lastT.toFixed(1)+' '+weightUnit()+'</div></div>';
     h+=trendChartHTML(ser,{});
     if(r&&ser.length>=TREND_MIN_DAYS){
       var up=r.over>0,flat=Math.abs(r.over)<0.15;
@@ -9934,14 +9943,14 @@ function nextAdvice(exName,sets){
   var step=small?Math.max(1.25,g.step/2):g.step;
   if(allOver&&w>0)
     return {dir:'up',w:w+step,
-      t:''+_t('העלה ל־')+''+(w+step)+' '+_t('ק"ג')+'',
+      t:_t('העלה ל־{w}',{w:fmtWeight(w+step)}),
       why:''+_t('השלמת')+' '+g.hi+''+_t('+ חזרות בכל הסטים במשקל')+' '+w+'.'};
   if(allOver)
     return {dir:'up',w:0,t:''+_t('הוסף חזרות או משקל')+'',
       why:''+_t('עברת את הטווח בכל הסטים במשקל הגוף.')+''};
   if(allUnder&&w>0)
     return {dir:'down',w:Math.max(0,w-step),
-      t:''+_t('רד ל־')+''+Math.max(0,w-step)+' '+_t('ק"ג')+'',
+      t:_t('רד ל־{w}',{w:fmtWeight(Math.max(0,w-step))}),
       why:''+_t('לא הגעת ל־')+''+g.lo+' '+_t('חזרות באף סט. המשקל גבוה מדי כרגע.')+''};
   return {dir:'hold',w:w,
     t:''+_t('אותו משקל שוב')+'',
@@ -10301,7 +10310,7 @@ function renderFitSummary(){
 
   // 4.1 Hero stats
   h+='<div style="display:flex;gap:10px;margin-bottom:16px">';
-  [{num:totalSets,lbl:''+_t('סטים')+''},{num:avgRPE!==null?effortFromRPE(avgRPE):''+_t('לא דורג')+'',lbl:(effortScale()==='rir'?_t('RIR ממוצע'):_t('RPE ממוצע'))},{num:totalVol>0?Math.round(totalVol):0,lbl:''+_t('ק"ג נפח')+''}].forEach(function(s){
+  [{num:totalSets,lbl:''+_t('סטים')+''},{num:avgRPE!==null?effortFromRPE(avgRPE):''+_t('לא דורג')+'',lbl:(effortScale()==='rir'?_t('RIR ממוצע'):_t('RPE ממוצע'))},{num:totalVol>0?Math.round(totalVol):0,lbl:''+_t('{u} נפח',{u:weightUnit()})+''}].forEach(function(s){
     h+='<div style="flex:1;background:var(--card);border-radius:20px;padding:14px 8px;text-align:center;box-shadow:0 2px 10px rgba(58,53,48,.06)">';
     h+='<div style="font-size:20px;font-weight:800;color:var(--ink-strong)">'+s.num+'</div>';
     h+='<div style="font-size:10px;color:#9A9184;margin-top:3px">'+s.lbl+'</div></div>';
@@ -10397,7 +10406,7 @@ function renderFitSummary(){
     var curMax=ex.sets.length?Math.max.apply(null,ex.sets.map(function(s){return s.weight||0;})):0;
     var allGood=ex.sets.length&&ex.sets.every(function(s){return s.reps>=(ex.targetReps||10);});
     var nextW=Math.round((curMax+2.5)*2)/2;
-    var suggestion=curMax===0?''+_t('התמקד על טכניקה')+'':allGood?''+_t('נסה')+' '+fmtWeight(nextW)+'':''+_t('הישאר על')+' '+curMax+' '+_t('ק"ג, ישימות על טכניקה')+'';
+    var suggestion=curMax===0?''+_t('התמקד על טכניקה')+'':allGood?''+_t('נסה')+' '+fmtWeight(nextW)+'':''+_t('הישאר על {w}, ישימות על טכניקה',{w:fmtWeight(curMax)})+'';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-strong);gap:10px">';
     h+='<span style="font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden;text-overflow:ellipsis">'+esc(ex.name)+'</span>';
     h+='<span style="font-size:11px;color:#9A9184;text-align:start">'+suggestion+'</span></div>';
@@ -10410,7 +10419,7 @@ function renderFitSummary(){
     return v>best.vol?{name:ex.name,vol:v}:best;
   },{name:'',vol:0});
   h+='<div style="background:#D6ECE8;color:#2E6B62;border-radius:16px;padding:16px;font-size:13px;line-height:1.7;margin-bottom:16px">';
-  if(bestEx.name)h+='<div style="margin-bottom:6px"><b style="font-weight:800">'+_t('הבולט ביותר:')+'</b> '+esc(bestEx.name)+' '+_t('עם')+' '+nfmt(Math.round(bestEx.vol))+' '+_t('ק"ג נפח.')+'</div>';
+  if(bestEx.name)h+='<div style="margin-bottom:6px"><b style="font-weight:800">'+_t('הבולט ביותר:')+'</b> '+esc(bestEx.name)+' '+_t('עם')+' '+nfmt(Math.round(bestEx.vol))+' '+_t('{u} נפח.',{u:weightUnit()})+'</div>';
   h+='<div><b style="font-weight:800">'+_t('סה"כ:')+'</b> '+totalSets+' '+_t('סטים')+''+(avgRPE!==null?''+_t(', RPE ממוצע')+' '+avgRPE+'. '+(avgRPE>=9?''+_t('עומס כבד — שים לב להתאוששות.')+'':avgRPE>=7.5?''+_t('אימון טוב — באזור העלייה.')+'':''+_t('אימון נוח. אפשר להעלות במשקל.')+''):'.')+' '+_t('אין דיווח כאב.')+'</div>';
   h+='</div>';
 
