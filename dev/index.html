@@ -1136,9 +1136,17 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
    sit in. */
 .mo-chip.mo-seg{background:transparent!important;color:transparent!important}
 .mo-spans{position:absolute;inset:0;pointer-events:none;z-index:5}
-.mo-span{position:absolute;height:13px;border-radius:4px;display:flex;align-items:center;
-  padding:0 4px;font-size:7.5px;font-weight:700;color:var(--white);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo-span{position:absolute;height:14px}
+/* The name sits above the rail. On a 3px rail at 7.5px type there is nowhere
+   else for it to go that does not either cross the letters or need a backing
+   behind them, and a backing would put back the weight the rail removes. */
+.mo-span-t{position:absolute;inset-inline:1px;top:0;font-size:7.5px;font-weight:700;
+  line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo-span-r{position:absolute;inset-inline:3px;bottom:2px;height:2.5px;border-radius:2px}
+/* The ends, so the first and last day are read rather than inferred. */
+.mo-span-d{position:absolute;bottom:0;width:6.5px;height:6.5px;border-radius:50%}
+.mo-span-d.s{inset-inline-start:0}
+.mo-span-d.e{inset-inline-end:0}
 .dp-q{font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.4;margin-bottom:9px}
 .dp-ta{width:100%;background:var(--card);border:none;border-radius:14px;padding:12px 14px;font-size:12.5px;color:var(--ink);line-height:1.6;font-family:inherit;unicode-bidi:plaintext;outline:none;resize:none;min-height:74px}
 .dp-ta::placeholder{color:#c9c0b8}
@@ -13723,6 +13731,11 @@ function moWeekTasksOn(date,cache){
 
 /* One bar per run per grid row. Measured rather than computed: the rows are
    content-sized, so only the cells themselves know where they are. */
+var _moSpanIv=null;
+window.addEventListener('resize',function(){
+  if(_moSpanIv)clearTimeout(_moSpanIv);
+  _moSpanIv=setTimeout(moPlaceSpans,120);   // no-ops on its own when the grid is gone
+});
 function moPlaceSpans(){
   var grid=document.querySelector('#plan-sec-month .mo-grid');
   if(!grid)return;
@@ -13748,23 +13761,39 @@ function moPlaceSpans(){
   }
 
   for(id in runs)for(row in runs[id]){
-    var list=runs[id][row],a=list[0].r,b=list[0].r,j;
+    var list=runs[id][row],a=list[0].r,b=list[0].r,j,top=list[0].r.top;
     for(j=1;j<list.length;j++){
       if(list[j].r.left<a.left)a=list[j].r;
       if(list[j].r.right>b.right)b=list[j].r;
+      /* Cells hold different amounts, so the placeholder sits at a different
+         height in each one. Take the LOWEST of them: any higher and the bar
+         rides up over a day number in whichever cell had the most in it. */
+      if(list[j].r.top>top)top=list[j].r.top;
     }
     var first=null;
     for(j=0;j<list.length;j++)if(list[j].el.getAttribute('data-spanfirst'))first=list[j].el;
     var src=first||list[0].el;
+    var col=src.getAttribute('data-spancol');
     var bar=document.createElement('div');
     bar.className='mo-span';
-    bar.style.background=src.getAttribute('data-spancol');
     bar.style.left=(a.left-gb.left)+'px';
     bar.style.width=(b.right-a.left)+'px';
-    bar.style.top=(a.top-gb.top)+'px';
+    bar.style.top=(top-gb.top)+'px';
     /* Only the row that starts the run says what it is; a continuation with
        the words repeated reads as two things happening. */
-    bar.textContent=first?src.getAttribute('data-spanw'):'';
+    if(first){
+      var lbl=document.createElement('div');
+      lbl.className='mo-span-t';
+      lbl.style.color=col;
+      lbl.textContent=src.getAttribute('data-spanw');
+      bar.appendChild(lbl);
+    }
+    var rail=document.createElement('div');
+    rail.className='mo-span-r';rail.style.background=col;
+    bar.appendChild(rail);
+    var ds=document.createElement('div');ds.className='mo-span-d s';ds.style.background=col;
+    var de=document.createElement('div');de.className='mo-span-d e';de.style.background=col;
+    bar.appendChild(ds);bar.appendChild(de);
     layer.appendChild(bar);
   }
   grid.appendChild(layer);
@@ -14106,7 +14135,16 @@ function renderPlanning(){
   document.getElementById('content').innerHTML=h;
 
   /* the after-steps each screen used to run for itself */
-  if(o.month)moPlaceSpans();
+  if(o.month){
+    /* Placed straight away so nothing flashes, then again once the layout has
+       actually settled. Measured: the first pass reads the cells 9px higher
+       than they end up, because the web font has not arrived and the rows are
+       content-sized - so the bar lands on the day numbers. Re-placing is
+       idempotent; it removes its own layer first. */
+    moPlaceSpans();
+    requestAnimationFrame(moPlaceSpans);
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moPlaceSpans);
+  }
   if(o.week)wkPlacePoint();
   if(o.day){dpRail();dpNowLine();dpNowStart();}
 
