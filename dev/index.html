@@ -745,6 +745,13 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-pad{flex-shrink:0;width:calc(50% - 26px);pointer-events:none}
 .cl-mirror.side{padding:8px}
 .cl-row{position:relative;z-index:1;display:flex;align-items:center;gap:3px}
+.cl-pair{display:flex;align-items:stretch;gap:9px}
+.cl-pair-main{flex:1;min-width:0}
+.cl-pair-side{flex-shrink:0;width:120px;border-inline-start:1px solid var(--line);padding-inline-start:9px;display:flex;align-items:center}
+.cl-pair .cl-row{flex-wrap:wrap}
+.cl-pair .cl-lab{width:100%;padding-inline-end:0;margin-bottom:1px}
+.cl-pair-side .cl-arw{display:none}
+.cl-pair-side .cl-row{width:100%}
 .cl-row+.cl-row{margin-top:5px;border-top:1px solid #f7f2ec;padding-top:5px}
 .cl-lab{flex-shrink:0;width:52px;text-align:start;padding-inline-end:2px}
 .cl-rt{display:block;font-size:10px;font-weight:800;color:var(--ink);line-height:1.2}
@@ -787,7 +794,8 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-fit-b{display:flex;align-items:center;gap:7px;margin-top:9px}
 .cl-look{background:var(--surface);border-radius:20px;padding:18px 14px 14px;margin-bottom:10px}
 .cl-look-stage{position:relative;margin:0 auto;direction:ltr}
-.cl-look-i{position:absolute;border-radius:12px;overflow:hidden}
+.cl-look-i{position:absolute;overflow:hidden}
+.cl-look-img{position:absolute;display:block;max-width:none}
 .cl-look-i .cl-img{border-radius:12px}
 .cl-fit-d{flex:1;font-size:10px;color:var(--muted-soft)}
 .cl-fit-w{background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:9px;padding:6px 14px;font-size:11px;font-weight:700;color:var(--white);cursor:pointer;font-family:inherit}
@@ -8121,6 +8129,9 @@ var CLOSET_CATS;langOn(function(){CLOSET_CATS=[
 ];});
 // which rows a one-piece silences
 var CLOSET_SOLO_HIDES=['top','bottom'];
+/* The dress is drawn at 118 in a look and picked at 92, because the picker
+   gives it a column a third of the width and the look gives it the body. */
+var CLOSET_DRESS_CELL=92;
 function closetSoloOn(){
   var list=closetOf('dress');
   return list.length>0&&(_closetSel.dress||0)>0;
@@ -8546,7 +8557,7 @@ function erSave(){
   for(i=0;i<list.length;i++)if(list[i].id===e.id)it=list[i];
   if(!it){erClose();return;}
   var done=function(){
-    delete LOOK_ASPECT[it.ref];   // the picture behind the ref just changed
+    delete LOOK_TRIM[it.ref];    // the ink behind the ref just moved
     erClose();renderCloset();showToast(_t('✓ נשמר'));
   };
   if(isPhotoKey(it.ref))photoPutKeyed(it.ref,data).then(done,done);
@@ -8589,10 +8600,6 @@ function cropPaint(){
   h+='<div class="crop-top">';
   if(_cropQ.length>1)
     h+='<div class="crop-n">'+(_cropQi+1)+' '+_t('מתוך')+' '+_cropQ.length+'</div>';
-  h+='<div class="crop-modes">';
-  h+='<button class="crop-m'+(c.mode==='rect'?' on':'')+'" onclick="cropMode(&quot;rect&quot;)">'+_t('4 פאות')+'</button>';
-  h+='<button class="crop-m'+(c.mode==='free'?' on':'')+'" onclick="cropMode(&quot;free&quot;)">'+_t('חופשי')+'</button>';
-  h+='</div>';
   h+='</div>';
 
   h+='<div class="crop-stage" id="crop-stage" style="width:'+c.vw+'px;height:'+c.vh+'px">';
@@ -8622,9 +8629,15 @@ function cropPaint(){
     }
     h+='</div>';
   }
+  /* Beside the buttons that finish the job, rather than in the corner of the
+     screen furthest from a thumb. */
+  h+='<div class="crop-modes">';
+  h+='<button class="crop-m'+(c.mode==='rect'?' on':'')+'" onclick="cropMode(&quot;rect&quot;)">'+_t('מסגרת')+'</button>';
+  h+='<button class="crop-m'+(c.mode==='free'?' on':'')+'" onclick="cropMode(&quot;free&quot;)">'+_t('לגזור סביב הבגד')+'</button>';
+  h+='</div>';
   h+='<div class="crop-hint">'+(c.mode==='rect'
       ?''+_t('גרור צד או פינה. גרירה באמצע מזיזה את המסגרת.')+''
-      :''+_t('סמן עם האצבע סביב הבגד. מה שמחוץ לקו יימחק.')+'')+'</div>';
+      :''+_t('סמן עם האצבע סביב הבגד — אפשר להרים את האצבע ולהמשיך. מה שמחוץ לקו יימחק.')+'')+'</div>';
   /* All three within reach of a thumb, instead of two of them in the far
      top corners of a phone held in one hand. */
   h+='<div class="crop-bot">';
@@ -8654,7 +8667,11 @@ function cropBind(){
     if(!_crop)return;
     var p=pt(e);
     if(c.mode==='free'){
-      c.path=[p];c.drag={kind:'free'};
+      /* Continue the outline rather than replace it. Cutting round a sleeve
+         takes more than one drag, and losing everything on a lifted finger
+         made the whole mode unusable. אפס starts over. */
+      if(c.path.length)c.path.push(p); else c.path=[p];
+      c.drag={kind:'free'};
     } else {
       /* Which edge you meant is decided by how close you got, not by whether
          you landed on the handle. The handles were 5px thick and the test was
@@ -8737,6 +8754,18 @@ function cropDrawPath(){
   x.fillStyle='rgba(40,34,32,.55)';
   try{x.fill('evenodd');}catch(_e){x.fill();}
   x.restore();
+  /* From where you stopped back to where you started: the shape is closed
+     whether or not you got back there, and seeing it is what tells you you
+     can stop. */
+  var last=c.path[c.path.length-1];
+  if(c.path.length>2){
+    x.save();
+    x.setLineDash([5,5]);
+    x.beginPath();
+    x.moveTo(last.x,last.y);x.lineTo(c.path[0].x,c.path[0].y);
+    x.strokeStyle='rgba(255,255,255,.5)';x.lineWidth=1.5;x.stroke();
+    x.restore();
+  }
   x.beginPath();
   x.moveTo(c.path[0].x,c.path[0].y);
   for(var j=1;j<c.path.length;j++)x.lineTo(c.path[j].x,c.path[j].y);
@@ -8982,8 +9011,12 @@ function closetPickedPaint(){
   el.innerHTML=closetPickedHTML();
   hydratePhotos(el);
 }
-function closetRowHTML(cat){
+/* `cell` overrides the category's own height for the picker only. The look
+   still reads cat.h, because a dress has to be drawn large there whatever
+   room the picker had for it. */
+function closetRowHTML(cat,cell){
   var list=closetOf(cat.k),sel=_closetSel[cat.k]||0,i,h='';
+  var CH=cell||cat.h;
   var solo=!!cat.solo;
   // on the one-piece row index 0 is ללא, so the garments start at 1
   var maxSel=solo?list.length:Math.max(0,list.length-1);
@@ -8994,26 +9027,26 @@ function closetRowHTML(cat){
      (list.length>1?'<span class="cl-rn" id="cl-n-'+cat.k+'">'+
         (solo?(sel===0?''+_t('ללא')+'':sel+'/'+list.length):(sel+1)+'/'+list.length)+'</span>':'')+'</div>';
   if(!list.length){
-    h+='<label class="cl-empty" style="height:'+(solo?52:cat.h)+'px">+ '+cat.one+
+    h+='<label class="cl-empty" style="height:'+(solo?52:CH)+'px">+ '+cat.one+
        '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
     return h+'</div>';
   }
-  h+='<span class="cl-zone" style="width:'+(cat.h+12)+'px"></span>';
+  h+='<span class="cl-zone" style="width:'+(CH+12)+'px"></span>';
   h+='<button class="cl-arw" onclick="closetStep(&quot;'+cat.k+'&quot;,-1)" aria-label="'+_t("הקודם")+'">&#8249;</button>';
-  h+='<div class="cl-track" id="cl-tr-'+cat.k+'" data-cat="'+cat.k+'" onscroll="clScroll(this)" style="height:'+(cat.h+6)+'px">';
+  h+='<div class="cl-track" id="cl-tr-'+cat.k+'" data-cat="'+cat.k+'" onscroll="clScroll(this)" style="height:'+(CH+6)+'px">';
   // without these the first and last garment can never reach the middle
   h+='<span class="cl-pad"></span>';
   if(solo){
     h+='<span class="cl-cell">';
     h+='<button class="cl-it cl-none'+(sel===0?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,0)" '+
-       'style="width:'+cat.h+'px;height:'+cat.h+'px">'+_t('ללא')+'</button>';
+       'style="width:'+CH+'px;height:'+CH+'px">'+_t('ללא')+'</button>';
     h+='</span>';
   }
   for(i=0;i<list.length;i++){
     var at=solo?i+1:i;
     var on=(at===sel);
     h+='<span class="cl-cell">';
-    h+='<button class="cl-it'+(on?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,'+at+')" style="width:'+cat.h+'px;height:'+cat.h+'px">'+
+    h+='<button class="cl-it'+(on?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,'+at+')" style="width:'+CH+'px;height:'+CH+'px">'+
        photoImg(list[i].ref,'class="cl-img"')+'</button>';
     if(on){
       h+='<button class="cl-x" onclick="closetRemove(&quot;'+cat.k+'&quot;,'+i+')" aria-label="'+_t("הסר")+'">&times;</button>';
@@ -9021,7 +9054,7 @@ function closetRowHTML(cat){
     }
     h+='</span>';
   }
-  h+='<label class="cl-add" style="width:'+cat.h+'px;height:'+cat.h+'px">+'+
+  h+='<label class="cl-add" style="width:'+CH+'px;height:'+CH+'px">+'+
      '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
   h+='<span class="cl-pad"></span>';
   h+='</div>';
@@ -9128,7 +9161,24 @@ function clCentreAll(smooth){
   }
 }
 /* A look in the list is smaller than a look on its own. */
-var LOOK_LIST_SCALE=0.9;
+/* The room a look is given, rather than the size it is drawn at - the scale
+   is worked out from these and the composition's own proportions. Tall and
+   narrow, because a person is. */
+var LOOK_LIST_MAX={w:300,h:420};
+var LOOK_SHARE_MAX={w:880,h:1300};
+/* Lay the composition out at its natural size to find out what shape it is,
+   then return the scale that fits it in the room given. */
+function lookFit(o,maxW,maxH){
+  var L=lookLayout(o,1);
+  if(!L.width||!L.height)return 1;
+  return Math.min(maxW/L.width,maxH/L.height);
+}
+/* How far each garment climbs back over the one above it, as a fraction of
+   its own height. Read off the reference: the waistband disappears under the
+   hem, and most of the boot is in front of the trouser leg. Composition
+   knowledge, so it lives with the layout rather than in CLOSET_CATS, which
+   describes the wardrobe. */
+var LOOK_OVERLAP={top:0.05,dress:0.05,bottom:0.12,socks:0.30,shoes:0.42};
 /* Find the garment a look points at, or null if it has since been deleted. */
 function lookItemOf(o,cat){
   var id=o.items[cat.k];if(!id)return null;
@@ -9136,10 +9186,17 @@ function lookItemOf(o,cat){
   for(li=0;li<ll.length;li++)if(ll[li].id===id)return ll[li];
   return null;
 }
-/* A photograph's shape, once measured, for the life of the tab. The layout
-   needs it and cannot wait for it, so an unmeasured ref is assumed square
-   and corrected on the next render. */
-var LOOK_ASPECT={};
+/* Where the garment actually is inside its photograph, as fractions of the
+   picture, measured once and kept for the life of the tab. Every stored
+   photo is a 512x512 square with the garment letterboxed inside it, so
+   without this a shirt and a pair of trousers are both squares and most of
+   the space between two garments is the space inside their own boxes.
+
+   A photo that was never cut out is opaque to its own edges, so its ink is
+   the whole rectangle and nothing changes for it. */
+var LOOK_TRIM={};
+var LOOK_FULL={x:0,y:0,w:1,h:1,a:1};
+function lookTrim(ref){return LOOK_TRIM[ref]||LOOK_FULL;}
 function lookRefs(o){
   var out=[],cats=CLOSET_CATS.concat([CLOSET_SIDE]),ci,it;
   for(ci=0;ci<cats.length;ci++){it=lookItemOf(o,cats[ci]);if(it&&it.ref)out.push(it.ref);}
@@ -9149,22 +9206,46 @@ function lookImageSrc(ref){
   if(!isPhotoKey(ref))return Promise.resolve(ref);
   return photoGet(ref);
 }
+/* The bounding box of everything not transparent, as fractions. Scanned at a
+   reduced size because a bounding box does not need every pixel and a phone
+   should not read a quarter of a million of them per garment. */
+function lookInk(im){
+  var W=im.naturalWidth,H=im.naturalHeight;
+  if(!W||!H)return LOOK_FULL;
+  var k=Math.min(1,180/Math.max(W,H));
+  var w=Math.max(1,Math.round(W*k)),h=Math.max(1,Math.round(H*k));
+  var c=document.createElement('canvas');c.width=w;c.height=h;
+  var g=c.getContext('2d'),d;
+  g.drawImage(im,0,0,w,h);
+  try{d=g.getImageData(0,0,w,h).data;}catch(e){return LOOK_FULL;}
+  var x0=w,y0=h,x1=-1,y1=-1,x,y;
+  for(y=0;y<h;y++)for(x=0;x<w;x++){
+    if(d[(y*w+x)*4+3]>10){
+      if(x<x0)x0=x; if(x>x1)x1=x;
+      if(y<y0)y0=y; if(y>y1)y1=y;
+    }
+  }
+  if(x1<0)return LOOK_FULL;                       // nothing opaque at all
+  var bx=x0/w,by=y0/h,bw=(x1-x0+1)/w,bh=(y1-y0+1)/h;
+  if(bw<0.02||bh<0.02)return LOOK_FULL;           // a sliver is a bad measurement
+  return {x:bx,y:by,w:bw,h:bh,a:(bw*W)/(bh*H)};
+}
 /* Resolves true when something was newly measured - i.e. when a caller that
    has already drawn should draw again. */
 function lookMeasure(refs){
   var need=[],i;
-  for(i=0;i<refs.length;i++)if(refs[i]&&!(refs[i] in LOOK_ASPECT)&&need.indexOf(refs[i])<0)need.push(refs[i]);
+  for(i=0;i<refs.length;i++)if(refs[i]&&!(refs[i] in LOOK_TRIM)&&need.indexOf(refs[i])<0)need.push(refs[i]);
   if(!need.length)return Promise.resolve(false);
   return Promise.all(need.map(function(ref){
     return lookImageSrc(ref).then(function(src){
-      if(!src){LOOK_ASPECT[ref]=1;return;}
+      if(!src){LOOK_TRIM[ref]=LOOK_FULL;return;}
       return new Promise(function(res){
         var im=new Image();
-        im.onload=function(){LOOK_ASPECT[ref]=im.naturalHeight?im.naturalWidth/im.naturalHeight:1;res();};
-        im.onerror=function(){LOOK_ASPECT[ref]=1;res();};
+        im.onload=function(){LOOK_TRIM[ref]=lookInk(im);res();};
+        im.onerror=function(){LOOK_TRIM[ref]=LOOK_FULL;res();};
         im.src=src;
       });
-    },function(){LOOK_ASPECT[ref]=1;});
+    },function(){LOOK_TRIM[ref]=LOOK_FULL;});
   })).then(function(){return true;});
 }
 /* THE composition, as numbers. Everything that draws a look reads this and
@@ -9179,11 +9260,13 @@ function lookMeasure(refs){
 function lookLayout(o,scale){
   scale=scale||1;
   var GAP=Math.max(2,Math.round(5*scale));
-  var SIDE_GAP=Math.max(4,Math.round(10*scale));
+  var SIDE_GAP=Math.max(2,Math.round(3*scale));
   var box=function(cat,item){
+    var t=lookTrim(item.ref);
     var hgt=Math.round((cat.h||50)*scale);
-    var a=Math.max(0.45,Math.min(1.6,LOOK_ASPECT[item.ref]||1));
-    return {ref:item.ref,w:Math.round(hgt*a),h:hgt};
+    var a=Math.max(0.25,Math.min(2.6,t.a||1));
+    return {ref:item.ref,w:Math.round(hgt*a),h:hgt,trim:t,
+            ov:LOOK_OVERLAP[cat.k]||0};
   };
   var worn=[],side=[],ci,it;
   for(ci=0;ci<CLOSET_CATS.length;ci++){
@@ -9193,46 +9276,60 @@ function lookLayout(o,scale){
   it=lookItemOf(o,CLOSET_SIDE);
   if(it)side.push(box(CLOSET_SIDE,it));
 
+  /* Each garment climbs back over the one above it by a fraction of its own
+     height, the way it would if you laid it there: a waistband under a hem,
+     a shoe over the bottom of a trouser leg. This is the whole difference
+     between an outfit and a list, and it only works on cut-outs - overlap
+     two rectangles of bedsheet and you get one bedsheet over another. */
   var colW=0,colH=0,sideW=0,sideH=0,i;
-  for(i=0;i<worn.length;i++){colW=Math.max(colW,worn[i].w);colH+=worn[i].h+(i?GAP:0);}
+  for(i=0;i<worn.length;i++)colW=Math.max(colW,worn[i].w);
   for(i=0;i<side.length;i++){sideW=Math.max(sideW,side[i].w);sideH+=side[i].h+(i?GAP:0);}
 
   var items=[],y=0;
   for(i=0;i<worn.length;i++){
-    items.push({ref:worn[i].ref,x:Math.round((colW-worn[i].w)/2),y:y,w:worn[i].w,h:worn[i].h});
-    y+=worn[i].h+GAP;
+    if(i)y-=Math.round(worn[i].h*worn[i].ov);
+    items.push({ref:worn[i].ref,x:Math.round((colW-worn[i].w)/2),y:y,
+                w:worn[i].w,h:worn[i].h,trim:worn[i].trim});
+    y+=worn[i].h;
   }
+  colH=y;
   var sx=colW+(side.length?SIDE_GAP:0);
-  var sideTop=Math.max(0,Math.round((colH-sideH)*0.33));
+  var sideTop=Math.max(0,Math.round((colH-sideH)*0.20));
   y=sideTop;
   for(i=0;i<side.length;i++){
-    items.push({ref:side[i].ref,x:sx+Math.round((sideW-side[i].w)/2),y:y,w:side[i].w,h:side[i].h});
+    items.push({ref:side[i].ref,x:sx+Math.round((sideW-side[i].w)/2),y:y,
+                w:side[i].w,h:side[i].h,trim:side[i].trim});
     y+=side[i].h+GAP;
   }
   return {items:items,
           width:colW+(side.length?SIDE_GAP+sideW:0),
           height:Math.max(colH,sideTop+sideH),
-          radius:Math.round(12*scale)};
+          radius:0};
 }
 function lookStageHTML(o,scale){
   var L=lookLayout(o,scale||1),h='',i,it;
   for(i=0;i<L.items.length;i++){
     it=L.items[i];
+    /* The box is the garment, so the picture inside it is blown up and
+       offset until its ink fills the box exactly - the same crop the canvas
+       does with a source rectangle. */
+    var t=it.trim||LOOK_FULL;
     h+='<span class="cl-look-i" style="left:'+it.x+'px;top:'+it.y+'px;'+
-       'width:'+it.w+'px;height:'+it.h+'px">'+photoImg(it.ref,'class="cl-img"')+'</span>';
+       'width:'+it.w+'px;height:'+it.h+'px">'+
+       photoImg(it.ref,'class="cl-look-img" style="width:'+(100/t.w)+'%;height:'+(100/t.h)+'%;'+
+         'left:'+(-t.x/t.w*100)+'%;top:'+(-t.y/t.h*100)+'%"')+'</span>';
   }
   return '<div class="cl-look-stage" style="width:'+L.width+'px;height:'+L.height+'px">'+h+'</div>';
 }
 /* The same composition, drawn. Bigger than the screen copy because it leaves
    the phone and lands on somebody else's. */
-var LOOK_SHARE_SCALE=2.6;
 function lookCanvas(o){
   return lookMeasure(lookRefs(o)).then(function(){return lookDraw(o);});
 }
 function lookDraw(o){
-  var L=lookLayout(o,LOOK_SHARE_SCALE);
+  var L=lookLayout(o,lookFit(o,LOOK_SHARE_MAX.w,LOOK_SHARE_MAX.h));
   if(!L.items.length)return Promise.resolve(null);
-  var pad=Math.round(34*LOOK_SHARE_SCALE);
+  var pad=Math.round(Math.max(L.width,L.height)*0.09);
   var c=document.createElement('canvas');
   c.width=L.width+pad*2;c.height=L.height+pad*2;
   var x=c.getContext('2d');
@@ -9258,10 +9355,10 @@ function lookDraw(o){
       x.save();
       /* Rounded like the screen copy, where the browser supports it. */
       if(x.roundRect){x.beginPath();x.roundRect(bx,by,it.w,it.h,L.radius);x.clip();}
-      /* object-fit: contain, by hand. */
-      var r=Math.min(it.w/img.width,it.h/img.height);
-      var dw=img.width*r,dh=img.height*r;
-      x.drawImage(img,bx+(it.w-dw)/2,by+(it.h-dh)/2,dw,dh);
+      /* Only the ink, stretched to the box the layout gave it. */
+      var t=it.trim||LOOK_FULL;
+      x.drawImage(img,t.x*img.width,t.y*img.height,t.w*img.width,t.h*img.height,
+                  bx,by,it.w,it.h);
       x.restore();
     }
     return new Promise(function(res){
@@ -9302,9 +9399,12 @@ function renderCloset(){
     h+='<button class="cl-back" onclick="_closetView=\'home\';renderCloset()">&#8249; '+_t('הארון')+'</button>';
     h+='<div class="cl-h2">'+_t('הלוקים ששמרת')+'</div>';
     if(!fits.length)h+='<div class="cl-none">'+_t('עוד לא שמרת לוק. תגלגל את השורות עד שזה נראה טוב ותשמור.')+'</div>';
+    /* What the card actually leaves for the picture, on this screen. */
+    var cw=(document.getElementById('content')||{}).clientWidth||360;
+    var room=Math.max(150,Math.min(LOOK_LIST_MAX.w,cw-56));
     for(var fi=0;fi<fits.length;fi++){
       var o=fits[fi],d=new Date(o.ts);
-      h+='<div class="cl-look">'+lookStageHTML(o,LOOK_LIST_SCALE)+'<div class="cl-fit-b">';
+      h+='<div class="cl-look">'+lookStageHTML(o,lookFit(o,room,LOOK_LIST_MAX.h))+'<div class="cl-fit-b">';
       h+='<span class="cl-fit-d">'+d.getDate()+'/'+(d.getMonth()+1)+'</span>';
       h+='<button class="cl-fit-s" onclick="closetShareOutfit(\''+o.id+'\')">'+_t('שתף לוק')+'</button>';
       h+='<button class="cl-fit-w" onclick="closetWearOutfit(\''+o.id+'\')">'+_t('ללבוש')+'</button>';
@@ -9336,7 +9436,20 @@ function renderCloset(){
   // the body column, in the order it is worn, in one frame so that rolling
   // any row shows you what it did to the rest
   h+='<div class="cl-mirror">';
-  for(var i=0;i<CLOSET_CATS.length;i++)h+=closetRowHTML(CLOSET_CATS[i]);
+  for(var i=0;i<CLOSET_CATS.length;i++){
+    var rc=CLOSET_CATS[i];
+    /* The pair and its alternative are one block, drawn when we reach the
+       first of them; the other two are skipped where they used to sit. */
+    if(rc.k==='top'){
+      h+='<div class="cl-pair"><div class="cl-pair-main">'+
+         closetRowHTML(closetCat('top'))+closetRowHTML(closetCat('bottom'))+
+         '</div><div class="cl-pair-side">'+
+         closetRowHTML(closetCat('dress'),CLOSET_DRESS_CELL)+'</div></div>';
+      continue;
+    }
+    if(rc.k==='bottom'||rc.k==='dress')continue;
+    h+=closetRowHTML(rc);
+  }
   h+='</div>';
 
   h+=closetSeasonsHTML();
