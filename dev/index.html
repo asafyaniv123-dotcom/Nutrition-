@@ -9461,12 +9461,16 @@ function lookFit(o,maxW,maxH){
   if(!L.width||!L.height)return 1;
   return Math.min(maxW/L.width,maxH/L.height);
 }
-/* How wide each garment is drawn, relative to the others, before any scale.
-   Read off the reference as fractions of the tee's width: trousers 0.77,
-   boots 0.67. These are the proportions of a body seen from the front, and
-   they are the thing a category actually knows. How TALL a garment is, it
-   does not know - only the photograph does. */
-var LOOK_WIDTH={hat:38,top:100,dress:96,bottom:78,socks:34,shoes:66,jewel:30};
+/* The slot each garment occupies on a body: width and height, before any
+   scale. Measured off the reference and normalised to the tee's width - tee
+   100x97, trousers 78x127, boots 66x47.
+
+   Both numbers matter. A category that fixes only one of them hands the
+   other to the photograph, and a photograph will happily make a pair of
+   trousers half the width of a shirt or three times its length. The picture
+   is fitted INSIDE this box, so it can touch the sides but never leave. */
+var LOOK_BOX={hat:[38,38],top:[100,97],dress:[96,150],bottom:[78,127],
+              socks:[34,30],shoes:[66,47],jewel:[30,30]};
 /* How far each garment climbs back over the one above it, as a fraction of
    its own height. Read off the reference: the waistband disappears under the
    hem, and most of the boot is in front of the trouser leg. Composition
@@ -9545,11 +9549,11 @@ function lookMeasure(refs){
 /* THE composition, as numbers. Everything that draws a look reads this and
    nothing measures anything twice.
 
-   The width of each box comes from its category, because that is what a
-   body fixes - shoulders and hips are within a quarter of each other - and
-   the height comes from the photograph, because length is what actually
-   differs between a cropped tee and a wide-leg cord. A ring is never as
-   large as a coat because a ring is narrow, not because it is short.
+   The category gives each garment the slot it occupies on a body, both wide
+   and tall, and the photograph is fitted inside that slot without being
+   distorted. A ring is never as large as a coat, and no photograph - a
+   panorama, a garment folded in half - can make one dimension run away,
+   because there is no dimension the picture decides on its own.
 
    CLOSET_CATS is already in body order - hat, top, dress, bottom, socks,
    shoes - so the column needs no ordering of its own. */
@@ -9559,16 +9563,17 @@ function lookLayout(o,scale){
   var SIDE_GAP=Math.max(2,Math.round(3*scale));
   var box=function(cat,item){
     var t=lookTrim(item.ref);
-    var a=Math.max(0.15,t.a||1);
-    /* The body says how wide. The photograph says how tall. */
-    var w=Math.round((LOOK_WIDTH[cat.k]||60)*scale);
-    var hgt=Math.round(w/a);
-    /* A garment photographed folded would otherwise become a tower. Shrink
-       the whole box rather than squash it - the picture is stretched to fill
-       whatever box it is given, so distorting is never the way to fit. */
-    var capH=Math.round(w*3.2);
-    if(hgt>capH){w=Math.round(w*(capH/hgt));hgt=capH;}
-    return {ref:item.ref,w:w,h:hgt,trim:t,ov:LOOK_OVERLAP[cat.k]||0};
+    var a=Math.max(0.05,t.a||1);
+    /* The body gives the slot; the photograph is fitted into it, touching
+       whichever side it reaches first. One scale factor on both axes, so the
+       garment keeps its shape and neither dimension can run away. */
+    var sl=LOOK_BOX[cat.k]||[60,60];
+    var W=sl[0]*scale,H=sl[1]*scale;
+    var w,hgt;
+    if(a>W/H){w=W;hgt=W/a;}      // wide for its slot: the width stops it
+    else{hgt=H;w=H*a;}           // tall for its slot: the height stops it
+    return {ref:item.ref,w:Math.round(w),h:Math.round(hgt),trim:t,
+            ov:LOOK_OVERLAP[cat.k]||0};
   };
   var worn=[],side=[],ci,it;
   for(ci=0;ci<CLOSET_CATS.length;ci++){
