@@ -522,6 +522,8 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .er-view{overflow:hidden;touch-action:none}
 .er-zoom{position:absolute;top:0;inset-inline-start:0;transform-origin:0 0;will-change:transform}
 .er-can,.er-ring{position:absolute;inset:0;width:100%;height:100%;display:block}
+.er-loupe{position:absolute;pointer-events:none;display:none;border-radius:50%;
+  box-shadow:0 3px 14px rgba(0,0,0,.45),0 0 0 2px rgba(255,255,255,.75) inset;z-index:5}
 .er-z{background:none;border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:5px 11px;font-family:inherit;font-size:11px;font-weight:800;color:#cbbfb4;cursor:pointer}
 .er-ring{pointer-events:none}
 .er-auto{border:1px solid rgba(255,255,255,.2);background:none;border-radius:12px;padding:9px 18px;font-family:inherit;font-size:12px;font-weight:800;color:#cbbfb4;cursor:pointer}
@@ -718,10 +720,14 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
   padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--muted);font-family:inherit;cursor:pointer;white-space:nowrap}
 .cl-season.on{background:var(--violet-100);border-color:var(--violet-300);color:var(--violet-700)}
 /* On a garment: four small marks, none lit meaning any season. */
-.cl-iseasons{display:flex;gap:3px;justify-content:center;margin-top:4px}
-.cl-iseason{background:none;border:none;padding:1px;font-size:11px;line-height:1;cursor:pointer;
-  opacity:.28;filter:grayscale(1);transition:opacity .12s,filter .12s}
-.cl-iseason.on{opacity:1;filter:none}
+.cl-iseasons{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:6px}
+.cl-iscap{font-size:10.5px;font-weight:800;color:var(--muted);margin-top:14px}
+.cl-isnote{font-size:9.5px;color:var(--muted-soft);margin-top:6px}
+.cl-iseason{background:var(--card);border:1.5px solid var(--line);border-radius:999px;
+  padding:6px 12px;font-family:inherit;font-size:11px;font-weight:700;color:var(--muted);
+  line-height:1;cursor:pointer;opacity:.55;filter:grayscale(1);transition:opacity .12s,filter .12s,border-color .12s,color .12s}
+.cl-iseason.on{opacity:1;filter:none;border-color:var(--violet-300);color:var(--ink)}
+.cl-seasons-n{font-size:10px;color:var(--muted);text-align:center;margin:-4px 0 10px;font-weight:700}
 .cl-mirror{position:relative;background:var(--card);border-radius:20px;padding:10px 8px;margin-bottom:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
 /* a row a one-piece has made irrelevant */
 .cl-row.off{opacity:.32;pointer-events:none;filter:grayscale(.6)}
@@ -8233,20 +8239,38 @@ function closetSeasonsHTML(){
     h+='<button class="cl-season'+(_closetSeason===sn.k?' on':'')+'" onclick="closetSeasonSet(\''+sn.k+'\')">'+
        sn.ic+' '+_t(sn.t)+(n?'<span class="cl-season-n">'+n+'</span>':'')+'</button>';
   }
-  return h+'</div>';
+  h+='</div>';
+  /* The half that was genuinely invisible: what opening a folder does to the
+     NEXT garment you add only shows up later, in a list you are not looking
+     at by then. */
+  if(_closetSeason){
+    var cur='';
+    for(i=0;i<CLOSET_SEASONS.length;i++)
+      if(CLOSET_SEASONS[i].k===_closetSeason)cur=_t(CLOSET_SEASONS[i].t);
+    h+='<div class="cl-seasons-n">'+_t('בגד שתוסיף עכשיו ייכנס אל {season}',{season:cur})+'</div>';
+  }
+  return h;
 }
 /* On the item itself, because that is the only place you know which garment you
    are talking about. Untagged shows nothing lit, which reads correctly as
    "any season". */
 function closetItemSeasonsHTML(it){
-  var a=Array.isArray(it.seasons)?it.seasons:[],h='<div class="cl-iseasons">',i;
+  var a=Array.isArray(it.seasons)?it.seasons:[],i;
+  /* A caption, because four grey emoji in a row look like a rating. And the
+     names, because an unlit snowflake does not say "not winter". */
+  var h='<div class="cl-iscap">'+_t('באילו עונות ללבוש אותו')+'</div>';
+  h+='<div class="cl-iseasons">';
   for(i=0;i<CLOSET_SEASONS.length;i++){
     var sn=CLOSET_SEASONS[i];
     h+='<button class="cl-iseason'+(a.indexOf(sn.k)>=0?' on':'')+'" '+
-       'onclick="closetSeasonToggle(\''+it.id+'\',\''+sn.k+'\')" '+
-       'aria-label="'+_t(sn.t)+'">'+sn.ic+'</button>';
+       'onclick="closetSeasonToggle(\''+it.id+'\',\''+sn.k+'\')">'+
+       sn.ic+' '+_t(sn.t)+'</button>';
   }
-  return h+'</div>';
+  h+='</div>';
+  /* Nothing lit is not "no seasons" - it is every season, and that is worth
+     saying rather than leaving as an absence. */
+  if(!a.length)h+='<div class="cl-isnote">'+_t('בלי בחירה הוא מופיע בכל העונות')+'</div>';
+  return h;
 }
 function loadOutfits(){
   try{var a=JSON.parse(localStorage.getItem(CLOSET_FIT_KEY)||'[]');return Array.isArray(a)?a:[];}
@@ -8379,7 +8403,11 @@ function erPaint(){
   h+='<div class="er-zoom" id="er-stage" style="width:'+e.vw+'px;height:'+e.vh+'px">';
   h+='<canvas class="er-can" id="er-can" width="'+e.W+'" height="'+e.H+'"></canvas>';
   h+='<canvas class="er-ring" id="er-ring" width="'+e.vw+'" height="'+e.vh+'"></canvas>';
-  h+='</div></div>';
+  h+='</div>';
+  /* Outside the zoomed element and inside the window, so it is positioned
+     against the view and never scaled with the picture. */
+  h+='<canvas class="er-loupe" id="er-loupe" width="'+(LOUPE_R*2)+'" height="'+(LOUPE_R*2)+'"></canvas>';
+  h+='</div>';
   h+='<div class="er-size"><span>'+_t('עובי המברשת')+'</span>'+
      '<input type="range" min="6" max="90" value="'+e.size+'" oninput="erSize(this.value)">'+
      '<span id="er-sz">'+e.size+'</span></div>';
@@ -8435,6 +8463,43 @@ function erStroke(){
   }
   g.globalCompositeOperation='source-over';
   erShow();
+}
+/* Big enough to be worth looking at on a phone, small enough not to be the
+   thing you are looking at. */
+var LOUPE_R=46;
+var LOUPE_MAG=2.6;
+function erLoupe(p){
+  var e=_erase;if(!e)return;
+  var c=document.getElementById('er-loupe');if(!c)return;
+  if(!p){c.style.display='none';return;}
+  var R=LOUPE_R,g=c.getContext('2d');
+  /* How much of the PICTURE the window covers: magnified relative to what is
+     already on screen, so pinching in makes the loupe finer too. */
+  var half=R/(LOUPE_MAG*e.z)*(e.W/e.vw);
+  g.setTransform(1,0,0,1,0,0);
+  g.clearRect(0,0,R*2,R*2);
+  g.save();
+  g.beginPath();g.arc(R,R,R,0,6.284);g.clip();
+  /* The same checker the stage uses, so transparency reads the same here. */
+  g.fillStyle='#3a3330';g.fillRect(0,0,R*2,R*2);
+  g.fillStyle='#4a423e';
+  for(var y=0;y<R*2;y+=10)for(var x=(y/10%2)*10;x<R*2;x+=20)g.fillRect(x,y,10,10);
+  g.imageSmoothingEnabled=false;   // at this magnification, show the pixels
+  g.drawImage(e.can,p.x-half,p.y-half,half*2,half*2,0,0,R*2,R*2);
+  /* What the brush would take, at the size it would take it. */
+  var br=(e.size*(e.W/e.vw)/2)/half*R;
+  g.beginPath();g.arc(R,R,br,0,6.284);
+  g.strokeStyle='rgba(255,255,255,.9)';g.lineWidth=1.5;g.stroke();
+  g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=.7;g.stroke();
+  g.restore();
+  /* Above the finger - and below it instead when there is no room above,
+     because a loupe off the top of the screen helps nobody. */
+  var vx=p.vx*e.z+e.ox, vy=p.vy*e.z+e.oy;
+  var top=vy-R*2-26;
+  if(top<4)top=vy+26;
+  c.style.display='block';
+  c.style.left=Math.max(2,Math.min(e.vw-R*2-2,vx-R))+'px';
+  c.style.top=top+'px';
 }
 function erRing(p){
   var e=_erase;if(!e)return;
@@ -8505,7 +8570,7 @@ function erBind(){
       e.ctx.drawImage(prev,0,0);
       erShow();
     }
-    e.drawing=false;e.last=null;erRing(null);
+    e.drawing=false;e.last=null;erRing(null);erLoupe(null);
   };
   view.onpointerdown=function(ev){
     if(!_erase)return;
@@ -8526,7 +8591,7 @@ function erBind(){
     var p=pt(ev);
     e.last=p;e.drawing=true;
     erSeg(p,p);              // a tap is a dot, not nothing
-    erStroke();erRing(p);
+    erStroke();erRing(p);erLoupe(p);
     try{view.setPointerCapture(ev.pointerId);}catch(_e){}
     ev.preventDefault();
   };
@@ -8548,7 +8613,7 @@ function erBind(){
     var p=pt(ev);
     if(!e.drawing){erRing(p);return;}
     erSeg(e.last,p);e.last=p;
-    erStroke();erRing(p);
+    erStroke();erRing(p);erLoupe(p);
     ev.preventDefault();
   };
   var up=function(ev){
@@ -8556,7 +8621,7 @@ function erBind(){
     if(ev&&ev.pointerId!==undefined){delete e.ptrs[ev.pointerId];e.np=Object.keys(e.ptrs).length;}
     if(e.np<2)e.pinch=null;
     if(!e.drawing)return;
-    e.drawing=false;e.last=null;erRing(null);
+    e.drawing=false;e.last=null;erRing(null);erLoupe(null);
     var b=document.getElementById('er-undo');
     if(b){b.removeAttribute('disabled');b.removeAttribute('style');}
     if(ev&&ev.preventDefault)ev.preventDefault();
@@ -9396,6 +9461,12 @@ function lookFit(o,maxW,maxH){
   if(!L.width||!L.height)return 1;
   return Math.min(maxW/L.width,maxH/L.height);
 }
+/* How wide each garment is drawn, relative to the others, before any scale.
+   Read off the reference as fractions of the tee's width: trousers 0.77,
+   boots 0.67. These are the proportions of a body seen from the front, and
+   they are the thing a category actually knows. How TALL a garment is, it
+   does not know - only the photograph does. */
+var LOOK_WIDTH={hat:38,top:100,dress:96,bottom:78,socks:34,shoes:66,jewel:30};
 /* How far each garment climbs back over the one above it, as a fraction of
    its own height. Read off the reference: the waistband disappears under the
    hem, and most of the boot is in front of the trouser leg. Composition
@@ -9474,9 +9545,11 @@ function lookMeasure(refs){
 /* THE composition, as numbers. Everything that draws a look reads this and
    nothing measures anything twice.
 
-   The height of each box comes from its category, so a ring is never as
-   large as a coat; the width comes from the photograph, bounded so that
-   neither a panorama nor a sliver can distort the column.
+   The width of each box comes from its category, because that is what a
+   body fixes - shoulders and hips are within a quarter of each other - and
+   the height comes from the photograph, because length is what actually
+   differs between a cropped tee and a wide-leg cord. A ring is never as
+   large as a coat because a ring is narrow, not because it is short.
 
    CLOSET_CATS is already in body order - hat, top, dress, bottom, socks,
    shoes - so the column needs no ordering of its own. */
@@ -9486,14 +9559,15 @@ function lookLayout(o,scale){
   var SIDE_GAP=Math.max(2,Math.round(3*scale));
   var box=function(cat,item){
     var t=lookTrim(item.ref);
-    var hgt=Math.round((cat.h||50)*scale);
     var a=Math.max(0.15,t.a||1);
-    var w=Math.round(hgt*a);
-    /* A very wide shot must not shove the column sideways - but it must not
-       be squashed to prevent that either, because the picture is stretched
-       to fill whatever box it is given. Shrink the box, keep the shape. */
-    var cap=Math.round(hgt*2.4);
-    if(w>cap){hgt=Math.round(hgt*(cap/w));w=cap;}
+    /* The body says how wide. The photograph says how tall. */
+    var w=Math.round((LOOK_WIDTH[cat.k]||60)*scale);
+    var hgt=Math.round(w/a);
+    /* A garment photographed folded would otherwise become a tower. Shrink
+       the whole box rather than squash it - the picture is stretched to fill
+       whatever box it is given, so distorting is never the way to fit. */
+    var capH=Math.round(w*3.2);
+    if(hgt>capH){w=Math.round(w*(capH/hgt));hgt=capH;}
     return {ref:item.ref,w:w,h:hgt,trim:t,ov:LOOK_OVERLAP[cat.k]||0};
   };
   var worn=[],side=[],ci,it;
