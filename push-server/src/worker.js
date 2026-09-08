@@ -99,6 +99,18 @@ async function sendPush(endpoint, env) {
 
 /* ── HTTP ── */
 
+/* The app tells us which language it is showing. Guessing from the text
+   cannot work - "pasta" is four languages and a photograph is none - and the
+   app has known the answer since it grew a language picker. */
+const LANG_NAMES = {
+  he: 'Hebrew', en: 'English', de: 'German', es: 'Spanish', fr: 'French',
+  it: 'Italian', pt: 'Portuguese', ja: 'Japanese',
+  'zh-Hans': 'Simplified Chinese', 'zh-Hant': 'Traditional Chinese', ar: 'Arabic',
+};
+function langName(code) {
+  return LANG_NAMES[String(code || '').trim()] || 'English';
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -237,7 +249,8 @@ export default {
       await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
 
       const SYSTEM =
-        'You split a description of a meal into its items. Hebrew or English.\n' +
+        'You split a description of a meal into its items. It may be written\n' +
+        'in any language.\n' +
         'Reply with JSON only: {"items":[{"food":"","amount":1,"unit":""}]}\n' +
         '- food: the food alone, in the language it was written, no quantity words.\n' +
         '- amount: a number. If none is given use 1.\n' +
@@ -362,7 +375,7 @@ export default {
 
       const SYSTEM =
         'You match a written food to one row of a food table, and say what one\n' +
-        'serving of it weighs. Hebrew or English.\n' +
+        'serving of it weighs. The written food may be in any language.\n' +
         'Reply with JSON only:\n' +
         '{"picks":[0,4],"grams":200,"sure":true,"terms":["",""]}\n' +
         '- picks: 0-based indexes of the rows that are this food, best first,\n' +
@@ -551,8 +564,10 @@ export default {
       ];
 
       const SYSTEM =
-        "You answer questions about the user's own nutrition, in the language they\n" +
-        'asked in. Hebrew unless they write otherwise.\n' +
+        "You answer questions about the user's own nutrition. Write everything\n" +
+        'in ' + langName(b && b.lang) + ', which is the language the app is\n' +
+        'showing. Do not switch out of it because a food name in the data is\n' +
+        'written in another script.\n' +
         '\n' +
         'THE ONE RULE: every number you state must have come back from a tool in\n' +
         'this conversation. You do not know how much protein is in anything and you\n' +
@@ -655,7 +670,7 @@ export default {
 
       const SYSTEM =
         'You give nutrition values for a described food, for a food-logging app.\n' +
-        'Hebrew or English in, JSON only out:\n' +
+        'Any language in, JSON only out:\n' +
         '{"per100":{"kcal":0,"p":0,"c":0,"f":0},"serving_g":0,"kcal_low":0,\n' +
         ' "kcal_high":0,"confidence":"high|medium|low","assumed":"","ok":true}\n' +
         '\n' +
@@ -685,8 +700,9 @@ export default {
         '- In assumed, describe only the food and the portion. Do not state\n' +
         '  facts about a named restaurant, shop or brand - not its location, not\n' +
         '  its recipe, not its portion size - unless the user told you.\n' +
-        '- Write it entirely in the one language the user wrote in. No stray\n' +
-        '  words or characters from another script.\n' +
+        '- Write assumed entirely in ' + langName(b && b.lang) + ', the language\n' +
+        '  the app is showing. No stray words or characters from another\n' +
+        '  script.\n' +
         '- No prose, no markdown fence, JSON only.';
 
       let r;
@@ -789,6 +805,7 @@ export default {
       let b;
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
       const messages = Array.isArray(b && b.messages) ? b.messages : [];
+      const LANG = langName(b && b.lang);
       if (!messages.length) return json({ error: 'nothing to analyse' }, 400);
       if (messages.length > 20) return json({ error: 'too long' }, 400);
       if (JSON.stringify(messages).length > 60000) return json({ error: 'too long' }, 400);
@@ -807,8 +824,10 @@ export default {
           description:
             "Search the app's own food tables - the Israeli ministry of health " +
             'database and Open Food Facts. Returns rows with measured energy and ' +
-            'macros per 100g. Search for ONE ingredient at a time, in Hebrew, and ' +
-            'use the plainest word for it: "עוף", "פיתה", "טחינה", "שמן זית".',
+            'macros per 100g. Search for ONE ingredient at a time, and use the ' +
+            'plainest word for it: "עוף", "פיתה", "טחינה", "שמן זית". Search in ' +
+            'HEBREW whatever language the user writes in - that is the language ' +
+            'the tables are written in, not the language of the answer.',
           input_schema: {
             type: 'object',
             properties: { query: { type: 'string' } },
@@ -836,7 +855,7 @@ export default {
                         'as search_food returned it. Leave empty only if nothing ' +
                         'in the tables is this ingredient.',
                     },
-                    label: { type: 'string', description: 'What this part is, in Hebrew.' },
+                    label: { type: 'string', description: 'What this part is, in ' + LANG + '.' },
                     grams: { type: 'number', description: 'How much of it is in one serving.' },
                     per100: {
                       type: 'object',
@@ -852,7 +871,7 @@ export default {
                   required: ['label', 'grams'],
                 },
               },
-              dish: { type: 'string', description: 'A short name for the whole dish, in Hebrew.' },
+              dish: { type: 'string', description: 'A short name for the whole dish, in ' + LANG + '.' },
               assumed: {
                 type: 'string',
                 description:
