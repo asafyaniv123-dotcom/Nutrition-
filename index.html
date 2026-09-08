@@ -2195,12 +2195,43 @@ var LANGS=[
   {code:'zh-Hant',name:'繁體中文',locale:'zh-TW',dir:'ltr'},
   {code:'ar',name:'العربية',locale:'ar-EG',dir:'rtl'}
 ];
+/* What the phone is set to, mapped onto what we ship. Worked out once: this
+   is asked on nearly every render and the answer cannot change without a
+   reload. */
+var _langGuess='';
+function langFromBrowser(){
+  if(_langGuess)return _langGuess;
+  var list=[],i,raw,low;
+  try{
+    list=(navigator.languages&&navigator.languages.length)
+      ?navigator.languages:[navigator.language||''];
+  }catch(e){list=[];}
+  for(i=0;i<list.length;i++){
+    raw=String(list[i]||'');low=raw.toLowerCase();
+    /* Chinese is the one where the region decides the script, and getting it
+       backwards gives a reader characters they were never taught. */
+    if(low.indexOf('zh')===0){
+      _langGuess=/hant|tw|hk|mo/.test(low)?'zh-Hant':'zh-Hans';return _langGuess;
+    }
+    /* iw is Hebrew's old code and some phones still send it. */
+    if(low.indexOf('iw')===0){_langGuess='he';return _langGuess;}
+    var base=low.split('-')[0];
+    for(var j=0;j<LANGS.length;j++)
+      if(LANGS[j].code===base){_langGuess=base;return _langGuess;}
+  }
+  /* Not one we ship. English rather than Hebrew: Hebrew is right for one
+     person and unreadable for everyone else, in both senses. */
+  _langGuess='en';
+  return _langGuess;
+}
 function appLang(){
   try{
     var v=localStorage.getItem(LANG_KEY);
+    /* A stored choice always wins - someone who picked Hebrew on an English
+       phone meant it. */
     if(v&&LANGS.some(function(l){return l.code===v;}))return v;
   }catch(e){}
-  return 'he';
+  return langFromBrowser();
 }
 /* Direction and locale are set from the same record, so they can never drift
    apart - an English UI reading right to left is a worse bug than an
@@ -3519,8 +3550,18 @@ function foodTokens(q){
    glues its prefixes on - בשוקולד is שוקולד - so a long word is allowed to
    match anywhere, where a chance collision is unlikely. It is the two and
    three letter ones that land inside other words and mean nothing. */
+/* Matching inside a word is right for Hebrew and wrong for everything with
+   spaces in it. ו and ה and ב attach to the front of the word they modify,
+   so a search for לחם has to find ולחם - there is no boundary to anchor on.
+   A French reader typing oeuf has one, and without it was offered boeuf:
+   Chinese beef noodles, for an egg.
+
+   So the rule follows the token's own script. A short token still needs the
+   boundary in either script, because two or three letters land inside
+   half the table otherwise. */
 function foodHas(name,tok){
-  if(tok.length>3)return name.indexOf(tok)>=0;
+  var attaches=/[\u0590-\u05FF\u0600-\u06FF]/.test(tok);   // Hebrew, Arabic
+  if(attaches&&tok.length>3)return name.indexOf(tok)>=0;
   var at=name.indexOf(tok);
   while(at>=0){
     if(at===0||name.charAt(at-1)===' ')return true;
@@ -21060,6 +21101,9 @@ function tbSync(){
   (function(){
     var code=appLang();
     langApply(code);
+    /* Hebrew is its own key and carries no dictionary; everything else needs
+       one fetched - including a language nobody chose, which is now the
+       common case rather than an impossible one. */
     if(code!=='he')langLoad(code,function(){langRepaint();});
   })();
   // Hide app initially
