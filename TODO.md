@@ -104,31 +104,33 @@ building it rather than now:
   half the wardrobe; the season filters what you are *looking at*, and the
   current one is a sensible default rather than a rule.
 
-### 2. Share the look — mostly plumbing that exists
+### 2. ~~Share the look~~ — done
 
-> אפשרות לשתף את הלוק הנבחר ברשתות או בהודעות או בווצאפ לחבר
+Built on item 3, exactly as planned: `lookLayout` computes the composition once
+and both renderers read those numbers, so the picture that leaves the phone is
+the picture that was on it. The share button hands a PNG to
+`navigator.share({files})`, falling back to a download.
 
-`navigator.canShare({files:[file]})` is already used to share a backup, so the
-hard half — handing a real file to the OS share sheet, which is what puts
-WhatsApp and Messages in the list — is proven in this app on this phone.
+One thing to keep in mind if this is ever touched: **the letterbox is
+invisible.** A box a fixed 1.5× as wide as it is tall, holding a near-square
+photograph, is mostly empty — and on a flat ground with no border, nothing
+shows you that. A column whose ink was 200px wide claimed 335, and the
+accessory placed beside it landed an inch and a half out across nothing. The
+box now takes the photograph's own shape, which means the layout has to have
+*seen* the photograph; `LOOK_ASPECT` caches that per ref.
 
-What is missing is the picture. There is nothing to share until the look can be
-drawn to a canvas as one image, which means **this depends on item 3** and
-should be built immediately after it, reusing the same layout code.
+### 3. ~~The look summary~~ — done
 
-### 3. The look summary — a design pass, buildable now
+Route 1 from `Taste library/screenshots/selected-look-flat-lay.md`: keep the
+rectangles, size and place them by category, and let the arrangement carry the
+body. Nothing outlines a figure and no mannequin is drawn — hat above top above
+trousers above shoes, accessories in their own stack beside them — and the eye
+assembles one anyway.
 
-> סיכום של הלוק כמו בתמונה בפינטרס
-
-Fully analysed in `Taste library/screenshots/selected-look-flat-lay.md`. Short
-version: a saved look renders today as `.cl-fit-row`, a horizontal row of
-equal-sized thumbnails in category order. That is a list, not a look.
-
-**Build the arrangement first, without cut-outs.** Size and place each photo by
-category — top wide and high, trousers tall and centred, shoes small and low,
-accessories in their own column — so the composition carries the body even while
-every photo is still a rectangle. If that reads as an outfit, item 4 was never
-the point. If it does not, we will know exactly what is missing.
+The honest scale was already in the app and unused: every `CLOSET_CATS` row
+carries an `h` tuned for the picker strips — 44 for a hat, 86 for trousers, 38
+for socks. The look reuses those rather than inventing a second set of numbers
+that could drift from them.
 
 ### 4. Cutting the garment out — the hard one
 
@@ -164,3 +166,13 @@ reason is worth writing down rather than discovering later:
 So the honest order is: **crop → erase → then decide about automatic.** By the
 time the first two are built we will also know whether the arrangement in item 3
 needs cut-outs at all, which is the question that decides how much this is worth.
+
+**Item 3 has now answered half of that question.** The arrangement reads as a
+look with plain rectangles — the eye assembles a body from the sizes and the
+stacking, and no cut-out was needed for that. What the rectangles *do* cost is
+the ground: every photograph brings its own background, so a look is five
+slightly different off-whites tiled together rather than one surface. That is a
+smaller problem than "it does not read as an outfit", and it is the one the
+cut-out actually solves. It also raises the stakes on the shared picture, which
+is the copy that leaves the phone and gets looked at by someone who was not
+there.
