@@ -189,3 +189,20 @@ smaller problem than "it does not read as an outfit", and it is the one the
 cut-out actually solves. It also raises the stakes on the shared picture, which
 is the copy that leaves the phone and gets looked at by someone who was not
 there.
+
+## Waiting on a deploy (2026-09-08)
+
+The nutrition internationalisation shipped in the app; two of the three parts
+need the Worker redeployed before they do anything:
+
+    cd push-server && npx wrangler deploy
+
+- **the language on every AI route** — the app now sends `lang` on all seven
+  calls, and the running Worker ignores an unknown field, so nothing changes
+  until it is deployed. Until then `/analyze` still labels a photographed meal
+  in Hebrew whoever is looking at it.
+- **`/off`**, the Open Food Facts proxy. Until it exists the live shelf returns
+  nothing and the food search behaves exactly as it did before.
+
+The case-sensitivity fix and the translated core foods need no deploy and are
+already live.
