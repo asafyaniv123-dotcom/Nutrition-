@@ -1769,6 +1769,10 @@ body.night .tb-j{background:rgba(255,255,255,.07);color:#8f86ae;border-color:rgb
    NOT converted: a presentation attribute loses to a CSS rule, and 34 rules
    in this file already set fill or stroke. Rewriting them as style="" would
    flip that precedence and let an icon override its own stylesheet. */
+/* The language-change registry. It lives up here rather than beside langOn
+   because collections declared above that line register into it, and a var
+   hoists its name without its value - langOn would push onto undefined. */
+var _langRebuilds=[];
 var PAL=(function(){
   var cs=getComputedStyle(document.documentElement),o={};
   ['ink-strong','ink','ink-soft','muted','muted-soft','line','line-strong','surface','panel','card','white','violet-50','violet-100','violet-200','violet-300','violet-500','violet-700','terra-100','terra-200','terra-500','terra-700','green-50','green-100','green-200','green-500','green-600','green-700','amber-500','amber-700','indigo-50','indigo-100','indigo-500','indigo-600','indigo-700','water-100','water-500'].forEach(function(k){
@@ -1807,13 +1811,13 @@ loadTargets();
    a weight typed over is otherwise gone for good, and this is the one number
    here that is supposed to change. */
 var PROFILE_KEY='profile_v1';
-var ACT_LEVELS=[
+var ACT_LEVELS;langOn(function(){ACT_LEVELS=[
   {v:1,t:''+_t('כמעט ללא')+'',s:''+_t('יום יושבני, בלי אימונים')+''},
   {v:2,t:''+_t('קלה')+'',s:'1&ndash;'+_t('2 אימונים בשבוע')+''},
   {v:3,t:''+_t('בינונית')+'',s:'3&ndash;'+_t('4 אימונים בשבוע')+''},
   {v:4,t:''+_t('גבוהה')+'',s:'5&ndash;'+_t('6 אימונים בשבוע')+''},
   {v:5,t:''+_t('מאוד גבוהה')+'',s:''+_t('כל יום, או עבודה פיזית')+''}
-];
+];});
 /* Each goal is two numbers: how far off maintenance the calories sit, and
    how much protein per kilo is added on top of the activity level's own
    figure. חיטוב is the interesting one - it is not a smaller version of
@@ -1821,12 +1825,12 @@ var ACT_LEVELS=[
    protein high, so the body has the material to build with while the fat
    comes off; a large deficit is what stops that working. So it carries the
    smallest calorie cut of the three and the largest protein bonus. */
-var GOALS=[
+var GOALS;langOn(function(){GOALS=[
   {v:'lose',  t:''+_t('ירידה במשקל')+'',   k:0.85, p:0.2, n:''+_t('גירעון של 15%')+' &mdash; '+_t('ירידה יציבה')+''},
   {v:'recomp',t:''+_t('חיטוב')+'',         k:0.95, p:0.4, n:''+_t('קרוב לתחזוקה, חלבון גבוה')+' &mdash; '+_t('לרדת אחוז שומן בלי לאבד מסה')+''},
   {v:'keep',  t:''+_t('שמירה על המשקל')+'',k:1.00, p:0,   n:''+_t('בדיוק מה שאתה שורף')+''},
   {v:'gain',  t:''+_t('עלייה במסה')+'',    k:1.10, p:0.1, n:''+_t('עודף של 10% לבנייה')+''}
-];
+];});
 function goalDef(v){for(var i=0;i<GOALS.length;i++)if(GOALS[i].v===v)return GOALS[i];return null;}
 // the greeting reads it too, so both places stay in step
 function profName(v){greetSetName(v);renderGreeting();}
@@ -2014,7 +2018,7 @@ var CATS=[
   ['snack','נישנוש'],
   ['drinks','משקאות']
 ];
-var QUESTIONS=[
+var QUESTIONS;langOn(function(){QUESTIONS=[
   {id:'mood',type:'stars',text:''+_t('איך הייתה המזג שלך היום?')+''},
   {id:'body',type:'stars',text:''+_t('איך הגוף שלך הרגיש?')+''},
   {id:'moment',type:'text',text:''+_t('מה היה הרגע הכי טוב שלך היום?')+'',placeholder:''+_t('כתוב במילים שלך...')+''},
@@ -2026,7 +2030,7 @@ var QUESTIONS=[
   {id:'song',type:'text',text:''+_t('השיר של היום?')+'',placeholder:''+_t('שם השיר...')+''},
   {id:'differently',type:'text',text:''+_t('האם יש משהו שהיית רוצה לעשות אחרת?')+'',placeholder:''+_t('אופציונלי — אם יש משהו...')+''},
   {id:'quote',type:'text',text:''+_t('משפט שתפס אותך היום')+'',placeholder:''+_t('משפט, מחשבה, רגע...')+''}
-];
+];});
 
 
 function r2(v){return Math.round(v*100)/100;}
@@ -2127,7 +2131,8 @@ function _t(str,vars){
    rather than like a missing translation. */
 var LANGS=[
   {code:'he',name:'עברית',  locale:'he-IL',dir:'rtl'},
-  {code:'en',name:'English',locale:'en-US',dir:'ltr'}
+  {code:'en',name:'English',locale:'en-US',dir:'ltr'},
+  {code:'de',name:'Deutsch',locale:'de-DE',dir:'ltr'}
 ];
 function appLang(){
   try{
@@ -2161,7 +2166,6 @@ function langStatic(){
   var els=document.querySelectorAll('[data-t]'),i;
   for(i=0;i<els.length;i++)els[i].textContent=_t(els[i].getAttribute('data-t'));
 }
-var _langRebuilds=[];
 function langOn(fn){_langRebuilds.push(fn);fn();}
 function langRepaint(){
   /* Rebuild before painting: the paint reads these. */
@@ -2177,6 +2181,7 @@ function langRepaint(){
     if(currentModule==='planning'){renderPlanning();return;}
     if(currentModule){goHome();return;}
     renderGreeting();renderHomeGrid();renderAreasList();
+    goHome();   // the other seven cards on the home screen
   }catch(e){}
 }
 function langSet(code){
@@ -3303,14 +3308,14 @@ function appBase(){
    The choice is remembered per food. You tell the app once that your roll is
    80 grams, and from then on that food opens asking how many rolls. That is
    the whole point - it has to stop asking. */
-var FOOD_UNITS=[
+var FOOD_UNITS;langOn(function(){FOOD_UNITS=[
   {k:'g',    t:''+_t('גרם')+'',  one:''+_t('גרם')+'',   many:''+_t('גרם')+'',   g:1,   fixed:true},
   {k:'unit', t:''+_t('יחידה')+'',one:''+_t('יחידה')+'', many:''+_t('יחידות')+'',g:100},
   {k:'slice',t:''+_t('פרוסה')+'',one:''+_t('פרוסה')+'', many:''+_t('פרוסות')+'',g:30},
   {k:'cup',  t:''+_t('כוס')+'',  one:''+_t('כוס')+'',   many:''+_t('כוסות')+'', g:240},
   {k:'tbsp', t:''+_t('כף')+'',   one:''+_t('כף')+'',    many:''+_t('כפות')+'',  g:15},
   {k:'tsp',  t:''+_t('כפית')+'', one:''+_t('כפית')+'',  many:''+_t('כפיות')+'', g:5}
-];
+];});
 var FOOD_UNITS_KEY='food_units';
 function unitDef(k){for(var i=0;i<FOOD_UNITS.length;i++)if(FOOD_UNITS[i].k===k)return FOOD_UNITS[i];return FOOD_UNITS[0];}
 function loadFoodUnits(){
@@ -3933,14 +3938,14 @@ var _sayOpen=false,_sayBusy=false,_sayItems=null,_sayErr='';
 /* '' is closed. Only one way is open at a time - they are alternatives, not
    a list, and two open at once was most of what made this sprawl. */
 var _addMode='';
-var ADD_WAYS=[
+var ADD_WAYS;langOn(function(){ADD_WAYS=[
   {k:'say', ic:'&#x1F4AC;', t:''+_t('משפט')+''},
   {k:'find',ic:'&#x1F50D;', t:''+_t('חיפוש')+''},
   {k:'scan',ic:'&#x1F4F7;', t:''+_t('ברקוד')+''},
   {k:'lib', ic:'&#x1F4DA;', t:''+_t('שלי')+''},
   {k:'comp',ic:'&#x1F37D;', t:''+_t('מתכונים')+''},
   {k:'man', ic:'&#x270E;',  t:''+_t('ידני')+''}
-];
+];});
 function addSetMode(k){
   _fabOpen=false;
   // the scanner is a screen of its own, not a panel - it opens over
@@ -4270,12 +4275,12 @@ function sayResolve(it){
   else if(foodUnitRec(best?best.n:it.food).w[unit]>0)src='learned';
   return {q:it.food,amount:it.amount,unit:unit,g:g,food:best,alts:alts,gsrc:src};
 }
-var GSRC_SAY={
+var GSRC_SAY;langOn(function(){GSRC_SAY={
   learned:''+_t('המשקל ששמרת בפעם הקודמת.')+'',
   derived:''+_t('חושב מהחלבון שהמוצר מצהיר עליו ומהערך ל־100 גרם — לא הערכה.')+'',
   packet:''+_t('הגודל שמוצהר על האריזה.')+'',
   ai:''+_t('הערכה של גודל המנה. תקן אם צריך, וזה ייזכר.')+''
-};
+};});
 function sayAmount(row){
   if(!row.food)return null;
   var grams=row.amount*(row.unit==='g'?1:row.g);
@@ -5560,7 +5565,7 @@ function renderToday(){
 
   var pillsHTML='<div class="pills"><div class="pill"><div class="pill-val" style="color:var(--violet-500)">'+(TARGETS.kcal-kcal)+'</div><div class="pill-lbl">'+_t('קק"ל נותרו')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--terra-500)">'+r2(TARGETS.p-p)+'g</div><div class="pill-lbl">'+_t('חלבון נותר')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--amber-500)">'+r2(TARGETS.f-f)+'g</div><div class="pill-lbl">'+_t('שומן נותר')+'</div></div></div>';
 
-  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; מים</span><span class="wn">'+nfmt(toDisplayVolume(water),{maximumFractionDigits:0})+' / '+fmtVolume(TARGETS.water)+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+250מ"ל</button><button class="wadd" onclick="addWater(500)">+500מ"ל</button><button class="wadd" onclick="addWater(1000)">+1L</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
+  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; '+_t('מים')+'</span><span class="wn">'+nfmt(toDisplayVolume(water),{maximumFractionDigits:0})+' / '+fmtVolume(TARGETS.water)+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+'+fmtVolume(250)+'</button><button class="wadd" onclick="addWater(500)">+'+fmtVolume(500)+'</button><button class="wadd" onclick="addWater(1000)">+1L</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
 
   var compMeals=loadComposed();
   var compHTML='';
@@ -6699,7 +6704,7 @@ function saveCoachPlan(p){try{if(p)localStorage.setItem('coach_plan',JSON.string
 var _coachAnswers={};
 var _coachStep=0;
 
-var COACH_QUESTIONS=[
+var COACH_QUESTIONS;langOn(function(){COACH_QUESTIONS=[
   {id:'experience',q:''+_t('האם אי פעם אימנת בחדר כושר?')+'',type:'choice',
    options:[''+_t('כן, אני מנוסה')+'',''+_t('כן, אני מתאמן באופן סדיר')+'',''+_t('לא, אני חדש')+'']},
   {id:'equipment',q:''+_t('איזה ציוד יש לך גישה?')+'',type:'choice',
@@ -6711,7 +6716,7 @@ var COACH_QUESTIONS=[
   {id:'session',q:''+_t('כמה זמן יש לך לכל אימון?')+'',type:'choice',
    options:[''+_t('30-45 דקות')+'',''+_t('45-60 דקות')+'',''+_t('60-75 דקות')+'',''+_t('75+ דקות')+'']},
   {id:'limit',q:''+_t('יש איזשהו מגבלה פיזית?')+'',type:'text',placeholder:''+_t('למשל: כאב גב, ברך... (או לא אם אין)')+''}
-];
+];});
 
 function renderCoachQuestionnaire(){
   var q=COACH_QUESTIONS[_coachStep];
@@ -7259,14 +7264,14 @@ function exWeightEdit(name){
 /* Same shape as the area cards on the home screen, because it is the same
    idea: pick a place to be. The gradients reuse RF_GRAD so a colour changed
    once changes here too. */
-var FIT_AREAS=[
+var FIT_AREAS;langOn(function(){FIT_AREAS=[
   {id:'start',t:''+_t('אימון חדש')+'',s:''+_t('להתחיל עכשיו')+'',g:'ter',ic:'<path d="M6.5 9v6"/><path d="M17.5 9v6"/><path d="M3.5 10.5v3"/><path d="M20.5 10.5v3"/><path d="M6.5 12h11"/>'},
   {id:'weights',t:''+_t('מעקב משקלים')+'',s:''+_t('כמה אתה מרים בכל תרגיל')+'',g:'lav',ic:'<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h9"/>'},
   {id:'weekly-plan',t:''+_t('לוז האימונים')+'',s:''+_t('מה עושים ומתי')+'',g:'blu',ic:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17"/><path d="M8.5 3v4"/><path d="M15.5 3v4"/>'},
   {id:'stats',t:''+_t('המספרים שלי')+'',s:''+_t('נפח, שרירים, והכי חזק')+'',g:'grn',ic:'<path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-5"/>'},
   {id:'steps',t:''+_t('צעדים')+'',s:''+_t('הדבר שזז כל יום')+'',g:'grn',ic:'<path d="M8 4.5c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9S5.8 13.9 5.8 12.7c0-1.8-1-3.1-1-5.1C4.8 5.7 6.4 4.5 8 4.5Z"/><path d="M16.4 9c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9s-1.9-.7-1.9-1.9c0-1.8-1-3.1-1-5.1 0-1.9 1.6-3.1 3.2-3.1Z"/>'},
   {id:'history',t:''+_t('היסטוריה')+'',s:''+_t('כל אימון שרשמת')+'',g:'gry',ic:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.8"/>'},
-];
+];});
 function fitAreaGridHTML(){
   var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">',i,a,gr;
   for(i=0;i<FIT_AREAS.length;i++){
@@ -8056,7 +8061,7 @@ var CLOSET_KEY='closet_items', CLOSET_FIT_KEY='closet_outfits', CLOSET_WORN='wor
    rows and the jewellery have to fit on one phone screen, because the point
    of rolling a row is watching what it does to the whole outfit, and you
    cannot watch that if the shoes are two scrolls below the shirt. */
-var CLOSET_CATS=[
+var CLOSET_CATS;langOn(function(){CLOSET_CATS=[
   {k:'hat',   t:''+_t('כובע')+'',     h:44, one:''+_t('כובע')+''},
   {k:'top',   t:''+_t('חולצות')+'',   h:76, one:''+_t('חולצה')+''},
   /* A dress is not a sixth kind of clothing, it is a top that also does the
@@ -8069,7 +8074,7 @@ var CLOSET_CATS=[
   {k:'bottom',t:''+_t('מכנסיים')+'',  h:86, one:''+_t('מכנסיים')+''},
   {k:'socks', t:''+_t('גרביים')+'',   h:38, one:''+_t('גרביים')+''},
   {k:'shoes', t:''+_t('נעליים')+'',   h:48, one:''+_t('נעליים')+''}
-];
+];});
 // which rows a one-piece silences
 var CLOSET_SOLO_HIDES=['top','bottom'];
 function closetSoloOn(){
@@ -8884,7 +8889,7 @@ function loadProgLog(progId,exName){try{var x=localStorage.getItem('proglog_'+pr
 function saveProgLog(progId,exName,arr){try{localStorage.setItem('proglog_'+progId+'_'+exName,JSON.stringify(arr));}catch(e){}}
 
 /* ── WEEKLY PLANNER ── */
-var WORKOUT_TYPES=[
+var WORKOUT_TYPES;langOn(function(){WORKOUT_TYPES=[
   {id:'rest',     emoji:'&#x2014;', label:''+_t('מנוחה')+'',  color:PAL.muted},
   {id:'strength', emoji:'&#x1F3CB;',label:''+_t('כוח')+'',    color:PAL.violet500},
   {id:'cardio',   emoji:'&#x1F3C3;',label:''+_t('ריצה')+'',    color:PAL.terra500},
@@ -8897,7 +8902,7 @@ var WORKOUT_TYPES=[
   {id:'sport',    emoji:'&#x26BD;', label:''+_t('ספורט')+'',   color:PAL.green700},
   {id:'pilates',  emoji:'&#x1F9D8;',label:''+_t('פילאטיס')+'',color:PAL.violet300},
   {id:'other',    emoji:'&#x2B50;', label:''+_t('אחר')+'',   color:PAL.muted}
-];
+];});
 
 function loadWeekPlan(){try{var x=localStorage.getItem('fit_week_plan');return x?JSON.parse(x):{} ;}catch(e){return{};}}
 function saveWeekPlan(obj){try{localStorage.setItem('fit_week_plan',JSON.stringify(obj));}catch(e){}}
@@ -9052,7 +9057,7 @@ function copyWeekToWeek2(){
 var _wiz={step:0,prog:{id:0,name:'',splitType:'',daysPerWeek:0,goal:''},days:[],curDayIdx:0,curEx:null,exStep:0};
 // wiz steps: 0=name,1=split,2=days,3=goal,4=workout-name,5=add-ex,6=ex-detail,7=done
 
-var WIZ_SPLITS=[
+var WIZ_SPLITS;langOn(function(){WIZ_SPLITS=[
   {id:'full',label:'Full Body',sub:''+_t('כל הגוף בכל אימון')+''},
   {id:'ul',label:'Upper / Lower',sub:''+_t('פלג עליון / תחתון')+''},
   {id:'ppl',label:'Push / Pull / Legs',sub:''+_t('דחיפה / משיכה / רגליים')+''},
@@ -9061,15 +9066,15 @@ var WIZ_SPLITS=[
   {id:'abcd',label:'A/B/C/D',sub:''+_t('ארבעה אימונים')+''},
   {id:'fixed',label:''+_t('אימון קבוע')+'',sub:''+_t('אותו אימון בכל פעם')+''},
   {id:'other',label:''+_t('אחר')+'',sub:''}
-];
-var WIZ_GOALS=[
+];});
+var WIZ_GOALS;langOn(function(){WIZ_GOALS=[
   {id:'mass',e:'&#x1F4AA;',label:''+_t('עלייה במסת שריר')+''},
   {id:'strength',e:'&#x1F3CB;',label:''+_t('התחזקות / כוח')+''},
   {id:'cut',e:'&#x1F525;',label:''+_t('ירידה בשומן')+''},
   {id:'tone',e:'&#x2728;',label:''+_t('חיטוב')+''},
   {id:'cardio',e:'&#x1F3C3;',label:''+_t('שיפור כושר')+''},
   {id:'mobility',e:'&#x1F9D8;',label:''+_t('תנועה / בריאות')+''}
-];
+];});
 var WIZ_NAME_OPTS=['תוכנית כוח','תוכנית מסה','תוכנית חיטוב','תוכנית כללית','התוכנית שלי'];
 var WIZ_SETS=[1,2,3,4,5,6];
 var WIZ_REPS=[5,6,8,10,12,15,20];
@@ -10019,7 +10024,7 @@ function exPickInto(fn){_exPick=fn;exOpen();}
    the app expects, how much to add when you clear it, and how it talks about
    a session that went badly. */
 var FIT_GOAL_KEY='fit_goal';
-var FIT_GOALS=[
+var FIT_GOALS;langOn(function(){FIT_GOALS=[
   {v:'strength', t:''+_t('כוח')+'',        lo:3,  hi:6,  s:''+_t('משקלים כבדים, חזרות מעטות, מנוחות ארוכות')+'',
    rest:180, step:2.5,
    n:''+_t('המטרה היא להרים יותר. עלייה במשקל כשהשלמת את כל הסטים בטווח.')+''},
@@ -10032,7 +10037,7 @@ var FIT_GOALS=[
   {v:'general', t:''+_t('בריאות כללית')+'',lo:8,  hi:15, s:''+_t('בלי מספרים נוקשים')+'',
    rest:90,  step:2.5,
    n:''+_t('להגיע, לזוז, ולא להיפצע. התקדמות היא בונוס ולא מדד.')+''}
-];
+];});
 function fitGoal(){
   var v;try{v=localStorage.getItem(FIT_GOAL_KEY);}catch(e){}
   for(var i=0;i<FIT_GOALS.length;i++)if(FIT_GOALS[i].v===v)return FIT_GOALS[i];
@@ -10107,7 +10112,7 @@ function exAltWhy(want,cand){
    fatigue and a joint, do not train through the sharp kind - and when to ask
    someone qualified. An app that guesses at an injury is worse than one that
    says plainly that it cannot. */
-var FIT_CASES=[
+var FIT_CASES;langOn(function(){FIT_CASES=[
   {k:'busy', t:''+_t('הציוד תפוס')+'', ic:'&#8987;',
    h:''+_t('החלף לתרגיל שעובד על אותו שריר. למטה האפשרויות לפי מה שכנראה פנוי.')+'',
    alt:true},
@@ -10154,7 +10159,7 @@ var FIT_CASES=[
     ''+_t('צלם את עצמך מהצד. זה קצר את הדרך יותר מכל הסבר.')+'',
     'תרגיל שלא מרגיש נכון אחרי שתי ניסיונות — החלף אותו היום ותברר אחר כך.'
    ]}
-];
+];});
 /* ── WHAT TO DO NEXT TIME ──
    Read per exercise, against the goal, from what actually happened. Not
    "great workout" - a number and a reason.
@@ -11043,7 +11048,7 @@ function renderHabits(){
   var daysInMonth=new Date(y,mo+1,0).getDate();
   var todayD=now.getDate();
   var mn=[''+_t('ינואר')+'',''+_t('פברואר')+'',''+_t('מרץ')+'',''+_t('אפריל')+'',''+_t('מאי')+'',''+_t('יוני')+'',''+_t('יולי')+'',''+_t('אוגוסט')+'',''+_t('ספטמבר')+'',''+_t('אוקטובר')+'',''+_t('נובמבר')+'',''+_t('דצמבר')+''];
-  var dayNames=['ראשון',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'','שבת'];
+  var dayNames=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
   var h='';
 
   // ── HEADER ──
@@ -11452,7 +11457,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)sumR
 // Types: task=□, event=○, appt=△, note=·, due=⊙, important=★, reminder=!, idea=?, buy=$, birthday=⬡, work=W, study=M
 // Statuses: open, done=filled, migrated=→, cancelled=×, started=/
 
-var BJ_TYPES=[
+var BJ_TYPES;langOn(function(){BJ_TYPES=[
   {id:'task',    sym:'&#9633;', label:''+_t('משימה')+'',    sym_plain:'□'},
   {id:'event',   sym:'&#9675;', label:''+_t('אירוע')+'',    sym_plain:'○'},
   {id:'appt',    sym:'&#9651;', label:''+_t('פגישה')+'',    sym_plain:'△'},
@@ -11465,7 +11470,7 @@ var BJ_TYPES=[
   {id:'birthday',sym:'#',       label:''+_t('יום הולדת')+'', sym_plain:'#'},
   {id:'work',    sym:'W',       label:''+_t('עבודה')+'',    sym_plain:'W'},
   {id:'study',   sym:'M',       label:''+_t('לימוד')+'',    sym_plain:'M'}
-];
+];});
 
 // Status cycle on tap: open → done → migrated → cancelled → started → open
 var BJ_STATUSES=['open','done','migrated','cancelled','started'];
@@ -11502,7 +11507,7 @@ var _legendOpen=false;
 function renderReminders(){
   var el=document.getElementById('home-reminders');if(!el)return;
   var data=loadReminders();
-  var tabs=[['today','היום'],['week','השבוע'],['month','החודש']];
+  var tabs=[['today',_t('היום')],['week',_t('השבוע')],['month',_t('החודש')]];
   var items=data[_remTab]||[];
 
   var h='<div style="background:var(--card);border-radius:22px;padding:18px 16px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
@@ -11510,7 +11515,7 @@ function renderReminders(){
   // Header + legend toggle
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;font-weight:700">'+_t('תזכורות')+'</div>';
-  h+='<button onclick="toggleRemLegend()" style="background:'+(  _legendOpen?'var(--violet-100)':'transparent')+';border:none;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--violet-500);cursor:pointer">מקרא '+(  _legendOpen?'&#9650;':'&#9660;')+'</button>';
+  h+='<button onclick="toggleRemLegend()" style="background:'+(  _legendOpen?'var(--violet-100)':'transparent')+';border:none;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--violet-500);cursor:pointer">'+_t('מקרא')+' '+(  _legendOpen?'&#9650;':'&#9660;')+'</button>';
   h+='</div>';
 
   // Legend
@@ -11584,8 +11589,8 @@ function renderReminders(){
 
   // Items
   if(items.length===0){
-    var tabLabel=tabs.find(function(t){return t[0]===_remTab;})[1];
-    h+='<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted-soft);font-style:italic">'+_t('אין פריטים ל')+''+tabLabel+'</div>';
+    var empty=_remTab==='week'?_t('אין פריטים לשבוע'):_remTab==='month'?_t('אין פריטים לחודש'):_t('אין פריטים להיום');
+    h+='<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted-soft);font-style:italic">'+empty+'</div>';
   } else {
     for(var ri=0;ri<items.length;ri++){
       var item=items[ri];
@@ -12693,14 +12698,14 @@ function dpFind(id){
    A fired reminder is recorded per date and id, so a phone left open all
    evening does not get the same nudge every twenty seconds, and a task whose
    time is moved forward can legitimately fire again. */
-var DP_REM_CHOICES=[
+var DP_REM_CHOICES;langOn(function(){DP_REM_CHOICES=[
   {m:0,  t:''+_t('בזמן')+''},
   {m:5,  t:''+_t('5 דק׳ לפני')+''},
   {m:10, t:''+_t('10 דק׳ לפני')+''},
   {m:15, t:''+_t('רבע שעה')+''},
   {m:30, t:''+_t('חצי שעה')+''},
   {m:60, t:''+_t('שעה לפני')+''}
-];
+];});
 function dpRemOf(id,date){
   var dp=loadDPlan(date||_dpDate);
   if(!dp.rem)return null;
@@ -14537,11 +14542,11 @@ var _goalsView='home'; // home | view-goal | edit-goal | add-sub
 var _goalIdx=-1;
 var _subLevel=''; // 'monthly'|'weekly'|'daily'
 
-var GOAL_HORIZONS=[
+var GOAL_HORIZONS;langOn(function(){GOAL_HORIZONS=[
   {id:'dream',label:''+_t('החלום הגדול')+'',color:PAL.indigo500,bg:PAL.indigo50,emoji:'&#x2728;',desc:''+_t('לאן אני הולך בחיים')+''},
   {id:'yearly',label:''+_t('מטרה שנתית')+'',color:PAL.violet500,bg:PAL.violet100,emoji:'&#x1F4C5;',desc:''+_t('עד סוף השנה')+''},
   {id:'project',label:''+_t('פרויקט')+'',color:PAL.terra500,bg:'#fff0eb',emoji:'&#x1F4CC;',desc:''+_t('משהו ספציפי לבצע')+''}
-];
+];});
 
 function loadGoals(){try{var x=localStorage.getItem('goals_v1');return x?JSON.parse(x):[];}catch(e){return[];}}
 function saveGoals(arr){try{localStorage.setItem('goals_v1',JSON.stringify(arr));}catch(e){}}
@@ -14719,7 +14724,7 @@ var _cmView='text';
    One question per screen, with an example in the field rather than in a
    paragraph above it. Nobody reads the paragraph. */
 var _gw=null;
-var GW_STEPS=[
+var GW_STEPS;langOn(function(){GW_STEPS=[
   {k:'outcome', n:''+_t('כוכב הצפון')+'',
    q:''+_t('איך תדע בוודאות שהגעת ליעד?')+'',
    sub:''+_t('לא "להיות בריא" — משהו שאפשר למדוד ולדעת בוודאות שקרה.')+'',
@@ -14740,7 +14745,7 @@ var GW_STEPS=[
    q:''+_t('מה הדבר האחד שעלול להכשיל אותך?')+'',
    sub:''+_t('ואיך תתמודד איתו כשהוא יופיע — לא אם.')+'',
    pair:true, ph:''+_t('למשל: שבוע עמוס בעבודה')+'', ph2:''+_t('ואז? למשל: ריצה קצרה של 15 דקות במקום לוותר')+''}
-];
+];});
 
 function gwStart(){
   _gw={i:0,outcome:'',date:'',miles:['','',''],first:'',risk:'',plan:''};
@@ -15744,13 +15749,13 @@ var RELATIONSHIP_TYPES=[
   'חבר קרוב','חברה','בן משפחה','בת משפחה','בן זוג','בת זוג',
   'אח','אחות','אבא','אמא','סבא','סבתא','קולגה','אחר'
 ];
-var MEMORY_TYPES=[
+var MEMORY_TYPES;langOn(function(){MEMORY_TYPES=[
   {id:'note',label:''+_t('הערה')+''},
   {id:'memory',label:''+_t('זיכרון')+''},
   {id:'insight',label:''+_t('תובנה')+''},
   {id:'conversation',label:''+_t('שיחה')+''},
   {id:'important',label:''+_t('חשוב')+''}
-];
+];});
 var CONTACT_TYPES;langOn(function(){CONTACT_TYPES=[''+_t('הודעה')+'',''+_t('שיחה')+'',''+_t('פגישה')+'',''+_t('וידאו')+'',''+_t('אחר')+''];});
 
 
@@ -15770,12 +15775,12 @@ var CONTACT_TYPES;langOn(function(){CONTACT_TYPES=[''+_t('הודעה')+'',''+_t(
    you. חדר כושר / אורון / מאמן בחדר כושר - the place, the person, the role. */
 var PEOPLE_PLACES=['חדר כושר','עבודה','משפחה','לימודים','שכונה','צבא','חברים','אונליין'];
 var _pplSort='recent',_pplQ='',_pplPlace='';
-var PPL_SORTS=[
+var PPL_SORTS;langOn(function(){PPL_SORTS=[
   {v:'recent', t:''+_t('הכי מזמן')+''},
   {v:'name',   t:''+_t('לפי שם')+''},
   {v:'place',  t:''+_t('לפי מקום')+''},
   {v:'added',  t:''+_t('לפי הוספה')+''}
-];
+];});
 function pplKey(s){return String(s||'').replace(/['’׳"״,.\-]/g,'').replace(/\s+/g,' ').trim().toLowerCase();}
 function pplMatch(p,q){
   if(!q)return true;
@@ -16376,7 +16381,7 @@ function deletePerson(){
   people.splice(_personIdx,1);savePeople(people);
   _personIdx=-1;_peopleView='home';renderPeople();
 }
-var INSIGHTS_CATS=[
+var INSIGHTS_CATS;langOn(function(){INSIGHTS_CATS=[
   {id:'self',title:''+_t('אני')+'',color:PAL.violet500,bg:PAL.violet100,
    questions:[''+_t('מי אני')+'',''+_t('מה אני באמת רוצה')+'',''+_t('מה חשוב לי')+'',''+_t('הערכים שלי')+'',''+_t('החוזקות שלי')+'',''+_t('החולשות שלי')+'',''+_t('הפחדים שלי')+'',''+_t('הדפוסים שלי')+'',''+_t('דברים שאני משקר לעצמי')+'',''+_t('דברים שאני מגלה על עצמי')+'']},
   {id:'emotions',title:''+_t('רגשות ותודעה')+'',color:PAL.terra500,bg:'#fff0eb',
@@ -16391,7 +16396,7 @@ var INSIGHTS_CATS=[
    questions:[''+_t('החברה')+'',''+_t('מוסר')+'',''+_t('כוח')+'',''+_t('פוליטיקה')+'',''+_t('תרבות')+'',''+_t('טכנולוגיה')+'',''+_t('טבע')+'',''+_t('אמונות של אנשים')+'',''+_t('איך העולם באמת עובד')+'',''+_t('דברים שאני לא מבין')+'']},
   {id:'notebook',title:''+_t('בסוף המחברת')+'',color:'#9A9184',bg:PAL.surface,
    questions:[''+_t('תובנות שאני רוצה לזכור')+'',''+_t('דברים ששיניתי בהם את דעתי')+'',''+_t('סתירות שמצאתי בעצמי')+'',''+_t('שאלות שאין לי עליהן תשובה')+'',''+_t('דברים שאני רוצה לבדוק בחיים')+'']}
-];
+];});
 
 var _insView='home';
 var _insCat=null;
@@ -17972,13 +17977,13 @@ function renderBackup(){
 
 var _rfView='home',_rfStage=1,_rfStep=0,_rfDate='';
 
-var RF_MOODS=[
+var RF_MOODS;langOn(function(){RF_MOODS=[
   {v:1,l:''+_t('קשה')+'',c:'#d9795f'},
   {v:2,l:''+_t('לא משהו')+'',c:'#e0a072'},
   {v:3,l:''+_t('בסדר')+'',c:'#d9b45c'},
   {v:4,l:''+_t('טוב')+'',c:'#8fb98a'},
   {v:5,l:''+_t('מצוין')+'',c:'#6faf85'}
-];
+];});
 var RF_MOUTHS=['M8.6 16.4q3.4-3.2 6.8 0','M8.6 15.8q3.4-1.7 6.8 0','M8.6 15.3h6.8','M8.6 14.8q3.4 1.7 6.8 0','M8.6 14.2q3.4 3.2 6.8 0'];
 var RF_BODY=['אנרגטי','עייף','רגוע','מתוח','כבד','חזק','כאוב'];
 var RF_PLANNED=['בכלל לא','קצת','חלקית','די הרבה','לגמרי'];
@@ -17990,7 +17995,7 @@ var RF_SELFCARE=['אימון','זמן לבד','מוזיקה','לצאת החוצ�
 var RF_IMPACT=['לטובה','לרעה','גם וגם'];
 var RF_PARTS;langOn(function(){RF_PARTS=[''+_t('בוקר')+'',''+_t('צהריים')+'',''+_t('אחה״צ')+'',''+_t('ערב')+'',''+_t('לילה')+''];});
 
-var RF_STAGE1=[
+var RF_STAGE1;langOn(function(){RF_STAGE1=[
   {id:'mood',kind:'mood',q:''+_t('איך הרגשת היום?')+''},
   {id:'bodyFeelings',kind:'chips',q:''+_t('ואיך הגוף שלך הרגיש היום?')+'',sub:''+_t('אפשר לבחור יותר מאחד.')+'',opts:RF_BODY},
   {id:'dayRating',kind:'scale',q:''+_t('אם היית צריך לתת ליום הזה ציון — איזה ציון הוא מקבל?')+''},
@@ -18004,12 +18009,12 @@ var RF_STAGE1=[
   {id:'photo',kind:'photo',q:''+_t('איזו תמונה מספרת את היום שלך?')+'',sub:''+_t('זה יכול להיות רגע, מקום, אדם, משהו שעשית — או פשוט תמונה שמרגישה כמו היום שעבר עליך.')+''},
   {id:'takeawayForTomorrow',kind:'text',q:''+_t('מה אתה לוקח מהיום הזה למחר?')+'',ph:''+_t('מחשבה, כוונה, או משהו קטן.')+''},
   {id:'grateful',kind:'text',q:''+_t('על מה אתה אסיר תודה היום?')+'',ph:''+_t('דבר אחד. אפילו קטן מאוד.')+''}
-];
+];});
 
 /* The deep pass is a board, not a queue: fifteen questions laid out like the
    area cards on the home screen. Pick one, answer it, land back on the board
    with that card marked done - and finish whenever you like. */
-var RF_STAGE2=[
+var RF_STAGE2;langOn(function(){RF_STAGE2=[
   {id:'impactfulMoment',kind:'text',t:''+_t('הרגע שהשפיע')+'',s:''+_t('מה שינה את היום')+'',ic:'spark',g:'lav',q:''+_t('מה היה הרגע שהכי השפיע עליך היום?')+'',ph:''+_t('משהו ששינה את איך שהרגשת, חשבת או המשכת את היום.')+''},
   {id:'proudOf',kind:'text',t:''+_t('גאווה')+'',s:''+_t('גם משהו קטן')+'',ic:'medal',g:'amb',q:''+_t('במה אתה הכי גאה היום?')+'',ph:''+_t('גם משהו קטן נחשב.')+''},
   {id:'energyGivers',kind:'chipsNote',t:''+_t('מה מילא אותך')+'',s:''+_t('מאיפה הגיעה האנרגיה')+'',ic:'sun',g:'grn',q:''+_t('מה נתן לך הכי הרבה אנרגיה היום?')+'',opts:RF_ENERGY,note:'energyGiversNote',ph:''+_t('רוצה לפרט?')+''},
@@ -18026,7 +18031,7 @@ var RF_STAGE2=[
   {id:'differently',kind:'text',t:''+_t('מה היית משנה')+'',s:''+_t('רגע אחד אחורה')+'',ic:'undo',g:'gry',q:''+_t('אם היית יכול לחזור לרגע אחד היום — מה היית עושה אחרת?')+'',sub:''+_t('לא כדי לשפוט את היום. רק כדי להבין אותו טוב יותר.')+''},
   {id:'endOfDayMood',kind:'mood',t:''+_t('איך אתה עכשיו')+'',s:''+_t('ברגע הזה')+'',ic:'face',g:'ter',q:''+_t('איך אתה מרגיש עכשיו, ברגע הזה?')+''},
   {id:'gratefulOverlooked',kind:'text',t:''+_t('מה שמובן מאליו')+'',s:''+_t('ולא באמת')+'',ic:'bowl',g:'amb',q:''+_t('מה היה שם היום שאתה בדרך כלל לא שם לב אליו — ובלעדיו היום היה נראה אחרת?')+'',ph:''+_t('משהו שתמיד שם.')+''}
-];
+];});
 
 var RF_GRAD={
   lav:['linear-gradient(145deg,#f5eefa,#ede4f7)',PAL.violet500],
@@ -18091,7 +18096,7 @@ function rfGrow(el){
    everything ever written in it, and switching it back on brings all of it
    back - which is the only way this is safe to offer at all. */
 var SUM_SECS_KEY='sum_sections';
-var SUM_SECS=[
+var SUM_SECS;langOn(function(){SUM_SECS=[
   {k:'moment', t:''+_t('הרגעים הטובים')+'', d:''+_t('הרגע הכי טוב, מה שהשפיע, במה אתה גאה')+'',
    ids:['moment','impactfulMoment','proudOf']},
   {k:'photo',  t:''+_t('תמונת היום')+'',    d:''+_t('התמונה שמספרת את היום')+'', ids:['photo']},
@@ -18106,7 +18111,7 @@ var SUM_SECS=[
   {k:'song',   t:''+_t('השיר של היום')+'',  d:'', ids:['song']},
   {k:'grateful',t:''+_t('הכרת תודה')+'',    d:''+_t('על מה היית אסיר תודה, ומה היה מובן מאליו')+'',
    ids:['grateful','gratefulOverlooked']}
-];
+];});
 function sumSecsOn(){
   var raw=null;try{raw=localStorage.getItem(SUM_SECS_KEY);}catch(e){}
   if(raw===null)return null;                 // never chosen: everything is on
@@ -19148,7 +19153,7 @@ function renderMe(){
   h+='<div id="home-cal" class="me-slot"></div>';
   h+='<div id="home-vision" class="me-slot"></div>';
   h+='<div class="me-range">';
-  [[7,'שבוע'],[14,'שבועיים'],[30,'חודש']].forEach(function(o){
+  [[7,_t('שבוע')],[14,_t('שבועיים')],[30,_t('חודש')]].forEach(function(o){
     h+='<button class="me-rb'+(_meRange===o[0]?' on':'')+'" onclick="_meRange='+o[0]+';renderMe()">'+o[1]+'</button>';
   });
   h+='</div>';
@@ -19521,7 +19526,7 @@ function greetSetName(v){
   try{localStorage.setItem(GREET_NAME_KEY,v);}catch(e){}
   var p=loadProfile();p.name=v;saveProfile(p);
 }
-var GREETS={
+var GREETS;langOn(function(){GREETS={
   morning:[
     'בוקר טוב',''+_t('בוקר נפלא')+'',''+_t('בוקר אור')+'',''+_t('בוקר מלא באנרגיה')+'',
     ''+_t('יום חדש מתחיל')+'',''+_t('בוקר בהיר')+'','שיהיה בוקר מצוין'
@@ -19538,7 +19543,7 @@ var GREETS={
     'לילה טוב',''+_t('לילה שקט')+'',''+_t('לילה רגוע')+'',''+_t('זמן לנוח')+'',
     ''+_t('מנוחה נעימה')+'',''+_t('שינה טובה')+'','לילה שקט ומנוחה'
   ]
-};
+};});
 var GREET_ICON={morning:'☀️',noon:'',evening:'🌙',night:'🌙'};
 function greetPart(h){
   // every band stated at both ends. Written as bare upper bounds the small
@@ -19876,10 +19881,20 @@ function tbSync(){
 
   var dr=document.createElement('div');
   dr.id='areas-drawer';dr.className='areas-drawer';
-  dr.innerHTML='<div class="ar-hd"><div class="ar-title">'+_t('מה במעקב')+'</div><div class="ar-note">'+_t('סמן את התחומים שיופיעו ב-Better. מה שתוריד רק נעלם מהמסך')+' &mdash; '+_t('כל מה שכתבת בו נשמר, ואפשר להחזיר אותו מכאן בכל רגע.')+'</div><div class="ar-count" id="areas-count"></div></div>'+
+  dr.innerHTML='<div class="ar-hd"><div class="ar-title" id="areas-title"></div><div class="ar-note" id="areas-note"></div><div class="ar-count" id="areas-count"></div></div>'+
     '<div id="areas-list"></div>'+
-    '<button class="ar-done" id="areas-done">'+_t('סיימתי')+'</button>';
+    '<button class="ar-done" id="areas-done"></button>';
   document.body.appendChild(dr);
+  /* The drawer is built once, here, and lives outside every screen - so no
+     render repaints its words when the language changes. This does. */
+  langOn(function(){
+    var a=document.getElementById('areas-title');if(!a)return;
+    a.textContent=_t('מה במעקב');
+    document.getElementById('areas-note').textContent=
+      _t('סמן את התחומים שיופיעו ב-Better. מה שתוריד רק נעלם מהמסך')+' \u2014 '+
+      _t('כל מה שכתבת בו נשמר, ואפשר להחזיר אותו מכאן בכל רגע.');
+    document.getElementById('areas-done').textContent=_t('סיימתי');
+  });
   document.getElementById('areas-done').addEventListener('click',closeAreas);
   document.getElementById('home-menu-btn').addEventListener('click',openAreas);
 

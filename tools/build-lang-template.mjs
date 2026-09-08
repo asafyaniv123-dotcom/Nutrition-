@@ -33,7 +33,8 @@ while ((m = CALL.exec(app))) keys.add(m[2]);
    to the pattern above. Named explicitly, because guessing which arrays feed a
    _t(variable) is exactly the guess this whole exercise exists to avoid. */
 const VIA_VARIABLE = ['SAY_DERIVED_NONE', 'PLAN_FEELINGS', 'RELATIONSHIP_TYPES',
-                      'PEOPLE_PLACES', 'RF_IMPACT', 'WIZ_NAME_OPTS'];
+                      'PEOPLE_PLACES', 'RF_IMPACT', 'WIZ_NAME_OPTS',
+                      'CLOSET_SEASONS'];
 /* Bracket-matched rather than cut at the next "];", which is fragile for a
    multi-line collection: indexOf can run past the end of the declaration and
    let the regex pick fragments out of unrelated code.
