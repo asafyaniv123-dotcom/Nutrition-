@@ -64,6 +64,13 @@ const heAt = src.indexOf('var HE={');
 const heEnd = heAt < 0 ? -1 : src.indexOf(LF + '};', heAt);
 const inHE = (i) => heAt >= 0 && i >= heAt && i < heEnd;
 
+/* Show the Hebrew, not the first 60 characters of a style attribute. */
+function around(t){
+  const i = t.search(HEB);
+  const a = Math.max(0, i - 12), out = t.slice(a, a + 56);
+  return (a ? String.fromCharCode(8230) : '') + out + (a + 56 < t.length ? String.fromCharCode(8230) : '');
+}
+
 const found = [];
 
 /* ── string literals in the script ────────────────────────────────────────── */
@@ -109,7 +116,7 @@ for (const [a, b] of scripts) {
     const before = src.slice(Math.max(0, from - 3), from);
     if (before.endsWith('_t(')) continue;
     if (/\/\/\s*i18n-exempt/.test(lineAt(from))) continue;
-    found.push({ line: lineOf(from), where: 'script', text: text.slice(0, 60) });
+    found.push({ line: lineOf(from), where: 'script', text: around(text) });
   }
 }
 
