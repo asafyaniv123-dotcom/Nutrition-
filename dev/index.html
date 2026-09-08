@@ -494,7 +494,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .ask-a{font-size:13px;color:var(--ink);line-height:1.75;margin-top:10px;background:var(--panel);border-radius:13px;padding:12px}
 .ask-note{font-size:9.5px;color:var(--muted-soft);margin-top:10px;line-height:1.5}
 /* חיתוך */
-.crop-ov{position:fixed;inset:0;z-index:600;background:#2a2422;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:12px;}
+.crop-ov{position:fixed;inset:0;z-index:600;background:#2a2422;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px 12px calc(84px + env(safe-area-inset-bottom));}
 .crop-top{position:absolute;top:calc(10px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:center}
 .crop-modes{display:flex;gap:4px;background:rgba(255,255,255,.1);border-radius:12px;padding:3px}
 .crop-m{border:none;background:none;border-radius:10px;padding:9px 20px;font-family:inherit;font-size:12.5px;font-weight:800;color:#a49a92;cursor:pointer}
@@ -8359,7 +8359,8 @@ function erOpen(cat,idx){
     img.onerror=function(){showToast(_t('לא הצלחתי לקרוא את התמונה'));};
     img.onload=function(){
       var W=img.naturalWidth,H=img.naturalHeight;
-      var maxW=Math.min(window.innerWidth-52,520),maxH=window.innerHeight-250;
+      /* Modes, brush slider, zoom badge, background button, hint, bar. */
+      var maxW=Math.min(window.innerWidth-52,520),maxH=window.innerHeight-350;
       var k=Math.min(maxW/W,maxH/H,1);
       var mk=function(){var c=document.createElement('canvas');c.width=W;c.height=H;return c;};
       var base=mk();base.getContext('2d').drawImage(img,0,0);
@@ -8749,12 +8750,16 @@ function erSave(){
   else{it.ref=data;saveCloset(list);done();}
 }
 function cropOpen(img,cat){
-  // fit the picture into what is left of the screen once the bar is allowed for
+  /* What is left after the chrome below it: the mode pills, the background
+     button, the hint and the bar. Counted, not guessed - it was 230 when
+     there were two fewer rows. */
   var maxW=Math.min(window.innerWidth-52,520),
-      maxH=window.innerHeight-230;
+      maxH=window.innerHeight-320;
   var k=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);
   var vw=Math.round(img.naturalWidth*k),vh=Math.round(img.naturalHeight*k);
-  _crop={img:img,cat:cat,mode:'rect',vw:vw,vh:vh,drag:null,
+  /* Kept so removing the background can be undone without going back to the
+     camera roll for the same photograph. */
+  _crop={img:img,img0:img,cat:cat,mode:'rect',vw:vw,vh:vh,drag:null,
          box:{x:Math.round(vw*0.08),y:Math.round(vh*0.08),
               w:Math.round(vw*0.84),h:Math.round(vh*0.84)},
          path:[]};
@@ -8765,7 +8770,11 @@ function cropOpen(img,cat){
    enough that the flood fill is not asked to walk a camera sensor. */
 var BG_MAX=1200;
 function cropBg(){
-  var c=_crop;if(!c||c.cut)return;
+  var c=_crop;if(!c)return;
+  if(c.cut){                       // press it again to get the floor back
+    c.img=c.img0;c.cut=false;
+    cropPaint();return;
+  }
   var img=c.img,W=img.naturalWidth,H=img.naturalHeight;
   var k=Math.min(1,BG_MAX/Math.max(W,H));
   var can=document.createElement('canvas');
@@ -8844,8 +8853,8 @@ function cropPaint(){
   h+='<button class="crop-m'+(c.mode==='free'?' on':'')+'" onclick="cropMode(&quot;free&quot;)">'+_t('לגזור סביב הבגד')+'</button>';
   h+='</div>';
   /* Here, because here is where the photograph still has its floor in it. */
-  h+='<button class="er-auto"'+(c.cut?' disabled style="opacity:.4"':'')+' onclick="cropBg()">'+
-     (c.cut?_t('✓ הרקע הוסר'):_t('הסר רקע'))+'</button>';
+  h+='<button class="er-auto" onclick="cropBg()">'+
+     (c.cut?_t('החזר רקע'):_t('הסר רקע'))+'</button>';
   h+='<div class="crop-hint">'+(c.mode==='rect'
       ?''+_t('גרור צד או פינה. גרירה באמצע מזיזה את המסגרת.')+''
       :''+_t('סמן עם האצבע סביב הבגד — אפשר להרים את האצבע ולהמשיך. מה שמחוץ לקו יימחק.')+'')+'</div>';
