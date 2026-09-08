@@ -776,6 +776,12 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-fit-row::-webkit-scrollbar{display:none}
 .cl-fit-i{flex-shrink:0;width:52px;height:52px;border-radius:11px;overflow:hidden;border:1.5px solid var(--line)}
 .cl-fit-b{display:flex;align-items:center;gap:7px;margin-top:9px}
+.cl-look{background:var(--surface);border-radius:20px;padding:18px 14px 14px;margin-bottom:10px}
+.cl-look-stage{display:flex;align-items:flex-start;justify-content:center;gap:10px}
+.cl-look-col{display:flex;flex-direction:column;align-items:center;gap:5px}
+.cl-look-side{display:flex;flex-direction:column;align-items:center;gap:7px;padding-top:26px}
+.cl-look-i{display:block;border-radius:12px;overflow:hidden}
+.cl-look-i .cl-img{border-radius:12px}
 .cl-fit-d{flex:1;font-size:10px;color:var(--muted-soft)}
 .cl-fit-w{background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:9px;padding:6px 14px;font-size:11px;font-weight:700;color:var(--white);cursor:pointer;font-family:inherit}
 .cl-fit-x{background:none;border:none;font-size:17px;color:#e0d8ce;cursor:pointer;font-family:inherit;padding:0 4px}
@@ -8833,6 +8839,39 @@ function clCentreAll(smooth){
     if(closetOf(k).length)clCentre(k,_closetSel[k]||0,smooth);
   }
 }
+/* A look in the list is smaller than a look on its own. */
+var LOOK_LIST_SCALE=0.9;
+/* One garment, sized by what it is. The height comes from the category so a
+   ring is never as large as a coat; the width follows the photo, capped so a
+   wide shot cannot shove the column sideways. */
+function lookItemHTML(cat,item,scale){
+  var hgt=Math.round((cat.h||50)*scale);
+  return '<span class="cl-look-i" style="height:'+hgt+'px;width:'+Math.round(hgt*1.5)+'px">'+
+         photoImg(item.ref,'class="cl-img"')+'</span>';
+}
+/* The garments in one column in body order, the accessories in another.
+   CLOSET_CATS is already in body order - hat, top, dress, bottom, socks,
+   shoes - so the column needs no ordering of its own. */
+function lookStageHTML(o,scale){
+  scale=scale||1;
+  var worn='',side='',ci,li,found,ll,id;
+  for(ci=0;ci<CLOSET_CATS.length;ci++){
+    id=o.items[CLOSET_CATS[ci].k];if(!id)continue;
+    found=null;ll=closetOf(CLOSET_CATS[ci].k);
+    for(li=0;li<ll.length;li++)if(ll[li].id===id)found=ll[li];
+    if(found)worn+=lookItemHTML(CLOSET_CATS[ci],found,scale);
+  }
+  id=o.items[CLOSET_SIDE.k];
+  if(id){
+    found=null;ll=closetOf(CLOSET_SIDE.k);
+    for(li=0;li<ll.length;li++)if(ll[li].id===id)found=ll[li];
+    if(found)side+=lookItemHTML(CLOSET_SIDE,found,scale);
+  }
+  return '<div class="cl-look-stage">'+
+         '<div class="cl-look-col">'+worn+'</div>'+
+         (side?'<div class="cl-look-side">'+side+'</div>':'')+
+         '</div>';
+}
 function renderCloset(){
   document.getElementById('hdr-title').textContent=''+_t('הארון שלי')+'';
   var h='<div style="padding-bottom:24px">';
@@ -8844,16 +8883,7 @@ function renderCloset(){
     if(!fits.length)h+='<div class="cl-none">'+_t('עוד לא שמרת לוק. תגלגל את השורות עד שזה נראה טוב ותשמור.')+'</div>';
     for(var fi=0;fi<fits.length;fi++){
       var o=fits[fi],d=new Date(o.ts);
-      h+='<div class="cl-fit"><div class="cl-fit-row">';
-      var cats=CLOSET_CATS.concat([CLOSET_SIDE]);
-      for(var ci=0;ci<cats.length;ci++){
-        var id=o.items[cats[ci].k];
-        if(!id)continue;
-        var found=null,ll=closetOf(cats[ci].k);
-        for(var li=0;li<ll.length;li++)if(ll[li].id===id)found=ll[li];
-        if(found)h+='<span class="cl-fit-i">'+photoImg(found.ref,'class="cl-img"')+'</span>';
-      }
-      h+='</div><div class="cl-fit-b">';
+      h+='<div class="cl-look">'+lookStageHTML(o,LOOK_LIST_SCALE)+'<div class="cl-fit-b">';
       h+='<span class="cl-fit-d">'+d.getDate()+'/'+(d.getMonth()+1)+'</span>';
       h+='<button class="cl-fit-w" onclick="closetWearOutfit(\''+o.id+'\')">'+_t('ללבוש')+'</button>';
       h+='<button class="cl-fit-x" onclick="closetDeleteOutfit(\''+o.id+'\')">&times;</button>';
