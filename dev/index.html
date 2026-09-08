@@ -5934,7 +5934,7 @@ function renderHistory(){
     var kp=[];for(var ix=0;ix<days.length;ix++)if(days[ix].kcal>0)kp.push({i:ix,v:days[ix].kcal});
     var ak=days.map(function(d){return d.kcal;}).filter(function(v){return v>0;}).concat([TARGETS.kcal]);
     var minK=ak.length>1?Math.max(0,Math.min.apply(null,ak)-200):0,maxK=Math.max.apply(null,ak)+200;
-    chartCard='<div class="card"><div class="cttl">'+_t('צריכה קלורית מול יעד')+'</div>'+makeSVG([{pts:kp,col:PAL.terra500}],[{v:TARGETS.kcal,col:PAL.violet500,lbl:_t('יעד {n}',{n:TARGETS.kcal})}],minK,maxK,150)+'<div style="display:flex;gap:14px;margin-top:8px;font-size:10px"><span style="color:var(--terra-500);font-weight:700">&#x25CF; קלוריות</span><span style="color:var(--violet-500)">'+_t('-- יעד')+' '+TARGETS.kcal+'</span></div></div>';
+    chartCard='<div class="card"><div class="cttl">'+_t('צריכה קלורית מול יעד')+'</div>'+makeSVG([{pts:kp,col:PAL.terra500}],[{v:TARGETS.kcal,col:PAL.violet500,lbl:_t('יעד {n}',{n:TARGETS.kcal})}],minK,maxK,150)+'<div style="display:flex;gap:14px;margin-top:8px;font-size:10px"><span style="color:var(--terra-500);font-weight:700">&#x25CF; '+_t('קלוריות')+'</span><span style="color:var(--violet-500)">'+_t('-- יעד')+' '+TARGETS.kcal+'</span></div></div>';
   } else if(histTab==='deficit'){
     var dp=[];for(var ix2=0;ix2<days.length;ix2++)if(days[ix2].deficit>0)dp.push({i:ix2,v:days[ix2].deficit});
     var maxD=dp.length>0?Math.max.apply(null,dp.map(function(p){return p.v;}))+200:1500;
@@ -6076,6 +6076,7 @@ function openCalDay(ds){
   var today=todayStr();
   var diffDays=Math.round((new Date(ds+'T12:00:00')-new Date(today+'T12:00:00'))/(1000*60*60*24));
   var scopeLabel=diffDays===0?''+_t('היום')+'':diffDays>0&&diffDays<=7?''+_t('השבוע')+'':''+_t('החודש')+'';
+  var scopeAdded=diffDays===0?_t('נוסף להיום'):diffDays>0&&diffDays<=7?_t('נוסף לשבוע'):_t('נוסף לחודש');
   var scopeColor=diffDays===0?PAL.terra500:diffDays>0&&diffDays<=7?PAL.violet500:PAL.green500;
 
   var div=document.createElement('div');
@@ -6090,8 +6091,8 @@ function openCalDay(ds){
   h+='<div style="width:40px;height:4px;background:var(--violet-300);border-radius:2px;margin:0 auto 12px"></div>';
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-start">';
   h+='<div><div style="font-size:17px;font-weight:800;color:var(--ink)">'+dateLabel+'</div>';
-  h+='<div style="display:inline-block;margin-top:4px;background:'+scopeColor+'22;color:'+scopeColor+';border-radius:8px;padding:2px 10px;font-size:10px;font-weight:700">יוסף ל'+scopeLabel+'</div></div>';
-  if(sum)h+='<button onclick="closeCalDay();openSummary(\''+ds+'\')" style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:none;border-radius:12px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500)">סיכום יום</button>';
+  h+='<div style="display:inline-block;margin-top:4px;background:'+scopeColor+'22;color:'+scopeColor+';border-radius:8px;padding:2px 10px;font-size:10px;font-weight:700">'+scopeAdded+'</div></div>';
+  if(sum)h+='<button onclick="closeCalDay();openSummary(\''+ds+'\')" style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:none;border-radius:12px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500)">'+_t('סיכום יום')+'</button>';
   h+='</div></div>';
 
   h+='<div style="padding:16px 18px 0">';
@@ -6141,7 +6142,7 @@ function openCalDay(ds){
   h+='</div>';
 
   // Add button
-  h+='<button onclick="addCalDayItem(\''+ds+'\')" style="width:100%;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">הוסף &#10003;</button>';
+  h+='<button onclick="addCalDayItem(\''+ds+'\')" style="width:100%;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הוסף')+' &#10003;</button>';
   h+='</div></div></div>';
 
   div.innerHTML=h;
@@ -6269,7 +6270,7 @@ function renderSummaryOverlay(dateStr){
   // the picture already leads the sheet; only its caption belongs here
   if(sum.photo&&sum.photoCaption&&sumSecOn('photo'))
     h+='<div class="sm-cap">'+esc(sum.photoCaption)+'</div>';
-  if(sum.moment&&sumSecOn('moment'))h+='<div class="sm-sec sm-accent"><div class="sm-lab">&#x2728; הרגע הכי טוב</div><div class="sm-body">'+esc(sum.moment)+'</div></div>';
+  if(sum.moment&&sumSecOn('moment'))h+='<div class="sm-sec sm-accent"><div class="sm-lab">&#x2728; '+_t('הרגע הכי טוב')+'</div><div class="sm-body">'+esc(sum.moment)+'</div></div>';
   if(flowStops.length>0&&sumSecOn('flow')){
     h+='<div class="sm-sec"><div class="sm-lab">'+_t('זרימת היום')+'</div>';
     for(var fi2=0;fi2<flowStops.length;fi2++){
@@ -6285,7 +6286,7 @@ function renderSummaryOverlay(dateStr){
   h+='<div class="sm-sec"><div class="sm-lab">'+_t('תזונה')+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
   var smb=[{v:sum.kcal,pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:sum.p+'g',pct:pp2,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:sum.c+'g',pct:cp3,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:sum.f+'g',pct:fp2,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
   for(var bi2=0;bi2<smb.length;bi2++){var sb=smb[bi2];h+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:24px;height:68px;background:var(--line);border-radius:12px;overflow:hidden;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+sb.pct+'%;background:'+sb.g+'"></div></div><div style="font-size:10.5px;font-weight:700">'+sb.v+'</div><div style="font-size:9px;color:var(--muted)">'+sb.lbl+'</div></div>';}
-  if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; מים</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+fmtVolume(sum.water)+'</span></div>';}
+  if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; '+_t('מים')+'</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+fmtVolume(sum.water)+'</span></div>';}
   h+='</div>';
   }
   if(sum.workoutDone!==undefined&&sumSecOn('fit')){
@@ -6293,7 +6294,7 @@ function renderSummaryOverlay(dateStr){
     h+='<div class="sm-sec sm-quiet"><div class="sm-lab">'+(wp?esc(wp.label):''+_t('אימון')+'')+' '+_t('מתוכנן')+'</div>'+
        '<div class="sm-txt">'+(sum.workoutDone?''+_t('בוצע')+'':''+_t('לא יצא הפעם')+'')+'</div></div>';
   }
-  if((sum.workout||sum.steps)&&sumSecOn('fit')){h+='<div class="sm-sec">';if(sum.workout)h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:'+(sum.steps?'10px':'0')+'"><span style="font-size:22px">&#x1F3CB;&#xFE0F;</span><div><div style="font-size:9px;color:var(--muted)">פעילות גופנית</div><div style="font-size:13px;font-weight:600;margin-top:2px">'+esc(sum.workout)+'</div></div></div>';if(sum.steps)h+='<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">&#x1F463;</span><div><div style="font-size:9px;color:var(--muted)">'+_t('צעדים')+'</div><div style="font-size:18px;font-weight:700;color:var(--green-500)">'+nfmt(sum.steps)+'</div></div></div>';h+='</div>';}
+  if((sum.workout||sum.steps)&&sumSecOn('fit')){h+='<div class="sm-sec">';if(sum.workout)h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:'+(sum.steps?'10px':'0')+'"><span style="font-size:22px">&#x1F3CB;&#xFE0F;</span><div><div style="font-size:9px;color:var(--muted)">'+_t('פעילות גופנית')+'</div><div style="font-size:13px;font-weight:600;margin-top:2px">'+esc(sum.workout)+'</div></div></div>';if(sum.steps)h+='<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">&#x1F463;</span><div><div style="font-size:9px;color:var(--muted)">'+_t('צעדים')+'</div><div style="font-size:18px;font-weight:700;color:var(--green-500)">'+nfmt(sum.steps)+'</div></div></div>';h+='</div>';}
   if(sum.song&&sumSecOn('song'))h+='<div class="sm-sec sm-song"><span style="font-size:26px">&#x1F3B5;</span><div><div class="sm-lab">'+_t('השיר של היום')+'</div><div style="font-size:15px;font-weight:800;color:var(--ink);margin-top:2px">'+esc(sum.song)+'</div></div></div>';
   // Timeclock in summary — canvas-based spiral
   if(sum.timeclock&&sumSecOn('time')&&sum.timeclock.some(function(hx){return hx!=='none';})){
@@ -6325,7 +6326,7 @@ function renderSummaryOverlay(dateStr){
     h+='</div>';
   }
   if(sum.quote)h+='<div style="border-inline-start:3px solid var(--violet-500);padding:10px 14px;background:rgba(201,188,224,.09);border-radius:0 14px 14px 0;margin-bottom:12px"><div style="font-size:9px;color:var(--muted);margin-bottom:5px">'+_t('משפט שתפס')+'</div><div style="font-size:13px;line-height:1.7;font-style:italic">&#8220;'+esc(sum.quote)+'&#8221;</div></div>';
-  h+='<div style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px">&#x1F331; יום מוצלח</div></div>';
+  h+='<div style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px">&#x1F331; '+_t('יום מוצלח')+'</div></div>';
   div.innerHTML=h;document.body.appendChild(div);
   hydratePhotos(div);hydrateVlogs(div);
   if(window._sumClockNeedsDraw){window._sumClockNeedsDraw=false;setTimeout(function(){drawSumClock(window._sumClockData);},30);}
@@ -6693,7 +6694,7 @@ function renderComingSoon(mod){
     '<div style="font-size:64px;margin-bottom:20px">'+icons[mod]+'</div>'+
     '<div style="font-size:22px;font-weight:800;color:var(--ink);margin-bottom:8px">'+names[mod]+'</div>'+
     '<div style="font-size:14px;color:var(--muted);margin-bottom:32px;line-height:1.6">'+_t('המודול הזה נמצא בפיתוח')+'<br>'+_t('יגיע בקרוב &#x2728;')+'</div>'+
-    '<button onclick="goHome()" style="background:linear-gradient(135deg,'+colors[mod]+','+colors[mod]+'99);border:none;border-radius:16px;padding:14px 32px;font-size:14px;font-weight:700;color:var(--white);cursor:pointer">חזרה לבית</button>'+
+    '<button onclick="goHome()" style="background:linear-gradient(135deg,'+colors[mod]+','+colors[mod]+'99);border:none;border-radius:16px;padding:14px 32px;font-size:14px;font-weight:700;color:var(--white);cursor:pointer">'+_t('חזרה לבית')+'</button>'+
     '</div>';
 }
 
@@ -6805,7 +6806,7 @@ function renderCoachPlan(){
     h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
     h+='<div><div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(day.name)+'</div>';
     h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(day.focus||'')+'</div></div>';
-    h+='<button onclick="createTemplateFromPlan('+di+')" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:10px;padding:6px 10px;font-size:10px;font-weight:700;cursor:pointer;color:var(--white)">+ תבנית</button>';
+    h+='<button onclick="createTemplateFromPlan('+di+')" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:10px;padding:6px 10px;font-size:10px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('+ תבנית')+'</button>';
     h+='</div>';
     (day.exercises||[]).forEach(function(ex){
       h+='<div style="background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">';
@@ -7318,7 +7319,7 @@ function renderFitStart(){
       h+='<button onclick="_fitView=\'coach-plan\';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">'+_t('צפה')+'</button>';
       h+='</div>';
     } else {
-      h+='<button onclick="_fitView=\'coach-q\';renderFitness()" style="width:100%;background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--violet-500);margin-bottom:12px;font-family:inherit">&#x1F9D1;&#x200D;&#x1F3EB; בנה תוכנית אישית</button>';
+      h+='<button onclick="_fitView=\'coach-q\';renderFitness()" style="width:100%;background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--violet-500);margin-bottom:12px;font-family:inherit">&#x1F9D1;&#x200D;&#x1F3EB; '+_t('בנה תוכנית אישית')+'</button>';
     }
   }
 
@@ -7349,8 +7350,8 @@ function renderFitStart(){
     h+='<div style="background:var(--panel);border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">';
     h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(prog.name)+'</div>';
     h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+prog.exercises.length+' '+_t('תרגילים')+'</div></div>';
-    h+='<button onclick="_fitView=\'view-program\';_fitProgIdx='+pi+';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">עקב</button>';
-    h+='<button onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()" style="background:var(--violet-100);border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">ערוך</button>';
+    h+='<button onclick="_fitView=\'view-program\';_fitProgIdx='+pi+';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">'+_t('עקב')+'</button>';
+    h+='<button onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()" style="background:var(--violet-100);border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('ערוך')+'</button>';
     h+='</div>';
   }
   h+='</div>';
@@ -7617,8 +7618,8 @@ function renderFitStepsSetup(){
     h+='<div style="background:var(--panel);border-radius:11px;padding:11px;font-size:10px;color:var(--ink);direction:ltr;text-align:left;word-break:break-all;line-height:1.8;font-family:ui-monospace,Menlo,Consolas,monospace">';
     h+='POST '+esc(SYNC_SERVER)+'/steps<br>{"token":"'+esc(tok)+'", "steps":&lt;sum&gt;}</div>';
     h+='<div style="display:flex;gap:7px;margin-top:9px">';
-    h+='<button onclick="copyText(SYNC_SERVER+\'/steps\',\'הכתובת\')" style="flex:1;background:var(--violet-100);border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('העתק כתובת')+'</button>';
-    h+='<button onclick="copyText(\''+tok+'\',\'הטוקן\')" style="flex:1;background:var(--violet-100);border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">העתק טוקן</button></div>';
+    h+='<button onclick="copyText(SYNC_SERVER+\'/steps\',_t(\'הכתובת\'))" style="flex:1;background:var(--violet-100);border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('העתק כתובת')+'</button>';
+    h+='<button onclick="copyText(\''+tok+'\',_t(\'הטוקן\'))" style="flex:1;background:var(--violet-100);border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('העתק טוקן')+'</button></div>';
     h+='<div style="font-size:9.5px;color:var(--muted-soft);line-height:1.6;margin-top:9px">'+_t('אפשר גם לפתוח את האפליקציה עם')+' <span style="direction:ltr;display:inline-block">#steps=&lt;sum&gt;</span> '+_t('בסוף הכתובת.')+'</div></div>';
   }
   h+='</div>';
@@ -7667,8 +7668,8 @@ function fitStartCardHTML(templates){
       h+='<button onclick="startWorkout('+i+')" style="flex:1;background:none;border:none;padding:0;text-align:start;cursor:pointer;font-family:inherit;min-width:0">';
       h+='<div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(t.name)+'</div>';
       h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+t.exercises.length+' '+_t('תרגילים')+'</div></button>';
-      h+='<button onclick="startFitEdit('+i+')" style="background:var(--violet-100);border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">ערוך</button>';
-      h+='<button onclick="startWorkout('+i+')" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:9px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">התחל</button>';
+      h+='<button onclick="startFitEdit('+i+')" style="background:var(--violet-100);border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('ערוך')+'</button>';
+      h+='<button onclick="startWorkout('+i+')" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:9px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">'+_t('התחל')+'</button>';
       h+='</div>';
     }
   } else {
@@ -8275,8 +8276,8 @@ function cropPaint(){
   if(_cropQ.length>1)
     h+='<div class="crop-n">'+(_cropQi+1)+' '+_t('מתוך')+' '+_cropQ.length+'</div>';
   h+='<div class="crop-modes">';
-  h+='<button class="crop-m'+(c.mode==='rect'?' on':'')+'" onclick="cropMode(&quot;rect&quot;)">4 פאות</button>';
-  h+='<button class="crop-m'+(c.mode==='free'?' on':'')+'" onclick="cropMode(&quot;free&quot;)">חופשי</button>';
+  h+='<button class="crop-m'+(c.mode==='rect'?' on':'')+'" onclick="cropMode(&quot;rect&quot;)">'+_t('4 פאות')+'</button>';
+  h+='<button class="crop-m'+(c.mode==='free'?' on':'')+'" onclick="cropMode(&quot;free&quot;)">'+_t('חופשי')+'</button>';
   h+='</div>';
   h+='</div>';
 
@@ -8691,7 +8692,7 @@ function closetRowHTML(cat){
   if(solo){
     h+='<span class="cl-cell">';
     h+='<button class="cl-it cl-none'+(sel===0?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,0)" '+
-       'style="width:'+cat.h+'px;height:'+cat.h+'px">ללא</button>';
+       'style="width:'+cat.h+'px;height:'+cat.h+'px">'+_t('ללא')+'</button>';
     h+='</span>';
   }
   for(i=0;i<list.length;i++){
@@ -8831,7 +8832,7 @@ function renderCloset(){
       }
       h+='</div><div class="cl-fit-b">';
       h+='<span class="cl-fit-d">'+d.getDate()+'/'+(d.getMonth()+1)+'</span>';
-      h+='<button class="cl-fit-w" onclick="closetWearOutfit(\''+o.id+'\')">ללבוש</button>';
+      h+='<button class="cl-fit-w" onclick="closetWearOutfit(\''+o.id+'\')">'+_t('ללבוש')+'</button>';
       h+='<button class="cl-fit-x" onclick="closetDeleteOutfit(\''+o.id+'\')">&times;</button>';
       h+='</div></div>';
     }
@@ -9160,7 +9161,7 @@ function renderEditProgram(){
       h+='</div>';
     }
     h+=wizQ(''+_t('איך קוראים לאימון')+' '+dayLetter+'?');
-    var dayNames=['חזה + יד אחורית',''+_t('גב + יד קדמית')+'',''+_t('רגליים')+'',''+_t('כתפיים')+'','Full Body','Push','Pull','Legs'];
+    var dayNames=[''+_t('חזה + יד אחורית')+'',''+_t('גב + יד קדמית')+'',''+_t('רגליים')+'',''+_t('כתפיים')+'','Full Body','Push','Pull','Legs'];
     h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">';
     for(var dn2=0;dn2<dayNames.length;dn2++){
       h+=wizChip(dayNames[dn2],'_wiz.days.push({name:\''+dayLetter+' - '+dayNames[dn2]+'\',exercises:[]});_wiz.curDayIdx++;_wiz.step=5;_wiz.exStep=0;_wiz.curEx={name:\'\',sets:3,targetReps:10,baseWeight:0,rest:90,note:\'\'};renderFitness()',false);
@@ -9247,7 +9248,7 @@ function renderEditProgram(){
       h+='</div>';
     }
     // Back button
-    h+='<button onclick="'+( exs>0?'_wiz.exStep--;':'_wiz.step=5;')+'renderFitness()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;margin-top:16px">&#8249; חזרה</button>';
+    h+='<button onclick="'+( exs>0?'_wiz.exStep--;':'_wiz.step=5;')+'renderFitness()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;margin-top:16px">&#8249; '+_t('חזרה')+'</button>';
 
   } else if(step===7){
     // Done!
@@ -9351,7 +9352,7 @@ function renderViewProgram(){
     h+='<input id="prog-w-'+ei+'" class="mtnm" type="number" step="0.5" placeholder="'+(lastEntry?lastEntry.weight:ex.baseWeight||0)+'" style="width:100%"></div>';
     h+='<div style="flex:1"><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('חזרות')+'</div>';
     h+='<input id="prog-r-'+ei+'" class="mtnm" type="number" placeholder="'+ex.targetReps+'" style="width:100%"></div>';
-    h+='<button onclick="logProgEntry('+_fitProgIdx+','+ei+')" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white);align-self:flex-end">רשום</button>';
+    h+='<button onclick="logProgEntry('+_fitProgIdx+','+ei+')" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white);align-self:flex-end">'+_t('רשום')+'</button>';
     h+='</div>';
 
     // Mini history chart
@@ -9497,7 +9498,7 @@ function tplBlockHTML(ex,ei){
     h+='<button class="tb-x" onclick="tplDropSet('+ei+','+si+')"'+(ex.plan.length<=1?' disabled':'')+'>&times;</button>';
     h+='</div>';
   }
-  h+='<button class="tb-add" onclick="tplAddSet('+ei+')">+ הוסף סט</button>';
+  h+='<button class="tb-add" onclick="tplAddSet('+ei+')">'+_t('+ הוסף סט')+'</button>';
   return h+'</div>';
 }
 function tplSave(){
@@ -9533,7 +9534,7 @@ function renderFitEditTemplate(){
   h+='<div class="tpl-btns">';
   h+='<button class="tpl-save" onclick="tplSave()">'+_t('שמור')+'</button>';
   h+='<button class="tpl-cancel" onclick="tplCancel()">'+_t('ביטול')+'</button>';
-  if(_fitEditIdx>=0)h+='<button class="tpl-del" onclick="deleteFitTemplate('+_fitEditIdx+')">מחק</button>';
+  if(_fitEditIdx>=0)h+='<button class="tpl-del" onclick="deleteFitTemplate('+_fitEditIdx+')">'+_t('מחק')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
 }
@@ -9775,8 +9776,8 @@ function _exPaintBody(){
   var h='';
   if(!_exQ){
     h+='<div class="ex-tabs">'+
-       '<button class="ex-tab'+(_exTab==='muscle'?' on':'')+'" onclick="exSetTab(&quot;muscle&quot;)">לפי שריר</button>'+
-       '<button class="ex-tab'+(_exTab==='equip'?' on':'')+'" onclick="exSetTab(&quot;equip&quot;)">לפי ציוד</button>'+
+       '<button class="ex-tab'+(_exTab==='muscle'?' on':'')+'" onclick="exSetTab(&quot;muscle&quot;)">'+_t('לפי שריר')+'</button>'+
+       '<button class="ex-tab'+(_exTab==='equip'?' on':'')+'" onclick="exSetTab(&quot;equip&quot;)">'+_t('לפי ציוד')+'</button>'+
        '</div>';
     /* Cards with a picture, in sections, rather than fifteen word-chips in a
        row - you find יד אחורית by seeing an arm, not by reading labels. */
@@ -9796,7 +9797,7 @@ function _exPaintBody(){
         var sec=MU_SECTIONS[si],inner='';
         for(var mi=0;mi<sec.m.length;mi++)inner+=card(sec.m[mi],'');
         if(!inner)continue;
-        h+='<div class="gp-h">'+sec.t+'</div><div class="gp-grid">'+inner+'</div>';
+        h+='<div class="gp-h">'+_t(sec.t)+'</div><div class="gp-grid">'+inner+'</div>';
       }
     } else {
       var eq=_exDB.equipment||[],eh='';
@@ -16868,7 +16869,7 @@ function renderTripIntro(){
   h+='</div>';
 
   // New trip button
-  h+='<button onclick="_tripView=\'new-trip\';renderTrip()" style="width:100%;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));border:none;border-radius:16px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white);margin-bottom:14px">&#x2708; התחל טיול חדש</button>';
+  h+='<button onclick="_tripView=\'new-trip\';renderTrip()" style="width:100%;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));border:none;border-radius:16px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white);margin-bottom:14px">&#x2708; '+_t('התחל טיול חדש')+'</button>';
 
   // Past trips
   if(trips.length>0){

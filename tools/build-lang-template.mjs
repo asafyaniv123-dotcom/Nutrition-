@@ -62,12 +62,16 @@ for (const name of VIA_VARIABLE) {
   const body = arrayAt(app.indexOf('[', at));
   for (const k of body.matchAll(/(['"])([^'"]*[֐-׿][^'"]*)\1/g)) keys.add(k[2]);
 }
-/* and the muscle names, which the browser's cards translate one by one */
+/* and the muscle names, which the browser's cards translate one by one -
+   plus the three section headings above them, which the exercise picker
+   translates the same way. */
 const mu = app.indexOf('var MU_SECTIONS=[');
 if (mu >= 0) {
   const end = app.indexOf('\n];', mu);
-  for (const k of app.slice(mu, end).matchAll(/m:\s*\[([^\]]*)\]/g))
+  const block = app.slice(mu, end);
+  for (const k of block.matchAll(/m:\s*\[([^\]]*)\]/g))
     for (const w of k[1].matchAll(/(['"])([^'"]*[֐-׿][^'"]*)\1/g)) keys.add(w[2]);
+  for (const w of block.matchAll(/\bt:\s*(['"])([^'"]*[֐-׿][^'"]*)\1/g)) keys.add(w[2]);
 }
 
 /* The five words written into the document's own markup carry their key in a
