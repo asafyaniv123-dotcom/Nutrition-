@@ -1585,6 +1585,7 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .set-t{font-size:13.5px;font-weight:800;color:var(--ink)}
 .set-s{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:4px}
 .set-langs{display:flex;flex-wrap:wrap;gap:8px;padding:12px 10px 4px}
+.set-country{width:calc(100% - 20px);margin:4px 10px 0;background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:11px 12px;font-family:inherit;font-size:13px;font-weight:700;color:var(--ink)}
 .set-lang{min-height:44px;padding:0 15px;border-radius:13px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--line-strong);background:var(--card);color:var(--ink-soft)}
 .set-lang.on{border-color:var(--violet-500);background:var(--violet-50);color:var(--violet-700)}
 .ar-title{font-size:19px;font-weight:800;color:var(--ink)}
@@ -3511,7 +3512,10 @@ function foodHas(name,tok){
    It only ever makes matching more permissive: the key is never displayed
    and never stored as a name, it exists to be compared. */
 function foodKey(s){
-  return String(s).replace(/['’׳"“”״,.\-]/g,'')
+  /* Lower-cased so a search matches the way people type. Not locale-aware:
+     the Turkish locale folds I to a dotless i, and the key and the query
+     have to fold identically for every reader. */
+  return String(s).toLowerCase().replace(/['’׳"“”״,.\-]/g,'')
                   .replace(/יי/g,'י').replace(/וו/g,'ו')
                   .replace(/\s+/g,' ').trim();
 }
@@ -4617,7 +4621,62 @@ function fdbType(v){
   if(foodKey(q)!==foodKey(_fdbAIQ)){_fdbAI=null;_fdbAIBusy=false;}
   fdbPaint();
   // a request per keystroke would be absurd; this waits for a pause
-  if(q.length>=2&&SYNC_SERVER)_fdbTimer=setTimeout(function(){fdbAIGo(q);},650);
+  if(q.length>=2)_fdbTimer=setTimeout(function(){
+    offLive(q);                       // the shelf, if a country was named
+    if(SYNC_SERVER)fdbAIGo(q);
+  },650);
+}
+/* ── THE LIVE SHELF ──
+   The bundled Open Food Facts rows are Israel only. This asks the live index
+   for the country the person named, while they type, and folds whatever comes
+   back into the same array everything else already reads.
+
+   It goes through our own Worker, because Open Food Facts allows CORS on the
+   product lookup and on nothing else - a page can ask about a barcode it
+   already has and cannot ask what exists. Measured, all three endpoints.
+
+   Free text and a country filter do combine - "yaourt" in France returns 412,
+   "queso" in Spain 270, "natto" in Japan 10. But the index matches Latin
+   script only: 納豆,
+   ヨーグルト and לחם all return zero, with or without a country. So this helps
+   a French or Brazilian shopper immediately and a Japanese one only in romaji.
+   For them the barcode, which is script-free, and the model, which already
+   bridges languages against the tables, are what carry it. */
+var _offSeen={};
+/* The server sends rows already in the app's shape - it is the side that
+   knows Open Food Facts' field names, and keeping that there means the
+   upstream can change without shipping an app. */
+function offLiveRow(r){
+  if(!r||!r.id||!r.n||typeof r.k!=='number')return null;
+  return {id:r.id,n:r.n,k:r.k,p:r.p||0,c:r.c||0,f:r.f||0,
+          off:1,live:1,s:foodKey(r.n)};
+}
+/* Runs beside the model match, not instead of it. Silent on every failure:
+   there is always a local list underneath. */
+function offLive(q){
+  var cc=appCountry();
+  if(!cc||!_foods)return;
+  var tag=countryTag(cc);
+  if(!tag)return;
+  var term=String(q||'').trim();
+  if(term.length<2)return;
+  if(!SYNC_SERVER)return;
+  fetch(SYNC_SERVER+'/off',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({q:term,country:tag})
+  })
+    .then(function(r){return r.json();})
+    .then(function(j){
+      if(foodKey(q)!==foodKey(_fdbQ))return;      // they have typed on
+      var rows=(j&&j.rows)||[],added=0,i,row;
+      for(i=0;i<rows.length;i++){
+        row=offLiveRow(rows[i]);
+        if(!row||_offSeen[row.id])continue;
+        _offSeen[row.id]=1;_foods.push(row);added++;
+      }
+      if(added)fdbPaint();
+    })
+    .catch(function(){});
 }
 function fdbAskMatch(q,cands,done){
   fetch(SYNC_SERVER+'/match',{
@@ -20412,6 +20471,43 @@ function drawerChrome(){
    language finds it by recognising it, not by reading Hebrew. dir=ltr on the
    label keeps 简体中文 and العربية from being reordered by the panel around
    them. */
+/* ── WHICH SHELF ──
+   The country whose products are searched. Separate from the language on
+   purpose: a Hebrew speaker in Berlin buys German products, and deriving the
+   shelf from the interface language would be wrong for exactly the people
+   this exists for. Empty means the whole world, which is the honest default
+   for someone who has not said. */
+var COUNTRY_KEY='country';
+/* Open Food Facts tags countries by their English name, lower-cased. The
+   codes are ISO so Intl can name them; the tag is derived from the code. */
+var COUNTRIES=['AR','AT','AU','BE','BR','CA','CH','CL','CN','CO','CZ','DE','DK','EG',
+  'ES','FI','FR','GB','GR','HU','ID','IE','IL','IN','IT','JP','KR','MA','MX','MY',
+  'NL','NO','NZ','PH','PL','PT','RO','RU','SA','SE','SG','TH','TN','TR','TW','UA',
+  'US','VN','ZA'];
+function appCountry(){
+  try{return localStorage.getItem(COUNTRY_KEY)||'';}catch(e){return '';}
+}
+function countrySet(c){
+  try{localStorage.setItem(COUNTRY_KEY,c||'');}catch(e){}
+  renderSettings();
+}
+/* The browser has known every country's name in every language since 2021.
+   Nothing here needs a translation key. */
+function countryName(code){
+  try{
+    var d=new Intl.DisplayNames([APP_LOCALE],{type:'region'});
+    return d.of(code)||code;
+  }catch(e){return code;}
+}
+/* The tag Open Food Facts files a product under: its English name in lower
+   case, with spaces as hyphens - "en:united-kingdom". */
+function countryTag(code){
+  try{
+    var en=new Intl.DisplayNames(['en'],{type:'region'}).of(code)||'';
+    en=en.toLowerCase().replace(/[^a-z ]/g,'').trim().replace(/\s+/g,'-');
+    return en?'en:'+en:'';
+  }catch(e){return '';}
+}
 function renderSettings(){
   var v=document.getElementById('settings-view');if(!v)return;
   var cur=appLang(),h='';
@@ -20423,7 +20519,18 @@ function renderSettings(){
     h+='<button class="set-lang'+(l.code===cur?' on':'')+'" '+
        'onclick="langSet(\''+l.code+'\')" dir="'+l.dir+'">'+l.name+'</button>';
   }
-  v.innerHTML=h+'</div>';
+  h+='</div>';
+  h+='<div class="set-sec"><div class="set-t">'+_t('מדינה')+'</div>'+
+     '<div class="set-s">'+_t('איזה מדף מחפשים בו מוצרים. לא חייב להיות המקום שבו נולדת.')+'</div></div>';
+  var cc=appCountry(),ci,names=[];
+  for(ci=0;ci<COUNTRIES.length;ci++)names.push({c:COUNTRIES[ci],n:countryName(COUNTRIES[ci])});
+  names.sort(function(a,b){return a.n.localeCompare(b.n,APP_LOCALE);});
+  h+='<select class="set-country" onchange="countrySet(this.value)">';
+  h+='<option value=""'+(cc?'':' selected')+'>'+_t('כל העולם')+'</option>';
+  for(ci=0;ci<names.length;ci++)
+    h+='<option value="'+names[ci].c+'"'+(cc===names[ci].c?' selected':'')+'>'+esc(names[ci].n)+'</option>';
+  h+='</select>';
+  v.innerHTML=h;
 }
 function closeAreas(){
   document.getElementById('areas-back').classList.remove('on');

@@ -229,6 +229,62 @@ export default {
          AI_KEY  - an Anthropic API key
        Optional:
          PARSE_DAILY_CAP - requests per IP per day (default 60) */
+    /* Open Food Facts search, proxied. A browser cannot call this: they allow
+       CORS on the product lookup and on nothing else. We can, and we should -
+       they ask callers to identify themselves, which a page cannot do either. */
+    if (url.pathname === '/off' && req.method === 'POST') {
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const q = String((b && b.q) || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+      /* Their tag, already built by the app from an ISO code. Kept to the
+         shape a tag can have so nothing else can be smuggled into the URL. */
+      const tag = String((b && b.country) || '').trim().slice(0, 40);
+      if (q.length < 2) return json({ ok: true, rows: [] });
+      if (!/^en:[a-z-]+$/.test(tag)) return json({ ok: true, rows: [] });
+
+      const cap = Number(env.OFF_DAILY_CAP || 400);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'of:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ ok: true, rows: [] });
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const country = tag.slice(3);
+      const u = 'https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1' +
+        '&page_size=12&search_terms=' + encodeURIComponent(q) +
+        '&tagtype_0=countries&tag_contains_0=contains&tag_0=' + encodeURIComponent(country) +
+        '&fields=code,product_name,brands,nutriments';
+
+      let j;
+      try {
+        const r = await fetch(u, {
+          headers: { 'User-Agent': 'BetterMe/0.1 (personal nutrition app)' },
+        });
+        if (!r.ok) return json({ ok: true, rows: [] });
+        j = await r.json();
+      } catch {
+        return json({ ok: true, rows: [] });
+      }
+
+      const num = (v) => (typeof v === 'number' && isFinite(v) ? Math.round(v * 10) / 10 : 0);
+      const rows = [];
+      for (const p of (j && j.products) || []) {
+        const n = p.nutriments || {};
+        const k = n['energy-kcal_100g'];
+        if (typeof k !== 'number' || !isFinite(k)) continue;
+        let name = String(p.product_name || '').trim();
+        const brand = String(p.brands || '').split(',')[0].trim();
+        if (brand) name = name ? name + ', ' + brand : brand;
+        if (name.length < 2) continue;
+        rows.push({
+          id: 'off:' + p.code, n: name, k: Math.round(k),
+          p: num(n.proteins_100g), c: num(n.carbohydrates_100g), f: num(n.fat_100g),
+        });
+      }
+      return json({ ok: true, rows });
+    }
+
     if (url.pathname === '/parse' && req.method === 'POST') {
       if (!env.AI_KEY) return json({ error: 'parsing is not configured' }, 503);
 
