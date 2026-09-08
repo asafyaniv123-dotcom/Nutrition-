@@ -116,17 +116,38 @@ the rest.
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
 
-**Four checks are tools rather than prose**, and all should only ever go down:
+**Six checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments
     node tools/find-translated-data.mjs        # _t() results used as data, not shown
     node tools/find-units-in-strings.mjs       # kg or ml welded into a sentence
+    node tools/find-frozen-translations.mjs    # _t() called once, at load, then never
+    node tools/find-unwrapped-hebrew.mjs       # Hebrew that never reaches _t() at all
     node tools/build-lang-template.mjs --check # the template still matches the app
 
-They exit non-zero when they find anything. The first three take a file path,
+They exit non-zero when they find anything. All but the last take a file path,
 so they can be pointed at an older revision — which is how each was shown to
 actually detect the bugs it claims to, rather than being trusted because it
 reported nothing.
+
+The last two divide the ground between them. A collection declared at the top
+level calls `_t()` while the page is still booting, before any dictionary has
+been fetched — so it fills with Hebrew and stays Hebrew for the life of the
+tab. `langOn(fn)` runs fn then and again on every language change; the frozen
+check finds the declarations that are missing it. The unwrapped check finds the
+opposite failure: a Hebrew string that never tried to be translated, which no
+language file can reveal because it has no key to be missing.
+
+**Three bugs of the same shape, so far.** An array whose middle items are
+`_t('…')` and whose first — or last — is a bare string. It is what a pass
+anchored on a preceding comma leaves behind. When you find one, wrap the whole
+declaration and count, rather than picking lines off one at a time.
+
+**A key may carry a context after a vertical bar.** `בוקר` is one Hebrew word
+for the part of the day and for the meal, and German has two; `_t('בוקר|ארוחה')`
+says which is meant. Nothing shows the bar — with no answer `_t` returns the
+part before it — so the Hebrew app is unchanged and a translator sees both
+halves. Reach for it only when one Hebrew word genuinely needs two answers.
 
 **A tool that has never caught anything has not been tested.** Twice now a
 detector was written, reported zero, and was believed — and both times it was
