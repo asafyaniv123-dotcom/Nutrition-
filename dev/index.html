@@ -710,7 +710,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 /* ── SEASONS ──
    A filter that is generous by default: "all year" is lit until you narrow it,
    and narrowing still shows every untagged garment. */
-.cl-seasons{display:flex;gap:6px;overflow-x:auto;padding:0 2px 10px;-webkit-overflow-scrolling:touch}
+.cl-seasons{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:0 2px 10px}
 .cl-season{flex:0 0 auto;background:var(--card);border:1.5px solid var(--line);border-radius:999px;
   padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--muted);font-family:inherit;cursor:pointer;white-space:nowrap}
 .cl-season.on{background:var(--violet-100);border-color:var(--violet-300);color:var(--violet-700)}
@@ -727,16 +727,17 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 /* half the track either side, so the first and last garment can reach it */
 .cl-pad{flex-shrink:0;width:calc(50% - 26px);pointer-events:none}
 .cl-mirror.side{padding:8px}
-.cl-row{position:relative;z-index:1;display:flex;align-items:center;gap:3px}
+.cl-row{position:relative;z-index:1;display:flex;align-items:center;gap:3px;flex-wrap:wrap}
 .cl-pair{display:flex;align-items:stretch;gap:9px}
 .cl-pair-main{flex:1;min-width:0}
-.cl-pair-side{flex-shrink:0;width:120px;border-inline-start:1px solid var(--line);padding-inline-start:9px;display:flex;align-items:center}
-.cl-pair .cl-row{flex-wrap:wrap}
-.cl-pair .cl-lab{width:100%;padding-inline-end:0;margin-bottom:1px}
+.cl-pair-side{position:relative;flex-shrink:0;width:172px;border-inline-start:1px solid var(--line);padding-inline-start:9px;display:flex;align-items:center}
+.cl-season-n{display:inline-block;margin-inline-start:5px;font-size:9.5px;font-weight:800;opacity:.55}
+.cl-dress{display:block;margin:6px auto 0;background:none;border:1px solid var(--line);border-radius:11px;padding:6px 16px;font-family:inherit;font-size:11px;font-weight:800;color:var(--muted);cursor:pointer}
+.cl-dress-x{position:absolute;top:0;inset-inline-end:0;width:18px;height:18px;border:none;border-radius:50%;background:rgba(190,178,166,.8);color:var(--white);font-size:13px;line-height:18px;padding:0;cursor:pointer;font-family:inherit}
 .cl-pair-side .cl-arw{display:none}
 .cl-pair-side .cl-row{width:100%}
 .cl-row+.cl-row{margin-top:7px}
-.cl-lab{flex-shrink:0;width:52px;text-align:start;padding-inline-end:2px}
+.cl-lab{width:100%;text-align:start;padding-inline-end:0;margin-bottom:2px}
 .cl-rt{display:block;font-size:10px;font-weight:800;color:var(--ink);line-height:1.2}
 .cl-rn{display:block;font-size:8.5px;color:var(--muted-soft);font-weight:700}
 .cl-arw{flex-shrink:0;width:17px;border:none;background:none;font-size:17px;line-height:1;color:#d8cfc7;cursor:pointer;font-family:inherit;padding:0}
@@ -750,7 +751,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-img{width:100%;height:100%;object-fit:contain;display:block}
 .cl-x{position:absolute;top:0;inset-inline-end:0;width:15px;height:15px;border:none;border-radius:50%;background:rgba(190,178,166,.85);color:var(--white);font-size:11px;line-height:15px;padding:0;cursor:pointer;font-family:inherit}
 .cl-add,.cl-empty{flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px dashed #ebe4dc;border-radius:11px;color:#cdc3b8;font-size:14px;font-weight:800;cursor:pointer;background:none}
-.cl-empty{flex:1;font-size:11px}
+.cl-empty{flex:1;font-size:11.5px;border:none;justify-content:flex-start;padding:7px 2px;color:#c4b9ad;font-weight:700}
 /* what is on the line, big enough to judge */
 .cl-sheet-w{position:fixed;inset:0;z-index:400}
 .cl-sh-back{position:absolute;inset:0;background:rgba(58,50,46,.34)}
@@ -8127,15 +8128,21 @@ var CLOSET_CATS;langOn(function(){CLOSET_CATS=[
 ];});
 // which rows a one-piece silences
 var CLOSET_SOLO_HIDES=['top','bottom'];
-/* The dress is drawn at 118 in a look and picked at 92, because the picker
-   gives it a column a third of the width and the look gives it the body. */
-var CLOSET_DRESS_CELL=92;
+/* The picker draws half again as large as the look. They are different
+   questions: the look wants the proportions of a body, the picker wants the
+   garment big enough to choose between. */
+var CLOSET_PICK=1.5;
+var CLOSET_DRESS_CELL=150;
+/* The dress is the alternative to the pair, not a companion to it, so it does
+   not hold a third of the width until it is asked for. */
+var _clDress=false;
+function closetDressOpen(on){_clDress=!!on;renderCloset();}
 function closetSoloOn(){
   var list=closetOf('dress');
   return list.length>0&&(_closetSel.dress||0)>0;
 }
 function closetSoloItem(){
-  var list=closetOf('dress'),sel=(_closetSel.dress||0)-1;
+  var list=closetOf('dress'),sel=closetSelOf('dress')-1;
   return (sel>=0&&list[sel])?list[sel]:null;
 }
 var CLOSET_SIDE;langOn(function(){CLOSET_SIDE={k:'jewel',t:''+_t('תכשיטים')+'',h:46,one:''+_t('תכשיט')+''};});
@@ -8169,6 +8176,16 @@ function closetInSeason(x){
 function closetOf(cat){
   return loadCloset().filter(function(x){return x.cat===cat&&closetInSeason(x);});
 }
+/* Which garment a row is on, given that the list it indexes can shrink under
+   it - a season folder narrows it, removing a garment shortens it. The row
+   used to clamp this privately while closetCurrent read the raw index, so
+   the row could show a shirt that the look and the saved outfit did not
+   have. One answer, read by both. */
+function closetSelOf(cat){
+  var def=closetCat(cat),n=closetOf(cat).length;
+  var top=def.solo?n:Math.max(0,n-1);
+  return Math.min(_closetSel[cat]||0,top);
+}
 /* _closetSel holds an INDEX into the list above, so narrowing it would leave
    every strip pointing at a different garment. */
 function closetSeasonSet(k){
@@ -8191,13 +8208,26 @@ function closetSeasonToggle(id,k){
   if(_clSheet){closetSheetPaint();return;}
   renderCloset();
 }
+/* What the folder would show if you opened it - which includes everything
+   untagged, because untagged means every season. */
+function closetSeasonCount(k){
+  var all=loadCloset(),n=0,i;
+  for(i=0;i<all.length;i++){
+    var a=all[i].seasons;
+    if(!k||!Array.isArray(a)||!a.length||a.indexOf(k)>=0)n++;
+  }
+  return n;
+}
 function closetSeasonsHTML(){
-  var h='<div class="cl-seasons">',i;
-  h+='<button class="cl-season'+(_closetSeason?'':' on')+'" onclick="closetSeasonSet(\'\')">'+_t('כל השנה')+'</button>';
+  var h='<div class="cl-seasons">',i,n;
+  n=closetSeasonCount('');
+  h+='<button class="cl-season'+(_closetSeason?'':' on')+'" onclick="closetSeasonSet(\'\')">'+
+     _t('כל השנה')+(n?'<span class="cl-season-n">'+n+'</span>':'')+'</button>';
   for(i=0;i<CLOSET_SEASONS.length;i++){
     var sn=CLOSET_SEASONS[i];
+    n=closetSeasonCount(sn.k);
     h+='<button class="cl-season'+(_closetSeason===sn.k?' on':'')+'" onclick="closetSeasonSet(\''+sn.k+'\')">'+
-       sn.ic+' '+_t(sn.t)+'</button>';
+       sn.ic+' '+_t(sn.t)+(n?'<span class="cl-season-n">'+n+'</span>':'')+'</button>';
   }
   return h+'</div>';
 }
@@ -8846,8 +8876,12 @@ function cropApply(){
 function closetStore(data,cat,then){
   photoPut(data).then(function(ref){
     var items=loadCloset();
-    items.push({id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-                cat:cat,ref:ref||data,ts:Date.now()});
+    /* Whatever season you are looking at is the one you are adding to. In
+       כל השנה that is none, and the garment belongs to every season. */
+    var rec={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+             cat:cat,ref:ref||data,ts:Date.now()};
+    if(_closetSeason)rec.seasons=[_closetSeason];
+    items.push(rec);
     saveCloset(items);
     _closetSel[cat]=closetOf(cat).length-1;
     if(then){then();return;}
@@ -8874,7 +8908,7 @@ function closetStep(cat,d){
   // ללא is a position on the one-piece row, so it has one more stop than it
   // has garments
   var stops=closetCat(cat).solo?n+1:n;
-  var cur=_closetSel[cat]||0,next=(cur+d+stops)%stops;
+  var cur=closetSelOf(cat),next=(cur+d+stops)%stops;
   clCentre(cat,next,true);   // locks the row first, so its own scroll cannot undo this
   clSelect(cat,next);
 }
@@ -8932,7 +8966,7 @@ function closetSheetPaint(){
 function closetPick(cat,i){
   /* Already in the middle means you are not choosing it, you are asking
      about it. Anything else is the ordinary gesture and must stay that. */
-  if((_closetSel[cat]||0)===i){closetSheet(cat,i);return;}
+  if(closetSelOf(cat)===i){closetSheet(cat,i);return;}
   clCentre(cat,i,true);
   clSelect(cat,i);
 }
@@ -8961,7 +8995,7 @@ function closetCurrent(){
       if(d)out.dress=d.id;
       continue;
     }
-    var list=closetOf(k),sel=_closetSel[k]||0;
+    var list=closetOf(k),sel=closetSelOf(k);
     if(list.length&&list[sel])out[k]=list[sel].id;
   }
   return out;
@@ -9060,19 +9094,18 @@ function closetPickedPaint(){
    still reads cat.h, because a dress has to be drawn large there whatever
    room the picker had for it. */
 function closetRowHTML(cat,cell){
-  var list=closetOf(cat.k),sel=_closetSel[cat.k]||0,i,h='';
-  var CH=cell||cat.h;
+  var list=closetOf(cat.k),sel=closetSelOf(cat.k),i,h='';
+  var CH=cell||Math.round((cat.h||50)*CLOSET_PICK);
   var solo=!!cat.solo;
-  // on the one-piece row index 0 is ללא, so the garments start at 1
-  var maxSel=solo?list.length:Math.max(0,list.length-1);
-  if(sel>maxSel)sel=maxSel;
   var off=(!solo&&CLOSET_SOLO_HIDES.indexOf(cat.k)>=0&&closetSoloOn());
   h+='<div class="cl-row'+(off?' off':'')+'">';
   h+='<div class="cl-lab"><span class="cl-rt">'+cat.t+'</span>'+
      (list.length>1?'<span class="cl-rn" id="cl-n-'+cat.k+'">'+
         (solo?(sel===0?''+_t('ללא')+'':sel+'/'+list.length):(sel+1)+'/'+list.length)+'</span>':'')+'</div>';
   if(!list.length){
-    h+='<label class="cl-empty" style="height:'+(solo?52:CH)+'px">+ '+cat.one+
+    /* Nothing in it yet, so it is a line of text rather than a box held open
+       the height of a garment you have not photographed. */
+    h+='<label class="cl-empty">+ '+cat.one+
        '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
     return h+'</div>';
   }
@@ -9195,7 +9228,7 @@ function clCentreAll(smooth){
   _clLock={};   // the rows are being rebuilt; nothing is in flight
   for(i=0;i<cats.length;i++){
     var k=cats[i].k;
-    if(closetOf(k).length)clCentre(k,_closetSel[k]||0,smooth);
+    if(closetOf(k).length)clCentre(k,closetSelOf(k),smooth);
   }
 }
 /* A look in the list is smaller than a look on its own. */
@@ -9302,9 +9335,14 @@ function lookLayout(o,scale){
   var box=function(cat,item){
     var t=lookTrim(item.ref);
     var hgt=Math.round((cat.h||50)*scale);
-    var a=Math.max(0.25,Math.min(2.6,t.a||1));
-    return {ref:item.ref,w:Math.round(hgt*a),h:hgt,trim:t,
-            ov:LOOK_OVERLAP[cat.k]||0};
+    var a=Math.max(0.15,t.a||1);
+    var w=Math.round(hgt*a);
+    /* A very wide shot must not shove the column sideways - but it must not
+       be squashed to prevent that either, because the picture is stretched
+       to fill whatever box it is given. Shrink the box, keep the shape. */
+    var cap=Math.round(hgt*2.4);
+    if(w>cap){hgt=Math.round(hgt*(cap/w));w=cap;}
+    return {ref:item.ref,w:w,h:hgt,trim:t,ov:LOOK_OVERLAP[cat.k]||0};
   };
   var worn=[],side=[],ci,it;
   for(ci=0;ci<CLOSET_CATS.length;ci++){
@@ -9479,10 +9517,17 @@ function renderCloset(){
     /* The pair and its alternative are one block, drawn when we reach the
        first of them; the other two are skipped where they used to sit. */
     if(rc.k==='top'){
+      var dn=closetOf('dress').length;
       h+='<div class="cl-pair"><div class="cl-pair-main">'+
          closetRowHTML(closetCat('top'))+closetRowHTML(closetCat('bottom'))+
-         '</div><div class="cl-pair-side">'+
-         closetRowHTML(closetCat('dress'),CLOSET_DRESS_CELL)+'</div></div>';
+         '</div>';
+      if(_clDress)
+        h+='<div class="cl-pair-side">'+closetRowHTML(closetCat('dress'),CLOSET_DRESS_CELL)+
+           '<button class="cl-dress-x" onclick="closetDressOpen(false)" aria-label="'+_t('סגור')+'">&times;</button></div>';
+      h+='</div>';
+      if(!_clDress)
+        h+='<button class="cl-dress" onclick="closetDressOpen(true)">'+
+           closetCat('dress').t+(dn?' ('+dn+')':'')+'</button>';
       continue;
     }
     if(rc.k==='bottom'||rc.k==='dress')continue;
