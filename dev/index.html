@@ -3564,7 +3564,9 @@ function foodHas(name,tok){
   if(attaches&&tok.length>3)return name.indexOf(tok)>=0;
   var at=name.indexOf(tok);
   while(at>=0){
-    if(at===0||name.charAt(at-1)===' ')return true;
+    /* A word is at a boundary after anything that is not a letter, not only
+       after a space - the gloss in "دراق (خوخ)" is a word too. */
+    if(at===0||!/[\p{L}\p{N}]/u.test(name.charAt(at-1)))return true;
     at=name.indexOf(tok,at+1);
   }
   return false;
@@ -3582,7 +3584,12 @@ function foodKey(s){
   /* Lower-cased so a search matches the way people type. Not locale-aware:
      the Turkish locale folds I to a dotless i, and the key and the query
      have to fold identically for every reader. */
-  return String(s).toLowerCase().replace(/['’׳"“”״,.\-]/g,'')
+  return String(s).toLowerCase()
+                  /* Marks a reader never types: Arabic harakat and Hebrew
+                     niqqud. They arrive in a name copied from a table and
+                     have never once arrived in a query. */
+                  .replace(/[\u064B-\u0652\u0670\u0591-\u05C7]/g,'')
+                  .replace(/['’׳"“”״,.\-]/g,'')
                   .replace(/יי/g,'י').replace(/וו/g,'ו')
                   .replace(/\s+/g,' ').trim();
 }
