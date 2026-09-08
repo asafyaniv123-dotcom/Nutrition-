@@ -516,6 +516,14 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .ch-nw{top:-7px;inset-inline-end:-7px}.ch-ne{top:-7px;inset-inline-start:-7px}
 .ch-sw{bottom:-7px;inset-inline-end:-7px}.ch-se{bottom:-7px;inset-inline-start:-7px}
 .crop-hint{font-size:11px;color:#a49a92;text-align:center;line-height:1.6;max-width:300px}
+.cl-er{position:absolute;top:-5px;inset-inline-start:-5px;width:17px;height:17px;border:none;border-radius:50%;background:#e0d8ce;padding:0;cursor:pointer;line-height:0;display:flex;align-items:center;justify-content:center}
+.cl-er svg{width:10px;height:10px;fill:none;stroke:var(--white);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.er-board{background-color:#3a3330;background-image:linear-gradient(45deg,#4a423e 25%,transparent 25%),linear-gradient(-45deg,#4a423e 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#4a423e 75%),linear-gradient(-45deg,transparent 75%,#4a423e 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
+.er-can,.er-ring{position:absolute;inset:0;width:100%;height:100%;display:block}
+.er-ring{pointer-events:none}
+.er-size{display:flex;align-items:center;gap:10px;width:260px;max-width:80vw}
+.er-size input{flex:1;accent-color:var(--violet-300)}
+.er-size span{font-size:10.5px;font-weight:800;color:#a49a92;white-space:nowrap}
 /* the batch, as pictures */
 .crop-strip{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:320px}
 .crop-th{width:34px;height:34px;border-radius:7px;overflow:hidden;border:2px solid transparent;opacity:.4;transition:opacity .15s,border-color .15s}
@@ -8269,6 +8277,188 @@ function cropNext(){
    PNG that keeps its transparency. */
 var _crop=null;   // {img,cat,mode,box,path,vw,vh,drag}
 
+/* ── ERASING BY HAND ───────────────────────────────────────────────────── */
+var ER_BRUSH='<svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M15 5l4 4-8 8H7v-4z"/></svg>';
+var _erase=null;
+function erOpen(cat,idx){
+  var list=closetOf(cat),it=list[idx];
+  if(!it)return;
+  var start=function(src){
+    var img=new Image();
+    img.onerror=function(){showToast(_t('לא הצלחתי לקרוא את התמונה'));};
+    img.onload=function(){
+      var W=img.naturalWidth,H=img.naturalHeight;
+      var maxW=Math.min(window.innerWidth-52,520),maxH=window.innerHeight-250;
+      var k=Math.min(maxW/W,maxH/H,1);
+      var mk=function(){var c=document.createElement('canvas');c.width=W;c.height=H;return c;};
+      var base=mk();base.getContext('2d').drawImage(img,0,0);
+      var can=mk();can.getContext('2d').drawImage(img,0,0);
+      _erase={id:it.id,cat:cat,W:W,H:H,
+              vw:Math.round(W*k),vh:Math.round(H*k),
+              base:base,can:can,ctx:can.getContext('2d'),
+              committed:mk(),stroke:mk(),tmp:mk(),
+              mode:'erase',size:26,undo:[],last:null,drawing:false};
+      document.body.style.overflow='hidden';
+      erPaint();
+    };
+    img.src=src;
+  };
+  if(isPhotoKey(it.ref))photoGet(it.ref).then(function(d){
+    if(d)start(d); else showToast(_t('לא הצלחתי לקרוא את התמונה'));
+  });
+  else start(it.ref);
+}
+function erClose(){
+  _erase=null;
+  var o=document.getElementById('er-ov');if(o)o.remove();
+  document.body.style.overflow='';
+}
+function erMode(m){if(!_erase)return;_erase.mode=m;erPaint();}
+function erSize(v){
+  if(!_erase)return;
+  _erase.size=Math.max(6,Math.min(90,parseInt(v,10)||26));
+  var l=document.getElementById('er-sz');if(l)l.textContent=_erase.size;
+}
+function erPaint(){
+  var e=_erase;if(!e)return;
+  var old=document.getElementById('er-ov');
+  var h='<div class="crop-ov" id="er-ov">';
+  h+='<div class="crop-top"><div class="crop-modes">';
+  h+='<button class="crop-m'+(e.mode==='erase'?' on':'')+'" onclick="erMode(&quot;erase&quot;)">'+_t('מחק|מברשת')+'</button>';
+  h+='<button class="crop-m'+(e.mode==='back'?' on':'')+'" onclick="erMode(&quot;back&quot;)">'+_t('החזר|מברשת')+'</button>';
+  h+='</div></div>';
+  h+='<div class="crop-stage er-board" id="er-stage" style="width:'+e.vw+'px;height:'+e.vh+'px">';
+  h+='<canvas class="er-can" id="er-can" width="'+e.W+'" height="'+e.H+'"></canvas>';
+  h+='<canvas class="er-ring" id="er-ring" width="'+e.vw+'" height="'+e.vh+'"></canvas>';
+  h+='</div>';
+  h+='<div class="er-size"><span>'+_t('עובי המברשת')+'</span>'+
+     '<input type="range" min="6" max="90" value="'+e.size+'" oninput="erSize(this.value)">'+
+     '<span id="er-sz">'+e.size+'</span></div>';
+  h+='<div class="crop-hint">'+_t('העבר את האצבע על מה שצריך להיעלם. ״החזר״ מחזיר רק מה שמחקת כאן.')+'</div>';
+  h+='<div class="crop-bot">';
+  h+='<button class="crop-x" onclick="erClose()">'+_t('ביטול')+'</button>';
+  h+='<button class="crop-rs" id="er-undo" onclick="erUndo()"'+(e.undo.length?'':' disabled style="opacity:.35"')+'>'+_t('בטל')+'</button>';
+  h+='<button class="crop-ok" onclick="erSave()">'+_t('שמור')+'</button>';
+  h+='</div></div>';
+  if(old)old.outerHTML=h; else document.body.insertAdjacentHTML('beforeend',h);
+  erShow();
+  erBind();
+}
+/* The canvas on screen is a copy; e.can is the truth. Repainting the overlay
+   for a mode change must not lose a stroke, so it copies e.can back in. */
+function erShow(){
+  var e=_erase;if(!e)return;
+  var c=document.getElementById('er-can');if(!c)return;
+  var g=c.getContext('2d');
+  g.globalCompositeOperation='source-over';
+  g.clearRect(0,0,e.W,e.H);
+  g.drawImage(e.can,0,0);
+}
+function erSeg(a,b){
+  var e=_erase,q=e.stroke.getContext('2d');
+  q.globalCompositeOperation='source-over';
+  q.strokeStyle='#000';q.lineCap='round';q.lineJoin='round';
+  q.lineWidth=Math.max(1,e.size*(e.W/e.vw));
+  q.beginPath();q.moveTo(a.x,a.y);q.lineTo(b.x,b.y);q.stroke();
+}
+/* One composite from the state before the stroke, never an accumulation. */
+function erStroke(){
+  var e=_erase,g=e.ctx;
+  g.globalCompositeOperation='source-over';
+  g.clearRect(0,0,e.W,e.H);
+  g.drawImage(e.committed,0,0);
+  if(e.mode==='erase'){
+    g.globalCompositeOperation='destination-out';
+    g.drawImage(e.stroke,0,0);
+  }else{
+    var q=e.tmp.getContext('2d');
+    q.globalCompositeOperation='source-over';
+    q.clearRect(0,0,e.W,e.H);
+    q.drawImage(e.stroke,0,0);
+    q.globalCompositeOperation='source-in';   // the picture, masked by the stroke
+    q.drawImage(e.base,0,0);
+    g.drawImage(e.tmp,0,0);
+  }
+  g.globalCompositeOperation='source-over';
+  erShow();
+}
+function erRing(p){
+  var e=_erase;if(!e)return;
+  var c=document.getElementById('er-ring');if(!c)return;
+  var g=c.getContext('2d');
+  g.clearRect(0,0,e.vw,e.vh);
+  if(!p)return;
+  g.beginPath();g.arc(p.vx,p.vy,e.size/2,0,6.284);
+  g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=1.5;g.stroke();
+  g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=.7;g.stroke();
+}
+function erUndo(){
+  var e=_erase;if(!e||!e.undo.length)return;
+  var prev=e.undo.pop();
+  e.ctx.globalCompositeOperation='source-over';
+  e.ctx.clearRect(0,0,e.W,e.H);
+  e.ctx.drawImage(prev,0,0);
+  erPaint();
+}
+function erBind(){
+  var e=_erase;if(!e)return;
+  var stage=document.getElementById('er-stage');if(!stage)return;
+  var pt=function(ev){
+    var r=stage.getBoundingClientRect();
+    var vx=ev.clientX-r.left,vy=ev.clientY-r.top;
+    return {vx:vx,vy:vy,x:vx*(e.W/e.vw),y:vy*(e.H/e.vh)};
+  };
+  stage.onpointerdown=function(ev){
+    if(!_erase)return;
+    /* The picture this stroke starts from is both the undo entry and the
+       composite base, so it is one copy used twice. */
+    var snap=document.createElement('canvas');
+    snap.width=e.W;snap.height=e.H;
+    snap.getContext('2d').drawImage(e.can,0,0);
+    e.undo.push(snap);
+    if(e.undo.length>10)e.undo.shift();
+    var cg=e.committed.getContext('2d');
+    cg.globalCompositeOperation='source-over';
+    cg.clearRect(0,0,e.W,e.H);cg.drawImage(e.can,0,0);
+    e.stroke.getContext('2d').clearRect(0,0,e.W,e.H);
+    var p=pt(ev);
+    e.last=p;e.drawing=true;
+    erSeg(p,p);              // a tap is a dot, not nothing
+    erStroke();erRing(p);
+    try{stage.setPointerCapture(ev.pointerId);}catch(_e){}
+    ev.preventDefault();
+  };
+  stage.onpointermove=function(ev){
+    if(!_erase)return;
+    var p=pt(ev);
+    if(!e.drawing){erRing(p);return;}
+    erSeg(e.last,p);e.last=p;
+    erStroke();erRing(p);
+    ev.preventDefault();
+  };
+  var up=function(ev){
+    if(!_erase||!e.drawing)return;
+    e.drawing=false;e.last=null;erRing(null);
+    var b=document.getElementById('er-undo');
+    if(b){b.removeAttribute('disabled');b.removeAttribute('style');}
+    if(ev&&ev.preventDefault)ev.preventDefault();
+  };
+  stage.onpointerup=up;stage.onpointercancel=up;
+  stage.onpointerleave=function(){if(!e.drawing)erRing(null);};
+}
+function erSave(){
+  var e=_erase;if(!e)return;
+  var data=e.can.toDataURL('image/png');
+  var list=loadCloset(),it=null,i;
+  for(i=0;i<list.length;i++)if(list[i].id===e.id)it=list[i];
+  if(!it){erClose();return;}
+  var done=function(){
+    delete LOOK_ASPECT[it.ref];   // the picture behind the ref just changed
+    erClose();renderCloset();showToast(_t('✓ נשמר'));
+  };
+  if(isPhotoKey(it.ref))photoPutKeyed(it.ref,data).then(done,done);
+  else{it.ref=data;saveCloset(list);done();}
+}
 function cropOpen(img,cat){
   // fit the picture into what is left of the screen once the bar is allowed for
   var maxW=Math.min(window.innerWidth-52,520),
@@ -8347,7 +8537,7 @@ function cropPaint(){
   h+='<div class="crop-bot">';
   h+='<button class="crop-x" onclick="cropCancel()">'+
      (_cropQ.length>1?''+_t('דלג')+'':''+_t('ביטול')+'')+'</button>';
-  h+='<button class="crop-rs" onclick="cropReset()">'+_t('אפס')+'</button>';
+  h+='<button class="crop-rs" onclick="cropReset()">'+_t('אפס|איפוס')+'</button>';
   h+='<button class="crop-ok" onclick="cropApply()">'+_t('שמור')+'</button>';
   h+='</div>';
   if(_cropQ.length>1)
@@ -8732,7 +8922,10 @@ function closetRowHTML(cat){
     h+='<span class="cl-cell">';
     h+='<button class="cl-it'+(on?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,'+at+')" style="width:'+cat.h+'px;height:'+cat.h+'px">'+
        photoImg(list[i].ref,'class="cl-img"')+'</button>';
-    if(on)h+='<button class="cl-x" onclick="closetRemove(&quot;'+cat.k+'&quot;,'+i+')" aria-label="'+_t("הסר")+'">&times;</button>';
+    if(on){
+      h+='<button class="cl-x" onclick="closetRemove(&quot;'+cat.k+'&quot;,'+i+')" aria-label="'+_t("הסר")+'">&times;</button>';
+      h+='<button class="cl-er" onclick="erOpen(&quot;'+cat.k+'&quot;,'+i+')" aria-label="'+_t("מחיקה ידנית")+'">'+ER_BRUSH+'</button>';
+    }
     h+='</span>';
   }
   h+='<label class="cl-add" style="width:'+cat.h+'px;height:'+cat.h+'px">+'+
