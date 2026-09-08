@@ -1538,6 +1538,21 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .areas-drawer{position:fixed;top:0;inset-inline-start:0;bottom:0;width:88%;max-width:340px;background:var(--panel);z-index:151;transform:translateX(103%);transition:transform .34s cubic-bezier(.32,.72,0,1);display:flex;flex-direction:column;box-shadow:-8px 0 34px rgba(74,67,64,.18)}
 .areas-drawer.on{transform:none}
 .ar-hd{padding:calc(24px + env(safe-area-inset-top)) 20px 10px}
+.ar-hd-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ar-gear{flex:0 0 auto;background:none;border:none;padding:2px;margin:-2px;cursor:pointer;color:var(--muted);font-family:inherit;line-height:0}
+.ar-gear svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ar-gear.back svg{transform:scaleX(1)}
+[dir=rtl] .ar-gear.back svg{transform:scaleX(-1)}
+#settings-view{flex:1;overflow-y:auto;padding:8px 12px 16px;-webkit-overflow-scrolling:touch;display:none}
+.areas-drawer.settings #areas-list{display:none}
+.areas-drawer.settings #settings-view{display:block}
+.areas-drawer.settings .ar-count{display:none}
+.set-sec{padding:4px 10px 2px}
+.set-t{font-size:13.5px;font-weight:800;color:var(--ink)}
+.set-s{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:4px}
+.set-langs{display:flex;flex-wrap:wrap;gap:8px;padding:12px 10px 4px}
+.set-lang{min-height:44px;padding:0 15px;border-radius:13px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--line-strong);background:var(--card);color:var(--ink-soft)}
+.set-lang.on{border-color:var(--violet-500);background:var(--violet-50);color:var(--violet-700)}
 .ar-title{font-size:19px;font-weight:800;color:var(--ink)}
 .ar-note{font-size:11.5px;color:var(--muted);line-height:1.65;margin-top:7px}
 .ar-count{font-size:10.5px;color:var(--muted-soft);margin-top:8px;font-weight:700;letter-spacing:.02em}
@@ -19154,14 +19169,8 @@ function renderMe(){
     '<button class="snd-row" onclick="sndToggle()">'+
     '<span class="snd-t">'+(sndOn()?''+_t('מופעל')+'':''+_t('מושתק')+'')+'</span>'+
     '<span class="snd-sw'+(sndOn()?' on':'')+'"><i></i></span></button>');
-  h+=meCard('lang',_t('שפה'),_t('שפת הממשק, וכיוון הכתיבה איתה'),(function(){
-    var cur=appLang(),out='<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    LANGS.forEach(function(l){
-      var on=l.code===cur;
-      out+='<button onclick="langSet(\''+l.code+'\')" style="min-height:44px;padding:0 16px;border-radius:12px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid '+(on?'var(--violet-500)':'var(--line-strong)')+';background:'+(on?'var(--violet-50)':'var(--card)')+';color:'+(on?'var(--violet-700)':'var(--ink-soft)')+'" dir="ltr">'+l.name+'</button>';
-    });
-    return out+'</div>';
-  })());
+  /* Language used to be a card here. It moved behind the gear in the drawer:
+     it is chosen once, and this screen is for what you touch every day. */
   h+='<div id="home-cal" class="me-slot"></div>';
   h+='<div id="home-vision" class="me-slot"></div>';
   h+='<div class="me-range">';
@@ -19470,9 +19479,61 @@ function openAreas(){
   document.getElementById('areas-back').classList.add('on');
   document.getElementById('areas-drawer').classList.add('on');
 }
+/* The drawer has two bodies: the areas list you came for, and settings
+   behind the gear. Language lives there because you choose it once, not
+   every day - it has no business among the cards you touch daily. */
+/* Two icons for one button: it opens settings from the list, and returns
+   from settings to the list. */
+var DRAWER_GEAR='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>';
+var DRAWER_BACK='<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+function drawerIsSettings(){
+  var d=document.getElementById('areas-drawer');
+  return !!(d&&d.classList.contains('settings'));
+}
+function setDrawerView(on){
+  var d=document.getElementById('areas-drawer');if(!d)return;
+  d.classList.toggle('settings',!!on);
+  var g=document.getElementById('areas-gear');
+  if(g)g.classList.toggle('back',!!on);
+  if(on)renderSettings();
+  drawerChrome();
+}
+/* The header says where you are. Both views share it, so it is written once. */
+function drawerChrome(){
+  var t=document.getElementById('areas-title');if(!t)return;
+  var st=drawerIsSettings();
+  t.textContent=st?_t('הגדרות'):_t('מה במעקב');
+  document.getElementById('areas-note').textContent=st
+    ?_t('דברים שנקבעים פעם אחת ונשארים.')
+    :_t('סמן את התחומים שיופיעו ב-Better. מה שתוריד רק נעלם מהמסך')+' \u2014 '+
+     _t('כל מה שכתבת בו נשמר, ואפשר להחזיר אותו מכאן בכל רגע.');
+  var g=document.getElementById('areas-gear');
+  if(g){
+    g.innerHTML=st?DRAWER_BACK:DRAWER_GEAR;
+    g.setAttribute('aria-label',st?_t('מה במעקב'):_t('הגדרות'));
+  }
+}
+/* Every language names itself, in itself - a person looking for their own
+   language finds it by recognising it, not by reading Hebrew. dir=ltr on the
+   label keeps 简体中文 and العربية from being reordered by the panel around
+   them. */
+function renderSettings(){
+  var v=document.getElementById('settings-view');if(!v)return;
+  var cur=appLang(),h='';
+  h+='<div class="set-sec"><div class="set-t">'+_t('שפה')+'</div>'+
+     '<div class="set-s">'+_t('שפת הממשק, וכיוון הכתיבה איתה')+'</div></div>';
+  h+='<div class="set-langs">';
+  for(var i=0;i<LANGS.length;i++){
+    var l=LANGS[i];
+    h+='<button class="set-lang'+(l.code===cur?' on':'')+'" '+
+       'onclick="langSet(\''+l.code+'\')" dir="'+l.dir+'">'+l.name+'</button>';
+  }
+  v.innerHTML=h+'</div>';
+}
 function closeAreas(){
   document.getElementById('areas-back').classList.remove('on');
   document.getElementById('areas-drawer').classList.remove('on');
+  setTimeout(function(){setDrawerView(false);},340);   // after it has slid away
 }
 
 
@@ -19893,22 +19954,31 @@ function tbSync(){
 
   var dr=document.createElement('div');
   dr.id='areas-drawer';dr.className='areas-drawer';
-  dr.innerHTML='<div class="ar-hd"><div class="ar-title" id="areas-title"></div><div class="ar-note" id="areas-note"></div><div class="ar-count" id="areas-count"></div></div>'+
+  dr.innerHTML='<div class="ar-hd">'+
+      '<div class="ar-hd-row">'+
+        '<div class="ar-title" id="areas-title"></div>'+
+        '<button class="ar-gear" id="areas-gear">'+
+          '</button>'+
+      '</div>'+
+      '<div class="ar-note" id="areas-note"></div><div class="ar-count" id="areas-count"></div>'+
+    '</div>'+
     '<div id="areas-list"></div>'+
+    '<div id="settings-view"></div>'+
     '<button class="ar-done" id="areas-done"></button>';
   document.body.appendChild(dr);
   /* The drawer is built once, here, and lives outside every screen - so no
      render repaints its words when the language changes. This does. */
   langOn(function(){
     var a=document.getElementById('areas-title');if(!a)return;
-    a.textContent=_t('מה במעקב');
-    document.getElementById('areas-note').textContent=
-      _t('סמן את התחומים שיופיעו ב-Better. מה שתוריד רק נעלם מהמסך')+' \u2014 '+
-      _t('כל מה שכתבת בו נשמר, ואפשר להחזיר אותו מכאן בכל רגע.');
+    drawerChrome();
     document.getElementById('areas-done').textContent=_t('סיימתי');
+    if(document.getElementById('settings-view'))renderSettings();
   });
   document.getElementById('areas-done').addEventListener('click',closeAreas);
   document.getElementById('home-menu-btn').addEventListener('click',openAreas);
+  document.getElementById('areas-gear').addEventListener('click',function(){
+    setDrawerView(!drawerIsSettings());
+  });
 
   // one delegated handler each, so re-rendering the grid never strands a listener
   document.getElementById('home-grid').addEventListener('click',function(e){
