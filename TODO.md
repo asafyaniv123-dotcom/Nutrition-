@@ -140,15 +140,17 @@ that could drift from them.
 
 Three parts, and the middle one is the problem.
 
-**Free-hand cropping** is buildable today. The app already runs a crop flow
-(`_cropQ`, `cropNext`, `cropThumb`) and already paints to canvas in several
-places; a lasso is a path on a canvas and a clip.
+**~~Free-hand cropping~~ — done, and it already was.** `cropMode('free')` draws
+a lasso and `cropApply` clips to it with `destination-in`, writing a PNG
+because "the outside must stay absent". This file simply had not recorded it.
 
-**Manual erase and repair** is the same machinery — a brush over the alpha
-channel — and is genuinely needed whatever the automatic step turns out to be,
-because no cut-out is right every time. Worth building **before** the automatic
-step rather than after: with the eraser in place, an imperfect automatic result
-becomes a starting point instead of a failure.
+**~~Manual erase and repair~~ — done.** Two brushes over the alpha channel on
+the selected garment, with undo. Bring-back returns only what the current
+session erased, and that limit is real rather than an oversight: the picture in
+the store is the only original there is, because the lasso already threw the
+outside away. If that ever needs to change, the fix is to keep the uncropped
+photograph beside the cut one, which doubles what the closet stores — worth it
+only if someone actually wants it.
 
 **Automatic background removal is not currently possible in this app**, and the
 reason is worth writing down rather than discovering later:
@@ -163,9 +165,20 @@ reason is worth writing down rather than discovering later:
   call that endpoint directly anyway. Its `.catch` shows *שגיאה בבניית התוכנית*,
   which is what that feature has always done.
 
-So the honest order is: **crop → erase → then decide about automatic.** By the
-time the first two are built we will also know whether the arrangement in item 3
-needs cut-outs at all, which is the question that decides how much this is worth.
+So the honest order was **crop → erase → then decide about automatic**, and the
+first two are now done. The decision is what is left, and both halves of it have
+answers now:
+
+**Is it needed?** Partly. The arrangement reads as a look with plain rectangles,
+so the cut-out is not what makes an outfit legible. What it fixes is the ground:
+five photographs bring five slightly different off-whites, and a look is tiles
+rather than one surface. That matters most in the shared picture, which is the
+copy someone who was not there looks at.
+
+**What would it cost?** Unchanged and still the real obstacle — 5–25 MB of WASM
+and weights downloaded to a phone, for an app that is one HTML file. The eraser
+makes the cheap version viable in the meantime: cut roughly with the lasso, tidy
+with the brush, and no model is downloaded at all.
 
 **Item 3 has now answered half of that question.** The arrangement reads as a
 look with plain rectangles — the eye assembles a body from the sizes and the
