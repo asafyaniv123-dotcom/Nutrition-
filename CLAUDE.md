@@ -125,6 +125,11 @@ translation falls back to readable text rather than to `fitness.set.add`.
     node tools/find-unwrapped-hebrew.mjs       # Hebrew that never reaches _t() at all
     node tools/build-lang-template.mjs --check # the template still matches the app
 
+`tools/test-background-fill.mjs` is a seventh, of a different kind: it lifts
+the closet's background flood fill out of the shipped file and runs it against
+pictures whose right answer is known, asserting no garment pixel is ever taken.
+It also records the case the fill cannot do, so nobody has to rediscover it.
+
 They exit non-zero when they find anything. All but the last take a file path,
 so they can be pointed at an older revision — which is how each was shown to
 actually detect the bugs it claims to, rather than being trusted because it

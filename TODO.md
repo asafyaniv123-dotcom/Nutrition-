@@ -90,19 +90,13 @@ actually happening before deciding.
 Four things, and they are not the same size at all. Two are close, one is a
 design pass, one is genuinely hard.
 
-### 1. Seasons — the small one
+### 1. ~~Seasons~~ — done
 
-> לחלק את הארון לפי עונות (חורף, קיץ, סתיו, אביב)
-
-A field per garment and a filter over it. Nothing in the app stores a season
-today — the only mention of the word is a comment. Two decisions to make when
-building it rather than now:
-
-- **A garment can belong to more than one season.** A plain tee is summer and
-  a layer in winter, so this is a set and not a single choice.
-- **A season is not a date.** The app should not decide it is winter and hide
-  half the wardrobe; the season filters what you are *looking at*, and the
-  current one is a sensible default rather than a rule.
+Both decisions were taken the way this file argued for. A garment carries a
+**set** of seasons, not one — a plain tee is summer and a layer in winter — and
+the season filters what you are looking at rather than deciding for you: the
+row of pills across the bottom of the closet starts on *all year*, and nothing
+hides itself because of the date.
 
 ### 2. ~~Share the look~~ — done
 
@@ -132,7 +126,7 @@ carries an `h` tuned for the picker strips — 44 for a hat, 86 for trousers, 38
 for socks. The look reuses those rather than inventing a second set of numbers
 that could drift from them.
 
-### 4. Cutting the garment out — the hard one
+### 4. ~~Cutting the garment out~~ — done
 
 > אפשרות להעלות צילומים ולחתוך בצורה מדוייקת באופן חופשי את הבגד, AI שמזהה את
 > הבגד ומוריד את הרקע שלו. במידה והבגד נחתך שתהיה אפשרות לעשות מחיקה באופן ידני
@@ -152,18 +146,24 @@ outside away. If that ever needs to change, the fix is to keep the uncropped
 photograph beside the cut one, which doubles what the closet stores — worth it
 only if someone actually wants it.
 
-**Automatic background removal is not currently possible in this app**, and the
-reason is worth writing down rather than discovering later:
+**~~Automatic background removal~~ — done, by not doing segmentation.** The
+paragraph that used to sit here said it was impossible, and everything it said
+is still true: there is no browser API, on-device segmentation needs 5–25 MB of
+WASM and weights, and the app's one AI call cannot succeed as written (it sends
+`Content-Type` and nothing else — no `x-api-key`, no `anthropic-version` — and a
+browser cannot call that endpoint directly anyway; that is still open, and it is
+why *שגיאה בבניית התוכנית* is all the workout-plan builder has ever done).
 
-- There is no browser API for it. Safari and Chrome do not expose one.
-- On-device segmentation needs a real model. The usable ones are 5–25 MB of
-  WASM plus weights, downloaded to a phone, for an app that is one HTML file.
-- **The app's only AI call does not work.** `fetch('https://api.anthropic.com/v1/messages')`
-  in the workout-plan builder sends `Content-Type` and nothing else — no
-  `x-api-key`, no `anthropic-version`, and there are zero occurrences of any of
-  those headers anywhere in the file. It cannot succeed, and a browser cannot
-  call that endpoint directly anyway. Its `.catch` shows *שגיאה בבניית התוכנית*,
-  which is what that feature has always done.
+What was wrong was the question. Segmentation is the general problem — find the
+subject in any photograph — and the closet does not have the general problem. A
+garment is photographed lying on something. The background is one broad, fairly
+even colour that touches every edge of the frame, and the garment does not touch
+the edge at all. That is a flood fill from the border, and it needs no model.
+
+It will not survive a patterned duvet, and it is not meant to: the brush is
+right there, and the whole argument for building the brush first was that an
+imperfect automatic result is a starting point when there is something to fix it
+with.
 
 So the honest order was **crop → erase → then decide about automatic**, and the
 first two are now done. The decision is what is left, and both halves of it have
