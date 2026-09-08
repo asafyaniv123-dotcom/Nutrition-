@@ -519,7 +519,10 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-er{position:absolute;top:0;inset-inline-start:0;width:15px;height:15px;border:none;border-radius:50%;background:rgba(190,178,166,.85);padding:0;cursor:pointer;line-height:0;display:flex;align-items:center;justify-content:center}
 .cl-er svg{width:9px;height:9px;fill:none;stroke:var(--white);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .er-board{background-color:#3a3330;background-image:linear-gradient(45deg,#4a423e 25%,transparent 25%),linear-gradient(-45deg,#4a423e 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#4a423e 75%),linear-gradient(-45deg,transparent 75%,#4a423e 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
+.er-view{overflow:hidden;touch-action:none}
+.er-zoom{position:absolute;top:0;inset-inline-start:0;transform-origin:0 0;will-change:transform}
 .er-can,.er-ring{position:absolute;inset:0;width:100%;height:100%;display:block}
+.er-z{background:none;border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:5px 11px;font-family:inherit;font-size:11px;font-weight:800;color:#cbbfb4;cursor:pointer}
 .er-ring{pointer-events:none}
 .er-auto{border:1px solid rgba(255,255,255,.2);background:none;border-radius:12px;padding:9px 18px;font-family:inherit;font-size:12px;font-weight:800;color:#cbbfb4;cursor:pointer}
 .er-size{display:flex;align-items:center;gap:10px;width:260px;max-width:80vw}
@@ -763,8 +766,9 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-sh .cl-iseasons{margin-top:12px;gap:10px}
 .cl-sh .cl-iseason{font-size:20px;padding:4px}
 .cl-sh-b{display:flex;gap:9px;margin-top:16px}
-.cl-sh-x,.cl-sh-e{flex:1;border-radius:13px;padding:12px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;border:none}
-.cl-sh-x{background:rgba(243,185,168,.22);color:#9a5b46}
+.cl-sh-x,.cl-sh-e,.cl-sh-g{flex:1;border-radius:13px;padding:12px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;border:none}
+.cl-sh-g{background:var(--card);border:1.5px solid var(--line-strong);color:var(--ink-soft)}
+.cl-sh-x{display:block;width:100%;margin-top:9px;background:none;color:#b08b7d;font-size:11.5px;padding:9px}
 .cl-sh-e{background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white)}
 .cl-pick{background:var(--surface);border-radius:20px;padding:18px 14px;margin-top:10px;display:flex;justify-content:center}
 .cl-pick-h{font-size:11px;font-weight:800;color:var(--ink);margin-bottom:11px;padding:0 2px}
@@ -8340,7 +8344,8 @@ function erOpen(cat,idx){
               vw:Math.round(W*k),vh:Math.round(H*k),
               base:base,can:can,ctx:can.getContext('2d'),
               committed:mk(),stroke:mk(),tmp:mk(),
-              mode:'erase',size:26,undo:[],last:null,drawing:false};
+              mode:'erase',size:26,undo:[],last:null,drawing:false,
+              z:1,ox:0,oy:0,ptrs:{},np:0,pinch:null};
       document.body.style.overflow='hidden';
       erPaint();
     };
@@ -8370,13 +8375,18 @@ function erPaint(){
   h+='<button class="crop-m'+(e.mode==='erase'?' on':'')+'" onclick="erMode(&quot;erase&quot;)">'+_t('מחק|מברשת')+'</button>';
   h+='<button class="crop-m'+(e.mode==='back'?' on':'')+'" onclick="erMode(&quot;back&quot;)">'+_t('החזר|מברשת')+'</button>';
   h+='</div></div>';
-  h+='<div class="crop-stage er-board" id="er-stage" style="width:'+e.vw+'px;height:'+e.vh+'px">';
+  h+='<div class="crop-stage er-board er-view" id="er-view" style="width:'+e.vw+'px;height:'+e.vh+'px">';
+  h+='<div class="er-zoom" id="er-stage" style="width:'+e.vw+'px;height:'+e.vh+'px">';
   h+='<canvas class="er-can" id="er-can" width="'+e.W+'" height="'+e.H+'"></canvas>';
   h+='<canvas class="er-ring" id="er-ring" width="'+e.vw+'" height="'+e.vh+'"></canvas>';
-  h+='</div>';
+  h+='</div></div>';
   h+='<div class="er-size"><span>'+_t('עובי המברשת')+'</span>'+
      '<input type="range" min="6" max="90" value="'+e.size+'" oninput="erSize(this.value)">'+
      '<span id="er-sz">'+e.size+'</span></div>';
+  /* Only once you have zoomed, because otherwise it is a control that does
+     nothing sitting next to one that does. */
+  h+='<button class="er-z" id="er-z" onclick="erZoomSet(1)"'+(e.z>1.02?'':' style="visibility:hidden"')+
+     ' aria-label="'+_t('אפס|איפוס')+'">'+e.z.toFixed(1)+'&#215;</button>';
   h+='<button class="er-auto" onclick="erAuto()">'+_t('הסר רקע')+'</button>';
   h+='<div class="crop-hint">'+_t('העבר את האצבע על מה שצריך להיעלם. ״החזר״ מחזיר רק מה שמחקת כאן.')+'</div>';
   h+='<div class="crop-bot">';
@@ -8444,16 +8454,64 @@ function erUndo(){
   e.ctx.drawImage(prev,0,0);
   erPaint();
 }
+/* The picture may be moved, but not away: at any zoom the scaled stage has
+   to keep covering the window it is seen through. */
+function erClampPan(){
+  var e=_erase;if(!e)return;
+  var minX=e.vw-e.vw*e.z, minY=e.vh-e.vh*e.z;
+  e.ox=Math.min(0,Math.max(minX,e.ox));
+  e.oy=Math.min(0,Math.max(minY,e.oy));
+}
+function erApplyZoom(){
+  var e=_erase;if(!e)return;
+  erClampPan();
+  var st=document.getElementById('er-stage');
+  if(st)st.style.transform='translate('+e.ox+'px,'+e.oy+'px) scale('+e.z+')';
+  var b=document.getElementById('er-z');
+  if(b){b.textContent=e.z.toFixed(1)+'\u00d7';b.style.visibility=e.z>1.02?'':'hidden';}
+}
+function erZoomSet(z){
+  var e=_erase;if(!e)return;
+  e.z=Math.max(1,Math.min(6,z));
+  if(e.z===1){e.ox=0;e.oy=0;}
+  erApplyZoom();
+}
 function erBind(){
   var e=_erase;if(!e)return;
+  var view=document.getElementById('er-view');if(!view)return;
   var stage=document.getElementById('er-stage');if(!stage)return;
+  /* Measured from the TRANSFORMED rect, so zoom needs no other code to know
+     about it: r.width is vw*z, and the ratio to W is right at any scale. */
   var pt=function(ev){
     var r=stage.getBoundingClientRect();
-    var vx=ev.clientX-r.left,vy=ev.clientY-r.top;
+    var vx=(ev.clientX-r.left)/e.z,vy=(ev.clientY-r.top)/e.z;
     return {vx:vx,vy:vy,x:vx*(e.W/e.vw),y:vy*(e.H/e.vh)};
   };
-  stage.onpointerdown=function(ev){
+  var mid=function(){
+    var k=Object.keys(e.ptrs),a=e.ptrs[k[0]],b=e.ptrs[k[1]];
+    return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,
+            d:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))};
+  };
+  var startPinch=function(){
+    var m=mid(),r=view.getBoundingClientRect();
+    e.pinch={d0:m.d,z0:e.z,
+             mx:m.x-r.left,my:m.y-r.top,ox0:e.ox,oy0:e.oy};
+    /* Give back the dot the first finger committed before we knew this was
+       a pinch. Its snapshot is the top of the undo stack. */
+    if(e.drawing&&e.undo.length){
+      var prev=e.undo.pop();
+      e.ctx.globalCompositeOperation='source-over';
+      e.ctx.clearRect(0,0,e.W,e.H);
+      e.ctx.drawImage(prev,0,0);
+      erShow();
+    }
+    e.drawing=false;e.last=null;erRing(null);
+  };
+  view.onpointerdown=function(ev){
     if(!_erase)return;
+    e.ptrs[ev.pointerId]={x:ev.clientX,y:ev.clientY};
+    e.np=Object.keys(e.ptrs).length;
+    if(e.np>=2){startPinch();ev.preventDefault();return;}
     /* The picture this stroke starts from is both the undo entry and the
        composite base, so it is one copy used twice. */
     var snap=document.createElement('canvas');
@@ -8469,11 +8527,24 @@ function erBind(){
     e.last=p;e.drawing=true;
     erSeg(p,p);              // a tap is a dot, not nothing
     erStroke();erRing(p);
-    try{stage.setPointerCapture(ev.pointerId);}catch(_e){}
+    try{view.setPointerCapture(ev.pointerId);}catch(_e){}
     ev.preventDefault();
   };
-  stage.onpointermove=function(ev){
+  view.onpointermove=function(ev){
     if(!_erase)return;
+    if(e.ptrs[ev.pointerId])e.ptrs[ev.pointerId]={x:ev.clientX,y:ev.clientY};
+    if(e.np>=2&&e.pinch){
+      var m=mid(),pn=e.pinch;
+      var nz=Math.max(1,Math.min(6,pn.z0*(m.d/pn.d0)));
+      /* Hold the point that was under the fingers under the fingers. */
+      var r=view.getBoundingClientRect();
+      var sx=(pn.mx-pn.ox0)/pn.z0, sy=(pn.my-pn.oy0)/pn.z0;
+      e.z=nz;
+      e.ox=(m.x-r.left)-sx*nz;
+      e.oy=(m.y-r.top)-sy*nz;
+      erApplyZoom();
+      ev.preventDefault();return;
+    }
     var p=pt(ev);
     if(!e.drawing){erRing(p);return;}
     erSeg(e.last,p);e.last=p;
@@ -8481,14 +8552,18 @@ function erBind(){
     ev.preventDefault();
   };
   var up=function(ev){
-    if(!_erase||!e.drawing)return;
+    if(!_erase)return;
+    if(ev&&ev.pointerId!==undefined){delete e.ptrs[ev.pointerId];e.np=Object.keys(e.ptrs).length;}
+    if(e.np<2)e.pinch=null;
+    if(!e.drawing)return;
     e.drawing=false;e.last=null;erRing(null);
     var b=document.getElementById('er-undo');
     if(b){b.removeAttribute('disabled');b.removeAttribute('style');}
     if(ev&&ev.preventDefault)ev.preventDefault();
   };
-  stage.onpointerup=up;stage.onpointercancel=up;
-  stage.onpointerleave=function(){if(!e.drawing)erRing(null);};
+  view.onpointerup=up;view.onpointercancel=up;
+  view.onpointerleave=function(){if(!e.drawing)erRing(null);};
+  erApplyZoom();
 }
 /* How far a pixel may sit from the border colour and still be background.
    Euclidean in RGB, where the whole cube is 441 - so this is about a seventh
@@ -8541,21 +8616,16 @@ function erBgMask(d,W,H){
   }
   return grown;
 }
-function erAuto(){
-  var e=_erase;if(!e)return;
-  var g=e.ctx,W=e.W,H=e.H,N=W*H;
+/* Take the background off a canvas, in place. Returns how much survived, or
+   null when there was no background to find. Knows nothing about the eraser
+   or the crop screen - they each decide what to do with the answer. */
+function bgCut(can){
+  var W=can.width,H=can.height,N=W*H,g=can.getContext('2d');
   var im=g.getImageData(0,0,W,H),d=im.data;
   var mask=erBgMask(d,W,H);
-  if(!mask){showToast(_t('אין כאן רקע להוריד — השוליים כבר שקופים'));return;}
+  if(!mask)return null;
   var i,was=0,now=0;
   for(i=0;i<N;i++){if(d[i*4+3]!==0)was++;}
-  /* The snapshot goes on the same stack the brush uses, so one Undo takes
-     this back exactly the way it takes a stroke back. */
-  var snap=document.createElement('canvas');
-  snap.width=W;snap.height=H;
-  snap.getContext('2d').drawImage(e.can,0,0);
-  e.undo.push(snap);
-  if(e.undo.length>10)e.undo.shift();
   var a=new Uint8ClampedArray(N);
   for(i=0;i<N;i++)a[i]=mask[i]?0:d[i*4+3];
   /* One soft pixel, so the edge reads as photographed rather than as cut -
@@ -8577,9 +8647,28 @@ function erAuto(){
     d[i*4+3]=v;if(v!==0)now++;
   }
   g.putImageData(im,0,0);
+  return {was:was,now:now};
+}
+/* What the three callers all say about a result, so they say it the same. */
+function bgSay(r){
+  if(!r){showToast(_t('אין כאן רקע להוריד — השוליים כבר שקופים'));return false;}
+  if(r.now>r.was*0.97)showToast(_t('לא מצאתי רקע אחיד — נסה למחוק ביד'));
+  else if(r.now<r.was*0.06)showToast(_t('זה הוריד כמעט הכל. בטל, ומחק ביד.'));
+  return true;
+}
+function erAuto(){
+  var e=_erase;if(!e)return;
+  /* The snapshot goes on the same stack the brush uses, so one Undo takes
+     this back exactly the way it takes a stroke back. */
+  var snap=document.createElement('canvas');
+  snap.width=e.W;snap.height=e.H;
+  snap.getContext('2d').drawImage(e.can,0,0);
+  var r=bgCut(e.can);
+  if(!r){bgSay(null);return;}
+  e.undo.push(snap);
+  if(e.undo.length>10)e.undo.shift();
   erPaint();
-  if(now>was*0.97)showToast(_t('לא מצאתי רקע אחיד — נסה למחוק ביד'));
-  else if(now<was*0.06)showToast(_t('זה הוריד כמעט הכל. בטל, ומחק ביד.'));
+  bgSay(r);
 }
 function erSave(){
   var e=_erase;if(!e)return;
@@ -8607,6 +8696,29 @@ function cropOpen(img,cat){
   document.body.style.overflow='hidden';
   cropPaint();
 }
+/* Big enough that the 512 the crop stores is a downsample of it, small
+   enough that the flood fill is not asked to walk a camera sensor. */
+var BG_MAX=1200;
+function cropBg(){
+  var c=_crop;if(!c||c.cut)return;
+  var img=c.img,W=img.naturalWidth,H=img.naturalHeight;
+  var k=Math.min(1,BG_MAX/Math.max(W,H));
+  var can=document.createElement('canvas');
+  can.width=Math.max(1,Math.round(W*k));can.height=Math.max(1,Math.round(H*k));
+  can.getContext('2d').drawImage(img,0,0,can.width,can.height);
+  var r=bgCut(can);
+  if(!bgSay(r))return;
+  /* Swap the photograph for the cut one. The crop box is held in view
+     coordinates and cropApply rescales from naturalWidth every time, so a
+     smaller picture underneath changes nothing about where you cut. */
+  var nx=new Image();
+  nx.onload=function(){
+    if(!_crop)return;
+    _crop.img=nx;_crop.cut=true;
+    cropPaint();
+  };
+  nx.src=can.toDataURL('image/png');
+}
 function cropClose(){
   _crop=null;
   var o=document.getElementById('crop-ov');if(o)o.remove();
@@ -8633,7 +8745,7 @@ function cropPaint(){
     h+='<div class="crop-n">'+(_cropQi+1)+' '+_t('מתוך')+' '+_cropQ.length+'</div>';
   h+='</div>';
 
-  h+='<div class="crop-stage" id="crop-stage" style="width:'+c.vw+'px;height:'+c.vh+'px">';
+  h+='<div class="crop-stage'+(c.cut?' er-board':'')+'" id="crop-stage" style="width:'+c.vw+'px;height:'+c.vh+'px">';
   h+='<img class="crop-img" src="'+c.img.src+'" draggable="false">';
   if(c.mode==='rect'){
     var b=c.box;
@@ -8666,6 +8778,9 @@ function cropPaint(){
   h+='<button class="crop-m'+(c.mode==='rect'?' on':'')+'" onclick="cropMode(&quot;rect&quot;)">'+_t('מסגרת')+'</button>';
   h+='<button class="crop-m'+(c.mode==='free'?' on':'')+'" onclick="cropMode(&quot;free&quot;)">'+_t('לגזור סביב הבגד')+'</button>';
   h+='</div>';
+  /* Here, because here is where the photograph still has its floor in it. */
+  h+='<button class="er-auto"'+(c.cut?' disabled style="opacity:.4"':'')+' onclick="cropBg()">'+
+     (c.cut?_t('✓ הרקע הוסר'):_t('הסר רקע'))+'</button>';
   h+='<div class="crop-hint">'+(c.mode==='rect'
       ?''+_t('גרור צד או פינה. גרירה באמצע מזיזה את המסגרת.')+''
       :''+_t('סמן עם האצבע סביב הבגד — אפשר להרים את האצבע ולהמשיך. מה שמחוץ לקו יימחק.')+'')+'</div>';
@@ -8860,11 +8975,13 @@ function cropApply(){
   } else {
     var b=c.box;
     var rw=Math.max(1,Math.round(b.w*sx)), rh=Math.max(1,Math.round(b.h*sy));
-    g.fillStyle=PAL.card;g.fillRect(0,0,S,S);
+    /* A cut photograph has no floor left to stand on, so it must not be
+       given one - and a JPEG cannot carry the absence. */
+    if(!c.cut){g.fillStyle=PAL.card;g.fillRect(0,0,S,S);}
     var kk=Math.min(S/rw,S/rh);
     g.drawImage(img,Math.round(b.x*sx),Math.round(b.y*sy),rw,rh,
                 (S-rw*kk)/2,(S-rh*kk)/2,rw*kk,rh*kk);
-    data=out.toDataURL('image/jpeg',0.82);
+    data=c.cut?out.toDataURL('image/png'):out.toDataURL('image/jpeg',0.82);
   }
   cropClose();
   closetStore(data,cat,function(){
@@ -8945,11 +9062,46 @@ function closetSheetHTML(){
      (n?n+(n===1?' '+_t('פעם')+'':' '+_t('פעמים')+''):''+_t('עוד לא')+'')+'</div>';
   h+='<div class="cl-sh-f">'+_t('כמה פעמים לבשת אותו ב-30 הימים האחרונים')+'</div>';
   h+=closetItemSeasonsHTML(it);
+  var at=def.solo?sh.idx-1:sh.idx;
   h+='<div class="cl-sh-b">';
-  h+='<button class="cl-sh-x" onclick="closetSheetClose();closetRemove(&quot;'+sh.cat+'&quot;,'+(def.solo?sh.idx-1:sh.idx)+')">'+_t('הסר')+'</button>';
-  h+='<button class="cl-sh-e" onclick="closetSheetClose();erOpen(&quot;'+sh.cat+'&quot;,'+(def.solo?sh.idx-1:sh.idx)+')">'+_t('מחיקה ידנית')+'</button>';
-  h+='</div></div>';
+  h+='<button class="cl-sh-g" onclick="closetSheetBg()">'+_t('הסר רקע')+'</button>';
+  h+='<button class="cl-sh-e" onclick="closetSheetClose();erOpen(&quot;'+sh.cat+'&quot;,'+at+')">'+_t('ערוך')+'</button>';
+  h+='</div>';
+  h+='<button class="cl-sh-x" onclick="closetSheetClose();closetRemove(&quot;'+sh.cat+'&quot;,'+at+')">'+_t('הסר')+'</button>';
+  h+='</div>';
   return h;
+}
+/* One tap on a garment you saved months ago. Writes back to the same photo
+   key, so every look already holding it follows. */
+function closetSheetBg(){
+  var sh=_clSheet;if(!sh)return;
+  var all=loadCloset(),it=null,i;
+  for(i=0;i<all.length;i++)if(all[i].id===sh.id)it=all[i];
+  if(!it)return;
+  showToast(_t('מכין את התמונה…'));
+  var go=function(src){
+    var im=new Image();
+    im.onerror=function(){showToast(_t('לא הצלחתי לקרוא את התמונה'));};
+    im.onload=function(){
+      var can=document.createElement('canvas');
+      can.width=im.naturalWidth;can.height=im.naturalHeight;
+      can.getContext('2d').drawImage(im,0,0);
+      var r=bgCut(can);
+      if(!bgSay(r))return;
+      var data=can.toDataURL('image/png');
+      var done=function(){
+        delete LOOK_TRIM[it.ref];    // the ink just moved
+        closetSheetPaint();renderCloset();
+      };
+      if(isPhotoKey(it.ref))photoPutKeyed(it.ref,data).then(done,done);
+      else{it.ref=data;saveCloset(all);done();}
+    };
+    im.src=src;
+  };
+  if(isPhotoKey(it.ref))photoGet(it.ref).then(function(d){
+    if(d)go(d); else showToast(_t('לא הצלחתי לקרוא את התמונה'));
+  });
+  else go(it.ref);
 }
 function closetSheetPaint(){
   var el=document.getElementById('cl-sheet');
