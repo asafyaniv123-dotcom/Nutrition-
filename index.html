@@ -752,7 +752,20 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-add,.cl-empty{flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px dashed #ebe4dc;border-radius:11px;color:#cdc3b8;font-size:14px;font-weight:800;cursor:pointer;background:none}
 .cl-empty{flex:1;font-size:11px}
 /* what is on the line, big enough to judge */
-.cl-pick{background:var(--card);border-radius:20px;padding:14px 12px 12px;margin-top:10px;box-shadow:0 3px 14px rgba(200,180,160,.12)}
+.cl-sheet-w{position:fixed;inset:0;z-index:400}
+.cl-sh-back{position:absolute;inset:0;background:rgba(58,50,46,.34)}
+.cl-sh{position:absolute;inset-inline:0;bottom:0;background:var(--panel);border-radius:24px 24px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));text-align:center;box-shadow:0 -8px 30px rgba(74,67,64,.16)}
+.cl-sh-ph{width:120px;height:120px;margin:0 auto 10px;border-radius:16px;overflow:hidden}
+.cl-sh-t{font-size:13px;font-weight:800;color:var(--ink)}
+.cl-sh-n{font-size:11px;font-weight:800;color:var(--violet-500);margin-top:3px}
+.cl-sh-f{font-size:9.5px;color:var(--muted-soft);margin-top:2px}
+.cl-sh .cl-iseasons{margin-top:12px;gap:10px}
+.cl-sh .cl-iseason{font-size:20px;padding:4px}
+.cl-sh-b{display:flex;gap:9px;margin-top:16px}
+.cl-sh-x,.cl-sh-e{flex:1;border-radius:13px;padding:12px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;border:none}
+.cl-sh-x{background:rgba(243,185,168,.22);color:#9a5b46}
+.cl-sh-e{background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white)}
+.cl-pick{background:var(--surface);border-radius:20px;padding:18px 14px;margin-top:10px;display:flex;justify-content:center}
 .cl-pick-h{font-size:11px;font-weight:800;color:var(--ink);margin-bottom:11px;padding:0 2px}
 .cl-pick-row{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .cl-pick-row::-webkit-scrollbar{display:none}
@@ -8173,6 +8186,9 @@ function closetSeasonToggle(id,k){
     saveCloset(items);
     break;
   }
+  /* Toggling a season from inside the sheet must not pull the sheet out
+     from under the finger that is still tapping it. */
+  if(_clSheet){closetSheetPaint();return;}
   renderCloset();
 }
 function closetSeasonsHTML(){
@@ -8862,7 +8878,61 @@ function closetStep(cat,d){
   clCentre(cat,next,true);   // locks the row first, so its own scroll cannot undo this
   clSelect(cat,next);
 }
+/* One garment, opened. Its seasons and its wear count used to live in the
+   card at the bottom of the screen; remove and erase used to float on the
+   row. They belong together and they belong on the thing they act on. */
+var _clSheet=null;
+function closetSheet(cat,idx){
+  var def=closetCat(cat),list=closetOf(cat);
+  /* The one-piece row keeps ללא at index 0, so its garments start at 1. */
+  var it=def.solo?list[idx-1]:list[idx];
+  if(!it)return;
+  _clSheet={cat:cat,idx:idx,id:it.id};
+  closetSheetPaint();
+}
+function closetSheetClose(){
+  _clSheet=null;
+  var el=document.getElementById('cl-sheet');
+  if(el)el.remove();
+  document.body.style.overflow='';
+}
+function closetSheetHTML(){
+  var sh=_clSheet;if(!sh)return '';
+  var all=loadCloset(),it=null,i;
+  for(i=0;i<all.length;i++)if(all[i].id===sh.id)it=all[i];
+  if(!it)return '';
+  var def=closetCat(sh.cat);
+  var n=closetWearCounts()[it.id]||0;
+  var h='<div class="cl-sh-back" onclick="closetSheetClose()"></div>';
+  h+='<div class="cl-sh">';
+  h+='<div class="cl-sh-ph">'+photoImg(it.ref,'class="cl-img"')+'</div>';
+  h+='<div class="cl-sh-t">'+def.one+'</div>';
+  h+='<div class="cl-sh-n">'+
+     (n?n+(n===1?' '+_t('פעם')+'':' '+_t('פעמים')+''):''+_t('עוד לא')+'')+'</div>';
+  h+='<div class="cl-sh-f">'+_t('כמה פעמים לבשת אותו ב-30 הימים האחרונים')+'</div>';
+  h+=closetItemSeasonsHTML(it);
+  h+='<div class="cl-sh-b">';
+  h+='<button class="cl-sh-x" onclick="closetSheetClose();closetRemove(&quot;'+sh.cat+'&quot;,'+(def.solo?sh.idx-1:sh.idx)+')">'+_t('הסר')+'</button>';
+  h+='<button class="cl-sh-e" onclick="closetSheetClose();erOpen(&quot;'+sh.cat+'&quot;,'+(def.solo?sh.idx-1:sh.idx)+')">'+_t('מחיקה ידנית')+'</button>';
+  h+='</div></div>';
+  return h;
+}
+function closetSheetPaint(){
+  var el=document.getElementById('cl-sheet');
+  if(!_clSheet){if(el)el.remove();return;}
+  if(!el){
+    el=document.createElement('div');
+    el.id='cl-sheet';el.className='cl-sheet-w';
+    document.body.appendChild(el);
+  }
+  el.innerHTML=closetSheetHTML();
+  if(!_clSheet)document.body.style.overflow='';
+  else document.body.style.overflow='hidden';
+}
 function closetPick(cat,i){
+  /* Already in the middle means you are not choosing it, you are asking
+     about it. Anything else is the ordinary gesture and must stay that. */
+  if((_closetSel[cat]||0)===i){closetSheet(cat,i);return;}
   clCentre(cat,i,true);
   clSelect(cat,i);
 }
@@ -8959,41 +9029,31 @@ function closetWearCounts(){
   }
   return out;
 }
+/* The outfit as it stands, in the same composition the saved look and the
+   shared picture use. Not a list of what is chosen - the middle of each row
+   says that already - but the thing the choosing is for. */
 function closetPickedHTML(){
-  var cats=CLOSET_CATS.concat([CLOSET_SIDE]),i,shown=[];
-  var solo=closetSoloOn();
-  for(i=0;i<cats.length;i++){
-    var k=cats[i].k;
-    if(solo&&CLOSET_SOLO_HIDES.indexOf(k)>=0)continue;
-    if(cats[i].solo){
-      var dr=closetSoloItem();
-      if(dr)shown.push({cat:cats[i],it:dr});
-      continue;
-    }
-    var list=closetOf(k),sel=_closetSel[k]||0;
-    if(list.length&&list[sel])shown.push({cat:cats[i],it:list[sel]});
-  }
-  if(!shown.length)return '';
-  var counts=closetWearCounts();
-  var h='<div class="cl-pick"><div class="cl-pick-h">'+_t('מה שבחרת')+'</div><div class="cl-pick-row">';
-  for(i=0;i<shown.length;i++){
-    var n=counts[shown[i].it.id]||0;
-    h+='<div class="cl-pick-i">';
-    h+='<div class="cl-pick-ph">'+photoImg(shown[i].it.ref,'class="cl-img"')+'</div>';
-    h+='<div class="cl-pick-t">'+shown[i].cat.one+'</div>';
-    h+=closetItemSeasonsHTML(shown[i].it);
-    h+='<div class="cl-pick-n'+(n?' on':'')+'">'+
-       (n?n+(n===1?' '+_t('פעם')+'':' '+_t('פעמים')+''):''+_t('עוד לא')+'')+'</div>';
-    h+='</div>';
-  }
-  h+='</div><div class="cl-pick-f">'+_t('כמה פעמים לבשת כל פריט ב-30 הימים האחרונים')+'</div></div>';
-  return h;
+  var cur=closetCurrent();
+  if(!Object.keys(cur).length)return '';
+  var o={items:cur};
+  var el=document.getElementById('content');
+  var room=Math.max(150,Math.min(LOOK_LIST_MAX.w,((el&&el.clientWidth)||360)-56));
+  return '<div class="cl-pick">'+lookStageHTML(o,lookFit(o,room,LOOK_LIST_MAX.h))+'</div>';
 }
 // the strip commits its choice without a full repaint, so this follows it
 function closetPickedPaint(){
   var el=document.getElementById('cl-picked');
   if(!el)return;
   el.innerHTML=closetPickedHTML();
+  /* A garment whose ink has never been measured lays out as a square; the
+     measurement lands a moment later and the look settles into its real
+     proportions. Only redraw when something was actually new. */
+  (function(){
+    var refs=lookRefs({items:closetCurrent()});
+    lookMeasure(refs).then(function(changed){
+      if(changed&&document.getElementById('cl-picked'))closetPickedPaint();
+    });
+  })();
   hydratePhotos(el);
 }
 /* `cell` overrides the category's own height for the picker only. The look
@@ -9032,10 +9092,6 @@ function closetRowHTML(cat,cell){
     h+='<span class="cl-cell">';
     h+='<button class="cl-it'+(on?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,'+at+')" style="width:'+CH+'px;height:'+CH+'px">'+
        photoImg(list[i].ref,'class="cl-img"')+'</button>';
-    /* On every cell, shown only for the one in the middle - clPaintRow moves
-       them as the row rolls, and it can only move what is already there. */
-    h+='<button class="cl-x"'+(on?'':' style="display:none"')+' onclick="closetRemove(&quot;'+cat.k+'&quot;,'+i+')" aria-label="'+_t("הסר")+'">&times;</button>';
-    h+='<button class="cl-er"'+(on?'':' style="display:none"')+' onclick="erOpen(&quot;'+cat.k+'&quot;,'+i+')" aria-label="'+_t("מחיקה ידנית")+'">'+ER_BRUSH+'</button>';
     h+='</span>';
   }
   h+='<label class="cl-add" style="width:'+CH+'px;height:'+CH+'px">+'+
@@ -9078,10 +9134,6 @@ function clPaintRow(el,idx){
   for(i=0;i<cells.length;i++){
     var b=cells[i].querySelector('.cl-it');
     if(b)b.className='cl-it'+(b.classList.contains('cl-none')?' cl-none':'')+(i===idx?' on':'');
-    var x=cells[i].querySelector('.cl-x');
-    if(x)x.style.display=(i===idx)?'':'none';
-    var er=cells[i].querySelector('.cl-er');
-    if(er)er.style.display=(i===idx)?'':'none';
   }
   var def=closetCat(cat),lab=document.getElementById('cl-n-'+cat);
   if(lab)lab.textContent=def.solo
