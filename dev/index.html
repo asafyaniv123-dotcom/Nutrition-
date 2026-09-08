@@ -2228,6 +2228,15 @@ function langStatic(){
   for(i=0;i<els.length;i++)els[i].textContent=_t(els[i].getAttribute('data-t'));
 }
 function langOn(fn){_langRebuilds.push(fn);fn();}
+/* The foods were named when they loaded, which was in whatever language was
+   showing then. Rename them rather than reload them. */
+langOn(function(){
+  if(!window._foods)return;
+  for(var i=0;i<_foods.length;i++)if(_foods[i].t){
+    _foods[i].n=foodName(_foods[i]);
+    _foods[i].s=foodKey(_foods[i].n);
+  }
+});
 function langRepaint(){
   /* Rebuild before painting: the paint reads these. */
   for(var _i=0;_i<_langRebuilds.length;_i++){try{_langRebuilds[_i]();}catch(e){}}
@@ -3437,7 +3446,23 @@ var _fdbUnit={k:'g',g:1};   // what the number in the box is counting
    can be regenerated at any time, and an app that refuses to search because
    the second file is not there would be worse than one that searches the
    first. */
-var FOOD_FILES=['data/foods.json','data/foods.off.json'];
+/* The core is first so that when it and the ministry table describe the same
+   food, the one with a name in the reader's language is the row that
+   survives the de-duplication below. */
+var FOOD_FILES=['data/foods.core.json','data/foods.json','data/foods.off.json'];
+/* What to call this row here. A row without translations is called what it
+   has always been called. */
+function foodName(f){
+  if(!f||!f.t)return f?f.n:'';
+  return f.t[appLang()]||f.t.en||f.t.he||f.n||'';
+}
+/* Every name it has, so it can be found in any of them. */
+function foodAlt(f){
+  if(!f||!f.t)return '';
+  var out=[],k;
+  for(k in f.t)if(f.t[k])out.push(f.t[k]);
+  return foodKey(out.join(' '));
+}
 function foodsLoad(then){
   if(_foodsState==='ready'){then();return;}
   if(_foodsState==='loading')return;
@@ -3456,6 +3481,7 @@ function foodsLoad(then){
     var all=[],seen=Object.create(null),i,j,f,key;
     for(i=0;i<sets.length;i++)for(j=0;j<sets[i].length;j++){
       f=sets[i][j];
+      if(f.t){f.n=foodName(f);f.alt=foodAlt(f);}
       // matching ignores the punctuation Hebrew food names are inconsistent
       // about, so קוטג' and קוטג׳ and קוטג all find each other
       f.s=foodKey(f.n);
@@ -3533,6 +3559,14 @@ function foodSearch(q){
     if(at>0){phrase.push(f);continue;}
     all=true;
     for(j=0;j<toks.length;j++)if(!foodHas(f.s,toks[j])){all=false;break;}
+    if(all){words.push(f);continue;}
+    /* Not under the name it is showing - but a core food answers to ten
+       others, and the person may be typing any of them. */
+    if(!f.alt)continue;
+    at=f.alt.indexOf(q);
+    if(at>=0){phrase.push(f);continue;}
+    all=true;
+    for(j=0;j<toks.length;j++)if(!foodHas(f.alt,toks[j])){all=false;break;}
     if(all)words.push(f);
   }
   // the shortest name is usually the plainest version of the thing
