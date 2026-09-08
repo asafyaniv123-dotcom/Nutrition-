@@ -131,7 +131,15 @@ while ((m = CALL.exec(app)) !== null) {
    no brace matching. What matters is the consumer: reading an element and
    handing it to indexOf, ===, or an object index means the value is being
    matched against something, and something is always untranslated data. */
-const DECL = /\bvar\s+([A-Za-z_$][\w$]*)\s*=\s*[\[{]/g;
+/* Two shapes, because the language pass changed one of them. A collection that
+   has to be rebuilt when the language changes is written
+
+       var FOOD_UNITS;langOn(function(){FOOD_UNITS=[ … ]});
+
+   and the plain `var NAME=[` pattern stops seeing it. That is exactly how this
+   check silently fell from 23 findings to 10 without a single one being fixed:
+   every top-level collection it was watching had moved to the second shape. */
+const DECL = /\bvar\s+([A-Za-z_$][\w$]*)\s*(?:=|;\s*langOn\s*\(\s*function\s*\(\s*\)\s*\{\s*\1\s*=)\s*[\[{]/g;
 
 /* The declaration is found by matching brackets, not by taking a line: the two
    collections that motivated this pass are both written across several lines,
