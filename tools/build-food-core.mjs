@@ -31,10 +31,23 @@ import fs from 'fs';
 const SRC = 'data/foods.json';
 const OUT = 'data/foods.core.json';
 
-/* he: the exact name of a row in foods.json. Where that row carries a
-   qualifier that changes the numbers - dry rather than cooked, with the skin -
-   the other names say so too, because a person choosing between rows is
-   choosing between those numbers. */
+/* he: the exact name of a row in foods.json.
+
+   A QUALIFIER IS CARRIED INTO ALL ELEVEN when it does either of two jobs, and
+   dropped when it does neither:
+
+     it separates sibling rows - "without oil" picks one chicken breast out of
+     two, "organic" picks one soy drink out of nine, "dry" one lentil row from
+     the cooked one; or
+
+     it carries a word people use to name the food - "white or red" onion
+     separates nothing, both colours being one row, but dropping it makes "red
+     onion" and "white onion" return NOTHING AT ALL, because no other language's
+     name contains those words for foodAlt to rescue.
+
+   קפוא on the edamame does neither - both edamame rows are frozen, and nobody
+   types "frozen edamame" to mean it - so it is dropped. Measured, not argued:
+   the onion experiment showed absence from all forty results, not demotion. */
 const CORE = [
   { id: 'rice-white',   he: 'אורז לבן, מבושל, עם מלח, ללא תוספת שומן בבישול',
     t: { en: 'White rice, cooked', de: 'Weißer Reis, gekocht', es: 'Arroz blanco, cocido',
@@ -769,6 +782,24 @@ const CORE = [
          fr: 'Vinaigre balsamique', it: 'Aceto balsamico',
          pt: 'Vinagre balsâmico', ja: 'バルサミコ酢', 'zh-Hans': '意大利黑醋',
          'zh-Hant': '巴薩米克醋', ar: 'خل بلسمي' } },
+  { id: 'onion',        he: 'בצל לבן או אדום, טרי',
+    t: { en: 'Onion, white or red', de: 'Zwiebel, weiß oder rot',
+         es: 'Cebolla, blanca o roja', fr: 'Oignon, blanc ou rouge',
+         it: 'Cipolla, bianca o rossa', pt: 'Cebola, branca ou roxa',
+         ja: '玉ねぎ（白または赤）', 'zh-Hans': '洋葱（白或红）',
+         'zh-Hant': '洋蔥（白或紅）', ar: 'بصل أبيض أو أحمر' } },
+
+  { id: 'spring-onion', he: 'בצל ירוק, טרי',
+    t: { en: 'Green onion (scallion, spring onion)', de: 'Frühlingszwiebel', es: 'Cebolleta',
+         fr: 'Oignon nouveau', it: 'Cipollotto', pt: 'Cebolinha',
+         ja: '青ねぎ', 'zh-Hans': '青葱', 'zh-Hant': '青蔥',
+         ar: 'بصل أخضر' } },
+
+  { id: 'bread-white',  he: "לחם לבן, ברמן, אנג'ל, דוידוביץ, אילת",
+    t: { en: 'White bread', de: 'Weißbrot', es: 'Pan blanco',
+         fr: 'Pain blanc', it: 'Pane bianco', pt: 'Pão branco',
+         ja: '食パン（白）', 'zh-Hans': '白面包', 'zh-Hant': '白麵包',
+         ar: 'خبز أبيض' } },
 ];
 
 const LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', 'ar'];
