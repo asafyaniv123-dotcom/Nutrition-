@@ -3516,6 +3516,9 @@ function foodsLoad(then){
       // matching ignores the punctuation Hebrew food names are inconsistent
       // about, so קוטג' and קוטג׳ and קוטג all find each other
       f.s=foodKey(f.n);
+      /* Where it came in. FOOD_FILES is in order of how much a row is
+         worth showing first, and that is worth keeping. */
+      f.i=all.length;
       key=f.s+'|'+f.k;
       if(seen[key])continue;      // the same product from both files
       seen[key]=1;all.push(f);
@@ -3581,31 +3584,57 @@ function foodHas(name,tok){
    It only ever makes matching more permissive: the key is never displayed
    and never stored as a name, it exists to be compared. */
 function foodKey(s){
-  /* Lower-cased so a search matches the way people type. Not locale-aware:
-     the Turkish locale folds I to a dotless i, and the key and the query
-     have to fold identically for every reader. */
-  return String(s).toLowerCase()
-                  /* Marks a reader never types: Arabic harakat and Hebrew
+  /* Folds a name and a query onto common ground so they can meet. Every
+     step folds BOTH sides and none of it is ever displayed.
+
+     The order matters in one place, and only one: normalisation has to run
+     first. U+0654 sits outside the block the accent strip removes, so an
+     NFC late in the chain would rebuild أ out of ا and a hamza AFTER the
+     fold that removes أ had gone past, and nothing later would catch it. */
+  return String(s)
+                  /* Not locale-aware: the Turkish locale folds I to a
+                     dotless i, and the key and the query have to fold the
+                     same way for every reader. */
+                  .toLowerCase()
+                  /* Latin accents. An accent is on the keyboard of the one
+                     language that owns it and nobody elses - melocoton for
+                     Melocoton, susskartoffel for Suesskartoffel.
+
+                     Only U+0300-U+036F comes off, the Latin combining
+                     block. The Japanese dakuten is U+3099-U+309A, another
+                     block entirely, so this code cannot turn ジャム into
+                     シャム - the boundary does that, not a condition that
+                     could be written wrongly. */
+                  .normalize('NFD').replace(/[\u0300-\u036F]/g,'').normalize('NFC')
+                  /* Marks a reader never types: Arabic harakat, Hebrew
                      niqqud, and the invisible bidi marks that arrive with
-                     text copied out of a right-to-left table. They have
-                     never once arrived in a query. */
+                     text copied out of a right-to-left table. */
                   .replace(/[\u064B-\u0652\u0670\u0591-\u05C7\u200E\u200F\u061C\uFEFF]/g,'')
                   /* Arabic letters a phone keyboard hides behind a long
-                     press. Nobody types أرز; they type ارز. Folded on both
-                     sides, like יי and וו below, so a query and a name meet
-                     in the middle. Never displayed. */
+                     press. Nobody types أرز; they type ارز. */
                   .replace(/[\u0623\u0625\u0622]/g,'\u0627')
                   .replace(/\u0649/g,'\u064A').replace(/\u0629/g,'\u0647')
+                  /* Ligatures that need a compose key nobody presses. */
+                  .replace(/\u0153/g,'oe').replace(/\u00E6/g,'ae')
+                  /* Swiss German has no ß at all, so its readers type ss. */
+                  .replace(/\u00DF/g,'ss')
                   /* A hyphen SEPARATES words, so deleting it joined them -
                      Cantaloupe-Melone became one unsearchable word. */
                   .replace(/[-\u2010-\u2015]/g,' ')
                   .replace(/['’׳"“”״,.]/g,'')
+                  /* Hebrew writes the same word two ways. */
                   .replace(/יי/g,'י').replace(/וו/g,'ו')
                   .replace(/\s+/g,' ').trim();
 }
+
 /* Typing more words should narrow, not find nothing. Every word has to
    appear somewhere in the name; the phrase as written first, because when it
    does match it is the better answer. */
+/* Does the query end where a word ends, rather than in the middle of one? */
+function foodWhole(f,q){
+  var c=f.s.charAt(q.length);
+  return c===''||!/[\p{L}\p{N}]/u.test(c);
+}
 function foodSearch(q){
   q=foodKey(q);
   if(!q||!_foods)return [];
@@ -3629,6 +3658,18 @@ function foodSearch(q){
   }
   // the shortest name is usually the plainest version of the thing
   words.sort(function(a,b){return a.s.length-b.s.length;});
+  /* A whole word beats a prefix of a longer one. Both "Egg or omelette" and
+     "Eggplant" start with egg, and without this the one that merely begins
+     with those letters came first because the bucket was in table order. */
+  starts.sort(function(a,b){
+    var aw=foodWhole(a,q),bw=foodWhole(b,q);
+    if(aw!==bw)return aw?-1:1;
+    /* NOT by length. A short name is not a plainer food - Apple chips is
+       shorter than the apple, and חלב אם shorter than חלב 3%. The file it
+       came from is the better answer, and it is already in the right
+       order. */
+    return (a.i||0)-(b.i||0);
+  });
   return starts.concat(phrase).concat(words).slice(0,40);
 }
 
@@ -4764,6 +4805,10 @@ function offLive(q){
       for(i=0;i<rows.length;i++){
         row=offLiveRow(rows[i]);
         if(!row||_offSeen[row.id])continue;
+        /* Last, like the file it comes from. Without an index it reads as
+           0 - the BEST rank - and puts a shelf product ahead of every
+           curated generic. */
+        row.i=_foods.length;
         _offSeen[row.id]=1;_foods.push(row);added++;
       }
       if(added)fdbPaint();
