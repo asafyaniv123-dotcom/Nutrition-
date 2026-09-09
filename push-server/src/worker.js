@@ -250,11 +250,12 @@ export default {
       if (used >= cap) return json({ ok: true, rows: [] });
       await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
 
-      const country = tag.slice(3);
-      const u = 'https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1' +
-        '&page_size=12&search_terms=' + encodeURIComponent(q) +
-        '&tagtype_0=countries&tag_contains_0=contains&tag_0=' + encodeURIComponent(country) +
-        '&fields=code,product_name,brands,nutriments';
+      /* NOT cgi/search.pl. That endpoint answers 503 from a server - shut,
+         not throttled - and this route degrades silently, so it returned
+         nothing at all rather than saying so. This one answers in half a
+         second. The free text and the country filter combine inside q. */
+      const u = 'https://search.openfoodfacts.org/search?page_size=12&q=' +
+        encodeURIComponent(q + ' countries_tags:"' + tag + '"');
 
       let j;
       try {
@@ -267,20 +268,35 @@ export default {
         return json({ ok: true, rows: [] });
       }
 
-      const num = (v) => (typeof v === 'number' && isFinite(v) ? Math.round(v * 10) / 10 : 0);
+      /* All four or nothing. Open Food Facts often carries energy without
+         the macros, and a missing number defaulted to 0 would show "0 g
+         carbohydrate" on a yogurt - a figure nobody measured, presented
+         beside ones somebody did. */
+      const num = (v) => (typeof v === 'number' && isFinite(v) ? Math.round(v * 10) / 10 : null);
       const rows = [];
-      for (const p of (j && j.products) || []) {
+      for (const p of (j && j.hits) || []) {
         const n = p.nutriments || {};
         const k = n['energy-kcal_100g'];
-        if (typeof k !== 'number' || !isFinite(k)) continue;
-        let name = String(p.product_name || '').trim();
+        if (typeof k !== 'number' || !isFinite(k) || k < 0) continue;
+        const pr = num(n.proteins_100g), ca = num(n.carbohydrates_100g), fa = num(n.fat_100g);
+        if (pr === null || ca === null || fa === null) continue;
+        /* The macros are the check on the energy. 4 kcal a gram for protein
+           and carbohydrate, 9 for fat - the same arithmetic /estimate asks
+           the model to respect. A natto claiming 0.21 kcal against macros
+           implying 225 is not a measurement, and logging it would cost a
+           person their day's count with nothing on screen to explain it.
+
+           Low side only: energy far ABOVE the macros has an innocent cause
+           this cannot see, since alcohol carries 7 kcal a gram and appears
+           in no macro. And the row is rejected, not corrected - deriving the
+           number would be inventing it. */
+        const implied = pr * 4 + ca * 4 + fa * 9;
+        if (implied >= 20 && k < implied * 0.5) continue;
+        let name = String(p.product_name || p.product_name_en || '').trim();
         const brand = String(p.brands || '').split(',')[0].trim();
         if (brand) name = name ? name + ', ' + brand : brand;
         if (name.length < 2) continue;
-        rows.push({
-          id: 'off:' + p.code, n: name, k: Math.round(k),
-          p: num(n.proteins_100g), c: num(n.carbohydrates_100g), f: num(n.fat_100g),
-        });
+        rows.push({ id: 'off:' + p.code, n: name, k: Math.round(k), p: pr, c: ca, f: fa });
       }
       return json({ ok: true, rows });
     }
