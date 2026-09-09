@@ -866,6 +866,19 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .pl-x{flex:1;min-width:118px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .pl-m{width:100%;font-size:11px;color:var(--ink-soft);line-height:1.5;font-weight:700}
 .pl-l{color:var(--terra-700);font-weight:800}
+.pc{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.pc-p{display:inline-block;min-width:19px;text-align:center;border-radius:4px;border:1px solid;
+  padding:1px 4px;font-size:9.5px;font-weight:800;line-height:1.4}
+.pc-b{display:inline-block;border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:800;
+  background:#79726b;color:#fff;line-height:1.4}
+.pc-l{display:inline-block;border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:800;
+  background:#f6e2dc;color:var(--terra-700);line-height:1.4}
+.rk{width:100%;background:var(--card);border-radius:12px;padding:9px 10px;margin-top:2px}
+.rk-h{font-size:10px;font-weight:800;color:var(--muted);margin-bottom:7px}
+.rk-r{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.rk-p{min-width:34px;border-radius:8px;border:1.5px solid var(--line-strong);background:none;
+  padding:5px 7px;font:inherit;font-size:11px;font-weight:800;color:var(--muted);cursor:pointer}
+.rk-p.on{border-color:transparent}
 .pl-k{background:var(--card);border:none;border-radius:8px;padding:4px 9px;margin:0;
   font:inherit;font-size:10px;font-weight:800;color:var(--muted);cursor:pointer}
 .tgt{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0 0 10px;
@@ -7345,9 +7358,47 @@ function cycleBar(){
   try{localStorage.setItem(BAR_KEY,String(steps[(i+1)%steps.length]));}catch(e){}
   plateHint();
 }
-function plateSet(){
+var RACK_KEY='fit_rack';
+function plateSetAll(){
   return APP_UNITS==='imperial'?[45,35,25,10,5,2.5]:[25,20,15,10,5,2.5,1.25];
 }
+/* The plates THIS gym has. A suggestion assembled from discs you do not own
+   is noise, and it is the whole reason 10 + 5 can be the right answer where
+   15 would otherwise win: if there is no 15 in the rack, the greedy split
+   reaches the same conclusion the lifter already reached. */
+function plateSet(){
+  var all=plateSetAll(),have=null;
+  try{have=JSON.parse(localStorage.getItem(RACK_KEY)||'null');}catch(e){}
+  if(!Array.isArray(have)||!have.length)return all;
+  var out=all.filter(function(p){return have.indexOf(p)>=0;});
+  /* Never empty: an empty rack would make plateSplit return nothing for
+     every weight, which reads as a broken screen rather than as a setting. */
+  return out.length?out:all;
+}
+function rackToggle(p){
+  var all=plateSetAll(),cur=plateSet().slice();
+  var i=cur.indexOf(p);
+  if(i>=0)cur.splice(i,1);else cur.push(p);
+  cur=all.filter(function(x){return cur.indexOf(x)>=0;});
+  try{localStorage.setItem(RACK_KEY,JSON.stringify(cur));}catch(e){}
+  plateHint();
+}
+var _rackOpen=false;
+function rackOpen(){_rackOpen=!_rackOpen;plateHint();}
+function rackHTML(){
+  if(!_rackOpen)return '<button class="pl-k" onclick="rackOpen()">'+_t('הפלטות שלי')+'</button>';
+  var all=plateSetAll(),have=plateSet(),h='<div class="rk">',i,p;
+  h+='<div class="rk-h">'+_t('אילו פלטות יש במכון?')+'</div><div class="rk-r">';
+  for(i=0;i<all.length;i++){
+    p=all[i];
+    h+='<button class="rk-p'+(have.indexOf(p)>=0?' on':'')+'" onclick="rackToggle('+p+')" '+
+       'style="'+(have.indexOf(p)>=0?'background:'+(PLATE_COLOR[p]||'#9a938c')+';color:'+plateInk(p):'')+'">'+nfmt(p)+'</button>';
+  }
+  h+='</div><button class="pl-k" onclick="rackOpen()">'+_t('סגור')+'</button></div>';
+  return h;
+}
+/* White and silver discs need dark text on them; the rest take white. */
+function plateInk(p){return (p===5||p===1.25)?'#4a443f':'#fff';}
 /* Greedy is correct here rather than merely convenient: gym plates are chosen
    so that each is at least the sum of nothing smaller it could replace, and a
    lifter loads heaviest-first anyway. */
@@ -7557,10 +7608,15 @@ function plateVisualHTML(){
 }
 /* Only a barbell has a bar to choose. */
 function barSwitchHTML(kind){
-  if(kind!=='bar')return '';
-  var b=barWeight();
-  return '<button class="pl-k" onclick="cycleBar()">'+
-    (b?nfmt(b)+' '+weightUnit():_t('בלי מוט'))+' &#8646;</button>';
+  var h='';
+  if(kind==='bar'){
+    var b=barWeight();
+    h+='<button class="pl-k" onclick="cycleBar()">'+
+      (b?nfmt(b)+' '+weightUnit():_t('בלי מוט'))+' &#8646;</button>';
+  }
+  /* Only where plates are actually loaded - a pin stack has no rack. */
+  if(kind==='bar'||kind==='plate')h+=rackHTML();
+  return h;
 }
 function plateHint(){
   var box=document.getElementById('fit-plates');
@@ -11840,7 +11896,9 @@ function renderFitWorkout(){
       /* Tapping the numbers is how you correct them - there is nowhere else on
          this row for an edit affordance to live, and the numbers are what you
          are looking at when you notice the mistake. */
-      h+='<button onclick="editSet('+si+')" style="flex:1;text-align:start;background:none;border:none;padding:0;font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer">'+fmtWeight(s.weight)+' &times; '+s.reps+'</button>';
+      h+='<button onclick="editSet('+si+')" style="flex:1;min-width:0;text-align:start;background:none;border:none;padding:0;font-family:inherit;cursor:pointer">'+
+         '<span style="font-size:14px;font-weight:700;color:var(--ink)">'+fmtWeight(s.weight)+' &times; '+s.reps+'</span>'+
+         plateChipsHTML(s)+'</button>';
       if(isNewPR)h+='<div style="font-size:9px;font-weight:700;color:var(--amber-500);background:#fef9e7;border-radius:6px;padding:2px 6px">PR &#9733;</div>';
       h+='<button onclick="removeSet('+si+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px;padding:2px">&times;</button>';
     }
@@ -11895,6 +11953,31 @@ function renderFitWorkout(){
   plateHint();   // the boxes open prefilled, so the line has something to say already
 }
 
+/* The plate record for one set: what was on each side, what the bar was, and
+   which kind of equipment - a 60 on a bar and a 60 on a stack were built in
+   ways with nothing in common, and the strip has to be able to say so. */
+function setPlates(ex,weight){
+  var kind=loadKind(ex.name);
+  if(kind!=='bar'&&kind!=='plate')return {lk:kind};
+  if(!(weight>0))return {lk:kind};
+  var bar=(kind==='bar')?barWeight():0;
+  if(weight<bar)return {lk:kind,bar:bar};
+  var r=plateSplit(weight,bar);
+  return {lk:kind,bar:bar,pl:r.plates.slice(),lo:r.left||0};
+}
+/* The strip under a logged set. Small, and coloured the same way the bar
+   above is, so "blue blue" means the same thing in both places. */
+function plateChipsHTML(s){
+  if(!s||!s.pl||!s.pl.length)return '';
+  var h='<span class="pc">',i,p,col;
+  for(i=0;i<s.pl.length;i++){
+    p=s.pl[i];col=PLATE_COLOR[p]||'#9a938c';
+    h+='<span class="pc-p" style="background:'+col+';color:'+plateInk(p)+';border-color:'+plateEdge(col)+'">'+nfmt(p)+'</span>';
+  }
+  if(s.bar)h+='<span class="pc-b">+'+nfmt(s.bar)+'</span>';
+  if(s.lo>0)h+='<span class="pc-l">+'+nfmt(s.lo)+'</span>';
+  return h+'</span>';
+}
 function logSet(){
   if(!_fitWorkout)return;
   var w=document.getElementById('fit-w');var r=document.getElementById('fit-r');var rpeInp=document.getElementById('fit-rpe');
@@ -11914,7 +11997,10 @@ function logSet(){
     renderFitness();
     return;
   }
-  ex.sets.push({weight:weight,reps:reps,rpe:rpe});
+  /* How it was BUILT, captured now and never recomputed. Recomputing on
+     render would rewrite history the day a pair of 15s arrives in the rack:
+     a set genuinely made of 10 + 5 would start claiming it was a 15. */
+  ex.sets.push(Object.assign({weight:weight,reps:reps,rpe:rpe},setPlates(ex,weight)));
   /* Inside a superset there is no rest until the last exercise of the pair,
      and after it the sequence goes back to the top rather than leaving you
      wherever the last set happened to land. */
