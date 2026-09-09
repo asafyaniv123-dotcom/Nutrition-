@@ -4769,20 +4769,42 @@ function fdbType(v){
    already has and cannot ask what exists. Measured, all three endpoints.
 
    Free text and a country filter do combine - "yaourt" in France returns 412,
-   "queso" in Spain 270, "natto" in Japan 10. But the index matches Latin
-   script only: 納豆,
-   ヨーグルト and לחם all return zero, with or without a country. So this helps
-   a French or Brazilian shopper immediately and a Japanese one only in romaji.
-   For them the barcode, which is script-free, and the model, which already
-   bridges languages against the tables, are what carry it. */
-var _offSeen={};
+   "queso" in Spain 270, "natto" in Japan 10. The index reads other scripts
+   too, which I had wrongly recorded here as impossible: 納豆 returns twelve
+   usable rows, לחם twelve, γιαούρτι eleven, молоко ten.
+
+   What it does not have is even COVERAGE. زبادي returns nothing at all, and
+   酸奶 returns twelve products of which one carries all four numbers. So the
+   Worker, and only when the shelf came back that thin, asks what a PACKET of
+   it would say in that country and searches again under that word, adding
+   whatever it finds to what the typed word already found.
+
+   Both halves of what arrives here exist because of that. Each row says which
+   of the two words fetched it, so the ones the person's own word could never
+   match can still be found under it - and so they can be shown apart, under
+   the word that did fetch them. Eight Latin products in answer to 酸奶 are
+   unarguable until you can see which word went out. */
+var _offSeen={},_offVia={};
+/* alt is a list of whole queries, so it is tested as one.
+
+   indexOf would say "زبادي يوناني" already contains "زبادي" - it does, as a
+   prefix - and the shorter query would never be recorded, leaving the row
+   findable only under the longer one. Spaces around both sides is the whole
+   trick, and it is why a query is never joined with anything but a space. */
+function aliasAdd(f,k){
+  if(!k)return false;
+  var have=' '+String(f.alt||'')+' ';
+  if(have.indexOf(' '+k+' ')>=0)return false;
+  f.alt=f.alt?f.alt+' '+k:k;
+  return true;
+}
 /* The server sends rows already in the app's shape - it is the side that
    knows Open Food Facts' field names, and keeping that there means the
    upstream can change without shipping an app. */
 function offLiveRow(r){
   if(!r||!r.id||!r.n||typeof r.k!=='number')return null;
   return {id:r.id,n:r.n,k:r.k,p:r.p||0,c:r.c||0,f:r.f||0,
-          off:1,live:1,s:foodKey(r.n)};
+          off:1,live:1,via:r.via?1:0,s:foodKey(r.n)};
 }
 /* Runs beside the model match, not instead of it. Silent on every failure:
    there is always a local list underneath. */
@@ -4796,15 +4818,59 @@ function offLive(q){
   if(!SYNC_SERVER)return;
   fetch(SYNC_SERVER+'/off',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({q:term,country:tag})
+    /* This copy understands a translated row - it aliases it and shows it
+       under its own heading - so it is allowed to ask for one. The released
+       app does none of that and does not ask, which is what keeps it from
+       paying for rows it could never display. */
+    body:JSON.stringify({q:term,country:tag,via:1})
   })
     .then(function(r){return r.json();})
     .then(function(j){
       if(foodKey(q)!==foodKey(_fdbQ))return;      // they have typed on
-      var rows=(j&&j.rows)||[],added=0,i,row;
+      var rows=(j&&j.rows)||[],added=0,i,row,had,k=foodKey(q);
+      /* The word the shelf was searched under when the typed one came back
+         thin. Empty for most queries; shown, when it is not, above the rows
+         it fetched. */
+      var vterm=String((j&&j.via)||'');
       for(i=0;i<rows.length;i++){
         row=offLiveRow(rows[i]);
-        if(!row||_offSeen[row.id])continue;
+        if(!row)continue;
+        /* EVERY live row is aliased to the query that fetched it, not just
+           the translated ones. A row whose product name does not contain
+           what was typed - the shelf matched on ingredients, or the name
+           was empty and the English one was used - is otherwise in _foods
+           where foodSearch can never return it. The server counts it as a
+           usable row and holds the fallback back; the screen stays empty.
+           alt is the field that already means "answers to a name it does
+           not show". */
+        aliasAdd(row,k);
+        /* via decides the HEADING and nothing else. One answer can carry
+           rows found under the word typed and rows found under the
+           translated one, and calling the first kind "found under yogurt"
+           would be untrue in the one place this exists to be honest about.
+
+           A set, not a query: the same row answers many queries, and while
+           this held one, typing 酸奶 then 酸奶油 then 酸奶 again lost the
+           heading and slid the translated rows into the list that claims
+           they contain what was typed. */
+        if(row.via&&vterm){
+          _offVia[k]=vterm;
+          row.viaq={};row.viaq[k]=1;
+        }
+        /* Already here from an earlier query. Carry this query onto the row
+           that is in the array rather than dropping it, or the second word
+           to reach a row finds nothing. */
+        if(_offSeen[row.id]){
+          had=fdbFind(row.id);
+          if(had){
+            if(aliasAdd(had,k))added++;
+            if(row.via&&vterm){
+              had.viaq=had.viaq||{};
+              if(!had.viaq[k]){had.viaq[k]=1;added++;}
+            }
+          }
+          continue;
+        }
         /* Last, like the file it comes from. Without an index it reads as
            0 - the BEST rank - and puts a shelf product ahead of every
            curated generic. */
@@ -4999,8 +5065,36 @@ function fdbPaint(){
     h+='</div>';
   }
 
-  var rest=[];
-  for(i=0;i<res.length;i++)if(!shown[res[i].id])rest.push(res[i]);
+  var rest=[],via=[];
+  /* Rows the live shelf returned for a translated word. They are held apart
+     because the heading below says the rows contain what was typed, and
+     these contain not one character of it. */
+  var vq=_offVia[foodKey(_fdbQ)]||'';
+  for(i=0;i<res.length;i++){
+    if(shown[res[i].id])continue;
+    if(vq&&res[i].viaq&&res[i].viaq[foodKey(_fdbQ)])via.push(res[i]);
+    else rest.push(res[i]);
+  }
+
+  if(via.length){
+    /* esc, because vq arrives over the network and _t drops a variable into
+       the string raw - every other row in this list is escaped. And &rlm;,
+       the same way the estimate button below does it: a Latin word inside
+       neutral quotes inside a right-to-left sentence puts the quotes on the
+       wrong sides, in the two languages most likely to see this. */
+    h+='<div class="fdb-ai-h plain">'+_t('על המדף תחת "{t}"',{t:'&rlm;'+esc(vq)})+'</div>';
+    h+='<div class="fdb-list">';
+    for(i=0;i<via.length;i++){
+      f=via[i];shown[f.id]=1;
+      /* &#39; rather than the ' the two lists below use. Same character
+         to the parser, and it cannot be flattened by a shell on the way into
+         this file - which is how this very line shipped broken once. */
+      h+='<button class="fdb-row" onclick="fdbSelect(&#39;'+f.id+'&#39;)">'+
+         '<span class="fdb-rn">'+esc(f.n)+'</span>'+
+         '<span class="fdb-rk">'+f.k+'<span class="fdb-ru">/100g</span></span></button>';
+    }
+    h+='</div>';
+  }
 
   if(rest.length){
     if(h)h+='<div class="fdb-ai-h plain">'+_t('מכילים את מה שכתבת')+'</div>';
