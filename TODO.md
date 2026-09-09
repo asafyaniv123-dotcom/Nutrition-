@@ -206,3 +206,42 @@ need the Worker redeployed before they do anything:
 
 The case-sensitivity fix and the translated core foods need no deploy and are
 already live.
+
+## Foods with no measured row (2026-09-09)
+
+The international core is built on one rule: every number is copied from a
+named row of `data/foods.json`, and `tools/build-food-core.mjs` fails rather
+than guessing. The rule held for all 41 foods in batch 1 — the Israeli table
+turned out to carry natto, nori, miso, shiitake, mung sprouts, celeriac and
+bacon already. What it does not carry is a name anyone outside Israel can
+read, which is what the core fixes.
+
+These are the ones it genuinely does not have. **None of them may be added by
+typing a number.** Each needs a second measured source, and
+`build-food-core.mjs` now requires a `src` naming it — `SOURCES` currently
+lists only `moh`, so adding one of these means adding a source first.
+
+- **plain firm tofu.** The table has fried tofu (265 kcal), a branded soft tofu
+  and a yellow "tofu cheese". The block of firm tofu that most of the world
+  means by the word is absent, and it is not close enough to approximate: the
+  fried row is twice the energy.
+- **ghee** — nothing at all. Butter is in, ghee is not, and they differ.
+- **paneer** — nothing. Not interchangeable with the brined white cheeses.
+- **cassava / manioc**, and **plantain** — nothing. Both are staples for a
+  large part of the world and both are absent.
+- **kimchi**, **polenta**, **tempeh** and **seitan** are not there at all.
+- **nori** is fine, but the row it needed was not the obvious one. The first
+  attempt named `אצות, עלים להכנת סושי` - "seaweed, leaves for making sushi",
+  35 kcal - and called it a nori sheet in ten languages. That row is raw
+  laver; a sheet is `אצות, יבשות` at 298. An eight-fold understatement that
+  no check could catch, because the row existed and its numbers were copied
+  faithfully. **A row that exists is not the same as the right row**, and
+  only reading the Hebrew against the English finds the difference.
+- **cheddar** — the table has "yellow cheese" at various fat levels, which is
+  not the same food and should not borrow its numbers.
+
+The obvious second source is a national food composition table published as a
+bulk download — USDA FoodData Central publishes SR Legacy and Foundation Foods
+as public-domain files needing no API key. That is a real piece of work: the
+loader, the row matching, and a `src` per row so a reader can be told where a
+number came from. It is not a reason to invent one in the meantime.

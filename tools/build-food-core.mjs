@@ -31,6 +31,21 @@ import fs from 'fs';
 const SRC = 'data/foods.json';
 const OUT = 'data/foods.core.json';
 
+/* Where a row's numbers were measured. Every entry names one, and the build
+   refuses an entry that names none or names something not listed here.
+
+   It used to be implicit - every entry pointed at a row in foods.json, so
+   there was only one possible answer. The core now has to admit foods that
+   table does not carry, and the moment there are two possible answers,
+   "where did this number come from" stops being answerable by reading the
+   file. An entry that forgets to say is exactly what a hurried edit would
+   produce, so that is what this fails on. */
+const SOURCES = {
+  /* The Israeli Ministry of Health table, already in data/foods.json. The
+     numbers are copied from the named row, never retyped. */
+  moh: 'Israeli Ministry of Health food composition table',
+};
+
 /* he: the exact name of a row in foods.json.
 
    A QUALIFIER IS CARRIED INTO ALL ELEVEN when it does either of two jobs, and
@@ -800,6 +815,300 @@ const CORE = [
          fr: 'Pain blanc', it: 'Pane bianco', pt: 'Pão branco',
          ja: '食パン（白）', 'zh-Hans': '白面包', 'zh-Hant': '白麵包',
          ar: 'خبز أبيض' } },
+  /* ── batch 1: what the first 123 had no room for ──────────────────────
+     East Asia, the pulses and sprouts, and the European cured meats. Every
+     one already had a row; none of them had a readable name. */
+
+  { id: 'natto', he: 'נאטו (פולי סויה מותססים)',
+    t: { en: 'Natto (fermented soybeans)', de: 'Natto (fermentierte Sojabohnen)',
+         es: 'Natto (soja fermentada)', fr: 'Natto (soja fermenté)',
+         it: 'Natto (soia fermentata)', pt: 'Natto (soja fermentada)',
+         ja: '納豆', 'zh-Hans': '纳豆', 'zh-Hant': '納豆', ar: 'ناتو (فول صويا مخمّر)' } },
+
+  /* Nori in every language that has a word for it, because that is what is
+     printed on the packet - "seaweed leaves for sushi" is what the Hebrew row
+     calls it and what nobody would ever type. */
+  /* The DRIED row, 298 kcal. This first named `אצות, עלים להכנת סושי` at 35
+     kcal - raw laver - and called it a nori sheet in ten languages, which is
+     an eight-fold understatement of the thing on the packet. Nothing in the
+     build could have caught it: the row existed, the numbers were copied,
+     the spelling was right. Only asking "is this row that food" finds it. */
+  { id: 'nori', he: 'אצות, יבשות',
+    t: { en: 'Nori seaweed, dried sheets', de: 'Nori-Algen, getrocknete Blätter',
+         es: 'Alga nori seca en láminas', fr: 'Algue nori séchée en feuilles',
+         it: 'Alga nori essiccata in fogli', pt: 'Alga nori seca em folhas',
+         ja: '焼きのり・干し海苔', 'zh-Hans': '海苔片（干）', 'zh-Hant': '海苔片（乾）',
+         ar: 'أعشاب نوري مجففة' } },
+
+  { id: 'seaweed-fresh', he: 'אצות, טריות',
+    t: { en: 'Seaweed, fresh', de: 'Algen, frisch', es: 'Algas frescas',
+         fr: 'Algues fraîches', it: 'Alghe fresche', pt: 'Algas frescas',
+         ja: '生わかめ・海藻', 'zh-Hans': '新鲜海藻', 'zh-Hant': '新鮮海藻',
+         ar: 'أعشاب بحرية طازجة' } },
+
+  { id: 'spirulina', he: 'אצות, ספירולינה, מיובש',
+    t: { en: 'Spirulina, dried', de: 'Spirulina, getrocknet', es: 'Espirulina seca',
+         fr: 'Spiruline séchée', it: 'Spirulina essiccata', pt: 'Espirulina seca',
+         ja: 'スピルリナ（乾燥）', 'zh-Hans': '螺旋藻（干）', 'zh-Hant': '螺旋藻（乾）',
+         ar: 'سبيرولينا مجففة' } },
+
+  { id: 'miso-paste', he: 'מיסו, מחית פולי סויה מרוכז',
+    t: { en: 'Miso paste', de: 'Miso-Paste', es: 'Pasta de miso', fr: 'Pâte de miso',
+         it: 'Pasta di miso', pt: 'Pasta de missô', ja: '味噌', 'zh-Hans': '味噌',
+         'zh-Hant': '味噌', ar: 'معجون ميسو' } },
+
+  { id: 'soy-sauce', he: 'רוטב סויה',
+    t: { en: 'Soy sauce', de: 'Sojasauce', es: 'Salsa de soja', fr: 'Sauce soja',
+         it: 'Salsa di soia', pt: 'Molho de soja', ja: '醤油', 'zh-Hans': '酱油',
+         'zh-Hant': '醬油', ar: 'صلصة صويا' } },
+
+  { id: 'soy-sauce-low-salt', he: 'רוטב סויה מופחת נתרן',
+    t: { en: 'Soy sauce, reduced salt', de: 'Sojasauce, salzreduziert',
+         es: 'Salsa de soja baja en sal', fr: 'Sauce soja allégée en sel',
+         it: 'Salsa di soia a ridotto contenuto di sale', pt: 'Molho de soja com menos sal',
+         ja: '減塩醤油', 'zh-Hans': '减盐酱油', 'zh-Hant': '減鹽醬油',
+         ar: 'صلصة صويا قليلة الملح' } },
+
+  /* Dry and cooked are separate rows and separate foods on the plate - 364
+     kcal against 108 - so both are carried and both say which they are. */
+  { id: 'rice-noodles-dry', he: 'אטריות אורז, יבשות',
+    t: { en: 'Rice noodles, dry', de: 'Reisnudeln, trocken', es: 'Fideos de arroz secos',
+         fr: 'Nouilles de riz sèches', it: 'Noodles di riso secchi',
+         pt: 'Macarrão de arroz seco', ja: 'ビーフン（乾）', 'zh-Hans': '米粉（干）',
+         'zh-Hant': '米粉（乾）', ar: 'شعيرية أرز جافة' } },
+
+  { id: 'rice-noodles-cooked', he: 'אטריות אורז, מבושלות',
+    t: { en: 'Rice noodles, cooked', de: 'Reisnudeln, gekocht', es: 'Fideos de arroz cocidos',
+         fr: 'Nouilles de riz cuites', it: 'Noodles di riso cotti',
+         pt: 'Macarrão de arroz cozido', ja: 'ビーフン（ゆで）', 'zh-Hans': '米粉（煮熟）',
+         'zh-Hant': '米粉（煮熟）', ar: 'شعيرية أرز مطبوخة' } },
+
+  { id: 'napa-cabbage', he: 'כרוב סיני, טרי',
+    t: { en: 'Napa cabbage (Chinese leaf), fresh', de: 'Chinakohl, frisch',
+         es: 'Col china fresca', fr: 'Chou chinois frais', it: 'Cavolo cinese fresco',
+         pt: 'Couve chinesa fresca', ja: '白菜', 'zh-Hans': '大白菜', 'zh-Hant': '大白菜',
+         ar: 'ملفوف صيني طازج' } },
+
+  { id: 'napa-cabbage-cooked', he: 'כרוב סיני, מבושל, ללא תוספת שומן',
+    t: { en: 'Napa cabbage, cooked without fat', de: 'Chinakohl, ohne Fett gegart',
+         es: 'Col china cocida sin grasa', fr: 'Chou chinois cuit sans matière grasse',
+         it: 'Cavolo cinese cotto senza grassi', pt: 'Couve chinesa cozida sem gordura',
+         ja: '白菜（油なしで加熱）', 'zh-Hans': '大白菜（无油烹煮）',
+         'zh-Hant': '大白菜（無油烹煮）', ar: 'ملفوف صيني مطبوخ بدون دهن' } },
+
+  { id: 'mung-bean-sprouts', he: 'נבטי מש, נבטים סיניים, טרי',
+    t: { en: 'Mung bean sprouts, fresh', de: 'Mungbohnensprossen, frisch',
+         es: 'Brotes de soja verde (frescos)', fr: 'Germes de haricot mungo frais',
+         it: 'Germogli di fagiolo mungo freschi', pt: 'Brotos de feijão-moyashi frescos',
+         ja: 'もやし', 'zh-Hans': '绿豆芽', 'zh-Hant': '綠豆芽',
+         ar: 'براعم فول المونج طازجة' } },
+
+  /* SOYBEAN sprouts, not the cooked form of the mung ones above. Boiling
+     cannot take 30 kcal to 46 and 0.2 g of fat to 2.0 - that is a different
+     bean, and the fat is what says which. Only the Japanese had it right
+     (豆もやし is specifically soy); the other nine said plain bean sprouts. */
+  { id: 'soybean-sprouts-cooked', he: 'נבטי שעועית, טריים, מבושלים, ללא תוספת שומן, עם מלח',
+    t: { en: 'Soybean sprouts, cooked without fat', de: 'Sojabohnensprossen, ohne Fett gegart',
+         es: 'Brotes de soja cocidos sin grasa', fr: 'Germes de soja cuits sans matière grasse',
+         it: 'Germogli di soia cotti senza grassi', pt: 'Brotos de soja cozidos sem gordura',
+         ja: '豆もやし（油なしで加熱）', 'zh-Hans': '黄豆芽（无油烹煮）',
+         'zh-Hant': '黃豆芽（無油烹煮）', ar: 'براعم فول الصويا مطبوخة بدون دهن' } },
+
+  { id: 'alfalfa-sprouts', he: 'נבטים, אלפלפה, טריים',
+    /* The only alfalfa row in the table, and nobody names the food "fresh
+       alfalfa sprouts". The qualifier separates nothing, so it goes. */
+    t: { en: 'Alfalfa sprouts', de: 'Alfalfasprossen', es: 'Brotes de alfalfa',
+         fr: 'Germes de luzerne', it: 'Germogli di erba medica', pt: 'Brotos de alfafa',
+         ja: 'アルファルファもやし', 'zh-Hans': '苜蓿芽', 'zh-Hant': '苜蓿芽',
+         ar: 'براعم البرسيم' } },
+
+  { id: 'snow-peas', he: 'אפונה סינית, טריה',
+    t: { en: 'Snow peas (mangetout), fresh', de: 'Zuckerschoten, frisch',
+         es: 'Tirabeques frescos', fr: 'Pois gourmands frais',
+         it: 'Taccole fresche', pt: 'Ervilhas-tortas frescas',
+         ja: 'さやえんどう', 'zh-Hans': '荷兰豆', 'zh-Hant': '荷蘭豆',
+         ar: 'بازلاء صينية طازجة' } },
+
+  /* Fried, and it says so: 265 kcal against a plain block's 130. The table has
+     no plain firm tofu row - recorded in TODO.md rather than approximated. */
+  { id: 'tofu-fried', he: 'טופו מטוגן בשמן סויה',
+    t: { en: 'Tofu, fried', de: 'Tofu, frittiert', es: 'Tofu frito', fr: 'Tofu frit',
+         it: 'Tofu fritto', pt: 'Tofu frito', ja: '揚げ豆腐', 'zh-Hans': '炸豆腐',
+         'zh-Hant': '炸豆腐', ar: 'توفو مقلي' } },
+
+  { id: 'shiitake-dried', he: 'פטריות שיטאקי, מיובשות',
+    t: { en: 'Shiitake mushrooms, dried', de: 'Shiitake-Pilze, getrocknet',
+         es: 'Setas shiitake secas', fr: 'Champignons shiitake séchés',
+         it: 'Funghi shiitake secchi', pt: 'Cogumelos shiitake secos',
+         ja: '干し椎茸', 'zh-Hans': '干香菇', 'zh-Hant': '乾香菇',
+         ar: 'فطر شيتاكي مجفف' } },
+
+  { id: 'shiitake-cooked', he: 'פטריות שיטאקי, מיובשות, מבושלות',
+    t: { en: 'Shiitake mushrooms, rehydrated and cooked',
+         de: 'Shiitake-Pilze, eingeweicht und gegart',
+         es: 'Setas shiitake rehidratadas y cocidas',
+         fr: 'Champignons shiitake réhydratés et cuits',
+         it: 'Funghi shiitake reidratati e cotti',
+         pt: 'Cogumelos shiitake hidratados e cozidos',
+         ja: '干し椎茸（戻して加熱）', 'zh-Hans': '香菇（泡发后煮熟）',
+         'zh-Hant': '香菇（泡發後煮熟）', ar: 'فطر شيتاكي منقوع ومطبوخ' } },
+
+  { id: 'rice-parboiled', he: 'אורז לבן, להכנה מהירה (parboiled), מבושל, ללא תוספת מלח',
+    t: { en: 'Parboiled rice, cooked', de: 'Parboiled-Reis, gekocht',
+         es: 'Arroz vaporizado, cocido', fr: 'Riz étuvé, cuit',
+         it: 'Riso parboiled, cotto', pt: 'Arroz parboilizado, cozido',
+         ja: 'パーボイルドライス（炊いたもの）', 'zh-Hans': '蒸谷米（煮熟）',
+         'zh-Hant': '蒸穀米（煮熟）', ar: 'أرز مسلوق مسبقًا، مطبوخ' } },
+
+  { id: 'millet-dry', he: 'דוחן, לא מבושל',
+    t: { en: 'Millet, dry', de: 'Hirse, ungekocht', es: 'Mijo crudo', fr: 'Millet cru',
+         it: 'Miglio crudo', pt: 'Painço cru', ja: 'キビ（乾燥）',
+         'zh-Hans': '小米（生）', 'zh-Hant': '小米（生）', ar: 'دخن غير مطبوخ' } },
+
+  { id: 'lima-beans', he: 'שעועית לימה, טריה',
+    t: { en: 'Lima beans (butter beans), fresh', de: 'Limabohnen, frisch',
+         es: 'Habas de Lima frescas', fr: 'Haricots de Lima frais',
+         it: 'Fagioli di Lima freschi', pt: 'Feijão-de-lima fresco',
+         ja: 'ライマメ（生）', 'zh-Hans': '利马豆（鲜）', 'zh-Hant': '利馬豆（鮮）',
+         ar: 'فاصولياء ليما طازجة' } },
+
+  { id: 'red-kidney-beans-dry', he: 'שעועית אדומה יבשה',
+    t: { en: 'Red kidney beans, dry', de: 'Rote Kidneybohnen, getrocknet',
+         es: 'Alubias rojas secas', fr: 'Haricots rouges secs',
+         it: 'Fagioli rossi secchi', pt: 'Feijão vermelho seco',
+         ja: '赤いんげん豆（乾燥）', 'zh-Hans': '红芸豆（干）', 'zh-Hant': '紅芸豆（乾）',
+         ar: 'فاصولياء حمراء جافة' } },
+
+  { id: 'lentil-sprouts', he: 'עדשים, מונבטים טריים',
+    t: { en: 'Lentil sprouts, fresh', de: 'Linsensprossen, frisch',
+         es: 'Brotes de lenteja frescos', fr: 'Germes de lentille frais',
+         it: 'Germogli di lenticchia freschi', pt: 'Brotos de lentilha frescos',
+         ja: 'レンズ豆のスプラウト', 'zh-Hans': '扁豆芽', 'zh-Hant': '扁豆芽',
+         ar: 'براعم عدس طازجة' } },
+
+  { id: 'green-peas-in-pod', he: 'אפונה ירוקה, טריה, עם תרמילים',
+    /* Same trap as the corn: 31 kcal against shelled peas' 81, because the
+       pod is in the weight. */
+    t: { en: 'Green peas, weighed in the pod', de: 'Grüne Erbsen, mit Schote gewogen',
+         es: 'Guisantes, pesados con la vaina',
+         fr: 'Petits pois, pesés en cosse',
+         it: 'Piselli, pesati con il baccello',
+         pt: 'Ervilhas, pesadas com a vagem',
+         ja: 'グリーンピース（さや込みの重さ）', 'zh-Hans': '青豌豆（连荚称重）',
+         'zh-Hant': '青豌豆（連莢秤重）', ar: 'بازلاء خضراء موزونة بقرونها' } },
+
+  { id: 'chestnuts-roasted', he: 'ערמונים קלויים ללא קליפה',
+    t: { en: 'Chestnuts, roasted and peeled', de: 'Esskastanien, geröstet und geschält',
+         es: 'Castañas asadas y peladas', fr: 'Châtaignes grillées et épluchées',
+         it: 'Castagne arrostite e sbucciate', pt: 'Castanhas assadas e descascadas',
+         ja: '焼き栗（皮なし）', 'zh-Hans': '烤栗子（去壳）', 'zh-Hant': '烤栗子（去殼）',
+         ar: 'كستناء محمصة ومقشرة' } },
+
+  { id: 'chestnuts-boiled', he: 'ערמונים מבושלים, ללא קליפה',
+    t: { en: 'Chestnuts, boiled and peeled', de: 'Esskastanien, gekocht und geschält',
+         es: 'Castañas cocidas y peladas', fr: 'Châtaignes bouillies et épluchées',
+         it: 'Castagne lessate e sbucciate', pt: 'Castanhas cozidas e descascadas',
+         ja: 'ゆで栗（皮なし）', 'zh-Hans': '水煮栗子（去壳）', 'zh-Hant': '水煮栗子（去殼）',
+         ar: 'كستناء مسلوقة ومقشرة' } },
+
+  { id: 'okra-fresh', he: 'במיה, ללא גבעול, טריה',
+    t: { en: 'Okra, fresh', de: 'Okra, frisch', es: 'Okra (quimbombó) fresca',
+         fr: 'Gombo frais', it: 'Okra fresca', pt: 'Quiabo fresco',
+         ja: 'オクラ', 'zh-Hans': '秋葵', 'zh-Hant': '秋葵', ar: 'بامية طازجة' } },
+
+  { id: 'okra-frozen', he: 'במיה, קפואה, לא מבושלת',
+    t: { en: 'Okra, frozen, uncooked', de: 'Okra, tiefgekühlt, ungegart',
+         es: 'Okra congelada, cruda', fr: 'Gombo surgelé, cru',
+         it: 'Okra surgelata, cruda', pt: 'Quiabo congelado, cru',
+         ja: 'オクラ（冷凍・未加熱）', 'zh-Hans': '秋葵（冷冻，未烹煮）',
+         'zh-Hant': '秋葵（冷凍，未烹煮）', ar: 'بامية مجمدة غير مطبوخة' } },
+
+  { id: 'artichoke-heart', he: 'ארטישוק, חי, ללא עלים וגבעול',
+    t: { en: 'Artichoke heart, raw', de: 'Artischockenherz, roh',
+         es: 'Corazón de alcachofa crudo', fr: 'Cœur d’artichaut cru',
+         it: 'Cuore di carciofo crudo', pt: 'Coração de alcachofra cru',
+         ja: 'アーティチョークの芯（生）', 'zh-Hans': '洋蓟心（生）',
+         'zh-Hant': '朝鮮薊心（生）', ar: 'قلب الخرشوف نيء' } },
+
+  { id: 'jerusalem-artichoke', he: 'ארטישוק ירושלמי, טרי',
+    t: { en: 'Jerusalem artichoke (sunchoke), fresh', de: 'Topinambur, frisch',
+         es: 'Tupinambo fresco', fr: 'Topinambour frais',
+         it: 'Topinambur fresco', pt: 'Tupinambo fresco',
+         ja: '菊芋', 'zh-Hans': '菊芋', 'zh-Hant': '菊芋', ar: 'طرطوفة طازجة' } },
+
+  { id: 'leek-cooked', he: 'כרישה, מבושלת ללא מלח',
+    t: { en: 'Leek, cooked without salt', de: 'Lauch, ohne Salz gegart',
+         es: 'Puerro cocido sin sal', fr: 'Poireau cuit sans sel',
+         it: 'Porro cotto senza sale', pt: 'Alho-poró cozido sem sal',
+         ja: 'リーキ（無塩でゆで）', 'zh-Hans': '韭葱（无盐煮）',
+         'zh-Hant': '韭蔥（無鹽煮）', ar: 'كرّاث مطبوخ بدون ملح' } },
+
+  { id: 'celeriac-cooked', he: 'סלרי, כרפס, שורש, מבושל, עם מלח CELERIAC',
+    t: { en: 'Celeriac (celery root), cooked', de: 'Knollensellerie, gegart',
+         es: 'Apionabo cocido', fr: 'Céleri-rave cuit',
+         it: 'Sedano rapa cotto', pt: 'Aipo-rábano cozido',
+         ja: 'セロリアック（根セロリ・加熱）', 'zh-Hans': '根芹菜（煮熟）',
+         'zh-Hant': '根芹菜（煮熟）', ar: 'جذر الكرفس مطبوخ' } },
+
+  { id: 'pumpkin-cooked', he: 'דלעת, מבושלת, עם מלח, ללא תוספת שומן בבישול',
+    t: { en: 'Pumpkin, cooked without fat', de: 'Kürbis, ohne Fett gegart',
+         es: 'Calabaza cocida sin grasa', fr: 'Potiron cuit sans matière grasse',
+         it: 'Zucca cotta senza grassi', pt: 'Abóbora cozida sem gordura',
+         ja: 'かぼちゃ（油なしで加熱）', 'zh-Hans': '南瓜（无油烹煮）',
+         'zh-Hant': '南瓜（無油烹煮）', ar: 'قرع عسلي مطبوخ بدون دهن' } },
+
+  { id: 'sweetcorn-canned', he: 'תירס, משומר, מתוק',
+    t: { en: 'Sweet corn, canned', de: 'Zuckermais, aus der Dose',
+         es: 'Maíz dulce en conserva', fr: 'Maïs doux en conserve',
+         it: 'Mais dolce in scatola', pt: 'Milho doce em lata',
+         ja: 'スイートコーン（缶詰）', 'zh-Hans': '甜玉米罐头',
+         'zh-Hant': '甜玉米罐頭', ar: 'ذرة حلوة معلبة' } },
+
+  { id: 'corn-on-the-cob', he: 'תירס, טרי, קלח וגרעינים',
+    /* 31 kcal against plain corn's 86, because the cob is in the 100 g. Said
+       out loud in every language: the two sit side by side in one search,
+       and someone who cut the kernels off first would otherwise undercount
+       by 55 kcal per 100 g with nothing on screen to explain it. */
+    t: { en: 'Corn on the cob, weighed with the cob', de: 'Maiskolben, mit Kolben gewogen',
+         es: 'Mazorca de maíz, pesada con el zuro',
+         fr: 'Épi de maïs, pesé avec la rafle',
+         it: 'Pannocchia di mais, pesata con il torsolo',
+         pt: 'Espiga de milho, pesada com o sabugo',
+         ja: 'とうもろこし（軸込みの重さ）', 'zh-Hans': '带棒玉米（连棒称重）',
+         'zh-Hant': '帶棒玉米（連棒秤重）', ar: 'كوز ذرة موزون مع القالب' } },
+
+  { id: 'black-olives', he: 'זיתים שחורים',
+    t: { en: 'Black olives', de: 'Schwarze Oliven', es: 'Aceitunas negras',
+         fr: 'Olives noires', it: 'Olive nere', pt: 'Azeitonas pretas',
+         ja: 'ブラックオリーブ', 'zh-Hans': '黑橄榄', 'zh-Hant': '黑橄欖',
+         ar: 'زيتون أسود' } },
+
+  /* The row that made the whole batch necessary. A photograph of an English
+     breakfast said "בקון"; the table files it under "pork, cutlet/bacon,
+     fresh or smoked or salted, cooked", and nothing matched. */
+  { id: 'bacon', he: 'בשר חזיר, קוטלט/בייקון, לפנ אם טרי, מעושן או מומלח, מבושל',
+    t: { en: 'Bacon, cooked', de: 'Bacon, gebraten', es: 'Bacon (panceta) cocinado',
+         fr: 'Bacon cuit', it: 'Bacon cotto', pt: 'Bacon cozido',
+         ja: 'ベーコン（加熱済み）', 'zh-Hans': '培根（熟）', 'zh-Hant': '培根（熟）',
+         ar: 'لحم خنزير مقدد مطهو' } },
+
+  { id: 'brie-camembert-25', he: 'גבינת ברי/קממבר/בושרון 25% שומן, מחלב צאן , מעודנת',
+    /* Sheep's milk is carried: the table has a Tnuva COW-milk brie at 25% too,
+       and מחלב צאן is the only thing separating the two rows. */
+    t: { en: "Brie or camembert, sheep's milk, 25%", de: 'Brie oder Camembert, Schafsmilch, 25 %',
+         es: 'Brie o camembert de leche de oveja, 25 %',
+         fr: 'Brie ou camembert au lait de brebis, 25 %',
+         it: 'Brie o camembert di latte di pecora, 25%',
+         pt: 'Brie ou camembert de leite de ovelha, 25%',
+         ja: 'ブリー／カマンベール（羊乳）25%', 'zh-Hans': '布里／卡门贝尔奶酪（绵羊奶）25%',
+         'zh-Hant': '布里／卡門貝爾乳酪（綿羊奶）25%', ar: 'جبن بري أو كاممبير من حليب الغنم 25%' } },
+
+  { id: 'sour-cream-15', he: 'שמנת חמוצה 15% שומן, טרה, תנובה',
+    t: { en: 'Sour cream, 15%', de: 'Saure Sahne, 15 %', es: 'Crema agria, 15 %',
+         fr: 'Crème aigre, 15 %', it: 'Panna acida, 15%', pt: 'Creme azedo, 15%',
+         ja: 'サワークリーム 15%', 'zh-Hans': '酸奶油 15%', 'zh-Hant': '酸奶油 15%',
+         ar: 'قشدة حامضة 15%' } },
+
 ];
 
 const LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', 'ar'];
@@ -812,12 +1121,42 @@ for (const r of rows) byName.set(r.n, r);
 const out = [];
 const missing = [];
 const gaps = [];
+const unsourced = [];
+const seen = new Set();
 for (const c of CORE) {
-  const r = byName.get(c.he);
-  if (!r) { missing.push(c.he); continue; }
+  /* An id used twice would silently keep only one of the two foods, and the
+     count at the end would still look right. */
+  if (seen.has(c.id)) unsourced.push(c.id + ' is declared twice');
+  seen.add(c.id);
+
+  const src = c.src || 'moh';
+  if (!SOURCES[src]) { unsourced.push(c.id + ' claims an unknown source: ' + src); continue; }
+
+  /* moh means the numbers ARE a row of foods.json, copied. Any other source
+     has to carry its own four numbers, and they are checked for being
+     numbers rather than trusted - a missing macro read as undefined would
+     land in the file as null and show as a blank where a measurement
+     should be. */
+  let k, p, cc, f;
+  if (src === 'moh') {
+    const r = byName.get(c.he);
+    if (!r) { missing.push(c.he); continue; }
+    k = r.k; p = r.p; cc = r.c; f = r.f;
+  } else {
+    const n = c.n || {};
+    const ok = ['k', 'p', 'c', 'f'].every((x) => typeof n[x] === 'number' && isFinite(n[x]) && n[x] >= 0);
+    if (!ok) { unsourced.push(c.id + ' has source ' + src + ' but no complete k/p/c/f'); continue; }
+    if (!c.ref) { unsourced.push(c.id + ' has source ' + src + ' but no ref naming the entry'); continue; }
+    k = n.k; p = n.p; cc = n.c; f = n.f;
+  }
+
   for (const l of LANGS) if (!c.t[l]) gaps.push(c.id + ' has no ' + l);
   const t = Object.assign({ he: c.he }, c.t);
-  out.push({ id: 'core:' + c.id, k: r.k, p: r.p, c: r.c, f: r.f, t });
+  /* ref travels with src. Requiring it and then dropping it left the file
+     unable to answer the one question src exists for. */
+  const row = { id: 'core:' + c.id, k, p, c: cc, f, t, src };
+  if (c.ref) row.ref = c.ref;
+  out.push(row);
 }
 
 if (missing.length) {
@@ -830,7 +1169,15 @@ if (gaps.length) {
   for (const g of gaps) console.error('  ' + g);
   process.exit(1);
 }
+if (unsourced.length) {
+  console.error('Entries whose numbers cannot be traced:');
+  for (const u of unsourced) console.error('  ' + u);
+  process.exit(1);
+}
 
 fs.writeFileSync(OUT, JSON.stringify({ foods: out }, null, 1) + '\n');
 console.log(out.length + ' generic foods, ' + (LANGS.length + 1) + ' languages each -> ' + OUT);
-console.log('every value copied from ' + SRC + '; nothing invented');
+const bySrc = {};
+for (const o of out) bySrc[o.src] = (bySrc[o.src] || 0) + 1;
+for (const [s, n] of Object.entries(bySrc)) console.log('  ' + n + ' from ' + SOURCES[s]);
+console.log('every value traced to a named source; nothing invented');
