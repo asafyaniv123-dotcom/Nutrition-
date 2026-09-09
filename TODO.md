@@ -307,3 +307,21 @@ bulk download — USDA FoodData Central publishes SR Legacy and Foundation Foods
 as public-domain files needing no API key. That is a real piece of work: the
 loader, the row matching, and a `src` per row so a reader can be told where a
 number came from. It is not a reason to invent one in the meantime.
+
+## Quinoa (2026-09-09)
+
+Found by a 229-word search sweep across Hebrew, English, Arabic, Japanese and
+Chinese. 222 of 229 words returned a curated food in the top three; the seven
+that did not split the usual way.
+
+Six were the naming lesson again, for the fifth and sixth time — coffee and
+courgette were both in the table under words I had not searched for
+(`כולל קפה פילטר`, `בהירים`), and sausage under `נקניקיות`. All six are now in
+the core, along with an alias so the ordinary Japanese word for a mushroom,
+きのこ, reaches the row named マッシュルーム.
+
+**Quinoa is the one that is genuinely absent.** The table's only quinoa is
+inside `פריכיות אורז מלא עם קינואה` — a rice cake that happens to contain
+some. A rice cake's numbers are not quinoa's, so it is recorded here rather
+than approximated, and it joins cassava, plantain, paneer, polenta, kimchi and
+plain firm tofu on the list that needs a second measured source.

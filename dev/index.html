@@ -859,6 +859,12 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .fdb-row.ai{border-inline-start:3px solid var(--violet-300)}
 .fdb-ai-w{font-size:10px;color:var(--muted-soft);padding:8px 2px 0}
 .fdb-msg{font-size:11.5px;color:var(--muted);padding:10px 4px;text-align:center;line-height:1.6}
+.cs-ic{width:64px;height:64px;margin-bottom:18px;display:flex;align-items:center;justify-content:center}
+/* 0.83 not 1.5: the same 24-unit viewBox drawn at 52px instead of 24px
+   multiplies the stroke by 2.2, so 1.5 lands at 3.3 device px against the
+   home screen's 1.8 and the glyph reads as a heavier icon of the same thing. */
+.cs-ic svg{width:52px;height:52px;fill:none;stroke:currentColor;stroke-width:0.83;
+  stroke-linecap:round;stroke-linejoin:round}
 .pl{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--panel);border-radius:14px;
   padding:10px 12px;flex-wrap:wrap}
 .pl-svg{width:100%;max-width:250px;height:auto;flex-shrink:0}
@@ -3742,6 +3748,14 @@ function foodSearch(q){
   phrase.sort(function(a,b){
     var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
     if(ac!==bc)return ac?-1:1;
+    /* Then whichever name mentions the word EARLIER. "סלמי" was returning
+       salami-STYLE seitan before salami, because both are core and seitan is
+       declared first; the word sits at character 22 of one name and 7 of the
+       other, and the one that leads with it is the one being asked for. */
+    var ai=a.s.indexOf(q), bi=b.s.indexOf(q);
+    if(ai<0)ai=(a.alt||'').indexOf(q);
+    if(bi<0)bi=(b.alt||'').indexOf(q);
+    if(ai>=0&&bi>=0&&ai!==bi)return ai-bi;
     return (a.i||0)-(b.i||0);
   });
   words.sort(function(a,b){
@@ -7247,16 +7261,31 @@ function enterModule(mod){
 }
 
 function renderComingSoon(mod){
-  var names={fitness:''+_t('כושר ואימונים')+''};
-  var icons={fitness:'&#x1F3CB;&#xFE0F;'};
-  var colors={fitness:PAL.terra500};
+  /* Read from the list the home screen is already built from, rather than
+     from a table beside this function. That table held one entry - fitness -
+     for a module built long ago that never reaches here, so icons[mod] and
+     names[mod] were both undefined and this screen would have drawn the word
+     "undefined" twice.
+
+     WOULD HAVE: no user can reach this today. Every id in HOME_AREAS is
+     explicitly routed, so the fallback is currently dead - it was found by
+     calling enterModule with an id no button sends. It is fixed because the
+     next area added to HOME_AREAS before it is routed lands here, which is
+     exactly the case this screen exists for. A second lookup table would rot
+     the same way; this one cannot, because the home screen depends on it. */
+  var area=null,ai;
+  for(ai=0;ai<HOME_AREAS.length;ai++)if(HOME_AREAS[ai].id===mod){area=HOME_AREAS[ai];break;}
+  var names={},icons={},colors={};
+  names[mod]=area?area.title:mod;
+  icons[mod]=area?area.svg:'';
+  colors[mod]=area?area.color:PAL.violet500;
   document.getElementById('hdr-date').textContent='';
   document.getElementById('hdr-title').textContent=names[mod]||mod;
   ['today','history','day'].forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.className='tab';});
   document.getElementById('content').innerHTML=
     '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:40px 20px">'+
-    '<div style="font-size:64px;margin-bottom:20px">'+icons[mod]+'</div>'+
-    '<div style="font-size:22px;font-weight:800;color:var(--ink);margin-bottom:8px">'+names[mod]+'</div>'+
+    (icons[mod]?'<div class="cs-ic" style="color:'+colors[mod]+'">'+icons[mod]+'</div>':'')+
+    '<div style="font-size:22px;font-weight:800;color:var(--ink);margin-bottom:8px">'+esc(names[mod])+'</div>'+
     '<div style="font-size:14px;color:var(--muted);margin-bottom:32px;line-height:1.6">'+_t('המודול הזה נמצא בפיתוח')+'<br>'+_t('יגיע בקרוב &#x2728;')+'</div>'+
     '<button onclick="goHome()" style="background:linear-gradient(135deg,'+colors[mod]+','+colors[mod]+'99);border:none;border-radius:16px;padding:14px 32px;font-size:14px;font-weight:700;color:var(--white);cursor:pointer">'+_t('חזרה לבית')+'</button>'+
     '</div>';

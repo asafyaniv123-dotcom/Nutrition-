@@ -251,6 +251,7 @@ const CORE = [
          pt: 'Alho', ja: 'にんにく', 'zh-Hans': '大蒜', 'zh-Hant': '大蒜', ar: 'ثوم' } },
 
   { id: 'mushroom',     he: 'פטריות, טריות',
+    aka: ['きのこ','キノコ'],
     t: { en: 'Mushrooms', de: 'Champignons', es: 'Champiñones', fr: 'Champignons',
          it: 'Funghi', pt: 'Cogumelos', ja: 'マッシュルーム', 'zh-Hans': '蘑菇',
          'zh-Hant': '蘑菇', ar: 'فطر' } },
@@ -2123,6 +2124,90 @@ const CORE = [
          ja: 'ジャム（砂糖控えめ・全種類）', 'zh-Hans': '低糖果酱（各种口味）',
          'zh-Hant': '低糖果醬（各種口味）', ar: 'مربى قليل السكر، بجميع النكهات' } },
 
+  /* ── found by a 229-word search sweep ─────────────────────────────────── */
+
+  /* 1 kcal. Coffee is water with a smell, and the number says so - which is
+     exactly why it is worth having: without it, someone logging six coffees a
+     day has six gaps in their diary. */
+  { id: 'coffee-brewed', he: 'קפה, מוכן מקפה טחון, רגיל, כולל קפה פילטר',
+    /* The name is method-neutral because the row is; the METHODS are aliases,
+       so someone who thinks of it as filter coffee still finds it without
+       eleven names claiming the row is only that. */
+    aka: ['filter coffee','Filterkaffee','drip coffee','קפה פילטר','café filtre','ドリップコーヒー'],
+    /* Method-NEUTRAL in all eleven, the way core:tea-brewed already is. The
+       Hebrew says כולל קפה פילטר - filter INCLUDED - and eight of the names
+       turned that into filter only, so a moka pot or cafetière read as not
+       this row, and "filter coffee" and "Filterkaffee" found nothing. */
+    t: { en: 'Coffee, brewed', de: 'Kaffee, aufgebrüht', es: 'Café preparado',
+         fr: 'Café infusé', it: 'Caffè preparato', pt: 'Café preparado',
+         ja: 'コーヒー（浸出液）', 'zh-Hans': '咖啡（冲泡）',
+         'zh-Hant': '咖啡（沖泡）', ar: 'قهوة محضّرة' } },
+
+  { id: 'coffee-espresso', he: 'קפה, מוכן אספרסו,כולל טורקי/שחור,לא ממותק',
+    t: { en: 'Espresso or Turkish coffee, unsweetened',
+         de: 'Espresso oder türkischer Kaffee, ungesüßt',
+         es: 'Espresso o café turco, sin azúcar',
+         fr: 'Expresso ou café turc, non sucré',
+         it: 'Espresso o caffè turco, non zuccherato',
+         pt: 'Expresso ou café turco, sem açúcar',
+         ja: 'エスプレッソ／トルココーヒー（無糖）',
+         /* Both halves whole. Chinese has no spaces, so 浓缩咖啡 - the ordinary word
+            for espresso - was not a substring of 浓缩／土耳其咖啡 and returned
+            nothing; 浓缩 alone means "concentrated", not a drink. */
+         'zh-Hans': '浓缩咖啡／土耳其咖啡（无糖）',
+         'zh-Hant': '濃縮咖啡／土耳其咖啡（無糖）', ar: 'إسبريسو أو قهوة تركية بدون سكر' } },
+
+  /* The DARK row. The table separates בהירים from כהים, and the two are
+     different vegetables to different readers: zucchina, Zucchini, ズッキーニ
+     and 西葫芦 all denote the dark Italian courgette, while كوسا is the pale
+     Levantine kousa. Naming the light row in all eleven made ten of them
+     point at the wrong squash for one kcal of difference.
+
+     RECORDED EXCEPTION to the qualifier rule: כהים separates sibling rows
+     and is dropped anyway, because "dark courgette" is a word nobody types
+     in any of the eleven - the colour is how the table distinguishes them,
+     not how people name them. The pale kousa is deliberately not carried. */
+  { id: 'courgette-fresh', he: 'קישואים, כהים, חיים, עם קליפה',
+    t: { en: 'Courgette (zucchini), raw', de: 'Zucchini, roh',
+         es: 'Calabacín crudo', fr: 'Courgette crue',
+         it: 'Zucchina cruda', pt: 'Abobrinha crua',
+         ja: 'ズッキーニ（生）', 'zh-Hans': '西葫芦（生）', 'zh-Hant': '櫛瓜（生）',
+         ar: 'كوسا نيئة' } },
+
+  { id: 'courgette-cooked', he: 'קישואים מבושלים עם מלח, ללא תוספת שומן בבישול',
+    t: { en: 'Courgette (zucchini), cooked without fat',
+         de: 'Zucchini, ohne Fett gegart',
+         es: 'Calabacín cocido sin grasa',
+         fr: 'Courgette cuite sans matière grasse',
+         it: 'Zucchina cotta senza grassi',
+         pt: 'Abobrinha cozida sem gordura',
+         ja: 'ズッキーニ（油なしで加熱）', 'zh-Hans': '西葫芦（无油烹煮）',
+         'zh-Hant': '櫛瓜（無油烹煮）', ar: 'كوسا مطبوخة بدون دهن' } },
+
+  { id: 'frankfurters', he: 'נקניקיות בקר/הודו/חזיר,מעדני מזרע',
+    /* The row is בקר/הודו/חזיר and every name says so. A Hebrew reader sees
+       חזיר on screen; an Arabic reader was shown only "frankfurters", and
+       pork is the one qualifier a large part of that readership screens
+       for. The Hebrew name is itself the evidence it matters. */
+    t: { en: 'Frankfurters, beef, turkey or pork',
+         de: 'Frankfurter Würstchen, Rind, Pute oder Schwein',
+         es: 'Salchichas frankfurt, vacuno, pavo o cerdo',
+         fr: 'Saucisses de Francfort, bœuf, dinde ou porc',
+         it: 'Würstel di manzo, tacchino o maiale',
+         pt: 'Salsichas frankfurt, bovina, peru ou porco',
+         ja: 'フランクフルト（牛・七面鳥・豚）',
+         'zh-Hans': '法兰克福香肠（牛／火鸡／猪）',
+         'zh-Hant': '法蘭克福香腸（牛／火雞／豬）',
+         ar: 'نقانق فرانكفورت (بقر أو ديك رومي أو خنزير)' } },
+
+  /* NOT `סלמי איטלקי, עוף טוב` - עוף טוב is a poultry producer and that row
+     is 243/14/19, below every other salami in the table and ~40% under what
+     the word means in any of the eleven languages. This row is 355/26/27. */
+  { id: 'salami', he: 'נקניק, סלמי, מעדני מזרע',
+    t: { en: 'Salami', de: 'Salami', es: 'Salami', fr: 'Salami', it: 'Salame',
+         pt: 'Salame', ja: 'サラミ', 'zh-Hans': '萨拉米香肠',
+         'zh-Hant': '薩拉米香腸', ar: 'سلامي' } },
+
 ];
 
 const LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', 'ar'];
@@ -2137,11 +2222,21 @@ const missing = [];
 const gaps = [];
 const unsourced = [];
 const seen = new Set();
+const rowSeen = new Map();
 for (const c of CORE) {
   /* An id used twice would silently keep only one of the two foods, and the
      count at the end would still look right. */
   if (seen.has(c.id)) unsourced.push(c.id + ' is declared twice');
   seen.add(c.id);
+
+  /* And the same ROW twice under two ids, which the id check cannot see: it
+     builds clean, ships two entries with identical numbers, and shows the
+     reader the same food twice under different names. Three entries have
+     already been dropped by hand for exactly this - celery-stalk, salted
+     butter, wholewheat spaghetti - so it is worth a check rather than an
+     eye. */
+  if (rowSeen.has(c.he)) unsourced.push(c.id + ' names the same row as ' + rowSeen.get(c.he));
+  else rowSeen.set(c.he, c.id);
 
   const src = c.src || 'moh';
   if (!SOURCES[src]) { unsourced.push(c.id + ' claims an unknown source: ' + src); continue; }
