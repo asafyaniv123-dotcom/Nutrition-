@@ -1010,6 +1010,125 @@ export default {
        allowed to carry its own values, and is marked so it can be seen.
 
        Secrets: AI_KEY. Optional: ANALYZE_DAILY_CAP (default 80/IP/day). */
+    /* ── /see ── what is on the plate ──
+       One look, not a conversation. The reply is a sentence naming each food
+       with a weight, and that sentence goes straight into /analyze, which
+       already knows how to turn food into numbers out of the tables. The
+       picture is never asked for a calorie figure: a model will give one,
+       and it would sit on screen in the same typeface as the measured rows
+       with nothing to say it was invented. */
+    if (url.pathname === '/see' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'photos are not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const data = String((b && b.image) || '');
+      const mime = String((b && b.mime) || 'image/jpeg');
+      const LANG = langName(b && b.lang);
+      if (!/^image\/(jpeg|png|webp)$/.test(mime)) return json({ error: 'bad image type' }, 400);
+      /* Base64 only, and nothing that is not base64 - this string is handed
+         to the model API verbatim. The client sends about 80-120 KB after
+         downscaling; 900 KB is generous and still bounded. */
+      if (!/^[A-Za-z0-9+/]+=*$/.test(data)) return json({ error: 'bad image' }, 400);
+      if (data.length < 500) return json({ error: 'bad image' }, 400);
+      if (data.length > 900000) return json({ error: 'image too large' }, 413);
+
+      /* Its own budget. An image is several times the cost of a sentence, and
+         /analyze's cap was sized for sentences. */
+      const cap = Number(env.SEE_DAILY_CAP || 40);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'se:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const SYSTEM =
+        'You look at a photograph of food and say what is on the plate and how\n' +
+        'much of each thing there is. Another part of the app then prices every\n' +
+        'item from measured nutrition tables, so your job is identification and\n' +
+        'portion size ONLY.\n' +
+        '\n' +
+        'Judging the amount is most of the work. Use what is in the frame for\n' +
+        'scale - a fork is about 19 cm, a dinner plate 26 cm, a slice of bread\n' +
+        '30 g, an egg 55 g, a standard can 330 ml. Say the weight of the food\n' +
+        'as served, not of the packet it came from.\n' +
+        '\n' +
+        'Name things plainly and separately. Rice with chicken and salad is\n' +
+        'three items, not one. Include what is easy to forget and carries real\n' +
+        'energy: the oil something was fried in, the dressing on a salad, the\n' +
+        'butter on bread, the sauce under the pasta.\n' +
+        '\n' +
+        'NEVER give calories, protein, carbohydrate or fat. Not for an item and\n' +
+        'not for the plate. Those come from the tables, and a number from you\n' +
+        'would appear beside measured ones with nothing to mark it as a guess.\n' +
+        '\n' +
+        'If the picture is not food, or you cannot tell what it is, say so with\n' +
+        'ok false and leave items empty. A confident wrong answer costs someone\n' +
+        'their day; an honest "I cannot see it" costs them one retake.\n' +
+        '\n' +
+        'Write dish and every item name in ' + LANG + '. Reply with JSON only,\n' +
+        'no prose and no code fence:\n' +
+        '{"ok":true,"dish":"short name of the meal","items":[{"name":"food","grams":150}],\n' +
+        ' "note":"what you assumed, one short sentence","confidence":"high|medium|low"}';
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 800,
+            temperature: 0,
+            system: SYSTEM,
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'image', source: { type: 'base64', media_type: mime, data } },
+                { type: 'text', text: 'What food is in this picture, and how much of each?' },
+              ],
+            }],
+          }),
+        });
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+
+      let d;
+      try { d = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
+      const text = ((d && d.content) || []).map((c) => c.text || '').join('').trim();
+      let out;
+      try { out = JSON.parse(text.replace(/^```(?:json)?|```$/g, '').trim()); }
+      catch { return json({ ok: false, why: 'unreadable' }); }
+      if (!out || out.ok === false) return json({ ok: false, why: 'not food' });
+
+      /* Rebuilt field by field rather than passed through: whatever it sent
+         reaches a screen, and a kcal key smuggled into an item would be shown
+         as measured. Only a name and a weight survive. */
+      const items = [];
+      for (const it of (Array.isArray(out.items) ? out.items : []).slice(0, 12)) {
+        const name = String((it && it.name) || '').trim().slice(0, 40);
+        const g = Number(it && it.grams);
+        if (name.length < 2) continue;
+        if (!isFinite(g) || g <= 0 || g > 3000) continue;
+        items.push({ name, grams: Math.round(g) });
+      }
+      if (!items.length) return json({ ok: false, why: 'nothing seen' });
+
+      return json({
+        ok: true,
+        dish: String(out.dish || '').trim().slice(0, 60),
+        items,
+        note: String(out.note || '').trim().slice(0, 240),
+        confidence: ['high', 'medium', 'low'].indexOf(out.confidence) >= 0 ? out.confidence : 'low',
+      });
+    }
     if (url.pathname === '/analyze' && req.method === 'POST') {
       if (!env.AI_KEY) return json({ error: 'analysis is not configured' }, 503);
 

@@ -399,6 +399,10 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .say-in{width:100%;min-height:76px;border:1.5px solid var(--line-strong);border-radius:13px;padding:11px 13px;font-size:16px;font-family:inherit;outline:none;background:var(--card);unicode-bidi:plaintext;resize:none;line-height:1.6}
 .say-in:focus{border-color:var(--violet-300)}
 .say-go{width:100%;margin-top:8px;border:none;border-radius:13px;padding:12px;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white);font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
+.say-cam{display:block;width:100%;margin-top:7px;border:1.5px dashed var(--line-strong);border-radius:13px;padding:11px;background:none;color:var(--ink-soft);font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center}
+.say-shot{margin-top:9px;text-align:center}
+.say-shot img{max-height:132px;border-radius:12px}
+.say-note{margin-top:9px;font-size:11px;color:var(--muted);line-height:1.6;padding:0 2px}
 .say-msg{font-size:11.5px;color:var(--muted);text-align:center;padding:14px 6px;line-height:1.7}
 .say-row{display:flex;align-items:flex-start;gap:8px;background:var(--card);border-radius:14px;padding:10px 11px;margin-top:8px;box-shadow:0 2px 9px rgba(200,180,160,.1)}
 .say-x{border:none;background:none;color:#d8cfc6;font-size:17px;line-height:1;cursor:pointer;padding:0 2px;font-family:inherit;flex-shrink:0}
@@ -4155,7 +4159,7 @@ function addSetMode(k){
   libOpen=(_addMode==='lib');
   compOpen=(_addMode==='comp');
   manOpen=(_addMode==='man');
-  if(_addMode!=='say'){_sayItems=null;_sayErr='';}
+  if(_addMode!=='say'){_sayItems=null;_sayErr='';_picThumb='';_picNote='';_picBusy=false;}
   if(_addMode!=='find')pendingLib=null;
   render();
   if(_addMode==='find'){
@@ -4231,6 +4235,88 @@ function addPanelHTML(inner){
     '<span class="aw-hic">'+w.ic+'</span><span class="aw-ht">'+w.t+'</span>'+
     '<button class="aw-x" onclick="addSetMode(&quot;'+_addMode+'&quot;)" aria-label="'+_t("סגור")+'">&times;</button>'+
     '</div>'+inner+'</div>';
+}
+/* ── PHOTOGRAPH THE MEAL ──
+   /see looks at the picture once and says what is on the plate and roughly
+   what each thing weighs - never a calorie figure. Its answer is the shape
+   /parse already returns, so from sayResolveAll onwards this IS the sentence
+   flow: the same rows, the same editable amounts, the same measured numbers
+   out of the same tables, and the same button to put it in the day. */
+var _picBusy=false,_picNote='',_picThumb='';
+/* 900px and quality 0.72 lands around 60-90 KB. The size is about WAITING,
+   not bandwidth: a 4 MB photo straight off a phone camera is several seconds
+   of upload before a single thing happens on screen. */
+function picShrink(file,done){
+  var reader=new FileReader();
+  reader.onerror=function(){done(null);};
+  reader.onload=function(e){
+    var img=new Image();
+    img.onerror=function(){done(null);};
+    img.onload=function(){
+      var w=img.width,h=img.height,max=900;
+      if(w>max||h>max){var sc=max/Math.max(w,h);w=Math.round(w*sc);h=Math.round(h*sc);}
+      var can=document.createElement('canvas');can.width=w;can.height=h;
+      /* White underneath: a PNG with transparency would otherwise flatten to
+         black in the JPEG and take half the plate with it. */
+      var cx=can.getContext('2d');
+      cx.fillStyle='#fff';cx.fillRect(0,0,w,h);
+      cx.drawImage(img,0,0,w,h);
+      done(can.toDataURL('image/jpeg',0.72));
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function picPick(input){
+  var file=input&&input.files&&input.files[0];
+  /* Cleared so the SAME picture can be chosen twice - without this, picking
+     the file you just picked fires no change event and nothing happens. */
+  if(input)input.value='';
+  if(!file)return;
+  if(!SYNC_SERVER){_sayErr=''+_t('הצילום דורש חיבור לשרת.')+'';sayPaint();return;}
+  _picBusy=true;_picNote='';_sayErr='';_sayItems=null;_sayBusy=true;sayPaint();
+  picShrink(file,function(dataUrl){
+    if(!dataUrl){picFail(''+_t('לא הצלחתי לקרוא את התמונה.')+'');return;}
+    _picThumb=dataUrl;render();sayPaint();
+    picGo(dataUrl);
+  });
+}
+function picFail(msg){
+  _picBusy=false;_sayBusy=false;_sayErr=msg;sayPaint();
+}
+function picGo(dataUrl){
+  var comma=dataUrl.indexOf(',');
+  foodsLoad(function(){});
+  fetch(SYNC_SERVER+'/see',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({image:dataUrl.slice(comma+1),mime:'image/jpeg',lang:appLang()})
+  }).then(function(r){return r.json();})
+    .then(function(j){
+      if(!j||!j.ok){
+        /* Said no on purpose, and the reason matters: "that is not food" is
+           answerable by taking another picture, and being told only that it
+           failed is not. */
+        picFail(j&&j.error==='too many for today'
+          ?''+_t('הגעת למכסה היומית של הצילומים.')+''
+          :''+_t('לא זיהיתי אוכל בתמונה. נסה מקרוב יותר, או כתוב מה אכלת.')+'');
+        return;
+      }
+      _picNote=String(j.note||'');
+      /* Grams, because that is what a picture gives - a portion, not a count
+         of units. It is also the one unit that needs no per-item weight, so
+         nothing downstream has to guess how much one of anything weighs. */
+      var items=(j.items||[]).map(function(it){
+        return {food:it.name,amount:it.grams,unit:'g'};
+      });
+      if(!items.length){picFail(''+_t('לא זיהיתי אוכל בתמונה. נסה מקרוב יותר, או כתוב מה אכלת.')+'');return;}
+      foodsLoad(function(){
+        sayResolveAll(items,function(rows){
+          _picBusy=false;_sayBusy=false;_sayItems=rows;_sayRow=-1;
+          sayPaint();
+        });
+      });
+    })
+    .catch(function(){picFail(''+_t('אין חיבור כרגע.')+'');});
 }
 function sayGo(){
   var el=document.getElementById('say-in');
@@ -4634,10 +4720,16 @@ function sayExpand(i){_sayRow=(_sayRow===i)?-1:i;sayPaint();}
 function sayPaint(){
   var el=document.getElementById('say-body');
   if(!el)return;
-  if(_sayBusy){el.innerHTML='<div class="say-msg">'+_t('קורא מה כתבת…')+'</div>';return;}
+  if(_sayBusy){el.innerHTML='<div class="say-msg">'+
+    (_picBusy?_t('מסתכל על התמונה…'):_t('קורא מה כתבת…'))+'</div>';return;}
   if(_sayErr){el.innerHTML='<div class="say-msg">'+esc(_sayErr)+'</div>';return;}
   if(!_sayItems){el.innerHTML='';return;}
-  var h='',i,row,a,open;
+  /* What it took the sizes to be. A portion read off a photograph is the
+     shakiest number in the whole chain, and the person holding the plate is
+     the only one who can correct it - so what it assumed is on screen, not
+     behind a tap. */
+  var _note=_picNote?'<div class="say-note">'+esc(_picNote)+'</div>':'';
+  var h=_note,i,row,a,open;
   for(i=0;i<_sayItems.length;i++){
     row=_sayItems[i];a=sayAmount(row);open=(_sayRow===i);
     h+='<div class="sr'+(open?' open':'')+(row.food?'':' miss')+'">';
@@ -5959,6 +6051,13 @@ function renderToday(){
     sayHTML='<div class="aw-body">'+
       '<textarea class="say-in" id="say-in" placeholder="'+_t("אכלתי 2 ביצים ופרוסת לחם עם גבינה…")+'"></textarea>'+
       '<button class="say-go" onclick="sayGo()">'+_t('פרק לי את זה')+'</button>'+
+      /* The other door into the same list. capture="environment" opens the
+         back camera on a phone and is ignored on a desktop, where the same
+         control picks a file - so one input serves both without asking
+         which kind of machine this is. */
+      '<label class="say-cam">&#x1F4F8; '+_t('או צלם את הצלחת')+
+      '<input type="file" accept="image/*" capture="environment" hidden onchange="picPick(this)"></label>'+
+      (_picThumb?'<div class="say-shot"><img src="'+_picThumb+'" alt=""></div>':'')+
       '<div id="say-body"></div></div>';
   }
 
