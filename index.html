@@ -7046,137 +7046,6 @@ function renderComingSoon(mod){
 }
 
 /* ── FITNESS MODULE ── */
-/* ── FITNESS MODE & COACH ── */
-function loadFitMode(){try{return localStorage.getItem('fit_mode')||null;}catch(e){return null;}}
-function saveFitMode(m){try{if(m)localStorage.setItem('fit_mode',m);else localStorage.removeItem('fit_mode');}catch(e){}}
-function loadCoachPlan(){try{var x=localStorage.getItem('coach_plan');return x?JSON.parse(x):null;}catch(e){return null;}}
-function saveCoachPlan(p){try{if(p)localStorage.setItem('coach_plan',JSON.stringify(p));else localStorage.removeItem('coach_plan');}catch(e){}}
-
-var _coachAnswers={};
-var _coachStep=0;
-
-var COACH_QUESTIONS;langOn(function(){COACH_QUESTIONS=[
-  {id:'experience',q:''+_t('האם אי פעם אימנת בחדר כושר?')+'',type:'choice',
-   options:[''+_t('כן, אני מנוסה')+'',''+_t('כן, אני מתאמן באופן סדיר')+'',''+_t('לא, אני חדש')+'']},
-  {id:'equipment',q:''+_t('איזה ציוד יש לך גישה?')+'',type:'choice',
-   options:[''+_t('חדר כושר מלא')+'',''+_t('משקולות יד ביתי')+'',''+_t('עניבות/TRX בלבד')+'',''+_t('בלי ציוד כלל')+'']},
-  {id:'days',q:''+_t('כמה פעמים בשבוע תוכל להתאמן?')+'',type:'choice',
-   options:['2-3','3-4','4-5','5+']},
-  {id:'goal',q:''+_t('מה המטרה עיקרית שלך?')+'',type:'choice',
-   options:[''+_t('בניית שריר')+'',''+_t('ירידת שומן')+'',''+_t('שיפור כוח כללי')+'',''+_t('כושר ובריאות')+'']},
-  {id:'session',q:''+_t('כמה זמן יש לך לכל אימון?')+'',type:'choice',
-   options:[''+_t('30-45 דקות')+'',''+_t('45-60 דקות')+'',''+_t('60-75 דקות')+'',''+_t('75+ דקות')+'']},
-  {id:'limit',q:''+_t('יש איזשהו מגבלה פיזית?')+'',type:'text',placeholder:''+_t('למשל: כאב גב, ברך... (או לא אם אין)')+''}
-];});
-
-function renderCoachQuestionnaire(){
-  var q=COACH_QUESTIONS[_coachStep];
-  var h='<div style="padding:20px 0">';
-  h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:8px">'+_t('שאלה {n} מתוך {t}',{n:_coachStep+1,t:COACH_QUESTIONS.length})+'</div>';
-  h+='<div style="font-size:20px;font-weight:800;color:var(--ink);margin-bottom:24px;line-height:1.4">'+q.q+'</div>';
-  if(q.type==='choice'){
-    h+='<div style="display:flex;flex-direction:column;gap:10px">';
-    for(var oi=0;oi<q.options.length;oi++){
-      var opt=q.options[oi];var isSel=_coachAnswers[q.id]===opt;
-      h+='<button onclick="coachSelectOption(\''+q.id+'\','+oi+')" style="background:'+(isSel?'linear-gradient(135deg,var(--violet-300),var(--violet-500))':'var(--card)')+';border:2px solid '+(isSel?'var(--violet-500)':'var(--line)')+';border-radius:16px;padding:14px 18px;font-size:13px;font-weight:700;cursor:pointer;color:'+(isSel?'var(--white)':'var(--ink)')+';text-align:start">'+esc(opt)+'</button>';
-    }
-    h+='</div>';
-  } else {
-    h+='<textarea id="coach-text-inp" class="q-input" rows="3" placeholder="'+(q.placeholder||'')+'" style="min-height:80px">'+(  _coachAnswers[q.id]||'')+'</textarea>';
-  }
-  h+='<div style="display:flex;gap:10px;margin-top:24px">';
-  if(_coachStep>0)h+='<button onclick="_coachStep--;renderFitness()" style="background:var(--surface);border:none;border-radius:14px;padding:14px 20px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('חזרה')+'</button>';
-  h+='<button onclick="coachNextStep()" style="flex:1;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+(_coachStep===COACH_QUESTIONS.length-1?''+_t('בנה תוכנית')+' &#10003;':''+_t('המשך')+' &#8594;')+'</button>';
-  h+='</div></div>';
-  document.getElementById('hdr-title').textContent=''+_t('מאמן אישי')+'';
-  document.getElementById('content').innerHTML=h;
-}
-
-function coachSelectOption(id,oi){
-  var q=COACH_QUESTIONS.find(function(x){return x.id===id;});
-  if(q)_coachAnswers[id]=q.options[oi];
-  renderFitness();
-}
-function coachNextStep(){
-  var q=COACH_QUESTIONS[_coachStep];
-  if(q.type==='text'){var inp=document.getElementById('coach-text-inp');if(inp)_coachAnswers[q.id]=inp.value.trim()||''+_t('לא')+'';}
-  if(!_coachAnswers[q.id]){showToast(''+_t('בחר תשובה')+'');return;}
-  if(_coachStep<COACH_QUESTIONS.length-1){_coachStep++;renderFitness();}
-  else{buildCoachPlan();}
-}
-
-function buildCoachPlan(){
-  document.getElementById('content').innerHTML=
-    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;text-align:center;padding:40px 20px">'+
-    '<div style="font-size:44px;margin-bottom:16px;animation:plane-fly 1.5s ease-in-out infinite">&#x1F9E0;</div>'+
-    '<div style="font-size:17px;font-weight:800;color:var(--ink);margin-bottom:8px">'+_t('בונה תוכנית...')+'</div>'+
-    '<div style="font-size:13px;color:var(--muted)">'+_t('מנתח את המידע ובונה עבורך')+'</div>'+
-    '</div>';
-  var a=_coachAnswers;
-  var prompt='אתה מאמן כושר אישי. בנה תוכנית אימון שבועית מלאה בעברית:\n'+
-    '- ניסיון: '+a.experience+'\n- ציוד: '+a.equipment+'\n- ימי אימון: '+a.days+'\n- מטרה: '+a.goal+'\n- זמן: '+a.session+'\n- מגבלות: '+a.limit+'\n\n'+
-    'החזר JSON בלבד סלל טקסט נוסף:\n'+
-    '{"summary":"תיאור קצר","daysPerWeek":"טקסט","equipment":"הציוד","days":[{"name":"שם אימון","focus":"קבוצת שריר","exercises":[{"name":"שם","sets":3,"reps":"8-12","note":"הערה"}]}]}';
-
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:prompt}]})
-  })
-  .then(function(r){return r.json();})
-  .then(function(data){
-    var text=data.content.map(function(i){return i.text||'';}).join('');
-    var clean=text.replace(/```json|```/g,'').trim();
-    var plan=JSON.parse(clean);
-    plan.answers=a;saveCoachPlan(plan);_fitView='coach-plan';renderFitness();
-  })
-  .catch(function(){showToast(''+_t('שגיאה בבניית התוכנית')+'');_fitView='home';renderFitness();});
-}
-
-function renderCoachPlan(){
-  var plan=loadCoachPlan();if(!plan){_fitView='home';renderFitness();return;}
-  var h='<div style="padding-bottom:20px">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
-  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('תוכנית האימונים')+'</div>';
-  h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('חזרה')+'</button>';
-  h+='</div>';
-  h+='<div style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border-radius:18px;padding:16px;margin-bottom:14px">';
-  h+='<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em;margin-bottom:6px">'+_t('סיכום')+'</div>';
-  h+='<div style="font-size:14px;color:var(--ink);line-height:1.6">'+esc(plan.summary||'')+'</div>';
-  h+='<div style="display:flex;gap:10px;margin-top:10px">';
-  h+='<div style="background:rgba(255,255,255,.6);border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--violet-500)">'+esc(plan.daysPerWeek||'')+'</div>';
-  h+='<div style="background:rgba(255,255,255,.6);border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--violet-500)">'+esc(plan.equipment||'')+'</div>';
-  h+='</div></div>';
-  var days=plan.days||[];
-  days.forEach(function(day,di){
-    h+='<div style="background:var(--card);border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 2px 10px rgba(200,180,160,.1)">';
-    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
-    h+='<div><div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(day.name)+'</div>';
-    h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(day.focus||'')+'</div></div>';
-    h+='<button onclick="createTemplateFromPlan('+di+')" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:10px;padding:6px 10px;font-size:10px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('+ תבנית')+'</button>';
-    h+='</div>';
-    (day.exercises||[]).forEach(function(ex){
-      h+='<div style="background:var(--panel);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">';
-      h+='<div><div style="font-size:12.5px;font-weight:700;color:var(--ink)">'+esc(ex.name)+'</div>';
-      if(ex.note)h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(ex.note)+'</div>';
-      // the planned rows, not a single sets-by-reps figure
-      var _pl=tplRows(ex);
-      h+='</div><div style="font-size:11px;font-weight:700;color:var(--violet-500);flex-shrink:0">'+_pl.length+' &#215; '+esc(String((_pl[0]&&_pl[0].r)||''))+'</div></div>';
-    });
-    h+='</div>';
-  });
-  h+='<button onclick="_coachStep=0;_coachAnswers={};_fitView=\'coach-q\';renderFitness()" style="width:100%;background:var(--surface);border:none;border-radius:14px;padding:12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted)">'+_t('בנה תוכנית מחדש')+'</button>';
-  h+='</div>';
-  document.getElementById('content').innerHTML=h;
-}
-
-function createTemplateFromPlan(dayIdx){
-  var plan=loadCoachPlan();if(!plan||!plan.days[dayIdx])return;
-  var day=plan.days[dayIdx];var templates=loadTemplates();
-  templates.push({name:day.name,exercises:(day.exercises||[]).map(function(ex){return{name:ex.name,targetSets:ex.sets,targetReps:parseInt(ex.reps)||10,sets:[]};})});
-  saveTemplates(templates);showToast('✓ '+day.name+' '+_t('נוספה לתבניות!')+'');
-}
-
 function loadTemplates(){try{var x=localStorage.getItem('fit_templates');return x?JSON.parse(x):[];}catch(e){return[];}}
 function saveTemplates(arr){try{localStorage.setItem('fit_templates',JSON.stringify(arr));}catch(e){}}
 function loadWorkoutLog(){try{var x=localStorage.getItem('fit_log');return x?JSON.parse(x):[];}catch(e){return[];}}
@@ -7409,8 +7278,6 @@ function renderFitness(){
   else if(_fitView==='history')renderFitHistory();
   else if(_fitView==='progress')renderFitProgress();
   else if(_fitView==='summary')renderFitSummary();
-  else if(_fitView==='coach-q')renderCoachQuestionnaire();
-  else if(_fitView==='coach-plan')renderCoachPlan();
   else if(_fitView==='edit-program')renderEditProgram();
   else if(_fitView==='view-program')renderViewProgram();
   else if(_fitView==='weekly-plan')renderWeeklyPlan();
@@ -7647,7 +7514,6 @@ function renderFitStart(){
   document.getElementById('hdr-title').textContent=''+_t('אימון חדש')+'';
   var templates=loadTemplates();
   var log=loadWorkoutLog();
-  var fitMode=loadFitMode();
   var h='<div style="padding-bottom:24px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
   h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('אימון חדש')+'</div>';
@@ -7655,24 +7521,6 @@ function renderFitStart(){
   h+='</div>';
   /* 1. starting a workout */
   h+=fitStartCardHTML(templates);
-
-  if(fitMode==='coach'){
-    var plan=loadCoachPlan();
-    if(plan){
-      h+='<div style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border-radius:18px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">';
-      h+='<div style="font-size:28px">&#x1F9D1;&#x200D;&#x1F3EB;</div>';
-      h+='<div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--ink)">'+_t('תוכנית אישית פעילה')+'</div>';
-      h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+plan.daysPerWeek+' '+_t('ימי אימון בשבוע')+' &middot; '+plan.equipment+'</div></div>';
-      h+='<button onclick="_fitView=\'coach-plan\';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">'+_t('צפה')+'</button>';
-      h+='</div>';
-    } else {
-      h+='<button onclick="_fitView=\'coach-q\';renderFitness()" style="width:100%;background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--violet-500);margin-bottom:12px;font-family:inherit">&#x1F9D1;&#x200D;&#x1F3EB; '+_t('בנה תוכנית אישית')+'</button>';
-    }
-  }
-
-
-
-
 
   // Steps: the one number that moves every day, workout or not
   var stToday=stepsOf(todayStr()),stSrc=loadStepsSrc();
@@ -8317,31 +8165,7 @@ function fitProgressCardHTML(log){
 function renderFitHome(){
   var templates=loadTemplates();
   var log=loadWorkoutLog();
-  var fitMode=loadFitMode(); // 'solo' | 'coach' | null
-
   var h='<div style="padding-bottom:20px">';
-
-  // Mode selector - nothing else belongs on the screen until this is answered
-  if(!fitMode){
-    h+='<div style="background:var(--card);border-radius:22px;padding:22px 18px;margin-bottom:16px;box-shadow:0 4px 20px rgba(200,180,160,.12);text-align:center">';
-    h+='<div style="font-size:22px;margin-bottom:10px">&#x1F3CB;&#xFE0F;</div>';
-    h+='<div style="font-size:17px;font-weight:800;color:var(--ink);margin-bottom:6px">'+_t('איך תרצה להתאמן?')+'</div>';
-    h+='<div style="font-size:12px;color:var(--muted);margin-bottom:20px">'+_t('בחר את הדרך שמתאימה לך')+'</div>';
-    h+='<div style="display:flex;gap:12px">';
-    h+='<button onclick="saveFitMode(\'coach\');_fitView=\'coach-q\';renderFitness()" style="flex:1;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:16px;padding:16px 10px;cursor:pointer;color:var(--white);font-family:inherit">';
-    h+='<div style="font-size:22px;margin-bottom:6px">&#x1F9D1;&#x200D;&#x1F3EB;</div>';
-    h+='<div style="font-size:13px;font-weight:800">'+_t('מאמן אישי')+'</div>';
-    h+='<div style="font-size:10px;opacity:.8;margin-top:3px">'+_t('תוכנית אימון אישית')+'</div>';
-    h+='</button>';
-    h+='<button onclick="saveFitMode(\'solo\');renderFitness()" style="flex:1;background:linear-gradient(135deg,var(--terra-200),var(--terra-500));border:none;border-radius:16px;padding:16px 10px;cursor:pointer;color:var(--white);font-family:inherit">';
-    h+='<div style="font-size:22px;margin-bottom:6px">&#x1F4AA;</div>';
-    h+='<div style="font-size:13px;font-weight:800">'+_t('מתאמן לבד')+'</div>';
-    h+='<div style="font-size:10px;opacity:.8;margin-top:3px">'+_t('אני בונה את התוכנית')+'</div>';
-    h+='</button>';
-    h+='</div></div>';
-    document.getElementById('content').innerHTML=h+'</div>';
-    return;
-  }
 
   /* ── the areas ──
      כושר used to be one screen with nine things stacked on it: start a
@@ -8364,10 +8188,6 @@ function renderFitHome(){
     h+='<button class="fg-b'+(G.v===fg.v?' on':'')+'" onclick="fitGoalSet(&quot;'+G.v+'&quot;)">'+G.t+'</button>';
   }
   h+='</div><div class="fg-n">'+esc(fg.n)+'</div></div>';
-
-  h+='<div style="text-align:end;margin-top:2px">';
-  h+='<button onclick="saveFitMode(null);saveCoachPlan(null);renderFitness()" style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">'+_t('שנה מוד')+' &#8250;</button>';
-  h+='</div>';
 
   h+='</div>';
   document.getElementById('content').innerHTML=h;
