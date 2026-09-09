@@ -488,6 +488,7 @@ const CORE = [
          'zh-Hant': '杏仁（去皮）', ar: 'لوز مقشّر' } },
 
   { id: 'walnuts',      he: 'אגוזי מלך, בלי קליפה, לא קלויים, ללא מלח',
+    aka: ['אגוזים'],
     t: { en: 'Walnuts, shelled, unroasted, unsalted',
          de: 'Walnüsse, geschält, ungeröstet, ungesalzen',
          es: 'Nueces, peladas, sin tostar, sin sal',
@@ -499,6 +500,7 @@ const CORE = [
          ar: 'جوز مقشور غير محمص وبدون ملح' } },
 
   { id: 'cashews',      he: 'אגוזי קשיו, טבעיים',
+    aka: ['אגוזים'],
     t: { en: 'Cashews, raw', de: 'Cashewkerne, natur', es: 'Anacardos, crudos',
          fr: 'Noix de cajou, nature', it: 'Anacardi, al naturale',
          pt: 'Castanhas de caju, cruas', ja: 'カシューナッツ（生）',
@@ -606,6 +608,7 @@ const CORE = [
          ja: 'ジャム（味を問わず）', 'zh-Hans': '果酱（各种口味）',
          'zh-Hant': '果醬（各種口味）', ar: 'مربى، بجميع النكهات' } },
   { id: 'potato-baked',  he: 'תפוחי אדמה, אפויים, עם מלח, קליפה נאכלה, ללא תוספת שומן',
+    aka: ['תפוח אדמה'],
     t: { en: 'Potato, baked with skin, no added fat',
          de: 'Kartoffel, mit Schale gebacken, ohne Fettzugabe',
          es: 'Patata, asada con piel, sin grasa añadida',
@@ -618,6 +621,7 @@ const CORE = [
          ar: 'بطاطا (بطاطس) مشوية بالقشر بدون دهون مضافة' } },
 
   { id: 'potato-boiled', he: 'תפוחי אדמה, מבושלים, ללא קליפה, עם מלח, ללא תוספת שומן',
+    aka: ['תפוח אדמה'],
     t: { en: 'Potato, boiled and peeled, no added fat',
          de: 'Kartoffel, geschält gekocht, ohne Fettzugabe',
          es: 'Patata, hervida y pelada, sin grasa añadida',
@@ -1089,6 +1093,9 @@ const CORE = [
      breakfast said "בקון"; the table files it under "pork, cutlet/bacon,
      fresh or smoked or salted, cooked", and nothing matched. */
   { id: 'bacon', he: 'בשר חזיר, קוטלט/בייקון, לפנ אם טרי, מעושן או מומלח, מבושל',
+    /* The row says בייקון, foodKey folds that to ביקון, and everyone - the
+       vision model included - writes בקון. One missing yod. */
+    aka: ['בקון'],
     t: { en: 'Bacon, cooked', de: 'Bacon, gebraten', es: 'Bacon (panceta) cocinado',
          fr: 'Bacon cuit', it: 'Bacon cotto', pt: 'Bacon cozido',
          ja: 'ベーコン（加熱済み）', 'zh-Hans': '培根（熟）', 'zh-Hant': '培根（熟）',
@@ -1180,6 +1187,7 @@ const CORE = [
          ar: 'بذور سمسم مقشورة' } },
 
   { id: 'brazil-nuts', he: 'אגוזי ברזיל, טבעיים',
+    aka: ['אגוזים'],
     /* The qualifier goes: the only sibling row is brazil-nut butter, so
        "plain" separates nothing, which is the rule. */
     t: { en: 'Brazil nuts', de: 'Paranüsse', es: 'Nueces de Brasil',
@@ -2162,6 +2170,12 @@ for (const c of CORE) {
      unable to answer the one question src exists for. */
   const row = { id: 'core:' + c.id, k, p, c: cc, f, t, src };
   if (c.ref) row.ref = c.ref;
+  /* Words this food answers to that appear in none of its eleven names - a
+     spelling variant, or a singular where the row is a construct plural.
+     Searched, never shown. Deliberately NOT translations: they carry no
+     meaning of their own, and putting them in `t` would put them on screen
+     and into the language files. */
+  if (Array.isArray(c.aka) && c.aka.length) row.aka = c.aka.slice();
   out.push(row);
 }
 
