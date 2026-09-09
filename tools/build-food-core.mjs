@@ -433,7 +433,9 @@ const CORE = [
          'zh-Hans': '豌豆', 'zh-Hant': '豌豆', ar: 'بازلاء خضراء' } },
 
   { id: 'peas-dry',     he: 'אפונה יבשה',
-    t: { en: 'Peas, dry', de: 'Erbsen, trocken', es: 'Guisantes, secos',
+    /* Split peas, matching the cooked entry: 341/24.5/34.9/1.2 is USDA
+       "peas, split, mature seeds, raw" to the decimal. */
+    t: { en: 'Split peas, dry', de: 'Schälerbsen, trocken', es: 'Guisantes, secos',
          fr: 'Pois, secs', it: 'Piselli, secchi', pt: 'Ervilhas, secas',
          ja: 'えんどう豆（乾燥）', 'zh-Hans': '豌豆（干）',
          'zh-Hant': '豌豆（乾）', ar: 'بازلاء جافة' } },
@@ -1956,6 +1958,162 @@ const CORE = [
          fr: 'Graines de lin', it: 'Semi di lino', pt: 'Sementes de linhaça',
          ja: '亜麻仁（フラックスシード）', 'zh-Hans': '亚麻籽',
          'zh-Hant': '亞麻籽', ar: 'بذور الكتان' } },
+
+  /* ── batch 5: legumes, drinks, and what is drunk rather than eaten ────── */
+
+  { id: 'fava-beans-dry', he: 'פול יבש, לא מבושל',
+    t: { en: 'Fava beans (broad beans), dry', de: 'Ackerbohnen (Puffbohnen), getrocknet',
+         es: 'Habas secas', fr: 'Fèves sèches', it: 'Fave secche',
+         pt: 'Favas secas', ja: 'そら豆（乾燥）', 'zh-Hans': '蚕豆（干）',
+         'zh-Hant': '蠶豆（乾）', ar: 'فول جاف' } },
+
+  { id: 'fava-beans-cooked', he: 'פול יבש, מבושל',
+    /* "Dried" is carried: the table also has a FRESH cooked fava row at 109,
+       and that qualifier is the only thing separating them. */
+    t: { en: 'Fava beans (broad beans), dried, cooked',
+         de: 'Ackerbohnen, getrocknet, gekocht',
+         es: 'Habas secas cocidas', fr: 'Fèves sèches cuites',
+         it: 'Fave secche cotte', pt: 'Favas secas cozidas',
+         ja: 'そら豆（乾燥・ゆで）', 'zh-Hans': '干蚕豆（煮熟）',
+         'zh-Hant': '乾蠶豆（煮熟）', ar: 'فول جاف مطبوخ' } },
+
+  { id: 'lupini-dry', he: 'תורמוס יבש',
+    t: { en: 'Lupini beans, dry', de: 'Lupinen, getrocknet', es: 'Altramuces secos',
+         fr: 'Lupins secs', it: 'Lupini secchi', pt: 'Tremoços secos',
+         ja: 'ルピナス豆（乾燥）', 'zh-Hans': '羽扇豆（干）',
+         'zh-Hant': '羽扇豆（乾）', ar: 'ترمس جاف' } },
+
+  { id: 'lupini-cooked', he: 'תורמוס מבושל',
+    t: { en: 'Lupini beans, cooked', de: 'Lupinen, gekocht', es: 'Altramuces cocidos',
+         fr: 'Lupins cuits', it: 'Lupini cotti', pt: 'Tremoços cozidos',
+         ja: 'ルピナス豆（ゆで）', 'zh-Hans': '羽扇豆（煮熟）',
+         'zh-Hant': '羽扇豆（煮熟）', ar: 'ترمس مطبوخ' } },
+
+  { id: 'split-peas-cooked', he: 'אפונה יבשה, מבושלת, ללא תוספת שומן בבישול, עם מלח',
+    /* SPLIT in all eleven. Four said split and seven said merely dried -
+       one entry contradicting itself - and split is the right word: 341 for
+       the dry row and 117 for this one are USDA's split peas to the
+       decimal. core:peas-dry is corrected to match. */
+    t: { en: 'Split peas, cooked', de: 'Schälerbsen, gekocht',
+         es: 'Guisantes partidos cocidos', fr: 'Pois cassés cuits',
+         it: 'Piselli spezzati cotti', pt: 'Ervilha partida cozida',
+         ja: '割りえんどう豆（ゆで）', 'zh-Hans': '干豌豆瓣（煮熟）',
+         'zh-Hant': '乾豌豆瓣（煮熟）', ar: 'بازلاء مجروشة مطبوخة' } },
+
+  { id: 'walnuts-in-shell', he: 'אגוזי מלך, עם קליפה, לא קלויים, ללא מלח',
+    t: { en: 'Walnuts, weighed in the shell', de: 'Walnüsse, mit Schale gewogen',
+         es: 'Nueces, pesadas con cáscara', fr: 'Noix, pesées en coque',
+         it: 'Noci, pesate con guscio', pt: 'Nozes, pesadas com casca',
+         ja: 'くるみ（殻込みの重さ）', 'zh-Hans': '核桃（连壳称重）',
+         'zh-Hant': '核桃（連殼秤重）', ar: 'جوز موزون بقشره' } },
+
+  { id: 'tofu-soft', he: 'טופו במרקם רך, כפרי בריא, משק ווילר',
+    t: { en: 'Tofu, soft', de: 'Tofu, weich', es: 'Tofu blando', fr: 'Tofu mou',
+         it: 'Tofu morbido', pt: 'Tofu macio', ja: '豆腐（やわらかめ）',
+         'zh-Hans': '嫩豆腐', 'zh-Hant': '嫩豆腐', ar: 'توفو طري' } },
+
+  { id: 'cottage-cheese-3', he: 'גבינת קוטג\' 3% שומן, תנובה',
+    t: { en: 'Cottage cheese, 3%', de: 'Hüttenkäse, 3%', es: 'Queso cottage, 3%',
+         fr: 'Fromage cottage, 3%', it: 'Fiocchi di latte, 3%',
+         pt: 'Queijo cottage, 3%', ja: 'カッテージチーズ 3%',
+         'zh-Hans': '茅屋奶酪 3%', 'zh-Hant': '茅屋起司 3%',
+         ar: 'جبنة قريش 3%' } },
+
+  { id: 'goat-milk-3', he: 'חלב עזים 3.7% שומן, צוריאל',
+    t: { en: 'Goat milk, 3.7%', de: 'Ziegenmilch, 3,7%', es: 'Leche de cabra, 3,7%',
+         fr: 'Lait de chèvre, 3,7%', it: 'Latte di capra, 3,7%',
+         pt: 'Leite de cabra, 3,7%', ja: 'ヤギミルク 3.7%', 'zh-Hans': '山羊奶 3.7%',
+         'zh-Hant': '山羊奶 3.7%', ar: 'حليب ماعز 3.7%' } },
+
+  { id: 'peanut-oil', he: 'שמן בוטנים',
+    t: { en: 'Peanut oil', de: 'Erdnussöl', es: 'Aceite de cacahuete',
+         fr: 'Huile d’arachide', it: 'Olio di arachidi', pt: 'Óleo de amendoim',
+         ja: 'ピーナッツオイル', 'zh-Hans': '花生油', 'zh-Hant': '花生油',
+         ar: 'زيت فول سوداني' } },
+
+  { id: 'coconut-milk', he: 'חלב קוקוס, (נוזל המופק מטחינת הבשר עם מי הקוקוס)',
+    t: { en: 'Coconut milk', de: 'Kokosmilch', es: 'Leche de coco',
+         fr: 'Lait de coco', it: 'Latte di cocco', pt: 'Leite de coco',
+         ja: 'ココナッツミルク', 'zh-Hans': '椰浆', 'zh-Hant': '椰漿',
+         ar: 'حليب جوز الهند' } },
+
+  { id: 'rice-drink', he: 'משקה אורז, אלפרו',
+    t: { en: 'Rice drink', de: 'Reisdrink', es: 'Bebida de arroz',
+         fr: 'Boisson au riz', it: 'Bevanda di riso', pt: 'Bebida de arroz',
+         ja: 'ライスミルク', 'zh-Hans': '大米饮品', 'zh-Hant': '大米飲品',
+         ar: 'مشروب أرز' } },
+
+  { id: 'carrot-juice', he: 'מיץ גזר',
+    t: { en: 'Carrot juice', de: 'Karottensaft', es: 'Zumo de zanahoria',
+         fr: 'Jus de carotte', it: 'Succo di carota', pt: 'Suco de cenoura',
+         ja: 'にんじんジュース', 'zh-Hans': '胡萝卜汁', 'zh-Hant': '胡蘿蔔汁',
+         ar: 'عصير جزر' } },
+
+  { id: 'apple-juice', he: 'מיץ תפוחים',
+    t: { en: 'Apple juice', de: 'Apfelsaft', es: 'Zumo de manzana',
+         fr: 'Jus de pomme', it: 'Succo di mela', pt: 'Suco de maçã',
+         ja: 'りんごジュース', 'zh-Hans': '苹果汁', 'zh-Hant': '蘋果汁',
+         ar: 'عصير تفاح' } },
+
+  /* Ethanol carries 7 kcal a gram and appears in no macro, which is why these
+     four read as zero-calorie under 4/4/9 - the clearest possible statement
+     that the arithmetic was never a validity test. */
+  { id: 'beer', he: 'בירה, כל הסוגים',
+    t: { en: 'Beer', de: 'Bier', es: 'Cerveza', fr: 'Bière', it: 'Birra',
+         pt: 'Cerveja', ja: 'ビール', 'zh-Hans': '啤酒', 'zh-Hant': '啤酒',
+         ar: 'بيرة' } },
+
+  { id: 'beer-light', he: 'בירה, קלה',
+    t: { en: 'Beer, light', de: 'Bier, leicht', es: 'Cerveza light',
+         fr: 'Bière légère', it: 'Birra light', pt: 'Cerveja light',
+         ja: 'ライトビール', 'zh-Hans': '淡啤酒', 'zh-Hant': '淡啤酒',
+         ar: 'بيرة خفيفة' } },
+
+  { id: 'whisky', he: 'ויסקי',
+    t: { en: 'Whisky (whiskey)', de: 'Whisky', es: 'Whisky', fr: 'Whisky', it: 'Whisky',
+         pt: 'Uísque', ja: 'ウイスキー', 'zh-Hans': '威士忌',
+         'zh-Hant': '威士忌', ar: 'ويسكي' } },
+
+  { id: 'vodka', he: 'וודקה, ערק 40% אלכוהול, proof 80',
+    t: { en: 'Vodka or arak, 40% alcohol', de: 'Wodka oder Arak, 40% Alkohol',
+         es: 'Vodka o arak, 40% de alcohol', fr: 'Vodka ou arak, 40% d’alcool',
+         it: 'Vodka o arak, 40% di alcol', pt: 'Vodca ou arak, 40% de álcool',
+         ja: 'ウォッカ／アラック（アルコール40%）', 'zh-Hans': '伏特加／亚力酒（40%酒精）',
+         'zh-Hant': '伏特加／亞力酒（40%酒精）', ar: 'فودكا أو عرق 40% كحول' } },
+
+  { id: 'apricot-canned-juice', he: 'משמש, מבושל או משומר, במיץ',
+    t: { en: 'Apricots, canned in juice', de: 'Aprikosen, Dose in Saft',
+         es: 'Albaricoques en conserva, en su jugo',
+         fr: 'Abricots en conserve, au jus', it: 'Albicocche in scatola, al succo',
+         pt: 'Damascos em conserva, no próprio suco',
+         ja: 'あんず（果汁漬け缶詰）', 'zh-Hans': '杏罐头（原汁）',
+         'zh-Hant': '杏罐頭（原汁）', ar: 'مشمش معلب في عصيره' } },
+
+  { id: 'carob', he: 'חרובים, שלמים כולל קמח',
+    /* The row is USDA carob FLOUR to the decimal, and nobody weighs "carob
+       whole including flour" - that was the Hebrew descriptor rendered word
+       for word, which is the one thing the English is not allowed to be. */
+    t: { en: 'Carob powder (ground pods)', de: 'Johannisbrotmehl (Carobpulver)',
+         es: 'Algarroba en polvo', fr: 'Poudre de caroube',
+         it: 'Farina di carrube', pt: 'Alfarroba em pó',
+         ja: 'キャロブパウダー', 'zh-Hans': '角豆粉',
+         'zh-Hant': '角豆粉', ar: 'مسحوق الخروب' } },
+
+  { id: 'raisins-cooked', he: 'צימוקים, מבושלים',
+    t: { en: 'Raisins, stewed', de: 'Rosinen, gekocht', es: 'Pasas cocidas',
+         fr: 'Raisins secs cuits', it: 'Uvetta cotta', pt: 'Passas cozidas',
+         ja: 'レーズン（煮たもの）', 'zh-Hans': '葡萄干（煮过）',
+         'zh-Hant': '葡萄乾（煮過）', ar: 'زبيب مطبوخ' } },
+
+  { id: 'jam-reduced-sugar', he: 'ריבה, דלת סוכר, כל הטעמים',
+    t: { en: 'Jam, reduced sugar, any flavour',
+         de: 'Marmelade, zuckerreduziert, alle Sorten',
+         es: 'Mermelada baja en azúcar, cualquier sabor',
+         fr: 'Confiture allégée en sucre, tous parfums',
+         it: 'Marmellata a ridotto contenuto di zucchero, tutti i gusti',
+         pt: 'Geleia com menos açúcar, qualquer sabor',
+         ja: 'ジャム（砂糖控えめ・全種類）', 'zh-Hans': '低糖果酱（各种口味）',
+         'zh-Hant': '低糖果醬（各種口味）', ar: 'مربى قليل السكر، بجميع النكهات' } },
 
 ];
 
