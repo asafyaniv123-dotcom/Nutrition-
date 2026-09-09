@@ -859,6 +859,47 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .fdb-row.ai{border-inline-start:3px solid var(--violet-300)}
 .fdb-ai-w{font-size:10px;color:var(--muted-soft);padding:8px 2px 0}
 .fdb-msg{font-size:11.5px;color:var(--muted);padding:10px 4px;text-align:center;line-height:1.6}
+.pl{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--panel);border-radius:14px;
+  padding:10px 12px;flex-wrap:wrap}
+.pl-svg{width:100%;max-width:250px;height:auto;flex-shrink:0}
+.pl-svg.sm{width:86px}
+.pl-x{flex:1;min-width:118px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.pl-m{width:100%;font-size:11px;color:var(--ink-soft);line-height:1.5;font-weight:700}
+.pl-l{color:var(--terra-700);font-weight:800}
+.pl-k{background:var(--card);border:none;border-radius:8px;padding:4px 9px;margin:0;
+  font:inherit;font-size:10px;font-weight:800;color:var(--muted);cursor:pointer}
+.tgt{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0 0 10px;
+  margin:0;font:inherit;font-size:11px;color:var(--muted);cursor:pointer}
+.tgt-e{font-size:10px;opacity:.75}
+.tgt-b{background:var(--panel);border-radius:14px;padding:11px 13px;margin:0 0 11px}
+.tgt-r{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.tgt-r:last-of-type{margin-bottom:0}
+.tgt-l{flex:1;font-size:12px;font-weight:700;color:var(--ink-soft)}
+.tgt-x{width:32px;height:32px;border-radius:10px;border:none;background:var(--card);
+  font:inherit;font-size:17px;font-weight:800;color:var(--violet-500);cursor:pointer;line-height:1}
+.tgt-v{min-width:26px;text-align:center;font-size:15px;font-weight:800;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.tgt-n{margin-top:9px;font-size:10px;color:var(--muted);line-height:1.5}
+.fh{display:block;width:100%;border:none;border-radius:24px;padding:22px 18px 18px;
+  margin-bottom:14px;cursor:pointer;font-family:inherit;text-align:center}
+.fh-ic{width:52px;height:52px;border-radius:50%;background:var(--card);margin:0 auto 11px;
+  display:flex;align-items:center;justify-content:center}
+.fh-ic svg{width:26px;height:26px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fh-t{font-size:19px;font-weight:800;color:var(--ink)}
+.fh-s{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.4}
+.fh-go{display:inline-block;margin-top:15px;border-radius:14px;padding:11px 30px;
+  font-size:14px;font-weight:800;color:var(--white)}
+.fr-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.fr{display:flex;align-items:center;gap:12px;width:100%;background:var(--card);border:none;
+  border-radius:17px;padding:13px 14px;cursor:pointer;font-family:inherit;text-align:start;
+  box-shadow:0 2px 10px rgba(200,180,160,.10)}
+.fr-ic{width:36px;height:36px;border-radius:12px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center}
+.fr-ic svg{width:18px;height:18px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fr-x{flex:1;min-width:0;display:flex;flex-direction:column}
+.fr-t{font-size:13.5px;font-weight:800;color:var(--ink)}
+.fr-s{font-size:10.5px;color:var(--muted);margin-top:1px}
+.fr-c{font-size:15px;color:#d8cfc7;flex-shrink:0}
 .fdb-shelf{margin-top:7px;font-size:11px;color:var(--muted)}
 .fdb-shelfb{background:none;border:none;padding:0;margin-inline-start:4px;font:inherit;font-weight:700;color:var(--ink-soft);cursor:pointer}
 .fdb-list{max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:3px}
@@ -7320,28 +7361,210 @@ function plateSplit(total,bar){
   }
   return {plates:out,left:Math.round(perSide*100)/100};
 }
-function plateLineHTML(){
+/* ── WHAT AM I LOADING ──
+   Derived from the exercise database's own equipment tags, overridable per
+   exercise because one of those tags is genuinely ambiguous. */
+var LOAD_KEY='fit_load';
+/* bar   - a barbell: bar weight plus plates on both sides
+   plate - plate-loaded, no bar in the total: a sled, a hammer machine, a horn
+   stack - a pin in a weight stack: nothing to compute, nothing to load
+   fixed - a dumbbell or kettlebell: the number IS the object
+   body  - your own weight, possibly plus something hung on you
+   band  - a rubber band, which has no kilograms at all */
+function loadKind(name){
+  var over=null;
+  try{over=(JSON.parse(localStorage.getItem(LOAD_KEY)||'{}')||{})[name];}catch(e){}
+  if(over)return over;
+  var all=(typeof exAll==='function')?exAll():[],i,e=null;
+  /* The equipment lives in the exercise database, and during a workout that
+     database is usually not loaded - the picker loads it, and you are past
+     the picker. Without this every lift fell through to the default and a
+     dumbbell curl was drawn as a barbell. Fetch it once and repaint; until
+     it lands the default stands, which is one frame, not a session. */
+  if(!all.length&&typeof exLoad==='function'&&_exState==='idle'){
+    exLoad(function(){ if(typeof plateHint==='function')plateHint(); });
+  }
+  for(i=0;i<all.length;i++)if(all[i].n===name){e=all[i];break;}
+  var q=(e&&e.q)||[];
+  /* Order matters: an exercise tagged both מוט and ספסל is a barbell lift,
+     and ספסל is furniture. The specific tags are tested before the vague
+     one, so מכונה only wins when nothing sharper applies. */
+  if(q.indexOf('\u05de\u05d5\u05d8')>=0)return 'bar';
+  if(q.indexOf('\u05de\u05e9\u05e7\u05d5\u05dc\u05d5\u05ea \u05d9\u05d3')>=0)return 'fixed';
+  if(q.indexOf('\u05e7\u05d8\u05dc\u05d1\u05dc')>=0)return 'fixed';
+  if(q.indexOf('\u05e4\u05d5\u05dc\u05d9')>=0)return 'stack';
+  if(q.indexOf('\u05d2\u05d5\u05de\u05d9\u05d9\u05d4')>=0)return 'band';
+  if(q.indexOf('\u05de\u05e9\u05e7\u05dc \u05d2\u05d5\u05e3')>=0)return 'body';
+  if(q.indexOf('\u05de\u05ea\u05d7')>=0)return 'body';
+  /* מכונה covers a pin stack AND a plate-loaded sled - opposite cases. The
+     stack is the commoner one in a commercial gym, so it is the guess, and
+     the guess is one tap from being corrected. */
+  if(q.indexOf('\u05de\u05db\u05d5\u05e0\u05d4')>=0)return 'stack';
+  return 'bar';
+}
+function loadKindSet(name,kind){
+  try{
+    var m=JSON.parse(localStorage.getItem(LOAD_KEY)||'{}')||{};
+    m[name]=kind;
+    localStorage.setItem(LOAD_KEY,JSON.stringify(m));
+  }catch(e){}
+}
+var LOAD_ORDER=['bar','plate','stack','fixed','body','band'];
+function loadCycle(){
+  if(!_fitWorkout)return;
+  var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
+  if(!ex)return;
+  var i=LOAD_ORDER.indexOf(loadKind(ex.name));
+  loadKindSet(ex.name,LOAD_ORDER[(i+1)%LOAD_ORDER.length]);
+  plateHint();
+}
+function loadLabel(k){
+  return k==='bar'?_t('מוט')
+       :k==='plate'?_t('מכונת פלטות')
+       :k==='stack'?_t('מכונת פינים')
+       :k==='fixed'?_t('משקולת')
+       :k==='body'?_t('משקל גוף')
+       :_t('גומייה');
+}
+
+/* The IPF colours. A lifter reads "red, blue" off a bar across the room
+   without counting, so the drawing uses the same code the discs do. Anything
+   not in the table - an odd gym plate, any imperial disc - falls back to a
+   neutral grey, which is honest: it says the colour carries no information
+   here rather than inventing one. */
+var PLATE_COLOR={25:'#C0392B',20:'#2A6FB5',15:'#E3B505',10:'#2E8B57',
+                 5:'#EDEAE4',2.5:'#C0392B',1.25:'#B8B5B0'};
+function plateSvg(plates,bar){
+  var W=250,H=92,mid=H/2;
+  /* Height by weight, the way the real discs are - a 25 towers over a 1.25 -
+     but on a square root so the small ones stay big enough to see. Nothing
+     is allowed under 22px tall or 7px wide: below that the difference
+     between two plates is a couple of pixels, which is not a difference
+     anyone can act on while holding one. */
+  var maxP=plateSet()[0]||25;
+  var g='',i,p,ph,pw,col,edge,x;
+
+  /* The bar: two sleeves and a knurled centre. */
+  g+='<rect x="6" y="'+(mid-3.5)+'" width="'+(W-12)+'" height="7" rx="3.5" fill="#a49b92"/>';
+  g+='<rect x="'+(W/2-30)+'" y="'+(mid-5.5)+'" width="60" height="11" rx="5.5" fill="#79726b"/>';
+
+  /* Plates outward from the sleeve, heaviest inboard, mirrored. */
+  var offL=W/2-32, offR=W/2+32, run=0;
+  /* The offset ACCUMULATES the widths already drawn. Multiplying by the
+     current plate's width - which is what this did first - puts every disc
+     on top of the one before it whenever the widths differ, so a 25 and a 5
+     overlapped and the lighter plate painted over the heavier one. On screen
+     that read as the plates being loaded in the wrong order. */
+  for(i=0;i<plates.length;i++){
+    p=plates[i];
+    ph=Math.max(22,Math.round(H*0.94*Math.sqrt(p/maxP)));
+    pw=p>=20?15:p>=10?13:p>=5?10:7;
+    col=PLATE_COLOR[p]||'#9a938c';
+    /* Its own colour, darkened - not a grey rim. The 5 kg disc is white in
+       the IPF code and vanished on a light panel with a grey edge. */
+    edge=plateEdge(col);
+    g+='<rect x="'+(offL-run-pw)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="3" fill="'+col+'" stroke="'+edge+'" stroke-width="1.4"/>';
+    g+='<rect x="'+(offR+run)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="3" fill="'+col+'" stroke="'+edge+'" stroke-width="1.4"/>';
+    run+=pw+3;
+  }
+
+  /* The collar goes OUTSIDE the plates, which is the end that holds them on.
+     The first version drew it over the innermost plate. */
+  if(plates.length){
+    g+='<rect x="'+(offL-run-4)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="#6b645e"/>';
+    g+='<rect x="'+(offR+run-2)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="#6b645e"/>';
+  }
+  if(bar)g+='<text x="'+(W/2)+'" y="'+(mid+4)+'" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">'+nfmt(bar)+'</text>';
+  return '<svg class="pl-svg" viewBox="0 0 '+W+' '+H+'" role="img">'+g+'</svg>';
+}
+/* A darker version of the plate's own colour, so a white disc gets a grey-
+   brown rim and a red one a darker red, instead of every disc sharing one
+   grey outline that reads as a drawing convention rather than an edge. */
+function plateEdge(hex){
+  var m=/^#([0-9a-f]{6})$/i.exec(hex);
+  if(!m)return 'rgba(0,0,0,.25)';
+  var v=parseInt(m[1],16),r=(v>>16)&255,gg=(v>>8)&255,b=v&255;
+  var d=function(c){return Math.max(0,Math.round(c*0.62));};
+  return 'rgb('+d(r)+','+d(gg)+','+d(b)+')';
+}
+/* A pin stack: blocks and a pin. There is no arithmetic to show - the number
+   on the plate you put the pin under IS the weight - so this draws the object
+   and says nothing it cannot know, like which block that is. */
+function stackSvg(){
+  var g='',i,y;
+  for(i=0;i<9;i++){
+    y=6+i*7.2;
+    g+='<rect x="14" y="'+y+'" width="34" height="5.4" rx="1.6" fill="'+(i<4?'#8e867e':'#d8d2cb')+'"/>';
+  }
+  g+='<rect x="28" y="2" width="6" height="66" rx="3" fill="#b3aca5" opacity=".55"/>';
+  g+='<circle cx="52" cy="'+(6+3*7.2+2.7)+'" r="3.4" fill="#C0392B"/>';
+  g+='<rect x="44" y="'+(6+3*7.2+1.4)+'" width="9" height="2.6" rx="1.3" fill="#C0392B"/>';
+  return '<svg class="pl-svg sm" viewBox="0 0 70 74" role="img">'+g+'</svg>';
+}
+/* A dumbbell or a kettlebell - the number is the object, so the drawing is
+   the object and nothing else. */
+function bellSvg(){
+  var g='';
+  g+='<rect x="30" y="33" width="48" height="7" rx="3.5" fill="#9c948c"/>';
+  g+='<rect x="16" y="20" width="13" height="33" rx="4" fill="#6f6862"/>';
+  g+='<rect x="79" y="20" width="13" height="33" rx="4" fill="#6f6862"/>';
+  g+='<rect x="6" y="25" width="11" height="23" rx="3.5" fill="#857e77"/>';
+  g+='<rect x="91" y="25" width="11" height="23" rx="3.5" fill="#857e77"/>';
+  return '<svg class="pl-svg sm" viewBox="0 0 108 74" role="img">'+g+'</svg>';
+}
+
+/* Replaces the old text line. Same inputs, same maths, and it now refuses to
+   do the maths where the maths does not apply. */
+function plateVisualHTML(){
   var el=document.getElementById('fit-w');
   var total=el?parseFloat(el.value):NaN;
-  var bar=barWeight();
+  var ex=_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx];
+  var kind=ex?loadKind(ex.name):'bar';
   var unit=weightUnit();
-  var barLbl='<button onclick="cycleBar()" style="background:none;border:none;padding:2px 5px;margin:0;font:inherit;font-size:10px;font-weight:800;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px">'+
-    (bar?nfmt(bar)+' '+unit:_t('בלי מוט'))+'</button>';
-  if(!isFinite(total)||total<=0)return '<span style="color:var(--muted)">'+_t('מוט')+' '+barLbl+'</span>';
-  if(!bar)return '<span style="color:var(--muted)">'+_t('בלי מוט')+' &middot; </span>'+barLbl;
-  if(total<bar)return '<span style="color:var(--muted)">'+_t('פחות מהמוט לבדו')+' &middot; </span>'+barLbl;
+  /* The kind is the switch. It sits on the drawing it changes, the way the
+     bar weight already sat on the number it changes. */
+  var sw='<button class="pl-k" onclick="loadCycle()">'+loadLabel(kind)+' &#8646;</button>';
+
+  if(kind==='stack')
+    return '<div class="pl">'+stackSvg()+'<div class="pl-x"><div class="pl-m">'+
+      _t('פין בערימה - אין פלטות להרכיב')+'</div>'+sw+'</div></div>';
+  if(kind==='fixed')
+    return '<div class="pl">'+bellSvg()+'<div class="pl-x"><div class="pl-m">'+
+      (isFinite(total)&&total>0?_t('{w} לכל יד',{w:fmtWeight(total)}):_t('המשקל הוא המשקולת עצמה'))+
+      '</div>'+sw+'</div></div>';
+  if(kind==='body')
+    return '<div class="pl"><div class="pl-x"><div class="pl-m">'+
+      (isFinite(total)&&total>0?_t('משקל גוף + {w}',{w:fmtWeight(total)}):_t('משקל גוף בלבד'))+
+      '</div>'+sw+'</div></div>';
+  if(kind==='band')
+    return '<div class="pl"><div class="pl-x"><div class="pl-m">'+
+      _t('גומייה - אין משקל למדוד')+'</div>'+sw+'</div></div>';
+
+  /* bar and plate differ in one thing: whether the bar is inside the number. */
+  var bar=(kind==='bar')?barWeight():0;
+  if(!isFinite(total)||total<=0)
+    return '<div class="pl"><div class="pl-x"><div class="pl-m">'+
+      _t('הקלד משקל ואראה איך להרכיב')+'</div>'+sw+barSwitchHTML(kind)+'</div></div>';
+  if(kind==='bar'&&total<bar)
+    return '<div class="pl"><div class="pl-x"><div class="pl-m">'+
+      _t('פחות מהמוט לבדו')+'</div>'+sw+barSwitchHTML(kind)+'</div></div>';
   var r=plateSplit(total,bar);
-  if(!r.plates.length)return '<span style="color:var(--muted)">'+_t('המוט לבדו')+' &middot; </span>'+barLbl;
-  var chips=r.plates.map(function(p){
-    return '<span style="display:inline-block;background:var(--violet-50);color:var(--violet-700);border-radius:6px;padding:1px 6px;margin-inline-end:3px;font-weight:800">'+nfmt(p)+'</span>';
-  }).join('');
-  return '<span style="color:var(--muted)">'+_t('לכל צד')+':</span> '+chips+
-    (r.left>0?'<span style="color:var(--terra-700);font-weight:700">+'+nfmt(r.left)+' '+_t('לא ניתן להרכבה')+'</span> ':'')+
-    '&middot; '+barLbl;
+  var msg=!r.plates.length?_t('המוט לבדו')
+    :_t('לכל צד')+': '+r.plates.map(function(p){return nfmt(p);}).join(' + ')+' '+unit;
+  if(r.left>0)msg+=' \u00b7 <span class="pl-l">+'+nfmt(r.left)+' '+_t('לא ניתן להרכבה')+'</span>';
+  return '<div class="pl">'+plateSvg(r.plates,bar,r.left)+
+    '<div class="pl-x"><div class="pl-m">'+msg+'</div>'+sw+barSwitchHTML(kind)+'</div></div>';
+}
+/* Only a barbell has a bar to choose. */
+function barSwitchHTML(kind){
+  if(kind!=='bar')return '';
+  var b=barWeight();
+  return '<button class="pl-k" onclick="cycleBar()">'+
+    (b?nfmt(b)+' '+weightUnit():_t('בלי מוט'))+' &#8646;</button>';
 }
 function plateHint(){
   var box=document.getElementById('fit-plates');
-  if(box)box.innerHTML=plateLineHTML();
+  if(box)box.innerHTML=plateVisualHTML();
 }
 function toggleWarm(){_fitWarm=!_fitWarm;renderFitness();}
 function removeWarm(idx){
@@ -7364,6 +7587,66 @@ function removeWarm(idx){
    rest already ended while the app was away, it simply comes back finished. */
 var FITW_KEY='fit_active';
 var FITW_MAX_AGE=12*60*60*1000;   // nothing that calls itself a workout runs longer
+/* Which exercise's target is open for editing, or -1. Screen state, not
+   workout state, so it is deliberately not inside _fitWorkout - it must not
+   survive being saved and restored. */
+var _fitTgtOpen=-1;
+function fitTgtToggle(){
+  var i=_fitWorkout?_fitWorkout.currentEx:-1;
+  _fitTgtOpen=(_fitTgtOpen===i)?-1:i;
+  renderFitness();
+}
+/* Steppers rather than a number field: this is 3 or 4, never 37, and a
+   keyboard sliding up over the set you are in the middle of is the wrong
+   trade for a number you change by one. */
+function fitTgtBump(which,by){
+  if(!_fitWorkout)return;
+  var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
+  if(!ex)return;
+  if(which==='s')ex.targetSets=Math.max(1,Math.min(20,(ex.targetSets||3)+by));
+  else ex.targetReps=Math.max(1,Math.min(60,(ex.targetReps||10)+by));
+  fitwSave();
+
+  /* And into the template it came from, which is what "next time" means.
+     By NAME: a superset can reorder the session, and an index would write
+     this onto whichever lift had drifted into the slot. */
+  var ti=_fitWorkout.templateIdx;
+  if(ti>=0){
+    var tpls=loadTemplates(),t=tpls[ti];
+    if(t&&t.exercises){
+      for(var j=0;j<t.exercises.length;j++){
+        if(t.exercises[j].name!==ex.name)continue;
+        t.exercises[j].targetSets=ex.targetSets;
+        t.exercises[j].targetReps=ex.targetReps;
+        saveTemplates(tpls);
+        break;
+      }
+    }
+  }
+  renderFitness();
+}
+function fitTgtHTML(ex){
+  var open=(_fitTgtOpen===_fitWorkout.currentEx);
+  var saved=_fitWorkout.templateIdx>=0;
+  var h='<button class="tgt" onclick="fitTgtToggle()">'+
+    ex.targetSets+' '+_t('סטים')+' &#215; '+ex.targetReps+' '+_t('חזרות')+
+    '<span class="tgt-e">'+(open?'&#8963;':'&#9998;')+'</span></button>';
+  if(!open)return h;
+  h+='<div class="tgt-b">';
+  h+=fitTgtRow('s',_t('סטים'),ex.targetSets);
+  h+=fitTgtRow('r',_t('חזרות'),ex.targetReps);
+  /* Says where it went. A change that silently does or does not survive to
+     next week is worse than one that says which. */
+  h+='<div class="tgt-n">'+(saved?_t('נשמר גם לפעם הבאה')
+                                 :_t('לאימון הזה בלבד - הוא לא נשמר כתבנית'))+'</div>';
+  return h+'</div>';
+}
+function fitTgtRow(k,label,val){
+  return '<div class="tgt-r"><span class="tgt-l">'+label+'</span>'+
+    '<button class="tgt-x" onclick="fitTgtBump(&quot;'+k+'&quot;,-1)">&minus;</button>'+
+    '<span class="tgt-v">'+val+'</span>'+
+    '<button class="tgt-x" onclick="fitTgtBump(&quot;'+k+'&quot;,1)">+</button></div>';
+}
 function fitwSave(){
   try{
     if(!_fitWorkout){localStorage.removeItem(FITW_KEY);return;}
@@ -7372,7 +7655,7 @@ function fitwSave(){
     }));
   }catch(e){}
 }
-function fitwClear(){ _fitWorkout=null; try{localStorage.removeItem(FITW_KEY);}catch(e){} }
+function fitwClear(){ _fitWorkout=null; _fitTgtOpen=-1; try{localStorage.removeItem(FITW_KEY);}catch(e){} }
 function fitwRestore(){
   var o=null;
   try{o=JSON.parse(localStorage.getItem(FITW_KEY)||'null');}catch(e){}
@@ -7611,19 +7894,58 @@ var FIT_AREAS;langOn(function(){FIT_AREAS=[
   {id:'steps',t:''+_t('צעדים')+'',s:''+_t('הדבר שזז כל יום')+'',g:'grn',ic:'<path d="M8 4.5c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9S5.8 13.9 5.8 12.7c0-1.8-1-3.1-1-5.1C4.8 5.7 6.4 4.5 8 4.5Z"/><path d="M16.4 9c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9s-1.9-.7-1.9-1.9c0-1.8-1-3.1-1-5.1 0-1.9 1.6-3.1 3.2-3.1Z"/>'},
   {id:'history',t:''+_t('היסטוריה')+'',s:''+_t('כל אימון שרשמת')+'',g:'gry',ic:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.8"/>'},
 ];});
+/* When you last trained and what it was - the fact that decides whether you
+   train today, and the only one worth putting on the card you cannot miss. */
+function fitLastSession(){
+  var log=loadWorkoutLog();
+  if(!log.length)return null;
+  var last=log[log.length-1];
+  if(!last||!last.date)return null;
+  /* Whole days apart on the calendar, not hours divided by 24: training at
+     23:00 and again at 07:00 is yesterday and today, not "0 days ago". */
+  var a=new Date(last.date),b=new Date();
+  a.setHours(0,0,0,0);b.setHours(0,0,0,0);
+  var days=Math.round((b-a)/86400000);
+  return {name:String(last.name||''),days:days};
+}
+/* The one door in nine that gets opened. */
+function fitHeroHTML(a){
+  var gr=RF_GRAD[a.g]||RF_GRAD.gry;
+  var last=fitLastSession();
+  var when=!last?_t('עוד לא רשמת אימון')
+    :last.days===0?_t('האחרון: היום')
+    :last.days===1?_t('האחרון: אתמול')
+    /* Two is its own word in Hebrew and Arabic - יומיים, يومين - and both
+       would read as a mistake written as "2 days". The other nine languages
+       simply say two. */
+    :last.days===2?_t('האחרון: לפני יומיים')
+    :_t('האחרון: לפני {n} ימים',{n:last.days});
+  if(last&&last.name)when+=' \u00b7 '+esc(last.name);
+  return '<button class="fh" onclick="_fitView=\''+a.id+'\';renderFitness()" style="background:'+gr[0]+'">'+
+    '<div class="fh-ic"><svg viewBox="0 0 24 24" style="stroke:'+gr[1]+'">'+a.ic+'</svg></div>'+
+    '<div class="fh-t">'+a.t+'</div>'+
+    '<div class="fh-s">'+when+'</div>'+
+    '<div class="fh-go" style="background:'+gr[1]+'">'+_t('להתחיל')+'</div>'+
+    '</button>';
+}
+/* And the five you open afterwards. */
+function fitRowHTML(a){
+  var gr=RF_GRAD[a.g]||RF_GRAD.gry;
+  return '<button class="fr" onclick="_fitView=\''+a.id+'\';renderFitness()">'+
+    '<span class="fr-ic" style="background:'+gr[0]+'">'+
+    '<svg viewBox="0 0 24 24" style="stroke:'+gr[1]+'">'+a.ic+'</svg></span>'+
+    '<span class="fr-x"><span class="fr-t">'+a.t+'</span>'+
+    '<span class="fr-s">'+a.s+'</span></span>'+
+    '<span class="fr-c">&#8249;</span></button>';
+}
 function fitAreaGridHTML(){
-  var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">',i,a,gr;
-  for(i=0;i<FIT_AREAS.length;i++){
-    a=FIT_AREAS[i];
-    gr=RF_GRAD[a.g]||RF_GRAD.gry;
-    h+='<button onclick="_fitView=\''+a.id+'\';renderFitness()" '+
-       'style="background:'+gr[0]+';border:none;border-radius:22px;padding:18px 14px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;font-family:inherit;text-align:center">'+
-       '<div style="width:40px;height:40px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center">'+
-       '<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:'+gr[1]+';stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">'+a.ic+'</svg></div>'+
-       '<div style="font-size:13px;font-weight:800;color:var(--ink)">'+a.t+'</div>'+
-       '<div style="font-size:10px;color:var(--muted);line-height:1.35">'+a.s+'</div>'+
-       '</button>';
-  }
+  var h='',i;
+  /* The first area is the hero by position, not by id, so reordering
+     FIT_AREAS reorders the screen and nothing here has to know which one
+     is the important one. */
+  if(FIT_AREAS.length)h+=fitHeroHTML(FIT_AREAS[0]);
+  h+='<div class="fr-list">';
+  for(i=1;i<FIT_AREAS.length;i++)h+=fitRowHTML(FIT_AREAS[i]);
   return h+'</div>';
 }
 
@@ -11476,7 +11798,7 @@ function renderFitWorkout(){
   h+='<div style="font-size:17px;font-weight:800;color:var(--ink)">'+esc(ex.name)+'</div>';
   if(curPR>0)h+='<div style="font-size:10px;color:var(--amber-500);font-weight:700">PR: '+fmtWeight(curPR)+'</div>';
   h+='</div>';
-  h+='<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+ex.targetSets+' '+_t('סטים')+' &#215; '+ex.targetReps+' '+_t('חזרות')+'</div>';
+  h+=fitTgtHTML(ex);
   /* The link is always to the NEXT exercise, so there is nothing to choose
      and no way to build a group that is not adjacent. */
   (function(){
@@ -11540,7 +11862,7 @@ function renderFitWorkout(){
   h+='<input id="fit-rpe" class="mtnm" type="number" step="0.5" min="'+(_sc==='rir'?'0':'1')+'" max="'+(_sc==='rir'?'9':'10')+'" placeholder="'+_t("רשות")+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   h+='</div>';
   /* Costs no tap: it is already right for the number the boxes opened on. */
-  h+='<div id="fit-plates" style="font-size:10.5px;line-height:1.9;margin-bottom:9px;min-height:19px"></div>';
+  h+='<div id="fit-plates" style="margin-bottom:9px;min-height:19px"></div>';
   /* The toggle sits on the button it changes rather than up with the boxes,
      because the decision is made at the moment of pressing, not before. */
   h+='<div style="display:flex;gap:8px">';
