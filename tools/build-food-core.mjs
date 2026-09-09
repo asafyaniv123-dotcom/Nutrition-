@@ -330,11 +330,11 @@ const CORE = [
          it: 'Tonno, crudo', pt: 'Atum, cru', ja: 'まぐろ（生）',
          'zh-Hans': '金枪鱼（生）', 'zh-Hant': '鮪魚（生）', ar: 'تونة نيئة' } },
 
-  { id: 'yogurt-plain-2', he: 'יוגורט טבעי, 2% שומן, מולר',
-    t: { en: 'Plain yogurt, 2%', de: 'Naturjoghurt, 2%', es: 'Yogur natural, 2%',
-         fr: 'Yaourt nature, 2%', it: 'Yogurt bianco, 2%', pt: 'Iogurte natural, 2%',
-         ja: 'プレーンヨーグルト 2%', 'zh-Hans': '原味酸奶 2%',
-         'zh-Hant': '原味優格 2%', ar: 'لبن زبادي سادة 2%' } },
+  { id: 'yogurt-plain-2', he: 'יוגורט טבעי, 2.8% שומן , מולר',
+    t: { en: 'Plain yogurt, 2.8%', de: 'Naturjoghurt, 2,8%', es: 'Yogur natural, 2,8%',
+         fr: 'Yaourt nature, 2,8%', it: 'Yogurt bianco, 2,8%', pt: 'Iogurte natural, 2,8%',
+         ja: 'プレーンヨーグルト 2.8%', 'zh-Hans': '原味酸奶 2.8%',
+         'zh-Hant': '原味優格 2.8%', ar: 'لبن زبادي سادة 2.8%' } },
 
   { id: 'cream-cheese-9', he: 'גבינת שמנת 9% שומן, שטראוס',
     t: { en: 'Cream cheese, 9%', de: 'Frischkäse, 9%', es: 'Queso crema, 9%',
@@ -1095,19 +1095,293 @@ const CORE = [
   { id: 'brie-camembert-25', he: 'גבינת ברי/קממבר/בושרון 25% שומן, מחלב צאן , מעודנת',
     /* Sheep's milk is carried: the table has a Tnuva COW-milk brie at 25% too,
        and מחלב צאן is the only thing separating the two rows. */
-    t: { en: "Brie or camembert, sheep's milk, 25%", de: 'Brie oder Camembert, Schafsmilch, 25 %',
-         es: 'Brie o camembert de leche de oveja, 25 %',
-         fr: 'Brie ou camembert au lait de brebis, 25 %',
+    t: { en: "Brie or camembert, sheep's milk, 25%", de: 'Brie oder Camembert, Schafsmilch, 25%',
+         es: 'Brie o camembert de leche de oveja, 25%',
+         fr: 'Brie ou camembert au lait de brebis, 25%',
          it: 'Brie o camembert di latte di pecora, 25%',
          pt: 'Brie ou camembert de leite de ovelha, 25%',
          ja: 'ブリー／カマンベール（羊乳）25%', 'zh-Hans': '布里／卡门贝尔奶酪（绵羊奶）25%',
          'zh-Hant': '布里／卡門貝爾乳酪（綿羊奶）25%', ar: 'جبن بري أو كاممبير من حليب الغنم 25%' } },
 
   { id: 'sour-cream-15', he: 'שמנת חמוצה 15% שומן, טרה, תנובה',
-    t: { en: 'Sour cream, 15%', de: 'Saure Sahne, 15 %', es: 'Crema agria, 15 %',
-         fr: 'Crème aigre, 15 %', it: 'Panna acida, 15%', pt: 'Creme azedo, 15%',
+    t: { en: 'Sour cream, 15%', de: 'Saure Sahne, 15%', es: 'Crema agria, 15%',
+         fr: 'Crème aigre, 15%', it: 'Panna acida, 15%', pt: 'Creme azedo, 15%',
          ja: 'サワークリーム 15%', 'zh-Hans': '酸奶油 15%', 'zh-Hant': '酸奶油 15%',
          ar: 'قشدة حامضة 15%' } },
+
+  /* ── batch 2: the Levant, the store cupboard, and the offal ───────────── */
+
+  { id: 'chickpeas-canned', he: 'חומוס, גרגירים משומרים',
+    t: { en: 'Chickpeas, canned', de: 'Kichererbsen, aus der Dose', es: 'Garbanzos en conserva',
+         fr: 'Pois chiches en conserve', it: 'Ceci in scatola', pt: 'Grão-de-bico em lata',
+         ja: 'ひよこ豆（缶詰）', 'zh-Hans': '鹰嘴豆罐头', 'zh-Hant': '鷹嘴豆罐頭',
+         ar: 'حمص معلب' } },
+
+  { id: 'chickpeas-roasted', he: 'חומוס קלוי, גת',
+    t: { en: 'Roasted chickpeas', de: 'Geröstete Kichererbsen', es: 'Garbanzos tostados',
+         fr: 'Pois chiches grillés', it: 'Ceci tostati', pt: 'Grão-de-bico torrado',
+         ja: 'ローストひよこ豆', 'zh-Hans': '烤鹰嘴豆', 'zh-Hant': '烤鷹嘴豆',
+         ar: 'قضامة (حمص محمص)' } },
+
+  /* Whole sesame is what separates this from the tahini already in the core. */
+  { id: 'tahini-wholegrain', he: 'טחינה גולמית, שומשום מלא, לא מדוללת',
+    t: { en: 'Tahini, wholegrain sesame, raw, undiluted',
+         de: 'Tahini aus ungeschältem Sesam, roh, unverdünnt',
+         es: 'Tahine de sésamo integral, crudo, sin diluir',
+         fr: 'Tahini de sésame complet, cru, non dilué',
+         it: 'Tahini di sesamo integrale, crudo, non diluito',
+         pt: 'Tahine de gergelim integral, cru, não diluído',
+         ja: '練りごま（全粒・生・希釈なし）', 'zh-Hans': '全粒芝麻酱（生，未稀释）',
+         'zh-Hant': '全粒芝麻醬（生，未稀釋）', ar: 'طحينة من السمسم الكامل، خام وغير مخففة' } },
+
+  { id: 'tahini-green', he: 'טחינה ירוקה, טחינה ירוקה חריפה בלאדי',
+    t: { en: 'Green tahini sauce', de: 'Grüne Tahini-Sauce', es: 'Salsa de tahine verde',
+         fr: 'Sauce tahini verte', it: 'Salsa tahini verde', pt: 'Molho de tahine verde',
+         ja: 'グリーン練りごまソース', 'zh-Hans': '青芝麻酱',
+         'zh-Hant': '青芝麻醬', ar: 'طحينة خضراء' } },
+
+  { id: 'dates-fresh-pitted', he: 'תמרים לחים, ללא גלעין',
+    t: { en: 'Dates, fresh, pitted', de: 'Datteln, frisch, entsteint',
+         es: 'Dátiles frescos sin hueso', fr: 'Dattes fraîches dénoyautées',
+         it: 'Datteri freschi denocciolati', pt: 'Tâmaras frescas sem caroço',
+         ja: 'デーツ（生・種なし）', 'zh-Hans': '鲜椰枣（去核）',
+         'zh-Hant': '鮮椰棗（去核）', ar: 'تمر طازج منزوع النوى' } },
+
+  /* Weighed WITH the stone - 249 kcal against the pitted row's 282, so the
+     stone is 11.7% of the weight, not the third I first wrote here.
+
+     The pitted row is deliberately NOT the one taken: at 282 it sits within
+     2% of the Medjool date already in the core, and a second generic entry
+     that close is the celery-stalk mistake again. This row measures a
+     different thing - a bowl of dates you have not taken the stones out of
+     - and says so in all eleven. */
+  { id: 'dates-dried', he: 'תמרים מיובשים, עם גלעין',
+    t: { en: 'Dates, dried, weighed with the stone',
+         de: 'Datteln, getrocknet, mit Stein gewogen',
+         es: 'Dátiles secos, pesados con el hueso',
+         fr: 'Dattes séchées, pesées avec le noyau',
+         it: 'Datteri secchi, pesati con il nocciolo',
+         pt: 'Tâmaras secas, pesadas com o caroço',
+         ja: 'デーツ（乾燥・種込みの重さ）', 'zh-Hans': '干椰枣（连核称重）',
+         'zh-Hant': '乾椰棗（連核秤重）', ar: 'تمر مجفف موزون مع النوى' } },
+
+  { id: 'pine-nuts', he: 'צנוברים',
+    t: { en: 'Pine nuts', de: 'Pinienkerne', es: 'Piñones', fr: 'Pignons de pin',
+         it: 'Pinoli', pt: 'Pinhões', ja: '松の実', 'zh-Hans': '松子',
+         'zh-Hant': '松子', ar: 'صنوبر' } },
+
+  { id: 'sesame-hulled', he: 'גרעיני שומשום קלופים',
+    t: { en: 'Sesame seeds, hulled', de: 'Sesamsamen, geschält',
+         es: 'Semillas de sésamo peladas', fr: 'Graines de sésame décortiquées',
+         it: 'Semi di sesamo decorticati', pt: 'Sementes de gergelim descascadas',
+         ja: 'むきごま', 'zh-Hans': '去皮芝麻', 'zh-Hant': '去皮芝麻',
+         ar: 'بذور سمسم مقشورة' } },
+
+  { id: 'brazil-nuts', he: 'אגוזי ברזיל, טבעיים',
+    /* The qualifier goes: the only sibling row is brazil-nut butter, so
+       "plain" separates nothing, which is the rule. */
+    t: { en: 'Brazil nuts', de: 'Paranüsse', es: 'Nueces de Brasil',
+         fr: 'Noix du Brésil', it: 'Noci del Brasile',
+         pt: 'Castanhas-do-pará', ja: 'ブラジルナッツ',
+         'zh-Hans': '巴西坚果', 'zh-Hant': '巴西堅果',
+         ar: 'جوز برازيلي' } },
+
+  { id: 'almonds-roasted-salted', he: 'שקדים קלויים עם מלח',
+    t: { en: 'Almonds, roasted and salted', de: 'Mandeln, geröstet und gesalzen',
+         es: 'Almendras tostadas con sal', fr: 'Amandes grillées et salées',
+         it: 'Mandorle tostate e salate', pt: 'Amêndoas torradas e salgadas',
+         ja: 'アーモンド（ロースト・有塩）', 'zh-Hans': '烤杏仁（加盐）',
+         'zh-Hant': '烤杏仁（加鹽）', ar: 'لوز محمص ومملح' } },
+
+  { id: 'watermelon-seeds', he: 'גרעיני אבטיח עם קליפה, ללא מלח',
+    t: { en: 'Watermelon seeds, in the shell, unsalted',
+         de: 'Wassermelonenkerne, in der Schale, ungesalzen',
+         es: 'Pipas de sandía con cáscara, sin sal',
+         fr: 'Graines de pastèque en coque, non salées',
+         it: 'Semi di anguria con guscio, non salati',
+         pt: 'Sementes de melancia com casca, sem sal',
+         ja: 'すいかの種（殻つき・無塩）', 'zh-Hans': '西瓜子（带壳，无盐）',
+         'zh-Hant': '西瓜子（帶殼，無鹽）', ar: 'بذور بطيخ بقشرها، بدون ملح' } },
+
+  { id: 'beef-liver-steamed', he: 'כבד בקר, מאודה',
+    t: { en: 'Beef liver, steamed', de: 'Rinderleber, gedämpft',
+         es: 'Hígado de ternera al vapor', fr: 'Foie de bœuf, cuit à la vapeur',
+         it: 'Fegato di manzo, al vapore', pt: 'Fígado bovino, no vapor',
+         ja: '牛レバー（蒸し）', 'zh-Hans': '牛肝（蒸）', 'zh-Hant': '牛肝（蒸）',
+         ar: 'كبد بقري مطهو بالبخار' } },
+
+  { id: 'beef-liver-raw', he: 'כבד בקר, לא מבושל',
+    t: { en: 'Beef liver, raw', de: 'Rinderleber, roh', es: 'Hígado de ternera crudo',
+         fr: 'Foie de bœuf, cru', it: 'Fegato di manzo, crudo',
+         pt: 'Fígado bovino, cru', ja: '牛レバー（生）', 'zh-Hans': '牛肝（生）',
+         'zh-Hant': '牛肝（生）', ar: 'كبد بقري نيء' } },
+
+  { id: 'chicken-liver-steamed', he: 'כבד עוף, מאודה',
+    t: { en: 'Chicken liver, steamed', de: 'Hühnerleber, gedämpft',
+         es: 'Hígado de pollo al vapor', fr: 'Foie de poulet, cuit à la vapeur',
+         it: 'Fegato di pollo, al vapore', pt: 'Fígado de frango, no vapor',
+         ja: '鶏レバー（蒸し）', 'zh-Hans': '鸡肝（蒸）', 'zh-Hant': '雞肝（蒸）',
+         ar: 'كبد دجاج مطهو بالبخار' } },
+
+  { id: 'tongue-cooked', he: 'לשון, מבושל',
+    t: { en: 'Tongue, cooked (any animal)', de: 'Zunge, gekocht', es: 'Lengua cocida',
+         fr: 'Langue, cuite', it: 'Lingua, cotta', pt: 'Língua cozida',
+         ja: '舌肉（ゆで）', 'zh-Hans': '口条（熟）', 'zh-Hant': '口條（熟）',
+         ar: 'لسان مطبوخ' } },
+
+  { id: 'beef-tongue-raw', he: 'לשון בקר, לא מבושלת',
+    t: { en: 'Beef tongue, raw', de: 'Rinderzunge, roh', es: 'Lengua de ternera cruda',
+         fr: 'Langue de bœuf, crue', it: 'Lingua di manzo, cruda',
+         pt: 'Língua bovina, crua', ja: '牛タン（生）', 'zh-Hans': '牛舌（生）',
+         'zh-Hant': '牛舌（生）', ar: 'لسان بقري نيء' } },
+
+  { id: 'herring-pickled', he: 'דג הרינג, כבוש',
+    t: { en: 'Herring, pickled', de: 'Hering, eingelegt', es: 'Arenque en escabeche',
+         fr: 'Hareng mariné', it: 'Aringa marinata', pt: 'Arenque em conserva',
+         ja: 'にしんの酢漬け', 'zh-Hans': '腌鲱鱼', 'zh-Hant': '醃鯡魚',
+         ar: 'رنجة مخللة' } },
+
+  { id: 'mackerel-pickled', he: 'דג מקרל, כבוש',
+    t: { en: 'Mackerel, pickled', de: 'Makrele, eingelegt', es: 'Caballa en escabeche',
+         fr: 'Maquereau mariné', it: 'Sgombro marinato', pt: 'Cavala em conserva',
+         ja: 'さばの酢漬け', 'zh-Hans': '腌鲭鱼', 'zh-Hant': '醃鯖魚',
+         ar: 'ماكريل مخلل' } },
+
+  /* Brazilian Portuguese calls only olive oil azeite; every other oil is óleo.
+     The two therefore do not share a word, and that is the language being
+     right rather than the pair being broken. */
+  { id: 'sesame-oil', he: 'שמן שומשום',
+    t: { en: 'Sesame oil', de: 'Sesamöl', es: 'Aceite de sésamo', fr: 'Huile de sésame',
+         it: 'Olio di sesamo', pt: 'Óleo de gergelim', ja: 'ごま油',
+         'zh-Hans': '芝麻油', 'zh-Hant': '芝麻油', ar: 'زيت سمسم' } },
+
+  { id: 'coconut-oil', he: 'שמן קוקוס',
+    t: { en: 'Coconut oil', de: 'Kokosöl', es: 'Aceite de coco', fr: 'Huile de coco',
+         it: 'Olio di cocco', pt: 'Óleo de coco', ja: 'ココナッツオイル',
+         'zh-Hans': '椰子油', 'zh-Hant': '椰子油', ar: 'زيت جوز الهند' } },
+
+  { id: 'mustard', he: 'חרדל, מוכן לאכילה',
+    t: { en: 'Mustard, prepared', de: 'Tafelsenf', es: 'Mostaza preparada',
+         fr: 'Moutarde préparée', it: 'Senape pronta', pt: 'Mostarda pronta',
+         ja: 'マスタード', 'zh-Hans': '芥末酱', 'zh-Hant': '芥末醬',
+         ar: 'خردل جاهز' } },
+
+  { id: 'ketchup', he: 'קטשופ עגבניות',
+    t: { en: 'Tomato ketchup', de: 'Tomatenketchup', es: 'Kétchup de tomate',
+         fr: 'Ketchup de tomate', it: 'Ketchup di pomodoro', pt: 'Ketchup de tomate',
+         ja: 'トマトケチャップ', 'zh-Hans': '番茄酱', 'zh-Hant': '番茄醬',
+         ar: 'كاتشب طماطم' } },
+
+  { id: 'mayonnaise', he: 'מיונז רגיל',
+    t: { en: 'Mayonnaise, full fat', de: 'Mayonnaise, klassisch', es: 'Mayonesa entera',
+         fr: 'Mayonnaise entière', it: 'Maionese classica', pt: 'Maionese tradicional',
+         ja: 'マヨネーズ（全脂）', 'zh-Hans': '蛋黄酱（全脂）',
+         'zh-Hant': '美乃滋（全脂）', ar: 'مايونيز كامل الدسم' } },
+
+  { id: 'salt', he: 'מלח',
+    t: { en: 'Salt', de: 'Salz', es: 'Sal', fr: 'Sel', it: 'Sale', pt: 'Sal',
+         ja: '塩', 'zh-Hans': '盐', 'zh-Hant': '鹽', ar: 'ملح' } },
+
+  { id: 'icing-sugar', he: 'סוכר, אבקה',
+    t: { en: 'Icing sugar (powdered)', de: 'Puderzucker', es: 'Azúcar glas',
+         fr: 'Sucre glace', it: 'Zucchero a velo', pt: 'Açúcar de confeiteiro',
+         ja: '粉砂糖', 'zh-Hans': '糖粉', 'zh-Hant': '糖粉', ar: 'سكر بودرة' } },
+
+  { id: 'cream-cheese-35', he: 'גבינת שמנת 35% שומן, כולל פילדלפיה',
+    t: { en: 'Cream cheese, 35%', de: 'Frischkäse, 35%', es: 'Queso crema, 35%',
+         fr: 'Fromage à tartiner, 35%', it: 'Formaggio spalmabile, 35%',
+         pt: 'Queijo cremoso, 35%', ja: 'クリームチーズ 35%',
+         'zh-Hans': '奶油奶酪 35%', 'zh-Hant': '奶油乳酪 35%', ar: 'جبنة كريمية 35%' } },
+
+  { id: 'bulgarian-cheese-3', he: 'גבינה בולגרית 3% שומן, מעודנת, גד',
+    /* Word for word the convention core:bulgarian-cheese already uses at 24%.
+       Two names for one cheese is worse than either name. */
+    t: { en: 'Brined white cheese (feta-style), 3%', de: 'Salzlakenkäse, 3%',
+         es: 'Queso blanco en salmuera, 3%', fr: 'Fromage en saumure (type feta), 3%',
+         it: 'Formaggio bianco in salamoia, 3%', pt: 'Queijo branco em salmoura, 3%',
+         ja: 'フェタ風チーズ 3%', 'zh-Hans': '盐渍白奶酪 3%',
+         'zh-Hant': '鹽漬白起司 3%', ar: 'جبنة بيضاء بالماء المالح 3%' } },
+
+  { id: 'yogurt-plain-3', he: 'יוגורט 3% שומן תנובה',
+    t: { en: 'Plain yogurt, 3%', de: 'Naturjoghurt, 3%', es: 'Yogur natural, 3%',
+         fr: 'Yaourt nature, 3%', it: 'Yogurt bianco, 3%', pt: 'Iogurte natural, 3%',
+         ja: 'プレーンヨーグルト 3%', 'zh-Hans': '原味酸奶 3%',
+         'zh-Hant': '原味優格 3%', ar: 'لبن زبادي سادة 3%' } },
+
+  { id: 'yogurt-plain-7', he: 'יוגורט 7%,תנובה',
+    t: { en: 'Plain yogurt, 7%', de: 'Naturjoghurt, 7%', es: 'Yogur natural, 7%',
+         fr: 'Yaourt nature, 7%', it: 'Yogurt bianco, 7%', pt: 'Iogurte natural, 7%',
+         ja: 'プレーンヨーグルト 7%', 'zh-Hans': '原味酸奶 7%',
+         'zh-Hant': '原味優格 7%', ar: 'لبن زبادي سادة 7%' } },
+
+  { id: 'blueberries', he: 'אוכמניות, טריות',
+    t: { en: 'Blueberries, fresh', de: 'Heidelbeeren, frisch', es: 'Arándanos frescos',
+         fr: 'Myrtilles fraîches', it: 'Mirtilli freschi', pt: 'Mirtilos frescos',
+         ja: 'ブルーベリー（生）', 'zh-Hans': '蓝莓（鲜）', 'zh-Hant': '藍莓（鮮）',
+         ar: 'توت أزرق طازج' } },
+
+  { id: 'raspberries', he: 'פטל אדום, טרי',
+    t: { en: 'Raspberries, fresh', de: 'Himbeeren, frisch', es: 'Frambuesas frescas',
+         fr: 'Framboises fraîches', it: 'Lamponi freschi', pt: 'Framboesas frescas',
+         ja: 'ラズベリー（生）', 'zh-Hans': '树莓（鲜）', 'zh-Hant': '覆盆子（鮮）',
+         ar: 'توت العليق الأحمر طازج' } },
+
+  { id: 'lime', he: 'ליים, טרי',
+    t: { en: 'Lime, fresh', de: 'Limette, frisch', es: 'Lima fresca', fr: 'Citron vert frais',
+         it: 'Lime fresco', pt: 'Limão-taiti fresco', ja: 'ライム',
+         'zh-Hans': '青柠', 'zh-Hant': '青檸', ar: 'ليمون أخضر طازج' } },
+
+  { id: 'pineapple-dried', he: 'אננס, מיובש',
+    t: { en: 'Pineapple, dried', de: 'Ananas, getrocknet', es: 'Piña seca',
+         fr: 'Ananas séché', it: 'Ananas essiccato', pt: 'Abacaxi seco',
+         ja: 'ドライパイナップル', 'zh-Hans': '菠萝干', 'zh-Hant': '鳳梨乾',
+         ar: 'أناناس مجفف' } },
+
+  { id: 'pineapple-canned', he: 'אננס, מבושל או משומר, במיץ',
+    t: { en: 'Pineapple, canned in juice', de: 'Ananas, in Saft eingelegt',
+         es: 'Piña en conserva, en su jugo', fr: 'Ananas en conserve, au jus',
+         it: 'Ananas in scatola, al succo', pt: 'Abacaxi em conserva, no próprio suco',
+         ja: 'パイナップル（果汁漬け缶詰）', 'zh-Hans': '菠萝罐头（原汁）',
+         'zh-Hant': '鳳梨罐頭（原汁）', ar: 'أناناس معلب في عصيره' } },
+
+  /* Cantaloupe is already in the core, so this one says which melon it is in
+     every language rather than being a second "melon". */
+  { id: 'honeydew-melon', he: 'מלון ירוק, דבש, טרי',
+    t: { en: 'Honeydew melon', de: 'Honigmelone', es: 'Melón verde (honeydew)',
+         fr: 'Melon vert (honeydew)', it: 'Melone verde (honeydew)',
+         pt: 'Melão verde (honeydew)', ja: 'ハネデューメロン',
+         'zh-Hans': '白兰瓜（蜜瓜）', 'zh-Hant': '白蘭瓜（蜜瓜）',
+         ar: 'شمام عسلي أخضر' } },
+
+  { id: 'prunes', he: 'שזיף, מיובש, לא מבושל',
+    t: { en: 'Prunes (dried plums)', de: 'Backpflaumen (Trockenpflaumen)',
+         es: 'Ciruelas pasas', fr: 'Pruneaux', it: 'Prugne secche',
+         pt: 'Ameixas secas', ja: 'プルーン（乾燥）', 'zh-Hans': '西梅干',
+         'zh-Hant': '西梅乾', ar: 'برقوق مجفف' } },
+
+  { id: 'peaches-dried', he: 'אפרסק, מיובש, לא מבושל',
+    t: { en: 'Peaches, dried', de: 'Pfirsiche, getrocknet', es: 'Melocotones secos',
+         fr: 'Pêches séchées', it: 'Pesche essiccate', pt: 'Pêssegos secos',
+         ja: 'ドライピーチ', 'zh-Hans': '桃干', 'zh-Hant': '桃乾',
+         ar: 'دراق مجفف' } },
+
+  { id: 'rosemary-fresh', he: 'רוזמרין, טרי',
+    t: { en: 'Rosemary, fresh', de: 'Rosmarin, frisch', es: 'Romero fresco',
+         fr: 'Romarin frais', it: 'Rosmarino fresco', pt: 'Alecrim fresco',
+         ja: 'ローズマリー（生）', 'zh-Hans': '迷迭香（鲜）',
+         'zh-Hant': '迷迭香（鮮）', ar: 'إكليل الجبل طازج' } },
+
+  { id: 'tea-brewed', he: 'תה, עלים, לא ממותק',
+    t: { en: 'Tea, brewed, unsweetened', de: 'Tee, aufgebrüht, ungesüßt',
+         es: 'Té infusionado, sin azúcar', fr: 'Thé infusé, non sucré',
+         it: 'Tè in infusione, non zuccherato', pt: 'Chá, sem açúcar',
+         ja: 'お茶（浸出液・無糖）', 'zh-Hans': '茶（无糖）', 'zh-Hant': '茶（無糖）',
+         ar: 'شاي مُحضَّر بدون سكر' } },
+
+  { id: 'herbal-tea', he: 'תה, צמחים',
+    t: { en: 'Herbal tea', de: 'Kräutertee', es: 'Infusión de hierbas',
+         fr: 'Tisane', it: 'Tisana', pt: 'Chá de ervas', ja: 'ハーブティー',
+         'zh-Hans': '花草茶', 'zh-Hant': '花草茶', ar: 'شاي أعشاب' } },
 
 ];
 
