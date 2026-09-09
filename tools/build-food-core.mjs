@@ -1668,6 +1668,295 @@ const CORE = [
          pt: 'Repolho roxo fresco', ja: '紫キャベツ', 'zh-Hans': '紫甘蓝',
          'zh-Hant': '紫甘藍', ar: 'ملفوف أحمر طازج' } },
 
+  /* ── batch 4: recovered from the "absent" list, plus produce ──────────── */
+
+  { id: 'tapioca-pearls', he: 'טפיוקה, גרגירים, יבש',
+    t: { en: 'Tapioca pearls, dry', de: 'Tapiokaperlen, trocken',
+         es: 'Perlas de tapioca secas', fr: 'Perles de tapioca sèches',
+         it: 'Perle di tapioca secche', pt: 'Sagu de tapioca seco',
+         ja: 'タピオカパール（乾燥）', 'zh-Hans': '西米（木薯珍珠，干）',
+         'zh-Hant': '西米（木薯珍珠，乾）', ar: 'حبوب تابيوكا جافة' } },
+
+  /* The table's only tempeh row, and a branded frozen one: 16 g of
+     carbohydrate against USDA's 7.6 suggests added grain. Kept because
+     there is no alternative, recorded because there is no alternative. */
+  { id: 'tempeh', he: 'טמפה, מזון אינדונזי שורשי, קפוא, כפרי בריא',
+    t: { en: 'Tempeh', de: 'Tempeh', es: 'Tempeh', fr: 'Tempeh', it: 'Tempeh',
+         pt: 'Tempeh', ja: 'テンペ', 'zh-Hans': '天贝（印尼发酵豆饼）',
+         'zh-Hant': '天貝（印尼發酵豆餅）', ar: 'تمبيه' } },
+
+  { id: 'wheat-gluten', he: 'גלוטן חיטה, יבש, vital wheat gluten',
+    t: { en: 'Vital wheat gluten (seitan flour), dry',
+         de: 'Weizengluten (Seitan-Mehl), trocken',
+         es: 'Gluten de trigo (harina para seitán), seco',
+         fr: 'Gluten de blé (farine à seitan), sec',
+         it: 'Glutine di frumento (farina per seitan), secco',
+         pt: 'Glúten de trigo (farinha para seitan), seco',
+         ja: '小麦グルテン（セイタンの粉・乾燥）',
+         'zh-Hans': '小麦面筋粉（干）', 'zh-Hant': '小麥麵筋粉（乾）',
+         ar: 'غلوتين القمح (دقيق السيتان) جاف' } },
+
+  /* The generic row, 185 kcal - USDA's canned-in-tomato is 186. The branded
+     tin this first named is 121, and it was wearing a name in eleven
+     languages that promises the ordinary thing. */
+  /* Cooked seitan, 112 kcal. The dry gluten powder above is 370, and calling
+     that "seitan flour" left anyone logging seitan 3.3x high. */
+  { id: 'seitan', he: 'סייטן, פרוסות בסגנון סלמי, טבע דלי',
+    t: { en: 'Seitan slices', de: 'Seitan-Scheiben', es: 'Lonchas de seitán',
+         fr: 'Tranches de seitan', it: 'Fette di seitan', pt: 'Fatias de seitan',
+         ja: 'セイタン（グルテンミート）スライス', 'zh-Hans': '面筋素肉片',
+         'zh-Hant': '麵筋素肉片', ar: 'شرائح سيتان' } },
+
+  { id: 'sardines-tomato', he: 'דג סרדין, ברוטב עגבניות',
+    t: { en: 'Sardines, canned in tomato sauce',
+         de: 'Sardinen in Tomatensauce, Dose',
+         es: 'Sardinas en conserva con salsa de tomate',
+         fr: 'Sardines en conserve à la sauce tomate',
+         it: 'Sardine in scatola al pomodoro',
+         pt: 'Sardinhas em lata ao molho de tomate',
+         ja: 'いわしのトマトソース缶', 'zh-Hans': '茄汁沙丁鱼罐头',
+         'zh-Hant': '茄汁沙丁魚罐頭', ar: 'سردين معلب بصلصة الطماطم' } },
+
+  { id: 'anchovies-canned', he: 'דג אנשובי, משומר',
+    t: { en: 'Anchovies, canned', de: 'Sardellen, Dose', es: 'Anchoas en conserva',
+         fr: 'Anchois en conserve', it: 'Acciughe in scatola',
+         pt: 'Anchovas em lata', ja: 'アンチョビ（缶詰）',
+         'zh-Hans': '鳀鱼罐头', 'zh-Hant': '鯷魚罐頭', ar: 'أنشوجة معلبة' } },
+
+  /* 19 / 0.9 / 1.4 / 0.1, which is USDA canned sauerkraut on all four. The
+     row first taken said מוחמץ - soured - at 14, and the eleven names were
+     asserting fermentation the Hebrew did not. */
+  { id: 'sauerkraut', he: 'כרוב, כבוש, משומר',
+    t: { en: 'Sauerkraut (fermented cabbage)', de: 'Sauerkraut',
+         es: 'Chucrut (col fermentada)', fr: 'Choucroute (chou fermenté)',
+         it: 'Crauti (cavolo fermentato)', pt: 'Chucrute (repolho fermentado)',
+         ja: 'ザワークラウト（発酵キャベツ）', 'zh-Hans': '德式酸菜（发酵卷心菜）',
+         'zh-Hant': '德式酸菜（發酵高麗菜）', ar: 'مخلل الملفوف المخمّر' } },
+
+  { id: 'fennel-fresh', he: 'שומר, טרי',
+    t: { en: 'Fennel bulb, fresh', de: 'Fenchelknolle, frisch',
+         es: 'Bulbo de hinojo fresco', fr: 'Bulbe de fenouil frais',
+         it: 'Finocchio fresco', pt: 'Funcho fresco', ja: 'フェンネル（生）',
+         'zh-Hans': '茴香头（鲜）', 'zh-Hant': '茴香頭（鮮）',
+         ar: 'شمر طازج' } },
+
+  /* The `ללא תוספת שומן` row, as spinach, chard and butternut in this batch
+     all took. The other one carries 8.1 g of carbohydrate - more than raw
+     fennel has in TOTAL - so it is not a plain drained fennel. */
+  { id: 'fennel-cooked', he: 'שומר, מבושל, ללא תוספת שומן בבישול, עם מלח',
+    t: { en: 'Fennel bulb, cooked', de: 'Fenchelknolle, gegart',
+         es: 'Bulbo de hinojo cocido', fr: 'Bulbe de fenouil cuit',
+         it: 'Finocchio cotto', pt: 'Funcho cozido', ja: 'フェンネル（加熱）',
+         'zh-Hans': '茴香头（熟）', 'zh-Hant': '茴香頭（熟）',
+         ar: 'شمر مطبوخ' } },
+
+  { id: 'turnip-fresh', he: 'לפת, טריה',
+    t: { en: 'Turnip, fresh', de: 'Speiserübe, frisch', es: 'Nabo fresco',
+         fr: 'Navet frais', it: 'Rapa fresca', pt: 'Nabo fresco',
+         ja: 'かぶ（生）', 'zh-Hans': '芜菁（鲜）', 'zh-Hant': '蕪菁（鮮）',
+         ar: 'لفت طازج' } },
+
+  { id: 'turnip-pickled', he: 'לפת, כבושה',
+    t: { en: 'Turnip, pickled', de: 'Speiserübe, eingelegt', es: 'Nabo encurtido',
+         fr: 'Navet mariné', it: 'Rapa sottaceto', pt: 'Nabo em conserva',
+         ja: 'かぶの漬物', 'zh-Hans': '腌芜菁', 'zh-Hant': '醃蕪菁',
+         ar: 'لفت مخلل' } },
+
+  { id: 'beetroot-pickled', he: 'סלק, כבוש',
+    t: { en: 'Beet, pickled', de: 'Rote Bete, eingelegt',
+         es: 'Remolacha encurtida', fr: 'Betterave marinée',
+         it: 'Barbabietola sottaceto', pt: 'Beterraba em conserva',
+         ja: 'ビーツの酢漬け', 'zh-Hans': '腌甜菜根', 'zh-Hant': '醃甜菜根',
+         ar: 'شمندر مخلل' } },
+
+  { id: 'cucumber-pickled', he: 'מלפפון כבוש עם שמיר',
+    t: { en: 'Pickled cucumber with dill', de: 'Salzgurke mit Dill',
+         es: 'Pepinillo en vinagre con eneldo', fr: 'Cornichon à l’aneth',
+         it: 'Cetriolo sottaceto all’aneto', pt: 'Pepino em conserva com endro',
+         ja: 'きゅうりのピクルス（ディル）', 'zh-Hans': '莳萝腌黄瓜',
+         'zh-Hant': '蒔蘿醃小黃瓜', ar: 'خيار مخلل بالشبت' } },
+
+  { id: 'mushrooms-pickled', he: 'פטריות, כבושות',
+    t: { en: 'Mushrooms, pickled', de: 'Champignons, eingelegt',
+         es: 'Champiñones encurtidos', fr: 'Champignons marinés',
+         it: 'Funghi sottaceto', pt: 'Cogumelos em conserva',
+         ja: 'マッシュルームの酢漬け', 'zh-Hans': '腌蘑菇',
+         'zh-Hant': '醃蘑菇', ar: 'فطر مخلل' } },
+
+  { id: 'boston-lettuce', he: 'חסה בוסטון',
+    t: { en: 'Butterhead lettuce (Boston)', de: 'Kopfsalat (Butterhead)',
+         es: 'Lechuga mantecosa (Boston)', fr: 'Laitue beurre (Boston)',
+         it: 'Lattuga a cappuccio (Boston)', pt: 'Alface manteiga (Boston)',
+         ja: 'サラダ菜（バターヘッドレタス）', 'zh-Hans': '奶油生菜（波士顿生菜）',
+         'zh-Hant': '奶油萵苣（波士頓萵苣）', ar: 'خس بوسطن' } },
+
+  { id: 'spinach-cooked', he: 'תרד, טרי, מבושל, ללא תוספת שומן, עם מלח',
+    t: { en: 'Spinach, cooked without fat', de: 'Spinat, ohne Fett gegart',
+         es: 'Espinacas cocidas sin grasa', fr: 'Épinards cuits sans matière grasse',
+         it: 'Spinaci cotti senza grassi', pt: 'Espinafre cozido sem gordura',
+         ja: 'ほうれん草（油なしで加熱）', 'zh-Hans': '菠菜（无油烹煮）',
+         'zh-Hant': '菠菜（無油烹煮）', ar: 'سبانخ مطبوخة بدون دهن' } },
+
+  { id: 'chard-cooked', he: 'מנגולד, מבושל, עם מלח, ללא תוספת שומן בבישול',
+    t: { en: 'Swiss chard, cooked without fat', de: 'Mangold, ohne Fett gegart',
+         es: 'Acelga cocida sin grasa', fr: 'Blette cuite sans matière grasse',
+         it: 'Bietola cotta senza grassi', pt: 'Acelga cozida sem gordura',
+         ja: 'フダンソウ（油なしで加熱）', 'zh-Hans': '牛皮菜（无油烹煮）',
+         'zh-Hant': '牛皮菜（無油烹煮）', ar: 'سلق مطبوخ بدون دهن' } },
+
+  { id: 'brussels-sprouts', he: 'כרוב ניצנים, טרי',
+    t: { en: 'Brussels sprouts, fresh', de: 'Rosenkohl, frisch',
+         es: 'Coles de Bruselas frescas', fr: 'Choux de Bruxelles frais',
+         it: 'Cavoletti di Bruxelles freschi', pt: 'Couve-de-bruxelas fresca',
+         ja: '芽キャベツ', 'zh-Hans': '抱子甘蓝', 'zh-Hant': '抱子甘藍',
+         ar: 'كرنب بروكسل طازج' } },
+
+  { id: 'cauliflower-frozen', he: 'כרובית, קפואה, לא מבושלת',
+    t: { en: 'Cauliflower, frozen, uncooked', de: 'Blumenkohl, tiefgekühlt, ungegart',
+         es: 'Coliflor congelada, cruda', fr: 'Chou-fleur surgelé, cru',
+         it: 'Cavolfiore surgelato, crudo', pt: 'Couve-flor congelada, crua',
+         ja: 'カリフラワー（冷凍・未加熱）', 'zh-Hans': '花椰菜（冷冻，未烹煮）',
+         'zh-Hant': '白花椰菜（冷凍，未烹煮）', ar: 'قرنبيط مجمد غير مطبوخ' } },
+
+  { id: 'butternut-raw', he: 'דלורית, לא מבושלת',
+    t: { en: 'Butternut squash, raw', de: 'Butternusskürbis, roh',
+         es: 'Calabaza cacahuete cruda', fr: 'Courge butternut crue',
+         it: 'Zucca butternut cruda', pt: 'Abóbora butternut crua',
+         ja: 'バターナッツかぼちゃ（生）', 'zh-Hans': '奶油南瓜（生）',
+         'zh-Hant': '奶油南瓜（生）', ar: 'قرع الجوز نيء' } },
+
+  { id: 'butternut-cooked', he: 'דלורית, מבושלת/אפויה, ללא מלח',
+    t: { en: 'Butternut squash, cooked without salt',
+         de: 'Butternusskürbis, ohne Salz gegart',
+         es: 'Calabaza cacahuete cocida sin sal',
+         fr: 'Courge butternut cuite sans sel',
+         it: 'Zucca butternut cotta senza sale',
+         pt: 'Abóbora butternut cozida sem sal',
+         ja: 'バターナッツかぼちゃ（無塩で加熱）', 'zh-Hans': '奶油南瓜（无盐烹煮）',
+         'zh-Hant': '奶油南瓜（無鹽烹煮）', ar: 'قرع الجوز مطبوخ بدون ملح' } },
+
+  { id: 'aubergine-roasted', he: 'חצילים קלויים ללא תוספות',
+    t: { en: 'Eggplant, roasted, plain', de: 'Aubergine, geröstet, pur',
+         es: 'Berenjena asada, sin más', fr: 'Aubergine grillée, nature',
+         it: 'Melanzana arrostita, al naturale', pt: 'Berinjela assada, simples',
+         ja: '焼きなす（味付けなし）', 'zh-Hans': '烤茄子（原味）',
+         'zh-Hant': '烤茄子（原味）', ar: 'باذنجان مشوي بدون إضافات' } },
+
+  { id: 'artichoke-whole', he: 'ארטישוק, חי, עם עלים וגבעול',
+    t: { en: 'Artichoke, whole, weighed with leaves and stem',
+         de: 'Artischocke, ganz, mit Blättern und Stiel gewogen',
+         es: 'Alcachofa entera, pesada con hojas y tallo',
+         fr: 'Artichaut entier, pesé avec feuilles et tige',
+         it: 'Carciofo intero, pesato con foglie e gambo',
+         pt: 'Alcachofra inteira, pesada com folhas e talo',
+         ja: 'アーティチョーク（葉と茎込みの重さ）',
+         'zh-Hans': '整颗洋蓟（连叶带茎称重）', 'zh-Hant': '整顆朝鮮薊（連葉帶莖秤重）',
+         ar: 'خرشوف كامل موزون بأوراقه وساقه' } },
+
+  { id: 'sundried-tomatoes-oil', he: 'עגבניות מיובשות בשמן, אוליביה',
+    /* Undrained: 428 kcal against USDA's drained 213, because the oil is in
+       the 100 g. Someone who drains them would otherwise log double. */
+    t: { en: 'Sun-dried tomatoes in oil, undrained',
+         de: 'Getrocknete Tomaten in Öl, nicht abgetropft',
+         es: 'Tomates secos en aceite, sin escurrir',
+         fr: 'Tomates séchées à l’huile, non égouttées',
+         it: 'Pomodori secchi sott’olio, non sgocciolati',
+         pt: 'Tomates secos em óleo, sem escorrer',
+         ja: 'ドライトマトのオイル漬け（油ごと）', 'zh-Hans': '油浸晒干番茄（连油）',
+         'zh-Hant': '油漬曬乾番茄（連油）', ar: 'طماطم مجففة بالزيت، غير مصفّاة' } },
+
+  { id: 'green-olives-stuffed', he: 'זיתים ירוקים, ממולאים',
+    t: { en: 'Green olives, stuffed', de: 'Grüne Oliven, gefüllt',
+         es: 'Aceitunas verdes rellenas', fr: 'Olives vertes farcies',
+         it: 'Olive verdi farcite', pt: 'Azeitonas verdes recheadas',
+         ja: 'グリーンオリーブ（詰め物入り）', 'zh-Hans': '绿橄榄，酿馅',
+         'zh-Hant': '綠橄欖（釀餡）', ar: 'زيتون أخضر محشي' } },
+
+  { id: 'grapes', he: 'ענבים, לפנ לסוג, טרי',
+    t: { en: 'Grapes, fresh', de: 'Weintrauben, frisch', es: 'Uvas frescas',
+         fr: 'Raisin frais', it: 'Uva fresca', pt: 'Uvas frescas',
+         ja: 'ぶどう', 'zh-Hans': '葡萄（鲜）', 'zh-Hant': '葡萄（鮮）',
+         ar: 'عنب طازج' } },
+
+  { id: 'nectarine', he: 'נקטרינה, טריה',
+    t: { en: 'Nectarine, fresh', de: 'Nektarine, frisch', es: 'Nectarina fresca',
+         fr: 'Nectarine fraîche', it: 'Pesca noce fresca', pt: 'Nectarina fresca',
+         ja: 'ネクタリン', 'zh-Hans': '油桃', 'zh-Hant': '油桃',
+         ar: 'نكتارين طازج' } },
+
+  { id: 'persimmon', he: 'אפרסמון, טרי',
+    t: { en: 'Persimmon, fresh', de: 'Kaki, frisch', es: 'Caqui fresco',
+         fr: 'Kaki frais', it: 'Caco fresco', pt: 'Caqui fresco',
+         ja: '柿', 'zh-Hans': '柿子', 'zh-Hant': '柿子',
+         ar: 'كاكا طازجة' } },
+
+  { id: 'guava', he: 'גויאבה, טריה',
+    t: { en: 'Guava, fresh', de: 'Guave, frisch', es: 'Guayaba fresca',
+         fr: 'Goyave fraîche', it: 'Guava fresca', pt: 'Goiaba fresca',
+         ja: 'グアバ', 'zh-Hans': '番石榴', 'zh-Hant': '芭樂',
+         ar: 'جوافة طازجة' } },
+
+  { id: 'passion-fruit', he: 'פסיפלורה, פרי התאוה, טרי',
+    t: { en: 'Passion fruit, fresh', de: 'Passionsfrucht, frisch',
+         es: 'Maracuyá fresco', fr: 'Fruit de la passion frais',
+         it: 'Frutto della passione fresco', pt: 'Maracujá fresco',
+         ja: 'パッションフルーツ', 'zh-Hans': '百香果', 'zh-Hant': '百香果',
+         ar: 'فاكهة الباشن فروت طازجة' } },
+
+  { id: 'mandarin', he: 'קלמנטינה/מנדרינה, טריה',
+    t: { en: 'Mandarin or clementine, fresh', de: 'Mandarine oder Clementine, frisch',
+         es: 'Mandarina o clementina fresca', fr: 'Mandarine ou clémentine fraîche',
+         it: 'Mandarino o clementina fresca', pt: 'Tangerina ou clementina fresca',
+         ja: 'みかん（マンダリン）', 'zh-Hans': '橘子（柑橘）',
+         'zh-Hant': '橘子（柑橘）', ar: 'يوسفي طازج' } },
+
+  { id: 'mulberry', he: 'תות עץ, טרי',
+    t: { en: 'Mulberry, fresh', de: 'Maulbeere, frisch', es: 'Mora de morera fresca',
+         fr: 'Mûre de mûrier fraîche', it: 'Gelso fresco', pt: 'Amora-de-árvore fresca',
+         ja: '桑の実', 'zh-Hans': '桑葚', 'zh-Hant': '桑葚',
+         ar: 'توت شامي طازج' } },
+
+  { id: 'quince', he: 'חבוש, טרי',
+    t: { en: 'Quince, fresh', de: 'Quitte, frisch', es: 'Membrillo fresco',
+         fr: 'Coing frais', it: 'Mela cotogna fresca', pt: 'Marmelo fresco',
+         ja: 'マルメロ', 'zh-Hans': '榅桲', 'zh-Hant': '榲桲',
+         ar: 'سفرجل طازج' } },
+
+  { id: 'loquat', he: 'שסק, טרי',
+    t: { en: 'Loquat, fresh', de: 'Loquat (Wollmispel), frisch',
+         es: 'Níspero fresco', fr: 'Nèfle du Japon fraîche',
+         it: 'Nespola del Giappone fresca', pt: 'Nêspera fresca',
+         ja: 'びわ', 'zh-Hans': '枇杷', 'zh-Hant': '枇杷',
+         ar: 'أكي دنيا طازج' } },
+
+  { id: 'pear-baked', he: 'אגס, אפוי',
+    t: { en: 'Pear, baked', de: 'Birne, gebacken', es: 'Pera al horno',
+         fr: 'Poire cuite au four', it: 'Pera al forno', pt: 'Pera assada',
+         ja: '洋なし（焼き）', 'zh-Hans': '烤梨', 'zh-Hant': '烤梨',
+         ar: 'كمثرى مخبوزة' } },
+
+  { id: 'mango-dried', he: 'מנגו, מיובש',
+    t: { en: 'Mango, dried', de: 'Mango, getrocknet', es: 'Mango seco',
+         fr: 'Mangue séchée', it: 'Mango essiccato', pt: 'Manga seca',
+         ja: 'ドライマンゴー', 'zh-Hans': '芒果干', 'zh-Hant': '芒果乾',
+         ar: 'مانجو مجففة' } },
+
+  { id: 'cranberries-dried', he: 'חמוציות, מיובשות ממותקות',
+    t: { en: 'Cranberries, dried and sweetened',
+         de: 'Cranberries, getrocknet und gesüßt',
+         es: 'Arándanos rojos secos y azucarados',
+         fr: 'Canneberges séchées et sucrées',
+         it: 'Mirtilli rossi secchi e zuccherati',
+         pt: 'Cranberries secas e adoçadas',
+         ja: 'ドライクランベリー（加糖）', 'zh-Hans': '蔓越莓干（加糖）',
+         'zh-Hant': '蔓越莓乾（加糖）', ar: 'توت بري مجفف ومحلى' } },
+
+  { id: 'flaxseed', he: 'זרעי פשתן',
+    t: { en: 'Flaxseed (linseed)', de: 'Leinsamen', es: 'Semillas de lino',
+         fr: 'Graines de lin', it: 'Semi di lino', pt: 'Sementes de linhaça',
+         ja: '亜麻仁（フラックスシード）', 'zh-Hans': '亚麻籽',
+         'zh-Hant': '亞麻籽', ar: 'بذور الكتان' } },
+
 ];
 
 const LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', 'ar'];

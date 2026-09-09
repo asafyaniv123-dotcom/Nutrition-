@@ -229,9 +229,21 @@ lists only `moh`, so adding one of these means adding a source first.
   99.5% fat. Filed under its Arabic name, so no search for the English word
   could find it. In the core since batch 3.
 - **paneer** — nothing. Not interchangeable with the brined white cheeses.
-- **cassava / manioc**, and **plantain** — nothing. Both are staples for a
-  large part of the world and both are absent.
-- **kimchi**, **polenta**, **tempeh** and **seitan** are not there at all.
+- **cassava / manioc** — STILL ABSENT. I struck this through when I found
+  `טפיוקה, גרגירים, יבש`, but tapioca is extracted cassava STARCH: 358 kcal
+  and 0.2 g protein against fresh cassava root’s ~160 and 1.4. Searched six
+  ways (קסאווה, קסאבה, קססווה, מניוק, מנדיוקה, יוקה) — no cassava row exists.
+  The tapioca entry itself is honest; my framing of it was not.
+- **plantain** — still genuinely absent.
+- ~~**tempeh**~~ and ~~**seitan**~~ — both there, both found only by searching
+  in Hebrew rather than for the English loanword: `טמפה, מזון אינדונזי שורשי`
+  and `סייטן, פרוסות בסגנון סלמי`. Seitan needed two entries, not one: the dry
+  gluten powder (`גלוטן חיטה, יבש`) is 370 kcal and cooked seitan is 112, and
+  naming the powder "seitan flour" left anyone logging seitan 3.3x high.
+- **kimchi** is still absent, but `כרוב כבוש מוחמץ` is sauerkraut and is now
+  in the core — a different ferment, not a substitute.
+- **kimchi**, **polenta**, **paneer** and plain **firm tofu** are not there
+  at all. (tempeh and seitan were, and are now in the core.)
 - **nori** is fine, but the row it needed was not the obvious one. The first
   attempt named `אצות, עלים להכנת סושי` - "seaweed, leaves for making sushi",
   35 kcal - and called it a nori sheet in ten languages. That row is raw
@@ -243,9 +255,15 @@ lists only `moh`, so adding one of these means adding a source first.
   I read "yellow cheese" and stopped; the row says צ'דר in it. In the core
   since batch 3.
 
-**Three times now** a food recorded here as absent turned out to be present
-under a name I did not search for — bacon, then ghee, then cheddar. The
-lesson is not about any of those foods. It is that "the table does not have
+**Five times now** a food recorded here as absent turned out to be present
+under a name I did not search for — bacon, ghee, cheddar, tempeh and seitan.
+
+I first wrote "nine", counting the whole batch instead of reading this list:
+sardines, anchovies and sauerkraut were never on it, and **sardines were
+already in the core** as `core:sardine-raw` before I "recovered" them. That
+is the same species of mistake as the ones the list is about — asserting from
+memory instead of looking — so it is recorded rather than quietly corrected.
+The lesson is not about any of those foods. It is that "the table does not have
 it" almost always means "I looked for the wrong word", and that the gap this
 whole file closes is a NAMING gap. Search the table three ways before adding
 anything to this list.
