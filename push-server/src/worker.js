@@ -99,6 +99,81 @@ async function sendPush(endpoint, env) {
 
 /* ── HTTP ── */
 
+/* The AI branch has its own budget, because /off's cap was sized for a free
+   upstream. 400 a day is right for asking Open Food Facts twice; it is not
+   right for a model call, and /parse - the same kind of spending on the same
+   key - is capped at 60. Typing and backspacing over a Chinese word fires
+   this repeatedly, so it is counted separately from the searches. */
+async function aiSpend(env, ip, day) {
+  const cap = Number(env.OFF_AI_DAILY_CAP || 60);
+  const key = 'oa:' + day + ':' + ip;
+  const used = Number((await env.SUBS.get(key)) || 0);
+  if (used >= cap) return false;
+  await env.SUBS.put(key, String(used + 1), { expirationTtl: 172800 });
+  return true;
+}
+/* What a packet of this would say, in Latin letters.
+
+   Open Food Facts indexes what is printed on the packaging, and packaging
+   in Japan says Natto and in Israel says Cottage. So the question is not
+   "translate this" but "what would the label say", which is a different and
+   more answerable one - and it is why the country is passed in.
+
+   One short answer, no punctuation, and an empty string when the model is
+   unsure: a wrong search term returns wrong products with real numbers on
+   them, which is worse than returning nothing. */
+async function latinTerm(q, tag, env) {
+  const country = tag.slice(3).replace(/-/g, ' ');
+  const SYSTEM =
+    'You turn a food a person typed into the words a PACKET of it would\n' +
+    'carry on a shelf in ' + country + ', written in Latin letters.\n' +
+    '\n' +
+    '- Reply with the search words alone. No explanation, no punctuation, no\n' +
+    '  quotes. Two or three words at most.\n' +
+    '- Use the name the product is SOLD under, not a description: natto, not\n' +
+    '  fermented soybeans; cottage, not white cheese in grains.\n' +
+    '- If you are not confident what it is, reply with nothing at all. A\n' +
+    '  wrong guess returns real numbers for the wrong food, which is worse\n' +
+    '  than returning none.';
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.AI_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 24,
+        temperature: 0,
+        system: SYSTEM,
+        messages: [{ role: 'user', content: q }],
+      }),
+    });
+  } catch {
+    return '';
+  }
+  if (!r.ok) return '';
+  let d;
+  try { d = await r.json(); } catch { return ''; }
+  const text = ((d && d.content) || []).map((c) => c.text || '').join('').trim();
+  /* Accents FOLD, they do not get deleted. The country is in the prompt
+     precisely so the answer is what a French or Spanish packet says, and
+     those packets carry accents - stripping the character outright turned
+     "creme fraiche" into "cr me fra che", which searches for three words
+     that are not words and returns rubbish. Rubbish is worse than nothing
+     here: it comes back with real numbers attached to the wrong food.
+
+     Same fold the client's foodKey uses, and only U+0300-U+036F, the Latin
+     combining block. THEN the whitelist, which is what keeps a colon or a
+     quote - the two characters needed to forge an Open Food Facts field
+     filter - out of the URL. */
+  const folded = text.normalize('NFD').replace(/[\u0300-\u036F]/g, '');
+  const clean = folded.replace(/[^A-Za-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+  return clean.length >= 2 ? clean : '';
+}
 /* The app tells us which language it is showing. Guessing from the text
    cannot work - "pasta" is four languages and a photograph is none - and the
    app has known the answer since it grew a language picker. */
@@ -239,6 +314,12 @@ export default {
       /* Their tag, already built by the app from an ISO code. Kept to the
          shape a tag can have so nothing else can be smuggled into the URL. */
       const tag = String((b && b.country) || '').trim().slice(0, 40);
+      /* The released app has none of the client half of this - it ignores
+         `via`, sets no alias, and drops every translated row into an array
+         where nothing can surface it. Deploying this route alone would have
+         bought it model calls for rows nobody can see. So the fallback is
+         asked for, and the copy that cannot use it does not ask. */
+      const wantVia = !!(b && b.via);
       if (q.length < 2) return json({ ok: true, rows: [] });
       if (!/^en:[a-z-]+$/.test(tag)) return json({ ok: true, rows: [] });
 
@@ -254,51 +335,98 @@ export default {
          not throttled - and this route degrades silently, so it returned
          nothing at all rather than saying so. This one answers in half a
          second. The free text and the country filter combine inside q. */
-      const u = 'https://search.openfoodfacts.org/search?page_size=12&q=' +
-        encodeURIComponent(q + ' countries_tags:"' + tag + '"');
-
-      let j;
-      try {
-        const r = await fetch(u, {
-          headers: { 'User-Agent': 'BetterMe/0.1 (personal nutrition app)' },
-        });
-        if (!r.ok) return json({ ok: true, rows: [] });
-        j = await r.json();
-      } catch {
-        return json({ ok: true, rows: [] });
-      }
+      const hits = async (term) => {
+        const u = 'https://search.openfoodfacts.org/search?page_size=12&q=' +
+          encodeURIComponent(term + ' countries_tags:"' + tag + '"');
+        try {
+          const r = await fetch(u, {
+            headers: { 'User-Agent': 'BetterMe/0.1 (personal nutrition app)' },
+          });
+          if (!r.ok) return [];
+          const jj = await r.json();
+          return (jj && jj.hits) || [];
+        } catch {
+          return [];
+        }
+      };
 
       /* All four or nothing. Open Food Facts often carries energy without
          the macros, and a missing number defaulted to 0 would show "0 g
          carbohydrate" on a yogurt - a figure nobody measured, presented
          beside ones somebody did. */
       const num = (v) => (typeof v === 'number' && isFinite(v) ? Math.round(v * 10) / 10 : null);
-      const rows = [];
-      for (const p of (j && j.hits) || []) {
-        const n = p.nutriments || {};
-        const k = n['energy-kcal_100g'];
-        if (typeof k !== 'number' || !isFinite(k) || k < 0) continue;
-        const pr = num(n.proteins_100g), ca = num(n.carbohydrates_100g), fa = num(n.fat_100g);
-        if (pr === null || ca === null || fa === null) continue;
-        /* The macros are the check on the energy. 4 kcal a gram for protein
-           and carbohydrate, 9 for fat - the same arithmetic /estimate asks
-           the model to respect. A natto claiming 0.21 kcal against macros
-           implying 225 is not a measurement, and logging it would cost a
-           person their day's count with nothing on screen to explain it.
+      const usable = (found, isVia) => {
+        /* `out`, not `rows`: the caller's array is also called rows, and a
+           shadowed name is the bug class this repo keeps paying for. */
+        const out = [];
+        for (const p of found) {
+          const n = p.nutriments || {};
+          const k = n['energy-kcal_100g'];
+          if (typeof k !== 'number' || !isFinite(k) || k < 0) continue;
+          const pr = num(n.proteins_100g), ca = num(n.carbohydrates_100g), fa = num(n.fat_100g);
+          if (pr === null || ca === null || fa === null) continue;
+          /* The macros are the check on the energy. 4 kcal a gram for protein
+             and carbohydrate, 9 for fat - the same arithmetic /estimate asks
+             the model to respect. A natto claiming 0.21 kcal against macros
+             implying 225 is not a measurement, and logging it would cost a
+             person their day's count with nothing on screen to explain it.
 
-           Low side only: energy far ABOVE the macros has an innocent cause
-           this cannot see, since alcohol carries 7 kcal a gram and appears
-           in no macro. And the row is rejected, not corrected - deriving the
-           number would be inventing it. */
-        const implied = pr * 4 + ca * 4 + fa * 9;
-        if (implied >= 20 && k < implied * 0.5) continue;
-        let name = String(p.product_name || p.product_name_en || '').trim();
-        const brand = String(p.brands || '').split(',')[0].trim();
-        if (brand) name = name ? name + ', ' + brand : brand;
-        if (name.length < 2) continue;
-        rows.push({ id: 'off:' + p.code, n: name, k: Math.round(k), p: pr, c: ca, f: fa });
+             Low side only: energy far ABOVE the macros has an innocent cause
+             this cannot see, since alcohol carries 7 kcal a gram and appears
+             in no macro. And the row is rejected, not corrected - deriving the
+             number would be inventing it. */
+          const implied = pr * 4 + ca * 4 + fa * 9;
+          if (implied >= 20 && k < implied * 0.5) continue;
+          let name = String(p.product_name || p.product_name_en || '').trim();
+          const brand = String(p.brands || '').split(',')[0].trim();
+          if (brand) name = name ? name + ', ' + brand : brand;
+          if (name.length < 2) continue;
+          out.push({ id: 'off:' + p.code, n: name, k: Math.round(k), p: pr, c: ca, f: fa,
+                     via: isVia ? 1 : 0 });
+        }
+        return out;
+      };
+
+      const rows = usable(await hits(q), false);
+      let via = '';
+
+      /* Not "the index cannot read this script" - it reads Japanese, Hebrew,
+         Greek and Russian perfectly well (12, 12, 11 and 10 usable rows for
+         納豆, לחם, γιαούρτι and молоко). What varies is COVERAGE: زبادي
+         returns nothing at all and 酸奶 returns twelve hits of which one
+         survives the all-four-macros rule above.
+
+         Which is why this counts USABLE rows and not hits. A trigger reading
+         the hit count would never fire on 酸奶 - the case that needs it most
+         - and a trigger at exactly zero would leave that reader with a shelf
+         of one. So it fires below a small floor.
+
+         The Latin rows are ADDED to the native ones, never instead of them:
+         what came back under the word the person actually typed is the
+         better answer and keeps its place. */
+      /* Inclusive. `< 3` fires at 0, 1 and 2 - and of the ten pairs measured,
+         the one sitting exactly on the boundary is ヨーグルト at 3 usable
+         rows against 10 for "yogurt". Excluding the thinnest real shelf in
+         the sample would make the constant an accident. Everything else
+         measured is at 0-1 or 10-12, so the gap is wide and 3 is safe. */
+      const THIN = 3;
+      /* A Latin WORD, not a Latin letter. A single one skipped "ヨーグルト
+         500g" and "牛乳 1L" - a pack size is an ordinary thing to type, and
+         those queries were losing the fallback at zero rows. Two letters
+         together mean the index has a word to match on. */
+      const hasLatinWord = /[a-z]{2,}/i.test(q);
+      if (wantVia && rows.length <= THIN && !hasLatinWord && env.AI_KEY &&
+          (await aiSpend(env, ip, day))) {
+        via = await latinTerm(q, tag, env);
+        if (via) {
+          const seen = new Set(rows.map((r) => r.id));
+          for (const r of usable(await hits(via), true)) {
+            if (!seen.has(r.id)) { seen.add(r.id); rows.push(r); }
+          }
+        }
       }
-      return json({ ok: true, rows });
+
+      return json({ ok: true, rows, via });
     }
 
     if (url.pathname === '/parse' && req.method === 'POST') {
