@@ -225,7 +225,9 @@ lists only `moh`, so adding one of these means adding a source first.
   and a yellow "tofu cheese". The block of firm tofu that most of the world
   means by the word is absent, and it is not close enough to approximate: the
   fried row is twice the energy.
-- **ghee** — nothing at all. Butter is in, ghee is not, and they differ.
+- ~~**ghee**~~ — WRONG, it is there: `חמאה מזוככת, סמנה`, 876 kcal and
+  99.5% fat. Filed under its Arabic name, so no search for the English word
+  could find it. In the core since batch 3.
 - **paneer** — nothing. Not interchangeable with the brined white cheeses.
 - **cassava / manioc**, and **plantain** — nothing. Both are staples for a
   large part of the world and both are absent.
@@ -237,8 +239,50 @@ lists only `moh`, so adding one of these means adding a source first.
   no check could catch, because the row existed and its numbers were copied
   faithfully. **A row that exists is not the same as the right row**, and
   only reading the Hebrew against the English finds the difference.
-- **cheddar** — the table has "yellow cheese" at various fat levels, which is
-  not the same food and should not borrow its numbers.
+- ~~**cheddar**~~ — WRONG, it is there: `גבינה צהובה 32% שומן, צ'דר, תנובה`.
+  I read "yellow cheese" and stopped; the row says צ'דר in it. In the core
+  since batch 3.
+
+**Three times now** a food recorded here as absent turned out to be present
+under a name I did not search for — bacon, then ghee, then cheddar. The
+lesson is not about any of those foods. It is that "the table does not have
+it" almost always means "I looked for the wrong word", and that the gap this
+whole file closes is a NAMING gap. Search the table three ways before adding
+anything to this list.
+
+### Atwater is a flag, not a verdict — and I used it as one
+
+I wrote a section here declaring two cocoa rows "wrong" because their energy
+did not match 4·protein + 4·carbohydrate + 9·fat, and I rejected a baby-corn
+row on the same reasoning. **That test does not do what I asked of it.**
+Measured against the core as already shipped: **47 of 241 rows are more than
+10% away from it.** Dry lentils are +48%, raspberries +64%, spirulina −27%.
+None of those foods is in any doubt.
+
+Two mechanisms, both ordinary:
+
+- **This table stores NET carbohydrate and computes energy from TOTAL.** So
+  anything with fibre reads high. `קמח שעורה עם לתת` is USDA barley malt
+  flour: 78.3 g carbohydrate less 7.1 g fibre is exactly the 71.2 stored
+  here, and the 361 kcal counts the fibre the 71.2 no longer mentions.
+- **Not every food uses 4/4/9.** Specific Atwater factors are lower for some
+  proteins and starches, which is why USDA’s own dried spirulina is 290 kcal
+  against macros implying 395.
+
+So `קקאו, אבקה, ללא חלב מיובש` — 228 / 19.6 / 24.7 / 13.7, the row I called
+wrong — is USDA’s unsweetened cocoa powder verbatim, and it is now the cocoa
+the core carries. The 24%-fat "breakfast" row I promoted in its place passed
+my test only because its carbohydrate happens to be stored as total. **I
+picked the atypical row using a test that cannot tell typical from atypical.**
+
+The baby-corn rejection rested on the same reasoning and is therefore not
+established either. It may still be wrong — 16.4 g of carbohydrate is high
+for canned baby corn against USDA’s 5.2 — but that is an argument from a
+second source, which is the only kind that settles it.
+
+**How to apply:** `vet.mjs` still prints the Atwater gap, because a large one
+is worth a look. It is never a reason to drop a row on its own. To doubt a
+number, compare it with a second measured table, not with arithmetic.
 
 The obvious second source is a national food composition table published as a
 bulk download — USDA FoodData Central publishes SR Legacy and Foundation Foods

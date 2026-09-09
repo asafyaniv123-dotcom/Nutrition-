@@ -1383,6 +1383,291 @@ const CORE = [
          fr: 'Tisane', it: 'Tisana', pt: 'Chá de ervas', ja: 'ハーブティー',
          'zh-Hans': '花草茶', 'zh-Hant': '花草茶', ar: 'شاي أعشاب' } },
 
+  /* ── batch 3: breads, flours, cuts and fish ───────────────────────────── */
+
+  /* Filed as "Indian pita", which no Indian reader would ever type. */
+  { id: 'chapati', he: 'פיתה הודית, צ\'פאטי',
+    t: { en: 'Chapati (Indian flatbread)', de: 'Chapati (indisches Fladenbrot)',
+         es: 'Chapati (pan plano indio)', fr: 'Chapati (pain plat indien)',
+         it: 'Chapati (pane piatto indiano)', pt: 'Chapati (pão achatado indiano)',
+         ja: 'チャパティ', 'zh-Hans': '恰帕提（印度薄饼）', 'zh-Hant': '恰帕提（印度薄餅）',
+         ar: 'تشباتي (خبز هندي)' } },
+
+  { id: 'druze-flatbread', he: 'פיתה דרוזית',
+    t: { en: 'Druze flatbread (markook)', de: 'Drusisches Fladenbrot (Markook)',
+         es: 'Pan plano druso (markook)', fr: 'Pain plat druze (markouk)',
+         it: 'Pane piatto druso (markook)', pt: 'Pão achatado druso (markook)',
+         ja: 'ドゥルーズ風薄焼きパン', 'zh-Hans': '德鲁兹薄饼',
+         'zh-Hant': '德魯茲薄餅', ar: 'خبز مرقوق درزي' } },
+
+  { id: 'yemeni-saluf', he: 'פיתה תימנית, סאלוף',
+    t: { en: 'Yemeni saluf flatbread', de: 'Jemenitisches Saluf-Fladenbrot',
+         es: 'Pan plano yemení (saluf)', fr: 'Pain plat yéménite (saluf)',
+         it: 'Pane piatto yemenita (saluf)', pt: 'Pão achatado iemenita (saluf)',
+         ja: 'イエメン風サルーフ（薄焼きパン）', 'zh-Hans': '也门萨鲁夫薄饼',
+         'zh-Hant': '葉門薩魯夫薄餅', ar: 'خبز صلوف يمني' } },
+
+  { id: 'chickpea-flour', he: 'קמח חומוס',
+    t: { en: 'Chickpea flour (gram flour, besan)', de: 'Kichererbsenmehl',
+         es: 'Harina de garbanzo', fr: 'Farine de pois chiches',
+         it: 'Farina di ceci', pt: 'Farinha de grão-de-bico',
+         ja: 'ひよこ豆粉（ベサン）', 'zh-Hans': '鹰嘴豆粉',
+         'zh-Hant': '鷹嘴豆粉', ar: 'دقيق الحمص' } },
+
+  { id: 'rye-flour', he: 'קמח שיפון בינוני',
+    t: { en: 'Rye flour, medium', de: 'Roggenmehl, mittel', es: 'Harina de centeno media',
+         fr: 'Farine de seigle, moyenne', it: 'Farina di segale, media',
+         pt: 'Farinha de centeio, média', ja: 'ライ麦粉（中挽き）',
+         'zh-Hans': '黑麦粉（中度研磨）', 'zh-Hant': '黑麥粉（中度研磨）',
+         ar: 'دقيق الجاودار، متوسط' } },
+
+  { id: 'self-raising-flour', he: 'קמח חיטה תופח',
+    t: { en: 'Self-raising wheat flour', de: 'Weizenmehl mit Backtriebmittel',
+         es: 'Harina de trigo leudante', fr: 'Farine de blé avec levure incorporée',
+         it: 'Farina di grano autolievitante', pt: 'Farinha de trigo com fermento',
+         ja: '小麦粉（ベーキングパウダー入り）', 'zh-Hans': '自发小麦粉',
+         'zh-Hant': '自發小麥粉', ar: 'دقيق قمح ذاتي التخمير' } },
+
+  { id: 'malted-barley-flour', he: 'קמח שעורה עם לתת',
+    t: { en: 'Malted barley flour', de: 'Gerstenmalzmehl', es: 'Harina de cebada malteada',
+         fr: 'Farine d’orge maltée', it: 'Farina d’orzo maltato',
+         pt: 'Farinha de cevada maltada', ja: '麦芽大麦粉',
+         'zh-Hans': '麦芽大麦粉', 'zh-Hant': '麥芽大麥粉',
+         ar: 'دقيق شعير منبت' } },
+
+  { id: 'ptitim', he: 'פתיתים מבושלים ללא שמן',
+    t: { en: 'Ptitim (Israeli couscous), cooked without oil',
+         de: 'Ptitim (israelischer Couscous), ohne Öl gegart',
+         es: 'Ptitim (cuscús israelí), cocido sin aceite',
+         fr: 'Ptitim (couscous israélien), cuit sans huile',
+         it: 'Ptitim (couscous israeliano), cotto senza olio',
+         pt: 'Ptitim (cuscuz israelense), cozido sem óleo',
+         ja: 'プティティム（イスラエル風クスクス・油なし）',
+         'zh-Hans': '以色列珍珠面（无油煮）', 'zh-Hant': '以色列珍珠麵（無油煮）',
+         ar: 'بتيتيم (كسكس إسرائيلي) مطبوخ بدون زيت' } },
+
+  /* NOT `מצה קלה` - קלה is reduced-calorie, the same word the light-bread
+     rows carry, and at 268 against this row's 354 that is 24% under for
+     every reader who cannot read the Hebrew. This is also the multi-brand
+     generic the file prefers. */
+  { id: 'matzah', he: 'מצה, פת מצה, דננברג, מצות ראשון, מצות יהודה, כרמל',
+    t: { en: 'Matzah', de: 'Matze', es: 'Matzá', fr: 'Matza', it: 'Matzah',
+         pt: 'Matzá', ja: 'マツァ', 'zh-Hans': '无酵饼（马佐）',
+         'zh-Hant': '無酵餅（馬佐）', ar: 'خبز المتزة' } },
+
+  { id: 'white-bread-toasted', he: 'לחם לבן, קלוי',
+    t: { en: 'White bread, toasted', de: 'Weißbrot, getoastet', es: 'Pan blanco tostado',
+         fr: 'Pain blanc grillé', it: 'Pane bianco tostato', pt: 'Pão branco torrado',
+         ja: '食パン（白・トースト）', 'zh-Hans': '白面包（烤）',
+         'zh-Hant': '白麵包（烤）', ar: 'خبز أبيض محمص' } },
+
+  { id: 'bread-light-white', he: 'לחם קל, לבן',
+    t: { en: 'White bread, light', de: 'Weißbrot, leicht', es: 'Pan blanco ligero',
+         fr: 'Pain blanc allégé', it: 'Pane bianco light', pt: 'Pão branco light',
+         ja: '食パン（白・低カロリー）', 'zh-Hans': '白面包（低卡）',
+         'zh-Hant': '白麵包（低卡）', ar: 'خبز أبيض خفيف' } },
+
+  { id: 'baguette-toasted', he: 'לחם בגט, קלוי',
+    t: { en: 'Baguette, toasted', de: 'Baguette, getoastet', es: 'Baguette tostada',
+         fr: 'Baguette grillée', it: 'Baguette tostata', pt: 'Baguete torrada',
+         ja: 'バゲット（トースト）', 'zh-Hans': '法棍（烤）',
+         'zh-Hant': '法棍（烤）', ar: 'باغيت محمص' } },
+
+  { id: 'multigrain-bread', he: 'לחם דגנים, ברמן',
+    t: { en: 'Multigrain bread', de: 'Mehrkornbrot', es: 'Pan multicereales',
+         fr: 'Pain multicéréales', it: 'Pane multicereali', pt: 'Pão multigrãos',
+         ja: '雑穀パン', 'zh-Hans': '多谷物面包', 'zh-Hant': '多穀物麵包',
+         ar: 'خبز متعدد الحبوب' } },
+
+  /* Ghee, which I had recorded in TODO.md as absent. It is filed under its
+     Arabic name, samneh, so no search for the English word could find it. */
+  { id: 'ghee', he: 'חמאה מזוככת, סמנה',
+    t: { en: 'Ghee (clarified butter)', de: 'Ghee (Butterschmalz)',
+         es: 'Ghee (mantequilla clarificada)', fr: 'Ghee (beurre clarifié)',
+         it: 'Ghee (burro chiarificato)', pt: 'Ghee (manteiga clarificada)',
+         ja: 'ギー（澄ましバター）', 'zh-Hans': '酥油（澄清黄油）',
+         'zh-Hant': '酥油（澄清奶油）', ar: 'سمنة' } },
+
+  /* Cheddar, likewise recorded as absent. Filed as "yellow cheese 32%". */
+  { id: 'cheddar', he: 'גבינה צהובה 32% שומן, צ\'דר, תנובה',
+    t: { en: 'Cheddar, 32%', de: 'Cheddar, 32%', es: 'Cheddar, 32%',
+         fr: 'Cheddar, 32%', it: 'Cheddar, 32%', pt: 'Cheddar, 32%',
+         ja: 'チェダーチーズ 32%', 'zh-Hans': '切达奶酪 32%',
+         'zh-Hant': '切達乳酪 32%', ar: 'جبنة شيدر 32%' } },
+
+  { id: 'yellow-cheese-15', he: 'גבינה צהובה 15% שומן, עמק',
+    t: { en: 'Semi-hard yellow cheese, 15%', de: 'Schnittkäse, 15%',
+         es: 'Queso semiduro amarillo, 15%', fr: 'Fromage à pâte pressée, 15%',
+         it: 'Formaggio semiduro, 15%', pt: 'Queijo semiduro amarelo, 15%',
+         ja: 'セミハードチーズ 15%', 'zh-Hans': '半硬质奶酪 15%',
+         'zh-Hant': '半硬質起司 15%', ar: 'جبنة صفراء نصف صلبة 15%' } },
+
+  { id: 'goat-cheese-20', he: 'גבינת עזים 20% שומן, גד',
+    t: { en: 'Goat cheese, 20%', de: 'Ziegenkäse, 20%', es: 'Queso de cabra, 20%',
+         fr: 'Fromage de chèvre, 20%', it: 'Formaggio di capra, 20%',
+         pt: 'Queijo de cabra, 20%', ja: 'シェーヴルチーズ（ヤギ）20%',
+         'zh-Hans': '山羊奶酪 20%', 'zh-Hant': '山羊乳酪 20%',
+         ar: 'جبنة ماعز 20%' } },
+
+  /* Cooking cream, not soured. It sits two kcal from the 15% sour cream, so
+     every name says which of the two it is. */
+  { id: 'cooking-cream-15', he: 'שמנת לבישול 15% שומן, תנובה',
+    t: { en: 'Cooking cream, 15%', de: 'Kochsahne, 15%', es: 'Nata para cocinar, 15%',
+         fr: 'Crème à cuisiner, 15%', it: 'Panna da cucina, 15%',
+         pt: 'Creme de leite culinário, 15%', ja: '料理用クリーム 15%',
+         'zh-Hans': '烹饪奶油 15%', 'zh-Hant': '烹飪鮮奶油 15%',
+         ar: 'كريمة طهي 15%' } },
+
+  { id: 'sheep-milk-7', he: 'חלב כבשים 7% שומן',
+    t: { en: 'Sheep milk, 7%', de: 'Schafsmilch, 7%', es: 'Leche de oveja, 7%',
+         fr: 'Lait de brebis, 7%', it: 'Latte di pecora, 7%',
+         pt: 'Leite de ovelha, 7%', ja: '羊乳 7%', 'zh-Hans': '绵羊奶 7%',
+         'zh-Hant': '綿羊奶 7%', ar: 'حليب غنم 7%' } },
+
+  /* The plain tub, not `מרגרינה מחמאה` - that row is margarine made WITH
+     butter, and the person who picks margarine over butter is usually the
+     person avoiding dairy. Byte-identical numbers, so nothing is lost. */
+  { id: 'margarine', he: 'מרגרינה גולדבנד, בגביע, תלמה',
+    t: { en: 'Margarine, tub', de: 'Margarine, Becher', es: 'Margarina en tarrina (pote)',
+         fr: 'Margarine en barquette', it: 'Margarina in vaschetta',
+         pt: 'Margarina em pote', ja: 'マーガリン（カップ）',
+         'zh-Hans': '人造黄油（盒装）', 'zh-Hant': '人造奶油（盒裝）',
+         ar: 'مارغرين في علبة' } },
+
+  { id: 'beef-dried', he: 'בשר בקר, מיובש',
+    t: { en: 'Beef, dried', de: 'Rindfleisch, getrocknet', es: 'Carne de vacuno seca',
+         fr: 'Bœuf séché', it: 'Manzo essiccato', pt: 'Carne bovina seca',
+         ja: '乾燥牛肉', 'zh-Hans': '干制牛肉',
+         'zh-Hant': '乾製牛肉', ar: 'لحم بقري مجفف' } },
+
+  { id: 'beef-brisket-raw', he: 'בשר בקר, חזה, לא מבושל',
+    t: { en: 'Beef brisket, raw', de: 'Rinderbrust, roh', es: 'Pecho de vacuno, crudo',
+         fr: 'Poitrine de bœuf, crue', it: 'Punta di petto di manzo, cruda',
+         pt: 'Peito bovino, cru', ja: '牛ブリスケット（生）',
+         'zh-Hans': '牛胸肉（生）', 'zh-Hant': '牛胸肉（生）',
+         ar: 'صدر بقري نيء' } },
+
+  { id: 'lamb-roasted', he: 'בשר כבש צלוי בשמן זית',
+    t: { en: 'Lamb, roasted in olive oil', de: 'Lamm, in Olivenöl gebraten',
+         es: 'Cordero asado en aceite de oliva', fr: 'Agneau rôti à l’huile d’olive',
+         it: 'Agnello arrosto all’olio d’oliva', pt: 'Cordeiro assado em azeite',
+         ja: 'ラム肉（オリーブオイルでロースト）', 'zh-Hans': '橄榄油烤羊肉',
+         'zh-Hant': '橄欖油烤羊肉', ar: 'لحم ضأن مشوي بزيت الزيتون' } },
+
+  { id: 'lamb-osso-buco', he: 'בשר כבש, אוסובוקו',
+    /* Braised, and every name says so: no plain lamb row in this table
+       carries carbohydrate, and this one has 7.2 g of it. */
+    t: { en: 'Lamb shank, braised (osso buco)', de: 'Lammhaxe, geschmort (Ossobuco)',
+         es: 'Jarrete de cordero estofado (osso buco)',
+         fr: 'Jarret d’agneau braisé (osso buco)',
+         it: 'Ossobuco di agnello, brasato', pt: 'Ossobuco de cordeiro, estufado',
+         ja: 'ラムすね肉の煮込み（オッソブーコ）', 'zh-Hans': '炖羊腱（羊小腿）',
+         'zh-Hant': '燉羊腱（羊小腿）', ar: 'موزة ضأن مطهوة ببطء (أوسو بوكو)' } },
+
+  { id: 'turkey-liver', he: 'בשר הודו, כבד, מבושל',
+    t: { en: 'Turkey liver, cooked', de: 'Putenleber, gegart',
+         es: 'Hígado de pavo cocido', fr: 'Foie de dinde, cuit',
+         it: 'Fegato di tacchino, cotto', pt: 'Fígado de peru, cozido',
+         ja: '七面鳥のレバー（加熱）', 'zh-Hans': '火鸡肝（熟）',
+         'zh-Hant': '火雞肝（熟）', ar: 'كبد ديك رومي مطبوخ' } },
+
+  { id: 'turkey-breast-olive-oil', he: 'בשר הודו, חזה מטוגן בשמן זית',
+    t: { en: 'Turkey breast, fried in olive oil',
+         de: 'Putenbrust, in Olivenöl gebraten',
+         es: 'Pechuga de pavo frita en aceite de oliva',
+         fr: 'Blanc de dinde, poêlé à l’huile d’olive',
+         it: 'Petto di tacchino, saltato in olio d’oliva',
+         pt: 'Peito de peru, frito em azeite',
+         ja: '七面鳥むね肉（オリーブオイル焼き）',
+         'zh-Hans': '火鸡胸肉（橄榄油煎）', 'zh-Hant': '火雞胸肉（橄欖油煎）',
+         ar: 'صدر ديك رومي مقلي بزيت الزيتون' } },
+
+  { id: 'chicken-skin-roasted', he: 'בשר עוף, עור, צלוי',
+    t: { en: 'Chicken skin, roasted', de: 'Hähnchenhaut, gebraten',
+         es: 'Piel de pollo asada', fr: 'Peau de poulet rôtie',
+         it: 'Pelle di pollo arrosto', pt: 'Pele de frango assada',
+         ja: '鶏皮（ロースト）', 'zh-Hans': '烤鸡皮', 'zh-Hant': '烤雞皮',
+         ar: 'جلد دجاج مشوي' } },
+
+  { id: 'ground-chicken-roasted', he: 'בשר עוף, טחון, צלוי',
+    t: { en: 'Ground chicken (minced), roasted',
+         de: 'Hähnchenhackfleisch, gebraten', es: 'Pollo picado asado',
+         fr: 'Poulet haché, rôti', it: 'Pollo macinato, arrosto',
+         pt: 'Frango moído, assado', ja: '鶏ひき肉（ロースト）',
+         'zh-Hans': '鸡肉糜（烤）', 'zh-Hant': '雞絞肉（烤）',
+         ar: 'دجاج مفروم مشوي' } },
+
+  { id: 'tuna-canned-water', he: 'דג טונה, משומר במים',
+    t: { en: 'Tuna, canned in water', de: 'Thunfisch, Dose in Wasser',
+         es: 'Atún en conserva al natural', fr: 'Thon en conserve au naturel',
+         it: 'Tonno in scatola al naturale', pt: 'Atum em conserva na água',
+         ja: 'ツナ水煮缶', 'zh-Hans': '水浸金枪鱼罐头',
+         'zh-Hant': '水浸鮪魚罐頭', ar: 'تونة معلبة بالماء' } },
+
+  { id: 'tilapia-raw', he: 'דג אמנון-מושט, לא מבושל',
+    t: { en: 'Tilapia, raw', de: 'Tilapia, roh', es: 'Tilapia cruda',
+         fr: 'Tilapia, cru', it: 'Tilapia, cruda', pt: 'Tilápia, crua',
+         ja: 'ティラピア（生）', 'zh-Hans': '罗非鱼（生）',
+         'zh-Hant': '吳郭魚（生）', ar: 'بلطي نيء' } },
+
+  { id: 'grey-mullet-raw', he: 'דג בורי לא מבושל',
+    t: { en: 'Grey mullet, raw', de: 'Meeräsche, roh', es: 'Mújol crudo',
+         fr: 'Mulet, cru', it: 'Cefalo, crudo', pt: 'Tainha, crua',
+         ja: 'ボラ（生）', 'zh-Hans': '鲻鱼（生）', 'zh-Hant': '烏魚（生）',
+         ar: 'بوري نيء' } },
+
+  { id: 'salmon-smoked', he: 'דג סלמון, מעושן',
+    t: { en: 'Salmon, smoked', de: 'Lachs, geräuchert', es: 'Salmón ahumado',
+         fr: 'Saumon fumé', it: 'Salmone affumicato', pt: 'Salmão defumado',
+         ja: 'スモークサーモン', 'zh-Hans': '烟熏三文鱼',
+         'zh-Hant': '煙燻鮭魚', ar: 'سلمون مدخن' } },
+
+  { id: 'egg-whole-dried', he: 'ביצה שלמה מיובשת',
+    t: { en: 'Whole egg, dried', de: 'Vollei, getrocknet', es: 'Huevo entero en polvo',
+         fr: 'Œuf entier séché', it: 'Uovo intero essiccato',
+         pt: 'Ovo inteiro em pó', ja: '全卵粉', 'zh-Hans': '全蛋粉',
+         'zh-Hant': '全蛋粉', ar: 'بيض كامل مجفف' } },
+
+  { id: 'egg-white-dried', he: 'ביצה חלבון מיובש',
+    t: { en: 'Egg white, dried', de: 'Eiklar, getrocknet', es: 'Clara de huevo en polvo',
+         fr: 'Blanc d’œuf séché', it: 'Albume d’uovo, essiccato',
+         pt: 'Clara de ovo em pó', ja: '乾燥卵白', 'zh-Hans': '蛋清粉（干燥蛋清）',
+         'zh-Hant': '乾燥蛋白', ar: 'بياض البيض، مجفف' } },
+
+  /* The everyday cocoa - and the row I had wrongly condemned. I chose the
+     24% breakfast cocoa instead because its energy matched 4/4/9 exactly,
+     which turns out to mean only that its carbohydrate is stored as total
+     rather than net. This row is USDA's unsweetened cocoa powder verbatim,
+     and it is what someone means by cocoa. */
+  { id: 'cocoa-powder', he: 'קקאו, אבקה, ללא חלב מיובש',
+    t: { en: 'Cocoa powder, unsweetened', de: 'Kakaopulver, ungesüßt',
+         es: 'Cacao en polvo, sin azúcar', fr: 'Cacao en poudre, non sucré',
+         it: 'Cacao in polvere, non zuccherato', pt: 'Cacau em pó, sem açúcar',
+         ja: 'ココアパウダー（無糖）', 'zh-Hans': '可可粉（无糖）',
+         'zh-Hant': '可可粉（無糖）', ar: 'مسحوق كاكاو بدون سكر' } },
+
+  /* The generic row with the cocoa share in its name, not a single brand.
+     The percentage is what a person choosing dark chocolate is choosing. */
+  { id: 'dark-chocolate-60', he: 'שוקולד מריר, 60-69% מוצקי קקאו',
+    t: { en: 'Dark chocolate, 60-69% cocoa', de: 'Zartbitterschokolade, 60-69% Kakao',
+         es: 'Chocolate negro, 60-69% de cacao', fr: 'Chocolat noir, 60-69% de cacao',
+         it: 'Cioccolato fondente, 60-69% di cacao',
+         pt: 'Chocolate amargo, 60-69% de cacau',
+         ja: 'ダークチョコレート（カカオ60〜69%）', 'zh-Hans': '黑巧克力（可可60-69%）',
+         'zh-Hant': '黑巧克力（可可60-69%）', ar: 'شوكولاتة داكنة، كاكاو 60-69%' } },
+
+  { id: 'halva', he: 'חלבה פשוטה',
+    t: { en: 'Halva, plain', de: 'Halva, natur', es: 'Halva natural',
+         fr: 'Halva nature', it: 'Halva semplice', pt: 'Halva simples',
+         ja: 'ハルヴァ（プレーン）', 'zh-Hans': '哈尔瓦酥糖（原味）',
+         'zh-Hant': '哈爾瓦酥糖（原味）', ar: 'حلاوة طحينية سادة' } },
+
+  { id: 'red-cabbage', he: 'כרוב אדום, טרי',
+    t: { en: 'Red cabbage, fresh', de: 'Rotkohl, frisch', es: 'Repollo morado (lombarda), fresco',
+         fr: 'Chou rouge frais', it: 'Cavolo rosso fresco',
+         pt: 'Repolho roxo fresco', ja: '紫キャベツ', 'zh-Hans': '紫甘蓝',
+         'zh-Hant': '紫甘藍', ar: 'ملفوف أحمر طازج' } },
+
 ];
 
 const LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', 'ar'];
