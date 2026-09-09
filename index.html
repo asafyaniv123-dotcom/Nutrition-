@@ -1143,7 +1143,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
    Pads (nothing moves; the number is half the measured clearance or less):
      .wk-dot             15px, 37px of room  -> 45px hit area
      .jrnl-nav           32px, 67px of room  -> 44px
-     .trip-toggle-track  30px, 96px of room  -> 44px
+     .sw-track           30px, 96px of room  -> 44px
 
    Grown (no clearance at all, so a pad would overlap a neighbour; these
    reflow instead, which is a visible change and is meant to be):
@@ -1154,11 +1154,11 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
    Left alone deliberately: .tab (27px) and .stk (25px) have neighbours
    touching on both axes and are wide enough that a miss lands on nothing
    harmful; growing them would reflow a header for little gain. */
-.wk-dot,.jrnl-nav,.trip-toggle-track{position:relative}
-.wk-dot::after,.jrnl-nav::after,.trip-toggle-track::after{content:'';position:absolute}
+.wk-dot,.jrnl-nav,.sw-track{position:relative}
+.wk-dot::after,.jrnl-nav::after,.sw-track::after{content:'';position:absolute}
 .wk-dot::after{inset:-15px}
 .jrnl-nav::after{inset:-6px}
-.trip-toggle-track::after{inset:-7px}
+.sw-track::after{inset:-7px}
 
 .nav-arrow{width:42px;height:42px}
 .wadd,.wreset{min-height:42px}
@@ -1551,10 +1551,10 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .plane-anim{animation:plane-fly 2s ease-in-out infinite}
 @keyframes globe-orbit{0%{transform:rotate(0deg) translateX(90px) rotate(0deg)}100%{transform:rotate(360deg) translateX(90px) rotate(-360deg)}}
 @keyframes fly-across{0%{transform:translateX(120vw) rotate(-10deg);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateX(-120vw) rotate(-10deg);opacity:0}}
-.trip-toggle-track{width:56px;height:30px;border-radius:15px;background:#e0dbd5;position:relative;cursor:pointer;transition:background .3s;flex-shrink:0;border:none;padding:0}
-.trip-toggle-track.on{background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700))}
-.trip-toggle-thumb{position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:var(--card);transition:right .3s;box-shadow:0 2px 6px rgba(0,0,0,.2)}
-.trip-toggle-track.on .trip-toggle-thumb{inset-inline-start:calc(100% - 27px)}
+.sw-track{width:56px;height:30px;border-radius:15px;background:#e0dbd5;position:relative;cursor:pointer;transition:background .3s;flex-shrink:0;border:none;padding:0}
+.sw-track.on{background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700))}
+.sw-thumb{position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:var(--card);transition:right .3s;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.sw-track.on .sw-thumb{inset-inline-start:calc(100% - 27px)}
 /* The icon sits in a white disc rather than being a bare glyph - it gives every
    card the same optical weight whatever the icon, which emoji never did. */
 /* the vlog button, on the corner of the day's icon */
@@ -6777,7 +6777,6 @@ function addCalDayItem(ds){
   inp.value='';
   closeCalDay();openCalDay(ds);
   refreshHomeCal();
-  renderReminders();
 }
 
 function deleteCalRem(tab,idx,ds){
@@ -6786,7 +6785,6 @@ function deleteCalRem(tab,idx,ds){
   saveReminders(data);
   closeCalDay();openCalDay(ds);
   refreshHomeCal();
-  renderReminders();
 }
 
 function toggleCalRem(tab,idx,ds){
@@ -6797,7 +6795,6 @@ function toggleCalRem(tab,idx,ds){
     saveReminders(data);
   }
   closeCalDay();openCalDay(ds);
-  renderReminders();
 }
 
 function renderDay(){
@@ -7004,8 +7001,6 @@ function goHome(){
   refreshHomeCal();
   renderHomeToday();
   renderVisionBoard();
-  renderTripToggle();
-  renderReminders();
   renderSumRem();
   renderBookWidget();
   renderBackup();
@@ -7248,12 +7243,6 @@ function enterModule(mod){
     document.getElementById('content').innerHTML='';
     if(!_fitWorkout)_fitView='home';
     renderFitness();
-  } else if(mod==='trip'){
-    document.querySelector('.app').style.display='block';
-    document.querySelector('.tabs').style.display='none';
-    document.getElementById('hdr-date').textContent='';
-    document.getElementById('hdr-title').textContent=''+_t('מצב טיול')+'';
-    renderTripIntro();
   } else {
     document.querySelector('.app').style.display='block';
     renderComingSoon(mod);
@@ -10159,7 +10148,13 @@ function lookFit(o,maxW,maxH){
    trousers half the width of a shirt or three times its length. The picture
    is fitted INSIDE this box, so it can touch the sides but never leave. */
 var LOOK_BOX={hat:[38,38],top:[100,97],dress:[96,150],bottom:[78,127],
-              socks:[34,30],shoes:[66,47],jewel:[30,30]};
+              socks:[34,30],shoes:[84,60],jewel:[30,30]};
+/* The shoes were 66x47, narrower than the trouser hem above them, and they
+   read as a size too small for the body wearing them. A pair photographed
+   side by side is WIDER than the hem - feet splay outwards where the legs do
+   not - so 84 against the trousers' 78, and 60 tall so a boot has somewhere
+   to go. Everything else is unchanged: the slot only bounds the picture, and
+   the photograph is still fitted inside it. */
 /* How far each garment climbs back over the one above it, as a fraction of
    its own height. Read off the reference: the waistband disappears under the
    hem, and most of the boot is in front of the trouser leg. Composition
@@ -13042,7 +13037,7 @@ function renderSumRem(){
 
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:'+(o.on?'14px':'10px')+'">';
   h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;font-weight:700">'+_t('תזכורת לסיכום יום')+'</div>';
-  h+='<button class="trip-toggle-track'+(o.on?' on':'')+'" onclick="sumRemToggle('+(o.on?'false':'true')+')"><div class="trip-toggle-thumb"></div></button>';
+  h+='<button class="sw-track'+(o.on?' on':'')+'" onclick="sumRemToggle('+(o.on?'false':'true')+')"><div class="sw-thumb"></div></button>';
   h+='</div>';
 
   if(!o.on){
@@ -13132,246 +13127,8 @@ function bjTextStyle(status){
 function loadReminders(){try{var x=localStorage.getItem('reminders_bj');return x?JSON.parse(x):{today:[],week:[],month:[]};}catch(e){return{today:[],week:[],month:[]};}}
 function saveReminders(obj){try{localStorage.setItem('reminders_bj',JSON.stringify(obj));}catch(e){}}
 
-var _remTab='today';
 var _longPressTimer=null;
-var _legendOpen=false;
 
-function renderReminders(){
-  var el=document.getElementById('home-reminders');if(!el)return;
-  var data=loadReminders();
-  var tabs=[['today',_t('היום')],['week',_t('השבוע')],['month',_t('החודש')]];
-  var items=data[_remTab]||[];
-
-  var h='<div style="background:var(--card);border-radius:22px;padding:18px 16px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
-
-  // Header + legend toggle
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;font-weight:700">'+_t('תזכורות')+'</div>';
-  h+='<button onclick="toggleRemLegend()" style="background:'+(  _legendOpen?'var(--violet-100)':'transparent')+';border:none;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--violet-500);cursor:pointer">'+_t('מקרא')+' '+(  _legendOpen?'&#9650;':'&#9660;')+'</button>';
-  h+='</div>';
-
-  // Legend
-  if(_legendOpen){
-    h+='<div style="background:#faf7ff;border-radius:14px;padding:12px;margin-bottom:14px;border:1px solid var(--violet-200)">';
-    h+='<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.05em">'+_t('סוגי פריטים')+'</div>';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:10px">';
-    for(var li=0;li<BJ_TYPES.length;li++){
-      h+='<div style="display:flex;align-items:center;gap:6px;padding:2px 0">';
-      h+='<span style="font-size:14px;font-weight:700;color:var(--ink);width:16px;text-align:center;display:inline-block">'+BJ_TYPES[li].sym+'</span>';
-      h+='<span style="font-size:11px;color:var(--ink-soft)">'+BJ_TYPES[li].label+'</span>';
-      h+='</div>';
-    }
-    h+='</div>';
-    h+='<div style="border-top:1px solid var(--violet-200);padding-top:8px">';
-    h+='<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.05em">'+_t('סטאטוס (לחיצה על הסימן)')+'</div>';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">';
-    var sts=[
-      {sym:'&#9633;',lbl:''+_t('פתוחה')+''},
-      {sym:'&#9632;',lbl:''+_t('הושלם')+''},
-      {sym:'&#9633;&rarr;',lbl:''+_t('הועבר')+''},
-      {sym:'<s>&#9633;</s>',lbl:''+_t('בוטל')+''},
-      {sym:'&#9633;/',lbl:''+_t('התחיל')+''}
-    ];
-    for(var si=0;si<sts.length;si++){
-      h+='<div style="display:flex;align-items:center;gap:6px;padding:2px 0">';
-      h+='<span style="font-size:13px;font-weight:700;color:var(--ink);width:24px;text-align:center;display:inline-block">'+sts[si].sym+'</span>';
-      h+='<span style="font-size:11px;color:var(--ink-soft)">'+sts[si].lbl+'</span>';
-      h+='</div>';
-    }
-    h+='</div></div>';
-    h+='<div style="font-size:9px;color:var(--muted);margin-top:8px;text-align:center">'+_t('לחיצה קצרה על הסימן לשינוי סטאטוס')+' &nbsp;|&nbsp; '+_t('לחיצה ארוכה לבחירת סוג')+'</div>';
-    h+='</div>';
-  }
-
-  // Tabs
-  h+='<div style="display:flex;gap:6px;background:var(--surface);border-radius:12px;padding:4px;margin-bottom:14px">';
-  for(var ti=0;ti<tabs.length;ti++){
-    var on=_remTab===tabs[ti][0];
-    h+='<button onclick="setRemTab(\''+tabs[ti][0]+'\')" style="flex:1;border:none;border-radius:9px;padding:7px 4px;font-size:12px;font-weight:700;cursor:pointer;background:'+(on?'linear-gradient(135deg,var(--violet-300),var(--violet-500))':'transparent')+';color:'+(on?'var(--white)':'var(--muted)')+'">'+tabs[ti][1]+'</button>';
-  }
-  h+='</div>';
-
-  // Add input
-  var selType=_newRemType||'task';
-  var selT=BJ_TYPES.find(function(x){return x.id===selType;})||BJ_TYPES[0];
-  h+='<div style="margin-bottom:12px">';
-
-  // Symbol strip (hidden by default, shown on long press)
-  h+='<div id="rem-arc" style="display:none;background:var(--card);border-radius:14px;padding:8px 6px;margin-bottom:8px;box-shadow:0 4px 16px rgba(74,67,64,.15);border:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch">';
-  h+='<div style="display:flex;gap:6px;width:max-content">';
-  for(var ai=0;ai<BJ_TYPES.length;ai++){
-    var bt=BJ_TYPES[ai];
-    var isSel=selType===bt.id;
-    h+='<button onclick="selectArcType(\''+bt.id+'\')" style="display:flex;flex-direction:column;align-items:center;gap:3px;background:'+(isSel?'linear-gradient(135deg,var(--violet-300),var(--violet-500))':'var(--surface)')+';border:none;border-radius:10px;padding:6px 10px;cursor:pointer;min-width:44px">';
-    h+='<span style="font-size:16px;font-weight:700;color:'+(isSel?'var(--white)':'var(--ink)')+'">'+bt.sym+'</span>';
-    h+='<span style="font-size:9px;font-weight:700;color:'+(isSel?'rgba(255,255,255,.85)':'var(--muted)')+';white-space:nowrap">'+bt.label+'</span>';
-    h+='</button>';
-  }
-  h+='</div></div>';
-
-  // Input row
-  h+='<div style="display:flex;gap:8px;align-items:center">';
-  h+='<button id="rem-add-btn" onclick="addReminder()"';
-  h+=' onmousedown="startArcPress(event)" onmouseup="cancelArcPress()" onmouseleave="cancelArcPress()"';
-  h+=' ontouchstart="startArcPress(event)" ontouchend="cancelArcPress()" ontouchcancel="cancelArcPress()"';
-  h+=' style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;font-size:22px;cursor:pointer;color:var(--white);flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(166,144,207,.3)">+</button>';
-  h+='<div style="width:26px;height:26px;border-radius:50%;background:var(--surface);border:1.5px solid var(--violet-300);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--ink);flex-shrink:0">'+selT.sym+'</div>';
-  h+='<input id="rem-inp" class="mtin" style="flex:1;margin-bottom:0" placeholder="'+_t("הוסף פריט...")+'" onkeydown="if(event.key===\'Enter\')addReminder()">';
-  h+='</div></div>';
-
-  // Items
-  if(items.length===0){
-    var empty=_remTab==='week'?_t('אין פריטים לשבוע'):_remTab==='month'?_t('אין פריטים לחודש'):_t('אין פריטים להיום');
-    h+='<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted-soft);font-style:italic">'+empty+'</div>';
-  } else {
-    for(var ri=0;ri<items.length;ri++){
-      var item=items[ri];
-      var status=item.status||'open';
-      var type=item.type||'task';
-      h+='<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--surface)" id="rem-item-'+ri+'">';
-      // Symbol — tap=cycle status, long press=pick type
-      h+='<div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;flex-shrink:0;user-select:none;-webkit-user-select:none"';
-      h+=' onclick="cycleRemStatus('+ri+')"';
-      h+=' onmousedown="startRemLongPress('+ri+')" onmouseup="cancelRemLongPress()" onmouseleave="cancelRemLongPress()"';
-      h+=' ontouchstart="startRemLongPress('+ri+')" ontouchend="cancelRemLongPress()" ontouchcancel="cancelRemLongPress()">';
-      h+=bjSymbol(type,status);
-      h+='</div>';
-      // Text + date
-      var dateStr='';
-      if(item.date){var dd=new Date(item.date+'T12:00:00');dateStr=(dd.getDate()<10?'0':'')+dd.getDate()+'/'+(dd.getMonth()<9?'0':'')+(dd.getMonth()+1);}
-      h+='<div style="flex:1;min-width:0">';
-      h+='<div style="font-size:13px;'+bjTextStyle(status)+'line-height:1.4">'+esc(item.text)+'</div>';
-      if(dateStr||item.time)h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+(dateStr?'<span style="font-weight:700;color:var(--violet-500)">'+dateStr+'</span>':'')+(dateStr&&item.time?' &middot; ':'')+fmtClock(item.time||'')+'</div>';
-      h+='</div>';
-      // Delete
-      h+='<button onclick="deleteReminder('+ri+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px;padding:0 2px;flex-shrink:0">&times;</button>';
-      h+='</div>';
-    }
-  }
-
-  // Footer
-  var doneCount=items.filter(function(i){return i.status==='done';}).length;
-  if(items.length>0){
-    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">';
-    h+='<div style="font-size:10px;color:var(--muted)">'+doneCount+' / '+items.length+' '+_t('הושלמו')+'</div>';
-    if(doneCount>0)h+='<button onclick="clearDoneReminders()" style="background:none;border:none;font-size:10px;color:var(--muted-soft);cursor:pointer">'+_t('נקה שהושלמו')+'</button>';
-    h+='</div>';
-  }
-
-  h+='</div>';
-
-  // Type picker overlay
-  h+='<div id="rem-type-overlay" style="display:none;position:fixed;inset:0;background:rgba(74,67,64,.5);z-index:300;align-items:flex-end;justify-content:center" onclick="closeRemTypePicker()">';
-  h+='<div style="background:var(--panel);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:18px 16px 36px" onclick="event.stopPropagation()">';
-  h+='<div style="width:36px;height:4px;background:var(--violet-300);border-radius:2px;margin:0 auto 14px"></div>';
-  h+='<div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:14px">'+_t('בחר סוג פריט')+'</div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
-  for(var bi=0;bi<BJ_TYPES.length;bi++){
-    var bt=BJ_TYPES[bi];
-    h+='<button onclick="pickRemType(\''+bt.id+'\')" style="background:var(--surface);border:none;border-radius:14px;padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px">';
-    h+='<span style="font-size:20px;font-weight:700;color:var(--ink)">'+bt.sym+'</span>';
-    h+='<span style="font-size:10px;font-weight:700;color:var(--ink-soft)">'+bt.label+'</span>';
-    h+='</button>';
-  }
-  h+='</div></div></div>';
-
-  el.innerHTML=h;
-}
-
-var _newRemType='task';
-var _arcPressTimer=null;
-var _arcOpen=false;
-
-function startArcPress(e){
-  if(e&&e.preventDefault)e.preventDefault();
-  _arcPressTimer=setTimeout(function(){openArc();},500);
-}
-function cancelArcPress(){
-  clearTimeout(_arcPressTimer);
-}
-function openArc(){
-  _arcOpen=true;
-  var arc=document.getElementById('rem-arc');
-  if(arc){arc.style.display='block';}
-  // Close on tap outside
-  setTimeout(function(){
-    document.addEventListener('touchstart',closeArcOutside,{once:true});
-    document.addEventListener('mousedown',closeArcOutside,{once:true});
-  },50);
-}
-function closeArcOutside(e){
-  var arc=document.getElementById('rem-arc');
-  if(arc&&!arc.contains(e.target)){closeArc();}
-}
-function closeArc(){
-  _arcOpen=false;
-  var arc=document.getElementById('rem-arc');
-  if(arc)arc.style.display='none';
-}
-function selectArcType(typeId){
-  _newRemType=typeId;
-  closeArc();
-  renderReminders();
-}
-
-var _remLongPressIdx=-1;
-function startRemLongPress(idx){
-  _remLongPressIdx=idx;
-  _longPressTimer=setTimeout(function(){openRemTypePicker(idx);},600);
-}
-function cancelRemLongPress(){clearTimeout(_longPressTimer);}
-function openRemTypePicker(idx){
-  _remLongPressIdx=idx;
-  var ov=document.getElementById('rem-type-overlay');
-  if(ov)ov.style.display='flex';
-}
-function closeRemTypePicker(){
-  var ov=document.getElementById('rem-type-overlay');
-  if(ov)ov.style.display='none';
-}
-function pickRemType(typeId){
-  var data=loadReminders();
-  if(data[_remTab]&&data[_remTab][_remLongPressIdx]){
-    data[_remTab][_remLongPressIdx].type=typeId;
-    saveReminders(data);
-  }
-  closeRemTypePicker();
-  renderReminders();
-}
-function cycleRemStatus(idx){
-  var data=loadReminders();
-  if(!data[_remTab]||!data[_remTab][idx])return;
-  var cur=data[_remTab][idx].status||'open';
-  var next=BJ_STATUSES[(BJ_STATUSES.indexOf(cur)+1)%BJ_STATUSES.length];
-  data[_remTab][idx].status=next;
-  saveReminders(data);renderReminders();
-}
-function toggleRemLegend(){_legendOpen=!_legendOpen;renderReminders();}
-
-function setRemTab(tab){_remTab=tab;renderReminders();}
-
-function addReminder(){
-  var inp=document.getElementById('rem-inp');if(!inp)return;
-  var txt=inp.value.trim();if(!txt)return;
-  var data=loadReminders();
-  if(!data[_remTab])data[_remTab]=[];
-  data[_remTab].push({text:txt,type:_newRemType||'task',status:'open'});
-  saveReminders(data);inp.value='';renderReminders();
-}
-
-function deleteReminder(idx){
-  var data=loadReminders();
-  if(data[_remTab])data[_remTab].splice(idx,1);
-  saveReminders(data);renderReminders();
-}
-
-function clearDoneReminders(){
-  var data=loadReminders();
-  if(data[_remTab])data[_remTab]=data[_remTab].filter(function(i){return i.status!=='done';});
-  saveReminders(data);renderReminders();
-}
-
-/* ── RECIPE BOOK ── */
 function loadRecipes(){try{var x=localStorage.getItem('recipes');return x?JSON.parse(x):[];}catch(e){return[];}}
 function saveRecipes(arr){try{localStorage.setItem('recipes',JSON.stringify(arr));}catch(e){}}
 
@@ -18469,266 +18226,6 @@ function handleBookCover(input){
 }
 
 /* ── TRIP MODE ── */
-function loadTrips(){try{var x=localStorage.getItem('trips');return x?JSON.parse(x):[];}catch(e){return[];}}
-function saveTrips(arr){try{localStorage.setItem('trips',JSON.stringify(arr));}catch(e){}}
-function loadActiveTrip(){try{var x=localStorage.getItem('active_trip');return x?parseInt(x):-1;}catch(e){return -1;}}
-function saveActiveTrip(idx){try{localStorage.setItem('active_trip',String(idx));}catch(e){}}
-
-var _tripView='home'; // 'home' | 'active' | 'add-stop' | 'new-trip'
-
-function renderTripIntro(){
-  // Plane animation splash then home
-  var h='<div style="padding-bottom:20px">';
-  var trips=loadTrips();
-  var activeIdx=loadActiveTrip();
-
-  // Plane animation header
-  h+='<div style="background:linear-gradient(135deg,var(--indigo-50),var(--indigo-100));border-radius:22px;padding:22px 16px;margin-bottom:16px;text-align:center;overflow:hidden;position:relative">';
-  h+='<div style="font-size:52px;display:inline-block;animation:plane-fly 2s ease-in-out infinite">&#x2708;</div>';
-  h+='<div style="font-size:11px;color:var(--indigo-600);letter-spacing:.1em;font-weight:700;margin-top:6px">TRIP MODE</div>';
-  if(activeIdx>=0&&trips[activeIdx]){
-    var at=trips[activeIdx];
-    h+='<div style="font-size:17px;font-weight:800;color:var(--indigo-700);margin-top:4px">'+esc(at.name)+'</div>';
-    h+='<div style="font-size:11px;color:var(--indigo-600);margin-top:2px">'+at.stops.length+' '+_t('עצירות')+'</div>';
-    h+='<button onclick="_tripView=\'active\';renderTrip()" style="background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));border:none;border-radius:14px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white);margin-top:12px">'+_t('המשך את הטיול')+' &#8592;</button>';
-  } else {
-    h+='<div style="font-size:13px;color:var(--indigo-600);margin-top:6px">'+_t('אין טיול פעיל')+'</div>';
-  }
-  h+='</div>';
-
-  // New trip button
-  h+='<button onclick="_tripView=\'new-trip\';renderTrip()" style="width:100%;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));border:none;border-radius:16px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white);margin-bottom:14px">&#x2708; '+_t('התחל טיול חדש')+'</button>';
-
-  // Past trips
-  if(trips.length>0){
-    h+='<div style="background:var(--card);border-radius:20px;padding:16px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
-    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;font-weight:700;margin-bottom:12px">'+_t('טיולים קודמים')+'</div>';
-    for(var ti=trips.length-1;ti>=0;ti--){
-      var t=trips[ti];
-      var isAct=ti===activeIdx;
-      h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;background:'+(isAct?'linear-gradient(135deg,var(--indigo-50),var(--indigo-100))':'var(--panel)')+';border-radius:14px;margin-bottom:8px;cursor:pointer" onclick="saveActiveTrip('+ti+');_tripView=\'active\';renderTrip()">';
-      h+='<div style="font-size:22px">&#x2708;</div>';
-      h+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--ink)">'+esc(t.name)+'</div>';
-      h+='<div style="font-size:10px;color:var(--muted);margin-top:1px">'+t.stops.length+' '+_t('עצירות')+''+(t.startDate?' &middot; '+new Date(t.startDate).toLocaleDateString(APP_LOCALE):'')+'</div></div>';
-      if(isAct)h+='<div style="font-size:9px;font-weight:700;color:var(--indigo-500);background:rgba(79,110,247,.1);border-radius:8px;padding:3px 8px">'+_t('פעיל')+'</div>';
-      h+='<button onclick="event.stopPropagation();deleteTrip('+ti+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px;padding:2px 6px">&times;</button>';
-      h+='</div>';
-    }
-    h+='</div>';
-  }
-  h+='</div>';
-  document.getElementById('content').innerHTML=h;
-}
-
-function renderTrip(){
-  var trips=loadTrips();
-  var activeIdx=loadActiveTrip();
-
-  if(_tripView==='new-trip'){
-    var h='<div style="padding-bottom:20px">';
-    h+='<div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:16px">'+_t('טיול חדש')+'</div>';
-    h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('שם הטיול')+'</div>';
-    h+='<input id="trip-name-inp" class="mtin" placeholder="'+_t("למשל: גרמניה 2026")+'">';
-    h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('תאריך התחלה')+'</div>';
-    h+='<input id="trip-date-inp" class="mtin" type="date" style="margin-bottom:20px">';
-    h+='<div style="display:flex;gap:8px">';
-    h+='<button onclick="createTrip()" style="flex:1;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('התחל!')+'</button>';
-    h+='<button onclick="_tripView=\'home\';renderTripIntro()" style="background:var(--surface);border:none;border-radius:14px;padding:13px 16px;font-size:13px;cursor:pointer;color:var(--muted)">'+_t('ביטול')+'</button>';
-    h+='</div></div>';
-    document.getElementById('content').innerHTML=h;
-    return;
-  }
-
-  if(_tripView==='active'){
-    var trip=trips[activeIdx];
-    if(!trip){renderTripIntro();return;}
-    var h='<div style="padding-bottom:20px">';
-
-    // Trip header
-    h+='<div style="background:linear-gradient(135deg,var(--indigo-50),var(--indigo-100));border-radius:20px;padding:16px;margin-bottom:14px">';
-    h+='<div style="display:flex;justify-content:space-between;align-items:center">';
-    h+='<div><div style="font-size:18px;font-weight:800;color:var(--indigo-700)">'+esc(trip.name)+'</div>';
-    if(trip.startDate)h+='<div style="font-size:10px;color:var(--indigo-600);margin-top:2px">'+_t('התחיל:')+' '+new Date(trip.startDate).toLocaleDateString(APP_LOCALE)+'</div>';
-    h+='</div><div style="font-size:36px;animation:plane-fly 2s ease-in-out infinite">&#x2708;</div></div>';
-    h+='<div style="display:flex;gap:12px;margin-top:12px">';
-    h+='<div style="text-align:center;flex:1"><div style="font-size:20px;font-weight:800;color:var(--indigo-700)">'+trip.stops.length+'</div><div style="font-size:9px;color:var(--indigo-600)">'+_t('עצירות')+'</div></div>';
-    var countries=[...new Set(trip.stops.map(function(s){return s.country;}).filter(Boolean))].length;
-    h+='<div style="text-align:center;flex:1"><div style="font-size:20px;font-weight:800;color:var(--indigo-700)">'+countries+'</div><div style="font-size:9px;color:var(--indigo-600)">'+_t('מדינות')+'</div></div>';
-    var days2=trip.startDate?Math.floor((Date.now()-new Date(trip.startDate))/(1000*60*60*24)):0;
-    h+='<div style="text-align:center;flex:1"><div style="font-size:20px;font-weight:800;color:var(--indigo-700)">'+Math.max(0,days2)+'</div><div style="font-size:9px;color:var(--indigo-600)">'+_t('ימים')+'</div></div>';
-    h+='</div></div>';
-
-    // Add stop button
-    h+='<button onclick="_tripView=\'add-stop\';renderTrip()" style="width:100%;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));border:none;border-radius:14px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white);margin-bottom:14px">'+_t('+ הוסף עצירה')+'</button>';
-
-    // Timeline
-    if(trip.stops.length===0){
-      h+='<div style="text-align:center;padding:32px;color:var(--muted-soft);font-size:13px">'+_t('עדיין לא נוספו עצירות')+'</div>';
-    } else {
-      h+='<div style="position:relative;padding-inline-start:20px">';
-      // Vertical line
-      h+='<div style="position:absolute;inset-inline-start:7px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--indigo-500),#a0b0ff)"></div>';
-      for(var si=0;si<trip.stops.length;si++){
-        var stop=trip.stops[si];
-        var isFirst=si===0;var isLast=si===trip.stops.length-1;
-        h+='<div style="position:relative;margin-bottom:16px">';
-        // Dot on timeline
-        h+='<div style="position:absolute;inset-inline-start:-20px;top:14px;width:14px;height:14px;border-radius:50%;background:'+(isFirst?'var(--indigo-700)':(isLast?'var(--indigo-500)':'var(--card)'))+';border:2.5px solid var(--indigo-500);box-shadow:0 0 0 3px rgba(79,110,247,.15)"></div>';
-        h+='<div style="background:var(--card);border-radius:16px;padding:12px 14px;box-shadow:0 2px 10px rgba(79,110,247,.1)">';
-        h+='<div style="display:flex;justify-content:space-between;align-items:flex-start">';
-        h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--indigo-700)">'+esc(stop.place)+'</div>';
-        if(stop.country)h+='<div style="font-size:10px;color:var(--muted);margin-top:1px">'+esc(stop.country)+'</div>';
-        if(stop.date)h+='<div style="font-size:10px;color:var(--indigo-600);margin-top:2px">'+new Date(stop.date).toLocaleDateString(APP_LOCALE)+'</div>';
-        if(stop.note)h+='<div style="font-size:12px;color:var(--ink);margin-top:6px;line-height:1.5">'+esc(stop.note)+'</div>';
-        h+='</div>';
-        if(stop.photo)h+='<img src="'+stop.photo+'" style="width:56px;height:56px;object-fit:cover;border-radius:10px;margin-inline-start:8px">';
-        h+='<button onclick="deleteStop('+activeIdx+','+si+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px;padding:2px 4px">&times;</button>';
-        h+='</div></div></div>';
-      }
-      h+='</div>';
-    }
-
-    h+='<button onclick="_tripView=\'home\';renderTripIntro()" style="width:100%;background:var(--surface);border:none;border-radius:14px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);margin-top:8px">&#8592; '+_t('כל הטיולים')+'</button>';
-    h+='</div>';
-    document.getElementById('content').innerHTML=h;
-    return;
-  }
-
-  if(_tripView==='add-stop'){
-    var h='<div style="padding-bottom:20px">';
-    h+='<div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px">'+_t('הוסף עצירה')+'</div>';
-    h+='<div style="font-size:11px;color:var(--muted);margin-bottom:16px">'+_t('או חפש אוטומטית את המיקום שלך')+'</div>';
-    h+='<button onclick="detectLocation()" style="width:100%;background:linear-gradient(135deg,var(--indigo-50),var(--indigo-100));border:1.5px dashed var(--indigo-500);border-radius:14px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:var(--indigo-500);margin-bottom:12px" id="detect-loc-btn">&#x1F4CD; זהה מיקום אוטומטית</button>';
-    h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('שם המקום')+'</div>';
-    h+='<input id="stop-place" class="mtin" placeholder="'+_t("למשל: ברלין")+'">';
-    h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('מדינה/אזור')+'</div>';
-    h+='<input id="stop-country" class="mtin" placeholder="'+_t("למשל: גרמניה")+'">';
-    h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('תאריך')+'</div>';
-    h+='<input id="stop-date" class="mtin" type="date" style="margin-bottom:2px">';
-    h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('הערה')+'</div>';
-    h+='<textarea id="stop-note" class="q-input" rows="2" placeholder="'+_t("מה עשית? מה ראית?")+'" style="min-height:60px;margin-bottom:10px"></textarea>';
-    h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:6px">'+_t('תמונה')+'</div>';
-    h+='<div style="display:flex;gap:8px;margin-bottom:14px">';
-    h+='<button onclick="document.getElementById(\'stop-cam\').click()" style="flex:1;background:var(--violet-100);border:1.5px dashed var(--violet-500);border-radius:12px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-500)">&#x1F4F7; '+_t('צלם')+'</button>';
-    h+='<button onclick="document.getElementById(\'stop-gal\').click()" style="flex:1;background:var(--violet-100);border:1.5px dashed var(--violet-500);border-radius:12px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-500)">&#x1F5BC; '+_t('גלריה')+'</button>';
-    h+='</div>';
-    h+='<input id="stop-cam" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewStopPhoto(this)">';
-    h+='<input id="stop-gal" type="file" accept="image/*" style="display:none" onchange="previewStopPhoto(this)">';
-    h+='<div id="stop-photo-prev"></div>';
-    h+='<div style="display:flex;gap:8px">';
-    h+='<button onclick="saveStop()" style="flex:1;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('שמור')+'</button>';
-    h+='<button onclick="_tripView=\'active\';renderTrip()" style="background:var(--surface);border:none;border-radius:14px;padding:13px 16px;font-size:13px;cursor:pointer;color:var(--muted)">'+_t('ביטול')+'</button>';
-    h+='</div></div>';
-    document.getElementById('content').innerHTML=h;
-    // Set today's date
-    document.getElementById('stop-date').value=todayStr();
-  }
-}
-
-var _stopPhotoData='';
-
-function previewStopPhoto(input){
-  var file=input.files[0];if(!file)return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var img=new Image();
-    img.onload=function(){
-      var canvas=document.createElement('canvas');
-      var size=400;canvas.width=size;canvas.height=size;
-      var ctx=canvas.getContext('2d');
-      var scale=Math.max(size/img.width,size/img.height);
-      ctx.drawImage(img,(size-img.width*scale)/2,(size-img.height*scale)/2,img.width*scale,img.height*scale);
-      _stopPhotoData=canvas.toDataURL('image/jpeg',0.75);
-      var prev=document.getElementById('stop-photo-prev');
-      if(prev)prev.innerHTML='<img src="'+_stopPhotoData+'" style="width:100%;max-height:160px;object-fit:cover;border-radius:12px;margin-bottom:10px">';
-    };img.src=e.target.result;
-  };reader.readAsDataURL(file);
-}
-
-function createTrip(){
-  var name=document.getElementById('trip-name-inp');
-  var date=document.getElementById('trip-date-inp');
-  if(!name||!name.value.trim())return;
-  var trips=loadTrips();
-  var idx=trips.length;
-  trips.push({name:name.value.trim(),startDate:date&&date.value?new Date(date.value).getTime():Date.now(),stops:[]});
-  saveTrips(trips);saveActiveTrip(idx);_tripView='active';renderTrip();
-}
-
-function deleteTrip(idx){
-  var trips=loadTrips();trips.splice(idx,1);saveTrips(trips);
-  var active=loadActiveTrip();
-  if(active===idx)saveActiveTrip(-1);
-  else if(active>idx)saveActiveTrip(active-1);
-  renderTripIntro();
-}
-
-function detectLocation(){
-  var btn=document.getElementById('detect-loc-btn');
-  if(btn){btn.textContent=''+_t('חופש...⏳')+'';btn.disabled=true;}
-  if(!navigator.geolocation){showToast(''+_t('גיאולוקציה לא זמין')+'');return;}
-  navigator.geolocation.getCurrentPosition(function(pos){
-    var lat=pos.coords.latitude,lon=pos.coords.longitude;
-    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon+'&accept-language=he')
-      .then(function(r){return r.json();})
-      .then(function(data){
-        var place=data.address.city||data.address.town||data.address.village||data.address.county||'';
-        var country=data.address.country||'';
-        var placeInp=document.getElementById('stop-place');
-        var countryInp=document.getElementById('stop-country');
-        if(placeInp&&place)placeInp.value=place;
-        if(countryInp&&country)countryInp.value=country;
-        if(btn){btn.textContent=''+_t('✓ נמצא!')+'';btn.disabled=false;}
-        showToast('✓ '+place+', '+country);
-      }).catch(function(){
-        if(btn){btn.textContent=''+_t('זהה מיקום אוטומטית')+'';btn.disabled=false;}
-        showToast(''+_t('שגיאה בחיפוש')+'');
-      });
-  },function(){
-    if(btn){btn.textContent=''+_t('זהה מיקום אוטומטית')+'';btn.disabled=false;}
-    showToast(''+_t('לא ניתן לקבל מיקום')+'');
-  });
-}
-
-function saveStop(){
-  var place=document.getElementById('stop-place');
-  var country=document.getElementById('stop-country');
-  var date=document.getElementById('stop-date');
-  var note=document.getElementById('stop-note');
-  if(!place||!place.value.trim()){showToast(''+_t('נא להזין שם מקום')+'');return;}
-  var trips=loadTrips();
-  var idx=loadActiveTrip();
-  if(!trips[idx])return;
-  trips[idx].stops.push({
-    place:place.value.trim(),
-    country:country?country.value.trim():'',
-    date:date&&date.value?new Date(date.value).getTime():Date.now(),
-    note:note?note.value.trim():'',
-    photo:_stopPhotoData||''
-  });
-  _stopPhotoData='';
-  saveTrips(trips);_tripView='active';renderTrip();
-  showToast('✓ '+place.value.trim()+' '+_t('נוספה!')+'');
-}
-
-function deleteStop(tripIdx,stopIdx){
-  var trips=loadTrips();
-  if(trips[tripIdx])trips[tripIdx].stops.splice(stopIdx,1);
-  saveTrips(trips);renderTrip();
-}
-
-
-/* ── VISION BOARD ── */
-// Photos and words the user arranges by hand inside a framed square on the home
-// screen. Geometry is kept in percentages of the frame, so an arrangement
-// survives a different screen size; photos are downscaled on the way in,
-// because localStorage holds a few megabytes and a camera roll would fill it in
-// three pictures.
-//
-// A note is the same kind of object as a photo and moves through the same
-// gestures. The one difference is what scaling means: a photo has a width, a
-// note has a font size - both stored as a percentage of the frame, both driven
-// by the same corner handle.
 var VB_KEY='vision_board';
 var VB_MAX=520;   // longest edge kept of an uploaded photo, in px
 var VB_COLORS=[PAL.ink,PAL.violet500,PAL.terra500,'#8aa899',PAL.card];
@@ -19062,65 +18559,6 @@ function handleVisionPhoto(input){
     });
   });
 }
-function renderTripToggle(){
-  var el=document.getElementById('trip-toggle-strip');if(!el)return;
-  var isOn=loadActiveTrip()>=0&&loadTrips().length>0;
-  var h='<div style="background:var(--card);border-radius:20px;padding:14px 18px;box-shadow:0 4px 16px rgba(200,180,160,.1);display:flex;align-items:center;gap:14px">';
-  h+='<div style="flex:1">';
-  h+='<div style="font-size:13px;font-weight:700;color:var(--ink)">'+_t('מצב טיול')+'</div>';
-  h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+(isOn?''+_t('הטיול פעיל')+' &mdash; '+loadTrips()[loadActiveTrip()].name:''+_t('כבוי')+'')+'</div>';
-  h+='</div>';
-  if(isOn){
-    h+='<button onclick="enterModule(\'trip\')" style="background:linear-gradient(135deg,var(--indigo-50),var(--indigo-100));border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--indigo-500)">'+_t('פתח')+'</button>';
-  }
-  h+='<button class="trip-toggle-track'+(isOn?' on':'')+'" onclick="onTripToggle('+(isOn?'false':'true')+')" id="trip-toggle-btn">';
-  h+='<div class="trip-toggle-thumb"></div></button>';
-  h+='</div>';
-  el.innerHTML=h;
-}
-
-function onTripToggle(turnOn){
-  if(turnOn){
-    // Confirm dialog
-    var overlay=document.createElement('div');
-    overlay.id='trip-confirm-overlay';
-    overlay.style.cssText='position:fixed;inset:0;background:rgba(74,67,64,.55);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
-    overlay.innerHTML=
-      '<div style="background:var(--card);border-radius:24px;padding:28px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2)">'  +
-      '<div style="font-size:44px;margin-bottom:12px">&#x1F334;&#x2708;</div>'+
-      '<div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:8px">'+_t('עבור למצב טיול?')+'</div>'+
-      '<div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6">'+_t('תתחיל את מסלול הטיול')+'<br>'+_t('ותוכל לשמור עצירות וזיכרונות')+'</div>'+
-      '<div style="display:flex;gap:10px">'  +
-      '<button onclick="confirmTripOn()" style="flex:1;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('כן, יאללה!')+'</button>'+
-      '<button onclick="document.getElementById(\'trip-confirm-overlay\').remove()" style="flex:1;background:var(--surface);border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted)">'+_t('ביטול')+'</button>'+
-      '</div></div>';
-    document.body.appendChild(overlay);
-  } else {
-    // Turn off — just clear active trip
-    saveActiveTrip(-1);
-    renderTripToggle();
-  }
-}
-
-function confirmTripOn(){
-  var ov=document.getElementById('trip-confirm-overlay');if(ov)ov.remove();
-  // Plane animation across screen
-  var plane=document.createElement('div');
-  plane.style.cssText='position:fixed;top:50%;right:-80px;transform:translateY(-50%);font-size:52px;z-index:600;pointer-events:none;animation:fly-across 1.4s cubic-bezier(.4,0,.2,1) forwards';
-  plane.textContent='✈';
-  document.body.appendChild(plane);
-  setTimeout(function(){if(plane.parentNode)plane.remove();},1500);
-  // After animation, go to trip module
-  setTimeout(function(){
-    enterModule('trip');
-  },900);
-}
-
-// ---------------------------------------------------------------------
-// משחק - "החץ", a game for the table. It is a complete page of its own, kept
-// at the bottom of this file in a #game-src block and handed to an iframe, so
-// its dark full-screen styling stays sealed off from the app's.
-// ---------------------------------------------------------------------
 var _gameFrame=null;
 function sizeGameFrame(){
   if(!_gameFrame||!_gameFrame.parentNode)return;
@@ -21616,7 +21054,6 @@ function tbSync(){
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
 
-    '<div id="home-reminders" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div id="home-sumrem" style="width:100%;max-width:380px;margin-top:16px"></div>'+
 '<div id="home-backup" style="width:100%;max-width:380px;margin-bottom:20px"></div>';
   document.body.appendChild(home);
@@ -21693,8 +21130,6 @@ function tbSync(){
   ingestStepsFromLink();
   syncStepsFromServer();
   renderVisionBoard();
-  renderTripToggle();
-  renderReminders();
   renderSumRem();
   renderBookWidget();
   renderBackup();
