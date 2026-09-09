@@ -111,7 +111,22 @@ for (const [a, b] of scripts) {
     while (i < b && src[i] !== q) { if (src[i] === '\\') i++; i++; }
     const text = src.slice(from + 1, i);
     i++;
-    if (!HEB.test(text)) continue;
+    /* A _t() written inside an html attribute has to escape its quotes:
+
+           h+='<button onclick="if(confirm(_t(\'…\')))finish()">'
+
+       so it never opens a string of its own - the scan above steps over `\'`
+       and what it captures is one long html blob with Hebrew inside it. The
+       look-behind below therefore sees `h+=`, not `_t(`, and the string is
+       reported as unwrapped when it is not.
+
+       Three of those were reported for months. A report with permanent noise
+       in it teaches its reader to skim, and I skimmed: I wrote them into
+       TODO.md as false positives without checking whether the BUILDER could
+       see them either. It could not, so they really were untranslated - the
+       noise was hiding a bug of exactly the kind the check exists to find. */
+    const bare = text.replace(/_t\(\\?(['"])(?:(?!\1).)*\1\)?/g, '');
+    if (!HEB.test(bare)) continue;
     if (inHE(from)) continue;
     const before = src.slice(Math.max(0, from - 3), from);
     if (before.endsWith('_t(')) continue;

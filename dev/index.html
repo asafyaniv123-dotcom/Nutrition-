@@ -3569,6 +3569,18 @@ function foodAlt(f){
   if(f.aka&&f.aka.length)out=out.concat(f.aka);
   return foodKey(out.join(' '));
 }
+/* The same names foodAlt joins into one blob, kept apart. A query can then
+   be compared against a NAME rather than against the run of characters that
+   eleven names happen to make when they are laid end to end - which is the
+   difference between knowing that "Lauch" is the whole German name of the
+   leek and noticing that those five letters also occur inside Knoblauch. */
+function foodNames(f){
+  if(!f||!f.t)return null;
+  var out=[],k;
+  for(k in f.t)if(f.t[k])out.push(foodKey(f.t[k]));
+  if(f.aka&&f.aka.length)for(k=0;k<f.aka.length;k++)out.push(foodKey(f.aka[k]));
+  return out;
+}
 function foodsLoad(then){
   if(_foodsState==='ready'){then();return;}
   if(_foodsState==='loading')return;
@@ -3587,7 +3599,7 @@ function foodsLoad(then){
     var all=[],seen=Object.create(null),i,j,f,key;
     for(i=0;i<sets.length;i++)for(j=0;j<sets[i].length;j++){
       f=sets[i][j];
-      if(f.t){f.n=foodName(f);f.alt=foodAlt(f);}
+      if(f.t){f.n=foodName(f);f.alt=foodAlt(f);f.na=foodNames(f);}
       // matching ignores the punctuation Hebrew food names are inconsistent
       // about, so קוטג' and קוטג׳ and קוטג all find each other
       f.s=foodKey(f.n);
@@ -3707,18 +3719,52 @@ function foodKey(s){
    does match it is the better answer. */
 /* Does the query end where a word ends, rather than in the middle of one? */
 function foodWhole(f,q){
-  var c=f.s.charAt(q.length);
-  return c===''||!/[\p{L}\p{N}]/u.test(c);
+  /* Whichever of its names begins with the query is the one to ask. A food
+     reaches `starts` through any of its eleven, and the name on screen is
+     usually not the one that matched - Linsen begins "Linsen, trocken" and
+     also "Linsensprossen", while the English name it was being read from
+     says lentils. */
+  var i,c,na=f.na;
+  if(f.s.indexOf(q)===0){
+    c=f.s.charAt(q.length);
+    if(c===''||!/[\p{L}\p{N}]/u.test(c))return true;
+  }
+  if(na)for(i=0;i<na.length;i++)if(na[i].indexOf(q)===0){
+    c=na[i].charAt(q.length);
+    if(c===''||!/[\p{L}\p{N}]/u.test(c))return true;
+  }
+  return false;
 }
 function foodSearch(q){
   q=foodKey(q);
   if(!q||!_foods)return [];
-  var toks=foodTokens(q),starts=[],phrase=[],words=[],i,f,at,j,all;
+  var toks=foodTokens(q),exact=[],starts=[],phrase=[],startsAlt=[],exactAlt=[],words=[],phraseWeak=[],phraseAlt=[],wordsAlt=[],i,f,at,j,all,na,c;
   for(i=0;i<_foods.length;i++){
     f=_foods[i];
+    /* The query IS the name on the screen. Nothing beats that, and for a
+       script without word boundaries it is the only rule that can: 萝卜 sits
+       inside 胡萝卜 with nothing between them to match on. */
+    na=f.na;
+    if(f.s===q){exact.push(f);continue;}
     at=f.s.indexOf(q);
     if(at===0){starts.push(f);continue;}
-    if(at>0){phrase.push(f);continue;}
+    /* The name ON THE SCREEN contains the query. At a word boundary that is
+       a strong match; landing inside a word is the weakest evidence there is
+       and drops to the bottom - Spanish "Arroz vapoRIZado" is not an answer
+       to "riz", while the French name, which begins one of its own, is. */
+    if(at>0){(foodHas(f.s,q)?phrase:phraseWeak).push(f);continue;}
+    /* Below here nothing matched the name the reader is looking at. Someone
+       typing is producing a PREFIX, so a prefix in a name they cannot see is
+       not weaker than an exact hit in one - which is what keeps "prune" on
+       the prunes rather than on the French plum. */
+    if(na){for(j=0;j<na.length;j++)if(na[j].indexOf(q)===0){
+        /* A prefix that stops mid-word does not earn this tier, or the
+           Spanish "Brotes" answers for bread and "Pastèque" for paste. */
+        c=na[j].charAt(q.length);
+        if(c===''||!/[\p{L}\p{N}]/u.test(c))break;
+      }
+      if(j<na.length){startsAlt.push(f);continue;}}
+    if(na&&na.indexOf(q)>=0){exactAlt.push(f);continue;}
     all=true;
     for(j=0;j<toks.length;j++)if(!foodHas(f.s,toks[j])){all=false;break;}
     if(all){words.push(f);continue;}
@@ -3726,10 +3772,10 @@ function foodSearch(q){
        others, and the person may be typing any of them. */
     if(!f.alt)continue;
     at=f.alt.indexOf(q);
-    if(at>=0){phrase.push(f);continue;}
+    if(at>=0){phraseAlt.push(f);continue;}
     all=true;
     for(j=0;j<toks.length;j++)if(!foodHas(f.alt,toks[j])){all=false;break;}
-    if(all)words.push(f);
+    if(all)wordsAlt.push(f);
   }
   /* The curated food comes first in EVERY bucket, not just in `starts`.
 
@@ -3781,7 +3827,49 @@ function foodSearch(q){
      `phrase`. Pull the curated rows to the front of the whole list: that is
      what the file is for, and it is the only way the plain potato beats
      forty dishes that merely mention one. */
-  var out=starts.concat(phrase).concat(words);
+  exact.sort(function(a,b){
+    var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
+    if(ac!==bc)return ac?-1:1;
+    return (a.i||0)-(b.i||0);
+  });
+  /* The alt buckets keep the sorts their old homes had: core first, then the
+     name that mentions the word earliest, then file order. */
+  startsAlt.sort(function(a,b){
+    var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
+    if(ac!==bc)return ac?-1:1;
+    var aw=foodWhole(a,q),bw=foodWhole(b,q);
+    if(aw!==bw)return aw?-1:1;
+    return (a.i||0)-(b.i||0);
+  });
+  phraseAlt.sort(function(a,b){
+    var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
+    if(ac!==bc)return ac?-1:1;
+    /* "Miso paste" holds the whole word; "Pastèque" only starts with the
+       letters. Both land here once startsAlt requires a boundary, and this is
+       what separates them. */
+    var aw=foodHas(a.alt||'',q), bw=foodHas(b.alt||'',q);
+    if(aw!==bw)return aw?-1:1;
+    var ai=(a.alt||'').indexOf(q), bi=(b.alt||'').indexOf(q);
+    if(ai>=0&&bi>=0&&ai!==bi)return ai-bi;
+    return (a.i||0)-(b.i||0);
+  });
+  wordsAlt.sort(function(a,b){
+    var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
+    if(ac!==bc)return ac?-1:1;
+    return a.s.length-b.s.length;
+  });
+  exactAlt.sort(function(a,b){
+    var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
+    if(ac!==bc)return ac?-1:1;
+    return (a.i||0)-(b.i||0);
+  });
+  phraseWeak.sort(function(a,b){
+    var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
+    if(ac!==bc)return ac?-1:1;
+    return (a.i||0)-(b.i||0);
+  });
+  var out=exact.concat(starts).concat(phrase).concat(startsAlt).concat(exactAlt)
+               .concat(words).concat(phraseWeak).concat(phraseAlt).concat(wordsAlt);
   var core=[],rest=[],z;
   for(z=0;z<out.length;z++){
     if(String(out[z].id).indexOf('core:')===0)core.push(out[z]);else rest.push(out[z]);
@@ -6587,9 +6675,9 @@ function buildHomeCalHTML(){
 
   var h='<div style="background:var(--card);border-radius:22px;padding:16px;width:100%;max-width:380px;box-shadow:0 4px 20px rgba(200,180,160,.12)">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  h+='<button class="cal-nav" onclick="homeCalPrev()">&#8250;</button>';
+  h+='<button class="cal-nav" onclick="homeCalPrev()">&#8249;</button>';
   h+='<div style="font-size:13px;font-weight:700">'+mn[mo]+' '+y+'</div>';
-  h+='<button class="cal-nav" onclick="homeCalNext()">&#8249;</button>';
+  h+='<button class="cal-nav" onclick="homeCalNext()">&#8250;</button>';
   h+='</div><div class="cal-grid">';
   for(var d=0;d<7;d++)h+='<div class="cal-dh">'+dn[d]+'</div>';
   var sd=first.getDay();for(var pad=0;pad<sd;pad++)h+='<div></div>';
@@ -6802,7 +6890,7 @@ function renderDay(){
   var dn=[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''];
   var y=calMonth.getFullYear(),mo=calMonth.getMonth();
   var first=new Date(y,mo,1),last=new Date(y,mo+1,0);
-  var html='<div class="cal-card"><div class="cal-hd"><button class="cal-nav" onclick="calPrev()">&#8250;</button><div class="cal-mn">'+mn[mo]+' '+y+'</div><button class="cal-nav" onclick="calNext()">&#8249;</button></div><div class="cal-grid">';
+  var html='<div class="cal-card"><div class="cal-hd"><button class="cal-nav" onclick="calPrev()">&#8249;</button><div class="cal-mn">'+mn[mo]+' '+y+'</div><button class="cal-nav" onclick="calNext()">&#8250;</button></div><div class="cal-grid">';
   for(var d=0;d<7;d++)html+='<div class="cal-dh">'+dn[d]+'</div>';
   var sd=first.getDay();for(var pad=0;pad<sd;pad++)html+='<div></div>';
   for(var day=1;day<=last.getDate();day++){
@@ -8052,7 +8140,7 @@ function fitRowHTML(a){
     '<svg viewBox="0 0 24 24" style="stroke:'+gr[1]+'">'+a.ic+'</svg></span>'+
     '<span class="fr-x"><span class="fr-t">'+a.t+'</span>'+
     '<span class="fr-s">'+a.s+'</span></span>'+
-    '<span class="fr-c">&#8249;</span></button>';
+    '<span class="fr-c">&#8250;</span></button>';
 }
 function fitAreaGridHTML(){
   var h='',i;
@@ -8088,7 +8176,7 @@ function renderFitStart(){
   h+='<svg viewBox="0 0 24 24" style="width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M8.4 14.8c-1.7-1-2.3-3.3-1.4-5.1l1.2-2.3c1-1.8 3.2-2.4 4.9-1.4 1.7 1 2.3 3.3 1.4 5.1l-1.2 2.3c-1 1.8-3.2 2.4-4.9 1.4Z"/><path d="M8.7 17.8c-1.2-.7-1.6-2.2-1-3.4"/><path d="M17 19.6c-1.2-.7-1.6-2.2-1-3.4"/><path d="M16.7 16.2c-1.7-1-2.3-3.3-1.4-5.1"/></svg></div>';
   h+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:var(--ink)">'+_t('צעדים')+'</div>';
   h+='<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+(stToday?nfmt(stToday)+' '+_t('היום')+'':''+_t('עוד לא נרשמו היום')+'')+(stSrc.kind==='shortcut'?' &middot; '+_t('מסונכרן')+'':'')+'</div></div>';
-  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
+  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8250;</div></button>';
 
   // Programs brought in from a gym
   var progs=loadPrograms();
@@ -8293,7 +8381,7 @@ function renderFitSteps(){
   h+='<div style="flex:1;min-width:0">';
   h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">'+(linked?(STEPS_SRC_NAMES[src.kind]||''+_t('מחובר')+''):''+_t('חבר שעון או אפליקציה')+'')+'</div>';
   h+='<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+(linked?(src.last?''+_t('סונכרן')+' '+stepsAgo(src.last):''+_t('ממתין לסנכרון ראשון')+''):''+_t('גארמין, אפל וואטש, או אפליקציית כושר')+'')+'</div>';
-  h+='</div><div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
+  h+='</div><div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8250;</div></button>';
   h+='<button onclick="syncStepsNow()" style="width:100%;background:var(--surface);border:none;border-radius:12px;padding:10px;font-size:11.5px;font-weight:700;cursor:pointer;color:var(--muted);margin-top:8px;font-family:inherit">'+_t('סנכרן עכשיו')+'</button>';
   h+='</div>';
 
@@ -8360,7 +8448,7 @@ function renderFitStepsSetup(){
   h+='<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M4.5 19.5 19 5"/><path d="m14.5 5 5 0 0 5"/><path d="M4.5 12h6"/></svg></div>';
   h+='<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800;color:var(--ink)">'+_t('הזנה ידנית')+'</div>';
   h+='<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+_t('תמיד זמינה, גם כשמחובר מקור')+'</div></div>';
-  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8249;</div></button>';
+  h+='<div style="font-size:15px;color:#d8cfc7;flex-shrink:0">&#8250;</div></button>';
 
   // The shortcut is scaffolding for the prototype, not part of the product.
   h+='<div class="qacard"><button class="qatog" onclick="_stepsAdvOpen=!_stepsAdvOpen;renderFitStepsSetup()">';
@@ -8372,8 +8460,8 @@ function renderFitStepsSetup(){
     h+='<div style="background:var(--panel);border-radius:11px;padding:11px;font-size:10px;color:var(--ink);direction:ltr;text-align:left;word-break:break-all;line-height:1.8;font-family:ui-monospace,Menlo,Consolas,monospace">';
     h+='POST '+esc(SYNC_SERVER)+'/steps<br>{"token":"'+esc(tok)+'", "steps":&lt;sum&gt;}</div>';
     h+='<div style="display:flex;gap:7px;margin-top:9px">';
-    h+='<button onclick="copyText(SYNC_SERVER+\'/steps\',_t(\'הכתובת\'))" style="flex:1;background:var(--violet-100);border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('העתק כתובת')+'</button>';
-    h+='<button onclick="copyText(\''+tok+'\',_t(\'הטוקן\'))" style="flex:1;background:var(--violet-100);border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('העתק טוקן')+'</button></div>';
+    h+='<button onclick="copyText(SYNC_SERVER+\'/steps\',_t(\'הכתובת הועתקה\'))" style="flex:1;background:var(--violet-100);border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('העתק כתובת')+'</button>';
+    h+='<button onclick="copyText(\''+tok+'\',_t(\'הטוקן הועתק\'))" style="flex:1;background:var(--violet-100);border:none;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('העתק טוקן')+'</button></div>';
     h+='<div style="font-size:9.5px;color:var(--muted-soft);line-height:1.6;margin-top:9px">'+_t('אפשר גם לפתוח את האפליקציה עם')+' <span style="direction:ltr;display:inline-block">#steps=&lt;sum&gt;</span> '+_t('בסוף הכתובת.')+'</div></div>';
   }
   h+='</div>';
@@ -8383,9 +8471,12 @@ function renderFitStepsSetup(){
   document.getElementById('content').innerHTML=h;
 }
 
+/* `what` is a whole sentence, already translated - not a noun to be glued
+   to a verb here. It was the latter, and French was shown "l'adresse Copié"
+   for a feminine noun. Only the tick is added. */
 function copyText(t,what){
   if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(t).then(function(){showToast('✓ '+(what||''+_t('הטקסט')+'')+' '+_t('הועתק')+'');},function(){showToast(''+_t('לא ניתן להעתיק')+'');});
+    navigator.clipboard.writeText(t).then(function(){showToast('✓ '+(what||_t('הטקסט הועתק')));},function(){showToast(''+_t('לא ניתן להעתיק')+'');});
   } else showToast(''+_t('לא ניתן להעתיק')+'');
 }
 
@@ -13387,6 +13478,11 @@ function savePlanHistory(arr){try{localStorage.setItem('plan_history',JSON.strin
    HTML5 drag-and-drop does nothing on iOS Safari, so this is pointer events
    with a ghost that follows the finger, the same way the vision board works. */
 var _wkSun=null,_wkOpen=-1,_wkDrag=null;
+/* The strip's seven cells are a seventh of a phone each at 9.5px, so they
+   take the short form; every other site heads a day and takes the full
+   name. Hebrew answers both with one word, which is why one array served
+   for so long. */
+var WK_SHORT;langOn(function(){WK_SHORT=[_t('ראשון|קצר'),_t('שני|קצר'),_t('שלישי|קצר'),_t('רביעי|קצר'),_t('חמישי|קצר'),_t('שישי|קצר'),_t('שבת|קצר')];});
 var WK_DAYS;langOn(function(){WK_DAYS=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];});
 /* key, name, label, and the hours the band actually covers - the last two
    are what let a task be placed inside a band rather than dropped at the
@@ -13636,10 +13732,10 @@ function planWeekHTML(){
   var h='<div style="padding-bottom:30px">';
 
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
-  h+='<button onclick="wkShift(1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
+  h+='<button onclick="wkShift(-1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
   h+='<div style="text-align:center"><div style="font-size:14px;font-weight:800;color:var(--ink)">'+(thisWeek?''+_t('השבוע')+'':''+_t('שבוע של')+' '+wkShort(_wkSun))+'</div>';
   h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+wkShort(_wkSun)+' &ndash; '+wkShort(wkDateOf(_wkSun,6))+' &middot; <span style="font-size:9px;color:var(--muted-soft)">'+_t('החלק להחלפת שבוע')+'</span></div></div>';
-  h+='<button onclick="wkShift(-1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
+  h+='<button onclick="wkShift(1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
   h+='</div>';
 
   // day names and dates, above the table
@@ -13647,7 +13743,7 @@ function planWeekHTML(){
   for(i=0;i<7;i++){
     var d=wkDateOf(_wkSun,i);
     h+='<div class="wk-hcell'+(wkStamp(d)===today?' today':'')+'">';
-    h+='<div class="wk-dn">'+WK_DAYS[i]+'</div><div class="wk-dd">'+wkShort(d)+'</div></div>';
+    h+='<div class="wk-dn">'+WK_SHORT[i]+'</div><div class="wk-dd">'+wkShort(d)+'</div></div>';
   }
   h+='</div>';
 
@@ -13735,7 +13831,7 @@ function planWeekHTML(){
     h+='<div style="width:32px;height:32px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--water-500);flex-shrink:0">';
     h+='<svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 2"/></svg></div>';
     h+='<div style="flex:1;font-size:12.5px;font-weight:800;color:#2f5a73">'+_t('תכנן את היום הזה לפי שעות')+'</div>';
-    h+='<div style="font-size:14px;color:#8fbdd8">&#8249;</div></button>';
+    h+='<div style="font-size:14px;color:#8fbdd8">&#8250;</div></button>';
     var anyDay=false;
     for(j=0;j<3;j++){
       var dl=wkIn(wk.tasks,ost,WK_SLOTS[j][0]);
@@ -14343,9 +14439,12 @@ function dpHitFine(x,y){
    sideways and clearly further than a wobble. Anything vertical is the page
    scrolling and is left alone.
 
-   Direction follows the arrows above the grid rather than a convention: ›
-   points right and means the day before, so dragging rightwards brings the
-   previous day in behind your finger. */
+   Direction follows the arrows above the grid rather than a convention.
+   Those arrows read in the direction of travel, so › is the day AFTER - and
+   in a right-to-left build the browser mirrors it and draws it pointing
+   left. The gesture is the same either way: dragging against the reading
+   direction brings the previous day in behind your finger, which is why
+   planStep takes dx>0 ? -1 : 1 rather than the other way round. */
 var DAY_SWIPE_X=64, DAY_SWIPE_Y=44;
 var _daySwipe=null;
 // #content outlives whatever was rendered into it, so a handler left on it
@@ -14499,8 +14598,8 @@ function planDayHTML(){
   out+='<div><div style="font-size:17px;font-weight:800;color:var(--ink)">'+WK_DAYS[d.getDay()]+(isToday?' &middot; '+_t('היום')+'':'')+'</div>';
   out+='<div style="font-size:11px;color:var(--muted);margin-top:2px">'+wkShort(d)+' &middot; <span style="font-size:9.5px;color:var(--muted-soft)">'+_t('החלק להחלפת יום')+'</span></div></div>';
   out+='<div style="display:flex;gap:6px">';
-  out+='<button onclick="dpShift(-1)" style="background:var(--card);border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
-  out+='<button onclick="dpShift(1)" style="background:var(--card);border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
+  out+='<button onclick="dpShift(-1)" style="background:var(--card);border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
+  out+='<button onclick="dpShift(1)" style="background:var(--card);border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
   out+='</div></div>';
 
   // the hours
@@ -14588,14 +14687,14 @@ function planDayHTML(){
      button. Four of them, saved as you go. "מחר" only when the day really is
      tomorrow - on any other day it names the day instead. */
   var dpl=deepGet(),tm=wkStamp(new Date(Date.now()+86400000));
-  var when=(_dpDate===tm)?''+_t('מחר')+'':(''+_t('ביום')+' '+WK_DAYS[d.getDay()]);
+  var when=(_dpDate===tm)?_t('מחר'):_t('ביום {day}',{day:WK_DAYS[d.getDay()]});
   var feels=(dpl.feeling||'');
   out+='<div style="margin-top:24px;background:linear-gradient(150deg,var(--violet-50),#eaf1f8);border-radius:22px;padding:18px 16px">';
 
-  out+='<div class="dp-q">'+_t('מה חשוב לך ש{when} יקרה?',{when:(when==='מחר'?_t('מחר'):when.replace('ביום ',_t('ביום')+' '))})+'</div>';
+  out+='<div class="dp-q">'+_t('מה חשוב לך ש{when} יקרה?',{when:when})+'</div>';
   out+='<textarea id="dp-intent" class="dp-ta" onblur="deepSaveText()" placeholder="'+_t("לא רשימה — מה על הלב שלך?")+'">'+esc(dpl.intent||'')+'</textarea>';
 
-  out+='<div class="dp-q" style="margin-top:20px">'+_t('איך אני רוצה להרגיש')+' '+when+'?</div>';
+  out+='<div class="dp-q" style="margin-top:20px">'+_t('איך אני רוצה להרגיש {when}?',{when:when})+'</div>';
   out+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
   for(i=0;i<PLAN_FEELINGS.length;i++){
     var fl=PLAN_FEELINGS[i],on=feels.indexOf(fl)>=0;
@@ -15255,18 +15354,18 @@ function renderJournal(){
   var isToday=_jrnlDate===todayStr();
   var h='';
   h+='<div class="jrnl-head">';
-  h+='<button class="jrnl-nav" onclick="jrnlShift(-1)">&#8250;</button>';
+  h+='<button class="jrnl-nav" onclick="jrnlShift(-1)">&#8249;</button>';
   h+='<div style="text-align:center;flex:1;min-width:0">';
   h+='<div class="jrnl-day">'+WK_DAYS[dt.getDay()]+(isToday?' '+_t('· היום')+'':'')+'</div>';
   h+='<div class="jrnl-date">'+_t('{d} ב{m}',{d:dt.getDate(),m:MO_NAMES[dt.getMonth()]})+' '+dt.getFullYear()+'</div>';
   h+='</div>';
-  h+='<button class="jrnl-nav"'+(isToday?' disabled':'')+' onclick="jrnlShift(1)">&#8249;</button>';
+  h+='<button class="jrnl-nav"'+(isToday?' disabled':'')+' onclick="jrnlShift(1)">&#8250;</button>';
   h+='</div>';
   h+='<div class="jrnl-paper">';
   h+='<textarea id="jrnl-text" class="jrnl-text" placeholder="'+(isToday?''+_t('מה עובר לך בראש היום?')+'':''+_t('מה היה ביום הזה?')+'')+'" oninput="jrnlType(this)">'+esc(loadJournal(_jrnlDate))+'</textarea>';
   h+='<div class="jrnl-saved" id="jrnl-saved">'+_t('נשמר')+'</div>';
   h+='</div>';
-  if(!isToday)h+='<button class="jrnl-today" onclick="jrnlGo(&quot;'+todayStr()+'&quot;)">חזרה להיום</button>';
+  if(!isToday)h+='<button class="jrnl-today" onclick="jrnlGo(&quot;'+todayStr()+'&quot;)">'+_t('חזרה להיום')+'</button>';
   h+='<div class="jrnl-srch"><input class="jrnl-in" id="jrnl-q" type="search" placeholder="'+_t("חפש מילה בכל מה שכתבת…")+'" value="'+esc(_jrnlQ)+'" oninput="jrnlSearch(this.value)"></div>';
   h+='<div id="jrnl-results">'+jrnlResultsHTML()+'</div>';
   document.getElementById('content').innerHTML=h;
@@ -15374,7 +15473,7 @@ function moDayPanelHTML(){
   h+='<input id="mo-day-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="'+_t("משהו ליום הזה")+'" onkeydown="if(event.key===&quot;Enter&quot;)moDayAdd()">';
   h+='<button onclick="moDayAdd()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:0 15px;font-size:17px;color:var(--white);cursor:pointer;font-family:inherit">+</button>';
   h+='</div>';
-  h+='<button onclick="planOpenDay(\''+_moOpen+'\')" style="width:100%;margin-top:10px;background:var(--surface);border:none;border-radius:12px;padding:9px;font-size:11.5px;color:var(--ink-soft);cursor:pointer;font-family:inherit">לתכנן את היום הזה לפי שעות &#8249;</button>';
+  h+='<button onclick="planOpenDay(\''+_moOpen+'\')" style="width:100%;margin-top:10px;background:var(--surface);border:none;border-radius:12px;padding:9px;font-size:11.5px;color:var(--ink-soft);cursor:pointer;font-family:inherit">'+_t('לתכנן את היום הזה לפי שעות')+' &#8250;</button>';
   return h+'</div>';
 }
 
@@ -15474,10 +15573,10 @@ function planMonthHTML(){
   var h='<div style="padding-bottom:30px">';
 
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
-  h+='<button onclick="moShift(1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
+  h+='<button onclick="moShift(-1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
   h+='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:var(--ink)">'+MO_NAMES[mi]+' '+year+'</div>';
   h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+mo.tasks.filter(function(x){return x.d;}).length+' '+_t('מתוך {n} משובצים',{n:mo.tasks.length})+'</div></div>';
-  h+='<button onclick="moShift(-1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
+  h+='<button onclick="moShift(1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
   h+='</div>';
 
   h+='<div class="mo-head">';
@@ -16307,7 +16406,7 @@ function cmTextHTML(g){
       }
       h+='</div>';
     }
-    h+='<button class="cx-adds" onclick="cmAddStep('+i+')">+ צעד קטן</button>';
+    h+='<button class="cx-adds" onclick="cmAddStep('+i+')">'+_t('+ צעד קטן')+'</button>';
     h+='</div>';
   }
   h+='<button class="cx-addm" onclick="cmAddMile()">'+_t('+ מטרה בדרך')+'</button>';
@@ -16437,8 +16536,8 @@ function cmRender(){
   h+='<div class="cm-top">';
   h+='<button class="cm-back" onclick="cmClose()">&#8249; '+_t('חזרה')+'</button>';
   h+='<div class="cx-tabs">'+
-     '<button class="cx-tab'+(_cmView==='text'?' on':'')+'" onclick="cmSwitch(&quot;text&quot;)">כתיבה</button>'+
-     '<button class="cx-tab'+(_cmView==='stars'?' on':'')+'" onclick="cmSwitch(&quot;stars&quot;)">&#10022; כוכבים</button>'+
+     '<button class="cx-tab'+(_cmView==='text'?' on':'')+'" onclick="cmSwitch(&quot;text&quot;)">'+_t('כתיבה')+'</button>'+
+     '<button class="cx-tab'+(_cmView==='stars'?' on':'')+'" onclick="cmSwitch(&quot;stars&quot;)">&#10022; '+_t('כוכבים')+'</button>'+
      '</div>';
   h+='<div class="cm-pct">'+pct+'%</div>';
   h+='</div>';
@@ -16513,7 +16612,7 @@ function cmRender(){
     h+='<circle class="cm-halo" cx="'+_cmLoose.x+'" cy="'+_cmLoose.y+'" r="34" fill="url(#cmGlow)"/>';
     h+=cmStarPath(_cmLoose.x,_cmLoose.y,13);
     h+='<circle class="cm-hit" cx="'+_cmLoose.x+'" cy="'+_cmLoose.y+'" r="46"/>';
-    h+='<text class="cm-t" x="'+_cmLoose.x+'" y="'+(_cmLoose.y+42)+'" text-anchor="middle">גרור אל מטרה בדרך</text>';
+    h+='<text class="cm-t" x="'+_cmLoose.x+'" y="'+(_cmLoose.y+42)+'" text-anchor="middle">'+_t('גרור אל מטרה בדרך')+'</text>';
     h+='</g>';
   }
   h+='</g></svg>';
@@ -16525,7 +16624,7 @@ function cmRender(){
     var mm=cmMilestones(g)[_cmFocus];
     h+='<div class="cm-foc"><span>'+esc(mm?mm.text:'')+'</span>'+
        '<button class="cm-x" onclick="cmFocus(-1)">&times;</button></div>';
-    h+='<button class="cm-add" onclick="cmAddStep('+_cmFocus+')">+ הוסף צעד</button>';
+    h+='<button class="cm-add" onclick="cmAddStep('+_cmFocus+')">'+_t('+ הוסף צעד')+'</button>';
   } else {
     h+='<div class="cm-hint">'+_t('גע בכוכב כדי לסמן שנעשה')+' &middot; '+_t('לחיצה ארוכה על מטרה בדרך מצמיחה ממנה צעד')+'</div>';
     h+='<button class="cm-add" onclick="cmLoose()">'+_t('+ צעד חדש')+' &mdash; '+_t('וגרור אותו למטרה')+'</button>';
@@ -16947,7 +17046,7 @@ function renderGoalsHome(){
         // Next action
         var nextSub=subs.find(function(s){return !s.done;});
         if(nextSub)h+='<div style="margin-top:8px;font-size:11px;color:var(--ink-soft);background:var(--surface);border-radius:8px;padding:5px 10px">'+_t('צעד הבא:')+' '+esc(nextSub.text)+'</div>';
-        h+='<button class="cm-go" onclick="event.stopPropagation();cmOpen('+gidx+')">&#10022; מפת הכוכבים</button>';
+        h+='<button class="cm-go" onclick="event.stopPropagation();cmOpen('+gidx+')">&#10022; '+_t('מפת הכוכבים')+'</button>';
         h+='</div>';
       }
     }
@@ -16981,16 +17080,20 @@ function renderViewGoal(){
     {id:'daily',label:''+_t('יומית')+'',color:PAL.terra500}
   ];
 
+  /* Whole sentences, not a fragment plus an adjective - the same rule lvAsk
+     below already follows. "צעדים" here is a goal's small steps, not the
+     pedometer's; every language had answered the wrong sense of the old key. */
+  var lvNone=[''+_t('עדיין לא נקבעו צעדים לחודש')+'',''+_t('עדיין לא נקבעו צעדים לשבוע')+'',''+_t('עדיין לא נקבעו צעדים להיום')+''];
   for(var li=0;li<levels.length;li++){
     var lv=levels[li];
     var lvSubs=subs.filter(function(s){return s.level===lv.id;});
     h+='<div style="background:var(--card);border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(200,180,160,.08)">';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
     h+='<div style="font-size:11px;font-weight:700;color:'+lv.color+'">'+lv.label+'</div>';
-    h+='<button onclick="_subLevel=\''+lv.id+'\';_goalsView=\'add-sub\';renderGoals()" style="background:'+lv.color+'22;border:none;border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;color:'+lv.color+'">+ הוסף</button>';
+    h+='<button onclick="_subLevel=\''+lv.id+'\';_goalsView=\'add-sub\';renderGoals()" style="background:'+lv.color+'22;border:none;border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;color:'+lv.color+'">'+_t('+ הוסף')+'</button>';
     h+='</div>';
     if(lvSubs.length===0){
-      h+='<div style="font-size:11px;color:var(--muted-soft);padding:4px 0">'+_t('עדיין לא הוגדרו צעדים')+' '+lv.label.toLowerCase()+'</div>';
+      h+='<div style="font-size:11px;color:var(--muted-soft);padding:4px 0">'+lvNone[li]+'</div>';
     }
     for(var si=0;si<lvSubs.length;si++){
       var sub=lvSubs[si];var sidx=subs.indexOf(sub);
@@ -17023,16 +17126,20 @@ function renderViewGoal(){
 function renderAddSub(){
   var goals=loadGoals();var g=goals[_goalIdx];
   if(!g){_goalsView='view-goal';renderGoals();return;}
-  var lv=['monthly','weekly','daily'];var lvLabels=[''+_t('חודשית')+'',''+_t('שבועית')+'',''+_t('יומית')+''];
+  var lv=['monthly','weekly','daily'];
+  /* Three whole sentences rather than one with a slot: lvLabels holds
+     adjectives, and an adjective dropped into 'what do I want to do ___?'
+     is ungrammatical in every Romance language. A sentence is one key. */
+  var lvAsk=[''+_t('מה אני רוצה לעשות החודש?')+'',''+_t('מה אני רוצה לעשות השבוע?')+'',''+_t('מה אני רוצה לעשות היום?')+''];var lvLabels=[''+_t('חודשית')+'',''+_t('שבועית')+'',''+_t('יומית')+''];var lvGoal=[''+_t('מטרה חודשית')+'',''+_t('מטרה שבועית')+'',''+_t('מטרה יומית')+''];
   var lvColors=[PAL.violet500,PAL.green500,PAL.terra500];
   var li=lv.indexOf(_subLevel);var color=lvColors[li]||PAL.violet500;
-  document.getElementById('hdr-title').textContent=''+_t('מטרה')+' '+lvLabels[li];
+  document.getElementById('hdr-title').textContent=lvGoal[li];
   var h='<div style="padding-bottom:30px">';
   h+='<button onclick="_goalsView=\'view-goal\';renderGoals()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:14px;display:block">&#8249; '+esc(g.title)+'</button>';
   h+='<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(200,180,160,.08)">';
   h+='<div style="font-size:11px;font-weight:700;color:'+color+';margin-bottom:12px">'+lvLabels[li]+'</div>';
-  h+='<textarea id="sub-text" class="q-input" rows="3" placeholder="מה אני רוצה לעשות '+lvLabels[li].toLowerCase()+'?" style="min-height:80px;margin-bottom:12px"></textarea>';
-  h+='<button onclick="saveGoalSub()" style="width:100%;background:'+color+';border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)">הוסף</button>';
+  h+='<textarea id="sub-text" class="q-input" rows="3" placeholder="'+lvAsk[li]+'" style="min-height:80px;margin-bottom:12px"></textarea>';
+  h+='<button onclick="saveGoalSub()" style="width:100%;background:'+color+';border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הוסף')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
   setTimeout(function(){var t=document.getElementById('sub-text');if(t)t.focus();},100);
@@ -17043,7 +17150,7 @@ function renderEditGoal(){
   var g=_goalIdx>=0?goals[_goalIdx]:{title:'',why:'',horizon:'dream',subs:[],blocking:''};
   document.getElementById('hdr-title').textContent=_goalIdx>=0?''+_t('עריכת מטרה')+'':''+_t('מטרה חדשה')+'';
   var h='<div style="padding-bottom:30px">';
-  h+='<button onclick="_goalsView=\''+(_goalIdx>=0?'view-goal':'home')+'\';renderGoals()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:14px;display:block">&#8249; חזרה</button>';
+  h+='<button onclick="_goalsView=\''+(_goalIdx>=0?'view-goal':'home')+'\';renderGoals()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:14px;display:block">&#8249; '+_t('חזרה')+'</button>';
 
   h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:5px">'+_t('מה המטרה?')+'</div>';
   h+='<input id="goal-title" class="mtin" value="'+esc(g.title)+'" placeholder="'+_t("למשל: לבנות עסק משלי")+'">';
@@ -17134,6 +17241,23 @@ var _peopleView='home'; // home|person|edit-person|add-memory|edit-memory
 var _personIdx=-1;
 var _memoryIdx=-1;
 
+/* [stored id, label]. The label is translated at the point of display -
+   _t(f[1]) - never here, because the id is what the record keeps and the
+   Hebrew is the key that lookup uses. Named and top-level so
+   build-lang-template can harvest the labels; declared inside a render
+   function they were invisible to it, and twelve chips shipped untranslated. */
+var PEOPLE_FREQS=[['none','לא|תדירות'],['occasionally','מדי פעם'],['monthly','חודשי'],['biweekly','דו שבועי'],['weekly','שבועי'],['daily','יומי|תדירות']];
+var PEOPLE_DATE_TYPES=[['birthday','יום הולדת'],['anniversary','יום נישואין'],['event','אירוע'],['exam','מבחן'],['trip','טיול'],['other','אחר']];
+/* A stored word whose translation differs from the same word's translation
+   somewhere else. Only the KEY changes, and only while painting: the value in
+   the array, in the text box and in the saved record stays the bare word, so
+   nothing that was written before this existed stops matching.
+
+   חברה is a company and also a girlfriend; כבד is heavy and also difficult.
+   Hebrew needs no answer to either, which is why both went unnoticed until a
+   dictionary had to pick one. */
+var LABEL_CTX={'חברה':'חברה|קשר','כבד':'כבד|גוף'};   // i18n-exempt: keys, and the words they are keyed from - labelOf hands the value to _t()
+function labelOf(v){return _t(LABEL_CTX[v]||v);}
 var RELATIONSHIP_TYPES=[
   'חבר קרוב','חברה','בן משפחה','בת משפחה','בן זוג','בת זוג',
   'אח','אחות','אבא','אמא','סבא','סבתא','קולגה','אחר'
@@ -17176,6 +17300,7 @@ function pplMatch(p,q){
   q=pplKey(q);
   return pplKey(p.name).indexOf(q)>=0||
          pplKey(p.relationship).indexOf(q)>=0||
+         pplKey(labelOf(p.relationship||'')).indexOf(q)>=0||
          pplKey(p.place).indexOf(q)>=0||
          pplKey(p.currentUpdate).indexOf(q)>=0;
 }
@@ -17308,7 +17433,7 @@ function renderPeopleHome(){
     upcoming.sort(function(a,b){return a.inDays-b.inDays;});
     if(upcoming.length>0){
       h+='<div style="background:linear-gradient(135deg,var(--indigo-50),var(--indigo-100));border-radius:18px;padding:14px;margin-bottom:16px">';
-      h+='<div style="font-size:11px;font-weight:700;color:var(--indigo-500);margin-bottom:10px">&#x1F4C5; תאריכים קרובים</div>';
+      h+='<div style="font-size:11px;font-weight:700;color:var(--indigo-500);margin-bottom:10px">&#x1F4C5; '+_t('תאריכים קרובים')+'</div>';
       for(var ui=0;ui<upcoming.length;ui++){
         var u=upcoming[ui];
         h+='<div onclick="_personIdx='+u.pidx+';_peopleView=\'person\';renderPeople()" style="display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer;border-bottom:1px solid rgba(79,110,247,.1)">';
@@ -17370,7 +17495,7 @@ function pplListHTML(people){
     h+='<div style="display:flex;justify-content:space-between;align-items:flex-start">';
     h+='<div style="min-width:0"><div style="font-size:15px;font-weight:800;color:var(--ink)">'+esc(p.name)+'</div>';
     var sub=[];
-    if(p.relationship)sub.push(esc(p.relationship));
+    if(p.relationship)sub.push(esc(labelOf(p.relationship)));
     if(p.place&&_pplSort!=='place')sub.push('<span class="ppl-place">'+esc(p.place)+'</span>');
     h+='<div style="font-size:11px;color:var(--muted);margin-top:1px">'+sub.join(' &middot; ')+'</div></div>';
     if(days!==null)h+='<div style="font-size:10px;color:var(--muted-soft);white-space:nowrap">'+days+' '+_t('ימים')+'</div>';
@@ -17482,7 +17607,7 @@ function renderPersonPage(){
   h+=personAvatar(p,64);
   h+='<div style="flex:1">';
   h+='<div style="font-size:20px;font-weight:800;color:var(--ink)">'+esc(p.name)+'</div>';
-  h+='<div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(p.relationship||'')+'</div>';
+  h+='<div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(p.relationship?labelOf(p.relationship):'')+'</div>';
   if(days!==null)h+='<div style="font-size:11px;color:var(--terra-500);margin-top:6px">'+_t('דיברנו')+' '+_t('לפני {n} ימים',{n:days})+'</div>';
   h+='</div>';
   h+='<button onclick="_peopleView=\'edit-person\';renderPeople()" style="background:rgba(255,255,255,.7);border:none;border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--ink-soft)">'+_t('ערוך')+'</button>';
@@ -17510,7 +17635,7 @@ function renderPersonPage(){
   // Things to ask
   if(p.toAsk&&p.toAsk.trim()){
     h+='<div style="background:linear-gradient(135deg,var(--indigo-50),var(--indigo-100));border-radius:16px;padding:14px;margin-bottom:12px">';
-    h+='<div style="font-size:10px;color:var(--indigo-500);font-weight:700;margin-bottom:6px">&#x1F4AC; דברים שאני רוצה לשאול</div>';
+    h+='<div style="font-size:10px;color:var(--indigo-500);font-weight:700;margin-bottom:6px">&#x1F4AC; '+_t('דברים שאני רוצה לשאול')+'</div>';
     h+='<div style="font-size:13px;color:var(--ink);line-height:1.6;white-space:pre-wrap">'+esc(p.toAsk)+'</div>';
     h+='</div>';
   }
@@ -17519,7 +17644,7 @@ function renderPersonPage(){
   var idates=p.importantDates||[];
   if(idates.length>0){
     h+='<div style="background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(200,180,160,.08)">';
-    h+='<div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:10px">&#x1F4C5; תאריכים חשובים</div>';
+    h+='<div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:10px">&#x1F4C5; '+_t('תאריכים חשובים')+'</div>';
     for(var di2=0;di2<idates.length;di2++){
       var id2=idates[di2];var dt2=new Date(id2.date);
       h+='<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--surface)">';
@@ -17545,8 +17670,8 @@ function renderPersonPage(){
       h+='<div style="flex:1"><div style="font-size:9px;color:var(--muted);margin-bottom:3px">'+md.getDate()+'/'+(md.getMonth()+1)+'/'+md.getFullYear()+(mem.type?' &middot; '+((MEMORY_TYPES.find(function(t){return t.id===mem.type;})||{}).label||''):'')+'</div>';
       h+='<div style="font-size:13px;color:var(--ink);line-height:1.6;white-space:pre-wrap">'+esc(mem.content)+'</div>';
       h+='<div style="display:flex;gap:8px;margin-top:5px">';
-      h+='<button onclick="togglePinMemory(\''+mem.id+'\')" style="background:none;border:none;cursor:pointer;font-size:10px;color:'+(mem.pinned?'var(--terra-500)':'var(--muted-soft)')+'">'+(mem.pinned?'&#x1F4CC; קשור':'&#x1F4CC; קבע')+'</button>';
-      h+='<button onclick="deleteMemory(\''+mem.id+'\')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--terra-200)">מחק</button>';
+      h+='<button onclick="togglePinMemory(\''+mem.id+'\')" style="background:none;border:none;cursor:pointer;font-size:10px;color:'+(mem.pinned?'var(--terra-500)':'var(--muted-soft)')+'">'+(mem.pinned?'&#x1F4CC; '+_t('קשור'):'&#x1F4CC; '+_t('קבע'))+'</button>';
+      h+='<button onclick="deleteMemory(\''+mem.id+'\')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--terra-200)">'+_t('מחק')+'</button>';
       h+='</div></div></div>';
     }
     h+='</div>';
@@ -17625,6 +17750,19 @@ function deletePersonDate(di){
   savePeople(people);renderPeople();
 }
 
+/* The chip hands over its stored id and the label is looked up here. It used
+   to interpolate the translated label into the handler itself, inside a
+   single-quoted JS string inside a double-quoted attribute - which works
+   until a language answers with an apostrophe, and cannot be fixed by
+   escaping: esc() writes &#39;, the parser turns it back into ' before the JS
+   is read, and the button dies silently. */
+function epDateType(id){
+  var i,d=document.getElementById('ep-dtype'),t=document.getElementById('ep-date-title');
+  if(d)d.value=id;
+  if(!t)return;
+  for(i=0;i<PEOPLE_DATE_TYPES.length;i++)
+    if(PEOPLE_DATE_TYPES[i][0]===id){t.value=_t(PEOPLE_DATE_TYPES[i][1]);return;}
+}
 function renderEditPerson(){
   var people=loadPeople();
   // an index past the end of the list gives undefined, and the whole form
@@ -17632,7 +17770,7 @@ function renderEditPerson(){
   var p=(_personIdx>=0&&people[_personIdx])?people[_personIdx]:{name:'',relationship:'',place:'',whatTheyMean:'',whatILove:'',currentUpdate:'',toAsk:'',contactFreq:'monthly',lastContact:null,avatar:'',memories:[],importantDates:[]};
   document.getElementById('hdr-title').textContent=_personIdx>=0?''+_t('עריכת פרטים')+'':''+_t('אדם חדש')+'';
   var h='<div style="padding-bottom:30px">';
-  h+='<button onclick="epReset();_peopleView=\''+(_personIdx>=0?'person':'home')+'\';renderPeople()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:14px;display:block">&#8249; חזרה</button>';
+  h+='<button onclick="epReset();_peopleView=\''+(_personIdx>=0?'person':'home')+'\';renderPeople()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:14px;display:block">&#8249; '+_t('חזרה')+'</button>';
 
   function pfield(lbl,id,val,ph,isArea){
     var s='<div style="margin-bottom:12px"><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+lbl+'</div>';
@@ -17647,7 +17785,7 @@ function renderEditPerson(){
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">';
   for(var ri=0;ri<RELATIONSHIP_TYPES.length;ri++){
     var rt=RELATIONSHIP_TYPES[ri];var isSel=p.relationship===rt;
-    h+='<button onclick="document.getElementById(\'ep-rel\').value=\''+rt+'\'" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSel?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':'var(--surface)')+';color:'+(isSel?'var(--white)':'var(--ink-soft)')+'">'+_t(rt)+'</button>';
+    h+='<button onclick="document.getElementById(\'ep-rel\').value=\''+rt+'\'" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSel?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':'var(--surface)')+';color:'+(isSel?'var(--white)':'var(--ink-soft)')+'">'+labelOf(rt)+'</button>';
   }
   h+='</div><input id="ep-rel" class="mtin" value="'+esc(p.relationship||'')+'" placeholder="'+_t("או כתוב בעצמך...")+'"></div>';
   // where you know them from - its own field, so the list can group on it
@@ -17665,11 +17803,11 @@ function renderEditPerson(){
 
   // Contact frequency
   h+='<div style="margin-bottom:12px"><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:6px">'+_t('כל כמה זמן תזכורת?')+'</div>';
-  var freqs=[['none','לא'],['occasionally','מדי פעם'],['monthly','חודשי'],['biweekly','דו שבועי'],['weekly','שבועי'],['daily','יומי']];
+  var freqs=PEOPLE_FREQS;
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap" id="freq-btns">';
   for(var fi=0;fi<freqs.length;fi++){
     var f=freqs[fi];var isSelf=(p.contactFreq||'monthly')===f[0];
-    h+='<button type="button" onclick="selectFreq(\''+f[0]+'\')" id="freq-btn-'+f[0]+'" style="border:none;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSelf?'linear-gradient(135deg,var(--violet-300),var(--violet-500))':'var(--surface)')+';color:'+(isSelf?'var(--white)':'var(--ink-soft)')+'">'+f[1]+'</button>';
+    h+='<button type="button" onclick="selectFreq(\''+f[0]+'\')" id="freq-btn-'+f[0]+'" style="border:none;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSelf?'linear-gradient(135deg,var(--violet-300),var(--violet-500))':'var(--surface)')+';color:'+(isSelf?'var(--white)':'var(--ink-soft)')+'">'+_t(f[1])+'</button>';
   }
   h+='<input id="ep-freq" type="hidden" value="'+(p.contactFreq||'monthly')+'"></div></div>';
 
@@ -17681,9 +17819,9 @@ function renderEditPerson(){
   h+='<input id="ep-date-val" class="mtin" type="date" style="flex:1;margin-bottom:0">';
   h+='</div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">';
-  var dtypes=[['birthday','יום הולדת'],['anniversary','יום נישואין'],['event','אירוע'],['exam','מבחן'],['trip','טיול'],['other','אחר']];
+  var dtypes=PEOPLE_DATE_TYPES;
   for(var dti=0;dti<dtypes.length;dti++){
-    h+='<button onclick="document.getElementById(\'ep-dtype\').value=\''+dtypes[dti][0]+'\';document.getElementById(\'ep-date-title\').value=\''+dtypes[dti][1]+'\'" style="border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;background:var(--card);color:var(--ink-soft)">'+dtypes[dti][1]+'</button>';
+    h+='<button onclick="epDateType(\''+dtypes[dti][0]+'\')" style="border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;background:var(--card);color:var(--ink-soft)">'+_t(dtypes[dti][1])+'</button>';
   }
   h+='<input id="ep-dtype" type="hidden" value="birthday">';
   h+='</div>';
@@ -17886,7 +18024,7 @@ function renderInsQ(){
     h+='<button onclick="deleteInsEntry('+ei+')" style="position:absolute;top:10px;inset-inline-end:10px;background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:13px">&times;</button>';
     h+='</div>';
   }
-  h+='<button onclick="_insView=\'entry\';renderInsights()" style="width:100%;background:'+cat.bg+';border:1.5px dashed '+cat.color+';border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:'+cat.color+';margin-top:8px">+ הוסף תובנה</button>';
+  h+='<button onclick="_insView=\'entry\';renderInsights()" style="width:100%;background:'+cat.bg+';border:1.5px dashed '+cat.color+';border-radius:16px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;color:'+cat.color+';margin-top:8px">'+_t('+ הוסף תובנה')+'</button>';
   h+='</div>';
   document.getElementById('content').innerHTML=h;
 }
@@ -17908,7 +18046,7 @@ function renderInsEntry(){
   h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('מה שינה את דעתי:')+'</div>';
   h+='<input id="ins-changed-why" class="mtin" placeholder="'+_t("מה התקיים, מה קרה...")+'">';
   h+='</div>';
-  h+='<button onclick="saveInsEntry()" style="width:100%;background:'+cat.color+';border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">שמור</button>';
+  h+='<button onclick="saveInsEntry()" style="width:100%;background:'+cat.color+';border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('שמור')+'</button>';
   h+='</div>';
   document.getElementById('content').innerHTML=h;
 }
@@ -17995,7 +18133,7 @@ function renderBookWidget(){
     var quotes=loadBookQuotes();
     h+='<div style="width:100%;border-top:1px solid var(--surface);padding-top:12px">';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
-    h+='<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em">&#x1F4AC; משפטים שאהבתי</div>';
+    h+='<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em">&#x1F4AC; '+_t('משפטים שאהבתי')+'</div>';
     h+='<button onclick="openBookQuote()" style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500)">'+_t('+ הוסף')+'</button>';
     h+='</div>';
     if(quotes.length===0){
@@ -18015,7 +18153,7 @@ function renderBookWidget(){
     h+='</div>';
 
     // Finish book button
-    h+='<button onclick="if(confirm(\'סיימת לקרוא את הספר?\'))finishBook()" style="width:100%;background:linear-gradient(135deg,var(--green-50),var(--green-100));border:none;border-radius:12px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;color:#4a9a4a;margin-top:10px">'+_t('✓ סיימת לקרוא ספר זה')+'</button>';
+    h+='<button onclick="if(confirm(_t(\'סיימת לקרוא את הספר?\')))finishBook()" style="width:100%;background:linear-gradient(135deg,var(--green-50),var(--green-100));border:none;border-radius:12px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;color:#4a9a4a;margin-top:10px">'+_t('✓ סיימת לקרוא ספר זה')+'</button>';
 
     // Edit overlay trigger
     h+='<button onclick="openBookEdit()" style="display:none"></button>';
@@ -18075,7 +18213,7 @@ function renderBookWidget(){
   h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:6px">'+_t('תמונת שער')+'</div>';
   h+='<div style="display:flex;gap:10px;margin-bottom:18px;align-items:center">';
   if(book.cover)h+='<img src="'+book.cover+'" style="width:50px;height:50px;object-fit:cover;border-radius:10px">';
-  h+='<button onclick="document.getElementById(\'book-cover-inp\').click()" style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:12px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-500)">&#x1F4F7; בחר תמונה</button>';
+  h+='<button onclick="document.getElementById(\'book-cover-inp\').click()" style="background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:12px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-500)">&#x1F4F7; '+_t('בחר תמונה')+'</button>';
   h+='<input id="book-cover-inp" type="file" accept="image/*" style="display:none" onchange="handleBookCover(this)">';
   h+='</div>';
   h+='<div style="display:flex;gap:8px">';
@@ -18088,7 +18226,7 @@ function renderBookWidget(){
   h+='<div id="book-quote-overlay" style="display:none;position:fixed;inset:0;background:rgba(74,67,64,.6);z-index:200;align-items:flex-end;justify-content:center">';
   h+='<div style="background:var(--panel);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px 18px 40px">';
   h+='<div style="width:40px;height:4px;background:var(--violet-300);border-radius:2px;margin:0 auto 16px"></div>';
-  h+='<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:16px">&#x1F4AC; הוסף משפט</div>';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:16px">&#x1F4AC; '+_t('הוסף משפט')+'</div>';
   h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('המשפט')+'</div>';
   h+='<textarea id="book-quote-text" class="q-input" rows="3" placeholder="'+_t("כתוב כאן את המשפט שאהבת...")+'" style="min-height:80px;margin-bottom:12px"></textarea>';
   h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px">'+_t('עמוד')+'</div>';
@@ -19689,8 +19827,8 @@ function renderReflectStep(){
   /* yes / no, and the follow-up only if yes */
   else if(q.kind==='branch'){
     h+='<div class="rf-ladder">';
-    h+='<button class="rf-rung'+(cur===true?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',true)">כן</button>';
-    h+='<button class="rf-rung'+(cur===false?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',false)">לא</button>';
+    h+='<button class="rf-rung'+(cur===true?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',true)">'+_t('כן')+'</button>';
+    h+='<button class="rf-rung'+(cur===false?' on':'')+'" onclick="rfPickBranch(\''+q.id+'\',false)">'+_t('לא')+'</button>';
     h+='</div>';
     if(cur===true&&q.follow){
       h+='<div class="rf-sub" style="margin-top:26px;font-weight:700;color:var(--ink);font-size:15px">'+q.follow+'</div>';
@@ -19815,7 +19953,7 @@ function rfChipsHTML(id,opts,sel){
   var h='<div class="rf-chips">',i;
   for(i=0;i<opts.length;i++)
     /* The value is compared and stored raw; only the caption is translated. */
-    h+='<button class="rf-chip'+(sel.indexOf(opts[i])>=0?' on':'')+'" onclick="rfToggleChip(\''+id+'\',\''+opts[i]+'\')">'+_t(opts[i])+'</button>';
+    h+='<button class="rf-chip'+(sel.indexOf(opts[i])>=0?' on':'')+'" onclick="rfToggleChip(\''+id+'\',\''+opts[i]+'\')">'+labelOf(opts[i])+'</button>';
   return h+'</div>';
 }
 function rfRatingEcho(n){
@@ -20729,20 +20867,20 @@ function greetSetName(v){
 }
 var GREETS;langOn(function(){GREETS={
   morning:[
-    'בוקר טוב',''+_t('בוקר נפלא')+'',''+_t('בוקר אור')+'',''+_t('בוקר מלא באנרגיה')+'',
-    ''+_t('יום חדש מתחיל')+'',''+_t('בוקר בהיר')+'','שיהיה בוקר מצוין'
+    ''+_t('בוקר טוב')+'',''+_t('בוקר נפלא')+'',''+_t('בוקר אור')+'',''+_t('בוקר מלא באנרגיה')+'',
+    ''+_t('יום חדש מתחיל')+'',''+_t('בוקר בהיר')+'',''+_t('שיהיה בוקר מצוין')+''
   ],
   noon:[
-    'צהריים טובים',''+_t('צהריים נעימים')+'',''+_t('המשך יום טוב')+'',''+_t('חצי יום מאחוריך')+'',
-    ''+_t('צהריים מוארים')+'',''+_t('שיהיה המשך יום מצוין')+'','אמצע היום'
+    ''+_t('צהריים טובים')+'',''+_t('צהריים נעימים')+'',''+_t('המשך יום טוב')+'',''+_t('חצי יום מאחוריך')+'',
+    ''+_t('צהריים מוארים')+'',''+_t('שיהיה המשך יום מצוין')+'',''+_t('אמצע היום')+''
   ],
   evening:[
-    'ערב טוב',''+_t('ערב נעים')+'',''+_t('ערב שקט')+'',''+_t('סוף יום טוב')+'',
-    ''+_t('ערב רגוע')+'',''+_t('שיהיה ערב נעים')+'','ערב מואר'
+    ''+_t('ערב טוב')+'',''+_t('ערב נעים')+'',''+_t('ערב שקט')+'',''+_t('סוף יום טוב')+'',
+    ''+_t('ערב רגוע')+'',''+_t('שיהיה ערב נעים')+'',''+_t('ערב מואר')+''
   ],
   night:[
-    'לילה טוב',''+_t('לילה שקט')+'',''+_t('לילה רגוע')+'',''+_t('זמן לנוח')+'',
-    ''+_t('מנוחה נעימה')+'',''+_t('שינה טובה')+'','לילה שקט ומנוחה'
+    ''+_t('לילה טוב')+'',''+_t('לילה שקט')+'',''+_t('לילה רגוע')+'',''+_t('זמן לנוח')+'',
+    ''+_t('מנוחה נעימה')+'',''+_t('שינה טובה')+'',''+_t('לילה שקט ומנוחה')+''
   ]
 };});
 var GREET_ICON={morning:'☀️',noon:'',evening:'🌙',night:'🌙'};

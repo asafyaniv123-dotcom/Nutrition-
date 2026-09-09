@@ -68,7 +68,12 @@ const CORE = [
     t: { en: 'White rice, cooked', de: 'Weißer Reis, gekocht', es: 'Arroz blanco, cocido',
          fr: 'Riz blanc, cuit', it: 'Riso bianco, cotto', pt: 'Arroz branco, cozido',
          ja: '白米（炊いたもの）', 'zh-Hans': '白米饭（煮熟）', 'zh-Hant': '白米飯（煮熟）',
-         ar: 'أرز أبيض مطبوخ' } },
+         ar: 'أرز أبيض مطبوخ' },
+    /* Nobody in Japan types 白米（炊いたもの）. ごはん is the word for cooked
+       rice, and for a meal, and it is what a person reaches for - the same
+       shape as きのこ against マッシュルーム. Searched, never displayed, and
+       no number changes. */
+    aka: ['ごはん', 'ご飯'] },
 
   { id: 'chicken-breast', he: 'בשר עוף, חזה מטוגן ללא שמן',
     t: { en: 'Chicken breast, cooked without oil', de: 'Hähnchenbrust, ohne Öl gegart',

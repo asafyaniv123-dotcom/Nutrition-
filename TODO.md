@@ -325,3 +325,198 @@ inside `פריכיות אורז מלא עם קינואה` — a rice cake that h
 some. A rice cake's numbers are not quinoa's, so it is recorded here rather
 than approximated, and it joins cassava, plantain, paneer, polenta, kimchi and
 plain firm tofu on the list that needs a second measured source.
+
+## The unwrapped-Hebrew count, and what it is worth (2026-09-09)
+
+**Measured with the same checker on both revisions: 209 at HEAD, 172 now.**
+That comparison is the only honest one. An earlier note in this file quoted
+187, produced by the checker *before* it could see a `_t()` written with
+escaped quotes; that number counted three already-wrapped strings and is not
+comparable to anything. When a check changes, every baseline it produced
+expires with it.
+
+The 172 are not 172 unfinished jobs. Sorting them by whether the LINE PAINTS —
+concatenates into an html string, or assigns innerHTML or a placeholder —
+leaves **zero**. The same sort at HEAD leaves **26**, and this pass fixed all
+of them. What remains is keys, lookups and comparisons:
+
+- The Hebrew keys of `MUSCLE_ROLLUP` match the exercise database's own muscle
+  tags (its *values* are `_t()`); the stop-word list the food search folds
+  against; the single letters `foodKey` collapses (`יי`→`י`); the qualifier
+  words the food matcher compares (`מיובש`, `אבקה`, `קפוא`); `askDateArg`
+  comparing an argument against `היום`; and `עברית`, the Hebrew language's own
+  name in the picker, which is correct in every locale. Translating any of them
+  breaks the thing it exists for — CLAUDE.md's "a list that is compared is
+  data", and the check is doing its job by naming them.
+- The remainder are short words in contexts the heuristic cannot read. Worth a
+  pass, not urgent.
+
+### The three that painted
+
+**The planning screen's `when`** carried three separate defects on two lines,
+none visible in Hebrew:
+
+1. `ביום` was one key doing two jobs — the unit on a steps average ("8,240 a
+   day") and the preposition before a weekday. English answered the first, so
+   a Sunday plan read *"What matters to you a day Sunday?"*. Fixed by making
+   the second a whole phrase, `ביום {day}`, which also lets each language place
+   its own preposition: German *am*, Japanese trailing *に*, Arabic leading
+   *يوم*, French and Portuguese none at all.
+2. The next question was glued from a fragment and a variable, which fixes
+   Hebrew word order onto ten other languages. Now one key with `{when}`.
+3. The ternary between them compared `when` against bare Hebrew and called
+   `.replace('ביום ',…)` on it — but `when` was built from `_t()` one line
+   above, so both arms were no-ops in every language including Hebrew. Dead
+   code that looked like careful handling.
+
+**The copy toast** built `'✓ '+what+' '+_t('הועתק')` — a noun from the caller,
+a verb from here, a space welded between. Measured: `✓ the address Copied`,
+`✓ la dirección Copiado`, `✓ l'adresse Copié` for a feminine noun.
+`find-glued-sentences` reports zero and is not wrong to: the two halves sit on
+opposite sides of a function call, a shape it cannot see. Both fragments were
+invisible to the template builder as well, so they had simply stayed Hebrew —
+and the moment they were answered they became broken grammar in six languages.
+Worth remembering: a string that was never translated is not neutral, it is a
+bug waiting for its dictionary.
+
+**A context marker on a stored value.** `חברה|קשר` and `כבד|גוף` were put into
+`RELATIONSHIP_TYPES` and `RF_BODY`, and those arrays are not labels — their
+entries are written into `p.relationship` and into the day's reflection. The
+pipe would have been *saved*, then painted raw in the person's header and the
+people list, in Hebrew too; and every reflection already holding a plain `כבד`
+would have stopped matching its own chip. `LABEL_CTX` + `labelOf` moves the
+marker to the display, where rule 3 says it belongs: the stored value never
+changes, only the key looked up when it is painted. `build-lang-template` now
+reads that map — and keeps asking for a remapped word anyway when something
+else calls `_t()` on it directly, which `כבד` does in the RPE legend.
+
+### The day names were the array bug again
+
+*Sunday | Mon | Tue | Wed | Thu | Fri | Saturday* in nine of ten languages —
+the ends full, the middle five abbreviated, which is what a pass anchored
+between commas leaves behind. Hebrew hid it: ראשון and שבת are the same length
+as everything between them, so one array served both the week strip and the
+five sites that head a day.
+
+Split into `WK_DAYS` (full) and `WK_SHORT` (the strip), and measured rather
+than asserted — with a `Range` over the text node, because `scrollWidth` on a
+nowrap cell reports the *cell* width and called every string a fit, "Donnerstag"
+included. **A first measurement of the cell was also wrong**, taken by forcing
+`.wk-head` to 358px and so swallowing its own `margin-inline-start:36px`. The
+real arithmetic is (390 − 28 page padding − 36 margin − 6×3px gap) / 7 =
+**44.0px**, and that inverts the conclusion: *Donnerstag* at 47.4px does not
+fit with 1.6px to spare, it **overflows by 3.4px**. Portuguese *Segunda-feira*
+overflows by 14. Every short label fits — the widest is Hebrew at 23.1px, then
+Arabic 20.0, es/it/pt 19.1, zh 18.6, fr 18.1, en 17.7, de 12.3, ja 9.3.
+
+Two conclusions and a warning: the split was more necessary than the first
+measurement suggested, "measure it" is not the same as "measure the right
+thing", and a number in a write-up is worth exactly as much as the reader's
+ability to reproduce it.
+
+**What would still move the count:** give the checker the paints-vs-data split
+so it reports the few that matter instead of a total nobody can act on.
+
+## Cross-script food search (2026-09-09)
+
+`tools/test-food-search.mjs` types every core food's own name in all eleven
+languages and asks for that food back — 3,366 queries, nothing guessed, since
+a food's own name is not a matter of opinion. **At HEAD, 24 fail. Now, none.**
+A hand-written list of everyday words follows, in `food-search-probes.json`.
+
+What it found, all one bug seen twice:
+
+    Lauch   -> Garlic          Knoblauch contains it
+    Apio    -> Tapioca pearls  tapioca contains it
+    Piña    -> Spinach         espinacas contains it
+    Sal     -> Salmon          Sel -> Self-raising flour, Mel -> Melancia
+    萝卜     -> Carrot juice    胡萝卜 contains it
+    卵      -> Egg yolk        卵黄 contains it
+    بيض     -> White cabbage   أبيض contains it
+    もやし    -> Alfalfa sprouts アルファルファもやし contains it
+    Linsen  -> Lentil sprouts  Linsensprossen begins with it
+
+`foodSearch` built its `starts` bucket from `f.s` — the name in the *current*
+ui language — so a query in any other script could only fall through to the
+`alt` branch, which produces `phrase` or `words` and nothing better. And `alt`
+is all eleven names joined end to end, so `phrase` broke its tie on an offset
+into that blob: a number that says only which language happens to sit earlier
+in the join. The answers looked arbitrary because they were.
+
+`foodNames` keeps the names as names (`f.na`), and two rules go ahead of the
+rest: the query IS one of this food's names, then one of its names BEGINS with
+the query. A word boundary cannot separate 萝卜 from 胡萝卜 — Chinese has none,
+and German compounds have none either — so exactness has to be a bucket rather
+than a tiebreak. `foodWhole` was then reading the wrong string too, and now
+asks whichever name matched, which is what separates *Linsen, trocken* from
+*Linsensprossen*.
+
+Left open on purpose, recorded in the probe file: a query that is a whole
+ingredient word prefers the food whose name *begins* with it, so `rice` leads
+with rice noodles and `potato` with the baked potato rather than the boiled
+one. That is the existing rule working as designed; whether a bare ingredient
+word should mean the plainest food is the same undecided question as
+"potato" leading with sweet potato.
+
+`ごはん` reached nothing and now does — an `aka` on `core:rice-white`, the same
+shape as きのこ and ドリップコーヒー: searched, never displayed, no number
+touched. German *Quark* still reaches nothing and is recorded rather than
+guessed, because there is no measured row for it.
+
+## The chevrons pointed at the text they were supposed to lead away from (2026-09-09)
+
+This was recorded once before as "noted, undecided". It is decided now, and
+the reason it stayed undecided is that it cannot be reasoned about — every
+attempt to work it out on paper gave the wrong answer.
+
+`‹` U+2039 and `›` U+203A carry the **Bidi_Mirrored** property, so a browser
+draws them flipped when their resolved bidi level is RTL. Which means the
+source character does not mean "left" or "right". It means **direction of
+travel in reading order**, and the browser does the flipping:
+
+    ‹  U+2039   backward — drawn left in ltr, right in rtl
+    ›  U+203A   forward  — drawn right in ltr, left in rtl
+
+Three measurements, in the order they were taken, because two of them were
+wrong and it matters why:
+
+1. **A canvas test said U+2039 mirrors in rtl and U+203A does too.** Nonsense
+   on its face — `ctx.direction` is not the DOM's bidi resolution.
+2. **A DOM test said neither mirrors.** It put the glyphs next to the Latin
+   word "rtl", so the neutrals resolved to LTR level and nothing mirrored. A
+   test that reads plausibly and answers the wrong question.
+3. **Looking at the Hebrew app settled it.** The fitness row's `‹` sits at the
+   row's left end and is *drawn pointing right*, back at its own text.
+
+Against the rule, two things were wrong, and the second was wrong in Hebrew
+as well — which is unusual here, where Hebrew is normally the direction that
+works.
+
+**Six row chevrons** — the trailing mark on a row that opens something — used
+`‹`. English drew it at the right end pointing left; Hebrew at the left end
+pointing right. Both pointed back at the row's own text. They are `›` now.
+
+**Six paired prev/next controls** used prev=`›`, next=`‹`, which is inverted.
+Driven rather than deduced: on the planning day view in English, the button
+drawn as a LEFT-pointing chevron moved Wednesday 09/09 *forward* to Thursday
+10/09. The file held both conventions — `btnPrev`/`btnNext`, the closet's
+stepper and the workout wizard's back/next already used prev=`‹` next=`›` —
+and the minority of three was the correct one.
+
+Four of the six emit `[prev][title][next]`, so their sides were already right
+and only the glyphs swapped. The week and month headers emit
+`[next][title][prev]`, side inverted too, so there the **handlers** swapped
+instead: one change fixing glyph and side together without moving markup.
+
+Verified after: reversing the pass returns the file byte for byte (1,275,372
+bytes both ways); the game is untouched; the glyph counts move by exactly the
+six openers (41/15 → 35/21) because the four glyph swaps cancel and the two
+handler swaps change no glyphs. Then driven in both directions: in English the
+right-pointing arrow advances a day, in Hebrew the right-pointing arrow goes
+back, and the row chevron points away from its text in both.
+
+**Left alone deliberately:** every back button (`‹` before a label) is already
+correct in both directions, and so are the five forward marks that already
+used `›`. One oddity recorded rather than changed: at `:12517` a back button
+puts its chevron *after* the label rather than before it, unlike its fifteen
+siblings — a layout inconsistency, not a direction bug.

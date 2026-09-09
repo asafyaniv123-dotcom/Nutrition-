@@ -22,19 +22,39 @@ const app = s.slice(0, gs) + ' '.repeat(ge - gs) + s.slice(ge);
 
 /* The literal form only. A _t(variable) - the muscle captions, the feeling
    chips - cannot be read statically; those keys come from the collection the
-   variable walks, and are added below. */
-const CALL = /_t\((['"])((?:(?!\1).)*)\1/g;
+   variable walks, and are added below.
+
+   The optional backslash matters more than it looks. A _t() written inside
+   an html attribute must escape its quotes - onclick="...confirm(_t(\'…\'))"
+   - and without this the regex found a backslash where it wanted a quote,
+   emitted no key, and _t returned its own Hebrew argument in all ten
+   languages while --check stayed green. Three strings were shipped that way
+   before anyone noticed, and one of them was a confirm dialog. */
+const CALL = /_t\(\\?(['"])((?:(?!\1).)*)\1/g;
 const keys = new Set();
 let m;
-while ((m = CALL.exec(app))) keys.add(m[2]);
+/* The closing quote is escaped too, so the capture can end with a stray
+   backslash that is not part of the key. */
+while ((m = CALL.exec(app))) keys.add(m[2].replace(/\\$/, ''));
+/* Kept apart from the rest: a key with a real _t() call behind it is asked
+   for no matter what any collection says about it. LABEL_CTX below needs to
+   tell the two apart. */
+const called = new Set(keys);
 
 /* Collections whose values are handed to _t at the point of display. They are
    data in the file and text on the screen, so their keys are real but invisible
    to the pattern above. Named explicitly, because guessing which arrays feed a
    _t(variable) is exactly the guess this whole exercise exists to avoid. */
 const VIA_VARIABLE = ['SAY_DERIVED_NONE', 'PLAN_FEELINGS', 'RELATIONSHIP_TYPES',
-                      'PEOPLE_PLACES', 'RF_IMPACT', 'WIZ_NAME_OPTS',
-                      'CLOSET_SEASONS'];
+                      'PEOPLE_FREQS', 'PEOPLE_DATE_TYPES',
+                      'PEOPLE_PLACES', 'WIZ_NAME_OPTS', 'CLOSET_SEASONS',
+                      /* Every reflection list, not just RF_IMPACT. The other
+                         six were missing, so thirty answers to "what made you
+                         put it off?" and "how does your body feel?" were
+                         Hebrew in every other language - in the part of the
+                         app the rest of it exists to serve. */
+                      'RF_IMPACT', 'RF_BODY', 'RF_ENERGY', 'RF_DRAIN',
+                      'RF_PROC', 'RF_SELFCARE', 'RF_PLANNED'];
 /* Bracket-matched rather than cut at the next "];", which is fragile for a
    multi-line collection: indexOf can run past the end of the declaration and
    let the regex pick fragments out of unrelated code.
@@ -62,6 +82,27 @@ for (const name of VIA_VARIABLE) {
   const body = arrayAt(app.indexOf('[', at));
   for (const k of body.matchAll(/(['"])([^'"]*[֐-׿][^'"]*)\1/g)) keys.add(k[2]);
 }
+/* LABEL_CTX maps a stored word to the key it is painted under. The values are
+   the keys a translator has to answer, and they appear in no _t() call - the
+   call reads the map. Without this the two contexts vanish from the template,
+   every language quietly loses its answer, and _t falls back to the part
+   before the bar, which is the very word the context existed to disambiguate. */
+const lc = app.indexOf('var LABEL_CTX={');
+const remapped = new Set();
+if (lc >= 0) {
+  const block = app.slice(lc, app.indexOf('};', lc));
+  for (const m of block.matchAll(/(['"])([^'"]*[֐-׿][^'"]*)\1\s*:\s*(['"])([^'"]*[֐-׿][^'"]*)\3/g)) {
+    remapped.add(m[2]);   // the stored word, never looked up
+    keys.add(m[4]);       // the key it is painted under
+  }
+}
+/* A word LABEL_CTX remaps is painted under its mapped key, so asking for the
+   bare word as well would put a key in every language file that nothing
+   reads — UNLESS something calls _t() on it directly somewhere else, which is
+   the whole reason it needed a context: כבד is the body chip AND the word in
+   the RPE legend, and dropping it would have left that legend untranslated
+   while every check stayed green. */
+for (const k of remapped) if (!called.has(k)) keys.delete(k);
 /* and the muscle names, which the browser's cards translate one by one -
    plus the three section headings above them, which the exercise picker
    translates the same way. */
