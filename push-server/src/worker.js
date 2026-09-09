@@ -123,10 +123,14 @@ async function aiSpend(env, ip, day) {
    unsure: a wrong search term returns wrong products with real numbers on
    them, which is worse than returning nothing. */
 async function latinTerm(q, tag, env) {
-  const country = tag.slice(3).replace(/-/g, ' ');
+  /* With no country chosen the question loses its "in France" and becomes
+     the international name instead. Interpolating an empty string would
+     have asked what a packet says "on a shelf in ", which is not a
+     question. */
+  const where = tag ? 'in ' + tag.slice(3).replace(/-/g, ' ') : 'internationally';
   const SYSTEM =
     'You turn a food a person typed into the words a PACKET of it would\n' +
-    'carry on a shelf in ' + country + ', written in Latin letters.\n' +
+    'carry on a shelf ' + where + ', written in Latin letters.\n' +
     '\n' +
     '- Reply with the search words alone. No explanation, no punctuation, no\n' +
     '  quotes. Two or three words at most.\n' +
@@ -321,7 +325,13 @@ export default {
          asked for, and the copy that cannot use it does not ask. */
       const wantVia = !!(b && b.via);
       if (q.length < 2) return json({ ok: true, rows: [] });
-      if (!/^en:[a-z-]+$/.test(tag)) return json({ ok: true, rows: [] });
+      /* Empty is the app's own default and means the whole shelf - Open
+         Food Facts searches worldwide with the filter left off, and the
+         filter narrows a search rather than enabling one. Anything else
+         still has to be exactly a country tag: this is the check that keeps
+         a colon or a quote out of a field filter that is interpolated
+         straight into the query string. */
+      if (tag && !/^en:[a-z-]+$/.test(tag)) return json({ ok: true, rows: [] });
 
       const cap = Number(env.OFF_DAILY_CAP || 400);
       const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
@@ -336,8 +346,9 @@ export default {
          nothing at all rather than saying so. This one answers in half a
          second. The free text and the country filter combine inside q. */
       const hits = async (term) => {
+        const q2 = tag ? term + ' countries_tags:"' + tag + '"' : term;
         const u = 'https://search.openfoodfacts.org/search?page_size=12&q=' +
-          encodeURIComponent(term + ' countries_tags:"' + tag + '"');
+          encodeURIComponent(q2);
         try {
           const r = await fetch(u, {
             headers: { 'User-Agent': 'BetterMe/0.1 (personal nutrition app)' },

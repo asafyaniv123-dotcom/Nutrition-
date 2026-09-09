@@ -855,6 +855,8 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .fdb-row.ai{border-inline-start:3px solid var(--violet-300)}
 .fdb-ai-w{font-size:10px;color:var(--muted-soft);padding:8px 2px 0}
 .fdb-msg{font-size:11.5px;color:var(--muted);padding:10px 4px;text-align:center;line-height:1.6}
+.fdb-shelf{margin-top:7px;font-size:11px;color:var(--muted)}
+.fdb-shelfb{background:none;border:none;padding:0;margin-inline-start:4px;font:inherit;font-weight:700;color:var(--ink-soft);cursor:pointer}
 .fdb-list{max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:3px}
 .fdb-row{display:flex;align-items:center;gap:8px;width:100%;border:none;background:var(--card);border-radius:11px;padding:9px 10px;cursor:pointer;font-family:inherit;text-align:start;box-shadow:0 1px 5px rgba(200,180,160,.1)}
 .fdb-rn{flex:1;min-width:0;font-size:12px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -4809,10 +4811,13 @@ function offLiveRow(r){
 /* Runs beside the model match, not instead of it. Silent on every failure:
    there is always a local list underneath. */
 function offLive(q){
-  var cc=appCountry();
-  if(!cc||!_foods)return;
-  var tag=countryTag(cc);
-  if(!tag)return;
+  if(!_foods)return;
+  /* No country is the WHOLE shelf, which is what the setting has always
+     said it is. It used to mean no search at all, so the default state of
+     a fresh install was an Israeli table and nothing else. Open Food Facts
+     searches worldwide with the filter left off - the filter narrows, it
+     does not enable. */
+  var tag=countryTag(appCountry());
   var term=String(q||'').trim();
   if(term.length<2)return;
   if(!SYNC_SERVER)return;
@@ -4938,6 +4943,12 @@ function fdbAIGo(q){
     });
   });
 }
+/* Straight to where the country is chosen. The setting already exists and
+   is good; what it lacked was a door from the screen it governs. */
+function shelfOpen(){
+  openAreas();
+  setDrawerView(true);
+}
 function fdbSelect(id){
   fdbPick=id;
   var f=fdbFind(id);
@@ -5044,7 +5055,18 @@ function fdbPaint(){
       return;
     }
   }
-  if(!_fdbQ){el.innerHTML='<div class="fdb-msg">'+nfmt(_foods.length)+' '+_t('מאכלים ממאגר משרד הבריאות. הקלד כדי לחפש.')+'</div>';return;}
+  if(!_fdbQ){
+    /* Which shelf, named, and a way to change it from here. It used to say
+       "from the ministry of health database" to every reader in the world,
+       which is both parochial and no longer true - the table is three files
+       and one of them is worldwide. */
+    var _cc=appCountry();
+    el.innerHTML='<div class="fdb-msg">'+_t('{n} מאכלים. הקלד כדי לחפש.',{n:nfmt(_foods.length)})+
+      '<div class="fdb-shelf">'+_t('מדף')+' '+
+      '<button class="fdb-shelfb" onclick="shelfOpen()">'+
+      esc(_cc?countryName(_cc):_t('כל העולם'))+' &#8250;</button></div></div>';
+    return;
+  }
   var res=foodSearch(_fdbQ),i,f;
   var h='',shown={};
 
@@ -20535,11 +20557,48 @@ var COUNTRIES=['AR','AT','AU','BE','BR','CA','CH','CL','CN','CO','CZ','DE','DK',
   'ES','FI','FR','GB','GR','HU','ID','IE','IL','IN','IT','JP','KR','MA','MX','MY',
   'NL','NO','NZ','PH','PL','PT','RO','RU','SA','SE','SG','TH','TN','TR','TW','UA',
   'US','VN','ZA'];
+/* The region the phone is set to, when we ship that country's shelf.
+
+   Read from the same list as the language, so fr-FR starts on France and
+   the first search a person runs is already about the shop they are
+   standing in. A bare 'fr' carries no region and is skipped rather than
+   guessed - France is not the only country that speaks French, and a wrong
+   shelf is worse than the worldwide one.
+
+   It is only a DEFAULT. The moment anyone touches the setting their answer
+   is stored and this is never consulted again, including when they choose
+   the whole world on purpose. */
+var _ccGuess=null;
+function countryFromBrowser(){
+  if(_ccGuess!==null)return _ccGuess;
+  _ccGuess='';
+  var list=[],i;
+  try{
+    list=(navigator.languages&&navigator.languages.length)
+      ?navigator.languages:[navigator.language||''];
+  }catch(e){list=[];}
+  for(i=0;i<list.length;i++){
+    var m=/-([A-Za-z]{2})$/.exec(String(list[i]||''));
+    if(!m)continue;
+    var cc=m[1].toUpperCase();
+    if(COUNTRIES.indexOf(cc)>=0){_ccGuess=cc;break;}
+  }
+  return _ccGuess;
+}
 function appCountry(){
-  try{return localStorage.getItem(COUNTRY_KEY)||'';}catch(e){return '';}
+  var v=null;
+  try{v=localStorage.getItem(COUNTRY_KEY);}catch(e){}
+  /* null is "never answered" and '' is "answered: everywhere". They are
+     different, and collapsing them would re-guess a country for someone
+     who deliberately chose the whole world. */
+  if(v===null)return countryFromBrowser();
+  return v;
 }
 function countrySet(c){
+  /* '' is stored, not removed - it is the answer "everywhere", and the
+     absence of the key is what means nobody has answered. */
   try{localStorage.setItem(COUNTRY_KEY,c||'');}catch(e){}
+  _offSeen={};_offVia={};       // the old country's shelf is not this one's
   renderSettings();
 }
 /* The browser has known every country's name in every language since 2021.
