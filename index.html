@@ -3552,6 +3552,15 @@ function foodAlt(f){
   if(!f||!f.t)return '';
   var out=[],k;
   for(k in f.t)if(f.t[k])out.push(f.t[k]);
+  /* Words the food answers to that are in none of its eleven names. Found by
+     photographing a plate: the model wrote בקון, the core had bacon, and
+     nothing matched - the row says בייקון, foodKey folds that to ביקון, and
+     one missing yod is a different string. Same shape for תפוח אדמה against
+     rows that say תפוחי אדמה, and אגוזים against every אגוזי X.
+
+     Searched, never displayed - which is exactly the contract alt already
+     has, so nothing downstream needs to know these exist. */
+  if(f.aka&&f.aka.length)out=out.concat(f.aka);
   return foodKey(out.join(' '));
 }
 function foodsLoad(then){
@@ -3716,8 +3725,32 @@ function foodSearch(q){
     for(j=0;j<toks.length;j++)if(!foodHas(f.alt,toks[j])){all=false;break;}
     if(all)words.push(f);
   }
-  // the shortest name is usually the plainest version of the thing
-  words.sort(function(a,b){return a.s.length-b.s.length;});
+  /* The curated food comes first in EVERY bucket, not just in `starts`.
+
+     Found by typing "תפוח אדמה": forty results, not one of them a potato.
+     Every composed dish whose name contains that exact phrase - beef goulash
+     with potato, vegetable soup with potato - landed in `phrase`, while the
+     plain potato fell to `words` because its row says תפוחי אדמה, the
+     construct plural, which does not contain the singular as a substring. A
+     whole bucket of dishes outranked the ingredient, and the cut at forty
+     meant the ingredient was not on the list at all.
+
+     f.i is the load order and the core file loads first, so ascending .i is
+     core-first. Each bucket keeps its own second key: length for `words`,
+     which is the old "shortest name is the plainest" rule, and file order
+     for `phrase`. */
+  phrase.sort(function(a,b){
+    var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
+    if(ac!==bc)return ac?-1:1;
+    return (a.i||0)-(b.i||0);
+  });
+  words.sort(function(a,b){
+    /* Only core-vs-noncore, not core-vs-core: inside the core the shorter
+       name is still the plainer food. */
+    var ac=String(a.id).indexOf('core:')===0, bc=String(b.id).indexOf('core:')===0;
+    if(ac!==bc)return ac?-1:1;
+    return a.s.length-b.s.length;
+  });
   /* A whole word beats a prefix of a longer one. Both "Egg or omelette" and
      "Eggplant" start with egg, and without this the one that merely begins
      with those letters came first because the bucket was in table order. */
@@ -3730,7 +3763,16 @@ function foodSearch(q){
        order. */
     return (a.i||0)-(b.i||0);
   });
-  return starts.concat(phrase).concat(words).slice(0,40);
+  /* A core food that landed in `words` still sits behind every dish in
+     `phrase`. Pull the curated rows to the front of the whole list: that is
+     what the file is for, and it is the only way the plain potato beats
+     forty dishes that merely mention one. */
+  var out=starts.concat(phrase).concat(words);
+  var core=[],rest=[],z;
+  for(z=0;z<out.length;z++){
+    if(String(out[z].id).indexOf('core:')===0)core.push(out[z]);else rest.push(out[z]);
+  }
+  return core.concat(rest).slice(0,40);
 }
 
 /* ── SCANNING A BARCODE ──
