@@ -401,6 +401,10 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .say-go{width:100%;margin-top:8px;border:none;border-radius:13px;padding:12px;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white);font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
 .say-cam{display:block;width:100%;margin-top:7px;border:1.5px dashed var(--line-strong);border-radius:13px;padding:11px;background:none;color:var(--ink-soft);font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center}
 .say-shot{margin-top:9px;text-align:center}
+/* Standing on its own in the + rather than tucked under a textarea, the same
+   control is the only thing on the panel, so it is given the room to say so. */
+.say-cam.big{margin-top:0;padding:26px 14px;font-size:14px;border-width:2px}
+.pic-hint{margin-top:10px;font-size:11px;line-height:1.65;color:var(--muted);text-align:center}
 .say-shot img{max-height:132px;border-radius:12px}
 .say-note{margin-top:9px;font-size:11px;color:var(--muted);line-height:1.6;padding:0 2px}
 .say-msg{font-size:11.5px;color:var(--muted);text-align:center;padding:14px 6px;line-height:1.7}
@@ -4341,6 +4345,7 @@ var _sayOpen=false,_sayBusy=false,_sayItems=null,_sayErr='';
 var _addMode='';
 var ADD_WAYS;langOn(function(){ADD_WAYS=[
   {k:'say', ic:'&#x1F4AC;', t:''+_t('משפט')+''},
+  {k:'pic', ic:'&#x1F4F8;', t:''+_t('צילום')+''},
   {k:'find',ic:'&#x1F50D;', t:''+_t('חיפוש')+''},
   {k:'scan',ic:'&#x1F4F7;', t:''+_t('ברקוד')+''},
   {k:'lib', ic:'&#x1F4DA;', t:''+_t('שלי')+''},
@@ -4357,7 +4362,10 @@ function addSetMode(k){
   libOpen=(_addMode==='lib');
   compOpen=(_addMode==='comp');
   manOpen=(_addMode==='man');
-  if(_addMode!=='say'){_sayItems=null;_sayErr='';_picThumb='';_picNote='';_picBusy=false;}
+  /* The sentence and the photograph share this list - /see answers in the
+     shape /parse returns and the flow is one from there on - so leaving
+     EITHER of them clears it, and switching between them does not. */
+  if(_addMode!=='say'&&_addMode!=='pic'){_sayItems=null;_sayErr='';_picThumb='';_picNote='';_picBusy=false;}
   if(_addMode!=='find')pendingLib=null;
   render();
   if(_addMode==='find'){
@@ -4385,7 +4393,14 @@ var _fabOpen=false;
 /* Six pills side by side need 480px of width; a phone has 375. Six discs of
    54px on an arc of this radius sit 64px apart along it, which clears. So
    the name goes inside the disc with the icon, not on a tag beside it. */
-var FAB_R=142, FAB_A0=25, FAB_A1=155;   // radius, and the sweep in degrees
+/* Radius and sweep. The buttons fan along the arc and the spacing is derived,
+   so adding a way silently tightens it: at the old 142/25-155 a SEVENTH item
+   sat 53.4px from its neighbour with a 54px button - a 0.6px overlap, which
+   is how the photograph would have arrived. Measured, not eyeballed:
+   chord = 2R sin(step/2), step = sweep/(n-1). At 152/20-160 seven buttons
+   clear each other by 7.5px, and the furthest reaches 179px up and 170px in
+   from the +, which fits a 390px phone. */
+var FAB_R=152, FAB_A0=20, FAB_A1=160;
 function fabToggle(){_fabOpen=!_fabOpen;fabPaint();}
 function fabClose(){if(!_fabOpen)return;_fabOpen=false;fabPaint();}
 function fabPick(k){
@@ -6259,6 +6274,19 @@ function renderToday(){
       '<div id="say-body"></div></div>';
   }
 
+  /* The same #say-body the sentence writes into - sayPaint finds it by id and
+     the resolve flow is shared from /see's answer onward, so there is one list
+     to keep right rather than two. */
+  var picHTML='';
+  if(_addMode==='pic'){
+    picHTML='<div class="aw-body">'+
+      '<label class="say-cam big">&#x1F4F8; '+_t('צלם את הצלחת')+
+      '<input type="file" accept="image/*" capture="environment" hidden onchange="picPick(this)"></label>'+
+      (_picThumb?'<div class="say-shot"><img src="'+_picThumb+'" alt=""></div>':
+        '<div class="pic-hint">'+_t('הוא מזהה מה יש בצלחת וכמה, והמספרים עצמם באים מהטבלאות — לא מהתמונה.')+'</div>')+
+      '<div id="say-body"></div></div>';
+  }
+
   var fdbHTML='';
   if(_addMode==='find'){
     fdbHTML='<div class="aw-body">'+
@@ -6303,7 +6331,7 @@ function renderToday(){
 
   /* Only one body is ever non-empty, so this concatenation is really a
      switch. Nothing at all is drawn until a way has been chosen. */
-  var addHTML=addPanelHTML(compHTML+sayHTML+fdbHTML+libHTML+manHTML);
+  var addHTML=addPanelHTML(compHTML+sayHTML+picHTML+fdbHTML+libHTML+manHTML);
   /* Steps moved out to כושר, where they were already shown at the top of the
      screen. Two cards for one number, on two screens, and the one here was
      only ever a link to the one there. */
