@@ -849,6 +849,10 @@ body.night .st-m>span{background:rgba(255,255,255,.06)}
    one. */
 .sr-srctag{margin-inline-start:6px;font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px;background:rgba(143,199,158,.22);color:#4f7d5e;vertical-align:middle}
 body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
+/* The words the analyses run on. Wider and quieter than the search below
+   it: this is a sentence, not a lookup. */
+.sr-words{margin:8px 0 7px}
+.sr-wordsin{width:100%;border:1.5px solid var(--line-strong);border-radius:11px;padding:10px 11px;font-size:12.5px;font-family:inherit;background:var(--card);color:var(--ink);line-height:1.5}
 .sr-seek{margin-top:8px;display:flex;flex-direction:column;gap:5px}
 .sr-seekin{width:100%;border:1.5px solid var(--line-strong);border-radius:10px;padding:9px 11px;font-size:12.5px;font-family:inherit;background:var(--card);color:var(--ink)}
 .sr-seekhit{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:start;border:none;border-radius:9px;padding:8px 11px;background:var(--surface);color:var(--ink);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
@@ -4953,6 +4957,16 @@ function sayDrop(i){
 /* Open the search INSIDE the row. It used to set _sayItems=null and hand the
    word to the main food search, which meant correcting one item of a
    photographed plate discarded the other four. */
+/* The words the analyses work from. Editing them is how a person tells the
+   app what the photograph could not see - that the pancake is cottage
+   cheese - and what the picture first said is kept so the row can still
+   show it. */
+function saySaid(i,v){
+  var row=_sayItems&&_sayItems[i];
+  if(!row)return;
+  if(row.q0===undefined)row.q0=row.q;
+  row.q=v;
+}
 function sayLookup(i){
   var row=_sayItems&&_sayItems[i];
   if(!row)return;
@@ -5133,7 +5147,11 @@ function sayPaint(){
       // and the rest only when asked for
       if(open){
         h+='<div class="sr-more">';
-        if(foodKey(row.food.n)!==foodKey(row.q))
+        /* What the picture said, once the words have been changed - the
+           two are worth seeing together. */
+        if(row.q0!==undefined&&foodKey(row.q0)!==foodKey(row.q))
+          h+='<div class="sr-said">'+_t('בתמונה:')+' '+esc(row.q0)+'</div>';
+        else if(foodKey(row.food.n)!==foodKey(row.q))
           h+='<div class="sr-said">'+_t('אמרת:')+' '+esc(row.q)+'</div>';
         if(row.est&&row.assumed)
           h+='<div class="sr-src">'+esc(row.assumed)+'</div>';
@@ -5165,12 +5183,20 @@ function sayPaint(){
            all is rare, and putting the estimate only there made it almost
            unreachable. The place you actually want it is here: the match came
            back wrong and none of the alternatives are it either. */
-        if(!row.est){
-          h+='<button class="sr-estall" onclick="sayEstimate('+i+')">'+
-             (row.esting?''+_t('מעריך…')+'':''+_t('הערכה מהירה של מה שכתבתי')+'')+'</button>';
-          h+='<button class="sr-anall" onclick="sayAnalyze('+i+')">'+
-             (row.esting?''+_t('מפרק…')+'':''+_t('פירוק מעמיק — לפי מרכיבים מהמאגר')+'')+'</button>';
-        }
+        /* The words, editable. A photograph cannot see what something is
+           made OF, so this is where that gets said - and both analyses
+           below read straight from it. */
+        h+='<div class="sr-words">'+
+           '<input class="sr-wordsin" value="'+esc(row.q)+'" '+
+           'placeholder="'+_t("ממה זה עשוי? אפשר לפרט מרכיבים")+'" '+
+           'oninput="saySaid('+i+',this.value)"></div>';
+        /* Always, not only before the first estimate. Refining the words
+           and asking again is the whole point, and hiding these after one
+           answer made that answer final. */
+        h+='<button class="sr-estall" onclick="sayEstimate('+i+')">'+
+           (row.esting?''+_t('מעריך…')+'':''+_t('הערכה מהירה של מה שכתבתי')+'')+'</button>';
+        h+='<button class="sr-anall" onclick="sayAnalyze('+i+')">'+
+           (row.esting?''+_t('מפרק…')+'':''+_t('פירוק מעמיק — לפי מרכיבים מהמאגר')+'')+'</button>';
         h+='<button class="sr-other" onclick="sayLookup('+i+')">'+_t('משהו אחר לגמרי…')+'</button>';
         /* The search, on the row. Two characters before it answers, so a
            half-typed word does not flash the whole table past. */
