@@ -4783,18 +4783,25 @@ function sayGo(){
    visible and one tap from being fixed, rather than a wrong number, which is
    not. */
 function sayCandidates(q,n){
-  var toks=foodTokens(q),out=[],i,j,hits;
+  var toks=foodTokens(q),out=[],i,j,hits,alt;
   if(!_foods)return [];
   for(i=0;i<_foods.length;i++){
-    hits=0;
+    hits=0;alt=0;
     for(j=0;j<toks.length;j++)if(foodHas(_foods[i].s,toks[j]))hits++;
-    if(hits)out.push({f:_foods[i],h:hits});
+    /* and the other names, exactly as sayScore does - the model can only
+       pick from what it is sent, so a list that cannot see the aka entry
+       would overwrite the answer sayScore had just got right. */
+    if(!hits&&_foods[i].alt){
+      for(j=0;j<toks.length;j++)if(foodHas(_foods[i].alt,toks[j]))hits++;
+      alt=1;
+    }
+    if(hits)out.push({f:_foods[i],h:hits,a:alt});
   }
   // most words matched first, then the plainest name
   /* Most words matched, then the better table, then the plainest name.
      The model can only pick from what it is sent, so sending sixty
      branded packages is the same bug one step earlier. */
-  out.sort(function(a,b){return b.h-a.h||sayTier(b.f)-sayTier(a.f)||a.f.s.length-b.f.s.length;});
+  out.sort(function(a,b){return a.a-b.a||b.h-a.h||sayTier(b.f)-sayTier(a.f)||a.f.s.length-b.f.s.length;});
   return out.slice(0,n||60).map(function(x){return x.f;});
 }
 /* A name that declares "25 גרם חלבון" is telling you what the whole pot
@@ -5026,22 +5033,34 @@ function sayScore(f,q,toks){
     for(i=1;i<toks.length;i++)if(toks[i].length>gate.length)gate=toks[i];
   }
   /* Through the forms, like every other comparison here: a photograph
-     that says "bananas" must not be gated out of every banana row. */
-  if(f.s.indexOf(gate)<0&&!foodHas(f.s,gate))return -1;
+     that says "bananas" must not be gated out of every banana row.
+
+     And through the other names. f.alt is all eleven of a food's names and
+     its aka list folded into one string, which is what foodSearch's four
+     alt buckets match against; sayScore looked only at the name being
+     DISPLAYED, so "ביצת עין" found the right egg when typed and a chocolate
+     egg at 549 when photographed. f.alt contains f.s, so this can only ever
+     widen the gate, and measured over every core head word it widens it
+     barely at all - not once in Hebrew. */
+  var hay=f.s,alt=0;
+  if(f.s.indexOf(gate)<0&&!foodHas(f.s,gate)){
+    if(!f.alt||(f.alt.indexOf(gate)<0&&!foodHas(f.alt,gate)))return -1;
+    hay=f.alt;alt=1;
+  }
   var hits=0;
-  for(i=0;i<toks.length;i++)if(foodHas(f.s,toks[i]))hits++;
+  for(i=0;i<toks.length;i++)if(foodHas(hay,toks[i]))hits++;
   /* Among the curated rows the file order decides, because a short name is
      not a plainer food - it is what foodSearch settled on for the same
      reason. Outside core there is nothing better than length. */
   var core=String(f.id).indexOf('core:')===0;
   var score=hits*4000+sayTier(f)+(core?(1000-f.i):(1000-f.s.length));
-  var at=f.s.indexOf(toks[0]);
+  var at=hay.indexOf(toks[0]);
   if(at===0)score+=500;
   if(f.s===foodKey(q))score+=6000;
   /* Hebrew names the thing first, so the first token is the food itself.
      A row that carries it whole is about that food; one that merely
      contains the letters may be a different word entirely. */
-  if(sayWord(f.s,toks[0]))score+=1500;
+  if(sayWord(hay,toks[0]))score+=1500;
   /* And the qualifiers. קל is two letters, so foodHas takes the boundary
      path, which checks only what comes BEFORE - deliberately, because Hebrew
      glues prefixes on and a query for בצל has to find בצלים. The cost is that
@@ -5050,7 +5069,7 @@ function sayScore(f,q,toks){
      Rewarding the exact word rather than forbidding the loose one keeps both:
      600 is over the file-order and length tie-breaks and far under one
      matched word, so a word someone actually typed still decides. */
-  for(var w=1;w<toks.length;w++)if(sayWord(f.s,toks[w]))score+=600;
+  for(var w=1;w<toks.length;w++)if(sayWord(hay,toks[w]))score+=600;
   /* The tables weigh some things as bought. An apple with its peel is an
      apple; a walnut with its peel is a walnut and a SHELL, and it reads
      294 where the nut is 654. Preferring the row that says it is peeled
@@ -5063,6 +5082,9 @@ function sayScore(f,q,toks){
   for(d=0;d<SAY_D.length;d++)
     if(f.s.indexOf(SAY_D[d])>=0&&q.indexOf(SAY_D[d])<0&&
        !(cooked&&SAY_R[SAY_D[d]]))score-=2500;
+  /* Found under a name that is not on the screen. Still an answer, and
+     still a worse one than a food found under the name being read. */
+  if(alt)score-=1200;
   return score;
 }
 /* No amount of scoring is going to know that "ביצה" means a hen's egg and
