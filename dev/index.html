@@ -4626,7 +4626,10 @@ function picGo(dataUrl){
          of units. It is also the one unit that needs no per-item weight, so
          nothing downstream has to guess how much one of anything weighs. */
       var items=(j.items||[]).map(function(it){
-        return {food:it.name,amount:it.grams,unit:'g'};
+        /* ai: the grams were judged from the picture. Nothing else in the
+           panel produces a weight this uncertain, and until now it was the
+           only one that arrived unmarked. */
+        return {food:it.name,amount:it.grams,unit:'g',ai:true};
       });
       if(!items.length){picFail(''+_t('לא זיהיתי אוכל בתמונה. נסה מקרוב יותר, או כתוב מה אכלת.')+'');return;}
       /* A barcode outranks everything, but only once its own check digit
@@ -4706,7 +4709,10 @@ function sayCandidates(q,n){
     if(hits)out.push({f:_foods[i],h:hits});
   }
   // most words matched first, then the plainest name
-  out.sort(function(a,b){return b.h-a.h||a.f.s.length-b.f.s.length;});
+  /* Most words matched, then the better table, then the plainest name.
+     The model can only pick from what it is sent, so sending sixty
+     branded packages is the same bug one step earlier. */
+  out.sort(function(a,b){return b.h-a.h||sayTier(b.f)-sayTier(a.f)||a.f.s.length-b.f.s.length;});
   return out.slice(0,n||60).map(function(x){return x.f;});
 }
 /* A name that declares "25 גרם חלבון" is telling you what the whole pot
@@ -4813,7 +4819,39 @@ function sayResolveAll(items,done){
    means by default (dried, powdered, frozen, tinned) is pushed down unless
    the word was actually said. And a name that begins with the word as a
    whole word, rather than as the start of a longer one, is preferred. */
-var SAY_DERIVED=['מיובש','מיובשת','אבקה','אבקת','מרוכז','מרוכזת','קפוא','קפואה','משומר','משומרת','תחליף','לא מבושל','לא מבושלת'];
+/* Rows that are correctly measured and are not a serving of the food:
+   the ingredient it starts as, and the weight that includes a part
+   nobody eats. Each was counted against the shipped tables before it was
+   added - יבש is 70 rows at a median of 341 kcal, עם קליפה is 60, קמח is
+   86 at 325. Cooking METHODS are deliberately absent: fried, smoked and
+   cured are ways a food arrives on a plate, and choosing between them is
+   what the alternatives underneath the row are for. */
+var SAY_DERIVED=['מיובש','מיובשת','אבקה','אבקת','מרוכז','מרוכזת','קפוא','קפואה','משומר','משומרת','תחליף','לא מבושל','לא מבושלת','יבש','תערובת','לא נאכל','מסוכר','סירופ'];   // i18n-exempt: matched against the folded key, which is never displayed
+/* The ones that describe what the row was BEFORE it was cooked. A row
+   saying both - פול יבש, מבושל - is the cooked food and must not be
+   penalised for naming its ingredient. */
+var SAY_RAW={'יבש':1,'תערובת':1,'אבקה':1,'אבקת':1,'מיובש':1,'מיובשת':1};   // i18n-exempt: same list, same comparison
+var SAY_COOKED=['מבושל','מבושלת','אפוי','אפויה','צלוי','צלויה','בגריל'];   // i18n-exempt: same list, same comparison
+/* Which table it came from, which is a judgement already made: core is
+   306 foods chosen by hand, then the Israeli tables, then Open Food
+   Facts, which is branded packages. Under one matched word by design, so
+   a brand the person named still wins. */
+/* The token as a whole word - both edges, which is the half foodHas
+   leaves out. */
+function sayWord(s,w){
+  var at=s.indexOf(w);
+  while(at>=0){
+    if((at===0||!/[\p{L}\p{N}]/u.test(s.charAt(at-1)))&&
+       (at+w.length>=s.length||!/[\p{L}\p{N}]/u.test(s.charAt(at+w.length))))return true;
+    at=s.indexOf(w,at+1);
+  }
+  return false;
+}
+function sayTier(f){
+  if(String(f.id).indexOf('core:')===0)return 1200;
+  if(f.off)return -1200;
+  return 0;
+}
 function sayScore(f,q,toks){
   toks=toks||foodTokens(q);
   /* The longest word carries the meaning - ריקוטה, not 5% - so a name that
@@ -4828,12 +4866,25 @@ function sayScore(f,q,toks){
   if(f.s.indexOf(gate)<0)return -1;
   var hits=0;
   for(i=0;i<toks.length;i++)if(foodHas(f.s,toks[i]))hits++;
-  var score=hits*4000+(1000-f.s.length);
+  var score=hits*4000+(1000-f.s.length)+sayTier(f);
   var at=f.s.indexOf(toks[0]);
   if(at===0)score+=500;
   if(f.s===foodKey(q))score+=6000;
-  for(var d=0;d<SAY_DERIVED.length;d++)
-    if(f.s.indexOf(SAY_DERIVED[d])>=0&&q.indexOf(SAY_DERIVED[d])<0)score-=2500;
+  /* Hebrew names the thing first, so the first token is the food itself.
+     A row that carries it whole is about that food; one that merely
+     contains the letters may be a different word entirely. */
+  if(sayWord(f.s,toks[0]))score+=1500;
+  /* The tables weigh some things as bought. An apple with its peel is an
+     apple; a walnut with its peel is a walnut and a SHELL, and it reads
+     294 where the nut is 654. Preferring the row that says it is peeled
+     costs four calories on the apple and saves three hundred and sixty on
+     the nut, so it is only ever worth doing. */
+  if(q.indexOf('קליפה')<0&&(f.s.indexOf('בלי קליפה')>=0||f.s.indexOf('ללא קליפה')>=0))score+=900;   // i18n-exempt: folded key and folded query, neither displayed
+  var d,cooked=false;
+  for(d=0;d<SAY_COOKED.length;d++)if(f.s.indexOf(SAY_COOKED[d])>=0){cooked=true;break;}
+  for(d=0;d<SAY_DERIVED.length;d++)
+    if(f.s.indexOf(SAY_DERIVED[d])>=0&&q.indexOf(SAY_DERIVED[d])<0&&
+       !(cooked&&SAY_RAW[SAY_DERIVED[d]]))score-=2500;
   return score;
 }
 /* No amount of scoring is going to know that "ביצה" means a hen's egg and
@@ -4889,7 +4940,7 @@ function sayResolve(it){
   if(unit==='g')src='exact';
   else if(best&&best.u>0&&unit==='unit'){g=best.u;src='packet';}
   else if(foodUnitRec(best?best.n:it.food).w[unit]>0)src='learned';
-  return {q:it.food,amount:it.amount,unit:unit,g:g,food:best,alts:alts,gsrc:src};
+  return {q:it.food,amount:it.amount,unit:unit,g:g,food:best,alts:alts,gsrc:src,aiG:!!it.ai};
 }
 var GSRC_SAY;langOn(function(){GSRC_SAY={
   learned:''+_t('המשקל ששמרת בפעם הקודמת.')+'',
@@ -4908,6 +4959,11 @@ function saySetAmount(i,v){
   if(!_sayItems||!_sayItems[i])return;
   var n=parseFloat(v);
   _sayItems[i].amount=(isFinite(n)&&n>0)?n:0;
+  /* Once it has been typed over it is not the photograph's guess any
+     more, so it stops calling itself one. */
+  _sayItems[i].aiG=false;
+  var mk=document.getElementById('say-est-'+i);
+  if(mk)mk.parentNode.removeChild(mk);
   var el=document.getElementById('say-tot');
   if(el)el.innerHTML=sayTotalHTML();
   var one=document.getElementById('say-k-'+i);
@@ -5142,6 +5198,8 @@ function sayPaint(){
         h+='<button class="sr-g'+(row.gsrc==='guess'?' guess':'')+'" onclick="sayExpand('+i+')">'+
            (row.gsrc==='guess'?'~':'')+gw+' '+_t('גרם')+''+(row.gsrc==='guess'?' ?':'')+'</button>';
       }
+      /* The one number in this panel that nobody measured. */
+      if(row.aiG)h+='<span class="sr-esttag" id="say-est-'+i+'">'+_t('הערכה')+'</span>';
       h+='</div>';
 
       // and the rest only when asked for
@@ -5164,6 +5222,8 @@ function sayPaint(){
           }
           h+='</div><div class="sr-src">'+row.measured+''+_t('% מהקלוריות מערכים מדודים במאגר.')+'</div>';
         }
+        if(row.aiG)
+          h+='<div class="sr-src">'+_t('כמה יש בצלחת נאמד מהתמונה. זה החלק הכי קשה לצלם נכון — אם המשקל נראה רחוק, תקן אותו.')+'</div>';
         if(row.unit!=='g'&&GSRC_SAY[row.gsrc])
           h+='<div class="sr-src">'+GSRC_SAY[row.gsrc]+'</div>';
         if(row.unit!=='g'&&row.gsrc==='guess')

@@ -520,3 +520,59 @@ correct in both directions, and so are the five forward marks that already
 used `›`. One oddity recorded rather than changed: at `:12517` a back button
 puts its chevron *after* the label rather than before it, unlike its fifteen
 siblings — a layout inconsistency, not a direction bug.
+
+## The photograph: identification and the amount
+
+Asked for as *"ולגבי 2 הזיהוי עצמו והכמות"*. Both were real and neither was
+a model being stupid.
+
+**Identification.** Twenty ordinary Hebrew photo outputs through `sayResolve`
+- the offline matcher, which answers alone when `/match` times out and which
+always chooses the sixty candidates `/match` may pick from - and four came
+back with a row that is correctly measured and is not the food:
+
+| the words | the row it picked | should be |
+|---|---|---|
+| אורז לבן | אורז לבן ארוך, סוגת — 347 | 129, cooked |
+| חומוס | חומוס יבש — 364 | about 187 |
+| תפוח | תפוח עץ, מסוכר — 129 | 52 |
+| בננה | בננה, עם קליפה — 57 | 89, the flesh |
+
+Three causes, all of them the scorer knowing less than the app already knew:
+it never looked at which FILE a row came from, though `foodSearch` has
+preferred `core` since the potato bug; it could not tell the dry ingredient
+from the food; and `foodHas` is loose at both ends on purpose, so חלבה
+satisfied חלב and תפוחי satisfied תפוח and the length tie-break then
+rewarded them for being short.
+
+Fixed by a file tier (core +1200, Open Food Facts -1200), a state penalty
+that skips a term the query itself used, and a bonus for carrying the first
+token as a WHOLE word. Every step is smaller than one matched word (4000),
+so nothing can outrank something the person actually said. Swept over 306
+queries built from the core names: 57 rows changed, and not one dropped the
+query's own head word.
+
+**Still wrong: חומוס.** It picks `חומוס קלוי, גת` at 370 - roasted chickpeas
+as a snack. This is a data gap, not a scoring one: `core` carries the dry,
+the roasted, the canned and the flour, and no row for the dip, which is what
+the word means on a plate. The online `/match` gets it right (`חומוס, אחלה`,
+187), so it is only the offline fallback that is wrong. Worth a core row,
+from a measured source rather than a guess.
+
+**The amount.** The photograph always sends grams, and every one of the
+panel's five explanations for where a weight came from is painted behind
+`row.unit!=='g'`. So the model's guess at the size of a portion arrived as a
+bare number in a box, in the same typeface as a weight off a scale, with
+nothing to say which it was - the hardest thing the feature does, shown as
+the most certain. It now carries `aiG`, shows an הערכה chip on the line, says
+so in words when the row is opened, and stops claiming to be an estimate the
+moment someone types over it.
+
+**And the model.** `/see` and `/match` run Sonnet; the other five routes stay
+on Haiku. Those two are the ones that look at a picture rather than read a
+sentence. Two things learned the hard way: Sonnet 5 rejects `temperature`,
+and `/match` at 200 tokens truncated mid-object and reported `unreadable`,
+which the app treats as "no answer" and silently falls back from. 500 now.
+The routes also return the API's own error message beside the status code,
+because "the model refused" and "our request is malformed" looked identical
+and cost two deploys to tell apart.

@@ -502,7 +502,14 @@ export default {
       } catch {
         return json({ error: 'could not reach the model' }, 502);
       }
-      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+      if (!r.ok) {
+        /* The API's own sentence, not only its number: a 400 here is
+           usually something structural in the request we sent, and the
+           code alone is indistinguishable from a genuine refusal. */
+        let why = '';
+        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
 
       let out;
       try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
@@ -635,9 +642,10 @@ export default {
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 200,
-            temperature: 0,
+            /* Sonnet rather than Haiku: this one is not reading a
+               sentence, it is looking. */
+            model: 'claude-sonnet-5',
+            max_tokens: 500,
             system: SYSTEM,
             messages: [{
               role: 'user',
@@ -649,7 +657,14 @@ export default {
       } catch {
         return json({ error: 'could not reach the model' }, 502);
       }
-      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+      if (!r.ok) {
+        /* The API's own sentence, not only its number: a 400 here is
+           usually something structural in the request we sent, and the
+           code alone is indistinguishable from a genuine refusal. */
+        let why = '';
+        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
 
       let out;
       try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
@@ -936,7 +951,14 @@ export default {
       } catch {
         return json({ error: 'could not reach the model' }, 502);
       }
-      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+      if (!r.ok) {
+        /* The API's own sentence, not only its number: a 400 here is
+           usually something structural in the request we sent, and the
+           code alone is indistinguishable from a genuine refusal. */
+        let why = '';
+        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
 
       let out;
       try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
@@ -1049,10 +1071,22 @@ export default {
         'item from measured nutrition tables, so your job is identification and\n' +
         'portion size ONLY.\n' +
         '\n' +
-        'Judging the amount is most of the work. Use what is in the frame for\n' +
-        'scale - a fork is about 19 cm, a dinner plate 26 cm, a slice of bread\n' +
-        '30 g, an egg 55 g, a standard can 330 ml. Say the weight of the food\n' +
-        'as served, not of the packet it came from.\n' +
+        'Judging the amount is most of the work, and it is not done by looking\n' +
+        'at food and thinking of a number. A photograph gives you an area. Do\n' +
+        'the two steps apart: how much of the plate does it cover, and how DEEP\n' +
+        'is it. Depth is the half a picture hides and the half usually got\n' +
+        'wrong - a flat smear of rice and a heaped mound cover the same circle\n' +
+        'and differ threefold.\n' +
+        '\n' +
+        'Use what is in the frame for scale - a fork is about 19 cm, a dinner\n' +
+        'plate 26 cm, a slice of bread 30 g, a pita 60 g, an egg 55 g, a\n' +
+        'tablespoon of oil 14 g, a standard can 330 ml. Say the weight of the\n' +
+        'food as served, not of the packet it came from.\n' +
+        '\n' +
+        'If nothing in the frame gives you scale - a close crop, a plate whose\n' +
+        'edge is out of shot - say that in the note, use the ordinary serving\n' +
+        'of that food, and set confidence low. That is a useful answer. A\n' +
+        'confident weight from a picture with no ruler in it is not.\n' +
         '\n' +
         'Name things plainly and separately. Rice with chicken and salad is\n' +
         'three items, not one. Include what is easy to forget and carries real\n' +
@@ -1107,9 +1141,10 @@ export default {
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
+            /* Sonnet rather than Haiku: this one is not reading a
+               sentence, it is looking. */
+            model: 'claude-sonnet-5',
             max_tokens: 800,
-            temperature: 0,
             system: SYSTEM,
             messages: [{
               role: 'user',
@@ -1123,7 +1158,14 @@ export default {
       } catch {
         return json({ error: 'could not reach the model' }, 502);
       }
-      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+      if (!r.ok) {
+        /* The API's own sentence, not only its number: a 400 here is
+           usually something structural in the request we sent, and the
+           code alone is indistinguishable from a genuine refusal. */
+        let why = '';
+        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
 
       let d;
       try { d = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
@@ -1315,7 +1357,14 @@ export default {
       } catch {
         return json({ error: 'could not reach the model' }, 502);
       }
-      if (!r.ok) return json({ error: 'the model refused', status: r.status }, 502);
+      if (!r.ok) {
+        /* The API's own sentence, not only its number: a 400 here is
+           usually something structural in the request we sent, and the
+           code alone is indistinguishable from a genuine refusal. */
+        let why = '';
+        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
 
       let out;
       try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
