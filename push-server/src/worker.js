@@ -1059,9 +1059,31 @@ export default {
         'energy: the oil something was fried in, the dressing on a salad, the\n' +
         'butter on bread, the sauce under the pasta.\n' +
         '\n' +
-        'NEVER give calories, protein, carbohydrate or fat. Not for an item and\n' +
-        'not for the plate. Those come from the tables, and a number from you\n' +
-        'would appear beside measured ones with nothing to mark it as a guess.\n' +
+        'NEVER WORK OUT calories, protein, carbohydrate or fat. Not for an item\n' +
+        'and not for the plate. Those come from the tables, and a figure you\n' +
+        'reasoned out would appear beside measured ones with nothing to mark it\n' +
+        'as a guess.\n' +
+        '\n' +
+        'READING is different from working out, and there are two things worth\n' +
+        'reading when the picture is of something packaged.\n' +
+        '\n' +
+        'A BARCODE. If a barcode is in shot and you can read every digit of the\n' +
+        'number printed under it, give it as "barcode". All of it or none of it:\n' +
+        'a single wrong digit is a different product, and it would be looked up\n' +
+        'and believed. If any digit is blurred, obscured or you are completing\n' +
+        'it from what the brand usually is, leave it out.\n' +
+        '\n' +
+        'A NUTRITION PANEL. If the printed nutrition information is legible,\n' +
+        'copy it as "label" - the numbers as printed, in the units printed,\n' +
+        'saying which basis they are per. Copy only; do not convert, do not\n' +
+        'total, do not fill a missing line from the others. If the panel is not\n' +
+        'readable in the photograph, leave it out. Large front-of-pack claims\n' +
+        'count as a panel only when they name the nutrient and its unit -\n' +
+        '"25g protein" and "130 kcal" do; a bare "25" does not.\n' +
+        '\n' +
+        'Both must come from THIS photograph. You may know what this product\n' +
+        'contains; that is not reading it, and it is exactly the guess the\n' +
+        'tables exist to avoid.\n' +
         '\n' +
         'If the picture is not food, or you cannot tell what it is, say so with\n' +
         'ok false and leave items empty. A confident wrong answer costs someone\n' +
@@ -1070,7 +1092,10 @@ export default {
         'Write dish and every item name in ' + LANG + '. Reply with JSON only,\n' +
         'no prose and no code fence:\n' +
         '{"ok":true,"dish":"short name of the meal","items":[{"name":"food","grams":150}],\n' +
-        ' "note":"what you assumed, one short sentence","confidence":"high|medium|low"}';
+        ' "note":"what you assumed, one short sentence","confidence":"high|medium|low",\n' +
+        ' "barcode":"digits under the barcode, or omit",\n' +
+        ' "label":{"basis":"100g|100ml|serving","serving_g":330,"kcal":37,"protein":7.1,\n' +
+        '          "carbs":2.1,"fat":0} or omit}';
 
       let r;
       try {
@@ -1121,12 +1146,40 @@ export default {
       }
       if (!items.length) return json({ ok: false, why: 'nothing seen' });
 
+      /* A barcode of a length that exists, digits only. The app still checks
+         the check digit before it looks anything up - a misread digit names a
+         real but different product, which is the one failure here that would
+         be confidently wrong rather than obviously wrong. */
+      let barcode = String((out && out.barcode) || '').replace(/[^0-9]/g, '');
+      if ([8, 12, 13, 14].indexOf(barcode.length) < 0) barcode = '';
+
+      /* The panel as printed. All four lines or none: a partial panel invites
+         filling the gap by arithmetic, which is the thing being avoided. */
+      let label = null;
+      const L = out && out.label;
+      if (L && typeof L === 'object') {
+        const num = (v) => {
+          const x = Number(v);
+          return isFinite(x) && x >= 0 && x < 10000 ? Math.round(x * 10) / 10 : null;
+        };
+        const kcal = num(L.kcal), p = num(L.protein), c = num(L.carbs), f = num(L.fat);
+        const basis = ['100g', '100ml', 'serving'].indexOf(L.basis) >= 0 ? L.basis : '';
+        const serving = num(L.serving_g);
+        if (basis && kcal !== null && p !== null && c !== null && f !== null &&
+            (basis !== 'serving' || (serving && serving > 0))) {
+          label = { basis, kcal, p, c, f };
+          if (serving && serving > 0) label.serving_g = serving;
+        }
+      }
+
       return json({
         ok: true,
         dish: String(out.dish || '').trim().slice(0, 60),
         items,
         note: String(out.note || '').trim().slice(0, 240),
         confidence: ['high', 'medium', 'low'].indexOf(out.confidence) >= 0 ? out.confidence : 'low',
+        barcode,
+        label,
       });
     }
     if (url.pathname === '/analyze' && req.method === 'POST') {
