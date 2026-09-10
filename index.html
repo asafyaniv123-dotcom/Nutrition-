@@ -8346,7 +8346,7 @@ function renderFitStats(){
     for(var L=0;L<lifts.length;L++){
       var li=lifts[L];
       h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(L<lifts.length-1?'8px':'0')+'">';
-      h+='<div style="font-size:12.5px;color:var(--ink);font-weight:600">'+esc(li.name)+'</div>';
+      h+='<div style="font-size:12.5px;color:var(--ink);font-weight:600">'+esc(exLabel(li.name))+'</div>';
       h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+
          Math.round(li.e.v)+' '+weightUnit()+' <span style="color:var(--muted-soft)">&middot; '+li.e.w+'×'+li.e.r+'</span></div>';
       h+='</div>';
@@ -10889,7 +10889,7 @@ function renderEditProgram(){
       for(var ei2=0;ei2<curDay.exercises.length;ei2++){
         var ex2=curDay.exercises[ei2];
         h+='<div style="display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:9px 12px;margin-bottom:6px">';
-        h+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--ink)">'+esc(ex2.name)+'</div>';
+        h+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--ink)">'+esc(exLabel(ex2.name))+'</div>';
         h+='<div style="font-size:10px;color:var(--muted)">'+ex2.sets+' '+_t('סט')+' &times; '+ex2.targetReps+' '+_t('חזר')+'&nbsp;&nbsp;'+ex2.baseWeight+'kg</div></div>';
         h+='<button onclick="_wiz.days[_wiz.days.length-1].exercises.splice('+ei2+',1);renderFitness()" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px">&times;</button>';
         h+='</div>';
@@ -10913,7 +10913,7 @@ function renderEditProgram(){
   } else if(step===6){
     // Step 6 — exercise detail (sub-steps via exStep)
     var exs=_wiz.exStep;
-    h+='<div style="font-size:13px;font-weight:800;color:var(--violet-500);margin-bottom:18px">'+esc(_wiz.curEx.name)+'</div>';
+    h+='<div style="font-size:13px;font-weight:800;color:var(--violet-500);margin-bottom:18px">'+esc(exLabel(_wiz.curEx.name))+'</div>';
     if(exs===0){
       h+=wizQ(''+_t('כמה סטים?')+'');
       h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
@@ -10969,7 +10969,7 @@ function renderEditProgram(){
       var wd=_wiz.days[di2];
       h+='<div style="background:var(--violet-100);border-radius:14px;padding:10px 14px;margin-bottom:8px;text-align:start">';
       h+='<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px">'+esc(wd.name)+'</div>';
-      h+='<div style="font-size:11px;color:var(--muted)">'+wd.exercises.map(function(e){return esc(e.name);}).join(' &middot; ')+'</div>';
+      h+='<div style="font-size:11px;color:var(--muted)">'+wd.exercises.map(function(e){return esc(exLabel(e.name));}).join(' &middot; ')+'</div>';
       h+='</div>';
     }
     h+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:20px">';
@@ -11041,7 +11041,7 @@ function renderViewProgram(){
     h+='<div style="background:var(--card);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px rgba(200,180,160,.1)">';
     // Exercise header
     h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    h+='<div><div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(ex.name)+'</div>';
+    h+='<div><div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(exLabel(ex.name))+'</div>';
     h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+ex.sets+' '+_t('סט')+' &times; '+ex.targetReps+' '+_t('חזר')+'</div></div>';
     if(pr>0)h+='<div style="background:linear-gradient(135deg,#fef9e7,#fef3c7);border-radius:10px;padding:6px 10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#b45309">'+pr+'kg</div><div style="font-size:8px;color:#b45309;font-weight:700">PR</div></div>';
     h+='</div>';
@@ -11191,7 +11191,7 @@ function tplAddExercise(){
 }
 function tplBlockHTML(ex,ei){
   var h='<div class="tb">';
-  h+='<div class="tb-hd"><span class="tb-n">'+esc(ex.name)+'</span>';
+  h+='<div class="tb-hd"><span class="tb-n">'+esc(exLabel(ex.name))+'</span>';
   h+='<span class="tb-tools">';
   if(ei>0)h+='<button onclick="tplMoveEx('+ei+',-1)" aria-label="'+_t("למעלה")+'">&#8963;</button>';
   h+='<button onclick="tplDropEx('+ei+')" aria-label="'+_t("הסר")+'">&times;</button>';
@@ -11429,11 +11429,33 @@ function exLoad(cb){
 }
 function exAll(){return (_exDB&&_exDB.exercises)||[];}
 // what you type finds the Hebrew or the English, whichever you happen to know
+/* The name to show for a row. `n` is the stored id and never changes; `t`
+   holds all eleven, the way the food table does. */
+function exTitle(e){
+  if(!e)return '';
+  var t=e.t;
+  if(t){var l=appLang();if(t[l])return t[l];if(t.en)return t.en;}
+  return e.n||'';
+}
+/* The name to show for a name that was STORED - a logged workout, a history
+   row, a program's exercise. Anything the library does not know is a name the
+   person typed themselves, and is shown exactly as they typed it. */
+function exLabel(nm){
+  if(!nm)return '';
+  var a=(typeof exAll==='function')?exAll():[],i;
+  for(i=0;i<a.length;i++)if(a[i].n===nm)return exTitle(a[i]);
+  return nm;
+}
 function exMatch(e,q){
   if(!q)return true;
   q=q.toLowerCase();
   if(e.n.toLowerCase().indexOf(q)>=0)return true;
-  if((e.en||'').toLowerCase().indexOf(q)>=0)return true;
+  /* Every language's name, not just Hebrew and English - so Kniebeuge,
+     スクワット, 深蹲 and sentadilla all reach the squat whatever the
+     interface is set to. */
+  var t=e.t,k;
+  if(t)for(k in t)if(t[k]&&String(t[k]).toLowerCase().indexOf(q)>=0)return true;
+  else if((e.en||'').toLowerCase().indexOf(q)>=0)return true;
   /* The other words people say for it. The lat pulldown was in this list from
      the first day and nobody could find it, because it is called פולי עליון
      here and פול דאון in the room. Searched, never displayed. */
@@ -11444,15 +11466,20 @@ function exMatch(e,q){
 /* How well a row answers what was typed - lower is better. Only ever called
    on rows exMatch has already accepted, so one of the branches always hits. */
 function exRank(e,q){
-  var n=e.n.toLowerCase(),en=(e.en||'').toLowerCase(),a=e.aka,i;
+  /* The name ON SCREEN first, then any other language, then the words it
+     merely answers to - the same order the food search settled on. */
+  var n=exTitle(e).toLowerCase(),a=e.aka,t=e.t,i,k;
   if(n===q)return 0;
   if(n.indexOf(q)===0)return 1;
   if(n.indexOf(q)>=0)return 2;
-  if(en===q||en.indexOf(q)===0)return 3;
-  if(en.indexOf(q)>=0)return 4;
+  if(t)for(k in t){
+    var v=String(t[k]||'').toLowerCase();
+    if(v===q||v.indexOf(q)===0)return 3;
+  }
+  if(t)for(k in t)if(String(t[k]||'').toLowerCase().indexOf(q)>=0)return 4;
   if(a)for(i=0;i<a.length;i++){
-    var k=a[i].toLowerCase();
-    if(k===q||k.indexOf(q)===0)return 5;
+    var y=a[i].toLowerCase();
+    if(y===q||y.indexOf(q)===0)return 5;
   }
   return 6;
 }
@@ -11550,7 +11577,7 @@ function _exPaintBody(){
     for(var j=0;j<list.length;j++){
       var e=list[j];
       h+='<button class="ex-row" onclick="exDetailOpen('+j+')">'+
-         '<span class="ex-n">'+esc(e.n)+'</span>'+
+         '<span class="ex-n">'+esc(exTitle(e))+'</span>'+
          '<span class="ex-meta">'+esc(e.m.map(_t).join(' · '))+' &middot; '+esc(e.q.map(_t).join(', '))+'</span>'+
          (e.en?'<span class="ex-en">'+esc(e.en)+'</span>':'')+
          '</button>';
@@ -11694,7 +11721,7 @@ function exDetailHTML(e){
   var st=exStand(e.n);
   var h='<div class="xd">';
   h+='<div class="xd-hd"><button class="xd-back" onclick="exDetailClose()">&#8249; '+_t('לרשימה')+'</button>'+
-     '<span class="xd-name">'+esc(e.n)+'</span></div>';
+     '<span class="xd-name">'+esc(exTitle(e))+'</span></div>';
   h+='<div class="xd-meta">'+esc(e.m.map(_t).join(' · '))+' &middot; '+esc(e.q.map(_t).join(', '))+
      (e.en?' &middot; <span class="xd-en">'+esc(e.en)+'</span>':'')+'</div>';
 
@@ -12072,7 +12099,7 @@ function renderFitWorkout(){
   var curPR=prs[prKey]||0;
   h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
-  h+='<div style="font-size:17px;font-weight:800;color:var(--ink)">'+esc(ex.name)+'</div>';
+  h+='<div style="font-size:17px;font-weight:800;color:var(--ink)">'+esc(exLabel(ex.name))+'</div>';
   if(curPR>0)h+='<div style="font-size:10px;color:var(--amber-500);font-weight:700">PR: '+fmtWeight(curPR)+'</div>';
   h+='</div>';
   h+=fitTgtHTML(ex);
@@ -12455,7 +12482,7 @@ function renderFitSummary(){
       var prevEx=prev.exercises.find(function(e){return e.name===ex.name;});
       var prevMax=prevEx&&prevEx.sets.length?Math.max.apply(null,prevEx.sets.map(function(s){return s.weight||0;})):null;
       var arrow=prevMax===null?'&#8212;':curMax>prevMax?'<span style="color:var(--green-700)">&#11014;</span>':curMax<prevMax?'<span style="color:#D33A2C">&#11015;</span>':'<span style="color:#ADA79A">&#10132;</span>';
-      h+='<tr><td style="font-size:11px;font-weight:700;text-align:start;padding:8px 4px;border-bottom:1px solid var(--line-strong);overflow:hidden;text-overflow:ellipsis">'+esc(ex.name)+'</td>';
+      h+='<tr><td style="font-size:11px;font-weight:700;text-align:start;padding:8px 4px;border-bottom:1px solid var(--line-strong);overflow:hidden;text-overflow:ellipsis">'+esc(exLabel(ex.name))+'</td>';
       h+='<td style="font-size:11px;text-align:center;padding:8px 4px;border-bottom:1px solid var(--line-strong);color:#9A9184">'+(prevMax!==null?fmtWeight(prevMax):''+_t('לא')+'')+'</td>';
       h+='<td style="font-size:11px;text-align:center;padding:8px 4px;border-bottom:1px solid var(--line-strong);font-weight:700">'+fmtWeight(curMax)+'</td>';
       h+='<td style="text-align:center;padding:8px 4px;border-bottom:1px solid var(--line-strong);font-size:14px">'+arrow+'</td></tr>';
@@ -12484,7 +12511,7 @@ function renderFitSummary(){
       var isPR=prs[ex.name]&&s.weight>=prs[ex.name]&&s.weight>0;
       h+='<tr style="border-top:'+(isFirst?'1.5px solid var(--ink-strong)':'none')+'">';
       if(isFirst){
-        h+='<td style="font-size:11px;font-weight:700;text-align:start;padding:8px 3px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line-strong)" rowspan="'+ns+'">'+esc(ex.name)+'</td>';
+        h+='<td style="font-size:11px;font-weight:700;text-align:start;padding:8px 3px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line-strong)" rowspan="'+ns+'">'+esc(exLabel(ex.name))+'</td>';
       }
       h+='<td style="font-size:11px;text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong);color:#9A9184">'+(si+1)+'</td>';
       h+='<td style="font-size:11px;text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong)">'+(s.weight>0?fmtWeight(s.weight):'BW')+'</td>';
@@ -12512,7 +12539,7 @@ function renderFitSummary(){
     var vol=ex.sets.reduce(function(a,s){return a+(s.weight>0?(s.weight||0)*(s.reps||0):0);},0);
     var pct=maxVol>0?Math.round(vol/maxVol*100):0;
     h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
-    h+='<div style="width:90px;font-size:10px;flex-shrink:0;color:var(--ink-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(ex.name)+'</div>';
+    h+='<div style="width:90px;font-size:10px;flex-shrink:0;color:var(--ink-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(exLabel(ex.name))+'</div>';
     h+='<div style="flex:1;background:#EFE9DD;border-radius:6px;height:10px;overflow:hidden">';
     h+='<div style="height:100%;width:'+pct+'%;background:#2E6B62;border-radius:6px;transition:width .8s"></div></div>';
     h+='<div style="width:44px;text-align:start;font-size:10px;color:#9A9184;flex-shrink:0">'+vol+'</div>';
@@ -12529,7 +12556,7 @@ function renderFitSummary(){
     var nextW=Math.round((curMax+2.5)*2)/2;
     var suggestion=curMax===0?''+_t('התמקד על טכניקה')+'':allGood?''+_t('נסה')+' '+fmtWeight(nextW)+'':''+_t('הישאר על {w}, ישימות על טכניקה',{w:fmtWeight(curMax)})+'';
     h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-strong);gap:10px">';
-    h+='<span style="font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden;text-overflow:ellipsis">'+esc(ex.name)+'</span>';
+    h+='<span style="font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden;text-overflow:ellipsis">'+esc(exLabel(ex.name))+'</span>';
     h+='<span style="font-size:11px;color:#9A9184;text-align:start">'+suggestion+'</span></div>';
   });
   h+='</div>';
@@ -12613,7 +12640,7 @@ function renderFitHistory(){
     for(var ei=0;ei<entry.exercises.length;ei++){
       var ex=entry.exercises[ei];
       var best=ex.sets.reduce(function(mx,s){return Math.max(mx,s.weight||0);},0);
-      h+='<div style="background:var(--surface);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--ink-soft)">'+esc(ex.name)+(best?' '+best+'kg':'')+'</div>';
+      h+='<div style="background:var(--surface);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--ink-soft)">'+esc(exLabel(ex.name))+(best?' '+best+'kg':'')+'</div>';
     }
     h+='</div></div>';
   }
