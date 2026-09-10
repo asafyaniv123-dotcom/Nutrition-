@@ -87,6 +87,16 @@ for (const name of VIA_VARIABLE) {
    call reads the map. Without this the two contexts vanish from the template,
    every language quietly loses its answer, and _t falls back to the part
    before the bar, which is the very word the context existed to disambiguate. */
+/* MUSCLE_ROLLUP names the groups the weekly chart counts together. Its values
+   are plain strings - they have to be, they are compared and used to index
+   byMuscle - and they are painted through _t(nm) at the one place the bar is
+   labelled. Without this, ליבה is asked for by nobody and the core bar reads
+   Hebrew in ten languages. */
+const mr = app.indexOf('var MUSCLE_ROLLUP={');
+if (mr >= 0) {
+  const block = app.slice(mr, app.indexOf('};', mr));
+  for (const m of block.matchAll(/:\s*"([^"]*[֐-׿][^"]*)"/g)) keys.add(m[1]);
+}
 const lc = app.indexOf('var LABEL_CTX={');
 const remapped = new Set();
 if (lc >= 0) {
@@ -103,6 +113,18 @@ if (lc >= 0) {
    the RPE legend, and dropping it would have left that legend untranslated
    while every check stayed green. */
 for (const k of remapped) if (!called.has(k)) keys.delete(k);
+/* The exercise picker's two filter rows are built from data/exercises.json and
+   painted through _t(k), so every muscle and every piece of equipment in that
+   file is a key. Nothing told the template that: eight of the twelve equipment
+   names had no entry in any language, so the "by equipment" tab showed Hebrew
+   chips - מכונה, פולי, ספסל - to a reader in every other language, and the
+   line under an exercise's name did the same. */
+try {
+  const ex = JSON.parse(fs.readFileSync('data/exercises.json', 'utf8'));
+  for (const k of (ex.muscles || [])) keys.add(k);
+  for (const k of (ex.equipment || [])) keys.add(k);
+} catch (e) { /* the table is optional; the app ships without it in dev */ }
+
 /* and the muscle names, which the browser's cards translate one by one -
    plus the three section headings above them, which the exercise picker
    translates the same way. */

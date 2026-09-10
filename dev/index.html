@@ -7589,6 +7589,25 @@ function loadKind(name){
      and ספסל is furniture. The specific tags are tested before the vague
      one, so מכונה only wins when nothing sharper applies. */
   if(q.indexOf('\u05de\u05d5\u05d8')>=0)return 'bar';
+  /* A Smith machine, an EZ bar and a trap bar all take plates, so they
+     answer the same question a straight bar does. They were reaching this
+     answer only because everything unrecognised did, which is the same
+     answer for the wrong reason. */
+  if(q.indexOf('\u05e1\u05de\u05d9\u05ea\u05f3')>=0)return 'bar';
+  if(q.indexOf('\u05de\u05d5\u05d8\u0020\u0045\u005a')>=0)return 'bar';
+  if(q.indexOf('\u05de\u05d5\u05d8\u0020\u05d8\u05e8\u05e4\u05d6')>=0)return 'bar';
+  /* A plate held in the hands IS the weight, the way a dumbbell is. */
+  if(q.indexOf('\u05e4\u05dc\u05d8\u05d4')>=0)return 'fixed';
+  /* And nothing below has kilograms to split between two ends: your own
+     weight on a step or in a pair of straps, a sled you push, a rope you
+     swing, a bench you dip off. Without these a Weighted Plank was offered
+     a plate breakdown. */
+  if(q.indexOf('\u05e8\u05e6\u05d5\u05e2\u05d5\u05ea\u0020\u0054\u0052\u0058')>=0)return 'body';
+  if(q.indexOf('\u05de\u05d3\u05e8\u05d2\u05d4')>=0)return 'body';
+  if(q.indexOf('\u05de\u05d6\u05d7\u05dc\u05ea')>=0)return 'body';
+  if(q.indexOf('\u05d7\u05d1\u05dc\u0020\u05e7\u05e8\u05d1')>=0)return 'body';
+  if(q.indexOf('\u05de\u05d6\u05e8\u05df')>=0)return 'body';
+  if(q.indexOf('\u05e1\u05e4\u05e1\u05dc')>=0)return 'body';
   if(q.indexOf('\u05de\u05e9\u05e7\u05d5\u05dc\u05d5\u05ea \u05d9\u05d3')>=0)return 'fixed';
   if(q.indexOf('\u05e7\u05d8\u05dc\u05d1\u05dc')>=0)return 'fixed';
   if(q.indexOf('\u05e4\u05d5\u05dc\u05d9')>=0)return 'stack';
@@ -7967,15 +7986,20 @@ function e1rm(weight,reps){
    database splits it four ways because that is how you FIND an exercise, not
    how you dose one. Cardio is left out of the band entirely - the range below
    is about growing a muscle and says nothing about a run. */
-var MUSCLE_ROLLUP;langOn(function(){MUSCLE_ROLLUP={"גב רחב":""+_t("גב")+"","טרפז":""+_t("גב")+"","גב תחתון":""+_t("גב")+"","אלכסונים":""+_t("ליבה")+"","בטן":""+_t("ליבה")+""};});
+/* Which muscles are counted together in the weekly chart. Bare Hebrew on
+   both sides: these are keys, compared and used to index byMuscle, and
+   translating them here is what made the "Other" note invisible in ten
+   languages and scored cardio against a strength set band. Translated where
+   the bar is drawn, not here. */
+var MUSCLE_ROLLUP={"גב רחב":"גב","טרפז":"גב","גב תחתון":"גב","מקרבים":"ישבן","מרחיקים":"ישבן","אלכסונים":"ליבה","בטן":"ליבה"};   // i18n-exempt: keys and the groups they name, painted through _t(nm) where the bar is drawn
 var SETS_BAND={lo:10,hi:20};
 function muscleGroupOf(exName){
   var all=exAll(),i;
   for(i=0;i<all.length;i++)if(all[i].n===exName){
     var m=(all[i].m&&all[i].m[0])||"";
-    return MUSCLE_ROLLUP[m]||m||""+_t("אחר")+"";
+    return MUSCLE_ROLLUP[m]||m||"אחר";   // i18n-exempt: compared at the bar, translated where it is drawn
   }
-  return ""+_t("אחר")+"";
+  return "אחר";   // i18n-exempt: same
 }
 
 /* The week runs Sunday to Saturday, in app days - so a session finished at
@@ -8301,7 +8325,7 @@ function renderFitStats(){
       var pct=Math.min(100,ct/SETS_BAND.hi*100);
       var inBand=!isCardio&&ct>=SETS_BAND.lo;
       h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">';
-      h+='<div style="width:64px;font-size:11px;color:var(--ink-soft);flex-shrink:0">'+esc(nm)+'</div>';
+      h+='<div style="width:64px;font-size:11px;color:var(--ink-soft);flex-shrink:0">'+esc(_t(nm))+'</div>';
       h+='<div style="flex:1;height:8px;border-radius:4px;background:var(--surface);overflow:hidden;position:relative">'+
          '<div style="height:100%;width:'+pct+'%;border-radius:4px;background:'+(inBand?'var(--green-500)':'var(--violet-300)')+'"></div></div>';
       h+='<div style="width:22px;text-align:end;font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums">'+ct+'</div>';
@@ -11408,7 +11432,29 @@ function exAll(){return (_exDB&&_exDB.exercises)||[];}
 function exMatch(e,q){
   if(!q)return true;
   q=q.toLowerCase();
-  return e.n.toLowerCase().indexOf(q)>=0||(e.en||'').toLowerCase().indexOf(q)>=0;
+  if(e.n.toLowerCase().indexOf(q)>=0)return true;
+  if((e.en||'').toLowerCase().indexOf(q)>=0)return true;
+  /* The other words people say for it. The lat pulldown was in this list from
+     the first day and nobody could find it, because it is called פולי עליון
+     here and פול דאון in the room. Searched, never displayed. */
+  var a=e.aka,i;
+  if(a)for(i=0;i<a.length;i++)if(a[i].toLowerCase().indexOf(q)>=0)return true;
+  return false;
+}
+/* How well a row answers what was typed - lower is better. Only ever called
+   on rows exMatch has already accepted, so one of the branches always hits. */
+function exRank(e,q){
+  var n=e.n.toLowerCase(),en=(e.en||'').toLowerCase(),a=e.aka,i;
+  if(n===q)return 0;
+  if(n.indexOf(q)===0)return 1;
+  if(n.indexOf(q)>=0)return 2;
+  if(en===q||en.indexOf(q)===0)return 3;
+  if(en.indexOf(q)>=0)return 4;
+  if(a)for(i=0;i<a.length;i++){
+    var k=a[i].toLowerCase();
+    if(k===q||k.indexOf(q)===0)return 5;
+  }
+  return 6;
 }
 function exList(){
   var all=exAll(),out=[],i,e;
@@ -11419,6 +11465,13 @@ function exList(){
     if(_exTab==='muscle'&&_exFilter&&e.m.indexOf(_exFilter)<0)continue;
     if(_exTab==='equip'&&_exFilter&&e.q.indexOf(_exFilter)<0)continue;
     out.push(e);
+  }
+  /* Ranked only while typing; the tabs have their own order, which is the
+     order the list was written in. A stable sort keeps that order inside a
+     tier - Array.prototype.sort is stable everywhere this runs. */
+  if(_exQ){
+    var qq=_exQ.toLowerCase();
+    out.sort(function(a,b){return exRank(a,qq)-exRank(b,qq);});
   }
   return out;
 }
@@ -11498,7 +11551,7 @@ function _exPaintBody(){
       var e=list[j];
       h+='<button class="ex-row" onclick="exDetailOpen('+j+')">'+
          '<span class="ex-n">'+esc(e.n)+'</span>'+
-         '<span class="ex-meta">'+esc(e.m.join(' · '))+' &middot; '+esc(e.q.join(', '))+'</span>'+
+         '<span class="ex-meta">'+esc(e.m.map(_t).join(' · '))+' &middot; '+esc(e.q.map(_t).join(', '))+'</span>'+
          (e.en?'<span class="ex-en">'+esc(e.en)+'</span>':'')+
          '</button>';
     }
@@ -11534,30 +11587,41 @@ function exChooseOwn(){
    for something a few paths do better at this size. */
 var MU_SECTIONS=[
   {t:'פלג גוף עליון',m:['חזה','גב','גב רחב','טרפז','כתפיים','יד קדמית','יד אחורית','אמה']},
-  {t:'פלג גוף תחתון',m:['ארבע ראשי','ירך אחורית','ישבן','תאומים']},
+  {t:'פלג גוף תחתון',m:['ארבע ראשי','ירך אחורית','ישבן','מקרבים','מרחיקים','תאומים']},
   {t:'מרכז הגוף ואחר',m:['בטן','אלכסונים','גב תחתון','אירובי']}
 ];
 /* Equipment, drawn. Line work in the app's own weight rather than photographs
    of gym kit, which would be a fourth licence to keep track of. */
 var EQ_ICONS={
-  'מוט':'<path d="M3 12h18"/><rect x="4" y="8.5" width="2.6" height="7" rx="1"/><rect x="17.4" y="8.5" width="2.6" height="7" rx="1"/><rect x="7.2" y="10" width="1.8" height="4" rx=".8"/><rect x="15" y="10" width="1.8" height="4" rx=".8"/>',
-  'משקולות יד':'<path d="M7.5 12h9"/><rect x="3.2" y="8" width="3" height="8" rx="1.2"/><rect x="17.8" y="8" width="3" height="8" rx="1.2"/><rect x="6.6" y="9.6" width="1.6" height="4.8" rx=".7"/><rect x="15.8" y="9.6" width="1.6" height="4.8" rx=".7"/>',
-  'קטלבל':'<path d="M9 7.4a3 3 0 0 1 6 0"/><path d="M8.6 8.2C6.6 9.6 5.4 12 5.4 14.4a4.4 4.4 0 0 0 4.4 4.4h4.4a4.4 4.4 0 0 0 4.4-4.4c0-2.4-1.2-4.8-3.2-6.2Z"/>',
-  'פולי':'<rect x="4" y="3.4" width="16" height="3" rx="1"/><path d="M12 6.4v6"/><circle cx="12" cy="14.4" r="2"/><path d="M8 20.6h8"/><path d="M12 16.4v4.2"/>',
-  'מכונה':'<rect x="3.4" y="4" width="4" height="16" rx="1.2"/><rect x="16.6" y="4" width="4" height="16" rx="1.2"/><path d="M7.4 9h9.2"/><path d="M7.4 14h9.2"/>',
-  'משקל גוף':'<circle cx="12" cy="5" r="2.2"/><path d="M12 7.4v6.4"/><path d="M8 10.2h8"/><path d="m12 13.8-2.6 6.4"/><path d="m12 13.8 2.6 6.4"/>',
-  'מתח':'<path d="M3.4 5h17.2"/><path d="M8 5v3.4"/><path d="M16 5v3.4"/><circle cx="12" cy="11" r="1.8"/><path d="M12 12.8v4"/><path d="m12 16.8-2 3.4"/><path d="m12 16.8 2 3.4"/>',
-  'ספסל':'<rect x="3.4" y="8.6" width="17.2" height="3" rx="1.2"/><path d="M6.4 11.6v7"/><path d="M17.6 11.6v7"/>',
-  'ספסל משופע':'<path d="m3.6 15.4 14-7.2"/><path d="M4.6 15.8v3.4"/><path d="M16.4 9.6v9.6"/>',
-  'גומייה':'<path d="M5 6.6c6 3 8 5.4 8 10.8"/><path d="M9 6.6c6 3 8 5.4 8 10.8"/>',
-  'מזרן':'<rect x="2.6" y="8" width="18.8" height="8" rx="2"/><path d="M7.4 8v8"/><path d="M12 8v8"/><path d="M16.6 8v8"/>',
-  'כדור פיזיו':'<circle cx="12" cy="12" r="8.4"/><path d="M3.8 12h16.4"/><path d="M12 3.6a13 13 0 0 1 0 16.8"/>',
-  'מכשיר אירובי':'<path d="M4 18.4h16"/><path d="m6 18.4 2.6-8.8h6.8L18 18.4"/><circle cx="8.6" cy="6.4" r="1.8"/>'
+  'סמית׳':'<path d="M6 3v18"/><path d="M18 3v18"/><path d="M6 12h12"/><rect x="7.4" y="9.6" width="2.2" height="4.8" rx=".9"/><rect x="14.4" y="9.6" width="2.2" height="4.8" rx=".9"/>',   // i18n-exempt: icon lookup key
+  'מוט EZ':'<path d="M3.4 12h2.2"/><path d="M5.6 12c1.5 0 1.5-2.4 3-2.4s1.5 2.4 3 2.4 1.5-2.4 3-2.4 1.5 2.4 3 2.4"/><path d="M18.4 12h2.2"/><rect x="2.2" y="9" width="1.8" height="6" rx=".8"/><rect x="20" y="9" width="1.8" height="6" rx=".8"/>',   // i18n-exempt: icon lookup key
+  'מוט טרפז':'<path d="M8 5h8l4 7-4 7H8l-4-7Z"/><path d="M8 9.4v5.2"/><path d="M16 9.4v5.2"/>',   // i18n-exempt: icon lookup key
+  'פלטה':'<circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="2.4"/>',   // i18n-exempt: icon lookup key
+  'רצועות TRX':'<path d="M4 3.6h16"/><path d="M12 3.6v3.4"/><path d="M12 7 8.4 16"/><path d="M12 7l3.6 9"/><path d="M6.6 16.6h3.6"/><path d="M13.8 16.6h3.6"/>',   // i18n-exempt: icon lookup key
+  'מדרגה':'<path d="M3 19.4h6V13h6V6.6h6"/><path d="M3 19.4V13"/>',   // i18n-exempt: icon lookup key
+  'מזחלת':'<path d="M3.6 18.4h16.8"/><path d="M6 18.4V9.6"/><path d="M18 18.4V9.6"/><path d="M6 9.6h12"/><path d="M4.4 14.4h15.2"/>',   // i18n-exempt: icon lookup key
+  'חבל קרב':'<path d="M3 9.4c2.4 0 2.4 3 4.8 3s2.4-3 4.8-3 2.4 3 4.8 3 2.4-3 4.8-3"/><path d="M3 15.4c2.4 0 2.4 3 4.8 3s2.4-3 4.8-3 2.4 3 4.8 3 2.4-3 4.8-3"/>',   // i18n-exempt: icon lookup key
+  'מוט':'<path d="M3 12h18"/><rect x="4" y="8.5" width="2.6" height="7" rx="1"/><rect x="17.4" y="8.5" width="2.6" height="7" rx="1"/><rect x="7.2" y="10" width="1.8" height="4" rx=".8"/><rect x="15" y="10" width="1.8" height="4" rx=".8"/>',   // i18n-exempt: icon lookup key
+  'משקולות יד':'<path d="M7.5 12h9"/><rect x="3.2" y="8" width="3" height="8" rx="1.2"/><rect x="17.8" y="8" width="3" height="8" rx="1.2"/><rect x="6.6" y="9.6" width="1.6" height="4.8" rx=".7"/><rect x="15.8" y="9.6" width="1.6" height="4.8" rx=".7"/>',   // i18n-exempt: icon lookup key
+  'קטלבל':'<path d="M9 7.4a3 3 0 0 1 6 0"/><path d="M8.6 8.2C6.6 9.6 5.4 12 5.4 14.4a4.4 4.4 0 0 0 4.4 4.4h4.4a4.4 4.4 0 0 0 4.4-4.4c0-2.4-1.2-4.8-3.2-6.2Z"/>',   // i18n-exempt: icon lookup key
+  'פולי':'<rect x="4" y="3.4" width="16" height="3" rx="1"/><path d="M12 6.4v6"/><circle cx="12" cy="14.4" r="2"/><path d="M8 20.6h8"/><path d="M12 16.4v4.2"/>',   // i18n-exempt: icon lookup key
+  'מכונה':'<rect x="3.4" y="4" width="4" height="16" rx="1.2"/><rect x="16.6" y="4" width="4" height="16" rx="1.2"/><path d="M7.4 9h9.2"/><path d="M7.4 14h9.2"/>',   // i18n-exempt: icon lookup key
+  'משקל גוף':'<circle cx="12" cy="5" r="2.2"/><path d="M12 7.4v6.4"/><path d="M8 10.2h8"/><path d="m12 13.8-2.6 6.4"/><path d="m12 13.8 2.6 6.4"/>',   // i18n-exempt: icon lookup key
+  'מתח':'<path d="M3.4 5h17.2"/><path d="M8 5v3.4"/><path d="M16 5v3.4"/><circle cx="12" cy="11" r="1.8"/><path d="M12 12.8v4"/><path d="m12 16.8-2 3.4"/><path d="m12 16.8 2 3.4"/>',   // i18n-exempt: icon lookup key
+  'ספסל':'<rect x="3.4" y="8.6" width="17.2" height="3" rx="1.2"/><path d="M6.4 11.6v7"/><path d="M17.6 11.6v7"/>',   // i18n-exempt: icon lookup key
+  'ספסל משופע':'<path d="m3.6 15.4 14-7.2"/><path d="M4.6 15.8v3.4"/><path d="M16.4 9.6v9.6"/>',   // i18n-exempt: icon lookup key
+  'גומייה':'<path d="M5 6.6c6 3 8 5.4 8 10.8"/><path d="M9 6.6c6 3 8 5.4 8 10.8"/>',   // i18n-exempt: icon lookup key
+  'מזרן':'<rect x="2.6" y="8" width="18.8" height="8" rx="2"/><path d="M7.4 8v8"/><path d="M12 8v8"/><path d="M16.6 8v8"/>',   // i18n-exempt: icon lookup key
+  'כדור פיזיו':'<circle cx="12" cy="12" r="8.4"/><path d="M3.8 12h16.4"/><path d="M12 3.6a13 13 0 0 1 0 16.8"/>',   // i18n-exempt: icon lookup key
+  'מכשיר אירובי':'<path d="M4 18.4h16"/><path d="m6 18.4 2.6-8.8h6.8L18 18.4"/><circle cx="8.6" cy="6.4" r="1.8"/>'   // i18n-exempt: icon lookup key
 };
 function eqArtHTML(name){
   var p=EQ_ICONS[name];
+  /* The letter is the LABEL's, not the key's. It used to be the key's, so a
+     card with no drawing showed a Hebrew letter to a reader in any of the
+     other ten languages. */
   return '<span class="eq-art">'+(p?
-    '<svg viewBox="0 0 24 24">'+p+'</svg>':'<b>'+esc(name.charAt(0))+'</b>')+'</span>';
+    '<svg viewBox="0 0 24 24">'+p+'</svg>':'<b>'+esc(String(_t(name)).charAt(0))+'</b>')+'</span>';
 }
 /* ── ONE EXERCISE ──
    Two questions, one screen. Where do I stand on this compared with before,
@@ -11631,7 +11695,7 @@ function exDetailHTML(e){
   var h='<div class="xd">';
   h+='<div class="xd-hd"><button class="xd-back" onclick="exDetailClose()">&#8249; '+_t('לרשימה')+'</button>'+
      '<span class="xd-name">'+esc(e.n)+'</span></div>';
-  h+='<div class="xd-meta">'+esc(e.m.join(' · '))+' &middot; '+esc(e.q.join(', '))+
+  h+='<div class="xd-meta">'+esc(e.m.map(_t).join(' · '))+' &middot; '+esc(e.q.map(_t).join(', '))+
      (e.en?' &middot; <span class="xd-en">'+esc(e.en)+'</span>':'')+'</div>';
 
   // ── where you stand ──
