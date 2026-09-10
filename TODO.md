@@ -753,3 +753,79 @@ but the everyday word for a fried egg should find the fried egg.
 `aka` exists on core entries and is used by nine of 308. Filling it with the
 common dish words per language is its own pass, and open-ended enough to
 want a rule for what belongs there before starting.
+
+## The exercise instructions, and the direction they were painted in
+
+### Counted first
+
+96 of the 228 exercises carry instructions: **384 step lines and 241
+mistake lines, 625 in all, about 20,000 characters of Hebrew.** Times the
+ten other languages, 6,250 lines. That is not one pass and pretending
+otherwise would have produced 6,250 bad lines.
+
+### Where they live, and why not in data/lang
+
+In the exercise data, as `sl` — one file per language under `tools/`,
+keyed by the Hebrew name like everything else in this repo.
+
+Not in `data/lang/*.json`, for two reasons that both bite. Those files are
+the UI dictionary and load at boot: 625 paragraph-length keys would grow it
+by a third and put 20 KB of prose in front of every start, including the
+starts that never open the fitness area. And `exercises.json` already
+carries a name per language in `t` — the instructions are the same kind of
+thing and belong beside them, loaded on demand by `exLoad`.
+
+A file per language is additive: adding Japanese touches nothing that
+exists, and two people writing two languages never touch the same file.
+The build refuses a language whose line count differs from the Hebrew — they
+are shown as a numbered list, and one that silently drops step three is
+worse than one nobody wrote — and refuses a name no exercise answers to.
+
+### The slice that is done
+
+**English, 15 exercises, 101 lines.** Not chosen by taste: the first
+exercise of each of the eighteen muscle groups, which is the primary
+movement for that group in the order the data already declares. Three of the
+eighteen have no Hebrew instructions yet, leaving fifteen.
+
+English first because it is the pivot — CLAUDE.md: *"every other language is
+written from the English, because a Japanese translator does not read
+Hebrew"* — and because it makes a far better fallback than Hebrew for the
+other nine.
+
+`node tools/build-exercises.mjs` now prints the number that has to go down:
+
+    instructions in en: 15 of 96   (81 still Hebrew only)
+
+### The defect underneath, which was worth more than the translation
+
+Driven in German: the card said *Bankdrücken mit Langhantel*, the headings
+said *So geht's* and *Häufige Fehler*, and then four lines of Hebrew arrived
+left-aligned with the full stop of every sentence hanging off the wrong end.
+It did not read as untranslated. It read as broken.
+
+`li` carries `unicode-bidi: isolate` from the browser's own stylesheet,
+which isolates the run and leaves the paragraph direction as the page's.
+The pass that added `unicode-bidi: plaintext` to `.sm-body` and its
+neighbours describes this exactly — *"hung the line off the wrong edge"* —
+and covered text the person had typed. Text that came from the DATA has the
+same problem for anyone not reading Hebrew, and had not been covered.
+
+So `.xd-steps li` and `.xd-miss li` take their direction from their own
+first strong character, and the 81 exercises that are still Hebrew now at
+least read as Hebrew.
+
+### And the card says which language it is
+
+The chain is the reader's own language, then English, then Hebrew. When
+what comes back is not what they are reading, a quiet line says so and names
+the language in its own script: *"Was hier steht, ist auf עברית."* It costs
+one line and turns "why is this gibberish" into "ah, it is in Hebrew".
+
+### What is left
+
+- **81 exercises still English-less**, 524 lines. Same mechanical slice rule
+  can continue: second exercise of each muscle group, then third.
+- **Ten languages after that**, 625 lines each once English is complete.
+- Three of the eighteen primaries have no Hebrew instructions at all:
+  לחיצת לנדמיין, משיכה בין הרגליים, קירוב ירך במכונה.

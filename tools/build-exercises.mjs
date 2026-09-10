@@ -48,6 +48,10 @@
  */
 import fs from 'fs';
 import {HOWTO} from './exercise-howto.mjs';
+/* One file per language, keyed by the same Hebrew name. Adding a language
+   is a new file and one line here, and touches nothing that exists. */
+import {EN} from './exercise-howto-en.mjs';
+const HOWTO_L={en:EN};
 import {NAMES} from './exercise-names.mjs';
 
 const M={
@@ -342,7 +346,21 @@ const list=RAW.map(function(r,i){
   /* How it is done and what goes wrong. Not every exercise has it yet - a
      screen that says nothing is better than one that says something vague. */
   const hw=HOWTO[r[0]];
-  if(hw){o.s=hw.s;o.k=hw.m;}
+  if(hw){
+    o.s=hw.s;o.k=hw.m;
+    /* and the same two lists in every language that has been written.
+       Hebrew stays exactly where it is. */
+    for(const l of Object.keys(HOWTO_L)){
+      const v=HOWTO_L[l][r[0]];
+      if(!v)continue;
+      if(!Array.isArray(v.s)||!Array.isArray(v.m))
+        throw new Error(r[0]+': '+l+' instructions are not two arrays');
+      /* A numbered list that loses a step is worse than one nobody wrote. */
+      if(v.s.length!==hw.s.length||v.m.length!==hw.m.length)
+        throw new Error(r[0]+': '+l+' has '+v.s.length+'/'+v.m.length+ ' lines where Hebrew has '+hw.s.length+'/'+hw.m.length);
+      (o.sl||(o.sl={}))[l]={s:v.s,k:v.m};
+    }
+  }
   return o;
 });
 
@@ -390,6 +408,13 @@ fs.writeFileSync('data/exercises.json',JSON.stringify({
 const byM={};for(const e of list)byM[e.m[0]]=(byM[e.m[0]]||0)+1;
 const withHow=list.filter(e=>e.s).length;
 const withAka=list.filter(e=>e.aka).length;
+for(const l of Object.keys(HOWTO_L)){
+  const names=new Set(list.map(e=>e.n));
+  for(const k of Object.keys(HOWTO_L[l]))
+    if(!names.has(k))throw new Error(l+' instructions name an exercise that does not exist: '+k);
+  const done=list.filter(e=>e.sl&&e.sl[l]).length, could=list.filter(e=>e.s).length;
+  console.log('instructions in '+l+': '+done+' of '+could+'   ('+(could-done)+' still Hebrew only)');
+}
 console.log('exercises: '+list.length+'   with instructions: '+withHow+'   with aliases: '+withAka);
 console.log('all in Hebrew: '+list.every(e=>/[֐-׿]/.test(e.n)));
 console.log('by muscle: '+MUSCLES.map(m=>m+' '+(byM[m]||0)).join(', '));
