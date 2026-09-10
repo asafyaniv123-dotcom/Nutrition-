@@ -325,6 +325,18 @@ const CORE = [
          'zh-Hans': '鸡腿肉（仅肉，生）', 'zh-Hant': '雞腿肉（僅肉，生）',
          ar: 'فخذ دجاج، لحم فقط، نيء' } },
 
+  /* The one a person photographs. core had frozen and smoked and nothing
+     that had simply been cooked, so a plate of salmon was priced as one or
+     the other. */
+  { id: 'salmon-baked',  he: 'דג סלמון אפוי ללא תוספת שומן בבישול',
+    t: { en: 'Salmon, baked, no added fat', de: 'Lachs, gebacken, ohne Fettzugabe',
+         es: 'Salmón, al horno, sin grasa añadida',
+         fr: 'Saumon, au four, sans matière grasse ajoutée',
+         it: 'Salmone, al forno, senza grassi aggiunti',
+         pt: 'Salmão, assado, sem gordura adicionada',
+         ja: 'サーモン（オーブン焼き・油なし）', 'zh-Hans': '三文鱼（烤，无额外油脂）',
+         'zh-Hant': '鮭魚（烤，無額外油脂）', ar: 'سلمون مخبوز بدون دهون مضافة' } },
+
   { id: 'salmon-frozen', he: 'דג סלמון, קפוא',
     t: { en: 'Salmon, frozen', de: 'Lachs, gefroren', es: 'Salmón, congelado',
          fr: 'Saumon, surgelé', it: 'Salmone, congelato', pt: 'Salmão, congelado',
@@ -532,6 +544,18 @@ const CORE = [
          pt: 'Sementes de gergelim, inteiras, não torradas',
          ja: 'ごま（粒・未焙煎）', 'zh-Hans': '芝麻（整粒，未烤）',
          'zh-Hant': '芝麻（整粒，未烤）', ar: 'بذور سمسم كاملة غير محمصة' } },
+
+  /* Weighed out of the shell. The row core already had is weighed IN it,
+     as bought - 414 against 559 - and nobody eats the shell. */
+  { id: 'pumpkin-seeds-shelled', he: 'גרעיני דלעת בלי קליפה, לא קלויים, ללא מלח',
+    t: { en: 'Pumpkin seeds, shelled, unsalted',
+         de: 'Kürbiskerne, geschält, ungesalzen',
+         es: 'Pipas de calabaza, peladas, sin sal',
+         fr: 'Graines de courge, décortiquées, non salées',
+         it: 'Semi di zucca, sgusciati, non salati',
+         pt: 'Sementes de abóbora, sem casca, sem sal',
+         ja: 'かぼちゃの種（むき身・無塩）', 'zh-Hans': '南瓜子仁（去壳，无盐）',
+         'zh-Hant': '南瓜子仁（去殼，無鹽）', ar: 'بذور قرع مقشرة بدون ملح' } },
 
   { id: 'pumpkin-seeds', he: 'גרעיני דלעת עם קליפה ללא מלח',
     t: { en: 'Pumpkin seeds, in shell, unsalted',

@@ -667,3 +667,89 @@ ten, which is what makes it certain rather than a matter of taste.
   6,931 rows in the other two files carry Hebrew names for every reader, so
   an English query cannot match them at all. `/match` could bridge it and is
   never asked, because `sayCandidates` finds no candidates to send.
+
+## A short name is not a plainer food
+
+### foodSearch does NOT need the state penalty — measured, not assumed
+
+The previous note said the typed search should learn what `sayScore` learned.
+It should not, and the measurement is the reason.
+
+| | words | first result is a state row | …with no plain row anywhere |
+|---|---|---|---|
+| he | 235 | 30 | 5 |
+| en | 244 | 27 | 11 |
+| de | 246 | 26 | 17 |
+
+Read the third column: those are foods that **only exist in that state**.
+Flour is flour. Icing sugar is powdered. Nori is dried sheets. Millet, sea
+bass, tapioca and vital wheat gluten have no other row in either file. A
+penalty would demote the correct and only answer, in seventeen German cases.
+
+And where it does fire wrongly, the list rescues it: `Linsen` shows the dry
+row and the sprouts, two entries, both visible. The photo path has no list -
+it picks one row and prices it - which is exactly why the two want different
+rules. Same rows, different job.
+
+Also checked and rejected: rows penalised for a state they say they do NOT
+have (`קקאו, אבקה, ללא חלב מיובש`). Twelve to fifteen matches across 7,000
+rows, and reading them, nearly all are correct - `ללא` attaches to the fat or
+the bones while `לא מבושל` is a genuine separate marker. One real case. Not
+worth a rule.
+
+### Two rows promoted into core
+
+Both were selection gaps, not data gaps - the measured generic row was in
+`foods.json` and core had never taken it. Numbers copied by the build, as
+always; nothing typed.
+
+- `דג סלמון אפוי ללא תוספת שומן בבישול` 164, p26.5 — core had only frozen
+  (172) and smoked (117), and a plate of salmon is neither.
+- `גרעיני דלעת בלי קליפה, לא קלויים, ללא מלח` 559, p30.2 — core had only the
+  in-shell row at 414, which understates the food by a quarter.
+
+core is 308 now, and the probe suite runs 308/308 in every language.
+
+### The tie-break that made the promotion pointless
+
+Adding the baked salmon changed nothing at first: the photo still came back
+with smoked, because both are core and `Salmon, smoked` is the shorter name.
+`sayScore` broke ties with `1000 - f.s.length`.
+
+`foodSearch` had already met this and decided the other way, in its own
+words above the `starts` sort: *"NOT by length. A short name is not a plainer
+food… The file it came from is the better answer, and it is already in the
+right order."* So the file held both views and only one of them got salmon
+right. `sayScore` now uses file order among core rows and length outside it.
+
+Measured over the head word of all 308 core foods before adopting - fifteen
+rows moved, eight clear wins, three mild losses:
+
+    בשר עוף   450 roasted chicken SKIN   ->  176 breast, cooked without oil
+    חלב 3%     69 GOAT milk              ->   60 cow milk 3%
+    דג סלמון  117 smoked                 ->  164 baked
+    בשר הודו  189 turkey LIVER           ->  108 turkey breast
+    ארטישוק    73 JERUSALEM artichoke    ->   47 artichoke
+
+and across the eleven languages **pasta became 123 everywhere** — it had
+been 199 in Spanish and Italian, where it answered with miso PASTE, and 348
+in French and Portuguese, where it was the dry row.
+
+**The three losses are all bread**, from the order core declares its bread
+rows in: `לחם קל` now finds toasted white bread at 360 rather than light
+white bread at 190. Underneath is an older looseness — `foodHas` lets the
+two-letter קל match inside קלוי — and length was hiding it by accident
+rather than fixing it. Recorded rather than papered over.
+
+### Found by driving German: Spiegelei
+
+A photograph in German named `Spiegelei` and nothing matched, where the
+English run resolved the same item to "Egg or omelette, cooked without oil".
+core names that row `Ei oder Omelett, ohne Öl gegart`; Spiegelei is a
+different word for the same thing and is in no `aka`. The app behaved
+correctly — it offered Suchen and Schätzen rather than inventing a number —
+but the everyday word for a fried egg should find the fried egg.
+
+`aka` exists on core entries and is used by nine of 308. Filling it with the
+common dish words per language is its own pass, and open-ended enough to
+want a rule for what belongs there before starting.
