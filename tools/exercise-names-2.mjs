@@ -1,0 +1,110 @@
+/* Exercise names, part 2 of 3 — arms, legs, glutes, calves.
+   Split only because one file of 228 entries is unwieldy to edit; see
+   exercise-names.mjs for what these are and how the register was chosen. */
+export const PART2 = {
+
+/* ── יד קדמית ────────────────────────────────────────────────────────── */
+'Barbell Curl':{de:'Bizepscurls mit Langhantel',es:'Curl de bíceps con barra',fr:'Curl à la barre',it:'Curl con bilanciere',pt:'Rosca direta com barra',ja:'バーベルカール','zh-Hans':'杠铃弯举','zh-Hant':'槓鈴彎舉',ar:'مرجحة البايسبس بالبار'},
+'EZ Bar Curl':{de:'Bizepscurls mit SZ-Stange',es:'Curl con barra Z',fr:'Curl à la barre EZ',it:'Curl con bilanciere EZ',pt:'Rosca com barra W',ja:'EZバーカール','zh-Hans':'曲杠弯举','zh-Hant':'曲槓彎舉',ar:'مرجحة بالبار المتعرج'},
+'Dumbbell Curl':{de:'Bizepscurls mit Kurzhanteln',es:'Curl con mancuernas',fr:'Curl aux haltères',it:'Curl con manubri',pt:'Rosca com halteres',ja:'ダンベルカール','zh-Hans':'哑铃弯举','zh-Hant':'啞鈴彎舉',ar:'مرجحة بالدمبل'},
+'Hammer Curl':{de:'Hammercurls',es:'Curl martillo',fr:'Curl marteau',it:'Curl a martello',pt:'Rosca martelo',ja:'ハンマーカール','zh-Hans':'锤式弯举','zh-Hant':'錘式彎舉',ar:'مرجحة المطرقة'},
+'Rope Hammer Curl':{de:'Hammercurls am Seil',es:'Curl martillo con cuerda',fr:'Curl marteau à la corde',it:'Curl a martello con fune',pt:'Rosca martelo na corda',ja:'ロープハンマーカール','zh-Hans':'绳索锤式弯举','zh-Hant':'繩索錘式彎舉',ar:'مرجحة المطرقة بالحبل'},
+'Preacher Curl':{de:'Scottcurls',es:'Curl predicador',fr:'Curl au pupitre',it:'Curl su panca Scott',pt:'Rosca Scott',ja:'プリーチャーカール','zh-Hans':'牧师凳弯举','zh-Hant':'牧師椅彎舉',ar:'مرجحة على المقعد المائل'},
+'Cable Curl':{de:'Bizepscurls am Kabelzug',es:'Curl en polea',fr:'Curl à la poulie',it:'Curl ai cavi',pt:'Rosca na polia',ja:'ケーブルカール','zh-Hans':'绳索弯举','zh-Hant':'繩索彎舉',ar:'مرجحة بالكابل'},
+'Bayesian Curl':{de:'Bayesian Curl',es:'Curl bayesiano',fr:'Curl bayésien',it:'Bayesian curl',pt:'Rosca bayesiana',ja:'ベイジアンカール','zh-Hans':'后拉绳索弯举','zh-Hant':'後拉繩索彎舉',ar:'مرجحة بايزية'},
+'Concentration Curl':{de:'Konzentrationscurls',es:'Curl concentrado',fr:'Curl concentré',it:'Curl di concentrazione',pt:'Rosca concentrada',ja:'コンセントレーションカール','zh-Hans':'集中弯举','zh-Hant':'集中彎舉',ar:'مرجحة التركيز'},
+'Incline Curl':{de:'Schrägbankcurls',es:'Curl inclinado',fr:'Curl incliné',it:'Curl su panca inclinata',pt:'Rosca inclinada',ja:'インクラインカール','zh-Hans':'上斜哑铃弯举','zh-Hant':'上斜啞鈴彎舉',ar:'مرجحة مائلة'},
+'Spider Curl':{de:'Spider Curls',es:'Curl araña',fr:'Curl spider',it:'Spider curl',pt:'Rosca aranha',ja:'スパイダーカール','zh-Hans':'蜘蛛弯举','zh-Hant':'蜘蛛彎舉',ar:'مرجحة العنكبوت'},
+'Reverse Curl':{de:'Reverse Curls',es:'Curl inverso',fr:'Curl inversé',it:'Curl inverso',pt:'Rosca inversa',ja:'リバースカール','zh-Hans':'反握弯举','zh-Hant':'反握彎舉',ar:'مرجحة عكسية'},
+'Zottman Curl':{de:'Zottman Curls',es:'Curl Zottman',fr:'Curl Zottman',it:'Zottman curl',pt:'Rosca Zottman',ja:'ゾットマンカール','zh-Hans':'佐特曼弯举','zh-Hant':'佐特曼彎舉',ar:'مرجحة زوتمان'},
+'Machine Curl':{de:'Bizepscurls an der Maschine',es:'Curl en máquina',fr:'Curl à la machine',it:'Curl alla macchina',pt:'Rosca na máquina',ja:'マシンカール','zh-Hans':'器械弯举','zh-Hant':'器械彎舉',ar:'مرجحة على الجهاز'},
+
+/* ── יד אחורית ───────────────────────────────────────────────────────── */
+'Tricep Pushdown':{de:'Trizepsdrücken am Kabelzug',es:'Extensión de tríceps en polea',fr:'Extension triceps à la poulie',it:'Push down ai cavi',pt:'Tríceps na polia',ja:'トライセプスプレスダウン','zh-Hans':'绳索下压','zh-Hant':'繩索下壓',ar:'دفع الترايسبس بالكابل'},
+'Rope Pushdown':{de:'Trizepsdrücken am Seil',es:'Extensión de tríceps con cuerda',fr:'Extension triceps à la corde',it:'Push down con fune',pt:'Tríceps corda',ja:'ローププレスダウン','zh-Hans':'绳索三头下压','zh-Hant':'繩索三頭下壓',ar:'دفع الترايسبس بالحبل'},
+'Single Arm Pushdown':{de:'Einarmiges Trizepsdrücken',es:'Extensión de tríceps a una mano',fr:'Extension triceps à un bras',it:'Push down a un braccio',pt:'Tríceps unilateral na polia',ja:'ワンハンドプレスダウン','zh-Hans':'单臂下压','zh-Hant':'單臂下壓',ar:'دفع الترايسبس بيد واحدة'},
+'Reverse Grip Pushdown':{de:'Trizepsdrücken im Untergriff',es:'Extensión de tríceps supina',fr:'Extension triceps en supination',it:'Push down presa inversa',pt:'Tríceps pegada supinada',ja:'リバースグリッププレスダウン','zh-Hans':'反握下压','zh-Hant':'反握下壓',ar:'دفع بقبضة معكوسة'},
+'Skull Crushers':{de:'Stirndrücken',es:'Press francés',fr:'Barre au front',it:'French press',pt:'Tríceps testa',ja:'スカルクラッシャー','zh-Hans':'仰卧臂屈伸','zh-Hant':'仰臥臂屈伸',ar:'كسارة الجمجمة'},
+'Dumbbell Skull Crusher':{de:'Stirndrücken mit Kurzhanteln',es:'Press francés con mancuernas',fr:'Barre au front aux haltères',it:'French press con manubri',pt:'Tríceps testa com halteres',ja:'ダンベルスカルクラッシャー','zh-Hans':'哑铃仰卧臂屈伸','zh-Hant':'啞鈴仰臥臂屈伸',ar:'كسارة الجمجمة بالدمبل'},
+'Overhead Tricep Extension':{de:'Trizepsdrücken über Kopf',es:'Extensión de tríceps sobre la cabeza',fr:'Extension triceps au-dessus de la tête',it:'Estensioni sopra la testa',pt:'Tríceps francês acima da cabeça',ja:'オーバーヘッドトライセプスエクステンション','zh-Hans':'颈后臂屈伸','zh-Hant':'頸後臂屈伸',ar:'تمديد الترايسبس فوق الرأس'},
+'Overhead Rope Extension':{de:'Trizepsdrücken über Kopf am Seil',es:'Extensión sobre la cabeza con cuerda',fr:'Extension triceps corde au-dessus de la tête',it:'Estensioni sopra la testa con fune',pt:'Tríceps corda acima da cabeça',ja:'オーバーヘッドロープエクステンション','zh-Hans':'颈后绳索臂屈伸','zh-Hant':'頸後繩索臂屈伸',ar:'تمديد بالحبل فوق الرأس'},
+'Close Grip Bench Press':{de:'Enges Bankdrücken',es:'Press de banca con agarre estrecho',fr:'Développé couché prise serrée',it:'Panca presa stretta',pt:'Supino com pegada fechada',ja:'クローズグリップベンチプレス','zh-Hans':'窄握卧推','zh-Hant':'窄握臥推',ar:'ضغط بقبضة ضيقة'},
+'Tricep Dips':{de:'Dips für Trizeps',es:'Fondos para tríceps',fr:'Dips triceps',it:'Dip per tricipiti',pt:'Mergulho para tríceps',ja:'トライセプスディップス','zh-Hans':'三头双杠臂屈伸','zh-Hant':'三頭雙槓臂屈伸',ar:'متوازي للترايسبس'},
+'Bench Dips':{de:'Dips an der Bank',es:'Fondos en banco',fr:'Dips sur banc',it:'Dip alla panca',pt:'Mergulho no banco',ja:'ベンチディップス','zh-Hans':'凳上臂屈伸','zh-Hant':'椅上臂屈伸',ar:'متوازي على المقعد'},
+'Tricep Kickback':{de:'Trizeps-Kickbacks',es:'Patada de tríceps',fr:'Kickback triceps',it:'Kickback per tricipiti',pt:'Tríceps coice',ja:'トライセプスキックバック','zh-Hans':'哑铃臂屈伸后踢','zh-Hant':'啞鈴臂屈伸後踢',ar:'ركلة الترايسبس'},
+'Cable Kickback':{de:'Trizeps-Kickbacks am Kabelzug',es:'Patada de tríceps en polea',fr:'Kickback triceps à la poulie',it:'Kickback ai cavi',pt:'Tríceps coice na polia',ja:'ケーブルキックバック','zh-Hans':'绳索后踢','zh-Hant':'繩索後踢',ar:'ركلة الترايسبس بالكابل'},
+'Diamond Push Ups':{de:'Diamant-Liegestütze',es:'Flexiones diamante',fr:'Pompes diamant',it:'Piegamenti a diamante',pt:'Flexões diamante',ja:'ダイヤモンド腕立て伏せ','zh-Hans':'钻石俯卧撑','zh-Hant':'鑽石伏地挺身',ar:'ضغط الماسة'},
+'Machine Tricep Extension':{de:'Trizepsmaschine',es:'Extensión de tríceps en máquina',fr:'Extension triceps à la machine',it:'Estensioni tricipiti alla macchina',pt:'Tríceps na máquina',ja:'マシントライセプスエクステンション','zh-Hans':'器械臂屈伸','zh-Hant':'器械臂屈伸',ar:'تمديد الترايسبس على الجهاز'},
+
+/* ── אמה ─────────────────────────────────────────────────────────────── */
+'Wrist Curl':{de:'Handgelenkcurls',es:'Curl de muñeca',fr:'Curl de poignet',it:'Curl per i polsi',pt:'Rosca de punho',ja:'リストカール','zh-Hans':'腕弯举','zh-Hant':'腕彎舉',ar:'ثني الرسغ'},
+'Reverse Wrist Curl':{de:'Handgelenkcurls im Untergriff',es:'Curl de muñeca inverso',fr:'Curl de poignet inversé',it:'Curl inverso per i polsi',pt:'Rosca de punho inversa',ja:'リバースリストカール','zh-Hans':'反向腕弯举','zh-Hant':'反向腕彎舉',ar:'ثني الرسغ العكسي'},
+'Wrist Roller':{de:'Unterarmroller',es:'Rodillo de muñeca',fr:'Enrouleur de poignet',it:'Rullo per avambracci',pt:'Rolo de punho',ja:'リストローラー','zh-Hans':'腕力棒','zh-Hant':'腕力棒',ar:'بكرة الساعد'},
+'Farmers Carry':{de:'Farmers Walk',es:'Paseo del granjero',fr:'Marche du fermier',it:'Farmer’s walk',pt:'Caminhada do fazendeiro',ja:'ファーマーズウォーク','zh-Hans':'农夫行走','zh-Hant':'農夫行走',ar:'مشية المزارع'},
+'Dead Hang':{de:'Passives Hängen',es:'Colgarse de la barra',fr:'Suspension à la barre',it:'Sospensione alla sbarra',pt:'Pendurado na barra',ja:'デッドハング','zh-Hans':'悬垂','zh-Hant':'懸垂',ar:'التعلق الحر'},
+
+/* ── ארבע ראשי ───────────────────────────────────────────────────────── */
+'Barbell Squat':{de:'Kniebeuge mit Langhantel',es:'Sentadilla con barra',fr:'Squat à la barre',it:'Squat con bilanciere',pt:'Agachamento com barra',ja:'バーベルスクワット','zh-Hans':'杠铃深蹲','zh-Hant':'槓鈴深蹲',ar:'سكوات بالبار'},
+'Front Squat':{de:'Frontkniebeuge',es:'Sentadilla frontal',fr:'Squat avant',it:'Front squat',pt:'Agachamento frontal',ja:'フロントスクワット','zh-Hans':'前蹲','zh-Hant':'前蹲',ar:'سكوات أمامي'},
+'Goblet Squat':{de:'Goblet Squat',es:'Sentadilla goblet',fr:'Goblet squat',it:'Goblet squat',pt:'Agachamento goblet',ja:'ゴブレットスクワット','zh-Hans':'高脚杯深蹲','zh-Hant':'高腳杯深蹲',ar:'سكوات الكأس'},
+'Bodyweight Squat':{de:'Kniebeuge ohne Gewicht',es:'Sentadilla sin peso',fr:'Squat au poids du corps',it:'Squat a corpo libero',pt:'Agachamento livre',ja:'自重スクワット','zh-Hans':'徒手深蹲','zh-Hant':'徒手深蹲',ar:'سكوات بوزن الجسم'},
+'Smith Machine Squat':{de:'Kniebeuge an der Smith-Maschine',es:'Sentadilla en máquina Smith',fr:'Squat à la Smith machine',it:'Squat al multipower',pt:'Agachamento na máquina Smith',ja:'スミスマシンスクワット','zh-Hans':'史密斯机深蹲','zh-Hant':'史密斯機深蹲',ar:'سكوات على جهاز سميث'},
+'Box Squat':{de:'Box Squat',es:'Sentadilla al cajón',fr:'Squat sur boîte',it:'Box squat',pt:'Agachamento no caixote',ja:'ボックススクワット','zh-Hans':'箱式深蹲','zh-Hant':'箱式深蹲',ar:'سكوات الصندوق'},
+'Pause Squat':{de:'Kniebeuge mit Pause',es:'Sentadilla con pausa',fr:'Squat avec pause',it:'Squat con fermo',pt:'Agachamento com pausa',ja:'ポーズスクワット','zh-Hans':'停顿深蹲','zh-Hant':'停頓深蹲',ar:'سكوات مع توقف'},
+'Leg Press':{de:'Beinpresse',es:'Prensa de piernas',fr:'Presse à cuisses',it:'Leg press',pt:'Leg press',ja:'レッグプレス','zh-Hans':'腿举','zh-Hant':'腿舉',ar:'ضغط الأرجل'},
+'Single Leg Press':{de:'Einbeinige Beinpresse',es:'Prensa a una pierna',fr:'Presse à cuisses unilatérale',it:'Leg press a una gamba',pt:'Leg press unilateral',ja:'シングルレッグプレス','zh-Hans':'单腿腿举','zh-Hant':'單腿腿舉',ar:'ضغط الأرجل برجل واحدة'},
+'Hack Squat':{de:'Hackenschmidt-Kniebeuge',es:'Sentadilla hack',fr:'Hack squat',it:'Hack squat',pt:'Agachamento hack',ja:'ハックスクワット','zh-Hans':'哈克深蹲','zh-Hant':'哈克深蹲',ar:'هاك سكوات'},
+'Pendulum Squat':{de:'Pendel-Kniebeuge',es:'Sentadilla pendular',fr:'Squat pendulaire',it:'Pendulum squat',pt:'Agachamento pendular',ja:'ペンデュラムスクワット','zh-Hans':'钟摆深蹲','zh-Hant':'鐘擺深蹲',ar:'سكوات البندول'},
+'Belt Squat':{de:'Gürtel-Kniebeuge',es:'Sentadilla con cinturón',fr:'Squat à la ceinture',it:'Belt squat',pt:'Agachamento com cinto',ja:'ベルトスクワット','zh-Hans':'腰带深蹲','zh-Hant':'腰帶深蹲',ar:'سكوات بالحزام'},
+'Leg Extension':{de:'Beinstrecker',es:'Extensión de cuádriceps',fr:'Leg extension',it:'Leg extension',pt:'Cadeira extensora',ja:'レッグエクステンション','zh-Hans':'坐姿腿屈伸','zh-Hant':'坐姿腿屈伸',ar:'تمديد الأرجل'},
+'Lunges':{de:'Ausfallschritte',es:'Zancadas',fr:'Fentes',it:'Affondi',pt:'Afundo',ja:'ランジ','zh-Hans':'弓步蹲','zh-Hant':'弓步蹲',ar:'الطعن'},
+'Walking Lunges':{de:'Gehende Ausfallschritte',es:'Zancadas caminando',fr:'Fentes marchées',it:'Affondi in camminata',pt:'Afundo caminhando',ja:'ウォーキングランジ','zh-Hans':'行走弓步','zh-Hant':'行走弓步',ar:'طعن مع المشي'},
+'Reverse Lunge':{de:'Ausfallschritt nach hinten',es:'Zancada hacia atrás',fr:'Fente arrière',it:'Affondo all’indietro',pt:'Afundo para trás',ja:'リバースランジ','zh-Hans':'后撤弓步','zh-Hant':'後撤弓步',ar:'طعن للخلف'},
+'Bulgarian Split Squat':{de:'Bulgarische Kniebeuge',es:'Sentadilla búlgara',fr:'Squat bulgare',it:'Affondo bulgaro',pt:'Agachamento búlgaro',ja:'ブルガリアンスクワット','zh-Hans':'保加利亚分腿蹲','zh-Hant':'保加利亞分腿蹲',ar:'سكوات بلغاري'},
+'Step Ups':{de:'Step-ups',es:'Subidas al cajón',fr:'Montées sur banc',it:'Step up',pt:'Subida no banco',ja:'ステップアップ','zh-Hans':'登台阶','zh-Hant':'登階',ar:'الصعود على الصندوق'},
+'Step Downs':{de:'Step-downs',es:'Bajadas del cajón',fr:'Descentes de banc',it:'Step down',pt:'Descida do banco',ja:'ステップダウン','zh-Hans':'下台阶','zh-Hant':'下階',ar:'النزول من الصندوق'},
+'Sissy Squat':{de:'Sissy Squat',es:'Sentadilla sissy',fr:'Sissy squat',it:'Sissy squat',pt:'Agachamento sissy',ja:'シシースクワット','zh-Hans':'西西深蹲','zh-Hant':'西西深蹲',ar:'سيسي سكوات'},
+'Wall Sit':{de:'Wandsitzen',es:'Sentadilla isométrica en pared',fr:'Chaise contre le mur',it:'Wall sit',pt:'Cadeira na parede',ja:'ウォールシット','zh-Hans':'靠墙静蹲','zh-Hant':'靠牆靜蹲',ar:'الجلوس على الحائط'},
+
+/* ── ירך אחורית ──────────────────────────────────────────────────────── */
+'Romanian Deadlift':{de:'Rumänisches Kreuzheben',es:'Peso muerto rumano',fr:'Soulevé de terre roumain',it:'Stacco rumeno',pt:'Levantamento terra romeno',ja:'ルーマニアンデッドリフト','zh-Hans':'罗马尼亚硬拉','zh-Hant':'羅馬尼亞硬舉',ar:'الرفعة الميتة الرومانية'},
+'Dumbbell Romanian Deadlift':{de:'Rumänisches Kreuzheben mit Kurzhanteln',es:'Peso muerto rumano con mancuernas',fr:'Soulevé de terre roumain aux haltères',it:'Stacco rumeno con manubri',pt:'Terra romeno com halteres',ja:'ダンベルルーマニアンデッドリフト','zh-Hans':'哑铃罗马尼亚硬拉','zh-Hant':'啞鈴羅馬尼亞硬舉',ar:'رفعة رومانية بالدمبل'},
+'Stiff Leg Deadlift':{de:'Kreuzheben mit gestreckten Beinen',es:'Peso muerto con piernas rígidas',fr:'Soulevé de terre jambes tendues',it:'Stacco a gambe tese',pt:'Terra com pernas estendidas',ja:'スティッフレッグデッドリフト','zh-Hans':'直腿硬拉','zh-Hant':'直腿硬舉',ar:'رفعة بأرجل مستقيمة'},
+'Single Leg Romanian Deadlift':{de:'Einbeiniges rumänisches Kreuzheben',es:'Peso muerto rumano a una pierna',fr:'Soulevé de terre roumain unilatéral',it:'Stacco rumeno su una gamba',pt:'Terra romeno unilateral',ja:'シングルレッグルーマニアンデッドリフト','zh-Hans':'单腿罗马尼亚硬拉','zh-Hant':'單腿羅馬尼亞硬舉',ar:'رفعة رومانية برجل واحدة'},
+'Lying Leg Curl':{de:'Beinbeuger liegend',es:'Curl femoral tumbado',fr:'Leg curl allongé',it:'Leg curl da sdraiato',pt:'Mesa flexora',ja:'ライイングレッグカール','zh-Hans':'俯卧腿弯举','zh-Hant':'俯臥腿彎舉',ar:'ثني الأرجل مستلقيًا'},
+'Seated Leg Curl':{de:'Beinbeuger sitzend',es:'Curl femoral sentado',fr:'Leg curl assis',it:'Leg curl da seduto',pt:'Cadeira flexora',ja:'シーテッドレッグカール','zh-Hans':'坐姿腿弯举','zh-Hant':'坐姿腿彎舉',ar:'ثني الأرجل جالسًا'},
+'Standing Leg Curl':{de:'Beinbeuger stehend',es:'Curl femoral de pie',fr:'Leg curl debout',it:'Leg curl in piedi',pt:'Flexora em pé',ja:'スタンディングレッグカール','zh-Hans':'站姿腿弯举','zh-Hant':'站姿腿彎舉',ar:'ثني الأرجل واقفًا'},
+'Nordic Curl':{de:'Nordic Curl',es:'Curl nórdico',fr:'Curl nordique',it:'Nordic curl',pt:'Nordic curl',ja:'ノルディックカール','zh-Hans':'北欧腿弯举','zh-Hant':'北歐腿彎舉',ar:'الثني النوردي'},
+'Glute Ham Raise':{de:'Glute-Ham-Raise',es:'Elevación glúteo-femoral',fr:'Glute ham raise',it:'Glute ham raise',pt:'Glute ham raise',ja:'グルートハムレイズ','zh-Hans':'臀腿升起','zh-Hant':'臀腿升起',ar:'رفع الألوية والأوتار'},
+
+/* ── ישבן ────────────────────────────────────────────────────────────── */
+'Cable Pull Through':{de:'Pull Through am Kabelzug',es:'Pull through en polea',fr:'Pull through à la poulie',it:'Pull through ai cavi',pt:'Pull through na polia',ja:'ケーブルプルスルー','zh-Hans':'绳索髋屈伸','zh-Hant':'繩索髖屈伸',ar:'سحب بين الساقين'},
+'Hip Thrust':{de:'Hip Thrust',es:'Empuje de cadera',fr:'Hip thrust',it:'Hip thrust',pt:'Elevação pélvica',ja:'ヒップスラスト','zh-Hans':'臀推','zh-Hant':'臀推',ar:'دفع الحوض'},
+'Machine Hip Thrust':{de:'Hip Thrust an der Maschine',es:'Empuje de cadera en máquina',fr:'Hip thrust à la machine',it:'Hip thrust alla macchina',pt:'Elevação pélvica na máquina',ja:'マシンヒップスラスト','zh-Hans':'器械臀推','zh-Hant':'器械臀推',ar:'دفع الحوض على الجهاز'},
+'Single Leg Hip Thrust':{de:'Einbeiniger Hip Thrust',es:'Empuje de cadera a una pierna',fr:'Hip thrust unilatéral',it:'Hip thrust su una gamba',pt:'Elevação pélvica unilateral',ja:'シングルレッグヒップスラスト','zh-Hans':'单腿臀推','zh-Hant':'單腿臀推',ar:'دفع الحوض برجل واحدة'},
+'Glute Bridge':{de:'Beckenheben',es:'Puente de glúteos',fr:'Pont fessier',it:'Ponte per glutei',pt:'Ponte de glúteos',ja:'ヒップリフト','zh-Hans':'臀桥','zh-Hant':'臀橋',ar:'جسر الألوية'},
+'Sumo Deadlift':{de:'Sumo-Kreuzheben',es:'Peso muerto sumo',fr:'Soulevé de terre sumo',it:'Stacco sumo',pt:'Levantamento terra sumô',ja:'スモウデッドリフト','zh-Hans':'相扑硬拉','zh-Hant':'相撲硬舉',ar:'رفعة سومو'},
+'Sumo Squat':{de:'Sumo-Kniebeuge',es:'Sentadilla sumo',fr:'Squat sumo',it:'Squat sumo',pt:'Agachamento sumô',ja:'スモウスクワット','zh-Hans':'相扑深蹲','zh-Hant':'相撲深蹲',ar:'سكوات سومو'},
+'Cable Glute Kickback':{de:'Beinheben am Kabelzug',es:'Patada de glúteo en polea',fr:'Kickback fessier à la poulie',it:'Slancio glutei ai cavi',pt:'Coice de glúteo na polia',ja:'ケーブルヒップキックバック','zh-Hans':'绳索后踢腿','zh-Hant':'繩索後踢腿',ar:'ركلة الألوية بالكابل'},
+'Machine Glute Kickback':{de:'Gesäßmaschine',es:'Patada de glúteo en máquina',fr:'Kickback fessier à la machine',it:'Slancio glutei alla macchina',pt:'Coice de glúteo na máquina',ja:'マシンヒップキックバック','zh-Hans':'器械后踢腿','zh-Hant':'器械後踢腿',ar:'ركلة الألوية على الجهاز'},
+'Kettlebell Swing':{de:'Kettlebell Swing',es:'Swing con pesa rusa',fr:'Swing kettlebell',it:'Swing con kettlebell',pt:'Swing com kettlebell',ja:'ケトルベルスイング','zh-Hans':'壶铃摆荡','zh-Hant':'壺鈴擺盪',ar:'أرجحة الكيتل بيل'},
+'Banded Lateral Walk':{de:'Seitwärtsgehen mit Band',es:'Caminata lateral con banda',fr:'Marche latérale à l’élastique',it:'Camminata laterale con elastico',pt:'Caminhada lateral com elástico',ja:'バンドサイドウォーク','zh-Hans':'弹力带侧走','zh-Hant':'彈力帶側走',ar:'مشي جانبي بالمطاط'},
+'Clamshell':{de:'Muschel',es:'Almeja',fr:'Clamshell',it:'Clamshell',pt:'Concha',ja:'クラムシェル','zh-Hans':'蚌式开合','zh-Hant':'蚌式開合',ar:'تمرين المحارة'},
+'Power Clean':{de:'Power Clean',es:'Cargada de potencia',fr:'Épaulé debout',it:'Power clean',pt:'Power clean',ja:'パワークリーン','zh-Hans':'高翻','zh-Hant':'高翻',ar:'النتر القوي'},
+
+/* ── מקרבים ומרחיקים ─────────────────────────────────────────────────── */
+'Hip Adduction Machine':{de:'Adduktorenmaschine',es:'Máquina de aductores',fr:'Machine à adducteurs',it:'Macchina per adduttori',pt:'Cadeira adutora',ja:'アダクションマシン','zh-Hans':'内收肌器械','zh-Hant':'內收肌器械',ar:'جهاز المقربات'},
+'Cable Hip Adduction':{de:'Adduktion am Kabelzug',es:'Aducción de cadera en polea',fr:'Adduction de hanche à la poulie',it:'Adduzione ai cavi',pt:'Adução de quadril na polia',ja:'ケーブルヒップアダクション','zh-Hans':'绳索内收','zh-Hant':'繩索內收',ar:'تقريب الورك بالكابل'},
+'Copenhagen Plank':{de:'Copenhagen Plank',es:'Plancha de Copenhague',fr:'Planche de Copenhague',it:'Copenhagen plank',pt:'Prancha de Copenhague',ja:'コペンハーゲンプランク','zh-Hans':'哥本哈根平板','zh-Hant':'哥本哈根平板',ar:'بلانك كوبنهاغن'},
+'Cossack Squat':{de:'Kosaken-Kniebeuge',es:'Sentadilla cosaca',fr:'Squat cosaque',it:'Squat cosacco',pt:'Agachamento cossaco',ja:'コサックスクワット','zh-Hans':'哥萨克深蹲','zh-Hant':'哥薩克深蹲',ar:'سكوات القوزاق'},
+'Hip Abduction Machine':{de:'Abduktorenmaschine',es:'Máquina de abductores',fr:'Machine à abducteurs',it:'Macchina per abduttori',pt:'Cadeira abdutora',ja:'アブダクションマシン','zh-Hans':'外展肌器械','zh-Hant':'外展肌器械',ar:'جهاز المبعدات'},
+'Cable Hip Abduction':{de:'Abduktion am Kabelzug',es:'Abducción de cadera en polea',fr:'Abduction de hanche à la poulie',it:'Abduzione ai cavi',pt:'Abdução de quadril na polia',ja:'ケーブルヒップアブダクション','zh-Hans':'绳索外展','zh-Hant':'繩索外展',ar:'تبعيد الورك بالكابل'},
+
+/* ── תאומים ──────────────────────────────────────────────────────────── */
+'Standing Calf Raise':{de:'Wadenheben stehend',es:'Elevación de gemelos de pie',fr:'Extensions mollets debout',it:'Calf raise in piedi',pt:'Panturrilha em pé',ja:'スタンディングカーフレイズ','zh-Hans':'站姿提踵','zh-Hant':'站姿提踵',ar:'رفع السمانة واقفًا'},
+'Seated Calf Raise':{de:'Wadenheben sitzend',es:'Elevación de gemelos sentado',fr:'Extensions mollets assis',it:'Calf raise da seduto',pt:'Panturrilha sentado',ja:'シーテッドカーフレイズ','zh-Hans':'坐姿提踵','zh-Hant':'坐姿提踵',ar:'رفع السمانة جالسًا'},
+'Leg Press Calf Raise':{de:'Wadenheben an der Beinpresse',es:'Gemelos en prensa',fr:'Mollets à la presse',it:'Calf raise alla leg press',pt:'Panturrilha no leg press',ja:'レッグプレスカーフレイズ','zh-Hans':'腿举机提踵','zh-Hant':'腿舉機提踵',ar:'رفع السمانة على جهاز الأرجل'},
+'Single Leg Calf Raise':{de:'Einbeiniges Wadenheben',es:'Gemelos a una pierna',fr:'Mollets unilatéraux',it:'Calf raise su una gamba',pt:'Panturrilha unilateral',ja:'シングルレッグカーフレイズ','zh-Hans':'单腿提踵','zh-Hant':'單腿提踵',ar:'رفع السمانة برجل واحدة'},
+'Smith Machine Calf Raise':{de:'Wadenheben an der Smith-Maschine',es:'Gemelos en máquina Smith',fr:'Mollets à la Smith machine',it:'Calf raise al multipower',pt:'Panturrilha na máquina Smith',ja:'スミスマシンカーフレイズ','zh-Hans':'史密斯机提踵','zh-Hant':'史密斯機提踵',ar:'رفع السمانة على جهاز سميث'},
+'Tibialis Raise':{de:'Schienbeinheben',es:'Elevación del tibial',fr:'Extension du tibial',it:'Tibialis raise',pt:'Elevação do tibial',ja:'チビアリスレイズ','zh-Hans':'胫骨前肌训练','zh-Hant':'脛骨前肌訓練',ar:'رفع الظنبوب'},
+};

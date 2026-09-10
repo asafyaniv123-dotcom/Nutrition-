@@ -32,12 +32,19 @@ const DATA = opt('data', 'data/exercises.json');
 
 /* ── lift exMatch out of the shipped file ─────────────────────────────── */
 const src = fs.readFileSync(FILE, 'utf8');
-const a = src.indexOf('function exMatch(e,q){');
+/* An older revision has neither exTitle nor exRank. Lift what is there and
+   stub the rest, or this can never be pointed at the revision that has the
+   bug - which is the only way to show it detects anything. */
+let a = src.indexOf('function exTitle(e){');
+if (a < 0) a = src.indexOf('function exMatch(e,q){');
 const b = src.indexOf('function exOpen(){');
-if (a < 0 || b < 0 || b <= a) throw new Error('could not lift exMatch/exRank');
+if (a < 0 || b < 0 || b <= a) throw new Error('could not lift exTitle/exMatch/exRank');
+const UI = opt('ui', 'he');
 const ctx = { console };
 vm.createContext(ctx);
+vm.runInContext('function appLang(){return ' + JSON.stringify(UI) + ';}', ctx);
 vm.runInContext(src.slice(a, b), ctx);
+if (!/function exTitle/.test(src)) vm.runInContext('function exTitle(e){return e&&e.n||"";}', ctx);
 const match = (e, q) => vm.runInContext('exMatch', ctx)(e, q);
 /* The picker ranks what it matched, so the test has to rank it too - a probe
    that only checks membership cannot see that the Copenhagen plank was
@@ -110,6 +117,28 @@ const PROBES = [
   ['תאומים', 'הרמת עקבים בעמידה'], ['נורדיק', 'כפיפה נורדית'],
 ];
 
+/* The same movement asked for in every language it now has a name in. This is
+   the whole point of the eleven-name table: measured before it, Kniebeuge,
+   スクワット, 深蹲 and sentadilla each returned NOTHING. */
+const CROSS = [
+  ['Kniebeuge','סקוואט'], ['sentadilla','סקוואט'], ['スクワット','סקוואט'], ['squat','סקוואט'],
+  ['Bankdrücken','לחיצת חזה במוט'], ['ベンチプレス','לחיצת חזה במוט'], ['卧推','לחיצת חזה במוט'], ['supino','לחיצת חזה במוט'],
+  ['Kreuzheben','דדליפט'], ['デッドリフト','דדליפט'], ['硬拉','דדליפט'], ['peso muerto','דדליפט'], ['stacco','דדליפט'],
+  ['Klimmzüge','מתח'], ['懸垂','מתח'], ['引体向上','מתח'], ['dominadas','מתח'],
+  ['Latziehen','פולי עליון'], ['ラットプルダウン','פולי עליון'], ['高位下拉','פולי עליון'], ['jalón al pecho','פולי עליון'],
+  ['Liegestütze','שכיבות סמיכה'], ['腕立て伏せ','שכיבות סמיכה'], ['俯卧撑','שכיבות סמיכה'], ['pompes','שכיבות סמיכה'],
+  ['Beinpresse','לחיצת רגליים'], ['レッグプレス','לחיצת רגליים'], ['腿举','לחיצת רגליים'],
+  ['Bizepscurls mit Langhantel','כפיפת מרפק במוט'], ['バーベルカール','כפיפת מרפק במוט'],
+  ['Wadenheben stehend','הרמת עקבים בעמידה'], ['站姿提踵','הרמת עקבים בעמידה'],
+  ['Unterarmstütz','פלאנק'], ['プランク','פלאנק'], ['平板支撑','פלאנק'], ['gainage','פלאנק'],
+  /* OPEN, and the same question as 'rice' in the food probes: 深蹲推举 (the
+     thruster) BEGINS with 深蹲 while 杠铃深蹲 (the barbell squat) only
+     contains it, and a name that begins with the word outranks one that
+     contains it by design. Whether a bare movement word should instead mean
+     the plainest exercise is undecided. */
+  ['深蹲','סקוואט','open'],
+];
+
 let none = 0, wrong = 0;
 for (const [q, want] of PROBES) {
   const hits = EX.filter((e) => match(e, q))
@@ -122,6 +151,17 @@ for (const [q, want] of PROBES) {
     wrong++;
   }
 }
+for (const [q, want, open] of CROSS) {
+  const hits = EX.filter((e) => match(e, q))
+    .map((e, i) => [e, rank(e, q), i])
+    .sort((x, y) => x[1] - y[1] || x[2] - y[2])
+    .map((x) => x[0]);
+  if (!hits.length) { console.log('  NONE   ' + q.padEnd(28) + ' wanted ' + want); none++; }
+  else if (hits[0].n !== want) {
+    console.log('  ' + (open ? 'open ' : 'RANK ') + '  ' + q.padEnd(28) + ' wanted ' + want + '  got ' + hits[0].n);
+    if (!open) wrong++;
+  }
+}
 bad += none + wrong;
 
 const byM = {};
@@ -129,7 +169,7 @@ for (const e of EX) byM[e.m[0]] = (byM[e.m[0]] || 0) + 1;
 console.log('\n' + EX.length + ' exercises, ' + EX.filter((e) => e.aka).length + ' with aliases, ' +
   EX.filter((e) => e.s).length + ' with instructions');
 console.log(db.muscles.map((m) => m + ' ' + (byM[m] || 0)).join(', '));
-console.log(PROBES.length + ' gym words: ' + (PROBES.length - none - wrong) + ' found the right movement, ' +
+console.log((PROBES.length + CROSS.length) + ' words (' + CROSS.length + ' of them another language): ' + (PROBES.length + CROSS.length - none - wrong) + ' found the right movement, ' +
   none + ' found nothing, ' + wrong + ' found the wrong one');
 if (structural.length) console.log(structural.length + ' problems in the table itself');
 process.exit(bad ? 1 : 0);

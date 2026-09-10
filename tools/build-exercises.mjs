@@ -48,6 +48,7 @@
  */
 import fs from 'fs';
 import {HOWTO} from './exercise-howto.mjs';
+import {NAMES} from './exercise-names.mjs';
 
 const M={
   chest:'חזה', back:'גב', lats:'גב רחב', traps:'טרפז', shoulders:'כתפיים',
@@ -326,6 +327,14 @@ const RAW=[
 const list=RAW.map(function(r,i){
   const o={id:'x'+(i+1),n:r[0],m:[r[1]],q:r[2]};
   if(r[3])o.en=r[3];
+  /* The name in every language. `n` stays the STORED id - the workout log, the
+     history and loadKind all key on it - and `t` is what the reader is shown,
+     exactly the split the food table uses. */
+  if(r[3]){
+    const tr=NAMES[r[3]];
+    if(!tr)throw new Error(r[3]+': no translations in exercise-names');
+    o.t=Object.assign({he:r[0],en:r[3]},tr);
+  }
   /* The other words people say for it. Searched, never displayed - the same
      contract the food table's `aka` has, and the reason a lat pulldown that
      was always in the list could not be found by anyone looking for one. */
@@ -337,6 +346,11 @@ const list=RAW.map(function(r,i){
   return o;
 });
 
+const LANGS=['he','en','de','es','fr','it','pt','ja','zh-Hans','zh-Hant','ar'];
+for(const e of list){
+  if(!e.t)throw new Error(e.n+': no names');
+  for(const l of LANGS)if(!e.t[l])throw new Error(e.n+': no '+l+' name');
+}
 // nothing named twice, or the picker shows the same movement in two places
 const seen={};
 for(const e of list){
