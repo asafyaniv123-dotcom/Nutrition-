@@ -204,7 +204,13 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragi
 .xd-when{font-size:10px;color:var(--muted);flex-shrink:0}
 .xd-sets{font-size:11.5px;font-weight:700;color:var(--ink);direction:ltr;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .xd-steps,.xd-miss{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:6px}
-.xd-steps li,.xd-miss li{font-size:12.5px;line-height:1.65;color:var(--ink)}
+/* plaintext, not the page direction. These lines come from the data and
+   are Hebrew for 81 of the 96 exercises whatever language is being read;
+   isolate - which is what a li carries by default - keeps the run apart
+   but still lays it out in the page's paragraph direction, which put the
+   full stop of every Hebrew sentence at the left-hand end. */
+.xd-steps li,.xd-miss li{font-size:12.5px;line-height:1.65;color:var(--ink);unicode-bidi:plaintext}
+.xd-lang{font-size:11px;color:var(--muted);line-height:1.7;margin:12px 0 4px}
 .xd-miss li{color:#8a6a3a}
 .xd-none{font-size:11.5px;color:var(--muted);line-height:1.7;background:#faf6f1;border-radius:12px;padding:12px}
 .xd-none.small{font-size:11px;margin-top:14px}
@@ -12206,21 +12212,40 @@ function exDetailHTML(e){
   }
 
   // ── how it is done ──
-  if(e.s&&e.s.length){
+  var how=exHow(e);
+  if(how.s&&how.s.length){
     h+='<div class="xd-h">'+_t('איך מבצעים')+'</div><ol class="xd-steps">';
-    for(var j=0;j<e.s.length;j++)h+='<li>'+esc(e.s[j])+'</li>';
+    for(var j=0;j<how.s.length;j++)h+='<li>'+esc(how.s[j])+'</li>';
     h+='</ol>';
   }
-  if(e.k&&e.k.length){
+  if(how.k&&how.k.length){
     h+='<div class="xd-h warn">'+_t('טעויות נפוצות')+'</div><ul class="xd-miss">';
-    for(var m=0;m<e.k.length;m++)h+='<li>'+esc(e.k[m])+'</li>';
+    for(var m=0;m<how.k.length;m++)h+='<li>'+esc(how.k[m])+'</li>';
     h+='</ul>';
   }
-  if(!(e.s&&e.s.length))
+  /* Not the language being read. Saying which one it is costs a line and
+     turns "why is this gibberish" into "ah, it is in Hebrew". */
+  if(how.s&&how.s.length&&how.lang!==appLang()){
+    var lname=how.lang;
+    for(var li2=0;li2<LANGS.length;li2++)if(LANGS[li2].code===how.lang)lname=LANGS[li2].name;
+    h+='<div class="xd-lang">'+
+       _t('ההסבר עוד לא נכתב בשפה שלך. מה שמופיע כאן הוא ב{lang}.',{lang:lname})+'</div>';
+  }
+  if(!(how.s&&how.s.length))
     h+='<div class="xd-none small">'+_t('ההסבר לתרגיל הזה עוד לא נכתב.')+'</div>';
 
   h+='<button class="xd-pick" onclick="exDetailChoose()">'+_t('בחר את התרגיל הזה')+'</button>';
   return h+'</div>';
+}
+/* The instructions in the best language available: the reader's own,
+   then English, then Hebrew. 96 of the 228 exercises carry instructions
+   and they were written in Hebrew, so for ten readers in eleven this is
+   a fallback rather than a choice - which is why it also reports WHICH
+   language came back. */
+function exHow(e){
+  var l=appLang(),src=e.sl&&(e.sl[l]||e.sl.en);
+  if(l!=="he"&&src)return {s:src.s,k:src.k,lang:(e.sl[l]?l:"en")};
+  return {s:e.s,k:e.k,lang:"he"};
 }
 function exDetailOpen(i){
   _exDetail=exList()[i];
