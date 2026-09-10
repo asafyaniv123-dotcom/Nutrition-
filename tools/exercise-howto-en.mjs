@@ -19,7 +19,7 @@
  * data already declares. Three of the eighteen carry no Hebrew instructions at
  * all, so the first slice was fifteen and the second sixteen.
  *
- * 31 of the 96 exercises that have instructions, 204 lines of the 625 that
+ * 42 of the 96 exercises that have instructions, 273 lines of the 625 that
  * exist. `node tools/build-exercises.mjs` prints the number that has to go
  * down, so it is never a matter of anyone remembering.
  *
@@ -296,6 +296,100 @@ export const EN = {
       'Finish by slowing down gradually.'],
   m: ['Holding the rails, which lowers the effort and distorts your posture.',
       'Jumping straight to a high speed with no warm-up.'] },
+
+/* ── the third movement of each group ──────────────────────────────── */
+
+'לחיצת חזה בשיפוע חיובי': {
+  s: ['Set the bench to about 30 degrees — no more.',
+      'Grip as you would on the flat press, bar over your upper chest.',
+      'Lower to your collarbone, elbows not fully flared.',
+      'Press back up over the same point.'],
+  m: ['An incline of 45 degrees or more — the movement becomes a shoulder press.',
+      'Lowering to mid-chest instead of the upper chest.'] },
+
+'לחיצת כתפיים במשקולות': {
+  s: ['Sit against the backrest with the dumbbells at ear height.',
+      'Brace your stomach, elbows slightly forward rather than in line with your body.',
+      'Press up to almost straight.',
+      'Lower under control back to ear height.'],
+  m: ['Arching the lower back to press.',
+      'Clashing the dumbbells together at the top.',
+      'Going too low, which stretches the shoulder.'] },
+
+'מתח בסיוע גומייה': {
+  s: ['Loop a band over the bar and put a knee or a foot in it.',
+      'Same grip and same movement as an ordinary pull up.',
+      'Pick a band that lets you do six to eight clean reps.',
+      'Move to a thinner band once that gets easy.'],
+  m: ['A band so strong it does the work for you.',
+      'Giving up the slow lower because there is help.'] },
+
+'חתירה בפולי בישיבה': {
+  s: ['Feet on the platform, knees slightly bent.',
+      'Back flat, hands on the handle, arms straight.',
+      'Pull to your lower stomach, shoulder blades drawing together.',
+      'Return forward under control without rounding your back.'],
+  m: ['Leaning far back, which hands the work to the lower back.',
+      'A back that rounds at the end of the return.',
+      'Pulling fast and stopping sharply.'] },
+
+'כפיפת פטיש': {
+  s: ['Dumbbells at your sides, palms facing your body.',
+      'Keep that grip through the whole movement.',
+      'Curl the elbow to chest height.',
+      'Lower slowly to straight.'],
+  m: ['Rotating the wrist on the way up — that is an ordinary curl.',
+      'Elbows drifting forward.'] },
+
+'סקאל קראשר': {
+  s: ['Lie on the bench with the bar over your chest, arms straight.',
+      'Lower the bar towards your forehead by bending the elbow only.',
+      'The upper arm stays vertical.',
+      'Press back up.'],
+  m: ['Letting the upper arm travel back — that turns it into a pullover.',
+      'Lowering to your forehead with a weight you cannot control.',
+      'Elbows flaring out to the sides.'] },
+
+'סקוואט גובלט': {
+  s: ['Hold a dumbbell upright against your chest with both hands.',
+      'Feet about shoulder width, toes turned out a little.',
+      'Descend straight down, elbows between your knees.',
+      'Drive up through the middle of your foot.'],
+  m: ['The dumbbell drifting away from your body and pulling you forward.',
+      'A partial descent because the weight is too heavy.'] },
+
+'כפיפת ברך בישיבה': {
+  s: ['Set the pad above your ankles and the backrest against your thigh.',
+      'Keep your back against the rest.',
+      'Curl all the way and pause a moment.',
+      'Return slowly.'],
+  m: ['Leaning forward to help.',
+      'A partial range with far too much weight.'] },
+
+'גשר ישבן': {
+  s: ['Lie on your back, knees bent, feet close to your backside.',
+      'Drive through your heels and lift your hips.',
+      'Pause at the top in a straight line from knee to shoulder.',
+      'Lower under control without settling all the way down.'],
+  m: ['Arching the lower back instead of extending the hip.',
+      'Feet too far away — then the hamstrings take it.'] },
+
+'הרמת רגליים בתלייה': {
+  s: ['Hang from the bar with your shoulders active rather than slack.',
+      'Raise your legs straight, or with the knees bent.',
+      'Curl your hips up slightly at the end — that is where the stomach works.',
+      'Lower slowly without swinging.'],
+  m: ['Swinging your body, which turns it into momentum.',
+      'Lifting from the hip alone, with no curl of the pelvis.'] },
+
+'אופני כושר': {
+  s: ['Set the saddle height: your knee almost straight at the bottom of the stroke.',
+      'Back flat, shoulders loose.',
+      'Push through the full circle, not only downwards.',
+      'Start and finish on a low resistance.'],
+  m: ['A saddle set too low — that is what makes knees ache.',
+      'Rocking your hips side to side on a high resistance.'] },
+
 
 
 };

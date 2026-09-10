@@ -854,6 +854,14 @@ const CORE = [
          ja: '青ねぎ', 'zh-Hans': '青葱', 'zh-Hant': '青蔥',
          ar: 'بصل أخضر' } },
 
+  /* core had white, dark and light bread and no wholemeal, so `לחם מלא`
+     was decided among seven branded rows a point apart. */
+  { id: 'bread-wholemeal', he: 'לחם מחיטה מלאה, ברמן/לחם הארץ',
+    t: { en: 'Wholemeal bread', de: 'Vollkornbrot', es: 'Pan integral',
+         fr: 'Pain complet', it: 'Pane integrale', pt: 'Pão integral',
+         ja: '全粒粉パン', 'zh-Hans': '全麦面包', 'zh-Hant': '全麥麵包',
+         ar: 'خبز قمح كامل' } },
+
   { id: 'bread-white',  he: "לחם לבן, ברמן, אנג'ל, דוידוביץ, אילת",
     t: { en: 'White bread', de: 'Weißbrot', es: 'Pan blanco',
          fr: 'Pain blanc', it: 'Pane bianco', pt: 'Pão branco',

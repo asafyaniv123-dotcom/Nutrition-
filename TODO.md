@@ -913,3 +913,78 @@ mode and no check. It has one now, and it earned its keep twice over:
   adding aliases only half-works.
 - German `Eier` still finds nothing — irregular plural, as recorded.
 - 65 exercises still have no English instructions, 421 lines.
+
+## The names the photo matcher could not see
+
+`foodSearch` matches against `f.na` and `f.alt` — every one of a food's
+eleven names plus its `aka` list — and four of its nine buckets exist for
+exactly that. `sayScore` gated on `f.s`, the name being **displayed**, and
+nothing else.
+
+### Measured before widening anything
+
+Widening a gate is how a candidate list turns into noise, so the cost came
+first. Over the head word of every core food:
+
+| | queries | let more rows through | worst |
+|---|---|---|---|
+| he | 235 | **0** | — |
+| en | 244 | 14 | 2 → 11 |
+| de | 246 | 8 | 220 → 274 |
+
+No flood, and the reason is structural: **`f.alt` contains `f.s`** — it is
+all eleven names folded together — so for the language being read the gate
+was already as wide as it can be. What opens up is only the words that live
+in another language's name or in the `aka` list.
+
+And the benefit, on the words a photograph actually produces: **13 resolve
+differently, 0 lost an answer.**
+
+    ביצת עין    549 CHOCOLATE egg      ->  162 the egg
+    fried egg   265 Tofu, fried        ->  162 the egg
+    אגוזים      559 chocolate-coated   ->  654 walnuts
+    בקון        nothing                ->  468 bacon
+    Spiegelei   nothing                ->  162 the egg
+    ごはん        nothing                ->  129 white rice, cooked
+    きのこ        nothing                ->   22 mushrooms
+
+The last two are the sharpest: `ごはん` and `きのこ` have been in `aka` since
+the core file was written, and the photo matcher had never once used them.
+
+### And the candidate list, which had the same blindness
+
+`sayResolveAI` computes the local answer, then asks `/match` to choose from
+`sayCandidates(q,60)` and **replaces** the local food with whatever comes
+back. A candidate list that could not see the `aka` list would have handed
+the model nothing but chocolate eggs and overwritten the answer that had
+just been fixed. Widening one without the other would have been worse than
+widening neither.
+
+Name matches stay ahead of alt matches in the list. After: `Spiegelei`,
+`ごはん`, `きのこ` and `בקון` each get exactly **one** candidate, the right one.
+
+A row matched under a name the reader cannot see scores 1200 lower — the
+same shape `foodSearch` settled on when it put its four alt buckets
+underneath its five name buckets.
+
+### Wholemeal bread, and three gaps left alone
+
+`לחם מלא` was a lottery: seven branded rows between 179 and 262 kcal, every
+one tier 0, separated by single points, because core had white, dark and
+light bread and no wholemeal. Promoted `לחם מחיטה מלאה, ברמן/לחם הארץ`
+(228, p10.5) — brands kept in the Hebrew where they identify the row and
+dropped from the other ten, the same shape as the milk row. core is 309.
+
+The other three gaps are **not** fixed, each for its own reason:
+
+- **quark** — nothing anywhere in either file. Cannot be done honestly.
+- **rocket** — the only row is `סלט עלי רוקט/עלי בייבי, ארוז, שטראוס`, a
+  branded bag of mixed baby leaves. Promoting it would put a salad mix
+  behind the word for one leaf.
+- **water** — rows *do* exist, tap water and unsweetened soda both at 0
+  kcal, and it is left out on purpose. The app already tracks water in its
+  own place, and a food row would be a second place to log the same glass.
+
+### English instructions: 42 of 96
+
+Third mechanical slice — 11 exercises, 69 lines, 273 of 625.
