@@ -829,3 +829,87 @@ one line and turns "why is this gibberish" into "ah, it is in Hebrew".
 - **Ten languages after that**, 625 lines each once English is complete.
 - Three of the eighteen primaries have no Hebrew instructions at all:
   לחיצת לנדמיין, משיכה בין הרגליים, קירוב ירך במכונה.
+
+## Bread, another sixteen exercises, and what an alias is for
+
+### The bread regression, closed
+
+`לחם קל` came back as toasted white bread at 360 where the light one is 190,
+and the two rows were **one point apart** — both core, both scoring two
+matched words, separated only by the file-order tie-break.
+
+Both scored two because `foodHas` is loose at the trailing edge: `קל` is two
+Hebrew letters, so it takes the boundary path, which checks only the
+character BEFORE a match. In `לחם לבן קלוי` the `קל` of `קלוי` has a space in
+front of it and counts as a hit.
+
+That looseness is deliberate — Hebrew glues prefixes on, and `בצל` has to
+find `בצלים` — so the fix rewards the exact word rather than forbidding the
+loose one. `sayScore` already did that for the FIRST token at 1500 and gave
+the rest nothing, and the rest is exactly where the qualifier lives. 600 for
+each of them: over the file-order and length tie-breaks, far under one
+matched word.
+
+Swept over all 235 Hebrew core head words: **one row changed**, the intended
+one. Checked again over a bread-heavy set against the morning's shipped
+build: two moved, `לחם קל` 360 → 190 and `לחם מלא` 243 → 179.
+
+**`לחם מלא` is a data gap, not a ranking one.** Every candidate is tier 0 —
+core has no plain wholemeal bread row — so the top seven are branded
+products between 179 and 262 separated by single points. Which one wins is a
+lottery either way. Recorded rather than tuned.
+
+### English instructions: 31 of 96
+
+Second mechanical slice — the second exercise of each muscle group — 16
+exercises, 103 lines, bringing the total to 31 of 96 and 204 lines of 625.
+`node tools/build-exercises.mjs` prints it:
+
+    instructions in en: 31 of 96   (65 still Hebrew only)
+
+### What an alias is for, and the guard that was missing
+
+**The rule is a test, not a matter of taste: an alias earns its place only
+when the search FAILS without it.** If the everyday word already finds the
+right food, an alias adds nothing and risks a collision.
+
+Run against the shipped search first. These returned nothing and were added:
+
+    Spiegelei  Rührei  fried egg  scrambled egg  huevo frito  oeuf au plat
+    Haferbrei  porridge  copos de avena  Pellkartoffel
+
+These were tried and NOT added, because they already work: `aubergine`,
+`courgette`, `Hüttenkäse`, `flocons`.
+
+And four were refused for a better reason. `rocket`, `Rauke`, `Magerquark`
+and `Sprudelwasser` all find nothing, and an alias would not help — **core
+has no rocket, no quark and no water row at all.** An alias pointing at a
+food that does not exist is a different bug wearing the same clothes.
+`requesón` and `fromage blanc` were left alone too: neither is cottage
+cheese, and guessing at a dairy product is how somebody logs the wrong fat
+content every morning for a month.
+
+**The guard.** `tools/build-exercises.mjs` has refused a colliding alias
+since the day it was written; `build-food-core.mjs` had the same failure
+mode and no check. It has one now, and it earned its keep twice over:
+
+- It fired on its first run, on three real aliases — and **it was wrong**.
+  `אגוזים` is nobody's name; it is the generic word for nuts, deliberately
+  hung on the walnuts, the cashews and the brazil nuts so the generic word
+  offers all three, and `תפוח אדמה` likewise on both potatoes. Sharing an
+  alias is a feature. The check now refuses only an alias that is another
+  food's NAME.
+- Then proved against a revision with the bug: hanging `Banana` on the oats
+  fails the build with *"core:oats has the alias \"Banana\", which is the
+  NAME of core:banana"*.
+
+### Left open
+
+- **`sayScore` never consults aliases.** `foodSearch` matches against `f.na`
+  — every name and alias — while the photo matcher gates on `f.s`, the
+  display name alone. Measured on `ביצת עין`: the typed search went from
+  nothing to the right egg, and the photo path still returns a **chocolate**
+  egg at 549 kcal, exactly as it did before. Pre-existing, and the reason
+  adding aliases only half-works.
+- German `Eier` still finds nothing — irregular plural, as recorded.
+- 65 exercises still have no English instructions, 421 lines.

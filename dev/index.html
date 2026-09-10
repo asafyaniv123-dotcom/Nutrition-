@@ -5042,6 +5042,15 @@ function sayScore(f,q,toks){
      A row that carries it whole is about that food; one that merely
      contains the letters may be a different word entirely. */
   if(sayWord(f.s,toks[0]))score+=1500;
+  /* And the qualifiers. קל is two letters, so foodHas takes the boundary
+     path, which checks only what comes BEFORE - deliberately, because Hebrew
+     glues prefixes on and a query for בצל has to find בצלים. The cost is that
+     the קל of קלוי counts as a hit, and "לחם קל" came back as toasted bread
+     at 360 where the light one is 190, the two rows one point apart.
+     Rewarding the exact word rather than forbidding the loose one keeps both:
+     600 is over the file-order and length tie-breaks and far under one
+     matched word, so a word someone actually typed still decides. */
+  for(var w=1;w<toks.length;w++)if(sayWord(f.s,toks[w]))score+=600;
   /* The tables weigh some things as bought. An apple with its peel is an
      apple; a walnut with its peel is a walnut and a SHELL, and it reads
      294 where the nut is 654. Preferring the row that says it is peeled

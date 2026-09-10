@@ -157,7 +157,10 @@ const CORE = [
          ja: '練りごま（生・希釈なし）', 'zh-Hans': '芝麻酱（生，未稀释）',
          'zh-Hant': '芝麻醬（生，未稀釋）', ar: 'طحينة خام غير مخففة' } },
 
+  /* The cooked dish and the dry flakes are one row here, and the word
+     people use is the dish. */
   { id: 'oats',         he: 'שיבולת שועל, קוואקר, רגיל ואינסטנט, לא מבושל',
+    aka: ['porridge', 'Haferbrei', 'copos de avena', 'דייסת שיבולת שועל'],
     t: { en: 'Oats, uncooked', de: 'Haferflocken, ungekocht', es: 'Avena, cruda',
          fr: 'Flocons d’avoine, crus', it: 'Fiocchi d’avena, crudi',
          pt: 'Aveia, crua', ja: 'オートミール（未調理）', 'zh-Hans': '燕麦片（未煮）',
@@ -594,7 +597,12 @@ const CORE = [
          ja: '丸麦（炊いたもの）', 'zh-Hans': '珍珠大麦（煮熟）',
          'zh-Hant': '珍珠大麥（煮熟）', ar: 'شعير لؤلؤي مطبوخ' } },
 
+  /* Nobody calls it "egg or omelette cooked without oil". Each of these
+     returned NOTHING before it was added. */
   { id: 'egg-cooked',   he: 'ביצה או חביתה מטוגנת ללא שמן',
+    aka: ['Spiegelei', 'Rührei', 'fried egg', 'scrambled egg',
+          'huevo frito', 'huevos revueltos', 'oeuf au plat', 'œuf au plat',
+          'uovo fritto', 'ovo frito', 'ביצת עין', 'חביתה'],
     t: { en: 'Egg or omelette, cooked without oil',
          de: 'Ei oder Omelett, ohne Öl gegart',
          es: 'Huevo u omelet, cocinado sin aceite',
@@ -651,7 +659,7 @@ const CORE = [
          ar: 'بطاطا (بطاطس) مشوية بالقشر بدون دهون مضافة' } },
 
   { id: 'potato-boiled', he: 'תפוחי אדמה, מבושלים, ללא קליפה, עם מלח, ללא תוספת שומן',
-    aka: ['תפוח אדמה'],
+    aka: ['תפוח אדמה', 'Pellkartoffel'],
     t: { en: 'Potato, boiled and peeled, no added fat',
          de: 'Kartoffel, geschält gekocht, ohne Fettzugabe',
          es: 'Patata, hervida y pelada, sin grasa añadida',
@@ -2301,6 +2309,29 @@ for (const c of CORE) {
      and into the language files. */
   if (Array.isArray(c.aka) && c.aka.length) row.aka = c.aka.slice();
   out.push(row);
+}
+
+/* No alias may be another food's NAME. One word answering for a food it is
+   not is the quietest bug this file could ship: both rows match, one wins on
+   a tie-break, and nothing says the other was ever a candidate.
+
+   Two foods MAY share an alias, and three of them do - אגוזים is hung on the
+   walnuts, the cashews and the brazil nuts so that the generic word offers
+   all three, and תפוח אדמה on both potatoes. The first cut of this check
+   refused that and would have made a deliberate pattern unbuildable.
+
+   Folded, because folded is how a search will compare them. */
+const fold = (x) => String(x).toLowerCase().normalize('NFC').trim();
+const named = new Map();
+for (const row of out) {
+  for (const l of Object.keys(row.t)) named.set(fold(row.t[l]), row.id);
+}
+for (const row of out) {
+  for (const w of (row.aka || [])) {
+    const owner = named.get(fold(w));
+    if (owner && owner !== row.id)
+      unsourced.push(row.id + ' has the alias ' + JSON.stringify(w) + ', which is the NAME of ' + owner);
+  }
 }
 
 if (missing.length) {

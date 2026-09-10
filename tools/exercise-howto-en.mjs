@@ -13,10 +13,15 @@
  * Hebrew, because the app shows them as a numbered list and the build refuses
  * a language whose line count differs.
  *
- * WHICH FIFTEEN. Not chosen by taste: the first exercise of each of the
- * eighteen muscle groups, which is the primary movement for that group in the
- * order the data already declares. Three of the eighteen have no Hebrew
- * instructions yet, so fifteen remain. 101 lines of the 625 that exist.
+ * WHICH ONES, AND WHY NOT BY TASTE. Taken a slice at a time, mechanically:
+ * the first exercise of each of the eighteen muscle groups, then the second,
+ * and so on - which is the primary movement for that group in the order the
+ * data already declares. Three of the eighteen carry no Hebrew instructions at
+ * all, so the first slice was fifteen and the second sixteen.
+ *
+ * 31 of the 96 exercises that have instructions, 204 lines of the 625 that
+ * exist. `node tools/build-exercises.mjs` prints the number that has to go
+ * down, so it is never a matter of anyone remembering.
  *
  * The mistakes matter more than the steps. Every site on earth has the steps;
  * what a person actually needs is to be told the thing they are doing wrong
@@ -154,5 +159,143 @@ export const EN = {
       'Finish by walking, not by stopping dead.'],
   m: ['Adding distance too quickly — that is how overuse injuries happen.',
       'Over-striding, landing on the heel out in front of you.'] },
+
+/* ── the second movement of each group ─────────────────────────────── */
+
+'לחיצת חזה במשקולות': {
+  s: ['Sit on the bench with the dumbbells on your thighs, then lie back as you bring them up.',
+      'Start with the dumbbells over your chest, palms facing forward.',
+      'Lower them to the sides of your chest until your elbow is just below shoulder height.',
+      'Press up on a slight inward arc, without clashing the dumbbells together.'],
+  m: ['Going too deep — that is what makes the front of the shoulder ache.',
+      'Finishing the press by banging the dumbbells together, which loses the tension.',
+      'Too wide a path, which turns it into a fly.'] },
+
+'לחיצת כתפיים במוט': {
+  s: ['Bar on your upper chest, grip a little wider than your shoulders.',
+      'Brace your stomach and your glutes — no leaning back.',
+      'Press overhead, moving your head slightly forward as the bar passes.',
+      'Finish with the bar locked out over the middle of your foot.'],
+  m: ['Arching your back to press — that is a standing bench press.',
+      'Pressing forward instead of up.',
+      'Elbows flaring out to the sides.'] },
+
+'מתח אחיזה תחתונה': {
+  s: ['Grip about shoulder width, palms facing you.',
+      'Start from straight arms with your shoulders down.',
+      'Pull until your chin clears the bar.',
+      'Lower under control to a full hang.'],
+  m: ['Kicking your legs for momentum.',
+      'A partial range that stops halfway.',
+      'Elbows flaring out instead of staying close.'] },
+
+'חתירה במשקולת יד': {
+  s: ['One knee and one hand on the bench, back flat and parallel to the floor.',
+      'Dumbbell in your free hand, arm hanging straight down.',
+      'Pull the dumbbell to the side of your stomach, elbow close in.',
+      'Lower under control to a full stretch.'],
+  m: ['Twisting your torso to lift more.',
+      'Pulling out and away rather than in to your side.',
+      'A rounded back, usually from a bench that is too low.'] },
+
+'משיכת כתפיים במוט': {
+  s: ['Bar in front of you, grip about shoulder width.',
+      'Pull your shoulders straight up.',
+      'Pause a moment and lower slowly.',
+      'Do not roll them and do not bend your elbows.'],
+  m: ['Using your legs to give it a bounce.',
+      'A short range that never reaches the stretch at the bottom.'] },
+
+'גוד מורנינג': {
+  s: ['Bar across your upper back, feet about hip width, knees soft.',
+      'Push your hips back and let your torso come forward.',
+      'Go down to parallel, or as far as the stretch in your hamstrings allows.',
+      'Return by driving your hips forward.'],
+  m: ['A rounded back — this movement does not forgive one.',
+      'Heavy weight before you own the movement.',
+      'Bending the knees, which hides the mobility you do not have.'] },
+
+'כפיפת מרפק במשקולות': {
+  s: ['Dumbbells at your sides, elbows tucked against your ribs.',
+      'Curl the elbow without moving your upper arm.',
+      'Pause at the top without bringing the dumbbell to your shoulder.',
+      'Lower slowly to almost straight.'],
+  m: ['Elbows drifting forward — then the shoulder takes the work.',
+      'Rocking your body to give it momentum.',
+      'A partial range that never straightens at the bottom.'] },
+
+'פשיטת מרפק בחבל': {
+  s: ['High cable with a rope, elbows tucked against your ribs.',
+      'Push down and spread the rope apart at the end.',
+      'Pause a moment at full extension.',
+      'Return to about 90 degrees under control.'],
+  m: ['Elbows travelling backwards.',
+      'Leaning forward to push with your bodyweight.'] },
+
+'אחיזת חוואי': {
+  s: ['A heavy dumbbell in each hand, at your sides.',
+      'Chest open, shoulders back and down.',
+      'Walk a set distance or for a set time.',
+      'Put them down under control rather than dropping them.'],
+  m: ['Shoulders rounding forward under the load.',
+      'Walking fast and losing the posture.'] },
+
+'סקוואט קדמי': {
+  s: ['Bar on the front of your shoulders, elbows high.',
+      'More upright than a back squat.',
+      'Descend straight down, elbows staying up.',
+      'Drive up without letting the elbows drop.'],
+  m: ['Elbows dropping — the bar rolls forward.',
+      'Trying to hold the bar in your hands instead of on your shoulders.'] },
+
+'כפיפת ברך בשכיבה': {
+  s: ['Lie face down with the pad just above your ankles.',
+      'Keep your hips pressed into the bench.',
+      'Curl up close to your backside and pause a moment.',
+      'Lower slowly to almost straight.'],
+  m: ['Hips lifting off the bench — a sign the weight is too heavy.',
+      'Letting it drop on the way down.'] },
+
+'היפ ת׳ראסט': {
+  s: ['Upper back on the bench, bar padded across the crease of your hips.',
+      'Feet close to your backside, shins vertical at the top.',
+      'Drive your hips up to a straight line from knee to shoulder.',
+      'Squeeze your glutes for a second at the top and lower under control.'],
+  m: ['Arching the lower back instead of extending the hip — that is what aches afterwards.',
+      'Chin lifting; look forward instead.',
+      'A partial range that never reaches the straight line.'] },
+
+'הרמת עקבים בישיבה': {
+  s: ['Knees under the pad, the balls of your feet on the step.',
+      'Lower until your calf is fully stretched.',
+      'Rise as high as you can.',
+      'Pause a moment at the top.'],
+  m: ['Short bounces with no range.',
+      'No pause at the top.'] },
+
+'כפיפות בטן בפולי': {
+  s: ['Kneel facing a high cable, rope beside your head.',
+      'Curl your chest down towards your knees.',
+      'The work is in your stomach, not your arms.',
+      'Return slowly against the weight.'],
+  m: ['Pulling with your arms instead of curling your torso.',
+      'Bending at the hip rather than through the stomach.'] },
+
+'טוויסט רוסי': {
+  s: ['Sit with your knees bent and your torso leaning back about 45 degrees.',
+      'Back flat, not rounded.',
+      'Rotate your torso from side to side.',
+      'The rotation comes from your torso, not your arms.'],
+  m: ['A rounded back, which loads the lower spine.',
+      'Swinging your arms while the torso never turns.'] },
+
+'הליכון': {
+  s: ['Start with a few minutes of walking.',
+      'A slight incline of 1–2% is closer to running outdoors.',
+      'Do not hang on to the handrails.',
+      'Finish by slowing down gradually.'],
+  m: ['Holding the rails, which lowers the effort and distorts your posture.',
+      'Jumping straight to a high speed with no warm-up.'] },
+
 
 };
