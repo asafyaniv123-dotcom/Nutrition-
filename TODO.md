@@ -576,3 +576,94 @@ which the app treats as "no answer" and silently falls back from. 500 now.
 The routes also return the API's own error message beside the status code,
 because "the model refused" and "our request is malformed" looked identical
 and cost two deploys to tell apart.
+
+## The plural, and the state penalty in eleven languages
+
+Started as "how many foods have the חומוס shape - a word with no generic
+row to land on". The answer is **few**: 26 of 235 core head words land on a
+preparation nobody asked for, and most of those are right (an apple with its
+peel is an apple; dry gluten is only sold dry). The genuinely wrong ones are
+listed at the bottom.
+
+Looking for it in other languages is what found the real defects.
+
+### The state penalty was Hebrew-only
+
+`f.s` holds a row's name in the READER's language, so every term in
+`SAY_DERIVED` was inert for ten readers in eleven. The same eight foods,
+asked for in each language, priced from the same tables:
+
+| | before | after |
+|---|---|---|
+| lentils | 106 in Hebrew, **338** in eight others | 106 in ten of eleven |
+| pasta | 123 in Hebrew, **348** in eight others | 108-123 in seven |
+
+The terms were read out of the core names - every qualifier used three or
+more times, per language - rather than written from memory. That is how the
+CJK entries came to carry their bracket: Chinese writes 全麦意面（干）, and a
+bare 生 would have matched 花生, which is a peanut.
+
+### "bananas" found nothing at all
+
+Driven in the shipped app, in English:
+
+    bananas 0    cucumbers 0    apples 2 (applesauce)    eggs 1 (a brand)
+    carrots 1 (frozen peas)     strawberries 2 (frozen)  potatoes 2 (sweet)
+
+`foodHas` is a substring test and the singular is inside the plural but not
+the other way round. Hebrew could never show this - עדשים is the same word
+in "עדשים" and in "עדשים מונבטים" - so a year of Hebrew testing was blind to
+it, and it was hurting the TYPED search more than the photo.
+
+Only the query folds, never the name: `foodKey` is the storage key for every
+weight a person has ever corrected, and folding names would orphan all of
+them silently.
+
+Three things the fix had to learn the hard way, each caught by measuring:
+
+1. **The tiers compare whole strings.** Getting the plural into `foodHas`
+   put "eggs" in the `words` bucket, where the shortest name wins, and the
+   shortest name containing "egg" is Eggplant.
+2. **The sorts ask about the query.** `foodWhole(f,q)` with q="eggs" is false
+   for every row that arrived through the fold, so the rule that exists to
+   stop exactly the Eggplant case collapsed to table order - and Eggplant is
+   declared first.
+3. **A derived form has to be a whole word.** `Linsen` folds to `linse`,
+   which is inside `linseed`, and German lentils read in English came back
+   as flaxseed. The probe suite caught it: 531 -> 530.
+
+And one regression of mine that the cross-language measurement caught:
+swapping `sayScore`'s gate from a plain substring to `foodHas` broke every
+compound - 全粒粉パスタ and Vollkornnudeln both lost their food entirely. The
+loose test was loose on purpose. It stays, with the fold added on top.
+
+**Still broken and left alone deliberately:** Italian `-o/-a -> -i/-e`
+(lenticchie), German `Eier` and `Walnüsse` (irregular), and `-en` is
+deliberately NOT stripped because "chicken" would become "chick" and answer
+with chickpeas.
+
+### "Rating", beside a calorie count
+
+Found by driving the photo panel in English rather than in Hebrew. The badge
+marking a number as estimated is `_t('הערכה')`, and all ten languages
+answered it with the appraisal sense - Rating, Bewertung, Voto, 评分, تقييم.
+הערכה is both "an estimate" and "an appraisal"; the wrong one was chosen. No
+Hebrew test could see it, because the key IS the Hebrew word. All six uses
+mean estimate, so there is no second sense to separate - the answers were
+simply wrong, and the neighbouring `מעריך…` was already "Estimating…" in all
+ten, which is what makes it certain rather than a matter of taste.
+
+### Left open
+
+- **`foodSearch` has no state penalty at all.** Typing חומוס gives
+  "חומוס יבש" and פנקייק gives a dry mix. `sayScore` learned this and the
+  typed search did not; they are separate rankers and only one was taught.
+- **Data gaps, where nothing honest can be done by ranking.** חומוס has no
+  generic dip row anywhere - every one is branded; דוחן (millet) and דג לברק
+  exist only raw, in both files. Promotable from the tables into core, with
+  measured numbers already in them: `דג סלמון אפוי ללא תוספת שומן בבישול`
+  (164, p26.5) and `גרעיני דלעת בלי קליפה, לא קלויים, ללא מלח` (559, p30.2).
+- **A non-Hebrew reader can only reach the 306 core rows by name.** The
+  6,931 rows in the other two files carry Hebrew names for every reader, so
+  an English query cannot match them at all. `/match` could bridge it and is
+  never asked, because `sayCandidates` finds no candidates to send.
