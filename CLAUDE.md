@@ -194,6 +194,15 @@ says which is meant. Nothing shows the bar — with no answer `_t` returns the
 part before it — so the Hebrew app is unchanged and a translator sees both
 halves. Reach for it only when one Hebrew word genuinely needs two answers.
 
+**A key is the string `_t` is CALLED with, not the source between the quotes.**
+`_t('למשל:\n200ג עוף')` is filed by the extractor under a backslash and an n
+and asked for at runtime with a line break — two different strings, so the
+lookup misses and `_t` falls back to its own Hebrew argument. Two recipe
+placeholders sat translated into all eleven languages with every answer dead,
+and **nothing in the toolchain could see it**: the template and the language
+files were consistently wrong in the same way, so `--check` stayed green. The
+extractor resolves escapes now; a German screen is what found it.
+
 **A tool that has never caught anything has not been tested.** Twice now a
 detector was written, reported zero, and was believed — and both times it was
 missing the very bugs it had been written for. `find-translated-data.mjs`

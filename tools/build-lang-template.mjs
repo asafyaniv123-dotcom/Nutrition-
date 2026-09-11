@@ -33,9 +33,22 @@ const app = s.slice(0, gs) + ' '.repeat(ge - gs) + s.slice(ge);
 const CALL = /_t\(\\?(['"])((?:(?!\1).)*)\1/g;
 const keys = new Set();
 let m;
+/* The capture is SOURCE text, and the parser has already resolved its escapes
+   by the time _t is called. So a key written `_t('למשל:\n200ג עוף')` is filed
+   here under a backslash and an n, and asked for at runtime with a real line
+   break - two different strings. The lookup missed, _t fell back to the
+   Hebrew, and the two recipe placeholders sat translated into all eleven
+   languages with every one of those answers dead. Resolving the same escapes
+   the file uses makes the filed key and the asked-for key one string again.
+
+   JSON.stringify writes a real newline back out as \n, so the language files
+   still hold one line per key and nothing about their shape changes. */
+const unesc = (t) => t.replace(/\\(n|t|r|\\|'|")/g,
+  (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c === 'r' ? '\r' : c));
 /* The closing quote is escaped too, so the capture can end with a stray
-   backslash that is not part of the key. */
-while ((m = CALL.exec(app))) keys.add(m[2].replace(/\\$/, ''));
+   backslash that is not part of the key. Stripped before unescaping, or that
+   backslash would eat the quote after it. */
+while ((m = CALL.exec(app))) keys.add(unesc(m[2].replace(/\\$/, '')));
 /* Kept apart from the rest: a key with a real _t() call behind it is asked
    for no matter what any collection says about it. LABEL_CTX below needs to
    tell the two apart. */

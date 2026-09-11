@@ -2003,3 +2003,76 @@ whole, shows exactly what that cost:
 rule wants two `_t()` calls and there is one, and its lone-fragment rule looks
 for unbalanced punctuation **inside** the key. The mark is on the outside.
 Worth a rule of its own next time a third one turns up.
+
+## Eleven translations that were never once read
+
+The recipe editor, opened in German. Two of its nine placeholders were still
+in Hebrew:
+
+    #rec-ingredients   למשל:\n200ג עוף\n1 בצל...
+    #rec-instructions  למשל:\nחממו שמן במחבת...\nהוסיפו בצל...
+
+Not missing translations. **Every language had answered both**, years of
+them, and not one answer was ever reachable:
+
+    the dictionary holds   "למשל:\\n200ג עוף…"   a backslash and an n
+    _t is asked for        "למשל:⏎200ג עוף…"    a real line break
+
+`build-lang-template` captures the **source text** between the quotes; the
+JS parser has already resolved the escape by the time `_t` is called. Two
+different strings, so the lookup missed and `_t` fell back to its own
+Hebrew argument — with the German sitting right there in de.json.
+
+And even a hit would have been wrong: the stored *value* carried the literal
+backslash too, so a textarea would have printed `Zum Beispiel:\n200 g` on one
+line.
+
+**No check could see this.** The template check compares the template against
+the language files, and both sides were consistently wrong in the same way.
+It is invisible from inside the toolchain and obvious the moment a German
+screen is read.
+
+So the extractor resolves the escapes the file uses, and both keys and both
+values were migrated in all ten files. `JSON.stringify` writes a real newline
+back out as `\n`, so every key still occupies one line and nothing else about
+those files changed. Scanned first: **exactly two keys in the app hold an
+escape**, and these are they.
+
+    Zum Beispiel:      例:            مثلًا:
+    200 g Hähnchen     鶏肉 200g      ٢٠٠ جم دجاج
+    1 Zwiebel…         玉ねぎ 1個…     بصلة واحدة…
+
+## An alphabetical index that is not alphabetical
+
+Found in the same screen. Six sorts passed `'he'` to `localeCompare` — the
+food library, the recipe A–Z index, three in the people list — while one
+other place already passed `APP_LOCALE`, so the idiom existed and six sites
+had missed it.
+
+**Measured across all eleven before changing anything**, because most of them
+would not care. German, Japanese and Arabic sort identically under `'he'`.
+Three do not:
+
+    es       he  ácido avena ñame naranja nuez
+             es  ácido avena naranja nuez ñame
+    zh-Hans  he  大米 牛奶 苹果 豆腐 香蕉 鸡蛋     codepoint order, no order at all
+             zh  大米 豆腐 鸡蛋 牛奶 苹果 香蕉     dà dòu jī niú píng xiāng
+    zh-Hant differs again, by stroke rather than by pinyin.
+
+Driven end to end: two recipes added through the box in Spanish, *Naranjada*
+and *Ñoquis de calabaza*. The index now reads **Todo · L · N · Ñ**; under the
+old collation it was L · Ñ · N.
+
+### Also driven, and correct
+
+A full recipe typed through the UI — *Linsensuppe mit Zitrone*, six
+ingredients, four numbered steps, tags, notes — renders entirely in German,
+including **🍽 4 Portionen** from the plural key. No Hebrew nodes on the
+editor, the detail view or the list.
+
+### Looked at and left alone
+
+The recipes **tab** and the composed-meal **FAB** are both labelled "Rezepte"
+in German. They are different features — a recipe book and a meal builder —
+and share a word. Not fixed here because the right answer is an editorial
+one about what to call the builder, and that is Asaf's to make.
