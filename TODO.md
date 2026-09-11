@@ -3579,3 +3579,50 @@ The two batch writers (`sayAdd`, the vision board) already disambiguate with
 same millisecond. `deleteMeal` does filter by id, so a collision **would** be
 silent and destructive — which is why it was worth checking rather than
 assuming.
+
+## 96 of 96
+
+    instructions in en: 62 of 96   (34 still Hebrew only)
+    instructions in en: 96 of 96   (0 still Hebrew only)
+
+The last thirty-four. Push-ups, dips, the deadlift, lunges, lateral raises,
+the whole fly family across three machines, face pulls, concentration curls,
+Bulgarian split squats, the ab wheel, the Turkish get-up, burpees, the
+stepper.
+
+**English is the pivot**, so these are written to stand on their own — a
+person under a bar reading English, not a translation of the Hebrew read
+sideways. But they say the same things in the same order, because the app
+draws them as a numbered list and the build refuses a language whose line
+count differs.
+
+Checked before writing rather than after: every one of the 96 compared to
+its Hebrew for step and mistake counts. **0 mismatches**, which is what let
+the build pass first time.
+
+### The mistakes are the part worth having
+
+Every site on earth has the steps. What a person needs is to be told the
+thing they are doing wrong while they are doing it, in the words they would
+use themselves:
+
+    deadlift    Hips rising before the chest, which turns it into a good morning.
+    dips        Going too deep — the shoulder moves into a range it cannot protect.
+    burpees     A rhythm that falls apart after five reps — fewer and cleaner is better.
+    get-up      The arm bending — stop immediately.
+    ab wheel    The lower back arching as you roll out — the sign that you went too far.
+
+Where the Hebrew names a cause, the English names it too: *"hips sagging or
+riding up — the sign that the brace has gone"* rather than a tidier sentence
+that says less.
+
+### Driven
+
+The exercise sheet in English shows Burpees and Deadlift with their four
+steps and their mistakes; in Hebrew the same two still read Hebrew. The
+English name sits in the meta line either way, which is what makes the sheet
+searchable in both.
+
+**`dev/index.html` is untouched this pass** — the content lives in
+`tools/exercise-howto-en.mjs` and reaches the app through
+`data/exercises.json`, which is the whole point of that file existing.

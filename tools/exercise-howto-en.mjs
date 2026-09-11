@@ -569,4 +569,293 @@ export const EN = {
 
 
 
+'שכיבות סמיכה': {
+  s: ['Hands a little wider than your shoulders, body in one straight line from head to heels.',
+      'Brace your abs and your glutes — the body is a single plank.',
+      'Lower until your chest almost touches, elbows back rather than out to the sides.',
+      'Press up without snapping the elbow locked.'],
+  m: ['Hips sagging or riding up — the sign that the brace has gone.',
+      'Half range, stopping halfway down.',
+      'The neck craning forward to "reach" the floor.'] },
+
+'מקבילים': {
+  s: ['Take the bars with your arms straight, shoulders down rather than up by your ears.',
+      'Lean the torso forward a little to put the work on the chest.',
+      'Lower until the elbow is at about 90 degrees.',
+      'Press back up without locking out hard.'],
+  m: ['Going too deep — the shoulder moves into a range it cannot protect.',
+      'Shoulders creeping up towards the ears at the bottom.',
+      'Staying bolt upright when the chest is what you are after.'] },
+
+'דדליפט': {
+  s: ['Bar over the middle of your foot, feet about hip width.',
+      'Grip outside your legs, flat back, chest open, shoulders a little in front of the bar.',
+      'Push the floor away with your legs and stand — the bar stays against your shins.',
+      'Finish with hips and glutes locked, without leaning back.'],
+  m: ['A rounded lower back — end the set there.',
+      'Hips rising before the chest, which turns it into a good morning.',
+      'The bar drifting away from you and loading the back.'] },
+
+'לאנג׳': {
+  s: ['Step forward a comfortable distance, torso tall.',
+      'Lower until both knees are at about 90 degrees.',
+      'The back knee comes close to the floor without touching.',
+      'Drive back through the front heel.'],
+  m: ['The front knee travelling well past the toes.',
+      'The torso tipping forward and loading the back.',
+      'Too short a step, which turns it into a one-legged squat.'] },
+
+'הרחקת כתף': {
+  s: ['Dumbbells at your sides, elbow slightly bent and kept that way.',
+      'Raise out to the sides, to shoulder height and no further.',
+      'Lead with the elbow, not with the hand.',
+      'Lower slowly — the useful part is the way down.'],
+  m: ['Too much weight, which drags the traps into the work.',
+      'Raising above shoulder height.',
+      'Swinging from the body instead of moving the shoulder alone.'] },
+
+'לחיצת חזה במכונה': {
+  s: ['Set the seat height so the handles sit at mid-chest.',
+      'Back and shoulders flat against the pad.',
+      'Press forward to almost straight.',
+      'Return under control until you feel a light stretch across the chest.'],
+  m: ['A seat set too low or too high — the press then runs on a diagonal.',
+      'Shoulders lifting off the pad.',
+      'Letting it snap back with no braking.'] },
+
+'פרפר במשקולות': {
+  s: ['Lie on a flat bench, dumbbells above your chest, elbows slightly bent and fixed there.',
+      'Open out to the sides in a wide arc until the chest stretches.',
+      'Stop when the elbow is at about shoulder height.',
+      'Close along the same arc, without bending the elbow any further.'],
+  m: ['Bending the elbow on the way — that turns it into a press.',
+      'Going too deep, which loads the shoulder joint.',
+      'A weight heavy enough to force you to give up the arc.'] },
+
+'פרפר בפולי': {
+  s: ['Set the pulleys high, take a handle in each hand and step forward.',
+      'Torso leaning a little forward, elbows slightly bent.',
+      'Bring your hands together in front of your chest along an arc.',
+      'Return under control until the chest stretches.'],
+  m: ['Straightening the elbow, which turns it into a triceps pushdown.',
+      'The torso rocking back and forth to give it momentum.',
+      'A short range that never reaches the stretch.'] },
+
+'פרפר במכונה': {
+  s: ['Set the seat so the handles sit at chest height.',
+      'Back against the pad, elbows slightly bent.',
+      'Close until the handles almost touch.',
+      'Open under control to the stretch, without letting go all at once.'],
+  m: ['Opening too far back, past the line of the body.',
+      'Shoulders rolling forward as you close.'] },
+
+'שכיבות סמיכה בשיפוע': {
+  s: ['Hands on a bench or a step, body in one straight line.',
+      'The higher your hands, the easier it is.',
+      'Lower your chest to the surface, elbows back.',
+      'Press back up without breaking the line.'],
+  m: ['Hips sagging because the abs are not braced.',
+      'Hands too wide, which loads the shoulder.'] },
+
+'פולאובר': {
+  s: ['Lie across the bench or along it, one dumbbell in both hands above your chest.',
+      'Lower it back over your head in an arc, elbows slightly bent.',
+      'Go down until the chest and lats stretch.',
+      'Bring it back over your chest along the same arc.'],
+  m: ['Going past the stretch — that is load on the shoulder.',
+      'Letting the hips drop to reach lower.',
+      'A heavy weight in an exercise that is entirely about range.'] },
+
+'פייס פול': {
+  s: ['Pulley at face height, rope in both hands.',
+      'Pull the rope towards your forehead, elbows high.',
+      'Turn your palms outwards at the end of the pull.',
+      'Return under control.'],
+  m: ['Pulling to the chest instead of to the face.',
+      'A heavy weight, which destroys the external rotation.',
+      'Low elbows, which turn it into a row.'] },
+
+'הרחקת כתף בפולי': {
+  s: ['Stand beside the low pulley, handle in the far hand.',
+      'Raise out to the side to shoulder height, elbow slightly bent.',
+      'Pause for a moment at the top.',
+      'Lower slowly against the cable.'],
+  m: ['Leaning away to get higher.',
+      'Raising above shoulder height.'] },
+
+'הרמה קדמית': {
+  s: ['Dumbbells in front of your thighs, palms facing you.',
+      'Raise forward to shoulder height, elbow nearly straight.',
+      'Pause for a moment.',
+      'Lower slowly.'],
+  m: ['Swinging from the lower back.',
+      'Raising above shoulder height, which passes the load to the traps.',
+      'Both arms at once with a weight that drags the torso backwards.'] },
+
+'פרפר הפוך': {
+  s: ['Hinge the torso forward to almost parallel, back flat.',
+      'Dumbbells hanging, elbows slightly bent.',
+      'Open out to the sides to shoulder height.',
+      'Lower under control.'],
+  m: ['Pulling with the shoulder blades, which turns it into a row.',
+      'The torso rising as you go.',
+      'A heavy weight that prevents a clean opening.'] },
+
+'פרפר הפוך במכונה': {
+  s: ['Sit facing the machine, chest against the pad.',
+      'Take the handles, elbows slightly bent.',
+      'Open out to the sides as far as the line of your body.',
+      'Return under control.'],
+  m: ['Opening past the line of the body.',
+      'The chest coming away from the pad.'] },
+
+'חתירה אנכית': {
+  s: ['Bar in front of your thighs, hands about shoulder width.',
+      'Pull straight up along your body, elbows leading.',
+      'Stop when the bar reaches chest height.',
+      'Lower under control.'],
+  m: ['Too narrow a grip, which rotates the shoulder inwards — that is the pain.',
+      'Pulling above chest height.'] },
+
+'קלין אנד פרס': {
+  s: ['Kettlebell between your feet, back flat.',
+      'Pull it to your shoulder in one movement and let it settle on your forearm.',
+      'Press overhead until your arm is straight.',
+      'Lower to the shoulder and then to the floor, under control.'],
+  m: ['The kettlebell landing on your wrist — the sign of an untidy clean.',
+      'Pressing with the back instead of the shoulder.'] },
+
+'כפיפת ריכוז': {
+  s: ['Sit down, elbow resting against the inside of your thigh.',
+      'Dumbbell hanging from a straight arm.',
+      'Curl to shoulder height without moving the elbow.',
+      'Lower slowly to straight.'],
+  m: ['Lifting the elbow off the thigh to help.',
+      'A heavy weight in an exercise whose whole point is isolation.'] },
+
+'כפיפת מרפק בשיפוע': {
+  s: ['Sit on a bench set to 45–60 degrees, arms hanging behind the line of your body.',
+      'Curl without moving your upper arm.',
+      'Pause for a moment at the top.',
+      'Lower all the way to straight — the stretch is the whole idea.'],
+  m: ['Letting the elbow drift forward, which cancels the stretch.',
+      'A partial range that never straightens at the bottom.'] },
+
+'מקבילים לטרייספס': {
+  s: ['Stay as upright as you can — that is what moves the load to the triceps.',
+      'Lower to 90 degrees at the elbow.',
+      'Elbows back and close in, not out to the sides.',
+      'Press back up without locking out.'],
+  m: ['Leaning forward, which hands it to the chest.',
+      'Going too deep.'] },
+
+'בעיטת טרייספס': {
+  s: ['Torso hinged forward, upper arm parallel to the floor and held there.',
+      'Elbow at 90 degrees to start.',
+      'Extend the elbow back until the arm is straight.',
+      'Return slowly to 90.'],
+  m: ['Swinging the whole arm instead of extending the elbow.',
+      'A heavy weight that stops you straightening fully — which is the exercise.'] },
+
+'האק סקוואט': {
+  s: ['Back and shoulders against the pad, feet in the middle of the platform.',
+      'Release the catch and lower to 90 degrees at the knee.',
+      'Knees tracking in the direction of your toes.',
+      'Drive up without snapping into the lock.'],
+  m: ['Feet too low on the platform — that is load on the knee.',
+      'Hips lifting off the pad at the bottom.'] },
+
+'פשיטת ברך': {
+  s: ['Set the pad so it sits just above your ankle.',
+      'Back against the seat.',
+      'Extend the knee to straight and pause for a moment.',
+      'Lower slowly against the weight.'],
+  m: ['Kicking out sharply and locking at the end.',
+      'Hips lifting off the seat.',
+      'Letting it drop back freely.'] },
+
+'לאנג׳ בהליכה': {
+  s: ['Step forward and lower until both knees are at 90 degrees.',
+      'Drive through the front heel and move into the next step.',
+      'Torso tall throughout.',
+      'Keep walking in a straight line.'],
+  m: ['Short steps, which turn it into a squat.',
+      'The torso tipping forward under a heavy weight.',
+      'Losing your balance from looking down.'] },
+
+'סקוואט בולגרי': {
+  s: ['Back foot up on a bench behind you.',
+      'Front foot far enough forward that the knee does not travel far past the toes.',
+      'Lower straight down to 90 degrees at the front knee.',
+      'Drive through the front heel.'],
+  m: ['The front foot too close to the bench — that is the knee pain.',
+      'Leaning forward, which hands it entirely to the glute.',
+      'Losing balance from an unsteady back foot.'] },
+
+'עליות מדרגה': {
+  s: ['Pick a height where your thigh comes to about parallel.',
+      'Rise by pushing only through the foot that is on the step.',
+      'Do not push off with the lower leg.',
+      'Come down slowly on the same leg.'],
+  m: ['Hopping off the lower leg — then the working leg is not working.',
+      'Dropping down instead of lowering under control.'] },
+
+'גלגל בטן': {
+  s: ['Kneel on a mat, wheel under your shoulders.',
+      'Brace your abs and glutes — the hips do not drop.',
+      'Roll forward as far as you can control.',
+      'Pull back with your abs, not with your arms.'],
+  m: ['The lower back arching as you roll out — the sign that you went too far.',
+      'Pulling with the shoulders instead of the abs.'] },
+
+'טיפוס הרים': {
+  s: ['Push-up position, body in one straight line.',
+      'Bring one knee to your chest and swap.',
+      'The hips stay low and steady.',
+      'Keep the rhythm even.'],
+  m: ['Hips rising as the speed goes up.',
+      'Hands drifting out from under the shoulders.'] },
+
+'ווקאום': {
+  s: ['Breathe all the air out.',
+      'Draw your stomach in towards your spine.',
+      'Hold for 10–20 seconds and breathe normally through your nose.',
+      'Release slowly.'],
+  m: ['Holding your breath instead of breathing normally.',
+      'Squeezing the stomach outwards instead of inwards.'] },
+
+'טורקיש גט אפ': {
+  s: ['Lie down, kettlebell in a straight arm above your chest.',
+      'Move through elbow, hand, bridge and then to kneeling.',
+      'Eyes on the kettlebell the whole way.',
+      'Return through the same stages in reverse.'],
+  m: ['The arm bending — stop immediately.',
+      'Rushing between the stages instead of settling into each one.',
+      'A heavy weight before the movement is solid with none.'] },
+
+'קפיצה בחבל': {
+  s: ['Elbows in against your body, the turn comes from the wrist.',
+      'Low jumps, on the balls of your feet.',
+      'Soft knees on landing.',
+      'Start with short sets.'],
+  m: ['High jumps, which tire you fast and load the shin.',
+      'Turning with the whole arm instead of the wrist.'] },
+
+'ברפי': {
+  s: ['From a squat, plant your hands and shoot your legs back.',
+      'One push-up (or skip it).',
+      'Bring your legs back to the squat.',
+      'Jump up with your hands overhead.'],
+  m: ['Hips sagging during the push-up.',
+      'Landing on locked legs.',
+      'A rhythm that falls apart after five reps — fewer and cleaner is better.'] },
+
+'סטפר': {
+  s: ['Stand tall, do not hang on the handles.',
+      'Step through the whole foot rather than just the toes.',
+      'Keep the pace even.',
+      'Start slow and build.'],
+  m: ['Leaning on the rail, which takes away half the effort.',
+      'Small fast steps instead of a full range.'] },
+
 };
