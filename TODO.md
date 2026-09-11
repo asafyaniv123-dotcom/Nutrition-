@@ -1494,3 +1494,139 @@ name, or that the name already ends with (*"Griechischer Joghurt Arla" +
 "Arla"*). Nine helper cases checked in node before shipping.
 
 **After, same eight queries against the deployed worker: 0 of 74.**
+
+## "0 g Fett", on a yogurt nobody measured the fat of
+
+The Worker refuses a live shelf row that is missing any of the four numbers,
+and says why: *"a missing number defaulted to 0 would show 0 g carbohydrate
+on a yogurt — a figure nobody measured, presented beside ones somebody did."*
+
+Both barcode lookups in the app did exactly that. They guarded on the calorie
+count alone and then wrote `(nu.proteins_100g || 0)` for each macro.
+
+Measured against 113 real Open Food Facts products that carry a calorie
+count, **two are missing a macro**:
+
+    0015000047306  Strawberry           429 kcal, no carbohydrate
+    4903019006406  十勝のむヨーグルト    31 kcal, no fat
+
+Small, and not a rounding error — somebody scans that packet and their fat
+for the day is wrong by whatever was in it, with nothing on screen to say so.
+
+So `offMacros` reads all four or returns nothing, and both call sites use it.
+The honest answer already existed on the screen: `scanNotFound(code, true)`
+points at the label photo and manual entry, which read the printed panel —
+where the missing number actually is. Its sentence widened from "has no
+nutritional values" to "its table is incomplete", which is truer of the old
+case too, and was re-answered in eleven languages.
+
+### Measured and NOT changed: the name Open Food Facts gives back
+
+The app asks OFF for `product_name_he` and prefers it, for every reader, and
+never asks for the reader’s own language. That reads like a leftover from
+when this was a Hebrew app, so it was measured rather than assumed:
+
+| | |
+|---|---|
+| Israeli shelf, 43 products, German reader | 42 shown a Hebrew name, **1** has a Latin alternative at all |
+| 127 products worldwide | `product_name_he` overrode a reader’s own name **0** times |
+| German shelf, 60 products | 38 carry `product_name_de`, **7** differ from what is shown |
+
+And those seven are a wash, not an improvement:
+
+    "Joghurt dressing light"  ->  "Rewe"       the brand, entered as the name
+    "Brot"  ->  "Brot /// 1x Burger Buns im Eis /// 0,5 x BB frisch"
+    "Wurst"  ->  "Knüppelsalami"               genuinely better
+
+`lc=` does not relabel `product_name` either, tested on three products in
+four languages. So the change would trade one arbitrary name for another.
+**Left alone**, and written down so it is not re-proposed.
+
+## "1 Tag an denen du geschrieben hast"
+
+The journal, driven for the first time with real entries typed into the box,
+in German. Three of its sentences were built out of fragments:
+
+    days.length +" "+ (days.length===1?_t("יום"):_t("ימים")) +" "+ _t("שכתבת בהם")
+    _t("לא מצאתי") +" \""+ esc(q) +"\" "+ _t("בשום יום.")
+
+The first freezes the relative clause in the plural, so German says *an denen*
+over the number 1. The second fixes the word order in Hebrew’s, and no other
+language can move the quoted word — German wants it first:
+
+    was   Nicht gefunden "zucchini" an keinem Tag.
+    now   An keinem Tag steht „zucchini“.
+    was   1 Tag an denen du geschrieben hast
+    now   1 Tag, an dem du geschrieben hast
+
+Each language now picks its own quotation marks too — „…“, « … », 「…」 —
+which gluing had also made impossible.
+
+## "🔥 3 3 Tage am Stück"
+
+Found by asking where else a plural is chosen by hand. The streak badge on
+the home screen had already been converted to a plural key — and the badge
+draws the number itself, in its own bold span:
+
+    <span class="stk-n">3</span><span class="stk-w">3 Tage am Stück</span>
+
+Every language, Hebrew included. A plural key needs **no `{n}` hole to
+inflect** — `_t` reads the category from `vars.n` either way — so the word
+beside a number the layout draws should be numberless and still plural. Two
+such keys now exist, for the badge’s two states.
+
+### And six counted sentences that chose their own plural
+
+| screen | was |
+|---|---|
+| toast, items added | `n===1?"פריט נוסף":"פריטים נוספו"` |
+| my numbers, sessions | `now.sessions===1?"אימון":"אימונים"` |
+| closet, times worn | `n===1?"פעם":"פעמים"` |
+| week summary, workouts | `workouts===1?"אימון":"אימונים"` |
+| streak badge + overlay | `st.total===1?"יום שרשמת בו":"ימים שרשמת בהם"` |
+| week planner, span length | `_L>1?_L+" ימים":"יום"` |
+
+A ternary has two branches. CLDR gives Hebrew three categories and Arabic
+six, so **"2 ימים" can never become "יומיים"** and *2 أيام* can never become
+*يومان*. Six new plural keys, answered in eleven languages — and the people
+list stopped saying "1 Tage".
+
+One correction while passing: **שרשמת is "recorded", not "wrote".** The
+streak counts a day on which anything was logged — a meal, a workout, water,
+steps — and every language had it as the journal’s own word. With both keys
+now in the same build, one key one meaning had to hold in both directions.
+
+### The check that could not see any of it
+
+`find-glued-sentences` wants a VALUE between the two `_t()` calls, because an
+array of labels has only punctuation there. A hand-rolled plural puts the
+value **before** both fragments and a ternary between them, so the gap holds
+nothing but a colon and every filter throws it away.
+
+A fourth rule, narrowed by what it reported on its first run — the test must
+compare against **1** (`_cmCelebrate===2` is a mode flag, not a count) and the
+two branches must **begin alike** (`דלג`/`ביטול` is skip versus cancel, not a
+singular and a plural). With both, the two false pairs go quiet:
+
+    against HEAD   9 found
+    after          0
+
+**And it can finally fail.** This check printed its findings and exited 0, so
+nothing it found could ever break a build. The reason was its one permanent
+finding: a worked example, `"למשל:\\n200ג עוף..."`, where `200ג` is exactly
+what a person would type. A key carrying its own line breaks is an example,
+not a sentence cut in half — so it is no longer reported, and the check exits
+1 like the other six.
+
+### Open: the other family, 48 sites
+
+Driving *Meine Zahlen* found **"1 Sätze"** — `now.sets + " " + _t("סטים")`.
+No ternary, so neither the old rules nor the new one sees it. A scan for "a
+count concatenated straight onto a bare Hebrew noun" returns **48**, of which
+the inflecting ones are סטים, חזרות, תרגילים, אימונים, שנים, שניות, דקות,
+משימות, שאלות, רשומות, משפטים, מנות, פריטים. The rest are unit abbreviations
+(גרם, קג, דק) that the units check already governs.
+
+Its own pass: the fix is the same numberless-plural-key shape, the scan needs
+its own narrowing, and folding it into this one would have made a change too
+big to verify.

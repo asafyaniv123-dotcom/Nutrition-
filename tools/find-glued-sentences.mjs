@@ -10,6 +10,7 @@
 import fs from 'fs';
 
 const CR = String.fromCharCode(13), LF = String.fromCharCode(10);
+const BS = String.fromCharCode(92);       // a literal backslash, in source text
 /* Takes a path so it can be pointed at an older revision. */
 const FILE = process.argv[2] || 'dev/index.html';
 const s = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
@@ -44,10 +45,17 @@ for (const m of app.matchAll(/_t\((['"])((?:(?!\1).)*)\1/g)) {
   /* Likewise the maqaf: ל־100 is Hebrew punctuation joining a word to a number,
      not a placeholder that got welded shut. */
   const welded = key.replace(/[־–-]/g, ' ');
+  /* A key carrying its own line breaks is a worked EXAMPLE - the placeholder
+     that shows what to type into the recipe box, "למשל:\n200ג עוף\n1 בצל..."
+     - and the welded-number rule fires on it every time, because 200ג is
+     exactly what a person would write. An example is not a sentence cut in
+     half, which is what this rule is for, and it was the single finding that
+     kept this check from being able to fail at all. */
+  const example = key.indexOf(BS + 'n') >= 0;
   let why = '';
   if (opens !== closes) why = 'an unclosed bracket';
   else if (quotes % 2) why = 'one lone quote';
-  else if (/\d[֐-׿]|[֐-׿]\d/.test(welded)) why = 'a number welded to a word';
+  else if (!example && /\d[֐-׿]|[֐-׿]\d/.test(welded)) why = 'a number welded to a word';
   if (why) LONE.push({ line: app.slice(0, m.index).split(LF).length, key, why });
 }
 
@@ -152,6 +160,48 @@ if (BR.length) {
     console.log('    line ' + String(f.line).padStart(6) + '  ' + JSON.stringify(f.a) + '  +<br>+  ' + JSON.stringify(f.b));
 }
 
+/* ── a plural chosen by hand ──
+   n===1 ? _t(singular) : _t(plural). The pair rule cannot see this: the value
+   sits BEFORE both fragments and only a colon sits between them, so the "must
+   contain an identifier" filter throws it away. That is how
+
+       days.length +' '+ (days.length===1?_t('יום'):_t('ימים')) +' '+ _t('שכתבת בהם')
+
+   put "1 Tag an denen du geschrieben hast" on a German screen.
+
+   It is a bug on its own terms too, not only a glued one. A ternary has two
+   branches; CLDR gives Hebrew three plural categories and Arabic six, so "2
+   ימים" can never become "יומיים". _t already selects a category with
+   Intl.PluralRules whenever a key answers with an object, so the fix is to
+   make it a plural key and pass the count.
+
+   Narrowed by two things, both learned from what it reported on its first
+   run. The test has to compare against 1 - `_cmCelebrate===2` chooses between
+   "goal completed" and "milestone completed" and is a mode flag, not a count.
+   And the two branches have to BEGIN alike, which a singular and a plural of
+   one word do - יום/ימים, פעם/פעמים, אימון/אימונים - and two different words
+   do not: `_cropQ.length>1?_t('דלג'):_t('ביטול')` is skip versus cancel.
+   With both, the two false pairs go quiet and all six real ones stay. */
+const PLU = [];
+const PLU_RE = new RegExp(
+  '([A-Za-z_$][\\w.$\\[\\]]*)\\s*(?:===|==|!==|!=|>|<|>=|<=)\\s*1\\s*\\?' +
+  '([^;' + LF + ']{0,200})', 'g');
+const PLU_T = /_t\((['"])((?:(?!\1).)*)\1\)/g;
+for (const m of app.matchAll(PLU_RE)) {
+  const ts = [...m[2].matchAll(PLU_T)].map((x) => x[2]);
+  if (ts.length < 2) continue;
+  const a = ts[0], b = ts[1];
+  if (a === b || a[0] !== b[0]) continue;
+  PLU.push({ line: app.slice(0, m.index).split(LF).length, count: m[1], a, b });
+}
+if (PLU.length) {
+  console.log('');
+  console.log('a plural chosen by hand rather than by a plural key: ' + PLU.length);
+  for (const f of PLU)
+    console.log('    line ' + String(f.line).padStart(6) + '  ' + f.count + '  ' +
+      JSON.stringify(f.a) + ' / ' + JSON.stringify(f.b));
+}
+
 /* group by line so a three-part sentence shows as one finding */
 if (LONE.length) {
   console.log('');
@@ -174,3 +224,8 @@ for (const r of rows.slice(0, 22)) {
   console.log('  line ' + String(r.line).padStart(6) + '  [' + r.n + ']  ' +
     JSON.stringify(h.a).slice(0, 34) + '  <' + mid + '>  ' + JSON.stringify(h.b).slice(0, 30));
 }
+
+/* This check printed its findings and exited 0, so nothing it found could
+   ever fail a build - and the one finding it always had, a worked example, is
+   why. With that example no longer reported, it can say so properly. */
+if (rows.length || BR.length || LONE.length || PLU.length) process.exit(1);

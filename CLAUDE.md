@@ -105,7 +105,14 @@ the rest.
    and fat is F; no dictionary can say both.
 2. **A sentence is one key.** Never assemble one from fragments — `_t('(כעת') +
    n + ')'` hands over half a parenthesis. `find-glued-sentences.mjs` catches
-   both the pair shape and the lone fragment.
+   the pair shape, the lone fragment, the pair split over a `<br>`, and a
+   **plural chosen by a ternary**. That last one is a rule of its own: a
+   ternary has two branches, Hebrew has three plural categories and Arabic
+   six, so `n===1?_t('יום'):_t('ימים')` can never say *יומיים*. Answer with a
+   plural key — a dictionary value that is an object of categories — and pass
+   the count as `{n:…}`; `Intl.PluralRules` does the grammar. The key needs
+   no `{n}` hole to inflect, which is how a badge that draws the number
+   itself still gets the right word beside it.
 3. **A list that is compared or stored is data.** Translate it at the point of
    display, never in the declaration. `find-translated-data.mjs` is the check,
    and it has caught fourteen collections that looked exactly like labels.
