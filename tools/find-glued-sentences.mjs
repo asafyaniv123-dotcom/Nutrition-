@@ -17,6 +17,23 @@ const s = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
 const gs = s.indexOf('id="game-src"'), ge = s.indexOf('</script>', gs);
 const app = s.slice(0, gs) + s.slice(ge);
 
+/* ── an HTML entity hides a glued sentence ──
+   The pair rule's gap is [^;\n], because a semicolon ends the statement and a
+   match must not run past one. But an ENTITY ends in a semicolon too, and
+   this app separates with &middot; and &times; everywhere - so any sentence
+   glued across one was invisible. That is what hid
+
+       _t('מעולה! סיימנו אימון') +' '+ … +' &#127881; '+ _t('עכשיו אימון')
+
+   which had been printing "NaN 🎉 Jetzt trainieren B." in all eleven.
+
+   So the pair rule reads a copy with the entity's semicolon masked to a
+   character nothing else uses. Every offset is identical, so a line number
+   taken from it is still right, and a real statement-ending semicolon still
+   stops a match. */
+const SEMI = String.fromCharCode(1);
+const scan = app.replace(/&#?[a-zA-Z0-9]{1,8};/g, (m) => m.slice(0, -1) + SEMI);
+
 /* A _t call, then up to ~60 characters of anything that is not a _t call, then
    another _t call - all inside one expression (no semicolons or line breaks). */
 const re = /_t\((['"])((?:(?!\1).)*)\1\)((?:[^;\n]{0,70}?))_t\((['"])((?:(?!\4).)*)\4\)/g;
@@ -61,14 +78,14 @@ for (const m of app.matchAll(/_t\((['"])((?:(?!\1).)*)\1/g)) {
 
 const hits = [];
 let m;
-while ((m = re.exec(app)) !== null) {
+while ((m = re.exec(scan)) !== null) {
   /* Rewind so every _t gets a turn as the left half of a pair.
      Without this a match CONSUMES its text even when the filters below throw it
      away, so a real glued sentence sitting after a false one on the same line
      is never examined. That is what hid "עברו {n} ימים": the ternary before it
      matched first, was correctly discarded, and took the real pair with it. */
   re.lastIndex = m.index + 1;
-  const between = m[3];
+  const between = m[3].split(SEMI).join(String.fromCharCode(59));
   if (!/\+/.test(between)) continue;
   /* Markup between two fragments usually means two blocks rather than one
      sentence - </div><div>, or a span wrapping a value. <br> is the
@@ -114,6 +131,17 @@ while ((m = re.exec(app)) !== null) {
   /* An object key whose value is an array or object leaves "m:[" rather than
      "m:" - same shape, one character further along. */
   if (/:[[{]$/.test(bare)) continue;
+
+  /* A second half that may not appear at all is not the second half of a
+     sentence. Reading through entities turned up three of these at once -
+
+         _t('מחובר') + (src.last ? ' &middot; ' + _t('סונכרן') + ago : '')
+
+     "Connected · Synced 2h ago", where the part after the separator is
+     conditional. Two independent labels sharing a line, each translatable on
+     its own; a sentence cannot have an optional ending. The tell is a ternary
+     OPENING inside the gap, so the second _t sits in one of its branches. */
+  if (/\?/.test(between.replace(/(['"])(?:(?!\1).)*\1/g, ''))) continue;
 
   /* An ARGUMENT LIST is the last shape that looks glued from outside:
      inputRow(label, id, value, placeholder) puts two _t calls either side of

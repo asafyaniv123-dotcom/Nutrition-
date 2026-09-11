@@ -1893,3 +1893,113 @@ quietly skipped.
 
 That closes the open item from tick 12 — *"a hardcoded English word is
 invisible to find-unwrapped-hebrew"* — with a tool rather than with prose.
+
+## A box labelled kg, for a reader who chose pounds
+
+The plan wizard, built end to end for the first time. **"3 Sätze × 10 Whd."**
+fits at 360px with no overflow, which is what this was meant to confirm —
+and four other things turned up on the way.
+
+### The unit the box asks for, and the unit it stores
+
+Two inputs in the whole file carried a hardcoded unit, and they were the only
+two bare `>kg<` in the markup: the wizard’s starting weight, and the weight
+column on the screen where a plan is actually run.
+
+The display half is Rule 4. **The storage half is worse.** `logProgEntry` did
+
+    var weight = parseFloat(wInp.value) || 0;
+
+and everything downstream treats that as kilograms, because `fmtWeight`
+converts *from* kg. So an imperial reader typing 135 had **135 kilograms**
+recorded and was shown **297.6 lb** back. The line directly above that box
+already printed `fmtWeight(lastEntry.weight)`, so the same card showed both
+units at once.
+
+The app’s own idiom is written down elsewhere, in a comment that says it:
+*"The box shows the display unit, so convert back before storing."* These two
+boxes never did it. Driven afterwards, in German with `app_units=imperial`:
+
+    typed 135 into a box labelled lb  ->  stored 61.23496995 kg  ->  "135 lb"
+
+### And six more that printed a stored kilogram raw
+
+Logging one set made the rest of the family visible at once — the PR badge,
+the weights-tracking chip, a PR row, and the three numbers on the progress
+card. All six now go through `fmtWeight`, which is also why the badge had
+read **142.88159655kg**: 315 lb is that many kilograms exactly, and nothing
+was rounding it. After: **315 lb**.
+
+## "NaN 🎉 Jetzt trainieren B."
+
+On screen, between workouts, in every language.
+
+    _t('מעולה! סיימנו אימון') +' '+ dayLetter.charCodeAt(0)-65 +' 🎉 '+ …
+
+The left side is already a **string**, so the `-65` is arithmetic on text.
+The author meant an index and left out `String.fromCharCode`; the workout
+just finished is simply the letter before this one. It was also a glued
+sentence — two fragments with a letter welded into each and a full stop on
+the end — so it is one key now: **"🎉 Stark — Training A geschafft. Jetzt
+Training B."**
+
+### Why the check could not see it: an HTML entity
+
+The pair rule’s gap is `[^;\n]`, because a semicolon ends the statement and a
+match must not run past one. **But an entity ends in a semicolon too**, and
+this app separates with `&middot;` and `&times;` everywhere — so any sentence
+glued across one was invisible. The 🎉 was `&#127881;`.
+
+The rule now reads a copy with the entity’s semicolon masked to a character
+nothing else uses, so every offset stays identical and a real
+statement-ending semicolon still stops a match. That surfaced four pairs, of
+which three were the same false shape:
+
+    _t('מחובר') + (src.last ? ' &middot; ' + _t('סונכרן') + ago : '')
+
+**A second half that may not appear at all is not the second half of a
+sentence** — two independent labels sharing a line. A ternary opening inside
+the gap is the tell, and with that narrowing:
+
+    against HEAD   1, the NaN line
+    after          0
+
+## "תוכנית מסה · 3 Trainings"
+
+The plan’s name is **stored** as the Hebrew it was picked from — which is
+right and deliberate: the chips compare against it to know which is selected,
+and a plan keeps its identity when the reader changes language. The chip
+already translates at display, exactly as Rule 3 asks.
+
+What was missing is the other half. Five places printed the stored value
+straight out, so a plan picked as *Aufbauplan* came back as תוכנית מסה on the
+summary, the card, the plan screen and the header. Same split `exLabel` makes
+for an exercise, same fix: `progLabel` translates a name the list knows and
+passes anything else through, because a name someone typed is theirs.
+
+The name box gets one extra care: it is pre-filled with the **label** now, and
+if it is saved unchanged the **stored key** is kept — so a plan does not
+quietly stop being translatable just because someone looked at the box.
+
+And two save toasts were a name glued to "saved!". One key with a hole, so a
+language can put the name where its grammar wants it: *¡{name} guardado!*,
+*已保存 {name}！*
+
+## Two question marks that could not move
+
+    _t('כמה') +' '+ unitDef(k).many +'?'
+    _t('איך קוראים לאימון') +' '+ dayLetter +'?'
+
+Both read fine in German and can be right in no other language, because the
+mark is outside the key. The sibling key `כמה גרם?`, which has always been
+whole, shows exactly what that cost:
+
+    es  ¿Cuántos gramos?      an opening mark, at the other end
+    fr  Combien de grammes ?  a space before it
+    ja  何グラムですか？        a full-width mark
+    ar  كم جرامًا؟             a different character entirely
+
+`find-glued-sentences` misses this shape on purpose-built grounds: its pair
+rule wants two `_t()` calls and there is one, and its lone-fragment rule looks
+for unbalanced punctuation **inside** the key. The mark is on the outside.
+Worth a rule of its own next time a third one turns up.

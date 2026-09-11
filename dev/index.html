@@ -5870,7 +5870,7 @@ function fdbPaint(){
         '<div class="fdb-cname">'+esc(f.n)+'</div>'+
         '<div class="fdb-c100">'+f.k+' '+_t('קק"ל ל-100 גרם')+' &middot; '+_t('{p}ח {c}פ {f}ש',{p:f.p,c:f.c,f:f.f})+'</div>'+
         unitsRowHTML(f.n,_fdbUnit,'fdbSetUnit(&quot;%K%&quot;)')+
-        '<div class="fdb-grow"><span class="fdb-glbl">'+(_fdbUnit.k==='g'?''+_t('כמה גרם?')+'':''+_t('כמה')+' '+unitDef(_fdbUnit.k).many+'?')+'</span>'+
+        '<div class="fdb-grow"><span class="fdb-glbl">'+(_fdbUnit.k==='g'?''+_t('כמה גרם?')+'':''+_t('כמה {unit}?',{unit:unitDef(_fdbUnit.k).many})+'')+'</span>'+
         '<input class="fdb-gin" id="fdb-grams" type="number" inputmode="decimal" step="'+(_fdbUnit.k==='g'?'1':'0.5')+'" value="'+fdbGrams+'" oninput="fdbSetGrams(this.value)">'+
         '<span class="fdb-gu">'+(_fdbUnit.k==='g'?'g':unitLabel(_fdbUnit.k,fdbGrams))+'</span></div>'+
         (_fdbUnit.k==='g'?'':
@@ -6584,7 +6584,7 @@ function saveBuilderMeal(){
   if(builderIngs.length===0){alert(''+_t('נא להוסיף מרכיבים')+'');return;}
   var meals=loadComposed();
   meals.push({id:Date.now(),name:builderName,category:builderCat,ingredients:builderIngs.slice()});
-  saveComposed(meals);closeBuilder();showToast('✓ '+builderName+' '+_t('נשמרה!')+'');render();
+  saveComposed(meals);closeBuilder();showToast('✓ '+_t('{name} נשמרה!',{name:builderName}));render();
 }
 
 function renderBuilderOverlay(){
@@ -8784,7 +8784,7 @@ function renderFitStart(){
   for(var pi=0;pi<progs.length;pi++){
     var prog=progs[pi];
     h+='<div style="background:var(--panel);border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">';
-    h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(prog.name)+'</div>';
+    h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(progLabel(prog.name))+'</div>';
     h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+_t('{n} תרגילים',{n:prog.exercises.length})+'</div></div>';
     h+='<button onclick="_fitView=\'view-program\';_fitProgIdx='+pi+';renderFitness()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">'+_t('עקב')+'</button>';
     h+='<button onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()" style="background:var(--violet-100);border:none;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('ערוך')+'</button>';
@@ -11362,6 +11362,14 @@ var WIZ_SETS=[1,2,3,4,5,6];
 var WIZ_REPS=[5,6,8,10,12,15,20];
 var WIZ_REST=[30,60,90,120,180];
 
+/* A plan's name is stored as the Hebrew it was picked from, so the chips can
+   tell which is selected and so the plan keeps its identity across a change
+   of language. Showing it needs the reader's language back - the same split
+   exLabel makes for an exercise. Anything the list does not know is a name
+   the person typed themselves, and is shown exactly as they typed it. */
+function progLabel(nm){
+  return (WIZ_NAME_OPTS.indexOf(nm)>=0)?_t(nm):String(nm||'');
+}
 function startProgramWizard(){
   _wiz={step:0,prog:{id:Date.now(),name:'',splitType:'',daysPerWeek:0,goal:''},days:[],curDayIdx:0,curEx:{name:'',sets:3,targetReps:10,baseWeight:0,rest:90,note:''},exStep:0};
   _fitView='edit-program';renderFitness();
@@ -11387,8 +11395,8 @@ function renderEditProgram(){
     }
     h+='</div>';
     h+='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+_t('או שם מותאם אישית:')+'</div>';
-    h+='<div style="display:flex;gap:8px"><input id="wiz-name-inp" class="mtin" style="flex:1;margin-bottom:0" value="'+esc(_wiz.prog.name||'')+'" placeholder="'+_t("שם התוכנית...")+'">';
-    h+='<button onclick="var v=document.getElementById(\'wiz-name-inp\').value.trim();if(v){_wiz.prog.name=v;_wiz.step=1;renderFitness();}" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:11px;padding:0 16px;font-size:18px;cursor:pointer;color:var(--white)">&#8594;</button></div>';
+    h+='<div style="display:flex;gap:8px"><input id="wiz-name-inp" class="mtin" style="flex:1;margin-bottom:0" value="'+esc(progLabel(_wiz.prog.name||''))+'" placeholder="'+_t("שם התוכנית...")+'">';
+    h+='<button onclick="var v=document.getElementById(\'wiz-name-inp\').value.trim();if(v){_wiz.prog.name=(v===progLabel(_wiz.prog.name)?_wiz.prog.name:v);_wiz.step=1;renderFitness();}" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:11px;padding:0 16px;font-size:18px;cursor:pointer;color:var(--white)">&#8594;</button></div>';
 
   } else if(step===1){
     // Step 1 — split
@@ -11435,10 +11443,17 @@ function renderEditProgram(){
     var doneCount=_wiz.days.length;
     if(doneCount>0){
       h+='<div style="background:linear-gradient(135deg,#eef5ee,var(--violet-100));border-radius:14px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--ink)">';
-      h+=''+_t('מעולה! סיימנו אימון')+' '+dayLetter.charCodeAt(0)-65+' &#127881; '+_t('עכשיו אימון')+' '+dayLetter+'.';
+      /* This said "NaN 🎉". `_t(…)+' '+dayLetter.charCodeAt(0)` is already a
+         STRING, so the -65 after it is arithmetic on text - the author meant
+         an index and left out String.fromCharCode. The workout just finished
+         is simply the letter before this one. And it is one sentence, so it
+         is one key: two fragments with a letter in each could not be
+         reordered by any language, and the full stop was welded on outside. */
+      var doneLetter=String.fromCharCode(64+_wiz.curDayIdx);
+      h+='&#127881; '+_t('מעולה! סיימנו אימון {done}. עכשיו אימון {next}.',{done:doneLetter,next:dayLetter});
       h+='</div>';
     }
-    h+=wizQ(''+_t('איך קוראים לאימון')+' '+dayLetter+'?');
+    h+=wizQ(''+_t('איך קוראים לאימון {letter}?',{letter:dayLetter})+'');
     var dayNames=[''+_t('חזה + יד אחורית')+'',''+_t('גב + יד קדמית')+'',''+_t('רגליים')+'',''+_t('כתפיים')+'','Full Body','Push','Pull','Legs'];
     h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">';
     for(var dn2=0;dn2<dayNames.length;dn2++){
@@ -11460,7 +11475,7 @@ function renderEditProgram(){
         var ex2=curDay.exercises[ei2];
         h+='<div style="display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:9px 12px;margin-bottom:6px">';
         h+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--ink)">'+esc(exLabel(ex2.name))+'</div>';
-        h+='<div style="font-size:10px;color:var(--muted)">'+_t('{n} סטים',{n:ex2.sets})+' &times; '+_t('{n} חזר',{n:ex2.targetReps})+'&nbsp;&nbsp;'+ex2.baseWeight+'kg</div></div>';
+        h+='<div style="font-size:10px;color:var(--muted)">'+_t('{n} סטים',{n:ex2.sets})+' &times; '+_t('{n} חזר',{n:ex2.targetReps})+'&nbsp;&nbsp;'+fmtWeight(ex2.baseWeight)+'</div></div>';
         h+='<button onclick="_wiz.days[_wiz.days.length-1].exercises.splice('+ei2+',1);renderFitness()" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px">&times;</button>';
         h+='</div>';
       }
@@ -11503,10 +11518,10 @@ function renderEditProgram(){
     } else if(exs===2){
       h+=wizQ(''+_t('עם איזה משקל מתחיל?')+'');
       h+='<div style="display:flex;gap:8px;margin-bottom:10px">';
-      h+='<input id="wiz-w-inp" class="mtnm" type="number" step="2.5" placeholder="0" value="'+(_wiz.curEx.baseWeight||'')+'" style="flex:1;font-size:20px;font-weight:700;text-align:center">';
-      h+='<div style="display:flex;align-items:center;font-size:13px;color:var(--muted)">kg</div></div>';
+      h+='<input id="wiz-w-inp" class="mtnm" type="number" step="2.5" placeholder="0" value="'+(_wiz.curEx.baseWeight?Math.round(toDisplayWeight(_wiz.curEx.baseWeight)*100)/100:'')+'" style="flex:1;font-size:20px;font-weight:700;text-align:center">';
+      h+='<div style="display:flex;align-items:center;font-size:13px;color:var(--muted)">'+weightUnit()+'</div></div>';
       h+='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+_t('אפשר להשאיר 0 אם לא יודע')+'</div>';
-      h+='<button onclick="var v=parseFloat(document.getElementById(\'wiz-w-inp\').value)||0;_wiz.curEx.baseWeight=v;_wiz.exStep=3;renderFitness()" style="width:100%;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הבא')+' &#8594;</button>';
+      h+='<button onclick="var v=parseFloat(document.getElementById(\'wiz-w-inp\').value)||0;_wiz.curEx.baseWeight=fromDisplayWeight(v);_wiz.exStep=3;renderFitness()" style="width:100%;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הבא')+' &#8594;</button>';
     } else if(exs===3){
       h+=wizQ(''+_t('כמה זמן מנוחה בין סטים?')+'');
       var restLabels=[_t('{n} שנ׳',{n:30}),_t('{n} שנ׳',{n:60}),_t('{n} שנ׳',{n:90}),_t('{n} דק׳',{n:2}),_t('{n} דק׳',{n:3})];
@@ -11533,7 +11548,7 @@ function renderEditProgram(){
     h+='<div style="text-align:center;padding:30px 0">';
     h+='<div style="font-size:52px;margin-bottom:16px">&#x1F4AA;</div>';
     h+='<div style="font-size:20px;font-weight:800;color:var(--ink);margin-bottom:8px">'+_t('התוכנית מוכנה!')+'</div>';
-    h+='<div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6">'+esc(_wiz.prog.name)+' &middot; '+_t('{n} אימונים',{n:_wiz.days.length})+'</div>';
+    h+='<div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6">'+esc(progLabel(_wiz.prog.name))+' &middot; '+_t('{n} אימונים',{n:_wiz.days.length})+'</div>';
     // Summary
     for(var di2=0;di2<_wiz.days.length;di2++){
       var wd=_wiz.days[di2];
@@ -11587,7 +11602,7 @@ function finalizeProgramWizard(){
   else progs.push(prog);
   savePrograms(progs);
   _fitProgIdx=progs.indexOf(prog);
-  showToast('✓ '+prog.name+' '+_t('נשמרה!')+'');
+  showToast('✓ '+_t('{name} נשמרה!',{name:progLabel(prog.name)}));
   _fitView='view-program';renderFitness();
 }
 
@@ -11598,7 +11613,7 @@ function renderViewProgram(){
 
   var h='<div style="padding-bottom:20px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
-  h+='<div style="font-size:16px;font-weight:800;color:var(--ink)">'+esc(prog.name)+'</div>';
+  h+='<div style="font-size:16px;font-weight:800;color:var(--ink)">'+esc(progLabel(prog.name))+'</div>';
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('חזרה')+'</button>';
   h+='</div>';
 
@@ -11613,7 +11628,7 @@ function renderViewProgram(){
     h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
     h+='<div><div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(exLabel(ex.name))+'</div>';
     h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+_t('{n} סטים',{n:ex.sets})+' &times; '+_t('{n} חזר',{n:ex.targetReps})+'</div></div>';
-    if(pr>0)h+='<div style="background:linear-gradient(135deg,#fef9e7,#fef3c7);border-radius:10px;padding:6px 10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#b45309">'+pr+'kg</div><div style="font-size:8px;color:#b45309;font-weight:700">PR</div></div>';
+    if(pr>0)h+='<div style="background:linear-gradient(135deg,#fef9e7,#fef3c7);border-radius:10px;padding:6px 10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#b45309">'+fmtWeight(pr)+'</div><div style="font-size:8px;color:#b45309;font-weight:700">PR</div></div>';
     h+='</div>';
 
     // Last entry
@@ -11626,8 +11641,8 @@ function renderViewProgram(){
 
     // Log new entry
     h+='<div style="display:flex;gap:6px;align-items:center">';
-    h+='<div style="flex:1"><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">kg</div>';
-    h+='<input id="prog-w-'+ei+'" class="mtnm" type="number" step="0.5" placeholder="'+(lastEntry?lastEntry.weight:ex.baseWeight||0)+'" style="width:100%"></div>';
+    h+='<div style="flex:1"><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+weightUnit()+'</div>';
+    h+='<input id="prog-w-'+ei+'" class="mtnm" type="number" step="0.5" placeholder="'+(Math.round(toDisplayWeight(lastEntry?lastEntry.weight:ex.baseWeight||0)*100)/100)+'" style="width:100%"></div>';
     h+='<div style="flex:1"><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('חזרות')+'</div>';
     h+='<input id="prog-r-'+ei+'" class="mtnm" type="number" placeholder="'+ex.targetReps+'" style="width:100%"></div>';
     h+='<button onclick="logProgEntry('+_fitProgIdx+','+ei+')" style="background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white);align-self:flex-end">'+_t('רשום')+'</button>';
@@ -11660,7 +11675,7 @@ function renderViewProgram(){
     h+='</div>';
   }
   h+='</div>';
-  document.getElementById('hdr-title').textContent=esc(prog.name);
+  document.getElementById('hdr-title').textContent=progLabel(prog.name);
   document.getElementById('content').innerHTML=h;
 }
 
@@ -11670,7 +11685,8 @@ function logProgEntry(progIdx,exIdx){
   var ex=prog.exercises[exIdx];
   var wInp=document.getElementById('prog-w-'+exIdx);
   var rInp=document.getElementById('prog-r-'+exIdx);
-  var weight=parseFloat(wInp&&wInp.value)||0;
+  /* The box shows the display unit, so convert back before storing. */
+  var weight=fromDisplayWeight(parseFloat(wInp&&wInp.value)||0);
   var reps=parseInt(rInp&&rInp.value)||ex.targetReps;
   if(!weight){showToast(''+_t('הזן משקל')+'');return;}
   var log=loadProgLog(prog.id,ex.name);
@@ -13234,7 +13250,7 @@ function renderFitHistory(){
     for(var ei=0;ei<entry.exercises.length;ei++){
       var ex=entry.exercises[ei];
       var best=ex.sets.reduce(function(mx,s){return Math.max(mx,s.weight||0);},0);
-      h+='<div style="background:var(--surface);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--ink-soft)">'+esc(exLabel(ex.name))+(best?' '+best+'kg':'')+'</div>';
+      h+='<div style="background:var(--surface);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:600;color:var(--ink-soft)">'+esc(exLabel(ex.name))+(best?' '+fmtWeight(best):'')+'</div>';
     }
     h+='</div></div>';
   }
@@ -13279,7 +13295,7 @@ function renderFitProgress(){
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
   for(var pi=0;pi<prKeys.length;pi++){
     h+='<div style="background:linear-gradient(135deg,#fef9e7,#fef3c7);border-radius:10px;padding:5px 10px;font-size:11px;font-weight:700;color:#b45309">';
-    h+='&#9733; '+esc(prKeys[pi])+' &mdash; '+prs[prKeys[pi]]+'kg</div>';
+    h+='&#9733; '+esc(prKeys[pi])+' &mdash; '+fmtWeight(prs[prKeys[pi]])+'</div>';
   }
   h+='</div></div>';
 
@@ -13352,9 +13368,9 @@ function renderFitProgress(){
       var delta=pts[pts.length-1].weight-pts[0].weight;
       var pct2=pts[0].weight>0?Math.round(delta/pts[0].weight*100):0;
       h+='<div style="display:flex;justify-content:space-around;margin-top:10px;padding-top:10px;border-top:1px solid var(--surface)">';
-      h+='<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:var(--violet-500)">'+pts[0].weight+'kg</div><div style="font-size:9px;color:var(--muted)">'+_t('התחלה')+'</div></div>';
-      h+='<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:'+(delta>=0?'var(--green-500)':'var(--terra-500)')+'">'+(delta>=0?'+':'')+delta+'kg</div><div style="font-size:9px;color:var(--muted)">'+_t('שיפור ({n}%)',{n:pct2})+'</div></div>';
-      h+='<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:var(--terra-500)">'+pts[pts.length-1].weight+'kg</div><div style="font-size:9px;color:var(--muted)">'+_t('עכשיו')+'</div></div>';
+      h+='<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:var(--violet-500)">'+fmtWeight(pts[0].weight)+'</div><div style="font-size:9px;color:var(--muted)">'+_t('התחלה')+'</div></div>';
+      h+='<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:'+(delta>=0?'var(--green-500)':'var(--terra-500)')+'">'+(delta>=0?'+':'')+fmtWeight(delta)+'</div><div style="font-size:9px;color:var(--muted)">'+_t('שיפור ({n}%)',{n:pct2})+'</div></div>';
+      h+='<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:var(--terra-500)">'+fmtWeight(pts[pts.length-1].weight)+'</div><div style="font-size:9px;color:var(--muted)">'+_t('עכשיו')+'</div></div>';
       h+='</div></div>';
 
       // Volume chart
