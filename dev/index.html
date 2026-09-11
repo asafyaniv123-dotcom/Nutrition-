@@ -246,6 +246,21 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragi
 .ex-chip b{font-size:9.5px;color:var(--muted-soft);font-weight:800}
 .ex-chip.on{background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white)}
 .ex-chip.on b{color:rgba(255,255,255,.8)}
+/* the footer of the picking half. Sticky against .ex-sheet, which is the
+   scroller, so the count stays reachable however long the muscle list is. */
+.ex-foot{position:sticky;bottom:calc(-18px - env(safe-area-inset-bottom));display:flex;gap:8px;margin-top:14px;padding:10px 0 calc(10px + env(safe-area-inset-bottom));background:var(--panel)}
+.ex-clear{flex-shrink:0;border:1.5px solid var(--line-strong);background:var(--card);border-radius:14px;padding:12px 14px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
+.ex-go{flex:1;border:none;border-radius:14px;padding:12px;font-size:13.5px;font-weight:800;color:var(--white);cursor:pointer;font-family:inherit;background:linear-gradient(135deg,var(--violet-300),var(--violet-500))}
+.ex-back{display:flex;align-items:center;gap:8px;width:100%;border:none;background:none;padding:10px 2px;margin-bottom:4px;cursor:pointer;font-family:inherit;text-align:start}
+/* the glyph is a picture of a direction, and the direction is "back to where
+   the text starts" - which is the other way round in Hebrew and Arabic. */
+/* A chevron drawn rather than typed. U+2039 is a BIDI-MIRRORED character, so
+   the browser already turns it round in an RTL paragraph - and a CSS mirror
+   on top of that is two mirrors, which is none. An SVG has no bidi behaviour,
+   so the direction is decided in exactly one place. */
+.ex-back-a{flex-shrink:0;width:9px;height:15px;fill:none;stroke:var(--violet-500);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+[dir="rtl"] .ex-back-a{transform:scaleX(-1)}
+.ex-back-t{flex:1;min-width:0;font-size:12.5px;font-weight:800;color:var(--violet-500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ex-list{display:flex;flex-direction:column;gap:6px}
 .ex-row{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:none;border-radius:13px;padding:10px 12px;background:var(--card);cursor:pointer;font-family:inherit;text-align:start;box-shadow:0 2px 8px rgba(200,180,160,.1)}
 .ex-n{font-size:13.5px;font-weight:800;color:var(--ink)}
@@ -2280,6 +2295,12 @@ var HE={
   '{n} סטים':{one:'סט אחד',two:'שני סטים',other:'{n} סטים'},
   '{n} חזרות':{one:'חזרה אחת',two:'שתי חזרות',other:'{n} חזרות'},
   '{n} תרגילים':{one:'תרגיל אחד',two:'שני תרגילים',other:'{n} תרגילים'},
+  /* The count on the button that ends the filter step. It is its own key
+     rather than a verb glued to the one above, because the verb and the
+     number are one sentence and several languages put them in the other
+     order. Zero is a real state here - a filter can exclude everything - and
+     Hebrew says it without a number. */
+  'הצג {n} תרגילים':{one:'הצג תרגיל אחד',two:'הצג שני תרגילים',other:'הצג {n} תרגילים'},
   '{n} אימונים אחרונים':{one:'האימון האחרון',two:'שני האימונים האחרונים',other:'{n} אימונים אחרונים'},
   '{n} מנות':{one:'מנה אחת',two:'שתי מנות',other:'{n} מנות'},
   '{n} משימות':{one:'משימה אחת',two:'שתי משימות',other:'{n} משימות'},
@@ -12159,7 +12180,14 @@ function restTick(){
    by the equipment in front of you, or by typing. The English name is carried
    alongside because half the gym says it that way, and searching either finds
    the same row. */
-var _exDB=null,_exState='idle',_exTab='muscle',_exFilter='',_exQ='',_exPick=null;
+/* Choosing a muscle used to BE the navigation: one tap filtered the list that
+   was already sitting underneath, so the muscles and the exercises ran into
+   each other and you could only ever ask about one muscle.
+   They are a filter now, and a filter is a question you finish asking before
+   you get an answer: pick as many as you like, watch the count move, then
+   press it. _exFilters is a list because "abs and lower back" is a real
+   question; _exShow is which half of the sheet you are looking at. */
+var _exDB=null,_exState='idle',_exTab='muscle',_exFilters=[],_exShow=false,_exQ='',_exPick=null;
 function exLoad(cb){
   if(_exState==='ready')return cb&&cb();
   if(_exState==='loading'){setTimeout(function(){exLoad(cb);},120);return;}
@@ -12229,14 +12257,25 @@ function exRank(e,q){
   }
   return 6;
 }
+/* The chosen filters are stored as the data words the database uses, never as
+   translated labels - they are compared against e.m and e.q, and translated
+   only where a card or a chip is drawn. */
+function exHasAny(list){
+  for(var i=0;i<_exFilters.length;i++)if(list.indexOf(_exFilters[i])>=0)return true;
+  return false;
+}
 function exList(){
   var all=exAll(),out=[],i,e;
   for(i=0;i<all.length;i++){
     e=all[i];
     if(!exMatch(e,_exQ))continue;
     if(_exQ){out.push(e);continue;}                 // typing overrides the tabs
-    if(_exTab==='muscle'&&_exFilter&&e.m.indexOf(_exFilter)<0)continue;
-    if(_exTab==='equip'&&_exFilter&&e.q.indexOf(_exFilter)<0)continue;
+    /* ANY of the chosen, not all of them. Picking a second muscle should
+       widen what you are shown - two muscles asked together is "either of
+       these" - and an exercise that trains both would otherwise be the only
+       thing left. */
+    if(_exTab==='muscle'&&_exFilters.length&&!exHasAny(e.m))continue;
+    if(_exTab==='equip'&&_exFilters.length&&!exHasAny(e.q))continue;
     out.push(e);
   }
   /* Ranked only while typing; the tabs have their own order, which is the
@@ -12249,7 +12288,7 @@ function exList(){
   return out;
 }
 function exOpen(){
-  _exQ='';_exFilter='';_exTab='muscle';_exDetail=null;
+  _exQ='';_exFilters=[];_exShow=false;_exTab='muscle';_exDetail=null;
   // the sheet has to exist before anything can be painted into it. Loading
   // first only worked while the file was still being fetched; once it was
   // cached exLoad called back immediately, ex-body did not exist yet, and
@@ -12261,8 +12300,18 @@ function exClose(){
   var o=document.getElementById('ex-ov');if(o)o.remove();
   document.body.style.overflow='';
 }
-function exSetTab(t){_exTab=t;_exFilter='';_exPaintBody();}
-function exSetFilter(f){_exFilter=(_exFilter===f)?'':f;_exPaintBody();}
+/* A tab is a different question, so it starts with no answer to the old one.
+   Keeping muscle picks alive under the equipment tab would apply a filter
+   nothing on screen was showing. */
+function exSetTab(t){_exTab=t;_exFilters=[];_exShow=false;_exPaintBody();}
+function exToggleFilter(f){
+  var at=_exFilters.indexOf(f);
+  if(at>=0)_exFilters.splice(at,1);else _exFilters.push(f);
+  _exPaintBody();
+}
+function exClearFilters(){_exFilters=[];_exPaintBody();}
+function exShowResults(){_exShow=true;_exPaintBody();}
+function exBackToFilters(){_exShow=false;_exPaintBody();}
 function exSearch(v){_exQ=v;_exPaintBody();}
 function exSheet(){
   var old=document.getElementById('ex-ov');if(old)old.remove();
@@ -12283,8 +12332,10 @@ function _exPaintBody(){
   if(_exState!=='ready'){el.innerHTML='<div class="ex-none">'+_t('טוען')+'&hellip;</div>';return;}
   // one exercise open takes the whole sheet: it is a page, not a row
   if(_exDetail){el.innerHTML=exDetailHTML(_exDetail);return;}
+  /* Typing is its own answer and skips the picking half entirely. */
+  var choosing=!_exQ&&!_exShow;
   var h='';
-  if(!_exQ){
+  if(choosing){
     h+='<div class="ex-tabs">'+
        '<button class="ex-tab'+(_exTab==='muscle'?' on':'')+'" onclick="exSetTab(&quot;muscle&quot;)">'+_t('לפי שריר')+'</button>'+
        '<button class="ex-tab'+(_exTab==='equip'?' on':'')+'" onclick="exSetTab(&quot;equip&quot;)">'+_t('לפי ציוד')+'</button>'+
@@ -12299,8 +12350,8 @@ function _exPaintBody(){
     function card(k,art){
       var n=count(k);
       if(!n)return '';
-      return '<button class="gp'+(art?'':' bare')+(_exFilter===k?' on':'')+'" onclick="exSetFilter(&quot;'+esc(k)+'&quot;)">'+
-        art+'<span class="gp-t">'+esc(_t(k))+'</span><span class="gp-n">'+n+'</span></button>';
+      return '<button class="gp'+(art?'':' bare')+(_exFilters.indexOf(k)>=0?' on':'')+'" onclick="exToggleFilter(&quot;'+esc(k)+'&quot;)">'+
+        art+'<span class="gp-t">'+esc(_t(k))+'</span><span class="gp-n">'+nfmt(n)+'</span></button>';
     }
     if(_exTab==='muscle'){
       for(var si=0;si<MU_SECTIONS.length;si++){
@@ -12316,6 +12367,27 @@ function _exPaintBody(){
     }
   }
   var list=exList();
+  if(choosing){
+    /* The count is the whole point of the step: you can see what the question
+       is worth before you commit to reading the answer. It sits in a plural
+       key with the number in a hole, so a language inflects the word and
+       formats the digits for itself. */
+    h+='<div class="ex-foot">';
+    if(_exFilters.length)
+      h+='<button class="ex-clear" onclick="exClearFilters()">'+_t('נקה סינון')+'</button>';
+    h+='<button class="ex-go" onclick="exShowResults()">'+
+       _t('הצג {n} תרגילים',{n:list.length})+'</button>';
+    h+='</div>';
+    el.innerHTML=h;
+    return;
+  }
+  if(!_exQ){
+    /* Coming back is one tap, and it says what it is coming back from - the
+       filter you are inside is not worth hiding behind a bare arrow. */
+    h+='<button class="ex-back" onclick="exBackToFilters()">'+
+       '<svg class="ex-back-a" viewBox="0 0 9 15"><path d="M7.4 1.3 1.6 7.5l5.8 6.2"/></svg>'+
+       '<span class="ex-back-t">'+esc(_exFilters.length?_exFilters.map(_t).join(' · '):_t('הכל'))+'</span></button>';
+  }
   if(!list.length){
     h+='<div class="ex-none">'+_t('לא מצאתי. אפשר גם להקליד שם משלך למטה.')+'</div>';
   } else {

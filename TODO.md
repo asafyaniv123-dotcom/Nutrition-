@@ -2957,3 +2957,72 @@ so it is worth him seeing rather than discovering.
 
 Width is not the reason to worry: measured in the header’s own font, the
 longest of the eleven is Portuguese at **211px in a 368px box**.
+
+## A muscle is a filter, not a door
+
+Asaf, with two screenshots of another app: *"אצלנו זה קצת מסורבל, אין כל כך
+הבדל בין השרירים לתחילת התרגילים"*. He is right, and the reason is
+structural: **choosing a muscle WAS the navigation.** One tap filtered a
+list that was already sitting underneath, so the two halves ran into each
+other and you could only ever ask about one muscle at a time.
+
+A filter is a question you finish asking before you get an answer.
+
+    picking           choosing chest + biceps, nothing else on screen
+                      [ נקה סינון ]  [ הצג 39 תרגילים ]
+    ↓
+    reading           ‹ חזה · יד קדמית
+                      39 rows
+
+`_exFilter` (a string) became `_exFilters` (a list), and `_exShow` says which
+half you are looking at. Typing in the search box still skips the picking
+half entirely — a typed word is its own answer.
+
+**Any, not all.** Picking a second muscle should WIDEN what you are shown:
+two muscles asked together is "either of these". Chest 25 + biceps 14 gave
+39, so those two share no exercise; had it been an AND, the second tap would
+have emptied the screen, which is the opposite of what a second tap looks
+like it should do.
+
+Switching tab clears the picks, because keeping muscle picks alive under the
+equipment tab would apply a filter that nothing on screen is showing.
+
+### The count is the point of the step
+
+It is a **plural key** and it had to be, for two reasons both visible on one
+button: the word inflects, and the verb and the number are one sentence, so
+a language that wants the count first can only do that if it owns the whole
+string. Japanese and Chinese take that option. Arabic uses all six
+categories, and zero is a real state here because a filter can exclude
+everything:
+
+    ar   لا تمارين مطابقة · اعرض تمرينًا واحدًا · اعرض تمرينين
+         اعرض ٥ تمارين · اعرض ١١ تمرينًا · اعرض ٢٢٨ تمرينًا
+    en   Show 1 exercise · Show 46 exercises
+    ja   {n}件の種目を見る
+
+Two keys added, none retired. The card counts went through `nfmt` while I
+was in there — they were raw.
+
+### A double mirror, found by looking
+
+The back chevron pointed the wrong way in Hebrew, so it got
+`[dir="rtl"] { transform: scaleX(-1) }`. It still pointed the wrong way.
+Then `display:inline-block`, because a transform does nothing to a
+non-replaced inline element. **It still pointed the wrong way**, with the
+computed transform sitting right there in the inspector saying
+`matrix(-1,0,0,1,0,0)`.
+
+`U+2039` is a **bidi-mirrored character**. The browser had already turned it
+round for the RTL paragraph, and the CSS turned it back. Two mirrors is
+none.
+
+It is an SVG path now — no bidi behaviour, so the direction is decided in
+exactly one place. *Three wrong explanations in a row, each one reasoned
+from the code; the zoom is what settled it.*
+
+### Driven end to end
+
+Real clicks: a muscle card, the count button, a row, the detail, "choose
+this exercise" — the picker handed back **כפיפת שורש כף יד** and closed.
+Exercise search still 95/95.
