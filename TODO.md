@@ -2796,3 +2796,92 @@ line after it as well. Delete a line by matching its own text.
 **`javascript_tool` still RUNS code whose result it blocks.** A call whose
 output tripped the "Cookie/query string data" filter had already executed —
 the next call found its work done. Do not assume a blocked call was a no-op.
+
+## Four questions, and a bank behind the fifth
+
+Asaf: *"אני רוצה שהמשתמש לא ירגיש כאילו סיכום יום זאת משימה"* — and then the
+exact list he wants asked. Ten questions before the app lets you go is a
+task. Four is a moment.
+
+    הרגע הכי טוב   ·   תמונת היום   ·   שיר היום   ·   משפט שתפס אותך
+    נוסף…
+
+**Nothing was deleted.** Every question that left the queue is still there,
+still answerable, still in the summary, and every answer already recorded
+still reads back — checked by writing a day in the old ten-question shape and
+opening it: the grade came back as `8/10`, the gratitude, the mood, the
+moment. What changed is *who has to ask*.
+
+### The shape was already there
+
+The module already had the two halves: a linear queue (`RF_STAGE1`) and a
+board of optional cards (`RF_STAGE2`), with a bridge between them asking
+*"רוצה להסתכל קצת יותר לעומק?"*. So this is not new machinery — it is eight
+questions moving across the line, two moving back, and the bridge changing
+from an invitation into a door:
+
+| | before | after |
+|---|---|---|
+| asked every day | 10 | **4** |
+| in the bank | 16 | **21** (22 on a day with a planned workout) |
+
+`song` and `quote` came **up** into the four and left the board, because a
+card that opens a question you were already asked reads as a bug even when it
+is not. The eight that went down got card titles, subtitles and icons.
+
+### The bridge is now the fifth step
+
+The finish button is the one that looks like the answer, and the bank is
+offered underneath it — because the day is already closed by then, and the
+bank is an offer rather than a fifth thing being asked.
+
+    נוסף…
+    יש עוד שאלות אם בא לך אחת. אפשר גם פשוט לסיים כאן.
+    [ סיימתי להיום ]
+      הראה לי את השאלות
+
+### The index bug this uncovered
+
+The board walked `RF_STAGE2` **unfiltered** while `rfOpenCard(i)` stored `i`
+as `_rfStep` and the step view read `rfSteps()[_rfStep]` — the **filtered**
+list. So turning off one section shifted every card after it, and tapping a
+card opened a different question.
+
+It was rare before, because only a section toggle could trigger it. It would
+have been **routine** now: `workoutDone` is a card, and it drops out of the
+list on every rest day. Driven: 21 cards today (no workout planned), tapped
+*ציון היום* at index 2, got `dayRating`. One `rfFilter`, both callers.
+
+### Eight icons
+
+`body star wave target dumbbell sunrise hands moon` — same 24-box, same
+stroke. `endOfDayMood` moved from `face` to `moon`, because the board now
+carries two mood cards and two identical icons is two cards nobody can tell
+apart at a glance.
+
+### Answered in eleven, and two pairs kept apart
+
+17 new keys, 8 retired. Two pairs sit on the same board and have to stay
+tellable apart — Rule 5 applied to cards rather than chips:
+
+    איך זרם היום / עוגנים לפי הסדר   beside   ציר היום / איך הוא התגלגל
+    איך הרגשת / היום, בגדול          beside   איך אתה עכשיו / ברגע הזה
+
+Japanese already answers *ציר היום* with 一日の流れ — literally "the day’s
+flow" — so the new flow card could not be 流れ too. It is 節目, the day’s
+anchor points, which is what that question actually collects. German checked
+on the rendered board: 21 cards, no duplicate titles, nothing clipped.
+
+### Open, and his to decide
+
+- **Per-day or remembered?** The bank adds a question to *today*. Whether
+  picking one should make it part of your own nightly four from then on is a
+  real fork and he should pick it, not me.
+- The board’s subtitles mix capitals in the European languages — a sub that
+  continues its title is lowercase, a standalone one is capitalised. That was
+  already true before this change and the new ones follow the same principle,
+  but 11 lowercase against 10 capitalised is a visible split on one screen.
+- `enterModule('reflect')` renders a "module under development" placeholder;
+  the real door is **`enterModule('endofday')`**. Driving through the wrong
+  one paints the reflection over the nutrition tab strip, which looks exactly
+  like a layout bug and is not one.
