@@ -112,17 +112,27 @@ the rest.
 4. **A unit comes from `fmtWeight` / `weightUnit`**, never welded into a
    sentence — otherwise an imperial reader is shown pounds labelled in
    kilograms, which shipped.
+5. **Options a person chooses between must stay distinct in every
+   language.** The daily reflection opens with a five-point mood scale, and
+   Spanish put *Bien* under faces three and four while Arabic put *لا بأس*
+   under two and three — a person being asked to choose between two
+   identical words. Hebrew cannot show it, because in Hebrew every step is
+   distinct; it exists only in the answers. Where the collapse is real —
+   Hebrew marks gender on בן משפחה / בת משפחה and ten languages do not —
+   the list is drawn through `optOnce`, which shows one chip per label and
+   lights it for either value.
 
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
 
-**Six checks are tools rather than prose**, and all should only ever go down:
+**Seven checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments
     node tools/find-translated-data.mjs        # _t() results used as data, not shown
     node tools/find-units-in-strings.mjs       # kg or ml welded into a sentence
     node tools/find-frozen-translations.mjs    # _t() called once, at load, then never
     node tools/find-unwrapped-hebrew.mjs       # Hebrew that never reaches _t() at all
+    node tools/find-duplicate-options.mjs      # two choices wearing the same label
     node tools/build-lang-template.mjs --check # the template still matches the app
 
 `tools/test-background-fill.mjs` is a seventh, of a different kind: it lifts

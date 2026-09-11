@@ -988,3 +988,78 @@ The other three gaps are **not** fixed, each for its own reason:
 ### English instructions: 42 of 96
 
 Third mechanical slice — 11 exercises, 69 lines, 273 of 625.
+
+## Two faces, one word
+
+The daily reflection opens with a five-point mood scale — five faces, five
+words underneath — and it is the first thing the app asks anybody. Driven in
+German:
+
+    Schwer · Nichts Besonderes · OK · Gut · Sehr gut
+
+"Nichts Besonderes" is neutral, and step two has to sit *below* OK. It is
+also the answer German gives to `כלום מיוחד`, which really does mean nothing
+in particular, in a different list entirely.
+
+Looking at the other ten turned one bad word into a class:
+
+    es   Difícil · Regular · Bien   · Bien  · Genial     <- 3 and 4 identical
+    ar   صعب     · لا بأس · لا بأس · جيد   · ممتاز      <- 2 and 3 identical
+
+**A person is shown two faces with the same word under them and asked to**
+**choose.** No amount of reading the Hebrew reveals it — there every step is
+distinct (`קשה · לא משהו · בסדר · טוב · מצוין`). It exists only in the
+answers, which is why eleven months of Hebrew use never showed it.
+
+### The check that came out of it
+
+`tools/find-duplicate-options.mjs` — the seventh, now in CLAUDE.md's list.
+It reads every list in the app whose members are shown as options, in both
+shapes the file uses (bare Rule-3 data, and `langOn` + `_t`), maps them
+through each dictionary and reports two members that come back the same.
+
+Proved against the dictionaries as they were that morning: **6 findings**,
+silent after the fix. 46 lists, 10 languages.
+
+| | was | now |
+|---|---|---|
+| de `לא משהו` | Nichts Besonderes | Mäßig |
+| es `בסדר` | Bien *(= `טוב`)* | Normal |
+| ar `לא משהו` | لا بأس *(= `בסדר`)* | متوسط |
+| de `מזל` | Glück *(= `אושר`)* | Zufall |
+| pt `לילה` | Noite *(= `ערב`)* | Madrugada |
+| ja `אירוע` / `פגישה` | 予定 / 予定 | イベント / アポイント |
+| ar `אירוע` | موعد *(= `פגישה`)* | حدث |
+
+Both retuned scale keys are used exactly once in the app — checked before
+either was touched, because `בסדר` is an ordinary word that could easily
+have been an OK button somewhere.
+
+### The collapse that is not a translation fault
+
+Fifteen of the twenty-one findings were `RELATIONSHIP_TYPES`: Hebrew marks
+gender on `בן משפחה` / `בת משפחה` and on `בן זוג` / `בת זוג`, and ten
+languages cannot tell them apart. Every one of those translations is
+**correct**; it is the list that is wrong for them, and the picker drew two
+chips saying "Family" and two saying "Partner".
+
+It cannot be fixed in the dictionary without writing something nobody says
+("Family (male)"), and it cannot be fixed in the data, because the Hebrew is
+what is stored on the person. So it is fixed where it is drawn: `optOnce`
+shows one chip per **label** and lights it when *either* value is the stored
+one — so a Hebrew user who chose `בת משפחה` still sees their own choice lit
+when they read the app in English, and the free-text field keeps the exact
+value either way.
+
+It is language-aware for free: German *does* distinguish Partner/Partnerin,
+so German loses one chip and keeps thirteen while Hebrew keeps all fourteen.
+
+The check knows about this by **looking for the `optOnce(NAME)` call in the
+source** rather than by an allow-list kept in the tool — an allow-list would
+rot the moment somebody stopped calling it.
+
+### Not done this tick
+
+English exercise instructions stay at 42 of 96. The tick went to driving an
+untouched area instead, and it found a defect class; another predictable
+translation slice would not have.
