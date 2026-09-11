@@ -1728,3 +1728,94 @@ The two compact plan rows and the exercise target row were verified through
 is a long path through the wizard, and this pass had already changed enough
 to want shipping. Next time the plan is driven, look at
 **"3 Sätze × 10 Whd."** and confirm it fits the row.
+
+## 11/9/2026, read on an American screen as the ninth of November
+
+The insights module, driven for the first time with a real entry typed into
+the box. The entry saved and rendered correctly — and carried a date the app
+had written by hand:
+
+    getDate() + "/" + (getMonth()+1) + "/" + getFullYear()
+
+That is Israel’s order and nobody else’s. With the app in English:
+
+    on screen      11/9/2026
+    what en-US wants  9/11/2026
+
+The same eight characters, two months apart. **Twelve other places** wrote a
+date the same way — the workout history, the day plan, a memory, the journal
+rows, two chart axes.
+
+This is Rule 4’s shape — a format welded into the code instead of coming
+from the reader — and **the file had already solved it for times**. `fmtClock`
+says in its own comment *"so 17:32 in Hebrew and 5:32 PM in American English"*
+and goes through `dfmt`, the cached `Intl.DateTimeFormat` keyed on the
+language the app is in. Dates never got the same treatment.
+
+So `fmtDay` and `fmtDayShort`, the second without the year for a chart axis
+or a chip where the year is already on screen. Thirteen sites, and every
+locale asked what it wants:
+
+    en-US  9/11/2026     ja-JP  2026/9/11     fr-FR  11/09/2026
+    de-DE  11.9.2026     ar-EG  ١١‏/٩‏/٢٠٢٦
+
+On screen after: the insight says **9/11/2026** in English, the journal rows
+**11.9.26** in German, the workout history **11.9.2026**.
+
+## "٦٤٠ حجم العمل كجم" beside "5 مجموعات"
+
+Found on the Arabic numbers screen. Every number the app formats goes through
+`nfmt` — one place, `Intl.NumberFormat` on the app’s language — and in Arabic
+that writes ٥ and ٦٤٠. **Every number that went into a `{hole}` did not:**
+
+    nfmt(5)                  ->  ٥
+    _t("{n} סטים",{n:5})     ->  5 مجموعات
+
+Two numbering systems on one screen. German had the same split the other way:
+`nfmt(20.2)` is *20,2* and a macro dropped into a hole was *20.2*.
+
+One line in `_t` fixes all 148 call sites: **a hole whose value is an actual
+number goes through `nfmt`; anything else is untouched.** Checked against
+every one of those call sites first — each value is a raw number, an
+already-formatted string (`fmtWeight`, `nfmt`), or text (a name, an escaped
+query, the book page’s styled span) — and **no key takes a year**, which is
+the one number that must not be grouped. The plural category is still chosen
+from the raw `vars.n` before any of this.
+
+### And the main screen, which mixed the two
+
+The water line has always gone through `fmtVolume` → `nfmt`, so German got
+*3.000 ml*. The macro bars right above it concatenated the number straight
+into the markup, so they kept *20.2g*. Older than this pass, and the app’s
+busiest screen.
+
+`fmtGrams` for the four display blocks — the bars, the pills under them, the
+same bars on the day summary, the profile’s recommended targets — plus the
+percentages and the one water button that was still a hardcoded **+1L**
+while +250 ml and +500 ml converted for an imperial reader.
+
+    German  1,1g · 20,2g · 0,3g · 1.886 kcal übrig · 3.000 ml
+    Arabic  ٥% · ٨٩ · ١٫١g · ١٬٨٨٦ · ٠ / ٣٬٠٠٠ مل · +١٬٠٠٠ مل
+    Hebrew  unchanged — 1.1g, 1,886, 3,000 מ"ל
+
+**Not touched: `howMuch` in the food picker.** That string is written into the
+meal’s stored NAME — *"Banane (100g)"* — and formatting it per locale would
+freeze whichever locale was active into the diary. Storage keeps one form;
+only the screen follows the reader.
+
+### A measurement trap, paid for
+
+The macro bars read back as zero height, which looked like a regression. It
+is not: **the driven tab is hidden, and Chrome does not run
+`requestAnimationFrame` in a hidden tab**, so `animateBars` never fires. The
+`data-h` attributes were correct throughout. Anything that animates in reads
+as zero when driven this way — check `document.visibilityState` before
+believing it.
+
+### Still open: raw numbers outside _t
+
+The meal log row and the food library rows still print `m.p+"p "+m.c+"c"` —
+raw numbers AND hardcoded English letters for protein, carbohydrate and fat,
+which `find-unwrapped-hebrew` cannot see because they are not Hebrew. Its own
+pass: the letters need keys, and the numbers need `nfmt`, and the row is
+narrow enough that both together may not fit.

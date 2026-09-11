@@ -123,7 +123,13 @@ the rest.
    and it has caught fourteen collections that looked exactly like labels.
 4. **A unit comes from `fmtWeight` / `weightUnit`**, never welded into a
    sentence — otherwise an imperial reader is shown pounds labelled in
-   kilograms, which shipped.
+   kilograms, which shipped. **A number and a date are the same rule.**
+   `nfmt` and `dfmt` are the one place that knows the reader's digits,
+   separators and date order; written by hand, `11/9/2026` is the eleventh of
+   September in Hebrew and the ninth of November in American English, and a
+   raw `5` sits beside `٥` on the same Arabic screen. `_t` now formats any
+   hole whose value is an actual number, so a whole sentence only has to
+   pass the number in.
 5. **Options a person chooses between must stay distinct in every
    language.** The daily reflection opens with a five-point mood scale, and
    Spanish put *Bien* under faces three and four while Arabic put *لا بأس*
