@@ -2135,9 +2135,9 @@ function renderProfile(){
     h+='<div class="pf-bmr">'+_t('שריפה במנוחה')+' '+nfmt(rec.bmr)+' &middot; '+_t('עם הפעילות {n} קק"ל ליום',{n:nfmt(rec.tdee)})+'</div>';
     var rows=[
       {v:nfmt(rec.kcal),l:''+_t('קק"ל')+'',cur:nfmt(TARGETS.kcal),col:PAL.violet500},
-      {v:rec.p+'g',l:''+_t('חלבון')+'',cur:TARGETS.p+'g',col:PAL.terra500},
-      {v:rec.c+'g',l:''+_t('פחמימה')+'',cur:TARGETS.c+'g',col:PAL.green500},
-      {v:rec.f+'g',l:''+_t('שומן')+'',cur:TARGETS.f+'g',col:PAL.amber500}
+      {v:fmtGrams(rec.p),l:''+_t('חלבון')+'',cur:fmtGrams(TARGETS.p),col:PAL.terra500},
+      {v:fmtGrams(rec.c),l:''+_t('פחמימה')+'',cur:fmtGrams(TARGETS.c),col:PAL.green500},
+      {v:fmtGrams(rec.f),l:''+_t('שומן')+'',cur:fmtGrams(TARGETS.f),col:PAL.amber500}
     ];
     h+='<div class="pf-recs">';
     for(i=0;i<rows.length;i++){
@@ -2307,7 +2307,24 @@ function _t(str,vars){
   var out=(typeof v==='string'&&v)||(str.indexOf('|')>0?str.slice(0,str.indexOf('|')):str);
   /* Holes are filled last, so the Hebrew source works with no dictionary at
      all: "לפני {n} ימים" with no translation still reads "לפני 3 ימים". */
-  if(vars)out=out.replace(/\{(\w+)\}/g,function(m,k){return vars[k]!=null?vars[k]:m;});
+  /* A hole holding an actual NUMBER goes through nfmt, because every other
+     number on the screen does: Arabic writes ٥ and ٦٤٠, and a raw 5 dropped
+     into a sentence put two numbering systems side by side on one screen.
+     German gets its decimal comma the same way. Anything that is not a
+     number is left exactly as it is - fmtWeight and nfmt hand over formatted
+     strings, and names, escaped text and the book page's styled span must
+     not be touched at all.
+
+     _nfCache is declared below this function, so the guard is for a caller
+     that runs while the script is still being read; every real one is a
+     render. The plural category was chosen from the raw vars.n above, so
+     nothing about that changes. */
+  if(vars)out=out.replace(/\{(\w+)\}/g,function(m,k){
+    var v=vars[k];
+    if(v==null)return m;
+    if(typeof v==='number'&&isFinite(v)&&typeof _nfCache!=='undefined')return nfmt(v);
+    return v;
+  });
   return out;
 }
 /* Only languages that actually have a file are offered. A code with no
@@ -2473,6 +2490,11 @@ function fmtVolume(ml){
   /* Whole fluid ounces: a tenth of one is below what anyone pours. */
   return nfmt(toDisplayVolume(ml),{maximumFractionDigits:APP_UNITS==='imperial'?0:0})+' '+volumeUnit();
 }
+/* A macro in grams, in the reader's own digits - ٢٠٫٢ in Arabic, 20,2 in
+   German. Grams, not a stored weight: fmtWeight is the one that converts to
+   pounds, and a macro is always grams in every unit system. The symbol stays
+   "g", which is what the app has always shown in all eleven. */
+function fmtGrams(n){return nfmt(n)+'g';}
 function fmtWeight(kg){
   var v=toDisplayWeight(kg);
   /* Do not round here - a stored 62.75 must not become 62.8 just by being
@@ -2498,6 +2520,16 @@ function dayShift(n,from){
   d.setDate(d.getDate()+n);
   return dayStr(d);
 }
+/* A date in the order the reader's language writes one. Twelve places used
+   to build d/m/Y by hand, which is Israel's order and nobody else's: the
+   same "11/9/2026" is the 11th of September in Hebrew and the 9th of
+   November in American English. fmtClock has done this for times all along
+   - dfmt is the cached Intl.DateTimeFormat, keyed on the language the app
+   is in rather than on the device - and this is its other half. */
+function fmtDay(d){return dfmt(d,{year:'numeric',month:'numeric',day:'numeric'});}
+/* Without the year, for a chart axis or a chip where the year is already
+   known and the space is eight pixels wide. */
+function fmtDayShort(d){return dfmt(d,{month:'numeric',day:'numeric'});}
 function fmtDate(s){
   var d=new Date(s+'T12:00:00');
   var dn=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
@@ -6732,13 +6764,13 @@ function renderToday(){
   var wp=Math.min(100,Math.round(water/TARGETS.water*100));
 
   var macroHTML='<div class="macro-card"><div class="macro-title">'+_t('התקדמות מול היעד')+'</div><div class="macro-bars">';
-  var mb=[{v:kcal,pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:p+'g',pct:pp,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:c+'g',pct:cp,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:f+'g',pct:fp,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
-  for(var bi=0;bi<mb.length;bi++){var b=mb[bi];macroHTML+='<div class="macro-col"><div class="macro-pct">'+b.pct+'%</div><div class="macro-track"><div class="macro-fill" data-h="'+b.pct+'" style="background:'+b.g+'"></div></div><div class="macro-val" style="color:'+b.col+'">'+b.v+'</div><div class="macro-lbl">'+b.lbl+'</div></div>';}
+  var mb=[{v:nfmt(kcal),pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:fmtGrams(p),pct:pp,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:fmtGrams(c),pct:cp,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:fmtGrams(f),pct:fp,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
+  for(var bi=0;bi<mb.length;bi++){var b=mb[bi];macroHTML+='<div class="macro-col"><div class="macro-pct">'+nfmt(b.pct)+'%</div><div class="macro-track"><div class="macro-fill" data-h="'+b.pct+'" style="background:'+b.g+'"></div></div><div class="macro-val" style="color:'+b.col+'">'+b.v+'</div><div class="macro-lbl">'+b.lbl+'</div></div>';}
   macroHTML+='</div></div>';
 
-  var pillsHTML='<div class="pills"><div class="pill"><div class="pill-val" style="color:var(--violet-500)">'+(TARGETS.kcal-kcal)+'</div><div class="pill-lbl">'+_t('קק"ל נותרו')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--terra-500)">'+r2(TARGETS.p-p)+'g</div><div class="pill-lbl">'+_t('חלבון נותר')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--amber-500)">'+r2(TARGETS.f-f)+'g</div><div class="pill-lbl">'+_t('שומן נותר')+'</div></div></div>';
+  var pillsHTML='<div class="pills"><div class="pill"><div class="pill-val" style="color:var(--violet-500)">'+nfmt(TARGETS.kcal-kcal)+'</div><div class="pill-lbl">'+_t('קק"ל נותרו')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--terra-500)">'+fmtGrams(r2(TARGETS.p-p))+'</div><div class="pill-lbl">'+_t('חלבון נותר')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--amber-500)">'+fmtGrams(r2(TARGETS.f-f))+'</div><div class="pill-lbl">'+_t('שומן נותר')+'</div></div></div>';
 
-  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; '+_t('מים')+'</span><span class="wn">'+nfmt(toDisplayVolume(water),{maximumFractionDigits:0})+' / '+fmtVolume(TARGETS.water)+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+'+fmtVolume(250)+'</button><button class="wadd" onclick="addWater(500)">+'+fmtVolume(500)+'</button><button class="wadd" onclick="addWater(1000)">+1L</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
+  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; '+_t('מים')+'</span><span class="wn">'+nfmt(toDisplayVolume(water),{maximumFractionDigits:0})+' / '+fmtVolume(TARGETS.water)+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns"><button class="wadd" onclick="addWater(250)">+'+fmtVolume(250)+'</button><button class="wadd" onclick="addWater(500)">+'+fmtVolume(500)+'</button><button class="wadd" onclick="addWater(1000)">+'+fmtVolume(1000)+'</button><button class="wreset" onclick="resetWater()">&#x21BA;</button></div></div>';
 
   var compMeals=loadComposed();
   var compHTML='';
@@ -7110,7 +7142,7 @@ function renderHistory(){
     var steps=stepsOf(s);var tdee=steps>0?Math.round(2200+steps*0.04):0;
     var deficit=kcal>0&&tdee>0?tdee-kcal:0;
     var dt=new Date(s+'T12:00:00');
-    days.push({date:s,kcal:kcal,p:p,deficit:deficit,label:dt.getDate()+'/'+(dt.getMonth()+1),isToday:s===todayStr()});
+    days.push({date:s,kcal:kcal,p:p,deficit:deficit,label:fmtDayShort(dt),isToday:s===todayStr()});
   }
   var active=days.filter(function(d){return d.kcal>0;});
   function makeSVG(series,refs,minV,maxV,h){
@@ -7479,8 +7511,8 @@ function renderSummaryOverlay(dateStr){
   if(sum.kcal!==undefined&&sumSecOn('food')){
   var kp=Math.min(100,Math.round(sum.kcal/TARGETS.kcal*100)),pp2=Math.min(100,Math.round(sum.p/TARGETS.p*100)),cp3=Math.min(100,Math.round(sum.c/TARGETS.c*100)),fp2=Math.min(100,Math.round(sum.f/TARGETS.f*100));
   h+='<div class="sm-sec"><div class="sm-lab">'+_t('תזונה')+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
-  var smb=[{v:sum.kcal,pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:sum.p+'g',pct:pp2,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:sum.c+'g',pct:cp3,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:sum.f+'g',pct:fp2,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
-  for(var bi2=0;bi2<smb.length;bi2++){var sb=smb[bi2];h+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:24px;height:68px;background:var(--line);border-radius:12px;overflow:hidden;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+sb.pct+'%;background:'+sb.g+'"></div></div><div style="font-size:10.5px;font-weight:700">'+sb.v+'</div><div style="font-size:9px;color:var(--muted)">'+sb.lbl+'</div></div>';}
+  var smb=[{v:nfmt(sum.kcal),pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:fmtGrams(sum.p),pct:pp2,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:fmtGrams(sum.c),pct:cp3,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:fmtGrams(sum.f),pct:fp2,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
+  for(var bi2=0;bi2<smb.length;bi2++){var sb=smb[bi2];h+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:24px;height:68px;background:var(--line);border-radius:12px;overflow:hidden;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+nfmt(sb.pct)+'%;background:'+sb.g+'"></div></div><div style="font-size:10.5px;font-weight:700">'+sb.v+'</div><div style="font-size:9px;color:var(--muted)">'+sb.lbl+'</div></div>';}
   if(sum.water){var wp2=Math.min(100,Math.round(sum.water/3000*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; '+_t('מים')+'</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+fmtVolume(sum.water)+'</span></div>';}
   h+='</div>';
   }
@@ -8866,7 +8898,7 @@ function renderFitStats(){
       h+='<div style="width:64px;font-size:11px;color:var(--ink-soft);flex-shrink:0">'+esc(_t(nm))+'</div>';
       h+='<div style="flex:1;height:8px;border-radius:4px;background:var(--surface);overflow:hidden;position:relative">'+
          '<div style="height:100%;width:'+pct+'%;border-radius:4px;background:'+(inBand?'var(--green-500)':'var(--violet-300)')+'"></div></div>';
-      h+='<div style="width:22px;text-align:end;font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums">'+ct+'</div>';
+      h+='<div style="width:22px;text-align:end;font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums">'+nfmt(ct)+'</div>';
       h+='</div>';
     }
     h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">'+_t('מי שמתאמן כדי לגדול נמצא בדרך כלל בין {lo} ל־{hi} סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.',{lo:SETS_BAND.lo,hi:SETS_BAND.hi})+'</div>';
@@ -11049,7 +11081,7 @@ function renderCloset(){
     for(var fi=0;fi<fits.length;fi++){
       var o=fits[fi],d=new Date(o.ts);
       h+='<div class="cl-look">'+lookStageHTML(o,lookFit(o,room,LOOK_LIST_MAX.h))+'<div class="cl-fit-b">';
-      h+='<span class="cl-fit-d">'+d.getDate()+'/'+(d.getMonth()+1)+'</span>';
+      h+='<span class="cl-fit-d">'+fmtDayShort(d)+'</span>';
       h+='<button class="cl-fit-s" onclick="closetShareOutfit(\''+o.id+'\')">'+_t('שתף לוק')+'</button>';
       h+='<button class="cl-fit-w" onclick="closetWearOutfit(\''+o.id+'\')">'+_t('ללבוש')+'</button>';
       h+='<button class="cl-fit-x" onclick="closetDeleteOutfit(\''+o.id+'\')">&times;</button>';
@@ -11588,7 +11620,7 @@ function renderViewProgram(){
     if(lastEntry){
       var dd=new Date(lastEntry.date);
       h+='<div style="background:var(--surface);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--ink-soft)">';
-      h+=''+_t('אחרון:')+' '+fmtWeight(lastEntry.weight)+' &times; '+_t('{n} חזר',{n:lastEntry.reps})+' &mdash; '+dd.getDate()+'/'+(dd.getMonth()+1);
+      h+=''+_t('אחרון:')+' '+fmtWeight(lastEntry.weight)+' &times; '+_t('{n} חזר',{n:lastEntry.reps})+' &mdash; '+fmtDayShort(dd);
       h+='</div>';
     }
 
@@ -13011,7 +13043,7 @@ function renderFitSummary(){
   });
 
   var d2=new Date(entry.date);
-  var dateStr=d2.getDate()+'/'+(d2.getMonth()+1)+'/'+d2.getFullYear();
+  var dateStr=fmtDay(d2);
   var h='<div style="background:#FAF6EF;min-height:100vh;padding-bottom:40px">';
 
   // Header
@@ -13191,7 +13223,7 @@ function renderFitHistory(){
     h+='<div style="font-size:14px;font-weight:700;color:var(--ink)">'+esc(entry.name)+'</div>';
     /* stopPropagation because the card itself opens the summary. */
     h+='<button onclick="event.stopPropagation();deleteWorkout('+i+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px;min-height:44px;min-width:34px;padding:0;margin-inline-start:auto">&times;</button>';
-    h+='<div style="font-size:10px;color:var(--muted)">'+d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+'</div>';
+    h+='<div style="font-size:10px;color:var(--muted)">'+fmtDay(d)+'</div>';
     h+='</div>';
     h+='<div style="display:flex;gap:14px;font-size:11px;color:var(--muted)">';
     h+='<span>'+_t('{n} תרגילים',{n:entry.exercises.length})+'</span>';
@@ -13307,7 +13339,7 @@ function renderFitProgress(){
       for(var pi4=0;pi4<pts.length;pi4++){
         var dd=new Date(pts[pi4].date);
         svg+='<circle cx="'+xp2(pi4)+'" cy="'+yp2(pts[pi4].weight)+'" r="4" fill="'+PAL.violet500+'" stroke="#fff" stroke-width="2"/>';
-        svg+='<text x="'+xp2(pi4)+'" y="'+(H-4)+'" text-anchor="middle" font-size="8" fill="'+PAL.muted+'">'+dd.getDate()+'/'+(dd.getMonth()+1)+'</text>';
+        svg+='<text x="'+xp2(pi4)+'" y="'+(H-4)+'" text-anchor="middle" font-size="8" fill="'+PAL.muted+'">'+fmtDayShort(dd)+'</text>';
         svg+='<text x="'+xp2(pi4)+'" y="'+(yp2(pts[pi4].weight)-7)+'" text-anchor="middle" font-size="8" fill="'+PAL.violet500+'" font-weight="700">'+pts[pi4].weight+'</text>';
       }
       svg+='</svg>';
@@ -13337,7 +13369,7 @@ function renderFitProgress(){
         h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">';
         h+='<div style="font-size:8px;color:var(--muted)">'+pts[vi].vol+'</div>';
         h+='<div style="width:100%;height:'+bh+'px;background:linear-gradient(180deg,var(--green-200),var(--green-500));border-radius:4px 4px 0 0"></div>';
-        h+='<div style="font-size:7px;color:var(--muted-soft)">'+dd2.getDate()+'/'+(dd2.getMonth()+1)+'</div>';
+        h+='<div style="font-size:7px;color:var(--muted-soft)">'+fmtDayShort(dd2)+'</div>';
         h+='</div>';
       }
       h+='</div></div>';
@@ -15996,7 +16028,7 @@ function jrnlResultsHTML(){
 }
 function jrnlRow(d,inner){
   var dt=new Date(d+'T12:00:00');
-  var when=WK_DAYS[dt.getDay()]+' · '+dt.getDate()+'/'+(dt.getMonth()+1)+'/'+String(dt.getFullYear()).slice(2);
+  var when=WK_DAYS[dt.getDay()]+' · '+dfmt(dt,{year:'2-digit',month:'numeric',day:'numeric'});
   return '<button class="jrnl-row" onclick="jrnlGo(&quot;'+d+'&quot;)">'+
          '<div class="jrnl-when">'+when+(d===todayStr()?' '+_t('· היום')+'':'')+'</div>'+
          '<div class="jrnl-prev">'+inner+'</div></button>';
@@ -16666,7 +16698,7 @@ function renderPlanHistory(){
   if(hist.length===0){h+='<div style="text-align:center;padding:50px 20px;color:var(--muted-soft);font-size:13px">'+_t('אין עדיין תכנונים')+'</div>';}
   for(var hi5=0;hi5<hist.length;hi5++){
     var p=hist[hi5];var d2=new Date(p.date);
-    var ds=d2.getDate()+'/'+(d2.getMonth()+1)+'/'+d2.getFullYear();
+    var ds=fmtDay(d2);
     h+='<div style="background:var(--card);border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(200,180,160,.08);border-inline-start:3px solid var(--indigo-500)">';
     h+='<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+ds+'</div>';
     if(p.goal)h+='<div style="font-size:14px;font-weight:800;color:var(--ink);margin-bottom:4px">&#x1F3AF; '+esc(p.goal)+'</div>';
@@ -18322,7 +18354,7 @@ function renderPersonPage(){
       h+='<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--surface)">';
       h+='<div style="font-size:18px">'+upcomingEmoji(id2.type)+'</div>';
       h+='<div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--ink)">'+esc(id2.title)+'</div>';
-      h+='<div style="font-size:10px;color:var(--muted)">'+dt2.getDate()+'/'+(dt2.getMonth()+1)+(id2.yearly?' '+_t('בשנתי')+'':'')+'</div></div>';
+      h+='<div style="font-size:10px;color:var(--muted)">'+fmtDayShort(dt2)+(id2.yearly?' '+_t('בשנתי')+'':'')+'</div></div>';
       h+='<button onclick="deletePersonDate('+di2+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px">&times;</button>';
       h+='</div>';
     }
@@ -18339,7 +18371,7 @@ function renderPersonPage(){
       var isImportant=mem.type==='important'||mem.pinned;
       h+='<div style="display:flex;gap:10px;margin-bottom:12px">';
       h+='<div style="display:flex;flex-direction:column;align-items:center"><div style="width:10px;height:10px;border-radius:50%;background:'+(isImportant?'var(--terra-500)':'var(--violet-300)')+';flex-shrink:0;margin-top:4px"></div>'+(mi<sorted.length-1?'<div style="width:2px;flex:1;background:var(--line);margin-top:3px;margin-bottom:-3px"></div>':'')+'</div>';
-      h+='<div style="flex:1"><div style="font-size:9px;color:var(--muted);margin-bottom:3px">'+md.getDate()+'/'+(md.getMonth()+1)+'/'+md.getFullYear()+(mem.type?' &middot; '+((MEMORY_TYPES.find(function(t){return t.id===mem.type;})||{}).label||''):'')+'</div>';
+      h+='<div style="flex:1"><div style="font-size:9px;color:var(--muted);margin-bottom:3px">'+fmtDay(md)+(mem.type?' &middot; '+((MEMORY_TYPES.find(function(t){return t.id===mem.type;})||{}).label||''):'')+'</div>';
       h+='<div style="font-size:13px;color:var(--ink);line-height:1.6;white-space:pre-wrap">'+esc(mem.content)+'</div>';
       h+='<div style="display:flex;gap:8px;margin-top:5px">';
       h+='<button onclick="togglePinMemory(\''+mem.id+'\')" style="background:none;border:none;cursor:pointer;font-size:10px;color:'+(mem.pinned?'var(--terra-500)':'var(--muted-soft)')+'">'+(mem.pinned?'&#x1F4CC; '+_t('קשור'):'&#x1F4CC; '+_t('קבע'))+'</button>';
@@ -18681,7 +18713,7 @@ function renderInsQ(){
   for(var ei=entries.length-1;ei>=0;ei--){
     var e=entries[ei];
     var dd=new Date(e.date);
-    var ds=dd.getDate()+'/'+(dd.getMonth()+1)+'/'+dd.getFullYear();
+    var ds=fmtDay(dd);
     h+='<div style="background:var(--card);border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(200,180,160,.08);position:relative">';
     h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:8px">'+ds+'</div>';
     h+='<div style="font-size:13px;color:var(--ink);line-height:1.7;white-space:pre-wrap">'+esc(e.text)+'</div>';
