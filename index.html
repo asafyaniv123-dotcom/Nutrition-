@@ -17852,6 +17852,25 @@ var PEOPLE_DATE_TYPES=[['birthday','יום הולדת'],['anniversary','יום �
    Hebrew needs no answer to either, which is why both went unnoticed until a
    dictionary had to pick one. */
 var LABEL_CTX={'חברה':'חברה|קשר','כבד':'כבד|גוף'};   // i18n-exempt: keys, and the words they are keyed from - labelOf hands the value to _t()
+/* A list of options with one chip per LABEL rather than per value.
+
+   Hebrew marks gender where most languages do not, so בן משפחה and
+   בת משפחה both read "Family" and the picker drew the same chip twice.
+   The translations are right and the stored value must not change, so
+   the de-duplication happens here, at the point of drawing.
+
+   Each entry carries every value that collapsed into it, so a chip lights
+   up when any of them is what was stored. */
+function optOnce(list){
+  var out=[],seen=Object.create(null),i,l;
+  for(i=0;i<list.length;i++){
+    l=labelOf(list[i]);
+    if(seen[l]){seen[l].push(list[i]);continue;}
+    seen[l]=[list[i]];
+    out.push({v:list[i],same:seen[l]});
+  }
+  return out;
+}
 function labelOf(v){return _t(LABEL_CTX[v]||v);}
 var RELATIONSHIP_TYPES=[
   'חבר קרוב','חברה','בן משפחה','בת משפחה','בן זוג','בת זוג',
@@ -18378,8 +18397,10 @@ function renderEditPerson(){
   // Relationship
   h+='<div style="margin-bottom:12px"><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:6px">'+_t('סוג הקשר')+'</div>';
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">';
-  for(var ri=0;ri<RELATIONSHIP_TYPES.length;ri++){
-    var rt=RELATIONSHIP_TYPES[ri];var isSel=p.relationship===rt;
+  /* one chip per label, not per value - see optOnce */
+  var relOpts=optOnce(RELATIONSHIP_TYPES);
+  for(var ri=0;ri<relOpts.length;ri++){
+    var rt=relOpts[ri].v;var isSel=relOpts[ri].same.indexOf(p.relationship)>=0;
     h+='<button onclick="document.getElementById(\'ep-rel\').value=\''+rt+'\'" style="border:none;border-radius:10px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSel?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':'var(--surface)')+';color:'+(isSel?'var(--white)':'var(--ink-soft)')+'">'+labelOf(rt)+'</button>';
   }
   h+='</div><input id="ep-rel" class="mtin" value="'+esc(p.relationship||'')+'" placeholder="'+_t("או כתוב בעצמך...")+'"></div>';
