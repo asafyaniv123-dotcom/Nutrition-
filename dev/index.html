@@ -8270,10 +8270,34 @@ function plateSetAll(){
    is noise, and it is the whole reason 10 + 5 can be the right answer where
    15 would otherwise win: if there is no 15 in the rack, the greedy split
    reaches the same conclusion the lifter already reached. */
+/* The rack is a list of DISC SIZES, and a disc size is a display number: 20
+   means a 20 kg plate to one reader and a 20 lb plate to another, and those
+   are not the same disc.
+
+   Stored bare, a metric rack of [25,20,10,5,2.5] read back in imperial became
+   [25,10,5,2.5] - the 20 dropped because no 20 lb plate exists, and the four
+   that survived quietly changed meaning. Worse, the imperial reader was then
+   told their gym has no 45s and no 35s, which are the two plates every
+   imperial gym has.
+
+   It carries its unit now, and a rack chosen in the other system is simply
+   not applied: nobody has said which discs this gym has in THIS unit, so the
+   answer is "all of them" until they do. */
+function loadRack(){
+  var raw=null;
+  try{raw=JSON.parse(localStorage.getItem(RACK_KEY)||'null');}catch(e){}
+  /* The shape before this carried no unit, and can only have been chosen in
+     metric - imperial arrived later than it did. */
+  if(Array.isArray(raw))raw={u:'metric',p:raw};
+  if(!raw||!Array.isArray(raw.p)||!raw.p.length)return null;
+  return raw.u===APP_UNITS?raw.p:null;
+}
+function saveRack(list){
+  try{localStorage.setItem(RACK_KEY,JSON.stringify({u:APP_UNITS,p:list}));}catch(e){}
+}
 function plateSet(){
-  var all=plateSetAll(),have=null;
-  try{have=JSON.parse(localStorage.getItem(RACK_KEY)||'null');}catch(e){}
-  if(!Array.isArray(have)||!have.length)return all;
+  var all=plateSetAll(),have=loadRack();
+  if(!have)return all;
   var out=all.filter(function(p){return have.indexOf(p)>=0;});
   /* Never empty: an empty rack would make plateSplit return nothing for
      every weight, which reads as a broken screen rather than as a setting. */
@@ -8284,7 +8308,7 @@ function rackToggle(p){
   var i=cur.indexOf(p);
   if(i>=0)cur.splice(i,1);else cur.push(p);
   cur=all.filter(function(x){return cur.indexOf(x)>=0;});
-  try{localStorage.setItem(RACK_KEY,JSON.stringify(cur));}catch(e){}
+  saveRack(cur);
   plateHint();
 }
 var _rackOpen=false;
@@ -9089,7 +9113,10 @@ function renderFitStats(){
   h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:12px">'+_t('השבוע')+' &middot; '+_t('מול שבוע שעבר')+'</div>';
   var rows=[[_t('{n} אימונים',{n:now.sessions}),delta(now.sessions,prev.sessions)],
             [''+_t('{n} סטים',{n:now.sets})+'',delta(now.sets,prev.sets)],
-            [nfmt(now.vol)+' '+_t('{u} נפח',{u:weightUnit()})+'',delta(now.vol,prev.vol,'%')]];
+            /* The sixth site of the same bug, found by grepping the label
+               rather than the screen: kilogram-reps under a weightUnit()
+               label. volDisp is declared further down the file and hoisted. */
+            [nfmt(volDisp(now.vol))+' '+_t('{u} נפח',{u:weightUnit()})+'',delta(now.vol,prev.vol,'%')]];
   for(var r=0;r<rows.length;r++){
     h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(r<2?'8px':'0')+';font-variant-numeric:tabular-nums">'+
        '<div style="font-size:13px;font-weight:700;color:var(--ink)">'+rows[r][0]+'</div>'+
@@ -9133,7 +9160,7 @@ function renderFitStats(){
       h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:'+(L<lifts.length-1?'8px':'0')+'">';
       h+='<div style="font-size:12.5px;color:var(--ink);font-weight:600">'+esc(exLabel(li.name))+'</div>';
       h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+
-         Math.round(li.e.v)+' '+weightUnit()+' <span style="color:var(--muted-soft)">&middot; '+li.e.w+'×'+li.e.r+'</span></div>';
+         fmtWeight(li.e.v)+' <span style="color:var(--muted-soft)">&middot; '+fmtWeight(li.e.w)+'×'+nfmt(li.e.r)+'</span></div>';
       h+='</div>';
     }
     h+='</div>';
@@ -12213,7 +12240,12 @@ function restTick(){
     el=document.getElementById('fw-rest');
   }
   var n=document.getElementById('fw-rest-n');
-  if(n)n.textContent=Math.floor(left/60)+':'+(left%60<10?'0':'')+(left%60);
+  /* A clock face built by hand - digits, a colon and a zero-pad - is the
+     family the planning module's hour rail paid for. nfmt does the pad in the
+     reader's own digits, so this reads ١:٣٠ in Arabic rather than 1:30.
+     (The other minutes-and-seconds expression in this file, in the reminder
+     scheduler, is a SORT KEY compared as a string and must stay ASCII.) */
+  if(n)n.textContent=nfmt(Math.floor(left/60))+':'+nfmt(left%60,{minimumIntegerDigits:2});
 }
 /* ── THE EXERCISE LIBRARY ──
    Until now an exercise was whatever you typed, which meant "לחיצת חזה" and
@@ -12962,7 +12994,7 @@ function renderFitWorkout(){
   // Header bar
   h+='<div style="background:linear-gradient(135deg,#fef0e8,#fae0d0);border-radius:18px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">';
   h+='<div><div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(w.name)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">&#9200; '+_t('{n} דקות',{n:elapsed})+'</div></div>';
-  h+='<div style="font-size:11px;color:var(--terra-500);font-weight:700">'+( w.currentEx+1)+' / '+w.exercises.length+'</div>';
+  h+='<div style="font-size:11px;color:var(--terra-500);font-weight:700">'+nfmt(w.currentEx+1)+' / '+nfmt(w.exercises.length)+'</div>';
   h+='</div>';
 
   // Exercise tabs
@@ -13005,7 +13037,7 @@ function renderFitWorkout(){
   for(var wi=0;wi<_wu.length;wi++){
     h+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;opacity:.55">';
     h+='<div style="font-size:10px;color:var(--muted);width:32px">'+_t('חימום')+'</div>';
-    h+='<div style="font-size:12.5px;font-weight:700;color:var(--muted);flex:1">'+fmtWeight(_wu[wi].weight)+' &times; '+_wu[wi].reps+'</div>';
+    h+='<div style="font-size:12.5px;font-weight:700;color:var(--muted);flex:1">'+fmtWeight(_wu[wi].weight)+' &times; '+nfmt(_wu[wi].reps)+'</div>';
     h+='<button onclick="removeWarm('+wi+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:13px;padding:2px">&times;</button>';
     h+='</div>';
   }
@@ -13014,11 +13046,13 @@ function renderFitWorkout(){
   for(var si=0;si<ex.sets.length;si++){
     var s=ex.sets[si];var isNewPR=s.weight>curPR;
     h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--surface)">';
-    h+='<div style="font-size:11px;color:var(--muted);width:32px">'+_t('סט')+' '+(si+1)+'</div>';
+    h+='<div style="font-size:11px;color:var(--muted);width:32px">'+_t('סט {n}',{n:si+1})+'</div>';
     if(si===_editSet){
       /* The boxes open on what is already there, in the unit on screen. */
       h+='<input id="ed-w" class="mtnm" type="number" step="0.5" value="'+edWeightVal(s.weight)+'" style="width:72px;padding:7px;border-radius:9px;font-size:15px;font-weight:700">';
       h+='<span style="font-size:12px;color:var(--muted)">&times;</span>';
+      /* NOT nfmt: this is an <input type=number>, and a grouped or
+         Arabic-Indic string is not a value it can hold. */
       h+='<input id="ed-r" class="mtnm" type="number" value="'+s.reps+'" style="width:58px;padding:7px;border-radius:9px;font-size:15px;font-weight:700">';
       h+='<button onclick="saveEditSet()" style="min-height:36px;padding:0 12px;border:none;border-radius:9px;background:var(--green-500);color:var(--white);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">'+_t('שמור')+'</button>';
       h+='<button onclick="cancelEditSet()" style="min-height:36px;padding:0 10px;border:none;border-radius:9px;background:var(--surface);color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">'+_t('ביטול')+'</button>';
@@ -13027,7 +13061,7 @@ function renderFitWorkout(){
          this row for an edit affordance to live, and the numbers are what you
          are looking at when you notice the mistake. */
       h+='<button onclick="editSet('+si+')" style="flex:1;min-width:0;text-align:start;background:none;border:none;padding:0;font-family:inherit;cursor:pointer">'+
-         '<span style="font-size:14px;font-weight:700;color:var(--ink)">'+fmtWeight(s.weight)+' &times; '+s.reps+'</span>'+
+         '<span style="font-size:14px;font-weight:700;color:var(--ink)">'+fmtWeight(s.weight)+' &times; '+nfmt(s.reps)+'</span>'+
          plateChipsHTML(s)+'</button>';
       if(isNewPR)h+='<div style="font-size:9px;font-weight:700;color:var(--amber-500);background:#fef9e7;border-radius:6px;padding:2px 6px">PR &#9733;</div>';
       h+='<button onclick="removeSet('+si+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px;padding:2px">&times;</button>';

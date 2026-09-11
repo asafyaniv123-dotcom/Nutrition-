@@ -3316,3 +3316,81 @@ Widening the check was not an option — that is how a check rots, and this is
 the second time this session the answer was to change the code instead. The
 range and its name are two things; they are two elements now, and the markup
 carries the space that the string used to.
+
+## The rack was stored without saying which plates
+
+A disc size is a display number. **20 means a 20 kg plate to one reader and
+a 20 lb plate to another, and those are not the same disc** — so the list of
+plates your gym owns cannot be stored as bare numbers. It was.
+
+Driven, metric then imperial:
+
+    chosen in metric   [25, 20, 10, 5, 2.5]     kilogram discs
+    stored as          [25,20,10,5,2.5]         no unit anywhere
+    read in imperial   [25, 10, 5, 2.5]         pound discs
+
+The 20 vanished because no 20 lb plate exists, and the four that survived
+changed meaning. Worse than the dropped plate: the imperial reader was now
+being told **their gym has no 45s and no 35s** — the two plates every
+imperial gym has — so every loading suggestion would be assembled out of
+discs they do not own, which is the exact failure `plateSet`’s own comment
+says it exists to prevent.
+
+It carries its unit now. A rack chosen in the other system is not applied at
+all, which is the honest answer: nobody has said what this gym has *in this
+unit*, so the answer is "everything" until they do. The old bare shape is
+read as metric, because imperial arrived after it did.
+
+Checked all three ways: the legacy array still applies in metric and is
+ignored in imperial; a rack chosen in imperial survives a round trip through
+metric and back; and metric sees its own full rack untouched.
+
+**This is the unit bug in STORED DATA rather than on a screen**, which is
+the version that does not heal when you fix the display.
+
+## Six more raw numbers, and the volume label twice more
+
+The workout screen, swept in Arabic — every visible element whose own text
+nodes match `[0-9]`. **6 → 0.**
+
+    ١٣٢٫٣ lb × 8      the weight converted and formatted, the reps beside
+                      it raw, in the same row
+    مجموعة 1          a translated word with a number glued to it
+    1 / 2             the position counter, both numbers raw
+
+`סט {n}` is a new key and deliberately **not** a plural one: it is an
+ordinal label, "set 3", not a count of three sets. Japanese and Chinese put
+the number first (`{n}セット目`, `第 {n} 组`), which is the argument for the
+whole sentence being one key.
+
+The rep box in the inline editor stays unformatted, and now says why: an
+`<input type=number>` cannot hold `١٣٢٫٣` or a grouped string. That comment
+exists so the next sweep does not "fix" it.
+
+And the volume label turned up **twice more** — the strongest-lift line on
+the stats screen (`Math.round(li.e.v)` beside `weightUnit()`) and the weekly
+volume stat (`855 حجم العمل lb`, which is 855 kilogram-reps). Both now read
+`١٬٨٨٥ lb` and `١٦٧٫٦ lb · ١٣٢٫٣ lb×٨`.
+
+**Sixth site of one bug.** Found this time by grepping the LABEL — `{u} נפח`
+— rather than by finding it on a screen, which is what the "grep for its
+siblings" rule is for.
+
+## The rest timer
+
+`Math.floor(left/60)+':'+(left%60<10?'0':'')+(left%60)` — a clock face built
+by hand, the family the planning module’s hour rail paid for. `nfmt` with
+`minimumIntegerDigits:2` does the pad in the reader’s own digits: **١:٣٠**.
+
+Grepping for siblings found one other minutes-and-seconds expression, in the
+reminder scheduler — and it is a **sort key compared as a string**, so it
+must stay zero-padded ASCII. Left alone, and the comment in the timer now
+says so, because it is exactly the shape a later sweep would "fix".
+
+## What was already right
+
+`plateSetAll()` returns `[45,35,25,10,5,2.5]` in imperial and
+`[25,20,15,10,5,2.5,1.25]` in metric, `barWeight()` returns 45 for a pound
+bar, and `plateSplit` works in whatever it is handed. Driven: **225 lb on a
+45 lb bar gives 45 + 45 a side**, which is right. The plate maths is the one
+place in the app where display units are correct on purpose, and it is.
