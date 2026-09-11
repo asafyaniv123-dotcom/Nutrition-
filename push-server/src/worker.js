@@ -390,7 +390,13 @@ export default {
           if (implied >= 20 && k < implied * 0.5) continue;
           let name = String(p.product_name || p.product_name_en || '').trim();
           const brand = String(p.brands || '').split(',')[0].trim();
-          if (brand) name = name ? name + ', ' + brand : brand;
+          /* A brand that IS the name adds nothing. Seven of seventy-four
+             live rows came back saying it twice - Yogurt, Yogurt. */
+          if (brand) {
+            const a = name.toLowerCase(), b = brand.toLowerCase();
+            if (!name) name = brand;
+            else if (a !== b && a.slice(-b.length - 1) !== ' ' + b) name = name + ', ' + brand;
+          }
           if (name.length < 2) continue;
           out.push({ id: 'off:' + p.code, n: name, k: Math.round(k), p: pr, c: ca, f: fa,
                      via: isVia ? 1 : 0 });

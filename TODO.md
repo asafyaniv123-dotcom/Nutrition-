@@ -1442,3 +1442,55 @@ weights, numbers and the training plan — on a fresh reload in German.
 
 Also driven and correct: the set logger (80 kg × 8 recorded, PR set), the
 plate calculator (20 kg bar + 2×(25+5) = 80, shown as "Pro Seite: 25 + 5 kg"), and the rest-timer chips.
+
+## The lazy-load question, asked of everything else
+
+Last tick, one lazy fetch explained four broken screens. The obvious
+follow-up: does any other data file have the same exposure?
+
+**It does not, and the reason is structural.** A fresh reload straight into
+each of eight modules, in German, measuring the loader state rather than
+guessing:
+
+    nutrition planning endofday journal insights goals people hobbies
+    _exState idle · _foodsState idle · exAll 0 · _foods 0    hebrew = 0
+
+Nothing needs either file, because **a logged meal stores its NAME, not an**
+**id**. Read from the app's own writer rather than guessed:
+
+    day.meals.push({name: f.n + ' (' + howMuch + ')', kcal, p, c, f, …})
+
+Driven end to end to confirm: searched *Banane* in German, added it, and
+read back what landed in storage — `"Banane (100g)"`. The name is captured
+in the reader's language at log time, which is exactly what
+`build-food-core.mjs` says the core file exists for: *"a Japanese user finds
+the right rice and then logs אורז לבן into their diary, where it stays."*
+
+So exercises were the only file looked up by id, and that is fixed.
+
+## "Banane, Banane"
+
+Found while doing the above — the first result for *Banane* in German.
+
+Open Food Facts carries a product name and a brand, and this app glues them
+together — *"Skyr, Arla"* — which is right whenever they differ. Very often
+they do not: the brand **is** the product name.
+
+Measured against the deployed live endpoint, eight everyday words in four
+languages: **seven of seventy-four rows, nearly one in ten.**
+
+    Banane, Banane      Yogurt, Yogurt      Riso, Riso      PAN, PAN
+    Leite moça, Leite moça
+    Altländer Apfel-Curry Soße, Altländer Apfel-Curry Soße
+
+The **bundled** file has one such row in 3,308, which is why nobody had seen
+it: it lives almost entirely in the live search. The row that gave it away
+was marked `live:1`, and checking that flag is what pointed at the worker
+rather than at the data.
+
+Three sites build that string — the live shelf in the worker and the two
+barcode lookups in the app — so all three now drop a brand that repeats the
+name, or that the name already ends with (*"Griechischer Joghurt Arla" +
+"Arla"*). Nine helper cases checked in node before shipping.
+
+**After, same eight queries against the deployed worker: 0 of 74.**
