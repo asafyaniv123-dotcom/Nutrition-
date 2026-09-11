@@ -1135,3 +1135,69 @@ scanning the **home page six times**: `goRoute` takes no argument, it reads
 `?go=` from the URL, and `goRoute('insights')` silently does nothing. The
 screens only opened once the sweep called `enterModule` instead. A clean
 result is worth nothing until the thing being measured is on screen.
+
+## Chips that disagree about capitals
+
+Same screen, same shape as last tick. The reflection asks how the day
+affected you and offers three chips:
+
+    Zum Besseren · zum Schlechteren · Beides
+
+Two capitalised and one not, in **six languages**. Each answer is defensible
+read alone; the row is not. Hebrew has no capitals, so it could only ever
+appear on a screen in a language that does.
+
+Two more of the same, found by turning it into a rule:
+
+- the reminder offsets — *At the time · 5 min before · 10 min before ·
+  **an** hour before* — where the numeric ones start with a digit and dodge
+  the question, in six languages;
+- the afternoon: Hebrew writes `אחה״צ` because the full form is long, and
+  English and German inherited an abbreviation into a row of whole words —
+  *Morning · Lunch · **PM** · Evening · Night*. French *Après-midi* is
+  longer than *Afternoon*, so width was never the constraint.
+
+14 answers corrected. `find-duplicate-options.mjs` reads capitals now as
+well as duplicates — same lists, second rule — proved against the
+dictionaries as they were: **13 findings, silent after.**
+
+### Getting the rule to be worth reading
+
+The first cut reported **32**, and most were noise. Three things had to be
+fixed before the number meant anything:
+
+1. **It was reading keys the screen never shows.** `LABEL_CTX` sends one
+   stored word to a different dictionary key — `כבד` is *heavy* in a body
+   and a *liver* on a plate, so `labelOf` asks for `כבד|גוף`. The check read
+   the bare key and reported six languages lower-casing a word that is
+   capitalised on screen. This had been wrong for the duplicate rule too,
+   since the day it was written.
+2. **Not every array is a row of chips.** `GW_STEPS` mixes step labels with
+   *"e.g. …"* hints and `RF_STAGE2` holds questions and the fragments that
+   continue them; a lower-case member there is prose, not a style slip. Only
+   lists whose members are all short count.
+3. **Unit symbols are not words.** `g`, `ml` say nothing about
+   capitalisation.
+
+After all three: **13 findings in 3 lists, every one real.** A check that
+cries wolf is worse than no check, and 32 would have been ignored inside a
+week.
+
+### Tried and abandoned: detecting the wrong-noun class
+
+Last tick found a subtitle under "This week" that said *the day* in five
+languages. The obvious follow-up — compare the noun in the key against the
+noun in the answer, using the app's own words for day/week/month/year —
+finds nothing, and checking **why** is the useful part: the Hebrew says
+`אותו`, "it". **The key names no noun at all.**
+
+Widening it to "keys whose Hebrew contains a pronoun" gives 70 of 1733, and
+nearly all have their antecedent inside the same sentence. Telling those
+apart needs the surrounding code, not the dictionary. Recorded as a review
+hazard rather than a tool: **a key that points at something outside itself
+cannot be answered by a translator who cannot see the screen.**
+
+### No release needed
+
+`dev/index.html` is untouched this tick — the work was dictionaries and
+tooling. Both copies share `data/`, so pushing is the release.

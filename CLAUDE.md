@@ -120,7 +120,9 @@ the rest.
    distinct; it exists only in the answers. Where the collapse is real —
    Hebrew marks gender on בן משפחה / בת משפחה and ten languages do not —
    the list is drawn through `optOnce`, which shows one chip per label and
-   lights it for either value.
+   lights it for either value. The same check reads capitals: *Zum Besseren ·
+   zum Schlechteren · Beides* is three chips in one row, two capitalised and
+   one not, in six languages — each defensible alone and wrong together.
 
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
@@ -132,7 +134,8 @@ translation falls back to readable text rather than to `fitness.set.add`.
     node tools/find-units-in-strings.mjs       # kg or ml welded into a sentence
     node tools/find-frozen-translations.mjs    # _t() called once, at load, then never
     node tools/find-unwrapped-hebrew.mjs       # Hebrew that never reaches _t() at all
-    node tools/find-duplicate-options.mjs      # two choices wearing the same label
+    node tools/find-duplicate-options.mjs      # two choices wearing the same label,
+                                               # or disagreeing about capitals
     node tools/build-lang-template.mjs --check # the template still matches the app
 
 `tools/test-background-fill.mjs` is a seventh, of a different kind: it lifts

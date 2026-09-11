@@ -68,8 +68,20 @@ const LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', '
 const dict = {};
 for (const l of LANGS) dict[l] = JSON.parse(fs.readFileSync('data/lang/' + l + '.json', 'utf8'));
 
+/* LABEL_CTX is how the app sends one stored word to a DIFFERENT dictionary
+   key - כבד is heavy in a body and a liver on a plate, so labelOf hands _t
+   the key כבד|גוף instead. A check that reads the bare key is measuring a
+   string the screen never shows, which is what made this report six languages
+   lower-casing a word that is capitalised on screen. */
+const CTX = {};
+{
+  const m = src.match(/var LABEL_CTX=\{([^}]*)\}/);
+  if (m) for (const p of m[1].matchAll(/'([^']*)':'([^']*)'/g)) CTX[p[1]] = p[2];
+}
+
 /* the same fold _t does: a key may carry a context after a bar */
-const answer = (d, k) => {
+const answer = (d, k0) => {
+  const k = CTX[k0] || k0;
   const v = d[k];
   if (typeof v === 'string' && v) return v;
   return k.indexOf('|') > 0 ? k.slice(0, k.indexOf('|')) : k;
@@ -100,11 +112,54 @@ for (const [name, items] of lists) {
   }
 }
 
+/* ── and whether the chips in a list agree about capitals ──
+   Three chips reading "Zum Besseren · zum Schlechteren · Beides" are each
+   defensible alone and wrong together. Hebrew cannot show it - it has no
+   capitals - so it only exists in the answers, like everything else this
+   file looks for.
+
+   Languages without case are skipped by asking whether the first letter
+   changes when lowered, rather than by naming them here. */
+let mixed = 0;
+for (const [name, items] of lists) {
+  for (const l of LANGS) {
+    const firsts = [];
+    for (const k of items) {
+      const v = answer(dict[l], k).trim();
+      const c = v.charAt(0);
+      if (!c || c.toLowerCase() === c.toUpperCase()) continue;   // no case in this script
+      /* A word that is capitals all through - OK, PM - is an abbreviation
+         rather than a capitalised word, and says nothing about the style of
+         the list. */
+      if (v.length > 1 && v === v.toUpperCase()) continue;
+      firsts.push([k, v, c === c.toUpperCase()]);
+    }
+    if (firsts.length < 2) continue;
+    /* Only a row of CHIPS. Several of these arrays are not flat lists of
+       siblings at all - GW_STEPS mixes step labels with "e.g. …" hints,
+       RF_STAGE2 holds questions and the fragments that continue them - and
+       in those a lower-case member is prose rather than a style slip. A chip
+       is short and carries no sentence punctuation. */
+    if (firsts.some((x) => x[1].length > 24)) continue;
+    /* A row of unit SYMBOLS - g, ml, oz - is not a row of words and says
+       nothing about capitalisation. */
+    if (firsts.some((x) => x[1].length <= 2)) continue;
+    const up = firsts.filter((x) => x[2]).length;
+    if (up === 0 || up === firsts.length) continue;
+    mixed++;
+    const odd = up * 2 > firsts.length ? firsts.filter((x) => !x[2]) : firsts.filter((x) => x[2]);
+    console.log(name + '  [' + l + ']  mixed capitals: ' +
+      odd.map((x) => JSON.stringify(x[1])).join(', ') +
+      '  against ' + (firsts.length - odd.length) + ' the other way');
+  }
+}
+
 console.log('');
 console.log(lists.size + ' option lists checked in ' + LANGS.length + ' languages');
 if (collapsed) console.log(collapsed + ' collapses in lists drawn through optOnce, which shows one chip per label');
-if (found) {
-  console.log(found + ' places where two options carry the same label');
+if (mixed) console.log(mixed + ' lists whose options disagree about capitals');
+if (found || mixed) {
+  if (found) console.log(found + ' places where two options carry the same label');
   process.exit(1);
 }
 console.log('every option in every list is distinct');
