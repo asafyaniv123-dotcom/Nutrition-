@@ -2074,6 +2074,12 @@ function profNum(field,el){
     if(isNaN(n))return;
     p[field]=n;
     if(field==='weight'){
+      /* The note beside this box is weightUnit(), so what was typed is in
+         the reader's own unit and has to be converted exactly like every
+         gym weight box already is. profileBMI and the target read kilograms
+         out of here, and before this they were reading pounds. */
+      n=Math.round(fromDisplayWeight(n)*100)/100;
+      p[field]=n;
       /* Into the same store the quick add uses, so the graph shows a weight
          however it was entered. Writing it here rather than calling logWeight
          avoids saving and repainting the profile twice on one keystroke. */
@@ -2152,7 +2158,7 @@ function renderProfile(){
      '<input class="pf-in" type="number" inputmode="decimal" step="0.5" placeholder="0" value="'+(p.height!==undefined?p.height:'')+'" onchange="profNum(\u0027height\u0027,this)">'+
      '<span class="pf-note">'+_t('ס"מ')+'</span></div>';
   h+='<div class="pf-row"><label class="pf-lbl">'+_t('משקל')+'</label>'+
-     '<input class="pf-in" type="number" inputmode="decimal" step="0.1" placeholder="0" value="'+(p.weight!==undefined?p.weight:'')+'" onchange="profNum(\u0027weight\u0027,this)">'+
+     '<input class="pf-in" type="number" inputmode="decimal" step="0.1" placeholder="0" value="'+(p.weight!==undefined?edWeightVal(p.weight):'')+'" onchange="profNum(\u0027weight\u0027,this)">'+
      '<span class="pf-note">'+weightUnit()+'</span></div>';
   if(bmi!==null)
     h+='<div class="pf-derived">BMI '+bmi+'</div>';
@@ -9566,7 +9572,10 @@ function saveWeights(o){try{localStorage.setItem(WEIGHTS_KEY,JSON.stringify(o));
 function logWeight(kg,dateStr){
   var w=parseFloat(kg);
   if(!(w>20&&w<400))return false;
-  w=Math.round(w*10)/10;
+  /* Two decimals of a kilogram, not one: a tenth of a kilogram is 0.22 lb,
+     coarser than the tenth of a pound the box shows, so a typed 180 came
+     back 179.9. Metric lost the same way - its box shows two decimals. */
+  w=Math.round(w*100)/100;
   var o=loadWeights();o[dateStr||todayStr()]=w;saveWeights(o);
   profSet('weight',String(w));   // BMI and the target still read this
   return true;
@@ -9636,7 +9645,7 @@ function weightCardHTML(){
   }else{
     var ser=ewma(pts,EWMA_ALPHA),r=trendRate(ser,30);
     var lastT=ser[ser.length-1].t;
-    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+lastT.toFixed(1)+' '+weightUnit()+'</div></div>';
+    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+nfmt(toDisplayWeight(lastT),{maximumFractionDigits:1})+' '+weightUnit()+'</div></div>';
     h+=trendChartHTML(ser,{});
     if(r&&ser.length>=TREND_MIN_DAYS){
       var up=r.over>0,flat=Math.abs(r.over)<0.15;
@@ -9658,7 +9667,7 @@ function weightCardHTML(){
   }
 
   h+='<div style="display:flex;gap:8px;margin-top:12px">';
-  h+='<input id="weigh-in" type="number" inputmode="decimal" step="0.1" placeholder="'+_t("משקל היום")+'" '+
+  h+='<input id="weigh-in" type="number" inputmode="decimal" step="0.1" placeholder="'+_t("משקל היום ({u})",{u:weightUnit()})+'" '+
      'style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-family:inherit;text-align:center">';
   h+='<button onclick="weighInSubmit()" style="background:var(--violet-100);border:none;border-radius:12px;padding:10px 16px;font-size:12.5px;font-weight:700;color:var(--violet-700);cursor:pointer;font-family:inherit">'+_t('רישום')+'</button>';
   h+='</div>';
@@ -9666,7 +9675,10 @@ function weightCardHTML(){
 }
 function weighInSubmit(){
   var el=document.getElementById('weigh-in');if(!el)return;
-  if(logWeight(el.value)){el.value="";renderFitness();}
+  /* Converted here rather than inside logWeight, which is also called with
+     kilograms by the profile screen. A blank or bad box comes through as 0
+     and fails logWeight's own range check, exactly as it did before. */
+  if(logWeight(fromDisplayWeight(parseFloat(el.value)))){el.value="";renderFitness();}
   else showToast(''+_t('משקל לא תקין')+'');
 }
 
