@@ -2436,3 +2436,79 @@ visible and whose text contains `[0-9]`.
 
 English re-checked in the same place — `September 2026` ungrouped, `06:00`
 unchanged, `0 of 1 scheduled`, `9/11` in American order.
+
+## A setting nobody could reach
+
+The settings screen has two sections: language and country. **There is no
+units setting** — and `APP_UNITS` drives `fmtWeight`, `weightUnit`,
+`toDisplayWeight` and every box in the app that takes a weight.
+
+It has always been **read** and never **written**. The pattern behind that:
+`UNITS_KEY` appears four times in the file — its declaration, one
+`getItem`, and two comments. No `setItem`.
+
+Which is also why three unit bugs could sit there being found one at a time
+over four passes: **nobody could turn the setting on to see them.** A reader
+on pounds had no way to say so.
+
+So: a third section, stored the way the language and country are, repainted
+the way a language change is — a weight is on half the screens in the app,
+and changing the unit should not send anybody home. Driven end to end: the
+chip in settings, then the weights screen reading **185 lb**, with no reload.
+
+### The chips name the systems, because the check was right
+
+They first showed the units themselves — `kg · ml` against `lb · fl oz` —
+which reads better, because what a person wants to know is what they will
+see. But it meant joining two unit keys with a separator, and
+`find-units-in-strings` flagged it: **its rule is that a bare unit may stand
+alone only when it is not being joined to something else**, and that rule has
+caught a real bug before.
+
+Widening a check to let my own code through is how a check rots. The code
+changed instead — *Metrisch / Imperial*, 公制 / 英制, متري / إمبراطوري.
+
+(And then it flagged the **comment** I wrote explaining all this, because the
+comment quoted the code. Reworded. The check reads the whole file, which is
+right.)
+
+## The Arabic sweep, run across everything
+
+Reading the rendered screen for `[0-9]` in Arabic is the cheapest detector
+found in this repo: it catches a raw number **wherever it came from** —
+behind a helper, inside a percentage, welded to a denominator — because the
+evidence is on the screen rather than in a pattern someone guessed.
+
+It found **nine families across four modules**, including two in the habit
+tracker, which a German sweep had passed clean twice. German shares the
+Latin digits, so it can never show this.
+
+| where | was |
+|---|---|
+| week counter | `2 من ٧ أيام` — count raw, **the 7 baked into the key** so all eleven wrote it by hand |
+| past day | `9.9` — a date built by hand with a dot, so neither the `getDate` grep nor `wkShort` caught it |
+| grade badge | `8` |
+| grade recap | `٨/10` — the number formatted, its denominator not |
+| goal card | `0/3` |
+| habit header | `سبتمبر 2026` — a **second** month header, in a different module from the one fixed last pass |
+| habit percent | `0%` and the per-habit row |
+| habit grid | `1 2 3 … 31`, every day row |
+| fitness goal | `6–12 تكرارًا` |
+
+The week counter is the one worth naming: seven is still seven, but it is
+**passed** now rather than written into eleven translations, which is what
+lets it be ٧ for one reader and 7 for another without anyone typing either.
+Japanese and Chinese immediately used the whole key to put the total first.
+
+**After: all ten modules clean in Arabic.** The three things still matching
+`[0-9]` are text I typed myself — a German journal entry, a meal name, a goal
+title — which must never be reformatted.
+
+### A measurement error, caught before it was reported
+
+Switching the language from inside settings looked like it left the settings
+screen in the old language while the app behind it turned over — the one
+screen guaranteed to be in front of the reader at that moment. It does not.
+`langLoad` fetches the dictionary asynchronously and my first read was 1.2
+seconds in, before it landed. At 2 seconds: 言語 / 国 / 単位, then Sprache /
+Land / Einheiten. **Wait for the fetch before believing a repaint failed.**
