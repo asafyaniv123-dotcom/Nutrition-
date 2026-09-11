@@ -3626,3 +3626,70 @@ searchable in both.
 **`dev/index.html` is untouched this pass** — the content lives in
 `tools/exercise-howto-en.mjs` and reaches the app through
 `data/exercises.json`, which is the whole point of that file existing.
+
+## The button promised 8 and added 8.45
+
+The water quick-adds were three **metric** quantities with imperial labels
+stuck on — `+250 / +500 / +1000 ml`, rendered through `fmtVolume` as
+`+8 / +17 / +34 fl oz`. Driven, four taps of the first one:
+
+    the label promised   32 fl oz
+    the line said        34 fl oz
+
+**A button’s label is a promise about what it does**, and this one was out by
+half a unit on every tap, compounding.
+
+An imperial reader thinks in a cup, a pint and a quart — 8, 16, 32 — which
+are round in their own system and only become awkward once converted. So the
+LIST is theirs now, the conversion to the stored millilitre happens once, and
+`fmtVolume` prints the exact number back because that is what it was handed.
+Four taps now give exactly 32. **Metric is byte-for-byte unchanged**, checked
+on the same path.
+
+Same shape as `BAR_STEPS` and `plateSetAll`, which already do this — a
+per-system list of quantities that are natural in that system.
+
+## Eleven raw calorie counts, and the grep that was too narrow
+
+The confirm card in Arabic read:
+
+    129 سعرة لكل ١٠٠ جم · بروتين ٢٫٧ كربوهيدرات ٢٧٫٥ دهون ٠٫٣
+
+Four formatted numbers and one Latin one **in the same line**. The macros go
+through a whole-sentence key with holes, which formats them; the calories
+were concatenated.
+
+I grepped the VALUE — `+a.kcal+`, `+f.k+` — and got seven. Then I grepped
+the LABEL — `/100g`, `ל-100 גרם` — and got **five more**, one of which is the
+identical expression under a different variable name (`rest[i].k` instead of
+`f.k`), sitting nine lines below one I had just fixed.
+
+The loop’s own rule says to grep the label *as well as* the expression. This
+is the pass it was written for, and I only half applied it the first time.
+
+### Two that are already right
+
+The two keys that spell out `קק"ל/100g` and `קק"ל ל-100 גרם` bake the
+hundred into the KEY, which looks like the bug the week counter was. It is
+not:
+**Arabic answered both with ١٠٠**, so every language already writes the
+hundred in its own digits.
+Checked before touching, the way the "leave it at 0" hint was checked last
+week.
+
+## The amount lives inside a display string
+
+One Latin number survives the Arabic sweep of the whole nutrition day:
+
+    أرز أبيض مطبوخ (150g)
+
+That is the meal’s stored **name**. The app builds it at log time as
+the food name followed by the grams in brackets — so the amount exists only
+as text inside a label, and no formatter can reach it afterwards.
+
+**Not fixed, deliberately.** Formatting it at log time would freeze the
+digits in whatever language the meal was logged in, which is worse than
+neutral Latin. The real fix is to store the amount as a number beside the
+name and format it at display — a data-model change across seven push sites
+with a migration, which is a pass of its own and changes what is on disk.
+Written down rather than half-done.
