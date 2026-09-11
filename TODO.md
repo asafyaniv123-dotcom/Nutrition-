@@ -3693,3 +3693,93 @@ neutral Latin. The real fix is to store the amount as a number beside the
 name and format it at display — a data-model change across seven push sites
 with a migration, which is a pass of its own and changes what is on disk.
 Written down rather than half-done.
+
+## The arrows that belonged to someone else
+
+The day arrows were turned ON for every module and turned off again by each
+one that did not want them. Five forgot: תחביבים, כושר, מטרות, האנשים שלי,
+תובנות.
+
+In the habit tracker they land directly above **ספטמבר 2026**, so they read
+as the month navigation. Driven from the home board, one tap:
+
+    before   מעקב תחביבים, the habit grid
+    after    יום שבת, 12 בספטמבר, the FOOD LOG on screen
+             currentModule still saying hobbies
+
+And the damage accumulates. Four taps in four different modules walked the
+log from the 11th to the 15th, nothing on the way home undoes it, and
+opening תזונה afterwards landed on **15 בספטמבר** with the היום badge gone.
+Meals are written to `loadDay(curDate)`, so food logged there goes to the
+wrong day.
+
+**One root cause, not five patches: the default is inverted.** תזונה is the
+only module with a date to step, so it is the only one that turns them on,
+and forgetting can no longer leak them. All ten non-nutrition modules driven
+clean afterwards; תזונה still steps forward and back and still shows היום.
+
+## Whose weekend is it
+
+The habit grid shaded Friday and Saturday and drew its week line where
+Sunday starts. Both are the Israeli calendar, frozen for everyone. Asked the
+browser instead of reasoning about it, for the eleven locales we ship:
+
+    he-IL  first day 7  weekend 5,6        ar-EG  first day 6  weekend 5,6
+    the other nine      weekend 6,7        de/es/fr/it/zh-CN  first day 1
+
+**Nine of eleven had the wrong two rows tinted**, and six had the week line
+on the wrong row. A German reader saw Friday shaded and their own Sunday
+not.
+
+Same class as the open "יום שישי" question, but needing no decision: there
+is no taste in it and `Intl.Locale` states the answer per locale. Driven in
+four languages after — Hebrew unchanged, German shades Samstag+Sonntag with
+the line on Montag, Arabic opens its week on السبت, Japanese on 日曜日.
+
+The habit grid is one row per day, so this was self-contained. **The month
+GRIDS that pad from Sunday are not** — the two calendars and the journal —
+and they are a structural change of their own.
+
+## The day ends at four, and eleven places have not heard
+
+Two of them fixed, both proven rather than argued:
+
+**The habit grid**, with a stubbed clock at 01:30 on 1 October — `todayStr()`
+said 2026-09-30 while the grid drew **אוקטובר 2026** with exactly ONE
+tappable row. The day being lived in was not on the board, so its habits
+could not be ticked at all.
+
+**"Yesterday" in the AI date argument**, which needed no stub because the
+real clock was already inside the window:
+
+    01:01     askDateArg('today')      2026-09-11
+              askDateArg('yesterday')  2026-09-11      ← the same day
+
+Its own neighbour one line up already answered 'today' with `todayStr()`.
+So a question about yesterday was answered out of today's log, inside a
+billed call with no way to notice.
+
+### Still on the raw clock — eleven sites, not fixed here
+
+Seven matched `(wkStamp|moFirst|weekSunday|dtStamp)\(new Date\(\)\)` — the
+weekly plan, the day planner and the month grid. Four more wear other
+shapes: the cumulative-deficit month, "days since your last workout", the
+closet's thirty-day wear window, and the people module's upcoming dates.
+
+All are the same one-line change, but they sit in six modules already driven
+and signed off, and changing six at once without re-driving each is how a
+regression gets in. A pass of their own.
+
+### And the habit log has no month in its key
+
+Verified by reading what the app itself wrote: ticking one box stored
+
+    {"שתיית מים__5": true}
+
+A habit and a day NUMBER. No month, no year, and nothing clears it — so on
+the 1st of October the board opens with September's ticks already in place
+under October's dates, and the streak counts them.
+
+**Not fixed.** Re-keying to `habit__2026-09-05` is a data-model change with a
+migration, the same category as the meal amount. Written down rather than
+half-done.

@@ -2509,6 +2509,29 @@ var APP_UNITS=(function(){
   try{var v=localStorage.getItem(UNITS_KEY);if(v==='imperial'||v==='metric')return v;}catch(e){}
   return 'metric';
 })();
+/* ── WHOSE WEEK ──
+   Which two days are the weekend, and which day a week begins on, belong to
+   the READER's calendar and not to ours. Intl.Locale knows both, and knowing
+   is the whole job: hard-coded to Friday-Saturday and a Sunday week line,
+   nine of the eleven shipped locales had the wrong two days marked.
+
+   getWeekInfo numbers days the ISO way - 1 for Monday through 7 for Sunday -
+   while Date.getDay() numbers them 0 for Sunday, so isoDow converts between
+   them. The fallback is the Israeli week, because that is what the app did
+   before and a browser too old to answer is not a reason to move anyone. */
+function isoDow(d){return d===0?7:d;}
+var _wkCache={};
+function weekInfo(){
+  var k=APP_LOCALE||'he-IL';
+  if(_wkCache[k])return _wkCache[k];
+  var w={firstDay:7,weekend:[5,6]};
+  try{
+    var loc=new Intl.Locale(k);
+    var got=(typeof loc.getWeekInfo==='function')?loc.getWeekInfo():loc.weekInfo;
+    if(got&&got.weekend&&got.weekend.length)w={firstDay:got.firstDay||7,weekend:got.weekend};
+  }catch(e){}
+  _wkCache[k]=w;return w;
+}
 /* Intl formatters are expensive to construct and these are called inside
    render loops, so each shape is built once and kept. */
 var _nfCache={},_dfCache={};
@@ -6126,9 +6149,11 @@ var _askQ='',_askBusy=false,_askAns='',_askErr='',_askTrace=[],_askOpen=false;
 function askDateArg(v){
   var t=String(v||'').trim().toLowerCase();
   if(!t||t==='today'||t==='היום')return todayStr();
-  if(t==='yesterday'||t==='אתמול'){
-    var d=new Date();d.setDate(d.getDate()-1);return dtStamp(d);
-  }
+  /* dayShift, which counts from appNow, because the line above answers
+     'today' with todayStr and the two have to agree. Off the raw clock they
+     did not: at 01:00 both returned the same date, so a question about
+     yesterday was answered out of today's log. */
+  if(t==='yesterday'||t==='אתמול')return dayShift(-1);
   return /^\d{4}-\d{2}-\d{2}$/.test(t)?t:todayStr();
 }
 /* The same day, written the way the reader writes one. askDateArg keeps
@@ -8036,8 +8061,15 @@ function enterModule(mod){
   currentModule=mod;
   tbSync();
   document.querySelector('.app').classList.remove('game-mode');
-  document.getElementById('btnPrev').style.display='';
-  document.getElementById('btnNext').style.display='';
+  /* The day arrows step the FOOD LOG's date, and תזונה is the only module
+     with a date to step. They used to be turned on here and turned off again
+     by each module that did not want them, so the five that forgot inherited
+     them - and the tap that looked like the habit tracker's month arrow moved
+     the food log a day, cumulatively, with nothing on the way home to undo
+     it. Inverting the default means forgetting can no longer leak them. */
+  var _dayArrows=(mod==='nutrition')?'':'none';
+  document.getElementById('btnPrev').style.display=_dayArrows;
+  document.getElementById('btnNext').style.display=_dayArrows;
   document.getElementById('home-screen').style.display='none';
   if(mod==='nutrition'){
     document.querySelector('.app').style.display='block';
@@ -8049,18 +8081,12 @@ function enterModule(mod){
     document.getElementById('hdr-title').textContent=''+_t('סיום יום')+'';
     ['today','history'].forEach(function(t){var el=document.getElementById('tab-'+t);if(el)el.className='tab';});
     document.querySelector('.tabs').style.display='none';
-    // The day arrows belong to the food log, not here.
-    document.getElementById('btnPrev').style.display='none';
-    document.getElementById('btnNext').style.display='none';
     curTab='today';interviewStep=-1;interviewAnswers={};enterReflect();
   } else if(mod==='journal'){
     document.querySelector('.app').style.display='block';
     document.querySelector('.tabs').style.display='none';
     document.getElementById('hdr-date').textContent='';
     document.getElementById('hdr-title').textContent=''+_t('יומן')+'';
-    // the arrows step the food log, not this
-    document.getElementById('btnPrev').style.display='none';
-    document.getElementById('btnNext').style.display='none';
     _jrnlDate=todayStr();_jrnlQ='';renderJournal();
   } else if(mod==='hobbies'){
     document.querySelector('.app').style.display='block';
@@ -8075,9 +8101,6 @@ function enterModule(mod){
     document.querySelector('.tabs').style.display='none';
     document.getElementById('hdr-date').textContent='';
     document.getElementById('hdr-title').textContent=''+_t('תכנון זמן')+'';
-    // The day arrows belong to the food log, not here.
-    document.getElementById('btnPrev').style.display='none';
-    document.getElementById('btnNext').style.display='none';
     _planStep=0;
     renderPlanning();
   } else if(mod==='game'){
@@ -8086,8 +8109,6 @@ function enterModule(mod){
     document.querySelector('.tabs').style.display='none';
     document.getElementById('hdr-date').textContent='';
     document.getElementById('hdr-title').textContent=''+_t('משחק')+'';
-    document.getElementById('btnPrev').style.display='none';
-    document.getElementById('btnNext').style.display='none';
     renderGame();
   } else if(mod==='goals'){
     document.querySelector('.app').style.display='block';
@@ -8101,8 +8122,6 @@ function enterModule(mod){
     document.querySelector('.tabs').style.display='none';
     document.getElementById('hdr-date').textContent='';
     document.getElementById('hdr-title').textContent=''+_t('הארון שלי')+'';
-    document.getElementById('btnPrev').style.display='none';
-    document.getElementById('btnNext').style.display='none';
     _closetView='home';
     renderCloset();
   } else if(mod==='people'){
@@ -13877,7 +13896,12 @@ function focusNewHabit(){
 function renderHabits(){
   var habits=loadHabits();
   var log=loadHabitLog();
-  var now=new Date();
+  /* appNow, never the raw clock: this app's day ends at 04:00, so between
+     midnight and four the clock is already on tomorrow. On the 1st that put
+     the WHOLE GRID on the next month - October drawn while the app day was
+     still the 30th of September - with the day being lived in absent from
+     the board and therefore impossible to tick. */
+  var now=appNow();
   var y=now.getFullYear(),mo=now.getMonth();
   var daysInMonth=new Date(y,mo+1,0).getDate();
   var todayD=now.getDate();
@@ -13972,13 +13996,17 @@ function renderHabits(){
     var dw=date.getDay();
     var isToday=d===todayD;
     var isFuture=d>todayD;
-    /* Friday and Saturday are shaded, and a line is drawn where Sunday
-       starts a new one, so the month reads as weeks rather than as thirty
-       identical rows - you can see at a glance which week you are in. */
-    var isWeekend=(dw===5||dw===6);
+    /* The reader's own weekend is shaded, and the line is drawn where the
+       reader's own week begins, so the month reads as weeks rather than as
+       thirty identical rows - you can see at a glance which week you are in.
+       Both come from weekInfo(): Friday and Saturday for Hebrew and Arabic,
+       Saturday and Sunday for the other nine, and a week that opens on
+       Monday in German, Spanish, French, Italian and Simplified Chinese. */
+    var _iso=isoDow(dw),_wk=weekInfo();
+    var isWeekend=_wk.weekend.indexOf(_iso)>=0;
     var rowBg=isToday?'background:rgba(166,144,207,.11);'
                      :(isWeekend?'background:rgba(230,222,208,.5);':'');
-    var weekLine=(dw===0&&d>1)?'border-top:2px solid #e4dcd1;':'';
+    var weekLine=(_iso===_wk.firstDay&&d>1)?'border-top:2px solid #e4dcd1;':'';
     h+='<tr style="'+rowBg+weekLine+'">';
     var dCol=isToday?PAL.violet500:(isFuture?PAL.mutedSoft:PAL.inkSoft);
     h+='<td style="padding:3px 3px 3px 1px;text-align:center;white-space:nowrap;line-height:1">'+
