@@ -2309,3 +2309,68 @@ being unreachable. It was not: the goal **card** carries its own onclick and
 the button inside it calls `stopPropagation`, so matching on `innerText`
 found the card first. **Match the element that carries the onclick, not an
 ancestor whose text contains the label.**
+
+## "Gespeichert &#10003;"
+
+Saving a person in German printed the HTML entity as itself.
+
+`showToast` sets `textContent` **deliberately** — a toast often carries a
+name the person typed, and `textContent` is the one thing keeping that out
+of the markup. The cost is that an entity in the message is never decoded.
+
+**Twelve toasts**, ten `&#10003;` and two `&#9733;`, showing raw source in
+every language. The pattern behind that count: a `showToast(` call carrying
+an `&#…;` entity in the same statement. Nothing else in the file assigns
+`textContent` from a string holding an entity — checked separately — and one
+other line does hold `+' &#10003;'`, at 11541, where it is markup built into
+`innerHTML` and right as it stands. The trailing `);` is what tells them
+apart.
+
+**The callers changed, not `showToast`.** The file already has the right
+idiom in that same function's other callers — `showToast('✓ ' + …)` with the
+literal character — and decoding entities inside `showToast` would undo the
+protection that is its whole point.
+
+## Two questions, one heading
+
+The person editor asks two different things in a row:
+
+    סוג הקשר           what they are to you   Enger Freund, Familie, Bruder…
+    מאיפה אתם מכירים   where you met          Studio, Arbeit, Studium…
+
+**Seven of the eleven printed the same words over both** — de, es, fr, it,
+pt and both Chinese — so a reader saw the same question twice with different
+chips under each. English was nearly as bad: *"How you know them"* against
+*"How you know each other."* Japanese and Arabic already told them apart and
+keep what they had.
+
+Rule 5's ground — things a person chooses between must stay
+distinguishable — reaching the labels above the choices as well as the
+choices themselves. A translation fix: no code, no new keys.
+
+### Measured and rejected: a general rule for this
+
+"Two different Hebrew keys answered with the same string in one language"
+sounds like a check. It is not: **99 key pairs** share an answer somewhere,
+and the top of that list is deliberate —
+
+    בוקר אור · בוקר בהיר · בוקר טוב · בוקר נפלא   ->  all "Good morning"
+    בן משפחה · בת משפחה                           ->  both "Family"
+
+Four Hebrew greetings that vary so a rotating line does not repeat itself,
+and a gendered pair the app already draws through `optOnce`. Collapsing in
+translation is normal and is the reason the `|context` bar exists. **No rule
+added**; the pair was fixed by hand.
+
+## Driven end to end
+
+A whole person record typed through the form in German — name, relationship,
+where they met, what they mean, what to ask, a birthday, and a memory on the
+timeline:
+
+    Lena Brandt · Enge Freundin
+    📅 Geburtstag  21.6. jährlich
+    Zeitachse  11.9.2026 · Einsicht
+
+Both dates render through the formatters added two passes ago. No Hebrew
+anywhere in the module, and the relationship chips are all distinct.
