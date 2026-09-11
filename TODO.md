@@ -3501,3 +3501,81 @@ The header comment claims a specific cycle. Driven, with a real pair:
 Which is exactly what a superset is: no rest between the pair, rest after
 it, and back to the top rather than wherever the last set happened to land.
 The claim in the code is true.
+
+## Three rows of numbers you choose between, in Latin
+
+The programme wizard asks three questions by putting the **value on the**
+**button**: how many days a week, how many sets, how many reps. All three
+rows printed the value raw, so an Arabic reader chose between `1 2 3 4 5 6 7`
+on a screen that is otherwise entirely Arabic.
+
+    ١ ٢ ٣ ٤ ٥ ٦ ٧     ·     ١ ٢ ٣ ٤ ٥ ٦     ·     ٥ ٦ ٨ ١٠ ١٢ ١٥ ٢٠
+
+The value inside the `onclick` stays raw on purpose — that is code, not
+text.
+
+## The Arabic minute was the only one not abbreviated
+
+The rest chips read `٢ دقيقة` — and Arabic’s dual for two minutes is
+*دقيقتان*, so that looked like a missing plural. It is not. The key is
+`{n} דק׳`, an **abbreviation**, and abbreviations do not inflect.
+
+What was actually wrong is narrower and clearer once every language is laid
+side by side:
+
+    en  {n}s / {n} min      ja  {n}秒 / {n}分
+    de  {n} s / {n} Min     zh  {n} 秒 / {n} 分钟
+    ar  {n} ث / {n} دقيقة   <- abbreviated the second, spelled the minute out
+
+**Arabic alone answered an abbreviation key with a full word**, and a full
+word is what made the missing inflection visible. `{n} د`, matching its own
+`{n} ث`. One word, one file, no new key, no code change.
+
+## What I nearly reported, and why I did not
+
+Mid-flow the wizard showed:
+
+    🎉 מעולה! סיימנו אימון @. עכשיו אימון A.
+
+`@` is char 64 — `String.fromCharCode(64 + curDayIdx)` with `curDayIdx` at
+zero. The banner is guarded on `_wiz.days.length > 0` but the letter comes
+from `curDayIdx`, so the two can disagree.
+
+They cannot disagree **through the app**: every day-name pick does the push
+and the increment in one statement. I had hand-built `_wiz` with
+`days.length = 1` and `curDayIdx = 0` to skip ahead, and that state is
+unreachable. Driven properly from the first step: *"סיימנו אימון A. עכשיו
+אימון B."*
+
+**Seeded state can manufacture a bug the app cannot reach.** Worth the two
+minutes it cost to check, and worth remembering next time a shortcut through
+a multi-step flow produces something startling.
+
+## The wizard chain, verified
+
+Driven through its own steps, in imperial, first click to last:
+
+    typed 135 into a box labelled lb
+    stored  baseWeight 61.235 kg
+    the programme view’s box shows 135 again
+
+And the programme is written to `fit_programs` with every weight in
+kilograms. Nothing to fix — the chain was already right, including the
+`edWeightVal` rounding fixed one pass ago, which is what makes the last line
+read 135 rather than 135.28.
+
+## Date.now() as an identity, checked across the file
+
+After the superset collision, every `Date.now()` used as an id: meal pushes,
+composed meals, goal sub-items, person memories, vision-board items, the
+programme id. **None of them can collide**, and the distinction is worth
+naming because it is what made the superset different:
+
+> `Date.now()` as an id is fine. `Date.now() % N` is not — the modulo is
+> what turned "never" into "every hundred seconds".
+
+The two batch writers (`sayAdd`, the vision board) already disambiguate with
+`+ i`. Everything else is one write per tap, and two taps cannot land in the
+same millisecond. `deleteMeal` does filter by id, so a collision **would** be
+silent and destructive — which is why it was worth checking rather than
+assuming.
