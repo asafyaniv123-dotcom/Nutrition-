@@ -1372,3 +1372,73 @@ taken has carried that closed drawer along with it. That is where the
 
 Fifth mechanical slice — 10 exercises, 66 lines, 404 of 625. Thirty-four
 exercises left.
+
+## סקוואט, in the middle of a German workout
+
+Driven for the first time: a live session, a set logged, the workout
+finished, then the history, weights and numbers views with that data in
+them. Four screens showed the **stored Hebrew id** instead of a name the
+reader could read.
+
+    1 / 1
+    סקוואט                      <- the session chip
+    Kniebeuge mit Langhantel    <- the card, ten lines below it
+
+    Verlauf              סקוואט 80kg
+    Gewichte verfolgen   סקוואט
+    Meine Zahlen         סקוואט
+    Zusammenfassung      Vor allem: סקוואט, 640 kg Volumen.
+
+### One root cause under most of it
+
+The first instinct — patch each call site — was wrong. Measured in German
+straight after a reload:
+
+    _exState at boot                 idle
+    _exState after entering fitness  idle
+    _exState on the history screen   idle
+    exAll()                          0
+    exLabel('סקוואט')                 סקוואט
+
+**`exLoad` is lazy and only the picker ever called it.** The history row
+already went through `exLabel`; it had nothing to look the name up in. Four
+screens, one cause.
+
+And it fails **silently by design**. `exLabel` promises that *"anything the
+library does not know is a name the person typed themselves, and is shown
+exactly as they typed it"* — so a library that was never fetched is
+indistinguishable from a custom exercise. In Hebrew the fallback IS the
+right answer, which is why it survived.
+
+So `renderFitness` asks for the library once, and `exLoad` repaints the
+screen when it lands — the same shape as `langOn` redrawing when a
+dictionary arrives. The `idle` guard and `exLoad`'s own `ready`
+short-circuit mean it asks exactly once and cannot loop.
+
+### And four call sites that were genuinely raw
+
+| | was | now |
+|---|---|---|
+| session chip | `esc(w.exercises[ei].name)` | `exLabel(…)` |
+| summary sentence | `{name:esc(bestEx.name)}` | `exLabel(…)` |
+| weights list row | `esc(nm)` | `exLabel(nm)` |
+| best-record row | `esc(r.name)` | `exLabel(r.name)` |
+
+The two `esc(nm)` calls in the same block that sit **inside `onclick`** were
+left alone: those are the stored id and identify the exercise. Checked by
+grep rather than by eye — `esc(wd.name)` and `esc(entry.name)` are a workout
+day and a workout, both user-authored, and correct as they are.
+
+### A hardcoded English heading, in the hole with no check
+
+The summary printed `Exercises` among German headings. `תרגילים` has existed
+as a key all along, answered in all eleven — it was simply never asked for
+there. Nothing could have caught it: `find-unwrapped-hebrew` looks for
+**Hebrew** that never reaches `_t()`, and a hardcoded English word is
+invisible to it.
+
+**After: every fitness view reports zero Hebrew nodes** — home, history,
+weights, numbers and the training plan — on a fresh reload in German.
+
+Also driven and correct: the set logger (80 kg × 8 recorded, PR set), the
+plate calculator (20 kg bar + 2×(25+5) = 80, shown as "Pro Seite: 25 + 5 kg"), and the rest-timer chips.
