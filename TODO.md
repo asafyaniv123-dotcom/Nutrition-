@@ -2729,3 +2729,70 @@ identity — is true, and now has been watched happening.
 `javascript_tool` refuses a result containing `video/mp4;codecs=avc1` —
 a semicolon and an `=` read as query-string data. Return `vlogMime().length`
 rather than the string.
+
+## The history tab — a unit bug with a witness two rows above it
+
+The cumulative card draws two reference lines through `fmtWeight`, and then
+prints its headline number by hand. In imperial, one card said:
+
+    reference lines   ~1.1 lb      ~2.2 lb         through fmtWeight
+    the headline      ~1.99 kg                     by hand
+
+`~'+(cum/7700).toFixed(2)+' '+_t('קג')` — kilograms, unconverted, under a key
+that answers **kg in every language**. 1.99 kg is 4.4 lb, so the reader was
+shown less than half of the number the card exists to show, in a unit they do
+not use, **beside two correctly converted lines**. Now `~4.4 lb`.
+
+`_t('קג')` was also a second spelling of `_t('ק"ג')` — one meaning, two keys,
+Rule 1 backwards — and that single call site was its only use. Retired.
+
+### Eight raw numbers on the same screen
+
+The pattern: every visible element under `#content` whose **own text nodes**
+match `[0-9]`, in Arabic, on each of the three tabs.
+
+| where | was | is |
+|---|---|---|
+| y-axis, both charts | `45 578 1110 1643 2175` | `٤٥ ٥٧٨ ١٬١١٠ …` |
+| month chart x-axis | `1` `10` | `١` `١٠` |
+| the legend | `-- الهدف 1975` | `–– الهدف ١٬٩٧٥` |
+| averages | `894` `30g` `7/7` | `٨٩٤` `٣٠g` `٧/٧` |
+| card title | `… سبتمبر 2026` | `… سبتمبر ٢٠٢٦` |
+
+**The legend was three bugs in one expression.** `_t('-- יעד')+' '+TARGETS.kcal`:
+a fragment with a number glued to it (Rule 2), the number raw (Rule 4), and
+two dashes **inside the key**, where no language can move them and where they
+land on the wrong side of an RTL phrase. The dashes are a picture of the
+dashed reference line, exactly as the sibling entry’s `●` is a picture of the
+solid one, so they moved into the markup — and the sentence that remained is
+a key the reference label was already using. One key deleted, none added.
+
+### The month list, and the seven copies still out there
+
+The title was `_t('גרעון מצטבר') + ' — ' + mn3[mo2] + ' ' + y2` — a
+hand-written list of twelve month names, indexed, with a raw year glued on.
+`dfmt` already knows the month name for the reader’s locale, so the list and
+the year went together into one whole-sentence key. What that bought:
+
+    he  גרעון מצטבר — ספטמבר 2026
+    ar  العجز التراكمي — سبتمبر ٢٠٢٦
+    ja  2026年9月の累積赤字
+
+Japanese puts the date first and drops the dash, which the fragment could
+never have allowed — and `2026年9月` is a shape no hand-written list of twelve
+Hebrew keys was ever going to produce.
+
+**Still open: that same list of twelve `_t()` calls is written out SEVEN more
+times** (as `mn`, and once as `MO_NAMES` under `langOn`). Every one of them is
+a `dfmt` call. It is a pass of its own and should be taken as one, because it
+crosses four areas already marked clean.
+
+### Two traps
+
+**The file mixes line endings.** Splitting on CRLF yields chunks that hold
+several logical lines, so a `splice` to delete one line would have taken the
+line after it as well. Delete a line by matching its own text.
+
+**`javascript_tool` still RUNS code whose result it blocks.** A call whose
+output tripped the "Cookie/query string data" filter had already executed —
+the next call found its work done. Do not assume a blocked call was a no-op.
