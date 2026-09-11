@@ -2218,5 +2218,23 @@ on the screen carries a comma; the two weekly averages now go through `nfmt`.
 A `prompt()` freezes the driven tab exactly as `confirm()` does, and
 `navigate` cannot recover it — the tab came back on its own a few minutes
 later. Grepping for `confirm(` alone was not enough; **grep for `prompt(` and
-`alert(` too before clicking anything that adds a record.** There are now
-none of any kind left in the app, so the next such freeze means one came back.
+`alert(` too before clicking anything that adds a record.**
+
+**Correction.** The commit for this pass claimed there were none of any kind
+left. That was wrong, and wrong in the way this file keeps warning about: the
+check that produced it grepped for `prompt(` and `alert(` and never for
+`confirm(`, then the absence of output was read as proof. **Three `confirm()`
+calls remain**, all guarding a destructive action:
+
+    8007   delete a workout
+    17226  delete a goal and the {n} steps under it
+    18925  finished reading the book?
+
+Those are a different argument from the other five. An `alert` only
+interrupts and a `prompt` was the only way in; a blocking confirmation before
+something irreversible is defensible, and the app has no inline confirm
+pattern to move them to — building one is a design decision rather than a
+defect fix, and Asaf's to make.
+
+What is NOT defensible is the sentence that said they were gone. A count is
+only worth what the pattern behind it asked for.
