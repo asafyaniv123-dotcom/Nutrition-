@@ -4400,6 +4400,17 @@ function bcValid(code){
 }
 /* The same Open Food Facts lookup the scanner does, handing the row back
    instead of taking over the screen. cb(row) or cb(null). */
+/* Product name plus brand, unless the brand is the name again. Open Food
+   Facts is full of products whose brand and name are the same word, and
+   gluing them produced "Banane, Banane" in about one live row in ten. */
+function offBrandName(nm,brands){
+  var b=String(brands||'').split(',')[0].trim();
+  if(!b)return nm;
+  if(!nm)return b;
+  var a=nm.toLowerCase(),lb=b.toLowerCase();
+  if(a===lb||a.slice(-lb.length-1)===' '+lb)return nm;
+  return nm+', '+b;
+}
 function offFood(code,cb){
   fetch(OFF_API+encodeURIComponent(code)+'?fields=code,product_name,product_name_he,brands,serving_size,nutriments')
     .then(function(r){return r.json();})
@@ -4409,7 +4420,7 @@ function offFood(code,cb){
       var nu=p.nutriments||{},k=nu['energy-kcal_100g'];
       if(k===undefined||k===null){cb(null);return;}
       var nm=p.product_name_he||p.product_name||(''+_t('מוצר')+' '+code);
-      if(p.brands)nm+=', '+String(p.brands).split(',')[0].trim();
+      nm=offBrandName(nm,p.brands);
       var g=String(p.serving_size||'').match(/([\d.]+)\s*(g|ml|גרם|ג|מ"ל)/i);
       cb({id:'off:'+code,n:nm,k:Math.round(k),
           p:Math.round((nu.proteins_100g||0)*10)/10,
@@ -4449,7 +4460,7 @@ function barcodeLookup(code){
       var k=n['energy-kcal_100g'];
       if(k===undefined||k===null){scanNotFound(code,true);return;}
       var name=p.product_name_he||p.product_name||(''+_t('מוצר')+' '+code);
-      if(p.brands)name+=', '+String(p.brands).split(',')[0].trim();
+      name=offBrandName(name,p.brands);
       _fdbScanned={
         id:'off:'+code,n:name,
         k:Math.round(k),
