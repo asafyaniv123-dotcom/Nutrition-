@@ -1258,3 +1258,62 @@ rather than a number to keep at zero.
 The closet, the bullet journal, the habit tracker past its empty state and
 the steps screen. The Me screen was opened for the first time this tick and
 gave this up immediately; those four are still owed a look.
+
+## Four screens opened, and nothing wrong with them
+
+The closet, the habit tracker, the steps screen and the backup card, all
+driven in German for the first time. **No defect found**, and the four
+things that looked like one are worth writing down, because three of them
+would have been a wrong fix.
+
+### `[object Object]` in the habit tracker — mine, not the app's
+
+The header row read `Tag · [object Object] · [object Object] · +`. It was my
+own seed: `loadHabits()` returns an array of **strings** — its default is
+`['שתיית מים','אימון','קריאה']` — and I had seeded objects with
+`{id,name,emoji}` two ticks ago while guessing at storage shapes. Cleared
+the seed and the row reads *Wasser · Training · Lesen*.
+
+The lesson is the one already in this file about the syrup row: **a test
+fixture is not evidence.** Seeding storage with a guessed shape produces
+bugs that belong to the guess.
+
+### The dress row with no "+ Kleid"
+
+Six rows had an add control and the dress row appeared not to. It is a
+`BUTTON.cl-dress` — a **mode toggle**, not a row — and clicking it reveals
+the dress row complete with its add control, exactly as the comment above
+`CLOSET_CATS` says: *"It starts on ללא and stays out of the way until
+something is put in it."* Reading flat `innerText` made a button look like a
+row heading.
+
+### "Das Gerät DARF deine Daten löschen"
+
+German *darf* is permission, not possibility, and the warning looked like a
+modal-verb slip. The Hebrew is **רשאי** — "is permitted to" — so German is
+the one language that renders it faithfully, and Spanish, French, Italian,
+Portuguese, Japanese, Chinese and Arabic all chose *can/might* instead. The
+string that looked wrong was the only exact one.
+
+### English labels that no check can see
+
+The habit tracker prints `HABIT TRACKER`, `THIS MONTH I WILL`, `NOTES` and
+*progress, not perfection* in English on every screen, and the Me screen
+prints `VISION BOARD`. None reaches `_t()`.
+
+`find-unwrapped-hebrew` cannot see them — it looks for **Hebrew** that never
+reaches `_t()`, and the mirror image has no check. Probed the whole app for
+runs of English in emitted text: **seven**, and they split cleanly.
+
+    Better Me · Apple Health · Become the best version of yourself   brand and proper nouns
+    HABIT TRACKER · VISION BOARD · THIS MONTH I WILL · progress, not perfection
+
+The second group is a consistent bullet-journal and vision-board motif — the
+same deliberate choice as the English splash lines. **Left alone.** It is a
+design decision about whether a Japanese or Arabic reader should meet Latin
+script in the middle of their screen, and that is the author's call, not an
+oversight to correct. Worth knowing it is exactly seven and which four.
+
+### English instructions: 52 of 96
+
+Fourth mechanical slice — 10 exercises, 65 lines, 338 of 625.

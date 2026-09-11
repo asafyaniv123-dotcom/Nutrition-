@@ -19,7 +19,7 @@
  * data already declares. Three of the eighteen carry no Hebrew instructions at
  * all, so the first slice was fifteen and the second sixteen.
  *
- * 42 of the 96 exercises that have instructions, 273 lines of the 625 that
+ * 52 of the 96 exercises that have instructions, 338 lines of the 625 that
  * exist. `node tools/build-exercises.mjs` prints the number that has to go
  * down, so it is never a matter of anyone remembering.
  *
@@ -389,6 +389,94 @@ export const EN = {
       'Start and finish on a low resistance.'],
   m: ['A saddle set too low — that is what makes knees ache.',
       'Rocking your hips side to side on a high resistance.'] },
+
+/* ── the fourth movement of each group ─────────────────────────────── */
+
+'לחיצת חזה בשיפוע חיובי במשקולות': {
+  s: ['Bench at 30 degrees, dumbbells on your thighs, lie back as you bring them up.',
+      'Start over your upper chest, palms facing forward.',
+      'Lower to the sides of your chest until your elbow is just below shoulder height.',
+      'Press up on a slight inward arc.'],
+  m: ['Too steep an incline — the shoulder takes the work.',
+      'Going too deep on an incline, which stretches the front of the shoulder.',
+      'Clashing the dumbbells at the top and losing the tension.'] },
+
+'לחיצת כתפיים במכונה': {
+  s: ['Set the seat so the handles are at shoulder height.',
+      'Back against the rest.',
+      'Press up to almost straight.',
+      'Return under control.'],
+  m: ['A seat set too low, forcing an awkward angle.',
+      'Snapping the elbows locked at the top.'] },
+
+'פולי עליון': {
+  s: ['Set the thigh pad so you cannot lift off the seat.',
+      'Grip slightly wider than your shoulders.',
+      'Pull the bar to your upper chest, elbows driving down and back.',
+      'Return under control to almost straight arms.'],
+  m: ['Pulling behind your neck — a shoulder risk with nothing to show for it.',
+      'Leaning far back, which turns it into a row.',
+      'Pulling with your hands instead of leading with your elbows.'] },
+
+'חתירה במכונה': {
+  s: ['Set the seat so the handles are at lower-chest height.',
+      'Chest stays against the pad throughout.',
+      'Pull the handles back, elbows close to your sides.',
+      'Return under control until you feel the stretch in your back.'],
+  m: ['Chest coming off the pad to move more weight.',
+      'Pulling too high, which turns it into a reverse fly.'] },
+
+'כפיפה בסקוט': {
+  s: ['Set the pad so your armpit rests on it.',
+      'Upper arms flat along the pad.',
+      'Curl to chest height without lifting your elbows.',
+      'Lower to almost straight — not a hard lockout.'],
+  m: ['Snapping straight at the bottom, which loads the elbow joint.',
+      'Elbows lifting off the pad.',
+      'A weight so heavy it stops you lowering all the way.'] },
+
+'פשיטת מרפק מעל הראש': {
+  s: ['One dumbbell in both hands, overhead.',
+      'Elbows close to your head and pointing up.',
+      'Lower behind your head by bending the elbow.',
+      'Extend back to straight.'],
+  m: ['Elbows flaring out, which loses the stretch.',
+      'Arching the lower back as you press up.'] },
+
+'סקוואט משקל גוף': {
+  s: ['Feet about shoulder width, arms forward for balance.',
+      'Break at the hip and the knee together.',
+      'Descend at least to parallel.',
+      'Rise through the middle of your foot.'],
+  m: ['Knees collapsing inwards.',
+      'Heels lifting off the floor.',
+      'A half descent out of habit.'] },
+
+'דדליפט סומו': {
+  s: ['Wide stance, toes out, hands inside your legs.',
+      'Flat back, chest open, hips lower than an ordinary deadlift.',
+      'Push the floor apart and stand, the bar close to your legs.',
+      'Finish with your hips and glutes locked out.'],
+  m: ['Knees collapsing inwards on the way up.',
+      'A rounded back from trying to sit lower than you can.',
+      'The bar drifting away from your shins.'] },
+
+'הרמת רגליים בשכיבה': {
+  s: ['Lie down, hands at your sides or under your hips.',
+      'Keep your lower back pressed into the floor.',
+      'Raise to 90 degrees and lower slowly.',
+      'Stop before your back leaves the floor.'],
+  m: ['The lower back arching — that is the signal to stop.',
+      'Dropping your legs all the way down.'] },
+
+'אליפטיקל': {
+  s: ['Stand tall, whole foot on the plate.',
+      'Use the handles too, not only your legs.',
+      'Hold a steady rhythm.',
+      'Add resistance before you add speed.'],
+  m: ['Leaning your whole weight on the handles.',
+      'A fast rhythm on no resistance — it looks like effort and is not.'] },
+
 
 
 
