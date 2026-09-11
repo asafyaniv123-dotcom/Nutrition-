@@ -112,7 +112,12 @@ the rest.
    plural key — a dictionary value that is an object of categories — and pass
    the count as `{n:…}`; `Intl.PluralRules` does the grammar. The key needs
    no `{n}` hole to inflect, which is how a badge that draws the number
-   itself still gets the right word beside it.
+   itself still gets the right word beside it. The same check also finds a
+   count printed beside a noun that never tries to inflect at all
+   (`now.sets +' '+ _t('סטים')` → *1 Sätze*), and a value glued to a
+   preposition (`n +' '+ _t('מתוך') +' '+ total`) — the shape where Japanese
+   had answered *מתוך* with a slash, because the word order it wanted was
+   not available to it.
 3. **A list that is compared or stored is data.** Translate it at the point of
    display, never in the declaration. `find-translated-data.mjs` is the check,
    and it has caught fourteen collections that looked exactly like labels.

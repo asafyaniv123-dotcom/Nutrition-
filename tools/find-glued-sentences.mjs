@@ -202,6 +202,57 @@ if (PLU.length) {
       JSON.stringify(f.a) + ' / ' + JSON.stringify(f.b));
 }
 
+/* ── a counted noun that never tries to inflect ──
+   The rule above catches a plural chosen BADLY. This catches one not chosen
+   at all: `now.sets +' '+ _t('סטים')`, which prints the plural form whatever
+   the number is. "1 Sätze" on My Numbers, "1 Portionen" on a recipe, "1
+   Sekunden" on a one-second vlog. Twenty-four of these shipped.
+
+   The noun usually has to KEEP its bare key, because most of them are also
+   labels - a table header, a form field - and a label is not counted. So the
+   fix is a second key, `{n} noun`, or the same key answered with plural
+   categories and the count passed in; _t selects on vars.n whether or not the
+   key prints it.
+
+   Three narrowings, each from a false positive this reported:
+
+   1. The noun comes AFTER the number. All eleven shipped languages put the
+      count first, Japanese and Chinese included, so `_t('שיא')+' '+st.best`
+      is "best: 3" - a label and a value, not a counted noun. Same for
+      `_t('עמוד')+' '+q.page`.
+   2. Exactly one space between them, or none. Anything else means they are
+      not adjacent at all: `'+at+')">'+_t('ערוך')` is an onclick argument
+      ending just before a button label.
+   3. One word. A phrase that happens to follow a number is not a counted
+      noun - "steps per day" and "cannot be loaded" are invariant however
+      many precede them.
+
+   And a closed list of UNITS, which do not inflect in any of the eleven and
+   are find-units-in-strings' ground rather than this one's. It is a list and
+   lists rot, so it is spelled out here rather than hidden in a helper: if a
+   real counted noun is ever added to it, this rule goes quiet about it. */
+const UNIT = ['קק"ל', 'קלוריות', 'גרם', 'ג', 'קג', 'ק"ג', 'מ"ל', 'מל',
+              'דק', 'דקה', 'ש׳', 'שעה', 'חלבון', 'פחמ׳', 'שומן', 'סמ', 'ס"מ'];
+const CNT = [];
+const CNT_RE = new RegExp(
+  '([A-Za-z_$][\\w.$\\[\\]]*(?:\\([^()]*\\))?)' +
+  '\\s*\\+\\s*(?:([\'"]) \\2\\s*\\+\\s*)?' +
+  '_t\\((\'[^\']*\'|"[^"]*")\\)', 'g');
+for (const m of app.matchAll(CNT_RE)) {
+  const key = m[3].slice(1, -1);
+  if (!key || key.indexOf('{') >= 0) continue;          // already a whole key
+  if (!/^[֐-׿][֐-׿'׳״"]*$/.test(key)) continue;          // one Hebrew word
+  if (UNIT.indexOf(key) >= 0) continue;
+  CNT.push({ line: app.slice(0, m.index).split(LF).length, count: m[1], key });
+}
+if (CNT.length) {
+  console.log('');
+  console.log('a count printed beside a noun that cannot inflect: ' + CNT.length);
+  for (const f of CNT)
+    console.log('    line ' + String(f.line).padStart(6) + '  ' + f.count +
+      " + _t('" + f.key + "')");
+}
+
 /* group by line so a three-part sentence shows as one finding */
 if (LONE.length) {
   console.log('');
@@ -228,4 +279,4 @@ for (const r of rows.slice(0, 22)) {
 /* This check printed its findings and exited 0, so nothing it found could
    ever fail a build - and the one finding it always had, a worked example, is
    why. With that example no longer reported, it can say so properly. */
-if (rows.length || BR.length || LONE.length || PLU.length) process.exit(1);
+if (rows.length || BR.length || LONE.length || PLU.length || CNT.length) process.exit(1);

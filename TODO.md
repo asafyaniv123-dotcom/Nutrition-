@@ -1630,3 +1630,101 @@ the inflecting ones are סטים, חזרות, תרגילים, אימונים, ש
 Its own pass: the fix is the same numberless-plural-key shape, the scan needs
 its own narrowing, and folding it into this one would have made a change too
 big to verify.
+
+## "1 Sätze", and twenty-nine more
+
+The other half of last pass. A hand-rolled plural at least *tries* to
+inflect; this shape does not try at all — a count concatenated straight onto
+a noun that is its own key, so every language gets the plural form whatever
+the number is.
+
+    now.sets + " " + _t("סטים")        ->  "1 Sätze"
+    rec.servings + " " + _t("מנות")    ->  "1 Portionen"
+    Math.round(_vlSec) + " " + _t("שניות")  ->  "1 Sekunden" on a one-second vlog
+
+**Thirty of them**, measured by the new rule against the revision that had
+them. Seventeen nouns: שנים, שניות, דקות, סטים, חזרות, תרגילים, אימונים,
+מנות, משימות, שאלות, רשומות, משפטים, פריטים and the rest.
+
+Most of those nouns **keep their bare key**, because most are also labels —
+a table header, a form field — and a label is not counted. So the counted
+sites take a second key, `{n} noun`. Where the layout draws the number
+itself, in its own bold card or beside a range, the key stays **numberless**
+and still inflects: `_t` selects on `vars.n` whether or not the key prints
+it. That is what "Sätze pro Muskel" and "44 Teile" now do.
+
+Left alone deliberately: the unit abbreviations — קק"ל, גרם, קג, דק, ש׳ —
+which inflect in none of the eleven and are the units check’s ground, not
+this one’s. The compact plan rows keep THEIR abbreviation (חזר → "Whd.",
+"rip") but got a plural key of their own, because English still says
+"1 rep".
+
+## And seven that were a value glued to a preposition
+
+The new rule kept reporting four sites that are not counted nouns at all,
+and it was right to. They are a value and a **preposition**, and the order
+is fixed by the language they were written in:
+
+    on.length +" "+ _t("מתוך") +" "+ SUM_SECS.length      "3 von 8"
+    _t("עמוד") +" "+ q.page                                "Seite 45"
+    s.from +" "+ _t("עד") +" "+ s.to                       a date range
+    meal.name +" "+ _t("נוספה")                            "Banane hinzugefügt"
+
+**The old answers say what the gluing had cost.** Japanese had answered
+מתוך with `"/"` — a translator working around a word order they were not
+allowed to change — and עמוד with `"ページ"`, which the code then printed
+*before* the number, where Japanese puts it after. Now:
+
+    עמוד {n}                 ->  45 ページ
+    עמוד {n} מתוך {total}    ->  280 ページ中 45 ページ
+    {n} מתוך {total}         ->  8 件中 3 件
+
+The book page keeps its styled violet span by passing the span in as the
+hole’s value — the layout is untouched and the sentence is still one key.
+Arabic finally gets to say *من … إلى …* with a word for "from", which the
+old two-fragment shape gave it nowhere to put.
+
+### The fifth rule, and what it had to stop saying
+
+Three narrowings, each from a false positive it reported on its own first
+runs:
+
+1. **The noun comes after the number.** All eleven put the count first,
+   Japanese and Chinese included — so `_t("שיא")+" "+st.best` is a label and
+   a value ("best: 3"), not a counted noun.
+2. **Exactly one space between them, or none.** Anything else means they
+   are not adjacent: `'+at+')">'+_t("ערוך")` is an onclick argument ending
+   just before a button label.
+3. **One word.** "steps per day" and "cannot be loaded" are invariant
+   however many precede them.
+
+Plus a **closed list of units**, spelled out in the tool rather than hidden
+in a helper, with a note that it is a list and lists rot: put a real counted
+noun in it and the rule goes quiet about that noun.
+
+    against HEAD   30 found
+    after           0
+
+### Driven, not asserted
+
+A book added through the box — *Der Steppenwolf*, 280 pages — two quotes
+typed in and the book finished:
+
+    Seite 0 von 280     Seite 147     Seite 12     2026-09-11 · 2 Sätze
+
+and *Meine Zahlen* now says **1 Satz**, the habit month **0 / 33 Tage
+geschafft**, the backup **44 Teile**. Ten modules on a fresh reload in
+German: zero Hebrew nodes, clean console.
+
+`rec.servings` is whatever was typed into a box, so every shape it can take
+was put through `_t`: `1`, `"1"`, `"4"`, `"4-6"`, `""`, `null`. None throws,
+and "4-6 Portionen" comes out right — `Intl.PluralRules` answers `other` for
+anything it cannot read as a number.
+
+### Still open
+
+The two compact plan rows and the exercise target row were verified through
+`_t` rather than on screen — building a two-week plan with exercises in it
+is a long path through the wizard, and this pass had already changed enough
+to want shipping. Next time the plan is driven, look at
+**"3 Sätze × 10 Whd."** and confirm it fits the row.
