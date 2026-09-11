@@ -127,6 +127,18 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragi
 .pill{background:var(--card);border-radius:16px;padding:12px 8px;text-align:center;box-shadow:0 2px 10px rgba(200,180,160,.1)}
 .pill-val{font-size:17px;font-weight:700}
 .pill-lbl{font-size:9.5px;color:var(--muted);margin-top:2px}
+.who-card{background:var(--card);border-radius:20px;padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 10px rgba(200,180,160,.1)}
+.who-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px}
+.who-t{font-size:12px;font-weight:700;color:var(--ink)}
+.who-s{font-size:9.5px;color:var(--muted-soft);text-align:end}
+.who-row{margin-bottom:11px}
+.who-line{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
+.who-l{font-size:12px;font-weight:600;color:var(--ink-soft)}
+.who-v{font-size:13px;font-weight:700}
+.who-track{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.who-fill{height:100%;border-radius:3px}
+.who-cap{font-size:9.5px;color:var(--muted);margin-top:4px}
+.who-note{font-size:9.5px;color:var(--muted-soft);line-height:1.6;border-top:1px solid var(--line);padding-top:8px}
 .wcard{background:linear-gradient(135deg,var(--water-100),#dbeef9);border-radius:20px;padding:14px 16px;margin-bottom:12px}
 .whd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .wt{font-size:13px;font-weight:700;color:var(--water-500)}
@@ -3508,7 +3520,7 @@ function saveComposed(arr){try{localStorage.setItem('composed_meals',JSON.string
 function addMealToLib(meal){
   var lib=loadLib();
   if(lib.some(function(m){return m.name===meal.name;})){showToast(''+_t('כבר קיים בספרייה')+'');return;}
-  lib.push({name:meal.name,kcal:meal.kcal,p:meal.p,c:meal.c,f:meal.f,photo:meal.photo||'',
+  lib.push({name:meal.name,kcal:meal.kcal,p:meal.p,c:meal.c,f:meal.f,sod:meal.sod,fib:meal.fib,photo:meal.photo||'',
             basis:mealBasis(meal),grams:meal.grams||0});
   lib.sort(function(a,b){return a.name.localeCompare(b.name,APP_LOCALE);});
   saveLibData(lib);showToast(''+_t('✓ נשמר בספרייה!')+'');
@@ -3522,11 +3534,11 @@ function libSetGrams(v){
   if(el)el.innerHTML=libPreviewHTML();
 }
 function libAmount(meal){
-  if(mealBasis(meal)!=='100g')return {kcal:meal.kcal,p:meal.p,c:meal.c,f:meal.f,label:meal.name};
+  if(mealBasis(meal)!=='100g')return qualOf({kcal:meal.kcal,p:meal.p,c:meal.c,f:meal.f,label:meal.name},meal,1);
   var m=(libGrams||0)/100;
-  return {kcal:Math.round(meal.kcal*m),p:Math.round(meal.p*m*10)/10,
+  return qualOf({kcal:Math.round(meal.kcal*m),p:Math.round(meal.p*m*10)/10,
           c:Math.round(meal.c*m*10)/10,f:Math.round(meal.f*m*10)/10,
-          label:meal.name+' ('+libGrams+'g)'};
+          label:meal.name+' ('+libGrams+'g)'},meal,m);
 }
 function libPreviewHTML(){
   var lib=loadLib(),meal=lib.find(function(m){return m.name===pendingLib;});
@@ -3539,7 +3551,7 @@ function confirmLib(){
   var lib=loadLib();var meal=lib.find(function(m){return m.name===pendingLib;});if(!meal){pendingLib=null;return;}
   var a=libAmount(meal);
   var day=loadDay(curDate);
-  day.meals.push({name:a.label,kcal:a.kcal,p:a.p,c:a.c,f:a.f,id:Date.now(),time:fmtTime()});
+  day.meals.push({name:a.label,kcal:a.kcal,p:a.p,c:a.c,f:a.f,sod:a.sod,fib:a.fib,id:Date.now(),time:fmtTime()});
   saveDay(curDate,day);showToast(''+_t('✓ נוספה')+'');pendingLib=null;render();
 }
 function cancelLib(){pendingLib=null;render();}
@@ -4494,12 +4506,35 @@ function bcValid(code){
    same rule. Two of 113 real products with a calorie count are missing
    one, and the screen has an honest thing to say about them. */
 function offMacros(nu){
+  /* Sodium and fibre ride along under the OPPOSITE rule to the four below.
+     The macros are all-or-nothing because a meal missing one of them is not
+     a meal; these two are each-or-nothing, because a day that could read
+     only the sodium can still say something true about the sodium.
+     Open Food Facts stores sodium in GRAMS per 100 g - the printed panel
+     says salt, the API says sodium - so it is the one number here that is
+     converted rather than copied. */
+  var Q={sod:'sodium_100g',fib:'fiber_100g'};
   var F={k:'energy-kcal_100g',p:'proteins_100g',c:'carbohydrates_100g',f:'fat_100g'},o={},x,v;
   for(x in F){
     v=nu&&nu[F[x]];
     if(typeof v!=='number'||!isFinite(v)||v<0)return null;
     o[x]=x==='k'?Math.round(v):Math.round(v*10)/10;
   }
+  for(x in Q){
+    v=nu&&nu[Q[x]];
+    if(typeof v!=='number'||!isFinite(v)||v<0)continue;
+    o[x]=x==='sod'?Math.round(v*1000):Math.round(v*10)/10;
+  }
+  return o;
+}
+/* Copies whichever of the two WHO numbers the source row carries onto a
+   scaled amount, and copies NOTHING when it carries neither. The absent
+   field is the whole mechanism: it is what lets the day tell "there is no
+   sodium in this" apart from "nobody ever measured this", which are
+   different sentences and must never add up to the same number. */
+function qualOf(o,row,m){
+  if(row&&typeof row.sod==='number')o.sod=Math.round(row.sod*m);
+  if(row&&typeof row.fib==='number')o.fib=Math.round(row.fib*m*10)/10;
   return o;
 }
 function offBrandName(nm,brands){
@@ -4521,7 +4556,7 @@ function offFood(code,cb){
       var nm=p.product_name_he||p.product_name||(''+_t('מוצר')+' '+code);
       nm=offBrandName(nm,p.brands);
       var g=String(p.serving_size||'').match(/([\d.]+)\s*(g|ml|גרם|ג|מ"ל)/i);
-      cb({id:'off:'+code,n:nm,k:m.k,p:m.p,c:m.c,f:m.f,
+      cb({id:'off:'+code,n:nm,k:m.k,p:m.p,c:m.c,f:m.f,sod:m.sod,fib:m.fib,
           off:true,serving:g?Math.round(parseFloat(g[1])):0});
     })
     .catch(function(){cb(null);});
@@ -4558,7 +4593,7 @@ function barcodeLookup(code){
       name=offBrandName(name,p.brands);
       _fdbScanned={
         id:'off:'+code,n:name,
-        k:m.k,p:m.p,c:m.c,f:m.f,
+        k:m.k,p:m.p,c:m.c,f:m.f,sod:m.sod,fib:m.fib,
         off:true
       };
       // the label's own serving is the best first answer to "how many grams?"
@@ -5855,8 +5890,8 @@ function fdbFind(id){
 function fdbAmount(f,n){
   var g=(n||0)*(_fdbUnit.g||1);
   var m=g/100;
-  return {kcal:Math.round(f.k*m),p:Math.round(f.p*m*10)/10,
-          c:Math.round(f.c*m*10)/10,f:Math.round(f.f*m*10)/10};
+  return qualOf({kcal:Math.round(f.k*m),p:Math.round(f.p*m*10)/10,
+          c:Math.round(f.c*m*10)/10,f:Math.round(f.f*m*10)/10},f,m);
 }
 function fdbPreviewHTML(){
   var f=fdbFind(fdbPick);if(!f)return '';
@@ -5868,7 +5903,7 @@ function fdbAdd(){
   var a=fdbAmount(f,fdbGrams);
   var day=loadDay(curDate);
   var howMuch=(_fdbUnit.k==='g')?(fdbGrams+'g'):(fdbGrams+' '+unitLabel(_fdbUnit.k,fdbGrams));
-  day.meals.push({name:f.n+' ('+howMuch+')',kcal:a.kcal,p:a.p,c:a.c,f:a.f,
+  day.meals.push({name:f.n+' ('+howMuch+')',kcal:a.kcal,p:a.p,c:a.c,f:a.f,sod:a.sod,fib:a.fib,
                   id:Date.now(),time:fmtTime()});
   saveDay(curDate,day);
   showToast(''+_t('✓ נוסף ליום')+'');
@@ -5877,7 +5912,7 @@ function fdbAdd(){
 // saves the food itself, per 100 g, so it can be reached without searching again
 function fdbSaveToLib(){
   var f=fdbFind(fdbPick);if(!f)return;
-  addMealToLib({name:f.n,kcal:f.k,p:f.p,c:f.c,f:f.f,basis:'100g'});
+  addMealToLib({name:f.n,kcal:f.k,p:f.p,c:f.c,f:f.f,sod:f.sod,fib:f.fib,basis:'100g'});
   fdbPaint();
 }
 function fdbPaint(){
@@ -6776,6 +6811,79 @@ function render(){
   hydratePhotos();
 }
 
+/* ── WHAT THE DAY WAS MADE OF, NOT JUST HOW MUCH ──
+   TARGETS answers "how much": Mifflin-St Jeor for the energy, protein per
+   kilo of body weight, fat a share of the energy. It is a body-composition
+   calculation and it is the right one for what this app is for.
+   The World Health Organization answers a different question - what a
+   healthy adult should be getting whatever their goal is - and two of its
+   numbers turned out to be sitting unused in data we already hold. The
+   ministry's table carries a sodium for 3,606 of its rows and a fibre for
+   3,336, and Open Food Facts returns both in the same response the barcode
+   scanner was already asking for. Nothing here is invented, estimated or
+   interpolated: every milligram is a number somebody measured.
+     sodium  less than 2000 mg a day
+     fibre   at least 25 g a day
+   Both are the adult figures. They are shown as two bars rather than one
+   score because they pull in opposite directions - one is a ceiling and one
+   is a floor - and a score would hide exactly that. */
+var WHO_DAY={sod:2000,fib:25};
+/* A day sums only what was measured, and NAMES what was not. A food with no
+   clean row is skipped and written down - the same rule the food core is
+   built under - because a total quietly missing half the day's salt is
+   worse than no total at all. */
+function dayQuality(meals){
+  var o={sod:0,fib:0,sodN:0,fibN:0,miss:[],n:0},i,m;
+  meals=meals||[];
+  o.n=meals.length;
+  for(i=0;i<meals.length;i++){
+    m=meals[i];
+    if(typeof m.sod==='number'){o.sod+=m.sod;o.sodN++;}
+    if(typeof m.fib==='number'){o.fib+=m.fib;o.fibN++;}
+    if(typeof m.sod!=='number'||typeof m.fib!=='number')o.miss.push(m.name);
+  }
+  o.sod=Math.round(o.sod);
+  o.fib=Math.round(o.fib*10)/10;
+  return o;
+}
+/* Milligrams, the way fmtGrams does grams: the number follows the reader's
+   locale and the symbol does not, because there is no imperial milligram. */
+function fmtMg(n){return nfmt(n)+'mg';}
+/* One bar. `ceil` is what makes it two different readings of the same shape:
+   a CEILING is green until it is passed and terracotta after, a FLOOR is
+   amber until it is reached and green after. `n` is how many of the day's
+   items carried this number at all - none, and the row is not drawn, because
+   a bar at zero would read as a measured zero. */
+function whoRowHTML(lbl,n,v,lim,ceil,val,cap){
+  if(!n)return '';
+  var pct=Math.max(0,Math.min(100,Math.round(v/lim*100)));
+  var col=ceil?(v>lim?PAL.terra500:PAL.green500)
+              :(v>=lim?PAL.green500:PAL.amber500);
+  return '<div class="who-row"><div class="who-line">'+
+         '<span class="who-l">'+lbl+'</span>'+
+         '<span class="who-v" style="color:'+col+'">'+val+'</span></div>'+
+         '<div class="who-track"><div class="who-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+         '<div class="who-cap">'+cap+'</div></div>';
+}
+function whoCardHTML(day){
+  var q=dayQuality((day||{}).meals);
+  if(!q.n)return '';
+  var h='<div class="who-card"><div class="who-hd">'+
+        '<span class="who-t">'+_t('איכות התזונה')+'</span>'+
+        '<span class="who-s">'+_t('לפי ארגון הבריאות העולמי')+'</span></div>';
+  if(!q.sodN&&!q.fibN){
+    h+='<div class="who-note">'+_t('אין עדיין מדידה של נתרן או סיבים במה שנרשם היום.')+'</div></div>';
+    return h;
+  }
+  h+=whoRowHTML(_t('נתרן'),q.sodN,q.sod,WHO_DAY.sod,1,
+                fmtMg(q.sod),_t('עד {n} ליום',{n:fmtMg(WHO_DAY.sod)}));
+  h+=whoRowHTML(_t('סיבים תזונתיים'),q.fibN,q.fib,WHO_DAY.fib,0,
+                fmtGrams(q.fib),_t('לפחות {n} ליום',{n:fmtGrams(WHO_DAY.fib)}));
+  if(q.miss.length)
+    h+='<div class="who-note">'+_t('לא נמדד: {list}',{list:esc(q.miss.join(' · '))})+'</div>';
+  h+='</div>';
+  return h;
+}
 function renderToday(){
   if(interviewStep>=0){renderInterview();return;}
   var day=loadDay(curDate);
@@ -6900,7 +7008,7 @@ function renderToday(){
      only ever a link to the one there. */
   var _c=document.getElementById('content');
   _c.classList.add('has-fab');
-  _c.innerHTML=macroHTML+pillsHTML+waterHTML+askBarHTML()+addHTML+logHTML+addFabHTML();
+  _c.innerHTML=macroHTML+pillsHTML+whoCardHTML(day)+waterHTML+askBarHTML()+addHTML+logHTML+addFabHTML();
   if(_askOpen)askPaint();
   if(fdbOpen)fdbPaint();
   if(_sayOpen)sayPaint();

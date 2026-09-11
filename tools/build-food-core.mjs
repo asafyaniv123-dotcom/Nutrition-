@@ -2291,17 +2291,28 @@ for (const c of CORE) {
      numbers rather than trusted - a missing macro read as undefined would
      land in the file as null and show as a blank where a measurement
      should be. */
-  let k, p, cc, f;
+  let k, p, cc, f, na, fb;
   if (src === 'moh') {
     const r = byName.get(c.he);
     if (!r) { missing.push(c.he); continue; }
     k = r.k; p = r.p; cc = r.c; f = r.f;
+    /* Sodium and fibre come along when the ministry's row has them, and stay
+       away when it does not. A core food is the only kind the app can read
+       with no network, so this is what decides whether the day's WHO row can
+       say anything at all offline. */
+    if (typeof r.sod === 'number') na = r.sod;
+    if (typeof r.fib === 'number') fb = r.fib;
   } else {
     const n = c.n || {};
     const ok = ['k', 'p', 'c', 'f'].every((x) => typeof n[x] === 'number' && isFinite(n[x]) && n[x] >= 0);
     if (!ok) { unsourced.push(c.id + ' has source ' + src + ' but no complete k/p/c/f'); continue; }
     if (!c.ref) { unsourced.push(c.id + ' has source ' + src + ' but no ref naming the entry'); continue; }
     k = n.k; p = n.p; cc = n.c; f = n.f;
+    /* A non-moh entry may carry them too, under the same rule as the macros:
+       a number or nothing. Nothing is what an entry nobody has looked up yet
+       has, and the day counts it as unread rather than as zero. */
+    if (typeof n.sod === 'number' && isFinite(n.sod) && n.sod >= 0) na = n.sod;
+    if (typeof n.fib === 'number' && isFinite(n.fib) && n.fib >= 0) fb = n.fib;
   }
 
   for (const l of LANGS) if (!c.t[l]) gaps.push(c.id + ' has no ' + l);
@@ -2309,6 +2320,8 @@ for (const c of CORE) {
   /* ref travels with src. Requiring it and then dropping it left the file
      unable to answer the one question src exists for. */
   const row = { id: 'core:' + c.id, k, p, c: cc, f, t, src };
+  if (typeof na === 'number') row.sod = na;
+  if (typeof fb === 'number') row.fib = fb;
   if (c.ref) row.ref = c.ref;
   /* Words this food answers to that appear in none of its eleven names - a
      spelling variant, or a singular where the row is a construct plural.
@@ -2363,4 +2376,6 @@ console.log(out.length + ' generic foods, ' + (LANGS.length + 1) + ' languages e
 const bySrc = {};
 for (const o of out) bySrc[o.src] = (bySrc[o.src] || 0) + 1;
 for (const [s, n] of Object.entries(bySrc)) console.log('  ' + n + ' from ' + SOURCES[s]);
+console.log('  ' + out.filter((o) => 'sod' in o).length + ' carry a sodium, ' +
+            out.filter((o) => 'fib' in o).length + ' carry a fibre');
 console.log('every value traced to a named source; nothing invented');

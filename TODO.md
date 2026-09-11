@@ -2580,3 +2580,87 @@ After, asking a two-day question in Japanese:
     読み返す 2026/9/10   読み返す 2026/9/11
 
 and no ISO date left anywhere on the screen.
+
+## The WHO card — a prototype to look at, in dev only
+
+Asked for: *"תעשה שאראה בדיוק במה מדובר ומקסימום נבטל"*. So it is built, it is
+in `dev/` only, the root has not moved, and **one `git revert` undoes all of
+it**.
+
+### The finding that made it buildable
+
+Every food row in the app carries four numbers — `k p c f`. The MoH table
+those rows are built from carries **85 columns**, and `tools/build-foods.mjs`
+says so in its own first comment: *turns the ministry’s 85-column table into
+the four numbers the app tracks.* Four was a decision, not a limit.
+
+    3,623 foods kept    3,606 carry a sodium    3,336 carry a fibre
+    309 core foods        308 carry a sodium      303 carry a fibre
+
+Open Food Facts returns `sodium_100g` and `fiber_100g` **in the same response
+the barcode scanner was already asking for**, and both were being discarded.
+
+So four of the WHO’s five daily limits are reachable with nothing invented.
+Two are built: sodium and fibre. Saturated fat and trans fat are the same
+columns and the same shape. *Free* sugars is the one that is genuinely not
+measurable — both sources give total sugars, which is a different number.
+
+### What it shows
+
+    נתרן               1,008mg     עד 2,000mg ליום      ▓▓▓▓▓░░░░░  green
+    סיבים תזונתיים       18.4g     לפחות 25g ליום       ▓▓▓▓▓▓▓░░░  amber
+    לא נמדד: Banane (100g) · Vollkornbrot mit Frischkäse
+
+`ceil` is the whole of the design: **one bar, read two ways.** A ceiling is
+green until it is passed and terracotta after; a floor is amber until it is
+reached and green after. A single "diet score" would hide exactly that, which
+is why there are two bars and no score.
+
+The third line is the rule the food core is built under, applied to a day:
+**a food with no clean row is skipped and named.** A total quietly missing
+half the day’s salt is worse than no total. An absent field and a zero are
+never allowed to add up to the same number — which is why `qualOf` copies a
+field or copies nothing, and never writes a `0`.
+
+### The collision, caught on the first test run
+
+The fields were `na` and `fb` for about ten minutes. `f.na` has been a food
+row’s **normalised alternate names** since the search learned eleven
+languages, and `tools/test-food-search.mjs` said so immediately:
+
+    TypeError: na.indexOf is not a function
+
+`sod` and `fib`, both asserted free as bare words *and* as fields before the
+rename. The name-collision rule is about fields too, not only globals.
+
+### What is carried and what is not
+
+| path | carries |
+|---|---|
+| food database (the main one) | yes |
+| barcode / Open Food Facts | yes |
+| favourites, saved per 100 g | yes |
+| the live shelf | **no** — the Worker maps OFF’s fields and would have to send them |
+| AI estimate, photo, manual | no, and correctly: nobody measured those |
+
+Everything in the "no" column is named on screen rather than counted, so the
+gap is visible instead of silent.
+
+### Driven
+
+Real path, real boxes: searched לחם לבן, picked it, added 100 g → 450mg and
+1.6g, which is the ministry’s row exactly. Then עדשים at **250 g** → 558mg
+and 16.8g, the per-100 numbers times 2.5 to the decimal.
+
+Six languages read off the rendered card. Arabic `١٬٠٠٨mg` and `١٨٫٤g` with
+the Arabic decimal mark; German `1.008mg` and `18,4g`; Japanese `1日 2,000mg
+まで`. Nothing clipped at 400px in German, the longest of them.
+
+### Still open, if it stays
+
+- The app’s own protein target lands at 1.4–2.2 g/kg where WHO/FAO/UNU’s safe
+  level is 0.83. Both are defensible; they are answering different questions,
+  and nothing on screen says so yet.
+- These are the **adult** figures. WHO’s fruit-and-veg and fibre numbers step
+  down by age band, and pregnancy changes the iron story entirely.
+- The live shelf needs a Worker change to join in.
