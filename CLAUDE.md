@@ -145,13 +145,15 @@ the rest.
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
 
-**Seven checks are tools rather than prose**, and all should only ever go down:
+**Eight checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments
     node tools/find-translated-data.mjs        # _t() results used as data, not shown
     node tools/find-units-in-strings.mjs       # kg or ml welded into a sentence
     node tools/find-frozen-translations.mjs    # _t() called once, at load, then never
     node tools/find-unwrapped-hebrew.mjs       # Hebrew that never reaches _t() at all
+    node tools/find-hardcoded-english.mjs      # English written straight into the markup,
+                                               # which no language file can reveal
     node tools/find-duplicate-options.mjs      # two choices wearing the same label,
                                                # or disagreeing about capitals
     node tools/build-lang-template.mjs --check # the template still matches the app
@@ -166,13 +168,20 @@ so they can be pointed at an older revision — which is how each was shown to
 actually detect the bugs it claims to, rather than being trusted because it
 reported nothing.
 
-The last two divide the ground between them. A collection declared at the top
+Three of them divide the ground between them. A collection declared at the top
 level calls `_t()` while the page is still booting, before any dictionary has
 been fetched — so it fills with Hebrew and stays Hebrew for the life of the
 tab. `langOn(fn)` runs fn then and again on every language change; the frozen
 check finds the declarations that are missing it. The unwrapped check finds the
 opposite failure: a Hebrew string that never tried to be translated, which no
-language file can reveal because it has no key to be missing.
+language file can reveal because it has no key to be missing. And the English
+check covers what neither can see — a hardcoded **English** word, which has no
+key to be missing either and looks like an ordinary translation until you read
+the screen in German. That one shipped twice: an `Exercises` heading among
+German ones, and `1.1p 20.2c 0.3f` on every meal row. It carries a short list
+of English that is meant to stay English — the app's own name, a platform it
+talks to, and the paper-spread headings that are a design choice — and that
+list is spelled out in the tool, because a list is the thing that rots.
 
 **Three bugs of the same shape, so far.** An array whose middle items are
 `_t('…')` and whose first — or last — is a bare string. It is what a pass

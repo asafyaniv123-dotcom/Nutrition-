@@ -1819,3 +1819,77 @@ raw numbers AND hardcoded English letters for protein, carbohydrate and fat,
 which `find-unwrapped-hebrew` cannot see because they are not Hebrew. Its own
 pass: the letters need keys, and the numbers need `nfmt`, and the row is
 narrow enough that both together may not fit.
+
+## "1.1p 20.2c 0.3f", in every language
+
+Three rows printed the macro line by hand — the meal log, the food library,
+the confirm card — with **p, c and f welded in as English letters**. Nothing
+could catch it: `find-unwrapped-hebrew` looks for Hebrew that never reaches
+`_t()`, and a hardcoded English letter has no key to be missing.
+
+**Nothing new had to be written.** `{p}ח {c}פ {f}ש` has existed all along,
+answered in all eleven, and five other places already use it:
+
+    de  "{p} E {c} K {f} F"        ja  "P{p} C{c} F{f}"
+    ar  "بروتين {p} كربوهيدرات {c} دهون {f}"
+
+These three simply never asked. And because `_t` now formats a numeric hole
+through `nfmt`, the numbers came right in the same move.
+
+### Measured before choosing
+
+The Arabic and Chinese answers are far longer than "p c f", and the row is
+narrow — so it was measured in the real element and font, at the width the
+shell caps to, with a long food name in it:
+
+    macro cell   raw 54px   de 59   zh 82   ar 95
+    row height       58px      58      58      58
+    overflow         none    none    none    none
+
+The cell reflows and the row’s height is set by the photo, so the longest
+answer costs nothing. Driven afterwards at a 360px shell:
+
+    de  Vollkornbrot mit Frischkäse | 10:11 | 12,4 E 31,7 K 9,8 F | 268
+    ar  Banane (100g) | ٧:٠٦ ص | بروتين ١٫١ كربوهيدرات ٢٠٫٢ دهون ٠٫٣ | ٨٩
+
+No overflow in either. The meal was added through the manual box with **save
+to library** on, so the library row and the confirm card were driven too.
+
+## The eighth check: English written into the markup
+
+This bug class has now shipped twice and nothing could see it either time —
+the `Exercises` heading in tick 12, and the macro letters today. Both were
+found by driving a screen in German and reading it.
+
+`find-hardcoded-english.mjs`, two rules because those two bugs have two
+shapes:
+
+| | shape | what it caught |
+|---|---|---|
+| 1 | text between two tags | `>Exercises</div>` |
+| 2 | prose concatenated between two values | `+m.p+'p '+m.c+'c '` |
+
+The second never sits between tags, so the first rule cannot see it.
+
+**Proved against the revisions that have the bugs**, which is the rule here:
+
+    rule 1, against 71ee1e8~1    "Exercises", line 12999
+    rule 2, against bf7e84f      'p ' and 'c ', lines 6838 and 6864
+    both, against this revision  silent
+
+Two narrowings, each from a false positive it reported on its own first run.
+Rule 1 dropped quote characters from what counts as text, which was matching
+`prevMax?'` — a comparison, not markup. Rule 2 requires a space or three
+letters, because `'w'+w+'d'+dw` is how this file builds a storage key, and a
+key is not text.
+
+It carries a short list of **English that is meant to stay English** — the
+app’s own name, a platform it talks to, and the six paper-spread headings
+(HABIT TRACKER, THIS MONTH I WILL, NOTES, VISION BOARD, "progress, not
+perfection", "Become the best version of yourself") that are a design choice
+rather than an oversight. They are listed **in the tool**, with a note that a
+list is the thing that rots, so the decision stays visible rather than being
+quietly skipped.
+
+That closes the open item from tick 12 — *"a hardcoded English word is
+invisible to find-unwrapped-hebrew"* — with a tool rather than with prose.
