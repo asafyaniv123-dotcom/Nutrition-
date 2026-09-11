@@ -6111,14 +6111,32 @@ function askDateArg(v){
 /* The same day, written the way the reader writes one. askDateArg keeps
    returning the key, because two callers look a day up with it. */
 function askDateShow(v){return fmtDay(new Date(askDateArg(v)+'T12:00:00'));}
+/* Every field handed to the model carries its unit IN ITS NAME - protein_g,
+   fat_g, serving_g, basis:'per 100g'. That is what lets an answer come back
+   in the right unit without anyone agreeing a convention first.
+
+   Water was the one exception, and the one figure here that actually changes
+   with the reader's settings. An imperial reader's card said "42 / 101 fl oz"
+   while this handed over water_ml:3000, and the answer came back - measured,
+   not guessed - as "You have 1750 ml of water left today. You've logged
+   1250 ml so far and your target is 3000 ml." Three numbers in a unit the app
+   does not use, in one sentence, under a card saying otherwise.
+
+   So water follows the same rule as its neighbours: converted, and named for
+   what it is. */
+function askWater(ml){
+  return APP_UNITS==='imperial'
+    ? {water_fl_oz:Math.round(toDisplayVolume(ml))}
+    : {water_ml:Math.round(+ml||0)};
+}
 function askDayTotals(d){
   var day=loadDay(d),m=day.meals||[],i,t={kcal:0,p:0,c:0,f:0};
   for(i=0;i<m.length;i++){
     t.kcal+=(m[i].kcal||0);t.p+=(m[i].p||0);t.c+=(m[i].c||0);t.f+=(m[i].f||0);
   }
-  return {date:d,kcal:Math.round(t.kcal),protein_g:Math.round(t.p*10)/10,
+  return Object.assign({date:d,kcal:Math.round(t.kcal),protein_g:Math.round(t.p*10)/10,
           carbs_g:Math.round(t.c*10)/10,fat_g:Math.round(t.f*10)/10,
-          water_ml:day.water||0,meals_logged:m.length};
+          meals_logged:m.length},askWater(day.water||0));
 }
 var ASK_TOOLS={
   get_day:function(inp){
@@ -6138,8 +6156,8 @@ var ASK_TOOLS={
   },
   get_targets:function(){
     loadTargets();
-    return {kcal:TARGETS.kcal,protein_g:TARGETS.p,carbs_g:TARGETS.c,
-            fat_g:TARGETS.f,water_ml:TARGETS.water};
+    return Object.assign({kcal:TARGETS.kcal,protein_g:TARGETS.p,carbs_g:TARGETS.c,
+            fat_g:TARGETS.f},askWater(TARGETS.water));
   },
   search_food:function(inp){
     var q=String((inp&&inp.query)||'').trim();

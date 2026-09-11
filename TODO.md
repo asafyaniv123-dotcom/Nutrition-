@@ -3196,3 +3196,62 @@ wrong one. Renamed `topW`.
 reads as progress when it may be the opposite. `e1rm()` would say otherwise.
 Changing what the chart plots is a product decision, not a defect fix, so it
 is not made here.
+
+## The AI answered in millilitres under a card saying fl oz
+
+The payloads handed to the model are careful in a way worth naming: **every
+field carries its unit in its name** — `protein_g`, `fat_g`, `serving_g`,
+`basis:"per 100g"`. That is what lets an answer come back in the right unit
+without anyone having agreed a convention first, and it is why the box has
+been right about grams and calories all along.
+
+Water was the single exception, and the single figure in those payloads that
+changes with the reader’s settings. Measured, not guessed — an imperial
+reader, one live question:
+
+    the water card, same screen   42 / 101 fl oz
+    handed to the model           water_ml: 3000
+    the answer that came back     "You have 1750 ml of water left today.
+                                   You’ve logged 1250 ml so far and your
+                                   target is 3000 ml."
+
+Three numbers in a unit the app does not use, in one sentence, directly
+under a card saying otherwise. The model could not have done better: it
+answered exactly what it was given.
+
+Water follows the same rule as its neighbours now — converted, and named for
+what it is (`water_fl_oz` / `water_ml`). Asked again:
+
+    "You have 59 fl oz of water left today. You’ve logged 42 fl oz so far
+     and your target is 101 fl oz."
+
+and the card beside it still says `42 / 101 fl oz`. The payload now carries
+the same two numbers the screen does. **In metric it is byte-for-byte the
+old payload**, which is why this never showed.
+
+### What was already right, which is also a result
+
+The rendering side has **no numbers of its own at all**, so there was nothing
+to sweep: the trace is built from whole-sentence keys through `askDateShow`,
+and the answer is the model’s text, escaped, with only `**bold**` and line
+breaks converted. That is correct and deliberate — reformatting a model’s
+numbers would be inventing them.
+
+The trace in Arabic, all four tool shapes, zero Latin digits:
+
+    أعِد قراءة اليوم ١١/٩/٢٠٢٦
+    قرأ من ٥/٩/٢٠٢٦ إلى ١١/٩/٢٠٢٦
+    اقرأ أهدافك
+    بحث في قاعدة البيانات: أرز
+
+and in English the date reads `9/11/2026`, American order.
+
+### The shape to remember
+
+This is the third unit bug in three passes, and all three are the same
+sentence: **a number crossed a boundary without its unit.** Into a box
+(`logSet`), onto a chart (`pts[].weight`), into a model (`water_ml`). The
+app already knows the cure in two of the three places — `fromDisplayWeight`
+at an input, `fmtWeight` at a label, a `_g` suffix in a payload — so the
+question to ask of any new code is not "is this converted" but **"what is
+the unit of this number, and does the thing receiving it know?"**
