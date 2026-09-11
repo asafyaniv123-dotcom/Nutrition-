@@ -2512,3 +2512,71 @@ screen guaranteed to be in front of the reader at that moment. It does not.
 `langLoad` fetches the dictionary asynchronously and my first read was 1.2
 seconds in, before it landed. At 2 seconds: 言語 / 国 / 単位, then Sprache /
 Land / Einheiten. **Wait for the fetch before believing a repaint failed.**
+
+## Two sweeps that found nothing, and why that is the result
+
+The Arabic sweep paid out nine families in one pass, so the same was run in
+the other two scripts that can show what German cannot. **Both came back
+clean**, and that is worth writing down rather than quietly moving on.
+
+### Hebrew — the source language, and the one on the phone
+
+After twenty passes of changes driven in German and Arabic, the risk is a
+key that now renders a placeholder, an empty hole, or a NaN in the language
+the app is actually used in. The pattern searched: every visible leaf under
+`#content` whose text matches `{word}`, `NaN`, `undefined`, `&#` or
+`[object`. **Ten modules, nothing.**
+
+The subtler Hebrew risk is the numberless plural keys, which serve as a bare
+label in one place and a counted word in another. Checked both ways:
+
+    label (no vars)   סטים · חזרות · פריטים · ימים בוצעו · ימים ברצף
+    counted 1/2/5     סט / סטים / סטים · חזרה / חזרות / חזרות
+                      יום בוצע / ימים בוצעו · יום ברצף / ימים ברצף
+
+The bare label falls to `other`, which is the plural — right for a heading —
+and the counted forms inflect. Both behaviours from one key, as intended.
+
+### Japanese — for hardcoded Latin and for line breaking
+
+Every visible leaf holding three or more consecutive Latin letters, across
+ten modules. Everything returned was either **text I typed myself** (a
+German journal entry, a goal title, a person, a workout name) or the four
+paper-spread headings already in `find-hardcoded-english`'s allowlist as
+Asaf's design choice. **No new hardcoded English.**
+
+`kcal`, `kg` and `ml` show in Japanese and are correct: they are what the ja
+file answers, and Japanese labelling uses those Latin symbols. カロリー is
+used where the word rather than the symbol is wanted.
+
+Line breaking: Japanese has no spaces, so the question is whether anything
+overflows. Measured at the width the shell caps to — every visible leaf whose
+`scrollWidth` exceeds its `clientWidth`. **No overflow anywhere.**
+
+The one hit was a **false positive of the detector**: the journal's ‹ and ›
+chevrons report 32→38px, but their `overflow` is `visible`, so nothing is
+clipped — the glyph simply paints wider than its box. *A `scrollWidth`
+reading means nothing unless the overflow is hidden, auto or scroll.* The
+detector needs that condition before it is used again.
+
+## "一日を読み返す 2026-09-11"
+
+Found by driving the **AI question box**, which had never been driven. It
+works end to end: asked in Japanese, answered in Japanese, with the
+arithmetic right and the tool calls labelled in Japanese —
+
+    今日はあと141.5gのたんぱく質を摂ればいいです。目標は155gで、
+    現在13.5g摂取しているので、155 - 13.5 = 141.5gが残りです。
+
+But the trace under it printed the day **key**. `askDateArg` turns whatever
+the model asked for — "today", "אתמול", a date — into the app's
+`YYYY-MM-DD`, which is right for the two callers that look a day up and
+wrong for the two that show the trace to the reader.
+
+Same split as everywhere: the stored form sorts and compares, the shown form
+follows the reader. One helper, three call sites, noon rather than midnight.
+After, asking a two-day question in Japanese:
+
+    読み返す 2026/9/10   読み返す 2026/9/11
+
+and no ISO date left anywhere on the screen.
