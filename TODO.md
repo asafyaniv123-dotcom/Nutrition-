@@ -3255,3 +3255,64 @@ app already knows the cure in two of the three places — `fromDisplayWeight`
 at an input, `fmtWeight` at a label, a `_g` suffix in a payload — so the
 question to ask of any new code is not "is this converted" but **"what is
 the unit of this number, and does the thing receiving it know?"**
+
+## The workout summary: the same sentence, a fourth time
+
+    the hero stat, imperial     1930   labelled "lb נפח"
+    what it should say          4,255
+
+Volume is the sum of weight × reps. The sum was taken over **kilograms** and
+the label named the reader’s unit — wrong by 2.2×, in the headline number of
+the screen, in the same table as weights that convert correctly through
+`fmtWeight` three rows below.
+
+Fourth pass running, and the same sentence every time: **a number crossed a
+boundary without its unit.** Into a box, onto a chart, into a model, and now
+into a label. One helper (`volDisp`) and three call sites — the hero, the
+bars, the closing card — plus the history row, which had the same fault.
+
+### And 25 raw numbers on one screen
+
+The pattern: every visible element under `#content` whose **own** text nodes
+match `[0-9]`, in Arabic. **25 → 0.**
+
+| what | was |
+|---|---|
+| three hero stats | `7` `8.3` `1930` |
+| every set index and rep count | fourteen of them |
+| the RPE legend | `<6` `6-7.4` `7.5-8.9` `9+` |
+| the volume bars | `1377.5` `552.5` `0` |
+| the rep-range line | `6–12` |
+| the history duration | `52 دقيقة` |
+
+The rep-range line is the seven-month-lists shape in miniature: **three
+copies of one expression**, one fixed a pass ago, one fixed here, and a third
+on another screen that the first two greps never reached.
+
+The duration was a count glued to a noun that cannot inflect — and the plural
+key `{n} דקות` already existed and was already in use elsewhere. One key
+retired (`דק`), and Arabic gets its dual back: *دقيقتان* for two minutes.
+
+### `BW`
+
+A bodyweight set printed the English initials **BW** in a Hebrew app.
+`find-hardcoded-english` could not see it because the string is assembled in
+JS rather than sitting between two tags, which is exactly the blind spot that
+check documents. `משקל גוף` already existed as a key and answers *Bodyweight*
+in English, so it cost nothing.
+
+The comparison table two cards up still said `0 kg` for the same sets — "you
+lifted nothing" rather than "you did press-ups". The two now agree.
+
+### The check caught my own regression, in the same pass
+
+Localising the RPE legend produced `nfmt(6) + _t('קל')`, and
+`find-glued-sentences` flagged it immediately: **a count printed beside a
+noun that cannot inflect.** That is the bug the rule exists for, and the fact
+that this one is a legend rather than a count is not something a pattern can
+see.
+
+Widening the check was not an option — that is how a check rots, and this is
+the second time this session the answer was to change the code instead. The
+range and its name are two things; they are two elements now, and the markup
+carries the space that the string used to.

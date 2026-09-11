@@ -9588,7 +9588,7 @@ function fitProgressCardHTML(log){
   }
 
   var g=fitGoal();
-  h+='<div style="font-size:10px;color:var(--muted);margin-bottom:12px">'+_t('לפי המטרה:')+' '+esc(g.t)+' &middot; '+g.lo+'&ndash;'+g.hi+' '+_t('חזרות',{n:g.hi})+'</div>';
+  h+='<div style="font-size:10px;color:var(--muted);margin-bottom:12px">'+_t('לפי המטרה:')+' '+esc(g.t)+' &middot; '+nfmt(g.lo)+'&ndash;'+nfmt(g.hi)+' '+_t('חזרות',{n:g.hi})+'</div>';
 
   for(i=0;i<rows.length;i++){
     var r=rows[i],st=r.st,top=st.last.top;
@@ -13306,6 +13306,10 @@ function fitClearPhoto(){
   renderFitSummary();
 }
 
+/* Volume is weight x reps, so the weight factor carries the unit and an
+   imperial reader wants pound-reps. Rounded here rather than at each call
+   site, because a volume with a decimal is noise at this size. */
+function volDisp(kgReps){return Math.round(toDisplayWeight(kgReps||0));}
 function renderFitSummary(){
   var entry=_fitSummaryEntry;
   if(!entry){_fitView='home';renderFitness();return;}
@@ -13354,7 +13358,7 @@ function renderFitSummary(){
 
   // 4.1 Hero stats
   h+='<div style="display:flex;gap:10px;margin-bottom:16px">';
-  [{num:totalSets,lbl:''+_t('סטים',{n:totalSets})+''},{num:avgRPE!==null?effortFromRPE(avgRPE):''+_t('לא דורג')+'',lbl:(effortScale()==='rir'?_t('RIR ממוצע'):_t('RPE ממוצע'))},{num:totalVol>0?Math.round(totalVol):0,lbl:''+_t('{u} נפח',{u:weightUnit()})+''}].forEach(function(s){
+  [{num:nfmt(totalSets),lbl:''+_t('סטים',{n:totalSets})+''},{num:avgRPE!==null?nfmt(effortFromRPE(avgRPE)):''+_t('לא דורג')+'',lbl:(effortScale()==='rir'?_t('RIR ממוצע'):_t('RPE ממוצע'))},{num:nfmt(volDisp(totalVol)),lbl:''+_t('{u} נפח',{u:weightUnit()})+''}].forEach(function(s){
     h+='<div style="flex:1;background:var(--card);border-radius:20px;padding:14px 8px;text-align:center;box-shadow:0 2px 10px rgba(58,53,48,.06)">';
     h+='<div style="font-size:20px;font-weight:800;color:var(--ink-strong)">'+s.num+'</div>';
     h+='<div style="font-size:10px;color:#9A9184;margin-top:3px">'+s.lbl+'</div></div>';
@@ -13379,8 +13383,12 @@ function renderFitSummary(){
       var prevMax=prevEx&&prevEx.sets.length?Math.max.apply(null,prevEx.sets.map(function(s){return s.weight||0;})):null;
       var arrow=prevMax===null?'&#8212;':curMax>prevMax?'<span style="color:var(--green-700)">&#11014;</span>':curMax<prevMax?'<span style="color:#D33A2C">&#11015;</span>':'<span style="color:#ADA79A">&#10132;</span>';
       h+='<tr><td style="font-size:11px;font-weight:700;text-align:start;padding:8px 4px;border-bottom:1px solid var(--line-strong);overflow:hidden;text-overflow:ellipsis">'+esc(exLabel(ex.name))+'</td>';
-      h+='<td style="font-size:11px;text-align:center;padding:8px 4px;border-bottom:1px solid var(--line-strong);color:#9A9184">'+(prevMax!==null?fmtWeight(prevMax):''+_t('לא')+'')+'</td>';
-      h+='<td style="font-size:11px;text-align:center;padding:8px 4px;border-bottom:1px solid var(--line-strong);font-weight:700">'+fmtWeight(curMax)+'</td>';
+      /* A bodyweight exercise has no weight, and "0 kg" reads as having
+         lifted nothing rather than as having done press-ups. The table below
+         already says so in words; these two now agree. */
+      var wCell=function(kg){return kg>0?fmtWeight(kg):_t('משקל גוף');};
+      h+='<td style="font-size:11px;text-align:center;padding:8px 4px;border-bottom:1px solid var(--line-strong);color:#9A9184">'+(prevMax!==null?wCell(prevMax):''+_t('לא')+'')+'</td>';
+      h+='<td style="font-size:11px;text-align:center;padding:8px 4px;border-bottom:1px solid var(--line-strong);font-weight:700">'+wCell(curMax)+'</td>';
       h+='<td style="text-align:center;padding:8px 4px;border-bottom:1px solid var(--line-strong);font-size:14px">'+arrow+'</td></tr>';
     });
     h+='</tbody></table></div>';
@@ -13409,10 +13417,10 @@ function renderFitSummary(){
       if(isFirst){
         h+='<td style="font-size:11px;font-weight:700;text-align:start;padding:8px 3px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line-strong)" rowspan="'+ns+'">'+esc(exLabel(ex.name))+'</td>';
       }
-      h+='<td style="font-size:11px;text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong);color:#9A9184">'+(si+1)+'</td>';
-      h+='<td style="font-size:11px;text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong)">'+(s.weight>0?fmtWeight(s.weight):'BW')+'</td>';
+      h+='<td style="font-size:11px;text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong);color:#9A9184">'+nfmt(si+1)+'</td>';
+      h+='<td style="font-size:11px;text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong)">'+(s.weight>0?fmtWeight(s.weight):_t('משקל גוף'))+'</td>';
       var fail=s.reps<(ex.targetReps||10)&&s.weight>0?' <span style="font-size:9px;color:#D33A2C">'+_t('(כשל)')+'</span>':'';
-      h+='<td style="font-size:11px;text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong)">'+s.reps+fail+'</td>';
+      h+='<td style="font-size:11px;text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong)">'+nfmt(s.reps)+fail+'</td>';
       h+='<td style="text-align:center;padding:8px 3px;border-bottom:1px solid var(--line-strong)">';
       h+='<span style="width:9px;height:9px;border-radius:50%;background:'+dc+';display:inline-block"></span>';
       if(isPR)h+=' <span style="font-size:9px;color:#E0A020;font-weight:700">PR</span>';
@@ -13423,8 +13431,19 @@ function renderFitSummary(){
 
   // RPE legend
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:10px;color:#9A9184;justify-content:center">';
-  [[PAL.green700,'<6 '+_t('קל')],['#E0A020','6-7.4'],['#E0691E','7.5-8.9'],['#D33A2C','9+ '+_t('כבד')],['#ADA79A',_t('לא דורג')]].forEach(function(c){
-    h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:'+c[0]+';display:inline-block;flex-shrink:0"></span>'+c[1]+'</span>';
+  /* The range and its name are two things, and they are kept apart. Glued
+     into one string this reads to find-glued-sentences exactly like a count
+     beside a noun that cannot inflect - which is the bug that check exists
+     for, and the fact that this one is a legend rather than a count is not
+     something the pattern can see. Widening the check to let it through is
+     how a check rots; the markup carries the space instead. */
+  [[PAL.green700,'<'+nfmt(6),_t('קל')],
+   ['#E0A020',nfmt(6)+'-'+nfmt(7.4),''],
+   ['#E0691E',nfmt(7.5)+'-'+nfmt(8.9),''],
+   ['#D33A2C',nfmt(9)+'+',_t('כבד')],
+   ['#ADA79A','',_t('לא דורג')]].forEach(function(c){
+    h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:'+c[0]+';display:inline-block;flex-shrink:0"></span>'+
+       (c[1]?'<span>'+c[1]+'</span>':'')+(c[2]?'<span>'+c[2]+'</span>':'')+'</span>';
   });
   h+='</div></div>';
 
@@ -13438,7 +13457,7 @@ function renderFitSummary(){
     h+='<div style="width:90px;font-size:10px;flex-shrink:0;color:var(--ink-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(exLabel(ex.name))+'</div>';
     h+='<div style="flex:1;background:#EFE9DD;border-radius:6px;height:10px;overflow:hidden">';
     h+='<div style="height:100%;width:'+pct+'%;background:#2E6B62;border-radius:6px;transition:width .8s"></div></div>';
-    h+='<div style="width:44px;text-align:start;font-size:10px;color:#9A9184;flex-shrink:0">'+vol+'</div>';
+    h+='<div style="width:44px;text-align:start;font-size:10px;color:#9A9184;flex-shrink:0">'+nfmt(volDisp(vol))+'</div>';
     h+='</div>';
   });
   h+='</div>';
@@ -13463,7 +13482,7 @@ function renderFitSummary(){
     return v>best.vol?{name:ex.name,vol:v}:best;
   },{name:'',vol:0});
   h+='<div style="background:#D6ECE8;color:#2E6B62;border-radius:16px;padding:16px;font-size:13px;line-height:1.7;margin-bottom:16px">';
-  if(bestEx.name)h+='<div style="margin-bottom:6px"><b style="font-weight:800">'+_t('הבולט ביותר:')+'</b> '+_t('{name} עם {v} {u} נפח.',{name:esc(exLabel(bestEx.name)),v:nfmt(Math.round(bestEx.vol)),u:weightUnit()})+'</div>';
+  if(bestEx.name)h+='<div style="margin-bottom:6px"><b style="font-weight:800">'+_t('הבולט ביותר:')+'</b> '+_t('{name} עם {v} {u} נפח.',{name:esc(exLabel(bestEx.name)),v:nfmt(volDisp(bestEx.vol)),u:weightUnit()})+'</div>';
   h+='<div><b style="font-weight:800">'+_t('סה"כ:')+'</b> '+(avgRPE!==null?_t('{n} סטים, RPE ממוצע {rpe}.',{n:totalSets,rpe:avgRPE})+' '+(avgRPE>=9?''+_t('עומס כבד — שים לב להתאוששות.')+'':avgRPE>=7.5?''+_t('אימון טוב — באזור העלייה.')+'':''+_t('אימון נוח. אפשר להעלות במשקל.')+''):_t('{n} סטים.',{n:totalSets}))+' '+_t('אין דיווח כאב.')+'</div>';
   h+='</div>';
 
@@ -13476,7 +13495,10 @@ function renderFitSummary(){
   }
   if(_adv.length){
     h+='<div class="nx"><div class="nx-h">'+_t('בפעם הבאה')+'</div>';
-    h+='<div class="nx-goal">'+_t('לפי המטרה:')+' '+esc(_g.t)+' &middot; '+_g.lo+'&ndash;'+_g.hi+' '+_t('חזרות',{n:_g.hi})+'</div>';
+    /* The THIRD copy of this line. One was fixed a pass ago, one this pass,
+       and this one is on a different screen again - which is the argument for
+       a helper rather than a fourth grep. */
+    h+='<div class="nx-goal">'+_t('לפי המטרה:')+' '+esc(_g.t)+' &middot; '+nfmt(_g.lo)+'&ndash;'+nfmt(_g.hi)+' '+_t('חזרות',{n:_g.hi})+'</div>';
     for(var _j=0;_j<_adv.length;_j++){
       var _x=_adv[_j];
       h+='<div class="nx-row '+_x.a.dir+'">'+
@@ -13529,8 +13551,11 @@ function renderFitHistory(){
     h+='</div>';
     h+='<div style="display:flex;gap:14px;font-size:11px;color:var(--muted)">';
     h+='<span>'+_t('{n} תרגילים',{n:entry.exercises.length})+'</span>';
-    h+='<span>'+entry.duration+' '+_t('דק')+'</span>';
-    h+='<span style="color:var(--terra-500);font-weight:700">'+nfmt(vol)+' '+_t('{u} נפח',{u:weightUnit()})+'</span>';
+    /* A count beside a noun that never inflected, and the number raw with it.
+       The plural key already existed and is used elsewhere; "דק" was its only
+       call site and goes. */
+    h+='<span>'+_t('{n} דקות',{n:entry.duration})+'</span>';
+    h+='<span style="color:var(--terra-500);font-weight:700">'+nfmt(volDisp(vol))+' '+_t('{u} נפח',{u:weightUnit()})+'</span>';
     h+='</div>';
     h+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">';
     for(var ei=0;ei<entry.exercises.length;ei++){
