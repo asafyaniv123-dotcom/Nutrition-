@@ -1736,6 +1736,29 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .ar-t{font-size:13.5px;font-weight:700;color:var(--ink)}
 .ar-s{font-size:10.5px;color:var(--muted)}
 .ar-done{margin:0 12px calc(16px + env(safe-area-inset-bottom));padding:14px;border:none;border-radius:16px;background:var(--ink);color:var(--white);font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer}
+/* ── HOME LAYOUT UNDER TRIAL ── an alternative board shape, drawn only when
+   homeLay() asks for it. Both shapes reuse .home-card and the area id class,
+   so every gradient and shadow stays the one the area already owns. */
+.home-grid.lay-orbit{display:block;position:relative;aspect-ratio:1;max-width:380px}
+.home-hub{grid-column:1/-1;width:100%;border-radius:30px;padding:20px 22px;display:flex;align-items:center;gap:16px;text-align:start;flex-direction:row;margin-bottom:14px}
+.home-hub-ic{width:64px;height:64px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(58,124,165,.2)}
+.home-hub-ic svg{width:33px;height:33px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.home-hub-b{flex:1;min-width:0}
+.home-hub-t{font-size:19px;font-weight:800;color:var(--ink)}
+.home-hub-s{font-size:11.5px;color:var(--muted);margin-top:2px}
+.home-hub-p{display:flex;gap:5px;margin-top:10px;align-items:center}
+.home-hub-p i{width:24px;height:4px;border-radius:3px;background:rgba(58,124,165,.22)}
+.home-hub-p i.on{background:var(--water-500)}
+.home-hub-p b{font-size:10px;font-weight:800;color:var(--water-500);margin-inline-start:4px}
+.orb,.orb-c{justify-content:center}
+.orb-c .vlog-dot{top:-2px;inset-inline-end:-2px}
+.home-hub .vlog-dot{top:31px;inset-inline-end:18px}
+.orb-c{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:138px;height:138px;border-radius:50%;padding:0;gap:6px;overflow:visible}
+.orb-c svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.orb-c .home-card-title{font-size:15px}
+.orb{position:absolute;width:78px;height:78px;border-radius:50%;padding:0 5px;gap:3px;transform:translate(-50%,-50%);overflow:visible}
+.orb svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.orb .home-card-title{font-size:8.5px;line-height:1.1}
 .home-card-badge{position:absolute;top:12px;inset-inline-end:12px;background:rgba(166,144,207,.2);border-radius:20px;padding:3px 8px;font-size:9px;font-weight:700;color:var(--violet-500)}
 /* ── THE SKY ──
    One fixed layer behind everything, animating transform and opacity only so
@@ -21808,19 +21831,84 @@ function areaToggle(id){
   areasMarkSeen();
   renderHomeGrid();renderAreasList();
 }
+function homeCardHTML(a,cls){
+  return '<button class="home-card '+(cls?cls+' ':'')+a.id+'" data-area="'+a.id+'">'+
+    (a.id==='endofday'?vlogDotHTML():'')+
+    '<div class="home-card-icon" style="color:'+a.color+'">'+a.svg+'</div>'+
+    '<div class="home-card-title">'+a.title+'</div>'+
+    (cls?'':'<div class="home-card-sub">'+a.sub+'</div>')+
+    '</button>';
+}
+/* ── THE BOARD'S SHAPE, UNDER TRIAL ──
+   Eleven equal tiles say the eleven areas are equal, and they are not: סיום יום
+   is what the app is for. Measured on this phone width it starts 568px down a
+   550px viewport - one whole screen below the fold - and looks like its
+   neighbour when you reach it.
+
+   Two shapes are drawn so the idea can be looked at instead of argued about.
+   'grid' is what ships and is byte-for-byte what it was; nothing else runs
+   unless homeLay() is called. No shape adds a string, which is what makes
+   throwing any of them away free. */
+var _homeLay='grid';
+function homeLay(v){_homeLay=v||'grid';renderHomeGrid();window.scrollTo(0,0);return _homeLay;}
+/* The four the evening actually asks. A tile cannot say how far in you are;
+   a card that is the centre of the board has the room to. */
+function homeEodPips(){
+  var r=loadSummary(todayStr())||{},ids=['moment','photo','song','quote'],i,n=0,h='';
+  for(i=0;i<ids.length;i++){
+    var v=r[ids[i]],on=!!(v&&(typeof v!=='string'||v.trim()));
+    if(on)n++;
+    h+='<i class="'+(on?'on':'')+'"></i>';
+  }
+  return {h:h,n:n,t:ids.length};
+}
+/* A ring has no reading order of its own, so it takes one from the page:
+   first area at the top, then towards the side the language starts on. */
+function orbPos(i,n,R){
+  var d=(document.documentElement.dir==='rtl')?-1:1;
+  var th=-Math.PI/2+d*i*2*Math.PI/n;
+  return {x:50+R*Math.cos(th),y:50+R*Math.sin(th)};
+}
 function renderHomeGrid(){
   var g=document.getElementById('home-grid');if(!g)return;
-  var h='',i,a;
-  for(i=0;i<HOME_AREAS.length;i++){
-    a=HOME_AREAS[i];
-    if(!areaShown(a.id))continue;
-    h+='<button class="home-card '+a.id+'" data-area="'+a.id+'">'+
-       (a.id==='endofday'?vlogDotHTML():'')+
-       '<div class="home-card-icon" style="color:'+a.color+'">'+a.svg+'</div>'+
-       '<div class="home-card-title">'+a.title+'</div>'+
-       '<div class="home-card-sub">'+a.sub+'</div>'+
-       '</button>';
+  var on=[],i,a;
+  /* Written long rather than pushing the element into a call: a translated
+     collection's element handed into a CALL is the shape that hid the muscle
+     filter, and find-translated-data cannot tell push from a comparison. */
+  for(i=0;i<HOME_AREAS.length;i++){a=HOME_AREAS[i];if(areaShown(a.id))on[on.length]=a;}
+  var hub=null,rest=[];
+  for(i=0;i<on.length;i++)if(on[i].id==='endofday')hub=on[i];else rest.push(on[i]);
+  g.className='home-grid'+(_homeLay==='orbit'&&hub?' lay-orbit':'');
+  var h='';
+
+  if(_homeLay==='orbit'&&hub){
+    /* 78px satellites on a ring inside 380px: ten of them sit 86px apart
+       centre to centre, so they very nearly touch. The label is what pays
+       for it - the sub line cannot come, and the title drops to 8.5px. */
+    var R=38;
+    for(i=0;i<rest.length;i++){
+      var p=orbPos(i,rest.length,R);
+      h+=homeCardHTML(rest[i],'orb').replace('<button class="home-card orb',
+        '<button style="left:'+p.x.toFixed(2)+'%;top:'+p.y.toFixed(2)+'%" class="home-card orb');
+    }
+    h+=homeCardHTML(hub,'orb-c');
+    g.innerHTML=h;return;
   }
+
+  if(_homeLay==='hub'&&hub){
+    var pp=homeEodPips();
+    h+='<button class="home-card home-hub '+hub.id+'" data-area="'+hub.id+'">'+
+       vlogDotHTML()+
+       '<div class="home-hub-ic" style="color:'+hub.color+'">'+hub.svg+'</div>'+
+       '<div class="home-hub-b"><div class="home-hub-t">'+hub.title+'</div>'+
+       '<div class="home-hub-s">'+hub.sub+'</div>'+
+       '<div class="home-hub-p">'+pp.h+'<b>'+nfmt(pp.n)+'/'+nfmt(pp.t)+'</b></div></div>'+
+       '</button>';
+    for(i=0;i<rest.length;i++)h+=homeCardHTML(rest[i]);
+    g.innerHTML=h;return;
+  }
+
+  for(i=0;i<on.length;i++)h+=homeCardHTML(on[i]);
   g.innerHTML=h;
 }
 var TICK='<svg viewBox="0 0 24 24"><path d="m5 12.4 4.6 4.6L19 7.6"/></svg>';
