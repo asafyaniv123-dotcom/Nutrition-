@@ -62,7 +62,17 @@ while ((m = re.exec(app)) !== null) {
   re.lastIndex = m.index + 1;
   const between = m[3];
   if (!/\+/.test(between)) continue;
-  if (/<\/?[a-z]/i.test(between)) continue;         // separated by markup, not one sentence
+  /* Markup between two fragments usually means two blocks rather than one
+     sentence - </div><div>, or a span wrapping a value. <br> is the
+     exception and has to stay in: a line break is how one sentence gets laid
+     across two lines, and skipping it hid
+
+         _t('התחל להוסיף…')+'<br>'+_t('ולהיות נוכח בחיים שלהם.')
+
+     which reads as one sentence in Hebrew because the second half opens
+     with ו, and comes apart in German, where "willst" wants a finite
+     clause and got an infinitive. */
+  if (/<\/?[a-z]/i.test(between.replace(/<br\s*\/?>/gi, ' '))) continue;
 
   /* The overwhelming majority of matches are ARRAYS of labels -
      ['ינואר','פברואר',…] - where all that sits between two _t calls is a comma
@@ -111,6 +121,35 @@ while ((m = re.exec(app)) !== null) {
   const line = app.slice(0, m.index).split(LF).length;
   hits.push({ line, a: m[2], between: between.trim(), b: m[5] });
   re.lastIndex = m.index + 1;                        // allow overlapping chains
+}
+
+/* ── one sentence, laid across two lines ──
+   The pair rule above wants a VALUE between the fragments and throws away a
+   pair with only punctuation between them, because that is what an array of
+   labels looks like. A line break is neither: it is one sentence broken for
+   layout, and it breaks in translation the same way a glued one does - the
+   second half is written to continue the first, and no other language is
+   obliged to break in the same place or at all. */
+const BR = [];
+for (const m of app.matchAll(
+  /_t\((['"])((?:(?!\1).)*)\1\)[^;\n]{0,12}?<br\s*\/?>[^;\n]{0,12}?_t\((['"])((?:(?!\3).)*)\3\)/g)) {
+  const a = m[2], b = m[4];
+  /* Most pairs either side of a <br> are two FINISHED sentences that happen to
+     share a block - "No saved workouts yet." / "Finish one and save it." -
+     and nothing is glued. What marks a real continuation is the same thing
+     that marks a lone fragment: the punctuation.
+
+     A second half opening with the Hebrew ו, "and", cannot stand alone and
+     was written to continue the first. So can a first half that stops on a
+     comma or a dash. Everything else is two sentences. */
+  if (!/^ו[֐-׿]/.test(b) && !/[,:;־–-]\s*$/.test(a)) continue;
+  BR.push({ line: app.slice(0, m.index).split(LF).length, a, b });
+}
+if (BR.length) {
+  console.log('');
+  console.log('one sentence split across a line break: ' + BR.length);
+  for (const f of BR)
+    console.log('    line ' + String(f.line).padStart(6) + '  ' + JSON.stringify(f.a) + '  +<br>+  ' + JSON.stringify(f.b));
 }
 
 /* group by line so a three-part sentence shows as one finding */

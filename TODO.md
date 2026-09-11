@@ -1063,3 +1063,75 @@ rot the moment somebody stopped calling it.
 English exercise instructions stay at 42 of 96. The tick went to driving an
 untouched area instead, and it found a defect class; another predictable
 translation slice would not have.
+
+## A subtitle about the wrong noun, and a seam the check could not see
+
+### "Diese Woche — ihn ganz zu sehen"
+
+The planner, opened in German. Two things wrong at once: *ihn/er* is
+masculine and *die Woche* is feminine — gender carried straight over from
+Hebrew, where השבוע is masculine. And looking at the other nine showed the
+gender was the smaller half. **Five of them do not say "week" at all:**
+
+    pt   para ver O DIA inteiro antes de ele começar
+    ja   始まる前に一日を丸ごと見るために            "a whole DAY"
+    zh   在它开始之前先看到整天 / 一整天             "the whole DAY"
+    ar   لترى اليوم كله قبل أن يبدأ                "the whole DAY"
+    es   para verLO entero…                        masculine; la semana is not
+
+The card is headed "This week" in all ten, so **the heading and its own**
+**subtitle contradicted each other on six screens.** The Hebrew says אותו,
+"it", and a translator with no screen in front of them guessed the day —
+which is the thing a planner usually talks about. English, French and
+Italian were right and were left alone.
+
+Checked the siblings at the same time: the month card says "month" in all
+ten, and the day card shows a formatted date rather than a sentence. One
+key, not a pattern.
+
+### One sentence, two keys, and the blind spot in the check for that
+
+The people screen, same session:
+
+    _t('התחל להוסיף את האנשים שאתה רוצה לזכור') + '<br>' + _t('ולהיות נוכח בחיים שלהם.')
+
+    Fang an, die Menschen hinzuzufügen, an die du dich erinnern willst
+    und in ihrem Leben präsent zu sein.
+
+*willst* wants a finite clause after *und*; *zu sein* is an infinitive. Each
+half is a fair rendering of its own key and the pair is not German. Hebrew
+survives because the second half opens with ו and reads as a continuation.
+
+That is **Rule 2 exactly** — a sentence is one key — and
+`find-glued-sentences.mjs` did not see it. Two reasons, both worth writing
+down:
+
+1. It skipped any pair with markup between the fragments, on the grounds
+   that markup means two blocks. True of `</div><div>`; **false of `<br>`**,
+   which is precisely how one sentence gets laid across two lines.
+2. Even with that narrowed, the pair rule wants fragment + **value** +
+   fragment, because that is what `agoText` did. It explicitly discards a
+   pair with only punctuation between them, since that is what an array of
+   labels looks like. This pair has no value at all.
+
+So it got a third shape of its own — and then a discriminator, because the
+first cut reported three and two were fine: *"No saved workouts yet." /
+"Finish one and save it."* are two finished sentences sharing a block. What
+marks a real continuation is the punctuation, the same tell the lone-fragment
+rule already uses: a second half opening with the Hebrew ו, or a first half
+stopping on a comma or a dash.
+
+Proved against this tick's starting revision: **1 finding, the real one,**
+and silent now.
+
+The `<br>` went with the fix. Where a sentence wraps is a decision for the
+language and the screen width — German needs two lines here, Chinese needs
+one — and hard-coding the break served neither.
+
+### A false clean, worth recording
+
+The first sweep of these screens reported no defects anywhere. It was
+scanning the **home page six times**: `goRoute` takes no argument, it reads
+`?go=` from the URL, and `goRoute('insights')` silently does nothing. The
+screens only opened once the sweep called `enterModule` instead. A clean
+result is worth nothing until the thing being measured is on screen.
