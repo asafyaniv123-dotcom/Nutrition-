@@ -11931,7 +11931,13 @@ function tplSet(ei,si,k,v){
   if(!_tpl||!_tpl.exercises[ei])return;
   var row=_tpl.exercises[ei].plan[si];
   if(!row)return;
-  row[k]=(v===''?'':(parseFloat(v)||0));
+  /* The weight column is headed weightUnit(), so it speaks the reader's unit
+     and is stored in kilograms like every other weight in the app. Reps are
+     reps. In metric both conversions are the identity, so this changes
+     nothing for a metric reader - which is also why it went unnoticed. */
+  if(v==='')row[k]='';
+  else if(k==='w')row.w=fromDisplayWeight(parseFloat(v)||0);
+  else row[k]=parseFloat(v)||0;
 }
 function tplName(v){if(_tpl)_tpl.name=v;}
 function tplAddSet(ei){
@@ -11984,7 +11990,7 @@ function tplBlockHTML(ex,ei){
     var s=ex.plan[si];
     h+='<div class="tb-row">';
     h+='<span class="tb-i">'+(si+1)+'</span>';
-    h+='<input class="tb-in" type="number" inputmode="decimal" step="0.5" placeholder="&ndash;" value="'+(s.w===''||s.w===undefined?'':s.w)+'" oninput="tplSet('+ei+','+si+',&quot;w&quot;,this.value)">';
+    h+='<input class="tb-in" type="number" inputmode="decimal" step="0.5" placeholder="&ndash;" value="'+(s.w===''||s.w===undefined?'':edWeightVal(s.w))+'" oninput="tplSet('+ei+','+si+',&quot;w&quot;,this.value)">';
     h+='<input class="tb-in" type="number" inputmode="numeric" placeholder="&ndash;" value="'+(s.r===''||s.r===undefined?'':s.r)+'" oninput="tplSet('+ei+','+si+',&quot;r&quot;,this.value)">';
     h+='<button class="tb-x" onclick="tplDropSet('+ei+','+si+')"'+(ex.plan.length<=1?' disabled':'')+'>&times;</button>';
     h+='</div>';
@@ -13016,7 +13022,7 @@ function renderFitWorkout(){
      ordinary case - do it again - is one tap and nothing typed. */
   var pf=exPrefill(ex);
   h+='<div style="margin-top:12px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">';
-  h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('משקל')+' ('+weightUnit()+')'+'</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="0" value="'+pf.w+'" oninput="plateHint()" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
+  h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('משקל')+' ('+weightUnit()+')'+'</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="0" value="'+(pf.w===''||pf.w===undefined?'':edWeightVal(pf.w))+'" oninput="plateHint()" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('חזרות')+'</div><input id="fit-r" class="mtnm" type="number" placeholder="'+ex.targetReps+'" value="'+pf.r+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   /* The label is the switch. Nothing else on this screen has room for a
      settings row, and the person who wants the other scale is looking
@@ -13087,7 +13093,21 @@ function plateChipsHTML(s){
 function logSet(){
   if(!_fitWorkout)return;
   var w=document.getElementById('fit-w');var r=document.getElementById('fit-r');var rpeInp=document.getElementById('fit-rpe');
-  var weight=parseFloat(w?w.value:0)||0;var reps=parseInt(r?r.value:0)||0;
+  /* TWO numbers, not one, and the difference is the whole of this function's
+     unit handling.
+       shown  - what the box says, in whatever unit its label claims
+       weight - what gets STORED, which is always kilograms
+     The box is labelled with weightUnit(), so an imperial reader types 135
+     meaning pounds. This used to store that 135 unconverted, and the row
+     underneath then read it back through fmtWeight as 297.6 lb - the set
+     doubled the moment it was logged. saveEditSet has always converted, with
+     a comment saying why, so correcting a set fixed what logging it broke.
+     The PLATE strip is the exception and stays on `shown`: barWeight() reads
+     BAR_STEPS[APP_UNITS] and returns 45 for a pound bar, so the loading maths
+     already speaks the reader's unit and must not be handed kilograms. */
+  var shown=parseFloat(w?w.value:0)||0;
+  var weight=fromDisplayWeight(shown);
+  var reps=parseInt(r?r.value:0)||0;
   /* The box may be speaking RIR; the store only ever speaks RPE. */
   var rpe=rpeInp&&rpeInp.value!==''?effortToRPE(rpeInp.value):null;
   if(!reps)return;
@@ -13106,7 +13126,7 @@ function logSet(){
   /* How it was BUILT, captured now and never recomputed. Recomputing on
      render would rewrite history the day a pair of 15s arrives in the rack:
      a set genuinely made of 10 + 5 would start claiming it was a 15. */
-  ex.sets.push(Object.assign({weight:weight,reps:reps,rpe:rpe},setPlates(ex,weight)));
+  ex.sets.push(Object.assign({weight:weight,reps:reps,rpe:rpe},setPlates(ex,shown)));
   /* Inside a superset there is no rest until the last exercise of the pair,
      and after it the sequence goes back to the top rather than leaving you
      wherever the last set happened to land. */
@@ -13553,7 +13573,7 @@ function renderFitProgress(){
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
   for(var ei=0;ei<exList.length;ei++){
     var isSel=_fitProgressEx===exList[ei];
-    h+='<button onclick="_fitProgressEx=\''+exList[ei].replace(/'/g,'')+'\';renderFitProgress()" style="border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSel?'linear-gradient(135deg,var(--violet-300),var(--violet-500))':'var(--surface)')+';color:'+(isSel?'var(--white)':'var(--ink-soft)')+'">'+esc(exList[ei])+'</button>';
+    h+='<button onclick="_fitProgressEx=\''+exList[ei].replace(/'/g,'')+'\';renderFitProgress()" style="border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isSel?'linear-gradient(135deg,var(--violet-300),var(--violet-500))':'var(--surface)')+';color:'+(isSel?'var(--white)':'var(--ink-soft)')+'">'+esc(exLabel(exList[ei]))+'</button>';
   }
   h+='</div></div>';
 
@@ -13564,9 +13584,14 @@ function renderFitProgress(){
       var entry=log[li];
       for(var exi=0;exi<entry.exercises.length;exi++){
         if(entry.exercises[exi].name===_fitProgressEx){
-          var best1RM=entry.exercises[exi].sets.reduce(function(mx,s){return Math.max(mx,s.weight||0);},0);
+          /* The HEAVIEST WEIGHT of the session, which is what the card's own
+             title claims - not an estimated 1RM, whatever this used to be
+             called. e1rm() exists a few hundred lines up and is used on other
+             screens; a name that says 1RM while returning a top weight is how
+             somebody later "fixes" the wrong one. */
+          var topW=entry.exercises[exi].sets.reduce(function(mx,s){return Math.max(mx,s.weight||0);},0);
           var totalV=entry.exercises[exi].sets.reduce(function(a,s){return a+(s.weight||0)*(s.reps||0);},0);
-          if(best1RM>0||totalV>0)pts.push({date:entry.date,weight:best1RM,vol:totalV});
+          if(topW>0||totalV>0)pts.push({date:entry.date,weight:topW,vol:totalV});
         }
       }
     }
@@ -13576,7 +13601,11 @@ function renderFitProgress(){
     } else {
       // SVG chart
       var W=320,H=140,PL=40,PR=12,PT=12,PB=24,cW=W-PL-PR,cH=H-PT-PB;
-      var wVals=pts.map(function(p){return p.weight;});
+      /* Plotted in the reader's unit, because the card's own title names
+         it. Everything below reads wDisp; pts[].weight stays kilograms for
+         the fmtWeight summaries underneath. */
+      var wDisp=pts.map(function(p){return toDisplayWeight(p.weight);});
+      var wVals=wDisp;
       var minW=Math.max(0,Math.min.apply(null,wVals)-5);
       var maxW=Math.max.apply(null,wVals)+5;
       function xp2(i){return PL+i*(cW/(pts.length-1));}
@@ -13588,28 +13617,28 @@ function renderFitProgress(){
         var gv=minW+(maxW-minW)*gi/3;
         var gy=yp2(gv);
         svg+='<line x1="'+PL+'" y1="'+gy+'" x2="'+(PL+cW)+'" y2="'+gy+'" stroke="#f2ede6" stroke-width="1"/>';
-        svg+='<text x="'+(PL-3)+'" y="'+(gy+3)+'" text-anchor="end" font-size="8" fill="'+PAL.mutedSoft+'">'+Math.round(gv)+'</text>';
+        svg+='<text x="'+(PL-3)+'" y="'+(gy+3)+'" text-anchor="end" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(Math.round(gv))+'</text>';
       }
       // Area
-      var aPath='M'+xp2(0)+','+yp2(pts[0].weight);
-      for(var pi2=1;pi2<pts.length;pi2++)aPath+=' L'+xp2(pi2)+','+yp2(pts[pi2].weight);
+      var aPath='M'+xp2(0)+','+yp2(wDisp[0]);
+      for(var pi2=1;pi2<pts.length;pi2++)aPath+=' L'+xp2(pi2)+','+yp2(wDisp[pi2]);
       aPath+=' L'+xp2(pts.length-1)+','+(PT+cH)+' L'+xp2(0)+','+(PT+cH)+' Z';
       svg+='<path d="'+aPath+'" fill="'+PAL.violet500+'" opacity="0.12"/>';
       // Line
-      var lPath='M'+xp2(0)+','+yp2(pts[0].weight);
-      for(var pi3=1;pi3<pts.length;pi3++)lPath+=' L'+xp2(pi3)+','+yp2(pts[pi3].weight);
+      var lPath='M'+xp2(0)+','+yp2(wDisp[0]);
+      for(var pi3=1;pi3<pts.length;pi3++)lPath+=' L'+xp2(pi3)+','+yp2(wDisp[pi3]);
       svg+='<path d="'+lPath+'" fill="none" stroke="'+PAL.violet500+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
       // Dots + dates
       for(var pi4=0;pi4<pts.length;pi4++){
         var dd=new Date(pts[pi4].date);
-        svg+='<circle cx="'+xp2(pi4)+'" cy="'+yp2(pts[pi4].weight)+'" r="4" fill="'+PAL.violet500+'" stroke="#fff" stroke-width="2"/>';
+        svg+='<circle cx="'+xp2(pi4)+'" cy="'+yp2(wDisp[pi4])+'" r="4" fill="'+PAL.violet500+'" stroke="#fff" stroke-width="2"/>';
         svg+='<text x="'+xp2(pi4)+'" y="'+(H-4)+'" text-anchor="middle" font-size="8" fill="'+PAL.muted+'">'+fmtDayShort(dd)+'</text>';
-        svg+='<text x="'+xp2(pi4)+'" y="'+(yp2(pts[pi4].weight)-7)+'" text-anchor="middle" font-size="8" fill="'+PAL.violet500+'" font-weight="700">'+pts[pi4].weight+'</text>';
+        svg+='<text x="'+xp2(pi4)+'" y="'+(yp2(wDisp[pi4])-7)+'" text-anchor="middle" font-size="8" fill="'+PAL.violet500+'" font-weight="700">'+nfmt(wDisp[pi4],{maximumFractionDigits:1})+'</text>';
       }
       svg+='</svg>';
 
       h+='<div style="background:var(--card);border-radius:18px;padding:14px;box-shadow:0 2px 10px rgba(200,180,160,.1);margin-bottom:12px">';
-      h+='<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em;margin-bottom:10px">'+esc(_fitProgressEx)+' &mdash; '+_t('עליית משקל')+' ('+weightUnit()+')'+'</div>';
+      h+='<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em;margin-bottom:10px">'+esc(exLabel(_fitProgressEx))+' &mdash; '+_t('עליית משקל')+' ('+weightUnit()+')'+'</div>';
       h+=svg;
 
       // Delta
@@ -13622,16 +13651,18 @@ function renderFitProgress(){
       h+='</div></div>';
 
       // Volume chart
-      var vVals=pts.map(function(p){return p.vol;});
+      /* weight x reps - converting the weight factor converts the product,
+         so an imperial reader gets pound-reps rather than kilo-reps. */
+      var vVals=pts.map(function(p){return toDisplayWeight(p.vol);});
       var maxV=Math.max.apply(null,vVals);
       h+='<div style="background:var(--card);border-radius:18px;padding:14px;box-shadow:0 2px 10px rgba(200,180,160,.1)">';
       h+='<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em;margin-bottom:10px">'+_t('נפח לפי אימון')+'</div>';
       h+='<div style="display:flex;align-items:flex-end;gap:5px;height:60px">';
       for(var vi=0;vi<pts.length;vi++){
-        var bh=maxV>0?Math.round(pts[vi].vol/maxV*52):4;
+        var bh=maxV>0?Math.round(vVals[vi]/maxV*52):4;
         var dd2=new Date(pts[vi].date);
         h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">';
-        h+='<div style="font-size:8px;color:var(--muted)">'+pts[vi].vol+'</div>';
+        h+='<div style="font-size:8px;color:var(--muted)">'+nfmt(Math.round(vVals[vi]))+'</div>';
         h+='<div style="width:100%;height:'+bh+'px;background:linear-gradient(180deg,var(--green-200),var(--green-500));border-radius:4px 4px 0 0"></div>';
         h+='<div style="font-size:7px;color:var(--muted-soft)">'+fmtDayShort(dd2)+'</div>';
         h+='</div>';

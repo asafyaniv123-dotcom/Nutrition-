@@ -3106,3 +3106,93 @@ the Hebrew block.
 decoding waits for a rendering step that never comes, the same family as
 `requestAnimationFrame` not firing. Use `onload` and read `naturalWidth` in
 a later call.
+
+## A set doubled the moment it was logged
+
+The weight box in a workout is labelled with `weightUnit()`. An imperial
+reader types **135** meaning pounds. `logSet` stored that 135 unconverted,
+and the row underneath read it back through `fmtWeight`:
+
+    typed into a box labelled (lb)   135
+    stored                           135          <- should be 61.23 kg
+    the row then said                297.6 lb     <- should be 135 lb
+
+`saveEditSet` — the function that CORRECTS a set — has always converted,
+with a comment saying why. So correcting a set fixed what logging it broke,
+and the two paths had disagreed from the start.
+
+### Why it never showed
+
+The prefill has the same fault in the opposite direction: `exPrefill`
+returns the stored number and the box printed it raw. Log 135 → store 135 →
+prefill 135. **The round trip inside one workout looks perfectly
+consistent.** It only breaks where a stored weight meets `fmtWeight` — the
+set row, the history, the PRs, the volume — and by then it is a number in a
+list rather than the thing you just typed.
+
+### The exception that had to survive the fix
+
+`barWeight()` reads `BAR_STEPS[APP_UNITS]` and returns **45** for a pound
+bar. The plate maths speaks the reader’s unit on purpose — you load pound
+plates on a pound bar — so `setPlates` must keep getting the box number, not
+kilograms. `logSet` now carries two:
+
+    shown  = what the box says, in the unit its label claims  -> setPlates
+    weight = what gets stored, always kilograms               -> the set
+
+Driven: 135 into a box labelled lb → stored 61.235 kg → row reads 135 lb →
+plates read *45 lb bar, 45 a side*, which is 135. All three agree.
+
+**In metric every conversion is the identity**, so nothing changes for the
+app as it is actually used — checked on the same path: 60 in, 60 stored, 60
+shown, 60 prefilled, 20 kg bar and 20 a side. That is also why this survived
+this long.
+
+The template editor had the same shape — column headed `weightUnit()`,
+`tplSet` storing raw — and is fixed with it, so plan weights and logged
+weights are the same kind of number.
+
+## The progress chart plotted kilograms under a title saying lb
+
+Same card, two behaviours, exactly like the cumulative-deficit card in the
+history tab. The summary numbers under the chart go through `fmtWeight`; the
+chart above them was drawn from raw `pts[].weight`:
+
+    before   axis 48 53 58 63   ·   dots 52.5 57.5   ·   summary 115.7 lb
+    after    axis 111 118 125 132 ·  dots 115.7 126.8 ·  summary 115.7 lb
+
+It plots display units now, so scale, gridlines, dot labels and title agree,
+and every printed number goes through `nfmt` — the axis had been Latin
+digits on an Arabic screen. Volume is weight × reps, so converting the
+weight factor converts the product: an imperial reader wants pound-reps.
+
+**After, in Arabic:** `٤٨ ٥٣ ٥٨ ٦٣ · ٢٧/٨ · ٥٢٫٥ · ٩٧٣ · ١٬٠١٠`, and zero
+Latin digits on the screen — the pattern being every visible element whose
+own text nodes match `[0-9]`.
+
+### A wrong guess, caught by looking
+
+The x-axis read `27.8` and `10.9`, which I took for a hand-built `D.M` date
+of the kind the calendars were full of. It is `fmtDayShort` — Intl’s correct
+Hebrew short date, which uses dots. Nothing to fix. (In Arabic it renders
+`٢٧/٨`, which also settles the one real worry: on a chart whose other labels
+are weights, a dotted date could be read as a decimal.)
+
+## Two smaller things on the same screen
+
+The exercise chips and the chart title printed the **stored** name, so an
+Arabic reader got Hebrew on a screen that is otherwise Arabic. `exLabel`
+exists for exactly this and is used in seventeen other places; it translates
+a library exercise and falls back to the stored string for anything else.
+Now: *سكوات بالبار*, *ضغط الصدر بالبار* — and the chart title with them.
+
+And a name that lied: `best1RM` computed `Math.max(weight)`. The card’s title
+says *weight increase*, so the **screen** was honest and only the variable
+was not — but `e1rm()` is a real function a few hundred lines up, and a name
+claiming 1RM while returning a top weight is how somebody later fixes the
+wrong one. Renamed `topW`.
+
+**Worth asking Asaf:** a heaviest-weight line ignores reps, so 60×10 → 62.5×3
+reads as progress when it may be the opposite. `e1rm()` would say otherwise.
+Changing what the chart plots is a product decision, not a defect fix, so it
+is not made here.
