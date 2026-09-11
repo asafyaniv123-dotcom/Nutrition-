@@ -3394,3 +3394,59 @@ says so, because it is exactly the shape a later sweep would "fix".
 bar, and `plateSplit` works in whatever it is handed. Driven: **225 lb on a
 45 lb bar gives 45 + 45 a side**, which is right. The plate maths is the one
 place in the app where display units are correct on purpose, and it is.
+
+## The box opened on a number the reader had never seen
+
+    the weights row showed    132.3 lb
+    tapping it opened a box on 132.28
+
+A trailing digit out of nowhere — and pressing the tick without touching it
+stored **a different weight than the one displayed**.
+
+`edWeightVal` exists for precisely this and says so in its own comment:
+
+> *A converted weight is a long float — 30.86471670588286 lb — and nobody
+> can edit that. Round it the way `fmtWeight` rounds it, so the box holds
+> the number that was on the row a moment ago.*
+
+`fmtWeight` gives imperial **one** decimal. These three boxes rounded to
+two, by hand:
+
+    the exercise-weight editor
+    the wizard’s base-weight box
+    the programme weight placeholder
+
+**Three copies again.** Found by grepping the expression rather than the
+screen — the same rule that turned up two extra volume labels last pass and
+the third rep-range line before that. In metric both roundings give two
+decimals, so all three were invisible until the unit changed.
+
+## The template chain, verified rather than assumed
+
+The weight column was fixed for units two passes ago but nothing around it
+had been driven. Whole chain, in imperial, end to end:
+
+    stored plan            60 kg
+    editor column header   lb
+    the box shows          132.3
+    typed 145, saved       stored 65.771 kg
+    started the workout    the set box opened on 145 lb
+
+A programme weight typed in pounds reaches the bar as the same number of
+pounds. **Nothing to fix**, which is worth writing down: five passes of unit
+bugs make it tempting to assume the next screen has one too.
+
+The exercise-weight editor converts on **both** sides as well
+(`fromDisplayWeight` in, `toDisplayWeight` out) — only its rounding was
+wrong, which is why the number was nearly right and therefore easy to miss.
+
+## One raw number left on those screens
+
+The template editor’s set-index column printed `1 2 3` raw. The pattern:
+every visible element whose own text nodes match `[0-9]`, in Arabic, across
+the editor and both weekly-plan screens — **that was the only one**, and the
+exercise names beside it already go through the label function (*ضغط الصدر
+بالبار*).
+
+The `<input>` values are excluded from that sweep on purpose: an
+`<input type=number>` cannot hold `١٣٢٫٣`.
