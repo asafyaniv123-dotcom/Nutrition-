@@ -281,6 +281,50 @@ if (CNT.length) {
       " + _t('" + f.key + "')");
 }
 
+/* ── a count glued in front of a key that already has a hole ──
+   The counted-noun rule above skips any key containing a brace, as "already a
+   whole key". That is precisely where this one hides:
+
+       withW.length +' '+ _t('ימים עם אימון, {n} בלי', {n:noW.length})
+       n            +' '+ _t('מתוך {n} מופיעים ב-Better', {n:HOME_AREAS.length})
+
+   The hole is the argument against it. The author knew how to pass a number
+   in - they did it for the second count and glued the first on the outside,
+   so the key begins in mid-air and every translator has to start there. It
+   shows in what they wrote: Japanese and Chinese both opened the second key
+   with a SLASH - "/ {n} が Better に表示されています" - because the word order
+   they wanted was not available to them. That is the same failure this
+   project already recorded for מתוך, in a second key.
+
+   The fix is one key with one hole per count, and both counts passed in.
+
+   Two narrowings, each from a false positive this reported on its first run:
+
+   1. A key that is WHOLLY a parenthetical - '(שבוע {n})' after a day name -
+      is an appositive rather than a continuation. All eleven answered it as a
+      bracketed aside, "(week {n})", "(第{n}週)", and an aside attaches to
+      whatever precedes it in any word order.
+   2. A left side that is itself a _t() call is the PAIR rule's ground, at the
+      top of this file, which was written for two translated fragments. This
+      rule is about a raw VALUE. */
+const HOLE = [];
+const HOLE_RE =
+  /([A-Za-z_$][\w.$[\]]*(?:\([^()]*\))?)\s*\+\s*(?:(['"]) \2\s*\+\s*)?_t\((['"])((?:(?!\3).)*)\3\s*[,)]/g;
+for (const m of app.matchAll(HOLE_RE)) {
+  const key = m[4];
+  if (key.indexOf('{') < 0) continue;                       // no hole: CNT's ground
+  if (/^[([]/.test(key) && /[)\]]$/.test(key)) continue;    // an aside, not a continuation
+  if (/^_t\b/.test(m[1])) continue;                         // two fragments: the pair rule's
+  HOLE.push({ line: app.slice(0, m.index).split(LF).length, val: m[1], key });
+}
+if (HOLE.length) {
+  console.log('');
+  console.log('a count glued in front of a key that already has a hole: ' + HOLE.length);
+  for (const f of HOLE)
+    console.log('    line ' + String(f.line).padStart(6) + '  ' + f.val +
+      " + _t('" + f.key + "')");
+}
+
 /* group by line so a three-part sentence shows as one finding */
 if (LONE.length) {
   console.log('');
@@ -307,4 +351,4 @@ for (const r of rows.slice(0, 22)) {
 /* This check printed its findings and exited 0, so nothing it found could
    ever fail a build - and the one finding it always had, a worked example, is
    why. With that example no longer reported, it can say so properly. */
-if (rows.length || BR.length || LONE.length || PLU.length || CNT.length) process.exit(1);
+if (rows.length || BR.length || LONE.length || PLU.length || CNT.length || HOLE.length) process.exit(1);
