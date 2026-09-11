@@ -1201,3 +1201,60 @@ cannot be answered by a translator who cannot see the screen.**
 
 `dev/index.html` is untouched this tick — the work was dictionaries and
 tooling. Both copies share `data/`, so pushing is the release.
+
+## A calendar header that reads S M D M D F S
+
+Found on the Me screen, in German. The seven weekday keys are single Hebrew
+letters — `א ב ג ד ה ו ש` — because that is exactly what a Hebrew calendar
+prints, and every language answered with a single letter of its own. For two
+of them a single letter does not identify a day:
+
+| | header | distinct |
+|---|---|---|
+| de | S M **D** M **D** F S | **4 of 7** — Mo/Mi both M, Di/Do both D |
+| pt | D **S** T **Q** **Q** **S** **S** | **4 of 7** — three S, two Q |
+| en | S M T W T F S | 5 of 7 |
+| fr / it | D L M M J V S | 6 of 7 |
+| es | D L M X J V S | 7 of 7 |
+| ja / zh / ar | 日月火水木金土 … | 7 of 7 |
+
+**Why the others are fine matters more than the counts.** English really
+does print S M T W T F S, and French and Italian really do print L M M J V S
+D — ambiguous and conventional. Spanish uses X for *miércoles* precisely to
+avoid the clash. German and Portuguese are the only two where the app
+invented an abbreviation nobody uses: German calendars print Mo Di Mi Do Fr
+Sa So, Portuguese Dom Seg Ter Qua Qui Sex Sáb. Fixed to those.
+
+### Width was measured, because this file has got that wrong before
+
+Six places paint these letters. The narrowest cell in any of them is not the
+calendar at all — it is the streak overlay, which packs **fourteen** days
+into one row:
+
+    .stk-d    28.6px    flex 1 1 0%, overflow visible
+    .cal-dh   47.1px
+    .mo-hd    62px
+
+and in that font "Mi" paints at 9.3px and "Dom" at 18.3px. Both fit the
+narrowest cell with room to spare. Confirmed afterwards by walking every
+`.cal-dh`, `.mo-hd` and `.stk-d` on screen in Portuguese — the widest
+language — and comparing `scrollWidth` against the box: **no overflow**.
+
+Two things that could have gone wrong and did not: the letters are
+`auto`-width inside their cells, so measuring the letter rather than the
+cell would have reported 4.6px and proved nothing; and the narrowest context
+is a fourteen-cell strip that only exists inside an overlay, which a sweep
+of the visible page would never have opened.
+
+### Not a check
+
+Distinctness is **not** a rule here — English, French and Italian are
+correct at 5 and 6 of 7 — so there is nothing to enforce. It is a
+convention question per language, and the finding is the reasoning above
+rather than a number to keep at zero.
+
+### Still never opened
+
+The closet, the bullet journal, the habit tracker past its empty state and
+the steps screen. The Me screen was opened for the first time this tick and
+gave this up immediately; those four are still owed a look.
