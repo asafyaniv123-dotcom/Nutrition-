@@ -2374,3 +2374,65 @@ timeline:
 
 Both dates render through the formatters added two passes ago. No Hebrew
 anywhere in the module, and the relationship chips are all distinct.
+
+## An Arabic day board numbered in Latin
+
+The planning module, driven for the first time. In German the day board
+header read **11/09** — the hardcoded DD/MM again, three passes after the
+thirteen inline dates went through `fmtDay`.
+
+It survived that sweep for a plain reason: **it was behind a helper.**
+`wkShort(d)` built the order by hand, so the grep that found
+`getDate()+'/'+(getMonth()+1)` could not see it — and one body feeds **five**
+call sites: the week range, each of the seven week-strip cells, the opened
+day header and the day board. One line changed, all five with it.
+
+The zero padding went too. It was there to keep the week cells aligned, and
+Intl pads or does not according to what each language does. Measured at the
+width the shell caps to: seven cells at 40px, **no overflow in any of them**.
+
+    de  6.9. – 12.9.      en  9/11 · Swipe to change day
+
+## Then the same screen in Arabic
+
+Four families of Latin digits, on a right-to-left screen where everything
+around them was already Arabic-Indic:
+
+    ٠ من ١ موضوعة      the header counted 0 in one system and ١ in the other
+    1 2 3 … 30         every cell of the month grid
+    سبتمبر 2026        the year
+    06:00 … 23:00      eighteen rows of the hour rail
+
+The counter is the interesting one. `placed + ' ' + _t('…{n}…')` — the total
+goes through a hole and so through `nfmt`, the placed count is concatenated
+raw. **Two numbering systems four words apart**, and Rule 2 as well, since
+the fragment could not stand alone. One whole key with both holes fixes the
+grammar and the notation together — and Japanese and Chinese immediately used
+it to put the total first, which they could not do before.
+
+`dpHH` and `dpHM` build a clock face by hand — zero-pad, colon, zero-pad —
+so the rail, the five-minute steps inside an opened hour, the time on a week
+chip and the time in a reminder were all Latin whatever the reader used.
+Both are display-only: the real values travel beside them as `hour` and
+`min`, and the two callers that **look** like storage (a summary card's `at`,
+a notification's `when`) are strings being shown, not compared — checked
+before touching them. The clock stays 24-hour, which is what it already was;
+only the digits follow the reader. `fmtClock` would have brought ص/م with
+them and changed the rail's width, and this is a rail rather than a time.
+
+### The year is the one number that must not be grouped
+
+    nfmt(2026)                      ->  ٢٬٠٢٦   and "2,026"
+    nfmt(2026,{useGrouping:false})  ->  ٢٠٢٦    and "2026"
+
+Flagged as a risk two passes ago when `_t` learned to format numeric holes —
+*"no key takes a year, which is the one number that must not be grouped"* —
+and here are the two places that print one outside a hole. Both ask for
+grouping off explicitly.
+
+**After: zero Latin digits anywhere on the Arabic planning screen.** The
+pattern behind that count: every leaf element under `#content` that is
+visible and whose text contains `[0-9]`.
+
+English re-checked in the same place — `September 2026` ungrouped, `06:00`
+unchanged, `0 of 1 scheduled`, `9/11` in American order.

@@ -14332,10 +14332,15 @@ function loadWeek(sun){
 function saveWeek(sun,o){planPush(wkKey(sun));try{localStorage.setItem(wkKey(sun),JSON.stringify(o));}catch(e){}}
 function wkDateOf(sun,i){var d=new Date(sun);d.setDate(d.getDate()+i);return d;}
 function wkStamp(d){return dayStr(d);}
-function wkShort(d){
-  var dd=d.getDate(),mm=d.getMonth()+1;
-  return (dd<10?'0':'')+dd+'/'+(mm<10?'0':'')+mm;
-}
+/* The short date the week strip and the day board show. It used to build
+   DD/MM by hand, which is Israel's order and nobody else's - the same bug
+   thirteen inline dates had, hidden here behind a helper, so the grep that
+   found those could not see it. One body, five call sites.
+
+   The zero padding goes with it. It was there to keep the seven week cells
+   aligned, and Intl pads or does not according to what each language does:
+   9/11 in American English, 11.9. in German, 11/09 in French. */
+function wkShort(d){return fmtDayShort(d);}
 // A task placed on a day before the bands existed sits in the morning.
 function wkSlotOf(t){return t.s==='n'||t.s==='e'?t.s:'m';}
 
@@ -15115,8 +15120,11 @@ function dpSetColor(id,k){
   for(i=0;i<dp.items.length;i++)if(dp.items[i].id===id)dp.items[i].c=k;
   saveDPlan(_dpDate,dp);_dpPick='';renderPlanDay();
 }
-function dpHH(h){return (h<10?'0':'')+h+':00';}
-function dpHM(h,m){return (h<10?'0':'')+h+':'+((m||0)<10?'0':'')+(m||0);}
+function dpHH(h){return dpClock(h,0);}
+/* Two digits, a colon, two digits - in the reader's own numerals. h23 keeps
+   the 24-hour face the rail has always had; only the digits change. */
+function dpClock(h,m){return dfmt(new Date(2000,0,1,h||0,m||0),{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});}
+function dpHM(h,m){return dpClock(h,m);}
 
 /* Holding a dragged task still over an hour opens that hour into five-minute
    steps, so a time can be exact when it needs to be and stay an hour when it
@@ -16105,7 +16113,7 @@ function renderJournal(){
   h+='<button class="jrnl-nav" onclick="jrnlShift(-1)">&#8249;</button>';
   h+='<div style="text-align:center;flex:1;min-width:0">';
   h+='<div class="jrnl-day">'+WK_DAYS[dt.getDay()]+(isToday?' '+_t('· היום')+'':'')+'</div>';
-  h+='<div class="jrnl-date">'+_t('{d} ב{m}',{d:dt.getDate(),m:MO_NAMES[dt.getMonth()]})+' '+dt.getFullYear()+'</div>';
+  h+='<div class="jrnl-date">'+_t('{d} ב{m}',{d:dt.getDate(),m:MO_NAMES[dt.getMonth()]})+' '+nfmt(dt.getFullYear(),{useGrouping:false})+'</div>';
   h+='</div>';
   h+='<button class="jrnl-nav"'+(isToday?' disabled':'')+' onclick="jrnlShift(1)">&#8250;</button>';
   h+='</div>';
@@ -16322,8 +16330,8 @@ function planMonthHTML(){
 
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
   h+='<button onclick="moShift(-1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
-  h+='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:var(--ink)">'+MO_NAMES[mi]+' '+year+'</div>';
-  h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+mo.tasks.filter(function(x){return x.d;}).length+' '+_t('מתוך {n} משובצים',{n:mo.tasks.length})+'</div></div>';
+  h+='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:var(--ink)">'+MO_NAMES[mi]+' '+nfmt(year,{useGrouping:false})+'</div>';
+  h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+_t('{done} מתוך {n} משובצים',{done:mo.tasks.filter(function(x){return x.d;}).length,n:mo.tasks.length})+'</div></div>';
   h+='<button onclick="moShift(1)" style="background:var(--card);border:none;border-radius:11px;width:30px;height:30px;font-size:15px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
   h+='</div>';
 
@@ -16337,7 +16345,7 @@ function planMonthHTML(){
   for(i=1;i<=days;i++){
     var st=year+'-'+(mi<9?'0':'')+(mi+1)+'-'+(i<10?'0':'')+i;
     h+='<div class="mo-cell'+(st===today?' today':'')+(st===_moOpen?' mo-open':'')+'" data-date="'+st+'" onclick="moCellTap(\''+st+'\')">';
-    h+='<div class="mo-n">'+i+'</div>';
+    h+='<div class="mo-n">'+nfmt(i)+'</div>';
     var shown=0;
     for(t=0;t<mo.tasks.length;t++){
       if(mo.tasks[t].d!==st)continue;
