@@ -2238,3 +2238,74 @@ defect fix, and Asaf's to make.
 
 What is NOT defensible is the sentence that said they were gone. A count is
 only worth what the pattern behind it asked for.
+
+## „gesund sein" — a quote opened one way and closed another
+
+The goal wizard, opened in German. Its second line reads
+
+    Nicht „gesund sein" — etwas, das du messen … kannst.
+
+German opens with U+201E and closes with U+201C — **the character English
+uses to open one** — which is exactly the sort of thing that gets typed as a
+straight `"` and never looked at again.
+
+**Seven answers, all German, and every other language clean.** The pattern
+behind that count: an answer holding both a typographic quotation mark
+(“ ” „ « » 「 」) and a straight `"`. Each of the seven had exactly one of
+each, asserted per string rather than assumed, so the pairing was
+unambiguous.
+
+    „{what}\" kam einmal vor
+    Die Bibliothek ist leer — füge etwas über „Selbst eintragen\" hinzu
+    Nicht „gesund sein\" — etwas, das du messen und mit Sicherheit abhaken kannst.
+    „{name}\" und seine {n} Schritte löschen?
+
+### The rule now lives in the check that reads those files
+
+The eight checks all read `dev/index.html`; this is a defect in the language
+files, so it belongs to `build-lang-template --check`, which already
+validates them. It is narrow on purpose — a typographic mark and a straight
+one in the **same answer** — so a language that wanted a straight pair
+throughout would never trip it.
+
+    against the revision that had them   7, all German
+    after                                0
+
+And the exit code was confirmed separately, because the first attempt read
+`$?` after a pipe through `tail` and got the pipe's status — the same trap
+that produced last pass's wrong claim.
+
+## "Ziel: 2027-03-14"
+
+On the goal map, in German. A goal's target date is **stored** as YYYY-MM-DD,
+which is right — it sorts, it compares, and it is what the `<input
+type="date">` beside it requires. It was also printed to the reader exactly
+as stored.
+
+Thirteen hand-written dates went through `fmtDay` two passes ago. **This one
+survived that sweep because it never called `getDate()` at all** — it is a
+stored string, not a Date, so the grep that found the others could not see
+it. Noon rather than midnight when turning the day key into a Date, the same
+thing `fmtDate` does one screen over, because midnight UTC is the previous
+day for anyone west of Greenwich. After: **Ziel: 14.3.2027**.
+
+## Driven, and correct
+
+The whole goal wizard end to end in German — the north star, the finish line,
+three stations, the first small step, what could go wrong and what to do when
+it does — then the map it builds, in both its star and writing views:
+
+    10 km am Stück laufen, ohne zu gehen        0/3
+    Nächster Schritt: Drei Monate lang dreimal pro Woche laufen
+
+The file says this map was rebuilt away from `prompt()` dialogs so the whole
+shape would be visible and editable in place. It is, and every field of it is
+German.
+
+### A measurement trap
+
+Clicking "✦ Sternenkarte" opened the wrong screen, which looked like the map
+being unreachable. It was not: the goal **card** carries its own onclick and
+the button inside it calls `stopPropagation`, so matching on `innerText`
+found the card first. **Match the element that carries the onclick, not an
+ancestor whose text contains the label.**

@@ -209,6 +209,32 @@ if (process.argv.includes('--check')) {
     console.log(g.code + '.json: ' + g.missing.length + ' unanswered, ' + g.stale.length + ' no longer asked for');
     for (const k of g.missing.slice(0, 8)) console.log('  ? ' + JSON.stringify(k));
   }
+
+  /* ── an answer that opens a quote one way and closes it another ──
+     German writes „…“ and closes with the character English uses to OPEN
+     one, which is exactly the sort of thing that gets typed as a straight "
+     and never looked at again. Seven answers did, and every other language
+     was clean - so the rule is narrow on purpose: a typographic quotation
+     mark and a straight one in the SAME answer. A language that wanted a
+     straight pair throughout would never trip it.
+
+     Measured against the revision that had them: 7, all German. After: 0. */
+  const CURLY = ['“', '”', '„', '«', '»', '「', '」'];
+  const mixed = [];
+  for (const { code, path } of shipped()) {
+    let j;
+    try { j = JSON.parse(fs.readFileSync(path, 'utf8')); } catch (e) { continue; }
+    const look = (v) => {
+      if (typeof v !== 'string') { if (v) for (const c of Object.keys(v)) look(v[c]); return; }
+      if (v.indexOf('"') >= 0 && CURLY.some((c) => v.indexOf(c) >= 0)) mixed.push([code, v]);
+    };
+    for (const k of Object.keys(j)) look(j[k]);
+  }
+  if (mixed.length) {
+    bad = true;
+    console.log(mixed.length + ' answer(s) mix a typographic quote with a straight one:');
+    for (const [l, v] of mixed.slice(0, 8)) console.log('  ' + l + '  ' + JSON.stringify(v).slice(0, 88));
+  }
   process.exit(bad ? 1 : 0);
 }
 
