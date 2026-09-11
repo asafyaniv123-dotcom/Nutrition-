@@ -4587,6 +4587,13 @@ function offFood(code,cb){
    the app, so a per-serving panel is divided by the serving it names -
    which is arithmetic on two numbers that were both read, not a figure
    invented to fill a gap. */
+/* A number off a printed panel, or nothing. A panel is READ, not queried, so
+   a value can come back as the string it was printed as - and it can come
+   back missing, or negative, when the photo was blurred across that line. */
+function picNum(v){
+  var n=(typeof v==='string')?parseFloat(v):v;
+  return (typeof n==='number'&&isFinite(n)&&n>=0)?n:null;
+}
 function picFromLabel(L,name){
   if(!L)return null;
   var per=1;
@@ -4594,11 +4601,25 @@ function picFromLabel(L,name){
     if(!(L.serving_g>0))return null;
     per=100/L.serving_g;
   }
+  /* ALL FOUR OR NONE OF THEM - the same rule the barcode path keeps, and for
+     the same reason, which this path did not keep.
+     A panel the model could only half read came back with the energy and a
+     hole where the protein was. Math.round(undefined) is NaN, NaN survives
+     JSON.stringify as null, and null then did two things on the way to the
+     reader: it printed the literal placeholder "{p}ח" on the meal row,
+     because _t hands back the hole when a value is missing, and it counted
+     as ZERO in the day total, because `m.p||0` cannot tell a measured zero
+     from an absent one. A figure nobody measured, sitting beside three that
+     somebody did.
+     Refusing the row is also the better answer: picByTable then resolves the
+     dish against the food tables instead, which is a real number. */
+  var k=picNum(L.kcal),p=picNum(L.p),c=picNum(L.c),f=picNum(L.f);
+  if(k===null||p===null||c===null||f===null)return null;
   var row={id:'label:'+Date.now(),n:name||''+_t('מהתווית')+'',
-    k:Math.round(L.kcal*per),
-    p:Math.round(L.p*per*10)/10,
-    c:Math.round(L.c*per*10)/10,
-    f:Math.round(L.f*per*10)/10,label:true};
+    k:Math.round(k*per),
+    p:Math.round(p*per*10)/10,
+    c:Math.round(c*per*10)/10,
+    f:Math.round(f*per*10)/10,label:true};
   if(!(row.k>0))return null;
   return row;
 }

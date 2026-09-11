@@ -3026,3 +3026,83 @@ from the code; the zoom is what settled it.*
 Real clicks: a muscle card, the count button, a row, the detail, "choose
 this exercise" — the picker handed back **כפיפת שורש כף יד** and closed.
 Exercise search still 95/95.
+
+## The label path printed `{p}` at the reader
+
+A nutrition panel is **read**, not queried, so any one line of it can come
+back missing. `picFromLabel` had no guard for that, and the barcode path —
+the same job, from a different source — has had one from the beginning, with
+its reason written out:
+
+> *Open Food Facts often carries the energy of a product and not its macros,
+> and `|| 0` turns that into "0 g fat" — a figure nobody measured, sitting
+> beside three that somebody did, and counted into the day.*
+
+Same failure, other door. Driven on the real screen, a panel whose protein
+line could not be read produced this meal row:
+
+    קרקר מהתווית (100g)     {p}ח 53.6פ 1.7ש     264
+                             ^^^
+
+and this day total:  `264 · 0g · 53.6g · 1.7g`.
+
+**Four steps from a missing line to a literal placeholder on a phone:**
+
+    L.p is undefined
+    Math.round(undefined * 1)   ->  NaN
+    JSON.stringify on save      ->  null
+    _t("{p}ח …", {p:null})      ->  hands the hole back, unfilled
+    m.p || 0 in the day total   ->  0, because null and a measured zero
+                                    are the same thing to ||
+
+Every step is reasonable on its own. `_t` returning the placeholder is
+better than printing "null"; `|| 0` is how you sum a sparse list. The bug is
+that nothing upstream refused the row.
+
+It refuses now — all four or none, the barcode rule — and **refusing is the
+better answer anyway**: `picByTable` then resolves the dish against the food
+tables, which is a measured number instead of a half-read one.
+
+`picNum` also takes the two other shapes a photographed number arrives in: a
+string, because the panel was printed rather than transmitted, and a
+negative, which is a blur across the line and not a food that owes you
+protein.
+
+### The line the fix must not cross
+
+Olive oil really is 0 g protein and 0 g carbohydrate. **A measured zero is a
+measurement**; an absent one is not. Two of the twelve cases exist only to
+hold that line, one of them scaled from a 14 g serving so the zero passes
+through the arithmetic as well.
+
+### tools/test-label-panel.mjs
+
+Lifted out of the shipped file rather than retyped, the way the flood-fill
+test is. Both numbers, as the rule asks:
+
+    against 5479a3e, the revision with the bug     9/12
+    against the fix                               12/12
+
+The three it catches are the two unreadable-line cases and the negative one.
+I had written "4 of 12" in the file’s own header before running it; the run
+said three. Corrected there.
+
+### The rest of the photo path was already right
+
+| branch | driven with | result |
+|---|---|---|
+| oversized | a real 2400×1600 PNG, 90KB | 900×600 JPEG, 7KB, aspect kept |
+| unreadable | ten bytes in a file called `broken.jpg` | refused, *לא הצלחתי לקרוא את התמונה.* on screen |
+| no server | `SYNC_SERVER` blanked | *הצילום דורש חיבור לשרת.* on screen |
+
+Both error branches clear the busy flags, so the card does not sit spinning.
+The photo card swept in Arabic is clean — no Latin digits and no Hebrew, the
+pattern being every visible element whose own text nodes match `[0-9]` or
+the Hebrew block.
+
+### A tooling note
+
+`await img.decode()` never resolves in the driven tab — it is hidden, and
+decoding waits for a rendering step that never comes, the same family as
+`requestAnimationFrame` not firing. Use `onload` and read `naturalWidth` in
+a later call.
