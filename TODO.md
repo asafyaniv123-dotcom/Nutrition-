@@ -2885,3 +2885,75 @@ on the rendered board: 21 cards, no duplicate titles, nothing clipped.
   the real door is **`enterModule('endofday')`**. Driving through the wrong
   one paints the reflection over the nutrition tab strip, which looks exactly
   like a layout bug and is not one.
+
+## Seven lists of twelve month names, and what they were costing
+
+They looked like the *right* shape. `_t('{d} ב{m}', {d: …, m: mn[month]})`
+is a whole sentence in one key with the month as a translated value — Rule 2
+and Rule 3 both satisfied, and that is why the pattern survived every sweep.
+
+**But a sentence key can only ever be one order, and the order it froze was
+the Hebrew one.**
+
+    en answered it "{d} {m}"   ->  Friday, 11 September
+    Intl for en-US             ->  Friday, September 11
+    fr answered it "{d} {m}", and capitalised Septembre
+    Intl for fr-FR             ->  vendredi 11 septembre
+
+American English does not put the day first and French does not capitalise
+month names. Eleven translators each answered one key correctly for their
+own reading of it; **the key itself could not carry the difference.** No
+check could see this either — every language had an answer, so
+`--check` was green, and the Hebrew screen was right.
+
+The separator was the same story. `', '` is a Latin comma welded between
+two values: Arabic wants `،` and French wants no comma at all. Both arrive
+free once Intl formats the whole date.
+
+### And two things the same replacement swept up
+
+Reading the home calendar in Arabic to check the header showed **the day
+cells as well**:
+
+    before   ‹سبتمبر 2026›  ح ن ث ر خ ج س  1 2 3 4 5 … 30
+    after    ‹سبتمبر ٢٠٢٦›  ح ن ث ر خ ج س  ١ ٢ ٣ ٤ ٥ … ٣٠
+
+A raw year in two calendar headers, and **every day cell of both calendars**
+— the same family the planning module’s grid paid for, in two functions that
+sweep never read. They came out with the month names because they are in the
+same expression.
+
+### What went
+
+| | |
+|---|---|
+| hand-written month lists | **7 → 0** (six `var mn=`, one `MO_NAMES`) |
+| full weekday lists beside them | 3 removed, 1 kept (it is indexed on its own line) |
+| keys retired | **13** — the twelve months and `{d} ב{m}` |
+| keys added | **0** |
+
+The single-letter weekday strips (`א ב ג ד ה ו ש`) stay: they are a column
+header, not a date.
+
+### Driven, before and after, in four languages
+
+    en   Friday, September 11        ·  September 2026
+    fr   vendredi 11 septembre
+    ar   الجمعة، ١١ سبتمبر            ·  سبتمبر ٢٠٢٦, every cell Arabic-Indic
+    he   יום שישי, 11 בספטמבר        ·  ספטמבר 2026
+
+Six screens read: the nutrition day header, both calendars, the habit
+tracker header, the journal date line and the home date. **Zero Latin digits
+anywhere in Arabic** — the pattern being every visible element whose own text
+nodes match `[0-9]`.
+
+### One visible change to Hebrew, which is his to judge
+
+Hebrew gained a word: **שישי → יום שישי**, because that is what `he-IL` calls
+Friday and Intl has no option that returns the bare form (`weekday:'short'`
+gives *יום ו׳*, which is worse). It is correct Hebrew and it is what the
+phone’s own OS says — but it is a change to the screen he reads every day,
+so it is worth him seeing rather than discovering.
+
+Width is not the reason to worry: measured in the header’s own font, the
+longest of the eleven is Portuguese at **211px in a 368px box**.
