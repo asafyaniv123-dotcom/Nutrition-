@@ -3764,6 +3764,30 @@ function foodForms(w){
        chickpeas. Just the n, which is all Bananen, Karotten, Zwiebeln,
        Erdbeeren, Oliven, Nudeln and Trauben need. */
     else if(w.length>=5&&/n$/.test(w))out.push(w.slice(0,-1));
+    /* Italian puts its plural on the end like English, but with a vowel
+       rather than an s, so none of the rules above touch it. Measured before
+       adding any: of eighteen everyday singular/plural pairs, TWO reached the
+       same food, and six - carote, cipolle, arance, fragole, cetrioli, fichi
+       - reached nothing at all. Typing "carote" is how a person says they ate
+       carrots.
+
+       -a becomes -e and -o becomes -i, and -e becomes -i as well, which is
+       why a plural in -i offers back both -o and -e: pomodori is a pomodoro
+       and noci are a noce. A c or a g before the ending hardens with an h
+       that belongs to the plural only, so fichi folds to fico rather than to
+       ficho, and -ce is what -cia turns into. */
+    else if(/i$/.test(w)){
+      if(/chi$/.test(w))out.push(w.slice(0,-3)+"co");
+      else if(/ghi$/.test(w))out.push(w.slice(0,-3)+"go");
+      out.push(w.slice(0,-1)+"o");
+      out.push(w.slice(0,-1)+"e");
+    }
+    else if(/e$/.test(w)){
+      if(/che$/.test(w))out.push(w.slice(0,-3)+"ca");
+      else if(/ghe$/.test(w))out.push(w.slice(0,-3)+"ga");
+      else if(/ce$/.test(w))out.push(w.slice(0,-1)+"ia");
+      out.push(w.slice(0,-1)+"a");
+    }
     /* the other way: a singular query against a name written in the
        plural. Only y -> ies needs saying, because every other singular is
        already a substring of its own plural. */
@@ -5353,9 +5377,9 @@ function sayTotalHTML(){
   if(!t.n)return '<span class="st-none">'+_t('אין פריטים שזוהו')+'</span>';
   return '<div class="st-k">'+nfmt(t.kcal)+' <span>'+_t('קלוריות')+'</span></div>'+
          '<div class="st-m">'+
-         '<span><b>'+t.p+'</b> '+_t('גרם חלבון')+'</span>'+
-         '<span><b>'+t.c+'</b> '+_t('גרם פחמימות')+'</span>'+
-         '<span><b>'+t.f+'</b> '+_t('גרם שומן')+'</span>'+
+         '<span><b>'+nfmt(t.p)+'</b> '+_t('גרם חלבון')+'</span>'+
+         '<span><b>'+nfmt(t.c)+'</b> '+_t('גרם פחמימות')+'</span>'+
+         '<span><b>'+nfmt(t.f)+'</b> '+_t('גרם שומן')+'</span>'+
          '</div>';
 }
 /* ── ESTIMATING ONE LINE OF A SENTENCE ──
@@ -5452,7 +5476,7 @@ function sayPaint(){
          (row.src==='barcode'?'<span class="sr-srctag">'+_t('מהברקוד')+'</span>':'')+
          (row.src==='label'?'<span class="sr-srctag">'+_t('מהתווית')+'</span>':'')+
          '<span class="sr-chev">'+(open?'&#8963;':'&#8964;')+'</span></button>';
-      h+='<span class="sr-k" id="say-k-'+i+'">'+(a?a.kcal:'')+'</span>';
+      h+='<span class="sr-k" id="say-k-'+i+'">'+(a?nfmt(a.kcal):'')+'</span>';
     } else {
       h+='<button class="sr-name" onclick="sayLookup('+i+')">'+esc(row.q)+
          '<span class="sr-find">'+_t('חפש')+'</span></button>';
@@ -6580,8 +6604,8 @@ function calcBTotal(){
 function builderRemoveIng(i){builderIngs.splice(i,1);renderBuilderOverlay();}
 function saveBuilderMeal(){
   var ne=document.getElementById('builder-name');if(ne)builderName=ne.value.trim();
-  if(!builderName){alert(''+_t('נא לתת שם')+'');return;}
-  if(builderIngs.length===0){alert(''+_t('נא להוסיף מרכיבים')+'');return;}
+  if(!builderName){showToast(''+_t('נא לתת שם')+'');return;}
+  if(builderIngs.length===0){showToast(''+_t('נא להוסיף מרכיבים')+'');return;}
   var meals=loadComposed();
   meals.push({id:Date.now(),name:builderName,category:builderCat,ingredients:builderIngs.slice()});
   saveComposed(meals);closeBuilder();showToast('✓ '+_t('{name} נשמרה!',{name:builderName}));render();
@@ -6597,7 +6621,7 @@ function renderBuilderOverlay(){
   h+='<div style="font-size:17px;font-weight:700">'+_t('בנאי ארוחה')+'</div>';
   h+='<button onclick="closeBuilder()" style="background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">&times;</button></div>';
   h+='<div class="builder-section">'+_t('שם')+'</div>';
-  h+='<input id="builder-name" class="mtin" placeholder="'+_t("שם הארוחה")+'" value="" oninput="builderName=this.value">';
+  h+='<input id="builder-name" class="mtin" placeholder="'+_t("שם הארוחה")+'" value="'+esc(builderName)+'" oninput="builderName=this.value">';
   h+='<div class="builder-section">'+_t('קטגוריה')+'</div><div class="bcat-tabs">';
   for(var ci=0;ci<CATS.length;ci++){
     h+='<button class="bcat-tab'+(builderCat===CATS[ci][0]?' on':'')+'" onclick="setBuildCat(\''+CATS[ci][0]+'\')">'+CATS[ci][1]+'</button>';
@@ -6618,7 +6642,7 @@ function renderBuilderOverlay(){
     if(lib.length===0)h+='<div style="font-size:12px;color:var(--muted);padding:10px;text-align:center">'+_t('הספרייה ריקה — הוסף דרך "הוספה ידנית"')+'</div>';
     for(var li=0;li<lib.length;li++){
       h+='<div class="lib-pick-item" onclick="builderAddIng('+li+')">';
-      h+='<div><div style="font-size:12.5px;font-weight:700">'+esc(lib[li].name)+'</div><div style="font-size:10px;color:var(--muted)">'+lib[li].kcal+' '+_t('קק"ל/100g')+'</div></div>';
+      h+='<div><div style="font-size:12.5px;font-weight:700">'+esc(lib[li].name)+'</div><div style="font-size:10px;color:var(--muted)">'+lib[li].kcal+(mealBasis(lib[li])==='serving'?' '+_t('קק"ל למנה')+'':' '+_t('קק"ל/100g')+'')+'</div></div>';
       h+='<div style="font-size:12px;font-weight:700;color:var(--violet-500)">'+_t('+ הוסף')+'</div></div>';
     }
     h+='</div>';
@@ -6668,7 +6692,7 @@ function clearMealPhoto(){
 function addManual(){
   var name=document.getElementById('mn')?document.getElementById('mn').value.trim():'';
   var kcal=document.getElementById('mk')?parseFloat(document.getElementById('mk').value)||0:0;
-  if(!name||!kcal){alert(''+_t('נא למלא שם וקלוריות')+'');return;}
+  if(!name||!kcal){showToast(''+_t('נא למלא שם וקלוריות')+'');return;}
   var p=parseFloat(document.getElementById('mp').value)||0;
   var c=parseFloat(document.getElementById('mc').value)||0;
   var f=parseFloat(document.getElementById('mf').value)||0;
