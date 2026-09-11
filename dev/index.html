@@ -1863,7 +1863,7 @@ body.night .tb-j{background:rgba(255,255,255,.07);color:#8f86ae;border-color:rgb
 .vb-item.on .vb-tx{outline:2px dashed var(--violet-500);outline-offset:3px;border-radius:5px}
 .vb-edit{top:-13px;inset-inline-end:-13px;font-size:12px}
 .vb-sw{width:28px;height:28px;border-radius:50%;border:2px solid #e6ded4;padding:0;cursor:pointer}
-.vb-sw.on{border-color:var(--ink);transform:scale(1.12)}
+.vb-sw.on{box-shadow:0 0 0 2.5px var(--panel),0 0 0 5px var(--ink);transform:scale(1.12)}
 .vb-empty{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:inherit}
 .vb-add{background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:12px;padding:7px 14px;font-size:11px;font-weight:700;color:var(--violet-500);cursor:pointer;font-family:inherit}
 .vb-hint{text-align:center;font-size:9px;color:var(--muted-soft);margin-top:10px;line-height:1.6}
@@ -10101,7 +10101,7 @@ function erPaint(){
   /* Only once you have zoomed, because otherwise it is a control that does
      nothing sitting next to one that does. */
   h+='<button class="er-z" id="er-z" onclick="erZoomSet(1)"'+(e.z>1.02?'':' style="visibility:hidden"')+
-     ' aria-label="'+_t('אפס|איפוס')+'">'+e.z.toFixed(1)+'&#215;</button>';
+     ' aria-label="'+_t('אפס|איפוס')+'">'+nfmt(Math.round(e.z*10)/10)+'&#215;</button>';
   h+='<button class="er-auto" onclick="erAuto()">'+_t('הסר רקע')+'</button>';
   h+='<div class="crop-hint">'+_t('העבר את האצבע על מה שצריך להיעלם. ״החזר״ מחזיר רק מה שמחקת כאן.')+'</div>';
   h+='<div class="crop-bot">';
@@ -10220,7 +10220,7 @@ function erApplyZoom(){
   var st=document.getElementById('er-stage');
   if(st)st.style.transform='translate('+e.ox+'px,'+e.oy+'px) scale('+e.z+')';
   var b=document.getElementById('er-z');
-  if(b){b.textContent=e.z.toFixed(1)+'\u00d7';b.style.visibility=e.z>1.02?'':'hidden';}
+  if(b){b.textContent=nfmt(Math.round(e.z*10)/10)+'\u00d7';b.style.visibility=e.z>1.02?'':'hidden';}
 }
 function erZoomSet(z){
   var e=_erase;if(!e)return;
@@ -19567,8 +19567,21 @@ function saveVision(a){
 function vbFind(a,id){for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
 function vbClamp(v,lo,hi){return v<lo?lo:(v>hi?hi:v);}
 function vbTop(a){var t=0;a.forEach(function(o){if((o.z||1)>t)t=o.z||1;});return t;}
-// Where a new item lands: scattered around the middle rather than stacked.
-function vbSpot(n){return {x:34+(n%3)*16,y:34+(Math.floor(n/3)%3)*16};}
+/* Where a new item lands. A three by three of nine places sixteen per cent
+   apart was tighter than the items themselves, so the first ten arrived as
+   one unreadable pile - and the cycle being nine long, the tenth landed on
+   exactly the first. Minimum separation over ten items: zero.
+
+   The golden angle spreads any count evenly and, being irrational, never
+   repeats a position. The radius grows as a square root so the density stays
+   even rather than crowding the rim, and is capped to keep the item on the
+   board. Measured before it was written: 13.4 over ten, 11.0 over twenty. */
+var VB_GOLDEN=2.399963229728653;
+function vbSpot(n){
+  var r=30*Math.sqrt((n+0.5)/12);if(r>32)r=32;
+  return {x:Math.round((50+r*Math.cos(n*VB_GOLDEN))*10)/10,
+          y:Math.round((50+r*Math.sin(n*VB_GOLDEN))*10)/10};
+}
 
 function renderVisionBoard(){
   var el=document.getElementById('home-vision');if(!el)return;
@@ -21591,8 +21604,8 @@ function renderMe(){
   h+='<div class="me-sub">'+_t('מה שהימים מצטברים אליו')+'</div></div>';
 
   // the one number worth leading with
-  h+='<div class="me-hero"><div class="me-hero-n">'+done+'</div>';
-  h+='<div class="me-hero-l">'+_t('ימים שסיכמת מתוך')+' '+_meRange+'</div></div>';
+  h+='<div class="me-hero"><div class="me-hero-n">'+nfmt(done)+'</div>';
+  h+='<div class="me-hero-l">'+_t('ימים שסיכמת מתוך {n}',{n:_meRange})+'</div></div>';
 
   h+=meCard('snd',''+_t('צלילים')+'',''+_t('צליל פתיחה והתראות בתוך האפליקציה')+'',
     '<button class="snd-row" onclick="sndToggle()">'+
@@ -21611,7 +21624,10 @@ function renderMe(){
   var ratings=[];
   for(i=0;i<rows.length;i++)if(rows[i].sum&&rows[i].sum.dayRating)ratings.push(rows[i].sum.dayRating);
   h+=meCard('rating',''+_t('ציון היום')+'',
-    ratings.length?(''+_t('ממוצע {n} מתוך 10',{n:meAvg(ratings).toFixed(1)})):'',
+    /* The NUMBER, not toFixed's string of it - _t formats a hole holding a
+   real number and leaves a string alone, which is how one Latin 8.0 came
+   to sit beside the key's own ١٠. */
+    ratings.length?(''+_t('ממוצע {n} מתוך 10',{n:Math.round(meAvg(ratings)*10)/10})):'',
     meLine('rating',rows,function(x){return x.sum&&x.sum.dayRating?x.sum.dayRating:null;},ME_C[0],function(v){return String(v);}));
 
   h+=meCard('steps',''+_t('צעדים')+'','',
@@ -21681,8 +21697,8 @@ function meInsights(rows){
     var a=meAvg(withW),b=meAvg(noW),diff=a-b;
     cards+=meInsight(
       diff>=0?''+_t('ימים שהתאמנת בהם טובים יותר')+'':''+_t('ימים שהתאמנת בהם לא יצאו טובים יותר')+'',
-      _t('ציון ממוצע {a} לעומת {b} בלי אימון',{a:a.toFixed(1),b:b.toFixed(1)}),
-      withW.length+' '+_t('ימים עם אימון, {n} בלי',{n:noW.length}),
+      _t('ציון ממוצע {a} לעומת {b} בלי אימון',{a:Math.round(a*10)/10,b:Math.round(b*10)/10}),
+      _t('{a} ימים עם אימון, {b} בלי',{a:withW.length,b:noW.length}),
       diff>=0?ME_C[2]:ME_C[1]);
   }
   var top=Object.keys(givers).sort(function(x,y){return givers[y]-givers[x];})[0];

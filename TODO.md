@@ -3783,3 +3783,95 @@ under October's dates, and the streak counts them.
 **Not fixed.** Re-keying to `habit__2026-09-05` is a data-model change with a
 migration, the same category as the meal amount. Written down rather than
 half-done.
+
+## The one weight box that never converted
+
+Grepped `fromDisplayWeight|edWeightVal`: **nine** weight inputs. Eight
+convert on both sides. The two that write BODY weight did neither — and the
+profile screen labels its box with `weightUnit()`, so it promised pounds and
+stored kilograms.
+
+Driven in imperial, a reader weighing 175 lb types 175:
+
+    stored          {"2026-09-11": 175}     read everywhere as kilograms
+    profile weight  "175"                   BMI and the target read this
+    they meant      79.4 kg
+
+Then the card printed **174.8 lb** — the kilogram number with the reader’s
+unit glued on. **The two halves cancel on screen.** The number looks right,
+nothing gives it away, and the profile carries a body 2.2× too heavy into
+every target it feeds. That is why eight passes of unit work never found it:
+this is the one place where being wrong twice looks like being right.
+
+After, on the same stored kilograms: imperial reads 174.8 lb, metric reads
+79.3 ק"ג, and they agree. Metric is unchanged — `fromDisplayWeight` is the
+identity there.
+
+And the store rounded to a **tenth of a kilogram**, which is 0.22 lb —
+coarser than the tenth of a pound the box shows, so a typed 180 came back
+179.9. Two decimals now; 180, 174.6 and 79.55 all round-trip exactly.
+
+### Height, deliberately not touched
+
+Its note is a hard-coded `ס"מ` and there is no imperial height anywhere in
+the file. Storing weight in kilograms and height in centimetres keeps
+`profileBMI` correct, so fixing weight alone is coherent. An imperial reader
+being asked for centimetres is a real gap and wants a feet-and-inches input,
+which is a design change rather than a conversion.
+
+## The vision board
+
+`vbSpot` cycled through **nine** places sixteen per cent apart, so the tenth
+item landed exactly on the first. Measured minimum separation over ten items:
+**0**. Ten notes arrive as one unreadable pile with the tenth hidden under
+the first.
+
+A golden-angle spiral: measured 13.4 over ten and 11.0 over twenty, never
+repeats a position, stays on the board. Driven after — ten notes, **ten**
+distinct places, minimum separation 13.4.
+
+**The selected swatch had no ring.** `.vb-sw.on` painted
+`border-color:var(--ink)`, and `VB_COLORS[0]` *is* `--ink` — so the default
+selection’s ring was its own fill. Measured RGB distance **0**, while every
+UNselected swatch showed 60 to 129. The one that was chosen was the only one
+with no ring. A ring with a gap reads on any fill, ink and white included.
+
+## Numbers that never reached a formatter
+
+Swept the Arabic Me screen for elements whose own text nodes carry a Latin
+digit — two hits on an empty board, both in the hero. And the holes that were
+killed before they got there:
+
+    متوسط 8.0 من ١٠
+
+`_t` formats a hole holding an actual NUMBER and leaves a string alone.
+`.toFixed()` hands it a string. So the ten baked into the KEY was answered
+`١٠` by the translator, and the number the code passed stayed Latin — in the
+same three-word phrase.
+
+Grepped `toFixed(`: **forty** uses. Thirty-five are geometry — path data, CSS
+widths, conic-gradient degrees, stored coordinates — and must stay Latin.
+Five reach a text node; all five fixed.
+
+### What the glued counts did to ten translators
+
+Two keys had a count glued outside them, and it shows in what the translators
+were forced to write:
+
+    ja   日を締めくくりました。全      ends on 全 because a number follows
+    zh   天写了总结，共                ends on 共 for the same reason
+    en   days with a workout, {n} without     begins mid-sentence
+
+Both now carry their counts inside, and each language puts the number where
+it belongs. Not plural keys: two independent counts cannot share one plural
+category, so a sentence with two holes is the right shape.
+
+Arabic Me screen after: **zero** Latin digits, `٠ / يومًا أغلقته من أصل ١٤`,
+`متوسط ٨٫٣ من ١٠`, `٩ أيام فيها تمرين، و٥ بلا`.
+
+### The check did not see the glued count
+
+`find-glued-sentences` was quiet on `withW.length+' '+_t('… {n} …')` — a
+value glued in FRONT of a whole-sentence key. It catches the pair shape and
+the lone fragment; this one is a bare expression against a key that already
+has a hole. Worth teaching it, against this revision as the proof.
