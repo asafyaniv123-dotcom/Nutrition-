@@ -8209,7 +8209,23 @@ function ssIsLastIn(i){ return ssNextIn(i)===null; }
 function ssLabel(i){
   var g=ssGroup(i);
   if(g.length<2)return '';
-  return 'A'.charCodeAt ? String.fromCharCode(65+g.indexOf(i))+'/'+g.length : '';
+  /* The letter is gym notation and stays Latin in every language, the way
+     RPE and kcal do. The COUNT is a number and follows the reader. */
+  return 'A'.charCodeAt ? String.fromCharCode(65+g.indexOf(i))+'/'+nfmt(g.length) : '';
+}
+/* A group id only has to be unique WITHIN this workout - ss is dropped when a
+   session is saved and when one is restored - and the clock was a bad way to
+   get that. Date.now()%100000 cycles every hundred seconds, so two supersets
+   created an exact multiple of 100s apart shared an id; and because ssGroup
+   finds members by ID rather than by adjacency, the two merged into one
+   group. Driven with the clock stubbed: ssGroup(0) came back [0,1,2,3] and
+   ssNextIn(1) jumped into the next pair instead of ending its own, so a set
+   logged on the second exercise sent you to the third and rest never started.
+   One more than the largest id in use cannot collide with anything. */
+function ssNewId(exs){
+  var m=0,i;
+  for(i=0;i<exs.length;i++)if(typeof exs[i].ss==='number'&&exs[i].ss>m)m=exs[i].ss;
+  return m+1;
 }
 /* Joining always links this exercise to the one after it, because that is the
    only pairing that keeps a group adjacent. */
@@ -8223,7 +8239,7 @@ function ssJoin(i){
     exs[i+1].ss=null;
     if(ssGroup(i).length<2)exs[i].ss=null;
   } else {
-    var id=exs[i].ss!=null?exs[i].ss:(Date.now()%100000);
+    var id=exs[i].ss!=null?exs[i].ss:ssNewId(exs);
     exs[i].ss=id; exs[i+1].ss=id;
   }
   renderFitness();

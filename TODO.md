@@ -3450,3 +3450,54 @@ exercise names beside it already go through the label function (*ضغط الصد
 
 The `<input>` values are excluded from that sweep on purpose: an
 `<input type=number>` cannot hold `١٣٢٫٣`.
+
+## Two supersets a hundred seconds apart became one
+
+`ssJoin` took a group id from the clock:
+
+    var id = exs[i].ss != null ? exs[i].ss : (Date.now() % 100000);
+
+**That cycles every hundred seconds.** And `ssGroup` finds a group’s members
+by ID rather than by adjacency, so two supersets created an exact multiple
+of 100s apart merge into one.
+
+Driven with the clock stubbed to two instants exactly 100,000 ms apart:
+
+    ss ids        [0, 0, 0, 0]
+    ssGroup(0)    [0, 1, 2, 3]     should be [0, 1]
+    ssNextIn(1)   2                should be null - b ends its pair
+    ssLabel(0)    A/4              should be A/2
+
+What that does to a session: logging a set on the second exercise sends you
+to the **third**, which belongs to the other superset, and rest never starts
+because `ssIsLastIn` is false. The session silently reorders itself and
+nothing on screen says why.
+
+A group id only has to be unique **within one workout** — `ss` is set to
+null both when a session is saved and when one is restored, so an id never
+leaves the session it was made in. One more than the largest id in use
+cannot collide with anything, and needs no clock. After: ids `[1,1,2,2]`,
+the groups separate, `ssNextIn(1)` null.
+
+The odds were long — the two joins have to land on the same millisecond
+modulo 100,000 — but the failure is silent, and the fix is one line.
+
+### And the label
+
+`A/2` printed the count raw: `مجموعة مركّبة A/2` on an Arabic screen where
+everything else had been fixed. The **letter** stays Latin in every language,
+the way `RPE` and `kcal` do — it is gym notation — and the count follows the
+reader: `A/٢`. That was the only raw number left on the superset screen, the
+pattern being every visible non-input element whose own text nodes match
+`[0-9]`.
+
+## What the supersets do, verified
+
+The header comment claims a specific cycle. Driven, with a real pair:
+
+    set on A   ->  currentEx 0 -> 1,  rest NOT started
+    set on B   ->  currentEx 1 -> 0,  rest started
+
+Which is exactly what a superset is: no rest between the pair, rest after
+it, and back to the top rather than wherever the last set happened to land.
+The claim in the code is true.
