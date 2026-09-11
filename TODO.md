@@ -1317,3 +1317,58 @@ oversight to correct. Worth knowing it is exactly seven and which four.
 ### English instructions: 52 of 96
 
 Fourth mechanical slice — 10 exercises, 65 lines, 338 of 625.
+
+## "Search in Hebrew or English"
+
+The exercise picker's search box, in every one of the eleven:
+
+    de   Suche auf Hebräisch oder Englisch
+    ja   ヘブライ語または英語で検索
+    ar   ابحث بالعبرية أو الإنجليزية
+
+It was true when `exercises.json` held two names per movement. It now holds
+**eleven**, plus an `aka` list, and the search matches all of them. So the
+sentence is not merely unhelpful — it is wrong, and it **hides a feature**
+instead of explaining one. A German reader is told to type a language they
+may not have.
+
+Driven in the German app, typing into the real box, before a word was
+changed:
+
+    Bankdrücken        ->  Bankdrücken mit Langhantel
+    bench press        ->  Bankdrücken mit Langhantel
+    développé couché   ->  Bankdrücken mit Langhantel
+    סקוואט              ->  Kniebeuge mit Langhantel
+    sentadilla         ->  Kniebeuge mit Langhantel
+    スクワット            ->  Kniebeuge mit Langhantel
+
+Five languages other than the one being read, every one landing on the right
+movement under its German name. "Search in any language" is a statement of
+fact. The old key was replaced rather than reworded: it names two languages
+in its own Hebrew text.
+
+**Width measured, in the real input, in the longest language.** The input has
+413px of room and French — `Cherche dans n'importe quelle langue` — paints
+at 220px. The column is capped, so 413px holds from 957px of viewport down
+to about 450px; below that it tracks the screen, and French still clears a
+phone with room to spare.
+
+### Two things that looked wrong and were not
+
+**A panel half German and half French.** The areas drawer showed a German
+title over a French list after switching language inside a module, and
+`langRepaint()` does return early for every module — `renderAreasList()` only
+runs on the home branch. But the drawer is `translateX(-350px)` with
+`offsetParent: null`: **not visible**, and `openAreas()` re-renders it before
+showing it. Confirmed by switching language inside fitness and then opening
+it: German.
+
+The useful part is why I saw it at all. **`innerText` includes off-screen
+elements that are not `display:none`**, so every screen dump this audit has
+taken has carried that closed drawer along with it. That is where the
+"Was du erfasst" block at the bottom of each dump has been coming from.
+
+### English instructions: 62 of 96
+
+Fifth mechanical slice — 10 exercises, 66 lines, 404 of 625. Thirty-four
+exercises left.

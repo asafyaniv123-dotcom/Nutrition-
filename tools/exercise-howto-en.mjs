@@ -19,7 +19,7 @@
  * data already declares. Three of the eighteen carry no Hebrew instructions at
  * all, so the first slice was fifteen and the second sixteen.
  *
- * 52 of the 96 exercises that have instructions, 338 lines of the 625 that
+ * 62 of the 96 exercises that have instructions, 404 lines of the 625 that
  * exist. `node tools/build-exercises.mjs` prints the number that has to go
  * down, so it is never a matter of anyone remembering.
  *
@@ -476,6 +476,95 @@ export const EN = {
       'Add resistance before you add speed.'],
   m: ['Leaning your whole weight on the handles.',
       'A fast rhythm on no resistance — it looks like effort and is not.'] },
+
+/* ── the fifth movement of each group ──────────────────────────────── */
+
+'לחיצת חזה בשיפוע שלילי': {
+  s: ['Hook your feet into the decline bench and lie back.',
+      'Grip as you would on the flat press, bar over your lower chest.',
+      'Lower to the bottom of your chest under control.',
+      'Press back up over the same point.'],
+  m: ['Sitting up quickly at the end of the set — head-down makes you dizzy.',
+      'Lowering to mid-chest instead of the lower chest.',
+      'Training alone with a heavy weight and no spotter.'] },
+
+'לחיצת ארנולד': {
+  s: ['Start with the dumbbells in front of your chest, palms facing you.',
+      'Rotate your hands outwards as you press up.',
+      'Finish with palms forward and arms straight.',
+      'Return along the same path, rotating back.'],
+  m: ['Rotating after the press instead of during it.',
+      'A weight so heavy it stops the rotation being clean.'] },
+
+'פולי עליון אחיזה צרה': {
+  s: ['A triangle handle, or a grip about shoulder width.',
+      'Pull to your upper chest, elbows close to your body.',
+      'Pause a moment as the handle reaches your chest.',
+      'Return to almost straight arms.'],
+  m: ['Leaning far back, which turns it into a row.',
+      'Pulling with your hands instead of your elbows.'] },
+
+'חתירת T': {
+  s: ['Stand over the bar, torso hinged forward, back flat.',
+      'Take the handles and pull towards your stomach.',
+      'Shoulder blades draw together at the end of the pull.',
+      'Lower under control until your arms are straight.'],
+  m: ['Standing up as you pull.',
+      'A rounded back — dangerous with heavy weight.',
+      'A short range because the weight is too much.'] },
+
+'כפיפת מרפק בפולי': {
+  s: ['Low cable, straight bar or rope.',
+      'Elbows tucked against your ribs.',
+      'Curl to chest height, tension constant throughout.',
+      'Return slowly against the cable.'],
+  m: ['Leaning back to help.',
+      'Elbows drifting backwards at the end.'] },
+
+'לחיצת חזה אחיזה צרה': {
+  s: ['Grip about shoulder width — no narrower.',
+      'Elbows close to your body throughout.',
+      'Lower to your lower chest.',
+      'Press up, thinking about straightening the elbow.'],
+  m: ['Too narrow a grip, which hurts the wrist.',
+      'Elbows flaring, which turns it back into a bench press.'] },
+
+'לחיצת רגליים': {
+  s: ['Feet in the middle of the platform, about hip width.',
+      'Release the catch and lower to about 90 degrees at the knee.',
+      'Lower back stays against the pad the whole way.',
+      'Press without forcing your knees locked.'],
+  m: ['Going so low your hips lift off the pad — that loads the lower back directly.',
+      'Snapping the knees locked at the top.',
+      'A short range with far too much weight.'] },
+
+'סווינג קטלבל': {
+  s: ['Feet about shoulder width, kettlebell on the floor in front of you.',
+      'Hinge your hips back and take hold — back flat.',
+      'Send it between your legs, then snap your hips through.',
+      'It rises to chest height on the swing, not by lifting with your arms.'],
+  m: ['Squatting instead of hinging at the hip — the main mistake.',
+      'Lifting with the shoulders rather than the hips.',
+      'A rounded back at the bottom of the swing.'] },
+
+'פלאנק': {
+  s: ['Elbows under your shoulders, forearms on the floor.',
+      'Body in a straight line from head to heels.',
+      'Brace your stomach and glutes, and breathe normally.',
+      'Hold for a set time rather than to collapse.'],
+  m: ['Hips dropping — the signal that the set is over.',
+      'Hips high, which turns it into a rest.',
+      'Holding your breath.'] },
+
+'מכונת חתירה': {
+  s: ['Legs first: drive with the legs, then lean the torso, then pull with the arms.',
+      'Return in reverse: arms, torso, legs.',
+      'Back flat the whole way.',
+      'Breathe in on the return and out on the pull.'],
+  m: ['Pulling with the arms before the legs have driven — the order is everything.',
+      'A rounded back on the pull.',
+      'A fast rhythm with a short range.'] },
+
 
 
 
