@@ -2664,3 +2664,68 @@ the Arabic decimal mark; German `1.008mg` and `18,4g`; Japanese `1日 2,000mg
 - These are the **adult** figures. WHO’s fruit-and-veg and fibre numbers step
   down by age band, and pregnancy changes the iron story entirely.
 - The live shelf needs a Worker change to join in.
+
+## The vlog, driven for the first time
+
+### Getting a camera without a camera
+
+The sheet cannot be driven at all without `getUserMedia`, and a real
+permission prompt in an automated tab is a trap. So the sensor was replaced
+by **a painted canvas plus a real oscillator**, handed back as a genuine
+`MediaStream`. Nothing downstream is stubbed: the canvas pipeline, the
+`MediaRecorder`, the countdown, the blob and the save all ran for real.
+
+That is also how the **denied** path was reached — one rejected promise with
+`NotAllowedError`, which is exactly what a denial is. It lands correctly:
+
+    אין הרשאה למצלמה. אפשר לאשר אותה בהגדרות האתר.
+    אפשר להקליט במצלמה של הטלפון, עד 30 שניות.
+    [ הקלט במצלמת הטלפון ]   [ בטל ]
+
+and the fallback is a `capture="user"` file input, which is the right answer.
+`NotFoundError` and the generic failure have their own sentences.
+
+**A measurement error, caught before it was reported.** Read through
+`textContent`, those two sentences look glued: `…בהגדרות האתר.אפשר להקליט…`.
+They are not — there is a `<br>`, and `textContent` drops it. *Use
+`innerText` when the question is whether two sentences are separated.*
+
+### Three families of raw digits, all on one screen
+
+Same detector as the planning module: open the sheet in **Arabic** and read
+every visible element whose own text nodes match `[0-9]`.
+
+| where | was | is |
+|---|---|---|
+| zoom badge | `1×` in the markup **and** `2.4×` from `vlogZoomSet` | `١×` · `٢٫٤×` |
+| countdown | `30` seeded in the markup, `27` every tick | `٣٠` · `٢٨` |
+| preview line | `١١ ثانية · 166KB` | `٩ ثوانٍ · ١٤٧KB` |
+
+The third is the one worth naming. The seconds inflected correctly — they go
+through a plural key with a numeric hole, and Arabic picked `ثوانٍ` for nine.
+The size **four characters away** stayed Latin because `vlogSize` builds it by
+hand. Two numbering systems in one sentence, which is the exact shape the
+planning module paid for.
+
+The zoom badge had **two writers** — a hardcoded `1×` in the markup and
+`vlogZoomSet`. The seed is gone and `vlogOpen` asks for the label it already
+has, so there is one writer now. Both size branches checked in both
+languages, and a clip under a kilobyte still reads `١KB` rather than `٠KB`,
+which is what the function’s own comment exists to protect.
+
+**After: zero Latin digits anywhere on the Arabic vlog sheet.** German read
+clean too — every label and every `aria-label` translated, no Hebrew left.
+
+### And the thing the canvas exists for
+
+Recorded, pressed flip mid-clip, kept recording. `_vlFacing` went
+`user` → `environment`, the recorder stayed `recording` straight through, and
+one nine-second clip came out the other side. The claim in the header comment
+— that the recorder never notices the switch because the canvas never changes
+identity — is true, and now has been watched happening.
+
+### A tooling trap
+
+`javascript_tool` refuses a result containing `video/mp4;codecs=avc1` —
+a semicolon and an `=` read as query-string data. Return `vlogMime().length`
+rather than the string.

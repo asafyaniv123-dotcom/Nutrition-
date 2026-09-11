@@ -2764,8 +2764,8 @@ function vlogCanCanvas(){
 function vlogSecs(v){return v&&v.sec?Math.round(v.sec):0;}
 // A short clip rounded to megabytes reads as "0MB", which looks like a failure.
 function vlogSize(b){
-  return b<1024*1024?Math.max(1,Math.round(b/1024))+'KB'
-                    :Math.round(b/1024/1024*10)/10+'MB';
+  return b<1024*1024?nfmt(Math.max(1,Math.round(b/1024)))+'KB'
+                    :nfmt(b/1024/1024,{maximumFractionDigits:1})+'MB';
 }
 
 /* ── THE CANVAS IN THE MIDDLE ──
@@ -2798,6 +2798,9 @@ function vlogOpen(d){
   _vlDate=d||todayStr();
   _vlBlob=null;_vlSec=0;_vlZoom=1;
   vlogSheet();
+  /* The zoom label has one writer, so the sheet no longer carries a second
+     copy of it as markup - it asks for the label it already has. */
+  vlogZoomSet(_vlZoom);
   var have=loadVlog(_vlDate);
   if(have&&have.k)vlogShowSaved(have);
   else vlogStartCam();
@@ -2816,11 +2819,11 @@ function vlogSheet(){
     '<path d="M20.4 4.6v4.2h-4.2"/><path d="M20.4 14.6a8.6 8.6 0 0 1-14.2 3.2l-2.6-2.4"/>'+
     '<path d="M3.6 19.4v-4.2h4.2"/></svg></button>'+
     '<button class="vl-orient" id="vl-orient" onclick="vlogToggleOrient()" aria-label="'+_t("לאורך או לרוחב")+'"></button>'+
-    '<button class="vl-zoom" id="vl-zoom" onclick="vlogZoomReset()" aria-label="'+_t("אפס זום")+'">1×</button>'+
+    '<button class="vl-zoom" id="vl-zoom" onclick="vlogZoomReset()" aria-label="'+_t("אפס זום")+'"></button>'+
     '<div class="vl-ring" id="vl-ringwrap">'+
     '<svg viewBox="0 0 72 72"><circle class="vl-ring-bg" cx="36" cy="36" r="32"/>'+
     '<circle class="vl-ring-fg" id="vl-ring" cx="36" cy="36" r="32"/></svg>'+
-    '<span id="vl-count">'+VLOG_MAX+'</span></div>'+
+    '<span id="vl-count">'+nfmt(VLOG_MAX)+'</span></div>'+
     '</div>'+
     '<div class="vl-msg" id="vl-msg"></div>'+
     '<div class="vl-actions" id="vl-actions"></div>'+
@@ -2942,7 +2945,7 @@ function vlogZoomSet(z){
   _vlZoom=Math.max(1,Math.min(4,z));
   var e=document.getElementById('vl-zoom');
   if(e){
-    e.textContent=(Math.round(_vlZoom*10)/10)+'×';
+    e.textContent=nfmt(_vlZoom,{maximumFractionDigits:1})+'×';
     if(_vlZoom>1.02)e.classList.add('on'); else e.classList.remove('on');
   }
 }
@@ -3193,7 +3196,7 @@ function vlogTick(){
   var left=Math.max(0,(_vlEnd-Date.now())/1000);
   vlogRing(true,left/VLOG_MAX);
   var n=document.getElementById('vl-count');
-  if(n)n.textContent=Math.ceil(left);
+  if(n)n.textContent=nfmt(Math.ceil(left));
   if(left<=0)vlogStop();
 }
 /* Leaving the page stops the painting, and a stopped canvas records a frozen
