@@ -8696,12 +8696,23 @@ function setExerciseWeight(name,kg){
   return true;
 }
 
+/* Which row is being edited, or ''. The value used to be asked for with a
+   prompt, which also meant the number offered and the number stored were
+   both raw kilograms while the question said lb. */
+var _exWEdit='';
 function exWeightEdit(name){
-  var cur=currentWeightFor(name);
-  var v=prompt(_t('משקל נוכחי ל{name} ({unit})',{name:name,unit:weightUnit()}),cur?String(cur.w):'');
-  if(v===null)return;
-  if(v.trim()===''){var o=loadExWeights();delete o[name];saveExWeights(o);renderFitness();return;}
-  if(setExerciseWeight(name,v))renderFitness();
+  _exWEdit=name;renderFitness();
+}
+function exWeightCancel(){_exWEdit='';renderFitness();}
+/* An empty box still means forget this weight, which is what the prompt's own
+   empty string meant. And the box shows the DISPLAY unit, so convert back
+   before storing - the rule the set logger states in its own comment, which
+   the prompt never followed: it offered the stored kilograms under a label
+   that said lb, and put back whatever was typed as kilograms again. */
+function exWeightCommit(name){
+  var el=document.getElementById('ex-w-in'),v=el?el.value.trim():'';
+  if(v===''){var o=loadExWeights();delete o[name];saveExWeights(o);_exWEdit='';renderFitness();return;}
+  if(setExerciseWeight(name,fromDisplayWeight(parseFloat(v)||0))){_exWEdit='';renderFitness();}
   else showToast(''+_t('משקל לא תקין')+'');
 }
 
@@ -8849,8 +8860,20 @@ function renderFitWeights(){
        '<div style="font-size:12.5px;color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(exLabel(nm))+'</div>'+
        (cw?'<div style="font-size:9.5px;color:var(--muted-soft);margin-top:2px">'+(cw.manual?''+_t('הוקלד')+'':''+_t('מהאימון')+'')+' &middot; '+fmtDate(cw.at)+'</div>':'')+
        '</button>';
+    /* The row turns into its own editor rather than opening a dialog. The box
+       carries the DISPLAY unit, so an imperial reader types and reads pounds
+       and exWeightCommit converts on the way back in. */
+    if(_exWEdit===nm){
+      h+='<input id="ex-w-in" class="mtin" type="number" step="0.5" style="width:78px;margin-bottom:0;text-align:center" autofocus '+
+         'value="'+(cw?Math.round(toDisplayWeight(cw.w)*100)/100:'')+'" '+
+         'onkeydown="if(event.key===&quot;Enter&quot;)exWeightCommit(&quot;'+esc(nm).replace(/'/g,"&#39;").replace(/"/g,'&#34;')+'&quot;);else if(event.key===&quot;Escape&quot;)exWeightCancel()">';
+      h+='<span style="font-size:9.5px;color:var(--muted)">'+weightUnit()+'</span>';
+      h+='<button onclick="exWeightCommit(\''+esc(nm).replace(/'/g,"&#39;")+'\')" style="background:var(--green-200);border:none;border-radius:12px;padding:7px 12px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700">&#10003;</button>';
+      h+='</div>';
+      continue;
+    }
     h+='<button onclick="exWeightEdit(\''+esc(nm).replace(/'/g,"&#39;")+'\')" style="background:var(--surface);border:none;border-radius:12px;padding:7px 12px;cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums">'+
-       (cw?'<span style="font-size:13px;font-weight:800;color:var(--ink)">'+cw.w+'</span><span style="font-size:9.5px;color:var(--muted)"> '+weightUnit()+'</span>'
+       (cw?'<span style="font-size:13px;font-weight:800;color:var(--ink)">'+fmtWeight(cw.w)+'</span>'
           :'<span style="font-size:11px;color:var(--muted-soft)">'+_t('הוסף')+'</span>')+'</button>';
     h+='</div>';
   }
@@ -19930,6 +19953,9 @@ function renderBackup(){
    genuinely new answers get new names. Nothing that works today changes. */
 
 var _rfView='home',_rfStage=1,_rfStep=0,_rfDate='';
+/* The name box under the chips, open or not. A flag rather than a dialog:
+   the answer belongs on the page being answered. */
+var _rfNewPerson=false;
 
 var RF_MOODS;langOn(function(){RF_MOODS=[
   {v:1,l:''+_t('קשה')+'',c:'#d9795f'},
@@ -20259,8 +20285,8 @@ function weekCardHTML(){
     if(st>0){stepSum+=st;stepDays++;}
   }
   var bits=[],avg=function(a){var t=0,j;for(j=0;j<a.length;j++)t+=a[j];return t/a.length;};
-  if(moods.length)bits.push(''+_t('מזג')+' '+avg(moods).toFixed(1));
-  if(bodies.length)bits.push(''+_t('גוף')+' '+avg(bodies).toFixed(1));
+  if(moods.length)bits.push(''+_t('מזג')+' '+nfmt(avg(moods),{minimumFractionDigits:1,maximumFractionDigits:1}));
+  if(bodies.length)bits.push(''+_t('גוף')+' '+nfmt(avg(bodies),{minimumFractionDigits:1,maximumFractionDigits:1}));
   if(workouts)bits.push(_t('{n} אימונים',{n:workouts}));
   if(stepDays)bits.push(nfmt(Math.round(stepSum/stepDays))+' '+_t('צעדים ביום')+'');
   if(bits.length)
@@ -20592,8 +20618,17 @@ function renderReflectStep(){
       if(!o)continue;
       h+='<button class="rf-chip'+(sel===o?' on':'')+'" onclick="rfPickPerson(\''+esc(o).replace(/'/g,"\\'")+'\')">'+esc(o)+'</button>';
     }
-    h+='<button class="rf-chip" style="border-style:dashed" onclick="rfAddPerson()">'+_t('+ אדם חדש')+'</button>';
+    h+='<button class="rf-chip" style="border-style:dashed" onclick="rfAddPersonOpen()">'+_t('+ אדם חדש')+'</button>';
     h+='</div>';
+    /* Inline, right under the chips, instead of a system dialog. Enter accepts
+       and Escape drops it, which is what a phone keyboard already offers. */
+    if(_rfNewPerson){
+      h+='<div style="display:flex;gap:8px;margin-top:10px">'+
+         '<input id="rf-person-in" class="mtin" style="flex:1;margin-bottom:0" autofocus '+
+         'placeholder="'+_t('שם האדם')+'" '+
+         'onkeydown="if(event.key===&quot;Enter&quot;)rfAddPerson();else if(event.key===&quot;Escape&quot;){_rfNewPerson=false;renderReflectStep();}">'+
+         '<button class="rf-chip on" onclick="rfAddPerson()">'+_t('הוסף')+'</button></div>';
+    }
     if(sel){
       h+='<div class="rf-sub" style="margin-top:26px;font-weight:700;color:var(--ink);font-size:15px">'+_t('איך הוא השפיע עליך היום?')+'</div>';
       h+='<div class="rf-ladder" style="margin-top:14px">';
@@ -20820,12 +20855,19 @@ function rfPickBranch(id,yes){
   if(!yes||!q||!q.follow)rfAutoAdvance();else renderReflectStep();
 }
 function rfPickPerson(name){rfSave({influentialPerson:name});renderReflectStep();}
+function rfAddPersonOpen(){_rfNewPerson=true;renderReflectStep();}
+/* The name comes from a box on the page now, not from a system dialog. This
+   file already says what it thinks of the alternative, about the goals map it
+   rebuilt for the same reason: "the map could only be filled through prompt()
+   dialogs, one line at a time, which is no way to think a goal through." */
 function rfAddPerson(){
-  var n=prompt(''+_t('שם האדם')+'');
-  if(!n||!n.trim())return;
+  var el=document.getElementById('rf-person-in');
+  var n=el?el.value:'';
+  if(!n||!n.trim()){_rfNewPerson=false;renderReflectStep();return;}
   var people=loadPeople();
   people.push({name:n.trim(),relationship:'',whatTheyMean:'',whatILove:'',currentUpdate:'',toAsk:'',contactFreq:'monthly',lastContact:null,avatar:'',memories:[],importantDates:[]});
   savePeople(people);
+  _rfNewPerson=false;
   rfSave({influentialPerson:n.trim()});
   renderReflectStep();
 }

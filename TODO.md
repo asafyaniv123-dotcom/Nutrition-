@@ -2160,3 +2160,63 @@ Butter und einen großen Apfel"* — parsed into four items, all four matched:
     428 Kalorien · 20,1 g Eiweiß · 34,6 g Kohlenhydrate · 22,3 g Fett
 
 Before this pass the egg row was a manual search and the total read 266.
+
+## The last two native dialogs, found by the tab freezing
+
+The end-of-day reflection, driven end to end in German for the first time —
+the mood scale, the body chips, the 1–10 grade, three flow anchors typed in,
+the best moment, gratitude, and on into the sixteen-card second stage. All of
+it correct, all of it German, and the five mood steps distinct.
+
+Then **Mensch des Tages → + Neue Person** froze the tab. That is the
+signature of a `prompt()`, and it was one:
+
+    function rfAddPerson(){ var n = prompt(_t('שם האדם')); … }
+
+A grep found the other: `exWeightEdit` on the weights screen. **This file
+already says what it thinks of them**, in a comment about the goals map it
+rebuilt for exactly this reason —
+
+> the map could only be filled through prompt() dialogs, one line at a time,
+> which is no way to think a goal through
+
+Three `alert()`s became toasts last pass. These two were what remained, and
+they are worse: an alert only interrupts, **a prompt is the only way in**. On
+a phone it opens a system dialog with the site's domain printed above the
+question, in an app somebody installed to feel like an app.
+
+Both are inline now — a field where the chip or the value already sits, Enter
+to accept, Escape to drop it. Every string they need already existed and was
+answered in eleven languages, so nothing new had to be written.
+
+### And the weight prompt was lying about its units
+
+It offered `String(cur.w)` — the stored **kilograms** — under a label reading
+`weightUnit()`, and put whatever was typed back as kilograms again. The row
+behind it printed `cw.w` with `weightUnit()` beside it, so a reader on pounds
+saw **"80 lb"** for 80 kg.
+
+That is the **third** instance of the bug found in the plan wizard last pass,
+and it hid from the `>kg<` grep for a simple reason: **a prompt has no markup
+to grep.** Driven after the fix, in German with imperial units:
+
+    the row now reads      176,4 lb     (80 kg, was "80 lb")
+    typed 185 into the box  ->  stored 83.91 kg  ->  reads back 185 lb
+
+The prompt's question key is retired in all ten files: a box under a heading
+that already names the exercise does not need to repeat it.
+
+### Also driven, and correct
+
+A person created from inside the reflection — Lena — lands in the people
+store, is selected, and the follow-up question appears, all without leaving
+the page. And the week card said **"Stimmung 4.0"** where every other number
+on the screen carries a comma; the two weekly averages now go through `nfmt`.
+
+### The trap, for next time
+
+A `prompt()` freezes the driven tab exactly as `confirm()` does, and
+`navigate` cannot recover it — the tab came back on its own a few minutes
+later. Grepping for `confirm(` alone was not enough; **grep for `prompt(` and
+`alert(` too before clicking anything that adds a record.** There are now
+none of any kind left in the app, so the next such freeze means one came back.
