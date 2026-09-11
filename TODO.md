@@ -2076,3 +2076,87 @@ The recipes **tab** and the composed-meal **FAB** are both labelled "Rezepte"
 in German. They are different features — a recipe book and a meal builder —
 and share a word. Not fixed here because the right answer is an editorial
 one about what to call the builder, and that is Asaf's to make.
+
+## The name you typed disappears when you add an ingredient
+
+The composed-meal builder, driven for the first time. Type a name, tap **+
+Zutat aus der Bibliothek**, and the name vanishes from the box.
+
+    h+='<input id="builder-name" … value="" oninput="builderName=this.value">'
+
+Every re-render redraws the box empty — and there are four paths to one:
+the picker toggle, each category chip, adding an ingredient, removing one.
+The *variable* keeps the name, so saving still worked; what was wrong is the
+gap between what the screen says and what the app holds. Measured, not
+guessed: box `""`, `builderName` `"Haferbrei mit Beeren"`.
+
+## "268 kcal/100 g" in the picker, "268 kcal pro Portion" once picked
+
+The same food, the same number, two claims about what it means. A library
+entry carries its own basis and every other place asks — the ingredient row
+directly below, the library list on the Meine screen. The picker alone said
+"/100g" about all of them.
+
+The arithmetic was never wrong: `builderAddIng` copies the basis across, so a
+serving-based entry is counted in servings whatever the picker said. What was
+wrong is the number a person reads while **choosing** — the one moment the
+label is all they have. Both keys already existed, answered in all eleven.
+
+## Three native alert() dialogs
+
+All validation — "give it a name", "add some ingredients", "fill in a name
+and a calorie count" — in an app where every other refusal is a toast,
+`logProgEntry`'s own "enter a weight" included. A native alert blocks the
+page and, on a phone, opens a system dialog with the site's **domain** printed
+above the message: not this app's voice, and not what someone who installed
+it as an app expects. The wording did not change, so nothing new to translate.
+
+## carote, cipolle, arance, fragole, cetrioli, fichi — all reached nothing
+
+Driving the sentence path in German turned up **Eier** finding no food, which
+raised the question of how big the plural gap really is. Measured rather than
+assumed, with the shipped search asked in each language:
+
+    German   20 of 22 everyday singular/plural pairs already agreed
+    Italian   2 of 18
+
+German was fine: `foodForms` folds the `-n` plural and that is most of them.
+**Italian was not handled at all** — it builds its plural with a vowel rather
+than an s, so none of the existing rules touched it, and six everyday foods
+reached *nothing*. Typing "carote" is simply how a person says they ate
+carrots.
+
+Italian is a rule, so it became one: `-e → -a`, `-i → -o` **and** `-i → -e`
+(pomodori is a pomodoro, noci are a noce), with the hardening h that belongs
+to the plural alone — `fichi → fico`, not `ficho`.
+
+    Italian   2 of 18  ->  12 of 18, and all six NONE cases fixed
+
+The six that remain are singular-side gaps and ties between two rows of the
+same food (lenticchia/lenticchie reach lentil-sprouts and lentils-dry), which
+are data questions rather than rule ones.
+
+**German's Ei/Eier is an irregular, so it became data.** Stripping `-er` in
+general would turn Butter into Butt and Wasser into Wass for nothing; the core
+already carries Spiegelei and Rührei as search words for that row, and Eier
+joins them. 20 of 22 → 21 of 22.
+
+Both wins are locked into `food-search-probes.json`, so the suite went from
+**531/53 to 538/60** with every per-language baseline unchanged — 309/309,
+fr 306+3 known, pt 308+1 known.
+
+## And the sentence summary was the only line not in the reader's notation
+
+"266 Kalorien · 5.9 g Eiweiß", an inch above meal rows reading "12,4 E 31,7
+K". The calorie count already went through `nfmt`, which is exactly what made
+the mismatch visible. Three macros and the per-row calorie badge now do too.
+
+### Driven end to end
+
+A German sentence — *"Ich hatte zwei Eier, eine Scheibe Vollkornbrot mit
+Butter und einen großen Apfel"* — parsed into four items, all four matched:
+
+    Ei oder Omelett, ohne Öl gegart · Vollkornbrot · Butter · Apfel, mit Schale
+    428 Kalorien · 20,1 g Eiweiß · 34,6 g Kohlenhydrate · 22,3 g Fett
+
+Before this pass the egg row was a manual search and the total read 266.

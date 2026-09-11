@@ -600,7 +600,7 @@ const CORE = [
   /* Nobody calls it "egg or omelette cooked without oil". Each of these
      returned NOTHING before it was added. */
   { id: 'egg-cooked',   he: 'ביצה או חביתה מטוגנת ללא שמן',
-    aka: ['Spiegelei', 'Rührei', 'fried egg', 'scrambled egg',
+    aka: ['Spiegelei', 'Rührei', 'Eier', 'fried egg', 'scrambled egg',
           'huevo frito', 'huevos revueltos', 'oeuf au plat', 'œuf au plat',
           'uovo fritto', 'ovo frito', 'ביצת עין', 'חביתה'],
     t: { en: 'Egg or omelette, cooked without oil',
