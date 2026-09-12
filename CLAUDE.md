@@ -145,7 +145,7 @@ the rest.
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
 
-**Nine checks are tools rather than prose**, and all should only ever go down:
+**Ten checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments
     node tools/find-translated-data.mjs        # _t() results used as data, not shown
@@ -158,6 +158,8 @@ translation falls back to readable text rather than to `fitness.set.add`.
                                                # or disagreeing about capitals
     node tools/find-raw-clock-days.mjs         # a DAY decided from new Date(),
                                                # which does not know the day ends at 04:00
+    node tools/find-crowd-address.mjs          # Hebrew speaking to a crowd in an
+                                               # app that addresses one person
     node tools/build-lang-template.mjs --check # the template still matches the app
 
 The newest one has the same shape as the units check and the same origin. This
@@ -174,6 +176,21 @@ the wall clock in several places. What it reads is the QUESTION being asked:
 midnight, or a date handed to `dfmt` is a DAY question. A variable answering
 both — the home card read its date for the header and its minutes for the
 progress bar — is reported, and splitting it is the fix.
+
+The newest of them guards the app's VOICE, which nothing else could. Hebrew is
+its own key, so a defect in the Hebrew has no key to be missing and no language
+file can report it — and the Hebrew was the only place a slip like this could
+show at all, because Hebrew marks plural on the verb and the ten languages that
+answer it do not. The reminder card said *קבעו שעה קבועה, ותקבלו תזכורת יומית*
+while every other screen addresses one person, and all ten translations had
+quietly read it as singular: nobody heard a crowd. It resolves escapes before
+it looks, because a key is the string `_t` is CALLED with — the first version
+of the scan missed the recipe placeholder entirely, since the character in
+front of its verb is the letter `n` of a `\n`. And it carries one exemption,
+spelled out in the tool: a recipe body is not the app talking. Every language
+wrote that placeholder in its own cooking register — German and French the
+infinitive, Japanese the dictionary form, Spanish and Arabic the singular
+imperative — and Hebrew's cooking register is the plural.
 
 `tools/test-background-fill.mjs` is a seventh, of a different kind: it lifts
 the closet's background flood fill out of the shipped file and runs it against
