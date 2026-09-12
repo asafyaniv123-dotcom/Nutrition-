@@ -22049,10 +22049,24 @@ var ARC_W=70,ARC_GAP=12,ARC_UP=60,ARC_CLEAR=123;
    least a capsule apart or they touch. Never more than five - beyond that
    the sweep flattens into a row however wide the screen is. */
 function arcFit(W){return Math.max(2,Math.min(5,1+Math.floor((W-ARC_W)/(ARC_W+1))));}
-/* Split n into ranks as evenly as possible, so no rank is left with one or
-   two capsules rattling under a full one. */
+/* Each sweep is narrower than the one above it, by a quarter each time. */
+var ARC_TAPER=0.75;
+function arcHalf(W,r){return (W-ARC_W)/2*Math.pow(ARC_TAPER,r);}
+/* HOW MANY IN EACH SWEEP. Not an even split - an even split of ten is five
+   and five, and two sweeps of five have the SAME five x positions, so every
+   capsule sits directly above another and the board reads as five columns.
+   The counts step down with the widths instead, and these particular ones
+   were chosen so that no two capsules anywhere share an x: a sweep of four
+   at full width sits at 143 and 48 from the middle, and a sweep of four at
+   three quarters sits at 107 and 36, which interleave rather than stack. */
+var ARC_SIZES={2:[2],3:[3],4:[4],5:[5],6:[4,2],7:[4,3],8:[4,4],9:[5,4],10:[5,4,1]};
 function arcRanks(n,per){
-  var k=Math.max(1,Math.ceil(n/per)),out=[],base=Math.floor(n/k),extra=n%k,i;
+  var s=ARC_SIZES[n],i,ok=!!s;
+  if(ok)for(i=0;i<s.length;i++)if(s[i]>per)ok=false;
+  if(ok)return s.slice();
+  /* A board too narrow for the table - a 320px phone holds four, not five -
+     or a count the drawer should not be able to produce. Even split. */
+  var k=Math.max(1,Math.ceil(n/per)),out=[],base=Math.floor(n/k),extra=n%k;
   for(i=0;i<k;i++)out[i]=base+(i<extra?1:0);
   return out;
 }
@@ -22073,15 +22087,21 @@ function arcPlan(n,W,H){
   if(!(W>0))W=356;
   if(!(H>0))H=118;
   var ranks=arcRanks(n,arcFit(W)),at=[],prev=[],k=0,r,i,j,bottom=0;
-  /* x is a percentage because the board's width is the phone's business,
-     and the outermost centre is exactly half a capsule in from the edge so
-     the sweep ends flush rather than wasting the corners. */
-  var edge=50*ARC_W/W;
+  /* x is a percentage because the board's width is the phone's business.
+     The widest sweep's outermost centre is exactly half a capsule in from
+     the edge, so it ends flush rather than wasting the corners; the sweeps
+     below it come in from there. */
+  var base=arcDepth(ranks[0],W);
   for(r=0;r<ranks.length;r++){
-    var m=ranks[r],depth=arcDepth(m,W),cur=[],y0=0;
+    var m=ranks[r],half=arcHalf(W,r),cur=[],y0=0;
+    /* Concentric, not merely similar. A parabola's curvature at its lowest
+       point is depth/half^2, so holding the family together means the depth
+       follows the SQUARE of the width. Linear would have flattened each
+       lower sweep against the one above it. */
+    var depth=(r===0)?base:Math.round(base*Math.pow(ARC_TAPER,2*r));
     for(i=0;i<m;i++){
       var t=(m===1)?0:((i-(m-1)/2)/((m-1)/2));
-      cur[i]={x:(m===1)?50:(edge+(100-2*edge)*(i/(m-1))),dy:Math.round(depth*(1-t*t)),y:0};
+      cur[i]={x:50+100*t*half/W,dy:Math.round(depth*(1-t*t)),y:0};
     }
     /* WHERE THIS SWEEP STARTS IS SOLVED, NOT ASSUMED. The sweep continues
        while the one above it is still coming down - that is what makes the
