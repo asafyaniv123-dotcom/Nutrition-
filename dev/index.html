@@ -1762,7 +1762,11 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
    Every shadow here is warm grey and diffuse rather than black and tight -
    two wide ones for the float, one hairline for the contact, and a white
    inset along the top edge for the lit rim. */
-.home-board{width:100%;max-width:460px;border-radius:32px;padding:30px 8px 34px;background:linear-gradient(172deg,#eef4f7 0%,#e7eff2 48%,#dfe9ed 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -14px 28px -18px rgba(116,132,142,.3),0 12px 34px -16px rgba(116,132,142,.42)}
+/* The screen indents everything by 20 a side, which is right for the
+   greeting and the day card and wrong for this: forty pixels is exactly
+   the difference between five capsules in a row and four, and four means a
+   third row and a column down the middle. It steps back out. */
+.home-board{width:calc(100% + 40px);margin-inline:-20px;max-width:460px;border-radius:32px;padding:30px 8px 34px;background:linear-gradient(172deg,#eef4f7 0%,#e7eff2 48%,#dfe9ed 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -14px 28px -18px rgba(116,132,142,.3),0 12px 34px -16px rgba(116,132,142,.42)}
 
 .hhero{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:176px;height:176px;margin:4px auto 0;border:none;border-radius:50%;cursor:pointer;font-family:inherit;text-align:center;padding:0 26px;background:linear-gradient(174deg,#fcfaf7 0%,#f7f4ef 44%,#eeebe4 100%);box-shadow:inset 0 4px 5px rgba(255,255,255,.95),inset 0 -12px 20px -8px rgba(172,163,150,.34),0 3px 5px rgba(140,130,118,.28),0 18px 28px -8px rgba(140,130,118,.42),0 40px 58px -14px rgba(136,126,114,.38),0 76px 104px -30px rgba(132,122,110,.34)}
 .hhero:active{transform:scale(.975)}
@@ -22074,26 +22078,54 @@ function arcRanks(n,per){
 function arcPlan(n,W,H){
   if(!(W>0))W=398;
   if(!(H>0))H=118;
-  var ranks=arcRanks(n,arcPerRow(W)),at=[],k=0,r,i,bottom=0;
+  var ranks=arcRanks(n,arcPerRow(W)),at=[],prev=[],k=0,r,i,j,bottom=0;
   /* Every row is centred and spans the full width, so the step is whatever
      is left after the capsules - never less than the capsule itself, which
      is what "not touching" means. */
   for(r=0;r<ranks.length;r++){
-    var m=ranks[r],step=(m>1)?(W-ARC_W)/(m-1):0;
-    /* THE ROW PITCH FOLLOWS THE MEASURED HEIGHT, not a number tuned to it.
-       Every row carries the same valley, so two capsules sharing an x are
-       exactly one pitch apart and the gap between them is pitch minus the
-       capsule. Written as a constant it was 128, which is 118 and ten - right
-       in Hebrew and wrong in German, where the wording is longer and the
-       capsule is 140. Five overlaps in German and five in Japanese, found by
-       the test rather than by me. */
-    var y0=ARC_BASE+r*(H+ARC_PITCH);
+    /* Two rows of the SAME count at the SAME width land on the same x
+       positions, which is a column however the rows are stepped. A repeat
+       comes in so the two interleave. Ten on a 414 phone is five and five
+       and never reaches this; ten on a 360 is four, three and three, and
+       the two threes would otherwise stack. */
+    var m=ranks[r],span=(W-ARC_W);
+    /* Bringing a row in is what stops it landing on the row above's x
+       positions - but a row brought in has less room for ITSELF, and a row of
+       five narrowed by a quarter puts 61 between capsules that are 70 wide.
+       Eight overlaps, which the test caught the moment I tried it. So the
+       inset is offered and taken only when the row still fits: a phone wide
+       enough for five never needs it, and a narrower one where ten becomes
+       four, three and three does. */
+    if(r%2){
+      var tryS=span*0.74;
+      if(m<2||tryS/(m-1)>=ARC_W+6)span=tryS;
+    }
+    var step=(m>1)?span/(m-1):0;
+    /* WHERE THE ROW STARTS IS SOLVED AGAINST THE ROW ABOVE, pair by pair,
+       over exactly the capsules whose x ranges overlap. A FIXED pitch is only
+       right when the two rows are identical: every row carries the same
+       valley, so two capsules sharing an x stay one pitch apart - but a row of
+       four above a row of three does not share x with it, and the four's
+       DEEPEST capsule hangs 39 below its own base, 29 into the three's top
+       row. Two overlaps on every phone narrower than 390. A constant cannot
+       know that; this can. */
+    var cur=[],y0=0;
     for(i=0;i<m;i++){
       var t=(m===1)?0:((i-(m-1)/2)/((m-1)/2));
-      var y=y0+Math.round(ARC_DEPTH*(1-t*t));
-      at[k++]={x:50+100*(i-(m-1)/2)*step/W,y:y};
-      if(y+H>bottom)bottom=y+H;
+      cur[i]={x:50+100*(i-(m-1)/2)*step/W,dy:Math.round(ARC_DEPTH*(1-t*t))};
     }
+    if(!prev.length)y0=ARC_BASE;
+    else for(i=0;i<cur.length;i++)for(j=0;j<prev.length;j++){
+      if(Math.abs(cur[i].x-prev[j].x)/100*W>=ARC_W-0.5)continue;
+      var need=prev[j].y+H+ARC_PITCH-cur[i].dy;
+      if(need>y0)y0=need;
+    }
+    for(i=0;i<cur.length;i++){
+      cur[i].y=y0+cur[i].dy;
+      at[k++]={x:cur[i].x,y:cur[i].y};
+      if(cur[i].y+H>bottom)bottom=cur[i].y+H;
+    }
+    prev=cur;
   }
   return {at:at,height:bottom};
 }
