@@ -21924,12 +21924,38 @@ function renderHomeGrid(){
      tick and cannot be turned off, so this is unreachable today - but the
      grid stays as the fallback rather than as a second design to maintain. */
   g.className='home-grid'+(hub?' lay-orbit':'');
+  /* The orbit sets an inline width from the ring it needs; clear it first so
+     the fallback grid never inherits the last ring's size. */
+  g.style.width='';
   var h='';
 
   if(hub){
-    /* 78px satellites on a ring inside 380px: ten of them sit 86px apart
-       centre to centre, so they very nearly touch. */
-    var R=38;
+    /* ── HOW BIG THE RING HAS TO BE ──
+       A fixed 38% of a fixed 380px board was right for ten areas and wrong at
+       both ends. With two areas turned on, the pair landed at the very top
+       and the very bottom - measured, both at x=190 in a 380 square, 288px
+       apart with the whole width of the board empty between them, reading as
+       a stack rather than a constellation. With eleven the gaps fell to 3px.
+
+       So the ring asks for the radius it actually needs and the board follows
+       it. Two things set that radius: it has to clear the centre circle, and
+       neighbours must not touch. The board is then just big enough to hold
+       the ring, capped at the 380 a phone can give.
+
+       Measured after, at every count the drawer can reach - ten satellites is
+       the most there can be, because סיום יום is always the centre:
+
+           2 sats  318px board    7 sats  318px, 24px gaps
+           9 sats  337px, 9px    10 sats  364px, 9px
+
+       Anything up to seven now sits on a 318px board rather than a 380 one
+       with the difference left empty. */
+    var ORB=78,GAP=8,CENTRE=138,n=rest.length;
+    var clear=CENTRE/2+ORB/2+GAP;
+    var need=(n>1)?(ORB+GAP)/(2*Math.sin(Math.PI/n)):0;
+    var boardPx=Math.min(380,2*(Math.max(clear,need)+ORB/2)+8);
+    var R=((boardPx-ORB)/2-2)/boardPx*100;
+    g.style.width=Math.round(boardPx)+'px';
     for(i=0;i<rest.length;i++){
       var p=orbPos(i,rest.length,R);
       h+=homeCardHTML(rest[i],'orb').replace('<button class="home-card orb',
