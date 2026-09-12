@@ -6,6 +6,63 @@ section — git already keeps that.
 
 ---
 
+## The seven that were waiting on him — all answered (2026-09-12)
+
+They had been blocking a release for days. Four need building; three cost
+nothing because the answer was to leave things alone.
+
+| | Answer | Work |
+|---|---|---|
+| The question bank | **Remembered**, with a small "keep this one" step | yes |
+| The WHO card | **A disclosure** — folded away, opened when wanted | yes |
+| The fitness chart | **Both** — e1RM and the heaviest weight | yes |
+| `שישי` → `יום שישי` | **Accept.** It is what the phone calls that day | none |
+| The board's reading order | **Leave it.** He is used to where things are | none |
+| The board's panel | **Keep the panel** | none |
+| Start with a shadow pass | Moot — the design work happened and carried its own | none |
+
+### The bank: what "remembered" costs
+
+A question you add stays. Which means two things that are not optional:
+
+- **Adding is not the same as answering.** He chose the version where you
+  answer it tonight and are then asked whether to keep it. Touching a card out
+  of curiosity must not sign you up to that question every night forever —
+  that is the exact shape of an app that feels like a task, and this module
+  exists to not be one.
+- **There has to be a way to drop one.** If questions accumulate and nothing
+  removes them, the four become nine and we are back where we started. The
+  natural home is the "מה נכנס לסיכום היום" sheet that already exists.
+
+### The WHO card: folded, not gone
+
+Built and working — driven with white bread at 100g, which reads sodium 450mg
+against 2,000 and fibre 1.6g against 25, the ministry's own row. Two bars
+rather than one score, so neither hides the other.
+
+His judgement: it should not be in front of the eyes every day, but a person
+who wants it should be able to open it. Same principle as the summary page —
+the screen shows what you are actually looking for.
+
+### The chart: both lines
+
+The heaviest weight is honest and flat when you add reps instead of load; e1RM
+moves when the work does. `e1rm()` already exists. Two lines or a toggle, and
+the axis has to stay readable either way.
+
+### The panel: settled by looking, not by arguing
+
+I described this badly twice, so it was shown instead: the board rendered with
+its panel removed and the light colour taken to the full screen, at midday and
+at night. What the night frame proved is that the panel is a FEATURE — the
+light board on a dark sky reads as deliberate — and that removing it breaks
+more than a background. `paintSky()` does two jobs at once: it paints the sky
+from one of six phases, and it toggles `body.night`, which **17 CSS rules**
+depend on. Take the sky away and either the whole night theme goes with it or
+the tab bar stays dark under a light screen.
+
+---
+
 ## The day summary is a page, not a feed (2026-09-12)
 
 Asaf, with a photograph of a bullet-journal spread as the reference:
