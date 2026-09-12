@@ -52,11 +52,24 @@ const DFMT_DAY = /weekday|day\s*:|month|year/;
 
 const hits = [];
 
-/* ── shape one: handed straight to a day helper ── */
+/* ── shape one: handed straight to a day helper ──
+   The Date need not be EMPTY. `wkStamp(new Date(Date.now()+86400000))` is the
+   planning module's "tomorrow", and it was invisible to this check for as long
+   as the check only looked for `new Date()` with nothing between the brackets
+   - so at 01:30 the day board opened the day after tomorrow and the word מחר
+   landed on the wrong one. What matters is where the milliseconds came from:
+   nothing, or `Date.now()`, is the raw clock however much arithmetic is done
+   to it afterwards. `new Date(someStoredDayKey)` is not - that number was
+   already an app day when it was written down. */
+const FROM_CLOCK = /^\s*$|Date\.now\s*\(\s*\)|new Date\s*\(\s*\)/;
 for (const fn of DAY_FN) {
-  const re = new RegExp('\\b' + fn + '\\s*\\(\\s*new Date\\(\\)\\s*\\)', 'g');
+  const re = new RegExp('\\b' + fn + '\\s*\\(\\s*new Date\\(((?:[^()]|\\([^()]*\\))*)\\)\\s*[,)]', 'g');
   for (const m of app.matchAll(re))
-    hits.push({ line: app.slice(0, m.index).split(LF).length, why: fn + '(new Date())' });
+    if (FROM_CLOCK.test(m[1]))
+      hits.push({
+        line: app.slice(0, m.index).split(LF).length,
+        why: fn + '(new Date(' + (m[1].trim() ? m[1].trim() : '') + '))',
+      });
 }
 
 /* ── shape two: kept in a variable, then asked a day question ──
