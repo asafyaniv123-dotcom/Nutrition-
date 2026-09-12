@@ -145,7 +145,7 @@ the rest.
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
 
-**Eight checks are tools rather than prose**, and all should only ever go down:
+**Nine checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments
     node tools/find-translated-data.mjs        # _t() results used as data, not shown
@@ -156,7 +156,24 @@ translation falls back to readable text rather than to `fitness.set.add`.
                                                # which no language file can reveal
     node tools/find-duplicate-options.mjs      # two choices wearing the same label,
                                                # or disagreeing about capitals
+    node tools/find-raw-clock-days.mjs         # a DAY decided from new Date(),
+                                               # which does not know the day ends at 04:00
     node tools/build-lang-template.mjs --check # the template still matches the app
+
+The newest one has the same shape as the units check and the same origin. This
+app's day ends at **04:00**: `appNow()`, `todayStr()` and `dayShift()` carry
+that rollover and `new Date()` does not, so between midnight and four every
+raw-clock day decision is a day ahead of the day the person is still living
+in — while everything they log is filed under the app's day. Seventeen of them
+had accumulated, and the home card was printing *היום* over tomorrow's date
+with today's schedule underneath it.
+
+It needs no allow-list, which is the point, because the app genuinely does want
+the wall clock in several places. What it reads is the QUESTION being asked:
+`getHours` is a clock question, `getDate`/`getMonth`/`getFullYear`, a floor to
+midnight, or a date handed to `dfmt` is a DAY question. A variable answering
+both — the home card read its date for the header and its minutes for the
+progress bar — is reported, and splitting it is the fix.
 
 `tools/test-background-fill.mjs` is a seventh, of a different kind: it lifts
 the closet's background flood fill out of the shipped file and runs it against

@@ -2049,7 +2049,10 @@ function profileAge(birth){
   if(!birth)return null;
   var b=new Date(birth+'T00:00:00');
   if(isNaN(b))return null;
-  var n=new Date(),a=n.getFullYear()-b.getFullYear();
+  /* appNow, so the age turns over when the app's day does. Between
+     midnight and four on a birthday every other date on this screen
+     still says yesterday, and the age has to agree with them. */
+  var n=appNow(),a=n.getFullYear()-b.getFullYear();
   var m=n.getMonth()-b.getMonth();
   if(m<0||(m===0&&n.getDate()<b.getDate()))a--;
   return (a>=0&&a<130)?a:null;
@@ -2252,7 +2255,7 @@ var DAY_ENDS_AT=4;
 var curDate=todayStr(),curTab='today',manOpen=false,libOpen=false,compOpen=false,compCat='breakfast';
 var pendingLib=null,toastTimer,saveToLib=false;
 var builderCat='breakfast',builderName='',builderIngs=[],builderPickOpen=false;
-var interviewStep=-1,interviewAnswers={},calMonth=new Date();
+var interviewStep=-1,interviewAnswers={},calMonth=appNow();
 
 /* ── WHAT DAY IT IS ──
    This used to be toISOString().slice(0,10), which is the UTC date. At UTC+3
@@ -7441,7 +7444,7 @@ function renderHistory(){
     chartCard='<div class="card"><div class="cttl">'+_t('גרעון אמיתי יומי')+'</div>'+(dp.length>0?makeSVG([{pts:dp,col:PAL.green500}],[{v:500,col:PAL.amber500,lbl:''+_t('מינימום')+''}],0,maxD,150):'<div style="font-size:12px;color:var(--muted);padding:24px;text-align:center">'+_t('הזן צעדים בסיכום יום')+'</div>')+'</div>';
   } else {
     // Cumulative — use full current month
-    var now2=new Date();var y2=now2.getFullYear(),mo2=now2.getMonth();
+    var now2=appNow();var y2=now2.getFullYear(),mo2=now2.getMonth();
     var daysInMo=new Date(y2,mo2+1,0).getDate();
     var cum=0;var cp2=[];
     for(var mi=1;mi<=daysInMo;mi++){
@@ -9012,7 +9015,7 @@ function fitLastSession(){
   if(!last||!last.date)return null;
   /* Whole days apart on the calendar, not hours divided by 24: training at
      23:00 and again at 07:00 is yesterday and today, not "0 days ago". */
-  var a=new Date(last.date),b=new Date();
+  var a=new Date(last.date),b=appNow();
   a.setHours(0,0,0,0);b.setHours(0,0,0,0);
   var days=Math.round((b-a)/86400000);
   return {name:String(last.name||''),days:days};
@@ -10966,7 +10969,7 @@ function closetWornOn(d){
    back out of the worn records, so it is true from whenever you started
    pressing the button rather than from when this was written. */
 function closetWearCounts(){
-  var out={},d=new Date(),i;
+  var out={},d=appNow(),i;
   for(i=0;i<30;i++){
     var rec=closetWornOn(dtStamp(d));
     if(rec&&rec.items)for(var k in rec.items)
@@ -14885,9 +14888,9 @@ function wkIn(tasks,date,slot){
 }
 
 function planWeekHTML(){
-  if(!_wkSun)_wkSun=weekSunday(new Date());
+  if(!_wkSun)_wkSun=weekSunday(appNow());
   var wk=loadWeek(_wkSun),i,j,t;
-  var today=wkStamp(new Date()),thisWeek=wkStamp(weekSunday(new Date()))===wkStamp(_wkSun);
+  var today=wkStamp(appNow()),thisWeek=wkStamp(weekSunday(appNow()))===wkStamp(_wkSun);
 
   var h='<div style="padding-bottom:30px">';
 
@@ -15730,7 +15733,7 @@ function dpNotesFor(date,hour){
 function dpNowLine(){
   var old=document.querySelector('.dp-now');
   if(old)old.remove();
-  if(_dpDate!==wkStamp(new Date()))return;
+  if(_dpDate!==wkStamp(appNow()))return;
   var now=new Date(),hr=now.getHours();
   if(hr<DP_FROM||hr>DP_TO)return;
   var row=document.querySelector('.dp-row[data-hrow="'+hr+'"]');
@@ -15751,9 +15754,9 @@ function dpNowStart(){
   },60000);
 }
 function planDayHTML(){
-  if(!_dpDate)_dpDate=wkStamp(new Date());
+  if(!_dpDate)_dpDate=wkStamp(appNow());
   var d=new Date(_dpDate+'T12:00:00'),all=dpAll(_dpDate),i,h,t;
-  var isToday=_dpDate===wkStamp(new Date());
+  var isToday=_dpDate===wkStamp(appNow());
 
   var out='<div style="padding-bottom:30px">';
 
@@ -16725,12 +16728,12 @@ function moPlaceSpans(){
 }
 
 function planMonthHTML(){
-  if(!_moMonth)_moMonth=moFirst(new Date());
+  if(!_moMonth)_moMonth=moFirst(appNow());
   var mo=loadMonth(_moMonth),i,t;
   var wkCache={};                       // one loadWeek per week the month touches
   var year=_moMonth.getFullYear(),mi=_moMonth.getMonth();
   var first=new Date(year,mi,1,12),days=new Date(year,mi+1,0).getDate();
-  var lead=first.getDay(),today=wkStamp(new Date());
+  var lead=first.getDay(),today=wkStamp(appNow());
 
   var h='<div style="padding-bottom:30px">';
 
@@ -18598,7 +18601,7 @@ function renderPeopleHome(){
     }
 
     // Upcoming dates
-    var now=new Date();var upcoming=[];
+    var now=appNow();var upcoming=[];
     for(var pi2=0;pi2<people.length;pi2++){
       var p2=people[pi2];
       var dates2=p2.importantDates||[];
@@ -22382,7 +22385,10 @@ function streakHTML(){
 function streakOpen(){
   var old=document.getElementById('stk-ov');if(old)old.remove();
   var s=streakNow(),stats=streakStats(),best=stats.best;
-  var days='',d=new Date(),i,names=[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''];
+  /* appNow, like streakNow and streakStats beside it. On the raw clock
+     the strip marked tomorrow as "now" and left the day the streak had
+     just counted unmarked one cell to its left. */
+  var days='',d=appNow(),i,names=[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''];
   var cells=[];
   for(i=0;i<14;i++){
     var st=dtStamp(d),on=didSomething(st);
@@ -22439,6 +22445,11 @@ function renderHomeToday(){
   renderGreeting();
   var el=document.getElementById('home-today');
   if(!el)return;
+  /* d is the WALL clock and stays one - the progress bar below measures
+     how far into the real hours the day has come. The date printed in
+     the header asks a different question and asks appNow instead: this
+     card used to say "today" above the 12th while its own schedule and
+     notes were read from todayStr(), the 11th. */
   var date=todayStr(),d=new Date();
   var mins=d.getHours()*60+d.getMinutes();
   var from=DP_FROM*60,to=(DP_TO+1)*60;
@@ -22452,7 +22463,7 @@ function renderHomeToday(){
   var h='<button class="td-card" onclick="enterModule(&quot;planning&quot;)">';
   h+='<div class="td-top">';
   h+='<div class="td-word">'+_t('היום')+'</div>';
-  h+='<div class="td-when">'+dfmt(d,{weekday:'long',day:'numeric',month:'long'})+
+  h+='<div class="td-when">'+dfmt(appNow(),{weekday:'long',day:'numeric',month:'long'})+
      ' <span class="td-clock">'+nowTodayHM()+'</span></div>';
   h+='</div>';
   h+='<div class="td-bar"><div class="td-fill" style="width:'+pct.toFixed(1)+'%"></div>'+
@@ -22532,7 +22543,7 @@ function openJournalTab(){
 function homeDatePaint(){
   var el=document.getElementById("home-date");
   if(!el)return;
-  var d=new Date();
+  var d=appNow();
   el.textContent=dfmt(d,{weekday:'long',day:'numeric',month:'long'});
 }
 function tbSync(){

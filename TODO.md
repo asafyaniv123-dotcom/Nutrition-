@@ -3875,3 +3875,67 @@ Arabic Me screen after: **zero** Latin digits, `٠ / يومًا أغلقته م�
 value glued in FRONT of a whole-sentence key. It catches the pair shape and
 the lone fragment; this one is a bare expression against a key that already
 has a hole. Worth teaching it, against this revision as the proof.
+
+## The day ends at four, and seventeen places had not heard
+
+Caught with the REAL clock, no stub: it was 03:03 on Saturday the 12th and
+the app’s day was Friday the 11th. Between midnight and four every one of
+these reproduces for free, which is the cheapest test window there is.
+
+The sharpest was the home card:
+
+    היום        יום שבת, 12 בספטמבר        02:58
+
+The word **today**, the date of a different day, and — underneath it — a
+schedule and a notes list read from `todayStr()`, the 11th. One card
+contradicting itself.
+
+And the streak strip marked **tomorrow** as "now" while `streakNow()` beside
+it, which already used `appNow()`, had counted the 11th — so the day the
+streak was built on sat unmarked one cell to the left.
+
+### A check, not seventeen fixes
+
+`tools/find-raw-clock-days.mjs`. **17 before, 0 after**, proved against the
+revision that had them.
+
+It needs no allow-list — the app genuinely wants the wall clock in several
+places and reads it correctly there. What it reads is the QUESTION:
+
+    getHours / getMinutes / getTime          a clock question
+    getDate / getMonth / getFullYear         a DAY question
+    dtStamp / wkStamp / moFirst / dayShift   a DAY question
+    setHours(0,0,0,0)                        flooring to a day
+    dfmt(d, {weekday|day|month|year})        printing a day
+
+Five correct wall-clock reads stay silent: `fmtTime` and `nowHHMM`, which
+their own comments say are compared as strings; the now-line’s hour; the
+progress bar’s minutes; and the home clock.
+
+Two narrowings, each from a false positive on its first run. Anchoring on
+the `var` keyword missed every binding that came after a comma — four real
+findings, the home card among them. And treating any unindented line as
+top-level caught one-line functions, whose locals it then hunted through the
+whole file; the line has to OPEN with the declaration.
+
+### One variable answering two questions
+
+`renderHomeToday` read the same Date for the header date and for the
+progress bar’s minutes. The hour half was right and the day half was wrong,
+so the fix is to split it rather than to swap it — the bar still measures
+real hours, and only the printed date asks `appNow()`.
+
+### Driven after, all six signed-off modules
+
+    home card       יום שישי, 11 בספטמבר · 03:03   date app-day, clock wall
+    weekly plan     wk-hcell today :: שישי 11.9
+    month grid      mo-cell today :: 11
+    day planner     _dpDate = 2026-09-11
+    streak strip    now cell = ו11, agreeing with streakNow()
+    cumulative      גרעון מצטבר — ספטמבר 2026
+
+### The age, deliberately moved too
+
+Between midnight and four on a birthday the profile now keeps yesterday’s
+age. That is right rather than wrong: on that same screen every other date
+still says yesterday, and the app has one definition of today.
