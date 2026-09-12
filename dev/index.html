@@ -6940,9 +6940,24 @@ function addManual(){
 }
 function deleteMeal(id){var d=loadDay(curDate);d.meals=d.meals.filter(function(m){return m.id!==id;});saveDay(curDate,d);render();}
 
+/* What each bar was last painted at, for the life of the tab. A bar is
+   BORN here rather than at zero, so the transition carries it from where
+   it was to where it is - the difference between moving and replaying. */
+var _barLast={};
+function barBorn(key,val){
+  /* Nothing to animate from on the first paint of a session, so it is born
+     at the truth. Watching five bars grow from empty every time the tab
+     opens is the same noise in a friendlier costume. */
+  var was=_barLast[key];
+  return (was===undefined?val:was);
+}
 function animateBars(){requestAnimationFrame(function(){requestAnimationFrame(function(){
-  document.querySelectorAll('.macro-fill[data-h]').forEach(function(el){el.style.height=el.getAttribute('data-h')+'%';});
-  var wf=document.querySelector('.wf[data-w]');if(wf)wf.style.width=wf.getAttribute('data-w')+'%';
+  document.querySelectorAll('.macro-fill[data-h]').forEach(function(el){
+    el.style.height=el.getAttribute('data-h')+'%';
+    _barLast[el.getAttribute('data-k')]=+el.getAttribute('data-h');
+  });
+  var wf=document.querySelector('.wf[data-w]');
+  if(wf){wf.style.width=wf.getAttribute('data-w')+'%';_barLast.water=+wf.getAttribute('data-w');}
 });});}
 
 function starSelect(n){interviewAnswers[QUESTIONS[interviewStep].id]=n;document.querySelectorAll('.star-btn').forEach(function(b,i){b.classList.toggle('sel',i<n);});}
@@ -7105,12 +7120,12 @@ function renderToday(){
       _t('יעד התחלתי. מלא פרטים בפרופיל ואחשב אותו לפיך')+'</button>';
   macroHTML+='<div class="macro-bars">';
   var mb=[{v:nfmt(kcal),pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:fmtGrams(p),pct:pp,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:fmtGrams(c),pct:cp,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:fmtGrams(f),pct:fp,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
-  for(var bi=0;bi<mb.length;bi++){var b=mb[bi];macroHTML+='<div class="macro-col"><div class="macro-pct">'+nfmt(b.pct)+'%</div><div class="macro-track"><div class="macro-fill" data-h="'+b.pct+'" style="background:'+b.g+'"></div></div><div class="macro-val" style="color:'+b.col+'">'+b.v+'</div><div class="macro-lbl">'+b.lbl+'</div></div>';}
+  for(var bi=0;bi<mb.length;bi++){var b=mb[bi];macroHTML+='<div class="macro-col"><div class="macro-pct">'+nfmt(b.pct)+'%</div><div class="macro-track"><div class="macro-fill" data-k="m'+bi+'" data-h="'+b.pct+'" style="height:'+barBorn('m'+bi,b.pct)+'%;background:'+b.g+'"></div></div><div class="macro-val" style="color:'+b.col+'">'+b.v+'</div><div class="macro-lbl">'+b.lbl+'</div></div>';}
   macroHTML+='</div></div>';
 
   var pillsHTML='<div class="pills"><div class="pill"><div class="pill-val" style="color:var(--violet-500)">'+nfmt(TARGETS.kcal-kcal)+'</div><div class="pill-lbl">'+_t('קק"ל נותרו')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--terra-500)">'+fmtGrams(r2(TARGETS.p-p))+'</div><div class="pill-lbl">'+_t('חלבון נותר')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--amber-500)">'+fmtGrams(r2(TARGETS.f-f))+'</div><div class="pill-lbl">'+_t('שומן נותר')+'</div></div></div>';
 
-  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; '+_t('מים')+'</span><span class="wn">'+nfmt(toDisplayVolume(water),{maximumFractionDigits:0})+' / '+fmtVolume(TARGETS.water)+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'"></div></div><div class="wbtns">';
+  var waterHTML='<div class="wcard"><div class="whd"><span class="wt">&#x1F4A7; '+_t('מים')+'</span><span class="wn">'+nfmt(toDisplayVolume(water),{maximumFractionDigits:0})+' / '+fmtVolume(TARGETS.water)+'</span></div><div class="wb"><div class="wf" data-w="'+wp+'" style="width:'+barBorn('water',wp)+'%"></div></div><div class="wbtns">';
   var _wa=waterAdds(),_wi;
   for(_wi=0;_wi<_wa.length;_wi++)
     waterHTML+='<button class="wadd" onclick="addWater('+_wa[_wi]+')">+'+fmtVolume(_wa[_wi])+'</button>';
