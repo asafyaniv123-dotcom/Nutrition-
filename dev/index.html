@@ -367,6 +367,13 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragi
 .mtgr{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
 .mtfl{font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px;text-align:center}
 .mtnm{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:7px 4px;font-size:13px;text-align:center;outline:none}
+/* ── EFFORT, TAPPED ── ten of them across the width of one box, so the row
+   sits where the number field sat and needs no keyboard. It scrolls rather
+   than shrinking below a thumb: at 1 to 10 they fit, and RIR's 0 to 9 fit
+   more easily, but a narrow phone must never make them unhittable. */
+.rpe-row{display:flex;gap:3px;overflow-x:auto;padding-bottom:2px}
+.rpe-b{flex:1 0 auto;min-width:26px;min-height:32px;border:1.5px solid var(--line);background:var(--card);border-radius:8px;font:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;padding:0}
+.rpe-b.on{background:var(--terra-500);border-color:var(--terra-500);color:var(--white)}
 .addbtn{width:100%;background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:11px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)}
 .lib-save-btn{width:100%;background:linear-gradient(135deg,var(--violet-100),var(--green-50));border:none;border-radius:11px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-500);margin-bottom:8px}
 .lib-save-btn.saved{background:linear-gradient(135deg,var(--green-200),var(--green-500));color:var(--white)}
@@ -1525,7 +1532,11 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 @keyframes reveal-ltr{0%{clip-path:inset(0 100% 0 0)}100%{clip-path:inset(0 0% 0 0)}}
 @keyframes dot-in{0%{opacity:0;transform:scale(.5)}100%{opacity:1;transform:scale(1)}}
 @keyframes splash-fade-out{0%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
-.toast{position:fixed;bottom:90px;inset-inline-end:50%;transform:translateX(-50%);background:rgba(74,67,64,.9);color:var(--white);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:100;pointer-events:none}
+/* Above the rest timer, which .fw-rest puts at bottom:96 with z-index:200
+   and which starts on the very same tap that raises a PR toast. At z-index
+   100 the best message this app has was drawn underneath it every time. */
+body:has(.fw-rest) .toast{bottom:calc(152px + env(safe-area-inset-bottom))}
+.toast{position:fixed;bottom:90px;inset-inline-end:50%;transform:translateX(-50%);background:rgba(74,67,64,.9);color:var(--white);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:300;pointer-events:none}
 
 /* HOME SCREEN */
 .home{position:relative;min-height:100vh;background:linear-gradient(160deg,var(--line) 0%,var(--violet-200) 100%);display:flex;flex-direction:column;align-items:center;padding:60px 20px 40px}
@@ -8406,6 +8417,19 @@ function plateInk(p){return (p===5||p===1.25)?'#4a443f':'#fff';}
 /* Greedy is correct here rather than merely convenient: gym plates are chosen
    so that each is at least the sum of nothing smaller it could replace, and a
    lifter loads heaviest-first anyway. */
+/* "10 + 5 + 5" makes a person count discs while holding a bar. Grouped,
+   it reads the way the rack is loaded and the way a lifter says it out
+   loud: one ten and two fives. Order is preserved - plateSplit already
+   walks heaviest first - so the line still reads outside-in. */
+function plateGroups(plates){
+  var out=[],i;
+  for(i=0;i<plates.length;i++){
+    var last=out[out.length-1];
+    if(last&&last.p===plates[i])last.n++;
+    else out.push({p:plates[i],n:1});
+  }
+  return out;
+}
 function plateSplit(total,bar){
   var perSide=(total-bar)/2;
   if(!(perSide>0))return {plates:[],left:Math.max(0,perSide)};
@@ -8624,7 +8648,8 @@ function plateVisualHTML(){
       _t('פחות מהמוט לבדו')+'</div>'+sw+barSwitchHTML(kind)+'</div></div>';
   var r=plateSplit(total,bar);
   var msg=!r.plates.length?_t('המוט לבדו')
-    :_t('לכל צד')+': '+r.plates.map(function(p){return nfmt(p);}).join(' + ')+' '+unit;
+    :_t('לכל צד')+': '+plateGroups(r.plates).map(function(g){
+      return g.n>1?nfmt(g.n)+'\u00d7'+nfmt(g.p):nfmt(g.p);}).join(' + ')+' '+unit;
   if(r.left>0)msg+=' \u00b7 <span class="pl-l">+'+nfmt(r.left)+' '+_t('לא ניתן להרכבה')+'</span>';
   return '<div class="pl">'+plateSvg(r.plates,bar,r.left)+
     '<div class="pl-x"><div class="pl-m">'+msg+'</div>'+sw+barSwitchHTML(kind)+'</div></div>';
@@ -8645,6 +8670,11 @@ function plateHint(){
   var box=document.getElementById('fit-plates');
   if(box)box.innerHTML=plateVisualHTML();
 }
+/* Which effort was tapped for the set being entered, or null. Screen
+   state, not workout state: it belongs to the set you have not logged
+   yet, so it is cleared the moment that set goes in. */
+var _fitRpe=null;
+function rpePick(v){_fitRpe=(_fitRpe===v)?null:v;renderFitness();}
 function toggleWarm(){_fitWarm=!_fitWarm;renderFitness();}
 function removeWarm(idx){
   if(!_fitWorkout)return;
@@ -12254,7 +12284,11 @@ function exPrefill(ex){
     return {w:p.w||'',r:p.r||''};
   /* Otherwise: what you actually did on the first set today. It is the most
      recent evidence there is, and it beats last week by a week. */
-  if(n>0&&ex.sets[0])return {w:ex.sets[0].weight,r:ex.sets[0].reps};
+  /* The LAST set, not the first. Going 10 then 15 and being offered 10
+     again is the box arguing with what you just did; the sentence above
+     already says the most recent evidence wins, and the most recent set
+     is the one at the end. */
+  if(n>0&&ex.sets[n-1])return {w:ex.sets[n-1].weight,r:ex.sets[n-1].reps};
   var prev=exLastTime(ex.name);
   if(prev&&prev.sets[n])return {w:prev.sets[n].weight,r:prev.sets[n].reps};
   if(prev&&prev.sets.length)return {w:prev.sets[prev.sets.length-1].weight,r:prev.sets[prev.sets.length-1].reps};
@@ -13079,16 +13113,19 @@ function renderFitWorkout(){
   h+='<div style="font-size:11px;color:var(--terra-500);font-weight:700">'+nfmt(w.currentEx+1)+' / '+nfmt(w.exercises.length)+'</div>';
   h+='</div>';
 
-  // Exercise tabs
-  h+='<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px">';
+  /* ── EXERCISE TABS, DRAWN LAST ──
+     Navigation between exercises rather than part of one, so it belongs
+     under the thumb and not above the work. Assembled here, where the
+     screen is built in order, and appended after the nav buttons. */
+  var tabsHTML='<div style="display:flex;gap:5px;overflow-x:auto;margin-top:14px;padding-bottom:2px">';
   for(var ei=0;ei<w.exercises.length;ei++){
     var done=w.exercises[ei].sets.length>=w.exercises[ei].targetSets;
     var isCur=ei===w.currentEx;
-    h+='<button onclick="_fitWorkout.currentEx='+ei+';renderFitness()" style="flex-shrink:0;border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isCur?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':(done?'var(--green-200)':'var(--surface)'))+';color:'+(isCur||done?'var(--white)':'var(--muted)')+'">'+esc(exLabel(w.exercises[ei].name))+'</button>';
+    tabsHTML+='<button onclick="_fitWorkout.currentEx='+ei+';renderFitness()" style="flex-shrink:0;border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isCur?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':(done?'var(--green-200)':'var(--surface)'))+';color:'+(isCur||done?'var(--white)':'var(--muted)')+'">'+esc(exLabel(w.exercises[ei].name))+'</button>';
   }
   // adding one mid-session: the plan meets the gym more often than not
-  h+='<button onclick="workoutAddExercise()" style="flex-shrink:0;border:1.5px dashed #e0d8ce;background:none;border-radius:10px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;color:var(--muted);font-family:inherit">+</button>';
-  h+='</div>';
+  tabsHTML+='<button onclick="workoutAddExercise()" style="flex-shrink:0;border:1.5px dashed #e0d8ce;background:none;border-radius:10px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;color:var(--muted);font-family:inherit">+</button>';
+  tabsHTML+='</div>';
 
   // Current exercise
   var prKey=ex.name;
@@ -13163,7 +13200,16 @@ function renderFitWorkout(){
      straight at the word that is wrong. */
   var _sc=effortScale();
   h+='<div><button onclick="toggleEffort()" style="background:none;border:none;padding:0 0 3px;margin:0;font:inherit;font-size:9px;color:var(--muted);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px">'+(_sc==='rir'?'RIR':'RPE')+'</button>';
-  h+='<input id="fit-rpe" class="mtnm" type="number" step="0.5" min="'+(_sc==='rir'?'0':'1')+'" max="'+(_sc==='rir'?'9':'10')+'" placeholder="'+_t("רשות")+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
+  /* Ten taps rather than a number field. This value is one of ten and it
+     is optional, and a keyboard sliding up over the set you have just
+     finished is the wrong price for it. Tapping the one that is already
+     lit clears it, because "I did not mean to answer" has to be reachable
+     without a keyboard either. */
+  h+='<div class="rpe-row">';
+  var _lo=(_sc==='rir')?0:1,_hi=(_sc==='rir')?9:10,_v;
+  for(_v=_lo;_v<=_hi;_v++)
+    h+='<button class="rpe-b'+(_fitRpe===_v?' on':'')+'" onclick="rpePick('+_v+')">'+nfmt(_v)+'</button>';
+  h+='</div></div>';
   h+='</div>';
   /* Costs no tap: it is already right for the number the boxes opened on. */
   h+='<div id="fit-plates" style="margin-bottom:9px;min-height:19px"></div>';
@@ -13192,6 +13238,7 @@ function renderFitWorkout(){
     h+='<button onclick="finishWorkout()" style="flex:1;background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('סיים אימון')+' &#10003;</button>';
   }
   h+='</div>';
+  h+=tabsHTML;
   h+=fitPhotoBlockHTML(w.photo,'fitLivePhoto','fitLiveClearPhoto');
   h+='</div>';
   document.getElementById('content').innerHTML=h;
@@ -13226,7 +13273,7 @@ function plateChipsHTML(s){
 }
 function logSet(){
   if(!_fitWorkout)return;
-  var w=document.getElementById('fit-w');var r=document.getElementById('fit-r');var rpeInp=document.getElementById('fit-rpe');
+  var w=document.getElementById('fit-w');var r=document.getElementById('fit-r');
   /* TWO numbers, not one, and the difference is the whole of this function's
      unit handling.
        shown  - what the box says, in whatever unit its label claims
@@ -13243,7 +13290,9 @@ function logSet(){
   var weight=fromDisplayWeight(shown);
   var reps=parseInt(r?r.value:0)||0;
   /* The box may be speaking RIR; the store only ever speaks RPE. */
-  var rpe=rpeInp&&rpeInp.value!==''?effortToRPE(rpeInp.value):null;
+  /* The row holds the reader's own scale - RPE or RIR - exactly as the
+     box did, so it converts the same way. */
+  var rpe=(_fitRpe!==null)?effortToRPE(_fitRpe):null;
   if(!reps)return;
   var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
   if(_fitWarm){
@@ -13252,7 +13301,7 @@ function logSet(){
        the set after a warm-up is nearly always the real one. */
     if(!ex.warm)ex.warm=[];
     ex.warm.push({weight:weight,reps:reps});
-    _fitWarm=false;
+    _fitWarm=false;_fitRpe=null;
     restStart();
     renderFitness();
     return;
@@ -13272,6 +13321,7 @@ function logSet(){
     var _g=ssGroup(_i);
     if(_g.length>1)_fitWorkout.currentEx=_g[0];
   }
+  _fitRpe=null;
   // Update PR
   if(weight>0){
     var prs=loadPRs();var key=ex.name;
