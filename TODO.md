@@ -6,6 +6,60 @@ section — git already keeps that.
 
 ---
 
+## The day summary is a page, not a feed (2026-09-12)
+
+Asaf, with a photograph of a bullet-journal spread as the reference:
+
+> *"סיכום היום מבחינתי צריך להראות כמו עמוד אחד יפה ומסודר שמארגן לעצמו את כל
+> המידע שכתבת בו. בלי צורך לגלול למטה אלא אם כתבת הרבה."*
+
+**What the reference actually does**, which is the part worth copying and not
+the handwriting: a bordered box holds the picture on the LEFT, and the facts
+sit BESIDE it on the right as short unlabelled lines — title, author, pages,
+rating, language, format. A rule under them. Then one date line. Then the prose
+runs the full width underneath. Everything is on one page and the eye takes the
+whole day in a single look.
+
+**What we render today**, counted in the source rather than guessed: FOURTEEN
+stacked `.sm-sec` cards in this order — the weekday strip, the title, mood and
+body stars, הרגע הכי טוב, זרימת היום, תזונה with four bars and water, the
+planned workout, steps, השיר של היום, לאן הלך הזמן with its four rows, הייתי
+עושה אחרת, הכרת תודה, משפט שתפס, יום מוצלח. A stack of fourteen cards IS the
+scroll he is describing. Nothing is wrong with any one of them; the shape is
+wrong.
+
+**The photo is a full-width hero** (`.sm-hero-ph`) with the title under it. He
+wants it boxed on the left with the day's facts beside it.
+
+**And the vlog already exists in there** — `vlogPlayerHTML(vlg)` renders near
+the TOP as a player. He wants it at the BOTTOM, and as an offer to watch rather
+than a player sitting open. That part is small and precise.
+
+### Why this goes BEFORE the freeze rather than into it
+
+The freeze exists to find out whether the workflow is a pleasure. סיום יום is
+the spine of this app — it is the thing the other areas feed. If the page that
+closes the day is a fourteen-card scroll, the freeze week will measure how it
+feels to read a chore, and the answer will be the shape rather than the
+content.
+
+### How to build it without a sixth round
+
+The home board took six rounds today because I built and shipped and asked him
+to react. The lesson was cheap to learn and expensive to ignore: **a static
+preview first, with his own real data in it, before any of it reaches the app.**
+Two or three layouts of the same day, he points at one, then it gets built.
+
+### Open inside this
+
+- Which facts are the "beside the photo" block? The date, the day rating, mood
+  and body are candidates; kcal and steps might be, or might belong lower.
+- What happens on a day with almost nothing in it — the page still has to look
+  composed rather than empty.
+- Eleven languages: a two-column head is the kind of layout German breaks.
+
+---
+
 ## Planning area (2026-09-07)
 
 Four items, all in תכנון זמן.
