@@ -14571,6 +14571,20 @@ function renderRecipeList(){
   document.getElementById('content').innerHTML=h;
 }
 
+/* The servings field is free text, so what reaches the chip could be "4" or
+   "4-6" or "לשניים". A HOLE HOLDING A STRING IS LEFT ALONE by _t, on purpose -
+   fmtWeight and nfmt hand over formatted strings and names must not be touched
+   - so esc() around a plain "4" meant the count never reached a formatter, and
+   an Arabic screen showed "4 حصص" beside its own ٤ everywhere else. Proved in
+   one line: _t('{n} מנות',{n:4}) is "٤ حصص" and {n:'4'} is "4 حصص", and the
+   only difference is the type.
+
+   It hands over a NUMBER when it is one, which also gives Intl.PluralRules a
+   real number to choose the category from, and the escaped text otherwise. */
+function recServings(v){
+  var n=parseFloat(v);
+  return (isFinite(n)&&String(n)===String(v).trim())?n:esc(v);
+}
 function renderViewRecipe(){
   var recipes=loadRecipes();
   var rec=recipes[_recipeIdx];
@@ -14596,7 +14610,7 @@ function renderViewRecipe(){
   if(rec.time||rec.servings||rec.difficulty){
     h+='<div style="display:flex;gap:10px;margin-bottom:16px">';
     if(rec.time)h+='<div style="background:var(--surface);border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--ink-soft)">&#x23F1; '+esc(rec.time)+'</div>';
-    if(rec.servings)h+='<div style="background:var(--surface);border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--ink-soft)">&#x1F37D; '+_t('{n} מנות',{n:esc(rec.servings)})+'</div>';
+    if(rec.servings)h+='<div style="background:var(--surface);border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--ink-soft)">&#x1F37D; '+_t('{n} מנות',{n:recServings(rec.servings)})+'</div>';
     if(rec.difficulty)h+='<div style="background:var(--surface);border-radius:10px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--ink-soft)">'+esc(rec.difficulty)+'</div>';
     h+='</div>';
   }
@@ -14623,7 +14637,7 @@ function renderViewRecipe(){
     for(var si2=0;si2<steps.length;si2++){
       if(!steps[si2].trim())continue;stepNum++;
       h+='<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">';
-      h+='<div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--terra-200),var(--terra-500));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--white);flex-shrink:0;margin-top:1px">'+stepNum+'</div>';
+      h+='<div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--terra-200),var(--terra-500));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--white);flex-shrink:0;margin-top:1px">'+nfmt(stepNum)+'</div>';
       h+='<div style="font-size:13px;color:var(--ink);line-height:1.6;flex:1">'+esc(steps[si2].trim())+'</div>';
       h+='</div>';
     }
