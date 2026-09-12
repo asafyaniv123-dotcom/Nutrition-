@@ -1779,17 +1779,17 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 /* A positioned field rather than a flex wrap: every capsule is PLACED, so
    the composition can be a curve instead of a queue. The negative top is
    what lets the outer capsules ride up beside the circle's lower flanks. */
-.hcards{position:relative;width:100%;margin-top:-60px}
+.hcards{position:relative;width:100%;margin-top:-180px}
 /* A CAPSULE, not a rectangle with a bigger radius: the radius is half the
    element's own width, so the top and bottom are semicircles and there is
    no corner left anywhere. Taller than it is wide by about one to one
    point eight, which is the reference's proportion. */
-.hcard{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:70px;border:none;border-radius:999px;padding:18px 6px;cursor:pointer;font-family:inherit;text-align:center;background:linear-gradient(176deg,#fbf9f5 0%,#f6f3ee 46%,#eae6de 100%);box-shadow:inset 0 3px 4px rgba(255,255,255,1),inset 0 -9px 14px -5px rgba(168,158,144,.4),0 2px 3px rgba(138,128,116,.3),0 9px 14px -3px rgba(138,128,116,.46),0 20px 28px -8px rgba(134,124,112,.42),0 40px 56px -18px rgba(130,120,108,.38)}
+.hcard{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:70px;border:none;border-radius:999px;padding:26px 6px 18px;cursor:pointer;font-family:inherit;text-align:center;background:linear-gradient(176deg,#fbf9f5 0%,#f6f3ee 46%,#eae6de 100%);box-shadow:inset 0 3px 4px rgba(255,255,255,1),inset 0 -9px 14px -5px rgba(168,158,144,.4),0 2px 3px rgba(138,128,116,.3),0 9px 14px -3px rgba(138,128,116,.46),0 20px 28px -8px rgba(134,124,112,.42),0 40px 56px -18px rgba(130,120,108,.38)}
 .hcard:active{transform:scale(.97)}
 /* The raised platform. It has to read as sitting ON the capsule rather
    than in it, so it carries a lit top rim, a shaded lower inside edge and
    two shadows of its own beneath it. */
-.hcard-ic{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:38px;height:38px;border-radius:50%;background:linear-gradient(176deg,#fff 0%,#fffefc 50%,#f9f7f3 100%);box-shadow:inset 0 2px 2px rgba(255,255,255,1),inset 0 -2px 4px rgba(172,163,150,.28),0 1px 2px rgba(142,132,120,.34),0 5px 8px 0 rgba(142,132,120,.36),0 12px 18px -4px rgba(138,128,116,.32)}
+.hcard-ic{position:absolute;top:-19px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;flex-shrink:0;width:38px;height:38px;border-radius:50%;background:linear-gradient(176deg,#fff 0%,#fffefc 50%,#f9f7f3 100%);box-shadow:inset 0 2px 2px rgba(255,255,255,1),inset 0 -2px 4px rgba(172,163,150,.28),0 1px 2px rgba(142,132,120,.34),0 5px 8px 0 rgba(142,132,120,.36),0 12px 18px -4px rgba(138,128,116,.32)}
 .hcard-ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .hcard-t{font-size:9.5px;font-weight:800;color:var(--ink);line-height:1.2;hyphens:auto;overflow-wrap:break-word}
 .hcard-s{font-size:7.5px;color:var(--muted-soft);line-height:1.4;hyphens:auto;overflow-wrap:break-word}
@@ -22044,87 +22044,80 @@ function homeCardHTML(a,cls){
    rank continues onto a second, concentric one - a wider, lower sweep of the
    same curve, starting beside the first one's dip rather than under it, so
    the two read as one spiral wrapping the circle rather than as two rows. */
-var ARC_W=70,ARC_GAP=12,ARC_UP=60,ARC_CLEAR=123;
+var ARC_W=70,ARC_GAP=12,ARC_ICON=19,ARC_CLEAR=123,ARC_HUB_CY=92;
 /* The widest rank this board can hold: neighbouring centres must be at
    least a capsule apart or they touch. Never more than five - beyond that
    the sweep flattens into a row however wide the screen is. */
-function arcFit(W){return Math.max(2,Math.min(5,1+Math.floor((W-ARC_W)/(ARC_W+1))));}
-/* Each sweep is narrower than the one above it, by a quarter each time. */
-var ARC_TAPER=0.75;
-function arcHalf(W,r){return (W-ARC_W)/2*Math.pow(ARC_TAPER,r);}
-/* HOW MANY IN EACH SWEEP. Not an even split - an even split of ten is five
-   and five, and two sweeps of five have the SAME five x positions, so every
-   capsule sits directly above another and the board reads as five columns.
-   The counts step down with the widths instead, and these particular ones
-   were chosen so that no two capsules anywhere share an x: a sweep of four
-   at full width sits at 143 and 48 from the middle, and a sweep of four at
-   three quarters sits at 107 and 36, which interleave rather than stack. */
-var ARC_SIZES={2:[2],3:[3],4:[4],5:[5],6:[4,2],7:[4,3],8:[4,4],9:[5,4],10:[5,4,1]};
-function arcRanks(n,per){
-  var s=ARC_SIZES[n],i,ok=!!s;
-  if(ok)for(i=0;i<s.length;i++)if(s[i]>per)ok=false;
-  if(ok)return s.slice();
-  /* A board too narrow for the table - a 320px phone holds four, not five -
-     or a count the drawer should not be able to produce. Even split. */
-  var k=Math.max(1,Math.ceil(n/per)),out=[],base=Math.floor(n/k),extra=n%k;
-  for(i=0;i<k;i++)out[i]=base+(i<extra?1:0);
-  return out;
+/* Two capsules miss each other when they are a capsule apart ACROSS or a
+   capsule apart DOWN. The second half is the whole reason an arc can climb:
+   on the flanks the x barely changes and the y does all the work, which is
+   why the capsule's HEIGHT and not its width decides how far it can wrap. */
+function arcApart(p,q,H){
+  return Math.abs(p.x-q.x)>=ARC_W+ARC_GAP||Math.abs(p.y-q.y)>=H+ARC_GAP+ARC_ICON;
 }
-/* How far the middle of the sweep has to fall for every capsule that
-   overlaps the circle to clear its bottom edge. Solved, not chosen. */
-function arcDepth(m,W){
-  var half=(W-ARC_W)/2,need=0,i,t,dx,d;
-  for(i=0;i<m;i++){
-    t=(m===1)?0:((i-(m-1)/2)/((m-1)/2));
-    dx=Math.abs(t*half);
-    if(dx>=ARC_CLEAR)continue;          /* wide enough to ride up beside it */
-    d=(ARC_UP+2)/(1-t*t);
-    if(d>need)need=d;
+/* Past 88+35 a capsule is wide of the circle at any height; inside that it
+   has to pass below it. No other arithmetic is needed, and this is what lets
+   the outer capsules ride up beside the circle instead of queueing under. */
+function arcClears(p,H){
+  if(Math.abs(p.x)>=ARC_CLEAR+4)return true;
+  /* The TOP of the object is the platform, not the capsule - it stands 19
+     above the white body, and a rule that measured only the body let it push
+     into the circle at two, three and four areas, where there is room to
+     spare and the curve sits high. The test found it; the arithmetic had
+     simply forgotten which part of the object comes first. */
+  return p.y-H/2-ARC_ICON>=96;
+}
+/* Walk out from the bottom of the ellipse, taking the first angle that
+   clears the one before it and clears the circle, and stop when the next
+   would rise off the top of the board. Returns the angles for ONE side. */
+function arcRing(n,a,b,H){
+  var odd=n%2,want=odd?(n-1)/2+1:n/2,th=[],prev,t,p,got;
+  t=odd?0:Math.asin(Math.min(1,(ARC_W+ARC_GAP)/2/a));
+  prev={x:a*Math.sin(t),y:b*Math.cos(t)};
+  if(!arcClears(prev,H)||prev.y-H/2<-ARC_HUB_CY)return null;
+  th.push(t);
+  while(th.length<want){
+    got=null;
+    for(t=th[th.length-1]+0.006;t<2.8;t+=0.006){
+      p={x:a*Math.sin(t),y:b*Math.cos(t)};
+      if(p.y-H/2<-ARC_HUB_CY)break;
+      if(!arcApart(p,prev,H)||!arcClears(p,H))continue;
+      got=p;th.push(t);prev=p;break;
+    }
+    if(!got)return null;
   }
-  return Math.round(need);
+  return th;
 }
+/* The shallowest ellipse that seats them all, so the arc stays as tight
+   around the circle as that many capsules allow: four hug it closely, ten
+   swing wider, and it is the same single curve either way. */
 function arcPlan(n,W,H){
   if(!(W>0))W=356;
-  if(!(H>0))H=118;
-  var ranks=arcRanks(n,arcFit(W)),at=[],prev=[],k=0,r,i,j,bottom=0;
-  /* x is a percentage because the board's width is the phone's business.
-     The widest sweep's outermost centre is exactly half a capsule in from
-     the edge, so it ends flush rather than wasting the corners; the sweeps
-     below it come in from there. */
-  var base=arcDepth(ranks[0],W);
-  for(r=0;r<ranks.length;r++){
-    var m=ranks[r],half=arcHalf(W,r),cur=[],y0=0;
-    /* Concentric, not merely similar. A parabola's curvature at its lowest
-       point is depth/half^2, so holding the family together means the depth
-       follows the SQUARE of the width. Linear would have flattened each
-       lower sweep against the one above it. */
-    var depth=(r===0)?base:Math.round(base*Math.pow(ARC_TAPER,2*r));
-    for(i=0;i<m;i++){
-      var t=(m===1)?0:((i-(m-1)/2)/((m-1)/2));
-      cur[i]={x:50+100*t*half/W,dy:Math.round(depth*(1-t*t)),y:0};
-    }
-    /* WHERE THIS SWEEP STARTS IS SOLVED, NOT ASSUMED. The sweep continues
-       while the one above it is still coming down - that is what makes the
-       two read as one spiral rather than as two rows - and it is only safe
-       where their x positions differ. Two sweeps of the SAME count keep a
-       constant gap and one shift would do; a sweep of four under a sweep of
-       five does NOT, and the upper one's middle came down 9px into the lower
-       one's shoulder. Measured, at nine areas, by a test that compares every
-       capsule against every other. So the shift is taken pair by pair, over
-       exactly the capsules that overlap horizontally. */
-    for(i=0;i<cur.length;i++)for(j=0;j<prev.length;j++){
-      if(Math.abs(cur[i].x-prev[j].x)/100*W>=ARC_W-0.5)continue;
-      var need=prev[j].y+H+ARC_GAP-cur[i].dy;
-      if(need>y0)y0=need;
-    }
-    for(i=0;i<cur.length;i++){
-      cur[i].y=y0+cur[i].dy;
-      at[k++]={x:cur[i].x,y:cur[i].y};
-      if(cur[i].y+H>bottom)bottom=cur[i].y+H;
-    }
-    prev=cur;
+  if(!(H>0))H=85;
+  var a=(W-ARC_W)/2,odd=n%2,b,th=null,i;
+  for(b=96+H/2;b<=1400;b+=4){th=arcRing(n,a,b,H);if(th)break;}
+  /* Nothing seats this many on one curve at this size. Rather than invent a
+     second row, seat as many as the deepest curve will take and let the
+     caller see the shortfall - it has never happened at ten or fewer. */
+  if(!th){b=1400;th=[0];}
+  var pts=[];
+  for(i=th.length-1;i>=(odd?1:0);i--)pts.push({x:-a*Math.sin(th[i]),y:b*Math.cos(th[i])});
+  if(odd)pts.push({x:0,y:b});
+  for(i=(odd?1:0);i<th.length;i++)pts.push({x:a*Math.sin(th[i]),y:b*Math.cos(th[i])});
+  /* Into the board's own coordinates: the circle's centre is 92 below the
+     content top, and the field is pulled up to sit over it. */
+  var at=[],top,lo=0,hi=0;
+  for(i=0;i<pts.length;i++){
+    top=ARC_HUB_CY+pts[i].y-H/2;
+    if(i===0||top<lo)lo=top;
+    if(top+H>hi)hi=top+H;
+    at.push({x:50+100*pts[i].x/W,y:top});
   }
-  return {at:at,height:bottom};
+  /* The platform pokes 19 above its capsule, so the topmost one needs that
+     much room or it is clipped by the board's padding. */
+  var shift=Math.max(0,ARC_ICON-lo);
+  for(i=0;i<at.length;i++)at[i].y+=shift;
+  return {at:at,height:hi+shift};
 }
 function renderHomeGrid(){
   var g=document.getElementById('home-grid');if(!g)return;
@@ -22140,11 +22133,8 @@ function renderHomeGrid(){
   if(hub)h+=homeCardHTML(hub,'hhero');
   /* The width the board really got, not the width it asked for. */
   _arcW=Math.max(0,g.clientWidth-24);
-  var plan=arcPlan(rest.length,_arcW);
   h+='<div class="hcards">';
-  for(i=0;i<rest.length;i++)
-    h+=homeCardHTML(rest[i],'hcard').replace('<button class="hcard',
-      '<button style="left:'+plan.at[i].x.toFixed(2)+'%" class="hcard');
+  for(i=0;i<rest.length;i++)h+=homeCardHTML(rest[i],'hcard');
   h+='</div>';
   g.innerHTML=h;
   arcPlace(g,rest.length);
@@ -22165,12 +22155,13 @@ function arcPlace(g,n){
      font triggers, was measuring the height the first pass had written - so a
      card laid out before the font arrived stayed at the taller wrapping's
      height for the life of the tab, and Hebrew sat in a German-sized body. */
-  for(i=0;i<cards.length;i++)cards[i].style.height='';
+  for(i=0;i<cards.length;i++){cards[i].style.height='';cards[i].style.left='';}
   for(i=0;i<cards.length;i++){var e=cards[i].offsetHeight;if(e>H)H=e;}
   var plan=arcPlan(n,_arcW,H);
   for(i=0;i<cards.length&&i<plan.at.length;i++){
     cards[i].style.height=H+'px';
-    cards[i].style.top=plan.at[i].y+'px';
+    cards[i].style.left=plan.at[i].x.toFixed(2)+'%';
+    cards[i].style.top=Math.round(plan.at[i].y)+'px';
   }
   var box=g.querySelector('.hcards');
   if(box)box.style.height=plan.height+'px';
