@@ -50,13 +50,66 @@ to react. The lesson was cheap to learn and expensive to ignore: **a static
 preview first, with his own real data in it, before any of it reaches the app.**
 Two or three layouts of the same day, he points at one, then it gets built.
 
-### Open inside this
+### What goes beside the photo — answered
 
-- Which facts are the "beside the photo" block? The date, the day rating, mood
-  and body are candidates; kcal and steps might be, or might belong lower.
-- What happens on a day with almost nothing in it — the page still has to look
-  composed rather than empty.
+I proposed "the day rating" and was wrong: there is no day rating any more.
+Ten questions became four at `499888a`, and the grade went into the bank.
+**Never propose a field without checking it is still asked.**
+
+- **The caption under the photo, and only if one was written.** One exists
+  already (`.sm-cap`) but it sits under a full-width hero; it moves under the
+  boxed one.
+- **THE PAGE SHOWS WHAT THE PERSON ACTUALLY TRACKS, AND NOTHING ELSE.** His
+  words: if someone follows their nutrition then the nutrition graph belongs in
+  the summary so they can see what they ate; if they do not follow it, the graph
+  has no meaning there at all. And the reason, which is the part to hold on to:
+  *"שהוא לא ירגיש מופסד כי הוא לא עוקב אחרי משהו"* — a section standing empty
+  tells a person they are failing at something they never chose to do.
+
+  The machinery for this already exists and is not being used this way: the
+  areas drawer decides what is on the board, and `sumSecOn()` already filters
+  sections. The summary should be composed from what is ON rather than from a
+  fixed list with holes in it.
+
+- A day with almost nothing in it: decided while building, not before.
 - Eleven languages: a two-column head is the kind of layout German breaks.
+
+---
+
+## Nutrition: the bars refill from empty on every render (2026-09-12)
+
+> *"כל פעם שמוסיפים משהו האפליקציה קצת קופצת. המים מתאפסים ומתמלאים מההתחלה
+> וגם עמודות הערכים התזונתיים."*
+
+**This one is a bug and it is in the CSS, not in the feel.** Both fills are
+born at zero with a transition on them, and the real value is written by JS
+afterwards:
+
+    .macro-fill{height:0%;transition:height .8s ...}
+    .wf{width:0%;transition:width .6s}
+
+So every re-render creates the element empty and animates it up from nothing.
+Measured rather than reasoned: added 500ml and read the computed width - `0%`
+at the instant of render, `17%` eighty milliseconds later. The bar is not
+continuing, it is starting again, every single time.
+
+The fix is that a bar which is already on screen should MOVE, not replay - the
+element has to survive the render, or the render has to write the value before
+the transition can see it.
+
+### And the part that is taste, not a bug
+
+> *"העמודות צריכות להיות יפות יותר, וכשמשתמש מכניס משהו שהמילוי שלהם יהיה
+> מספק יותר - כרגע אם אני מוסיף 20 גרם חלבון זה נראה כמו כלום בגרף"*
+
+He is right and the number says why: the track is 100px tall, the default
+protein target is 155g, so 20g of protein is **12.9%** - thirteen pixels. A
+real meal's worth of protein reads as a smear at the bottom of a tube.
+
+That is a scale problem, not a polish problem, and polish will not fix it. The
+honest options are a different scale, or a bar made of countable units so one
+addition is one visible step rather than a fraction of a column. Worth
+sketching statically before building, like the summary page.
 
 ---
 
