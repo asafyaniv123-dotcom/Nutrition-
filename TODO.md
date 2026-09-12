@@ -3939,3 +3939,60 @@ real hours, and only the printed date asks `appNow()`.
 Between midnight and four on a birthday the profile now keeps yesterday’s
 age. That is right rather than wrong: on that same screen every other date
 still says yesterday, and the app has one definition of today.
+
+## The German width sweep — nothing clips
+
+German is the longest language and nothing in this app had ever been
+measured for overflow. It is measured now, from two independent directions,
+and it comes back clean. Recording it so nobody has to wonder again.
+
+### In the browser
+
+Thirteen screens driven in German at a 400px container: the home board, all
+ten module entry screens, the Me screen, every fitness sub-view, the areas
+drawer, the settings drawer, and the twenty-one-card reflection board.
+
+A clip is **not** `scrollWidth > clientWidth` on its own — a scroll container
+is supposed to be wider than its box. It is text that is cut off and cannot
+be reached: `overflow-x` hidden or clipped, or an ellipsis drawn. **Zero**,
+and no container scrolled sideways either.
+
+**The harness was proved before it was believed**, because a detector that
+has never caught anything has not been tested. Three deliberate clips were
+planted — a nowrap in a 60px box, an ellipsis in a 60px box, and a nowrap
+span inside a 300px parent — plus one paragraph that is merely allowed to
+wrap. It caught **3 of 3** and correctly ignored the fourth.
+
+### Offline
+
+Of the forty longest German answers, **zero** are drawn onto a source line
+that also sets a nowrap, an ellipsis, a line-clamp or a fixed pixel width.
+The longest German strings are all explanatory paragraphs in cards that wrap
+— 180, 162, 157 characters — which is exactly where length is harmless.
+
+Five `-webkit-line-clamp` rules exist and every one is on **user data** — a
+day-planner note, a rail chip, a person's update, a goal name — where a
+clamp is the intended behaviour, not a translation failure.
+
+The header was measured the hard way too: every weekday×month combination it
+can ever print, through a canvas in the header's own font. German's worst is
+*Donnerstag, 24. September* at 214px in a 368px box — **154px of headroom**.
+
+## And one Latin zero the greps had missed
+
+The composed-meal builder's total row, in Arabic:
+
+    0 سعرة · بروتين ٠ كربوهيدرات ٠ دهون ٠
+
+One Latin zero and three Arabic ones in a single line. The macros go through
+a key with three holes, which formats them; the calories were concatenated.
+
+Both of its siblings were already fixed — the composed-meal card and the
+library button both call `nfmt`. **This one survived three greps**: that pass
+searched the VALUE (`+a.kcal+`, `+f.k+`) and the label `/100g`, and this is a
+third variable name (`tot.kcal`) beside a fourth form of the label (a plain
+`קק"ל`).
+
+**The rendered Arabic screen found it.** Third time it has been cheaper than
+any grep — and the lesson is that the greps are for finding SIBLINGS once a
+screen has pointed at the first one, not for finding the first one.
