@@ -1779,17 +1779,17 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 /* A positioned field rather than a flex wrap: every capsule is PLACED, so
    the composition can be a curve instead of a queue. The negative top is
    what lets the outer capsules ride up beside the circle's lower flanks. */
-.hcards{position:relative;width:100%;margin-top:-34px}
+.hcards{position:relative;width:100%;margin-top:-60px}
 /* A CAPSULE, not a rectangle with a bigger radius: the radius is half the
    element's own width, so the top and bottom are semicircles and there is
    no corner left anywhere. Taller than it is wide by about one to one
    point eight, which is the reference's proportion. */
-.hcard{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:76px;height:158px;border:none;border-radius:999px;padding:16px 9px 16px;cursor:pointer;font-family:inherit;text-align:center;background:linear-gradient(176deg,#fbf9f5 0%,#f6f3ee 46%,#eae6de 100%);box-shadow:inset 0 3px 4px rgba(255,255,255,1),inset 0 -10px 16px -6px rgba(168,158,144,.36),0 2px 3px rgba(140,130,118,.26),0 10px 16px -4px rgba(140,130,118,.4),0 24px 34px -10px rgba(136,126,114,.36),0 48px 68px -22px rgba(132,122,110,.34)}
+.hcard{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:70px;border:none;border-radius:999px;padding:18px 6px;cursor:pointer;font-family:inherit;text-align:center;background:linear-gradient(176deg,#fbf9f5 0%,#f6f3ee 46%,#eae6de 100%);box-shadow:inset 0 3px 4px rgba(255,255,255,1),inset 0 -9px 14px -5px rgba(168,158,144,.4),0 2px 3px rgba(138,128,116,.3),0 9px 14px -3px rgba(138,128,116,.46),0 20px 28px -8px rgba(134,124,112,.42),0 40px 56px -18px rgba(130,120,108,.38)}
 .hcard:active{transform:scale(.97)}
 /* The raised platform. It has to read as sitting ON the capsule rather
    than in it, so it carries a lit top rim, a shaded lower inside edge and
    two shadows of its own beneath it. */
-.hcard-ic{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:linear-gradient(176deg,#fff 0%,#fffefc 50%,#f9f7f3 100%);box-shadow:inset 0 2px 2px rgba(255,255,255,1),inset 0 -2px 4px rgba(172,163,150,.28),0 1px 2px rgba(142,132,120,.34),0 5px 8px 0 rgba(142,132,120,.36),0 12px 18px -4px rgba(138,128,116,.32)}
+.hcard-ic{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:38px;height:38px;border-radius:50%;background:linear-gradient(176deg,#fff 0%,#fffefc 50%,#f9f7f3 100%);box-shadow:inset 0 2px 2px rgba(255,255,255,1),inset 0 -2px 4px rgba(172,163,150,.28),0 1px 2px rgba(142,132,120,.34),0 5px 8px 0 rgba(142,132,120,.36),0 12px 18px -4px rgba(138,128,116,.32)}
 .hcard-ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .hcard-t{font-size:9.5px;font-weight:800;color:var(--ink);line-height:1.2;hyphens:auto;overflow-wrap:break-word}
 .hcard-s{font-size:7.5px;color:var(--muted-soft);line-height:1.4;hyphens:auto;overflow-wrap:break-word}
@@ -22019,48 +22019,89 @@ function homeCardHTML(a,cls){
    The sub-line is back. A card has room for icon, title and a short line,
    which is the reference's own hierarchy and which the ring could not hold. */
 /* ── WHERE EACH ONE SITS ──
-   Rows of three and four alternating, each row bent into a shallow valley:
-   the outer ones ride high beside the circle and the middle drops beneath
-   it. y = depth * (1 - t*t) with t running -1 to 1 across the row, which is
-   a parabola and reads as the curve the eye expects.
+   ONE curve, not rows. Every capsule in a rank sits on the same parabola,
+   y = depth * (1 - t*t) with t running -1 to 1: the outer ones ride high
+   beside the circle, each step moves a little lower, and the middle is the
+   lowest point. A parabola has no corners, so there is no step to read as a
+   zigzag - the positions differ by 0, 21, 83, 21, 0 across five, and the eye
+   joins them into a single sweep.
 
-   A row of four is only possible because the capsule is 76 wide; at 110 the
-   fourth ran off a 320px phone, which is why rows were all that fitted
-   before and why the board could only look like a grid. */
-var ARC_W=76,ARC_H=158,ARC_GAP=13;
-function arcRows(n){
-  var rows=[],want=3,left=n;
-  while(left>0){var take=Math.min(want,left);rows.push(take);left-=take;want=(want===3)?4:3;}
-  /* A single capsule alone under an arc reads as a mistake rather than as
-     the end of one, so it is folded back into the row above. */
-  if(rows.length>1&&rows[rows.length-1]===1){rows[rows.length-2]--;rows[rows.length-1]=2;}
-  return rows;
+   THE DEPTH IS NOT A TASTE, IT IS A CLEARANCE. The circle is 176 across, so
+   anything whose centre is nearer the middle than 88+35=123 overlaps it
+   horizontally and must therefore pass BELOW it; anything further out can
+   ride as high as it likes, because 35 short of 123 is still 88 clear. The
+   rank starts 60px above the circle's bottom edge, so an inner capsule has
+   to fall at least 62 to clear - and depth is solved from that rather than
+   chosen: depth = 62 / (1 - t*t) for the innermost capsule that needs it.
+
+   HOW MANY FIT IS MEASURED, NOT ASSUMED. Five 70px capsules need 350 of the
+   356 a 380px board has inside its padding; a 320px phone has 296 and holds
+   four. So the rank is sized from the width the board actually has, and the
+   board re-plans when that width changes. A count that does not fit in one
+   rank continues onto a second, concentric one - a wider, lower sweep of the
+   same curve, starting beside the first one's dip rather than under it, so
+   the two read as one spiral wrapping the circle rather than as two rows. */
+var ARC_W=70,ARC_GAP=12,ARC_UP=60,ARC_CLEAR=123;
+/* The widest rank this board can hold: neighbouring centres must be at
+   least a capsule apart or they touch. Never more than five - beyond that
+   the sweep flattens into a row however wide the screen is. */
+function arcFit(W){return Math.max(2,Math.min(5,1+Math.floor((W-ARC_W)/(ARC_W+1))));}
+/* Split n into ranks as evenly as possible, so no rank is left with one or
+   two capsules rattling under a full one. */
+function arcRanks(n,per){
+  var k=Math.max(1,Math.ceil(n/per)),out=[],base=Math.floor(n/k),extra=n%k,i;
+  for(i=0;i<k;i++)out[i]=base+(i<extra?1:0);
+  return out;
 }
-function arcPlan(n){
-  var rows=arcRows(n),at=[],y=0,r,i,k=0;
-  for(r=0;r<rows.length;r++){
-    var m=rows[r];
-    /* How far in the outermost centre sits, as a share of the width. Four
-       across needs to hug the edges harder than three does. */
-    var edge=(m>=4)?13:(m===3?15:(m===2?28:50));
-    var depth=(m>=4)?34:(m===3?50:24);
-    var deepest=0;
+/* How far the middle of the sweep has to fall for every capsule that
+   overlaps the circle to clear its bottom edge. Solved, not chosen. */
+function arcDepth(m,W){
+  var half=(W-ARC_W)/2,need=0,i,t,dx,d;
+  for(i=0;i<m;i++){
+    t=(m===1)?0:((i-(m-1)/2)/((m-1)/2));
+    dx=Math.abs(t*half);
+    if(dx>=ARC_CLEAR)continue;          /* wide enough to ride up beside it */
+    d=(ARC_UP+2)/(1-t*t);
+    if(d>need)need=d;
+  }
+  return Math.round(need);
+}
+function arcPlan(n,W,H){
+  if(!(W>0))W=356;
+  if(!(H>0))H=118;
+  var ranks=arcRanks(n,arcFit(W)),at=[],prev=[],k=0,r,i,j,bottom=0;
+  /* x is a percentage because the board's width is the phone's business,
+     and the outermost centre is exactly half a capsule in from the edge so
+     the sweep ends flush rather than wasting the corners. */
+  var edge=50*ARC_W/W;
+  for(r=0;r<ranks.length;r++){
+    var m=ranks[r],depth=arcDepth(m,W),cur=[],y0=0;
     for(i=0;i<m;i++){
       var t=(m===1)?0:((i-(m-1)/2)/((m-1)/2));
-      var dy=Math.round(depth*(1-t*t));
-      if(dy>deepest)deepest=dy;
-      at[k++]={x:(m===1)?50:(edge+(100-2*edge)*(i/(m-1))),y:y+dy};
+      cur[i]={x:(m===1)?50:(edge+(100-2*edge)*(i/(m-1))),dy:Math.round(depth*(1-t*t)),y:0};
     }
-    /* Not the full dip. Clearing the deepest capsule of the row above would
-       leave the OUTER ones - which ride high - stranded 75px apart, and the
-       composition goes airy exactly where it should feel gathered. The rows
-       interleave instead: the next row starts while the previous row's dip is
-       still coming down beside it, which is safe because their x positions
-       differ. Verified by measuring capsule against capsule, not box against
-       box: zero overlaps at every count the drawer can reach. */
-    y+=Math.round(deepest*0.35)+ARC_H+ARC_GAP;
+    /* WHERE THIS SWEEP STARTS IS SOLVED, NOT ASSUMED. The sweep continues
+       while the one above it is still coming down - that is what makes the
+       two read as one spiral rather than as two rows - and it is only safe
+       where their x positions differ. Two sweeps of the SAME count keep a
+       constant gap and one shift would do; a sweep of four under a sweep of
+       five does NOT, and the upper one's middle came down 9px into the lower
+       one's shoulder. Measured, at nine areas, by a test that compares every
+       capsule against every other. So the shift is taken pair by pair, over
+       exactly the capsules that overlap horizontally. */
+    for(i=0;i<cur.length;i++)for(j=0;j<prev.length;j++){
+      if(Math.abs(cur[i].x-prev[j].x)/100*W>=ARC_W-0.5)continue;
+      var need=prev[j].y+H+ARC_GAP-cur[i].dy;
+      if(need>y0)y0=need;
+    }
+    for(i=0;i<cur.length;i++){
+      cur[i].y=y0+cur[i].dy;
+      at[k++]={x:cur[i].x,y:cur[i].y};
+      if(cur[i].y+H>bottom)bottom=cur[i].y+H;
+    }
+    prev=cur;
   }
-  return {at:at,height:Math.max(0,y-ARC_GAP)};
+  return {at:at,height:bottom};
 }
 function renderHomeGrid(){
   var g=document.getElementById('home-grid');if(!g)return;
@@ -22074,14 +22115,48 @@ function renderHomeGrid(){
   g.className='home-board';
   var h='';
   if(hub)h+=homeCardHTML(hub,'hhero');
-  var plan=arcPlan(rest.length);
-  h+='<div class="hcards" style="height:'+plan.height+'px">';
+  /* The width the board really got, not the width it asked for. */
+  _arcW=Math.max(0,g.clientWidth-24);
+  var plan=arcPlan(rest.length,_arcW);
+  h+='<div class="hcards">';
   for(i=0;i<rest.length;i++)
     h+=homeCardHTML(rest[i],'hcard').replace('<button class="hcard',
-      '<button style="left:'+plan.at[i].x.toFixed(2)+'%;top:'+plan.at[i].y+'px" class="hcard');
+      '<button style="left:'+plan.at[i].x.toFixed(2)+'%" class="hcard');
   h+='</div>';
   g.innerHTML=h;
+  arcPlace(g,rest.length);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){
+    if(document.getElementById('home-grid')===g)arcPlace(g,rest.length);
+  });
 }
+/* A geometry solved for one width is right at one width. The rank narrows
+   from five to four between a 380px board and a 320px one, so the board has
+   to be re-planned when the width changes - and only then, since a resize
+   fires on every pixel and on the keyboard opening. */
+/* Laid out at their natural heights, read, then set to one height and
+   dropped onto the curve. Two passes, because the first one is the only
+   way to learn what this language's wording actually needs. */
+function arcPlace(g,n){
+  var cards=g.querySelectorAll('.hcard'),H=0,i;
+  /* Let go of the height BEFORE reading it. The second pass, the one the web
+     font triggers, was measuring the height the first pass had written - so a
+     card laid out before the font arrived stayed at the taller wrapping's
+     height for the life of the tab, and Hebrew sat in a German-sized body. */
+  for(i=0;i<cards.length;i++)cards[i].style.height='';
+  for(i=0;i<cards.length;i++){var e=cards[i].offsetHeight;if(e>H)H=e;}
+  var plan=arcPlan(n,_arcW,H);
+  for(i=0;i<cards.length&&i<plan.at.length;i++){
+    cards[i].style.height=H+'px';
+    cards[i].style.top=plan.at[i].y+'px';
+  }
+  var box=g.querySelector('.hcards');
+  if(box)box.style.height=plan.height+'px';
+}
+var _arcW=0;
+window.addEventListener('resize',function(){
+  var g=document.getElementById('home-grid');
+  if(g&&Math.max(0,g.clientWidth-24)!==_arcW)renderHomeGrid();
+});
 var TICK='<svg viewBox="0 0 24 24"><path d="m5 12.4 4.6 4.6L19 7.6"/></svg>';
 function renderAreasList(){
   var l=document.getElementById('areas-list');if(!l)return;
