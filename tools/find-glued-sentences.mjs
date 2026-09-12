@@ -34,9 +34,20 @@ const app = s.slice(0, gs) + s.slice(ge);
 const SEMI = String.fromCharCode(1);
 const scan = app.replace(/&#?[a-zA-Z0-9]{1,8};/g, (m) => m.slice(0, -1) + SEMI);
 
-/* A _t call, then up to ~60 characters of anything that is not a _t call, then
-   another _t call - all inside one expression (no semicolons or line breaks). */
-const re = /_t\((['"])((?:(?!\1).)*)\1\)((?:[^;\n]{0,70}?))_t\((['"])((?:(?!\4).)*)\4\)/g;
+/* A _t call, then up to ~70 characters of anything that is not a _t call, then
+   another _t call - all inside one expression, which a semicolon ends.
+
+   LINE BREAKS USED TO END IT TOO, and that was the biggest hole in this check.
+   A long concatenation wraps; that is all a line break means inside one. The
+   closet's opening paragraph is two sentences across four keys joined with
+   +' '+ and a newline before each continuation, and this rule could not see a
+   single one of them. Nothing else could either - the keys are Hebrew, so they
+   are their own keys and no language file can report them missing. It reported
+   zero for as long as it has existed.
+
+   A semicolon still stops it, and so does the 70-character reach, so it does
+   not wander from one statement into the next. */
+const re = /_t\((['"])((?:(?!\1).)*)\1\)((?:[^;]{0,70}?))_t\((['"])((?:(?!\4).)*)\4\)/g;
 
 /* ── a fragment that needs no partner to be one ──
    The pair rule above needs two _t() calls with something between them, so it
@@ -115,8 +126,36 @@ while ((m = re.exec(scan)) !== null) {
   if (/[.!?]["'׳״)\]]?\s*$/.test(m[2])) continue;
 
   const bare = between.replace(/(['"])(?:(?!\1).)*\1/g, '').replace(/[\s+,]/g, '');
-  if (!/[A-Za-z_$]/.test(bare)) continue;
-  if (/^[[\]{}:()]*$/.test(bare)) continue;
+  /* ── A GAP THAT IS ONLY A SPACE ──
+     The value test below is the right rule for a COMMA join, which is how a
+     list of independent labels is built, and the wrong rule for a SPACE join,
+     which is how one sentence gets cut in half. Both reduce to nothing once
+     the string literals are stripped, so they cannot be told apart there -
+     they have to be told apart by what is INSIDE those literals. Whitespace
+     and nothing else is glue; a comma, a bullet or a slash is a list.
+
+     This is what hid the closet's opening paragraph: two sentences broken
+     across four keys, one of the breaks landing between a noun and its own
+     verb - "…וכך המידות" / "נשארות הגיוניות…". All five languages I read had
+     to cut at the same point and all five came away with a dangling half
+     clause: Japanese ended a key on the topic particle も, Chinese on 也就,
+     Arabic on وكذلك المقاسات. The check said zero the whole time. */
+  const lit = [...between.matchAll(/(['"])((?:(?!\1).)*)\1/g)].map((x) => x[2]).join('');
+  const glue = between.replace(/(['"])(?:(?!\1).)*\1/g, '');
+  const spaceOnly = /^\s*$/.test(lit) && /^[\s+]*$/.test(glue);
+
+  /* Letting line breaks through reaches further, and far enough to step over a
+     CALL BOUNDARY. navigator.share({title:_t('גיבוי Better Me')}).then(
+     function(){showToast(_t('✓ נשמר'));}) puts two unrelated strings within
+     seventy characters of each other, and a brace or an arrow between two
+     fragments means they are in different callbacks rather than in one
+     sentence. Nothing that is genuinely one sentence has a function in it. */
+  if (/[{}]|=>|\bfunction\b/.test(glue)) continue;
+
+  if (!spaceOnly) {
+    if (!/[A-Za-z_$]/.test(bare)) continue;
+    if (/^[[\]{}:()]*$/.test(bare)) continue;
+  }
 
   /* Two more shapes that look glued and are not.
      An OBJECT LITERAL - {sleep:'שינה', work:'עבודה'} - puts a key between two
