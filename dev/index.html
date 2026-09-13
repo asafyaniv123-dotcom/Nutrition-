@@ -1513,19 +1513,28 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .wkr-b{width:28px;height:28px;border-radius:50%;border:1px solid var(--line-strong);background:var(--card);
   color:var(--muted);font-size:15px;line-height:1;cursor:pointer;font-family:inherit;padding:0}
 .wkr-b:active{background:var(--surface)}
-.wkr-stage{height:216px;perspective:760px;position:relative;overflow:hidden;touch-action:pan-y;
-  cursor:grab;outline:none}
+.wkr-stage{height:232px;perspective:1100px;perspective-origin:50% 46%;position:relative;
+  overflow:hidden;touch-action:pan-y;cursor:grab;outline:none}
 .wkr-stage:focus-visible{outline:2px solid var(--violet-500);outline-offset:3px;border-radius:14px}
 .wkr-stage.drag{cursor:grabbing}
-.wkr-ring{position:absolute;inset:0;transform-style:preserve-3d;
-  transition:transform .5s cubic-bezier(.22,.75,.3,1)}
-.wkr-stage.drag .wkr-ring{transition:none}
-.wkr-card{position:absolute;top:6px;left:50%;width:140px;height:188px;margin-inline-start:-70px;
-  border-radius:12px;overflow:hidden;background:var(--surface);
-  box-shadow:0 10px 26px -10px rgba(70,62,54,.55);backface-visibility:hidden;
-  transition:opacity .4s ease,filter .4s ease}
+.wkr-ring{position:absolute;inset:0;transform-style:preserve-3d}
+/* Each photograph is its own object on the arc. transform-origin sits at the
+   card's own centre so a card rotates about itself rather than swinging around
+   the stage, which is the difference between a wheel of cards and a fan. */
+.wkr-card{position:absolute;top:50%;left:50%;width:112px;height:150px;margin:-75px 0 0 -56px;
+  border-radius:14px;overflow:hidden;background:var(--panel);
+  box-shadow:0 14px 30px -12px rgba(70,62,54,.55);
+  transform-origin:50% 50%;will-change:transform;
+  transition:transform .42s cubic-bezier(.2,.85,.3,1),opacity .42s ease}
+.wkr-stage.drag .wkr-card{transition:none}
 .wkr-card img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
-.wkr-card.off{opacity:.42;filter:saturate(.55)}
+/* a day with no photograph still holds its place, so the wheel is always seven */
+.wkr-empty{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;color:var(--muted-soft);background:var(--panel);
+  border:1.5px dashed var(--line-strong);border-radius:14px}
+.wkr-empty svg{width:24px;height:24px}
+.wkr-empty span{font-size:9.5px;font-weight:700}
+@media (prefers-reduced-motion:reduce){.wkr-card{transition:none}}
 .wkr-cap{text-align:center;margin-top:10px;min-height:32px}
 .wkr-day{font-size:11px;font-weight:800;color:var(--ink)}
 .wkr-note{font-size:11px;color:var(--muted);line-height:1.55;margin-top:2px;unicode-bidi:plaintext}
@@ -21475,74 +21484,127 @@ function dayName(iso){
 
    Deliberately not here: a streak, a percentage, or any red. The point of
    this card is to be worth opening on a week that went badly. */
-/* Fifty degrees between cards. See the note at the top of this change: 360/n
-   is the textbook answer and it is wrong for two photographs. */
-var WK_RING_STEP=50;
-var _wkRing={i:0,n:0,days:[]};
+/* The arc. Every number here is read back out of the browser and checked -
+   see the overlap assertion in the drive notes - rather than trusted. */
+var WK_X=128;       // px of sideways travel per card: sets the GAP
+var WK_Z=118;       // px deeper per card away from the centre
+var WK_POP=34;      // how far forward the selected card stands
+var WK_ROT=30;      // degrees of turn per card
+var WK_ROT_MAX=58;  // never past this: an outer card stays recognisable
+var WK_SHRINK=0.09; // how much smaller each step from the centre is
+var WK_DRAG=104;    // px of finger travel that equals one card
+var _wkRing={pos:0,n:0,days:[]};
+/* SEVEN cards for the last seven days, always. A day without a photograph
+   keeps its place rather than collapsing the geometry into six - the spec asks
+   for seven, and a wheel whose spacing changes with how many pictures you took
+   is not a wheel. */
 function wkRingHTML(days){
-  var shots=[],i;
+  var shots=[],i,r;
   for(i=0;i<days.length;i++){
-    var r=days[i].r;
-    if(r&&r.photo&&sumSecOn('photo'))shots.push({d:days[i].d,p:r.photo,c:(r.photoCaption||'').trim()});
+    r=days[i].r;
+    shots.push({d:days[i].d,
+                p:(r&&r.photo&&sumSecOn('photo'))?r.photo:'',
+                c:(r&&r.photoCaption||'').trim()});
   }
-  if(!shots.length)return '';                     // no pictures, no stage
-  _wkRing={i:0,n:shots.length,days:shots};
-  /* R from the step, so the cards sit on a circle the width actually fits. */
-  var R=Math.round((140/2)/Math.tan(WK_RING_STEP*Math.PI/360));
-  var h='<div class="wkr"><div class="wkr-hd"><div class="wkr-t">'+_t('תמונות השבוע')+'</div>';
-  if(shots.length>1)
-    h+='<div class="wkr-nav">'+
-       '<button class="wkr-b" onclick="wkRingGo(-1)" aria-label="'+_t('הקודם')+'">&#8249;</button>'+
-       '<button class="wkr-b" onclick="wkRingGo(1)" aria-label="'+_t('הבא')+'">&#8250;</button></div>';
-  h+='</div>';
+  var any=false;
+  for(i=0;i<shots.length;i++)if(shots[i].p)any=true;
+  if(!any)return '';                      // a week with no pictures shows no stage
+  _wkRing={pos:shots.length-1,n:shots.length,days:shots};
+  var h='<div class="wkr"><div class="wkr-hd"><div class="wkr-t">'+_t('תמונות השבוע')+'</div>'+
+        '<div class="wkr-nav">'+
+        '<button class="wkr-b" onclick="wkRingGo(-1)" aria-label="'+_t('הקודם')+'">&#8249;</button>'+
+        '<button class="wkr-b" onclick="wkRingGo(1)" aria-label="'+_t('הבא')+'">&#8250;</button></div></div>';
   h+='<div class="wkr-stage" id="wkr-stage" tabindex="0" role="group" aria-label="'+_t('תמונות השבוע')+'"'+
      ' onpointerdown="wkRingDrag(event)" onkeydown="if(event.key===\'ArrowLeft\'){wkRingGo(1);event.preventDefault();}else if(event.key===\'ArrowRight\'){wkRingGo(-1);event.preventDefault();}">'+
-     '<div class="wkr-ring" id="wkr-ring" data-r="'+R+'">';
-  for(i=0;i<shots.length;i++)
-    h+='<div class="wkr-card'+(i?' off':'')+'" data-i="'+i+'" style="transform:rotateY('+(i*WK_RING_STEP)+'deg) translateZ('+R+'px)">'+
-       photoImg(shots[i].p,'alt=""')+'</div>';
-  h+='</div></div>';
-  h+='<div class="wkr-cap" id="wkr-cap"></div></div>';
+     '<div class="wkr-ring" id="wkr-ring">';
+  for(i=0;i<shots.length;i++){
+    h+='<div class="wkr-card" data-i="'+i+'">';
+    h+=shots[i].p?photoImg(shots[i].p,'alt=""')
+      :'<div class="wkr-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">'+
+       '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/>'+
+       '<path d="M21 16l-5-5-6 6-2-2-5 4"/></svg><span>'+dayName(shots[i].d)+'</span></div>';
+    h+='</div>';
+  }
+  h+='</div></div><div class="wkr-cap" id="wkr-cap"></div></div>';
   return h;
 }
-/* Turn to a card. The index is not wrapped into range - it keeps counting, so
-   turning past the last card carries on around the circle instead of spinning
-   all the way back the other way, which is what a ring should do. */
-function wkRingTurn(idx){
+/* Put every card where the wheel's CURRENT position says it belongs. One
+   continuous number drives all seven, so during a drag the whole arc turns
+   together - the centre falling back as its neighbour comes forward - instead
+   of one picture being swapped for another at a threshold. */
+function wkPlace(pos){
   var ring=document.getElementById('wkr-ring');if(!ring)return;
-  _wkRing.i=idx;
-  ring.style.transform='rotateY('+(-idx*WK_RING_STEP)+'deg)';
-  var at=((idx%_wkRing.n)+_wkRing.n)%_wkRing.n;
-  var cards=ring.querySelectorAll('.wkr-card'),j;
-  for(j=0;j<cards.length;j++)cards[j].className='wkr-card'+(j===at?'':' off');
+  var cards=ring.querySelectorAll('.wkr-card'),i,off,rot,z,sc,op;
+  for(i=0;i<cards.length;i++){
+    off=i-pos;
+    rot=Math.max(-WK_ROT_MAX,Math.min(WK_ROT_MAX,-off*WK_ROT));
+    z=(Math.abs(off)<0.001?WK_POP:-Math.abs(off)*WK_Z);
+    /* the centre keeps its full size and pops forward; everything else falls
+       back and shrinks with distance */
+    sc=Math.max(0.55,1-Math.abs(off)*WK_SHRINK);
+    op=Math.abs(off)>3.4?0:Math.max(0.35,1-Math.abs(off)*0.2);
+    cards[i].style.transform='translateX('+(off*WK_X)+'px) translateZ('+z+'px) rotateY('+rot+'deg) scale('+sc+')';
+    cards[i].style.opacity=op;
+    cards[i].style.zIndex=String(100-Math.round(Math.abs(off)*10));
+  }
   var cap=document.getElementById('wkr-cap');
   if(cap){
+    var at=Math.max(0,Math.min(_wkRing.n-1,Math.round(pos)));
     var sh=_wkRing.days[at];
     cap.innerHTML='<div class="wkr-day">'+dayName(sh.d)+'</div>'+
                   (sh.c?'<div class="wkr-note">'+esc(sh.c)+'</div>':'');
   }
 }
-function wkRingGo(dir){wkRingTurn(_wkRing.i+dir);}
-/* The content follows the finger: drag left and the week turns forward, drag
-   right and it turns back. True in RTL and LTR without asking which is on. */
+/* Settle on a whole card. The wheel is a bounded set of seven, so it CLAMPS at
+   the ends rather than wrapping - a card teleporting from one end to the other
+   is the one thing a real wheel never does. */
+function wkSettle(target){
+  _wkRing.pos=Math.max(0,Math.min(_wkRing.n-1,Math.round(target)));
+  wkPlace(_wkRing.pos);
+}
+function wkRingGo(dir){wkSettle(_wkRing.pos+dir);}
+/* The content follows the finger in both directions, which is correct in RTL
+   and LTR without asking which is on. Release carries a VELOCITY, so a flick
+   travels further than a slow drag - the momentum the spec asks for, handed to
+   one CSS transition rather than to a timer. */
 function wkRingDrag(e){
   var stage=document.getElementById('wkr-stage');if(!stage)return;
-  var x0=e.clientX,start=_wkRing.i,moved=false;
-  stage.classList.add('drag');
-  try{stage.setPointerCapture(e.pointerId);}catch(_){}
-  var ring=document.getElementById('wkr-ring');
-  var move=function(ev){
-    var dx=ev.clientX-x0;
-    if(Math.abs(dx)>4)moved=true;
-    if(ring)ring.style.transform='rotateY('+(-start*WK_RING_STEP+dx/2.2)+'deg)';
-  };
-  var up=function(ev){
-    stage.classList.remove('drag');
+  var x0=e.clientX,y0=e.clientY,start=_wkRing.pos;
+  var t0=Date.now(),lastX=x0,lastT=t0,vel=0,on=false,dead=false;
+  var off=function(){
     stage.removeEventListener('pointermove',move);
     stage.removeEventListener('pointerup',up);
     stage.removeEventListener('pointercancel',up);
-    var dx=(ev.clientX||x0)-x0;
-    wkRingTurn(moved?start-Math.round(dx/56):start);
+  };
+  var move=function(ev){
+    if(dead)return;
+    var dx=ev.clientX-x0,dy=ev.clientY-y0;
+    if(!on){
+      /* a mostly vertical gesture is the page scrolling, not the wheel */
+      if(Math.abs(dy)>Math.abs(dx)){dead=true;off();return;}
+      if(Math.abs(dx)<5)return;
+      on=true;stage.classList.add('drag');
+      try{stage.setPointerCapture(ev.pointerId);}catch(_){}
+    }
+    var now=Date.now();
+    /* dt is floored at a millisecond: two moves can land in the SAME one, and
+       guarding with now>lastT meant the fastest flicks - the ones that most
+       need a velocity - recorded none at all. */
+    vel=(ev.clientX-lastX)/Math.max(1,now-lastT);lastX=ev.clientX;lastT=now;
+    /* clamped half a card past each end, so the ends feel like ends */
+    var p=start-dx/WK_DRAG;
+    _wkRing.pos=Math.max(-0.5,Math.min(_wkRing.n-0.5,p));
+    wkPlace(_wkRing.pos);
+  };
+  var up=function(){
+    stage.classList.remove('drag');
+    off();
+    if(!on){wkPlace(_wkRing.pos);return;}
+    /* px per ms of travel, turned into cards of carry and CLAMPED: a wheel of
+       seven that flings four cards on one flick is a slot machine, not a
+       carousel. */
+    var carry=Math.max(-2,Math.min(2,vel*0.42));
+    wkSettle(_wkRing.pos-carry);
   };
   stage.addEventListener('pointermove',move);
   stage.addEventListener('pointerup',up);
@@ -21759,8 +21821,8 @@ function renderReflectHome(){
 
   h+=weekCardHTML();
   h+=monthCardHTML();
-  /* the ring's caption is written by wkRingTurn, which needs the elements to
-     exist - so it is called once the home has been put in the page below */
+  /* the wheel is placed by wkPlace, which needs the cards to exist - so it is
+     called once the home has been put in the page below */
 
   var prev=[],i,d,s;
   for(i=1;i<=60;i++){
@@ -21788,9 +21850,9 @@ function renderReflectHome(){
   h+='</div>';
   document.getElementById('content').innerHTML=h;
   /* Facing TODAY. weekCardHTML walks the week oldest-first, so the newest
-     picture is the last one on the ring - and opening on a photograph from six
-     days ago, with today's behind your shoulder, is the wrong way round. */
-  if(document.getElementById('wkr-ring'))wkRingTurn(_wkRing.n-1);
+     picture is the last card - and opening on a photograph from six days ago,
+     with today's behind your shoulder, is the wrong way round. */
+  if(document.getElementById('wkr-ring'))wkPlace(_wkRing.pos);
 }
 function rfRecap(r){
   var bits=[];
