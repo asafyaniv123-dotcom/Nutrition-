@@ -160,6 +160,59 @@ row means the photo column comes second. Worth knowing that the RTL-native
 reading would put it on the right, and it is a one-line change if he wants it
 mirrored; the same question he answered "leave it" on for the board.
 
+### He chose א׳ — and caught that its head was built on fields that mostly do not exist
+
+> *"אהבתי את א׳ אבל לשים לב שהשאלות הקבועות אין לנו את ה״מזג״ ו״איך הרגיש
+> הגוף״ … להכין את עצמך לכל אפשרות שהמשתמש יפעל באפליקציה."*
+
+He was right, and reading the source rather than my own memory says how right.
+**`RF_STAGE1` is `moment`, `photo`, `song`, `quote`. That is the whole fixed
+set.** `mood` is a card in the bank; `bodyFeelings` is a **multi-select over
+`RF_BODY`**, not a rating; `dayRating` is 1–10 and is also in the bank. So the
+head I built stood on two fields that are usually absent, and one of them is
+not a number even when present. *Never propose a field without checking it is
+still asked* — written down here once already, about the day rating, and
+repeated anyway.
+
+**That kills the fixed page, not just the fixed head.** 4 fixed + 22 bank
+questions in 12 kinds, and a person may answer 26 or one. The page has to be
+composed. The rule in the preview, in three tiers:
+
+1. **Atomic → a line beside the photo**, capped at **six**, which is the height
+   of the picture box. Everything past six drops to a compact strip under the
+   rule, so the head stays the same height whether you answered four questions
+   or twenty-six.
+2. **Shaped → a block.** The clock, the flow, the timeline, the food. A picture
+   does not become a line.
+3. **Written → prose, grouped by `SUM_SECS`'s own taxonomy** — הרגעים הטובים,
+   תובנות, אנרגיה, הכרת תודה. Nine text answers land as three legible groups
+   instead of nine identical cards, using a grouping the app already has.
+
+Measured across five personas: typical **822px**, every question answered
+**1629px**, no-nutrition **636px**, one answer **151px**, vlog only **141px**.
+The maximal day is longer than today's 3.31 screens — as it should be, because
+that person *did* write a lot. The head is 155–172px in all of them.
+
+### Three things to fix in the app, found while reading it
+
+- **`rfAnswered(q)` already exists** and already knows, per kind, what counts as
+  answered — including that an explicit "no" on a branch **is** an answer. The
+  overlay ignores it and uses a hand-written list of `if(sum.x)` instead. Compose
+  from `rfAnswered` over `RF_STAGE1.concat(RF_STAGE2)` filtered by `sumSecOn`.
+  Same bug class as `6546b08`, where the water bar divided by a literal 3000
+  while the four bars beside it read `TARGETS`.
+- **The journal never reaches the summary.** `jrnl_<date>` is its own key and
+  appears in **no `SUM_SECS` row**, so a day someone wrote a page about shows
+  none of it on the page that is supposed to be that day.
+- **`sum.body` is dead.** Only `finishInterview` writes it — the old
+  `QUESTIONS` path — and the overlay still renders it as five stars beside
+  `sum.mood`. Nothing in the reflection writes it; `bodyFeelings` is the live
+  field and has a different shape.
+
+**Still open:** a person who tracks food but never reflects has **no summary
+page at all** — `renderSummaryOverlay` returns early unless there is a `sum_`
+record or a vlog, so the nutrition they did log has nowhere to appear.
+
 ---
 
 ## Nutrition: the bars refill from empty on every render (2026-09-12)
