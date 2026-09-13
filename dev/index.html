@@ -1502,6 +1502,34 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .photo-upload-area{border:2px dashed var(--violet-300);border-radius:16px;padding:30px;text-align:center;cursor:pointer;margin-bottom:10px;background:#faf7ff}
 .photo-preview{width:100%;max-height:200px;object-fit:contain;border-radius:16px;margin-bottom:10px}
 .summary-overlay{position:fixed;inset:0;background:rgba(74,67,64,.6);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+/* ── the week on a turntable ──
+   The stage carries the perspective; the ring carries the rotation; each card
+   sits on the circle. touch-action:pan-y so a vertical scroll still scrolls
+   the page and only a horizontal drag turns the week. */
+.wkr{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.wkr-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.wkr-t{font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700}
+.wkr-nav{display:flex;gap:6px}
+.wkr-b{width:28px;height:28px;border-radius:50%;border:1px solid var(--line-strong);background:var(--card);
+  color:var(--muted);font-size:15px;line-height:1;cursor:pointer;font-family:inherit;padding:0}
+.wkr-b:active{background:var(--surface)}
+.wkr-stage{height:216px;perspective:760px;position:relative;overflow:hidden;touch-action:pan-y;
+  cursor:grab;outline:none}
+.wkr-stage:focus-visible{outline:2px solid var(--violet-500);outline-offset:3px;border-radius:14px}
+.wkr-stage.drag{cursor:grabbing}
+.wkr-ring{position:absolute;inset:0;transform-style:preserve-3d;
+  transition:transform .5s cubic-bezier(.22,.75,.3,1)}
+.wkr-stage.drag .wkr-ring{transition:none}
+.wkr-card{position:absolute;top:6px;left:50%;width:140px;height:188px;margin-inline-start:-70px;
+  border-radius:12px;overflow:hidden;background:var(--surface);
+  box-shadow:0 10px 26px -10px rgba(70,62,54,.55);backface-visibility:hidden;
+  transition:opacity .4s ease,filter .4s ease}
+.wkr-card img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.wkr-card.off{opacity:.42;filter:saturate(.55)}
+.wkr-cap{text-align:center;margin-top:10px;min-height:32px}
+.wkr-day{font-size:11px;font-weight:800;color:var(--ink)}
+.wkr-note{font-size:11px;color:var(--muted);line-height:1.55;margin-top:2px;unicode-bidi:plaintext}
+@media (prefers-reduced-motion:reduce){.wkr-ring{transition:none}.wkr-card{transition:none}}
 /* One card, one label, one rhythm. The sheet had eight sections each with its
    own radius, padding, shadow and label size - it read as something that had
    accumulated rather than been designed. */
@@ -21246,6 +21274,79 @@ function dayName(iso){
 
    Deliberately not here: a streak, a percentage, or any red. The point of
    this card is to be worth opening on a week that went badly. */
+/* Fifty degrees between cards. See the note at the top of this change: 360/n
+   is the textbook answer and it is wrong for two photographs. */
+var WK_RING_STEP=50;
+var _wkRing={i:0,n:0,days:[]};
+function wkRingHTML(days){
+  var shots=[],i;
+  for(i=0;i<days.length;i++){
+    var r=days[i].r;
+    if(r&&r.photo&&sumSecOn('photo'))shots.push({d:days[i].d,p:r.photo,c:(r.photoCaption||'').trim()});
+  }
+  if(!shots.length)return '';                     // no pictures, no stage
+  _wkRing={i:0,n:shots.length,days:shots};
+  /* R from the step, so the cards sit on a circle the width actually fits. */
+  var R=Math.round((140/2)/Math.tan(WK_RING_STEP*Math.PI/360));
+  var h='<div class="wkr"><div class="wkr-hd"><div class="wkr-t">'+_t('תמונות השבוע')+'</div>';
+  if(shots.length>1)
+    h+='<div class="wkr-nav">'+
+       '<button class="wkr-b" onclick="wkRingGo(-1)" aria-label="'+_t('הקודם')+'">&#8249;</button>'+
+       '<button class="wkr-b" onclick="wkRingGo(1)" aria-label="'+_t('הבא')+'">&#8250;</button></div>';
+  h+='</div>';
+  h+='<div class="wkr-stage" id="wkr-stage" tabindex="0" role="group" aria-label="'+_t('תמונות השבוע')+'"'+
+     ' onpointerdown="wkRingDrag(event)" onkeydown="if(event.key===\'ArrowLeft\'){wkRingGo(1);event.preventDefault();}else if(event.key===\'ArrowRight\'){wkRingGo(-1);event.preventDefault();}">'+
+     '<div class="wkr-ring" id="wkr-ring" data-r="'+R+'">';
+  for(i=0;i<shots.length;i++)
+    h+='<div class="wkr-card'+(i?' off':'')+'" data-i="'+i+'" style="transform:rotateY('+(i*WK_RING_STEP)+'deg) translateZ('+R+'px)">'+
+       photoImg(shots[i].p,'alt=""')+'</div>';
+  h+='</div></div>';
+  h+='<div class="wkr-cap" id="wkr-cap"></div></div>';
+  return h;
+}
+/* Turn to a card. The index is not wrapped into range - it keeps counting, so
+   turning past the last card carries on around the circle instead of spinning
+   all the way back the other way, which is what a ring should do. */
+function wkRingTurn(idx){
+  var ring=document.getElementById('wkr-ring');if(!ring)return;
+  _wkRing.i=idx;
+  ring.style.transform='rotateY('+(-idx*WK_RING_STEP)+'deg)';
+  var at=((idx%_wkRing.n)+_wkRing.n)%_wkRing.n;
+  var cards=ring.querySelectorAll('.wkr-card'),j;
+  for(j=0;j<cards.length;j++)cards[j].className='wkr-card'+(j===at?'':' off');
+  var cap=document.getElementById('wkr-cap');
+  if(cap){
+    var sh=_wkRing.days[at];
+    cap.innerHTML='<div class="wkr-day">'+dayName(sh.d)+'</div>'+
+                  (sh.c?'<div class="wkr-note">'+esc(sh.c)+'</div>':'');
+  }
+}
+function wkRingGo(dir){wkRingTurn(_wkRing.i+dir);}
+/* The content follows the finger: drag left and the week turns forward, drag
+   right and it turns back. True in RTL and LTR without asking which is on. */
+function wkRingDrag(e){
+  var stage=document.getElementById('wkr-stage');if(!stage)return;
+  var x0=e.clientX,start=_wkRing.i,moved=false;
+  stage.classList.add('drag');
+  try{stage.setPointerCapture(e.pointerId);}catch(_){}
+  var ring=document.getElementById('wkr-ring');
+  var move=function(ev){
+    var dx=ev.clientX-x0;
+    if(Math.abs(dx)>4)moved=true;
+    if(ring)ring.style.transform='rotateY('+(-start*WK_RING_STEP+dx/2.2)+'deg)';
+  };
+  var up=function(ev){
+    stage.classList.remove('drag');
+    stage.removeEventListener('pointermove',move);
+    stage.removeEventListener('pointerup',up);
+    stage.removeEventListener('pointercancel',up);
+    var dx=(ev.clientX||x0)-x0;
+    wkRingTurn(moved?start-Math.round(dx/56):start);
+  };
+  stage.addEventListener('pointermove',move);
+  stage.addEventListener('pointerup',up);
+  stage.addEventListener('pointercancel',up);
+}
 function weekCardHTML(){
   var days=[],i,d,r;
   for(i=6;i>=0;i--){d=dayAdd(todayStr(),-i);days.push({d:d,r:loadSummary(d)||null});}
@@ -21319,6 +21420,8 @@ function weekCardHTML(){
   if(stepDays)bits.push(nfmt(Math.round(stepSum/stepDays))+' '+_t('צעדים ביום')+'');
   if(bits.length)
     h+='<div style="font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums">'+bits.join(' · ')+'</div>';
+
+  h+=wkRingHTML(days);
 
   return h+'</div>';
 }
@@ -21455,6 +21558,8 @@ function renderReflectHome(){
 
   h+=weekCardHTML();
   h+=monthCardHTML();
+  /* the ring's caption is written by wkRingTurn, which needs the elements to
+     exist - so it is called once the home has been put in the page below */
 
   var prev=[],i,d,s;
   for(i=1;i<=60;i++){
@@ -21481,6 +21586,10 @@ function renderReflectHome(){
   }
   h+='</div>';
   document.getElementById('content').innerHTML=h;
+  /* Facing TODAY. weekCardHTML walks the week oldest-first, so the newest
+     picture is the last one on the ring - and opening on a photograph from six
+     days ago, with today's behind your shoulder, is the wrong way round. */
+  if(document.getElementById('wkr-ring'))wkRingTurn(_wkRing.n-1);
 }
 function rfRecap(r){
   var bits=[];
