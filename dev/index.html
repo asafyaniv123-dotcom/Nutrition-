@@ -7954,6 +7954,7 @@ function sumLabelFor(id){
   if(id==='song')return ''+_t('השיר של היום')+'';
   if(id==='quote')return ''+_t('משפט שתפס')+'';
   if(id==='moment')return ''+_t('הרגע הכי טוב')+'';
+  if(id==='photo')return ''+_t('תמונת היום')+'';
   return '';
 }
 /* The short value for one fact, or '' when there is nothing to show. The
@@ -21009,7 +21010,64 @@ function rfFilter(all){
   }
   return out.length?out:all;
 }
-function rfSteps(){return rfFilter(_rfStage===2?RF_STAGE2:RF_STAGE1);}
+/* ── WHAT THE EVENING ASKS ──
+   One list of question ids, seeded with the four RF_STAGE1 always asked. It
+   is stored as {on:[…],asked:[…]} under one key: `on` is the evening's
+   questions in order, `asked` is every question the keep prompt has
+   already put to the person - so a question you declined is never offered
+   again, and neither is one you accepted.
+
+   There is no privileged "fixed four" any more. The four are simply the
+   default contents of a list the person owns, which is what makes "edit the
+   fixed ones" a thing the sheet can do rather than a thing it cannot. */
+var RF_NIGHTLY_KEY='rf_nightly';
+var RF_NIGHTLY_DEF=['moment','photo','song','quote'];
+function rfNightly(){
+  var raw=null;try{raw=localStorage.getItem(RF_NIGHTLY_KEY);}catch(e){}
+  if(raw===null)return {on:RF_NIGHTLY_DEF.slice(),asked:[]};
+  try{
+    var o=JSON.parse(raw);
+    return {on:Array.isArray(o.on)?o.on:RF_NIGHTLY_DEF.slice(),
+            asked:Array.isArray(o.asked)?o.asked:[]};
+  }catch(e){return {on:RF_NIGHTLY_DEF.slice(),asked:[]};}
+}
+function rfNightlySave(o){
+  try{localStorage.setItem(RF_NIGHTLY_KEY,JSON.stringify({on:o.on,asked:o.asked}));}catch(e){}
+}
+function rfNightlyOn(id){return rfNightly().on.indexOf(id)>=0;}
+/* Every question in the app, the four and the bank together, so one lookup
+   answers for either. */
+function rfAllQs(){return RF_STAGE1.concat(RF_STAGE2);}
+function rfQById(id){
+  var a=rfAllQs(),i;
+  for(i=0;i<a.length;i++)if(a[i].id===id)return a[i];
+  return null;
+}
+function rfNightlyToggle(id){
+  var o=rfNightly(),at=o.on.indexOf(id);
+  if(at>=0)o.on.splice(at,1);else o.on.push(id);
+  /* Choosing from the sheet is itself an answer to "shall I keep this", so the
+     prompt must not come back and ask afterwards. */
+  if(o.asked.indexOf(id)<0)o.asked.push(id);
+  rfNightlySave(o);
+  rfNightlyOpen();
+  if(_rfView==='home')renderReflectHome();
+}
+function rfNightlyReset(){
+  try{localStorage.removeItem(RF_NIGHTLY_KEY);}catch(e){}
+  rfNightlyOpen();
+  if(_rfView==='home')renderReflectHome();
+}
+
+/* Stage one walks the person's own list rather than RF_STAGE1, in the order
+   they hold it. An id whose question no longer exists is skipped rather than
+   crashing the evening. */
+function rfSteps(){
+  if(_rfStage===2)return rfFilter(RF_STAGE2);
+  var ids=rfNightly().on,out=[],i,q;
+  for(i=0;i<ids.length;i++){q=rfQById(ids[i]);if(q)out.push(q);}
+  return rfFilter(out.length?out:RF_STAGE1);
+}
 function rfBank(){return rfFilter(RF_STAGE2);}
 
 function rfFace(i,col,on){
@@ -21283,6 +21341,7 @@ function renderReflectHome(){
   }
   h+='</div>';
 
+  h+='<button class="rf-secs-b" onclick="rfNightlyOpen()">'+rfNightlyLabel()+'</button>';
   h+='<button class="rf-secs-b" onclick="rfSecsOpen()">'+rfSecsLabel()+'</button>';
 
   h+=weekCardHTML();
@@ -21347,6 +21406,46 @@ function rfSecsOpen(){
 }
 function rfSecsClose(){
   var e=document.getElementById('rf-secs');if(e)e.remove();
+  document.body.style.overflow='';
+}
+/* ── THE EVENING'S QUESTIONS ──
+   The other half of "remembered". Every question in the app on one list, the
+   four defaults marked as such, each one on or off. This is where a question
+   that accumulated gets dropped, which is the thing that keeps four from
+   becoming nine. It borrows the whole rf-secs vocabulary and adds no CSS. */
+function rfNightlyLabel(){
+  var n=rfNightly().on.length;
+  return ''+_t('שאלות הערב')+' &middot; '+_t('{n} שאלות',{n:n});
+}
+function rfNightlyOpen(){
+  var old=document.getElementById('rf-nightly');if(old)old.remove();
+  var o=rfNightly(),all=rfAllQs(),i,q,on,isDef;
+  var custom=false;
+  if(o.on.length!==RF_NIGHTLY_DEF.length)custom=true;
+  else for(i=0;i<RF_NIGHTLY_DEF.length;i++)if(o.on.indexOf(RF_NIGHTLY_DEF[i])<0)custom=true;
+  var h='<div class="rf-secs-ov" id="rf-nightly" onclick="if(event.target===this)rfNightlyClose()">'+
+    '<div class="rf-secs">'+
+    '<div class="rf-secs-hd"><span>'+_t('שאלות הערב')+'</span>'+
+    '<button class="rf-secs-x" onclick="rfNightlyClose()">&times;</button></div>'+
+    '<div class="rf-secs-n">'+_t('מה שמסומן כאן תישאל עליו כל ערב. השאר נשאר בבנק, ואפשר לפתוח אותו מתי שבא לך. שום דבר לא נמחק.')+'</div>';
+  if(custom)h+='<button class="rf-secs-all" onclick="rfNightlyReset()">'+_t('חזרה לארבע המקוריות')+'</button>';
+  for(i=0;i<all.length;i++){
+    q=all[i];on=o.on.indexOf(q.id)>=0;isDef=RF_NIGHTLY_DEF.indexOf(q.id)>=0;
+    /* RF_STAGE1 carries no short title - it is a question, not a card - and
+       putting the whole question in the row while every bank row shows two
+       words made the four defaults look like a different kind of thing.
+       sumLabelFor already names all four, out of keys that exist. */
+    h+='<button class="rf-sec'+(on?' on':'')+'" onclick="rfNightlyToggle(&quot;'+q.id+'&quot;)">'+
+       '<span class="rf-sec-tick">'+(on?'&#10003;':'')+'</span>'+
+       '<span class="rf-sec-t">'+(q.t||sumLabelFor(q.id)||q.q)+
+       '<i>'+(isDef?_t('ברירת מחדל'):(q.s||''))+'</i></span></button>';
+  }
+  h+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+  document.body.style.overflow='hidden';
+}
+function rfNightlyClose(){
+  var e=document.getElementById('rf-nightly');if(e)e.remove();
   document.body.style.overflow='';
 }
 function rfStart(){_rfDate=todayStr();_rfStage=1;_rfStep=0;_rfView='intro';renderReflect();}
@@ -21663,8 +21762,47 @@ function rfStageEnd(){
 }
 // The quick summary runs as a queue; the deep pass is picked off a board, so
 // finishing one of its questions returns there rather than marching on.
+/* Has the person already been asked about this question, either way? */
+function rfKeepAsked(id){return rfNightly().asked.indexOf(id)>=0;}
+/* Offered ONCE, after the question has actually been answered, and never
+   again - whichever way it goes. Opening a card out of curiosity must not
+   sign anybody up to it every night forever, and a prompt that returns is
+   the same nagging by another route. */
+function rfKeepOpen(id){
+  var q=rfQById(id);if(!q)return;
+  var old=document.getElementById('rf-keep');if(old)old.remove();
+  var h='<div class="rf-secs-ov" id="rf-keep" onclick="if(event.target===this)rfKeepAnswer(&quot;'+id+'&quot;,false)">'+
+    '<div class="rf-secs">'+
+    '<div class="rf-secs-hd"><span>'+_t('לשאול אותך את זה כל ערב?')+'</span>'+
+    '<button class="rf-secs-x" onclick="rfKeepAnswer(&quot;'+id+'&quot;,false)">&times;</button></div>'+
+    '<div class="rf-secs-n">'+_t('אפשר לשנות את זה מתי שתרצה, ברשימת שאלות הערב.')+'</div>'+
+    '<button class="rf-sec on" onclick="rfKeepAnswer(&quot;'+id+'&quot;,true)">'+
+      '<span class="rf-sec-tick">&#10003;</span>'+
+      '<span class="rf-sec-t">'+_t('כן, תשאל אותי כל ערב')+'<i>'+q.t+'</i></span></button>'+
+    '<button class="rf-sec" onclick="rfKeepAnswer(&quot;'+id+'&quot;,false)">'+
+      '<span class="rf-sec-tick"></span>'+
+      '<span class="rf-sec-t">'+_t('לא, רק היום')+'</span></button>'+
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+  document.body.style.overflow='hidden';
+}
+function rfKeepAnswer(id,keep){
+  var o=rfNightly();
+  if(o.asked.indexOf(id)<0)o.asked.push(id);
+  if(keep&&o.on.indexOf(id)<0)o.on.push(id);
+  rfNightlySave(o);
+  var e=document.getElementById('rf-keep');if(e)e.remove();
+  document.body.style.overflow='';
+  _rfView='board';renderReflect();
+}
 function rfAdvance(){
-  if(_rfStage===2){_rfView='board';renderReflect();return;}
+  if(_rfStage===2){
+    /* Answered a bank card. If it is not already one of the evening's own and
+       nobody has been asked about it yet, ask now - once. */
+    var bq=rfSteps()[_rfStep];
+    if(bq&&rfAnswered(bq)&&!rfNightlyOn(bq.id)&&!rfKeepAsked(bq.id)){rfKeepOpen(bq.id);return;}
+    _rfView='board';renderReflect();return;
+  }
   var last=rfSteps().length-1;
   rfSave({lastStep:Math.min(last,_rfStep+1),lastStage:1});
   _rfStep++;
