@@ -1563,10 +1563,8 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .daycard-ov{align-items:center}
 .daycard-wrap{width:100%;max-width:420px;max-height:92vh;overflow-y:auto;padding:14px 18px 22px;
   position:relative;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-.daycard-wrap .rfd-stage{margin-top:44px}
-.daycard-more{width:100%;margin-top:18px;background:rgba(255,255,255,.9);border:none;border-radius:14px;
-  padding:13px;font-family:inherit;font-size:12.5px;font-weight:800;color:var(--ink);cursor:pointer}
-.rfd-card{position:relative;transform-style:preserve-3d;cursor:grab;
+.daycard-wrap .rfd-stage{margin-top:44px;margin-bottom:8px}
+.rfd-card{position:relative;transform-style:preserve-3d;cursor:grab;touch-action:pan-y;
   background:linear-gradient(158deg,#fffdfa 0%,#fbf7f1 55%,#f5efe6 100%);
   border-radius:24px;padding:20px 18px 22px;
   box-shadow:0 20px 44px -20px rgba(70,62,54,.55),0 2px 7px rgba(90,80,70,.10);
@@ -1590,7 +1588,6 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
   background:linear-gradient(135deg,var(--green-200),var(--green-600));
   box-shadow:0 5px 12px -4px rgba(111,178,131,.75)}
 .rfd-seal-t{font-size:12.5px;font-weight:800;color:var(--ink);letter-spacing:.02em}
-.rfd-seal-d{font-size:10.5px;color:var(--muted);margin-top:2px}
 .rfd-ph{border-radius:16px;overflow:hidden;line-height:0;margin-bottom:12px;
   box-shadow:0 10px 22px -12px rgba(70,62,54,.5)}
 .rfd-ph img{width:100%;display:block}
@@ -8282,7 +8279,11 @@ function sumDayTotals(dateStr,sum){
   if(t.steps===undefined){var st=stepsOf(dateStr);if(st>0)t.steps=st;}
   return t;
 }
-function renderSummaryOverlay(dateStr){
+/* The day as one composed page, with no opinion about what it is presented
+   IN. The sheet wraps it in a drawer and the card wraps it in glass, and
+   because there is exactly one builder the two cannot drift apart. Returns ''
+   for a day with nothing on it. */
+function summaryBodyHTML(dateStr){
   /* A day can have a clip, or a journal page, and no written summary - so the
      sheet opens for any of the three and the parts with nothing behind them
      stay shut. The journal was reachable from none of this before: jrnl_<date>
@@ -8294,19 +8295,12 @@ function renderSummaryOverlay(dateStr){
   /* A day somebody only ATE on is a day worth opening. Before this, a person
      who logs every meal and never writes a reflection had nowhere their
      nutrition appeared at all. */
-  if(!sum&&!vlg&&!jrnl&&!dayHasSomething(dateStr))return;
+  if(!sum&&!vlg&&!jrnl&&!dayHasSomething(dateStr))return '';
   if(!sum)sum={date:dateStr};
   sum=sumDayTotals(dateStr,sum);
-  var old=document.getElementById('sum-overlay');if(old)old.remove();
   var flowStops=parseFlow(sum.flow);
   var hasPh=!!(sum.photo&&sumSecOn('photo'));
-  var div=document.createElement('div');div.id='sum-overlay';div.className='summary-overlay';
-  div.onclick=function(e){if(e.target===div)closeSummary();};
-  /* The tab bar is fixed at z-index 140 and this overlay is 50, so without
-     this the bar covers the foot of the sheet and swallows the touches there.
-     Every other sheet in the app already does this. */
-  document.body.classList.add('sheet-open');
-  var h='<div class="summary-sheet"><div class="summary-pull"></div><button class="summary-close" onclick="closeSummary()">&times;</button>';
+  var h='';
   var i,rows=sumFactRows(sum,dateStr),head=rows.slice(0,SUM_HEAD_MAX),rest=rows.slice(SUM_HEAD_MAX);
 
   /* THE HEAD. The picture sits where the drawing sits in the reference - on
@@ -8400,10 +8394,28 @@ function renderSummaryOverlay(dateStr){
      video player above the day it belongs to. */
   if(vlg&&vlg.k)h+=vlogPlayerHTML(vlg);
 
-  h+='</div>';
-  div.innerHTML=h;document.body.appendChild(div);
-  hydratePhotos(div);hydrateVlogs(div);
+  return h;
+}
+/* The pictures, the clips and the clock all need the markup to be in the page
+   before they can be filled in - so whoever put it there calls this. */
+function sumAfterPaint(root){
+  hydratePhotos(root);hydrateVlogs(root);
   if(window._sumClockNeedsDraw){window._sumClockNeedsDraw=false;setTimeout(function(){drawSumClock(window._sumClockData);},30);}
+}
+function renderSummaryOverlay(dateStr){
+  var body=summaryBodyHTML(dateStr);
+  if(!body)return;
+  var old=document.getElementById('sum-overlay');if(old)old.remove();
+  var div=document.createElement('div');div.id='sum-overlay';div.className='summary-overlay';
+  div.onclick=function(e){if(e.target===div)closeSummary();};
+  /* The tab bar is fixed at z-index 140 and this overlay is 50, so without
+     this the bar covers the foot of the sheet and swallows the touches there.
+     Every other sheet in the app already does this. */
+  document.body.classList.add('sheet-open');
+  div.innerHTML='<div class="summary-sheet"><div class="summary-pull"></div>'+
+    '<button class="summary-close" onclick="closeSummary()">&times;</button>'+body+'</div>';
+  document.body.appendChild(div);
+  sumAfterPaint(div);
 }
 
 document.getElementById('btnPrev').onclick=function(){goDay(-1);};
@@ -22416,97 +22428,87 @@ function renderReflectDone(){
   h+='<div class="rf-q" style="text-align:center">'+_t('זהו להיום.')+'</div>';
   h+='<div class="rf-sub" style="text-align:center;font-size:14px">'+_t('עצרת לרגע, הסתכלת על היום שלך — ועכשיו אפשר לשחרר אותו.')+'</div>';
 
-  h+=dayCardHTML(_rfDate,r);
+  h+=dayCardHTML(_rfDate);
 
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-next" style="margin-top:30px">'+_t('סיימתי להיום')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
 }
-/* ONE card, drawn the same way wherever it appears - the closing screen and
-   the calendar both call this, so the two cannot drift apart. tabindex so it
-   can be reached by somebody not using a finger; the tilt is decoration and
-   its absence costs nothing. */
-function dayCardHTML(dateStr,r){
-  r=r||{};
-  var h='<div class="rfd-stage"><div class="rfd-card" id="rfd-card" tabindex="0" onpointerdown="rfdTilt(event)">';
-  h+='<div class="rfd-sheen"></div>';
-  /* the graphic that says it is finished: a struck seal, and the day it is for */
-  h+='<div class="rfd-seal"><div class="rfd-mark">&#10003;</div>'+
-     '<div><div class="rfd-seal-t">'+_t('סיכום יום')+'</div>'+
-     '<div class="rfd-seal-d">'+fmtDate(dateStr)+'</div></div></div>';
-  if(r.photo)h+='<div class="rfd-ph">'+photoImg(r.photo,'alt=""')+'</div>';
-  if(r.photoCaption)h+='<div class="rfd-cap">'+esc(r.photoCaption)+'</div>';
-  if(r.mood||r.dayRating){
-    h+='<div class="rfd-faces">';
-    if(r.mood)h+='<div style="text-align:center">'+rfFaceMini(r.mood)+'<div style="font-size:10.5px;color:var(--muted);margin-top:5px">'+RF_MOODS[Math.max(1,Math.min(5,r.mood))-1].l+'</div></div>';
-    if(r.dayRating)h+='<div style="text-align:center"><div style="font-size:26px;font-weight:800;color:var(--violet-500);line-height:1">'+nfmt(r.dayRating)+'</div><div style="font-size:10.5px;color:var(--muted);margin-top:3px">'+_t('ציון היום')+'</div></div>';
-    h+='</div>';
-  }
-  if(r.moment)h+=rfdRow(''+_t('הרגע הטוב')+'',r.moment);
-  if(r.impactfulMoment)h+=rfdRow(''+_t('הכי השפיע')+'',r.impactfulMoment);
-  if(r.takeawayForTomorrow)h+=rfdRow(''+_t('למחר')+'',r.takeawayForTomorrow);
-  return h+'</div></div>';
+/* The SAME page the sheet shows, on glass instead of in a drawer. The seal is
+   the only thing the card adds - it is the graphic that says the day is
+   closed - and it carries no date, because the page under it opens with one. */
+function dayCardHTML(dateStr){
+  var body=summaryBodyHTML(dateStr);
+  if(!body)return '';
+  return '<div class="rfd-stage"><div class="rfd-card" id="rfd-card" tabindex="0" onpointerdown="rfdTilt(event)">'+
+    '<div class="rfd-sheen"></div>'+
+    '<div class="rfd-seal"><div class="rfd-mark">&#10003;</div>'+
+    '<div class="rfd-seal-t">'+_t('סיכום יום')+'</div></div>'+
+    body+'</div></div>';
 }
-/* Tapping a photograph in the calendar hands you the day as a CARD - the thing
-   you can tilt - rather than dropping you straight into the full page. The way
-   through to the page is on it. */
+/* Tapping a photograph in the calendar hands you the day as a card - the same
+   day the sheet would show, in the presentation you can tilt. */
 function openDayCard(dateStr){
-  var r=loadSummary(dateStr);
-  if(!r){openSummary(dateStr);return;}          // nothing to put on a card
+  var card=dayCardHTML(dateStr);
+  if(!card){openSummary(dateStr);return;}
   var old=document.getElementById('daycard-ov');if(old)old.remove();
   var div=document.createElement('div');
   div.id='daycard-ov';div.className='summary-overlay daycard-ov';
   div.onclick=function(e){if(e.target===div)closeDayCard();};
   div.innerHTML='<div class="daycard-wrap">'+
-    '<button class="summary-close" onclick="closeDayCard()">&times;</button>'+
-    dayCardHTML(dateStr,r)+
-    '<button class="daycard-more" onclick="closeDayCard();openSummary(\''+dateStr+'\')">'+
-    _t('לעמוד המלא')+' &#8250;</button></div>';
+    '<button class="summary-close" onclick="closeDayCard()">&times;</button>'+card+'</div>';
   document.body.appendChild(div);
   document.body.classList.add('sheet-open');
-  hydratePhotos(div);
+  sumAfterPaint(div);
 }
 function closeDayCard(){
   var ov=document.getElementById('daycard-ov');if(ov)ov.remove();
   if(!document.getElementById('sum-overlay'))document.body.classList.remove('sheet-open');
 }
-function rfdRow(label,text){
-  return '<div class="rfd-row"><div class="rfd-l">'+label+'</div>'+
-    '<div class="rfd-b">'+esc(text)+'</div></div>';
-}
-/* Eleven degrees. He asked for "קצת זז... לא מסתובב", and a card that swings
-   far enough to show its own edge stops being paper. */
-var RFD_MAX_TILT=11;
+/* Eight degrees, over 140px of travel. He asked for "קצת זז... לא מסתובב",
+   and a card that swings far enough to show its own edge stops being paper. */
+var RFD_MAX_TILT=8;
+var RFD_TRAVEL=140;
 function rfdTilt(e){
   var card=document.getElementById('rfd-card');if(!card)return;
   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  var box=card.getBoundingClientRect();
-  card.classList.add('live');
-  try{card.setPointerCapture(e.pointerId);}catch(_){}
-  var put=function(ev){
-    /* -1..1 from the centre of the card, so the tilt follows where the finger
-       actually is rather than how far it has travelled. */
-    var dx=(ev.clientX-(box.left+box.width/2))/(box.width/2);
-    var dy=(ev.clientY-(box.top+box.height/2))/(box.height/2);
-    dx=Math.max(-1,Math.min(1,dx));dy=Math.max(-1,Math.min(1,dy));
-    card.style.transform='rotateY('+(dx*RFD_MAX_TILT)+'deg) rotateX('+(-dy*RFD_MAX_TILT*0.6)+'deg)';
-    var sh=card.querySelector('.rfd-sheen');
-    if(sh)sh.style.transform='translateX('+(dx*34)+'%)';
-  };
-  var up=function(){
-    card.classList.remove('live');
-    card.style.transform='';                       // the CSS transition springs it back
-    var sh=card.querySelector('.rfd-sheen');if(sh)sh.style.transform='';
+  var x0=e.clientX,y0=e.clientY,on=false,dead=false;
+  var sheen=card.querySelector('.rfd-sheen');
+  var off=function(){
     card.removeEventListener('pointermove',put);
     card.removeEventListener('pointerup',up);
     card.removeEventListener('pointercancel',up);
-    card.removeEventListener('pointerleave',up);
   };
-  put(e);
+  var put=function(ev){
+    if(dead)return;
+    var dx=ev.clientX-x0,dy=ev.clientY-y0;
+    if(!on){
+      /* A gesture that is mostly vertical is a SCROLL. Letting go of it here
+         is what stops the card fighting the scroller and throwing the page
+         around - touch-action:pan-y keeps the browser from handing us most of
+         them, and this catches the rest. */
+      if(Math.abs(dy)>Math.abs(dx)){dead=true;off();return;}
+      if(Math.abs(dx)<6)return;              // a press is not a drag
+      on=true;
+      card.classList.add('live');
+      try{card.setPointerCapture(ev.pointerId);}catch(_){}
+    }
+    /* From TRAVEL, not from where the finger happens to be: touching near an
+       edge used to snap the card to full angle before anything had moved. */
+    var ry=Math.max(-1,Math.min(1,dx/RFD_TRAVEL))*RFD_MAX_TILT;
+    var rx=Math.max(-1,Math.min(1,dy/(RFD_TRAVEL*1.6)))*RFD_MAX_TILT*0.35;
+    card.style.transform='rotateY('+ry+'deg) rotateX('+(-rx)+'deg)';
+    if(sheen)sheen.style.transform='translateX('+(ry/RFD_MAX_TILT*30)+'%)';
+  };
+  var up=function(){
+    card.classList.remove('live');
+    card.style.transform='';                 // the CSS transition springs it back
+    if(sheen)sheen.style.transform='';
+    off();
+  };
   card.addEventListener('pointermove',put);
   card.addEventListener('pointerup',up);
   card.addEventListener('pointercancel',up);
-  card.addEventListener('pointerleave',up);
 }
 
 /* ── "ME" ──
