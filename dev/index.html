@@ -7866,7 +7866,7 @@ function buildHomeCalHTML(){
        nothing behind it is not a button at all - a tap that silently does
        nothing is worse than no tap. The journal counts because the summary
        page shows it now. */
-    var canOpen=!!(sum||loadVlog(ds)||loadJournal(ds));
+    var canOpen=!!(sum||loadVlog(ds)||loadJournal(ds)||dayHasSomething(ds));
     var dots='';
     if(sum)dots+='<div style="width:4px;height:4px;border-radius:50%;background:var(--violet-500);margin:0 1px;display:inline-block"></div>';
     else if(canOpen)dots+='<div style="width:4px;height:4px;border-radius:50%;background:var(--amber-500);margin:0 1px;display:inline-block"></div>';
@@ -8233,6 +8233,35 @@ function sumProseHTML(sum){
   return h;
 }
 
+/* Anything logged on a day that is worth opening a page for. The calendar and
+   the overlay BOTH read this, because a page that exists and cannot be reached
+   is the same as no page. */
+function dayHasSomething(dateStr){
+  var day=loadDay(dateStr);
+  return !!((day.meals&&day.meals.length)||day.water||stepsOf(dateStr)>0);
+}
+/* The food numbers on a summary are a snapshot saveSummaryTotals writes when a
+   reflection is FINISHED. A day nobody reflected on has no snapshot, so they
+   are read back out of the day record instead.
+
+   The snapshot wins wherever it exists, INCLUDING WHEN IT IS ZERO: a
+   reflection that recorded no food is a person who ate nothing worth logging,
+   and replacing that with a day record edited later would rewrite what they
+   actually said. Only a day with no snapshot at all reads through. */
+function sumDayTotals(dateStr,sum){
+  if(sum&&sum.kcal!==undefined)return sum;
+  var day=loadDay(dateStr),meals=day.meals||[],t={},k;
+  for(k in sum)if(Object.prototype.hasOwnProperty.call(sum,k))t[k]=sum[k];
+  if(meals.length||day.water){
+    t.kcal=Math.round(meals.reduce(function(a,m){return a+(m.kcal||0);},0));
+    t.p=r2(meals.reduce(function(a,m){return a+(m.p||0);},0));
+    t.c=r2(meals.reduce(function(a,m){return a+(m.c||0);},0));
+    t.f=r2(meals.reduce(function(a,m){return a+(m.f||0);},0));
+    t.water=day.water||0;
+  }
+  if(t.steps===undefined){var st=stepsOf(dateStr);if(st>0)t.steps=st;}
+  return t;
+}
 function renderSummaryOverlay(dateStr){
   /* A day can have a clip, or a journal page, and no written summary - so the
      sheet opens for any of the three and the parts with nothing behind them
@@ -8242,8 +8271,12 @@ function renderSummaryOverlay(dateStr){
   var vlg=loadVlog(dateStr);
   var sum=loadSummary(dateStr);
   var jrnl=loadJournal(dateStr);
-  if(!sum&&!vlg&&!jrnl)return;
+  /* A day somebody only ATE on is a day worth opening. Before this, a person
+     who logs every meal and never writes a reflection had nowhere their
+     nutrition appeared at all. */
+  if(!sum&&!vlg&&!jrnl&&!dayHasSomething(dateStr))return;
   if(!sum)sum={date:dateStr};
+  sum=sumDayTotals(dateStr,sum);
   var old=document.getElementById('sum-overlay');if(old)old.remove();
   var flowStops=parseFlow(sum.flow);
   var hasPh=!!(sum.photo&&sumSecOn('photo'));
