@@ -121,6 +121,16 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragi
 .macro-pct{font-size:11px;color:var(--muted);font-weight:600}
 .macro-track{width:34px;height:100px;background:var(--line);border-radius:17px;overflow:hidden;position:relative}
 .macro-fill{width:100%;height:0%;border-radius:17px;position:absolute;bottom:0;transition:height .8s cubic-bezier(.34,1.56,.64,1)}
+/* One band per meal. The track already clips to a pill, so a band needs no
+   radius of its own - and a FLAT top is what makes the stack read as levels
+   rather than as one smeared fill. The hairline is the whole point: thirteen
+   pixels with an edge reads as something added, thirteen pixels of gradient
+   does not. */
+.macro-band{width:100%;position:absolute;border-radius:0;
+  transition:height .8s cubic-bezier(.34,1.56,.64,1);
+  border-top:1.5px solid rgba(255,255,255,.92)}
+.macro-band.first{border-top:none}
+@media (prefers-reduced-motion:reduce){.macro-band{transition:none}}
 .macro-val{font-size:16px;font-weight:700}
 .macro-lbl{font-size:11px;color:var(--muted)}
 .pills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
@@ -7020,6 +7030,17 @@ function deleteMeal(id){var d=loadDay(curDate);d.meals=d.meals.filter(function(m
    BORN here rather than at zero, so the transition carries it from where
    it was to where it is - the difference between moving and replaying. */
 var _barLast={};
+/* Whether the macro columns have been painted at all in this tab. A band that
+   appears AFTER the first paint is a meal that was just added and grows from
+   nothing; on the very first paint they are all born at their own height,
+   because four columns assembling themselves every time the tab opens is
+   exactly the noise this was meant to remove. */
+var _macroPainted=false;
+function bandBorn(key,val){
+  var was=_barLast[key];
+  if(was!==undefined)return was;      // already on screen: do not move it
+  return _macroPainted?0:val;         // new band mid-session: grow it
+}
 function barBorn(key,val){
   /* Nothing to animate from on the first paint of a session, so it is born
      at the truth. Watching five bars grow from empty every time the tab
@@ -7028,9 +7049,10 @@ function barBorn(key,val){
   return (was===undefined?val:was);
 }
 function animateBars(){requestAnimationFrame(function(){requestAnimationFrame(function(){
-  document.querySelectorAll('.macro-fill[data-h]').forEach(function(el){
+  document.querySelectorAll('.macro-fill[data-h],.macro-band[data-h]').forEach(function(el){
     el.style.height=el.getAttribute('data-h')+'%';
     _barLast[el.getAttribute('data-k')]=+el.getAttribute('data-h');
+    _macroPainted=true;
   });
   var wf=document.querySelector('.wf[data-w]');
   if(wf){wf.style.width=wf.getAttribute('data-w')+'%';_barLast.water=+wf.getAttribute('data-w');}
@@ -7181,6 +7203,36 @@ function whoCardHTML(day){
   h+='</details>';
   return h;
 }
+/* The stack for one macro column. Each meal contributes its own true share of
+   the target, laid bottom-up from where the meals below it ended, so the total
+   height is exactly what one continuous fill would have been - the SCALE is
+   untouched. What changes is that the column now has edges in it.
+
+   A meal contributing nothing to this macro gets no band at all, rather than a
+   zero-height sliver carrying a visible hairline. The newest band is the full
+   colour and the older ones are the pale end of the same ramp, so the last
+   thing added is the thing the eye finds. */
+function macroBandsHTML(bi,b,meals){
+  meals=meals||[];
+  var tgt=TARGETS[b.k]||0;
+  if(!tgt||!meals.length)
+    return '<div class="macro-fill" data-k="m'+bi+'" data-h="'+b.pct+'" style="height:'+barBorn('m'+bi,b.pct)+'%;background:'+b.g+'"></div>';
+  var h='',bottom=0,i,share,key,drawn=0;
+  for(i=0;i<meals.length;i++){
+    share=(+meals[i][b.k]||0)/tgt*100;
+    if(share<=0)continue;
+    if(bottom>=100)break;
+    if(bottom+share>100)share=100-bottom;   // the target is the top of the track
+    key='m'+bi+'-'+i;
+    h+='<div class="macro-band'+(drawn===0?' first':'')+'" data-k="'+key+'" data-h="'+share+'"'+
+       ' style="bottom:'+bottom+'%;height:'+bandBorn(key,share)+'%;background:'+
+       (i===meals.length-1?b.g:b.dim)+'"></div>';
+    bottom+=share;drawn++;
+  }
+  if(!drawn)
+    return '<div class="macro-fill" data-k="m'+bi+'" data-h="0" style="height:0%;background:'+b.g+'"></div>';
+  return h;
+}
 function renderToday(){
   if(interviewStep>=0){renderInterview();return;}
   var day=loadDay(curDate);
@@ -7202,8 +7254,8 @@ function renderToday(){
     macroHTML+='<button class="macro-guess" onclick="switchTab(&quot;profile&quot;)">'+
       _t('יעד התחלתי. מלא פרטים בפרופיל ואחשב אותו לפיך')+'</button>';
   macroHTML+='<div class="macro-bars">';
-  var mb=[{v:nfmt(kcal),pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',col:PAL.violet500},{v:fmtGrams(p),pct:pp,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',col:PAL.terra500},{v:fmtGrams(c),pct:cp,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',col:PAL.green500},{v:fmtGrams(f),pct:fp,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',col:PAL.amber500}];
-  for(var bi=0;bi<mb.length;bi++){var b=mb[bi];macroHTML+='<div class="macro-col"><div class="macro-pct">'+nfmt(b.pct)+'%</div><div class="macro-track"><div class="macro-fill" data-k="m'+bi+'" data-h="'+b.pct+'" style="height:'+barBorn('m'+bi,b.pct)+'%;background:'+b.g+'"></div></div><div class="macro-val" style="color:'+b.col+'">'+b.v+'</div><div class="macro-lbl">'+b.lbl+'</div></div>';}
+  var mb=[{v:nfmt(kcal),pct:kp,lbl:''+_t('קק"ל')+'',k:'kcal',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',dim:'var(--violet-300)',col:PAL.violet500},{v:fmtGrams(p),pct:pp,lbl:''+_t('חלבון')+'',k:'p',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',dim:'#f3b9a8',col:PAL.terra500},{v:fmtGrams(c),pct:cp,lbl:''+_t('פחמימה')+'',k:'c',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',dim:'#bfe0c7',col:PAL.green500},{v:fmtGrams(f),pct:fp,lbl:''+_t('שומן')+'',k:'f',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',dim:'#f6dfa0',col:PAL.amber500}];
+  for(var bi=0;bi<mb.length;bi++){var b=mb[bi];macroHTML+='<div class="macro-col"><div class="macro-pct">'+nfmt(b.pct)+'%</div><div class="macro-track">'+macroBandsHTML(bi,b,day.meals)+'</div><div class="macro-val" style="color:'+b.col+'">'+b.v+'</div><div class="macro-lbl">'+b.lbl+'</div></div>';}
   macroHTML+='</div></div>';
 
   var pillsHTML='<div class="pills"><div class="pill"><div class="pill-val" style="color:var(--violet-500)">'+nfmt(TARGETS.kcal-kcal)+'</div><div class="pill-lbl">'+_t('קק"ל נותרו')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--terra-500)">'+fmtGrams(r2(TARGETS.p-p))+'</div><div class="pill-lbl">'+_t('חלבון נותר')+'</div></div><div class="pill"><div class="pill-val" style="color:var(--amber-500)">'+fmtGrams(r2(TARGETS.f-f))+'</div><div class="pill-lbl">'+_t('שומן נותר')+'</div></div></div>';
