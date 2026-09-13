@@ -14397,15 +14397,56 @@ function renderFitProgress(){
 /* ── HABIT TRACKER ── */
 function loadHabits(){try{var x=localStorage.getItem('habits_list');return x?JSON.parse(x):[''+_t('שתיית מים')+'',''+_t('אימון')+'',''+_t('קריאה')+''];}catch(e){return[];}}
 function saveHabits(arr){try{localStorage.setItem('habits_list',JSON.stringify(arr));}catch(e){}}
-function loadHabitLog(){try{var x=localStorage.getItem('habits_log');return x?JSON.parse(x):{};}catch(e){return{};}}
+/* A legacy key carries a bare day number and no month. The grid never lets
+   you tick a future day, so a day LATER than today was ticked in an earlier
+   month - the most recent one that actually has that date, which is not
+   always last month: a __30 migrated in March would land on a February that
+   has no 30th and roll into March. */
+function habitLegacyDate(d,now){
+  var y=now.getFullYear(),m=now.getMonth(),today=now.getDate(),i,yy,mm;
+  if(d<=today)return dayStr(new Date(y,m,d));
+  for(i=1;i<=12;i++){
+    yy=y;mm=m-i;
+    while(mm<0){mm+=12;yy--;}
+    if(new Date(yy,mm+1,0).getDate()>=d)return dayStr(new Date(yy,mm,d));
+  }
+  return dayStr(new Date(y,m,d));
+}
+/* Idempotent by construction: a key already carrying a date is copied
+   untouched, so running this twice is the same as running it once. */
+function habitLogMigrate(log){
+  var out={},k,m,changed=false,now=appNow();
+  for(k in log){
+    if(!Object.prototype.hasOwnProperty.call(log,k))continue;
+    if(/__\d{4}-\d{2}-\d{2}$/.test(k)){out[k]=log[k];continue;}
+    m=/^([\s\S]*)__(\d{1,2})$/.exec(k);
+    if(!m){out[k]=log[k];continue;}
+    out[m[1]+'__'+habitLegacyDate(+m[2],now)]=log[k];
+    changed=true;
+  }
+  return changed?out:log;
+}
+/* One key for one habit on one day. */
+function habitDayKey(habit,ds){return habit+'__'+ds;}
+function loadHabitLog(){
+  try{
+    var x=localStorage.getItem('habits_log');
+    var o=x?JSON.parse(x):{};
+    var mig=habitLogMigrate(o);
+    /* Written back the first time it converts, so the cost is paid once
+       rather than on every read for the life of the install. */
+    if(mig!==o)saveHabitLog(mig);
+    return mig;
+  }catch(e){return{};}
+}
 function saveHabitLog(obj){try{localStorage.setItem('habits_log',JSON.stringify(obj));}catch(e){}}
 
-function toggleHabitAnim(habitIdx,day,cellId){
+function toggleHabitAnim(habitIdx,ds,cellId){
   var habits=loadHabits();
   var habit=habits[habitIdx];
   if(!habit)return;
   var log=loadHabitLog();
-  var key=habit+'__'+day;
+  var key=habitDayKey(habit,ds);
   var nowDone=!log[key];
   log[key]=nowDone;
   saveHabitLog(log);
@@ -14488,7 +14529,7 @@ function renderHabits(){
 
   // ── OVERALL STAT ──
   var totalDone=0,totalPossible=todayD*habits.length;
-  for(var hh=0;hh<habits.length;hh++)for(var dd2=1;dd2<=todayD;dd2++)if(log[habits[hh]+'__'+dd2])totalDone++;
+  for(var hh=0;hh<habits.length;hh++)for(var dd2=1;dd2<=todayD;dd2++)if(log[habitDayKey(habits[hh],dayStr(new Date(y,mo,dd2)))])totalDone++;
   var overallPct=totalPossible>0?Math.round(totalDone/totalPossible*100):0;
   h+='<div style="background:linear-gradient(135deg,var(--violet-100),var(--green-50));border-radius:16px;padding:12px 16px;display:flex;align-items:center;gap:14px;margin-bottom:12px">';
   h+='<div style="font-size:28px;font-weight:800;color:var(--violet-500)">'+nfmt(overallPct)+'%</div>';
@@ -14579,13 +14620,13 @@ function renderHabits(){
     h+='<td style="padding:3px 5px 3px 1px;text-align:start;white-space:nowrap;line-height:1;border-inline-end:1.5px solid var(--line)">'+
        '<span style="font-size:9.5px;font-weight:'+(isWeekend?'800':'600')+';color:'+(isToday?'var(--violet-500)':(isWeekend?'#9a8f80':(isFuture?'#c9c1b8':'var(--muted)')))+'">'+dayNames[dw]+'</span></td>';
     for(var hi2=0;hi2<habits.length;hi2++){
-      var done=!!log[habits[hi2]+'__'+d];
+      var done=!!log[habitDayKey(habits[hi2],dayStr(new Date(y,mo,d)))];
       var borderCol=done?'#6db88a':(isToday?PAL.violet500:(isFuture?'#e8e4de':'#ccc7c0'));
       var bgCol=done?'rgba(143,199,158,.12)':'transparent';
       h+='<td style="text-align:center;padding:3px 3px;width:64px;border-inline-start:'+(hi2<habits.length-1?'1.5px solid var(--line)':'none')+'">';
       if(!isFuture){
         var cellId='hc-'+hi2+'-'+d;
-        h+='<div id="'+cellId+'" onclick="toggleHabitAnim(\''+hi2+'\','+d+',\''+cellId+'\')" style="width:28px;height:28px;border-radius:5px;background:'+bgCol+';border:2px solid '+borderCol+';margin:0 auto;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s">';
+        h+='<div id="'+cellId+'" onclick="toggleHabitAnim(\''+hi2+'\',\''+dayStr(new Date(y,mo,d))+'\',\''+cellId+'\')" style="width:28px;height:28px;border-radius:5px;background:'+bgCol+';border:2px solid '+borderCol+';margin:0 auto;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s">';
         if(done){
           // Static X — no animation class, animation only happens on toggle
           h+='<svg width="16" height="16" viewBox="0 0 16 16" style="overflow:visible">';
@@ -14608,7 +14649,7 @@ function renderHabits(){
   h+='<td colspan="2" style="padding:8px 5px;font-size:10px;color:var(--muted);font-weight:700;text-align:start">%</td>';
   for(var hi3=0;hi3<habits.length;hi3++){
     var done2=0;
-    for(var ddd=1;ddd<=todayD;ddd++)if(log[habits[hi3]+'__'+ddd])done2++;
+    for(var ddd=1;ddd<=todayD;ddd++)if(log[habitDayKey(habits[hi3],dayStr(new Date(y,mo,ddd)))])done2++;
     var pct=todayD>0?Math.round(done2/todayD*100):0;
     h+='<td style="text-align:center;padding:8px 4px;border-inline-start:'+(hi3<habits.length-1?'1.5px solid var(--line)':'none')+'"><div style="font-size:13px;font-weight:800;color:'+(pct>=70?'var(--green-500)':pct>=40?'var(--amber-500)':'var(--terra-500)')+'">'+nfmt(pct)+'</div></td>';
   }
