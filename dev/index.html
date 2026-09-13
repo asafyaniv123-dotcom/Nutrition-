@@ -2291,6 +2291,33 @@ function profSet(field,val){
   saveProfile(p);
   renderProfile();
 }
+/* Two boxes in imperial, one in metric. The stored value is centimetres in
+   both, so nothing downstream has to know which was used. */
+function heightRowHTML(p){
+  var h='<div class="pf-row"><label class="pf-lbl">'+_t('גובה')+'</label>';
+  if(APP_UNITS==='imperial'){
+    var d=p.height!==undefined?toDisplayHeight(p.height):{ft:'',inch:''};
+    h+='<input class="pf-in" id="pf-ft" type="number" inputmode="numeric" step="1" min="0" placeholder="0" value="'+d.ft+'" onchange="profHeight()" aria-label="ft">'+
+       '<span class="pf-note" style="flex:0 0 16px">ft</span>'+
+       '<input class="pf-in" id="pf-in-inch" type="number" inputmode="numeric" step="1" min="0" max="11" placeholder="0" value="'+d.inch+'" onchange="profHeight()" aria-label="in">'+
+       '<span class="pf-note" style="flex:0 0 16px">in</span>';
+  } else {
+    h+='<input class="pf-in" type="number" inputmode="decimal" step="0.5" placeholder="0" value="'+(p.height!==undefined?p.height:'')+'" onchange="profNum(\u0027height\u0027,this)">'+
+       '<span class="pf-note">'+_t('ס"מ')+'</span>';
+  }
+  return h+'</div>';
+}
+/* Both boxes read together: a person filling in the feet and leaving the
+   inches empty means five feet exactly, not "no height". */
+function profHeight(){
+  var f=document.getElementById('pf-ft'),i=document.getElementById('pf-in-inch');
+  if(!f||!i)return;
+  var p=loadProfile();
+  if(f.value.trim()===''&&i.value.trim()===''){delete p.height;}
+  else p.height=fromDisplayHeight(parseFloat(f.value),parseFloat(i.value));
+  saveProfile(p);
+  renderProfile();
+}
 function profNum(field,el){
   var p=loadProfile(),v=el.value.trim();
   if(v===''){delete p[field];}
@@ -2379,9 +2406,7 @@ function renderProfile(){
      '<button class="pf-sex'+(p.sex==='m'?' on':'')+'" onclick="profSet(\u0027sex\u0027,\u0027m\u0027)">'+_t('זכר')+'</button>'+
      '<button class="pf-sex'+(p.sex==='f'?' on':'')+'" onclick="profSet(\u0027sex\u0027,\u0027f\u0027)">'+_t('נקבה')+'</button>'+
      '</div><span class="pf-note"></span></div>';
-  h+='<div class="pf-row"><label class="pf-lbl">'+_t('גובה')+'</label>'+
-     '<input class="pf-in" type="number" inputmode="decimal" step="0.5" placeholder="0" value="'+(p.height!==undefined?p.height:'')+'" onchange="profNum(\u0027height\u0027,this)">'+
-     '<span class="pf-note">'+_t('ס"מ')+'</span></div>';
+  h+=heightRowHTML(p);
   h+='<div class="pf-row"><label class="pf-lbl">'+_t('משקל')+'</label>'+
      '<input class="pf-in" type="number" inputmode="decimal" step="0.1" placeholder="0" value="'+(p.weight!==undefined?edWeightVal(p.weight):'')+'" onchange="profNum(\u0027weight\u0027,this)">'+
      '<span class="pf-note">'+weightUnit()+'</span></div>';
@@ -2791,6 +2816,29 @@ var KG_PER_LB=0.45359237;
 function weightUnit(){return APP_UNITS==='imperial'?'lb':''+_t('ק"ג')+'';}
 function toDisplayWeight(kg){return APP_UNITS==='imperial'?(+kg||0)/KG_PER_LB:(+kg||0);}
 function fromDisplayWeight(v){return APP_UNITS==='imperial'?(+v||0)*KG_PER_LB:(+v||0);}
+/* Height, alongside weight and volume. Stored in CENTIMETRES always; only the
+   display converts, so no saved number changes meaning when the preference
+   flips - and profileBMI keeps reading the centimetres it always read. */
+var CM_PER_IN=2.54;
+function heightUnit(){return APP_UNITS==='imperial'?'ft':''+_t('ס"מ')+'';}
+/* Feet and whole inches, because nobody says they are 71 inches tall. The
+   inches are rounded before the feet are taken, so 179.9cm reads 5'11" rather
+   than 5'10.98" - and 12 inches rolls up into a foot instead of printing
+   5'12". */
+function toDisplayHeight(cm){
+  var total=Math.round((+cm||0)/CM_PER_IN);
+  var ft=Math.floor(total/12),inch=total-ft*12;
+  return {ft:ft,inch:inch};
+}
+function fromDisplayHeight(ft,inch){
+  return Math.round(((+ft||0)*12+(+inch||0))*CM_PER_IN*10)/10;
+}
+function fmtHeight(cm){
+  if(!cm)return '';
+  if(APP_UNITS!=='imperial')return nfmt(+cm,{maximumFractionDigits:0})+' '+_t('ס"מ');
+  var h=toDisplayHeight(cm);
+  return nfmt(h.ft)+"'"+nfmt(h.inch)+'"';
+}
 /* Volume, alongside weight. Stored in millilitres always; only the display
    converts, so no saved number changes meaning when the preference flips. */
 var ML_PER_FLOZ=29.5735;
