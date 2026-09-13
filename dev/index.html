@@ -129,6 +129,17 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragi
 .pill-lbl{font-size:9.5px;color:var(--muted);margin-top:2px}
 .who-card{background:var(--card);border-radius:20px;padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 10px rgba(200,180,160,.1)}
 .who-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px}
+/* Folded by default. A <summary> is a list-item by default in every engine and
+   draws its own marker, so both are taken off and the chevron is drawn here -
+   otherwise the flex row is broken by a triangle nobody asked for. */
+summary.who-hd{cursor:pointer;list-style:none;margin-bottom:0}
+summary.who-hd::-webkit-details-marker{display:none}
+summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:center;
+  border-inline-end:2px solid var(--muted-soft);border-bottom:2px solid var(--muted-soft);
+  transform:rotate(45deg);margin-top:-3px;transition:transform .2s}
+.who-card[open]>summary.who-hd{margin-bottom:12px}
+.who-card[open]>summary.who-hd::after{transform:rotate(-135deg);margin-top:3px}
+@media (prefers-reduced-motion:reduce){summary.who-hd::after{transition:none}}
 .who-t{font-size:12px;font-weight:700;color:var(--ink)}
 .who-s{font-size:9.5px;color:var(--muted-soft);text-align:end}
 .who-row{margin-bottom:11px}
@@ -7144,14 +7155,21 @@ function whoRowHTML(lbl,n,v,lim,ceil,val,cap){
          '<div class="who-track"><div class="who-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
          '<div class="who-cap">'+cap+'</div></div>';
 }
+/* Open for the life of the TAB, not for ever. renderToday() rebuilds this
+   pane on every meal, so without a memory the card would snap shut each time
+   something is logged; and with a REMEMBERED-for-ever one it would be back in
+   front of the eyes every day, which is the thing he decided against. */
+var _whoOpen=false;
+function whoToggle(el){_whoOpen=!!el.open;}
 function whoCardHTML(day){
   var q=dayQuality((day||{}).meals);
   if(!q.n)return '';
-  var h='<div class="who-card"><div class="who-hd">'+
+  var h='<details class="who-card"'+(_whoOpen?' open':'')+' ontoggle="whoToggle(this)">'+
+        '<summary class="who-hd">'+
         '<span class="who-t">'+_t('איכות התזונה')+'</span>'+
-        '<span class="who-s">'+_t('לפי ארגון הבריאות העולמי')+'</span></div>';
+        '<span class="who-s">'+_t('לפי ארגון הבריאות העולמי')+'</span></summary>';
   if(!q.sodN&&!q.fibN){
-    h+='<div class="who-note">'+_t('אין עדיין מדידה של נתרן או סיבים במה שנרשם היום.')+'</div></div>';
+    h+='<div class="who-note">'+_t('אין עדיין מדידה של נתרן או סיבים במה שנרשם היום.')+'</div></details>';
     return h;
   }
   h+=whoRowHTML(_t('נתרן'),q.sodN,q.sod,WHO_DAY.sod,1,
@@ -7160,7 +7178,7 @@ function whoCardHTML(day){
                 fmtGrams(q.fib),_t('לפחות {n} ליום',{n:fmtGrams(WHO_DAY.fib)}));
   if(q.miss.length)
     h+='<div class="who-note">'+_t('לא נמדד: {list}',{list:esc(q.miss.join(' · '))})+'</div>';
-  h+='</div>';
+  h+='</details>';
   return h;
 }
 function renderToday(){
@@ -14131,7 +14149,12 @@ function renderFitProgress(){
              somebody later "fixes" the wrong one. */
           var topW=entry.exercises[exi].sets.reduce(function(mx,s){return Math.max(mx,s.weight||0);},0);
           var totalV=entry.exercises[exi].sets.reduce(function(a,s){return a+(s.weight||0)*(s.reps||0);},0);
-          if(topW>0||totalV>0)pts.push({date:entry.date,weight:topW,vol:totalV});
+          /* The best estimated single of the session. ZERO means "this session
+             cannot be estimated" rather than "zero kilos" - e1rm() refuses
+             above twelve reps because Epley drifts there - and the chart has
+             to treat it as a gap, never as a value. */
+          var topE=entry.exercises[exi].sets.reduce(function(mx,s){return Math.max(mx,e1rm(s.weight,s.reps));},0);
+          if(topW>0||totalV>0)pts.push({date:entry.date,weight:topW,vol:totalV,e1:topE});
         }
       }
     }
@@ -14145,13 +14168,17 @@ function renderFitProgress(){
          it. Everything below reads wDisp; pts[].weight stays kilograms for
          the fmtWeight summaries underneath. */
       var wDisp=pts.map(function(p){return toDisplayWeight(p.weight);});
-      var wVals=wDisp;
+      /* The second series, in the same unit and therefore on the same scale.
+         A session with no estimate contributes nothing to the axis. */
+      var eDisp=pts.map(function(p){return p.e1>0?toDisplayWeight(p.e1):0;});
+      var hasE=eDisp.some(function(v){return v>0;});
+      var wVals=wDisp.concat(eDisp.filter(function(v){return v>0;}));
       var minW=Math.max(0,Math.min.apply(null,wVals)-5);
       var maxW=Math.max.apply(null,wVals)+5;
       function xp2(i){return PL+i*(cW/(pts.length-1));}
       function yp2(v){return PT+cH*(1-(v-minW)/(maxW-minW));}
 
-      var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block" xmlns="http://www.w3.org/2000/svg">';
+      var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block;direction:ltr" xmlns="http://www.w3.org/2000/svg">';
       // Grid
       for(var gi=0;gi<=3;gi++){
         var gv=minW+(maxW-minW)*gi/3;
@@ -14168,17 +14195,47 @@ function renderFitProgress(){
       var lPath='M'+xp2(0)+','+yp2(wDisp[0]);
       for(var pi3=1;pi3<pts.length;pi3++)lPath+=' L'+xp2(pi3)+','+yp2(wDisp[pi3]);
       svg+='<path d="'+lPath+'" fill="none" stroke="'+PAL.violet500+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+      /* The estimated single, drawn BEFORE the dots so the solid series sits
+         on top. The pen lifts across any session that could not be estimated:
+         a break in the line says "no reading here", a point at zero would say
+         something false. */
+      if(hasE){
+        var ePath='',pen=false,pe;
+        for(pe=0;pe<pts.length;pe++){
+          if(eDisp[pe]>0){ePath+=(pen?' L':'M')+xp2(pe)+','+yp2(eDisp[pe]);pen=true;}
+          else pen=false;
+        }
+        if(ePath)svg+='<path d="'+ePath+'" fill="none" stroke="'+PAL.terra500+'" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round"/>';
+      }
       // Dots + dates
+      /* A centred label on the FIRST point sits straight on top of the axis
+         tick label three pixels to its left, and a centred one on the last
+         runs past the right edge. Anchoring the ends inward keeps every label
+         inside the drawing without moving any of them off its own point. */
+      function anc2(i){return i===0?'start':(i===pts.length-1?'end':'middle');}
       for(var pi4=0;pi4<pts.length;pi4++){
         var dd=new Date(pts[pi4].date);
+        /* e1RM is never below the top weight, so its label goes ABOVE its dot
+           and the weight's goes BELOW - the two can never collide. */
+        if(eDisp[pi4]>0){
+          svg+='<circle cx="'+xp2(pi4)+'" cy="'+yp2(eDisp[pi4])+'" r="3" fill="#fff" stroke="'+PAL.terra500+'" stroke-width="2"/>';
+          svg+='<text x="'+xp2(pi4)+'" y="'+(yp2(eDisp[pi4])-7)+'" text-anchor="'+anc2(pi4)+'" font-size="8" fill="'+PAL.terra500+'" font-weight="700">'+nfmt(eDisp[pi4],{maximumFractionDigits:1})+'</text>';
+        }
         svg+='<circle cx="'+xp2(pi4)+'" cy="'+yp2(wDisp[pi4])+'" r="4" fill="'+PAL.violet500+'" stroke="#fff" stroke-width="2"/>';
-        svg+='<text x="'+xp2(pi4)+'" y="'+(H-4)+'" text-anchor="middle" font-size="8" fill="'+PAL.muted+'">'+fmtDayShort(dd)+'</text>';
-        svg+='<text x="'+xp2(pi4)+'" y="'+(yp2(wDisp[pi4])-7)+'" text-anchor="middle" font-size="8" fill="'+PAL.violet500+'" font-weight="700">'+nfmt(wDisp[pi4],{maximumFractionDigits:1})+'</text>';
+        svg+='<text x="'+xp2(pi4)+'" y="'+(H-4)+'" text-anchor="'+anc2(pi4)+'" font-size="8" fill="'+PAL.muted+'">'+fmtDayShort(dd)+'</text>';
+        svg+='<text x="'+xp2(pi4)+'" y="'+(yp2(wDisp[pi4])+12)+'" text-anchor="'+anc2(pi4)+'" font-size="8" fill="'+PAL.violet500+'" font-weight="700">'+nfmt(wDisp[pi4],{maximumFractionDigits:1})+'</text>';
       }
       svg+='</svg>';
 
       h+='<div style="background:var(--card);border-radius:18px;padding:14px;box-shadow:0 2px 10px rgba(200,180,160,.1);margin-bottom:12px">';
       h+='<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em;margin-bottom:10px">'+esc(exLabel(_fitProgressEx))+' &mdash; '+_t('עליית משקל')+' ('+weightUnit()+')'+'</div>';
+      /* A legend, because two lines without one is a puzzle. It names only
+         what is actually drawn - the dashed series is absent from both the
+         chart and the legend when nothing could be estimated. */
+      h+='<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px">';
+      h+='<span style="display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--muted)"><i style="width:14px;height:2.5px;border-radius:2px;background:'+PAL.violet500+';display:inline-block"></i>'+_t('המשקל הכבד ביותר')+'</span>';
+      if(hasE)h+='<span style="display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--muted)"><i style="width:14px;height:0;border-top:2.5px dashed '+PAL.terra500+';display:inline-block"></i>'+_t('חזרה אחת מקסימלית')+'</span>';
+      h+='</div>';
       h+=svg;
 
       // Delta
