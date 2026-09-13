@@ -1552,6 +1552,49 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .sm-cap{font-size:12.5px;color:var(--ink-soft);text-align:center;font-style:italic;margin:-4px 0 12px;line-height:1.6}
 /* choosing what a day is made of */
 .rf-secs-b{width:100%;background:var(--card);border:none;border-radius:16px;padding:13px;margin-top:12px;font-family:inherit;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;box-shadow:0 2px 10px rgba(200,180,160,.1)}
+/* ── the card the day is handed to you on ──
+   The stage owns the perspective so the card can keep a clean transform, and
+   pan-y means a vertical scroll still scrolls while only a press-and-drag
+   tilts. */
+.rfd-stage{perspective:1000px;perspective-origin:50% 38%;margin-top:26px;touch-action:pan-y}
+.rfd-card{position:relative;transform-style:preserve-3d;cursor:grab;
+  background:linear-gradient(158deg,#fffdfa 0%,#fbf7f1 55%,#f5efe6 100%);
+  border-radius:24px;padding:20px 18px 22px;
+  box-shadow:0 20px 44px -20px rgba(70,62,54,.55),0 2px 7px rgba(90,80,70,.10);
+  transition:transform .55s cubic-bezier(.22,.85,.28,1),box-shadow .55s ease;
+  will-change:transform}
+.rfd-card.live{transition:none;cursor:grabbing}
+.rfd-card:focus-visible{outline:2px solid var(--violet-500);outline-offset:4px}
+/* The layers. Small numbers: at this perspective 30px of Z is already a
+   visible parallax, and more makes the card look exploded rather than thick. */
+.rfd-seal{transform:translateZ(22px)}
+.rfd-ph{transform:translateZ(30px)}
+.rfd-row{transform:translateZ(10px)}
+.rfd-sheen{position:absolute;inset:0;border-radius:24px;pointer-events:none;opacity:0;
+  transition:opacity .5s ease;
+  background:linear-gradient(105deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.7) 50%,rgba(255,255,255,0) 62%)}
+.rfd-card.live .rfd-sheen{opacity:.9;transition:none}
+
+.rfd-seal{display:flex;align-items:center;gap:11px;margin-bottom:16px}
+.rfd-mark{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-size:16px;font-weight:700;
+  background:linear-gradient(135deg,var(--green-200),var(--green-600));
+  box-shadow:0 5px 12px -4px rgba(111,178,131,.75)}
+.rfd-seal-t{font-size:12.5px;font-weight:800;color:var(--ink);letter-spacing:.02em}
+.rfd-seal-d{font-size:10.5px;color:var(--muted);margin-top:2px}
+.rfd-ph{border-radius:16px;overflow:hidden;line-height:0;margin-bottom:12px;
+  box-shadow:0 10px 22px -12px rgba(70,62,54,.5)}
+.rfd-ph img{width:100%;display:block}
+.rfd-cap{font-size:12px;color:var(--muted);line-height:1.6;text-align:center;margin-bottom:4px;
+  unicode-bidi:plaintext}
+.rfd-faces{display:flex;justify-content:center;align-items:center;gap:26px;padding:10px 0 2px}
+.rfd-row{padding-top:13px;margin-top:13px;border-top:1px solid var(--line-strong)}
+.rfd-l{font-size:9.5px;letter-spacing:.1em;font-weight:700;color:var(--muted);margin-bottom:5px}
+.rfd-b{font-size:13.5px;color:var(--ink);line-height:1.65;unicode-bidi:plaintext}
+@media (prefers-reduced-motion:reduce){
+  .rfd-card{transition:none}
+  .rfd-card.live .rfd-sheen{opacity:0}
+}
 .rf-secs-ov{position:fixed;inset:0;z-index:520;background:rgba(74,67,64,.6);display:flex;align-items:flex-end;justify-content:center}
 .rf-secs{width:100%;max-width:480px;background:var(--panel);border-radius:24px 24px 0 0;padding:16px 14px calc(24px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
 .rf-secs-hd{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:var(--ink);margin-bottom:8px}
@@ -22226,27 +22269,70 @@ function renderReflectDone(){
   var h='<div class="rf"><div class="rf-body">';
   h+='<div class="rf-q" style="text-align:center">'+_t('זהו להיום.')+'</div>';
   h+='<div class="rf-sub" style="text-align:center;font-size:14px">'+_t('עצרת לרגע, הסתכלת על היום שלך — ועכשיו אפשר לשחרר אותו.')+'</div>';
-  h+='<div style="margin-top:30px;display:flex;flex-direction:column;gap:14px">';
-  if(r.photo)h+=photoImg(r.photo,'style="width:100%;border-radius:20px;display:block"');
-  if(r.photoCaption)h+='<div style="font-size:12.5px;color:var(--muted);line-height:1.6;text-align:center">'+esc(r.photoCaption)+'</div>';
+
+  /* ONE card, with the day on it. tabindex so it can be reached and read by
+     somebody who is not using a finger; the tilt is decoration and its absence
+     costs nothing. */
+  h+='<div class="rfd-stage"><div class="rfd-card" id="rfd-card" tabindex="0" onpointerdown="rfdTilt(event)">';
+  h+='<div class="rfd-sheen"></div>';
+  /* the graphic that says it is finished: a struck seal, and the day it is for */
+  h+='<div class="rfd-seal"><div class="rfd-mark">&#10003;</div>'+
+     '<div><div class="rfd-seal-t">'+_t('סיכום יום')+'</div>'+
+     '<div class="rfd-seal-d">'+fmtDate(_rfDate)+'</div></div></div>';
+  if(r.photo)h+='<div class="rfd-ph">'+photoImg(r.photo,'alt=""')+'</div>';
+  if(r.photoCaption)h+='<div class="rfd-cap">'+esc(r.photoCaption)+'</div>';
   if(r.mood||r.dayRating){
-    h+='<div style="display:flex;justify-content:center;align-items:center;gap:26px;padding:6px 0">';
+    h+='<div class="rfd-faces">';
     if(r.mood)h+='<div style="text-align:center">'+rfFaceMini(r.mood)+'<div style="font-size:10.5px;color:var(--muted);margin-top:5px">'+RF_MOODS[Math.max(1,Math.min(5,r.mood))-1].l+'</div></div>';
-    if(r.dayRating)h+='<div style="text-align:center"><div style="font-size:26px;font-weight:800;color:var(--violet-500);line-height:1">'+r.dayRating+'</div><div style="font-size:10.5px;color:var(--muted);margin-top:3px">'+_t('ציון היום')+'</div></div>';
+    if(r.dayRating)h+='<div style="text-align:center"><div style="font-size:26px;font-weight:800;color:var(--violet-500);line-height:1">'+nfmt(r.dayRating)+'</div><div style="font-size:10.5px;color:var(--muted);margin-top:3px">'+_t('ציון היום')+'</div></div>';
     h+='</div>';
   }
-  if(r.moment)h+=rfDoneBlock(''+_t('הרגע הטוב')+'',r.moment);
-  if(r.impactfulMoment)h+=rfDoneBlock(''+_t('הכי השפיע')+'',r.impactfulMoment);
-  if(r.takeawayForTomorrow)h+=rfDoneBlock(''+_t('למחר')+'',r.takeawayForTomorrow);
-  h+='</div>';
+  if(r.moment)h+=rfdRow(''+_t('הרגע הטוב')+'',r.moment);
+  if(r.impactfulMoment)h+=rfdRow(''+_t('הכי השפיע')+'',r.impactfulMoment);
+  if(r.takeawayForTomorrow)h+=rfdRow(''+_t('למחר')+'',r.takeawayForTomorrow);
+  h+='</div></div>';
+
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-next" style="margin-top:30px">'+_t('סיימתי להיום')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
 }
-function rfDoneBlock(label,text){
-  return '<div style="background:var(--card);border-radius:18px;padding:14px 16px;box-shadow:0 4px 14px rgba(200,180,160,.1)">'+
-    '<div style="font-size:9.5px;letter-spacing:.1em;font-weight:700;color:var(--muted);margin-bottom:6px">'+label+'</div>'+
-    '<div style="font-size:13.5px;color:var(--ink);line-height:1.6">'+esc(text)+'</div></div>';
+function rfdRow(label,text){
+  return '<div class="rfd-row"><div class="rfd-l">'+label+'</div>'+
+    '<div class="rfd-b">'+esc(text)+'</div></div>';
+}
+/* Eleven degrees. He asked for "קצת זז... לא מסתובב", and a card that swings
+   far enough to show its own edge stops being paper. */
+var RFD_MAX_TILT=11;
+function rfdTilt(e){
+  var card=document.getElementById('rfd-card');if(!card)return;
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var box=card.getBoundingClientRect();
+  card.classList.add('live');
+  try{card.setPointerCapture(e.pointerId);}catch(_){}
+  var put=function(ev){
+    /* -1..1 from the centre of the card, so the tilt follows where the finger
+       actually is rather than how far it has travelled. */
+    var dx=(ev.clientX-(box.left+box.width/2))/(box.width/2);
+    var dy=(ev.clientY-(box.top+box.height/2))/(box.height/2);
+    dx=Math.max(-1,Math.min(1,dx));dy=Math.max(-1,Math.min(1,dy));
+    card.style.transform='rotateY('+(dx*RFD_MAX_TILT)+'deg) rotateX('+(-dy*RFD_MAX_TILT*0.6)+'deg)';
+    var sh=card.querySelector('.rfd-sheen');
+    if(sh)sh.style.transform='translateX('+(dx*34)+'%)';
+  };
+  var up=function(){
+    card.classList.remove('live');
+    card.style.transform='';                       // the CSS transition springs it back
+    var sh=card.querySelector('.rfd-sheen');if(sh)sh.style.transform='';
+    card.removeEventListener('pointermove',put);
+    card.removeEventListener('pointerup',up);
+    card.removeEventListener('pointercancel',up);
+    card.removeEventListener('pointerleave',up);
+  };
+  put(e);
+  card.addEventListener('pointermove',put);
+  card.addEventListener('pointerup',up);
+  card.addEventListener('pointercancel',up);
+  card.addEventListener('pointerleave',up);
 }
 
 /* ── "ME" ──
