@@ -128,8 +128,37 @@ Ten questions became four at `499888a`, and the grade went into the bank.
   sections. The summary should be composed from what is ON rather than from a
   fixed list with holes in it.
 
-- A day with almost nothing in it: decided while building, not before.
 - Eleven languages: a two-column head is the kind of layout German breaks.
+
+### The three previews exist — waiting on him (2026-09-13)
+
+<https://claude.ai/code/artifact/f80cebca-c4dc-48a9-861d-e4342eda5e8e>
+
+Nothing in `dev/index.html`; the generator is a scratchpad `.mjs`, and its
+Hebrew stays out of the shipped file because a preview's Hebrew broke the
+unwrapped-hebrew baseline once already.
+
+**The number the whole thing turns on, measured on the real overlay** with a
+full day seeded through `saveSummary()`: `scrollH 1510` in a `456` sheet —
+**3.31 screens**, nine sections. What the three layouts come out at:
+
+| | יום מלא | יום שקט |
+|---|---|---|
+| א · the reference | 798px · 1.75 | 210px · 0.46 |
+| ב · numbers as a strip | 655px · 1.44 | 268px · 0.59 |
+| ג · the photo leads | 844px · 1.85 | 249px · 0.55 |
+
+**"A day with almost nothing in it" is no longer a decide-while-building.** It
+is the second row of that table, and it is rendered: every block is conditional
+on having content, so a day with one answer out of four comes out at half a
+screen rather than the same page with holes in it. That is the same rule as
+*"שהוא לא ירגיש מופסד"*, seen from the other side — and a layout that only
+looks right with every field filled has not been tested against the brief.
+
+**The photo is on the LEFT**, because he wrote *"בצד שמאל"* — which in an RTL
+row means the photo column comes second. Worth knowing that the RTL-native
+reading would put it on the right, and it is a one-line change if he wants it
+mirrored; the same question he answered "leave it" on for the board.
 
 ---
 
