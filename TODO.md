@@ -6,6 +6,73 @@ section — git already keeps that.
 
 ---
 
+## THE ONE THAT STOPS THE HABIT — nutrition (2026-09-14)
+
+> *"אני חושב שמה שמונע ממני מהרגל יומי זה האזור של התזונה. הflow שם לא טוב
+> המוצרים לא מדויקים והוא לא יודע באמת לחשב לפי המוצרים. זה מתסכל. מצאתי את
+> עצמי מוסיף ל״ידני״ אחרי שאני שואל את הGemini מה הערכים התזונתיים של ארוחה
+> מסוימת. אבל זה לא אמור להתנהל ככה."*
+
+**This is the third kind of note** — not a thing that annoys, a thing that
+stops him — and it is exactly what the freeze exists to surface. **It now
+outranks the workout generator.** Build this first on 23/09.
+
+### What is actually happening, read from the source
+
+There are three AI paths into nutrition and **all three end at the same wall**:
+
+| path | what the model does | what it returns |
+|---|---|---|
+| `fdbAIGo` | picks from `sayCandidates(q,60)` | **a name from a local table** |
+| `sayGo` → `/parse` | splits a sentence into items + amounts | items, then `sayResolveAll` **matches each to a local row** |
+| photo | same resolve | a local row |
+
+**No path can produce a nutrition VALUE.** Every one of them can only find a
+row that already exists in `foods.core.json` (309), `foods.json` (3,623) or
+`foods.off.json` (3,308). If the food is not in a table, the app has nothing
+to say — and that is the wall he keeps hitting.
+
+### Why the wall is there, and why it is now backfiring
+
+It is deliberate, and it is a standing rule of this project: **never invent a
+nutrition number; a food without a clean row is skipped and recorded as
+skipped.** The reason is good — an invented number presented as fact is worse
+than no number in an app someone uses to make decisions about their body.
+
+**But look at what the rule is actually producing.** He leaves the app, asks a
+model with no provenance at all, gets an estimate, and types it into "ידני"
+where it is stored looking exactly like a measured value. The rule is not
+protecting him. It is **moving the estimate off-platform and stripping the
+label off it on the way**. The app ends up holding the same guess with *less*
+honesty than if it had made it itself.
+
+### The shape of the fix — an estimate that admits it is one
+
+Not "start inventing numbers". The rule stands for anything that claims to be
+a measurement. What is missing is a third state between *found* and *nothing*:
+
+- when no row matches, the app may offer an **estimate**, from the same
+  server path that already runs `/parse`
+- **visibly labelled** as an estimate, never dressed as a table row
+- **attributed** — a model said this, not the ministry
+- **editable before it is saved**, because he will often know better
+- **marked on the meal afterwards**, so a day built on estimates can be seen
+  for what it is
+
+That keeps the spirit of the rule — never pass a guess off as a measurement —
+and closes the gap that is costing him the habit.
+
+### Before building it, two things
+
+- **Ask him for five to ten real meals that failed.** The fix has to be
+  testable against the actual misses, not against invented examples. This is
+  the single most useful thing to collect during the rest of the freeze.
+- **`/parse` is billed per call and already has a daily cap** (`too many for
+  today`). An estimate endpoint has a cost per meal; decide the budget before
+  the design, not after.
+
+---
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
