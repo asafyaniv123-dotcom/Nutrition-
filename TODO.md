@@ -93,6 +93,61 @@ The first row is the one that would have saved today, and it is the one to
 build first. It also makes the 2,060 Latin-brand rows matter far less: a
 product whose label you can photograph never needs to be found by name.
 
+### UPDATE 14/09, later — THE CAPABILITY IS ALREADY BUILT. THE FLOW NEVER REACHES IT.
+
+Everything above was written as though the app cannot produce a value without
+a table row. **It can.** Read the worker rather than assumed:
+
+`push-server/src/worker.js` is 1,424 lines and already serves **eight**
+endpoints — `/ask`, `/match`, `/parse`, **`/estimate`**, **`/see`**,
+**`/analyze`**, `/off`, `/steps` — each with its own daily cap
+(`EST_DAILY_CAP`, `SEE_DAILY_CAP`, `ANALYZE_DAILY_CAP`…). It calls
+`api.anthropic.com/v1/messages`, with the key held as a **Worker secret
+(`env.AI_KEY`), never in the client** — which is the only correct shape, since
+the app is a public HTML file.
+
+And `/estimate`'s own comment already says what this document proposed this
+morning as if it were a new idea: *"the estimate is allowed, and the entire job
+of this endpoint is to… An estimate you can see is an estimate you can
+correct."*
+
+**The app already calls all three.** `estAsk()` from the search panel and
+`sayEstimate()` from a sentence row both POST to `/estimate`; `/see` backs the
+photo path.
+
+#### So why did he never get one?
+
+Because of a precise defect, and this is the thing to fix:
+
+`/match` returns a **`sure`** flag — the worker's own prompt says *"sure: false
+if you are guessing at either field"*. It survives the whole way to the client
+and reaches `sayApplyMatch(local,name,aiGrams,sure)`. And there:
+
+```js
+if(aiGrams>0){local.g=aiGrams;local.gsrc=sure?'ai':'guess';return local;}
+```
+
+**`sure` is used only to label the GRAMS. It is never used to decide whether
+to trust the FOOD MATCH.** So a model that said "I am guessing" still gets its
+guess installed as `local.food`, its row's numbers displayed, and the whole
+thing captioned *"המספרים מהמאגר שלנו"*. That is exactly the 4g of fat on a 0g
+drink: not an invented number, a **low-confidence match presented with a
+table's authority**, while `/estimate` sat one branch away unused.
+
+#### The fix, and it is narrow
+
+When `sure` is false — or the match scores poorly — a row must not present a
+confident table answer. It should say it is unsure and offer the estimate that
+already exists. Nothing new has to be built; a signal that already crosses the
+wire has to be applied to the right decision.
+
+#### And on "can we use Gemini"
+
+We do not need to add a model — there is one. Swapping providers would be a
+change inside `worker.js` alone, because the app only ever talks to its own
+endpoints. The provider is therefore a reversible decision, not an
+architectural one.
+
 ### Before building it, two things
 
 - **Ask him for five to ten real meals that failed.** The fix has to be
