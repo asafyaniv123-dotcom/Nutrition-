@@ -62,6 +62,37 @@ a measurement. What is missing is a third state between *found* and *nothing*:
 That keeps the spirit of the rule — never pass a guess off as a measurement —
 and closes the gap that is costing him the habit.
 
+### UPDATE 14/09 evening — he is right, and the answer is the LABEL
+
+Two attempts at the barcode scanner failed the same day. The second one was
+mine and it made things worse: `scanFitBox` sized the camera box from the
+stream, which reflowed the whole sheet the moment the metadata landed. He
+reported it as *"שוב מקפיץ את הכל"* — that was my change, and it is reverted.
+
+**Stop polishing the barcode scanner.** What he asked for is
+*"משהו כמו ה־Gemini"*: point the phone at the product and be told. And look at
+what he actually did — **he photographed the nutrition panel**, and Gemini
+read it correctly in one second.
+
+**That reframes the whole plan, and improves it.** This morning's design was
+"offer an estimate when no row exists". But a photographed label is not an
+estimate at all — it is **the manufacturer's own declared values**, which is a
+more authoritative source than any table we hold, and one that cannot go
+stale. Reading a panel off a photograph does not bend the never-invent rule;
+it is the strongest possible way to honour it.
+
+So the nutrition work splits cleanly:
+
+| the food | where the numbers come from |
+|---|---|
+| packaged, panel visible | **read the label from the photo** — authoritative, no table needed |
+| packaged, no panel to hand | barcode or search against the tables, as now |
+| cooked, restaurant, homemade | an **estimate**, labelled as one, as designed above |
+
+The first row is the one that would have saved today, and it is the one to
+build first. It also makes the 2,060 Latin-brand rows matter far less: a
+product whose label you can photograph never needs to be found by name.
+
 ### Before building it, two things
 
 - **Ask him for five to ten real meals that failed.** The fix has to be

@@ -930,12 +930,12 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .scan-hd{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:800;color:var(--ink);margin-bottom:11px}
 .scan-x{border:none;background:none;font-size:24px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px;font-family:inherit}
 .scan-cam{width:100%;aspect-ratio:4/3;background:#2a2522;border-radius:14px;overflow:hidden;position:relative}
-/* BOTH contain, and the box takes its shape from the stream (scanFitBox), so
-   nothing is letterboxed and nothing is cropped: what the viewfinder shows is
-   exactly the frame the decoder is handed. A second rule further down used to
-   set the video to `cover` and win on source order, which is why pressing סרוק
-   made the picture jump backwards - the preview was cropped and the capture
-   was not. */
+/* BOTH contain, so the viewfinder and the capture agree. A second rule further
+   down used to set the video to `cover` and win on source order, which meant
+   the preview was cropped while the frozen frame was not.
+   The box stays a fixed 4:3: sizing it from the stream made the whole sheet
+   reflow the moment the camera's metadata landed, which is a worse jump than
+   the one it was meant to cure. */
 .scan-cam video,.scan-frozen{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#1c1917}
 .scan-frozen{display:none}
 .scan-frozen.on{display:block}
@@ -4552,7 +4552,6 @@ function scanCamStart(){
     })
     .then(function(){
       var b=document.getElementById('scan-shot');
-      scanFitBox();
       if(b)b.disabled=false;
       scanMsg(''+_t('החזק את הברקוד בתוך המסגרת, קרוב ומלא רוחב')+' &mdash; '+_t('ואז לחץ סרוק')+'');
     })
@@ -4576,21 +4575,6 @@ function scanCamStop(){
   }
   var v=document.getElementById('scan-video');
   if(v){try{v.pause();v.srcObject=null;}catch(e){}}
-}
-/* The frame is 4:3 in the stylesheet and a phone hands back 16:9 or portrait,
-   so one of the two always had to be padded or cropped. Taking the ratio from
-   the stream removes the choice: the preview fills the box, shows the WHOLE
-   frame, and the dashed guide finally measures something real. */
-function scanFitBox(){
-  var v=document.getElementById('scan-video'),box=document.getElementById('scan-cam');
-  if(!v||!box)return;
-  var apply=function(){
-    if(!v.videoWidth||!v.videoHeight)return;
-    box.style.aspectRatio=v.videoWidth+' / '+v.videoHeight;
-  };
-  apply();
-  /* videoWidth is 0 until the metadata lands, which is often after play() */
-  v.addEventListener('loadedmetadata',apply,{once:true});
 }
 function scanUnfreeze(){
   _scanBusy=false;
