@@ -6,6 +6,56 @@ section — git already keeps that.
 
 ---
 
+## A workout the app builds for you (2026-09-14) — FIRST THING AFTER THE FREEZE
+
+His idea, in his words: in כושר, an option where the app **prepares a workout
+for you** — it asks which muscles you want to work, how many sets and reps
+(from your goal), a muscle you want to emphasise, and **what equipment you
+have access to**, so that if you are not in a gym it knows to build a
+bodyweight session.
+
+**Do not build this before 23/09.** The freeze runs 16–22 Sep and exists to
+find out whether the daily workflow is a pleasure. This is the largest thing
+proposed in a week; shipping a new module two days before a freeze is how
+freezes collapse. It is the first thing to build when the notes come back.
+
+### Most of it already exists — measured, not assumed
+
+| | |
+|---|---|
+| `data/exercises.json` | **228 exercises, 228/228 carrying both `m` (muscle) and `q` (equipment)** — no gaps to fill |
+| muscle groups | 18: חזה, כתפיים, גב רחב, גב, טרפז, גב תחתון, יד קדמית, יד אחורית, אמה, ארבע ראשי, ירך אחורית, ישבן, מקרבים, מרחיקים, תאומים, בטן, אלכסונים, אירובי |
+| equipment | 19, including **משקל גוף, גומייה, רצועות TRX, מזרן** — the not-in-a-gym case is a query, not a data project |
+| languages | all 228 translated into eleven (`t`) |
+| reps, rest, increment | `FIT_GOALS` already: strength 3–6 / 180s, size 6–12 / 90s, endure 12–20 / 60s, general 8–15 / 90s |
+| weekly dose | `SETS_BAND={lo:10,hi:20}` sets per muscle per week, with `MUSCLE_ROLLUP` for grouping |
+| the workout screen | `startEmptyWorkout()`, `workoutAddExercise()`, `_exPick()` |
+
+So the build is a question sheet, a filter over `m` and `q`, and a division of
+sets. Not a new system.
+
+### Three decisions that make it better than a form
+
+- **Do not ask which muscles — PROPOSE them.** The app already counts sets per
+  muscle this week. Open with *"this week your back and glutes are under the
+  band, shoulders are inside it"* and let him confirm or change it. That is
+  the difference between a form and something that knows him.
+- **Remember the equipment, do not ask every time.** One stored preference —
+  gym / home / nothing — with a per-session override. Asking every time is
+  friction, and this module exists to remove friction, not add a questionnaire.
+- **The output must be EDITABLE.** It lands in the existing workout screen as
+  a session you can change, never a locked prescription. A generator whose
+  workout you do not perform is worse than no generator, and the only measure
+  of success is whether he actually does it.
+
+### The trap to avoid
+
+Sets per muscle should be the band MINUS what is already logged this week, or
+a Thursday session will prescribe a full week's volume on top of a full week's
+work.
+
+---
+
 ## The seven that were waiting on him — all answered (2026-09-12)
 
 They had been blocking a release for days. Four need building; three cost
