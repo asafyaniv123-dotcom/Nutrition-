@@ -4533,3 +4533,36 @@ labels. Then we know whether the rule buys accuracy or only costs it — and the
 same run tells us whether haiku is the limit or the prompt is.
 
 Do not reopen this with an opinion. Reopen it with the table.
+
+---
+
+## The dead space under the song, and what belongs in it (2026-09-14)
+
+His note: in the day summary there is a lot of empty room under "השיר של היום",
+and the day's sentence should go there.
+
+**Measured, so it is a number and not an impression.** The head's height is set
+by the PHOTO column, not by the facts. With one fact row the facts column is
+**52px tall against the photo's 177** — **125px of empty space, 316px wide**,
+sitting directly under the song. He is describing a real hole.
+
+### The rule it needs, or it will break the head
+
+The head was deliberately capped at six facts because six rows is the height of
+the picture box — that cap is what keeps the head the same height whether four
+questions were answered or twenty-six. So the quote must fill space that
+**already exists** and never create more:
+
+- move the quote into the head **only when the facts column is shorter than the
+  photo column**, and only as much of it as fits the gap
+- with a full head (six facts) there is no gap, and it stays where it is
+- it must appear in **one place only** — in the head it has to be removed from
+  the תובנות ומחשבות group, or the same sentence is printed twice on one page
+- with no photo there is no gap either, because the facts already run full width
+
+### Worth considering while it is open
+
+A quote set in the serif, quietly, in that hollow beside a photograph is the
+most bullet-journal thing on the page — it is the one piece of the reference
+spread that never got built. Worth treating as a design moment rather than as
+filling a hole.
