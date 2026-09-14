@@ -6,6 +6,68 @@ section — git already keeps that.
 
 ---
 
+## The freeze notes — fitness, day one (2026-09-14)
+
+Ten notes from the first day of real use, **all in כושר**. Triaged against the
+rule that keeps a freeze alive: *broken is fixed today, annoying is written
+down*. **Nothing here is broken — all ten wait for 23/09.** Two were worth
+investigating before saying so, and both investigations changed what to build.
+
+### 1 · Missing exercises — and what it actually costs
+
+He named it exactly: a lunge on the Smith machine is not there. Counted in
+`data/exercises.json`: **four Smith exercises** (chest press, shoulder press,
+squat, calf raise) and **no lunge among them**; the **three lunges** that exist
+are all `משקולות יד` only — no Smith, no barbell, **no bodyweight**.
+
+**Not blocking**, because `exChooseOwn()` lets any typed name through. But the
+cost of typing one is real and worth writing down: a custom name carries no
+`m`, so `muscleGroupOf` finds nothing, and **the set never counts toward the
+weekly sets-per-muscle band**. So the typed workaround quietly costs him the
+number the fitness screen is built around.
+
+The pass to do: walk every muscle × equipment pair and fill the holes,
+bodyweight first — it is the case with no gym and the one the generator will
+lean on hardest.
+
+### 7 · "Add set" jumps back — reproduced, and it is the superset logic
+
+Reproduced in the browser rather than guessed. It fires **only inside a
+superset**: with an A/B pair, logging the set on B sends the view back to A.
+That is deliberate — `logSet` ends with `if(_g.length>1)_fitWorkout.currentEx=
+_g[0]`, and the comment says the sequence should go back to the top "rather
+than leaving you wherever the last set happened to land".
+
+**The set lands on the right exercise — nothing is misfiled.** Checked: the
+Row got its set, the Bench did not. So it is not broken; it is the app
+overriding a switch the person made on purpose.
+
+The fix, for after: a manual switch should stick. Remember that `currentEx`
+was set by a tap rather than by the sequence, and do not re-home in that case.
+
+### The other eight, as he wrote them
+
+- Remember the weight used on that exercise last time and show it quietly
+  beside the input, as a reference.
+- **Plate picking is the wrong question.** It asks which dumbbells the gym
+  has; almost every gym has all of them. Ask instead **which plates you
+  loaded**.
+- Let the rest timer be started by hand, whether or not a set was detected —
+  and give it a better picture.
+- A stopwatch/timer in כושר, working like the app he uses today.
+  **Needs specifying before it can be built: which app, and what it does.**
+- Moving between exercises inside a live workout needs to be easy, including
+  when the order changed from what was planned.
+- A note during an exercise — "feet on the third line" — kept with that lift.
+- Change the weight while ADDING an exercise, not only through "add set".
+- Swap or cancel an exercise mid-workout.
+
+Several of these are the same complaint in different clothes: **a live workout
+is not editable enough.** Moving between exercises, swapping one out, changing
+a weight, adding a note. Worth building as one pass rather than eight.
+
+---
+
 ## A workout the app builds for you (2026-09-14) — FIRST THING AFTER THE FREEZE
 
 His idea, in his words: in כושר, an option where the app **prepares a workout
