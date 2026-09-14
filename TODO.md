@@ -4507,3 +4507,29 @@ third variable name (`tot.kcal`) beside a fourth form of the label (a plain
 **The rendered Arabic screen found it.** Third time it has been cheaper than
 any grep — and the lesson is that the greps are for finding SIBLINGS once a
 screen has pointed at the first one, not for finding the first one.
+
+---
+
+## OPEN QUESTION — is the brand restraint worth what it costs? (2026-09-14)
+
+He asked why Gemini's estimates are almost always accurate, and my answer
+explained our constraints as if they were settled. They are not. The question
+underneath was the real one: **if a general model does this well, why do we
+carry the tables, the matching and the restraint at all?**
+
+`/estimate` is explicitly told *"Never invent a specific brand's published
+figures… estimate the generic food and say so"*. That rule protects against a
+confident wrong brand number. It also guarantees we lose to a plain model on
+every branded product — which is most of what he logs.
+
+I also claimed Gemini "looks more precise but is not necessarily more
+accurate". **That was a defence with no evidence behind it.** He has evidence:
+it has been right for him repeatedly.
+
+**Settle it by measuring, not by arguing.** Take ten real products he actually
+eats, photograph the labels as ground truth, and run each name through our
+`/estimate` and through an unrestrained model. Compare both against the
+labels. Then we know whether the rule buys accuracy or only costs it — and the
+same run tells us whether haiku is the limit or the prompt is.
+
+Do not reopen this with an opinion. Reopen it with the table.
