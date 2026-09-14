@@ -4566,3 +4566,25 @@ A quote set in the serif, quietly, in that hollow beside a photograph is the
 most bullet-journal thing on the page — it is the one piece of the reference
 spread that never got built. Worth treating as a design moment rather than as
 filling a hole.
+
+---
+
+## תכנון הזמן feels wrong to him — his words, 23/09 (2026-09-14)
+
+> *"יש משהו בסדר של תכנון הזמן שממש לא בא לי בטוב. הוא לא מסודר ממש וזה קשה לי."*
+
+He parked it himself for 23/09. Recorded as he said it, and **not dressed up
+as a specification**, because it is not one yet — "not ordered" is a feeling,
+and the feeling is the real datum. Do not arrive on the 23rd with a redesign
+built on a guess about what he meant.
+
+**The cheapest way to sharpen it** — and the only thing to ask of him during
+the rest of the freeze: when it bites, one line about **which moment** it bit.
+Opening the screen? Looking for today? Moving something? Not knowing where to
+start? The moment names the problem; "the order" does not.
+
+Three candidates already written down under *Planning area* above, any of
+which could be what he is feeling: the accordion putting day, week and month
+on one page, `_planMode` no longer describing anything since it did, and the
+loose-task rail that never appears. Worth re-reading that section before
+touching anything — the answer may already be in it.
