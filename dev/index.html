@@ -5392,9 +5392,18 @@ function sayResolveAI(it,done){
     .then(function(j){
       if(!t)return; clearTimeout(t); t=0;
       if(!j||!j.ok||j.pick<0||!cands[j.pick]){done(local);return;}
-      var f=cands[j.pick];
-      matchCachePut(q,{n:f.n,g:j.grams||0,s:!!j.sure});
-      done(sayApplyMatch(local,f.n,j.grams||0,!!j.sure));
+      var f=cands[j.pick],g=j.grams||0,sure=!!j.sure;
+      /* The model is sent sixty NAMES and no numbers, so nothing tells it
+         that "ביצה שלמה מיובשת" is 605 kcal per 100 g and the row beside it
+         is 143. One egg in a pancake came back as egg powder: 303 kcal
+         instead of 72, and a meal of 657 where its own rows say 425.
+         The local scorer had it right - an unasked dried form costs 2500
+         there - so when the model's pick carries a form nobody asked for
+         and the local pick does not, the local one stands. */
+      if(sayDerivedUnasked(f,foodKey(q))&&local&&local.food&&
+         !sayDerivedUnasked(local.food,foodKey(q))){f=local.food;g=0;sure=false;}
+      matchCachePut(q,{n:f.n,g:g,s:sure});
+      done(sayApplyMatch(local,f.n,g,sure));
     })
     .catch(function(){ if(t){clearTimeout(t);t=0;done(local);} });
 }
@@ -5552,6 +5561,19 @@ function sayTier(f){
   if(String(f.id).indexOf('core:')===0)return 1200;
   if(f.off)return -1200;
   return 0;
+}
+/* The same question sayScore asks below, asked of an answer instead of of a
+   candidate: does this row carry a form nobody asked for - dried, powdered,
+   frozen, tinned - when the query never said the word? SAY_D and SAY_R are
+   built by langOn and read at call time, and a row that says BOTH (פול יבש,
+   מבושל) is the cooked food and must not be caught. q arrives folded. */
+function sayDerivedUnasked(f,q){
+  if(!f||!f.s||!SAY_D)return false;
+  var cooked=sayCooked(f.s),d;
+  for(d=0;d<SAY_D.length;d++)
+    if(f.s.indexOf(SAY_D[d])>=0&&q.indexOf(SAY_D[d])<0&&
+       !(cooked&&SAY_R[SAY_D[d]]))return true;
+  return false;
 }
 function sayScore(f,q,toks){
   toks=toks||foodTokens(q);
@@ -5713,6 +5735,14 @@ function sayUseAlt(i,a){
     row.g=unitWeightFor(picked.n,row.unit);
     if(picked.u>0&&row.unit==='unit')row.g=picked.u;
   }
+  /* A corrected WEIGHT has always been remembered - saySetWeight calls
+     saveFoodUnit, "told once, remembered". A corrected FOOD was not, and the
+     wrong pick stayed in the match cache with nothing in the read path to
+     expire it - so the egg fixed here came back on the next meal. Nothing
+     the app can compute beats being told, so the correction is written where
+     the wrong answer was cached. The weight keeps its own memory: g stays 0
+     so unitWeightFor and the packet size still decide it. */
+  if(row.q)matchCachePut(row.q,{n:picked.n,g:0,s:true});
   sayPaint();
 }
 function saySetWeight(i,v){
