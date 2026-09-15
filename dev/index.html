@@ -459,6 +459,15 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 /* saying what you ate, in a sentence */
 .say-in{width:100%;min-height:76px;border:1.5px solid var(--line-strong);border-radius:13px;padding:11px 13px;font-size:16px;font-family:inherit;outline:none;background:var(--card);unicode-bidi:plaintext;resize:none;line-height:1.6}
 .say-in:focus{border-color:var(--violet-300)}
+.gem-wrap{margin-bottom:12px}
+.gem-row{display:flex;gap:7px;align-items:stretch}
+.gem-in{flex:1;min-width:0;border:1.5px solid var(--line-strong);border-radius:13px;padding:11px 13px;font-size:16px;font-family:inherit;outline:none;background:var(--card);unicode-bidi:plaintext}
+.gem-in:focus{border-color:var(--violet-300)}
+.gem-btn{border:none;border-radius:13px;padding:0 16px;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.gem-btn:disabled{opacity:.55;cursor:default}
+.gem-out{margin-top:9px;background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:12px 13px;font-size:13.5px;line-height:1.75;color:var(--ink);unicode-bidi:plaintext;white-space:pre-wrap}
+.gem-note{margin-top:7px;font-size:10px;color:var(--muted-soft);line-height:1.6}
+.gem-err{margin-top:9px;font-size:11.5px;color:var(--terra-500);font-weight:700}
 .say-go{width:100%;margin-top:8px;border:none;border-radius:13px;padding:12px;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white);font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
 .say-cam{display:block;width:100%;margin-top:7px;border:1.5px dashed var(--line-strong);border-radius:13px;padding:11px;background:none;color:var(--ink-soft);font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center}
 .say-shot{margin-top:9px;text-align:center}
@@ -5293,6 +5302,64 @@ function picGo(dataUrl){
     })
     .catch(function(){picFail(''+_t('אין חיבור כרגע.')+'');});
 }
+/* The one-line assistant. DISPLAY ONLY: what it says never reaches the day
+   unless he reads it and adds it himself, which is what he chose and is the
+   right way round - three times today a confident number was half the truth. */
+var _gemOut='',_gemBusy=false,_gemErr='';
+function gemClear(){_gemOut='';_gemErr='';gemPaint();}
+function gemPaint(){
+  var el=document.getElementById('gem-out');
+  if(!el)return;
+  var h='';
+  if(_gemErr)h+='<div class="gem-err">'+esc(_gemErr)+'</div>';
+  else if(_gemBusy&&!_gemOut)h+='<div class="gem-out">'+esc(''+_t('חושב…')+'')+'</div>';
+  if(_gemOut){
+    h+='<div class="gem-out">'+esc(_gemOut)+'</div>';
+    /* It says so while it is still writing, not only at the end - the moment
+       a number appears is the moment it could be believed. */
+    h+='<div class="gem-note">'+_t('הערכה. שום דבר מכאן לא נכנס ליום עד שתוסיף אותו בעצמך.')+'</div>';
+  }
+  el.innerHTML=h;
+  var b=document.getElementById('gem-btn');
+  if(b)b.disabled=!!_gemBusy;
+}
+function gemGo(){
+  var el=document.getElementById('gem-in');
+  var q=el?el.value.trim():'';
+  if(q.length<2){_gemErr=''+_t('כתוב שאלה.')+'';gemPaint();return;}
+  if(!SYNC_SERVER){_gemErr=''+_t('השאלות דורשות חיבור לשרת.')+'';gemPaint();return;}
+  _gemBusy=true;_gemErr='';_gemOut='';gemPaint();
+  fetch(SYNC_SERVER+'/say',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({q:q,lang:appLang()})
+  }).then(function(r){
+    if(!r.ok||!r.body){
+      return r.json().then(function(j){throw new Error((j&&j.error)||'no');},function(){throw new Error('no');});
+    }
+    /* A chunk off the network does not respect message boundaries, so the
+       tail is kept and the next chunk is appended to it. */
+    var rd=r.body.getReader(),td=new TextDecoder(),buf='';
+    return (function pump(){
+      return rd.read().then(function(res){
+        if(res.done){_gemBusy=false;gemPaint();return;}
+        buf+=td.decode(res.value,{stream:true});
+        var i;
+        while((i=buf.indexOf('\n'))>=0){
+          var line=buf.slice(0,i).trim();buf=buf.slice(i+1);
+          if(line.indexOf('data:')!==0)continue;
+          var payload=line.slice(5).trim();
+          if(!payload)continue;
+          var j=null;try{j=JSON.parse(payload);}catch(e){continue;}
+          if(j&&typeof j.t==='string'){_gemOut+=j.t;gemPaint();}
+          else if(j&&j.error){_gemErr=''+_t('לא הצלחתי לענות כרגע.')+'';_gemBusy=false;gemPaint();}
+        }
+        return pump();
+      });
+    })();
+  }).catch(function(){
+    _gemBusy=false;_gemErr=''+_t('אין חיבור כרגע.')+'';gemPaint();
+  });
+}
 function sayGo(){
   var el=document.getElementById('say-in');
   var text=el?el.value.trim():'';
@@ -7497,6 +7564,13 @@ function renderToday(){
   var sayHTML='';
   if(_addMode==='say'){
     sayHTML='<div class="aw-body">'+
+      '<div class="gem-wrap">'+
+        '<div class="gem-row">'+
+          '<input class="gem-in" id="gem-in" placeholder="'+_t('שאל על אוכל — מה יש בזה?')+'" onkeydown="if(event.key===\'Enter\')gemGo()">'+
+          '<button class="gem-btn" id="gem-btn" onclick="gemGo()">'+_t('שאל')+'</button>'+
+        '</div>'+
+        '<div id="gem-out"></div>'+
+      '</div>'+
       '<textarea class="say-in" id="say-in" placeholder="'+_t("אכלתי 2 ביצים ופרוסת לחם עם גבינה…")+'"></textarea>'+
       '<button class="say-go" onclick="sayGo()">'+_t('פרק לי את זה')+'</button>'+
       /* The other door into the same list. capture="environment" opens the
