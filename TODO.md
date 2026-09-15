@@ -343,6 +343,103 @@ unconditionally**, while **nothing in the app can report pain**. The word
 clean bill it has no way to know. Either give pain somewhere to be reported
 (it belongs in this very card) or stop claiming it.
 
+## A workout in the day summary, and the calories it is worth (2026-09-15)
+
+Two asks. The first is a bug. The second is a decision about honesty, and it
+has to be taken before anything is built.
+
+### 1 · The day you actually trained is the day the summary says nothing
+
+The plumbing is all there. `SUM_SECS` has a section **`{k:'fit', t:'כושר
+וצעדים', ids:['steps','workoutDone']}`**. `trainedOn(dateStr,sum)` exists and
+already answers correctly from three sources. `workoutLoggedOn(dateStr)`
+already returns **the workout's name**.
+
+**And the day summary uses none of it.** Follow it through:
+
+- `rfFilter` drops the evening's workout question when a session was already
+  logged — `if(!planned||logged)continue;` — and the comment is right:
+  *"asking anyway would be the app pretending not to know something it does."*
+- So on a day he trained and logged it, **nothing ever sets `sum.workoutDone`.**
+- And `sumFactRow('workoutDone')` opens with `if(v!==true&&v!==false)return '';`
+
+**The result is backwards.** Train, log it in כושר, and the summary's fit
+section is **empty**. Skip the workout, answer the planned question with *לא
+יצא הפעם*, and it shows. The one day worth recording is the one day that
+records nothing.
+
+It is also invisible from the weekly view, because `renderWeek` and the month
+both call `trainedOn` and get the right answer — so the count is right
+everywhere except the page he actually reads.
+
+**The fix is narrow**: the fit row asks `trainedOn()` / `workoutLoggedOn()`
+instead of reading `sum.workoutDone` alone, and prints the name, the duration
+and the volume the entry already carries. **No new data, no migration.** This
+is the first thing to do in this area.
+
+### 2 · The coherence he asked for — and the app currently contradicts itself
+
+> *"שתהיה הלימה בין מספר צעדים שמישהו עשה ביום או אימון להתקדמות שלו כלפי
+> המטרה שלו מבחינת התזונה. הרי יש קשר בין אימון לקלוריות."*
+
+He is right that there is a relationship. The problem is that **the app already
+has two different answers to "how much did you burn today", and they disagree.**
+
+| where | what it computes |
+|---|---|
+| `profileTargets` | Mifflin-St Jeor `10w + 6.25h − 5·age ± s`, times `ACT_FACTOR` (1.2 / 1.375 / 1.55 / 1.725 / 1.9), times the goal factor |
+| `renderHistory`, the deficit tab | **`2200 + steps × 0.04`** |
+
+The second **ignores his weight, his height, his age, his sex and the activity
+level he chose** — all five of which the app is holding — and substitutes a
+flat 2200. Two numbers, one app, and the deficit chart is drawn from the one
+that knows least. **Fixing that is most of the coherence he is asking for, and
+it needs no new feature.**
+
+### And the trap under the request, which must not be walked into
+
+**`ACT_FACTOR` already contains his training.** That is what an activity
+multiplier *is*: someone who marks *4 — מתאמן הרבה* is carrying 1.725
+precisely because of the workouts. **Adding a workout's calories on top of
+that counts them twice**, and the app would be handing him permission to eat
+a session he has already been credited for. It is the single most common
+error in this category of app.
+
+There are only two coherent shapes, and they cannot be mixed:
+
+- **A · The target stays put.** The activity level already priced the
+  training in. Show the workout and the steps *beside* the intake, as
+  context, and never move the goal. Simplest, and the hardest to make dishonest.
+- **B · Split the two.** The activity question comes to mean **non-exercise
+  activity only** (1.2–1.375), and measured movement is added on top. More
+  truthful in principle — and it changes what a question he has already
+  answered means, so **he has to be re-asked**, and every existing target
+  shifts underneath him.
+
+**The recommendation is A**, with the two burn figures unified, for one
+reason: **the calories burned in a strength workout cannot be estimated
+honestly.** Steps are defensible — the app even has the body weight the
+estimate should scale with, and is not using it. A set of squats is not.
+Standing rule for this project: *never invent nutritional numbers.* Inflating
+a daily target by a guessed burn is that rule, pointed at the target instead
+of at the food.
+
+**So the answer to his ask is: show the relationship, do not silently move the
+number.** If the target should move, it moves where he can see it move.
+
+### What to build, in order
+
+1. **The fit row reads what the app already knows** — name, duration, volume.
+   No migration. (§1)
+2. **One definition of daily burn**, from the profile, used by the deficit
+   chart as well; the steps estimate scales with his weight, which is on file.
+3. **A relationship line in the day summary**: trained, steps, intake, and
+   where that left the day — with the burn side stated as an estimate.
+4. **Only then**, and only if he chooses B, touch the target.
+
+**Decide before building: A or B.** Everything above the last item is true
+either way, so it can start immediately.
+
 ## A workout the app builds for you (2026-09-14) — FIRST THING AFTER THE FREEZE
 
 His idea, in his words: in כושר, an option where the app **prepares a workout
