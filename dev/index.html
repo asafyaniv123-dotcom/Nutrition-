@@ -4224,6 +4224,21 @@ function foodHas1(name,tok){
    so both sides collapse to the short spelling before anything is compared.
    It only ever makes matching more permissive: the key is never displayed
    and never stored as a name, it exists to be compared. */
+/* Hebrew writes five letters differently at the end of a word, which made
+   "חלבון" and "חלבוני" unrelated strings - so a search for protein could not
+   reach a row whose name says protein-of.
+
+   ONLY ON A WORD OF FOUR LETTERS OR MORE, and that guard is the whole of it.
+   Folding every final letter was tried and measured: "שום" became "שומ", a
+   prefix of "שומן", and searching for garlic returned 577 rows of which 499
+   were fat. Below four letters a Hebrew word is short enough to be a prefix
+   of an unrelated one; at four and above the missing suffix is the real
+   problem.
+
+   The food-search suite passed BOTH versions identically, because it asks
+   whether each query still finds its own food - a question about the winner -
+   and the bad fold flooded the list without displacing the top hit. */
+var HEB_FINALS={'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'};   // i18n-exempt: five letterforms, not words - they are folded into the key and never displayed
 function foodKey(s){
   /* Folds a name and a query onto common ground so they can meet. Every
      step folds BOTH sides and none of it is ever displayed.
@@ -4265,6 +4280,13 @@ function foodKey(s){
                   .replace(/['’׳"“”״,.]/g,'')
                   /* Hebrew writes the same word two ways. */
                   .replace(/יי/g,'י').replace(/וו/g,'ו')
+                  /* and it writes five letters differently at the end - see
+                     HEB_FINALS above, and the four-letter guard here, which
+                     is what stops "שום" reaching "שומן" */
+                  .replace(/[\u05D0-\u05EA]{4,}/g,function(w){
+                    var l=w.charAt(w.length-1);
+                    return HEB_FINALS[l]?w.slice(0,-1)+HEB_FINALS[l]:w;
+                  })
                   .replace(/\s+/g,' ').trim();
 }
 
