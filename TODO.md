@@ -269,6 +269,80 @@ limit on a band; it now reads as a hole where a feature should be.
 Its real weight is the same as the nutrition finding: **something he actually
 did, that the app could not hold.**
 
+## Feedback after a workout (2026-09-15)
+
+His words: after finishing a workout, a few small questions — how the workout
+felt, and **what he thinks about the weight: could he lift more next time —
+כן / עדיין לא**.
+
+**Most of this already exists, which changes what to build.** Measured before
+designing:
+
+- **Every set can already carry an effort rating.** `_fitRpe`, one of ten,
+  ten taps rather than a keyboard, optional, cleared by tapping the lit one.
+  The scale toggles between **RPE and RIR** from the 9px label above it.
+- **The post-workout summary already exists** — `finishWorkout()` ends with
+  `_fitView='summary'` and hands it the entry. It colours every set by effort
+  (`rpeColor`), prints the average, and totals the volume.
+- **And it already answers his question.** One of three sentences at line
+  ~14282: *"עומס כבד — שים לב להתאוששות"* / *"אימון טוב — באזור העלייה"* /
+  **"אימון נוח. אפשר להעלות במשקל."**
+
+### So why does it feel missing? Three reasons, and each names the fix
+
+1. **It is a statement, not a question.** The app tells him; he does not
+   choose. כן / עדיין לא is agency — and it is also *better data*, because it
+   records his own judgment instead of an inference from a number he may not
+   have entered.
+2. **It is per workout, not per exercise.** He asked about *the weight* —
+   which one? Every lift progresses on its own clock, and an average across a
+   whole session cannot say which bar to add to.
+3. **The input is optional and nearly invisible** — a 9px underlined `RPE`
+   over ten small buttons, offered at the moment a hard set just ended. If he
+   is not filling it, `avgRPE` is null, the three sentences never fire, and
+   the summary falls back to *"לא דורג"*. **His fill rate cannot be measured
+   from here — it is on his phone.** Ask him, or read it on 23/09.
+
+**Asking once at the end is cheaper than tapping on every set.** That is the
+real argument for his idea, and it is a good one.
+
+### The constraint that shapes it
+
+**The evening already asks *"איך הגוף שלך הרגיש?"*** — `RF_STAGE1`, five
+stars, stored as `sum.body`. A post-workout "how did it feel" must not be a
+second version of it, or the app asks the same person about the same body
+twice in one day. **The workout question is about the workout; the evening
+question is about the day.** Keep them audibly different.
+
+### What to build
+
+On the summary screen that already opens, all optional, no keyboard:
+
+- **איך היה האימון?** — one row, about the session: too easy / right / brutal.
+  Not about the body.
+- **Per exercise: "בפעם הבאה, יותר משקל?" — כן / עדיין לא.** Only where it is
+  a real question: a working set with a weight above zero. **Cap the list** —
+  eight exercises times a question is a wall, not a check-in. Top few by
+  volume, or all when there are few.
+- Stored on the log entry keyed by exercise name, not on a set.
+
+**What the answers must then DO, or it is a survey.** *"כן"* pre-fills that
+exercise one step up next time, and says why it moved. That makes this the
+same feature as the eight-note item *"remember the weight used last time"*:
+**memory says what it was, feedback says what to suggest.** Build them
+together.
+
+Over time it is also a real line for the summary: *you said כן three times on
+bench in five weeks, and the weight went 60 → 65.*
+
+### A small honesty bug found on the way
+
+Line ~14282 ends every summary with **`_t('אין דיווח כאב.')` — printed
+unconditionally**, while **nothing in the app can report pain**. The word
+כאב appears only in the guidance text at 13561–13565. So the app asserts a
+clean bill it has no way to know. Either give pain somewhere to be reported
+(it belongs in this very card) or stop claiming it.
+
 ## A workout the app builds for you (2026-09-14) — FIRST THING AFTER THE FREEZE
 
 His idea, in his words: in כושר, an option where the app **prepares a workout
