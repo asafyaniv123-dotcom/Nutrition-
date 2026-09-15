@@ -248,3 +248,44 @@ worse than doing one properly.
 
 Steps 1 and 2 are **data, not app code**, so they are freeze-safe and can be
 done now. Step 3 is small and waits for the 23rd.
+
+---
+
+## Verified in the browser, and it found a requirement the count could not
+
+The forms were checked by reading real screens at phone width, not by trusting
+204. `_t` was wrapped the way the real change will wrap it, `data/gender/he.json`
+loaded over it, and the reflection driven.
+
+**It reads correctly and nothing clips.** *"התחילי סיכום"* sits on its button
+at 390px with room to spare.
+
+**And then the thing worth the whole exercise.** The gratitude question did
+*not* change. Because:
+
+> **39 collections in this app are built inside `langOn(...)`** — `RF_STAGE1`,
+> `RF_STAGE2`, `SUM_SECS`, `WORKOUT_TYPES`, the `SAY_*` lists and 34 more.
+> Each calls `_t()` **once, at build time**, and caches the result.
+
+So changing `readerSex()` changes nothing on its own. Every one of those 39
+still holds the masculine sentence it was built with, and the evening
+reflection is one of them — which means **the single most important screen in
+the app would have been the one that did not turn over.**
+
+Proved both directions in the page:
+
+| | `RF_STAGE2`'s gratitude question |
+|---|---|
+| with the wrapper, before `langRepaint()` | *על מה **אתה אסיר** תודה היום?* |
+| after `langRepaint()` | *על מה **את אסירת** תודה היום?* |
+
+`langRepaint()` walks `_langRebuilds`, re-runs all 39, then repaints — it is
+already exactly the mechanism a language change uses.
+
+**So the requirement is: setting the reader's address must call
+`langRepaint()`, precisely as `langSet` does.** Without that line the feature
+is silently half-built, and a count of 204 would have reported success.
+
+The reflection's own four opening questions are genuinely genderless — *מה היה
+הרגע הכי טוב שלך היום?*, *איזו תמונה מספרת את היום שלך?* — so the gendered ones
+live in the bank behind them, which is where this was found.
