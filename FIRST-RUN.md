@@ -340,3 +340,38 @@ English scan appeared to match `her ` five times, and every hit was the word
 **"Anot·her·"**. A crude pattern proposing work that does not exist is the same
 failure as a crude pattern hiding work that does — the Spanish hint pattern in
 the other direction.
+
+---
+
+## The measurement that decided the architecture
+
+Three meals the app got wrong on 15 Sep, asked through `/say` **twice**, on the
+paid tier:
+
+| | run 1 | run 2 | truth | our table, right row |
+|---|---|---|---|---|
+| pancake | 440 · 34p | 480 · 38p | ~426 · 33.6p | 425 · 37p |
+| Herbalife 30 g | 110 · 15p | 114 · 14.4p | ~114 · 15p | **not in the tables at all** |
+| chicken + udon | 500 · 45p | 450 · 42p | ~533 · 51p | 533 · 51p |
+
+**Two things fall out of running it twice rather than once.**
+
+**Gemini is right where we had nothing.** Herbalife is 0 rows of 7,240 — no
+matcher could ever have found it — and it named the product and derived 30 g
+from the 50 g serving, landing on 114 · 14.4 against a truth of 114 · 15.
+
+**And Gemini is not stable.** The same sentence moved 440 → 480 and 500 → 450
+between two runs minutes apart: about 10%. Our table, with the right row, gives
+533 · 51 every time.
+
+That is the whole case for keeping both, and for the order:
+
+1. **barcode / label** — truth
+2. **a table row that IS this product** — measured, and identical next month
+3. **Gemini** — when we have nothing, marked as an estimate
+4. **never a generic row dressed as a specific product** — the failure that
+   produced all three of these
+
+A daily log feeds a trend over weeks. A number that moves 10% between identical
+questions measures the model's variance, not his eating — which is why layer 2
+cannot be replaced by layer 3, however good layer 3 looks on a single answer.
