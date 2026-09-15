@@ -706,6 +706,146 @@ export default {
       return json({ ok: true, pick, picks, grams, terms, sure: parsed && parsed.sure !== false });
     }
 
+    /* ── /cross ──────────────────────────────────────────────────────────
+       The second opinion, in a shape the app can compare rather than read.
+
+       HIS IDEA, WITH ONE CORRECTION. He asked for the two paths to run against
+       each other up to four times and release the most accurate result. The
+       correction is that NEITHER SIDE CAN JUDGE ACCURACY - there is no ground
+       truth at the moment of asking, and a loop that picks a winner is just
+       picking twice. What two independent methods CAN do is agree or disagree,
+       and that is worth more than it sounds:
+
+         agreement    two methods that share no machinery landing on the same
+                      number is real evidence
+         disagreement a warning, and - measured three times on 15 September -
+                      almost always a ROW CHOICE rather than bad data. A fresh
+                      egg matched to egg powder, a protein powder to a clinical
+                      supplement, plain chicken to a breaded product. Every
+                      time our figures were right for the row we picked and the
+                      row was wrong.
+
+       So the loop converges by fixing IDENTIFICATION, which is what the model
+       is good at, and keeps the NUMBERS from the tables, which is what they
+       are good at: asked the same sentence twice, this model answered 440 and
+       then 480 kcal, while the table with the right row gives the same figure
+       every month. Layer 2 cannot be replaced by layer 3 however good layer 3
+       looks on one answer.
+
+       The app holds the food tables, so the loop itself lives there. This
+       endpoint is one round of it.
+
+       Round 1: `q` only - an independent reading of the sentence.
+       Round 2+: `q` plus `rows`, what the app matched. Told what we chose, the
+       model says which items are wrong and gives TERMS - words that would find
+       the right row in a table written in the reader's language. The app then
+       re-matches locally with those words. /match already returns terms for
+       exactly this reason.
+
+       Secrets: GEMINI_KEY. Optional: CROSS_DAILY_CAP (default 60/IP/day). */
+    if (url.pathname === '/cross' && req.method === 'POST') {
+      if (!env.GEMINI_KEY) return json({ error: 'the second opinion is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const q = String((b && b.q) || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+      if (q.length < 2) return json({ error: 'nothing to ask' }, 400);
+      const LANG = langName(b && b.lang);
+
+      /* what the app matched, if this is not the first round */
+      const rows = (Array.isArray(b && b.rows) ? b.rows : []).slice(0, 20).map((x) => ({
+        name: String((x && x.name) || '').slice(0, 120),
+        grams: Number(x && x.grams) || 0,
+        kcal: Number(x && x.kcal) || 0,
+        protein: Number(x && x.protein) || 0,
+      })).filter((x) => x.name);
+
+      const cap = Number(env.CROSS_DAILY_CAP || 60);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'xq:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const SYSTEM =
+        'You give a second opinion on what someone ate, for an app that prices\n' +
+        'food from measured tables. Reply with JSON only, no prose, no fence:\n' +
+        '{"ok":true,"items":[{"name":"food","grams":150,"terms":["word","word"]}],\n' +
+        ' "totals":{"kcal":500,"protein":45,"carbs":52,"fat":10},\n' +
+        ' "disagree":["index of any row you think is the wrong FOOD"],\n' +
+        ' "note":"one short sentence, or empty"}\n' +
+        '\n' +
+        '- items: every distinct food in the sentence, with the weight actually\n' +
+        '  eaten. Include what is easy to forget and carries real energy: the\n' +
+        '  oil it was fried in, the dressing, the sauce.\n' +
+        '- terms: 2-4 words per item, in ' + LANG + ', that would find that food\n' +
+        '  in a plain text search of a food table. Plain words for the plain\n' +
+        '  food - the generic, not a brand, unless the person named a brand.\n' +
+        '- totals: your own estimate for the whole thing. The app compares it\n' +
+        '  with its own and only trusts a figure the two agree on.\n' +
+        '\n' +
+        (rows.length
+          ? '- ROWS the app matched are given below with their figures. Say in\n' +
+            '  "disagree" the index of any row that is the WRONG FOOD - not\n' +
+            '  merely a different portion. A row naming a brand the person did\n' +
+            '  not name, or a dried, powdered or breaded form of a food they\n' +
+            '  described plainly, is the wrong food. For each of those give\n' +
+            '  better terms in the matching item, so the app can look again.\n'
+          : '') +
+        '\n' +
+        'Say what you do not know rather than filling it in. An item you cannot\n' +
+        'weigh gets the ordinary serving and a note saying so. Never invent a\n' +
+        'brand\'s published figures: estimate the generic food and say that is\n' +
+        'what you did.';
+
+      const user = 'EATEN: ' + q +
+        (rows.length
+          ? '\n\nROWS THE APP MATCHED:\n' + rows.map((r, i) =>
+              i + '. ' + r.name + ' — ' + r.grams + ' g — ' + r.kcal + ' kcal, ' +
+              r.protein + ' g protein').join('\n')
+          : '');
+
+      let r;
+      try {
+        r = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM }] },
+              contents: [{ role: 'user', parts: [{ text: user }] }],
+              generationConfig: {
+                maxOutputTokens: 1200,
+                temperature: 0,
+                thinkingConfig: { thinkingBudget: 0 },
+                responseMimeType: 'application/json',
+              },
+            }),
+          },
+        );
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) {
+        let why = '';
+        try { why = (await r.text()).slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
+
+      let j;
+      try { j = await r.json(); } catch { return json({ error: 'bad answer' }, 502); }
+      const parts = j?.candidates?.[0]?.content?.parts || [];
+      let text = '';
+      for (const p of parts) if (!p.thought && typeof p.text === 'string') text += p.text;
+      let out;
+      try { out = JSON.parse(text); } catch { return json({ error: 'bad answer', raw: text.slice(0, 200) }, 502); }
+      if (!out || typeof out !== 'object') return json({ error: 'bad answer' }, 502);
+
+      return json({ ok: true, ...out });
+    }
+
     /* ── /say ────────────────────────────────────────────────────────────
        One line in, an answer streamed back word by word.
 
@@ -1262,6 +1402,14 @@ export default {
         'and believed. If any digit is blurred, obscured or you are completing\n' +
         'it from what the brand usually is, leave it out.\n' +
         '\n' +
+        'A PRODUCT NAME. If the packet shows a brand and a product name, copy\n' +
+        'them as "product", exactly as printed - "Herbalife 24 Rebuild\n' +
+        'Strength", not "protein powder". Read it, do not recall it: the same\n' +
+        'rule as the other two. A name is worth having even with no numbers\n' +
+        'beside it, because it is what tells the rest of the app whether this\n' +
+        'product is in the tables at all - and saying "we do not have this"\n' +
+        'is impossible while the name is unknown.\n' +
+        '\n' +
         'A NUTRITION PANEL. If the printed nutrition information is legible,\n' +
         'copy it as "label" - the numbers as printed, in the units printed,\n' +
         'saying which basis they are per. Copy only; do not convert, do not\n' +
@@ -1283,6 +1431,7 @@ export default {
         '{"ok":true,"dish":"short name of the meal","items":[{"name":"food","grams":150}],\n' +
         ' "note":"what you assumed, one short sentence","confidence":"high|medium|low",\n' +
         ' "barcode":"digits under the barcode, or omit",\n' +
+        ' "product":"brand and product name as printed, or omit",\n' +
         ' "label":{"basis":"100g|100ml|serving","serving_g":330,"kcal":37,"protein":7.1,\n' +
         '          "carbs":2.1,"fat":0} or omit}';
 
