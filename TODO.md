@@ -259,6 +259,86 @@ functions, and touch no camera and no server.
 verified end to end here, it was `scanFitBox`, and it had to be reverted. His
 call whether this is worth breaking the freeze for.
 
+## It showed him another company's product (2026-09-15)
+
+He photographed a **Herbalife 24 Rebuild Strength** bag. The app answered
+**"תוסף חלבון, אבקה, כולל MERITENE"** — 30 g, 107 kcal, 9.3 p, 16.8 c —
+marked *הערכה*. Gemini read the bag and gave the product's own figures: 50 g
+serving, 190 kcal, **25 p**, 18 c.
+
+Per 30 g the truth is about **114 kcal, 15 p, 10.8 c**. So:
+
+| | app | truth | |
+|---|---|---|---|
+| kcal | 107 | 114 | **almost right** |
+| protein | 9.3 | 15 | **−38%** |
+| carbs | 16.8 | 10.8 | **+56%** |
+
+**The calories being nearly right is what makes it dangerous.** That is the
+number he would sanity-check, and it passes. The macro split — the thing he
+actually tracks — is badly wrong underneath it.
+
+### The chain, measured
+
+1. `/see` found **no barcode and no nutrition table** in the photo, and said
+   so honestly. It then fell back to describing the food as a **category**.
+2. The category it produced was **"תוסף חלבון"**, not "אבקת חלבון".
+3. **That one word decides everything.** Ranked against the shipped scorer:
+   - `אבקת חלבון` → p85, p75.8, p72.3, p73, p71. **All fine.**
+   - `תוסף חלבון` → a 138 kcal meal drink first, then **MERITENE at p31 c56**.
+4. So it landed on a **clinical meal-replacement** — the one row in 27 whose
+   macros look nothing like a protein powder — and that row **names another
+   company**.
+
+### Three defects, and they are not the egg's
+
+**1 · It substituted one brand for another.** The row says MERITENE. He is
+holding Herbalife. A generic answer would have been honest; naming a
+different manufacturer is not. **Rule to add: a row whose name carries a brand
+the query never asked for cannot be the match.** Narrow, checkable, and the
+same shape as the dried-form guard already shipped.
+
+**2 · The brand was legible and never read.** HERBALIFE 24 is in large letters
+on the front. Gemini used it in a second. `/see` hunts for a barcode or a
+nutrition table, finds neither, and **abandons identity altogether** instead
+of reading the name that is right there. Reading the product name has to be a
+first-class result — and then saying plainly *"Herbalife 24 Rebuild Strength —
+אין לנו אותו בטבלאות"*.
+
+**3 · Herbalife is 0 rows of 7,240.** Searching the brand returns nothing, and
+adding it to the Hebrew query changes nothing — the token is ignored. **No
+amount of matching was ever going to find this product.** This is his own
+argument, now with a number against it.
+
+### And it settles the open question about the brand restraint
+
+`/estimate` is told *"never invent a specific brand's published figures —
+estimate the generic food and say so."* That rule is **exactly what produced
+this**: unable to state Herbalife's numbers, the flow fell back to a table row,
+and the table row named the wrong company with a table's authority behind it.
+
+**The restraint did not protect him. It replaced a good estimate with a
+confident wrong one.**
+
+So the trust order needs one correction. Today it reads label > table >
+estimate. It should read:
+
+> **label > a table row that is THIS product > a product-identified estimate >
+> a generic table row.**
+
+A generic row matched to a branded product is not evidence. It is a guess
+wearing a table's authority, and it outranks a better answer today.
+
+### What to do, in order
+
+1. **No brand substitution.** Local, small, shippable the way the egg guard
+   was. Stops MERITENE appearing for a Herbalife bag today.
+2. **`/see` returns the product name** even with no barcode and no label, and
+   the screen says whether we have that product or not. Worker change.
+3. **Re-order the trust chain** as above, and let a product-identified
+   estimate outrank a generic row. Policy, and it is the parked open question
+   finally answered by a measurement rather than by an opinion.
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
