@@ -469,7 +469,8 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .gem-note{margin-top:7px;font-size:10px;color:var(--muted-soft);line-height:1.6}
 .gem-err{margin-top:9px;font-size:11.5px;color:var(--terra-500);font-weight:700}
 .say-go{width:100%;margin-top:8px;border:none;border-radius:13px;padding:12px;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white);font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
-.say-cam{display:block;width:100%;margin-top:7px;border:1.5px dashed var(--line-strong);border-radius:13px;padding:11px;background:none;color:var(--ink-soft);font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center}
+.say-cam{display:block;width:100%;margin-top:7px;border:1.5px dashed var(--line-strong);border-radius:13px;padding:11px;background:none;color:var(--ink-soft);font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center}
+.say-hint{font-size:10.5px;color:var(--muted-soft);line-height:1.6;margin:2px 0 6px;text-align:center}
 .say-shot{margin-top:9px;text-align:center}
 /* Standing on its own in the + rather than tucked under a textarea, the same
    control is the only thing on the panel, so it is given the room to say so. */
@@ -5219,8 +5220,11 @@ function picPick(input){
   _picBusy=true;_picNote='';_sayErr='';_sayItems=null;_sayBusy=true;sayPaint();
   picShrink(file,function(dataUrl){
     if(!dataUrl){picFail(''+_t('לא הצלחתי לקרוא את התמונה.')+'');return;}
-    _picThumb=dataUrl;render();sayPaint();
-    picGo(dataUrl);
+    _picThumb=dataUrl;_picData=dataUrl;render();sayPaint();
+    /* Whatever is in the sentence box goes with the picture. A container
+       photographs perfectly and still cannot say what was made from it. */
+    var t=document.getElementById('say-in');
+    picGo(dataUrl,t?t.value.trim():'');
   });
 }
 /* One product, its numbers from somewhere better than a name match. The
@@ -5246,7 +5250,10 @@ function picByTable(j,items){
   }
   foodsLoad(function(){
     sayResolveAll(items,function(rows){
-      _picBusy=false;_sayBusy=false;_sayItems=rows;_sayRow=-1;
+      _picBusy=false;_sayItems=rows;_sayRow=-1;
+      /* Still busy: a picture is the shakiest input here, so its rows
+         wait for the check exactly as a sentence's do. */
+      sayCross(0);
       sayPaint();
     });
   });
@@ -5254,21 +5261,40 @@ function picByTable(j,items){
 function picFail(msg){
   _picBusy=false;_sayBusy=false;_sayErr=msg;sayPaint();
 }
-function picGo(dataUrl){
+var _picData='',_picAsk=false;
+/* The same picture, sent again with the words now written. The photograph was
+   never the problem; there was nowhere to put the sentence that explains it. */
+function picRetry(){
+  var t=document.getElementById('say-in');
+  var note=t?t.value.trim():'';
+  if(note.length<2){_sayErr=''+_t('כתוב מה הכנת מזה.')+'';sayPaint();return;}
+  if(!_picData){_sayErr=''+_t('לא הצלחתי לקרוא את התמונה.')+'';sayPaint();return;}
+  _picAsk=false;_picBusy=true;_sayErr='';_sayItems=null;_sayBusy=true;sayPaint();
+  picGo(_picData,note);
+}
+function picGo(dataUrl,note){
+  /* What the loop will ask about. For a sentence this is what was typed;
+     for a photograph it is whatever was written beside it, and an empty
+     string when nothing was. */
+  _sayText=note||'';
   var comma=dataUrl.indexOf(',');
   foodsLoad(function(){});
   fetch(SYNC_SERVER+'/see',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({image:dataUrl.slice(comma+1),mime:'image/jpeg',lang:appLang()})
+    body:JSON.stringify({image:dataUrl.slice(comma+1),mime:'image/jpeg',note:note||'',lang:appLang()})
   }).then(function(r){return r.json();})
     .then(function(j){
       if(!j||!j.ok){
         /* Said no on purpose, and the reason matters: "that is not food" is
            answerable by taking another picture, and being told only that it
            failed is not. */
-        picFail(j&&j.error==='too many for today'
-          ?''+_t('הגעת למכסה היומית של הצילומים.')+''
-          :''+_t('לא זיהיתי אוכל בתמונה. נסה מקרוב יותר, או כתוב מה אכלת.')+'');
+        if(j&&j.error==='too many for today'){
+          picFail(''+_t('הגעת למכסה היומית של הצילומים.')+'');return;
+        }
+        /* Not a dead end. The picture is kept and the panel asks for the one
+           thing it cannot see - what was made from what is in the frame. */
+        _picAsk=true;
+        picFail(''+_t('אני רואה את המוצר אבל לא כמה ממנו. כתוב למעלה מה הכנת מזה, ואשלח שוב.')+'');
         return;
       }
       _picNote=String(j.note||'');
@@ -5295,7 +5321,10 @@ function picGo(dataUrl){
       picByTable(j,items);
       foodsLoad(function(){
         sayResolveAll(items,function(rows){
-          _picBusy=false;_sayBusy=false;_sayItems=rows;_sayRow=-1;
+          _picBusy=false;_sayItems=rows;_sayRow=-1;
+          /* Still busy: a picture is the shakiest input here, so its rows
+             wait for the check exactly as a sentence's do. */
+          sayCross(0);
           sayPaint();
         });
       });
@@ -6085,7 +6114,12 @@ function sayPaint(){
   if(_sayBusy){el.innerHTML='<div class="say-msg">'+
     (_sayXState==='busy'?_t('בודק מול מקור שני…')
      :_picBusy?_t('מסתכל על התמונה…'):_t('קורא מה כתבת…'))+'</div>';return;}
-  if(_sayErr){el.innerHTML='<div class="say-msg">'+esc(_sayErr)+'</div>';return;}
+  if(_sayErr){
+    el.innerHTML='<div class="say-msg">'+esc(_sayErr)+'</div>'+
+      (_picAsk&&_picData?'<button class="say-go" onclick="picRetry()">'+
+        _t('שלח שוב עם ההסבר')+'</button>':'');
+    return;
+  }
   if(!_sayItems){el.innerHTML='';return;}
   /* What it took the sizes to be. A portion read off a photograph is the
      shakiest number in the whole chain, and the person holding the plate is
@@ -7651,6 +7685,7 @@ function renderToday(){
          back camera on a phone and is ignored on a desktop, where the same
          control picks a file - so one input serves both without asking
          which kind of machine this is. */
+      '<div class="say-hint">'+_t('מצלם מוצר? כתוב למעלה מה הכנת ממנו.')+'</div>'+
       '<label class="say-cam">&#x1F4F8; '+_t('או צלם את הצלחת')+
       '<input type="file" accept="image/*" capture="environment" hidden onchange="picPick(this)"></label>'+
       '<label class="say-cam">&#x1F5BC;&#xFE0F; '+_t('או בחר תמונה מהגלריה')+
