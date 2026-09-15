@@ -221,6 +221,54 @@ a weight, adding a note. Worth building as one pass rather than eight.
 
 ---
 
+## Cardio has nowhere to go (2026-09-15)
+
+He finished a run and found nothing in כושר to put it in. Measured before
+agreeing, because twice now "absent" has meant "wrong search word".
+
+**What is actually there.** `data/exercises.json` carries **15 אירובי
+exercises** — ריצה (`x210`), הליכון, שיפוע, אופני כושר, אליפטיקל, מכונת
+חתירה, סקי ארג, סטפר, חבל, ברפי, קופסה, מזחלת, חבלי קרב, שחייה. The weekly
+planner's `WORKOUT_TYPES` has ריצה, שחייה, אופניים and הליכה. And a finished
+workout already stores `date` and a real `duration` in minutes, computed from
+start to finish. **A run is not unknown to this app.**
+
+**What is missing, and it is the whole thing.** `distance`, `km` and `pace`
+do not exist as data anywhere in the 25,002 lines — every hit is a CSS class,
+an English comment, or a goal placeholder (*"למשל: להגיע ל־7 ק״מ"*, which is
+a wish with nothing to measure it against). A set row holds **weight × reps**,
+and a run has neither. So the app can record *that* he ran and *how long*, and
+cannot record **how far** — therefore no pace, no weekly kilometres, no line.
+
+**The planner is not a fallback.** Its entries are keyed `w0d3` — relative to
+the week, not to a date — so it is a plan that rolls over, not a log. Checked
+before suggesting it, which is why it is not being suggested.
+
+**And the obvious workaround must never be used.** Logging a run as a set with
+kilometres in the weight box and minutes in the reps box feeds `now.vol`,
+which is weight × reps — the volume number the whole fitness screen is built
+around. Recording a run that way would corrupt the strength trend. Say this
+out loud whenever it comes up, because it is the first thing anyone tries.
+
+**The app already admits the gap in its own copy.** The sets-per-muscle card
+reads *"וריצה או שחייה לא נמדדות בו"*. That sentence was written as an honest
+limit on a band; it now reads as a hole where a feature should be.
+
+### What to build
+
+- **Distance and duration on a cardio entry; pace derived, never typed.**
+- **A distance formatter has to be written first.** km vs miles is exactly the
+  `fmtWeight`/`weightUnit` rule, and there is no `fmtDist` — so the first
+  version would weld a unit into a sentence, which is the bug the units check
+  exists to catch. Write the formatter, then the feature.
+- Kept out of the sets-per-muscle band, the way `אירובי` already is at the
+  `isCardio` test — the exclusion is written, and it stays right.
+- **Weekly kilometres and a pace trend.** `ewma` already exists and takes any
+  daily series, so the chart is nearly free once the number is stored.
+
+Its real weight is the same as the nutrition finding: **something he actually
+did, that the app could not hold.**
+
 ## A workout the app builds for you (2026-09-14) — FIRST THING AFTER THE FREEZE
 
 His idea, in his words: in כושר, an option where the app **prepares a workout
