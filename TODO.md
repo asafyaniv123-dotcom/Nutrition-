@@ -347,6 +347,54 @@ wearing a table's authority, and it outranks a better answer today.
    estimate outrank a generic row. Policy, and it is the parked open question
    finally answered by a measurement rather than by an opinion.
 
+## The third one, and now it is a pattern (2026-09-15)
+
+A stir-fry: 150 g chicken fillet, 100 g udon, vegetables. The app answered
+**614 kcal, 28.7 p**. Gemini said 520–550 and **53–55 p**.
+
+**It is one row again.** The app matched the chicken to **"בשר עוף, פילה עוף
+אמיתי/בשומשום, מאמא עוף"** — a sesame-coated product from a named
+manufacturer — where he wrote *"150 גרם של פילה עוף"*.
+
+| | kcal | protein | fat |
+|---|---|---|---|
+| what it picked (מאמא עוף) | 321 | **22.5** | 13.5 |
+| `בשר עוף, חזה, ללא עצם, צלוי, נאכל ללא עור` | 240 | **45.1** | 5.7 |
+| Gemini | 245 | 46.0 | 5.0 |
+
+Swap that single row and the meal goes **614 → 533 kcal, 28.7 → 51.3 p,
+26.7 → 18.9 f** — inside Gemini's range on every figure. **His protein was
+reported at half what he ate.**
+
+### Three for three, and the pattern is one sentence
+
+| | asked for | given |
+|---|---|---|
+| ביצה | a fresh egg, 143 | **egg powder**, 605 |
+| תוסף חלבון | a protein powder, p≈75 | **MERITENE**, a clinical supplement, p31 |
+| פילה עוף | plain chicken, p30 | **מאמא עוף** breaded fillet, p15 |
+
+**Every time the matcher chose something more processed, more branded and more
+specific than what was asked for. Every time the plain food was already in the
+table.** This is not a database problem and not a weak model - `/match` runs on
+Sonnet 5. It is an evidence problem: sixty names and no numbers, so nothing
+tells it that p15 is an outlier in a list where plain chicken is p30.
+
+### And it reinstates half of what I withdrew
+
+Earlier today the "no brand substitution" guard was measured and withdrawn,
+because **0 of 11 protein-powder rows are brandless** so it would never have
+fired. That measurement was right and the conclusion was too narrow: **here a
+brandless correct row exists** (`בשר עוף, חזה, ללא עצם, צלוי, נאכל ללא עור`),
+and the guard would have fired.
+
+So the rule is right and insufficient alone. Both halves are needed:
+
+1. **When the query names no brand, a row that names one cannot outrank a
+   brandless row that matches.** Local, and it would have caught this one.
+2. **Send the candidates' kcal and macros with their names**, so an outlier is
+   visible to the thing doing the choosing.
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
