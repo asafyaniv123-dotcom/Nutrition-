@@ -331,8 +331,16 @@ wearing a table's authority, and it outranks a better answer today.
 
 ### What to do, in order
 
-1. **No brand substitution.** Local, small, shippable the way the egg guard
-   was. Stops MERITENE appearing for a Herbalife bag today.
+1. ~~**No brand substitution.** Local, small, shippable the way the egg guard
+   was.~~ **Measured and withdrawn.** A local guard that prefers a row without
+   a brand had nothing to prefer: **0 of the 11 protein-powder rows are
+   brandless.** It would never have fired. Worse, the rule it was meant to add
+   **already exists in the `/match` prompt** — *"If a brand is named and no row
+   carries it, prefer -1 over a row from a different company"* — and it never
+   fired either, because **no brand was ever named**: `/see` threw the identity
+   away before `/match` ran. The fix is upstream, not a guard.
+   What the prompt still lacks is the **converse**: when NO brand is named and
+   the row names one, that row is a specific product and not a generic answer.
 2. **`/see` returns the product name** even with no barcode and no label, and
    the screen says whether we have that product or not. Worker change.
 3. **Re-order the trust chain** as above, and let a product-identified
