@@ -1,6 +1,6 @@
 /* The feminine Hebrew, checked against the app rather than trusted.
  *
- * data/lang/he.gender.json maps a key - the masculine Hebrew string _t is
+ * data/gender/he.json maps a key - the masculine Hebrew string _t is
  * CALLED with - to the same sentence addressed to a woman. Four things have
  * to hold, and each of them has already been got wrong somewhere in this
  * project by a pass that looked right:
@@ -22,7 +22,7 @@
 import fs from 'fs';
 
 const APP = process.argv[2] || 'dev/index.html';
-const MAP = 'data/lang/he.gender.json';
+const MAP = process.argv[3] || 'data/gender/he.json';
 
 const src = fs.readFileSync(APP, 'utf8');
 const pairs = JSON.parse(fs.readFileSync(MAP, 'utf8'));
