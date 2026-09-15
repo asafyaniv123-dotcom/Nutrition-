@@ -5365,7 +5365,8 @@ function sayGo(){
   var text=el?el.value.trim():'';
   if(text.length<2){_sayErr=''+_t('כתוב מה אכלת.')+'';sayPaint();return;}
   if(!SYNC_SERVER){_sayErr=''+_t('הפירוק דורש חיבור לשרת.')+'';sayPaint();return;}
-  _sayBusy=true;_sayErr='';_sayItems=null;sayPaint();
+  _sayText=text;   // the loop asks about the ORIGINAL sentence, not the rows
+  _sayBusy=true;_sayErr='';_sayItems=null;_sayXState='';sayPaint();
   foodsLoad(function(){});
   fetch(SYNC_SERVER+'/parse',{
     method:'POST',
@@ -5388,6 +5389,9 @@ function sayGo(){
         sayResolveAll(j.items,function(rows){
           _sayBusy=false;_sayItems=rows;_sayRow=-1;
           sayPaint();
+          /* After the rows are on screen, not before: the first answer should
+             not wait on a second opinion that may never come. */
+          sayCross(0);
         });
       });
     })
@@ -5953,6 +5957,68 @@ function sayTotalHTML(){
    So it fills the row where it stands. The other rows keep their matched
    values, the estimated one is marked as estimated, and one press still adds
    all of them to the day. */
+/* ── THE SECOND OPINION ──
+   Two methods that share no machinery. Agreement is evidence; disagreement,
+   measured three times on 15 September, is almost always a row choice rather
+   than bad data - a fresh egg matched to egg powder, plain chicken to a
+   breaded product, a protein powder to a clinical supplement. Every time our
+   figures were right for the row we picked and the row was wrong.
+
+   So this fixes IDENTIFICATION and keeps our NUMBERS. It never writes the
+   model's figures into a row. */
+var _sayText='',_sayXState='';
+function sayCross(depth){
+  if(!_sayItems||!_sayItems.length||!SYNC_SERVER)return;
+  if(depth>=4){_sayXState='done';sayPaint();return;}
+  _sayXState='busy';sayPaint();
+  var rows=[],i;
+  for(i=0;i<_sayItems.length;i++){
+    var r=_sayItems[i];
+    if(!r.food){rows.push({name:'',grams:0,kcal:0,protein:0});continue;}
+    var a=sayAmount(r);
+    rows.push({name:r.food.n,grams:Math.round((r.g||0)*(r.amount||1)),
+               kcal:(a&&a.kcal)||0,protein:(a&&a.p)||0});
+  }
+  fetch(SYNC_SERVER+'/cross',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({q:_sayText,rows:rows,lang:appLang()})
+  }).then(function(r){return r.json();})
+    .then(function(j){
+      if(!j||!j.ok){_sayXState='off';sayPaint();return;}
+      var dis=j.disagree||[],items=j.items||[],changed=0,k;
+      for(k=0;k<dis.length;k++){
+        var idx=Number(dis[k]);
+        var row=_sayItems[idx];
+        if(!row||!row.food)continue;
+        var terms=(items[idx]&&items[idx].terms)||[];
+        if(!terms.length)continue;
+        /* Its words, our scorer. The first term is its best reading of what
+           the food IS; the rest are fallbacks when that one finds nothing. */
+        var t,alt=null;
+        for(t=0;t<terms.length&&t<4;t++){
+          var cand=sayResolve({food:terms[t],amount:row.amount,unit:row.unit});
+          if(!cand||!cand.food)continue;
+          if(cand.food.n===row.food.n)continue;
+          /* The guards still have the last word. A swap that lands on a form
+             nobody asked for is refused here exactly as it is at /match. */
+          if(sayDerivedUnasked(cand.food,foodKey(_sayText)))continue;
+          alt=cand;break;
+        }
+        if(!alt)continue;
+        row.alts=[row.food].concat((row.alts||[]).filter(function(x){return x.n!==alt.food.n;})).slice(0,3);
+        row.food=alt.food;
+        /* The WEIGHT is not what was disputed - it came from the sentence -
+           so only take a new one when this row never had a real one. */
+        if(row.gsrc==='guess'&&alt.gsrc!=='guess'){row.g=alt.g;row.gsrc=alt.gsrc;}
+        row.fixed=true;
+        changed++;
+      }
+      if(changed){sayPaint();sayCross(depth+1);return;}
+      _sayXState=dis.length?'done':'agreed';
+      sayPaint();
+    })
+    .catch(function(){_sayXState='off';sayPaint();});
+}
 function sayEstimate(i){
   var row=_sayItems&&_sayItems[i];
   if(!row)return;
@@ -6030,6 +6096,7 @@ function sayPaint(){
     if(row.food){
       h+='<button class="sr-name" onclick="sayExpand('+i+')">'+esc(row.food.n)+
          (row.est?'<span class="sr-esttag">'+_t('הערכה')+'</span>':'')+
+         (row.fixed?'<span class="sr-srctag">'+_t('תוקן בבדיקה')+'</span>':'')+
          /* Not from the tables, so it says so. A row whose numbers came
             from a barcode or a printed panel is BETTER than a name match,
             not worse - but it is a different source, and a source that is
