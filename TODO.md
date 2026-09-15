@@ -395,6 +395,71 @@ So the rule is right and insufficient alone. Both halves are needed:
 2. **Send the candidates' kcal and macros with their names**, so an outlier is
    visible to the thing doing the choosing.
 
+## Editing a day summary after the fact (2026-09-15)
+
+> *"שתהיה אפשרות לערוך סיכום יומי — לדוגמה אם טעית במשהו או שאתה רוצה כן
+> להוסיף שאלה."*
+
+Measured before writing it down, and the gap is narrower and sharper than the
+ask suggests: **most of this exists, for exactly one day.**
+
+### What already works
+
+`renderReflectHome` offers three states, and the third is the one that matters:
+a finished summary shows **"פתח שוב"**, which calls `rfResume()` and drops back
+into the cards with every answer still there. Editing a summary is a solved
+problem.
+
+### What does not
+
+```
+function rfResume(){
+  _rfDate=todayStr();
+```
+
+**It is hardcoded to today.** So:
+
+- **Yesterday cannot be corrected at all.** The day sheet opened from the Me
+  calendar is read-only — checked the whole of `renderSummaryOverlay` and
+  `summaryBodyHTML`: **no edit affordance anywhere in it**, not a button, not
+  a tap target, nothing.
+- **A question cannot be added to a past day.** The bank is reachable from
+  `renderReflectHome`, which is also today-only, so a day already summarised
+  can never gain a question he wishes he had answered.
+
+And the mistake he is describing is usually noticed *later* — the evening
+reflection is written at night and re-read the next morning, which is precisely
+when it is no longer editable.
+
+### What to build
+
+**1 · `rfResume(dateStr)`.** The one-line half. Every other piece of the
+reflection already takes a date: `rfRec(dateStr)`, `rfDone(r)`, `rfSteps()`.
+Only the entry point assumes today.
+
+**2 · A way in from the day sheet.** The summary overlay is where a past day is
+actually read, so that is where "ערוך" belongs — not behind another screen.
+
+**3 · The bank, for a past day.** Adding a question to a finished day is the
+half he named explicitly and the half that is not just plumbing: a bank
+question added on the 20th to the day of the 15th needs a decision about
+whether it also joins his standing four from then on. That is the same fork
+already parked under *"Open, and his to decide"*, and it should be settled once
+for both.
+
+### Two things to get right
+
+**The day the reflection belongs to is not `new Date()`.** This app's day ends
+at **04:00**, and editing a past day is exactly where a raw clock would file an
+answer under the wrong date. `appDayOf` and `dayShift` exist for this and the
+edit path must use them.
+
+**Do not let editing rewrite history silently.** The daily summary feeds the
+week and month cards, the streak, and `trainedOn`. Changing an answer for the
+15th on the 20th changes numbers that were already read. That is fine and
+wanted - but it argues for editing an ANSWER rather than re-running the whole
+evening, so a reopened day cannot come out emptier than it went in.
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
