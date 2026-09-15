@@ -159,6 +159,106 @@ architectural one.
 
 ---
 
+## 657 against 426, and it was one row out of three (2026-09-15)
+
+He typed *"פנקייק מ- ביצה, גביע קוטג 5%, 4 כפות קמח"*, pressed **פרק לי את
+זה**, and got **657 kcal · 55 p · 28.2 c · 34.3 f**. Gemini, shown the same
+screen, said the real figures are about **426 · 33.6 · 28.5 · 17.6**, and named
+the cause: the app chose **"ביצה שלמה מיובשת"** — dried whole egg, egg powder —
+for one fresh egg.
+
+**Gemini was right, and our own table proves it.** Recomputed from the rows the
+app itself ships:
+
+| | kcal | p | c | f |
+|---|---|---|---|---|
+| what the app showed | 656 | 55.0 | 28.1 | 34.3 |
+| **the same three rows, fresh egg instead** | **425** | 37.1 | 27.7 | **17.6** |
+| Gemini's figure | 426 | 33.6 | 28.5 | 17.6 |
+
+`ביצה שלמה מיובשת` is **605 kcal/100g**; `ביצה שלמה בלי קליפה` is **143**. At
+50 g that is **303 against 72** — **one wrong row cost 231 kcal, +17.9 g
+protein and +16.8 g fat**, a 54% overstatement of the meal.
+
+**The cottage and the flour were both right.** 238 and 116 are exactly what
+those rows give for 250 g and 32 g. The protein still differs by 3.5 g between
+our cottage row and Gemini's, which is ordinary spread between brands and is
+not the story.
+
+**So this was never a data gap.** The right row is in the table, one line away
+from the wrong one. **Gemini's "correct" answer is reproducible from our own
+data to within one kilocalorie.** That matters for the open question about
+whether the tables earn their keep: on this meal they did, and the ranking did
+not.
+
+### Where it actually broke — measured, not assumed
+
+The first guess was the typed-search ranker. Wrong: **פרק לי את זה does not
+use `foodSearch` at all.** The path is `/parse` → `sayResolveAll` →
+`sayResolveAI`, and there:
+
+- `sayCandidates(q,60)` builds sixty candidates locally,
+- **only their NAMES are sent** to `/match` — `{q, unit, cands:names, lang}` —
+- and **the model picks one**.
+
+Three consequences, each its own fix:
+
+**1 · The model cannot see what it is choosing.** It is handed sixty strings
+and no numbers. It cannot tell that its pick is 605 kcal/100g while the
+neighbouring candidate is 143. **Sending kcal/100g alongside each name costs
+almost nothing and makes an implausible pick visible** — to the model, and to
+any check we put after it.
+
+**2 · The unit was sent and ignored.** The payload carries `unit:'unit'` — one
+*piece*. Egg powder does not come in pieces. The app already owns the lists
+that encode this: `SAY_DERIVED` and `SAY_RAW` (מיובש, אבקה, יבש…) **in eleven
+languages**, and the comment above them says they were written for precisely
+this bug: *"'ביצה' was landing on 'ביצה חלבון מיובש' — dried egg white."*
+**The medicine exists one function away and this path never takes it.** A
+guard — a `unit` pick may not land on a `SAY_RAW` row unless the person said
+the word — needs no server change at all.
+
+**3 · The wrong answer is now stuck.** `matchCachePut` stores the pick, and
+`matchCacheGet` reads it back **with no expiry in the read path**. So *ביצה*
+will resolve to egg powder on his phone every time until storage is cleared.
+This is what turns a bad guess into a standing defect.
+
+### And the asymmetry that should be fixed first
+
+Look at the two correction paths side by side:
+
+- `saySetWeight` → **`saveFoodUnit(row.food.n, row.unit, g)`**, with the
+  comment *"told once, remembered"*.
+- `sayUseAlt` → swaps the row in the view, calls `sayPaint()`, **and writes
+  nothing.**
+
+**Correct the grams and the app remembers for good. Correct the FOOD and it
+forgets the moment the panel closes — while the wrong pick stays cached.** He
+can fix this pancake and the same egg comes back tomorrow.
+
+**`sayUseAlt` should `matchCachePut` the corrected row.** It is a handful of
+lines, it is entirely local, it needs no Worker deploy, and it converts every
+correction he makes into a permanent repair. Of everything in this section it
+is the smallest and buys the most.
+
+### Order
+
+1. **`sayUseAlt` teaches the cache.** Local, small, self-correcting.
+2. **The unit/state guard**, from the lists that already exist. Local.
+3. **Send kcal/100g with the candidates**, so the pick can be judged. Worker.
+4. Then the wider `sure`-on-the-match work already written up above.
+
+### The freeze
+
+**This is the closest thing to broken this file has recorded** — wrong numbers
+written into his day, in the one area he has named as breaking his habit, and
+now cached. Items 1 and 2 are local, testable offline against the lifted
+functions, and touch no camera and no server.
+
+**Not built unasked.** The last time a fix went in on a path that could not be
+verified end to end here, it was `scanFitBox`, and it had to be reverted. His
+call whether this is worth breaking the freeze for.
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
