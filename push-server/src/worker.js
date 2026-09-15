@@ -702,6 +702,131 @@ export default {
       return json({ ok: true, pick, picks, grams, terms, sure: parsed && parsed.sure !== false });
     }
 
+    /* ── /say ────────────────────────────────────────────────────────────
+       One line in, an answer streamed back word by word.
+
+       WHY REST RATHER THAN @google/genai. That library is a Node SDK and this
+       is a Cloudflare Worker - a V8 isolate, not Node. It can sometimes be
+       coaxed through nodejs_compat, but every other model call in this file is
+       a plain fetch, and a REST call to Google is four lines. A Node SDK here
+       is risk with no return.
+
+       WHY NOT A .env FILE. Workers have no .env. A committed one leaks the key
+       and an ignored one never reaches the server. The key is a Worker secret:
+           npx wrangler secret put GEMINI_KEY
+       It is never in the client, never in the repo, and never printed.
+
+       WHY THIS IS NOT A GENERAL PURPOSE PROXY. The system prompt is fixed
+       here and not accepted from the caller, for the same reason /ask defines
+       its own tools: an endpoint that relays whatever it is handed is a free
+       model for anyone who finds the URL, paid for by this key.
+
+       AND THE RULE THAT MAKES AN ANSWER WORTH TRUSTING, the same one /ask and
+       /estimate carry: a figure the model states must be marked as an
+       estimate. It may not present a guess as a measured value.
+
+       Secrets: GEMINI_KEY. Optional: SAY_DAILY_CAP (default 80/IP/day). */
+    if (url.pathname === '/say' && req.method === 'POST') {
+      if (!env.GEMINI_KEY) return json({ error: 'the assistant is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const q = String((b && b.q) || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+      if (q.length < 2) return json({ error: 'nothing to ask' }, 400);
+      const lang = String((b && b.lang) || 'he').slice(0, 8);
+
+      const cap = Number(env.SAY_DAILY_CAP || 80);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'sq:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const SYSTEM =
+        'You answer one question about food, in ' + lang + ', in a few short lines.\n' +
+        '- Name the food you think it is, including the brand when the text says one.\n' +
+        '- Give energy and macronutrients for the portion described, and say per what.\n' +
+        '- Say plainly when a figure is an estimate rather than a label value. Never\n' +
+        '  present a guess as a measured number.\n' +
+        '- If the text is not about food, say so in one line and stop.\n' +
+        '- No markdown, no headings, no preamble.';
+
+      let r;
+      try {
+        r = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM }] },
+              contents: [{ role: 'user', parts: [{ text: q }] }],
+              generationConfig: { maxOutputTokens: 700, temperature: 0.2 },
+            }),
+          },
+        );
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok || !r.body) {
+        let why = '';
+        try { why = (await r.text()).slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
+
+      /* Google's SSE carries its whole JSON shape. The app should not have to
+         know that shape - swapping the provider later must not touch the
+         client - so the text deltas are unwrapped here and sent on as
+         {"t":"…"}, with a final {"done":true}. */
+      const out = new TransformStream();
+      const w = out.writable.getWriter();
+      const td = new TextDecoder();
+      const te = new TextEncoder();
+      (async () => {
+        let buf = '';
+        /* An explicit reader rather than for-await: async iteration over a
+           ReadableStream depends on the runtime, and this endpoint cannot be
+           run locally to find out. getReader is the same in every one. */
+        const rd = r.body.getReader();
+        try {
+          for (;;) {
+            const { done, value } = await rd.read();
+            if (done) break;
+            buf += td.decode(value, { stream: true });
+            let i;
+            while ((i = buf.indexOf('\n')) >= 0) {
+              const line = buf.slice(0, i).trim();
+              buf = buf.slice(i + 1);
+              if (!line.startsWith('data:')) continue;
+              const payload = line.slice(5).trim();
+              if (!payload || payload === '[DONE]') continue;
+              let j;
+              try { j = JSON.parse(payload); } catch { continue; }
+              const parts = j?.candidates?.[0]?.content?.parts || [];
+              for (const p of parts) {
+                if (typeof p.text === 'string' && p.text)
+                  await w.write(te.encode('data: ' + JSON.stringify({ t: p.text }) + '\n\n'));
+              }
+            }
+          }
+          await w.write(te.encode('data: ' + JSON.stringify({ done: true }) + '\n\n'));
+        } catch {
+          await w.write(te.encode('data: ' + JSON.stringify({ error: true }) + '\n\n'));
+        } finally {
+          try { await w.close(); } catch {}
+        }
+      })();
+
+      return new Response(out.readable, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          ...CORS,
+        },
+      });
+    }
+
     /* ── /ask ────────────────────────────────────────────────────────────
        A question about your own eating, answered from your own records.
 
