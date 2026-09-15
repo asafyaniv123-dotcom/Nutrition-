@@ -5410,7 +5410,7 @@ function sayResolveAI(it,done){
   if(!SYNC_SERVER){done(local);return;}
   var cands=sayCandidates(q,60);
   if(!cands.length){done(local);return;}
-  var names=cands.map(function(c){return c.n;});
+  var names=cands.map(sayCandLine);
   var t=setTimeout(function(){t=0;done(local);},9000);   // never hang the panel
   fetch(SYNC_SERVER+'/match',{
     method:'POST',headers:{'Content-Type':'application/json'},
@@ -5594,6 +5594,14 @@ function sayTier(f){
    frozen, tinned - when the query never said the word? SAY_D and SAY_R are
    built by langOn and read at call time, and a row that says BOTH (פול יבש,
    מבושל) is the cooked food and must not be caught. q arrives folded. */
+/* What a row costs, written next to its name for the model that has to
+   choose between sixty of them. Measured values straight from the table - the
+   same figures the row will show on screen - so nothing here is invented. The
+   model answers with an index, so this never reaches a reader. */
+function sayCandLine(f){
+  if(!f||!(f.k>=0))return f&&f.n||'';
+  return f.n+' ['+Math.round(f.k)+'kcal '+(+f.p||0)+'p '+(+f.c||0)+'c '+(+f.f||0)+'f]';   // i18n-exempt: a wire format for the matcher, which replies with an index - never rendered
+}
 function sayDerivedUnasked(f,q){
   if(!f||!f.s||!SAY_D)return false;
   var cooked=sayCooked(f.s),d;
@@ -6232,7 +6240,7 @@ function offLive(q){
 function fdbAskMatch(q,cands,done){
   fetch(SYNC_SERVER+'/match',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({q:q,unit:'unit',n:5,cands:cands.map(function(c){return c.n;}),lang:appLang()})
+    body:JSON.stringify({q:q,unit:'unit',n:5,cands:cands.map(sayCandLine),lang:appLang()})
   }).then(function(r){return r.json();}).then(done).catch(function(){done(null);});
 }
 /* The shortlist is built by string matching, so a query in another language

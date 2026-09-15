@@ -75,10 +75,21 @@ for (const m of app.matchAll(/>([A-Za-z][A-Za-z0-9 ,.!?&:%()\/-]{2,60})</g)) {
    reports: a single letter glued to a number is how this file builds a
    storage key, and a key is not text. */
 const GLUED = [];
+/* A line may say why its English is not text, the way find-unwrapped-hebrew
+   already lets a line say why its Hebrew is not a label. A marker is better
+   than growing KEPT: the list rots, and a reason written beside the code
+   stays true to the code. It is used where a string is a WIRE FORMAT rather
+   than something a reader sees - the macros sent alongside a candidate name
+   to the matcher, which answers with an index and never echoes them. */
+const lines = app.split('\n');
+const exempt = new Set();
+lines.forEach((l, i) => { if (/\/\/\s*i18n-exempt:/.test(l)) exempt.add(i + 1); });
+
 for (const m of app.matchAll(/\+\s*'([A-Za-z][A-Za-z ]{0,22})'\s*\+/g)) {
   const txt = m[1];
   if (txt.indexOf(' ') < 0 && txt.length < 3) continue;
   if (KEPT.indexOf(txt.trim()) >= 0) continue;
+  if (exempt.has(lineOf(m.index))) continue;
   GLUED.push({ line: lineOf(m.index), txt });
 }
 
