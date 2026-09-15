@@ -191,7 +191,11 @@ function langName(code) {
 }
 
 export default {
-  async fetch(req, env) {
+  /* ctx is here for one reason: a streaming response returns while its writer
+     is still running, and the runtime cancels pending work once the request is
+     done unless waitUntil holds it. Without it /say answered in two chunks and
+     stopped mid-word. */
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
 
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -725,6 +729,12 @@ export default {
        /estimate carry: a figure the model states must be marked as an
        estimate. It may not present a guess as a measured value.
 
+       THE MODEL NAME. gemini-2.5-flash is what the docs and every tutorial
+       still say, and Google answers a request for it with a 404: "no longer
+       available to new users… use models/gemini-3.6-flash". A new key gets the
+       newer model or nothing, so this is not a preference - it is the only one
+       that answers.
+
        Secrets: GEMINI_KEY. Optional: SAY_DAILY_CAP (default 80/IP/day). */
     if (url.pathname === '/say' && req.method === 'POST') {
       if (!env.GEMINI_KEY) return json({ error: 'the assistant is not configured' }, 503);
@@ -755,14 +765,23 @@ export default {
       let r;
       try {
         r = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse',
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: SYSTEM }] },
               contents: [{ role: 'user', parts: [{ text: q }] }],
-              generationConfig: { maxOutputTokens: 700, temperature: 0.2 },
+              /* thinkingBudget 0: this model reasons out loud by default, and for
+                 "what is in 150 g of chicken" that costs the whole token budget
+                 and fifty seconds before the answer starts. Measured: with
+                 thinking on, the reply arrived as two chunks of the model's own
+                 notes and the actual answer never came. */
+              generationConfig: {
+                maxOutputTokens: 1200,
+                temperature: 0.2,
+                thinkingConfig: { thinkingBudget: 0 },
+              },
             }),
           },
         );
@@ -783,7 +802,7 @@ export default {
       const w = out.writable.getWriter();
       const td = new TextDecoder();
       const te = new TextEncoder();
-      (async () => {
+      const pumped = (async () => {
         let buf = '';
         /* An explicit reader rather than for-await: async iteration over a
            ReadableStream depends on the runtime, and this endpoint cannot be
@@ -805,6 +824,9 @@ export default {
               try { j = JSON.parse(payload); } catch { continue; }
               const parts = j?.candidates?.[0]?.content?.parts || [];
               for (const p of parts) {
+                /* A thinking part is the model talking to itself. It arrives in
+                   the same shape as the answer and must not reach the screen. */
+                if (p.thought) continue;
                 if (typeof p.text === 'string' && p.text)
                   await w.write(te.encode('data: ' + JSON.stringify({ t: p.text }) + '\n\n'));
               }
@@ -817,6 +839,8 @@ export default {
           try { await w.close(); } catch {}
         }
       })();
+      /* Hold the pump open past the return, or it is killed mid-stream. */
+      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(pumped);
 
       return new Response(out.readable, {
         headers: {
