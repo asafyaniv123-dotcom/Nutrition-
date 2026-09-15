@@ -46,13 +46,31 @@ for (const [k, v] of Object.entries(pairs)) {
   else {
     if (v === k) problems.push(['feminine is identical to the key', k]);
     if (holes(v) !== holes(k)) problems.push(['holes differ: ' + holes(k) + ' vs ' + holes(v), k]);
+    /* 5. the feminine says the SAME THING. Two forms drifted once, written
+          while looking at a truncated preview of the sentence: one lost its
+          tail ("…ותשמור" became "…ואז שמרי") and one dropped a word
+          ("הרחקות כתף" became "הרחקות"). Neither the identical check nor the
+          holes check could see it - the strings differ, and there are no
+          holes. Changing gender changes a few words; it never changes how
+          many there are, and it never rewrites most of them. */
+    const kw = k.split(/\s+/).filter(Boolean), vw = v.split(/\s+/).filter(Boolean);
+    if (kw.length !== vw.length)
+      problems.push(['word count ' + kw.length + ' vs ' + vw.length + ' - the sentence drifted', k]);
+    else {
+      let same = 0;
+      for (let i = 0; i < kw.length; i++) if (kw[i] === vw[i]) same++;
+      /* a short string may be gendered end to end - "סרוק"/"סרקי" shares
+         nothing - so only sentences long enough to have a shape are judged */
+      if (kw.length >= 6 && same < kw.length * 0.5)
+        problems.push([same + ' of ' + kw.length + ' words unchanged - too much rewritten', k]);
+    }
   }
 }
 
 const n = Object.keys(pairs).length;
 if (problems.length) {
   console.log(problems.length + ' problem(s) in ' + MAP + ':\n');
-  for (const [why, k] of problems.slice(0, 40)) console.log('  ' + why.padEnd(38) + k.split('\n')[0].slice(0, 54));
+  for (const [why, k] of problems.slice(0, 40)) console.log('  ' + why.padEnd(48) + ' ' + k.split('\n')[0].slice(0, 54));
   console.log('\n' + n + ' pairs checked.');
   process.exit(1);
 }
