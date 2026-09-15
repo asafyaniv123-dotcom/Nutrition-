@@ -1342,6 +1342,10 @@ export default {
       const data = String((b && b.image) || '');
       const mime = String((b && b.mime) || 'image/jpeg');
       const LANG = langName(b && b.lang);
+      /* What the person wrote alongside the picture. A photograph of a
+         container cannot show what was made from it; this is the only place
+         that can say so. */
+      const note = String((b && b.note) || '').replace(/\s+/g, ' ').trim().slice(0, 400);
       if (!/^image\/(jpeg|png|webp)$/.test(mime)) return json({ error: 'bad image type' }, 400);
       /* Base64 only, and nothing that is not base64 - this string is handed
          to the model API verbatim. The client sends about 80-120 KB after
@@ -1383,6 +1387,14 @@ export default {
         'of that food, and set confidence low. That is a useful answer. A\n' +
         'confident weight from a picture with no ruler in it is not.\n' +
         '\n' +
+        'WHEN AN ITEM IS THE PRODUCT IN THE FRAME, NAME IT WITH THE PRODUCT\'S\n' +
+        'OWN WORDS. A tub marked WHEY becomes an item saying whey, not "protein\n' +
+        'powder" - the tables are searched with that name, and they hold forty\n' +
+        'eight whey rows and a great many soy and pea ones. Dropping the word\n' +
+        'that distinguishes them is how a whey shake gets logged as pea\n' +
+        'protein. Keep the type, the flavour and the brand when they are\n' +
+        'printed; leave out marketing words like ADVANCED or FORMULA.\n' +
+        '\n' +
         'Name things plainly and separately. Rice with chicken and salad is\n' +
         'three items, not one. Include what is easy to forget and carries real\n' +
         'energy: the oil something was fried in, the dressing on a salad, the\n' +
@@ -1422,6 +1434,23 @@ export default {
         'contains; that is not reading it, and it is exactly the guess the\n' +
         'tables exist to avoid.\n' +
         '\n' +
+        'A PACKAGED PRODUCT IS AN ANSWER, not a failure. A tub of whey, a\n' +
+        'cereal box, a bottle: name it, read what is printed on it, and set\n' +
+        'confidence low for any weight, because a sealed container shows you\n' +
+        'nothing about how much was taken from it. Do NOT reply ok false for\n' +
+        'these - a tub of WHEY ADVANCED FORMULA is among the most identifiable\n' +
+        'things anyone will photograph, and "not food" is the least useful\n' +
+        'answer available for it.\n' +
+        '\n' +
+        (note
+          ? 'THE PERSON WROTE THIS ALONGSIDE THE PICTURE, AND FOR WHAT WAS\n' +
+            'ACTUALLY CONSUMED IT OUTRANKS THE PICTURE:\n"' + note + '"\n' +
+            'The photograph says WHAT the thing is; these words say how much of\n' +
+            'it was had and what it was made with. A container plus "one scoop\n' +
+            'with 250 ml of water" is a shake, and the items are the scoop and\n' +
+            'the water - not the tub. Where the two conflict, believe the words.\n' +
+            '\n'
+          : '') +
         'If the picture is not food, or you cannot tell what it is, say so with\n' +
         'ok false and leave items empty. A confident wrong answer costs someone\n' +
         'their day; an honest "I cannot see it" costs them one retake.\n' +
@@ -1454,6 +1483,7 @@ export default {
               role: 'user',
               content: [
                 { type: 'image', source: { type: 'base64', media_type: mime, data } },
+                ...(note ? [{ type: 'text', text: 'What they wrote: ' + note }] : []),
                 { type: 'text', text: 'What food is in this picture, and how much of each?' },
               ],
             }],
