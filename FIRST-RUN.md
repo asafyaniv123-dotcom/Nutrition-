@@ -289,3 +289,54 @@ is silently half-built, and a count of 204 would have reported success.
 The reflection's own four opening questions are genuinely genderless — *מה היה
 הרגע הכי טוב שלך היום?*, *איזו תמונה מספרת את היום שלך?* — so the gendered ones
 live in the bank behind them, which is where this was found.
+
+---
+
+## Every language, and what the verification found
+
+| | forms | why that number |
+|---|---|---|
+| **he** | **204** | genders the verb, the pronoun and the participle |
+| **ar** | **187** | genders the imperative and the second-person present, like Hebrew |
+| **es** | 6 | only adjectives agree |
+| **it** | 5 | only adjectives agree |
+| **fr** | 5 | only adjectives agree |
+| **pt** | 3 | only adjectives agree |
+| **de** | **0** | verified, see below |
+| **en · ja · zh-Hans · zh-Hant** | **0** | verified, see below |
+
+### The Romance sets really are that small — read, not asserted
+
+The vocabulary audit's useful finding was how many words *look* like they
+agree and do not agree **with her**:
+
+- *"Ta sauvegarde est prête"* — the **backup** is ready
+- *"La caméra n'est pas encore prête"* — the **camera** is
+- *"Ton programme est prêt !"* — the **programme** is
+- *"C'est le choix sûr"* — the **choice** is
+- *"Il numero si aggiorna da solo"* — the **number** updates by itself
+- *"Tempo sozinho"* — a category label: **alone time**
+- Spanish's *solo* appears six times and is the adverb *only* every time
+
+What actually agrees with her is the handful this pass wrote: *agradecido →
+agradecida*, *orgoglioso → orgogliosa*, *fier → fière*, *grato → grata*.
+
+### German is zero, and that is a fact rather than an assumption
+
+**German predicate adjectives do not inflect.** The strings say so:
+*"Ich bin mir bei der Technik nicht **sicher**"*, *"Worauf bist du heute am
+**stolzesten**?"*, *"worauf du **stolz** bist"*, *"Die Kamera ist noch nicht
+**bereit**"*. A woman reads every one of those unchanged.
+
+German *would* gender an agent noun — *Anfänger* / *Anfängerin* — and the 204
+contain none. So: nothing to write, for a reason, rather than nothing found.
+
+### English, Japanese and both Chinese are zero
+
+None of them agrees with the person being addressed.
+
+One note on method, because it nearly produced a false positive: the first
+English scan appeared to match `her ` five times, and every hit was the word
+**"Anot·her·"**. A crude pattern proposing work that does not exist is the same
+failure as a crude pattern hiding work that does — the Spanish hint pattern in
+the other direction.
