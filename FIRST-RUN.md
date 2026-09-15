@@ -133,3 +133,118 @@ Worth stating, because it is where the two days do **not** have to go:
 
 Items 2 and 3 are small. **Item 1 is the work**, and it is the one that
 decides whether the app sounds like it was built for her or for someone else.
+
+---
+
+# DECIDED: B — gendered address, in every language
+
+*"ב׳ עדיף בכל השפות. אנחנו רוצים לתת למשתמש שלנו כמה שיותר נימה אישית."*
+
+Three things changed once that was the answer, and two of them are good news.
+
+## 1 · The 2,233-translation trap does not apply
+
+It was the argument against rewriting keys, and B rewrites none. **The key
+stays exactly the Hebrew string it is today** and gains a second form beside
+it. Nothing in the eleven language files is invalidated. The cost estimate in
+the section above belonged to A alone.
+
+## 2 · The mechanism already exists, twice over
+
+**`HE` is a Hebrew dictionary, in the file, holding only the keys whose right
+answer the fallback cannot produce.** It was built for the dual — *יומיים* is
+a category no ternary reaches — and it is the exact precedent gender needs:
+Hebrew keeps no full dictionary, and carries only what it must.
+
+So the Hebrew feminine forms go into `HE`, beside the plurals. **No `he.json`,
+no new file, no change to how Hebrew loads.**
+
+And `_t` already resolves a value that is an **object of categories**, chosen
+at runtime from something the caller knows — that is exactly what
+`Intl.PluralRules` does with `vars.n`. Gender is the same shape with a
+different selector.
+
+### The change to `_t`, and the collision to avoid
+
+Today **any** object value is read as plural categories. A gendered value is
+also an object, so the two would collide. They separate cleanly because the
+plural categories are a closed set — `zero one two few many other` — and
+`m`/`f` are not in it:
+
+```
+if(v&&typeof v==='object'&&(v.m||v.f)) v=v[readerSex()]||v.m||v.f;   // gender first
+if(v&&typeof v==='object'){ …Intl.PluralRules exactly as today… }    // then plural
+```
+
+Gender outside, plural inside, so a key that needs both nests naturally:
+`{m:{one:…,other:…}, f:{one:…,other:…}}`. Existing plural entries are
+untouched and keep working, which is what makes this safe to ship.
+
+`readerSex()` must be a **cached variable refreshed like `_lang`**, never a
+`localStorage` read — `_t` runs on every render of every screen.
+
+## 3 · Ask her, do not infer her
+
+The profile's **זכר / נקבה** exists so `profileTargets` can run Mifflin-St
+Jeor. Reusing it silently for address makes two different questions into one:
+how a body is metabolised, and how a person wants to be spoken to.
+
+**Address becomes its own setting**, seeded from `p.sex` when that is already
+answered, and asked directly in the first run. One extra stored key, and it is
+the difference between an app that assumed and an app that asked — which is
+the whole point of choosing B.
+
+---
+
+## What the pass actually covers — measured, and it is not 203
+
+**Two classes, and the address scan only sees the first.**
+
+**Second person — the app talking to her.** 203 keys.
+הוסף 29 · אתה 28 · שמור 16 · כתוב 14 · בחר 10 · נסה 9 · צלם 8 · הזן 8
+
+**First person — her own voice, in options she picks.** 81 more keys, and
+**this class lands on the spine**:
+
+- *"על מה אתה אסיר תודה היום?"*
+- *"במה אתה הכי גאה היום?"*
+- *"אני לא בטוח בטכניקה"*
+- *"איך אני רוצה להרגיש {when}?"*
+
+The evening reflection — the product — is masculine from end to end.
+
+### And the count is wrong in both directions, so the set must be READ
+
+A marker is not proof of address. Checked by printing the keys behind the
+ambiguous ones:
+
+- **ספר — 13 hits, essentially all nouns.** *המספר למטה*, *ספר המתכונים*,
+  *שם הספר*. Not one is the imperative.
+- **מוכן — 1 hit, *"הגיבוי מוכן"*.** The backup is ready, not her.
+- **מחובר — *"תמיד זמינה, גם כשמחובר מקור"*.** A power source.
+- **מלא — both *"מלא את כל הפרטים"* (imperative, real) and *"קרוב ומלא
+  רוחב"* (adjective, not her).**
+
+**So: ~284 candidates, a real false-positive rate, and a class the scan
+under-counts. Bulk transformation would put feminine verbs where nouns
+stand.** Every key gets read. That is the job, and it is why it is the job.
+
+---
+
+## The plan
+
+**Hebrew ships on the 25th. The other five gendered languages follow.**
+Spanish, French, Italian, Portuguese and Arabic all agree adjectives with the
+person addressed; English, German, Japanese and both Chinese largely do not.
+None of the five is what she opens on the 25th, and doing eleven badly is
+worse than doing one properly.
+
+1. **Read the ~284 and mark each**: address / her own voice / neither.
+2. **Write the feminine form** for the ones that survive, into `HE`.
+3. **`_t` + `readerSex()`** — the ten lines above.
+4. **Ask it in the first run**, seeded from `p.sex`.
+5. **A check**, so this can only go down: `tools/find-gendered-address.mjs`
+   already counts it. It becomes a test the day the count is meant to be zero.
+
+Steps 1 and 2 are **data, not app code**, so they are freeze-safe and can be
+done now. Step 3 is small and waits for the 23rd.
