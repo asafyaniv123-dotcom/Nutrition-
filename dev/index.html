@@ -5387,10 +5387,11 @@ function sayGo(){
       _sayBusy=true;sayPaint();
       foodsLoad(function(){
         sayResolveAll(j.items,function(rows){
-          _sayBusy=false;_sayItems=rows;_sayRow=-1;
-          sayPaint();
-          /* After the rows are on screen, not before: the first answer should
-             not wait on a second opinion that may never come. */
+          _sayItems=rows;_sayRow=-1;
+          /* Still busy. The rows exist but are not shown until the second
+             opinion has had its say - an answer that changes after it has been
+             read is worse than a moment's wait. sayCross clears this on every
+             path, including the ones where it does nothing at all. */
           sayCross(0);
         });
       });
@@ -5967,9 +5968,15 @@ function sayTotalHTML(){
    So this fixes IDENTIFICATION and keeps our NUMBERS. It never writes the
    model's figures into a row. */
 var _sayText='',_sayXState='';
+function sayCrossDone(state){
+  _sayXState=state;_sayBusy=false;sayPaint();
+}
 function sayCross(depth){
-  if(!_sayItems||!_sayItems.length||!SYNC_SERVER)return;
-  if(depth>=4){_sayXState='done';sayPaint();return;}
+  /* No rows, or nowhere to ask: there is nothing to wait for, so show what we
+     have. This is the path a dev build with no server takes, and the one that
+     would otherwise leave the panel spinning for ever. */
+  if(!_sayItems||!_sayItems.length||!SYNC_SERVER){sayCrossDone('off');return;}
+  if(depth>=4){sayCrossDone('done');return;}
   _sayXState='busy';sayPaint();
   var rows=[],i;
   for(i=0;i<_sayItems.length;i++){
@@ -5984,7 +5991,7 @@ function sayCross(depth){
     body:JSON.stringify({q:_sayText,rows:rows,lang:appLang()})
   }).then(function(r){return r.json();})
     .then(function(j){
-      if(!j||!j.ok){_sayXState='off';sayPaint();return;}
+      if(!j||!j.ok){sayCrossDone('off');return;}
       var dis=j.disagree||[],items=j.items||[],changed=0,k;
       for(k=0;k<dis.length;k++){
         var idx=Number(dis[k]);
@@ -6013,11 +6020,10 @@ function sayCross(depth){
         row.fixed=true;
         changed++;
       }
-      if(changed){sayPaint();sayCross(depth+1);return;}
-      _sayXState=dis.length?'done':'agreed';
-      sayPaint();
+      if(changed){sayCross(depth+1);return;}
+      sayCrossDone(dis.length?'done':'agreed');
     })
-    .catch(function(){_sayXState='off';sayPaint();});
+    .catch(function(){sayCrossDone('off');});
 }
 function sayEstimate(i){
   var row=_sayItems&&_sayItems[i];
@@ -6077,7 +6083,8 @@ function sayPaint(){
   var el=document.getElementById('say-body');
   if(!el)return;
   if(_sayBusy){el.innerHTML='<div class="say-msg">'+
-    (_picBusy?_t('מסתכל על התמונה…'):_t('קורא מה כתבת…'))+'</div>';return;}
+    (_sayXState==='busy'?_t('בודק מול מקור שני…')
+     :_picBusy?_t('מסתכל על התמונה…'):_t('קורא מה כתבת…'))+'</div>';return;}
   if(_sayErr){el.innerHTML='<div class="say-msg">'+esc(_sayErr)+'</div>';return;}
   if(!_sayItems){el.innerHTML='';return;}
   /* What it took the sizes to be. A portion read off a photograph is the
