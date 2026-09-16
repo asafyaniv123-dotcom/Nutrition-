@@ -56,32 +56,51 @@ badge, a count or a nag.
 ## Decoded, 16 September 2026 - IT INVERTS
 
 Three versions built off this reference all felt wrong, and "אתה צריך ללמוד
-את זה" was fair, so I stopped reading it off screenshots caught at random
-moments and decoded it: Chrome's ImageDecoder, 250 frames, and for every frame
-the mean luminance of the band just above the disc's centre minus the band just
-below it. With light from above THAT NUMBER IS THE CURVATURE - a bulge is
-bright on top and dark below, a dent is the reverse.
+את זה" was fair, so it was decoded rather than eyeballed. **The numbers below
+are the second measurement**, made in node from the file itself - GIF LZW,
+frame disposal, no dependencies - with the per-frame series saved beside this
+note as `dented-sensor-breathing.series.json` and the decoder kept as
+`tools/measure-gif.mjs`. The first pass was done in a browser and its series
+was never saved; **its three figures were all wrong** and are recorded at the
+bottom of this section so nobody restores them from memory.
 
-    top - bottom:   +21.6  ...  -37.9      IT FLIPS SIGN
+For every frame: the mean luminance of a band above the disc's centre minus a
+band below it. With light from above THAT NUMBER IS THE CURVATURE - a bulge is
+bright on top and dark below, a dent is the reverse. The disc finds itself, as
+the bounding box of every pixel that moves across the loop (700x525 frame,
+centre 352,287, r=111).
 
-**The surface does not deepen. It turns inside out** - convex at rest, concave
-while pressed. That is why every attempt failed: I kept making ONE shape more
-so, when the whole effect is that the shape REVERSES. It also retires the
-question above - in / out was never a choice between two designs, it is the
-two ends of one motion.
+    top - bottom:   -29.5  ...  +8.0      IT FLIPS SIGN, twice per loop
 
-**The tonal range is eleven levels out of 255.** Four percent. Nothing ever
-gets dark; the light only moves. That is what "ממש רך" meant, and it turns out
-not to be a matter of taste but a number - mine was three times too contrasty.
+**The surface does not deepen. It turns inside out** - and the two states are
+NOT mirror images. The dent is deep and the bulge is slight, four to one. What
+this thing mostly is, is dented; the convex state is a brief release from it.
 
-**The flip is fast against the holds** - about twelve of the 250 frames, then
-it sits. Quick and eased, never a slow fade, which is also why reading it as a
-nine-second idle loop was wrong: the motion is a RESPONSE.
+**The loop, measured:**
+
+    concave, held        1460 ms   (and 280 ms more at the loop's start)
+    rising to convex      460 ms
+    convex, held         2020 ms
+    sinking to concave    740 ms
+
+**IN IS SLOWER THAN OUT.** 740 ms to sink, 460 ms to return - and both are
+three to four times slower than the 190 ms I had guessed for our own button.
+Softness here is not only low contrast, it is TIME.
+
+**The tonal range is 3.8 levels out of 255. One and a half percent.** Nothing
+gets dark; the light only moves. That is what "ממש רך" meant - and it is even
+softer than the first measurement claimed.
 
 And at rest the dome is BLANK; the fingerprint appears only once it has
 inverted. The pressed state REVEALS rather than merely responds. That is the
 one thing deliberately not taken - the hub's label is how you know what it is,
 so ours cannot go blank.
+
+**What the first, lost measurement got wrong** — kept as a caution, not as
+data: it reported the swing as +21.6 to -37.9 (the direction was right, the
+magnitudes were not), the tonal range as eleven levels rather than 3.8, and
+the flip as "about twelve frames" - 240 ms, when it is 460 and 740. A number
+read off a console and not written down is a number you will misquote.
 
 ## What is still open - the held finger
 
