@@ -1529,8 +1529,24 @@ export default {
       let barcode = String((out && out.barcode) || '').replace(/[^0-9]/g, '');
       if ([8, 12, 13, 14].indexOf(barcode.length) < 0) barcode = '';
 
-      /* The panel as printed. All four lines or none: a partial panel invites
-         filling the gap by arithmetic, which is the thing being avoided. */
+      /* The panel as printed - WHATEVER OF IT WAS PRINTED.
+         This used to demand all four lines and return null otherwise, and the
+         reasoning was sound for the case it had in mind: a nutrition panel the
+         model could only half read invites filling the gap by arithmetic, and
+         a hole where the protein should be became NaN, then null, then a zero
+         in somebody's day total.
+         But a FRONT-OF-PACK CLAIM is not a half-read panel. "26 גרם חלבון" is
+         the manufacturer's own declared figure and it is complete in itself;
+         there is no missing carbohydrate line, because there was never a line.
+         Destroying it here meant a packet that states 26 was reported as the
+         22.8 of a generic table row - three times, to the same person, on the
+         same pastrami.
+         The all-four rule is not gone. It moved to where it can tell the two
+         cases apart: picFromLabel still refuses to build a standalone row out
+         of a partial, so the NaN cannot come back, and what a partial now
+         reaches instead is picLabelOverlay - which copies only the fields that
+         carry a real number and keeps the measured value for all the rest.
+         A complete panel produces exactly the object it produced before. */
       let label = null;
       const L = out && out.label;
       if (L && typeof L === 'object') {
@@ -1541,9 +1557,15 @@ export default {
         const kcal = num(L.kcal), p = num(L.protein), c = num(L.carbs), f = num(L.fat);
         const basis = ['100g', '100ml', 'serving'].indexOf(L.basis) >= 0 ? L.basis : '';
         const serving = num(L.serving_g);
-        if (basis && kcal !== null && p !== null && c !== null && f !== null &&
-            (basis !== 'serving' || (serving && serving > 0))) {
-          label = { basis, kcal, p, c, f };
+        /* A basis is not optional: a number with nothing to be per is not a
+           reading of anything. Neither is "serving" without the grams. */
+        if (basis && (basis !== 'serving' || (serving && serving > 0)) &&
+            (kcal !== null || p !== null || c !== null || f !== null)) {
+          label = { basis };
+          if (kcal !== null) label.kcal = kcal;
+          if (p !== null) label.p = p;
+          if (c !== null) label.c = c;
+          if (f !== null) label.f = f;
           if (serving && serving > 0) label.serving_g = serving;
         }
       }
