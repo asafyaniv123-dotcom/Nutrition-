@@ -1763,6 +1763,18 @@ export default {
         'energy line has calories_kcal null, not 0. Where a figure is null we ' +
         'fill it from measured tables; where it is 0 we believe you.' +
         '\n\n' +
+        'HOW MUCH THERE IS is a different question from what the numbers are ' +
+        'PER, and they are answered separately. A pot printing "170 g" beside ' +
+        'a panel headed "per 100 g" has serving_size_analyzed "100g" and ' +
+        'package_g 170.\n' +
+        '- package_g: the net weight printed on the pack, in grams. If nothing ' +
+        'is printed, give the ordinary weight of one of these - a yogurt pot ' +
+        'is about 170 g, a chocolate bar about 100 g, a canned drink 330 ml - ' +
+        'and set package_is_guess true. If you cannot even guess, null.\n' +
+        '- package_is_guess: true when package_g is the usual size rather than ' +
+        'a number you read. Saying so costs nothing; a guessed weight shown as ' +
+        'a reading costs someone their day.\n' +
+        '\n' +
         'nutritional_values are PER serving_size_analyzed, and that string must ' +
         'say which - "100g", "120g", "1 unit".\n' +
         '\n' +
@@ -1792,6 +1804,8 @@ export default {
           is_estimated: { type: 'BOOLEAN' },
           confidence: { type: 'STRING', enum: ['High', 'Medium', 'Low'] },
           cooking_state: { type: 'STRING', enum: ['raw', 'cooked', 'unspecified'] },
+          package_g: { type: 'NUMBER', nullable: true },
+          package_is_guess: { type: 'BOOLEAN' },
           nutritional_values: {
             type: 'OBJECT',
             nullable: true,
@@ -1816,10 +1830,12 @@ export default {
            it say null, which is an answer we can read. */
         propertyOrdering: ['product_name', 'brand', 'serving_size_analyzed',
                            'is_packaged_product', 'is_estimated', 'confidence',
-                           'cooking_state', 'nutritional_values', 'items', 'visual_reasoning'],
+                           'cooking_state', 'package_g', 'package_is_guess',
+                           'nutritional_values', 'items', 'visual_reasoning'],
         required: ['product_name', 'brand', 'serving_size_analyzed',
                    'is_packaged_product', 'is_estimated', 'confidence',
-                   'cooking_state', 'nutritional_values', 'items', 'visual_reasoning'],
+                   'cooking_state', 'package_g', 'package_is_guess',
+                   'nutritional_values', 'items', 'visual_reasoning'],
       };
 
       const VMODEL = String(env.VISION_MODEL || 'gemini-3.6-flash');
@@ -1930,6 +1946,10 @@ export default {
         estimated,
         confidence: ['High', 'Medium', 'Low'].indexOf(v.confidence) >= 0 ? v.confidence : 'Low',
         cooking_state: ['raw', 'cooked'].indexOf(v.cooking_state) >= 0 ? v.cooking_state : 'unspecified',
+        /* Bounded the same way an item's grams are - a pack weight outside
+           this is a misread digit, not a pack. */
+        package_g: (function () { const g = vnum(v.package_g); return (g && g > 0 && g <= 5000) ? Math.round(g) : null; }()),
+        package_is_guess: v.package_is_guess === true,
         values: anyValue ? values : null,
         items,
         why: String(v.visual_reasoning || '').trim().slice(0, 240),
