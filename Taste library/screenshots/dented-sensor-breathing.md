@@ -53,54 +53,67 @@ reflection is the one thing in the app that waits for you every evening. "On,
 and waiting" is exactly its sentence, and a breathing surface says it without a
 badge, a count or a nag.
 
-## Decoded, 16 September 2026 - IT INVERTS
+## Measured - IT INVERTS, and here is what by
 
-Three versions built off this reference all felt wrong, and "אתה צריך ללמוד
-את זה" was fair, so it was decoded rather than eyeballed. **The numbers below
-are the second measurement**, made in node from the file itself - GIF LZW,
-frame disposal, no dependencies - with the per-frame series saved beside this
-note as `dented-sensor-breathing.series.json` and the decoder kept as
-`tools/measure-gif.mjs`. The first pass was done in a browser and its series
-was never saved; **its three figures were all wrong** and are recorded at the
-bottom of this section so nobody restores them from memory.
+Decoded with `tools/measure-gif.mjs`, which writes the per-frame series beside
+this note. **Read the definition before quoting a number**, because two earlier
+attempts at this section quoted figures from a measurement that was never saved
+and both were wrong.
 
-For every frame: the mean luminance of a band above the disc's centre minus a
-band below it. With light from above THAT NUMBER IS THE CURVATURE - a bulge is
-bright on top and dark below, a dent is the reverse. The disc finds itself, as
-the bounding box of every pixel that moves across the loop (700x525 frame,
-centre 352,287, r=111).
+**THE DEFINITION.** Bare surface only: the annulus from 0.70R to 0.95R, and
+within it the arc within 40 degrees of straight up against the arc within 40
+degrees of straight down. Luminance of the upper arc minus the lower one. With
+light from above that IS the curvature - a bulge is bright on top and dark
+below, a dent the reverse - so **a change of sign means the surface turns
+inside out** rather than merely deepening. The annulus matters: a band straight
+across the middle works on a bare dome and fails the moment the object carries
+a label, which is how our own hub once measured as "never inverts".
 
-    top - bottom:   -29.5  ...  +8.0      IT FLIPS SIGN, twice per loop
+**THE REFERENCE:**
 
-**The surface does not deepen. It turns inside out** - and the two states are
-NOT mirror images. The dent is deep and the bulge is slight, four to one. What
-this thing mostly is, is dented; the convex state is a brief release from it.
+    curvature      -13.7 .. +41.4      sign changes twice per loop
+    tonal range    2.2 of 255          0.9% - nothing darkens, the light moves
+    the flip       ~190 ms             10-90 rise time, SYMMETRIC
+    the holds      2.0 s convex, 2.4 s concave
+    of a 5.00 s loop, 420 ms is spent moving
 
-**The loop, measured:**
+**OURS, measured the same way** (headless Chrome, PNG decoded in node - the
+pipeline is in the session scratchpad and needs no browser extension):
 
-    concave, held        1460 ms   (and 280 ms more at the loop's start)
-    rising to convex      460 ms
-    convex, held         2020 ms
-    sinking to concave    740 ms
+                        reference     ours
+    inverts?            yes           yes, +47.7 -> -64.4
+    curvature swing     55            112          TWICE THE REFERENCE
+    state change        2.2           3.6
+    the flip            190 ms        190 ms  (.29s under our easing curve)
 
-**IN IS SLOWER THAN OUT.** 740 ms to sink, 460 ms to return - and both are
-three to four times slower than the 190 ms I had guessed for our own button.
-Softness here is not only low contrast, it is TIME.
+So the shape and the timing are right and **the contrast is about double**.
+Scaling every alpha in the two hub rules by 0.55 lands the swing at 66 against
+the reference's 55 - that variant is rendered and measured but deliberately not
+committed, because it is a visible change to a button he approved.
 
-**The tonal range is 3.8 levels out of 255. One and a half percent.** Nothing
-gets dark; the light only moves. That is what "ממש רך" meant - and it is even
-softer than the first measurement claimed.
+**HOW THIS WAS GOT WRONG, TWICE** - kept because the failure is instructive and
+will otherwise be repeated:
 
-And at rest the dome is BLANK; the fingerprint appears only once it has
-inverted. The pressed state REVEALS rather than merely responds. That is the
-one thing deliberately not taken - the hub's label is how you know what it is,
-so ours cannot go blank.
+1. **Read off a console and never saved.** The first pass reported the swing as
+   +21.6/-37.9, the tonal range as eleven levels, and the flip as "about twelve
+   frames". All three were misquoted afterwards; there was no file to check
+   them against. **Save the series.**
+2. **A threshold is not a measurement.** The second pass timed the flip by when
+   the signal left a plateau defined as 10% of the full range - and got 460 ms
+   one way and 740 ms the other, an asymmetry that looked like a finding and
+   went straight into the app's CSS. The same footage measured on a different
+   part of the disc gave 260 and 260. **A number that moves when you change
+   where you looked is not a property of the thing.** The 10-90 rise time,
+   computed on each transition's own excursion, is 200/180/160 ms wherever you
+   sample - so the motion is symmetric, and the asymmetry never existed.
+3. And a CSS duration is not a rise time: under `cubic-bezier(.4,0,.2,1)` only
+   46% of the duration is the visible 10-90 window, so `.19s` showed 87 ms of
+   movement. The hub now uses `.29s cubic-bezier(.3,.2,.3,.8)`, where 65% is
+   the window and the movement lands on the measured 190 ms.
 
-**What the first, lost measurement got wrong** — kept as a caution, not as
-data: it reported the swing as +21.6 to -37.9 (the direction was right, the
-magnitudes were not), the tonal range as eleven levels rather than 3.8, and
-the flip as "about twelve frames" - 240 ms, when it is 460 and 740. A number
-read off a console and not written down is a number you will misquote.
+At rest the reference's dome is BLANK; the fingerprint appears only once it has
+inverted, so the pressed state REVEALS rather than merely responds. That is the
+one thing deliberately not taken - the hub's label is how you know what it is.
 
 ## What is still open - the held finger
 

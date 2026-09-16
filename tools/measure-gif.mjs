@@ -238,31 +238,50 @@ console.log('  frame      ' + W + 'x' + H + ', ' + N + ' frames');
 console.log('  moving     ' + (100 * moving / (W * H)).toFixed(1) + '% of the frame');
 console.log('  object     centre ' + cx.toFixed(0) + ',' + cy.toFixed(0) + '  r=' + R.toFixed(0));
 
-/* ── pass two: the curvature signature, frame by frame ── */
-const band = (c, yA, yB) => {
-  let s = 0, n = 0;
-  for (let y = Math.round(yA); y < Math.round(yB); y++)
-    for (let x = Math.round(cx - R * 0.5); x < Math.round(cx + R * 0.5); x++) {
+/* ── pass two: the curvature signature, frame by frame ──
+ *
+ * BARE SURFACE ONLY, and this is the second definition. The first read a band
+ * straight across the middle of the disc, which is fine on a blank dome and
+ * wrong the moment the object has anything drawn on it: measured that way our
+ * own hub reported "no inversion", because a white icon disc sits in its top
+ * band and outweighs the shading entirely. So both are read on the annulus
+ * from 0.70R to 0.95R - the surface, past any label - and within it the arc
+ * within 40 degrees of straight up against the arc within 40 degrees of
+ * straight down. */
+const ARC = { rIn: 0.70, rOut: 0.95, halfAngle: 40 };
+const arcs = (c) => {
+  const rad = ARC.halfAngle * Math.PI / 180;
+  let ts = 0, tn = 0, bs = 0, bn = 0, all = [];
+  for (let y = Math.round(cy - R); y <= Math.round(cy + R); y++)
+    for (let x = Math.round(cx - R); x <= Math.round(cx + R); x++) {
       if (x < 0 || y < 0 || x >= W || y >= H) continue;
-      s += lum(c, (y * W + x) * 4); n++;
+      const dx = x - cx, dy = y - cy, d2 = dx * dx + dy * dy;
+      if (d2 > (R * ARC.rOut) ** 2 || d2 < (R * ARC.rIn) ** 2) continue;
+      const v = lum(c, (y * W + x) * 4);
+      all.push(v);
+      if (Math.atan2(Math.abs(dx), -dy) <= rad) { ts += v; tn++; }
+      else if (Math.atan2(Math.abs(dx), dy) <= rad) { bs += v; bn++; }
     }
-  return n ? s / n : 0;
+  all.sort((a, b) => a - b);
+  const p = (q) => all[Math.floor(q * (all.length - 1))];
+  return {
+    top: tn ? ts / tn : 0,
+    bot: bn ? bs / bn : 0,
+    mean: all.reduce((a, v) => a + v, 0) / all.length,
+    spread: p(0.95) - p(0.05),
+  };
 };
 
 const series = [];
 let per = 20;
 frames((c, w, h, i, delay) => {
   if (i === 1) per = delay || per;
-  let s = 0, n = 0;
-  for (let y = Math.round(cy - R); y <= Math.round(cy + R); y++)
-    for (let x = Math.round(cx - R); x <= Math.round(cx + R); x++) {
-      if (x < 0 || y < 0 || x >= W || y >= H) continue;
-      if ((x - cx) ** 2 + (y - cy) ** 2 > R * R) continue;
-      s += lum(c, (y * W + x) * 4); n++;
-    }
-  const top = band(c, cy - R * 0.55, cy - R * 0.15);
-  const bot = band(c, cy + R * 0.15, cy + R * 0.55);
-  series.push({ i, ms: i * (delay || per), top: +top.toFixed(2), bot: +bot.toFixed(2), d: +(top - bot).toFixed(2), disc: +(s / n).toFixed(2) });
+  const a = arcs(c);
+  series.push({
+    i, ms: i * (delay || per),
+    top: +a.top.toFixed(2), bot: +a.bot.toFixed(2), d: +(a.top - a.bot).toFixed(2),
+    disc: +a.mean.toFixed(2), spread: +a.spread.toFixed(2),
+  });
 });
 
 const out = SRC.replace(/\.gif$/i, '') + '.series.json';
