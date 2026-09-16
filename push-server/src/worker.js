@@ -1580,6 +1580,269 @@ export default {
         label,
       });
     }
+    /* ── READ THE PACKET ──
+       His brief, and the right one: OCR first, the exact variant second, any
+       language third, an estimate only when nothing is printed to read.
+
+       THE SPLIT THIS ENDPOINT KEEPS. When the model READ something, its
+       numbers win - a printed figure outranks any row we hold, which is the
+       trust order already written down and the thing that was failing. When
+       it did NOT read anything it returns items and grams instead, and the
+       food tables supply the numbers. That is not caution for its own sake:
+       a named tub of whey, estimated, came back 35 kcal and 6 g of protein
+       against a true 114 and 15, carrying confidence "high". A model looking
+       at a plate cannot be held to a number; a model reading a label can.
+
+       THE MODEL NAME, again. gemini-2.5-flash is 404 for a new key - "no
+       longer available to new users… use models/gemini-3.6-flash" - and 1.5
+       is older than that. VISION_MODEL can override it without a code change
+       when Google moves the floor again, which it will.
+
+       Secrets: GEMINI_KEY. Optional: VISION_MODEL, VISION_DAILY_CAP (40). */
+    if (url.pathname === '/vision' && req.method === 'POST') {
+      if (!env.GEMINI_KEY) return json({ ok: false, error: 'vision is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ ok: false, error: 'bad json' }, 400); }
+
+      /* A data: URL carries its own mime, and the caller may send either that
+         or a bare payload plus a mime field. Take the URL's word when it has
+         one - a png announced as a jpeg is refused by the model, not by us. */
+      let data = String((b && b.image) || '').trim();
+      let mime = String((b && b.mime) || 'image/jpeg');
+      const m = /^data:(image\/[a-z+]+);base64,/i.exec(data);
+      if (m) { mime = m[1].toLowerCase(); data = data.slice(m[0].length); }
+      data = data.replace(/\s/g, '');
+
+      if (!/^image\/(jpeg|png|webp)$/.test(mime)) return json({ ok: false, error: 'bad image type: ' + mime }, 400);
+      if (!/^[A-Za-z0-9+/]+=*$/.test(data)) return json({ ok: false, error: 'the image is not base64' }, 400);
+      if (data.length < 500) return json({ ok: false, error: 'the image is too small to read' }, 400);
+      if (data.length > 900000) return json({ ok: false, error: 'image too large' }, 413);
+
+      const cap = Number(env.VISION_DAILY_CAP || 40);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const vday = new Date().toISOString().slice(0, 10);
+      const vkey = 'vi:' + vday + ':' + ip;
+      const vused = Number((await env.SUBS.get(vkey)) || 0);
+      if (vused >= cap) return json({ ok: false, error: 'too many for today' }, 429);
+      await env.SUBS.put(vkey, String(vused + 1), { expirationTtl: 172800 });
+
+      const VLANG = langName(b && b.lang);
+      /* What the person wrote alongside the picture. A sealed container cannot
+         show what was made from it; these words are the only thing that can. */
+      const vnote = String((b && b.note) || '').replace(/\s+/g, ' ').trim().slice(0, 400);
+
+      const VSYS =
+        'You are an elite, international nutritional analysis model and visual ' +
+        'OCR expert. Your sole purpose is ACCURACY. You must analyze images of ' +
+        'packaged food products or raw meals from ANY country and in ANY ' +
+        'language with surgical precision. Never use broad estimates when label ' +
+        'text or visual markers are present.';
+
+      const VUSER =
+        'Work in this order and do not skip a step.\n' +
+        '\n' +
+        'STEP 1 - OCR AND LABEL EXTRACTION. Scan the image for any readable ' +
+        'text: product names, weight markers ("120g", "26 גרם חלבון"), ' +
+        'percentages, and nutrition tables. Where figures are printed, take ' +
+        'them EXACTLY as printed. Copy, do not convert, do not total, and do ' +
+        'not fill a line the packet does not state from the ones it does.\n' +
+        '\n' +
+        'STEP 2 - THE EXACT VARIANT. Identify the specific product, not its ' +
+        'family: "High Protein", "XTRA", "Low Fat", "Sugar Free", the fat ' +
+        'percentage. A variant named on the packet is the answer; the generic ' +
+        'average of that food is not. This is the single most common way to be ' +
+        'wrong here.\n' +
+        '\n' +
+        'STEP 3 - ANY LANGUAGE. Read Hebrew, Arabic, English, Spanish, ' +
+        'Japanese, Chinese or anything else on the packet, and report every ' +
+        'number in international units: kcal, grams, milligrams.\n' +
+        '\n' +
+        'STEP 4 - WHEN THERE IS NOTHING TO READ. A prepared dish, loose fruit, ' +
+        'a plate of food: set is_estimated true, set confidence honestly, and ' +
+        'leave nutritional_values null. Instead fill items with what is on the ' +
+        'plate and what each part weighs. Do not state nutrition figures for ' +
+        'food you are looking at rather than reading - those are supplied from ' +
+        'measured tables on our side, and a figure you infer would sit beside ' +
+        'them with nothing to mark it as a guess.\n' +
+        '\n' +
+        'A FIGURE THE PACKET DOES NOT STATE IS null, NEVER 0. Zero is a ' +
+        'reading - it will be shown to the person and counted in their day as ' +
+        'a measured zero. A pastrami packet that prints protein and fat and no ' +
+        'energy line has calories_kcal null, not 0. Where a figure is null we ' +
+        'fill it from measured tables; where it is 0 we believe you.' +
+        '\n\n' +
+        'nutritional_values are PER serving_size_analyzed, and that string must ' +
+        'say which - "100g", "120g", "1 unit".\n' +
+        '\n' +
+        'visual_reasoning: name the text you actually read, or the visual cue ' +
+        'you actually used. One short sentence.\n' +
+        '\n' +
+        (vnote
+          ? 'THE PERSON WROTE THIS ALONGSIDE THE PICTURE, AND FOR WHAT WAS ' +
+            'ACTUALLY CONSUMED IT OUTRANKS THE PICTURE:\n"' + vnote + '"\n' +
+            'The photograph says WHAT the thing is; these words say how much of ' +
+            'it was had and what it was made with. Where the two conflict, ' +
+            'believe the words.\n\n'
+          : '') +
+        'Write product_name and every item name in ' + VLANG + '.';
+
+      /* A schema rather than a hope. responseMimeType alone still lets the
+         model choose its own field names, and every field below is read by
+         name on the other side. */
+      const N = { type: 'NUMBER', nullable: true };
+      const VSCHEMA = {
+        type: 'OBJECT',
+        properties: {
+          product_name: { type: 'STRING' },
+          brand: { type: 'STRING', nullable: true },
+          serving_size_analyzed: { type: 'STRING' },
+          is_packaged_product: { type: 'BOOLEAN' },
+          is_estimated: { type: 'BOOLEAN' },
+          confidence: { type: 'STRING', enum: ['High', 'Medium', 'Low'] },
+          nutritional_values: {
+            type: 'OBJECT',
+            nullable: true,
+            properties: {
+              calories_kcal: N, protein_g: N, carbohydrates_g: N, fat_g: N, sodium_mg: N,
+            },
+          },
+          items: {
+            type: 'ARRAY',
+            nullable: true,
+            items: {
+              type: 'OBJECT',
+              properties: { name: { type: 'STRING' }, grams: { type: 'NUMBER' } },
+              required: ['name', 'grams'],
+            },
+          },
+          visual_reasoning: { type: 'STRING' },
+        },
+        /* nutritional_values and items are REQUIRED and nullable, not optional.
+           Optional, the model simply left both out and answered with five fields:
+           a schema that permits silence gets silence. Required-and-nullable makes
+           it say null, which is an answer we can read. */
+        propertyOrdering: ['product_name', 'brand', 'serving_size_analyzed',
+                           'is_packaged_product', 'is_estimated', 'confidence',
+                           'nutritional_values', 'items', 'visual_reasoning'],
+        required: ['product_name', 'brand', 'serving_size_analyzed',
+                   'is_packaged_product', 'is_estimated', 'confidence',
+                   'nutritional_values', 'items', 'visual_reasoning'],
+      };
+
+      const VMODEL = String(env.VISION_MODEL || 'gemini-3.6-flash');
+      let vr;
+      try {
+        vr = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/' + VMODEL + ':generateContent',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: VSYS }] },
+              contents: [{
+                role: 'user',
+                parts: [
+                  { inlineData: { mimeType: mime, data } },
+                  { text: VUSER },
+                ],
+              }],
+              generationConfig: {
+                /* 3000, not 1400. At 1400 the answer came back TRUNCATED mid-word:
+                   this model thinks before it writes and the thinking is drawn from
+                   the same budget, Hebrew costs more tokens per character than
+                   English, and what fell off the end was the nutrition object.
+                   The thinking is not disabled here the way /say and /cross
+                   disable it - reading small print off a photograph is the one
+                   place in this app where it earns its cost. */
+                maxOutputTokens: 3000,
+                /* 0, because this is reading, not writing. Creativity here is
+                   indistinguishable from making the label say something else. */
+                temperature: 0,
+                responseMimeType: 'application/json',
+                responseSchema: VSCHEMA,
+              },
+            }),
+          },
+        );
+      } catch (e) {
+        return json({ ok: false, error: 'could not reach the model', why: String(e).slice(0, 160) }, 502);
+      }
+      if (!vr.ok) {
+        let why = '';
+        try { why = (await vr.text()).slice(0, 300); } catch {}
+        return json({ ok: false, error: 'the model refused', status: vr.status, model: VMODEL, why }, 502);
+      }
+
+      let vj;
+      try { vj = await vr.json(); } catch { return json({ ok: false, error: 'the model did not answer with json' }, 502); }
+      const vparts = vj?.candidates?.[0]?.content?.parts || [];
+      let vtext = '';
+      for (const p of vparts) if (!p.thought && typeof p.text === 'string') vtext += p.text;
+      let v;
+      try { v = JSON.parse(vtext); } catch {
+        return json({ ok: false, error: 'the model did not answer with json', raw: vtext.slice(0, 300) }, 502);
+      }
+      if (!v || typeof v !== 'object') return json({ ok: false, error: 'the model did not answer with json' }, 502);
+
+      /* Everything below is ours, not the model's. A field that did not come
+         back as a usable number becomes null rather than a zero: this app has
+         already shipped a null that counted as 0 in someone's day total. */
+      const vnum = (x) => {
+        const n = Number(x);
+        return isFinite(n) && n >= 0 && n < 100000 ? Math.round(n * 10) / 10 : null;
+      };
+      const NV = v.nutritional_values && typeof v.nutritional_values === 'object' ? v.nutritional_values : null;
+      const estimated = v.is_estimated !== false;
+
+      const items = [];
+      if (Array.isArray(v.items)) {
+        for (const it of v.items.slice(0, 12)) {
+          const name = String((it && it.name) || '').trim().slice(0, 60);
+          const g = Number(it && it.grams);
+          if (!name || !isFinite(g) || g <= 0 || g > 3000) continue;
+          items.push({ name, grams: Math.round(g) });
+        }
+      }
+
+      /* An estimate does not get to state nutrition. It states what is on the
+         plate; the tables state what that is worth. */
+      const values = (!estimated && NV) ? {
+        kcal: vnum(NV.calories_kcal),
+        p: vnum(NV.protein_g),
+        c: vnum(NV.carbohydrates_g),
+        f: vnum(NV.fat_g),
+        sod: vnum(NV.sodium_mg),
+      } : null;
+      /* The one zero that cannot be a reading. Asked for null, the model still
+         answered 0 for the energy line this packet does not print - and a food
+         carrying 26 g of protein does not have 0 kcal. No arithmetic is done
+         here and none is needed: the figure is simply dropped, and a dropped
+         figure is filled from the tables on the other side.
+         Carbohydrate and fat zeros are LEFT ALONE - pastrami really does print
+         0 g of carbohydrate, and second-guessing a plausible zero is how a
+         measured value gets thrown away. */
+      if (values && values.kcal === 0 &&
+          ((values.p || 0) > 0 || (values.c || 0) > 0 || (values.f || 0) > 0)) values.kcal = null;
+      const anyValue = !!values && (values.kcal !== null || values.p !== null ||
+                                    values.c !== null || values.f !== null);
+
+      if (!anyValue && !items.length) return json({ ok: false, error: 'nothing readable in the picture' });
+
+      return json({
+        ok: true,
+        product_name: String(v.product_name || '').trim().slice(0, 90),
+        brand: v.brand ? String(v.brand).trim().slice(0, 40) : null,
+        serving: String(v.serving_size_analyzed || '').trim().slice(0, 24),
+        packaged: v.is_packaged_product === true,
+        estimated,
+        confidence: ['High', 'Medium', 'Low'].indexOf(v.confidence) >= 0 ? v.confidence : 'Low',
+        values: anyValue ? values : null,
+        items,
+        why: String(v.visual_reasoning || '').trim().slice(0, 240),
+        model: VMODEL,
+      });
+    }
     if (url.pathname === '/analyze' && req.method === 'POST') {
       if (!env.AI_KEY) return json({ error: 'analysis is not configured' }, 503);
 
