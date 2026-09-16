@@ -524,6 +524,50 @@ Arabic. The setting has to degrade to something sensible per language rather
 than leave a reader with a face that has no glyphs for their script.
 
 
+## מטרות is out of the product (2026-09-16)
+
+> *"אני לא רוצה את האזור הזה ואני לא רוצה שלמשתמשת שלנו תהיה אפשרות לגשת אליו,
+> גם לא בגלגל שיניים. הוא מיותר כרגע בעיניי, ואם ארצה — נבנה אותו לגרסה הבאה."*
+
+Done, and deliberately at one level rather than two.
+
+### What was removed
+
+Three routes, which were all of them:
+
+- its row in `HOME_AREAS`, which is what the area gear reads
+- its line in the router map
+- its branch in `enterModule`
+
+Driven afterwards rather than assumed: the home does not show it, `HOME_AREAS`
+is down to ten ids with no `goals` among them, **and opening the gear does not
+list it** — which was the half he was explicit about. No console errors.
+
+One answer was left orphaned by the removal — *"חלומות והדרך להגשימם"*, that
+area's subtitle — and `build-lang-template --check` reported it in all ten
+languages and exited 1. Removed from the files rather than left: that check is
+what keeps the dictionaries honest, and a dictionary full of strings nothing
+asks for is the rot it exists to prevent. Template now current at 1,755.
+
+### What was NOT removed, and why
+
+**The module's body is still in the file** — about twelve hundred lines and
+twenty-seven functions — dormant, with no way in.
+
+Because this app has **two things called a goal**. `p.goal` and `.pf-goals` are
+the profile's *lose weight / gain muscle* picker, which feeds `profileTargets`
+and therefore **every calorie and protein figure in the nutrition area**. A
+search-and-delete on the word would take those out, four days before a stranger
+opens the app for the first time. Dormant code costs bytes; a broken calorie
+target costs her day.
+
+So deleting the body is its own pass, done with the same care as any other, and
+not on the eve of a first user.
+
+**`goals_v1` in storage is left alone.** It is his own writing, nothing reads
+it now, and it is still there if the area ever comes back.
+
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
