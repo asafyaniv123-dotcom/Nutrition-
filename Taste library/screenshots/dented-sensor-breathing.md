@@ -83,6 +83,19 @@ inverted. The pressed state REVEALS rather than merely responds. That is the
 one thing deliberately not taken - the hub's label is how you know what it is,
 so ours cannot go blank.
 
+## What is still open - the held finger
+
+The tap is answered now. The HELD finger is not, and he asked for it the same
+evening: a long press should say something of its own - the thin rim colour
+travelling around the button, or the centre carried softly further in - because
+the gesture it answers is someone who **has not decided where to press yet**.
+
+That is a different sentence from "something happened", and it is the same
+sentence this reference spends its whole loop saying. Whatever gets built has
+to stay inside the numbers above: eleven levels, and nothing that arrives as a
+second effect on top of the first. The specification, the cancel cases and the
+three platform traps are in TODO.md under *A long press is its own state*.
+
 ## The hard part
 
 **A continuous animation is not free.** It repaints forever, on a phone, in a

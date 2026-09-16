@@ -6,6 +6,67 @@ section — git already keeps that.
 
 ---
 
+## A long press is its own state — the undecided finger (2026-09-16)
+
+> *"שכשלוחצים לחיצה ארוכה כן יהיה אפקט שונה … בין אם זה שהצבע הדק יסתובב סביב
+> הלחצן או בלחצן האמצעי שהוא ברכות יכנס פנימה ויגיב בצורה עדינה למקרה שהמשתמש
+> לא ממש החליט איפה הוא רוצה ללחוץ."*
+
+Said the evening the hub inversion went out, and it is the same interaction
+continued: the tap is now answered, and the HELD finger is not.
+
+**THE REQUIREMENT IS THE LAST CLAUSE, not the effects.** "למקרה שהמשתמש לא ממש
+החליט איפה הוא רוצה ללחוץ" — the gesture being answered is HESITATION, not a
+command. That decides everything about how it must behave, and it is the part
+a nice animation would quietly get wrong:
+
+- it has to be **reversible without consequence** — a finger that wanders off
+  or lifts somewhere else must leave nothing behind and fire nothing
+- it has to read as **the same surface still responding**, not a second effect
+  arriving on top of the first
+- and it must **never be the only way to reach anything**, because a long
+  press has no keyboard and no screen-reader equivalent
+
+**HE NAMED TWO DIRECTIONS** and they are not exclusive:
+
+1. **The thin colour travels around the rim.** Each area already wears its own
+   colour there, so the rim is a surface that already means something. A
+   `conic-gradient` rotated on a pseudo-element is the cheap version — rotate
+   the ELEMENT with a transform rather than animating the gradient's angle,
+   which repaints every frame unless the angle is a registered
+   `@property`.
+2. **The centre goes softly further in and answers gently.** Continuing the
+   inversion rather than competing with it: the same surface, carried past
+   where a tap leaves it, at the same tiny tonal range.
+
+**THE PART THAT IS NOT CSS.** `:active` fires the instant a finger lands, so
+it cannot express "held" — this needs a timer (400-500ms is the usual window),
+armed on pointerdown and cancelled by pointerup, pointercancel, a scroll, or
+any movement past a few pixels. That cancel list is the whole difficulty: on a
+phone the hub sits on a scrolling board, and a press that becomes a drag must
+not light up.
+
+**Three traps, all of them platform rather than design:**
+
+- a long press on mobile raises the OS selection handles and the context menu
+  over exactly the element being held — `-webkit-touch-callout:none` and
+  `user-select:none` on the hub, or the effect is invisible under a menu
+- whatever happens on release has to stay decided: if the long press does
+  something, the tap must not also fire on the way out
+- `prefers-reduced-motion` still applies, and a rotating rim is precisely the
+  kind of thing it exists for
+
+**Where it belongs first:** סיום יום at the centre of the board, because that
+is the button he described and the one already carrying the inversion. If it
+earns its place there it generalises to the fan wedges for free — they are the
+same component.
+
+Related: [[dented-sensor-breathing]] in the Taste library holds the measured
+numbers this has to stay inside — an eleven-level tonal range and a flip of
+about twelve frames. A long press that gets loud breaks the thing it extends.
+
+---
+
 ## THE ONE THAT STOPS THE HABIT — nutrition (2026-09-14)
 
 > *"אני חושב שמה שמונע ממני מהרגל יומי זה האזור של התזונה. הflow שם לא טוב
