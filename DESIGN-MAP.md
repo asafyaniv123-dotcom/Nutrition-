@@ -48,9 +48,11 @@ of them at α≥.25, in 87 rules. That is the new line being *more* emphatic tha
 what it replaces, not less, which is consistent with what the hub measured:
 twice the reference's curvature swing.
 
-**תובנות has three rules.** Whatever the insights area is meant to be, it has
-no visual identity to contradict. It is the one place where the new line can be
-written first rather than retrofitted.
+**תובנות has three rules — AND THAT TURNED OUT TO BE WRONG.** Photographed, it
+has a full grid of coloured cards: its appearance is written in inline styles
+rather than in the stylesheet, where no census can see it. See *The
+photographs* below; the correction is what made the inline-style front visible
+at all.
 
 ---
 
@@ -120,8 +122,9 @@ and reversible, which makes it the cheapest real improvement available.
 
 **First, and it costs an afternoon: the radius scale.** Mechanical, reversible,
 provable by reversing the patch (the technique that caught ten corrupted
-declarations in the direction pass). It touches 392 declarations and changes
-the app's feel more than any single screen would.
+declarations in the direction pass). It touches 723 declarations — 392 in the
+stylesheet and 331 written inline in JS — and changes the app's feel more than
+any single screen would.
 
 **Second: pick one dialect for "this is an object" and delete the other.** 58
 shadows against 55 borders is not a style, it is two styles. This is a decision
@@ -132,12 +135,75 @@ what every screen looks like afterwards.
 above .32, minus the two that belong to the unused עיגולים layout. That
 includes `.hub-dot` at .80, which I wrote.
 
-**Fourth: תובנות, because it is empty.** Three rules. Write the new line there
-first, in full, and see it without retrofitting anything — the cheapest
-possible test of whether the line survives contact with a whole screen.
+**Fourth: תובנות — not because it is empty, but because it is inline.** Its
+whole appearance is built in JS template strings, so writing the new line there
+first tests the pass that actually has to happen across the app, on one screen,
+where it is cheap to throw away.
 
 **Not before the 23rd**, and none of it while the freeze is on except as
 design work on `design/glass`.
+
+---
+
+## The photographs — and two corrections to everything above
+
+All ten areas were photographed headlessly (`shoot-areas.mjs` in the session
+scratchpad; no browser extension, no clicking — the injected script calls the
+app's own `enterModule()`, which also reaches the closet, the one area with no
+`?go=` route). Two of them overturned claims made higher up this page.
+
+### CORRECTION 1 — "תובנות has three rules" is wrong
+
+It has a full grid of coloured cards with accent bars. The census was not
+lying; it was blind. **The area's entire appearance is written in inline
+styles inside JS template strings** — `border-radius:20px`,
+`box-shadow:0 4px 16px rgba(0,0,0,.06)`, and a background colour taken per
+card from `INSIGHTS_CATS`. A stylesheet census cannot see any of it.
+
+That opens a second front, and it is not small:
+
+    1,406 inline style attributes in the app (the game excluded)
+      424 of them set something VISUAL rather than layout
+      331 inline border-radius declarations — against 392 in the stylesheet
+      220 inline borders, 65 inline box-shadows, 402 inline backgrounds
+
+**Forty-six percent of every radius in this app is inline.** A CSS-only pass
+reaches barely half the surface, so the radius scale — item one on the list
+above — has to be a pass over the JS template strings as well, or it will land
+on half the app and look worse than doing nothing. Counting stylesheet and
+inline together, the file holds **37 distinct radius values**.
+
+### CORRECTION 2 — the app does not clip, my camera did
+
+The first set of photographs showed every screen cut off down its right edge,
+which in an RTL layout is where the text begins. That looked like a serious
+bug. It is not one: asked directly, every area reports
+`scrollWidth === clientWidth === 512`, and the only elements past the edge are
+three decorative `.cloud` divs and an off-canvas drawer header, all deliberate.
+
+Chrome headless had laid the page out at 512 CSS px while cropping the capture
+to the 430 I asked for. **A screenshot is a measurement too, and it can be
+wrong in exactly the way that makes you file a bug against the app.** The
+re-shot set is at the width the page actually used.
+
+### What the pictures show that the census could not
+
+**The app changes worlds when you enter an area.** The board is a dark night
+sky; every module is warm cream with white cards on it. That is not a shadow
+alpha or a radius, it is two different design languages either side of one tap,
+and no rule-count could have surfaced it. Whatever the new line becomes, this
+is the decision it has to answer first.
+
+**White card on cream is the house dialect**, and it is everywhere — תזונה's
+progress panel, its three macro tiles, the water strip, the ask box; תובנות'
+six category cards. Each is an object on a plate. The hub says the opposite:
+one surface, curved by light.
+
+**סיום יום opens nearly empty.** The spine of the product is a short card, two
+thin rows beneath it, and then ground all the way to the tab bar. Whether that
+is restraint or an unfinished screen is his call — but it is the first thing
+the eye meets in the area that matters most, and the census said nothing about
+it because there is nothing there to count.
 
 ---
 
