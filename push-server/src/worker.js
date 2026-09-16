@@ -26,6 +26,32 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+/* The FIRST BALANCED object, not everything between the outermost braces.
+   /\{[\s\S]*\}/ is greedy: a model that answers, then adds "Wait, let me
+   correct that" and a second object, produced one span from the first brace
+   to the last and JSON.parse refused all of it - the request failed as
+   "unreadable" when a perfectly good answer was sitting in front of it.
+   Strings are tracked as strings, because a brace inside a food name is not
+   a brace. */
+function firstJson(raw) {
+  const text = String(raw || '');
+  const start = text.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) return text.slice(start, i + 1); }
+  }
+  return null;
+}
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
     status,
@@ -493,6 +519,22 @@ export default {
            Cooked reads as part of a name, raw reads as a note about the
            weighing, and notes get dropped - so the one case that changes the
            answer most was the one case being thrown away. */
+        /* Measured: "6 oz ribeye steak" came back as SIX GRAMS, because there
+           is no oz in the unit list and the model reached for the nearest
+           thing. Six ounces is 170 g - a factor of twenty-eight on the one
+           input an American reader is most likely to type. And asked with the
+           number last, the model wrote prose about the missing unit instead
+           of an answer, which used to fail the whole request. */
+        '- IMPERIAL WEIGHTS ARE CONVERTED TO GRAMS, AND THE UNIT IS "g".\n' +
+        '  1 oz = 28.35 g, 1 lb = 453.6 g. These are exact, so this is\n' +
+        '  arithmetic and not an estimate: "6 oz" is amount 170, unit "g";\n' +
+        '  "1.5 lb" is amount 680, unit "g". Round to the nearest gram. The\n' +
+        '  reader is shown whichever unit they have chosen, so nothing is lost\n' +
+        '  by storing grams. Never answer with oz or lb as the unit.\n' +
+        '- THE NUMBER MAY COME FIRST OR LAST, and it means the same thing\n' +
+        '  either way: "6 oz ribeye steak", "ribeye steak 6 oz" and\n' +
+        '  "ribeye steak, 6oz" are one item of 170 g. A quantity written after\n' +
+        '  the food is still that food\u2019s quantity.\n' +
         '- THE STATE IT WAS WEIGHED IN IS PART OF THE FOOD, NOT A NOTE ABOUT IT.\n' +
         '  Keep these words in the food name, never drop them: לפני בישול,\n' +
         '  אחרי בישול, חי, גולמי, נא, מבושל, raw, uncooked, cooked.\n' +
@@ -538,9 +580,9 @@ export default {
 
       // it is told to send JSON only, but a fence or a sentence around it is
       // the classic failure and is cheaper to survive than to argue about
-      const m = raw.match(/\{[\s\S]*\}/);
+      const m = firstJson(raw);
       let parsed;
-      try { parsed = JSON.parse(m ? m[0] : raw); } catch { return json({ error: 'unreadable', raw: raw.slice(0, 200) }, 502); }
+      try { parsed = JSON.parse(m || raw); } catch { return json({ error: 'unreadable', raw: raw.slice(0, 200) }, 502); }
 
       const UNITS = ['g', 'unit', 'slice', 'cup', 'tbsp', 'tsp'];
       const items = (Array.isArray(parsed.items) ? parsed.items : [])
@@ -650,6 +692,22 @@ export default {
            this list can be overruled by the pick that comes back - so the
            model has to know the rule too, or it hands back the cooked row the
            scorer had just rejected. */
+        /* Measured: "2 eggs" came back as a dairy's branded pack and
+           "ribeye steak cooked" as a T-bone, while the app's own scorer had
+           both right. The rule for a named brand was here; the rule for an
+           UNnamed one never was. */
+        '- WHEN NO BRAND IS NAMED, PREFER THE PLAIN TABLE ROW. A row carrying a\n' +
+        '  company or a supermarket product name is the answer only when the\n' +
+        '  query named it. "2 eggs" is eggs, not one dairy\u2019s packaged eggs.\n' +
+        '  The plain row is what was meant, and its numbers were measured\n' +
+        '  rather than declared on a packet.\n' +
+        /* A different cut with similar numbers is the worst kind of wrong
+           answer here: nothing about it looks wrong. */
+        '- A CUT OF MEAT IS NAMED, NOT TRANSLATED, and a different cut is a\n' +
+        '  different food however close its numbers are. ribeye is אנטריקוט,\n' +
+        '  sirloin is סינטה, tenderloin is פילה or מותנית, brisket is חזה בקר,\n' +
+        '  chuck is צוואר, flank is שפונדרה. Never answer a ribeye with a\n' +
+        '  T-bone: pick the row for the SAME cut, or none.\n' +
         '- THE STATE DECIDES BETWEEN TWO ROWS OF THE SAME FOOD. If the query\n' +
         '  says raw - לפני בישול, חי, גולמי, נא, raw, uncooked - pick a row\n' +
         '  that says it is raw (לא מבושל, גולמי) and never one that says\n' +
@@ -701,9 +759,9 @@ export default {
       let out;
       try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
       const raw = ((out.content || []).find((c) => c.type === 'text') || {}).text || '';
-      const m = raw.match(/\{[\s\S]*\}/);
+      const m = firstJson(raw);
       let parsed;
-      try { parsed = JSON.parse(m ? m[0] : raw); } catch { return json({ error: 'unreadable' }, 502); }
+      try { parsed = JSON.parse(m || raw); } catch { return json({ error: 'unreadable' }, 502); }
 
       /* Range checks, not a formality: an index outside the list would read a
          row that was never sent, and a silly weight is the difference between
@@ -1280,9 +1338,9 @@ export default {
       let out;
       try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
       const rawTxt = ((out.content || []).find((c) => c.type === 'text') || {}).text || '';
-      const m = rawTxt.match(/\{[\s\S]*\}/);
+      const m = firstJson(rawTxt);
       let p;
-      try { p = JSON.parse(m ? m[0] : rawTxt); } catch { return json({ error: 'unreadable' }, 502); }
+      try { p = JSON.parse(m || rawTxt); } catch { return json({ error: 'unreadable' }, 502); }
 
       if (p && p.ok === false)
         return json({ ok: false, why: String(p.assumed || '').slice(0, 200) });

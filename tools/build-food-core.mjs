@@ -94,6 +94,45 @@ const CORE = [
      the most weighed food there is in anything to do with training, and a
      person who writes "לפני בישול" means exactly this row: 120 kcal and
      22.5 g against the cooked row's 176 and 33. */
+  /* Hebrew borrowed the French for this cut, so nothing in "ribeye" points at
+     אנטריקוט and /match returned nothing at all for it - while sirloin and
+     tenderloin, where the two languages describe the same anatomy, both
+     bridged fine. A name, not a translation. */
+  { id: 'beef-ribeye-raw', he: 'בשר בקר, אנטריקוט, לא מבושל',
+    aka: ['ribeye', 'rib eye', 'entrecote', 'entrecôte', 'סטייק אנטריקוט'],
+    t: { en: 'Ribeye steak, raw', de: 'Ribeye-Steak, roh',
+         es: 'Entrecot (ribeye), crudo', fr: 'Entrecôte, crue',
+         it: 'Costata (ribeye), cruda', pt: 'Bife de costela (ribeye), cru',
+         ja: 'リブアイステーキ（生）', 'zh-Hans': '肋眼牛排（生）',
+         'zh-Hant': '肋眼牛排（生）', ar: 'ستيك ريب آي نيء' } },
+
+  /* Asked for a COOKED ribeye the matcher answered T-bone, because no cooked
+     entrecôte was on offer - a prompt rule cannot pick a row that is not in
+     the list. סטייק עין is the rib eye, and the table holds it grilled. */
+  { id: 'beef-ribeye-cooked', he: 'סטייק בשר בקר, סטייק עין, אנטריקוט, צלוי, פרבורגר,בלדי',
+    aka: ['ribeye', 'rib eye', 'entrecote', 'entrecôte', 'סטייק אנטריקוט', 'סטייק עין'],
+    t: { en: 'Ribeye steak, grilled', de: 'Ribeye-Steak, gegrillt',
+         es: 'Entrecot (ribeye), a la parrilla', fr: 'Entrecôte grillée',
+         it: 'Costata (ribeye), alla griglia', pt: 'Bife de costela (ribeye), grelhado',
+         ja: 'リブアイステーキ（グリル）', 'zh-Hans': '肋眼牛排（烤）',
+         'zh-Hant': '肋眼牛排（烤）', ar: 'ستيك ريب آي مشوي' } },
+
+  { id: 'beef-sirloin-raw', he: 'בשר בקר, סינטה, לא מבושל',
+    aka: ['sirloin', 'striploin', 'strip steak', 'סטייק סינטה'],
+    t: { en: 'Sirloin steak, raw', de: 'Roastbeef, roh',
+         es: 'Solomillo bajo (sirloin), crudo', fr: 'Faux-filet, cru',
+         it: 'Controfiletto, crudo', pt: 'Contrafilé, cru',
+         ja: 'サーロイン（生）', 'zh-Hans': '西冷牛排（生）',
+         'zh-Hant': '西冷牛排（生）', ar: 'ستيك سيرلوين نيء' } },
+
+  { id: 'beef-tenderloin-raw', he: 'בשר בקר, טרי, ללא שומן, מותנית (פילה), לא מבושל',
+    aka: ['tenderloin', 'filet mignon', 'פילה בקר'],
+    t: { en: 'Beef tenderloin, raw', de: 'Rinderfilet, roh',
+         es: 'Solomillo de ternera, crudo', fr: 'Filet de bœuf, cru',
+         it: 'Filetto di manzo, crudo', pt: 'Filé mignon, cru',
+         ja: '牛ヒレ肉（生）', 'zh-Hans': '牛里脊（生）',
+         'zh-Hant': '牛里脊（生）', ar: 'فيليه بقر نيء' } },
+
   { id: 'chicken-breast-raw', he: 'בשר עוף, חזה, ללא עור ללא עצמות, רק בשר, לא מבושל',
     aka: ['פילה עוף', 'chicken fillet'],
     t: { en: 'Chicken breast, raw', de: 'Hähnchenbrust, roh',
