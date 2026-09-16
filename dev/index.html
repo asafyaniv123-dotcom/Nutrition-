@@ -23739,14 +23739,24 @@ var ARC_W=70,ARC_DEPTH=44,ARC_BASE=6,ARC_PITCH=10;
    by a line. HUB is the hero's own diameter, and GAP is what has to be left
    between the hub's edge and a capsule's - it is where the wire is visible,
    so it is the difference between "connected" and "touching". */
-var RING_HUB=176,RING_GAP=26;
+/* GAP is the air he asked to keep around the hub, and the only thing crossing
+   it is a wire. SWEEP is how far round the arc carries: 180 would stop at the
+   sides, 210 takes it just past them so the ends fall away and the row reads
+   as a curve rather than as a line of nine. */
+var RING_HUB=176,RING_GAP=26,RING_SWEEP=210;
 /* Nine points on an ellipse, rotated half a step so nothing sits at twelve
    o'clock - a capsule directly above the hub reads as a crown rather than as
    one of nine. */
 function ringPoints(n,cx,cy,rx,ry){
   var at=[],i,th;
+  /* AN OPEN ARC, NOT A CLOSED RING. 210 degrees centred on twelve o'clock, so
+     it runs from past nine, over the top, to past three - the two ends hanging
+     below the hub's own centre line, which is what "כולל הצדדים" asks for and
+     what a bare semicircle stops short of. The bottom stays empty on purpose:
+     it is where the day's schedule goes. */
+  var span=RING_SWEEP*Math.PI/180,start=-Math.PI/2-span/2;
   for(i=0;i<n;i++){
-    th=-Math.PI/2+(i+0.5)*(2*Math.PI/n);
+    th=(n===1)?-Math.PI/2:start+span*(i/(n-1));
     at.push({x:cx+rx*Math.cos(th),y:cy+ry*Math.sin(th),th:th});
   }
   return at;
@@ -23766,18 +23776,33 @@ function ringPlan(n,W,H){
      Two boxes overlap only if they overlap on BOTH axes, which is the test
      below; the cap is there because a ring taller than the screen is its own
      kind of broken, and reaching it is reported rather than drawn. */
+  /* Capped at an ellipse rather than a stripe. Past this the dome is not
+     failing to fit, it is failing to BE a dome - measured, the uncapped loop
+     reached ry 594 against rx 135 and the capsules bunched. */
+  var ryMax=rx*1.55;
   var at,i,tight=true,guard=0;
-  while(tight&&guard++<60){
+  while(tight&&guard++<60&&ry<=ryMax){
     at=ringPoints(n,W/2,ry+H/2,rx,ry);
     tight=false;
-    for(i=0;i<n;i++){
-      var p=at[i],q=at[(i+1)%n];
+    /* i+1, not (i+1)%n: an arc has two ends and they are not neighbours.
+       Wrapping compared the last capsule with the first across the open
+       bottom, which is the one pair that is allowed to be close. */
+    for(i=0;i<n-1;i++){
+      var p=at[i],q=at[i+1];
       if(Math.abs(p.x-q.x)<ARC_W&&Math.abs(p.y-q.y)<H){tight=true;break;}
     }
     if(tight)ry+=6;
   }
-  var cx=W/2,cy=ry+H/2;
-  return {at:at,cx:cx,cy:cy,rx:rx,ry:ry,w:W,tight:tight,height:Math.round(cy+ry+H/2)};
+  /* at was built from the ry BEFORE the last increment; rebuild it so the
+     points and the box agree about where the centre is. */
+  at=ringPoints(n,W/2,ry+H/2,rx,ry);
+  var cx=W/2,cy=ry+H/2,i2,low=cy;
+  /* The box ends at the LOWEST capsule, not at the bottom of a circle nothing
+     stands on - a closed ring needed the whole diameter and this does not,
+     which is most of the room the schedule moves into. */
+  for(i2=0;i2<at.length;i2++)if(at[i2].y>low)low=at[i2].y;
+  return {at:at,cx:cx,cy:cy,rx:rx,ry:ry,w:W,tight:tight,
+          height:Math.round(Math.max(low+H/2,cy+RING_HUB/2)+4)};
 }
 /* The widest rank this board can hold: neighbouring centres must be at
    least a capsule apart or they touch. Never more than five - beyond that
@@ -23882,9 +23907,13 @@ function renderHomeGrid(){
   for(i=0;i<rest.length;i++)h+=homeCardHTML(rest[i],'hcard');
   h+='</div>';
   g.innerHTML=h;
-  ringPlace(g,rest.length);
+  /* THE DOME WHERE IT FITS, THE ROWS WHERE IT DOES NOT. A 210-degree arc of
+     nine capsules needs about 608px of arc and a 360px phone offers 495 -
+     arithmetic, not taste. arcPlan is the geometry that was solved for that
+     case and it was kept for this. */
+  homePlace(g,rest.length);
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){
-    if(document.getElementById('home-grid')===g)ringPlace(g,rest.length);
+    if(document.getElementById('home-grid')===g)homePlace(g,rest.length);
   });
 }
 /* A geometry solved for one width is right at one width. The rank narrows
@@ -23917,6 +23946,24 @@ function ringWires(plan,H){
   }
   return '<svg class="hwires" viewBox="0 0 '+Math.round(plan.w)+' '+plan.height+
     '" preserveAspectRatio="none" aria-hidden="true">'+d+'</svg>';
+}
+/* Asks the dome whether it fits before drawing it, and hands over to the rows
+   when it does not. The hub and the wires belong to the dome alone, so the
+   fallback puts the board back the way the arc expects to find it. */
+function homePlace(g,n){
+  var cards=g.querySelectorAll('.hcard'),H=0,i;
+  for(i=0;i<cards.length;i++){var e=cards[i].offsetHeight;if(e>H)H=e;}
+  var plan=ringPlan(n,_arcW,H);
+  if(!plan.tight){ringPlace(g,n);return;}
+  var box=g.querySelector('.hcards');
+  if(box){
+    box.classList.remove('ring');
+    var w=box.querySelector('.hwires');
+    if(w)w.parentNode.removeChild(w);
+  }
+  var hero=g.querySelector('.hhero');
+  if(hero){hero.style.left='';hero.style.top='';}
+  arcPlace(g,n);
 }
 function ringPlace(g,n){
   var cards=g.querySelectorAll('.hcard'),H=0,i;
@@ -24552,11 +24599,13 @@ function tbSync(){
   home.className='home';
   home.innerHTML=
     '<div id="home-greet" class="greet-wrap"></div>'+
-    '<div id="home-today" class="td-wrap"></div>'+
     '<div class="home-logo">Better Me</div>'+
     '<div class="home-sub">Become the best version of yourself</div>'+
     '<button class="home-menu" id="home-menu-btn" aria-label="'+_t("מה במעקב")+'"><i></i><i></i><i></i></button>'+
     '<div class="home-grid" id="home-grid"></div>'+
+    /* UNDER the board, into the room the open bottom of the arc makes. It sat
+       above it, so the board - the thing the screen is for - was read second. */
+    '<div id="home-today" class="td-wrap"></div>'+
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
 
