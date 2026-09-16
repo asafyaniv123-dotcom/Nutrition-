@@ -960,9 +960,11 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .scan-in:focus{border-color:var(--violet-300)}
 .scan-go{border:none;border-radius:11px;padding:10px 16px;background:var(--ink);color:var(--white);font-size:12px;font-weight:800;font-family:inherit;cursor:pointer}
 .fdb-src{margin-top:8px;font-size:9.5px;color:var(--muted-soft);text-align:center;font-weight:700}
-.one-row{display:flex;gap:7px;align-items:stretch;margin-bottom:8px}
-.one-in{margin-bottom:0}
-.one-ic{flex:0 0 auto;width:40px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--line);border-radius:12px;background:var(--card);font-size:19px;line-height:1;cursor:pointer;padding:0;font-family:inherit}
+/* flex-start, not stretch: a grown textarea used to make the camera button
+   as tall as itself. */
+.one-row{display:flex;gap:7px;align-items:flex-start;margin-bottom:8px}
+.one-in{margin-bottom:0;display:block;min-height:56px;resize:none;line-height:1.5;overflow-y:auto;unicode-bidi:plaintext}
+.one-ic{flex:0 0 auto;width:40px;height:56px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--line);border-radius:12px;background:var(--card);font-size:19px;line-height:1;cursor:pointer;padding:0;font-family:inherit}
 .one-gem{margin-bottom:0;margin-top:10px}
 .fdb-in{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font-size:16px;font-family:inherit;outline:none;margin-bottom:8px;background:var(--card)}
 .fdb-in:focus{border-color:var(--violet-300)}
@@ -5558,7 +5560,25 @@ var _oneAsked=false;
    assistant answers questions about food and has no business sitting under a
    list of rows waiting to be added to the day. Called from both painters,
    because between them they run on every change the box can undergo. */
+/* Tall enough to read, never taller than the screen can spare. Measured off
+   scrollHeight rather than counted in characters, because the wrap depends on
+   the font, the language and the width of the phone - Arabic and German do
+   not break where Hebrew does. */
+function oneGrow(el){
+  if(!el)return;
+  el.style.height='auto';
+  /* scrollHeight is the CONTENT; the box is border-box, so the border has to
+     be added or the last line sits 3px under the bottom edge. Measured off the
+     element, not read from the stylesheet. */
+  var h=el.scrollHeight+(el.offsetHeight-el.clientHeight);
+  if(h>ONE_MAX)h=ONE_MAX;
+  if(h<ONE_MIN)h=ONE_MIN;
+  el.style.height=h+'px';
+}
 function oneRest(){
+  /* Re-running this on every paint is what stops a sentence still sitting in
+     the box from collapsing back to one line when something else re-renders. */
+  oneGrow(document.getElementById('fdb-q'));
   var g=document.querySelector('.one-gem');
   if(g)g.hidden=!!(_fdbQ||_sayItems||_sayBusy||_sayErr||_picThumb);
 }
@@ -5683,6 +5703,10 @@ function deriveGrams(f){
    BUMP THIS whenever matching changes: sayScore and its word lists, the core
    table, or the /match and /parse prompts. It costs one round trip per query
    once, and it is the difference between shipping a fix and appearing to. */
+/* Two lines at rest and about six at most, after which it scrolls. Six is
+   where a phone starts losing the list of results underneath, which is the
+   thing the box exists to produce. */
+var ONE_MIN=56,ONE_MAX=168;
 var MATCH_GEN=2;
 var MATCH_KEY='food_match_v'+MATCH_GEN;
 /* the older generations, removed rather than left to sit in storage */
@@ -8025,7 +8049,12 @@ function renderToday(){
        kind of machine this is. */
     fdbHTML='<div class="aw-body">'+
       '<div class="one-row">'+
-        '<input class="fdb-in one-in" id="fdb-q" placeholder="'+_t('מה אכלת? שם של מאכל, או משפט שלם')+'" value="'+esc(_fdbQ)+'" oninput="fdbType(this.value)" onkeydown="if(event.key===&#39;Enter&#39;){event.preventDefault();oneGo();}">'+
+        /* A textarea, not an input: a sentence long enough to be worth writing
+           is longer than one line, and its beginning used to scroll off the
+           edge while the end was still being typed. Enter still SENDS -
+           changing what Enter means would be worse than a short box -
+           and Shift+Enter is the new line, as in every chat box. */
+        '<textarea class="fdb-in one-in" id="fdb-q" rows="2" placeholder="'+_t('מה אכלת? שם של מאכל, או משפט שלם')+'" oninput="fdbType(this.value);oneGrow(this)" onkeydown="if(event.key===&#39;Enter&#39;&&!event.shiftKey){event.preventDefault();oneGo();}">'+esc(_fdbQ)+'</textarea>'+
         '<label class="one-ic" title="'+_t('צילום')+'" aria-label="'+_t('צילום')+'">&#x1F4F7;'+
         '<input type="file" accept="image/*" capture="environment" hidden onchange="picPick(this)"></label>'+
         /* The same control minus one attribute. capture is the whole
