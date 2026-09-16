@@ -601,6 +601,64 @@ Three things to get right:
   differently, and a squat's ladder is not a curl's.
 
 
+## Photograph a machine, get its cues (2026-09-16)
+
+> *"שהמשתמש יוכל לצלם את המכונות במכון שלו והאפליקציה תזהה את המכונה ותיתן
+> דגשים עליה."*
+
+**The good news is that it is mostly a new door into content that already
+exists**, and the bad news is a number.
+
+### What is already built
+
+- **228 exercises, all 228 translated** into the eleven languages.
+- **96 of them carry coaching content** — `s`, the steps, and `k`, the common
+  mistakes. Real cues, written: *"מרפקים פתוחים ל־90 מעלות — מעמיס על מפרק
+  הכתף"*, *"ניתור המוט מהחזה במקום עצירה שקטה"*.
+- `sl` carries those per language, so a cue reaches a reader in their own.
+- And `/see` already looks at a photograph and answers in a fixed JSON shape.
+- `q` tags every exercise with its equipment: 33 say מכונה, 35 פולי, 8
+  מכשיר אירובי.
+
+So the feature is: photo → exercise id → show `s` and `k`. Almost none of that
+is new.
+
+### The number that decides it
+
+**76 exercises are a machine, a cable or a cardio machine. Twenty-eight of them
+have cues. Forty-eight have nothing to say.**
+
+So today, a photograph of a gym machine has a **better than even chance of
+being identified correctly and then having nothing to offer** — including
+things people genuinely get wrong: לחיצת חזה בשיפוע במכונה, מתח במכונת סיוע,
+פולי עליון אחיזה רחבה.
+
+**That makes the content the project and the camera the easy part**, which is
+the opposite of how the idea sounds. Filling the 48 is the work; wiring the
+photo is a day.
+
+### And read the placard, do not guess the shape
+
+The lesson from the whey tub applies exactly. Plate-loaded machines from
+different manufacturers look alike and a model guessing from silhouette will
+be confidently wrong. But almost every machine carries **a placard with its
+name and a diagram**, and reading printed text is what `/see` was just taught
+to do for a product name.
+
+So: read the placard first, fall back to the shape, and **say which** — a cue
+delivered under the wrong exercise name is worse than no cue, because someone
+will follow it with load on the joint.
+
+### The order that makes sense
+
+1. **Fill the 48**, which is worth doing whether or not the camera is ever
+   built: they are missing from the exercise page today too.
+2. **Then the photo**, which is a small pass on top of `/see`.
+3. And it pairs naturally with the **workout generator**, which already has to
+   ask what equipment is available — a photograph of the gym answers that
+   question as a side effect.
+
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
