@@ -489,6 +489,17 @@ export default {
         '  in "שייק חלבון 25 גרם של מולר" the 25 g is the protein the product\n' +
         '  advertises, so amount is 1 and unit is "unit". Use a number as the\n' +
         '  amount only when it says how much was actually eaten.\n' +
+        /* Measured: this prompt kept "מבושל" and deleted "לפני בישול" and "חי".
+           Cooked reads as part of a name, raw reads as a note about the
+           weighing, and notes get dropped - so the one case that changes the
+           answer most was the one case being thrown away. */
+        '- THE STATE IT WAS WEIGHED IN IS PART OF THE FOOD, NOT A NOTE ABOUT IT.\n' +
+        '  Keep these words in the food name, never drop them: לפני בישול,\n' +
+        '  אחרי בישול, חי, גולמי, נא, מבושל, raw, uncooked, cooked.\n' +
+        '  "189 גרם פילה עוף (משקל לפני בישול)" is ONE item: food\n' +
+        '  "פילה עוף לפני בישול", amount 189, unit g. Raw chicken breast is\n' +
+        '  22.5 g of protein per 100 g and cooked is 31, so dropping those two\n' +
+        '  words changes the answer by a third.\n' +
         '- Never return calories, protein, carbohydrate or fat. You do not know them.\n' +
         '- No prose, no markdown fence, JSON only.';
 
@@ -635,6 +646,17 @@ export default {
         '  in, that would find this food in a plain text search of that table.\n' +
         '  For "protein yogurt muller" against Hebrew rows: ["יוגורט","חלבון",\n' +
         '  "מולר"]. Give these even when you also picked rows.\n' +
+        /* The app's own scorer already ranks the raw row first for these, and
+           this list can be overruled by the pick that comes back - so the
+           model has to know the rule too, or it hands back the cooked row the
+           scorer had just rejected. */
+        '- THE STATE DECIDES BETWEEN TWO ROWS OF THE SAME FOOD. If the query\n' +
+        '  says raw - לפני בישול, חי, גולמי, נא, raw, uncooked - pick a row\n' +
+        '  that says it is raw (לא מבושל, גולמי) and never one that says\n' +
+        '  מבושל, מטוגן, אפוי, צלוי or בגריל. If the query says cooked, the\n' +
+        '  reverse. Raw chicken breast is 22.5 g of protein per 100 g and\n' +
+        '  cooked is 31: this is not a shade of meaning, it is a third of the\n' +
+        '  answer.\n' +
         '- Never return calories, protein, carbohydrate or fat. You do not know\n' +
         '  them and they are not wanted; the app has them already.\n' +
         '- No prose, no markdown fence, JSON only.';
@@ -1654,6 +1676,17 @@ export default {
         'average of that food is not. This is the single most common way to be ' +
         'wrong here.\n' +
         '\n' +
+        'STEP 2b - RAW OR COOKED. Detect whether the state is stated: raw or\n' +
+        'uncooked (לפני בישול, חי, גולמי, נא, raw) versus cooked or prepared\n' +
+        '(אחרי בישול, מבושל, מוכן, cooked). Report it as cooking_state, and\n' +
+        'where it is stated put the words into the item names too, so the food\n' +
+        'tables are asked for the right row. If the values you give are read\n' +
+        'off a raw product they are RAW values - do not convert them, and do\n' +
+        'not answer a raw question with cooked figures. Raw chicken breast is\n' +
+        '22-23 g of protein and 110-115 kcal per 100 g; cooked is about 31 g\n' +
+        'and 165 kcal. Unspecified is an honest answer and is better than a\n' +
+        'guess.\n' +
+        '\n' +
         'STEP 3 - ANY LANGUAGE. Read Hebrew, Arabic, English, Spanish, ' +
         'Japanese, Chinese or anything else on the packet, and report every ' +
         'number in international units: kcal, grams, milligrams.\n' +
@@ -1700,6 +1733,7 @@ export default {
           is_packaged_product: { type: 'BOOLEAN' },
           is_estimated: { type: 'BOOLEAN' },
           confidence: { type: 'STRING', enum: ['High', 'Medium', 'Low'] },
+          cooking_state: { type: 'STRING', enum: ['raw', 'cooked', 'unspecified'] },
           nutritional_values: {
             type: 'OBJECT',
             nullable: true,
@@ -1724,10 +1758,10 @@ export default {
            it say null, which is an answer we can read. */
         propertyOrdering: ['product_name', 'brand', 'serving_size_analyzed',
                            'is_packaged_product', 'is_estimated', 'confidence',
-                           'nutritional_values', 'items', 'visual_reasoning'],
+                           'cooking_state', 'nutritional_values', 'items', 'visual_reasoning'],
         required: ['product_name', 'brand', 'serving_size_analyzed',
                    'is_packaged_product', 'is_estimated', 'confidence',
-                   'nutritional_values', 'items', 'visual_reasoning'],
+                   'cooking_state', 'nutritional_values', 'items', 'visual_reasoning'],
       };
 
       const VMODEL = String(env.VISION_MODEL || 'gemini-3.6-flash');
@@ -1837,6 +1871,7 @@ export default {
         packaged: v.is_packaged_product === true,
         estimated,
         confidence: ['High', 'Medium', 'Low'].indexOf(v.confidence) >= 0 ? v.confidence : 'Low',
+        cooking_state: ['raw', 'cooked'].indexOf(v.cooking_state) >= 0 ? v.cooking_state : 'unspecified',
         values: anyValue ? values : null,
         items,
         why: String(v.visual_reasoning || '').trim().slice(0, 240),

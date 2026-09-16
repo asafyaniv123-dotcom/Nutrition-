@@ -75,12 +75,32 @@ const CORE = [
        no number changes. */
     aka: ['ごはん', 'ご飯'] },
 
+  /* פילה is what this cut is called here, and no chicken row in the tables
+     contains the word - so "פילה עוף" gated on פילה and came back TURKEY,
+     "בשר הודו, מעובד, נתח פילה". Searched, never displayed, no number moves. */
   { id: 'chicken-breast', he: 'בשר עוף, חזה מטוגן ללא שמן',
-    t: { en: 'Chicken breast, cooked without oil', de: 'Hähnchenbrust, ohne Öl gegart',
-         es: 'Pechuga de pollo, cocinada sin aceite', fr: 'Blanc de poulet, cuit sans huile',
-         it: 'Petto di pollo, cotto senza olio', pt: 'Peito de frango, cozido sem óleo',
-         ja: '鶏むね肉（油なしで加熱）', 'zh-Hans': '鸡胸肉（无油烹制）',
-         'zh-Hant': '雞胸肉（無油烹製）', ar: 'صدر دجاج مطهو بدون زيت' } },
+    aka: ['פילה עוף', 'chicken fillet'],
+    /* The plain name, because a bare "chicken breast" means the cooked one -
+       the convention the search already had. It used to be the LONGEST name
+       of the two and so read as the less plain food, which sent every bare
+       query in ten languages to the raw row. */
+    t: { en: 'Chicken breast', de: 'Hähnchenbrust',
+         es: 'Pechuga de pollo', fr: 'Blanc de poulet',
+         it: 'Petto di pollo', pt: 'Peito de frango',
+         ja: '鶏むね肉', 'zh-Hans': '鸡胸肉',
+         'zh-Hant': '雞胸肉', ar: 'صدر دجاج' } },
+
+  /* The raw one, which the core did not have at all - only a raw thigh. It is
+     the most weighed food there is in anything to do with training, and a
+     person who writes "לפני בישול" means exactly this row: 120 kcal and
+     22.5 g against the cooked row's 176 and 33. */
+  { id: 'chicken-breast-raw', he: 'בשר עוף, חזה, ללא עור ללא עצמות, רק בשר, לא מבושל',
+    aka: ['פילה עוף', 'chicken fillet'],
+    t: { en: 'Chicken breast, raw', de: 'Hähnchenbrust, roh',
+         es: 'Pechuga de pollo, cruda', fr: 'Blanc de poulet, cru',
+         it: 'Petto di pollo, crudo', pt: 'Peito de frango, cru',
+         ja: '鶏むね肉（生）', 'zh-Hans': '鸡胸肉（生）',
+         'zh-Hant': '雞胸肉（生）', ar: 'صدر دجاج نيء' } },
 
   { id: 'milk-3',       he: 'חלב 3% שומן, תנובה, טרה, הרדוף, יטבתה',
     t: { en: 'Milk, 3%', de: 'Milch, 3%', es: 'Leche, 3%', fr: 'Lait, 3%',
