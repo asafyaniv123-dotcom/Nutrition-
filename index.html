@@ -5238,8 +5238,34 @@ function picExact(food,src,grams){
   sayPaint();
 }
 /* The printed panel, then the tables. */
+/* What the packet actually stated, when it did not state everything.
+   Kept rather than discarded: a front-of-pack claim is a complete figure, not
+   a panel read badly, and it outranks anything the tables can offer. */
+var _picPartial=null;
+function picLabelOverlay(row){
+  var L=_picPartial;
+  if(!L||!row||!row.food)return false;
+  var per=(L.basis==='serving'&&L.serving_g>0)?100/L.serving_g:1;
+  var f={},k;
+  /* a CLONE: _foods rows are shared, and writing a packet's protein onto one
+     would change that food on every screen in the app */
+  for(k in row.food)if(row.food.hasOwnProperty(k))f[k]=row.food[k];
+  var did=false,map={kcal:'k',p:'p',c:'c',f:'f'};
+  for(k in map)if(map.hasOwnProperty(k)){
+    var v=picNum(L[k]);
+    /* only a real number is copied; everything else keeps the measured value,
+       which is what stops the NaN the all-or-none rule was written against */
+    if(v===null)continue;
+    f[map[k]]=Math.round(v*per*10)/10;
+    did=true;
+  }
+  if(!did)return false;
+  row.food=f;row.src='label';
+  return true;
+}
 function picByTable(j,items){
   var L=j&&j.label;
+  _picPartial=null;
   if(L){
     var row=picFromLabel(L,j.dish||items[0].food||'');
     if(row){
@@ -5247,10 +5273,16 @@ function picByTable(j,items){
       picExact(row,'label',g);
       return;
     }
+    /* Not all four, so it cannot stand alone - but what it DID say is still
+       the best evidence in the room. */
+    _picPartial=L;
   }
   foodsLoad(function(){
     sayResolveAll(items,function(rows){
       _picBusy=false;_sayItems=rows;_sayRow=-1;
+      /* The packet overrules the row it landed on, for the fields it actually
+         stated. A declared 26 g of protein should not become a matched 22.8. */
+      if(_picPartial&&rows.length)picLabelOverlay(rows[0]);
       /* Still busy: a picture is the shakiest input here, so its rows
          wait for the check exactly as a sentence's do. */
       sayCross(0);
