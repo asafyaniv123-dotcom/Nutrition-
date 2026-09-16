@@ -568,6 +568,39 @@ not on the eve of a first user.
 it now, and it is still there if the area ever comes back.
 
 
+## A warm-up you can plan, not only mark (2026-09-16)
+
+> *"להוסיף בכושר אפשרות להוסיף חימום בבניית אימון."*
+
+**Half of this exists, and the note is about which half.**
+
+In the **live** workout there is a warm-up: `toggleWarm()` flips `_fitWarm`,
+the log button changes colour, and the set goes into `ex.warm[]` rather than
+`ex.sets[]`. It is a decision made with the weight already on the bar.
+
+In the **builder** there is nothing. A template exercise carries `targetSets`
+and `targetReps` and that is all — a plan is *"3 sets × 10 reps"*, with nowhere
+to say *"and two warm-up sets first"*. So a warm-up is something you remember
+to mark, every session, for ever.
+
+**And that makes it small.** `warm:[]` is already initialised on every template
+exercise, so the data shape carries warm-ups today. What is missing is a
+**target** for them beside `targetSets` — not a new model, not a migration.
+
+Three things to get right:
+
+- **A planned warm-up must not become a working set.** They are counted apart
+  on purpose: warm-ups stay out of volume and out of the weekly sets-per-muscle
+  band, and a planned one must inherit that, not quietly inflate the number the
+  whole fitness screen is built around.
+- **The weight is the point.** A warm-up plan that only says "2 sets" is half a
+  plan; what people actually want written down is the ladder - 40%, 60%, then
+  the working weight - so it should be expressible as a fraction of the working
+  set rather than as an absolute nobody will update.
+- **It belongs to the exercise, not the session.** Different lifts warm up
+  differently, and a squat's ladder is not a curl's.
+
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
