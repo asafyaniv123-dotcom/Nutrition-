@@ -5674,7 +5674,22 @@ function deriveGrams(f){
 }
 /* Repeat foods are most foods, so an answer is kept. It also means the app
    still resolves a food you have logged before with no network at all. */
-var MATCH_KEY='food_match';
+/* WHICH MATCHER FILLED THIS CACHE. Without it a wrong answer learned once was
+   served forever: "ribeye steak cooked" kept returning T-bone steak for an
+   hour after the core, the scorer and the /match prompt had all been fixed
+   and each measured correct on its own. The cache is read before any of them
+   and had no way to know they had changed - so it survived a reload, a
+   release and a worker deploy, on every phone that ever learned it.
+   BUMP THIS whenever matching changes: sayScore and its word lists, the core
+   table, or the /match and /parse prompts. It costs one round trip per query
+   once, and it is the difference between shipping a fix and appearing to. */
+var MATCH_GEN=2;
+var MATCH_KEY='food_match_v'+MATCH_GEN;
+/* the older generations, removed rather than left to sit in storage */
+try{
+  localStorage.removeItem('food_match');
+  for(var _mg=1;_mg<MATCH_GEN;_mg++)localStorage.removeItem('food_match_v'+_mg);
+}catch(e){}
 function matchCache(){
   try{var o=JSON.parse(localStorage.getItem(MATCH_KEY)||'{}');return (o&&typeof o==='object')?o:{};}
   catch(e){return {};}
@@ -6083,9 +6098,20 @@ function sayResolve(it){
      miss, it is a different food. Better to say nothing was found - the panel
      already offers adding it by hand - than to hand back something confident
      and wrong. */
-  if(best&&toks.length>=3){
+  /* Two corrections to what counts. A state word is not one of the things
+     NAMED - "ribeye steak cooked" names a food in two words and says one
+     thing about how it was made - and the count has to look where sayScore
+     looked. A food reached through its aka list carries none of the query's
+     words in its displayed Hebrew name, which is the entire point of an aka,
+     so every English cut name scored zero against "בשר בקר, אנטריקוט,
+     לא מבושל" and was deleted as a near miss after being matched correctly. */
+  var ftoks=[];
+  for(i=0;i<toks.length;i++)if(!SAY_STATET[toks[i]])ftoks.push(toks[i]);
+  if(!ftoks.length)ftoks=toks;
+  if(best&&ftoks.length>=3){
     var got=0;
-    for(i=0;i<toks.length;i++)if(foodHas(best.s,toks[i]))got++;
+    for(i=0;i<ftoks.length;i++)
+      if(foodHas(best.s,ftoks[i])||(best.alt&&foodHas(best.alt,ftoks[i])))got++;
     if(got<2){best=null;ranked=[];}
   }
   var alts=best?ranked.slice(1,4).map(function(r){return r.f;}):[];
