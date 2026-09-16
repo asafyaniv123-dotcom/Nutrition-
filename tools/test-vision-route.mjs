@@ -21,6 +21,10 @@ const cut = (a, b) => {
 
 const ctx = vm.createContext({ console });
 vm.runInContext('var _sayText="",_picNote="",_picPartial=null,SYNC_SERVER="x",appLang=function(){return "he";};function _t(s){return s;}', ctx);
+/* picVision now sets the meal category from what the food said, so the two
+   functions that answer that have to be here - lifted, because a stub would
+   test the stub. */
+vm.runInContext(cut('function mealByClock(){', 'var _sayCat'), ctx);
 vm.runInContext(cut('function picServingG(t){', '/* ── READ THE PACKET FIRST'), ctx);
 vm.runInContext(cut('function picVision(dataUrl,note){', '/* The tables answer'), ctx);
 
