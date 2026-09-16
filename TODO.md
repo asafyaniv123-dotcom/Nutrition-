@@ -460,6 +460,70 @@ week and month cards, the streak, and `trainedOn`. Changing an answer for the
 wanted - but it argues for editing an ANSWER rather than re-running the whole
 evening, so a reopened day cannot come out emptier than it went in.
 
+## The journal reads like an inbox (2026-09-16)
+
+> *"אני רוצה שהיומן יהיה בנימה קצת יותר אישית — הוא נראה כמו תיבת מייל ואני
+> רוצה שהוא יראה יותר כמו יומן. אולי אפשרות להכניס פונט שונה ואפילו את הפונט
+> שלך, כלומר לצלם איך הכתב שלך נראה."*
+
+Measured before designing, and the cause is one line.
+
+### Why it feels like mail
+
+```
+.jrnl-text{ … font-family:inherit … }
+```
+
+**The journal is set in the app's UI font.** `inherit` resolves to `Assistant`
+— the same face as every button, tab and label on every other screen. A page
+you write your private thoughts on is wearing the typography of a toolbar,
+which is exactly what a compose box looks like.
+
+It is also a single `textarea` on a plain card with a search field under it.
+Nothing in the layout says *page*: no measure, no indent, no margin, no paper.
+
+### Three steps, and the first costs nothing
+
+**1 · The app already owns a second voice.** `--serif` is defined and used in
+eleven places — Frank Ruhl Libre, David, Noto Serif Hebrew — and they are
+system or already-loaded faces. **Setting the journal in `var(--serif)` and
+giving it a page's proportions is free**, needs no download, works offline, and
+changes the feeling more than anything else on this list.
+
+**2 · A choice of hand.** A small set, remembered per person: the plain sans,
+the serif, and something handwritten. **Checked rather than assumed: Google
+Fonts has `Playpen Sans Hebrew`**, from a family built out of handwriting
+research — so the handwritten option is one `<link>`, not a project.
+*The app already loads exactly one webfont this way* (`Assistant`, in the head),
+so this is the mechanism that is already there, not a new one.
+
+**3 · His own handwriting.** The ambitious half, and worth splitting in two
+because one part is cheap and one is a project.
+
+- **A real font from his writing** — print a glyph sheet, photograph it,
+  vectorise, build a `woff`. Hebrew needs the twenty-two letters, the five
+  finals, punctuation and digits. This is what Calligraphr does, and doing it
+  ourselves is image processing plus font generation: **a project, not a
+  feature.** Worth costing before promising.
+- **A photographed page** — write the entry on paper, photograph it, and the
+  journal keeps the picture as that day's page. **Not a font, and more
+  personal than one**, because it is the actual handwriting rather than an
+  average of it. And it reuses machinery that already exists and is tested:
+  the photo pipeline, and the closet's background flood fill with its own
+  test file.
+
+### Two constraints to respect
+
+**Offline.** `sw.js` caches nothing, deliberately. A Google-hosted font means
+the journal loses its face on a train. The serif in step 1 does not, which is
+another reason it comes first — and a webfont choice should fall back to the
+serif rather than to the UI sans.
+
+**Ten other languages.** A Hebrew handwriting face does nothing for Japanese or
+Arabic. The setting has to degrade to something sensible per language rather
+than leave a reader with a face that has no glyphs for their script.
+
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
