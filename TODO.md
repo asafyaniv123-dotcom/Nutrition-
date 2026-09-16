@@ -27,6 +27,32 @@ a nice animation would quietly get wrong:
 - and it must **never be the only way to reach anything**, because a long
   press has no keyboard and no screen-reader equivalent
 
+**AND IT KEEPS RESPONDING WHILE THE FINGER IS DOWN** — his words, 16/09:
+*"וימשיך להגיב כל עוד האצבע שלך לוחצת"*. That is not a second state reached at
+400ms, it is a SUSTAINED response with no completion moment, and the difference
+matters: a state that arrives has fired something, a surface that keeps
+answering has not. The second is what *"לא ממש החליט"* deserves.
+
+It also means the effect must **end gracefully at any instant**, because the
+finger lifts whenever it lifts — nothing may depend on reaching a phase of an
+animation, and whatever is running has to return to rest from wherever it got
+to.
+
+**AND NO COPY CALLOUT** — *"בלי שכשלוחצים לחיצה ארוכה הוא יציע לך להעתיק מלל
+מסוים"*. On a phone a long press over text IS the copy gesture, so without this
+the OS puts selection handles and a menu over exactly the button being held and
+nothing else here matters. `-webkit-touch-callout:none` and `user-select:none`
+on the hub and everything inside it, plus `preventDefault` on `contextmenu`,
+which is what covers desktop and the Android browsers that fire it anyway.
+
+**THE ONE THING TO DECIDE BEFORE BUILDING:** if the long press commits to
+nothing, what does lifting do? Two honest answers — the tap still opens סיום
+יום, because a tap is a tap however long it was held, which is how every
+platform button behaves; or a long press resolves to nothing at all, because
+the person was undecided. The first is the safer default and the one I would
+build; the second is defensible only if holding is given something else to mean
+later. Sliding off cancels either way.
+
 **HE NAMED TWO DIRECTIONS** and they are not exclusive:
 
 1. **The thin colour travels around the rim.** Each area already wears its own
@@ -46,15 +72,17 @@ any movement past a few pixels. That cancel list is the whole difficulty: on a
 phone the hub sits on a scrolling board, and a press that becomes a drag must
 not light up.
 
-**Three traps, all of them platform rather than design:**
+**And three traps, all of them platform rather than design:**
 
-- a long press on mobile raises the OS selection handles and the context menu
-  over exactly the element being held — `-webkit-touch-callout:none` and
-  `user-select:none` on the hub, or the effect is invisible under a menu
-- whatever happens on release has to stay decided: if the long press does
+- whatever happens on release has to stay decided: if a long press ever does
   something, the tap must not also fire on the way out
-- `prefers-reduced-motion` still applies, and a rotating rim is precisely the
-  kind of thing it exists for
+- `prefers-reduced-motion` still applies, and it applies HARDER now that the
+  response is continuous — a rim that turns for as long as a finger rests on it
+  is exactly what that setting exists for, and the reduced answer is a still
+  state, not a slower turn
+- a sustained effect runs for an unbounded time on a phone, so it has to be
+  compositor-only: a transform on one layer. A repaint per frame is free for
+  190ms and is not free for as long as somebody leans on the screen
 
 **Where it belongs first:** סיום יום at the centre of the board, because that
 is the button he described and the one already carrying the inversion. If it

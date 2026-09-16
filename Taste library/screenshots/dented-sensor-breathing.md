@@ -90,6 +90,11 @@ evening: a long press should say something of its own - the thin rim colour
 travelling around the button, or the centre carried softly further in - because
 the gesture it answers is someone who **has not decided where to press yet**.
 
+**And it keeps answering for as long as the finger stays down** - a sustained
+response with no completion moment, not a second state reached at 400ms. Which
+is the closest thing yet to what this reference actually does: it never
+resolves, it just keeps being alive under attention.
+
 That is a different sentence from "something happened", and it is the same
 sentence this reference spends its whole loop saying. Whatever gets built has
 to stay inside the numbers above: eleven levels, and nothing that arrives as a
