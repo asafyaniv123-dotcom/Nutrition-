@@ -5782,8 +5782,38 @@ var SAY_DERIVED=['מיובש','מיובשת','אבקה','אבקת','מרוכז',
    saying both - פול יבש, מבושל - is the cooked food and must not be
    penalised for naming its ingredient. */
 var SAY_RAW={'יבש':1,'תערובת':1,'אבקה':1,'אבקת':1,'מיובש':1,'מיובשת':1};   // i18n-exempt: same list, same comparison
-var SAY_COOKED=['מבושל','מבושלת','אפוי','אפויה','צלוי','צלויה','בגריל'];   // i18n-exempt: same list, same comparison
-var SAY_PEEL=['בלי קליפה','ללא קליפה'],SAY_PEELW=['קליפה'];   // i18n-exempt: compared against the folded key
+/* ── THE STATE IT WAS WEIGHED IN ──
+   Two vocabularies, and the bug is that they are not the same one. The TABLES
+   say לא מבושל; PEOPLE say חי, גולמי, לפני בישול. Where the two failed to
+   meet, 189 g of chicken was answered with the cooked row - 62 g of protein
+   where the raw row gives 43.
+
+   Every word below was counted against the 7,240 rows first. טרי is missing
+   on purpose: it is a word in 114 of them and it means FRESH far more often
+   than it means uncooked, so claiming it would have moved all 114 on a guess.
+   נא is a word in exactly one, which is why it is safe to read as raw. */
+var SAY_RAWQ=['לפני בישול','לא מבושל','לא מבושלת','גולמי','גולמית','חי','חיה','נא','raw','uncooked'];   // i18n-exempt: matched against the folded key, which is never displayed
+var SAY_COOKQ=['אחרי בישול','מבושל','מבושלת','מוכן','מוכנה','cooked'];   // i18n-exempt: same list, same comparison
+/* How a ROW says it is raw. Kept apart from the list above because a query
+   and a table name are written by different people for different reasons. */
+var SAY_RAWROW=['גולמי','גולמית','חי','חיה','נא'];   // i18n-exempt: same list, same comparison
+/* Tokens that describe a state and never a food, so they may not become the
+   gate. מבושל is deliberately absent: it is a word in 380 rows and makes a
+   perfectly good gate, and the cooked case was never the broken one. */
+var SAY_STATET={'לפני':1,'אחרי':1,'בישול':1,'גולמי':1,'גולמית':1,'חי':1,'חיה':1,'נא':1,'raw':1,'uncooked':1,'cooked':1,'מוכן':1,'מוכנה':1};   // i18n-exempt: same list, same comparison
+/* The SAY_DERIVED entries that mean RAW rather than processed. Asked for raw,
+   these stop being a form nobody wanted and become the form that was. */
+var SAY_RAWMARK={'לא מבושל':1,'לא מבושלת':1};   // i18n-exempt: same list, same comparison
+/* מטוגן is a word in 166 rows and was missing, so a fried row counted as
+   neither cooked nor raw and escaped every penalty - which is how asking
+   for raw chicken returned it fried at 176 kcal. מעושן and כבוש are left
+   out on purpose: smoking and pickling preserve, they do not cook. */
+var SAY_COOKED=['מבושל','מבושלת','אפוי','אפויה','צלוי','צלויה','בגריל','מטוגן','מטוגנת','מטוגנים','מוקפץ','מאודה','שלוקה','בתנור'];   // i18n-exempt: same list, same comparison
+/* Skin is the same question as peel and the same arithmetic: a chicken
+   breast with its skin on is 172 kcal where the plain one is 120. Asking
+   about עור explicitly still turns the preference off, exactly as asking
+   about קליפה does. */
+var SAY_PEEL=['בלי קליפה','ללא קליפה','ללא עור','בלי עור'],SAY_PEELW=['קליפה','עור'];   // i18n-exempt: compared against the folded key
 /* The same four lists in the other ten languages. f.s carries the row's
    name in the reader's language, so a Hebrew-only list fires for one
    reader in eleven: lentils came back as the dry row at 338 kcal in eight
@@ -5864,6 +5894,22 @@ langOn(function(){
   for(i in SAY_RAW)SAY_R[i]=1;
   for(i=0;i<(L.r||[]).length;i++)SAY_R[L.r[i]]=1;
 });
+/* What the person said about the state, if anything. Raw is tested first and
+   wins: it is the unusual thing to say, nobody writes it by accident, and
+   "לא מבושל" contains "מבושל" whole. */
+function sayAskState(q){
+  var k=foodKey(q),i;
+  for(i=0;i<SAY_RAWQ.length;i++)if(sayWord(k,SAY_RAWQ[i]))return 'raw';
+  for(i=0;i<SAY_COOKQ.length;i++)if(sayWord(k,SAY_COOKQ[i]))return 'cooked';
+  return '';
+}
+/* And what the ROW says about it. Two spellings of the same fact. */
+function sayRawRow(str){
+  var i;
+  if(str.indexOf('לא מבושל')>=0)return true;   // i18n-exempt: compared against the folded key, which is never displayed
+  for(i=0;i<SAY_RAWROW.length;i++)if(sayWord(str,SAY_RAWROW[i]))return true;
+  return false;
+}
 /* Cooked, and not merely containing the letters of it. */
 function sayCooked(str){
   var t=str,i;
@@ -5912,9 +5958,18 @@ function sayScore(f,q,toks){
      shorter name. */
   var i,gate=arguments.length>3?arguments[3]:null;
   if(!gate){
-    gate=toks[0];
-    for(i=1;i<toks.length;i++)if(toks[i].length>gate.length)gate=toks[i];
+    /* A state word is never the food, and the gate must be the food. גולמי is
+       longer than both עוף and חזה and appears as a word in NO row of 7,240,
+       so "חזה עוף גולמי" gated on it scored -1 everywhere and the answer came
+       from the fallback: fried chicken, 176 kcal against the raw row's 120.
+       Saying the food was raw made the answer worse than staying silent. */
+    var gt=[];
+    for(i=0;i<toks.length;i++)if(!SAY_STATET[toks[i]])gt.push(toks[i]);
+    if(!gt.length)gt=toks;
+    gate=gt[0];
+    for(i=1;i<gt.length;i++)if(gt[i].length>gate.length)gate=gt[i];
   }
+  var ask=sayAskState(q);
   /* Through the forms, like every other comparison here: a photograph
      that says "bananas" must not be gated out of every banana row.
 
@@ -5930,8 +5985,14 @@ function sayScore(f,q,toks){
     if(!f.alt||(f.alt.indexOf(gate)<0&&!foodHas(f.alt,gate)))return -1;
     hay=f.alt;alt=1;
   }
+  /* A state word is not a name. It already decides the gate and moves the
+     score by 2600; paying it a hit as well rewards a row for having the
+     vocabulary of cooking in its NAME rather than for being in the state
+     that was asked for - which is how a row called "לפנ לשיטת הבישול" beat
+     the raw one by 1,400 points. מבושל is not in this list and still counts,
+     because it really is part of 380 row names. */
   var hits=0;
-  for(i=0;i<toks.length;i++)if(foodHas(hay,toks[i]))hits++;
+  for(i=0;i<toks.length;i++)if(!SAY_STATET[toks[i]]&&foodHas(hay,toks[i]))hits++;
   /* Among the curated rows the file order decides, because a short name is
      not a plainer food - it is what foodSearch settled on for the same
      reason. Outside core there is nothing better than length. */
@@ -5952,7 +6013,7 @@ function sayScore(f,q,toks){
      Rewarding the exact word rather than forbidding the loose one keeps both:
      600 is over the file-order and length tie-breaks and far under one
      matched word, so a word someone actually typed still decides. */
-  for(var w=1;w<toks.length;w++)if(sayWord(hay,toks[w]))score+=600;
+  for(var w=1;w<toks.length;w++)if(!SAY_STATET[toks[w]]&&sayWord(hay,toks[w]))score+=600;
   /* The tables weigh some things as bought. An apple with its peel is an
      apple; a walnut with its peel is a walnut and a SHELL, and it reads
      294 where the nut is 654. Preferring the row that says it is peeled
@@ -5964,7 +6025,23 @@ function sayScore(f,q,toks){
   var d,cooked=sayCooked(f.s);
   for(d=0;d<SAY_D.length;d++)
     if(f.s.indexOf(SAY_D[d])>=0&&q.indexOf(SAY_D[d])<0&&
-       !(cooked&&SAY_R[SAY_D[d]]))score-=2500;
+       !(cooked&&SAY_R[SAY_D[d]])&&
+       /* 'לא מבושל' is in SAY_DERIVED, so the raw row was docked 2500 as a
+          form nobody asked for - unless the person typed that exact phrase,
+          which nobody does. Asked for raw, it is the form they asked for. */
+       !(ask==='raw'&&SAY_RAWMARK[SAY_D[d]]))score-=2500;
+  /* The state, once the two vocabularies have been made to meet. 2600 is above
+     the 2500 it has to overturn and below the 4000 one matched word is worth:
+     enough to choose between two rows of the same food, never enough to
+     outvote which food it is. Cooked gets 900 because cooked is already what
+     the tables default to - a nudge, not a rescue. */
+  if(ask==='raw'){
+    if(sayRawRow(f.s))score+=2600;
+    else if(cooked)score-=2600;
+  }else if(ask==='cooked'){
+    if(cooked)score+=900;
+    else if(sayRawRow(f.s))score-=900;
+  }
   /* Found under a name that is not on the screen. Still an answer, and
      still a worse one than a food found under the name being read. */
   if(alt)score-=1200;
