@@ -5365,7 +5365,13 @@ function picVision(dataUrl,note){
         _picPartial=L;
         var nm=String(j.product_name||'');
         if(j.brand&&nm.indexOf(j.brand)<0)nm=j.brand+' '+nm;
-        picVisionRows([{food:nm,amount:g>0?g:100,unit:'g'}],L);
+        /* How much there IS, which is not what the numbers are PER. A 170 g
+           pot with a "per 100 g" panel was being logged as 100 g. And a pack
+           weight that was assumed rather than read is marked as an estimate -
+           the amount is the one thing people do correct. */
+        var pg=(+j.package_g>0)?+j.package_g:0;
+        picVisionRows([{food:nm,amount:pg||(g>0?g:100),unit:'g',
+                        ai:!!(pg&&j.package_is_guess)}],L);
         return;
       }
       _picPartial=null;
@@ -5382,13 +5388,27 @@ function picVisionRows(items,L){
   foodsLoad(function(){
     sayResolveAll(items,function(rows){
       _picBusy=false;_sayRow=-1;
-      if(!rows.length){
+      /* sayResolveAll does not answer "nothing found" with an empty list - it
+         answers with a row that has no food on it, which is what draws the
+         red חפש tag. Testing the LENGTH therefore never saw a miss, and a
+         product the tables have never heard of showed nothing at all while
+         its panel sat read and parsed in _picPartial. */
+      if(!rows.length||!rows[0].food){
         /* Nothing in 6,899 foods to hang it on. A complete reading can still
            stand alone; an incomplete one cannot, and saying so is better
            than a row with holes in it. */
+        /* A COMPLETE reading stands on its own - energy and all three macros,
+           which is what a European nutrition panel always prints. That is not
+           inventing: it is the packet, and a packet outranks a table row, so
+           it certainly outranks nothing.
+           An INCOMPLETE one still does not, and that is deliberate. With no
+           table row underneath to supply what the packet did not state, a
+           missing macro would be stored as 0 and counted in the day as a
+           measured zero - the bug picFromLabel's all-or-none rule exists for,
+           which shipped once already. The panel says so instead. */
         if(L&&L.kcal!==undefined&&L.p!==undefined&&L.c!==undefined&&L.f!==undefined){
           var row=picFromLabel(L,items[0].food);
-          if(row){picExact(row,'label',L.serving_g>0?L.serving_g:items[0].amount);return;}
+          if(row){picExact(row,'label',items[0].amount>0?items[0].amount:(L.serving_g>0?L.serving_g:100));return;}
         }
         picFail(''+_t('זיהיתי את המוצר אבל אין לי שורה מתאימה במאגר. כתוב מה אכלת ואפרק.')+'');
         return;

@@ -20,7 +20,7 @@ const cut = (a, b) => {
 };
 
 const ctx = vm.createContext({ console });
-vm.runInContext('var _sayText="",_picNote="",_picPartial=null,SYNC_SERVER="x",appLang=function(){return "he";};', ctx);
+vm.runInContext('var _sayText="",_picNote="",_picPartial=null,SYNC_SERVER="x",appLang=function(){return "he";};function _t(s){return s;}', ctx);
 vm.runInContext(cut('function picServingG(t){', '/* ── READ THE PACKET FIRST'), ctx);
 vm.runInContext(cut('function picVision(dataUrl,note){', '/* The tables answer'), ctx);
 
@@ -97,5 +97,67 @@ for (const [what, ans] of [
   ['the reply was not an object   ', null],
 ]) check('fallback to /see: ' + what, (await run(ans))?.to === 'picSee');
 
+/* ── the product the tables have never heard of ──
+   sayResolveAll does NOT answer "nothing found" with an empty list. It answers
+   with a row carrying q and no food, which is what draws the red חפש tag - so
+   a guard testing rows.length never saw a miss, and an Ísey Skyr read
+   perfectly by /vision showed "אין פריטים שזוהו" and no numbers at all. */
+vm.runInContext(cut('function picVisionRows(items,L){', 'function picSee('), ctx);
+/* picFromLabel and picNum live in their own context so the stubs above cannot
+   shadow them; they are lifted, not restated. */
+const ctx2 = vm.createContext({ console });
+vm.runInContext('function _t(s){return s;}', ctx2);
+vm.runInContext(cut('function picNum(', 'function picFromLabel('), ctx2);
+/* to the END of picFromLabel, not to the next name I happened to remember:
+   picLabelOverlay sits 12,000 characters later with ADD_WAYS in between, and
+   lifting all of it dragged in half the app. */
+const fromLabel = (() => {
+  const i = src.indexOf('function picFromLabel(');
+  const j = src.indexOf('\r\n}', i);
+  if (i < 0 || j < 0) throw new Error('could not lift picFromLabel');
+  return src.slice(i, j + 3);
+})();
+vm.runInContext(fromLabel, ctx2);
+
+const rowsCase = (resolved, L, amount) => {
+  const seen = {};
+  Object.assign(ctx, {
+    foodsLoad: (fn) => fn(),
+    sayResolveAll: (items, done) => done(resolved(items)),
+    picExact: (row, src, g) => { seen.exact = { n: row.n, k: row.k, p: row.p, src, g }; },
+    /* the real one, lifted - it is what decides that an incomplete reading
+       cannot stand alone, and stubbing it would test the stub */
+    picFromLabel: (L, n) => vm.runInContext(`picFromLabel(${JSON.stringify(L)},${JSON.stringify(n)})`, ctx2),
+    picLabelOverlay: () => { seen.overlaid = true; return true; },
+    picFail: (m) => { seen.failed = String(m).slice(0, 30); },
+    sayCross: () => {}, sayPaint: () => {},
+    _sayItems: null, _sayRow: 0, _picBusy: true,
+  });
+  vm.runInContext('picVisionRows(arg1,arg2)', Object.assign(ctx, {
+    arg1: [{ food: 'Ísey Skyr', amount, unit: 'g' }], arg2: L,
+  }));
+  return seen;
+};
+
+const FULL = { basis: 'serving', serving_g: 100, kcal: 61, p: 11, c: 4, f: 0.2 };
+const PARTIAL = { basis: 'serving', serving_g: 100, p: 11 };
+const noFood = () => [{ q: 'Ísey Skyr', food: null }];
+const gotFood = () => [{ q: 'Ísey Skyr', food: { n: 'יוגורט', k: 60, p: 5, c: 4, f: 2 } }];
+
+console.log('\n  a product with no row in the tables\n');
+let r = rowsCase(noFood, FULL, 170);
+check('a row with NO FOOD counts as a miss         ', !!r.exact, r.exact ? '' : 'fell through to ' + (r.failed || 'nothing'));
+check('a complete reading becomes a row of its own ', r.exact && r.exact.k === 61 && r.exact.p === 11);
+check('tagged as coming from the label             ', r.exact && r.exact.src === 'label');
+check('at the PACK weight, not the panel basis     ', r.exact && r.exact.g === 170, r.exact ? r.exact.g + ' g' : '');
+
+r = rowsCase(noFood, PARTIAL, 170);
+check('an INCOMPLETE reading does not stand alone  ', !r.exact && !!r.failed,
+  'with no row underneath, an unread macro would be stored as a measured 0');
+
+r = rowsCase(gotFood, FULL, 170);
+check('a row WITH a food is still overlaid, not replaced', !!r.overlaid && !r.exact);
+
 console.log(bad ? '\n' + bad + ' FAILED' : '\nthe packet decides, the plate does not');
 process.exit(bad ? 1 : 0);
+
