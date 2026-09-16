@@ -1918,6 +1918,14 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
    on rather than felt. */
 .hcard:active::after{opacity:.4}
 .hcards{position:relative;width:100%}
+/* Absolutely centred on its own point, like the capsules - in a ring the hub
+   is one more thing being placed, not the thing above them. */
+.hcards.ring .hhero{position:absolute;margin:0;transform:translateX(-50%);z-index:2}
+.hcards.ring .hhero:active{transform:translateX(-50%) scale(.975)}
+/* Behind everything, and it must never swallow a tap. */
+.hwires{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
+.hwires path{fill:none;stroke:rgba(108,126,138,.3);stroke-width:1.4;stroke-linecap:round}
+.hcards.ring .hcard{z-index:1}
 /* A CAPSULE, not a rectangle with a bigger radius: the radius is half the
    element's own width, so the top and bottom are semicircles and there is
    no corner left anywhere. Taller than it is wide by about one to one
@@ -22383,6 +22391,52 @@ function homeCardHTML(a,cls){
    same curve, starting beside the first one's dip rather than under it, so
    the two read as one spiral wrapping the circle rather than as two rows. */
 var ARC_W=70,ARC_DEPTH=44,ARC_BASE=6,ARC_PITCH=10;
+/* ── THE RING ──
+   The arc above stays, untouched and solved; this is the other shape, the one
+   the references draw: the hub in the middle and everything around it, joined
+   by a line. HUB is the hero's own diameter, and GAP is what has to be left
+   between the hub's edge and a capsule's - it is where the wire is visible,
+   so it is the difference between "connected" and "touching". */
+var RING_HUB=176,RING_GAP=26;
+/* Nine points on an ellipse, rotated half a step so nothing sits at twelve
+   o'clock - a capsule directly above the hub reads as a crown rather than as
+   one of nine. */
+function ringPoints(n,cx,cy,rx,ry){
+  var at=[],i,th;
+  for(i=0;i<n;i++){
+    th=-Math.PI/2+(i+0.5)*(2*Math.PI/n);
+    at.push({x:cx+rx*Math.cos(th),y:cy+ry*Math.sin(th),th:th});
+  }
+  return at;
+}
+function ringPlan(n,W,H){
+  if(!(W>0))W=398;
+  if(!(H>0))H=118;
+  /* Bounded by the board, not by taste: half the width less half a capsule,
+     so the outermost edge lands exactly on the board's inside. */
+  var rx=Math.max(96,W/2-ARC_W/2-2);
+  /* And tall enough that a capsule at the top clears the hub. */
+  var ry=Math.max(RING_HUB/2+H/2+RING_GAP,rx*0.82);
+  /* THEN GROWN UNTIL IT FITS. rx is bounded by the board - there is no more
+     width to give - so height is the only thing left to spend, and a taller
+     ellipse pushes neighbours apart along its own edge. Measured before this
+     existed: clean at 460, 414, 390 and 360, four overlapping pairs at 320.
+     Two boxes overlap only if they overlap on BOTH axes, which is the test
+     below; the cap is there because a ring taller than the screen is its own
+     kind of broken, and reaching it is reported rather than drawn. */
+  var at,i,tight=true,guard=0;
+  while(tight&&guard++<60){
+    at=ringPoints(n,W/2,ry+H/2,rx,ry);
+    tight=false;
+    for(i=0;i<n;i++){
+      var p=at[i],q=at[(i+1)%n];
+      if(Math.abs(p.x-q.x)<ARC_W&&Math.abs(p.y-q.y)<H){tight=true;break;}
+    }
+    if(tight)ry+=6;
+  }
+  var cx=W/2,cy=ry+H/2;
+  return {at:at,cx:cx,cy:cy,rx:rx,ry:ry,w:W,tight:tight,height:Math.round(cy+ry+H/2)};
+}
 /* The widest rank this board can hold: neighbouring centres must be at
    least a capsule apart or they touch. Never more than five - beyond that
    the sweep flattens into a row however wide the screen is. */
@@ -22476,16 +22530,19 @@ function renderHomeGrid(){
   for(i=0;i<on.length;i++)if(on[i].id==='endofday')hub=on[i];else rest.push(on[i]);
   g.className='home-board';
   var h='';
-  if(hub)h+=homeCardHTML(hub,'hhero');
   /* The width the board really got, not the width it asked for. */
   _arcW=Math.max(0,g.clientWidth-16);
-  h+='<div class="hcards">';
+  /* The hub moves INSIDE the ring box, because in a ring it is placed in the
+     same coordinate space as everything it is joined to - outside it, there
+     is nothing to measure the wires against. */
+  h+='<div class="hcards ring">';
+  if(hub)h+=homeCardHTML(hub,'hhero');
   for(i=0;i<rest.length;i++)h+=homeCardHTML(rest[i],'hcard');
   h+='</div>';
   g.innerHTML=h;
-  arcPlace(g,rest.length);
+  ringPlace(g,rest.length);
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){
-    if(document.getElementById('home-grid')===g)arcPlace(g,rest.length);
+    if(document.getElementById('home-grid')===g)ringPlace(g,rest.length);
   });
 }
 /* A geometry solved for one width is right at one width. The rank narrows
@@ -22495,6 +22552,55 @@ function renderHomeGrid(){
 /* Laid out at their natural heights, read, then set to one height and
    dropped onto the curve. Two passes, because the first one is the only
    way to learn what this language's wording actually needs. */
+/* One SVG behind everything, from the hub's edge to each capsule's inner
+   edge. Quadratic rather than straight, and the control point is pulled off
+   the line by a fraction of its own length - that is the whole difference
+   between the reference's soft wires and a bicycle wheel. */
+function ringWires(plan,H){
+  var d='',i,p,a;
+  for(i=0;i<plan.at.length;i++){
+    p=plan.at[i];a=p.th;
+    /* start on the hub's rim, end on the capsule's near side - both measured
+       along the same angle, so the wire always points at what it joins */
+    var x1=plan.cx+(RING_HUB/2-2)*Math.cos(a),y1=plan.cy+(RING_HUB/2-2)*Math.sin(a);
+    var rx2=Math.abs(Math.cos(a))*(ARC_W/2)+Math.abs(Math.sin(a))*(H/2);
+    var x2=p.x-rx2*Math.cos(a),y2=p.y-rx2*Math.sin(a);
+    /* perpendicular to the run, a fifth of its length, alternating side so
+       the nine do not all bow the same way */
+    var mx=(x1+x2)/2,my=(y1+y2)/2,dx=x2-x1,dy=y2-y1;
+    var len=Math.sqrt(dx*dx+dy*dy)||1,k=(i%2?-1:1)*len*0.18;
+    var qx=mx+(-dy/len)*k,qy=my+(dx/len)*k;
+    d+='<path d="M'+x1.toFixed(1)+' '+y1.toFixed(1)+'Q'+qx.toFixed(1)+' '+qy.toFixed(1)+
+       ' '+x2.toFixed(1)+' '+y2.toFixed(1)+'"/>';
+  }
+  return '<svg class="hwires" viewBox="0 0 '+Math.round(plan.w)+' '+plan.height+
+    '" preserveAspectRatio="none" aria-hidden="true">'+d+'</svg>';
+}
+function ringPlace(g,n){
+  var cards=g.querySelectorAll('.hcard'),H=0,i;
+  /* the same lesson the arc learned: let go of the height BEFORE reading it,
+     or the second pass measures what the first pass wrote */
+  for(i=0;i<cards.length;i++){cards[i].style.height='';cards[i].style.left='';cards[i].style.top='';}
+  for(i=0;i<cards.length;i++){var e=cards[i].offsetHeight;if(e>H)H=e;}
+  var plan=ringPlan(n,_arcW,H);
+  for(i=0;i<cards.length&&i<plan.at.length;i++){
+    cards[i].style.height=H+'px';
+    cards[i].style.left=(plan.at[i].x/plan.w*100).toFixed(2)+'%';
+    cards[i].style.top=Math.round(plan.at[i].y-H/2)+'px';
+  }
+  var hero=g.querySelector('.hhero');
+  if(hero){
+    hero.style.left=(plan.cx/plan.w*100).toFixed(2)+'%';
+    hero.style.top=Math.round(plan.cy-RING_HUB/2)+'px';
+  }
+  var box=g.querySelector('.hcards');
+  if(box){
+    box.style.height=plan.height+'px';
+    var old=box.querySelector('.hwires');
+    if(old)old.parentNode.removeChild(old);
+    box.insertAdjacentHTML('afterbegin',ringWires(plan,H));
+  }
+}
 function arcPlace(g,n){
   var cards=g.querySelectorAll('.hcard'),H=0,i;
   /* Let go of the height BEFORE reading it. The second pass, the one the web
