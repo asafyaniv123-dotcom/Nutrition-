@@ -9,6 +9,37 @@ because the two disagree badly on the one number that matters most.
 
 ---
 
+## 0 · Where this stands
+
+**Enrolment submitted and paid: 16 September 2026, 16:49.** Individual,
+identity verified in the Apple Developer app by scanning the ID, which is the
+faster of the two routes. Status: processing. The Enrollment ID is not
+recorded here on purpose — this repository is public.
+
+**The clock §1 asked for is now running on our own case.** Apple says 24–48
+hours; community reports say two to seven weeks. On 23 Sep, whatever has or
+has not happened by then is a measured number rather than an argument.
+
+**The choice in §5 is made, and he made it: B.**
+
+> *"אני יודע שאני רוצה שהאפליקציה תוכל להיות מותקנת בכל טלפון בעולם"*
+
+That is the business question §5 said only he could answer, answered. A is
+out. C was already written off on the evidence. What remains is a wrapper —
+and the one engineering consequence is §4: **the evening reminder has to be
+rebuilt on native push**, because Web Push does not exist inside a WKWebView
+and that reminder is the spine of the habit loop.
+
+**"Every phone in the world" is two stores, not one.** Google Play is $25 once
+against Apple's $99 a year, but a new *personal* Play account reportedly must
+run a closed test with a number of testers for a continuous period before it
+may apply for production access. That rule — the count and the days — is
+exactly the kind of number §1 warns about, and it has NOT been verified here
+yet. It should be, before any Play date is promised, because the binding
+constraint may turn out to be finding testers rather than paying anyone.
+
+---
+
 ## 1 · Start the enrolment today. This is the finding that cannot wait.
 
 Apple's own enrolment page says confirmation arrives within **24–48 hours**
@@ -142,6 +173,11 @@ that live in this file's comments. **Then it has to be maintained twice.**
 **On the evidence here, C is not a real option and should be written off
 rather than left open.** The choice is between A and B, and it is a business
 question — reach — not a technical one.
+
+**DECIDED 16 Sep 2026: B.** Asked, he answered that he wants the app
+installable on any phone in the world — which rules out A by definition rather
+than by argument. See §0. The push rewrite in §4 is therefore no longer a
+hypothetical cost; it is scheduled work, and it belongs on the 23 Sep agenda.
 
 ---
 
