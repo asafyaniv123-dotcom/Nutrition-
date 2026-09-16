@@ -17,8 +17,10 @@ import fs from 'fs';
 
 const CR = String.fromCharCode(13), LF = String.fromCharCode(10);
 const s = fs.readFileSync('dev/index.html', 'utf8').split(CR + LF).join(LF);
-const gs = s.indexOf('id="game-src"'), ge = s.indexOf('</script>', gs);
-const app = s.slice(0, gs) + ' '.repeat(ge - gs) + s.slice(ge);
+/* The game was taken out of the product on 16 September. gs is -1 now,
+   and the blanking below turns that into half the file scanned twice. */
+const gs = s.indexOf('id="game-src"'), ge = gs < 0 ? -1 : s.indexOf('</script>', gs);
+const app = (gs < 0 ? s : s.slice(0, gs) + ' '.repeat(ge - gs) + s.slice(ge));
 
 /* The literal form only. A _t(variable) - the muscle captions, the feeling
    chips - cannot be read statically; those keys come from the collection the

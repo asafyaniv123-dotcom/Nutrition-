@@ -14,8 +14,10 @@ const BS = String.fromCharCode(92);       // a literal backslash, in source text
 /* Takes a path so it can be pointed at an older revision. */
 const FILE = process.argv[2] || 'dev/index.html';
 const s = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
-const gs = s.indexOf('id="game-src"'), ge = s.indexOf('</script>', gs);
-const app = s.slice(0, gs) + s.slice(ge);
+/* The game was taken out of the product on 16 September. gs is -1 now,
+   and the blanking below turns that into half the file scanned twice. */
+const gs = s.indexOf('id="game-src"'), ge = gs < 0 ? -1 : s.indexOf('</script>', gs);
+const app = gs < 0 ? s : s.slice(0, gs) + s.slice(ge);
 
 /* ── an HTML entity hides a glued sentence ──
    The pair rule's gap is [^;\n], because a semicolon ends the statement and a

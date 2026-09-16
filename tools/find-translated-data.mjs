@@ -42,10 +42,12 @@ const CR = String.fromCharCode(13), LF = String.fromCharCode(10);
    never been shown finding anything is not evidence of anything. */
 const FILE = process.argv[2] || 'dev/index.html';
 const s = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
-const gs = s.indexOf('id="game-src"'), ge = s.indexOf('</script>', gs);
+/* The game was taken out of the product on 16 September. gs is -1 now,
+   and the blanking below turns that into half the file scanned twice. */
+const gs = s.indexOf('id="game-src"'), ge = gs < 0 ? -1 : s.indexOf('</script>', gs);
 
 /* Offsets stay honest by blanking the game rather than cutting it out. */
-const app = s.slice(0, gs) + ' '.repeat(ge - gs) + s.slice(ge);
+const app = (gs < 0 ? s : s.slice(0, gs) + ' '.repeat(ge - gs) + s.slice(ge));
 
 /* A _t call, with whatever immediately precedes and follows it. */
 const CALL = /_t\((['"])((?:(?!\1).)*)\1(?:\s*,[^)]*)?\)/g;

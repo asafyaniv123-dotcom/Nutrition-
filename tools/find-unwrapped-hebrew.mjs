@@ -31,9 +31,10 @@ const raw = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
 const HEB = /[֐-׿]/;
 
 /* The game is a document of its own and is never touched. */
+/* -1 once the game is gone; every use below is guarded on it. */
 const gs = raw.indexOf('id="game-src"');
 const ge = gs < 0 ? -1 : raw.indexOf('</script>', gs);
-const src = gs < 0 ? raw : raw.slice(0, gs) + ' '.repeat(ge - gs) + raw.slice(ge);
+const src = gs < 0 ? raw : (raw.slice(0, gs) + ' '.repeat(ge - gs) + raw.slice(ge));
 
 const lineOf = (i) => src.slice(0, i).split(LF).length;
 const lineAt = (i) => {

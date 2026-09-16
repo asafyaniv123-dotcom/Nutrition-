@@ -27,9 +27,10 @@ const FILE = process.argv[2] || 'dev/index.html';
 const raw = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
 
 /* The game is a document of its own and is never touched. */
+/* -1 once the game is gone; every use below is guarded on it. */
 const gs = raw.indexOf('id="game-src"');
 const ge = gs < 0 ? -1 : raw.indexOf('</script>', gs);
-const app = gs < 0 ? raw : raw.slice(0, gs) + ' '.repeat(ge - gs) + raw.slice(ge);
+const app = gs < 0 ? raw : (raw.slice(0, gs) + ' '.repeat(ge - gs) + raw.slice(ge));
 
 /* Every top-level `var NAME=` — column zero, so a var inside any function body
    is skipped by construction rather than by a brace count that can drift. */
