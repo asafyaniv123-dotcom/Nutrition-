@@ -2016,7 +2016,10 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .hcards{position:relative;width:100%}
 /* Absolutely centred on its own point, like the capsules - in a ring the hub
    is one more thing being placed, not the thing above them. */
-.hcards.ring .hhero{position:absolute;margin:0;transform:translateX(-50%);z-index:2}
+/* BEHIND, not on top. The plan keeps them apart now, but if anything ever
+   does overlap, the thing you can tap should be the thing you can see - a hub
+   hiding a button is worse than a button crossing a hub. */
+.hcards.ring .hhero{position:absolute;margin:0;transform:translateX(-50%);z-index:0}
 .hcards.ring .hhero:active{transform:translateX(-50%) scale(.975)}
 /* Behind everything, and it must never swallow a tap. */
 /* The wedges themselves. Translucent like everything else on this board, a
@@ -2024,8 +2027,69 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
    rim - the same identity the capsules carry, on the edge that is furthest
    from the hub and so reads as the fan's outline. */
 .hfan{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
-.hfan .fanw{fill:rgba(255,255,255,.74);stroke:rgba(255,255,255,.9);stroke-width:1}
+/* RAISED, not flat. A soft shadow under each wedge and a lit top edge, which
+   is what the reference's tiles have and ours did not - he has asked twice for
+   three dimensions and twice used the word עדין about them. */
+.hfan{filter:drop-shadow(0 6px 10px rgba(88,108,122,.22))}
+.hfan .fanw{fill:rgba(255,255,255,.88);stroke:rgba(255,255,255,.95);stroke-width:1.2}
 .hfan .fanr{fill:none;stroke-width:3;stroke-linecap:round;opacity:.72}
+/* the gauge: a quiet track, and the day filled in along it */
+.hfan .fang{fill:none;stroke:rgba(120,138,150,.22);stroke-width:2.5;stroke-linecap:round}
+.hfan .fangf{fill:none;stroke:var(--violet-500);stroke-width:2.5;stroke-linecap:round;opacity:.75}
+/* NO FRAME. The panel was a card holding the areas; the reference has no card,
+   one ground and nothing framing anything. */
+.home-board:has(.hcards.fan){background:none;box-shadow:none;padding-top:10px;padding-bottom:16px}
+/* ── THE HUB BREATHES ──
+   A still gradient reads as a PICTURE of a curved thing - which is why the
+   well looked flat and the raised version looked like a silver plate. The
+   depth here is in the MOTION: a highlight that travels, on a surface with
+   grain. Once the light moves, the shape stops being the question.
+   A shallow depression, because that is what the reference is. */
+.hcards.fan .hhero{
+  background:radial-gradient(118% 118% at 50% 8%,
+    rgba(104,124,140,.16) 0%,rgba(104,124,140,.06) 38%,rgba(255,255,255,.3) 100%);
+  box-shadow:
+    inset 0 16px 26px -10px rgba(74,94,110,.34),
+    inset 0 3px 6px -2px rgba(74,94,110,.26),
+    inset 0 -16px 24px -12px rgba(255,255,255,.95),
+    0 1px 0 rgba(255,255,255,.7)}
+/* THE GRAIN, STATIC. A perfectly smooth gradient is always a screen; a
+   gradient with grain is a thing. Rendered once as a data URI, clipped to the
+   circle, and never animated - moving grain is the expensive half and buys
+   nothing. */
+/* THE SURFACE, as a layer of its own. It clips itself, so the button does not
+   have to - overflow:hidden on the button ate the vlog dot, which sits half
+   outside its edge by design. */
+.hhero-skin{position:absolute;inset:0;border-radius:50%;overflow:hidden;z-index:0;pointer-events:none}
+.hcards.fan .hhero-skin::before{content:"";position:absolute;inset:0;border-radius:50%;
+  margin:0;box-shadow:none;z-index:0;pointer-events:none;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E")}
+/* THE TRAVELLING LIGHT. transform on its own layer, which the compositor
+   moves without repainting - box-shadow or filter animated here would repaint
+   every frame, and on a phone that is the difference between free and
+   battery. */
+.hcards.fan .hhero-skin::after{content:"";position:absolute;inset:-26%;border-radius:50%;
+  z-index:0;pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,
+    rgba(255,255,255,.9) 0%,rgba(255,255,255,.42) 34%,rgba(255,255,255,0) 62%);
+  animation:hubBreath 9s ease-in-out infinite;will-change:transform}
+@keyframes hubBreath{
+  0%{transform:translate(-11%,-14%) scale(1)}
+  50%{transform:translate(9%,7%) scale(1.07)}
+  100%{transform:translate(-11%,-14%) scale(1)}
+}
+/* Something that never stops moving has to know how to stop. */
+@media (prefers-reduced-motion:reduce){
+  .hcards.fan .hhero-skin::after{animation:none;transform:translate(-6%,-8%)}
+}
+/* ONE POINT OF COLOUR, and it means something: lit while today's reflection is
+   unwritten, quiet the moment there is one. */
+.hub-dot{position:absolute;left:50%;bottom:-3px;width:7px;height:7px;border-radius:50%;
+  transform:translateX(-50%);background:#e0a23f;
+  box-shadow:0 0 10px 3px rgba(224,162,63,.55),0 0 3px 1px rgba(224,162,63,.8);
+  animation:hubDot 3.4s ease-in-out infinite;z-index:2;pointer-events:none}
+@keyframes hubDot{0%,100%{opacity:.5}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.hub-dot{animation:none;opacity:.85}}
 /* In the fan the button carries only what is written on it - the wedge behind
    it is the surface, so the button must not paint one of its own. */
 .hcards.fan .hcard{background:none;box-shadow:none;padding:0;gap:3px;transform:translate(-50%,-50%)}
@@ -2034,6 +2098,48 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
    compromise - an area is not guessable from a pictogram - but the sentence
    under it does not fit a wedge and was spilling out of one. */
 .hcards.fan .hcard-s{display:none}
+/* ── ROUND AND RAISED ──
+   Two circles, not one: a collar, and a cap sitting on it slightly off centre.
+   That offset IS the three dimensions - it reads as a lid on a base rather
+   than as a disc with a border drawn round it. */
+.hcards.nodes .hcard{width:74px;height:74px;border-radius:50%;padding:0;gap:0;overflow:visible;
+  background:linear-gradient(158deg,#ffffff 0%,#f2f6f9 62%,#e6eef3 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.95) inset,0 10px 20px -10px rgba(88,108,122,.5),0 2px 4px -2px rgba(88,108,122,.35);
+  transform:translate(-50%,-50%)}
+/* the cap. Offset up and to the start, so more collar shows at the far edge,
+   which is exactly where the reference lets its own base show. */
+.hcards.nodes .hcard::before{content:"";position:absolute;inset:6px;border-radius:50%;
+  margin-block-start:-2px;margin-inline-end:-2px;
+  background:linear-gradient(200deg,#ffffff 0%,#fbfdfe 55%,#eef4f8 100%);
+  box-shadow:0 3px 7px -3px rgba(88,108,122,.4),0 1px 0 #fff inset;z-index:0}
+/* thick, and on the collar's outer edge. A third of the rim, not a border. */
+.hcards.nodes .hcard::after{content:"";position:absolute;inset:-5px;border-radius:50%;
+  border:5px solid transparent;border-top-color:var(--area,transparent);
+  border-inline-start-color:var(--area,transparent);
+  transform:rotate(var(--rot,18deg));opacity:.82;display:block}
+.hcards.nodes .hcard-ic{position:relative;z-index:1}
+/* the name lives OUTSIDE the node, as it does in the reference */
+.hcards.nodes .hcard-t{position:absolute;top:calc(100% + 5px);inset-inline:-18px;
+  font-size:10px;line-height:1.25;z-index:1}
+.hcards.nodes .hcard-s{display:none}
+.hcards.nodes .hcard:active{transform:translate(-50%,-50%) scale(.95)}
+/* the hub as a raised cylinder: a fat ring with the disc floating on it */
+.hcards.nodes .hhero{background:linear-gradient(160deg,#e9eef2 0%,#dbe4ea 55%,#cdd9e1 100%);
+  box-shadow:0 18px 34px -16px rgba(88,108,122,.55),0 1px 0 rgba(255,255,255,.9) inset}
+.hcards.nodes .hhero::before{inset:19px;margin-block-start:-5px;margin-inline-end:-5px;
+  background:linear-gradient(200deg,#ffffff 0%,#fdfefe 60%,#f2f7fa 100%);
+  box-shadow:0 8px 18px -8px rgba(88,108,122,.45),0 1px 0 #fff inset}
+/* darker and thinner, like the reference's */
+/* NO FRAME. The board was a tinted panel with its own edge and shadow - a
+   card holding the areas. The reference has no card: one flat ground, and
+   nothing framing anything. Only in this layout; the fan and the rows were
+   composed against the panel. */
+.home-board:has(.hcards.nodes){background:none;box-shadow:none;padding-top:14px;padding-bottom:18px}
+/* THE COLLAR, DARKER. It is the one thing in the reference that carries
+   weight - a turned grey ring with the white disc floating on it, rather than
+   a pale ring that dissolves into its own ground. */
+.hcards.nodes .hhero{background:linear-gradient(162deg,#c3cfd8 0%,#aebdc8 52%,#9aabb8 100%);
+  box-shadow:0 20px 38px -16px rgba(64,82,96,.6),0 2px 5px -2px rgba(64,82,96,.45),0 1px 0 rgba(255,255,255,.55) inset}
 .lay-strip{display:flex;gap:6px;justify-content:center;margin-top:14px}
 .lay-b{border:1.5px solid var(--line);border-radius:999px;padding:5px 13px;background:var(--card);color:var(--muted);font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .lay-b.on{border-color:var(--violet-500);color:var(--violet-500)}
@@ -23613,8 +23719,6 @@ var HOME_AREAS;langOn(function(){HOME_AREAS=[
    svg:'<svg viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 1.9 1.9 0 0 0 1.5-3.1 1.9 1.9 0 0 1 1.5-3.1h2.1a3 3 0 0 0 2.9-3A8.8 8.8 0 0 0 12 3.2Z"/><circle cx="8.2" cy="10" r=".9"/><circle cx="12" cy="7.6" r=".9"/><circle cx="15.8" cy="10" r=".9"/></svg>'},
   {id:'endofday',color:PAL.water500,title:''+_t('סיום יום')+'',sub:''+_t('ראיון יומי ושיקוף')+'',fixed:true,
    svg:'<svg viewBox="0 0 24 24"><path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/></svg>'},
-  {id:'journal',color:'#b8791a',title:''+_t('יומן')+'',sub:''+_t('לכתוב כל יום מה שבא')+'',
-   svg:'<svg viewBox="0 0 24 24"><path d="M5.5 4.2h10a3 3 0 0 1 3 3v12.6H8.5a3 3 0 0 1-3-3Z"/><path d="M5.5 16.8h13"/><path d="M9 8.4h6"/><path d="M9 11.8h4"/></svg>'},
   {id:'insights',color:'#7a716b',title:''+_t('תובנות')+'',sub:''+_t('מחשבות, שאלות וגילויים')+'',
    svg:'<svg viewBox="0 0 24 24"><path d="M9.2 17.6h5.6"/><path d="M10.2 20.4h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.4h5v-.4c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4Z"/></svg>'},
   {id:'people',color:PAL.terra500,title:''+_t('האנשים שלי')+'',sub:''+_t('אנשים שחשובים לי')+'',
@@ -23710,7 +23814,11 @@ function homeCardHTML(a,cls){
      anywhere but the icon. Handed to CSS as a property so the rim arc reads
      the SAME value, rather than a second palette that drifts from this one. */
   return '<button class="'+cls+' '+a.id+'" data-area="'+a.id+'" style="--area:'+a.color+'">'+
+    (cls==='hhero'?'<span class="hhero-skin"></span>':'')+
     (a.id==='endofday'?vlogDotHTML():'')+
+    /* Lit while today has no reflection in it, and gone once it does -
+       loadSummary already answers that, so nothing new is stored. */
+    (a.id==='endofday'&&!loadSummary(todayStr())?'<span class="hub-dot"></span>':'')+
     '<span class="'+ic+'" style="color:'+a.color+'">'+a.svg+'</span>'+
     '<span class="'+(cls==='hhero'?'hhero-t':'hcard-t')+'">'+a.title+'</span>'+
     '<span class="'+(cls==='hhero'?'hhero-s':'hcard-s')+'">'+a.sub+'</span>'+
@@ -23823,9 +23931,14 @@ function ringPoints(n,cx,cy,rx,ry){
 function ringPlan(n,W,H){
   if(!(W>0))W=398;
   if(!(H>0))H=118;
+  /* A 74px circle is not a 70x118 capsule, and the ring that could not hold
+     nine of the second holds nine of the first easily - the arithmetic that
+     killed the dome was the capsule's HEIGHT as much as its width. */
+  var CW=(HOME_LAYOUT==='nodes')?78:ARC_W;
+  if(HOME_LAYOUT==='nodes')H=Math.min(H,86);
   /* Bounded by the board, not by taste: half the width less half a capsule,
      so the outermost edge lands exactly on the board's inside. */
-  var rx=Math.max(96,W/2-ARC_W/2-2);
+  var rx=Math.max(96,W/2-CW/2-2);
   /* And tall enough that a capsule at the top clears the hub. */
   var ry=Math.max(RING_HUB/2+H/2+RING_GAP,rx*0.82);
   /* THEN GROWN UNTIL IT FITS. rx is bounded by the board - there is no more
@@ -23848,7 +23961,20 @@ function ringPlan(n,W,H){
        bottom, which is the one pair that is allowed to be close. */
     for(i=0;i<n-1;i++){
       var p=at[i],q=at[i+1];
-      if(Math.abs(p.x-q.x)<ARC_W&&Math.abs(p.y-q.y)<H){tight=true;break;}
+      if(Math.abs(p.x-q.x)<CW&&Math.abs(p.y-q.y)<H){tight=true;break;}
+    }
+    /* AND NONE OF THEM MAY TOUCH THE HUB. ry only ever guaranteed vertical
+       clearance, so at the ends of the arc a capsule swung in beside the hub
+       and vanished under it - the hub is drawn on top. A box meets a circle
+       when the nearest point ON the box is within the radius, which is what
+       this asks. */
+    if(!tight){
+      var hcx=W/2,hcy=ry+H/2,hr=RING_HUB/2+8;
+      for(i=0;i<n;i++){
+        var nx=Math.max(at[i].x-CW/2,Math.min(hcx,at[i].x+CW/2));
+        var ny=Math.max(at[i].y-H/2,Math.min(hcy,at[i].y+H/2));
+        if(Math.sqrt((nx-hcx)*(nx-hcx)+(ny-hcy)*(ny-hcy))<hr){tight=true;break;}
+      }
     }
     if(tight)ry+=6;
   }
@@ -24026,6 +24152,19 @@ function fanPlace(g,n){
          (plan.cy+p.r1*Math.sin(p.a1)).toFixed(1)+'" style="stroke:'+col+'"/>';
   }
   d+=rim;
+  /* THE GAUGE. The reference's one measuring element, and the app already has
+     the number - DP_FROM to DP_TO is the day the planning screen draws, and
+     this is the same fraction its bar shows. A wall-clock question, asked of
+     the wall clock, which is the distinction find-raw-clock-days enforces. */
+  var gd=new Date(),gm=gd.getHours()*60+gd.getMinutes();
+  var gfrom=DP_FROM*60,gto=(DP_TO+1)*60;
+  var gp=Math.max(0,Math.min(1,(gm-gfrom)/(gto-gfrom)));
+  var gr=plan.r0-13,ga0=-Math.PI/2-1.05,ga1=-Math.PI/2+1.05;
+  var arcAt=function(t){var a=ga0+(ga1-ga0)*t;
+    return (plan.cx+gr*Math.cos(a)).toFixed(1)+' '+(plan.cy+gr*Math.sin(a)).toFixed(1);};
+  d+='<path class="fang" d="M'+arcAt(0)+'A'+gr+' '+gr+' 0 0 1 '+arcAt(1)+'"/>';
+  if(gp>0.002)
+    d+='<path class="fangf" d="M'+arcAt(0)+'A'+gr+' '+gr+' 0 0 1 '+arcAt(gp)+'"/>';
   var old=box.querySelector('.hfan');
   if(old)old.parentNode.removeChild(old);
   box.insertAdjacentHTML('afterbegin',
@@ -24058,8 +24197,9 @@ var HOME_LAYOUT=(function(){
 /* Keys only. The words are fetched when they are drawn - a collection
    carrying a translated string is one refactor away from being compared
    against, which is the whole reason find-translated-data exists. */
-var HOME_LAYOUTS=['fan','auto','rows'];   // i18n-exempt: keys, never shown
+var HOME_LAYOUTS=['nodes','fan','auto','rows'];   // i18n-exempt: keys, never shown
 function layLabel(k){
+  if(k==='nodes')return ''+_t('עיגולים')+'';
   if(k==='fan')return ''+_t('מניפה')+'';
   if(k==='rows')return ''+_t('שורות')+'';
   return ''+_t('כיפה')+'';
@@ -24082,6 +24222,16 @@ function homePlace(g,n){
   var box0=g.querySelector('.hcards'),old0=box0&&box0.querySelector('.hfan');
   if(old0)old0.parentNode.removeChild(old0);
   if(box0)box0.classList.toggle('fan',HOME_LAYOUT==='fan');
+  if(box0)box0.classList.toggle('nodes',HOME_LAYOUT==='nodes');
+  if(HOME_LAYOUT==='nodes'){
+    if(box0)box0.classList.add('ring');
+    ringPlace(g,n);
+    /* The ring already says everything belongs to the hub. The wires were
+       saying it a second time. */
+    var w1=box0&&box0.querySelector('.hwires');
+    if(w1)w1.parentNode.removeChild(w1);
+    return;
+  }
   if(HOME_LAYOUT==='fan'){if(box0)box0.classList.add('ring');fanPlace(g,n);return;}
   if(HOME_LAYOUT==='rows'){
     if(box0){box0.classList.remove('ring');var w0=box0.querySelector('.hwires');if(w0)w0.parentNode.removeChild(w0);}
@@ -24113,6 +24263,12 @@ function ringPlace(g,n){
     cards[i].style.height=H+'px';
     cards[i].style.left=(plan.at[i].x/plan.w*100).toFixed(2)+'%';
     cards[i].style.top=Math.round(plan.at[i].y-H/2)+'px';
+    /* The arc faces AWAY from the hub. Its angle is the node's own place on
+       the ring - the same number that positioned it - so the nine read as one
+       object with an outer edge instead of as nine badges. The border sits on
+       the top-and-start quadrant, so the rotation is the node's angle plus a
+       right angle to bring that quadrant round to the outside. */
+    cards[i].style.setProperty('--rot',(plan.at[i].th*180/Math.PI+135).toFixed(1)+'deg');
   }
   var hero=g.querySelector('.hhero');
   if(hero){
