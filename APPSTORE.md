@@ -282,6 +282,73 @@ requirement on Play as it is on Apple
 
 ---
 
+## 8 · The dated plan — written 16 Sep 2026
+
+Every date here is either fixed by somebody else, or ours. They are marked,
+because confusing the two is how a plan becomes a wish.
+
+| when | what | whose date |
+|---|---|---|
+| 16–22 Sep | Freeze. Apple enrolment sits in the queue. | **not ours** |
+| **23 Sep** | The backlog day. Must include the habit-grid fix. | ours |
+| **25 Sep** | First user. | ours |
+| 25 Sep – 5 Oct | Her first week. The only real readiness signal there is. | ours |
+| **by 30 Sep** | **The habit grid breaks on 1 October.** Hard deadline. | ours |
+| ~5–12 Oct | Capacitor wrapper + the native push rewrite of §4. | ours |
+| **~12 Oct** | **First TestFlight build.** | ours |
+| 12–20 Oct | Listing, screenshots, privacy policy, real-device testing. | ours |
+| ~20 Oct | App Store submission. | ours |
+| +1 to 3 days | Apple review. Budget one rejection cycle, see §3. | **not ours** |
+| **late Oct – early Nov** | **iOS public** | |
+| ~12 Oct | Android build → closed test opens. | ours |
+| +14 days, continuous | Google's tester clock. Cannot be shortened. | **not ours** |
+| ~26 Oct | Apply for production access. | ours |
+| +≤7 days | Google review. | **not ours** |
+| **early–mid Nov** | **Android public** | |
+
+### The honest headline
+
+**The app is on real phones around 12 October, through TestFlight, and that
+needs no store at all.** The public listings follow: **iOS late October or
+early November, Android mid-November.**
+
+### The blocker nobody has said out loud
+
+**We work on Windows.** §5 B says a wrapper "needs a Mac" as if it were a
+footnote. It is not. **No Mac means no iOS build, no TestFlight and no
+submission** — it gates the earliest date on this page, not the last one.
+
+Three ways out, and the choice should be made before 5 Oct rather than
+discovered on it:
+
+- **A Mac.** A Mac mini is the cheapest new machine that does it. Owned
+  outright, no recurring cost, and it is also what every future release needs.
+- **A hosted build.** GitHub Actions has macOS runners, and Codemagic and
+  Ionic Appflow exist for exactly this. Cheaper up front, another moving part
+  to maintain, and signing certificates on someone else's machine.
+- **Borrow one.** Fine for the first build, bad as a plan — every release
+  needs it again.
+
+Nothing else on this page is blocked on a purchase. This one is.
+
+### What would actually make these dates slip
+
+Not the queues. **The product.** Every date from 5 Oct onward assumes the
+first user's week says the app is ready to be shown to strangers, and that is
+the one input nobody can estimate in advance. If her week says otherwise, the
+right move is to let these dates slip rather than ship to a store what a
+single person has not yet enjoyed using — the roadmap's own order was that the
+first two goals cannot be bought with the third.
+
+### And the smallest true version of the goal
+
+He said: installable on **any phone in the world**. That is true on 12 October
+through TestFlight, for anyone he invites, in eleven languages, with no store
+listing and no review. The stores are how strangers find it — which is a
+different and later problem from whether it works on people's phones.
+
+---
+
 ## Sources
 
 - [Apple — Program Enrollment](https://developer.apple.com/help/account/membership/program-enrollment/)
