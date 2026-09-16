@@ -659,6 +659,58 @@ will follow it with load on the joint.
    question as a side effect.
 
 
+## Lifting the brand restraint was tried and measured, and it failed (2026-09-16)
+
+> *"הקטע זה שהג׳מיני גם כשיש אריזה חצי הוא הולך לעבודת מחקר קצרה, מבין מה
+> המוצר, לוקח את הערכים ושולח. אצלנו זה לא עובד ככה."*
+
+He is describing the difference exactly, and it pointed at a prompt line I
+had already argued against twice this week:
+
+> *"Never invent a specific brand’s published figures. If a brand is named and
+> you do not know it, estimate the generic food and say so."*
+
+The condition is right and it arrives SECOND - the sentence opens with an
+absolute prohibition, and a model follows the first clause. So I separated the
+two cases: know it, say so and mark it as the maker’s figure; do not know it,
+estimate the generic. Deployed it, and tested it on the case it was built for.
+
+### It produced a confident wrong answer
+
+| Herbalife 24 Rebuild Strength, 30 g | kcal | protein |
+|---|---|---|
+|  with the restraint lifted | **35** | **6.0** |
+| the product | 114 | 15.0 |
+| , Gemini, yesterday | 114 | 14.4 |
+
+It answered 117 kcal and 20 g protein per 100 g - about a third of the truth -
+and reported . **That is precisely the failure the original
+restraint existed to prevent**, on the very case I lifted it for.
+
+Reverted and redeployed. The wording goes back as it was.
+
+### And the finding worth keeping
+
+**The two providers do not know the same products.** Asked the same tub,
+Gemini returns 114 kcal and 14.4 g protein and Claude returns 35 and 6.0. So
+"ask the model for a product’s published figures" is not one capability - it is
+a property of a particular provider for a particular product, and it cannot be
+unlocked by rewording a prompt.
+
+Which means the route he is describing is real but has to be built rather than
+permitted: when a product is identified and we hold no row for it, ASK THE
+PROVIDER THAT DEMONSTRABLY KNOWS IT, and mark the answer as the maker’s figure.
+We now have both providers wired, so that is a routing decision, not a prompt.
+
+### What actually worked today, by contrast
+
+**Reading what is printed.** The pastrami pack says "26 גרם חלבון" on its
+front, and the partial-label overlay took the app from 22.8 g to 26.0 g. No
+model was asked to recall anything.
+
+That is the order to keep: read the packet, then a row that IS this product,
+then a provider that knows this product, then a generic row - and say which.
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
