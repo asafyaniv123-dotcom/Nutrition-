@@ -30,13 +30,12 @@ and the one engineering consequence is §4: **the evening reminder has to be
 rebuilt on native push**, because Web Push does not exist inside a WKWebView
 and that reminder is the spine of the habit loop.
 
-**"Every phone in the world" is two stores, not one.** Google Play is $25 once
-against Apple's $99 a year, but a new *personal* Play account reportedly must
-run a closed test with a number of testers for a continuous period before it
-may apply for production access. That rule — the count and the days — is
-exactly the kind of number §1 warns about, and it has NOT been verified here
-yet. It should be, before any Play date is promised, because the binding
-constraint may turn out to be finding testers rather than paying anyone.
+**"Every phone in the world" is two stores, not one.** Checked against
+Google's own documentation on 16 Sep and written up in §7. The short version:
+Play costs $25 once against Apple's $99 a year, and its gate is not money or
+a queue — it is **twelve real people for fourteen continuous days**. That is
+the harder of the two constraints to satisfy right now, and it is the one
+nobody would have budgeted for.
 
 ---
 
@@ -197,6 +196,92 @@ hypothetical cost; it is scheduled work, and it belongs on the 23 Sep agenda.
 
 ---
 
+## 7 · Google Play — verified 16 Sep 2026
+
+Checked against Google's own Play Console Help pages, not the guide sites,
+because the guide sites agree with each other and disagree with Google on the
+one thing that affects privacy.
+
+### The money is the easy part
+
+**$25, once, with no annual renewal** — against Apple's $99 every year. Over
+five years that is $25 against $495. Money is not the constraint here.
+
+### The constraint is twelve people for fourteen days
+
+A **personal** Play account created after **13 November 2023** — ours would be
+— must "run a closed test for their app with a minimum of **12 testers who
+have been opted in continuously for at least 14 days**" before it may even
+*apply* for production access
+([Play Console Help](https://support.google.com/googleplay/android-developer/answer/14151465)).
+
+Three details that decide whether the clock actually runs:
+
+- **Opted in means installed.** A tester who accepted the invite but never
+  installed does not count.
+- **The fourteen days are continuous.** Google: "Testers who opt in, test for
+  fewer than 14 days, and then opt out do not count toward the requirement."
+  Opting out and back in resets the counter.
+- **Then it is an application, not a switch.** Three sections of questions
+  about the closed test, the app, and production readiness. "Review usually
+  takes seven days or less, but can occasionally take longer."
+
+It was twenty testers until 11 December 2024 and is twelve now
+([Testers Community](https://www.testerscommunity.com/blog/google-play-closed-testing-requirements-2026)) —
+a community figure, recorded as such.
+
+**So the two stores fail in opposite ways.** Apple's wait is long, opaque and
+asks nothing of us. Google's is short, published and asks for **twelve people
+who will keep the app installed for a fortnight**. On 25 Sep we have one user.
+That is the real Play blocker, and it is a people problem rather than an
+engineering one.
+
+**Apple has no equivalent gate.** TestFlight takes up to 10,000 testers with
+no minimum and no waiting period, which means the fastest route to "installed
+on someone's phone" is Apple's, not Google's — and it does not require the
+public listing at all.
+
+### Two findings from checking, neither of them in the original claim
+
+**The stage name he asked about is possible on Play and not on Apple.** The
+Play developer name is a name you CHOOSE, "shown on Google Play to identify
+your developer profile and apps", while legal name and physical address are
+collected for verification and are **not** publicly displayed
+([Play Console Help](https://support.google.com/googleplay/android-developer/answer/13634081)).
+Apple's individual enrolment shows the legal name and needs registered
+documentation for a trade name. So the same app could ship as *Better Me* by a
+chosen name on Play and by *Asaf Yaniv* on the App Store, and that asymmetry is
+worth knowing before either listing is written.
+
+**But that reverses the moment the app charges money.** Google's own page says
+a merchant account — one monetising through paid apps or in-app purchases —
+must show its "full address on Google Play", taken from the payments profile.
+For a personal account that is a **home** address. An organization account can
+use a business address instead.
+
+So: free with no purchases, nothing personal is published. Charge anything, and
+a personal Play account publishes where he lives. **If this app is ever going
+to charge, the Play account should be an organization from the start rather
+than migrated later.** That is a decision worth making before $25 is spent, not
+after — it costs nothing today and is awkward to undo.
+
+Verification for a personal account needs a government ID and a document
+proving the address; **no D-U-N-S number**, which is an organization
+requirement on Play as it is on Apple
+([Play Console Help](https://support.google.com/googleplay/android-developer/answer/10841920)).
+
+### What this means for the schedule
+
+1. **Nothing about Play is urgent the way Apple's queue was.** There is no
+   long opaque wait to get in front of.
+2. **But the fourteen-day clock cannot be shortened**, and it cannot start
+   before there is an Android build to install — which is the Capacitor work
+   in §5 B, which is after the freeze.
+3. **Twelve testers is the thing to start thinking about now**, because it is
+   the only item on this page that depends on other people.
+
+---
+
 ## Sources
 
 - [Apple — Program Enrollment](https://developer.apple.com/help/account/membership/program-enrollment/)
@@ -205,5 +290,10 @@ hypothetical cost; it is scheduled work, and it belongs on the 23 Sep agenda.
 - [Lance — Apple Developer enrolment timing](https://www.lance.app/guides/apple-developer-enrollment)
 - [MobiLoud — webview wrappers and the review guidelines](https://www.mobiloud.com/blog/app-store-review-guidelines-webview-wrapper)
 - [MobiLoud — publishing a PWA to the stores](https://www.mobiloud.com/blog/publishing-pwa-app-store/)
+- [Play Console Help — testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465)
+- [Play Console Help — developer account information, what is shown publicly](https://support.google.com/googleplay/android-developer/answer/13634081)
+- [Play Console Help — verify your developer identity](https://support.google.com/googleplay/android-developer/answer/10841920)
+- [Play Console Help — contact information requirements](https://support.google.com/googleplay/android-developer/answer/10840893)
+- [Testers Community — the 20-to-12 change, December 2024](https://www.testerscommunity.com/blog/google-play-closed-testing-requirements-2026)
 - [MagicBell — PWA iOS limitations](https://www.magicbell.com/blog/pwa-ios-limitations-safari-support-complete-guide)
 - [DEV — Capacitor push notifications](https://dev.to/saltorgil/the-complete-guide-to-capacitor-push-notifications-ios-android-firebase-bh4)
