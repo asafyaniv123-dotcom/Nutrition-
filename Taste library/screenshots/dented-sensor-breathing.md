@@ -53,6 +53,36 @@ reflection is the one thing in the app that waits for you every evening. "On,
 and waiting" is exactly its sentence, and a breathing surface says it without a
 badge, a count or a nag.
 
+## Decoded, 16 September 2026 - IT INVERTS
+
+Three versions built off this reference all felt wrong, and "אתה צריך ללמוד
+את זה" was fair, so I stopped reading it off screenshots caught at random
+moments and decoded it: Chrome's ImageDecoder, 250 frames, and for every frame
+the mean luminance of the band just above the disc's centre minus the band just
+below it. With light from above THAT NUMBER IS THE CURVATURE - a bulge is
+bright on top and dark below, a dent is the reverse.
+
+    top - bottom:   +21.6  ...  -37.9      IT FLIPS SIGN
+
+**The surface does not deepen. It turns inside out** - convex at rest, concave
+while pressed. That is why every attempt failed: I kept making ONE shape more
+so, when the whole effect is that the shape REVERSES. It also retires the
+question above - in / out was never a choice between two designs, it is the
+two ends of one motion.
+
+**The tonal range is eleven levels out of 255.** Four percent. Nothing ever
+gets dark; the light only moves. That is what "ממש רך" meant, and it turns out
+not to be a matter of taste but a number - mine was three times too contrasty.
+
+**The flip is fast against the holds** - about twelve of the 250 frames, then
+it sits. Quick and eased, never a slow fade, which is also why reading it as a
+nine-second idle loop was wrong: the motion is a RESPONSE.
+
+And at rest the dome is BLANK; the fingerprint appears only once it has
+inverted. The pressed state REVEALS rather than merely responds. That is the
+one thing deliberately not taken - the hub's label is how you know what it is,
+so ours cannot go blank.
+
 ## The hard part
 
 **A continuous animation is not free.** It repaints forever, on a phone, in a
