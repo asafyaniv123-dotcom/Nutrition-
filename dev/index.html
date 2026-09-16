@@ -960,6 +960,10 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .scan-in:focus{border-color:var(--violet-300)}
 .scan-go{border:none;border-radius:11px;padding:10px 16px;background:var(--ink);color:var(--white);font-size:12px;font-weight:800;font-family:inherit;cursor:pointer}
 .fdb-src{margin-top:8px;font-size:9.5px;color:var(--muted-soft);text-align:center;font-weight:700}
+.one-row{display:flex;gap:7px;align-items:stretch;margin-bottom:8px}
+.one-in{margin-bottom:0}
+.one-ic{flex:0 0 auto;width:44px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--line);border-radius:12px;background:var(--card);font-size:19px;line-height:1;cursor:pointer;padding:0;font-family:inherit}
+.one-gem{margin-bottom:0;margin-top:10px}
 .fdb-in{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font-size:16px;font-family:inherit;outline:none;margin-bottom:8px;background:var(--card)}
 .fdb-in:focus{border-color:var(--violet-300)}
 .fdb-ai-h{font-size:9.5px;font-weight:800;color:var(--violet-500);letter-spacing:.07em;margin:2px 2px 6px}
@@ -5073,11 +5077,14 @@ var _sayOpen=false,_sayBusy=false,_sayItems=null,_sayErr='';
 /* '' is closed. Only one way is open at a time - they are alternatives, not
    a list, and two open at once was most of what made this sprawl. */
 var _addMode='';
+/* Four, not seven. The four that went are not gone - they ARE the one box
+   below, which works out for itself whether what was typed is a food to look
+   up or a meal to break down, and carries the camera and the barcode as two
+   icons inside it. What stays on the fan is the three things that are
+   genuinely somewhere ELSE: what you saved, what you built, and the way in
+   for when you already know the numbers. */
 var ADD_WAYS;langOn(function(){ADD_WAYS=[
-  {k:'say', ic:'&#x1F4AC;', t:''+_t('משפט')+''},
-  {k:'pic', ic:'&#x1F4F8;', t:''+_t('צילום')+''},
-  {k:'find',ic:'&#x1F50D;', t:''+_t('חיפוש')+''},
-  {k:'scan',ic:'&#x1F4F7;', t:''+_t('ברקוד')+''},
+  {k:'find',ic:'&#x1F374;', t:''+_t('אוכל')+''},
   {k:'lib', ic:'&#x1F4DA;', t:''+_t('שלי')+''},
   {k:'comp',ic:'&#x1F37D;', t:''+_t('מתכונים')+''},
   {k:'man', ic:'&#x270E;',  t:''+_t('ידני')+''}
@@ -5099,6 +5106,7 @@ function addSetMode(k){
   if(_addMode!=='find')pendingLib=null;
   render();
   if(_addMode==='find'){
+    _oneAsked=false;
     foodsLoad(fdbPaint);
     setTimeout(function(){var e=document.getElementById('fdb-q');if(e)e.focus();},60);
   }
@@ -5421,8 +5429,74 @@ function gemGo(){
     _gemBusy=false;_gemErr=''+_t('אין חיבור כרגע.')+'';gemPaint();
   });
 }
+/* ── IS THIS A NAME, OR A SENTENCE? ──
+   Decided here, locally, for nothing. It fails towards the name on purpose:
+   a word search costs no call and shows its own failure, while a sentence
+   that was really a name has already spent two seconds by the time anyone
+   can tell. And because the local search runs FIRST either way, a wrong
+   answer here costs a search that had already happened. */
+function sayIsSentence(t){
+  var s=String(t||'').trim();
+  if(!s)return false;
+  /* A quantity is the clearest signal there is: nobody types a number into a
+     food NAME, and almost every sentence about eating carries one. Hebrew,
+     Latin and Arabic-Indic digits, because the box takes whatever keyboard
+     the phone is set to. */
+  if(/[0-9\u0660-\u0669\u06F0-\u06F9]/.test(s))return true;
+  /* A unit written out, with no digit beside it - "כוס קוטג", "כף שמן". */
+  if(/(^|\s)(כוס|כפית|כף|כפות|כוסות|פרוסה|פרוסות|יחידה|יחידות|חצי|רבע|שליש|גרם|מל|ליטר|קופסה|חבילה|מנה|צלחת|קערה)(\s|$)/.test(s))return true;
+  /* Two foods joined: the linking words, and a ו stuck to the front of one. */
+  if(/(^|\s)(עם|ועוד|בלי|על|בתוך)(\s|$)/.test(s))return true;
+  if(/\s\u05D5[\u05D0-\u05EA]{2,}/.test(s))return true;
+  /* Someone telling the story of a meal rather than naming a food. */
+  if(/(^|\s)(אכלתי|שתיתי|הכנתי|לקחתי|עשיתי|טעמתי|אכלנו)(\s|$)/.test(s))return true;
+  /* Length, last: four words or more is a description however it is phrased.
+     Three is still a name - "קוטג 5% תנובה", "לחם מחמצת שיפון". */
+  if(s.split(/\s+/).filter(Boolean).length>=4)return true;
+  return false;
+}
+/* Did the free search find anything worth showing? The tables have to be in
+   memory to answer; while they are still loading the answer is no, and the
+   query falls through to the breakdown rather than being silently dropped. */
+function oneHits(q){
+  if(_foodsState!=='ready')return false;
+  var r=foodSearch(q);
+  return !!(r&&r.length);
+}
+/* Whether the box is showing the model's rows instead of the free list. Any
+   keystroke puts it back - the list is the cheaper answer and the one that
+   belongs on screen by default. */
+var _oneAsked=false;
+/* At rest means: nothing typed, nothing found, nothing on its way. The
+   assistant answers questions about food and has no business sitting under a
+   list of rows waiting to be added to the day. Called from both painters,
+   because between them they run on every change the box can undergo. */
+function oneRest(){
+  var g=document.querySelector('.one-gem');
+  if(g)g.hidden=!!(_fdbQ||_sayItems||_sayBusy||_sayErr||_picThumb);
+}
+function oneGo(){
+  var el=document.getElementById('fdb-q');
+  var q=el?el.value.trim():'';
+  if(q.length<2)return;
+  /* The local search already ran, for free, while this was being typed. So
+     the only question left is whether the model has anything to add: it does
+     for a sentence, and it does for a name the tables could not place. */
+  if(!sayIsSentence(q)&&oneHits(q)){
+    var b=document.getElementById('fdb-body');
+    if(b&&b.scrollIntoView)b.scrollIntoView({block:'nearest',behavior:'smooth'});
+    return;
+  }
+  _oneAsked=true;fdbPick=null;
+  /* Take the free list down NOW, in the same tick. sayGo paints say-body
+     and nothing else, so without this the previous answer sits under the
+     box for as long as the model takes - which is exactly the "answer, then
+     a correction three seconds later" he asked us to stop doing. */
+  fdbPaint();
+  sayGo();
+}
 function sayGo(){
-  var el=document.getElementById('say-in');
+  var el=document.getElementById('say-in')||document.getElementById('fdb-q');
   var text=el?el.value.trim():'';
   if(text.length<2){_sayErr=''+_t('כתוב מה אכלת.')+'';sayPaint();return;}
   if(!SYNC_SERVER){_sayErr=''+_t('הפירוק דורש חיבור לשרת.')+'';sayPaint();return;}
@@ -6141,6 +6215,7 @@ function sayAdd(){
 var _sayRow=-1;
 function sayExpand(i){_sayRow=(_sayRow===i)?-1:i;sayPaint();}
 function sayPaint(){
+  oneRest();
   var el=document.getElementById('say-body');
   if(!el)return;
   if(_sayBusy){el.innerHTML='<div class="say-msg">'+
@@ -6309,6 +6384,9 @@ function sayPaint(){
 var _fdbAI=null,_fdbAIQ='',_fdbAIBusy=false,_fdbTimer=0;
 function fdbType(v){
   _fdbQ=v;fdbPick=null;
+  /* Back to the free answer. Rows from a previous breakdown must not sit
+     under a query that no longer produced them. */
+  if(_oneAsked){_oneAsked=false;_sayItems=null;_sayErr='';_sayBusy=false;sayPaint();}
   if(_fdbTimer){clearTimeout(_fdbTimer);_fdbTimer=0;}
   var q=String(v||'').trim();
   if(foodKey(q)!==foodKey(_fdbAIQ)){_fdbAI=null;_fdbAIBusy=false;}
@@ -6582,8 +6660,12 @@ function fdbSaveToLib(){
   fdbPaint();
 }
 function fdbPaint(){
+  oneRest();
   var el=document.getElementById('fdb-body');
   if(!el)return;
+  /* One answer at a time. Two lists of foods under one box, from two
+     different sources, is the sprawl this box was built to end. */
+  if(_oneAsked){el.innerHTML='';return;}
   if(_foodsState==='loading'){el.innerHTML='<div class="fdb-msg">'+_t('טוען את המאגר…')+'</div>';return;}
   if(_foodsState==='error'){el.innerHTML='<div class="fdb-msg">'+_t('לא הצלחתי לטעון את המאגר. בדוק חיבור ונסה שוב.')+'</div>';return;}
   if(_foodsState!=='ready'){el.innerHTML='';return;}
@@ -7747,8 +7829,32 @@ function renderToday(){
 
   var fdbHTML='';
   if(_addMode==='find'){
+    /* One row: the box, the lens, the barcode. capture="environment" opens
+       the back camera on a phone and is ignored on a desktop, where the same
+       control picks a file - so one input serves both without asking what
+       kind of machine this is. */
     fdbHTML='<div class="aw-body">'+
-      '<input class="fdb-in" id="fdb-q" placeholder="'+_t("חפש מאכל…")+'" value="'+esc(_fdbQ)+'" oninput="fdbType(this.value)"><div id="fdb-body"></div></div>';
+      '<div class="one-row">'+
+        '<input class="fdb-in one-in" id="fdb-q" placeholder="'+_t('מה אכלת? שם של מאכל, או משפט שלם')+'" value="'+esc(_fdbQ)+'" oninput="fdbType(this.value)" onkeydown="if(event.key===&#39;Enter&#39;){event.preventDefault();oneGo();}">'+
+        '<label class="one-ic" title="'+_t('צילום')+'" aria-label="'+_t('צילום')+'">&#x1F4F7;'+
+        '<input type="file" accept="image/*" capture="environment" hidden onchange="picPick(this)"></label>'+
+        '<button class="one-ic" onclick="scanOpen()" title="'+_t('ברקוד')+'" aria-label="'+_t('ברקוד')+'">&#x1F4CA;</button>'+
+      '</div>'+
+      '<button class="say-go" onclick="oneGo()">'+_t('פרק לי את זה')+'</button>'+
+      (_picThumb?'<div class="say-shot"><img src="'+_picThumb+'" alt=""></div>':'')+
+      '<div id="say-body"></div>'+
+      '<div id="fdb-body"></div>'+
+      /* The assistant, only while the box is at rest. It answers questions
+         about food; it does not log anything, and it has no business sitting
+         over a list of rows waiting to be added. */
+      '<div class="gem-wrap one-gem" hidden>'+
+          '<div class="gem-row">'+
+            '<input class="gem-in" id="gem-in" placeholder="'+_t('שאל על אוכל — מה יש בזה?')+'" onkeydown="if(event.key===&#39;Enter&#39;)gemGo()">'+
+            '<button class="gem-btn" id="gem-btn" onclick="gemGo()">'+_t('שאל')+'</button>'+
+          '</div>'+
+          '<div id="gem-out"></div>'+
+        '</div>'+
+      '</div>';
   }
 
   var libHTML='';
