@@ -542,6 +542,15 @@ export default {
         '  "פילה עוף לפני בישול", amount 189, unit g. Raw chicken breast is\n' +
         '  22.5 g of protein per 100 g and cooked is 31, so dropping those two\n' +
         '  words changes the answer by a third.\n' +
+        /* Same rule as /vision, same reason: "שתיתי קפה" is a drink whoever
+           reads it, and a plate of rice is lunch or dinner depending only on
+           the hour - which the app knows and this does not. */
+        '- meal_type, once for the whole sentence: "drink" if what was had is\n' +
+        '  drunk (water, coffee, tea, juice, a cola, a protein shake), "snack"\n' +
+        '  for one small thing on its own (a piece of fruit, a protein bar, a\n' +
+        '  handful of nuts), and "unspecified" for everything else. Do not\n' +
+        '  guess breakfast, lunch or dinner from the food - only the hour says\n' +
+        '  that, and you cannot see it.\n' +
         '- Never return calories, protein, carbohydrate or fat. You do not know them.\n' +
         '- No prose, no markdown fence, JSON only.';
 
@@ -597,7 +606,8 @@ export default {
         .filter(Boolean)
         .slice(0, 20);
 
-      return json({ ok: true, items });
+      return json({ ok: true, items,
+        meal_type: ['drink', 'snack'].indexOf(parsed && parsed.meal_type) >= 0 ? parsed.meal_type : 'unspecified' });
     }
 
     /* ── /match ──────────────────────────────────────────────────────────
@@ -1763,6 +1773,17 @@ export default {
         'energy line has calories_kcal null, not 0. Where a figure is null we ' +
         'fill it from measured tables; where it is 0 we believe you.' +
         '\n\n' +
+        '- meal_type: what the FOOD says, and nothing more.\n' +
+        '  "drink" for anything drunk - water, coffee, tea, juice, a cola, a\n' +
+        '  protein shake.\n' +
+        '  "snack" for a single piece of fruit, a protein bar, a handful of nuts,\n' +
+        '  a yogurt - one small item under roughly 200 kcal eaten on its own.\n' +
+        '  "unspecified" for EVERYTHING ELSE, and that is not a failure. A plate of\n' +
+        '  rice and chicken is lunch or dinner depending only on the hour, which\n' +
+        '  you cannot see. The app knows the time and will decide. Guessing here\n' +
+        '  files someone\u2019s food under the wrong meal with nothing to mark it as\n' +
+        '  a guess.\n' +
+        '\n' +
         'HOW MUCH THERE IS is a different question from what the numbers are ' +
         'PER, and they are answered separately. A pot printing "170 g" beside ' +
         'a panel headed "per 100 g" has serving_size_analyzed "100g" and ' +
@@ -1804,6 +1825,7 @@ export default {
           is_estimated: { type: 'BOOLEAN' },
           confidence: { type: 'STRING', enum: ['High', 'Medium', 'Low'] },
           cooking_state: { type: 'STRING', enum: ['raw', 'cooked', 'unspecified'] },
+          meal_type: { type: 'STRING', enum: ['breakfast', 'lunch', 'dinner', 'snack', 'drink', 'unspecified'] },
           package_g: { type: 'NUMBER', nullable: true },
           package_is_guess: { type: 'BOOLEAN' },
           nutritional_values: {
@@ -1830,11 +1852,11 @@ export default {
            it say null, which is an answer we can read. */
         propertyOrdering: ['product_name', 'brand', 'serving_size_analyzed',
                            'is_packaged_product', 'is_estimated', 'confidence',
-                           'cooking_state', 'package_g', 'package_is_guess',
+                           'cooking_state', 'meal_type', 'package_g', 'package_is_guess',
                            'nutritional_values', 'items', 'visual_reasoning'],
         required: ['product_name', 'brand', 'serving_size_analyzed',
                    'is_packaged_product', 'is_estimated', 'confidence',
-                   'cooking_state', 'package_g', 'package_is_guess',
+                   'cooking_state', 'meal_type', 'package_g', 'package_is_guess',
                    'nutritional_values', 'items', 'visual_reasoning'],
       };
 
@@ -1948,6 +1970,10 @@ export default {
         cooking_state: ['raw', 'cooked'].indexOf(v.cooking_state) >= 0 ? v.cooking_state : 'unspecified',
         /* Bounded the same way an item's grams are - a pack weight outside
            this is a misread digit, not a pack. */
+        /* Only what the food can say. Anything else - including a confident
+           "lunch" - is discarded and left to the clock, which is the one that
+           knows. */
+        meal_type: ['drink', 'snack'].indexOf(v.meal_type) >= 0 ? v.meal_type : 'unspecified',
         package_g: (function () { const g = vnum(v.package_g); return (g && g > 0 && g <= 5000) ? Math.round(g) : null; }()),
         package_is_guess: v.package_is_guess === true,
         values: anyValue ? values : null,

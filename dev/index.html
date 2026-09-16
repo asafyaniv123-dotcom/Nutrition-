@@ -930,6 +930,9 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .sr-seekhit span{font-weight:600;color:var(--muted);flex-shrink:0;font-variant-numeric:tabular-nums}
 .sr-seekhit:active{transform:scale(.99)}
 .st-none{font-size:12px;color:var(--muted-soft)}
+.say-cats{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:center}
+.say-cat{border:1.5px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--card);color:var(--muted);font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.say-cat.on{border-color:var(--violet-500);color:var(--violet-500);background:var(--violet-50,var(--card))}
 .say-add{width:100%;margin-top:9px;border:none;border-radius:13px;padding:13px;background:linear-gradient(135deg,var(--green-200),var(--green-500));color:var(--white);font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
 .say-note{margin-top:9px;font-size:9.5px;color:var(--muted-soft);text-align:center;line-height:1.6}
 /* the ministry database - a search card sitting above your own library */
@@ -2513,6 +2516,43 @@ function renderProfile(){
   document.getElementById('content').innerHTML=h;
 }
 
+/* ── WHICH MEAL IS IT ──
+   A question about the WALL CLOCK, which is not the same question as which
+   DAY it is. appNow() is shifted back four hours because this app's day ends
+   at 04:00; its getHours would call half past midnight "eight in the evening".
+   So this reads the real clock, which is exactly the distinction
+   find-raw-clock-days enforces - and the 01:00 snack still files under
+   yesterday, because todayStr carries the rollover on its own.
+
+   The bands are his. The only one worth explaining is 16:00-19:30 as a snack
+   rather than dinner: what people eat at five is almost never dinner, and the
+   chip is one tap away when it is. */
+function mealByClock(){
+  var d=new Date(),m=d.getHours()*60+d.getMinutes();
+  if(m>=300&&m<690)return 'breakfast';    // 05:00 - 11:30
+  if(m>=690&&m<960)return 'lunch';        // 11:30 - 16:00
+  if(m>=960&&m<1170)return 'snack';       // 16:00 - 19:30
+  if(m>=1170&&m<1380)return 'dinner';     // 19:30 - 23:00
+  return 'snack';                         // 23:00 - 05:00
+}
+/* What the FOOD said, if it said anything, and otherwise what the hour says.
+   The model is only ever allowed to answer drink or snack - it cannot see a
+   clock, and a guessed lunch would be filed with nothing to mark it. */
+function mealCat(fromFood){
+  if(fromFood==='drink')return 'drinks';
+  if(fromFood==='snack')return 'snack';
+  return mealByClock();
+}
+var _sayCat='';
+function saySetCat(k){_sayCat=k;sayPaint();}
+/* The chips. CATS is the same list the recipe builder draws, so every label is
+   already answered in eleven languages and the two can never disagree. */
+function sayCatHTML(){
+  var h='<div class="say-cats">',i;
+  for(i=0;i<CATS.length;i++)
+    h+='<button class="say-cat'+(_sayCat===CATS[i][0]?' on':'')+'" onclick="saySetCat(&#39;'+CATS[i][0]+'&#39;)">'+CATS[i][1]+'</button>';
+  return h+'</div>';
+}
 var CATS;langOn(function(){CATS=[
   ['breakfast',_t('בוקר|ארוחה')],
   ['lunch',_t('צהריים|ארוחה')],
@@ -5104,7 +5144,7 @@ function addSetMode(k){
   /* The sentence and the photograph share this list - /see answers in the
      shape /parse returns and the flow is one from there on - so leaving
      EITHER of them clears it, and switching between them does not. */
-  if(_addMode!=='say'&&_addMode!=='pic'){_sayItems=null;_sayErr='';_picThumb='';_picNote='';_picBusy=false;}
+  if(_addMode!=='say'&&_addMode!=='pic'){_sayItems=null;_sayErr='';_picThumb='';_picNote='';_picBusy=false;_sayCat='';}
   if(_addMode!=='find')pendingLib=null;
   render();
   if(_addMode==='find'){
@@ -5350,6 +5390,7 @@ function picVision(dataUrl,note){
       /* What it says it read, in his language, on screen rather than behind a
          tap: it is the only way to see WHY a number is what it is. */
       _picNote=String(j.why||'');
+      _sayCat=mealCat(j.meal_type);
       var v=j.values,i;
       if(v&&!j.estimated){
         var g=picServingG(j.serving);
@@ -5646,6 +5687,9 @@ function sayGo(){
          paint, so the message stays up while that happens. The food tables
          also have to be in memory by now - the candidate list is built from
          them - so this waits on the same load the panel already started. */
+      /* Chosen before he is asked, which is the point: he confirms rather
+         than classifies. */
+      _sayCat=mealCat(j.meal_type);
       _sayBusy=true;sayPaint();
       foodsLoad(function(){
         sayResolveAll(j.items,function(rows){
@@ -6429,7 +6473,7 @@ function sayAdd(){
     if(!a||!row.amount)continue;
     var how=(row.unit==='g')?(row.amount+'g'):(row.amount+' '+unitLabel(row.unit,row.amount));
     var rec={name:row.food.n+' ('+how+')',kcal:a.kcal,p:a.p,c:a.c,f:a.f,
-             id:Date.now()+i,time:fmtTime()};
+             id:Date.now()+i,time:fmtTime(),cat:_sayCat||mealByClock()};
     // carried through, or the log would show it as a measured value
     if(row.est)rec.est=1;
     day.meals.push(rec);
@@ -6438,7 +6482,7 @@ function sayAdd(){
   if(!n){showToast(''+_t('אין מה להוסיף')+'');return;}
   saveDay(curDate,day);
   showToast('✓ '+_t('{n} פריטים נוספו',{n:n}));
-  _sayOpen=false;_sayItems=null;render();
+  _sayOpen=false;_sayItems=null;_sayCat='';render();
 }
 /* ── ONE LINE EACH ──
    Every row was showing five things at once: what it matched, what you said,
@@ -6590,6 +6634,9 @@ function sayPaint(){
     }
     h+='</div>';
   }
+  /* Above the button, because it is part of what you are confirming - and
+     already answered, so the ordinary path is still one tap. */
+  h+=sayCatHTML();
   h+='<div class="say-tot" id="say-tot">'+sayTotalHTML()+'</div>';
   h+='<button class="say-add" onclick="sayAdd()">'+_t('הוסף הכל ליום ✓')+'</button>';
   h+='<div class="say-note">'+_t('המספרים מהמאגר שלנו. הקש על שורה כדי לשנות.')+'</div>';
