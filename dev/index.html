@@ -2019,6 +2019,26 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .hcards.ring .hhero{position:absolute;margin:0;transform:translateX(-50%);z-index:2}
 .hcards.ring .hhero:active{transform:translateX(-50%) scale(.975)}
 /* Behind everything, and it must never swallow a tap. */
+/* The wedges themselves. Translucent like everything else on this board, a
+   hairline lit top edge, and the area's own colour as a stroke on the OUTER
+   rim - the same identity the capsules carry, on the edge that is furthest
+   from the hub and so reads as the fan's outline. */
+.hfan{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
+.hfan .fanw{fill:rgba(255,255,255,.74);stroke:rgba(255,255,255,.9);stroke-width:1}
+.hfan .fanr{fill:none;stroke-width:3;stroke-linecap:round;opacity:.72}
+/* In the fan the button carries only what is written on it - the wedge behind
+   it is the surface, so the button must not paint one of its own. */
+.hcards.fan .hcard{background:none;box-shadow:none;padding:0;gap:3px;transform:translate(-50%,-50%)}
+.hcards.fan .hcard-t{font-size:10.5px;line-height:1.25}
+/* The reference's tiles carry an icon and nothing else. Icon plus name is our
+   compromise - an area is not guessable from a pictogram - but the sentence
+   under it does not fit a wedge and was spilling out of one. */
+.hcards.fan .hcard-s{display:none}
+.lay-strip{display:flex;gap:6px;justify-content:center;margin-top:14px}
+.lay-b{border:1.5px solid var(--line);border-radius:999px;padding:5px 13px;background:var(--card);color:var(--muted);font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.lay-b.on{border-color:var(--violet-500);color:var(--violet-500)}
+.hcards.fan .hcard::after{display:none}
+.hcards.fan .hcard:active{transform:translate(-50%,-50%) scale(.95)}
 .hwires{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
 .hwires path{fill:none;stroke:rgba(108,126,138,.3);stroke-width:1.4;stroke-linecap:round}
 .hcards.ring .hcard{z-index:1}
@@ -23744,6 +23764,45 @@ var ARC_W=70,ARC_DEPTH=44,ARC_BASE=6,ARC_PITCH=10;
    sides, 210 takes it just past them so the ends fall away and the row reads
    as a curve rather than as a line of nine. */
 var RING_HUB=176,RING_GAP=26,RING_SWEEP=210;
+/* ── THE FAN ──
+   The arc is DIVIDED, not populated. Each area gets a wedge of it, so nine
+   fit at any width for the same reason five do in the reference: their size
+   is a consequence of the sweep rather than a number that has to fit into it.
+   This is the thing the dome could not do - a 70px capsule times nine needs
+   608px of arc and a phone has 495.
+
+   SPAN is how far round, GAP the hairline between wedges, and DEEP how much
+   of the radius the wedge occupies - the reference's are about half as deep
+   as they are far out. */
+var FAN_SPAN=200,FAN_GAP=2.2,FAN_DEEP=0.42,FAN_HUB=150;
+function fanPath(cx,cy,r0,r1,a0,a1){
+  var x=function(r,a){return (cx+r*Math.cos(a)).toFixed(1);},
+      y=function(r,a){return (cy+r*Math.sin(a)).toFixed(1);};
+  /* an annular sector: out along a0, round the outside, in along a1, back
+     round the inside */
+  return 'M'+x(r0,a0)+' '+y(r0,a0)+
+         'L'+x(r1,a0)+' '+y(r1,a0)+
+         'A'+r1+' '+r1+' 0 0 1 '+x(r1,a1)+' '+y(r1,a1)+
+         'L'+x(r0,a1)+' '+y(r0,a1)+
+         'A'+r0+' '+r0+' 0 0 0 '+x(r0,a0)+' '+y(r0,a0)+'Z';
+}
+function fanPlan(n,W,H){
+  if(!(W>0))W=398;
+  if(!(H>0))H=118;
+  var r1=W/2-4;                       /* the outside lands on the board */
+  var r0=Math.max(FAN_HUB/2+14,r1*(1-FAN_DEEP));
+  var span=FAN_SPAN*Math.PI/180,start=-Math.PI/2-span/2,step=span/n;
+  var cx=W/2,cy=r1+6;                 /* the hub sits in the opening, low */
+  var gap=FAN_GAP*Math.PI/180,at=[],i;
+  for(i=0;i<n;i++){
+    var a0=start+i*step+gap/2,a1=start+(i+1)*step-gap/2,am=(a0+a1)/2;
+    var rm=(r0+r1)/2;
+    at.push({d:fanPath(cx,cy,r0,r1,a0,a1),x:cx+rm*Math.cos(am),y:cy+rm*Math.sin(am),
+             a0:a0,a1:a1,am:am,r0:r0,r1:r1});
+  }
+  /* the board ends under the hub, not under a circle nothing stands on */
+  return {at:at,cx:cx,cy:cy,r0:r0,r1:r1,w:W,height:Math.round(cy+FAN_HUB/2+8)};
+}
 /* Nine points on an ellipse, rotated half a step so nothing sits at twelve
    o'clock - a capsule directly above the hub reads as a crown rather than as
    one of nine. */
@@ -23950,7 +24009,85 @@ function ringWires(plan,H){
 /* Asks the dome whether it fits before drawing it, and hands over to the rows
    when it does not. The hub and the wires belong to the dome alone, so the
    fallback puts the board back the way the arc expects to find it. */
+function fanPlace(g,n){
+  var cards=g.querySelectorAll('.hcard'),i;
+  var plan=fanPlan(n,_arcW,0);
+  var box=g.querySelector('.hcards');
+  if(!box)return;
+  var d='',rim='';
+  for(i=0;i<plan.at.length;i++){
+    var p=plan.at[i],col=cards[i]?cards[i].style.getPropertyValue('--area'):'';
+    d+='<path class="fanw" d="'+p.d+'"/>';
+    /* the OUTER arc alone. A stroke round the whole wedge turns a soft shape
+       into a drawn outline, which is what the reference never does. */
+    rim+='<path class="fanr" d="M'+(plan.cx+p.r1*Math.cos(p.a0)).toFixed(1)+' '+
+         (plan.cy+p.r1*Math.sin(p.a0)).toFixed(1)+'A'+p.r1+' '+p.r1+' 0 0 1 '+
+         (plan.cx+p.r1*Math.cos(p.a1)).toFixed(1)+' '+
+         (plan.cy+p.r1*Math.sin(p.a1)).toFixed(1)+'" style="stroke:'+col+'"/>';
+  }
+  d+=rim;
+  var old=box.querySelector('.hfan');
+  if(old)old.parentNode.removeChild(old);
+  box.insertAdjacentHTML('afterbegin',
+    '<svg class="hfan" viewBox="0 0 '+Math.round(plan.w)+' '+plan.height+
+    '" preserveAspectRatio="none" aria-hidden="true">'+d+'</svg>');
+  /* The tap target is as wide as its wedge and no wider. A fixed 84 against a
+     61px wedge overlapped its neighbours, which is a finger opening the wrong
+     area - measured, three pairs. */
+  var rm=(plan.r0+plan.r1)/2;
+  for(i=0;i<cards.length&&i<plan.at.length;i++){
+    var wide=Math.max(44,rm*(plan.at[i].a1-plan.at[i].a0)-6);
+    cards[i].style.height='';
+    cards[i].style.width=Math.round(wide)+'px';
+    cards[i].style.left=(plan.at[i].x/plan.w*100).toFixed(2)+'%';
+    cards[i].style.top=Math.round(plan.at[i].y)+'px';
+  }
+  var hero=g.querySelector('.hhero');
+  if(hero){
+    hero.style.left=(plan.cx/plan.w*100).toFixed(2)+'%';
+    hero.style.top=Math.round(plan.cy-FAN_HUB/2)+'px';
+  }
+  box.style.height=plan.height+'px';
+}
+/* Three layouts to compare rather than one to argue about. Set from the
+   console or the strip below; 'auto' is the shipped behaviour. */
+var HOME_LAYOUT=(function(){
+  try{var v=localStorage.getItem('home_layout');if(v)return v;}catch(e){}
+  return 'fan';
+})();
+/* Keys only. The words are fetched when they are drawn - a collection
+   carrying a translated string is one refactor away from being compared
+   against, which is the whole reason find-translated-data exists. */
+var HOME_LAYOUTS=['fan','auto','rows'];   // i18n-exempt: keys, never shown
+function layLabel(k){
+  if(k==='fan')return ''+_t('מניפה')+'';
+  if(k==='rows')return ''+_t('שורות')+'';
+  return ''+_t('כיפה')+'';
+}
+function layStrip(){
+  var el=document.getElementById('lay-strip');
+  if(!el)return;
+  var h='',i;
+  for(i=0;i<HOME_LAYOUTS.length;i++)
+    h+='<button class="lay-b'+(HOME_LAYOUT===HOME_LAYOUTS[i]?' on':'')+
+       '" onclick="laySet(&#39;'+HOME_LAYOUTS[i]+'&#39;)">'+layLabel(HOME_LAYOUTS[i])+'</button>';
+  el.innerHTML=h;
+}
+function laySet(k){
+  HOME_LAYOUT=k;
+  try{localStorage.setItem('home_layout',k);}catch(e){}
+  renderHomeGrid();layStrip();
+}
 function homePlace(g,n){
+  var box0=g.querySelector('.hcards'),old0=box0&&box0.querySelector('.hfan');
+  if(old0)old0.parentNode.removeChild(old0);
+  if(box0)box0.classList.toggle('fan',HOME_LAYOUT==='fan');
+  if(HOME_LAYOUT==='fan'){if(box0)box0.classList.add('ring');fanPlace(g,n);return;}
+  if(HOME_LAYOUT==='rows'){
+    if(box0){box0.classList.remove('ring');var w0=box0.querySelector('.hwires');if(w0)w0.parentNode.removeChild(w0);}
+    var h0=g.querySelector('.hhero');if(h0){h0.style.left='';h0.style.top='';}
+    arcPlace(g,n);return;
+  }
   var cards=g.querySelectorAll('.hcard'),H=0,i;
   for(i=0;i<cards.length;i++){var e=cards[i].offsetHeight;if(e>H)H=e;}
   var plan=ringPlan(n,_arcW,H);
@@ -23969,7 +24106,7 @@ function ringPlace(g,n){
   var cards=g.querySelectorAll('.hcard'),H=0,i;
   /* the same lesson the arc learned: let go of the height BEFORE reading it,
      or the second pass measures what the first pass wrote */
-  for(i=0;i<cards.length;i++){cards[i].style.height='';cards[i].style.left='';cards[i].style.top='';}
+  for(i=0;i<cards.length;i++){cards[i].style.height='';cards[i].style.left='';cards[i].style.top='';cards[i].style.width='';}
   for(i=0;i<cards.length;i++){var e=cards[i].offsetHeight;if(e>H)H=e;}
   var plan=ringPlan(n,_arcW,H);
   for(i=0;i<cards.length&&i<plan.at.length;i++){
@@ -23996,7 +24133,7 @@ function arcPlace(g,n){
      font triggers, was measuring the height the first pass had written - so a
      card laid out before the font arrived stayed at the taller wrapping's
      height for the life of the tab, and Hebrew sat in a German-sized body. */
-  for(i=0;i<cards.length;i++){cards[i].style.height='';cards[i].style.left='';}
+  for(i=0;i<cards.length;i++){cards[i].style.height='';cards[i].style.left='';cards[i].style.width='';}
   for(i=0;i<cards.length;i++){var e=cards[i].offsetHeight;if(e>H)H=e;}
   var plan=arcPlan(n,_arcW,H);
   for(i=0;i<cards.length&&i<plan.at.length;i++){
@@ -24603,6 +24740,10 @@ function tbSync(){
     '<div class="home-sub">Become the best version of yourself</div>'+
     '<button class="home-menu" id="home-menu-btn" aria-label="'+_t("מה במעקב")+'"><i></i><i></i><i></i></button>'+
     '<div class="home-grid" id="home-grid"></div>'+
+    /* Only where the DEV badge already is: three layouts to compare on a
+       phone rather than to read a description of. It goes when one is
+       chosen. */
+    (window.__DEV__?'<div class="lay-strip" id="lay-strip"></div>':'')+
     /* UNDER the board, into the room the open bottom of the arc makes. It sat
        above it, so the board - the thing the screen is for - was read second. */
     '<div id="home-today" class="td-wrap"></div>'+
@@ -24663,6 +24804,7 @@ function tbSync(){
   });
 
   // one delegated handler each, so re-rendering the grid never strands a listener
+  layStrip();
   document.getElementById('home-grid').addEventListener('click',function(e){
     var b=e.target.closest&&e.target.closest('[data-area]');
     if(b)enterModule(b.getAttribute('data-area'));
