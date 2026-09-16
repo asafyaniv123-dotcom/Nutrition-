@@ -5312,7 +5312,93 @@ function picRetry(){
   _picAsk=false;_picBusy=true;_sayErr='';_sayItems=null;_sayBusy=true;sayPaint();
   picGo(_picData,note);
 }
-function picGo(dataUrl,note){
+/* "120g" -> 120. The serving the reading is PER, which is what turns the
+   packet's figures into something the app can hold. A count - "1 unit" - is
+   not a weight and returns 0, and the caller falls back to the ordinary
+   portion rather than inventing one. */
+function picServingG(t){
+  var m=/([0-9]+(?:[.,][0-9]+)?)\s*(g|gr|gram|grams|ml|גרם|מל)\s*$/i.exec(String(t||'').trim());
+  if(!m)return 0;
+  var n=parseFloat(String(m[1]).replace(',','.'));
+  return (isFinite(n)&&n>0&&n<=3000)?n:0;
+}
+/* ── READ THE PACKET FIRST ──
+   Same photograph, both providers, measured today: /see came back
+   {ok:false,"unreadable"} twice; this one came back with the brand, the
+   variant, the net weight and the protein, and said which words it read.
+
+   What it is allowed to do with that is narrow on purpose. A product it READ
+   becomes one item - the product, at its stated serving - resolved against
+   the food tables, and the figures it actually read are overlaid on top. Not
+   a row of its own: this packet prints protein and fat and no energy line,
+   and the table's measured 102 kcal is a better answer for that hole than
+   anything anyone could infer from the other three.
+   A plate it merely LOOKED AT carries no figures at all - the endpoint
+   refuses to state them - and goes down the ordinary table path. */
+function picVision(dataUrl,note){
+  _sayText=note||'';
+  fetch(SYNC_SERVER+'/vision',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({image:dataUrl,note:note||'',lang:appLang()})
+  }).then(function(r){return r.json();})
+    .then(function(j){
+      /* Anything at all goes wrong - quota, outage, a picture it could not
+         read - and the old path runs. A slower answer, not no answer. */
+      if(!j||!j.ok||(!j.values&&!(j.items&&j.items.length))){picSee(dataUrl,note);return;}
+      /* What it says it read, in his language, on screen rather than behind a
+         tap: it is the only way to see WHY a number is what it is. */
+      _picNote=String(j.why||'');
+      var v=j.values,i;
+      if(v&&!j.estimated){
+        var g=picServingG(j.serving);
+        /* Only the fields it actually read. picLabelOverlay copies a real
+           number and keeps the table's measured value for everything else,
+           which is what stops a hole becoming a zero in the day total. */
+        var L={basis:g>0?'serving':'100g'};
+        if(g>0)L.serving_g=g;
+        if(v.kcal!==null&&v.kcal!==undefined)L.kcal=v.kcal;
+        if(v.p!==null&&v.p!==undefined)L.p=v.p;
+        if(v.c!==null&&v.c!==undefined)L.c=v.c;
+        if(v.f!==null&&v.f!==undefined)L.f=v.f;
+        _picPartial=L;
+        var nm=String(j.product_name||'');
+        if(j.brand&&nm.indexOf(j.brand)<0)nm=j.brand+' '+nm;
+        picVisionRows([{food:nm,amount:g>0?g:100,unit:'g'}],L);
+        return;
+      }
+      _picPartial=null;
+      var items=[];
+      for(i=0;i<j.items.length;i++)
+        items.push({food:j.items[i].name,amount:j.items[i].grams,unit:'g',ai:true});
+      if(!items.length){picSee(dataUrl,note);return;}
+      picVisionRows(items,null);
+    })
+    .catch(function(){picSee(dataUrl,note);});
+}
+/* The tables answer, then the packet overrules it where the packet spoke. */
+function picVisionRows(items,L){
+  foodsLoad(function(){
+    sayResolveAll(items,function(rows){
+      _picBusy=false;_sayRow=-1;
+      if(!rows.length){
+        /* Nothing in 6,899 foods to hang it on. A complete reading can still
+           stand alone; an incomplete one cannot, and saying so is better
+           than a row with holes in it. */
+        if(L&&L.kcal!==undefined&&L.p!==undefined&&L.c!==undefined&&L.f!==undefined){
+          var row=picFromLabel(L,items[0].food);
+          if(row){picExact(row,'label',L.serving_g>0?L.serving_g:items[0].amount);return;}
+        }
+        picFail(''+_t('זיהיתי את המוצר אבל אין לי שורה מתאימה במאגר. כתוב מה אכלת ואפרק.')+'');
+        return;
+      }
+      _sayItems=rows;
+      if(L)picLabelOverlay(rows[0]);
+      sayCross(0);
+      sayPaint();
+    });
+  });
+}
+function picSee(dataUrl,note){
   /* What the loop will ask about. For a sentence this is what was typed;
      for a photograph it is whatever was written beside it, and an empty
      string when nothing was. */
@@ -5358,18 +5444,19 @@ function picGo(dataUrl,note){
         });
         return;
       }
+      /* ONCE. This used to call picByTable and then resolve the same items
+         a second time, with a callback that set _sayItems and never applied
+         the label overlay - so whichever chain finished last decided what
+         was on screen, and it was reliably the one without the packet's
+         numbers. picByTable does the whole job. */
       picByTable(j,items);
-      foodsLoad(function(){
-        sayResolveAll(items,function(rows){
-          _picBusy=false;_sayItems=rows;_sayRow=-1;
-          /* Still busy: a picture is the shakiest input here, so its rows
-             wait for the check exactly as a sentence's do. */
-          sayCross(0);
-          sayPaint();
-        });
-      });
     })
     .catch(function(){picFail(''+_t('אין חיבור כרגע.')+'');});
+}
+/* The name everything else already calls. */
+function picGo(dataUrl,note){
+  if(!SYNC_SERVER){picFail(''+_t('הצילום דורש חיבור לשרת.')+'');return;}
+  picVision(dataUrl,note);
 }
 /* The one-line assistant. DISPLAY ONLY: what it says never reaches the day
    unless he reads it and adds it himself, which is what he chose and is the
