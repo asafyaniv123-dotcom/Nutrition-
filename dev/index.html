@@ -933,6 +933,18 @@ body.night .st-m>span{background:rgba(255,255,255,.06)}
 /* On an unmatched row: the figure he read off the packet, kept in front of
    him instead of parsed and dropped. */
 .sr-said{font-size:10.5px;color:var(--muted);padding:2px 0 6px;margin-inline-start:30px}
+/* Four boxes for the numbers only the person has. */
+.sr-fillbox{margin:4px 0 8px 0;padding:10px;border-radius:12px;background:var(--surface)}
+.sr-fillr{display:flex;gap:8px;margin-bottom:7px}
+.sr-fillr label{flex:1;font-size:9.5px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.sr-fillr input{width:100%;padding:8px;border-radius:9px;border:1px solid rgba(140,133,125,.28);
+  font-size:15px;font-weight:700;font-family:inherit;background:var(--card);color:var(--ink)}
+.sr-fillnote{font-size:9.5px;color:var(--muted);margin-bottom:8px;line-height:1.5}
+.sr-fillgo{width:100%;border:none;border-radius:10px;padding:9px;font-family:inherit;
+  font-size:12px;font-weight:800;cursor:pointer;background:var(--green-200);color:var(--white)}
+.sr-fill{background:none;border:none;font-family:inherit;font-size:10.5px;font-weight:800;
+  cursor:pointer;color:var(--muted);text-decoration:underline;text-underline-offset:2px;padding:2px 4px}
+.st-need{font-size:10px;font-weight:700;color:var(--terra-500);margin-bottom:4px}
 .sr-said b{font-weight:800;color:var(--ink)}
 body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 /* The words the analyses run on. Wider and quieter than the search below
@@ -2892,6 +2904,7 @@ var HE={
   'אפשר עד {n} תמונות בבת אחת.':{one:'אפשר תמונה אחת בבת אחת.',two:'אפשר שתי תמונות בבת אחת.',other:'אפשר עד {n} תמונות בבת אחת.'},
   '{n} לכל צד':{one:'פלטה אחת לכל צד',two:'שתי פלטות לכל צד',other:'{n} פלטות לכל צד'},
   'להסיר את {name}? {n} סטים שנרשמו בו יימחקו.':{one:'להסיר את {name}? הסט שנרשם בו יימחק.',two:'להסיר את {name}? שני הסטים שנרשמו בו יימחקו.',other:'להסיר את {name}? {n} סטים שנרשמו בו יימחקו.'},
+  '{n} פריטים צריכים מספרים':{one:'פריט אחד צריך מספרים',two:'שני פריטים צריכים מספרים',other:'{n} פריטים צריכים מספרים'},
   '{n} פעמים':{one:'פעם אחת',two:'פעמיים',other:'{n} פעמים'},
   '{n} שנים':{one:'שנה',two:'שנתיים',other:'{n} שנים'},
   '{n} שניות':{one:'שנייה',two:'שתי שניות',other:'{n} שניות'},
@@ -6645,6 +6658,11 @@ var GSRC_SAY;langOn(function(){GSRC_SAY={
 };});
 function sayAmount(row){
   if(!row.food)return null;
+  /* ABSOLUTE: a row whose numbers the person typed holds the figures for what
+     they actually had, not per 100 g. Scaling them by a weight would turn a
+     stated 25 g of protein into 75 the moment anyone corrected the weight. */
+  if(row.abs)return {kcal:Math.round(row.food.k||0),p:Math.round((row.food.p||0)*10)/10,
+                     c:Math.round((row.food.c||0)*10)/10,f:Math.round((row.food.f||0)*10)/10,grams:0};
   var grams=row.amount*(row.unit==='g'?1:row.g);
   var m=grams/100;
   return {kcal:Math.round(row.food.k*m),p:Math.round(row.food.p*m*10)/10,
@@ -6759,6 +6777,22 @@ function sayTake(i,k){
   row.seek=undefined;row.seekRes=null;
   sayPaint();
 }
+/* The numbers he typed become a food with his own name on it. ABSOLUTE, so
+   nothing multiplies them afterwards. */
+function sayFillSave(i){
+  if(!_sayItems||!_sayItems[i])return;
+  var row=_sayItems[i],num=function(id){
+    var el=document.getElementById(id+'-'+i);
+    var v=el?parseFloat(el.value):NaN;
+    return isFinite(v)&&v>=0?v:0;
+  };
+  var k=num('fill-k'),p=num('fill-p'),c=num('fill-c'),f=num('fill-f');
+  if(!k&&!p&&!c&&!f){showToast(''+_t('כתוב לפחות מספר אחד.')+'');return;}
+  row.food={n:row.q,k:k,p:p,c:c,f:f};
+  row.abs=1;row.src='said';row.est=0;
+  _sayRow=-1;
+  sayPaint();
+}
 function sayTotals(){
   var t={kcal:0,p:0,c:0,f:0,n:0},i,a;
   if(_sayItems)for(i=0;i<_sayItems.length;i++){
@@ -6774,8 +6808,17 @@ function sayTotals(){
    here there is room, and a total that has to be decoded is not a total. */
 function sayTotalHTML(){
   var t=sayTotals();
-  if(!t.n)return '<span class="st-none">'+_t('אין פריטים שזוהו')+'</span>';
-  return '<div class="st-k">'+nfmt(t.kcal)+' <span>'+_t('קלוריות')+'</span></div>'+
+  /* A row the tables could not place is still an item on the screen. Saying
+     "nothing was recognised" over it is the app disagreeing with what the
+     person can see, and it used to be followed by an add button that refused
+     to add. */
+  var need=0,_i;
+  if(_sayItems)for(_i=0;_i<_sayItems.length;_i++)if(!_sayItems[_i].food)need++;
+  if(!t.n)return need
+    ?'<span class="st-none">'+_t('{n} פריטים צריכים מספרים',{n:need})+'</span>'
+    :'<span class="st-none">'+_t('אין פריטים שזוהו')+'</span>';
+  return (need?'<div class="st-need">'+_t('{n} פריטים צריכים מספרים',{n:need})+'</div>':'')+
+         '<div class="st-k">'+nfmt(t.kcal)+' <span>'+_t('קלוריות')+'</span></div>'+
          '<div class="st-m">'+
          '<span><b>'+nfmt(t.p)+'</b> '+_t('גרם חלבון')+'</span>'+
          '<span><b>'+nfmt(t.c)+'</b> '+_t('גרם פחמימות')+'</span>'+
@@ -6906,7 +6949,15 @@ function sayAdd(){
     day.meals.push(rec);
     n++;
   }
-  if(!n){showToast(''+_t('אין מה להוסיף')+'');return;}
+  if(!n){
+    /* There ARE rows; they just have no numbers yet, and saying "nothing to
+       add" over them is the app refusing work it could ask one question to
+       accept. */
+    var _need=0,_j;
+    for(_j=0;_j<_sayItems.length;_j++)if(!_sayItems[_j].food)_need++;
+    showToast(_need?_t('{n} פריטים צריכים מספרים',{n:_need}):''+_t('אין מה להוסיף')+'');
+    return;
+  }
   saveDay(curDate,day);
   showToast('✓ '+_t('{n} פריטים נוספו',{n:n}));
   _sayOpen=false;_sayItems=null;_sayCat='';render();
@@ -6966,12 +7017,30 @@ function sayPaint(){
          '<span class="sr-find">'+_t('חפש')+'</span></button>';
       h+=row.esting?'<span class="sr-esting">'+_t('מעריך…')+'</span>'
                    :'<button class="sr-est" onclick="sayEstimate('+i+')">'+_t('הערך')+'</button>';
+      h+='<button class="sr-fill" onclick="sayExpand('+i+')">'+_t('הזן ערכים')+'</button>';
     }
     h+='</div>';
     /* THE ONE REAL NUMBER IN THE SENTENCE. Nothing in the tables is this
        product, but he read its packet and typed what it says - so it is on
        screen rather than parsed and thrown away. Shown, not applied: the
        figures he did NOT give would have to be invented. */
+    /* FOUR BOXES, and whatever the sentence already said is in them. The
+       person is the only one who can supply these, and until now the app had
+       nowhere for them to put them. */
+    if(!row.food&&open){
+      var _v=row.said||{},_g=function(k){return (_v[k]===null||_v[k]===undefined)?'':_v[k];};
+      h+='<div class="sr-fillbox">';
+      h+='<div class="sr-fillr">'+
+         '<label>'+_t('קלוריות')+'<input id="fill-k-'+i+'" type="number" inputmode="decimal" value="'+_g('calories_kcal')+'"></label>'+
+         '<label>'+_t('חלבון')+'<input id="fill-p-'+i+'" type="number" inputmode="decimal" value="'+_g('protein_g')+'"></label>'+
+         '</div><div class="sr-fillr">'+
+         '<label>'+_t('פחמימות')+'<input id="fill-c-'+i+'" type="number" inputmode="decimal" value="'+_g('carbohydrates_g')+'"></label>'+
+         '<label>'+_t('שומן')+'<input id="fill-f-'+i+'" type="number" inputmode="decimal" value="'+_g('fat_g')+'"></label>'+
+         '</div>';
+      h+='<div class="sr-fillnote">'+_t('הערכים הם למה שאכלת, לא ל-100 גרם.')+'</div>';
+      h+='<button class="sr-fillgo" onclick="sayFillSave('+i+')">'+_t('שמור')+'</button>';
+      h+='</div>';
+    }
     if(!row.food&&row.said){
       var _sd=[],_sk=row.said;
       if(_sk.calories_kcal!==null&&_sk.calories_kcal!==undefined)_sd.push(_t('{n} קק"ל',{n:_sk.calories_kcal}));

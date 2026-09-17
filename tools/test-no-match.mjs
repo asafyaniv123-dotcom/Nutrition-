@@ -69,6 +69,29 @@ setTimeout(function(){
       var el=document.createElement('div');el.id='say-body';document.body.appendChild(el);
       sayPaint();
       R.painted=el.innerHTML.indexOf('sr-said')>=0;
+      /* the totals must not claim nothing was recognised over a row that is
+         plainly on the screen */
+      R.totalHTML=sayTotalHTML();
+      R.saysNone=R.totalHTML.indexOf('st-none')>=0;
+      /* the singular form carries no digit - 'פריט אחד צריך מספרים' - so
+         asking for a number here tested the phrasing, not the behaviour */
+      R.saysNothing=R.totalHTML.indexOf(_t('אין פריטים שזוהו'))>=0;
+      R.saysNeed=R.totalHTML.indexOf(_t('{n} פריטים צריכים מספרים',{n:1}))>=0;
+      /* open it, fill it, and it becomes a food of its own */
+      _sayRow=0;sayPaint();
+      R.hasBoxes=el.innerHTML.indexOf('sr-fillbox')>=0;
+      R.prefilled=(function(){var f=document.getElementById('fill-p-0');return f?f.value:null;})();
+      (function(){var k=document.getElementById('fill-k-0');if(k)k.value='170';})();
+      sayFillSave(0);
+      R.filledFood=_sayItems[0].food?_sayItems[0].food.n:null;
+      R.filledAbs=!!_sayItems[0].abs;
+      var amt=sayAmount(_sayItems[0]);
+      R.filledKcal=amt?amt.kcal:null;R.filledP=amt?amt.p:null;
+      /* and correcting the weight afterwards must NOT scale his numbers */
+      _sayItems[0].amount=3;
+      var amt2=sayAmount(_sayItems[0]);
+      R.afterAmount=amt2?amt2.p:null;
+      R.totalsNow=sayTotals().n;
       R.paintedNumber=el.innerHTML.indexOf('25')>=0;
       /* A query the local scorer CAN answer, so a silent request has
          something to preserve - with a product it has never heard of both
@@ -129,6 +152,18 @@ ok(got.painted === true, 'which the panel actually draws');
 ok(got.paintedNumber === true, 'with the number in it');
 
 console.log('');
+console.log('');
+console.log('the row is an item, not nothing');
+ok(got.saysNothing===false,'the totals do NOT say nothing was recognised over a row on the screen');
+ok(got.saysNeed===true,'they say the row needs numbers');
+ok(got.hasBoxes===true,'tapping it opens the boxes');
+ok(got.prefilled==='25','with the 25 g he typed already in (got '+got.prefilled+')');
+ok(got.filledFood!==null,'saving makes it a food of its own (got '+got.filledFood+')');
+ok(got.filledAbs===true,'marked absolute');
+ok(got.filledKcal===170&&got.filledP===25,'carrying exactly what was entered (got '+got.filledKcal+' kcal, '+got.filledP+' p)');
+ok(got.afterAmount===25,'and changing the amount does NOT scale his figures (got '+got.afterAmount+')');
+ok(got.totalsNow===1,'the totals count it (got '+got.totalsNow+')');
+
 console.log('a request that never came back');
 ok(got.deadFood !== null, 'is NOT an opinion - the local guess still stands (got ' + got.deadFood + ')');
 ok(got.deadFood === got.knownLocal, 'and it is exactly what the local scorer had (got ' + got.deadFood + ')');
