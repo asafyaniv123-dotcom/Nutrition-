@@ -1913,6 +1913,14 @@ export default {
         '\n' +
         'nutritional_values are PER serving_size_analyzed, and that string must ' +
         'say which - "100g", "120g", "1 unit".\n' +
+        '- serving_g: WHAT THAT SERVING WEIGHS, in grams, as a number. For a ' +
+        'panel headed "per 100 g" it is 100. For one printed per tub, per pot, ' +
+        'per bottle or per package it is the NET WEIGHT of that container - the ' +
+        'same figure as package_g. Give the number even when the serving is ' +
+        'written in words with no figure in it ("1 tub", "לגביע"): those are ' +
+        'exactly the labels where leaving it null makes the figures be read as ' +
+        'per 100 g and doubled. null only if the packet truly gives nothing to ' +
+        'go on.\n' +
         '\n' +
         'visual_reasoning: name the text you actually read, or the visual cue ' +
         'you actually used. One short sentence.\n' +
@@ -1959,6 +1967,11 @@ export default {
           product_name: { type: 'STRING' },
           brand: { type: 'STRING', nullable: true },
           serving_size_analyzed: { type: 'STRING' },
+          /* THE SAME THING AS A NUMBER. serving_size_analyzed is a display
+             string, and the app was reading the weight back out of it with a
+             regex - which answers nothing for "1 tub" or "לגביע", and a panel
+             printed per tub then got treated as per 100 g and doubled. */
+          serving_g: { type: 'NUMBER', nullable: true },
           is_packaged_product: { type: 'BOOLEAN' },
           is_estimated: { type: 'BOOLEAN' },
           confidence: { type: 'STRING', enum: ['High', 'Medium', 'Low'] },
@@ -2009,11 +2022,11 @@ export default {
            Optional, the model simply left both out and answered with five fields:
            a schema that permits silence gets silence. Required-and-nullable makes
            it say null, which is an answer we can read. */
-        propertyOrdering: ['product_name', 'brand', 'serving_size_analyzed',
+        propertyOrdering: ['product_name', 'brand', 'serving_size_analyzed', 'serving_g',
                            'is_packaged_product', 'is_estimated', 'confidence',
                            'cooking_state', 'meal_type', 'package_g', 'package_is_guess',
                            'nutritional_values', 'items', 'visual_reasoning'],
-        required: ['product_name', 'brand', 'serving_size_analyzed',
+        required: ['product_name', 'brand', 'serving_size_analyzed', 'serving_g',
                    'is_packaged_product', 'is_estimated', 'confidence',
                    'cooking_state', 'meal_type', 'package_g', 'package_is_guess',
                    'nutritional_values', 'items', 'visual_reasoning'],
@@ -2191,6 +2204,7 @@ export default {
         product_name: String(v.product_name || '').trim().slice(0, 90),
         brand: v.brand ? String(v.brand).trim().slice(0, 40) : null,
         serving: String(v.serving_size_analyzed || '').trim().slice(0, 24),
+        serving_g: vnum(v.serving_g),
         packaged: v.is_packaged_product === true,
         estimated,
         confidence: ['High', 'Medium', 'Low'].indexOf(v.confidence) >= 0 ? v.confidence : 'Low',
