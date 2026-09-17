@@ -107,6 +107,10 @@ const DRIVE = '<script>setTimeout(function(){' +
   '  var el=document.getElementById("fdb-q");' +
   '  if(el)el.value="עשיתי מזה טוסט - פרוסת גבינה צהובה ומרית רסק עגבניות";' +
   '  oneGo();' +
+  '  R.shotsAtSend=_picShots.length;' +
+  '  R.errAtSend=_sayErr;' +
+  '  R.busyAtSend=!!_picBusy;' +
+  '  R.sentRightAway=!!window.__sent;' +
   '}catch(e){R.threw=String(e&&e.message||e);}' +
   'setTimeout(function(){' +
   '  var sent=window.__sent||{};' +
@@ -131,7 +135,12 @@ const server = http.createServer((req, res) => {
   }
   if (p === '/dev/t.html') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    return res.end(app.replace('</body>', INJECT + DRIVE + '</body>'));
+    /* the LAST </body>: main still carries the game as a text/html template
+       with a </body> of its own, and a first-match replace puts the stub
+       inside inert text where it silently never runs */
+    const at = app.lastIndexOf('</body>');
+    if (at < 0) { res.writeHead(500); return res.end('no </body>'); }
+    return res.end(app.slice(0, at) + INJECT + DRIVE + app.slice(at));
   }
   const file = path.resolve(ROOT, '.' + (p.endsWith('/') ? p + 'index.html' : p));
   if (!file.startsWith(path.resolve(ROOT))) { res.writeHead(403); return res.end(); }
@@ -155,6 +164,8 @@ server.close();
 
 if (!result) { console.log('FAIL: the page never reported back'); process.exit(1); }
 if (result.threw) { console.log('FAIL: the page threw: ' + result.threw); process.exit(1); }
+
+if (process.env.TRAY_DEBUG) console.log(JSON.stringify(result, (k,v)=>typeof v==='string'&&v.length>80?v.slice(0,80)+'…':v, 1));
 
 const fails = [];
 const ok = (cond, what) => { console.log((cond ? '  ok   ' : '  FAIL ') + what); if (!cond) fails.push(what); };
