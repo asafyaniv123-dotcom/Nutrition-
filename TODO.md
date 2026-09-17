@@ -921,12 +921,32 @@ limit on a band; it now reads as a hole where a feature should be.
   to the band. `tools/test-cardio.mjs` asserts it against the shipped
   aggregator, with the negative control: logged the wrong way the same session
   reads 740 volume instead of 600.
-- **Weekly kilometres and a pace trend — STILL OPEN, and the next piece.**
-  `ewma` already exists and takes any daily series; the number is now stored,
-  so the chart is what is left. One thing to decide first: a week's cardio is
-  a mix of runs, swims and rides, and metres of swimming are not metres of
-  cycling. Either the line is per exercise, or the card says which sports it
-  is adding together.
+- ~~**Weekly kilometres and a pace trend.**~~ — done 18/09, and the open
+  question answered: **per exercise, with no total at all.** Adding a swum
+  kilometre to a cycled one gives a number true of nothing, and a pace
+  averaged across them is worse — forty minutes on a bike would make a good
+  5k look slow. So the card is one row per exercise — distance, minutes,
+  pace — compared against the same exercise last week, which is the only
+  comparison here that means anything. It sits directly under the
+  sets-per-muscle band, whose footnote says running and swimming are not
+  measured in it.
+
+**This note is closed.** Three things were seen and deliberately not built,
+each a refinement to a number that is already true rather than a hole:
+
+- A swim reads `1.5 ק"מ` where a swimmer would say 1,500 metres. The
+  magnitude threshold in `fmtDist` makes that consistent across the app; a
+  per-sport threshold would make it idiomatic. Not obviously worth the rule.
+- **Swimming pace is conventionally per 100 m**, not per kilometre, so
+  `23:20 /ק"מ` is right and unusual. `fmtPace` would need to know the sport.
+- The band's footnote still reads *"וריצה או שחייה לא נמדדות בו"*. It is true
+  of that card and now has the cardio card immediately below it, so it reads
+  as a pointer rather than an admission — but it could say so out loud.
+
+What is genuinely NOT here: a drawn line. `ewma` takes any daily series and
+the numbers are stored now, so a pace trend over weeks is available whenever
+it is wanted — but a week of rows was the thing he could not get at all, and
+a chart is a different question from a place to put a run.
 
 Its real weight is the same as the nutrition finding: **something he actually
 did, that the app could not hold.**
