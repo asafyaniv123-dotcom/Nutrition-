@@ -1698,16 +1698,38 @@ export default {
       /* A data: URL carries its own mime, and the caller may send either that
          or a bare payload plus a mime field. Take the URL's word when it has
          one - a png announced as a jpeg is refused by the model, not by us. */
-      let data = String((b && b.image) || '').trim();
-      let mime = String((b && b.mime) || 'image/jpeg');
-      const m = /^data:(image\/[a-z+]+);base64,/i.exec(data);
-      if (m) { mime = m[1].toLowerCase(); data = data.slice(m[0].length); }
-      data = data.replace(/\s/g, '');
+      /* One picture or several. `image` is the old field and still works; a
+         client sending `images` gets the ingredients question instead of the
+         product question. Four is the ceiling - past that the person is
+         photographing a shopping trip, not a meal, and every extra picture
+         costs tokens and latency on a phone. */
+      const VMAX = 4;
+      let raw = (b && Array.isArray(b.images) && b.images.length) ? b.images : [(b && b.image) || ''];
+      if (raw.length > VMAX) return json({ ok: false, error: 'too many images: ' + raw.length + ', the limit is ' + VMAX }, 400);
 
-      if (!/^image\/(jpeg|png|webp)$/.test(mime)) return json({ ok: false, error: 'bad image type: ' + mime }, 400);
-      if (!/^[A-Za-z0-9+/]+=*$/.test(data)) return json({ ok: false, error: 'the image is not base64' }, 400);
-      if (data.length < 500) return json({ ok: false, error: 'the image is too small to read' }, 400);
-      if (data.length > 900000) return json({ ok: false, error: 'image too large' }, 413);
+      const shots = [];
+      let vtotal = 0;
+      for (let i = 0; i < raw.length; i++) {
+        let data = String(raw[i] || '').trim();
+        let mime = String((b && b.mime) || 'image/jpeg');
+        const m = /^data:(image\/[a-z+]+);base64,/i.exec(data);
+        if (m) { mime = m[1].toLowerCase(); data = data.slice(m[0].length); }
+        data = data.replace(/\s/g, '');
+
+        /* the index is named in every message: with four pictures "bad image
+           type" alone does not say which one to take again */
+        const which = raw.length > 1 ? ' (picture ' + (i + 1) + ')' : '';
+        if (!/^image\/(jpeg|png|webp)$/.test(mime)) return json({ ok: false, error: 'bad image type: ' + mime + which }, 400);
+        if (!/^[A-Za-z0-9+/]+=*$/.test(data)) return json({ ok: false, error: 'the image is not base64' + which }, 400);
+        if (data.length < 500) return json({ ok: false, error: 'the image is too small to read' + which }, 400);
+        if (data.length > 900000) return json({ ok: false, error: 'image too large' + which }, 413);
+        vtotal += data.length;
+        shots.push({ mime, data });
+      }
+      /* and a ceiling on the total, because four legal images are still a
+         2.4 MB request from a phone on mobile data */
+      if (vtotal > 1800000) return json({ ok: false, error: 'the pictures are too large together' }, 413);
+      const many = shots.length > 1;
 
       const cap = Number(env.VISION_DAILY_CAP || 40);
       const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
@@ -1802,6 +1824,29 @@ export default {
         'visual_reasoning: name the text you actually read, or the visual cue ' +
         'you actually used. One short sentence.\n' +
         '\n' +
+        (many
+          ? 'THERE ARE ' + shots.length + ' PICTURES, AND THEY ARE NOT ' +
+            shots.length + ' SEPARATE MEALS.\n' +
+            'They are the COMPONENTS of one thing this person made. Read every ' +
+            'one of them: identify each product, its exact variant, and where a ' +
+            'nutrition panel is legible, read it.\n' +
+            'Then answer with items - one row per component that was ACTUALLY ' +
+            'EATEN, with how many grams of it went in. The words below say what ' +
+            'was made and in what quantity; a photographed packet says what the ' +
+            'thing IS, never how much of it was used. A 200 g jar with one ' +
+            'spoonful taken from it is 15 g in items, not 200.\n' +
+            'A component the words mention but no picture shows still belongs in ' +
+            'items - a slice of bread under the cheese is part of the meal.\n' +
+            'For each item, if you READ that component\u2019s own panel, put its ' +
+            'per-100g figures in per_100g and set from_label true. That is the ' +
+            'entire point of the pictures: this brand of cheese, not the average ' +
+            'of all cheese. If you did not read a panel for that component, ' +
+            'per_100g is null and from_label false - we have measured tables for ' +
+            'that case and an invented figure would sit beside them unmarked.\n' +
+            'With several pictures, product_name names the DISH and ' +
+            'nutritional_values is null: there is no single packet to report.\n' +
+            '\n'
+          : '') +
         (vnote
           ? 'THE PERSON WROTE THIS ALONGSIDE THE PICTURE, AND FOR WHAT WAS ' +
             'ACTUALLY CONSUMED IT OUTRANKS THE PICTURE:\n"' + vnote + '"\n' +
@@ -1840,8 +1885,22 @@ export default {
             nullable: true,
             items: {
               type: 'OBJECT',
-              properties: { name: { type: 'STRING' }, grams: { type: 'NUMBER' } },
-              required: ['name', 'grams'],
+              properties: {
+                name: { type: 'STRING' },
+                grams: { type: 'NUMBER' },
+                /* per-item, because with several packets in front of it there
+                   is no single "the" label any more. Required-and-nullable for
+                   the same reason the outer object is: a schema that permits
+                   silence gets silence. */
+                per_100g: {
+                  type: 'OBJECT',
+                  nullable: true,
+                  properties: { calories_kcal: N, protein_g: N, carbohydrates_g: N, fat_g: N },
+                },
+                from_label: { type: 'BOOLEAN' },
+              },
+              propertyOrdering: ['name', 'grams', 'per_100g', 'from_label'],
+              required: ['name', 'grams', 'per_100g', 'from_label'],
             },
           },
           visual_reasoning: { type: 'STRING' },
@@ -1872,10 +1931,11 @@ export default {
               systemInstruction: { parts: [{ text: VSYS }] },
               contents: [{
                 role: 'user',
-                parts: [
-                  { inlineData: { mimeType: mime, data } },
-                  { text: VUSER },
-                ],
+                /* the pictures first, then the question - the model reads
+                   parts in order, and a question asked before the evidence
+                   arrives is answered from the question alone */
+                parts: shots.map((sh) => ({ inlineData: { mimeType: sh.mime, data: sh.data } }))
+                  .concat([{ text: VUSER }]),
               }],
               generationConfig: {
                 /* 3000, not 1400. At 1400 the answer came back TRUNCATED mid-word:
@@ -1885,7 +1945,7 @@ export default {
                    The thinking is not disabled here the way /say and /cross
                    disable it - reading small print off a photograph is the one
                    place in this app where it earns its cost. */
-                maxOutputTokens: 3000,
+                maxOutputTokens: many ? 4500 : 3000,
                 /* 0, because this is reading, not writing. Creativity here is
                    indistinguishable from making the label say something else. */
                 temperature: 0,
