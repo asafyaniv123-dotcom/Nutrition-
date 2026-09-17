@@ -96,6 +96,32 @@ setTimeout(function(){exLoad(function(){
     R.badSets=wkBad.sets;
     R.badCardioBand=Object.keys(wkBad.byMuscle).indexOf('אירובי')>=0;
 
+    /* ── a whole week of cardio, mixed on purpose ── */
+    var day=function(back){var d=new Date();d.setDate(d.getDate()-back);return d.toISOString();};
+    var run=function(m,mins){return {name:'ריצה',sets:[{dist:m,mins:mins}],warm:[]};};
+    var swim=function(m,mins){return {name:'שחייה',sets:[{dist:m,mins:mins}],warm:[]};};
+    var bench=function(){return {name:'לחיצת חזה',sets:[{weight:60,reps:10}],warm:[]};};
+    /* Today and yesterday are in this week whatever day it is; a run seven
+       days back is not, and that is what makes the comparison a comparison. */
+    localStorage.setItem('fit_log',JSON.stringify([
+      {date:day(0),name:'a',duration:30,exercises:[run(5000,25),bench()]},
+      {date:day(1),name:'b',duration:40,exercises:[run(8000,44),swim(1500,35)]}
+    ]));
+    var w2=fitWeekStats(0);
+    R.ckeys=Object.keys(w2.cardio).sort();
+    R.runDist=w2.cardio['ריצה']&&w2.cardio['ריצה'].dist;
+    R.runMins=w2.cardio['ריצה']&&w2.cardio['ריצה'].mins;
+    R.runN=w2.cardio['ריצה']&&w2.cardio['ריצה'].n;
+    R.swimDist=w2.cardio['שחייה']&&w2.cardio['שחייה'].dist;
+    R.noBench='לחיצת חזה' in w2.cardio;
+    R.noTotal=('total' in w2.cardio)||('dist' in w2.cardio);
+    /* and the exclusion, re-asserted against the code that now walks these
+       rows rather than skipping them outright */
+    R.wkVol=w2.vol;
+    R.wkSets=w2.sets;
+    R.wkReps=w2.reps;
+    R.wkBand=Object.keys(w2.byMuscle).indexOf('אירובי')>=0;
+
     APP_UNITS=u0;window.renderFitness=realRender;
   }catch(e){R.threw=String(e&&e.message||e);}
   fetch('/r',{method:'POST',body:JSON.stringify(R)});
@@ -171,6 +197,23 @@ console.log('which is worth something only because the wrong way really does bre
 ok(got.badVol === 740, 'km in the weight box makes volume 600+140 (got ' + got.badVol + ')');
 ok(got.badSets === 2, 'and the run counts as a set (got ' + got.badSets + ')');
 ok(got.badCardioBand === true, 'and lands in the muscle band it does not belong to');
+
+console.log('');
+console.log("the week's cardio, gathered per exercise and never across them");
+ok(JSON.stringify(got.ckeys) === JSON.stringify(['ריצה', 'שחייה']),
+   'two exercises, kept apart (got ' + JSON.stringify(got.ckeys) + ')');
+ok(got.runDist === 13000 && got.runMins === 69 && got.runN === 2,
+   'the two runs add up: 13 km in 69 minutes (got ' + got.runDist + 'm / ' + got.runMins + 'min)');
+ok(got.swimDist === 1500, 'and the swim stays its own 1,500 m (got ' + got.swimDist + ')');
+ok(got.noBench === false, 'the bench press is not in here');
+ok(got.noTotal === false, 'and there is NO combined total - a swum kilometre is not a cycled one');
+
+console.log('');
+console.log('while the exclusion still holds, against the code that now walks these rows');
+ok(got.wkVol === 600, 'volume is still only the bench (got ' + got.wkVol + ')');
+ok(got.wkSets === 1, 'one set (got ' + got.wkSets + ')');
+ok(got.wkReps === 10, 'ten reps (got ' + got.wkReps + ')');
+ok(got.wkBand === false, 'and אירובי is still absent from the muscle band');
 
 console.log('');
 if (fails.length) { console.log(fails.length + ' FAILED'); process.exit(1); }
