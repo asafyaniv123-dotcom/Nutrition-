@@ -916,6 +916,10 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 /* ── LOADING THE BAR ──
    The drawing is the drop target, so the thing you aim at is the thing that
    changes. */
+/* A reference, not a control: it never takes a tap and never asks for one. */
+.fit-last{font-size:10.5px;color:var(--muted);margin-bottom:7px;line-height:1.5}
+.fit-last b{font-weight:800;color:var(--ink)}
+.fit-last i{font-style:normal;opacity:.75}
 .bld{margin-top:9px;padding:11px;border-radius:16px;background:var(--card);
   box-shadow:0 2px 10px -6px rgba(84,104,120,.28)}
 .bld-h{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:8px;text-align:center}
@@ -10327,6 +10331,16 @@ function plateHint(){
    state, not workout state: it belongs to the set you have not logged
    yet, so it is cleared the moment that set goes in. */
 var _fitRpe=null;
+/* WHO PUT YOU ON THIS EXERCISE. A superset walks itself back to the top of
+   the pair after the last set, which is right when the sequence moved you and
+   wrong when you tapped the tab yourself. Screen state, not workout state. */
+var _fitPinned=false;
+function fitGo(ei){
+  if(!_fitWorkout)return;
+  _fitWorkout.currentEx=ei;
+  _fitPinned=true;
+  renderFitness();
+}
 function rpePick(v){_fitRpe=(_fitRpe===v)?null:v;renderFitness();}
 function toggleWarm(){_fitWarm=!_fitWarm;renderFitness();}
 function removeWarm(idx){
@@ -13924,6 +13938,29 @@ function exPrevHTML(ex){
   return h+'</div></div>';
 }
 // what to put in the boxes before you touch them: the same set, last time
+/* ── LAST TIME, AS A REFERENCE ──
+   Not a prefill - that is exPrefill's job and it gets overwritten the moment
+   you type. This stays put while you decide, which is when it is wanted. */
+function exLastLine(ex){
+  var prev=exLastTime(ex.name);
+  if(!prev||!prev.sets||!prev.sets.length)return '';
+  var n=ex.sets.length;
+  /* the SAME set number, because the third set of the day is compared with
+     the third and not with the warm-up */
+  var same=prev.sets[n]||prev.sets[prev.sets.length-1];
+  var h='<div class="fit-last">'+_t('בפעם שעברה')+
+        ': <b>'+fmtWeight(same.weight)+'</b> \u00d7 '+nfmt(same.reps);
+  /* the whole set list, small - it is the shape of the session, and it is
+     what tells you whether that weight held up */
+  if(prev.sets.length>1){
+    var all=[],i;
+    for(i=0;i<prev.sets.length&&i<6;i++)all.push(nfmt(prev.sets[i].reps));
+    h+=' <i>('+all.join('\u00b7')+(prev.sets.length>6?'\u2026':'')+')</i>';
+  }
+  var ago=prev.date?agoText(new Date(prev.date).getTime()):'';
+  if(ago)h+=' <i>'+esc(ago)+'</i>';
+  return h+'</div>';
+}
 function exPrefill(ex){
   var n=ex.sets.length;
   /* A RAMP means it: a plan reading 60, 70, 80 is describing this set, not the
@@ -14773,7 +14810,7 @@ function renderFitWorkout(){
   for(var ei=0;ei<w.exercises.length;ei++){
     var done=w.exercises[ei].sets.length>=w.exercises[ei].targetSets;
     var isCur=ei===w.currentEx;
-    tabsHTML+='<button onclick="_fitWorkout.currentEx='+ei+';renderFitness()" style="flex-shrink:0;border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isCur?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':(done?'var(--green-200)':'var(--surface)'))+';color:'+(isCur||done?'var(--white)':'var(--muted)')+'">'+esc(exLabel(w.exercises[ei].name))+'</button>';
+    tabsHTML+='<button onclick="fitGo('+ei+')" style="flex-shrink:0;border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;background:'+(isCur?'linear-gradient(135deg,var(--terra-200),var(--terra-500))':(done?'var(--green-200)':'var(--surface)'))+';color:'+(isCur||done?'var(--white)':'var(--muted)')+'">'+esc(exLabel(w.exercises[ei].name))+'</button>';
   }
   // adding one mid-session: the plan meets the gym more often than not
   tabsHTML+='<button onclick="workoutAddExercise()" style="flex-shrink:0;border:1.5px dashed #e0d8ce;background:none;border-radius:10px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;color:var(--muted);font-family:inherit">+</button>';
@@ -14844,7 +14881,8 @@ function renderFitWorkout(){
   /* The boxes open holding what you did on this same set last time, so the
      ordinary case - do it again - is one tap and nothing typed. */
   var pf=exPrefill(ex);
-  h+='<div style="margin-top:12px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">';
+  h+='<div style="margin-top:12px">'+exLastLine(ex)+
+     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">';
   h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('משקל')+' ('+weightUnit()+')'+'</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="0" value="'+(pf.w===''||pf.w===undefined?'':edWeightVal(pf.w))+'" oninput="plateHint()" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('חזרות')+'</div><input id="fit-r" class="mtnm" type="number" placeholder="'+ex.targetReps+'" value="'+pf.r+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   /* The label is the switch. Nothing else on this screen has room for a
@@ -14968,10 +15006,15 @@ function logSet(){
   var _i=_fitWorkout.currentEx, _nx=ssNextIn(_i);
   if(_nx!==null){
     _fitWorkout.currentEx=_nx;
+    /* the sequence has the cursor again, so the next set re-homes normally */
+    _fitPinned=false;
   } else {
     restStart();   // rest begins the moment the set ends, not when you remember
     var _g=ssGroup(_i);
-    if(_g.length>1)_fitWorkout.currentEx=_g[0];
+    /* ...unless you chose this exercise yourself. Walking back to the top of
+       the pair is the sequence doing its job; doing it over a tap is the app
+       overruling you. */
+    if(_g.length>1&&!_fitPinned)_fitWorkout.currentEx=_g[0];
   }
   _fitRpe=null;
   // Update PR
