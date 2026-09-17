@@ -63,10 +63,18 @@ const CANNED = {
   nutritional_values: null,
   items: [
     { name: 'גבינה צהובה', grams: 25, from_label: true,
-      per_100g: { calories_kcal: 350, protein_g: 27.5, carbohydrates_g: 1.2, fat_g: 26 } },
+      per_100g: { calories_kcal: 350, protein_g: 27.5, carbohydrates_g: 1.2, fat_g: 26 },
+      stated_by_user: null },
     { name: 'רסק עגבניות', grams: 15, from_label: true,
-      per_100g: { calories_kcal: 82, protein_g: 4.3, carbohydrates_g: 18.9, fat_g: 0.5 } },
-    { name: 'לחם', grams: 30, from_label: false, per_100g: null },
+      per_100g: { calories_kcal: 82, protein_g: 4.3, carbohydrates_g: 18.9, fat_g: 0.5 },
+      stated_by_user: null },
+    { name: 'לחם', grams: 30, from_label: false, per_100g: null, stated_by_user: null },
+    /* A scoop whose packet says 75 g of protein per 100 g, and a person who
+       says the scoop has 25. 25 in a 30 g scoop is 83.3 per 100 g, so if the
+       stated figure wins the row reads 83.3 and not 75. */
+    { name: 'אבקת חלבון מי גבינה (WHEY)', grams: 30, from_label: true,
+      per_100g: { calories_kcal: 380, protein_g: 75, carbohydrates_g: 8, fat_g: 5 },
+      stated_by_user: { calories_kcal: null, protein_g: 25, carbohydrates_g: null, fat_g: null } },
   ],
   why: 'canned',
 };
@@ -106,7 +114,7 @@ const DRIVE = '<script>setTimeout(function(){' +
   '  R.sentImageToo=!!sent.image;' +
   '  R.sentNote=String(sent.note||"");' +
   '  R.rows=(_sayItems||[]).map(function(r){' +
-  '    return {q:r.q,amount:r.amount,' +
+  '    return {q:r.q,amount:r.amount,src:r.src,' +
   '            kcal:r.food?Math.round((r.food.kcal||0)*10)/10:null,' +
   '            p:r.food?Math.round((r.food.p||0)*10)/10:null};});' +
   '  fetch("/result?r="+encodeURIComponent(JSON.stringify(R)));' +
@@ -163,7 +171,7 @@ ok(/טוסט/.test(result.sentNote), 'the sentence travels with the pictures');
 
 console.log('the answer');
 const rows = result.rows || [];
-ok(rows.length === 3, 'three rows came back (got ' + rows.length + ')');
+ok(rows.length === 4, 'four rows came back (got ' + rows.length + ')');
 /* 25 g of a 27.5 g/100 g cheese is 6.9 g of protein. The tables' average
    yellow cheese is not that, which is the whole point of the photograph. */
 const cheese = rows[0] || {};
@@ -174,6 +182,16 @@ const paste = rows[1] || {};
 ok(Math.abs((paste.p || 0) - 4.3) < 0.6,
    "the paste row carries the PASTE's protein, 4.3/100g (got " + paste.p + ')');
 ok(cheese.p !== paste.p, 'and the two rows did not get the same panel');
+
+console.log('what the person said');
+/* The packet says 75 g of protein per 100 g. The person says the scoop has 25,
+   and a 30 g scoop holding 25 g is 83.3 per 100 g. If the row reads 75, the
+   stated figure lost to the photograph - which is the wrong way round. */
+const scoop = rows[3] || {};
+ok(Math.abs((scoop.p || 0) - 83.3) < 1,
+   "a figure the person stated beats the packet's own panel (got " + scoop.p + ', expected 83.3)');
+ok(scoop.src === 'said',
+   'and the row says where it came from, not "from the label" (got ' + scoop.src + ')');
 
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log('');

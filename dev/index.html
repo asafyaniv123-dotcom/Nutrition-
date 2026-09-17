@@ -5431,7 +5431,7 @@ function picExact(food,src,grams){
    Kept rather than discarded: a front-of-pack claim is a complete figure, not
    a panel read badly, and it outranks anything the tables can offer. */
 var _picPartial=null;
-function picLabelOverlay(row,Lin){
+function picLabelOverlay(row,Lin,src){
   var L=Lin||_picPartial;
   if(!L||!row||!row.food)return false;
   var per=(L.basis==='serving'&&L.serving_g>0)?100/L.serving_g:1;
@@ -5449,7 +5449,7 @@ function picLabelOverlay(row,Lin){
     did=true;
   }
   if(!did)return false;
-  row.food=f;row.src='label';
+  row.food=f;row.src=src||'label';
   return true;
 }
 function picByTable(j,items){
@@ -5576,7 +5576,19 @@ function picVision(shots,note){
           if(pv.fat_g!==null&&pv.fat_g!==undefined)L2.f=pv.fat_g;
           if(L2.kcal===undefined&&L2.p===undefined&&L2.c===undefined&&L2.f===undefined)L2=null;
         }
-        items.push({food:it.name,amount:it.grams,unit:'g',ai:!L2,L:L2});
+        /* WHAT THE PERSON STATED, kept apart from what a packet said. It is
+           the figure for THIS portion rather than per 100g, so it goes in on a
+           serving basis and picLabelOverlay does the arithmetic. */
+        var S2=null,sv=it.stated_by_user;
+        if(sv){
+          S2={basis:'serving',serving_g:it.grams>0?it.grams:100};
+          if(sv.calories_kcal!==null&&sv.calories_kcal!==undefined)S2.kcal=sv.calories_kcal;
+          if(sv.protein_g!==null&&sv.protein_g!==undefined)S2.p=sv.protein_g;
+          if(sv.carbohydrates_g!==null&&sv.carbohydrates_g!==undefined)S2.c=sv.carbohydrates_g;
+          if(sv.fat_g!==null&&sv.fat_g!==undefined)S2.f=sv.fat_g;
+          if(S2.kcal===undefined&&S2.p===undefined&&S2.c===undefined&&S2.f===undefined)S2=null;
+        }
+        items.push({food:it.name,amount:it.grams,unit:'g',ai:!(L2||S2),L:L2,S:S2});
       }
       if(!items.length){picSee(list[0],note);return;}
       picVisionRows(items,null);
@@ -5617,8 +5629,12 @@ function picVisionRows(items,L){
       /* Row by row: with one packet L covered row zero, and with several
          pictures each row carries the panel read off its own. */
       if(L)picLabelOverlay(rows[0],L);
-      for(var ri=0;ri<rows.length;ri++)
+      for(var ri=0;ri<rows.length;ri++){
         if(items[ri]&&items[ri].L)picLabelOverlay(rows[ri],items[ri].L);
+        /* LAST, so it wins. Somebody reading their own packet outranks a
+           photograph of it and every table we have. */
+        if(items[ri]&&items[ri].S)picLabelOverlay(rows[ri],items[ri].S,'said');
+      }
       sayCross(0);
       sayPaint();
     });
@@ -6700,6 +6716,9 @@ function sayPaint(){
             not shown is a source that gets assumed. */
          (row.src==='barcode'?'<span class="sr-srctag">'+_t('מהברקוד')+'</span>':'')+
          (row.src==='label'?'<span class="sr-srctag">'+_t('מהתווית')+'</span>':'')+
+         /* Not "from the label" - the person typed this number, and the app
+            does not get to imply it read it off a packet. */
+         (row.src==='said'?'<span class="sr-srctag">'+_t('ממה שכתבת')+'</span>':'')+
          '<span class="sr-chev">'+(open?'&#8963;':'&#8964;')+'</span></button>';
       h+='<span class="sr-k" id="say-k-'+i+'">'+(a?nfmt(a.kcal):'')+'</span>';
     } else {
