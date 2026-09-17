@@ -85,8 +85,8 @@ const items = j.items || [];
 const labelled = items.filter((it) => it.from_label && it.per_100g);
 
 ok(items.length >= 2, 'it answered with a list, not one product (got ' + items.length + ')');
-ok(j.nutritional_values === null,
-   'and no single set of nutritional_values - there is no one packet here');
+ok(!j.values,
+   'and no single set of values - there is no one packet here (got ' + JSON.stringify(j.values) + ')');
 ok(labelled.length >= 2, 'at least two items carry numbers read off their own packet (got ' + labelled.length + ')');
 ok(!items.some((it) => it.grams >= 150),
    'no item is logged at its PACKAGE weight - the sentence says how much was used');
