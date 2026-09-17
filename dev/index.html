@@ -5621,31 +5621,31 @@ function picVision(shots,note){
            off the cheese, the paste's off the paste. Only fields it actually
            read are carried - picLabelOverlay keeps the table's measured value
            for the rest, which is what stops a hole becoming a zero. */
-        var L2=null,pv=it.per_100g;
+        var panel=null,pv=it.per_100g;
         if(it.from_label&&pv){
-          L2={basis:'100g'};
-          if(pv.calories_kcal!==null&&pv.calories_kcal!==undefined)L2.kcal=pv.calories_kcal;
-          if(pv.protein_g!==null&&pv.protein_g!==undefined)L2.p=pv.protein_g;
-          if(pv.carbohydrates_g!==null&&pv.carbohydrates_g!==undefined)L2.c=pv.carbohydrates_g;
-          if(pv.fat_g!==null&&pv.fat_g!==undefined)L2.f=pv.fat_g;
-          if(L2.kcal===undefined&&L2.p===undefined&&L2.c===undefined&&L2.f===undefined)L2=null;
+          panel={basis:'100g'};
+          if(pv.calories_kcal!==null&&pv.calories_kcal!==undefined)panel.kcal=pv.calories_kcal;
+          if(pv.protein_g!==null&&pv.protein_g!==undefined)panel.p=pv.protein_g;
+          if(pv.carbohydrates_g!==null&&pv.carbohydrates_g!==undefined)panel.c=pv.carbohydrates_g;
+          if(pv.fat_g!==null&&pv.fat_g!==undefined)panel.f=pv.fat_g;
+          if(panel.kcal===undefined&&panel.p===undefined&&panel.c===undefined&&panel.f===undefined)panel=null;
         }
         /* WHAT THE PERSON STATED, kept apart from what a packet said. It is
            the figure for THIS portion rather than per 100g, so it goes in on a
            serving basis and picLabelOverlay does the arithmetic. */
-        var S2=null,sv=it.stated_by_user;
+        var said=null,sv=it.stated_by_user;
         if(sv){
-          S2={basis:'serving',serving_g:it.grams>0?it.grams:100};
-          if(sv.calories_kcal!==null&&sv.calories_kcal!==undefined)S2.kcal=sv.calories_kcal;
-          if(sv.protein_g!==null&&sv.protein_g!==undefined)S2.p=sv.protein_g;
-          if(sv.carbohydrates_g!==null&&sv.carbohydrates_g!==undefined)S2.c=sv.carbohydrates_g;
-          if(sv.fat_g!==null&&sv.fat_g!==undefined)S2.f=sv.fat_g;
-          if(S2.kcal===undefined&&S2.p===undefined&&S2.c===undefined&&S2.f===undefined)S2=null;
+          said={basis:'serving',serving_g:it.grams>0?it.grams:100};
+          if(sv.calories_kcal!==null&&sv.calories_kcal!==undefined)said.kcal=sv.calories_kcal;
+          if(sv.protein_g!==null&&sv.protein_g!==undefined)said.p=sv.protein_g;
+          if(sv.carbohydrates_g!==null&&sv.carbohydrates_g!==undefined)said.c=sv.carbohydrates_g;
+          if(sv.fat_g!==null&&sv.fat_g!==undefined)said.f=sv.fat_g;
+          if(said.kcal===undefined&&said.p===undefined&&said.c===undefined&&said.f===undefined)said=null;
         }
         /* the packet's own panel, for the first row only, and only where that
            row did not bring one of its own */
-        if(!L2&&prodL&&i===0){L2=prodL;prodL=null;}
-        items.push({food:it.name,amount:it.grams,unit:'g',ai:!(L2||S2),L:L2,S:S2});
+        if(!panel&&prodL&&i===0){panel=prodL;prodL=null;}
+        items.push({food:it.name,amount:it.grams,unit:'g',ai:!(panel||said),panel:panel,said:said});
       }
       if(!items.length){picSee(list[0],note);return;}
       picVisionRows(items,null);
@@ -5687,10 +5687,10 @@ function picVisionRows(items,L){
          pictures each row carries the panel read off its own. */
       if(L)picLabelOverlay(rows[0],L);
       for(var ri=0;ri<rows.length;ri++){
-        if(items[ri]&&items[ri].L)picLabelOverlay(rows[ri],items[ri].L);
+        if(items[ri]&&items[ri].panel)picLabelOverlay(rows[ri],items[ri].panel);
         /* LAST, so it wins. Somebody reading their own packet outranks a
            photograph of it and every table we have. */
-        if(items[ri]&&items[ri].S)picLabelOverlay(rows[ri],items[ri].S,'said');
+        if(items[ri]&&items[ri].said)picLabelOverlay(rows[ri],items[ri].said,'said');
       }
       sayCross(0);
       sayPaint();
@@ -22065,9 +22065,9 @@ function rfClockTotals(clk){
 function rfClockTotalsHTML(){
   var clk=interviewAnswers.timeclock||new Array(25).fill('none');
   var t=rfClockTotals(clk),C={sleep:PAL.terra200,work:PAL.green500,social:'#c9b8f0',other:PAL.amber500};
-  var L={sleep:''+_t('שינה')+'',work:''+_t('עבודה')+'',social:''+_t('חברתי')+'',other:''+_t('אחר')+''},k,tot=0;
+  var LABELS={sleep:''+_t('שינה')+'',work:''+_t('עבודה')+'',social:''+_t('חברתי')+'',other:''+_t('אחר')+''},k,tot=0;
   var h='<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">';
-  for(k in t)if(t[k]>0){tot+=t[k];h+='<div style="text-align:center"><div style="font-size:16px;font-weight:800;color:'+C[k]+'">'+t[k]+'h</div><div style="font-size:9px;color:var(--muted)">'+L[k]+'</div></div>';}
+  for(k in t)if(t[k]>0){tot+=t[k];h+='<div style="text-align:center"><div style="font-size:16px;font-weight:800;color:'+C[k]+'">'+t[k]+'h</div><div style="font-size:9px;color:var(--muted)">'+LABELS[k]+'</div></div>';}
   h+='</div><div style="text-align:center;font-size:10.5px;color:var(--muted-soft);margin-top:8px">'+tot+' '+_t('מתוך 24 שעות')+'</div>';
   return h;
 }
