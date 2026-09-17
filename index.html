@@ -347,6 +347,29 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .fw-rb{border:none;border-radius:9px;padding:5px 10px;font-size:10.5px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--muted)}
 .fw-rb.on{background:linear-gradient(135deg,var(--terra-200),var(--terra-500));color:var(--white)}
 /* the countdown, over everything, skippable */
+/* The timer, on the body rather than in a screen - so moving between
+   exercises does not restart it. */
+.fw-rb.go{background:var(--green-200);color:var(--white)}
+.fw-timerhome{width:100%;background:var(--surface);border:none;border-radius:14px;
+  padding:11px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;
+  color:var(--muted);margin-bottom:12px}
+.wt{position:fixed;inset-inline-end:50%;transform:translateX(-50%);
+  bottom:calc(150px + env(safe-area-inset-bottom));z-index:201;
+  background:rgba(74,67,64,.96);color:var(--white);border-radius:20px;
+  padding:12px 14px;box-shadow:0 10px 30px rgba(74,67,64,.4);min-width:214px}
+.wt-face{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;
+  direction:ltr;text-align:center;line-height:1.1;margin-bottom:9px}
+.wt-face.low{color:#ffb4a2}
+.wt-row{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
+.wt-b,.wt-m,.wt-s{border:none;border-radius:10px;font-family:inherit;cursor:pointer;
+  background:rgba(255,255,255,.16);color:var(--white);font-weight:800}
+.wt-b{flex:1;padding:9px 6px;font-size:12px}
+.wt-b.on{background:rgba(255,255,255,.3)}
+.wt-m{flex:1;padding:7px 6px;font-size:10.5px;background:rgba(255,255,255,.1)}
+.wt-m.on{background:rgba(255,255,255,.28)}
+.wt-len{flex-wrap:wrap}
+.wt-s{padding:6px 9px;font-size:10.5px;background:rgba(255,255,255,.1);font-variant-numeric:tabular-nums;direction:ltr}
+.wt-s.on{background:rgba(255,255,255,.28)}
 .fw-rest{position:fixed;inset-inline-end:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));z-index:200;display:flex;align-items:center;gap:12px;background:rgba(74,67,64,.94);color:var(--white);border-radius:18px;padding:10px 14px;box-shadow:0 8px 26px rgba(74,67,64,.34)}
 .fw-rest-n{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;direction:ltr;min-width:52px;text-align:center}
 .fw-rest-x{border:none;background:rgba(255,255,255,.16);color:var(--white);border-radius:10px;padding:6px 11px;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer}
@@ -11690,6 +11713,9 @@ function fitProgressCardHTML(log){
     h+='</div>';
   }
 
+  /* A clock before a workout exists: warming up, or timing something that
+     is not a set at all. */
+  h+=fitTimerBtnHTML();
   h+='<div style="display:flex;gap:8px;margin-top:2px">';
   h+='<button onclick="_fitView=\'history\';renderFitness()" style="flex:1;background:var(--surface);border:none;border-radius:10px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit">'+_t('כל האימונים')+' &#8250;</button>';
   h+='<button onclick="_fitView=\'progress\';_fitProgressEx=\'\';renderFitness()" style="flex:1;background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:none;border-radius:10px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-500);font-family:inherit">'+_t('גרף התקדמות')+' &#8250;</button>';
@@ -11697,6 +11723,10 @@ function fitProgressCardHTML(log){
   return h+'</div>';
 }
 
+/* The other moment you want a clock: before a workout exists. */
+function fitTimerBtnHTML(){
+  return '<button class="fw-timerhome" onclick="wtToggle()">&#9201; '+_t('סטופר')+'</button>';
+}
 function renderFitHome(){
   var templates=loadTemplates();
   var log=loadWorkoutLog();
@@ -14312,6 +14342,116 @@ function exPrefill(ex){
    The sound is built rather than loaded: two short tones from the oscillator
    the game already uses. A file would have to be fetched, and this needs to
    work in a basement gym with no signal. */
+/* ── THE TIMER ──
+   Counting up and counting down, computed from the wall clock so a locked
+   screen costs nothing. It lives on document.body so it keeps running while
+   you move between exercises, and it is the same shape as the rest pill
+   below - which is the piece of this that was already proven. */
+var _wtMode='up',_wtFrom=0,_wtEnd=0,_wtPaused=0,_wtSet=180,_wtIv=null,_wtOpen=false;
+var WT_KEY='fit_wt';
+function wtSetLen(n){
+  _wtSet=Math.max(5,Math.min(3600,Math.round(n)||0));
+  try{localStorage.setItem(WT_KEY,String(_wtSet));}catch(e){}
+  wtPaint();
+}
+function wtLoadLen(){
+  try{var v=parseInt(localStorage.getItem(WT_KEY),10);if(v>=5&&v<=3600)_wtSet=v;}catch(e){}
+}
+function wtRunning(){return !!_wtIv;}
+/* seconds on the clock right now, whichever way it is counting */
+function wtSecs(){
+  if(_wtMode==='up'){
+    var from=_wtFrom||Date.now();
+    return Math.floor(((_wtPaused||Date.now())-from)/1000);
+  }
+  var end=_wtEnd||Date.now();
+  return Math.max(0,Math.ceil((end-(_wtPaused||Date.now()))/1000));
+}
+function wtFace(sec){
+  var m=Math.floor(sec/60),ss=sec%60;
+  /* nfmt pads in the reader's own digits, so this reads ١:٣٠ in Arabic
+     rather than 1:30 - the same rule the rest pill follows. */
+  return nfmt(m)+':'+nfmt(ss,{minimumIntegerDigits:2});
+}
+function wtStart(){
+  var now=Date.now();
+  if(_wtPaused){
+    /* resuming: move the anchors forward by however long it stood still, so
+       the paused seconds are not counted */
+    var gap=now-_wtPaused;
+    if(_wtMode==='up')_wtFrom+=gap; else _wtEnd+=gap;
+    _wtPaused=0;
+  } else if(_wtMode==='up'){
+    _wtFrom=now;
+  } else {
+    _wtEnd=now+_wtSet*1000;
+  }
+  if(_wtIv)clearInterval(_wtIv);
+  _wtIv=setInterval(wtTick,200);
+  wtTick();
+}
+function wtPause(){
+  if(!_wtIv)return;
+  _wtPaused=Date.now();
+  clearInterval(_wtIv);_wtIv=null;
+  wtPaint();
+}
+function wtReset(){
+  if(_wtIv){clearInterval(_wtIv);_wtIv=null;}
+  _wtFrom=0;_wtEnd=0;_wtPaused=0;
+  wtPaint();
+}
+function wtMode(m){
+  wtReset();
+  _wtMode=(m==='down')?'down':'up';
+  wtPaint();
+}
+function wtTick(){
+  if(_wtMode==='down'&&wtSecs()<=0){
+    if(_wtIv){clearInterval(_wtIv);_wtIv=null;}
+    _wtPaused=0;_wtEnd=0;
+    restBeep();               /* the noise this app already makes at zero */
+    wtPaint();
+    return;
+  }
+  wtPaint();
+}
+function wtToggle(){
+  _wtOpen=!_wtOpen;
+  if(_wtOpen)wtLoadLen();
+  wtPaint();
+}
+/* Drawn onto the body, not into a screen, so changing exercise does not
+   restart it. */
+function wtPaint(){
+  var el=document.getElementById('wt');
+  if(!_wtOpen&&!wtRunning()&&!_wtPaused){ if(el)el.remove(); return; }
+  if(!el){
+    document.body.insertAdjacentHTML('beforeend','<div class="wt" id="wt"></div>');
+    el=document.getElementById('wt');
+  }
+  var sec=wtSecs(),run=wtRunning();
+  var h='<div class="wt-face'+(_wtMode==='down'&&sec<=10&&(run||_wtPaused)?' low':'')+'">'+wtFace(sec)+'</div>';
+  h+='<div class="wt-row">';
+  h+='<button class="wt-b'+(run?' on':'')+'" onclick="'+(run?'wtPause()':'wtStart()')+'">'+
+     (run?_t('עצור'):(_wtPaused?_t('המשך'):_t('התחל')))+'</button>';
+  h+='<button class="wt-b" onclick="wtReset()">'+_t('אפס')+'</button>';
+  h+='<button class="wt-b" onclick="wtToggle()">'+_t('סגור')+'</button>';
+  h+='</div>';
+  /* the two modes, and the length only where a length means something */
+  h+='<div class="wt-row">';
+  h+='<button class="wt-m'+(_wtMode==='up'?' on':'')+'" onclick="wtMode(\'up\')">'+_t('סופר למעלה')+'</button>';
+  h+='<button class="wt-m'+(_wtMode==='down'?' on':'')+'" onclick="wtMode(\'down\')">'+_t('סופר למטה')+'</button>';
+  h+='</div>';
+  if(_wtMode==='down'&&!run&&!_wtPaused){
+    h+='<div class="wt-row wt-len">';
+    var L=[60,90,120,180,300],i;
+    for(i=0;i<L.length;i++)
+      h+='<button class="wt-s'+(_wtSet===L[i]?' on':'')+'" onclick="wtSetLen('+L[i]+')">'+wtFace(L[i])+'</button>';
+    h+='</div>';
+  }
+  el.innerHTML=h;
+}
 var REST_KEY='fit_rest',_restEnd=0,_restIv=null;
 function restLen(){
   try{var v=parseInt(localStorage.getItem(REST_KEY),10);if(v>=0&&v<=600)return v;}catch(e){}
@@ -14339,6 +14479,14 @@ function restBeep(){
     });
     setTimeout(function(){try{a.close();}catch(e){}},900);
   }catch(e){}
+}
+/* BY HAND, whether or not a set was logged. The automatic start is right most
+   of the time and wrong exactly when a set was not detected - and then there
+   was no way to start it at all. */
+function restGo(){
+  var n=restLen();
+  if(!n){showToast(''+_t('זמן המנוחה מכובה. בחר אורך כדי להפעיל.')+'');return;}
+  restStart();
 }
 function restStart(){
   var n=restLen();
@@ -15242,6 +15390,11 @@ function renderFitWorkout(){
   [0,60,90,120,180].forEach(function(n){
     h+='<button class="fw-rb'+(restLen()===n?' on':'')+'" onclick="restSet('+n+')">'+(n?_t('{n}ש',{n:n}):''+_t('כבוי')+'')+'</button>';
   });
+  /* START IT BY HAND. The automatic start is right most of the time and wrong
+     exactly when a set was not detected - and then there was no way in at
+     all. */
+  h+='<button class="fw-rb go" onclick="restGo()">'+_t('התחל מנוחה')+'</button>';
+  h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
   h+='</div>';
   // Nav buttons
   h+='<div style="display:flex;gap:8px">';
