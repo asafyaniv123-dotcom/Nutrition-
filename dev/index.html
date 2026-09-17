@@ -913,6 +913,29 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .pc-l{display:inline-block;border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:800;
   background:#f6e2dc;color:var(--terra-700);line-height:1.4}
 .rk{width:100%;background:var(--card);border-radius:12px;padding:9px 10px;margin-top:2px}
+/* ── LOADING THE BAR ──
+   The drawing is the drop target, so the thing you aim at is the thing that
+   changes. */
+.bld{margin-top:9px;padding:11px;border-radius:16px;background:var(--card);
+  box-shadow:0 2px 10px -6px rgba(84,104,120,.28)}
+.bld-h{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:8px;text-align:center}
+.bld-drop{border-radius:14px;padding:3px;transition:box-shadow .15s,background .15s}
+.bld-drop.hot{background:rgba(124,150,175,.13);box-shadow:0 0 0 2px var(--accent,#8f7fd6)}
+.bld-t{text-align:center;font-size:15px;font-weight:800;margin:6px 0 2px}
+.bld-t i{font-style:normal;font-weight:600;font-size:11px;color:var(--muted)}
+.bld-pal{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:9px}
+/* touch-action:none, or the page scrolls instead of the plate moving */
+.bld-p{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;
+  min-width:38px;height:38px;border-radius:50%;border:none;font-weight:800;font-size:11.5px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px -3px rgba(0,0,0,.4)}
+.bld-ghost{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-50%);
+  opacity:.92;box-shadow:0 8px 18px -8px rgba(0,0,0,.5)}
+.bld-on{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:9px}
+.bld-c{border:none;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;
+  display:flex;align-items:center;gap:5px;cursor:pointer}
+.bld-c b{font-weight:800}
+.bld-row{display:flex;gap:7px;justify-content:center;margin-top:9px}
 .rk-h{font-size:10px;font-weight:800;color:var(--muted);margin-bottom:7px}
 .rk-r{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .rk-p{min-width:34px;border-radius:8px;border:1.5px solid var(--line-strong);background:none;
@@ -2758,6 +2781,7 @@ var HE={
   '{n} פריטים נוספו':{one:'פריט אחד נוסף',two:'שני פריטים נוספו',other:'{n} פריטים נוספו'},
   '{n} אימונים':{one:'אימון אחד',two:'שני אימונים',other:'{n} אימונים'},
   'אפשר עד {n} תמונות בבת אחת.':{one:'אפשר תמונה אחת בבת אחת.',two:'אפשר שתי תמונות בבת אחת.',other:'אפשר עד {n} תמונות בבת אחת.'},
+  '{n} לכל צד':{one:'פלטה אחת לכל צד',two:'שתי פלטות לכל צד',other:'{n} פלטות לכל צד'},
   '{n} פעמים':{one:'פעם אחת',two:'פעמיים',other:'{n} פעמים'},
   '{n} שנים':{one:'שנה',two:'שנתיים',other:'{n} שנים'},
   '{n} שניות':{one:'שנייה',two:'שתי שניות',other:'{n} שניות'},
@@ -9934,26 +9958,111 @@ function plateSet(){
      every weight, which reads as a broken screen rather than as a setting. */
   return out.length?out:all;
 }
-function rackToggle(p){
-  var all=plateSetAll(),cur=plateSet().slice();
-  var i=cur.indexOf(p);
-  if(i>=0)cur.splice(i,1);else cur.push(p);
-  cur=all.filter(function(x){return cur.indexOf(x)>=0;});
-  saveRack(cur);
-  plateHint();
-}
 var _rackOpen=false;
 function rackOpen(){_rackOpen=!_rackOpen;plateHint();}
-function rackHTML(){
-  if(!_rackOpen)return '<button class="pl-k" onclick="rackOpen()">'+_t('הפלטות שלי')+'</button>';
-  var all=plateSetAll(),have=plateSet(),h='<div class="rk">',i,p;
-  h+='<div class="rk-h">'+_t('אילו פלטות יש במכון?')+'</div><div class="rk-r">';
-  for(i=0;i<all.length;i++){
-    p=all[i];
-    h+='<button class="rk-p'+(have.indexOf(p)>=0?' on':'')+'" onclick="rackToggle('+p+')" '+
-       'style="'+(have.indexOf(p)>=0?'background:'+(PLATE_COLOR[p]||'#9a938c')+';color:'+plateInk(p):'')+'">'+nfmt(p)+'</button>';
+/* ── THE BAR AS IT IS BEING BUILT ──
+   Per SIDE, because that is the unit a lifter thinks in and the unit the
+   drawing already takes. The total doubles it and adds the bar. */
+var _bld=[];
+function bldBar(){
+  var ex=_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx];
+  return (ex?loadKind(ex.name):'bar')==='bar'?barWeight():0;
+}
+function bldTotal(){
+  var s2=0,i;
+  for(i=0;i<_bld.length;i++)s2+=_bld[i];
+  return Math.round((bldBar()+2*s2)*100)/100;
+}
+/* The number goes into the field the set is logged from - PLAIN, not through
+   nfmt: that formats for the reader's digits and separators, and this string
+   is parsed back by parseFloat. An Arabic screen would have written ٥٠ into a
+   number field. */
+function bldSync(){
+  var el=document.getElementById('fit-w');
+  if(el)el.value=_bld.length?String(bldTotal()):'';
+  plateHint();
+}
+function bldAdd(p){
+  if(_bld.length>=12)return;          /* twelve a side is not a rack, it is a mistake */
+  _bld.push(p);
+  _bld.sort(function(a,b){return b-a;});
+  /* What you load is what this gym has, which is the whole reason the picker
+     can go: the rack learns from the loading instead of being declared. */
+  var have=(loadRack()||[]).slice();
+  if(have.indexOf(p)<0){have.push(p);saveRack(plateSetAll().filter(function(x){return have.indexOf(x)>=0;}));}
+  bldSync();
+}
+function bldDrop(i){_bld.splice(i,1);bldSync();}
+function bldClear(){_bld=[];bldSync();}
+/* Drag with POINTER events. HTML5 drag-and-drop does not exist on iOS Safari,
+   which is the phone this is for. A drag that never moved is a tap, and a tap
+   loads too - faster than dragging, and the only route for anyone who cannot
+   drag at all. */
+function bldGrab(ev,p){
+  if(ev.button&&ev.button!==0)return;
+  ev.preventDefault();
+  var g=document.createElement('div');
+  g.className='bld-p bld-ghost';
+  g.textContent=nfmt(p);
+  g.style.background=PLATE_COLOR[p]||'#9a938c';
+  g.style.color=plateInk(p);
+  document.body.appendChild(g);
+  var moved=false;
+  function inDrop(e){
+    var d=document.getElementById('bld-drop');
+    if(!d)return false;
+    var r=d.getBoundingClientRect();
+    return e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
   }
-  h+='</div><button class="pl-k" onclick="rackOpen()">'+_t('סגור')+'</button></div>';
+  function at(e){g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';}
+  function mv(e){
+    moved=true;at(e);
+    var d=document.getElementById('bld-drop');
+    if(d)d.classList.toggle('hot',inDrop(e));
+  }
+  function up(e){
+    document.removeEventListener('pointermove',mv);
+    document.removeEventListener('pointerup',up);
+    document.removeEventListener('pointercancel',up);
+    if(g.parentNode)g.parentNode.removeChild(g);
+    var d=document.getElementById('bld-drop');
+    if(d)d.classList.remove('hot');
+    if(!moved||inDrop(e))bldAdd(p);
+  }
+  at(ev);
+  document.addEventListener('pointermove',mv);
+  document.addEventListener('pointerup',up);
+  document.addEventListener('pointercancel',up);
+}
+function rackHTML(){
+  if(!_rackOpen)return '<button class="pl-k" onclick="rackOpen()">'+_t('הרכב את המוט')+'</button>';
+  var all=plateSetAll(),h='<div class="bld">',i,p,col;
+  h+='<div class="bld-h">'+_t('גרור פלטה אל המוט - היא נכנסת לשני הצדדים')+'</div>';
+  /* The drawing IS the target, and it draws what is on the bar right now
+     rather than what a target weight would need. */
+  h+='<div class="bld-drop" id="bld-drop">'+plateSvg(_bld,bldBar())+'</div>';
+  h+='<div class="bld-t">'+(_bld.length
+      ?fmtWeight(bldTotal())+' <i>'+_t('{n} לכל צד',{n:_bld.length})+'</i>'
+      :_t('המוט לבדו'))+'</div>';
+  /* what is on it, and the way off it */
+  if(_bld.length){
+    h+='<div class="bld-on">';
+    for(i=0;i<_bld.length;i++){
+      p=_bld[i];col=PLATE_COLOR[p]||'#9a938c';
+      h+='<button class="bld-c" onclick="bldDrop('+i+')" style="background:'+col+';color:'+plateInk(p)+'" '+
+         'aria-label="'+_t('הורד פלטה')+'"><b>'+nfmt(p)+'</b> &#xD7;</button>';
+    }
+    h+='</div>';
+  }
+  h+='<div class="bld-pal">';
+  for(i=0;i<all.length;i++){
+    p=all[i];col=PLATE_COLOR[p]||'#9a938c';
+    h+='<button class="bld-p" onpointerdown="bldGrab(event,'+p+')" '+
+       'style="background:'+col+';color:'+plateInk(p)+'">'+nfmt(p)+'</button>';
+  }
+  h+='</div><div class="bld-row">'+
+     (_bld.length?'<button class="pl-k" onclick="bldClear()">'+_t('רוקן')+'</button>':'')+
+     '<button class="pl-k" onclick="rackOpen()">'+_t('סגור')+'</button></div></div>';
   return h;
 }
 /* White and silver discs need dark text on them; the rest take white. */
