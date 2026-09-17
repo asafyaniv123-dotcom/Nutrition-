@@ -1806,6 +1806,41 @@ export default {
         '  files someone\u2019s food under the wrong meal with nothing to mark it as\n' +
         '  a guess.\n' +
         '\n' +
+        'THREE RULES THAT APPLY TO EVERY PICTURE-AND-WORDS INPUT, however many ' +
+        'pictures there are.\n' +
+        '\n' +
+        'RULE 1 - THE WORDS MAY POINT AT THE PICTURE. If the sentence refers to ' +
+        'something instead of naming it - "מהזאת", "הזה", "מהקופסה הזו", "כאן", ' +
+        '"this", "that one", "from it" - then the thing being referred to is the ' +
+        'MAIN OBJECT IN THE PHOTOGRAPH, and it is the FIRST item in your answer. ' +
+        'Identify it from the picture, then attach the quantity the words give. ' +
+        '"סקופ מהזאת" over a tub of protein powder is one scoop of THAT powder, ' +
+        'named and measured; it is never an answer with no powder in it. An item ' +
+        'the words point at and you leave out is the worst failure here, because ' +
+        'the person cannot see that it is missing - they can see only a total ' +
+        'that is too small.\n' +
+        '\n' +
+        'RULE 2 - ONE BASE INGREDIENT, ONE ROW. Never return two brands or two ' +
+        'variants of the same base food in the same meal. If you are unsure ' +
+        'which brand of milk, or whether the lactose-free one is a different ' +
+        'product, choose ONE canonical row and return it once. Milk twice is not ' +
+        'two ingredients; it is one ingredient and an uncertainty, and returning ' +
+        'both doubles it in someone\u2019s day. The same goes for a food you can ' +
+        'see and also infer from the words - it is one row, not two.\n' +
+        '\n' +
+        'RULE 3 - HOUSEHOLD MEASURES BECOME GRAMS. A scoop, a spoonful, a ' +
+        'handful, a sip are quantities, and grams are the only unit the tables ' +
+        'answer. Convert them, and put the grams in the item. Where the ' +
+        'photographed pack states its own serving - "מנה: 32 גרם", a scoop ' +
+        'printed on the tub - THAT is the number, and these are only the ' +
+        'fallback:\n' +
+        '  scoop of protein powder 30 g, tablespoon 15 g, teaspoon 5 g,\n' +
+        '  tablespoon of peanut butter or tahini 16 g, tablespoon of oil 14 g,\n' +
+        '  handful of nuts 30 g, slice of bread 28 g, slice of hard cheese 25 g,\n' +
+        '  sip 30 ml, glass 250 ml, mug 240 ml.\n' +
+        'A converted household measure is not read off a label: from_label stays ' +
+        'false for it.\n' +
+        '\n' +
         'HOW MUCH THERE IS is a different question from what the numbers are ' +
         'PER, and they are answered separately. A pot printing "170 g" beside ' +
         'a panel headed "per 100 g" has serving_size_analyzed "100g" and ' +
@@ -1991,9 +2026,54 @@ export default {
           const name = String((it && it.name) || '').trim().slice(0, 60);
           const g = Number(it && it.grams);
           if (!name || !isFinite(g) || g <= 0 || g > 3000) continue;
-          items.push({ name, grams: Math.round(g) });
+          /* THE PANEL READ OFF THIS COMPONENT'S OWN PACKET. This used to be
+             dropped here - the schema asked for it, the model answered it, and
+             the assembly rebuilt the item without it, so the per-item numbers
+             never once reached the app. */
+          const pv = it && it.per_100g && typeof it.per_100g === 'object' ? it.per_100g : null;
+          const per = pv ? {
+            calories_kcal: vnum(pv.calories_kcal),
+            protein_g: vnum(pv.protein_g),
+            carbohydrates_g: vnum(pv.carbohydrates_g),
+            fat_g: vnum(pv.fat_g),
+          } : null;
+          const anyPer = per && (per.calories_kcal !== null || per.protein_g !== null ||
+                                 per.carbohydrates_g !== null || per.fat_g !== null);
+          items.push({
+            name,
+            grams: Math.round(g),
+            per_100g: anyPer ? per : null,
+            from_label: anyPer ? it.from_label === true : false,
+          });
         }
       }
+      /* ONE BASE INGREDIENT, ONE ROW - asked for in the prompt and enforced
+         here, because a prompt is a request and a day total is arithmetic.
+         Deliberately conservative: identical names, and a name whose words are
+         a subset of another's ("חלב" inside "חלב טרה"). The two-brands case is
+         left to the model, since deciding here that two unequal words are
+         brands of one thing would merge גבינה צהובה with גבינה לבנה too. */
+      const vnorm = (n) => n.toLowerCase().replace(/[\s,._\-()״"']+/g, ' ').trim();
+      const vwords = (n) => new Set(vnorm(n).split(' ').filter(Boolean));
+      const subset = (a, b) => { for (const w of a) if (!b.has(w)) return false; return a.size > 0; };
+      const merged = [];
+      for (const it of items) {
+        const w = vwords(it.name);
+        let hit = -1;
+        for (let k = 0; k < merged.length; k++) {
+          const mw = vwords(merged[k].name);
+          if (vnorm(merged[k].name) === vnorm(it.name) || subset(w, mw) || subset(mw, w)) { hit = k; break; }
+        }
+        if (hit < 0) { merged.push(it); continue; }
+        const m = merged[hit];
+        /* the more specific name wins, the grams add up, and a panel that was
+           read beats one that was not */
+        if (vwords(it.name).size > vwords(m.name).size) m.name = it.name;
+        m.grams = Math.min(3000, m.grams + it.grams);
+        if (!m.from_label && it.from_label) { m.per_100g = it.per_100g; m.from_label = true; }
+      }
+      items.length = 0;
+      for (const m of merged) items.push(m);
 
       /* An estimate does not get to state nutrition. It states what is on the
          plate; the tables state what that is worth. */

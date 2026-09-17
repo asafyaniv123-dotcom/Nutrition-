@@ -31,6 +31,8 @@ const env = {
 };
 
 let sent = null;
+/* the stubbed answer, swappable per case */
+let ANSWER = null;
 const GEMINI_OK = {
   candidates: [{ content: { parts: [{ text: JSON.stringify({
     product_name: 'טוסט גבינה', brand: null, serving_size_analyzed: '100g',
@@ -47,10 +49,23 @@ const GEMINI_OK = {
   }) }] } }],
 };
 
+/* a whole Gemini envelope around any answer object */
+const wrap = (obj) => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] });
+
 globalThis.fetch = async (url, opt) => {
   sent = { url: String(url), body: JSON.parse(opt.body) };
-  return new Response(JSON.stringify(GEMINI_OK), { status: 200, headers: { 'content-type': 'application/json' } });
+  const body = ANSWER ? wrap(ANSWER) : GEMINI_OK;
+  return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 };
+
+/* the shape the model answers in, with the items swapped per case */
+const answerWith = (items) => ({
+  product_name: 'ארוחה', brand: null, serving_size_analyzed: '100g',
+  is_packaged_product: false, is_estimated: true, confidence: 'Medium',
+  cooking_state: 'unspecified', meal_type: 'unspecified',
+  package_g: null, package_is_guess: false, nutritional_values: null,
+  items, visual_reasoning: 'stub',
+});
 
 const post = (body) => worker.fetch(
   new Request('https://x/vision', {
@@ -110,6 +125,54 @@ ok(parts1.filter((p) => p.inlineData).length === 1, 'one picture goes in');
 ok(!/THERE ARE 1 PICTURES/.test(text1) && !/THERE ARE/.test(text1),
    'and it is NOT asked the ingredients question');
 ok(sent.body.generationConfig.maxOutputTokens === 3000, 'with the budget it always had');
+
+console.log('');
+console.log('the three rules reach the model');
+sent = null; ANSWER = null;
+await post({ images: [img(), img()], note: 'סקופ מהזאת', lang: 'he' });
+const rules = (sent.body.contents[0].parts.find((p) => p.text) || {}).text || '';
+ok(/RULE 1 - THE WORDS MAY POINT AT THE PICTURE/.test(rules), 'rule 1, visual anaphora');
+ok(/מהזאת/.test(rules) && /scoop of THAT powder/.test(rules), 'with the referring words named, and the worked example');
+ok(/RULE 2 - ONE BASE INGREDIENT, ONE ROW/.test(rules), 'rule 2, de-duplication');
+ok(/RULE 3 - HOUSEHOLD MEASURES BECOME GRAMS/.test(rules), 'rule 3, household measures');
+ok(/scoop of protein powder 30 g/.test(rules) && /peanut butter or tahini 16 g/.test(rules),
+   'with a conversion table');
+ok(/states its own serving/.test(rules), "and the pack's own serving outranks it");
+
+console.log('');
+console.log("each item's own panel survives the assembly");
+ANSWER = answerWith([
+  { name: 'גבינה צהובה', grams: 25, from_label: true,
+    per_100g: { calories_kcal: 350, protein_g: 27.5, carbohydrates_g: 1.2, fat_g: 26 } },
+  { name: 'לחם', grams: 30, from_label: false, per_100g: null },
+]);
+r = await post({ images: [img(), img()], note: 'טוסט', lang: 'he' });
+j = await r.json();
+const ch = (j.items || [])[0] || {};
+ok(!!ch.per_100g, 'per_100g reaches the app at all - it used to be dropped here');
+ok(ch.per_100g && ch.per_100g.protein_g === 27.5, 'with the packet\'s own protein (got ' + (ch.per_100g || {}).protein_g + ')');
+ok(ch.from_label === true, 'and marked as read rather than estimated');
+ok(((j.items || [])[1] || {}).per_100g === null, 'an item with no panel carries none');
+
+console.log('');
+console.log('one base ingredient, one row');
+ANSWER = answerWith([
+  { name: 'חלב', grams: 100, from_label: false, per_100g: null },
+  { name: 'חלב טרה 3%', grams: 150, from_label: true,
+    per_100g: { calories_kcal: 60, protein_g: 3.4, carbohydrates_g: 4.8, fat_g: 3 } },
+  { name: 'גבינה צהובה', grams: 25, from_label: false, per_100g: null },
+  { name: 'גבינה לבנה', grams: 40, from_label: false, per_100g: null },
+]);
+r = await post({ images: [img()], note: 'שייק', lang: 'he' });
+j = await r.json();
+const names = (j.items || []).map((x) => x.name);
+ok(names.length === 3, 'the two milks became one row (got ' + names.length + ': ' + names.join(', ') + ')');
+const milk = (j.items || []).find((x) => /חלב/.test(x.name)) || {};
+ok(milk.name === 'חלב טרה 3%', 'the more specific name survives (got ' + milk.name + ')');
+ok(milk.grams === 250, 'and the grams add up (got ' + milk.grams + ')');
+ok(milk.from_label === true && !!milk.per_100g, 'a panel that was read beats one that was not');
+ok(names.indexOf('גבינה צהובה') >= 0 && names.indexOf('גבינה לבנה') >= 0,
+   'but yellow and white cheese are NOT merged - they are two foods, not one brand');
 
 console.log('');
 if (fails.length) { console.log(fails.length + ' failed'); process.exit(1); }
