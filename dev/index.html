@@ -347,6 +347,32 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* The timer, on the body rather than in a screen - so moving between
    exercises does not restart it. */
 .fw-rb.go{background:var(--green-200);color:var(--white)}
+.tm-card{background:var(--card);border-radius:18px;padding:14px;margin-bottom:12px;
+  box-shadow:0 4px 16px rgba(200,180,160,.1)}
+.tm-h{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:10px}
+.tm-row2{display:flex;gap:8px}
+.tm-go{flex:1;border:none;border-radius:12px;padding:12px;font-family:inherit;
+  font-size:12.5px;font-weight:800;cursor:pointer;background:var(--surface);color:var(--ink)}
+.tm-kinds{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.tm-k{flex:1;min-width:72px;border:none;border-radius:11px;padding:9px 6px;font-family:inherit;
+  font-size:11.5px;font-weight:800;cursor:pointer;background:var(--surface);color:var(--muted)}
+.tm-k.on{background:linear-gradient(135deg,var(--terra-200),var(--terra-500));color:var(--white)}
+.tm-what{font-size:10.5px;color:var(--muted);line-height:1.6;margin-bottom:11px}
+.tm-nums{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:11px}
+.tm-n{flex:1;min-width:66px;display:flex;flex-direction:column;gap:4px;
+  font-size:9.5px;font-weight:700;color:var(--muted)}
+.tm-n i{font-style:normal;opacity:.8}
+.tm-n input{width:100%;padding:9px;border-radius:10px;border:1px solid rgba(140,133,125,.28);
+  font-size:16px;font-weight:800;font-family:inherit;background:var(--surface);color:var(--ink);
+  font-variant-numeric:tabular-nums;direction:ltr;text-align:center}
+.tm-start{width:100%;border:none;border-radius:13px;padding:13px;font-family:inherit;
+  font-size:13px;font-weight:800;cursor:pointer;color:var(--white);
+  background:linear-gradient(135deg,var(--terra-200),var(--terra-500))}
+.wt-ph{text-align:center;font-size:11px;font-weight:800;color:rgba(255,255,255,.72);
+  margin-bottom:2px;letter-spacing:.04em}
+.wt-ph.work{color:#a8e6b0}
+.wt-ph.rest{color:#ffd9a8}
+.wt-ph b{font-variant-numeric:tabular-nums;direction:ltr}
 .fw-timerhome{width:100%;background:var(--surface);border:none;border-radius:14px;
   padding:11px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;
   color:var(--muted);margin-bottom:12px}
@@ -10662,6 +10688,7 @@ function renderFitness(){
   else if(_fitView==='start')document.getElementById('content').innerHTML=renderFitStart();
   else if(_fitView==='weights')document.getElementById('content').innerHTML=renderFitWeights();
   else if(_fitView==='stats')document.getElementById('content').innerHTML=renderFitStats();
+  else if(_fitView==='timer')renderFitTimer();
   else if(_fitView==='steps')renderFitSteps();
   else if(_fitView==='steps-setup')renderFitStepsSetup();
 }
@@ -11623,7 +11650,84 @@ function fitProgressCardHTML(log){
 
 /* The other moment you want a clock: before a workout exists. */
 function fitTimerBtnHTML(){
-  return '<button class="fw-timerhome" onclick="wtToggle()">&#9201; '+_t('סטופר')+'</button>';
+  return '<button class="fw-timerhome" onclick="fitTimerOpen()">&#9201; '+_t('סטופר וטיימרים')+'</button>';
+}
+var _wtKind='tabata';
+function fitTimerOpen(){_fitView='timer';renderFitness();}
+function wtKindPick(k){
+  _wtKind=k;
+  var saved=wtPlanLoad();
+  /* what he set last time for THIS shape, or the standard for it */
+  if(saved&&saved.kind===k)_wtTmp={work:saved.work,rest:saved.rest,rounds:saved.rounds,prep:saved.prep};
+  else _wtTmp=null;
+  renderFitness();
+}
+var _wtTmp=null;
+function wtNums(){
+  if(_wtTmp)return _wtTmp;
+  var saved=wtPlanLoad();
+  if(saved&&saved.kind===_wtKind)return saved;
+  return WT_PRESETS[_wtKind];
+}
+function wtNumSet(field,v){
+  var n=parseInt(v,10);
+  var cur=wtNums();
+  _wtTmp={work:cur.work,rest:cur.rest,rounds:cur.rounds,prep:cur.prep};
+  if(!isFinite(n)||n<0)n=0;
+  if(field==='work')_wtTmp.work=Math.min(3600,Math.max(1,n));
+  if(field==='rest')_wtTmp.rest=Math.min(3600,n);
+  if(field==='rounds')_wtTmp.rounds=Math.min(99,Math.max(1,n));
+  if(field==='prep')_wtTmp.prep=Math.min(60,n);
+}
+function wtGo(){
+  var n=wtNums();
+  wtPlanStart(_wtKind,n.work,n.rest,n.rounds,n.prep);
+  /* back to where you were - the clock follows you in the pill */
+  _fitView='home';renderFitness();
+}
+function renderFitTimer(){
+  var n=wtNums(),h='<div style="padding-bottom:20px">';
+  h+='<button class="fw-timerhome" style="margin-bottom:14px" onclick="_fitView=\'home\';renderFitness()">&#8249; '+_t('חזרה')+'</button>';
+
+  /* the two that need nothing set up */
+  h+='<div class="tm-card"><div class="tm-h">'+_t('בלי לוח זמנים')+'</div>';
+  h+='<div class="tm-row2">';
+  h+='<button class="tm-go" onclick="wtMode(\'up\');_wtOpen=true;wtStart();_fitView=\'home\';renderFitness()">'+_t('סופר למעלה')+'</button>';
+  h+='<button class="tm-go" onclick="wtMode(\'down\');_wtOpen=true;wtPaint();_fitView=\'home\';renderFitness()">'+_t('סופר למטה')+'</button>';
+  h+='</div></div>';
+
+  /* and the four that do */
+  h+='<div class="tm-card"><div class="tm-h">'+_t('עם לוח זמנים')+'</div>';
+  h+='<div class="tm-kinds">';
+  ['emom','amrap','tabata','interval'].forEach(function(k){
+    h+='<button class="tm-k'+(_wtKind===k?' on':'')+'" onclick="wtKindPick(\''+k+'\')">'+esc(wtPlanLabel(k))+'</button>';
+  });
+  h+='</div>';
+  /* what each one IS, in one line, because EMOM and AMRAP are jargon and a
+     person who has not done CrossFit should still be able to pick */
+  h+='<div class="tm-what">'+esc(wtKindWhat(_wtKind))+'</div>';
+  h+='<div class="tm-nums">';
+  h+=wtNumHTML('work',_t('עבודה'),n.work,_wtKind==='amrap'?_t('אורך הבלוק'):'');
+  if(_wtKind!=='amrap'&&_wtKind!=='emom')h+=wtNumHTML('rest',_t('מנוחה'),n.rest,'');
+  if(_wtKind!=='amrap')h+=wtNumHTML('rounds',_t('סבבים'),n.rounds,'');
+  h+=wtNumHTML('prep',_t('היכון'),n.prep,'');
+  h+='</div>';
+  h+='<button class="tm-start" onclick="wtGo()">'+_t('התחל')+'</button>';
+  h+='</div>';
+
+  h+='</div>';
+  document.getElementById('content').innerHTML=h;
+}
+function wtNumHTML(field,label,val,hint){
+  return '<label class="tm-n"><span>'+label+(hint?' <i>'+hint+'</i>':'')+'</span>'+
+    '<input type="number" inputmode="numeric" value="'+val+'" '+
+    'oninput="wtNumSet(\''+field+'\',this.value)"></label>';
+}
+function wtKindWhat(k){
+  if(k==='emom')return ''+_t('כל דקה על הדקה: צפצוף בתחילת כל דקה, והמנוחה היא מה שנשאר ממנה.')+'';
+  if(k==='amrap')return ''+_t('בלוק אחד ארוך: כמה סבבים שתספיק בתוכו.')+'';
+  if(k==='tabata')return ''+_t('עבודה קצרה ומנוחה קצרה, שמונה פעמים. ברירת המחדל היא 20 ו-10.')+'';
+  return ''+_t('עבודה, מנוחה, מספר סבבים — מה שתגדיר.')+'';
 }
 function renderFitHome(){
   var templates=loadTemplates();
@@ -14256,6 +14360,72 @@ function wtLoadLen(){
   try{var v=parseInt(localStorage.getItem(WT_KEY),10);if(v>=5&&v<=3600)_wtSet=v;}catch(e){}
 }
 function wtRunning(){return !!_wtIv;}
+/* ── A SCHEDULE, AND THE FOUR SHAPES OF IT ──
+   work and rest in seconds, rounds as a count, prep as the countdown before
+   anything starts. EMOM is rest 0 with a 60 second work; AMRAP is one long
+   round; Tabata is 20/10 eight times. One engine, four sets of numbers. */
+var _wtPlan=null,_wtPhase='',_wtRound=0;
+var WT_PRESETS={
+  emom:    {work:60,rest:0,rounds:10,prep:10},
+  amrap:   {work:600,rest:0,rounds:1,prep:10},
+  tabata:  {work:20,rest:10,rounds:8,prep:10},
+  interval:{work:40,rest:20,rounds:8,prep:10}
+};
+var WT_PLAN_KEY='fit_wtplan';
+function wtPlanLoad(){
+  try{
+    var raw=localStorage.getItem(WT_PLAN_KEY);
+    if(raw){var j=JSON.parse(raw);if(j&&j.kind&&WT_PRESETS[j.kind])return j;}
+  }catch(e){}
+  return null;
+}
+function wtPlanSave(p){try{localStorage.setItem(WT_PLAN_KEY,JSON.stringify(p));}catch(e){}}
+function wtPlanLabel(kind){
+  return kind==='emom'?'EMOM':kind==='amrap'?'AMRAP':
+         kind==='tabata'?'Tabata':''+_t('אינטרוולים')+'';   // i18n-exempt: EMOM, AMRAP and Tabata are the names of the protocols, in every language
+}
+/* WHERE IN THE SCHEDULE, from elapsed time alone. Deriving it rather than
+   counting it is what makes a locked screen cost nothing: come back in round
+   three and you are in round three, at the right second. */
+function wtAt(elapsed){
+  var p=_wtPlan;
+  if(!p)return null;
+  /* SECONDS, and elapsed is milliseconds. Written without this the prep was
+     ten THOUSANDTHS of a second and every round started ten seconds early -
+     which looks like nothing at all on a screen you are not watching. */
+  var prep=(p.prep||0)*1000;
+  if(elapsed<prep)return {phase:'prep',left:Math.ceil((prep-elapsed)/1000),round:0};
+  var t=elapsed-prep,cyc=(p.work+p.rest)*1000;
+  if(cyc<=0)return {phase:'done',left:0,round:p.rounds};
+  var round=Math.floor(t/cyc)+1;
+  if(round>p.rounds)return {phase:'done',left:0,round:p.rounds};
+  var inCyc=t%cyc;
+  if(inCyc<p.work*1000)
+    return {phase:'work',left:Math.ceil((p.work*1000-inCyc)/1000),round:round};
+  return {phase:'rest',left:Math.ceil((cyc-inCyc)/1000),round:round};
+}
+function wtPhaseLabel(ph){
+  return ph==='prep'?''+_t('היכון')+'':ph==='work'?''+_t('עבודה')+'':
+         ph==='rest'?''+_t('מנוחה')+'':''+_t('סיימת')+'';
+}
+/* A different noise for the end than for a round, because they mean different
+   things and you are not looking at the screen. */
+function wtBeep(times){
+  restBeep();
+  if(times>1)setTimeout(restBeep,420);
+  if(times>2)setTimeout(restBeep,840);
+}
+function wtPlanStart(kind,work,rest,rounds,prep){
+  _wtPlan={kind:kind,work:Math.max(1,work|0),rest:Math.max(0,rest|0),
+           rounds:Math.max(1,rounds|0),prep:Math.max(0,prep|0)};
+  wtPlanSave(_wtPlan);
+  _wtMode='plan';_wtPhase='';_wtRound=0;_wtPaused=0;
+  _wtFrom=Date.now();
+  _wtOpen=true;
+  if(_wtIv)clearInterval(_wtIv);
+  _wtIv=setInterval(wtTick,200);
+  wtTick();
+}
 /* seconds on the clock right now, whichever way it is counting */
 function wtSecs(){
   if(_wtMode==='up'){
@@ -14305,6 +14475,22 @@ function wtMode(m){
   wtPaint();
 }
 function wtTick(){
+  if(_wtMode==='plan'){
+    var at=wtAt((_wtPaused||Date.now())-_wtFrom);
+    if(!at){wtReset();return;}
+    /* the noise happens on the CHANGE, which is the only moment it means
+       anything - and it is how you follow this without looking */
+    if(at.phase!==_wtPhase||at.round!==_wtRound){
+      if(_wtPhase)wtBeep(at.phase==='done'?3:1);
+      _wtPhase=at.phase;_wtRound=at.round;
+    }
+    if(at.phase==='done'){
+      if(_wtIv){clearInterval(_wtIv);_wtIv=null;}
+      _wtPaused=0;
+    }
+    wtPaint();
+    return;
+  }
   if(_wtMode==='down'&&wtSecs()<=0){
     if(_wtIv){clearInterval(_wtIv);_wtIv=null;}
     _wtPaused=0;_wtEnd=0;
@@ -14328,15 +14514,34 @@ function wtPaint(){
     document.body.insertAdjacentHTML('beforeend','<div class="wt" id="wt"></div>');
     el=document.getElementById('wt');
   }
-  var sec=wtSecs(),run=wtRunning();
-  var h='<div class="wt-face'+(_wtMode==='down'&&sec<=10&&(run||_wtPaused)?' low':'')+'">'+wtFace(sec)+'</div>';
+  var sec=wtSecs(),run=wtRunning(),at=null;
+  if(_wtMode==='plan'){
+    at=wtAt((_wtPaused||Date.now())-_wtFrom);
+    sec=at?at.left:0;
+  }
+  var h='';
+  if(at){
+    h+='<div class="wt-ph'+(at.phase==='work'?' work':at.phase==='rest'?' rest':'')+'">'+
+       wtPhaseLabel(at.phase)+
+       (at.phase==='work'||at.phase==='rest'
+         ?' <b>'+nfmt(at.round)+'/'+nfmt(_wtPlan.rounds)+'</b>':'')+
+       '</div>';
+  }
+  h+='<div class="wt-face'+(((_wtMode==='down'||at)&&sec<=10&&(run||_wtPaused))?' low':'')+'">'+wtFace(sec)+'</div>';
   h+='<div class="wt-row">';
   h+='<button class="wt-b'+(run?' on':'')+'" onclick="'+(run?'wtPause()':'wtStart()')+'">'+
      (run?_t('עצור'):(_wtPaused?_t('המשך'):_t('התחל')))+'</button>';
   h+='<button class="wt-b" onclick="wtReset()">'+_t('אפס')+'</button>';
   h+='<button class="wt-b" onclick="wtToggle()">'+_t('סגור')+'</button>';
   h+='</div>';
-  /* the two modes, and the length only where a length means something */
+  /* the two simple shapes. A schedule is set up on its own screen, where
+     there is room for three numbers and a name. */
+  if(_wtMode==='plan'){
+    h+='<div class="wt-row"><button class="wt-m on" onclick="fitTimerOpen()">'+
+       esc(wtPlanLabel(_wtPlan?_wtPlan.kind:''))+' &#8250;</button></div>';
+    el.innerHTML=h;
+    return;
+  }
   h+='<div class="wt-row">';
   h+='<button class="wt-m'+(_wtMode==='up'?' on':'')+'" onclick="wtMode(\'up\')">'+_t('סופר למעלה')+'</button>';
   h+='<button class="wt-m'+(_wtMode==='down'?' on':'')+'" onclick="wtMode(\'down\')">'+_t('סופר למטה')+'</button>';
