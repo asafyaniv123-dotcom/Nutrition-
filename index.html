@@ -346,6 +346,39 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* the countdown, over everything, skippable */
 /* The timer, on the body rather than in a screen - so moving between
    exercises does not restart it. */
+/* A note on a lift: written once, read for years. Quiet enough to ignore and
+   always in the same place. */
+/* Adding an exercise, with what you mean to lift. */
+.ax-ov{position:fixed;inset:0;z-index:410;background:rgba(74,67,64,.62);
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.ax{width:100%;max-width:330px;background:var(--card);border-radius:20px;padding:16px;
+  box-shadow:0 18px 44px -18px rgba(60,54,50,.5)}
+.ax-t{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:2px}
+.ax-s{font-size:10.5px;color:var(--muted);margin-bottom:12px}
+.ax-row{display:flex;gap:8px;margin-bottom:12px}
+.ax-row label{flex:1;display:flex;flex-direction:column;gap:4px;
+  font-size:9.5px;font-weight:700;color:var(--muted)}
+.ax-row input{width:100%;padding:10px;border-radius:11px;border:1px solid rgba(140,133,125,.28);
+  font-size:16px;font-weight:800;font-family:inherit;background:var(--surface);color:var(--ink);
+  text-align:center;font-variant-numeric:tabular-nums;direction:ltr}
+.ax-row2{display:flex;gap:7px}
+.ax-go{flex:1;border:none;border-radius:12px;padding:12px;font-family:inherit;font-size:13px;
+  font-weight:800;cursor:pointer;color:var(--white);
+  background:linear-gradient(135deg,var(--terra-200),var(--terra-500))}
+.ax-x{border:none;border-radius:12px;padding:12px 16px;font-family:inherit;font-size:12px;
+  font-weight:700;cursor:pointer;background:var(--surface);color:var(--muted)}
+.exn{display:block;width:100%;text-align:start;border:none;font-family:inherit;cursor:pointer;
+  background:var(--surface);border-radius:11px;padding:8px 10px;margin-bottom:9px;
+  font-size:11px;line-height:1.5;color:var(--ink-soft)}
+.exn.add{color:var(--muted);font-weight:700;background:none;padding:4px 0}
+.exn-box{margin-bottom:9px}
+.exn-in{width:100%;padding:9px;border-radius:11px;border:1px solid rgba(140,133,125,.28);
+  font-size:12.5px;font-family:inherit;line-height:1.5;background:var(--card);color:var(--ink);resize:none}
+.exn-row{display:flex;gap:6px;margin-top:6px}
+.exn-save{flex:1;border:none;border-radius:10px;padding:8px;font-family:inherit;font-size:11.5px;
+  font-weight:800;cursor:pointer;background:var(--green-200);color:var(--white)}
+.exn-x{border:none;border-radius:10px;padding:8px 12px;font-family:inherit;font-size:11.5px;
+  font-weight:700;cursor:pointer;background:var(--surface);color:var(--muted)}
 .fw-rb.go{background:var(--green-200);color:var(--white)}
 .tm-card{background:var(--card);border-radius:18px;padding:14px;margin-bottom:12px;
   box-shadow:0 4px 16px rgba(200,180,160,.1)}
@@ -11815,13 +11848,60 @@ function wxRemove(i){
   _fitPinned=true;
   renderFitness();
 }
+/* ── ADDING ONE, WITH WHAT YOU MEAN TO LIFT ──
+   The name, then three boxes holding what you did on this lift last time. The
+   ordinary case is two taps and nothing typed; the boxes are there for the
+   day it is not the ordinary case. */
+var _addEx=null;
 function workoutAddExercise(){
   exPickInto(function(name){
     if(!_fitWorkout)return;
-    _fitWorkout.exercises.push({name:name,targetSets:3,targetReps:10,plan:[],sets:[],warm:[],ss:null});
-    _fitWorkout.currentEx=_fitWorkout.exercises.length-1;
+    var prev=exLastTime(name),first=prev&&prev.sets&&prev.sets[0];
+    _addEx={name:name,
+            w:first&&first.weight>0?first.weight:'',
+            r:first&&first.reps>0?first.reps:'',
+            sets:prev&&prev.sets?Math.min(8,Math.max(1,prev.sets.length)):3,
+            ago:prev&&prev.date?agoText(new Date(prev.date).getTime()):''};
     renderFitness();
   });
+}
+function addExCancel(){_addEx=null;renderFitness();}
+function addExGo(){
+  if(!_fitWorkout||!_addEx)return;
+  var g=function(id){var el=document.getElementById(id);return el?parseFloat(el.value):NaN;};
+  /* The boxes hold DISPLAY units and everything stored is kilograms - the same
+     bridge every other weight box in this app crosses. A blank box arrives as
+     NaN, and fromDisplayWeight turns that into 0, which fails the test below
+     and leaves no plan at all: skipping is still the old behaviour exactly. */
+  var w=fromDisplayWeight(g('addex-w')),r=g('addex-r'),n=g('addex-s');
+  var sets=(isFinite(n)&&n>0&&n<=20)?Math.round(n):3;
+  var reps=(isFinite(r)&&r>0&&r<=200)?Math.round(r):10;
+  var ex={name:_addEx.name,targetSets:sets,targetReps:reps,plan:[],sets:[],warm:[],ss:null};
+  /* THE PLAN, NOT A SET. Nothing is logged here - this is what the boxes will
+     open holding, and exPrefill already prefers a plan row on the first set.
+     Writing a set would put work in the log that nobody has done. */
+  if(isFinite(w)&&w>0)ex.plan=[{w:w,r:reps}];
+  _fitWorkout.exercises.push(ex);
+  _fitWorkout.currentEx=_fitWorkout.exercises.length-1;
+  _fitPinned=true;
+  _addEx=null;
+  renderFitness();
+}
+function addExHTML(){
+  if(!_addEx)return '';
+  var a=_addEx;
+  return '<div class="ax-ov" onclick="if(event.target===this)addExCancel()"><div class="ax">'+
+    '<div class="ax-t">'+esc(exLabel(a.name))+'</div>'+
+    (a.ago?'<div class="ax-s">'+_t('בפעם שעברה')+' \u00b7 '+esc(a.ago)+'</div>':'')+
+    '<div class="ax-row">'+
+      '<label>'+_t('משקל')+' ('+weightUnit()+')<input id="addex-w" type="number" inputmode="decimal" step="0.5" value="'+(a.w===''?'':edWeightVal(a.w))+'"></label>'+
+      '<label>'+_t('חזרות')+'<input id="addex-r" type="number" inputmode="numeric" value="'+a.r+'"></label>'+
+      '<label>'+_t('סטים')+'<input id="addex-s" type="number" inputmode="numeric" value="'+a.sets+'"></label>'+
+    '</div>'+
+    '<div class="ax-row2">'+
+      '<button class="ax-go" onclick="addExGo()">'+_t('הוסף')+'</button>'+
+      '<button class="ax-x" onclick="addExCancel()">'+_t('ביטול')+'</button>'+
+    '</div></div></div>';
 }
 /* ── הארון שלי ──────────────────────────────────────────────────────────
    Rows stacked the way a person is: hat, shirt, trousers, socks, shoes,
@@ -14272,6 +14352,57 @@ function agoText(ms){
 /* The line above the boxes: what the same set number was last time, and
    whether what you have just done beats it. A number to beat is the whole
    point of writing any of this down. */
+/* ── A NOTE ON A LIFT ──
+   Kept against the exercise NAME so it is waiting on the machine next month,
+   in a session nobody has planned yet. One per lift: a seat height stops being
+   true when the gym moves the rack, and a list of every note ever written
+   would bury the one that is still right. */
+var EXNOTE_KEY='fit_exnotes',_exNoteOpen=null;
+function exNotes(){
+  try{var x=localStorage.getItem(EXNOTE_KEY);return x?JSON.parse(x):{};}catch(e){return {};}
+}
+function exNoteGet(name){
+  var o=exNotes(),v=o[name];
+  return typeof v==='string'?v:'';
+}
+function exNoteSet(name,text){
+  var o=exNotes();
+  text=String(text||'').trim().slice(0,200);
+  if(text)o[name]=text; else delete o[name];
+  try{localStorage.setItem(EXNOTE_KEY,JSON.stringify(o));}catch(e){}
+}
+function exNoteEdit(i){
+  var ex=_fitWorkout&&_fitWorkout.exercises[i];
+  _exNoteOpen=(_exNoteOpen===i)?null:i;
+  renderFitness();
+  if(_exNoteOpen===i){
+    var el=document.getElementById('exnote-in');
+    if(el){el.focus();try{el.setSelectionRange(el.value.length,el.value.length);}catch(e){}}
+  }
+}
+function exNoteSave(i){
+  var ex=_fitWorkout&&_fitWorkout.exercises[i];
+  var el=document.getElementById('exnote-in');
+  if(!ex||!el)return;
+  exNoteSet(ex.name,el.value);
+  _exNoteOpen=null;
+  renderFitness();
+}
+function exNoteHTML(ex,i){
+  var note=exNoteGet(ex.name);
+  if(_exNoteOpen===i){
+    return '<div class="exn-box">'+
+      '<textarea id="exnote-in" class="exn-in" rows="2" maxlength="200" placeholder="'+
+      _t('מושב 4, רגליים על הקו השלישי…')+'">'+esc(note)+'</textarea>'+
+      '<div class="exn-row">'+
+      '<button class="exn-save" onclick="exNoteSave('+i+')">'+_t('שמור')+'</button>'+
+      '<button class="exn-x" onclick="exNoteEdit('+i+')">'+_t('ביטול')+'</button>'+
+      '</div></div>';
+  }
+  if(note)
+    return '<button class="exn" onclick="exNoteEdit('+i+')">&#9998; '+esc(note)+'</button>';
+  return '<button class="exn add" onclick="exNoteEdit('+i+')">+ '+_t('הערה על התרגיל')+'</button>';
+}
 function exPrevHTML(ex){
   var prev=exLastTime(ex.name);
   if(!prev)return '<div class="fw-prev none">'+_t('הפעם הראשונה שאתה עושה את זה')+' &mdash; '+_t('מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.')+'</div>';
@@ -15409,6 +15540,9 @@ function renderFitWorkout(){
         (joined?_t('פרק את הסופרסט'):_t('סופרסט עם')+' '+esc(exs[i+1].name))+'</button></div>';
     }
   })();
+  /* The note sits with the lift itself, above the sets - it is a setup
+     instruction, and setup happens before the first rep. */
+  h+=exNoteHTML(ex,w.currentEx);
   h+=exPrevHTML(ex);
 
   // Warm-up rows come first, because that is the order they happen in, and
@@ -15496,6 +15630,7 @@ function renderFitWorkout(){
   h+='<button class="fw-rb go" onclick="restGo()">'+_t('התחל מנוחה')+'</button>';
   h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
   h+='</div>';
+  h+=addExHTML();
   // Nav buttons
   h+='<div style="display:flex;gap:8px">';
   if(w.currentEx>0)h+='<button onclick="_fitWorkout.currentEx--;renderFitness()" style="flex:1;background:var(--surface);border:none;border-radius:14px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('אחור')+'</button>';
