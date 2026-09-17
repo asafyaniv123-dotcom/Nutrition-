@@ -3178,6 +3178,45 @@ function fmtVolume(ml){
   /* Whole fluid ounces: a tenth of one is below what anyone pours. */
   return nfmt(toDisplayVolume(ml),{maximumFractionDigits:APP_UNITS==='imperial'?0:0})+' '+volumeUnit();
 }
+/* Distance, alongside weight, height and volume. Stored in METRES always;
+   only the display converts, so no saved number changes meaning when the
+   preference flips. Metres rather than kilometres because a 400m interval and
+   a 1,500m swim are exact in metres and repeating decimals in kilometres. */
+var M_PER_MILE=1609.344,M_PER_YARD=0.9144;
+/* The unit you TYPE in: a run is entered in kilometres, never in metres. */
+function distUnit(){return APP_UNITS==='imperial'?'mi':''+_t('ק"מ')+'';}
+/* And the one short distances are SHOWN in, because "0.4 ק"מ" is not how
+   anyone says four hundred metres, and a pool is measured in neither. */
+function distUnitSmall(){return APP_UNITS==='imperial'?'yd':''+_t('מטר')+'';}
+function toDisplayDist(m){return APP_UNITS==='imperial'?(+m||0)/M_PER_MILE:(+m||0)/1000;}
+function fromDisplayDist(v){return APP_UNITS==='imperial'?(+v||0)*M_PER_MILE:(+v||0)*1000;}
+function fmtDist(m){
+  var v=+m||0;
+  /* Below one of the big unit, drop to the small one and round it whole - a
+     tenth of a metre is below anything a treadmill or a watch reports. */
+  if(APP_UNITS==='imperial'){
+    if(v<M_PER_MILE)return nfmt(Math.round(v/M_PER_YARD))+' '+distUnitSmall();
+    return nfmt(v/M_PER_MILE,{maximumFractionDigits:2})+' '+distUnit();
+  }
+  if(v<1000)return nfmt(Math.round(v))+' '+distUnitSmall();
+  /* Do not round the kilometres here, for the reason fmtWeight does not: a
+     stored 5.25 must not become 5.3 just by being displayed. */
+  return nfmt(v/1000,{maximumFractionDigits:2})+' '+distUnit();
+}
+/* Minutes per kilometre, or per mile. One place owns the slash so the whole
+   token can be fixed at once if it ever reads wrong in an RTL line. */
+function paceUnit(){return '/'+distUnit();}
+/* Derived, never typed. A run with no distance or no time has no pace, and
+   says nothing rather than printing 0:00 or Infinity. */
+function fmtPace(m,minutes){
+  var d=toDisplayDist(m),t=+minutes||0;
+  if(!(d>0)||!(t>0)||!isFinite(d)||!isFinite(t))return '';
+  var per=t/d,mm=Math.floor(per),ss=Math.round((per-mm)*60);
+  if(ss===60){mm++;ss=0;}
+  /* The seconds are padded by the FORMATTER, not by a Latin '0' - an Arabic
+     reader's half-minute is ٠٥ and gluing a zero in front of ٥ gives 0٥. */
+  return nfmt(mm)+':'+nfmt(ss,{minimumIntegerDigits:2})+' '+paceUnit();
+}
 /* A macro in grams, in the reader's own digits - ٢٠٫٢ in Arabic, 20,2 in
    German. Grams, not a stored weight: fmtWeight is the one that converts to
    pounds, and a macro is always grams in every unit system. The symbol stays

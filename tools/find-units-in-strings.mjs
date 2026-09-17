@@ -29,9 +29,32 @@ const s = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
 const gs = s.indexOf('id="game-src"'), ge = gs < 0 ? -1 : s.indexOf('</script>', gs);
 const app = gs < 0 ? s : s.slice(0, gs) + s.slice(ge);
 
-/* Both spellings of the Hebrew, and the two the app can display. */
-const UNITS = ['ק"ג', String.fromCharCode(1511, 1524, 1490), 'kg', 'lb', 'מ"ל', 'ml'];
-const ALLOWED = ['ק"ג', String.fromCharCode(1511, 1524, 1490), 'מ"ל'];
+/* Both spellings of the Hebrew, and the ones the app can display. Distance
+   joined the list when fmtDist was written: a kilometre welded into a sentence
+   is wrong for a reader in miles for exactly the reason a kilogram is. */
+const UNITS = ['ק"ג', String.fromCharCode(1511, 1524, 1490), 'kg', 'lb', 'מ"ל', 'ml',
+               'ק"מ', String.fromCharCode(1511, 1524, 1502), 'km', 'מטר'];
+const ALLOWED = ['ק"ג', String.fromCharCode(1511, 1524, 1490), 'מ"ל',
+                 'ק"מ', String.fromCharCode(1511, 1524, 1502), 'מטר'];
+
+/* A unit has to stand on its own. "מטר" is a substring of "מטרה" - a goal -
+   and reporting _t('מטרה') as a welded unit would make this check wrong on
+   the first run of its new entry. So a Hebrew unit must sit clear of Hebrew
+   letters on both sides, and a Latin one inside a word boundary, which also
+   stops "ml" matching the middle of a Latin word. */
+const HEB = /[\u05D0-\u05EA]/;
+const LAT = /[A-Za-z]/;
+function carries(key, unit) {
+  const wordy = LAT.test(unit) ? LAT : HEB;
+  let i = key.indexOf(unit);
+  while (i >= 0) {
+    const pre = i > 0 ? key[i - 1] : '';
+    const post = i + unit.length < key.length ? key[i + unit.length] : '';
+    if (!wordy.test(pre) && !wordy.test(post)) return true;
+    i = key.indexOf(unit, i + 1);
+  }
+  return false;
+}
 
 /* A bare unit as its own key was allowed on the reasoning that a unit standing
    alone is not a sentence. That is true of the key and false of the code: the
@@ -56,7 +79,7 @@ for (const m of app.matchAll(/_t\((['"])(.*?)\1\s*[,)]/g)) {
   const key = m[2];
   const bare = ALLOWED.indexOf(key) >= 0;
   if (bare && !gluedAt(m.index)) continue;
-  const hit = UNITS.filter(u => key.includes(u));
+  const hit = UNITS.filter(u => carries(key, u));
   if (!hit.length) continue;
   const line = app.slice(0, m.index).split(LF).length;
   if (!found.has(key)) found.set(key, { line, units: hit, n: 0, glued: bare });
@@ -66,7 +89,7 @@ for (const m of app.matchAll(/_t\((['"])(.*?)\1\s*[,)]/g)) {
 console.log('translatable strings carrying a unit: ' + found.size);
 if (!found.size) {
   console.log('');
-  console.log('  none — every unit comes from weightUnit() or fmtWeight().');
+  console.log('  none — every unit comes from weightUnit(), fmtWeight() or fmtDist().');
   process.exit(0);
 }
 console.log('');
