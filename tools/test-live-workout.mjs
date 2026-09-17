@@ -111,6 +111,24 @@ setTimeout(function(){
     wxRemove(1);
     R.cursorAtEnd=_fitWorkout.currentEx;
     R.leftAtEnd=_fitWorkout.exercises.length;
+    /* G: a note belongs to the LIFT, so it has to be there in a workout that
+       does not exist yet when it is written */
+    try{localStorage.removeItem('fit_exnotes');}catch(e){}
+    exNoteSet('לחיצת חזה','מושב 4, רגליים על הקו השלישי');
+    R.noteSame=exNoteGet('לחיצת חזה');
+    R.noteOther=exNoteGet('חתירה בכבל');
+    /* a whole new session, built from nothing */
+    _fitWorkout={name:'another day',date:new Date().toISOString(),currentEx:0,
+                 exercises:[mk('לחיצת חזה')]};
+    R.noteNextTime=exNoteGet(_fitWorkout.exercises[0].name);
+    R.noteInHTML=exNoteHTML(_fitWorkout.exercises[0],0).indexOf('הקו השלישי')>=0;
+    /* one per lift: writing again replaces rather than piles up */
+    exNoteSet('לחיצת חזה','מושב 5');
+    R.noteReplaced=exNoteGet('לחיצת חזה');
+    /* and emptying it removes it rather than leaving a blank note */
+    exNoteSet('לחיצת חזה','   ');
+    R.noteCleared=exNoteGet('לחיצת חזה');
+    R.noteGone=exNoteHTML({name:'לחיצת חזה',sets:[]},0).indexOf('exn add')>=0;
     window.renderFitness=realRender;
   }catch(e){R.threw=String(e&&e.message||e);}
   fetch('/r',{method:'POST',body:JSON.stringify(R)});
@@ -179,6 +197,16 @@ ok(got.loneSuper===null,'and a superset left with one member is dissolved (got '
 ok(got.cursorAtEnd===0,'removing the last one steps back rather than off the end (got '+got.cursorAtEnd+')');
 ok(got.leftAtEnd===1,'with one left (got '+got.leftAtEnd+')');
 
+console.log('a note on a lift');
+ok(got.noteSame==='מושב 4, רגליים על הקו השלישי','it is kept (got '+got.noteSame+')');
+ok(got.noteOther==='','and only on that lift (got "'+got.noteOther+'")');
+ok(got.noteNextTime===got.noteSame,'it is there in a workout built later (got '+got.noteNextTime+')');
+ok(got.noteInHTML===true,'and the exercise draws it');
+ok(got.noteReplaced==='מושב 5','writing again replaces rather than piles up (got '+got.noteReplaced+')');
+ok(got.noteCleared==='','emptying it clears it (got "'+got.noteCleared+'")');
+ok(got.noteGone===true,'and the lift offers to take a new one');
+
+console.log('');
 console.log('last time, as a line rather than a prefill');
 ok(got.lineEmpty === '', 'an exercise you have never done says nothing at all');
 ok(/60/.test(got.line0 || ''), 'the first set is compared with last time\'s first (got ' + (got.line0 || '').replace(/<[^>]*>/g, '') + ')');

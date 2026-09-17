@@ -346,6 +346,20 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* the countdown, over everything, skippable */
 /* The timer, on the body rather than in a screen - so moving between
    exercises does not restart it. */
+/* A note on a lift: written once, read for years. Quiet enough to ignore and
+   always in the same place. */
+.exn{display:block;width:100%;text-align:start;border:none;font-family:inherit;cursor:pointer;
+  background:var(--surface);border-radius:11px;padding:8px 10px;margin-bottom:9px;
+  font-size:11px;line-height:1.5;color:var(--ink-soft)}
+.exn.add{color:var(--muted);font-weight:700;background:none;padding:4px 0}
+.exn-box{margin-bottom:9px}
+.exn-in{width:100%;padding:9px;border-radius:11px;border:1px solid rgba(140,133,125,.28);
+  font-size:12.5px;font-family:inherit;line-height:1.5;background:var(--card);color:var(--ink);resize:none}
+.exn-row{display:flex;gap:6px;margin-top:6px}
+.exn-save{flex:1;border:none;border-radius:10px;padding:8px;font-family:inherit;font-size:11.5px;
+  font-weight:800;cursor:pointer;background:var(--green-200);color:var(--white)}
+.exn-x{border:none;border-radius:10px;padding:8px 12px;font-family:inherit;font-size:11.5px;
+  font-weight:700;cursor:pointer;background:var(--surface);color:var(--muted)}
 .fw-rb.go{background:var(--green-200);color:var(--white)}
 .tm-card{background:var(--card);border-radius:18px;padding:14px;margin-bottom:12px;
   box-shadow:0 4px 16px rgba(200,180,160,.1)}
@@ -14272,6 +14286,57 @@ function agoText(ms){
 /* The line above the boxes: what the same set number was last time, and
    whether what you have just done beats it. A number to beat is the whole
    point of writing any of this down. */
+/* ── A NOTE ON A LIFT ──
+   Kept against the exercise NAME so it is waiting on the machine next month,
+   in a session nobody has planned yet. One per lift: a seat height stops being
+   true when the gym moves the rack, and a list of every note ever written
+   would bury the one that is still right. */
+var EXNOTE_KEY='fit_exnotes',_exNoteOpen=null;
+function exNotes(){
+  try{var x=localStorage.getItem(EXNOTE_KEY);return x?JSON.parse(x):{};}catch(e){return {};}
+}
+function exNoteGet(name){
+  var o=exNotes(),v=o[name];
+  return typeof v==='string'?v:'';
+}
+function exNoteSet(name,text){
+  var o=exNotes();
+  text=String(text||'').trim().slice(0,200);
+  if(text)o[name]=text; else delete o[name];
+  try{localStorage.setItem(EXNOTE_KEY,JSON.stringify(o));}catch(e){}
+}
+function exNoteEdit(i){
+  var ex=_fitWorkout&&_fitWorkout.exercises[i];
+  _exNoteOpen=(_exNoteOpen===i)?null:i;
+  renderFitness();
+  if(_exNoteOpen===i){
+    var el=document.getElementById('exnote-in');
+    if(el){el.focus();try{el.setSelectionRange(el.value.length,el.value.length);}catch(e){}}
+  }
+}
+function exNoteSave(i){
+  var ex=_fitWorkout&&_fitWorkout.exercises[i];
+  var el=document.getElementById('exnote-in');
+  if(!ex||!el)return;
+  exNoteSet(ex.name,el.value);
+  _exNoteOpen=null;
+  renderFitness();
+}
+function exNoteHTML(ex,i){
+  var note=exNoteGet(ex.name);
+  if(_exNoteOpen===i){
+    return '<div class="exn-box">'+
+      '<textarea id="exnote-in" class="exn-in" rows="2" maxlength="200" placeholder="'+
+      _t('מושב 4, רגליים על הקו השלישי…')+'">'+esc(note)+'</textarea>'+
+      '<div class="exn-row">'+
+      '<button class="exn-save" onclick="exNoteSave('+i+')">'+_t('שמור')+'</button>'+
+      '<button class="exn-x" onclick="exNoteEdit('+i+')">'+_t('ביטול')+'</button>'+
+      '</div></div>';
+  }
+  if(note)
+    return '<button class="exn" onclick="exNoteEdit('+i+')">&#9998; '+esc(note)+'</button>';
+  return '<button class="exn add" onclick="exNoteEdit('+i+')">+ '+_t('הערה על התרגיל')+'</button>';
+}
 function exPrevHTML(ex){
   var prev=exLastTime(ex.name);
   if(!prev)return '<div class="fw-prev none">'+_t('הפעם הראשונה שאתה עושה את זה')+' &mdash; '+_t('מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.')+'</div>';
@@ -15409,6 +15474,9 @@ function renderFitWorkout(){
         (joined?_t('פרק את הסופרסט'):_t('סופרסט עם')+' '+esc(exs[i+1].name))+'</button></div>';
     }
   })();
+  /* The note sits with the lift itself, above the sets - it is a setup
+     instruction, and setup happens before the first rep. */
+  h+=exNoteHTML(ex,w.currentEx);
   h+=exPrevHTML(ex);
 
   // Warm-up rows come first, because that is the order they happen in, and
