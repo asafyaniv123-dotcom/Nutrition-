@@ -147,17 +147,20 @@ ok(near(got.iRound, 5000), 'and the imperial round trip holds too (got ' + got.i
 console.log('');
 console.log('pace, derived and never typed');
 ok(got.pUnit === '/ק"מ', 'the unit is per kilometre (got ' + got.pUnit + ')');
-ok(got.pFlat === '5:00 /ק"מ', '25 minutes over 5 km is 5:00 (got ' + got.pFlat + ')');
-ok(got.pHalf === '5:30 /ק"מ', '27.5 minutes is 5:30 (got ' + got.pHalf + ')');
-ok(got.pPad === '5:06 /ק"מ', 'and six seconds is padded, not 5:6 (got ' + got.pPad + ')');
-ok(got.pCarry === '6:00 /ק"מ', 'seconds that round to 60 carry into the minute (got ' + got.pCarry + ')');
+ok(got.pFlat === '⁦5:00 /ק"מ⁩', '25 minutes over 5 km is 5:00 (got ' + got.pFlat + ')');
+ok(got.pHalf === '⁦5:30 /ק"מ⁩', '27.5 minutes is 5:30 (got ' + got.pHalf + ')');
+ok(got.pPad === '⁦5:06 /ק"מ⁩', 'and six seconds is padded, not 5:6 (got ' + got.pPad + ')');
+ok(got.pCarry === '⁦6:00 /ק"מ⁩', 'seconds that round to 60 carry into the minute (got ' + got.pCarry + ')');
 ok(got.pNoDist === '' && got.pNoTime === '', 'no distance or no time means no pace, not 0:00');
 ok(got.pNaN === '' && got.pInf === '', 'and neither NaN nor Infinity reaches the screen');
-ok(got.pMile === '8:00 /mi', 'an imperial reader gets minutes per mile (got ' + got.pMile + ')');
+ok(got.pMile === '⁦8:00 /mi⁩', 'an imperial reader gets minutes per mile (got ' + got.pMile + ')');
+
+ok(got.pFlat.charCodeAt(0) === 0x2066 && got.pFlat.charCodeAt(got.pFlat.length - 1) === 0x2069,
+   'and the whole token is isolated, so the neutral slash cannot be resolved to the far side of the unit in a Hebrew line');
 
 console.log('');
 console.log('and the seconds are padded by the formatter, which only Arabic can show');
-ok(got.arPace === '\u0665:\u0660\u0666 /\u05e7"\u05de',
+ok(got.arPace === '\u2066\u0665:\u0660\u0666 /\u05e7"\u05de\u2069',
    'Arabic digits, with an Arabic zero in front of the six (got ' + got.arPace + ')');
 ok(got.arDist === '\u0665\u066b\u0662\u0665 \u05e7"\u05de',
    'and an Arabic decimal separator on the distance (got ' + got.arDist + ')');

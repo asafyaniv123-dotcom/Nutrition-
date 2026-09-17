@@ -3215,7 +3215,13 @@ function fmtPace(m,minutes){
   if(ss===60){mm++;ss=0;}
   /* The seconds are padded by the FORMATTER, not by a Latin '0' - an Arabic
      reader's half-minute is ٠٥ and gluing a zero in front of ٥ gives 0٥. */
-  return nfmt(mm)+':'+nfmt(ss,{minimumIntegerDigits:2})+' '+paceUnit();
+  /* Wrapped in an isolate. The slash between the digits and the unit is a
+     NEUTRAL character, so in a Hebrew line bidi was resolving it to the far
+     side of the word and painting ק"מ/ 5:12 - the slash reading as part of
+     the number instead of the unit. U+2066..U+2069 takes the whole token out
+     of the surrounding line's resolution; the Hebrew inside still paints
+     right-to-left, and it stays plain text. */
+  return '\u2066'+nfmt(mm)+':'+nfmt(ss,{minimumIntegerDigits:2})+' '+paceUnit()+'\u2069';
 }
 /* A macro in grams, in the reader's own digits - ٢٠٫٢ in Arabic, 20,2 in
    German. Grams, not a stored weight: fmtWeight is the one that converts to
@@ -10851,6 +10857,12 @@ function muscleGroupOf(exName){
   return "אחר";   // i18n-exempt: same
 }
 
+/* A run is not a set, and this is the one question that says so. It asks the
+   library, so the fifteen אירובי exercises answer yes and anything typed by
+   hand answers no - which is right: the app cannot know that a name it has
+   never seen is a run. */
+function isCardioEx(name){return muscleGroupOf(name)==='אירובי';}   // i18n-exempt: a library key, compared and never shown
+
 /* The week runs Sunday to Saturday, in app days - so a session finished at
    one in the morning lands in the week it belonged to. */
 function weekStartOf(dayKey){
@@ -15614,8 +15626,9 @@ function renderFitWorkout(){
          this row for an edit affordance to live, and the numbers are what you
          are looking at when you notice the mistake. */
       h+='<button onclick="editSet('+si+')" style="flex:1;min-width:0;text-align:start;background:none;border:none;padding:0;font-family:inherit;cursor:pointer">'+
-         '<span style="font-size:14px;font-weight:700;color:var(--ink)">'+fmtWeight(s.weight)+' &times; '+nfmt(s.reps)+'</span>'+
-         plateChipsHTML(s)+'</button>';
+         '<span style="font-size:14px;font-weight:700;color:var(--ink)">'+
+           (isCardioEx(ex.name)?cardioRowHTML(s):fmtWeight(s.weight)+' &times; '+nfmt(s.reps))+'</span>'+
+         (isCardioEx(ex.name)?'':plateChipsHTML(s))+'</button>';
       if(isNewPR)h+='<div style="font-size:9px;font-weight:700;color:var(--amber-500);background:#fef9e7;border-radius:6px;padding:2px 6px">PR &#9733;</div>';
       h+='<button onclick="removeSet('+si+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:14px;padding:2px">&times;</button>';
     }
@@ -15623,6 +15636,12 @@ function renderFitWorkout(){
   }
 
   // Add set
+  /* A run takes a duration and a distance, not a weight and a number of
+     repetitions, and it is the exercise itself that decides which pair of
+     boxes you get. */
+  if(isCardioEx(ex.name)){
+  h+=cardioAddHTML(ex);
+  }else{
   /* The boxes open holding what you did on this same set last time, so the
      ordinary case - do it again - is one tap and nothing typed. */
   var pf=exPrefill(ex);
@@ -15655,6 +15674,7 @@ function renderFitWorkout(){
   h+='<button onclick="logSet()" style="flex:1;min-height:46px;background:'+(_fitWarm?'linear-gradient(135deg,var(--amber-500),var(--amber-700))':'linear-gradient(135deg,var(--terra-200),var(--terra-500))')+';border:none;border-radius:13px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+(_fitWarm?_t('הוסף חימום'):_t('הוסף סט'))+'</button>';
   h+='</div>';
   h+='</div></div>';
+  }
 
   // the one button for when the plan meets the gym
   h+='<button class="fw-case" onclick="fitCaseOpen()">'+_t('משהו קרה?')+' &#8250;</button>';
@@ -15711,6 +15731,61 @@ function plateChipsHTML(s){
   if(s.bar)h+='<span class="pc-b">+'+nfmt(s.bar)+'</span>';
   if(s.lo>0)h+='<span class="pc-l">+'+nfmt(s.lo)+'</span>';
   return h+'</span>';
+}
+/* ── A CARDIO ENTRY ──
+   Duration always, distance when there is one, pace derived from the two and
+   shown only when both are there. */
+function edDistVal(m){var v=toDisplayDist(m);return Math.round(v*100)/100;}
+function cardioRowHTML(s){
+  var bits=[];
+  if(s.dist>0)bits.push(fmtDist(s.dist));
+  if(s.mins>0)bits.push(_t('{n} דקות',{n:s.mins}));
+  var p=fmtPace(s.dist,s.mins);
+  if(p)bits.push(p);
+  return bits.join(' \u00b7 ');
+}
+/* Last time, the same way the weight boxes do it: what you did a moment ago
+   beats what you did last week, and last week beats an empty box. */
+function cardioPrefill(ex){
+  var n=ex.sets.length,last=n>0?ex.sets[n-1]:null;
+  if(!last){
+    var prev=exLastTime(ex.name);
+    last=prev&&prev.sets&&prev.sets[prev.sets.length-1];
+  }
+  if(!last)return {m:'',d:''};
+  return {m:last.mins>0?last.mins:'',d:last.dist>0?edDistVal(last.dist):''};
+}
+function cardioAddHTML(ex){
+  var pf=cardioPrefill(ex);
+  var h='<div style="margin-top:12px">';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
+  h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('משך')+' ('+_t('דקות')+')</div>'+
+     '<input id="fit-mins" class="mtnm" type="number" inputmode="decimal" step="1" placeholder="0" value="'+pf.m+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
+  h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('מרחק')+' ('+distUnit()+')</div>'+
+     '<input id="fit-dist" class="mtnm" type="number" inputmode="decimal" step="0.1" placeholder="0" value="'+pf.d+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
+  h+='</div>';
+  h+='<button onclick="logCardio()" style="width:100%;min-height:46px;background:linear-gradient(135deg,var(--terra-200),var(--terra-500));border:none;border-radius:13px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('הוסף')+'</button>';
+  return h+'</div></div>';
+}
+function logCardio(){
+  if(!_fitWorkout)return;
+  var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
+  if(!ex)return;
+  var mEl=document.getElementById('fit-mins'),dEl=document.getElementById('fit-dist');
+  var mins=parseFloat(mEl?mEl.value:'')||0;
+  var dist=fromDisplayDist(parseFloat(dEl?dEl.value:'')||0);
+  /* Either one alone is an entry; neither is not. */
+  if(!(mins>0)&&!(dist>0))return;
+  /* NO weight and NO reps, deliberately. fitWeekStats skips every row whose
+     reps are not above zero, so this never reaches now.vol, the set count or
+     the sets-per-muscle band - which is exactly what the note demands, and it
+     costs no new exclusion anywhere. */
+  var row={};
+  if(mins>0)row.mins=Math.round(mins*100)/100;
+  if(dist>0)row.dist=Math.round(dist*100)/100;
+  ex.sets.push(row);
+  /* No restStart: a set is followed by a rest and a run is not. */
+  renderFitness();
 }
 function logSet(){
   if(!_fitWorkout)return;
