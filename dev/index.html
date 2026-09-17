@@ -1013,6 +1013,12 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
    changes. */
 /* A reference, not a control: it never takes a tap and never asks for one. */
 .fit-last{font-size:10.5px;color:var(--muted);margin-bottom:7px;line-height:1.5}
+/* Two controls that must be reachable and must not compete with the lift's
+   own name: full-size tap targets, drawn as quietly as a label. */
+.wx-b{background:none;border:none;font-family:inherit;cursor:pointer;
+  color:var(--muted);font-size:16px;line-height:1;padding:6px;border-radius:9px;
+  min-width:30px;min-height:30px}
+.wx-b:active{background:rgba(140,133,125,.14)}
 .fit-last b{font-weight:800;color:var(--ink)}
 .fit-last i{font-style:normal;opacity:.75}
 .bld{margin-top:9px;padding:11px;border-radius:16px;background:var(--card);
@@ -2881,6 +2887,7 @@ var HE={
   '{n} אימונים':{one:'אימון אחד',two:'שני אימונים',other:'{n} אימונים'},
   'אפשר עד {n} תמונות בבת אחת.':{one:'אפשר תמונה אחת בבת אחת.',two:'אפשר שתי תמונות בבת אחת.',other:'אפשר עד {n} תמונות בבת אחת.'},
   '{n} לכל צד':{one:'פלטה אחת לכל צד',two:'שתי פלטות לכל צד',other:'{n} פלטות לכל צד'},
+  'להסיר את {name}? {n} סטים שנרשמו בו יימחקו.':{one:'להסיר את {name}? הסט שנרשם בו יימחק.',two:'להסיר את {name}? שני הסטים שנרשמו בו יימחקו.',other:'להסיר את {name}? {n} סטים שנרשמו בו יימחקו.'},
   '{n} פעמים':{one:'פעם אחת',two:'פעמיים',other:'{n} פעמים'},
   '{n} שנים':{one:'שנה',two:'שנתיים',other:'{n} שנים'},
   '{n} שניות':{one:'שנייה',two:'שתי שניות',other:'{n} שניות'},
@@ -11597,6 +11604,55 @@ function startEmptyWorkout(){
   _fitView='workout';renderFitness();
   workoutAddExercise();
 }
+/* ── CHANGING YOUR MIND MID-WORKOUT ──
+   The machine is taken, or the shoulder says no. Both answers live here. */
+function wxSwap(i){
+  if(!_fitWorkout)return;
+  var ex=_fitWorkout.exercises[i];
+  if(!ex)return;
+  /* Renaming an exercise that already has sets files real work against a
+     movement nobody did. The sets are the reason, so the message says so. */
+  if(ex.sets&&ex.sets.length){
+    showToast(''+_t('כבר נרשמו סטים בתרגיל הזה. אפשר להסיר אותו, או להוסיף תרגיל חדש.')+'');
+    return;
+  }
+  exPickInto(function(name){
+    if(!_fitWorkout)return;
+    ex.name=name;
+    /* the plan was written for the other lift */
+    ex.plan=[];
+    _fitPinned=true;
+    renderFitness();
+  });
+}
+/* A group of one is not a superset. Leaving the badge on a lone exercise also
+   leaves logSet walking back to a top of the pair that is no longer there. */
+function wxLoneSuper(){
+  if(!_fitWorkout)return;
+  var exs=_fitWorkout.exercises,count={},i;
+  for(i=0;i<exs.length;i++)if(exs[i].ss!=null)count[exs[i].ss]=(count[exs[i].ss]||0)+1;
+  for(i=0;i<exs.length;i++)if(exs[i].ss!=null&&count[exs[i].ss]<2)exs[i].ss=null;
+}
+function wxRemove(i){
+  if(!_fitWorkout)return;
+  var exs=_fitWorkout.exercises,ex=exs[i];
+  if(!ex)return;
+  /* It asks only when there is something to lose - a confirmation on an empty
+     exercise is a dialog for its own sake. */
+  if(ex.sets&&ex.sets.length&&
+     !confirm(_t('להסיר את {name}? {n} סטים שנרשמו בו יימחקו.',{name:exLabel(ex.name),n:ex.sets.length})))return;
+  exs.splice(i,1);
+  wxLoneSuper();
+  if(!exs.length){_fitWorkout.currentEx=0;renderFitness();return;}
+  /* Stay where you were standing: the exercise that slid into this slot. Off
+     the end, step back to the last one. */
+  var c=_fitWorkout.currentEx;
+  if(c>i)c--;
+  if(c>=exs.length)c=exs.length-1;
+  _fitWorkout.currentEx=c;
+  _fitPinned=true;
+  renderFitness();
+}
 function workoutAddExercise(){
   exPickInto(function(name){
     if(!_fitWorkout)return;
@@ -14952,8 +15008,13 @@ function renderFitWorkout(){
   h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
   h+='<div style="font-size:17px;font-weight:800;color:var(--ink)">'+esc(exLabel(ex.name))+'</div>';
+  h+='<div style="display:flex;align-items:center;gap:10px">';
   if(curPR>0)h+='<div style="font-size:10px;color:var(--amber-500);font-weight:700">PR: '+fmtWeight(curPR)+'</div>';
-  h+='</div>';
+  /* On the exercise, not in a settings screen: the moment you want to change
+     it is the moment you are looking at it. */
+  h+='<button class="wx-b" onclick="wxSwap('+w.currentEx+')" title="'+_t('החלף תרגיל')+'" aria-label="'+_t('החלף תרגיל')+'">&#8646;</button>';
+  h+='<button class="wx-b" onclick="wxRemove('+w.currentEx+')" title="'+_t('הסר תרגיל')+'" aria-label="'+_t('הסר תרגיל')+'">&#215;</button>';
+  h+='</div></div>';
   h+=fitTgtHTML(ex);
   /* The link is always to the NEXT exercise, so there is nothing to choose
      and no way to build a group that is not adjacent. */
