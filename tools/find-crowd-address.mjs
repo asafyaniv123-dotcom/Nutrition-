@@ -32,8 +32,10 @@ const CR = String.fromCharCode(13), LF = String.fromCharCode(10);
 const FILE = process.argv[2] || 'dev/index.html';
 const raw = fs.readFileSync(FILE, 'utf8').split(CR + LF).join(LF);
 /* The game is a standalone document with its own voice. */
-const gs = raw.indexOf('id="game-src"'), ge = raw.indexOf('</script>', gs);
-const app = raw.slice(0, gs) + ' '.repeat(ge - gs) + raw.slice(ge);
+/* The game was taken out of the product on 16 September. gs is -1 now,
+   and the blanking below turns that into half the file scanned twice. */
+const gs = raw.indexOf('id="game-src"'), ge = gs < 0 ? -1 : raw.indexOf('</script>', gs);
+const app = (gs < 0 ? raw : raw.slice(0, gs) + ' '.repeat(ge - gs) + raw.slice(ge));
 
 /* Plural imperatives an app reaches for, and the plural futures and pronouns
    that follow them in a sentence. */
