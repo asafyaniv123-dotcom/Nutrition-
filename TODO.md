@@ -6,6 +6,95 @@ section — git already keeps that.
 
 ---
 
+## A long press is its own state — the undecided finger (2026-09-16)
+
+> *"שכשלוחצים לחיצה ארוכה כן יהיה אפקט שונה … בין אם זה שהצבע הדק יסתובב סביב
+> הלחצן או בלחצן האמצעי שהוא ברכות יכנס פנימה ויגיב בצורה עדינה למקרה שהמשתמש
+> לא ממש החליט איפה הוא רוצה ללחוץ."*
+
+Said the evening the hub inversion went out, and it is the same interaction
+continued: the tap is now answered, and the HELD finger is not.
+
+**THE REQUIREMENT IS THE LAST CLAUSE, not the effects.** "למקרה שהמשתמש לא ממש
+החליט איפה הוא רוצה ללחוץ" — the gesture being answered is HESITATION, not a
+command. That decides everything about how it must behave, and it is the part
+a nice animation would quietly get wrong:
+
+- it has to be **reversible without consequence** — a finger that wanders off
+  or lifts somewhere else must leave nothing behind and fire nothing
+- it has to read as **the same surface still responding**, not a second effect
+  arriving on top of the first
+- and it must **never be the only way to reach anything**, because a long
+  press has no keyboard and no screen-reader equivalent
+
+**AND IT KEEPS RESPONDING WHILE THE FINGER IS DOWN** — his words, 16/09:
+*"וימשיך להגיב כל עוד האצבע שלך לוחצת"*. That is not a second state reached at
+400ms, it is a SUSTAINED response with no completion moment, and the difference
+matters: a state that arrives has fired something, a surface that keeps
+answering has not. The second is what *"לא ממש החליט"* deserves.
+
+It also means the effect must **end gracefully at any instant**, because the
+finger lifts whenever it lifts — nothing may depend on reaching a phase of an
+animation, and whatever is running has to return to rest from wherever it got
+to.
+
+**AND NO COPY CALLOUT** — *"בלי שכשלוחצים לחיצה ארוכה הוא יציע לך להעתיק מלל
+מסוים"*. On a phone a long press over text IS the copy gesture, so without this
+the OS puts selection handles and a menu over exactly the button being held and
+nothing else here matters. `-webkit-touch-callout:none` and `user-select:none`
+on the hub and everything inside it, plus `preventDefault` on `contextmenu`,
+which is what covers desktop and the Android browsers that fire it anyway.
+
+**THE ONE THING TO DECIDE BEFORE BUILDING:** if the long press commits to
+nothing, what does lifting do? Two honest answers — the tap still opens סיום
+יום, because a tap is a tap however long it was held, which is how every
+platform button behaves; or a long press resolves to nothing at all, because
+the person was undecided. The first is the safer default and the one I would
+build; the second is defensible only if holding is given something else to mean
+later. Sliding off cancels either way.
+
+**HE NAMED TWO DIRECTIONS** and they are not exclusive:
+
+1. **The thin colour travels around the rim.** Each area already wears its own
+   colour there, so the rim is a surface that already means something. A
+   `conic-gradient` rotated on a pseudo-element is the cheap version — rotate
+   the ELEMENT with a transform rather than animating the gradient's angle,
+   which repaints every frame unless the angle is a registered
+   `@property`.
+2. **The centre goes softly further in and answers gently.** Continuing the
+   inversion rather than competing with it: the same surface, carried past
+   where a tap leaves it, at the same tiny tonal range.
+
+**THE PART THAT IS NOT CSS.** `:active` fires the instant a finger lands, so
+it cannot express "held" — this needs a timer (400-500ms is the usual window),
+armed on pointerdown and cancelled by pointerup, pointercancel, a scroll, or
+any movement past a few pixels. That cancel list is the whole difficulty: on a
+phone the hub sits on a scrolling board, and a press that becomes a drag must
+not light up.
+
+**And three traps, all of them platform rather than design:**
+
+- whatever happens on release has to stay decided: if a long press ever does
+  something, the tap must not also fire on the way out
+- `prefers-reduced-motion` still applies, and it applies HARDER now that the
+  response is continuous — a rim that turns for as long as a finger rests on it
+  is exactly what that setting exists for, and the reduced answer is a still
+  state, not a slower turn
+- a sustained effect runs for an unbounded time on a phone, so it has to be
+  compositor-only: a transform on one layer. A repaint per frame is free for
+  190ms and is not free for as long as somebody leans on the screen
+
+**Where it belongs first:** סיום יום at the centre of the board, because that
+is the button he described and the one already carrying the inversion. If it
+earns its place there it generalises to the fan wedges for free — they are the
+same component.
+
+Related: [[dented-sensor-breathing]] in the Taste library holds the measured
+numbers this has to stay inside — an eleven-level tonal range and a flip of
+about twelve frames. A long press that gets loud breaks the thing it extends.
+
+---
+
 ## THE ONE THAT STOPS THE HABIT — nutrition (2026-09-14)
 
 > *"אני חושב שמה שמונע ממני מהרגל יומי זה האזור של התזונה. הflow שם לא טוב
@@ -159,6 +248,558 @@ architectural one.
 
 ---
 
+## 657 against 426, and it was one row out of three (2026-09-15)
+
+He typed *"פנקייק מ- ביצה, גביע קוטג 5%, 4 כפות קמח"*, pressed **פרק לי את
+זה**, and got **657 kcal · 55 p · 28.2 c · 34.3 f**. Gemini, shown the same
+screen, said the real figures are about **426 · 33.6 · 28.5 · 17.6**, and named
+the cause: the app chose **"ביצה שלמה מיובשת"** — dried whole egg, egg powder —
+for one fresh egg.
+
+**Gemini was right, and our own table proves it.** Recomputed from the rows the
+app itself ships:
+
+| | kcal | p | c | f |
+|---|---|---|---|---|
+| what the app showed | 656 | 55.0 | 28.1 | 34.3 |
+| **the same three rows, fresh egg instead** | **425** | 37.1 | 27.7 | **17.6** |
+| Gemini's figure | 426 | 33.6 | 28.5 | 17.6 |
+
+`ביצה שלמה מיובשת` is **605 kcal/100g**; `ביצה שלמה בלי קליפה` is **143**. At
+50 g that is **303 against 72** — **one wrong row cost 231 kcal, +17.9 g
+protein and +16.8 g fat**, a 54% overstatement of the meal.
+
+**The cottage and the flour were both right.** 238 and 116 are exactly what
+those rows give for 250 g and 32 g. The protein still differs by 3.5 g between
+our cottage row and Gemini's, which is ordinary spread between brands and is
+not the story.
+
+**So this was never a data gap.** The right row is in the table, one line away
+from the wrong one. **Gemini's "correct" answer is reproducible from our own
+data to within one kilocalorie.** That matters for the open question about
+whether the tables earn their keep: on this meal they did, and the ranking did
+not.
+
+### Where it actually broke — measured, not assumed
+
+The first guess was the typed-search ranker. Wrong: **פרק לי את זה does not
+use `foodSearch` at all.** The path is `/parse` → `sayResolveAll` →
+`sayResolveAI`, and there:
+
+- `sayCandidates(q,60)` builds sixty candidates locally,
+- **only their NAMES are sent** to `/match` — `{q, unit, cands:names, lang}` —
+- and **the model picks one**.
+
+Three consequences, each its own fix:
+
+**1 · The model cannot see what it is choosing.** It is handed sixty strings
+and no numbers. It cannot tell that its pick is 605 kcal/100g while the
+neighbouring candidate is 143. **Sending kcal/100g alongside each name costs
+almost nothing and makes an implausible pick visible** — to the model, and to
+any check we put after it.
+
+**2 · The unit was sent and ignored.** The payload carries `unit:'unit'` — one
+*piece*. Egg powder does not come in pieces. The app already owns the lists
+that encode this: `SAY_DERIVED` and `SAY_RAW` (מיובש, אבקה, יבש…) **in eleven
+languages**, and the comment above them says they were written for precisely
+this bug: *"'ביצה' was landing on 'ביצה חלבון מיובש' — dried egg white."*
+**The medicine exists one function away and this path never takes it.** A
+guard — a `unit` pick may not land on a `SAY_RAW` row unless the person said
+the word — needs no server change at all.
+
+**3 · The wrong answer is now stuck.** `matchCachePut` stores the pick, and
+`matchCacheGet` reads it back **with no expiry in the read path**. So *ביצה*
+will resolve to egg powder on his phone every time until storage is cleared.
+This is what turns a bad guess into a standing defect.
+
+### And the asymmetry that should be fixed first
+
+Look at the two correction paths side by side:
+
+- `saySetWeight` → **`saveFoodUnit(row.food.n, row.unit, g)`**, with the
+  comment *"told once, remembered"*.
+- `sayUseAlt` → swaps the row in the view, calls `sayPaint()`, **and writes
+  nothing.**
+
+**Correct the grams and the app remembers for good. Correct the FOOD and it
+forgets the moment the panel closes — while the wrong pick stays cached.** He
+can fix this pancake and the same egg comes back tomorrow.
+
+**`sayUseAlt` should `matchCachePut` the corrected row.** It is a handful of
+lines, it is entirely local, it needs no Worker deploy, and it converts every
+correction he makes into a permanent repair. Of everything in this section it
+is the smallest and buys the most.
+
+### Order
+
+1. **`sayUseAlt` teaches the cache.** Local, small, self-correcting.
+2. **The unit/state guard**, from the lists that already exist. Local.
+3. **Send kcal/100g with the candidates**, so the pick can be judged. Worker.
+4. Then the wider `sure`-on-the-match work already written up above.
+
+### The freeze
+
+**This is the closest thing to broken this file has recorded** — wrong numbers
+written into his day, in the one area he has named as breaking his habit, and
+now cached. Items 1 and 2 are local, testable offline against the lifted
+functions, and touch no camera and no server.
+
+**Not built unasked.** The last time a fix went in on a path that could not be
+verified end to end here, it was `scanFitBox`, and it had to be reverted. His
+call whether this is worth breaking the freeze for.
+
+## It showed him another company's product (2026-09-15)
+
+He photographed a **Herbalife 24 Rebuild Strength** bag. The app answered
+**"תוסף חלבון, אבקה, כולל MERITENE"** — 30 g, 107 kcal, 9.3 p, 16.8 c —
+marked *הערכה*. Gemini read the bag and gave the product's own figures: 50 g
+serving, 190 kcal, **25 p**, 18 c.
+
+Per 30 g the truth is about **114 kcal, 15 p, 10.8 c**. So:
+
+| | app | truth | |
+|---|---|---|---|
+| kcal | 107 | 114 | **almost right** |
+| protein | 9.3 | 15 | **−38%** |
+| carbs | 16.8 | 10.8 | **+56%** |
+
+**The calories being nearly right is what makes it dangerous.** That is the
+number he would sanity-check, and it passes. The macro split — the thing he
+actually tracks — is badly wrong underneath it.
+
+### The chain, measured
+
+1. `/see` found **no barcode and no nutrition table** in the photo, and said
+   so honestly. It then fell back to describing the food as a **category**.
+2. The category it produced was **"תוסף חלבון"**, not "אבקת חלבון".
+3. **That one word decides everything.** Ranked against the shipped scorer:
+   - `אבקת חלבון` → p85, p75.8, p72.3, p73, p71. **All fine.**
+   - `תוסף חלבון` → a 138 kcal meal drink first, then **MERITENE at p31 c56**.
+4. So it landed on a **clinical meal-replacement** — the one row in 27 whose
+   macros look nothing like a protein powder — and that row **names another
+   company**.
+
+### Three defects, and they are not the egg's
+
+**1 · It substituted one brand for another.** The row says MERITENE. He is
+holding Herbalife. A generic answer would have been honest; naming a
+different manufacturer is not. **Rule to add: a row whose name carries a brand
+the query never asked for cannot be the match.** Narrow, checkable, and the
+same shape as the dried-form guard already shipped.
+
+**2 · The brand was legible and never read.** HERBALIFE 24 is in large letters
+on the front. Gemini used it in a second. `/see` hunts for a barcode or a
+nutrition table, finds neither, and **abandons identity altogether** instead
+of reading the name that is right there. Reading the product name has to be a
+first-class result — and then saying plainly *"Herbalife 24 Rebuild Strength —
+אין לנו אותו בטבלאות"*.
+
+**3 · Herbalife is 0 rows of 7,240.** Searching the brand returns nothing, and
+adding it to the Hebrew query changes nothing — the token is ignored. **No
+amount of matching was ever going to find this product.** This is his own
+argument, now with a number against it.
+
+### And it settles the open question about the brand restraint
+
+`/estimate` is told *"never invent a specific brand's published figures —
+estimate the generic food and say so."* That rule is **exactly what produced
+this**: unable to state Herbalife's numbers, the flow fell back to a table row,
+and the table row named the wrong company with a table's authority behind it.
+
+**The restraint did not protect him. It replaced a good estimate with a
+confident wrong one.**
+
+So the trust order needs one correction. Today it reads label > table >
+estimate. It should read:
+
+> **label > a table row that is THIS product > a product-identified estimate >
+> a generic table row.**
+
+A generic row matched to a branded product is not evidence. It is a guess
+wearing a table's authority, and it outranks a better answer today.
+
+### What to do, in order
+
+1. ~~**No brand substitution.** Local, small, shippable the way the egg guard
+   was.~~ **Measured and withdrawn.** A local guard that prefers a row without
+   a brand had nothing to prefer: **0 of the 11 protein-powder rows are
+   brandless.** It would never have fired. Worse, the rule it was meant to add
+   **already exists in the `/match` prompt** — *"If a brand is named and no row
+   carries it, prefer -1 over a row from a different company"* — and it never
+   fired either, because **no brand was ever named**: `/see` threw the identity
+   away before `/match` ran. The fix is upstream, not a guard.
+   What the prompt still lacks is the **converse**: when NO brand is named and
+   the row names one, that row is a specific product and not a generic answer.
+2. **`/see` returns the product name** even with no barcode and no label, and
+   the screen says whether we have that product or not. Worker change.
+3. **Re-order the trust chain** as above, and let a product-identified
+   estimate outrank a generic row. Policy, and it is the parked open question
+   finally answered by a measurement rather than by an opinion.
+
+## The third one, and now it is a pattern (2026-09-15)
+
+A stir-fry: 150 g chicken fillet, 100 g udon, vegetables. The app answered
+**614 kcal, 28.7 p**. Gemini said 520–550 and **53–55 p**.
+
+**It is one row again.** The app matched the chicken to **"בשר עוף, פילה עוף
+אמיתי/בשומשום, מאמא עוף"** — a sesame-coated product from a named
+manufacturer — where he wrote *"150 גרם של פילה עוף"*.
+
+| | kcal | protein | fat |
+|---|---|---|---|
+| what it picked (מאמא עוף) | 321 | **22.5** | 13.5 |
+| `בשר עוף, חזה, ללא עצם, צלוי, נאכל ללא עור` | 240 | **45.1** | 5.7 |
+| Gemini | 245 | 46.0 | 5.0 |
+
+Swap that single row and the meal goes **614 → 533 kcal, 28.7 → 51.3 p,
+26.7 → 18.9 f** — inside Gemini's range on every figure. **His protein was
+reported at half what he ate.**
+
+### Three for three, and the pattern is one sentence
+
+| | asked for | given |
+|---|---|---|
+| ביצה | a fresh egg, 143 | **egg powder**, 605 |
+| תוסף חלבון | a protein powder, p≈75 | **MERITENE**, a clinical supplement, p31 |
+| פילה עוף | plain chicken, p30 | **מאמא עוף** breaded fillet, p15 |
+
+**Every time the matcher chose something more processed, more branded and more
+specific than what was asked for. Every time the plain food was already in the
+table.** This is not a database problem and not a weak model - `/match` runs on
+Sonnet 5. It is an evidence problem: sixty names and no numbers, so nothing
+tells it that p15 is an outlier in a list where plain chicken is p30.
+
+### And it reinstates half of what I withdrew
+
+Earlier today the "no brand substitution" guard was measured and withdrawn,
+because **0 of 11 protein-powder rows are brandless** so it would never have
+fired. That measurement was right and the conclusion was too narrow: **here a
+brandless correct row exists** (`בשר עוף, חזה, ללא עצם, צלוי, נאכל ללא עור`),
+and the guard would have fired.
+
+So the rule is right and insufficient alone. Both halves are needed:
+
+1. **When the query names no brand, a row that names one cannot outrank a
+   brandless row that matches.** Local, and it would have caught this one.
+2. **Send the candidates' kcal and macros with their names**, so an outlier is
+   visible to the thing doing the choosing.
+
+## Editing a day summary after the fact (2026-09-15)
+
+> *"שתהיה אפשרות לערוך סיכום יומי — לדוגמה אם טעית במשהו או שאתה רוצה כן
+> להוסיף שאלה."*
+
+Measured before writing it down, and the gap is narrower and sharper than the
+ask suggests: **most of this exists, for exactly one day.**
+
+### What already works
+
+`renderReflectHome` offers three states, and the third is the one that matters:
+a finished summary shows **"פתח שוב"**, which calls `rfResume()` and drops back
+into the cards with every answer still there. Editing a summary is a solved
+problem.
+
+### What does not
+
+```
+function rfResume(){
+  _rfDate=todayStr();
+```
+
+**It is hardcoded to today.** So:
+
+- **Yesterday cannot be corrected at all.** The day sheet opened from the Me
+  calendar is read-only — checked the whole of `renderSummaryOverlay` and
+  `summaryBodyHTML`: **no edit affordance anywhere in it**, not a button, not
+  a tap target, nothing.
+- **A question cannot be added to a past day.** The bank is reachable from
+  `renderReflectHome`, which is also today-only, so a day already summarised
+  can never gain a question he wishes he had answered.
+
+And the mistake he is describing is usually noticed *later* — the evening
+reflection is written at night and re-read the next morning, which is precisely
+when it is no longer editable.
+
+### What to build
+
+**1 · `rfResume(dateStr)`.** The one-line half. Every other piece of the
+reflection already takes a date: `rfRec(dateStr)`, `rfDone(r)`, `rfSteps()`.
+Only the entry point assumes today.
+
+**2 · A way in from the day sheet.** The summary overlay is where a past day is
+actually read, so that is where "ערוך" belongs — not behind another screen.
+
+**3 · The bank, for a past day.** Adding a question to a finished day is the
+half he named explicitly and the half that is not just plumbing: a bank
+question added on the 20th to the day of the 15th needs a decision about
+whether it also joins his standing four from then on. That is the same fork
+already parked under *"Open, and his to decide"*, and it should be settled once
+for both.
+
+### Two things to get right
+
+**The day the reflection belongs to is not `new Date()`.** This app's day ends
+at **04:00**, and editing a past day is exactly where a raw clock would file an
+answer under the wrong date. `appDayOf` and `dayShift` exist for this and the
+edit path must use them.
+
+**Do not let editing rewrite history silently.** The daily summary feeds the
+week and month cards, the streak, and `trainedOn`. Changing an answer for the
+15th on the 20th changes numbers that were already read. That is fine and
+wanted - but it argues for editing an ANSWER rather than re-running the whole
+evening, so a reopened day cannot come out emptier than it went in.
+
+## The journal reads like an inbox (2026-09-16)
+
+> *"אני רוצה שהיומן יהיה בנימה קצת יותר אישית — הוא נראה כמו תיבת מייל ואני
+> רוצה שהוא יראה יותר כמו יומן. אולי אפשרות להכניס פונט שונה ואפילו את הפונט
+> שלך, כלומר לצלם איך הכתב שלך נראה."*
+
+Measured before designing, and the cause is one line.
+
+### Why it feels like mail
+
+```
+.jrnl-text{ … font-family:inherit … }
+```
+
+**The journal is set in the app's UI font.** `inherit` resolves to `Assistant`
+— the same face as every button, tab and label on every other screen. A page
+you write your private thoughts on is wearing the typography of a toolbar,
+which is exactly what a compose box looks like.
+
+It is also a single `textarea` on a plain card with a search field under it.
+Nothing in the layout says *page*: no measure, no indent, no margin, no paper.
+
+### Three steps, and the first costs nothing
+
+**1 · The app already owns a second voice.** `--serif` is defined and used in
+eleven places — Frank Ruhl Libre, David, Noto Serif Hebrew — and they are
+system or already-loaded faces. **Setting the journal in `var(--serif)` and
+giving it a page's proportions is free**, needs no download, works offline, and
+changes the feeling more than anything else on this list.
+
+**2 · A choice of hand.** A small set, remembered per person: the plain sans,
+the serif, and something handwritten. **Checked rather than assumed: Google
+Fonts has `Playpen Sans Hebrew`**, from a family built out of handwriting
+research — so the handwritten option is one `<link>`, not a project.
+*The app already loads exactly one webfont this way* (`Assistant`, in the head),
+so this is the mechanism that is already there, not a new one.
+
+**3 · His own handwriting.** The ambitious half, and worth splitting in two
+because one part is cheap and one is a project.
+
+- **A real font from his writing** — print a glyph sheet, photograph it,
+  vectorise, build a `woff`. Hebrew needs the twenty-two letters, the five
+  finals, punctuation and digits. This is what Calligraphr does, and doing it
+  ourselves is image processing plus font generation: **a project, not a
+  feature.** Worth costing before promising.
+- **A photographed page** — write the entry on paper, photograph it, and the
+  journal keeps the picture as that day's page. **Not a font, and more
+  personal than one**, because it is the actual handwriting rather than an
+  average of it. And it reuses machinery that already exists and is tested:
+  the photo pipeline, and the closet's background flood fill with its own
+  test file.
+
+### Two constraints to respect
+
+**Offline.** `sw.js` caches nothing, deliberately. A Google-hosted font means
+the journal loses its face on a train. The serif in step 1 does not, which is
+another reason it comes first — and a webfont choice should fall back to the
+serif rather than to the UI sans.
+
+**Ten other languages.** A Hebrew handwriting face does nothing for Japanese or
+Arabic. The setting has to degrade to something sensible per language rather
+than leave a reader with a face that has no glyphs for their script.
+
+
+## מטרות is out of the product (2026-09-16)
+
+> *"אני לא רוצה את האזור הזה ואני לא רוצה שלמשתמשת שלנו תהיה אפשרות לגשת אליו,
+> גם לא בגלגל שיניים. הוא מיותר כרגע בעיניי, ואם ארצה — נבנה אותו לגרסה הבאה."*
+
+Done, and deliberately at one level rather than two.
+
+### What was removed
+
+Three routes, which were all of them:
+
+- its row in `HOME_AREAS`, which is what the area gear reads
+- its line in the router map
+- its branch in `enterModule`
+
+Driven afterwards rather than assumed: the home does not show it, `HOME_AREAS`
+is down to ten ids with no `goals` among them, **and opening the gear does not
+list it** — which was the half he was explicit about. No console errors.
+
+One answer was left orphaned by the removal — *"חלומות והדרך להגשימם"*, that
+area's subtitle — and `build-lang-template --check` reported it in all ten
+languages and exited 1. Removed from the files rather than left: that check is
+what keeps the dictionaries honest, and a dictionary full of strings nothing
+asks for is the rot it exists to prevent. Template now current at 1,755.
+
+### What was NOT removed, and why
+
+**The module's body is still in the file** — about twelve hundred lines and
+twenty-seven functions — dormant, with no way in.
+
+Because this app has **two things called a goal**. `p.goal` and `.pf-goals` are
+the profile's *lose weight / gain muscle* picker, which feeds `profileTargets`
+and therefore **every calorie and protein figure in the nutrition area**. A
+search-and-delete on the word would take those out, four days before a stranger
+opens the app for the first time. Dormant code costs bytes; a broken calorie
+target costs her day.
+
+So deleting the body is its own pass, done with the same care as any other, and
+not on the eve of a first user.
+
+**`goals_v1` in storage is left alone.** It is his own writing, nothing reads
+it now, and it is still there if the area ever comes back.
+
+
+## A warm-up you can plan, not only mark (2026-09-16)
+
+> *"להוסיף בכושר אפשרות להוסיף חימום בבניית אימון."*
+
+**Half of this exists, and the note is about which half.**
+
+In the **live** workout there is a warm-up: `toggleWarm()` flips `_fitWarm`,
+the log button changes colour, and the set goes into `ex.warm[]` rather than
+`ex.sets[]`. It is a decision made with the weight already on the bar.
+
+In the **builder** there is nothing. A template exercise carries `targetSets`
+and `targetReps` and that is all — a plan is *"3 sets × 10 reps"*, with nowhere
+to say *"and two warm-up sets first"*. So a warm-up is something you remember
+to mark, every session, for ever.
+
+**And that makes it small.** `warm:[]` is already initialised on every template
+exercise, so the data shape carries warm-ups today. What is missing is a
+**target** for them beside `targetSets` — not a new model, not a migration.
+
+Three things to get right:
+
+- **A planned warm-up must not become a working set.** They are counted apart
+  on purpose: warm-ups stay out of volume and out of the weekly sets-per-muscle
+  band, and a planned one must inherit that, not quietly inflate the number the
+  whole fitness screen is built around.
+- **The weight is the point.** A warm-up plan that only says "2 sets" is half a
+  plan; what people actually want written down is the ladder - 40%, 60%, then
+  the working weight - so it should be expressible as a fraction of the working
+  set rather than as an absolute nobody will update.
+- **It belongs to the exercise, not the session.** Different lifts warm up
+  differently, and a squat's ladder is not a curl's.
+
+
+## Photograph a machine, get its cues (2026-09-16)
+
+> *"שהמשתמש יוכל לצלם את המכונות במכון שלו והאפליקציה תזהה את המכונה ותיתן
+> דגשים עליה."*
+
+**The good news is that it is mostly a new door into content that already
+exists**, and the bad news is a number.
+
+### What is already built
+
+- **228 exercises, all 228 translated** into the eleven languages.
+- **96 of them carry coaching content** — `s`, the steps, and `k`, the common
+  mistakes. Real cues, written: *"מרפקים פתוחים ל־90 מעלות — מעמיס על מפרק
+  הכתף"*, *"ניתור המוט מהחזה במקום עצירה שקטה"*.
+- `sl` carries those per language, so a cue reaches a reader in their own.
+- And `/see` already looks at a photograph and answers in a fixed JSON shape.
+- `q` tags every exercise with its equipment: 33 say מכונה, 35 פולי, 8
+  מכשיר אירובי.
+
+So the feature is: photo → exercise id → show `s` and `k`. Almost none of that
+is new.
+
+### The number that decides it
+
+**76 exercises are a machine, a cable or a cardio machine. Twenty-eight of them
+have cues. Forty-eight have nothing to say.**
+
+So today, a photograph of a gym machine has a **better than even chance of
+being identified correctly and then having nothing to offer** — including
+things people genuinely get wrong: לחיצת חזה בשיפוע במכונה, מתח במכונת סיוע,
+פולי עליון אחיזה רחבה.
+
+**That makes the content the project and the camera the easy part**, which is
+the opposite of how the idea sounds. Filling the 48 is the work; wiring the
+photo is a day.
+
+### And read the placard, do not guess the shape
+
+The lesson from the whey tub applies exactly. Plate-loaded machines from
+different manufacturers look alike and a model guessing from silhouette will
+be confidently wrong. But almost every machine carries **a placard with its
+name and a diagram**, and reading printed text is what `/see` was just taught
+to do for a product name.
+
+So: read the placard first, fall back to the shape, and **say which** — a cue
+delivered under the wrong exercise name is worse than no cue, because someone
+will follow it with load on the joint.
+
+### The order that makes sense
+
+1. **Fill the 48**, which is worth doing whether or not the camera is ever
+   built: they are missing from the exercise page today too.
+2. **Then the photo**, which is a small pass on top of `/see`.
+3. And it pairs naturally with the **workout generator**, which already has to
+   ask what equipment is available — a photograph of the gym answers that
+   question as a side effect.
+
+
+## Lifting the brand restraint was tried and measured, and it failed (2026-09-16)
+
+> *"הקטע זה שהג׳מיני גם כשיש אריזה חצי הוא הולך לעבודת מחקר קצרה, מבין מה
+> המוצר, לוקח את הערכים ושולח. אצלנו זה לא עובד ככה."*
+
+He is describing the difference exactly, and it pointed at a prompt line I
+had already argued against twice this week:
+
+> *"Never invent a specific brand’s published figures. If a brand is named and
+> you do not know it, estimate the generic food and say so."*
+
+The condition is right and it arrives SECOND - the sentence opens with an
+absolute prohibition, and a model follows the first clause. So I separated the
+two cases: know it, say so and mark it as the maker’s figure; do not know it,
+estimate the generic. Deployed it, and tested it on the case it was built for.
+
+### It produced a confident wrong answer
+
+| Herbalife 24 Rebuild Strength, 30 g | kcal | protein |
+|---|---|---|
+|  with the restraint lifted | **35** | **6.0** |
+| the product | 114 | 15.0 |
+| , Gemini, yesterday | 114 | 14.4 |
+
+It answered 117 kcal and 20 g protein per 100 g - about a third of the truth -
+and reported . **That is precisely the failure the original
+restraint existed to prevent**, on the very case I lifted it for.
+
+Reverted and redeployed. The wording goes back as it was.
+
+### And the finding worth keeping
+
+**The two providers do not know the same products.** Asked the same tub,
+Gemini returns 114 kcal and 14.4 g protein and Claude returns 35 and 6.0. So
+"ask the model for a product’s published figures" is not one capability - it is
+a property of a particular provider for a particular product, and it cannot be
+unlocked by rewording a prompt.
+
+Which means the route he is describing is real but has to be built rather than
+permitted: when a product is identified and we hold no row for it, ASK THE
+PROVIDER THAT DEMONSTRABLY KNOWS IT, and mark the answer as the maker’s figure.
+We now have both providers wired, so that is a routing decision, not a prompt.
+
+### What actually worked today, by contrast
+
+**Reading what is printed.** The pastrami pack says "26 גרם חלבון" on its
+front, and the partial-label overlay took the app from 22.8 g to 26.0 g. No
+model was asked to recall anything.
+
+That is the order to keep: read the packet, then a row that IS this product,
+then a provider that knows this product, then a generic row - and say which.
+
 ## The freeze notes — fitness, day one (2026-09-14)
 
 Ten notes from the first day of real use, **all in כושר**. Triaged against the
@@ -230,6 +871,225 @@ stopwatch (built, and given a door of its own in the כושר grid) and the
 plate-loading question, which became the bar loader.
 
 ---
+
+## Cardio has nowhere to go (2026-09-15)
+
+He finished a run and found nothing in כושר to put it in. Measured before
+agreeing, because twice now "absent" has meant "wrong search word".
+
+**What is actually there.** `data/exercises.json` carries **15 אירובי
+exercises** — ריצה (`x210`), הליכון, שיפוע, אופני כושר, אליפטיקל, מכונת
+חתירה, סקי ארג, סטפר, חבל, ברפי, קופסה, מזחלת, חבלי קרב, שחייה. The weekly
+planner's `WORKOUT_TYPES` has ריצה, שחייה, אופניים and הליכה. And a finished
+workout already stores `date` and a real `duration` in minutes, computed from
+start to finish. **A run is not unknown to this app.**
+
+**What is missing, and it is the whole thing.** `distance`, `km` and `pace`
+do not exist as data anywhere in the 25,002 lines — every hit is a CSS class,
+an English comment, or a goal placeholder (*"למשל: להגיע ל־7 ק״מ"*, which is
+a wish with nothing to measure it against). A set row holds **weight × reps**,
+and a run has neither. So the app can record *that* he ran and *how long*, and
+cannot record **how far** — therefore no pace, no weekly kilometres, no line.
+
+**The planner is not a fallback.** Its entries are keyed `w0d3` — relative to
+the week, not to a date — so it is a plan that rolls over, not a log. Checked
+before suggesting it, which is why it is not being suggested.
+
+**And the obvious workaround must never be used.** Logging a run as a set with
+kilometres in the weight box and minutes in the reps box feeds `now.vol`,
+which is weight × reps — the volume number the whole fitness screen is built
+around. Recording a run that way would corrupt the strength trend. Say this
+out loud whenever it comes up, because it is the first thing anyone tries.
+
+**The app already admits the gap in its own copy.** The sets-per-muscle card
+reads *"וריצה או שחייה לא נמדדות בו"*. That sentence was written as an honest
+limit on a band; it now reads as a hole where a feature should be.
+
+### What to build
+
+- **Distance and duration on a cardio entry; pace derived, never typed.**
+- **A distance formatter has to be written first.** km vs miles is exactly the
+  `fmtWeight`/`weightUnit` rule, and there is no `fmtDist` — so the first
+  version would weld a unit into a sentence, which is the bug the units check
+  exists to catch. Write the formatter, then the feature.
+- Kept out of the sets-per-muscle band, the way `אירובי` already is at the
+  `isCardio` test — the exclusion is written, and it stays right.
+- **Weekly kilometres and a pace trend.** `ewma` already exists and takes any
+  daily series, so the chart is nearly free once the number is stored.
+
+Its real weight is the same as the nutrition finding: **something he actually
+did, that the app could not hold.**
+
+## Feedback after a workout (2026-09-15)
+
+His words: after finishing a workout, a few small questions — how the workout
+felt, and **what he thinks about the weight: could he lift more next time —
+כן / עדיין לא**.
+
+**Most of this already exists, which changes what to build.** Measured before
+designing:
+
+- **Every set can already carry an effort rating.** `_fitRpe`, one of ten,
+  ten taps rather than a keyboard, optional, cleared by tapping the lit one.
+  The scale toggles between **RPE and RIR** from the 9px label above it.
+- **The post-workout summary already exists** — `finishWorkout()` ends with
+  `_fitView='summary'` and hands it the entry. It colours every set by effort
+  (`rpeColor`), prints the average, and totals the volume.
+- **And it already answers his question.** One of three sentences at line
+  ~14282: *"עומס כבד — שים לב להתאוששות"* / *"אימון טוב — באזור העלייה"* /
+  **"אימון נוח. אפשר להעלות במשקל."**
+
+### So why does it feel missing? Three reasons, and each names the fix
+
+1. **It is a statement, not a question.** The app tells him; he does not
+   choose. כן / עדיין לא is agency — and it is also *better data*, because it
+   records his own judgment instead of an inference from a number he may not
+   have entered.
+2. **It is per workout, not per exercise.** He asked about *the weight* —
+   which one? Every lift progresses on its own clock, and an average across a
+   whole session cannot say which bar to add to.
+3. **The input is optional and nearly invisible** — a 9px underlined `RPE`
+   over ten small buttons, offered at the moment a hard set just ended. If he
+   is not filling it, `avgRPE` is null, the three sentences never fire, and
+   the summary falls back to *"לא דורג"*. **His fill rate cannot be measured
+   from here — it is on his phone.** Ask him, or read it on 23/09.
+
+**Asking once at the end is cheaper than tapping on every set.** That is the
+real argument for his idea, and it is a good one.
+
+### The constraint that shapes it
+
+**The evening already asks *"איך הגוף שלך הרגיש?"*** — `RF_STAGE1`, five
+stars, stored as `sum.body`. A post-workout "how did it feel" must not be a
+second version of it, or the app asks the same person about the same body
+twice in one day. **The workout question is about the workout; the evening
+question is about the day.** Keep them audibly different.
+
+### What to build
+
+On the summary screen that already opens, all optional, no keyboard:
+
+- **איך היה האימון?** — one row, about the session: too easy / right / brutal.
+  Not about the body.
+- **Per exercise: "בפעם הבאה, יותר משקל?" — כן / עדיין לא.** Only where it is
+  a real question: a working set with a weight above zero. **Cap the list** —
+  eight exercises times a question is a wall, not a check-in. Top few by
+  volume, or all when there are few.
+- Stored on the log entry keyed by exercise name, not on a set.
+
+**What the answers must then DO, or it is a survey.** *"כן"* pre-fills that
+exercise one step up next time, and says why it moved. That makes this the
+same feature as the eight-note item *"remember the weight used last time"*:
+**memory says what it was, feedback says what to suggest.** Build them
+together.
+
+Over time it is also a real line for the summary: *you said כן three times on
+bench in five weeks, and the weight went 60 → 65.*
+
+### A small honesty bug found on the way
+
+Line ~14282 ends every summary with **`_t('אין דיווח כאב.')` — printed
+unconditionally**, while **nothing in the app can report pain**. The word
+כאב appears only in the guidance text at 13561–13565. So the app asserts a
+clean bill it has no way to know. Either give pain somewhere to be reported
+(it belongs in this very card) or stop claiming it.
+
+## A workout in the day summary, and the calories it is worth (2026-09-15)
+
+Two asks. The first is a bug. The second is a decision about honesty, and it
+has to be taken before anything is built.
+
+### 1 · The day you actually trained is the day the summary says nothing
+
+The plumbing is all there. `SUM_SECS` has a section **`{k:'fit', t:'כושר
+וצעדים', ids:['steps','workoutDone']}`**. `trainedOn(dateStr,sum)` exists and
+already answers correctly from three sources. `workoutLoggedOn(dateStr)`
+already returns **the workout's name**.
+
+**And the day summary uses none of it.** Follow it through:
+
+- `rfFilter` drops the evening's workout question when a session was already
+  logged — `if(!planned||logged)continue;` — and the comment is right:
+  *"asking anyway would be the app pretending not to know something it does."*
+- So on a day he trained and logged it, **nothing ever sets `sum.workoutDone`.**
+- And `sumFactRow('workoutDone')` opens with `if(v!==true&&v!==false)return '';`
+
+**The result is backwards.** Train, log it in כושר, and the summary's fit
+section is **empty**. Skip the workout, answer the planned question with *לא
+יצא הפעם*, and it shows. The one day worth recording is the one day that
+records nothing.
+
+It is also invisible from the weekly view, because `renderWeek` and the month
+both call `trainedOn` and get the right answer — so the count is right
+everywhere except the page he actually reads.
+
+**The fix is narrow**: the fit row asks `trainedOn()` / `workoutLoggedOn()`
+instead of reading `sum.workoutDone` alone, and prints the name, the duration
+and the volume the entry already carries. **No new data, no migration.** This
+is the first thing to do in this area.
+
+### 2 · The coherence he asked for — and the app currently contradicts itself
+
+> *"שתהיה הלימה בין מספר צעדים שמישהו עשה ביום או אימון להתקדמות שלו כלפי
+> המטרה שלו מבחינת התזונה. הרי יש קשר בין אימון לקלוריות."*
+
+He is right that there is a relationship. The problem is that **the app already
+has two different answers to "how much did you burn today", and they disagree.**
+
+| where | what it computes |
+|---|---|
+| `profileTargets` | Mifflin-St Jeor `10w + 6.25h − 5·age ± s`, times `ACT_FACTOR` (1.2 / 1.375 / 1.55 / 1.725 / 1.9), times the goal factor |
+| `renderHistory`, the deficit tab | **`2200 + steps × 0.04`** |
+
+The second **ignores his weight, his height, his age, his sex and the activity
+level he chose** — all five of which the app is holding — and substitutes a
+flat 2200. Two numbers, one app, and the deficit chart is drawn from the one
+that knows least. **Fixing that is most of the coherence he is asking for, and
+it needs no new feature.**
+
+### And the trap under the request, which must not be walked into
+
+**`ACT_FACTOR` already contains his training.** That is what an activity
+multiplier *is*: someone who marks *4 — מתאמן הרבה* is carrying 1.725
+precisely because of the workouts. **Adding a workout's calories on top of
+that counts them twice**, and the app would be handing him permission to eat
+a session he has already been credited for. It is the single most common
+error in this category of app.
+
+There are only two coherent shapes, and they cannot be mixed:
+
+- **A · The target stays put.** The activity level already priced the
+  training in. Show the workout and the steps *beside* the intake, as
+  context, and never move the goal. Simplest, and the hardest to make dishonest.
+- **B · Split the two.** The activity question comes to mean **non-exercise
+  activity only** (1.2–1.375), and measured movement is added on top. More
+  truthful in principle — and it changes what a question he has already
+  answered means, so **he has to be re-asked**, and every existing target
+  shifts underneath him.
+
+**The recommendation is A**, with the two burn figures unified, for one
+reason: **the calories burned in a strength workout cannot be estimated
+honestly.** Steps are defensible — the app even has the body weight the
+estimate should scale with, and is not using it. A set of squats is not.
+Standing rule for this project: *never invent nutritional numbers.* Inflating
+a daily target by a guessed burn is that rule, pointed at the target instead
+of at the food.
+
+**So the answer to his ask is: show the relationship, do not silently move the
+number.** If the target should move, it moves where he can see it move.
+
+### What to build, in order
+
+1. **The fit row reads what the app already knows** — name, duration, volume.
+   No migration. (§1)
+2. **One definition of daily burn**, from the profile, used by the deficit
+   chart as well; the steps estimate scales with his weight, which is on file.
+3. **A relationship line in the day summary**: trained, steps, intake, and
+   where that left the day — with the burn side stated as an estimate.
+4. **Only then**, and only if he chooses B, touch the target.
+
+**Decide before building: A or B.** Everything above the last item is true
+either way, so it can start immediately.
 
 ## A workout the app builds for you (2026-09-14) — FIRST THING AFTER THE FREEZE
 
