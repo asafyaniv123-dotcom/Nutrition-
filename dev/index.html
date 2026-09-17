@@ -1612,6 +1612,11 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .sm2-fx{flex:1;min-width:0}
 .sm2-date{font-size:17px;font-weight:800;color:var(--ink);margin-bottom:10px;line-height:1.25}
 .sm2-r{display:flex;gap:8px;align-items:baseline;font-size:11px;color:var(--muted);margin-bottom:6px}
+/* The one piece of the reference spread that never got built: a sentence set
+   quietly in the serif, in the hollow the photograph holds open. */
+.sm2-q{font-family:Georgia,'Times New Roman',serif;font-size:12.5px;line-height:1.65;
+  color:var(--ink);opacity:.82;margin-top:10px;padding-top:9px;
+  border-top:1px solid rgba(140,133,125,.22)}
 /* DIRECT children only: a descendant selector here also catches the mood dot
    nested inside the value and stretches a 7px dot to the label's width. */
 .sm2-r>span{min-width:58px;flex-shrink:0}
@@ -9221,7 +9226,22 @@ function sumSecTitles(){
   for(i=0;i<SUM_SECS.length;i++)m[SUM_SECS[i].k]=SUM_SECS[i].t;
   return m;
 }
-function sumProseHTML(sum){
+/* THE HOLLOW BESIDE THE PHOTOGRAPH, and whether this quote fits it.
+   Returns 0 when it does not go in the head at all - no photo means the facts
+   already run full width and there is no hole; a full head means there is no
+   room; and a quote longer than the gap stays whole where it is rather than
+   being cut off at the interesting part. */
+function sumQuoteFits(sum,headLen,hasPh){
+  if(!hasPh||!sum||typeof sum.quote!=='string')return 0;
+  var q=sum.quote.trim();
+  if(!q||!sumSecOn('think'))return 0;
+  var free=SUM_HEAD_MAX-headLen;
+  if(free<=0)return 0;
+  /* 316px of column at this size is about 45 characters a line, and one fact
+     row is about two of them. A heuristic, said out loud. */
+  return q.length<=free*90?1:0;
+}
+function sumProseHTML(sum,skip){
   var h='',i,j,g,sec,items,id,lab,titles=sumSecTitles();
   for(i=0;i<SUM_PROSE.length;i++){
     g=SUM_PROSE[i];
@@ -9230,6 +9250,9 @@ function sumProseHTML(sum){
     items='';
     for(j=0;j<g.ids.length;j++){
       id=g.ids[j];
+      /* it went into the head; printing it here too is the same sentence
+         twice on one page */
+      if(skip&&skip[id])continue;
       if(typeof sum[id]!=='string'||!sum[id])continue;
       /* A label that repeats the heading directly above it reads as a mistake
          even when it is not - הכרת תודה sitting under הכרת תודה. The heading
@@ -9305,6 +9328,11 @@ function summaryBodyHTML(dateStr){
   var facts='<div class="sm2-date">'+fmtDate(dateStr)+'</div>';
   for(i=0;i<head.length;i++)
     facts+='<div class="sm2-r"><span>'+head[i].l+'</span><b>'+head[i].v+'</b></div>';
+  /* The sentence of the day, in the room the photograph is already holding
+     open. Under the facts, which puts it under the song when the song is the
+     last of them - which is where he asked for it. */
+  var _q=sumQuoteFits(sum,head.length,hasPh);
+  if(_q)facts+='<div class="sm2-q">'+esc(sum.quote.trim())+'</div>';
   if(hasPh){
     h+='<div class="sm2-hd"><div class="sm2-fx">'+facts+'</div><div class="sm2-phc">'+
        '<div class="sm2-box">'+photoImg(sum.photo,'alt=""')+'</div>'+
@@ -9375,7 +9403,7 @@ function summaryBodyHTML(dateStr){
     window._sumClockNeedsDraw=true;
   }
 
-  h+=sumProseHTML(sum);
+  h+=sumProseHTML(sum,_q?{quote:1}:null);
 
   /* What the person wrote by themselves, so it carries no question label. */
   if(jrnl&&jrnl.trim()){
