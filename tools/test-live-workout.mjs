@@ -80,6 +80,37 @@ setTimeout(function(){
     R.lineEmpty=exLastLine({name:'אין כזה תרגיל',sets:[]});
     R.line0=exLastLine({name:'לחיצת חזה',sets:[]});
     R.line2=exLastLine({name:'לחיצת חזה',sets:[{},{}]});
+    /* D: swapping when nothing is logged, and refusing when something is */
+    _fitWorkout={name:'t',date:new Date().toISOString(),currentEx:0,
+                 exercises:[mk('חתירה בכבל'),mk('לחיצת חזה'),mk('סקוואט')]};
+    /* mk() hands every exercise ss:1, so the third has to be taken OUT of the
+       group or removing one still leaves two in it - which is what the first
+       run of this actually measured */
+    _fitWorkout.exercises[0].ss=1;_fitWorkout.exercises[1].ss=1;_fitWorkout.exercises[2].ss=null;
+    var picked=null;window.exPickInto=function(fn){picked=fn;};
+    wxSwap(0);
+    R.swapOpened=!!picked;
+    if(picked)picked('לחיצת כתפיים');
+    R.swappedName=_fitWorkout.exercises[0].name;
+    _fitWorkout.exercises[0].sets=[{weight:40,reps:10}];
+    picked=null;wxSwap(0);
+    R.swapRefused=!picked;
+    R.nameAfterRefuse=_fitWorkout.exercises[0].name;
+
+    /* E: removing, and what it does to the group and the cursor */
+    window.confirm=function(){return true;};
+    _fitWorkout.currentEx=2;
+    wxRemove(0);
+    R.leftAfterRemove=_fitWorkout.exercises.length;
+    R.cursorAfterRemove=_fitWorkout.currentEx;
+    R.firstNow=_fitWorkout.exercises[0].name;
+    R.loneSuper=_fitWorkout.exercises[0].ss;
+
+    /* F: removing the LAST one steps the cursor back */
+    _fitWorkout.currentEx=1;
+    wxRemove(1);
+    R.cursorAtEnd=_fitWorkout.currentEx;
+    R.leftAtEnd=_fitWorkout.exercises.length;
     window.renderFitness=realRender;
   }catch(e){R.threw=String(e&&e.message||e);}
   fetch('/r',{method:'POST',body:JSON.stringify(R)});
@@ -133,6 +164,21 @@ ok(got.setsOn1 === 1 && got.setsOn0 === 0, 'with the set filed on that exercise,
 ok(got.weightOn1 === 50, 'and it is the set you actually entered (got ' + got.weightOn1 + ')');
 
 console.log('');
+console.log('');
+console.log('swapping, and refusing to swap');
+ok(got.swapOpened===true,'swapping an empty exercise opens the picker');
+ok(got.swappedName==='לחיצת כתפיים','and the name changes (got '+got.swappedName+')');
+ok(got.swapRefused===true,'an exercise with sets in it refuses the swap');
+ok(got.nameAfterRefuse==='לחיצת כתפיים','and keeps its name (got '+got.nameAfterRefuse+')');
+
+console.log('');
+console.log('removing');
+ok(got.leftAfterRemove===2,'the exercise goes (got '+got.leftAfterRemove+' left)');
+ok(got.cursorAfterRemove===1,'the cursor follows what you were standing on (got '+got.cursorAfterRemove+')');
+ok(got.loneSuper===null,'and a superset left with one member is dissolved (got '+JSON.stringify(got.loneSuper)+')');
+ok(got.cursorAtEnd===0,'removing the last one steps back rather than off the end (got '+got.cursorAtEnd+')');
+ok(got.leftAtEnd===1,'with one left (got '+got.leftAtEnd+')');
+
 console.log('last time, as a line rather than a prefill');
 ok(got.lineEmpty === '', 'an exercise you have never done says nothing at all');
 ok(/60/.test(got.line0 || ''), 'the first set is compared with last time\'s first (got ' + (got.line0 || '').replace(/<[^>]*>/g, '') + ')');
