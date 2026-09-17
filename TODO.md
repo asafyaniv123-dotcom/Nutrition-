@@ -211,13 +211,23 @@ was set by a tap rather than by the sequence, and do not re-home in that case.
   **Needs specifying before it can be built: which app, and what it does.**
 - Moving between exercises inside a live workout needs to be easy, including
   when the order changed from what was planned.
-- A note during an exercise — "feet on the third line" — kept with that lift.
-- Change the weight while ADDING an exercise, not only through "add set".
+- ~~A note during an exercise — "feet on the third line" — kept with that
+  lift.~~ — done 17/09, keyed by the exercise NAME rather than by the workout,
+  so it is waiting on the machine next month, in a session nobody has planned.
+- ~~Change the weight while ADDING an exercise, not only through "add set".~~ —
+  done 17/09. The picker is followed by three boxes opening on what you did on
+  this lift last time; they write the PLAN, not a set, so nothing is logged
+  that nobody has done.
 - Swap or cancel an exercise mid-workout.
 
 Several of these are the same complaint in different clothes: **a live workout
 is not editable enough.** Moving between exercises, swapping one out, changing
 a weight, adding a note. Worth building as one pass rather than eight.
+
+**That cluster is closed as of 17/09** — moving, swapping, removing, the note
+and the weight-at-add are all in the app. What is left on this list is the
+stopwatch (built, and given a door of its own in the כושר grid) and the
+plate-loading question, which became the bar loader.
 
 ---
 
