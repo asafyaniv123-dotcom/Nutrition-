@@ -50,4 +50,11 @@ export const PART3 = {
 'Sled Push':{de:'Schlitten schieben',es:'Empuje de trineo',fr:'Poussée de traîneau',it:'Spinta della slitta',pt:'Empurrar o trenó',ja:'スレッドプッシュ','zh-Hans':'推雪橇','zh-Hant':'推雪橇',ar:'دفع الزحافة'},
 'Battle Ropes':{de:'Battle Ropes',es:'Cuerdas de batalla',fr:'Cordes ondulatoires',it:'Battle rope',pt:'Cordas navais',ja:'バトルロープ','zh-Hans':'战绳','zh-Hant':'戰繩',ar:'الحبال القتالية'},
 'Swimming':{de:'Schwimmen',es:'Natación',fr:'Natation',it:'Nuoto',pt:'Natação',ja:'水泳','zh-Hans':'游泳','zh-Hant':'游泳',ar:'السباحة'},
+'Bodyweight Lunge':{de:'Ausfallschritt ohne Gewicht',es:'Zancada sin peso',fr:'Fente au poids du corps',it:'Affondo a corpo libero',pt:'Afundo com peso do corpo',ja:'自重ランジ','zh-Hans':'徒手弓步蹲','zh-Hant':'徒手弓步蹲',ar:'طعن بوزن الجسم'},
+'Smith Machine Lunge':{de:'Ausfallschritt an der Multipresse',es:'Zancada en máquina Smith',fr:'Fente à la machine Smith',it:'Affondo alla multipower',pt:'Afundo no Smith',ja:'スミスマシンランジ','zh-Hans':'史密斯机弓步蹲','zh-Hant':'史密斯機弓步蹲',ar:'طعن على جهاز سميث'},
+'Barbell Lunge':{de:'Ausfallschritt mit Langhantel',es:'Zancada con barra',fr:'Fente à la barre',it:'Affondo con bilanciere',pt:'Afundo com barra',ja:'バーベルランジ','zh-Hans':'杠铃弓步蹲','zh-Hant':'槓鈴弓步蹲',ar:'طعن بالبار'},
+'Resistance Band Curl':{de:'Bizeps-Curl mit Band',es:'Curl de bíceps con banda',fr:'Curl avec élastique',it:'Curl con elastico',pt:'Rosca com elástico',ja:'バンドカール','zh-Hans':'弹力带弯举','zh-Hant':'彈力帶彎舉',ar:'ثني المرفق بشريط المقاومة'},
+'Resistance Band Shrug':{de:'Schulterheben mit Band',es:'Encogimiento con banda',fr:'Haussement d’épaules avec élastique',it:'Scrollate con elastico',pt:'Encolhimento com elástico',ja:'バンドシュラッグ','zh-Hans':'弹力带耸肩','zh-Hant':'彈力帶聳肩',ar:'رفع الكتفين بشريط المقاومة'},
+'Side-Lying Hip Abduction':{de:'Beinheben in Seitlage',es:'Abducción de cadera tumbado de lado',fr:'Abduction de hanche allongé sur le côté',it:'Abduzione dell’anca su un fianco',pt:'Abdução de quadril deitado de lado',ja:'サイドライイング・ヒップアブダクション','zh-Hans':'侧卧髋外展','zh-Hant':'側臥髖外展',ar:'إبعاد الورك من وضعية الاستلقاء الجانبي'},
+'Banded Hip Abduction':{de:'Hüftabduktion mit Band',es:'Abducción de cadera con banda',fr:'Abduction de hanche avec élastique',it:'Abduzione dell’anca con elastico',pt:'Abdução de quadril com elástico',ja:'バンド・ヒップアブダクション','zh-Hans':'弹力带髋外展','zh-Hant':'彈力帶髖外展',ar:'إبعاد الورك بشريط المقاومة'},
 };

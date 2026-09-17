@@ -325,11 +325,23 @@ const RAW=[
 ['קלין אנד פרס',M.shoulders,[Q.bar,Q.kb],'Clean and Press',['קלין']],
 ['פאוור קלין',M.glutes,[Q.bar],'Power Clean',[]],
 ['ת׳ראסטר',M.shoulders,[Q.bar],'Thruster',['תראסטר']],
-['סנאץ׳',M.shoulders,[Q.bar],'Snatch',['סנאצ']]
+['סנאץ׳',M.shoulders,[Q.bar],'Snatch',['סנאצ']],
+/* ── added after the list was first built; see the note on r[1] above ── */
+['לאנג׳ במשקל גוף',[M.quads,M.glutes],[Q.bw],'Bodyweight Lunge',['לאנג בלי משקל','מספריים משקל גוף']],
+['לאנג׳ בסמית׳',[M.quads,M.glutes],[Q.smith],'Smith Machine Lunge',['לאנג בסמית','מספריים בסמית׳']],
+['לאנג׳ במוט',[M.quads,M.glutes],[Q.bar],'Barbell Lunge',['לאנג במוט','מספריים במוט']],
+['כפיפת מרפק בגומייה',M.biceps,[Q.band],'Resistance Band Curl',['כפיפת יד בגומייה','ביצפס בגומייה']],
+['משיכת כתפיים בגומייה',M.traps,[Q.band],'Resistance Band Shrug',['שראגים בגומייה','טרפז בגומייה']],
+['הרחקת ירך בשכיבה על הצד',[M.abduct,M.glutes],[Q.bw,Q.mat],'Side-Lying Hip Abduction',['הרמת רגל בשכיבה על הצד','מרחיקים במזרן']],
+['הרחקת ירך בגומייה',[M.abduct,M.glutes],[Q.band],'Banded Hip Abduction',['פתיחת רגליים בגומייה','מרחיקים בגומייה']]
 ];
 
 const list=RAW.map(function(r,i){
-  const o={id:'x'+(i+1),n:r[0],m:[r[1]],q:r[2]};
+  /* A row may name ONE muscle or several. Six of the last seven work two -
+     a lunge is quadriceps and glutes - and having no way to say so in a row
+     is why they were written straight into the JSON, where the build could
+     not see them and silently dropped them on its next run. */
+  const o={id:'x'+(i+1),n:r[0],m:Array.isArray(r[1])?r[1].slice():[r[1]],q:r[2]};
   if(r[3])o.en=r[3];
   /* The name in every language. `n` stays the STORED id - the workout log, the
      history and loadKind all key on it - and `t` is what the reader is shown,

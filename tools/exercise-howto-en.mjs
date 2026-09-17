@@ -858,4 +858,168 @@ export const EN = {
   m: ['Leaning on the rail, which takes away half the effort.',
       'Small fast steps instead of a full range.'] },
 
+'לחיצת חזה על הרצפה': {
+  s: ['Lie on the floor under the bar, knees bent or legs straight, whichever is comfortable.',
+      'Take the same grip you would for a bench press, bar over your chest.',
+      'Lower until the back of your upper arm touches the floor, and stop there.',
+      'Press up out of the pause, without bouncing your elbow off the floor.'],
+  m: ['Bouncing the elbow off the floor instead of pausing — that loads the elbow joint.',
+      'Elbows flared out to 90 degrees — that loads the shoulder joint.',
+      'Lifting your hips off the floor to press more.'] },
+
+'לחיצת לנדמיין': {
+  s: ['Set one end of a bar into a corner or a landmine sleeve and hold the free end in one hand.',
+      'Stand in a short split stance with the bar at your shoulder and your elbow close to your body.',
+      'Press forward and up along the diagonal until your arm is straight.',
+      'Come back under control until the bar rests at your shoulder again.'],
+  m: ['Leaning back to help the press — that loads the lower back.',
+      'The elbow drifting outwards instead of staying under your hand.',
+      'Turning your hips into the press instead of keeping them facing forward.'] },
+
+'חתירה במוט אחיזה תחתונה': {
+  s: ['Take an underhand grip on the bar, palms facing forward, hands about shoulder width.',
+      'Soften your knees and hinge forward with a flat back.',
+      'Row the bar to your lower stomach, elbows travelling back close to your body.',
+      'Lower it under control until your arms are straight.'],
+  m: ['A rounded back — the main risk in any barbell row.',
+      'Letting the wrist bend back under load — that loads the wrist joint.',
+      'Standing up as you pull, in order to move more weight.'] },
+
+'חתירת פנדליי': {
+  s: ['Start with the bar on the floor, feet hip width, hinged over until your back is close to parallel.',
+      'Grip a little wider than your shoulders, back flat, eyes down.',
+      'Pull the bar from the floor to your stomach in one sharp effort, without moving your back.',
+      'Put the bar back on the floor and let it settle before the next rep.'],
+  m: ['Your torso rising on every rep — that is a regular row.',
+      'A rounded lower back the moment the bar leaves the floor.',
+      'Chaining reps without the bar stopping, which uses momentum instead of your back.'] },
+
+'חתירת לנדמיין': {
+  s: ['Set one end of a bar into a corner and load the other end.',
+      'Stand over or beside the bar and hinge forward with a flat back.',
+      'Row the end of the bar towards your ribs, elbow close to your body.',
+      'Lower it under control until your arm is straight.'],
+  m: ['Twisting your torso on every pull instead of keeping it still.',
+      'Pulling with the arm alone, with no movement at the shoulder blade.',
+      'A rounded back at the bottom of the movement.'] },
+
+'ראק פול': {
+  s: ['Set the bar on the safety pins, somewhere between your knee and mid-thigh.',
+      'Feet hip width, bar against your shins, hands outside your legs.',
+      'Set your back flat and your chest open, then lock your hips and glutes to stand it up.',
+      'Lower it under control until the bar rests on the pins again.'],
+  m: ['A rounded lower back — the range is short here but the load is heavy.',
+      'Leaning back at the lockout, which loads the lower back.',
+      'Dropping the bar onto the pins instead of lowering it.'] },
+
+'פוש פרס': {
+  s: ['Hold the bar on your upper chest, elbows slightly forward, feet hip width.',
+      'Dip at the knees — a short, vertical dip, without leaning forward.',
+      'Drive your legs and press the bar overhead in one movement.',
+      'Bring the bar back to your chest under control and take it on soft knees.'],
+  m: ['Dipping too deep, which turns it into a thruster.',
+      'Leaning back to get the bar past your head — that loads the lower back.',
+      'Catching the bar on locked legs, so the impact goes through the knee joint.'] },
+
+'פשיטת שורש כף יד': {
+  s: ['Sit and rest your forearms on your thighs or a bench, palms facing down.',
+      'Let your wrists hang past the edge, bar held overhand.',
+      'Raise the back of your hands as far as they will go.',
+      'Lower slowly until the forearm is fully stretched.'],
+  m: ['Moving the elbow to help — the forearm is meant to stay still.',
+      'Too much weight, which cuts the movement down to a few degrees.',
+      'Letting it drop instead of lowering it.'] },
+
+'סקוואט עם עצירה': {
+  s: ['Bar across your upper traps, feet about shoulder width, toes turned out a little.',
+      'Squat down under control, knees tracking over your toes.',
+      'Hold the bottom for two or three seconds without letting the tension go.',
+      'Stand up out of the pause itself, with no bounce.'],
+  m: ['Relaxing at the bottom — the back rounds and the chest drops.',
+      'Shifting onto your toes during the pause, so the heel lifts.',
+      'Standing up hips-first, ahead of your chest.'] },
+
+'דדליפט רגל ישרה': {
+  s: ['Stand with the bar against your thighs, feet hip width, knees almost straight.',
+      'Push your hips back and let the bar travel down along your legs.',
+      'Go down until you feel the stretch in your hamstrings, without rounding your back.',
+      'Come up by driving your hips forward, until you are standing tall.'],
+  m: ['Rounding the lower back once the stretch runs out — that is where the rep ends.',
+      'Bending the knees on the way down, which turns it into a regular deadlift.',
+      'Letting the bar drift away from your legs — that loads the lower back.'] },
+
+'סיבוב לנדמיין': {
+  s: ['Set one end of a bar into a corner and hold the free end with both hands.',
+      'Feet about shoulder width, arms straight, bar at chest height.',
+      'Sweep the bar down to one side, turning through your waist and hips together.',
+      'Bring it back to the middle under control, then go to the other side.'],
+  m: ['Turning from the lower back alone while the hips stay locked — that loads the spine.',
+      'Bending the arms and pulling, instead of turning through your body.',
+      'Swinging it fast, which gives up control at the ends.'] },
+
+'ת׳ראסטר': {
+  s: ['Bar on your upper chest, elbows forward, feet about shoulder width.',
+      'Squat down to full depth while keeping your elbows high.',
+      'Stand up and carry straight on into the overhead press — one continuous movement.',
+      'Bring the bar back to your chest and go straight into the next squat.'],
+  m: ['Pausing between standing up and pressing, which wastes the drive from your legs.',
+      'Elbows dropping at the bottom, so the bar rolls forward.',
+      'Leaning back to press instead of moving your head out of the way — that loads the lower back.'] },
+
+'לאנג׳ במשקל גוף': {
+  s: ['Stand tall, feet hip-width, hands on your hips.',
+      'Step forward a comfortable distance and lower your hips straight down.',
+      'Go down until both knees are near 90 degrees, torso tall.',
+      'Drive back up through the front heel.'],
+  m: ['Too short a step, which loads the front knee instead of the hip.',
+      'The torso tipping forward and loading the lower back.',
+      'Letting the back knee bang into the floor instead of stopping above it.'] },
+'לאנג׳ בסמית׳': {
+  s: ['Set the bar height so it rests on your traps without stooping to it.',
+      'One foot forward, one back, hips under the bar.',
+      'Lower your hips straight down until the knees are near 90 degrees.',
+      'Drive through the front heel; the bar travels on its rails.'],
+  m: ['A front foot too close in, forcing the knee forward — pressure on the knee joint.',
+      'Leaning on the bar instead of holding a tall torso under it.',
+      'Swapping legs mid-set without racking the bar.'] },
+'לאנג׳ במוט': {
+  s: ['Rack the bar on your traps as for a squat, elbows under it.',
+      'Step forward a comfortable distance and lock the torso tall.',
+      'Lower your hips straight down until the knees are near 90 degrees.',
+      'Drive back through the front heel, and only then step.'],
+  m: ['Stepping and descending in one motion, which loses balance with a loaded back.',
+      'A torso tipping forward — with a bar that loads the lower back directly.',
+      'Starting at squat weight; one leg carries less than two.'] },
+'כפיפת מרפק בגומייה': {
+  s: ['Stand on the middle of the band, feet hip-width, an end in each hand.',
+      'Elbows pinned to your ribs, palms facing forward.',
+      'Bend the elbows until the band is fully stretched.',
+      'Return slowly; the resistance is greatest at the very end.'],
+  m: ['Letting the band pull your hands back instead of controlling the way down.',
+      'Elbows drifting forward, which hands the work to the shoulder.',
+      'Standing too close to the anchor, so there is no resistance at the start.'] },
+'משיכת כתפיים בגומייה': {
+  s: ['Stand on the middle of the band, an end in each hand, arms straight at your sides.',
+      'Shoulders relaxed down, eyes forward.',
+      'Lift the shoulders straight up toward your ears.',
+      'Lower slowly to the end of the range before the next rep.'],
+  m: ['Rolling the shoulders in a circle — the movement is up and down only.',
+      'Bending the elbows, which turns it into a row rather than a shrug.',
+      'Craning the neck forward to help.'] },
+'הרחקת ירך בשכיבה על הצד': {
+  s: ['Lie on your side, body in one straight line, head supported on your hand.',
+      'Bend the bottom leg slightly for balance.',
+      'Raise the top leg straight up, foot neutral.',
+      'Lower slowly without resting the leg between reps.'],
+  m: ['Rolling the hips back, which hands the work to the hip flexors.',
+      'Lifting too high and bending sideways at the waist.',
+      'Turning the foot up, which takes the muscle out of the movement.'] },
+'הרחקת ירך בגומייה': {
+  s: ['Put a band above your knees, feet hip-width.',
+      'Bend the knees slightly and keep the torso tall.',
+      'Push the knees out against the band to the end of the range.',
+      'Close slowly — do not let the band snap you back.'],
+  m: ['Letting the knees fall inward between reps.',
+      'Compensating with the torso instead of opening from the hip.',
+      'A band so stiff it shortens the range to a couple of centimetres.'] }
 };
