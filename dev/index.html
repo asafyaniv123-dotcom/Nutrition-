@@ -348,6 +348,25 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
    exercises does not restart it. */
 /* A note on a lift: written once, read for years. Quiet enough to ignore and
    always in the same place. */
+/* Adding an exercise, with what you mean to lift. */
+.ax-ov{position:fixed;inset:0;z-index:410;background:rgba(74,67,64,.62);
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.ax{width:100%;max-width:330px;background:var(--card);border-radius:20px;padding:16px;
+  box-shadow:0 18px 44px -18px rgba(60,54,50,.5)}
+.ax-t{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:2px}
+.ax-s{font-size:10.5px;color:var(--muted);margin-bottom:12px}
+.ax-row{display:flex;gap:8px;margin-bottom:12px}
+.ax-row label{flex:1;display:flex;flex-direction:column;gap:4px;
+  font-size:9.5px;font-weight:700;color:var(--muted)}
+.ax-row input{width:100%;padding:10px;border-radius:11px;border:1px solid rgba(140,133,125,.28);
+  font-size:16px;font-weight:800;font-family:inherit;background:var(--surface);color:var(--ink);
+  text-align:center;font-variant-numeric:tabular-nums;direction:ltr}
+.ax-row2{display:flex;gap:7px}
+.ax-go{flex:1;border:none;border-radius:12px;padding:12px;font-family:inherit;font-size:13px;
+  font-weight:800;cursor:pointer;color:var(--white);
+  background:linear-gradient(135deg,var(--terra-200),var(--terra-500))}
+.ax-x{border:none;border-radius:12px;padding:12px 16px;font-family:inherit;font-size:12px;
+  font-weight:700;cursor:pointer;background:var(--surface);color:var(--muted)}
 .exn{display:block;width:100%;text-align:start;border:none;font-family:inherit;cursor:pointer;
   background:var(--surface);border-radius:11px;padding:8px 10px;margin-bottom:9px;
   font-size:11px;line-height:1.5;color:var(--ink-soft)}
@@ -11829,13 +11848,60 @@ function wxRemove(i){
   _fitPinned=true;
   renderFitness();
 }
+/* ── ADDING ONE, WITH WHAT YOU MEAN TO LIFT ──
+   The name, then three boxes holding what you did on this lift last time. The
+   ordinary case is two taps and nothing typed; the boxes are there for the
+   day it is not the ordinary case. */
+var _addEx=null;
 function workoutAddExercise(){
   exPickInto(function(name){
     if(!_fitWorkout)return;
-    _fitWorkout.exercises.push({name:name,targetSets:3,targetReps:10,plan:[],sets:[],warm:[],ss:null});
-    _fitWorkout.currentEx=_fitWorkout.exercises.length-1;
+    var prev=exLastTime(name),first=prev&&prev.sets&&prev.sets[0];
+    _addEx={name:name,
+            w:first&&first.weight>0?first.weight:'',
+            r:first&&first.reps>0?first.reps:'',
+            sets:prev&&prev.sets?Math.min(8,Math.max(1,prev.sets.length)):3,
+            ago:prev&&prev.date?agoText(new Date(prev.date).getTime()):''};
     renderFitness();
   });
+}
+function addExCancel(){_addEx=null;renderFitness();}
+function addExGo(){
+  if(!_fitWorkout||!_addEx)return;
+  var g=function(id){var el=document.getElementById(id);return el?parseFloat(el.value):NaN;};
+  /* The boxes hold DISPLAY units and everything stored is kilograms - the same
+     bridge every other weight box in this app crosses. A blank box arrives as
+     NaN, and fromDisplayWeight turns that into 0, which fails the test below
+     and leaves no plan at all: skipping is still the old behaviour exactly. */
+  var w=fromDisplayWeight(g('addex-w')),r=g('addex-r'),n=g('addex-s');
+  var sets=(isFinite(n)&&n>0&&n<=20)?Math.round(n):3;
+  var reps=(isFinite(r)&&r>0&&r<=200)?Math.round(r):10;
+  var ex={name:_addEx.name,targetSets:sets,targetReps:reps,plan:[],sets:[],warm:[],ss:null};
+  /* THE PLAN, NOT A SET. Nothing is logged here - this is what the boxes will
+     open holding, and exPrefill already prefers a plan row on the first set.
+     Writing a set would put work in the log that nobody has done. */
+  if(isFinite(w)&&w>0)ex.plan=[{w:w,r:reps}];
+  _fitWorkout.exercises.push(ex);
+  _fitWorkout.currentEx=_fitWorkout.exercises.length-1;
+  _fitPinned=true;
+  _addEx=null;
+  renderFitness();
+}
+function addExHTML(){
+  if(!_addEx)return '';
+  var a=_addEx;
+  return '<div class="ax-ov" onclick="if(event.target===this)addExCancel()"><div class="ax">'+
+    '<div class="ax-t">'+esc(exLabel(a.name))+'</div>'+
+    (a.ago?'<div class="ax-s">'+_t('בפעם שעברה')+' \u00b7 '+esc(a.ago)+'</div>':'')+
+    '<div class="ax-row">'+
+      '<label>'+_t('משקל')+' ('+weightUnit()+')<input id="addex-w" type="number" inputmode="decimal" step="0.5" value="'+(a.w===''?'':edWeightVal(a.w))+'"></label>'+
+      '<label>'+_t('חזרות')+'<input id="addex-r" type="number" inputmode="numeric" value="'+a.r+'"></label>'+
+      '<label>'+_t('סטים')+'<input id="addex-s" type="number" inputmode="numeric" value="'+a.sets+'"></label>'+
+    '</div>'+
+    '<div class="ax-row2">'+
+      '<button class="ax-go" onclick="addExGo()">'+_t('הוסף')+'</button>'+
+      '<button class="ax-x" onclick="addExCancel()">'+_t('ביטול')+'</button>'+
+    '</div></div></div>';
 }
 /* ── הארון שלי ──────────────────────────────────────────────────────────
    Rows stacked the way a person is: hat, shirt, trousers, socks, shoes,
@@ -15564,6 +15630,7 @@ function renderFitWorkout(){
   h+='<button class="fw-rb go" onclick="restGo()">'+_t('התחל מנוחה')+'</button>';
   h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
   h+='</div>';
+  h+=addExHTML();
   // Nav buttons
   h+='<div style="display:flex;gap:8px">';
   if(w.currentEx>0)h+='<button onclick="_fitWorkout.currentEx--;renderFitness()" style="flex:1;background:var(--surface);border:none;border-radius:14px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('אחור')+'</button>';

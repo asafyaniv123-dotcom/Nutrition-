@@ -129,6 +129,63 @@ setTimeout(function(){
     exNoteSet('לחיצת חזה','   ');
     R.noteCleared=exNoteGet('לחיצת חזה');
     R.noteGone=exNoteHTML({name:'לחיצת חזה',sets:[]},0).indexOf('exn add')>=0;
+    /* H: adding one, with the weight, before a single set is logged */
+    localStorage.setItem('fit_log',JSON.stringify([{date:new Date(Date.now()-5*86400000).toISOString(),name:'t',
+      exercises:[{name:'סקוואט',sets:[{weight:60,reps:10},{weight:60,reps:9},{weight:60,reps:8}]}]}]));
+    _fitWorkout={name:'today',date:new Date().toISOString(),currentEx:0,exercises:[]};
+    window.exPickInto=function(fn){fn('סקוואט');};
+    var units0=APP_UNITS;APP_UNITS='metric';
+    workoutAddExercise();
+    R.addName=_addEx&&_addEx.name;
+    R.addSeedW=_addEx&&_addEx.w;        /* 60, from last time */
+    R.addSeedR=_addEx&&_addEx.r;        /* 10 */
+    R.addSeedSets=_addEx&&_addEx.sets;  /* 3 */
+    R.addSeedAgo=_addEx&&_addEx.ago;    /* "לפני 5 ימים" */
+    host.innerHTML=addExHTML();
+    R.addBoxW=document.getElementById('addex-w').value;
+    document.getElementById('addex-w').value='65';
+    document.getElementById('addex-r').value='8';
+    document.getElementById('addex-s').value='4';
+    addExGo();
+    var added=_fitWorkout.exercises[0];
+    R.addedName=added&&added.name;
+    R.addedPlanW=added&&added.plan[0]&&added.plan[0].w;
+    R.addedPlanR=added&&added.plan[0]&&added.plan[0].r;
+    R.addedSets=added&&added.targetSets;
+    R.addedReps=added&&added.targetReps;
+    R.addedLogged=added&&added.sets.length;   /* NOTHING is logged */
+    R.addClosed=_addEx===null;
+    R.addPrefill=exPrefill(added);            /* the boxes open holding it */
+
+    /* the units, both ways: 100 lb typed in must be 45.36 kg stored, and the
+       box handed back must say 100 again */
+    APP_UNITS='imperial';
+    _fitWorkout.exercises=[];
+    workoutAddExercise();
+    host.innerHTML=addExHTML();
+    R.impBoxW=document.getElementById('addex-w').value;   /* 60kg shown as lb */
+    document.getElementById('addex-w').value='100';
+    document.getElementById('addex-r').value='5';
+    document.getElementById('addex-s').value='3';
+    addExGo();
+    R.impPlanW=_fitWorkout.exercises[0].plan[0].w;        /* 45.359… kg */
+    _addEx={name:'x',w:_fitWorkout.exercises[0].plan[0].w,r:5,sets:3,ago:''};
+    host.innerHTML=addExHTML();
+    R.impRoundTrip=document.getElementById('addex-w').value;  /* 100 again */
+    _addEx=null;
+
+    /* skipping is the old behaviour exactly: no weight typed, no plan */
+    APP_UNITS='metric';
+    _fitWorkout.exercises=[];
+    window.exPickInto=function(fn){fn('תרגיל שלא היה מעולם');};
+    workoutAddExercise();
+    R.skipSeedW=_addEx&&_addEx.w;    /* '' - nothing to seed from */
+    host.innerHTML=addExHTML();
+    addExGo();
+    R.skipPlan=_fitWorkout.exercises[0].plan.length;
+    R.skipSets=_fitWorkout.exercises[0].targetSets;
+    R.skipReps=_fitWorkout.exercises[0].targetReps;
+    APP_UNITS=units0;
     window.renderFitness=realRender;
   }catch(e){R.threw=String(e&&e.message||e);}
   fetch('/r',{method:'POST',body:JSON.stringify(R)});
@@ -197,6 +254,31 @@ ok(got.loneSuper===null,'and a superset left with one member is dissolved (got '
 ok(got.cursorAtEnd===0,'removing the last one steps back rather than off the end (got '+got.cursorAtEnd+')');
 ok(got.leftAtEnd===1,'with one left (got '+got.leftAtEnd+')');
 
+console.log('adding one, with what you mean to lift');
+ok(got.addName==='סקוואט','the picker hands the name over (got '+got.addName+')');
+ok(got.addSeedW===60,'and the boxes open holding last time (got '+got.addSeedW+')');
+ok(got.addSeedR===10&&got.addSeedSets===3,'reps and sets with it (got '+got.addSeedR+'x'+got.addSeedSets+')');
+ok(/5/.test(got.addSeedAgo||''),'said when that was (got "'+got.addSeedAgo+'")');
+ok(got.addBoxW==='60','the box is filled, not empty (got "'+got.addBoxW+'")');
+ok(got.addedPlanW===65&&got.addedPlanR===8,'what you typed lands in the PLAN (got '+got.addedPlanW+'x'+got.addedPlanR+')');
+ok(got.addedSets===4&&got.addedReps===8,'and in the targets (got '+got.addedSets+'x'+got.addedReps+')');
+ok(got.addedLogged===0,'nothing is logged - no set you have not done (got '+got.addedLogged+')');
+ok(got.addClosed===true,'the sheet closes behind itself');
+ok(got.addPrefill&&got.addPrefill.w===65,'and the first set opens holding it (got '+JSON.stringify(got.addPrefill)+')');
+
+console.log('');
+console.log('and it crosses the unit line in both directions');
+ok(got.impBoxW==='132.3','60 kg is offered to an imperial reader as 132.3 lb (got "'+got.impBoxW+'")');
+ok(Math.abs(got.impPlanW-45.359237)<0.0001,'100 lb typed is stored as 45.36 kg (got '+got.impPlanW+')');
+ok(got.impRoundTrip==='100','and handed back as 100 (got "'+got.impRoundTrip+'")');
+
+console.log('');
+console.log('skipping it is the old behaviour exactly');
+ok(got.skipSeedW==='','an exercise never done seeds nothing (got "'+got.skipSeedW+'")');
+ok(got.skipPlan===0,'and with nothing typed there is no plan (got '+got.skipPlan+')');
+ok(got.skipSets===3&&got.skipReps===10,'3x10, as before (got '+got.skipSets+'x'+got.skipReps+')');
+
+console.log('');
 console.log('a note on a lift');
 ok(got.noteSame==='מושב 4, רגליים על הקו השלישי','it is kept (got '+got.noteSame+')');
 ok(got.noteOther==='','and only on that lift (got "'+got.noteOther+'")');
