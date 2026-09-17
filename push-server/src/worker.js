@@ -498,7 +498,8 @@ export default {
       const SYSTEM =
         'You split a description of a meal into its items. It may be written\n' +
         'in any language.\n' +
-        'Reply with JSON only: {"items":[{"food":"","amount":1,"unit":""}]}\n' +
+        'Reply with JSON only:\n' +
+        '{"items":[{"food":"","amount":1,"unit":"","stated_by_user":null}]}\n' +
         '- food: the food alone, in the language it was written, no quantity words.\n' +
         '- amount: a number. If none is given use 1.\n' +
         '- unit: one of g, unit, slice, cup, tbsp, tsp. Use "unit" for whole things\n' +
@@ -525,6 +526,18 @@ export default {
            input an American reader is most likely to type. And asked with the
            number last, the model wrote prose about the missing unit instead
            of an answer, which used to fail the whole request. */
+        /* The figure was being read correctly as part of the name and then
+           dropped on the floor. It is the best evidence in the sentence: the
+           person read their own packet. */
+        '- A NUTRITION FIGURE THE PERSON STATES IS KEPT, in stated_by_user on\n' +
+        '  the item it belongs to: "25 גרם חלבון" is\n' +
+        '  stated_by_user {"protein_g":25}, "180 קלוריות" is\n' +
+        '  {"calories_kcal":180}. It is the figure FOR ONE of whatever amount\n' +
+        '  and unit say - one shake, not per 100 g. Fill ONLY the lines they\n' +
+        '  actually gave and leave stated_by_user null when they gave none.\n' +
+        '  Never invent the others to make a set look complete, and never let\n' +
+        '  this change the amount: the 25 g is what the packet advertises, not\n' +
+        '  how much was drunk.\n' +
         '- IMPERIAL WEIGHTS ARE CONVERTED TO GRAMS, AND THE UNIT IS "g".\n' +
         '  1 oz = 28.35 g, 1 lb = 453.6 g. These are exact, so this is\n' +
         '  arithmetic and not an estimate: "6 oz" is amount 170, unit "g";\n' +
@@ -601,7 +614,24 @@ export default {
           let amount = Number(it && it.amount);
           if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) amount = 1;
           const unit = UNITS.includes(it && it.unit) ? it.unit : 'unit';
-          return { food, amount, unit };      // note: nutrition is deliberately absent
+          /* Nutrition the endpoint would state ITSELF is still deliberately
+             absent. This is the opposite: a figure the person read off their
+             own packet and typed, which outranks every table we have. */
+          const sv = it && it.stated_by_user && typeof it.stated_by_user === 'object' ? it.stated_by_user : null;
+          const pnum = (x) => {
+            if (x === null || x === undefined || x === '') return null;
+            const n = Number(x);
+            return isFinite(n) && n >= 0 && n < 100000 ? Math.round(n * 10) / 10 : null;
+          };
+          const said = sv ? {
+            calories_kcal: pnum(sv.calories_kcal),
+            protein_g: pnum(sv.protein_g),
+            carbohydrates_g: pnum(sv.carbohydrates_g),
+            fat_g: pnum(sv.fat_g),
+          } : null;
+          const anySaid = said && (said.calories_kcal !== null || said.protein_g !== null ||
+                                   said.carbohydrates_g !== null || said.fat_g !== null);
+          return { food, amount, unit, stated_by_user: anySaid ? said : null };
         })
         .filter(Boolean)
         .slice(0, 20);

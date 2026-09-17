@@ -835,6 +835,10 @@ body.night .st-m>span{background:rgba(255,255,255,.06)}
    than the amber of an estimate: this is the better answer, not a weaker
    one. */
 .sr-srctag{margin-inline-start:6px;font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px;background:rgba(143,199,158,.22);color:#4f7d5e;vertical-align:middle}
+/* On an unmatched row: the figure he read off the packet, kept in front of
+   him instead of parsed and dropped. */
+.sr-said{font-size:10.5px;color:var(--muted);padding:2px 0 6px;margin-inline-start:30px}
+.sr-said b{font-weight:800;color:var(--ink)}
 body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 /* The words the analyses run on. Wider and quieter than the search below
    it: this is a sentence, not a lookup. */
@@ -6055,6 +6059,20 @@ function matchCacheGet(q){
    whenever there is no answer - no network, no key, over the daily cap. The
    fallback is the old behaviour exactly, so the feature degrades to what the
    app did before rather than to an error. */
+/* Nothing in 7,000 rows is this food, and saying so is the only answer that
+   cannot be wrong. The row keeps its question and loses its match, which is
+   what draws the red tag and the way to fix it by hand. */
+function sayNoMatch(it,local){
+  var row=local&&typeof local==='object'?local:{amount:it.amount,unit:it.unit,g:1};
+  row.q=row.q||it.food;
+  row.food=null;
+  row.src='none';
+  /* What he read off his own packet, kept rather than dropped: it is the best
+     evidence in the sentence and it is what makes adding this by hand a
+     matter of reading a number instead of remembering one. */
+  if(it.stated_by_user)row.said=it.stated_by_user;
+  return row;
+}
 function sayResolveAI(it,done){
   var local=sayResolve(it);
   var q=it.food;
@@ -6071,7 +6089,15 @@ function sayResolveAI(it,done){
   }).then(function(r){return r.json();})
     .then(function(j){
       if(!t)return; clearTimeout(t); t=0;
-      if(!j||!j.ok||j.pick<0||!cands[j.pick]){done(local);return;}
+      /* A FAILURE IS NOT AN OPINION. Nothing came back, so the local guess
+         is all there is and it stands. */
+      if(!j||!j.ok){done(local);return;}
+      /* AN EXPLICIT NO IS. The model was shown sixty rows the local scorer
+         had already ranked and said none of them is this food - so handing
+         back the top of that same list shows the row it just rejected. A
+         product the tables have never heard of is not the nearest thing in
+         them. */
+      if(j.pick<0||!cands[j.pick]){done(sayNoMatch(it,local));return;}
       var f=cands[j.pick],g=j.grams||0,sure=!!j.sure;
       /* The model is sent sixty NAMES and no numbers, so nothing tells it
          that "ביצה שלמה מיובשת" is 605 kcal per 100 g and the row beside it
@@ -6852,6 +6878,19 @@ function sayPaint(){
                    :'<button class="sr-est" onclick="sayEstimate('+i+')">'+_t('הערך')+'</button>';
     }
     h+='</div>';
+    /* THE ONE REAL NUMBER IN THE SENTENCE. Nothing in the tables is this
+       product, but he read its packet and typed what it says - so it is on
+       screen rather than parsed and thrown away. Shown, not applied: the
+       figures he did NOT give would have to be invented. */
+    if(!row.food&&row.said){
+      var _sd=[],_sk=row.said;
+      if(_sk.calories_kcal!==null&&_sk.calories_kcal!==undefined)_sd.push(_t('{n} קק"ל',{n:_sk.calories_kcal}));
+      if(_sk.protein_g!==null&&_sk.protein_g!==undefined)_sd.push(_t('{n} גרם חלבון',{n:_sk.protein_g}));
+      if(_sk.carbohydrates_g!==null&&_sk.carbohydrates_g!==undefined)_sd.push(_t('{n} גרם פחמימה',{n:_sk.carbohydrates_g}));
+      if(_sk.fat_g!==null&&_sk.fat_g!==undefined)_sd.push(_t('{n} גרם שומן',{n:_sk.fat_g}));
+      if(_sd.length)
+        h+='<div class="sr-said">'+_t('כתבת')+': <b>'+_sd.join(' · ')+'</b></div>';
+    }
 
     if(row.food){
       // the amount, always - it is the one thing people do change
