@@ -907,15 +907,26 @@ limit on a band; it now reads as a hole where a feature should be.
 
 ### What to build
 
-- **Distance and duration on a cardio entry; pace derived, never typed.**
-- **A distance formatter has to be written first.** km vs miles is exactly the
-  `fmtWeight`/`weightUnit` rule, and there is no `fmtDist` — so the first
-  version would weld a unit into a sentence, which is the bug the units check
-  exists to catch. Write the formatter, then the feature.
-- Kept out of the sets-per-muscle band, the way `אירובי` already is at the
-  `isCardio` test — the exclusion is written, and it stays right.
-- **Weekly kilometres and a pace trend.** `ewma` already exists and takes any
-  daily series, so the chart is nearly free once the number is stored.
+- ~~**A distance formatter has to be written first.**~~ — done 18/09.
+  `fmtDist`/`distUnit`/`fmtPace`, stored in METRES, with
+  `tools/test-distance.mjs`. The units check learned distance in the same
+  commit, and learned a boundary with it: `מטר` is a substring of `מטרה`.
+- ~~**Distance and duration on a cardio entry; pace derived, never typed.**~~ —
+  done 18/09. Both boxes are offered and **either alone is enough**, because
+  five of the fifteen — ברפי, קפיצה לקופסה, קפיצה בחבל, חבלי קרב, סטפר — have
+  no distance at all, and a list of which ones "really" do is a list that rots.
+- ~~Kept out of the sets-per-muscle band~~ — and it needed no new exclusion.
+  `fitWeekStats` already skips any row whose reps are not above zero, so a row
+  holding only `mins` and `dist` is invisible to volume, to the set count and
+  to the band. `tools/test-cardio.mjs` asserts it against the shipped
+  aggregator, with the negative control: logged the wrong way the same session
+  reads 740 volume instead of 600.
+- **Weekly kilometres and a pace trend — STILL OPEN, and the next piece.**
+  `ewma` already exists and takes any daily series; the number is now stored,
+  so the chart is what is left. One thing to decide first: a week's cardio is
+  a mix of runs, swims and rides, and metres of swimming are not metres of
+  cycling. Either the line is per exercise, or the card says which sports it
+  is adding together.
 
 Its real weight is the same as the nutrition finding: **something he actually
 did, that the app could not hold.**
