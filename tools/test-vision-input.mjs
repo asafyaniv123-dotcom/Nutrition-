@@ -175,5 +175,48 @@ ok(names.indexOf('גבינה צהובה') >= 0 && names.indexOf('גבינה לב
    'but yellow and white cheese are NOT merged - they are two foods, not one brand');
 
 console.log('');
+console.log('whey, a stated figure, and a small pour');
+sent = null; ANSWER = null;
+await post({ images: [img()], note: 'סקופ מהזאת עם קצת חלב (25 גרם חלבון)', lang: 'he' });
+const r2 = (sent.body.contents[0].parts.find((p) => p.text) || {}).text || '';
+ok(/RULE 4 - WHEY IS NOT SOY/.test(r2), 'rule 4, whey is not soy');
+ok(/Defaulting an unmarked protein powder to soy/.test(r2), 'and says what going wrong costs');
+ok(/RULE 5 - A FIGURE THE PERSON STATES IS BINDING/.test(r2), 'rule 5, a stated figure is binding');
+ok(/not per\s*\n?\s*100 g/.test(r2) || /not per 100 g/.test(r2),
+   'stated for the PORTION, not per 100 g');
+ok(/[Dd]o NOT invent the rest/.test(r2), 'and the rest is not invented to look complete');
+ok(/RULE 6 - A HEDGED QUANTITY IS A SMALL ONE/.test(r2), 'rule 6, "a little" is not a glass');
+ok(/60 ml/.test(r2) && /240 ml/.test(r2), 'with the pour and the glass side by side');
+
+ANSWER = answerWith([
+  { name: 'אבקת חלבון מי גבינה (WHEY)', grams: 30, from_label: true,
+    per_100g: { calories_kcal: 380, protein_g: 75, carbohydrates_g: 8, fat_g: 5 },
+    stated_by_user: { calories_kcal: null, protein_g: 25, carbohydrates_g: null, fat_g: null } },
+  { name: 'חלב', grams: 60, from_label: false, per_100g: null, stated_by_user: null },
+]);
+r = await post({ images: [img()], note: 'סקופ מהזאת עם קצת חלב (25 גרם חלבון)', lang: 'he' });
+j = await r.json();
+const scoop = (j.items || [])[0] || {};
+ok(!!scoop.stated_by_user, 'what the person stated reaches the app');
+ok(scoop.stated_by_user && scoop.stated_by_user.protein_g === 25, 'exactly as given (got ' + (scoop.stated_by_user || {}).protein_g + ')');
+ok(scoop.stated_by_user && scoop.stated_by_user.calories_kcal === null,
+   'and only the line they gave - the rest stays null for the tables to fill');
+ok(!!scoop.per_100g, "the packet's own panel is kept alongside it, not replaced");
+
+console.log('');
+console.log('and a stated figure survives a merge');
+ANSWER = answerWith([
+  { name: 'חלבון', grams: 30, from_label: false, per_100g: null,
+    stated_by_user: { calories_kcal: null, protein_g: 25, carbohydrates_g: null, fat_g: null } },
+  { name: 'חלבון מי גבינה', grams: 0.0001, from_label: false, per_100g: null, stated_by_user: null },
+]);
+r = await post({ images: [img()], note: '25 גרם חלבון', lang: 'he' });
+j = await r.json();
+const one1 = (j.items || [])[0] || {};
+ok((j.items || []).length === 1, 'the two rows merged (got ' + (j.items || []).length + ')');
+ok(one1.stated_by_user && one1.stated_by_user.protein_g === 25,
+   'and the stated figure came through the merge - no table can replace it');
+
+console.log('');
 if (fails.length) { console.log(fails.length + ' failed'); process.exit(1); }
 console.log('the worker takes several pictures as one meal, and one as one product');

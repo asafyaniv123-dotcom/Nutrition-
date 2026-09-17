@@ -1841,6 +1841,34 @@ export default {
         'A converted household measure is not read off a label: from_label stays ' +
         'false for it.\n' +
         '\n' +
+        'RULE 4 - WHEY IS NOT SOY. If a pack shows WHEY, Whey Protein, ' +
+        'ISOLATE, CONCENTRATE, or the words say אבקת חלבון with nothing else, ' +
+        'the item is WHEY protein powder - name it אבקת חלבון מי גבינה (WHEY) ' +
+        'in Hebrew, whey protein powder in English. Soy, pea, rice or hemp ' +
+        'protein is the answer ONLY where the packet or the person says so ' +
+        '(סויה, Soy, אפונה, Pea). Defaulting an unmarked protein powder to soy ' +
+        'sends the person to a different food with different numbers.\n' +
+        '\n' +
+        'RULE 5 - A FIGURE THE PERSON STATES IS BINDING. If the words give a ' +
+        'nutrition figure for what they ate - "25 גרם חלבון", "(20g protein)", ' +
+        '"180 קלוריות" - they read it off their own packet, and it OUTRANKS ' +
+        'both the picture and any table. Put it in stated_by_user on the item it ' +
+        'belongs to, exactly as given.\n' +
+        '  It is the figure FOR THE PORTION IN grams on that same item, not per ' +
+        '100 g. If they say a scoop has 25 g of protein, the item is the scoop, ' +
+        'grams is the scoop, and stated_by_user.protein_g is 25.\n' +
+        '  Fill ONLY the fields they actually stated; everything else stays ' +
+        'null and is supplied from measured tables. Do NOT invent the rest to ' +
+        'make a set look complete, and do NOT change grams to make some other ' +
+        'figure come out right - the portion is what they described.\n' +
+        '\n' +
+        'RULE 6 - A HEDGED QUANTITY IS A SMALL ONE. "קצת חלב", "מעט", "טיפה", ' +
+        '"a splash", "a little" is NOT a full serving. For a liquid use about ' +
+        '60 ml (50-100 is the honest range); for a solid, about 20 g. A glass ' +
+        'of milk is 240 ml and "a little milk" is not a glass - four times the ' +
+        'milk is four times its calories, in a cup of coffee nobody thought ' +
+        'twice about.\n' +
+        '\n' +
         'HOW MUCH THERE IS is a different question from what the numbers are ' +
         'PER, and they are answered separately. A pot printing "170 g" beside ' +
         'a panel headed "per 100 g" has serving_size_analyzed "100g" and ' +
@@ -1933,9 +1961,16 @@ export default {
                   properties: { calories_kcal: N, protein_g: N, carbohydrates_g: N, fat_g: N },
                 },
                 from_label: { type: 'BOOLEAN' },
+                /* what the PERSON said this portion contains - not per 100 g,
+                   and only the lines they actually gave */
+                stated_by_user: {
+                  type: 'OBJECT',
+                  nullable: true,
+                  properties: { calories_kcal: N, protein_g: N, carbohydrates_g: N, fat_g: N },
+                },
               },
-              propertyOrdering: ['name', 'grams', 'per_100g', 'from_label'],
-              required: ['name', 'grams', 'per_100g', 'from_label'],
+              propertyOrdering: ['name', 'grams', 'per_100g', 'from_label', 'stated_by_user'],
+              required: ['name', 'grams', 'per_100g', 'from_label', 'stated_by_user'],
             },
           },
           visual_reasoning: { type: 'STRING' },
@@ -2014,6 +2049,12 @@ export default {
          back as a usable number becomes null rather than a zero: this app has
          already shipped a null that counted as 0 in someone's day total. */
       const vnum = (x) => {
+        /* null FIRST, because Number(null) is 0 and 0 is a reading. The prompt
+           asks for null on every line a packet does not print, and without
+           this the answer it was told to give became a measured zero in
+           somebody's day - which is the bug the rest of this function was
+           written to prevent. */
+        if (x === null || x === undefined || x === '') return null;
         const n = Number(x);
         return isFinite(n) && n >= 0 && n < 100000 ? Math.round(n * 10) / 10 : null;
       };
@@ -2039,11 +2080,24 @@ export default {
           } : null;
           const anyPer = per && (per.calories_kcal !== null || per.protein_g !== null ||
                                  per.carbohydrates_g !== null || per.fat_g !== null);
+          /* A FIGURE THE PERSON STATED, kept apart from one that was read off
+             a packet: they outrank a label as well as a table, and the app
+             applies them last for that reason. Only the lines they gave. */
+          const sv = it && it.stated_by_user && typeof it.stated_by_user === 'object' ? it.stated_by_user : null;
+          const said = sv ? {
+            calories_kcal: vnum(sv.calories_kcal),
+            protein_g: vnum(sv.protein_g),
+            carbohydrates_g: vnum(sv.carbohydrates_g),
+            fat_g: vnum(sv.fat_g),
+          } : null;
+          const anySaid = said && (said.calories_kcal !== null || said.protein_g !== null ||
+                                   said.carbohydrates_g !== null || said.fat_g !== null);
           items.push({
             name,
             grams: Math.round(g),
             per_100g: anyPer ? per : null,
             from_label: anyPer ? it.from_label === true : false,
+            stated_by_user: anySaid ? said : null,
           });
         }
       }
@@ -2071,6 +2125,9 @@ export default {
         if (vwords(it.name).size > vwords(m.name).size) m.name = it.name;
         m.grams = Math.min(3000, m.grams + it.grams);
         if (!m.from_label && it.from_label) { m.per_100g = it.per_100g; m.from_label = true; }
+        /* and a figure the person stated survives the merge - it is the one
+           thing here that no table can replace */
+        if (!m.stated_by_user && it.stated_by_user) m.stated_by_user = it.stated_by_user;
       }
       items.length = 0;
       for (const m of merged) items.push(m);
