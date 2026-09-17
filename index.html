@@ -10877,7 +10877,10 @@ function weekStartOf(dayKey){
 function fitWeekStats(weeksAgo){
   var start=weekStartOf(dayShift(-7*(weeksAgo||0))),end=dayShift(6,new Date(start+"T12:00:00"));
   var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
-  var out={start:start,end:end,sessions:0,sets:0,reps:0,vol:0,byMuscle:{},minutes:0};
+  /* cardio is keyed BY EXERCISE and never summed across them - a kilometre of
+     swimming is not a kilometre of cycling, and a pace averaged over both is
+     true of neither. */
+  var out={start:start,end:end,sessions:0,sets:0,reps:0,vol:0,byMuscle:{},minutes:0,cardio:{}};
   for(var i=0;i<log.length;i++){
     var k=appDayOf(log[i].date);
     if(!k||k<start||k>end)continue;
@@ -10887,6 +10890,14 @@ function fitWeekStats(weeksAgo){
     for(var j=0;j<exs.length;j++){
       var g=muscleGroupOf(exs[j].name),st=exs[j].sets||[];
       for(var q=0;q<st.length;q++){
+        /* A cardio row carries mins and dist and NEITHER weight nor reps, so it
+           is gathered here and then falls straight through the line below -
+           which is what keeps a run out of volume, out of the set count and
+           out of the sets-per-muscle band. */
+        if((+st[q].dist||0)>0||(+st[q].mins||0)>0){
+          var cn=exs[j].name,cc=out.cardio[cn]||(out.cardio[cn]={dist:0,mins:0,n:0});
+          cc.dist+=(+st[q].dist||0);cc.mins+=(+st[q].mins||0);cc.n++;
+        }
         if(!((+st[q].reps||0)>0))continue;      // an empty row is not a set
         out.sets++;
         out.reps+=(+st[q].reps||0);
@@ -11225,6 +11236,38 @@ function renderFitStats(){
     h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">'+_t('מי שמתאמן כדי לגדול נמצא בדרך כלל בין {lo} ל־{hi} סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.',{lo:SETS_BAND.lo,hi:SETS_BAND.hi})+'</div>';
     if(now.byMuscle['אחר'])
       h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:6px">&ldquo;'+_t('אחר')+'&rdquo; '+_t('הם תרגילים שהקלדת בעצמך — לספרייה אין להם שריר. בחירה מהספרייה תשבץ אותם.')+'</div>';
+    h+='</div>';
+  }
+
+  /* ── the week's cardio, by exercise ──
+     Under the band on purpose: that card's own footnote says running and
+     swimming are not measured in it, and this is where they are. No total and
+     no combined pace, for the reason in the gathering above. */
+  var cks=[],ck;
+  for(ck in now.cardio)if(now.cardio.hasOwnProperty(ck))cks.push([ck,now.cardio[ck]]);
+  cks.sort(function(a,b){return (b[1].dist-a[1].dist)||(b[1].mins-a[1].mins);});
+  if(cks.length){
+    h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+    h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:12px">'+_t('אירובי')+' &middot; '+_t('השבוע')+'</div>';
+    for(var c2=0;c2<cks.length;c2++){
+      var cnm=cks[c2][0],cv=cks[c2][1],was=(prev.cardio&&prev.cardio[cnm])||null;
+      var line=[];
+      if(cv.dist>0)line.push(fmtDist(cv.dist));
+      if(cv.mins>0)line.push(_t('{n} דקות',{n:Math.round(cv.mins)}));
+      var pc=fmtPace(cv.dist,cv.mins);
+      if(pc)line.push(pc);
+      h+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:'+(c2<cks.length-1?'9px':'0')+'">';
+      h+='<div style="font-size:12.5px;color:var(--ink);font-weight:600;min-width:0">'+esc(exLabel(cnm))+'</div>';
+      h+='<div style="font-size:11px;color:var(--ink-soft);text-align:end;font-variant-numeric:tabular-nums">'+line.join(' &middot; ');
+      /* Against the SAME exercise last week, which is the only comparison
+         that means anything here. */
+      if(was&&was.dist>0&&cv.dist>0&&Math.round(cv.dist)!==Math.round(was.dist)){
+        var up=cv.dist>was.dist;
+        h+='<div style="font-size:10px;color:'+(up?'var(--green-700)':'var(--muted)')+'">'+
+           (up?'+':'-')+fmtDist(Math.abs(cv.dist-was.dist))+'</div>';
+      }
+      h+='</div></div>';
+    }
     h+='</div>';
   }
 
