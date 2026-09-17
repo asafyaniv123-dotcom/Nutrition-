@@ -6261,6 +6261,51 @@ function sayCandLine(f){
   if(!f||!(f.k>=0))return f&&f.n||'';
   return f.n+' ['+Math.round(f.k)+'kcal '+(+f.p||0)+'p '+(+f.c||0)+'c '+(+f.f||0)+'f]';   // i18n-exempt: a wire format for the matcher, which replies with an index - never rendered
 }
+/* ── WHAT A PROTEIN IS MADE OF ──
+   Groups, not words: every spelling of one source sits together, and two
+   different groups in the same match are a contradiction rather than a near
+   miss. Whey protein and soy protein are both "אבקת חלבון" and the tables hold
+   several of each, so the scorer had no reason to prefer one - it answered
+   soy for "אבקת חלבון מי גבינה" every time. */
+var SAY_SRC=[['מי גבינה','whey','וואי'],['סויה','soy'],['אפונה','pea'],   // i18n-exempt: matched against the folded key, which is never displayed
+             ['אורז','rice'],['קזאינ','casein'],['קנבוס','hemp'],['ביצים','egg white']];   // i18n-exempt: matched against the folded key, which is never displayed
+/* A scoop is a powder. These say so in a query. */
+var SAY_POWDERQ=['אבקה','אבקת','סקופ','powder','scoop'];   // i18n-exempt: same comparison
+/* And these are how a ROW says it is the liquid rather than the powder -
+   including חומצי, which is acid whey: the by-product of cheesemaking, 8 kcal,
+   and the row he was actually given for a scoop of protein. */
+var SAY_LIQUIDR=['נוזלי','נוזלית','liquid','חומצי'];   // i18n-exempt: same comparison
+function saySrcOf(str){
+  if(!str)return -1;
+  for(var i=0;i<SAY_SRC.length;i++)
+    for(var j=0;j<SAY_SRC[i].length;j++)
+      if(str.indexOf(SAY_SRC[i][j])>=0)return i;
+  return -1;
+}
+/* Refuse a row that contradicts the question - the same discipline as
+   sayDerivedUnasked, applied to what a protein IS and to whether it is a
+   powder at all. */
+function sayWrongKind(f,q){
+  if(!f||!f.s||!q)return false;
+  var a=saySrcOf(q),b=saySrcOf(f.s),k;
+  /* ask for whey, get soy */
+  if(a>=0&&b>=0&&a!==b)return true;
+  /* ask for a protein powder without saying which, and get soy. Unqualified,
+     a protein powder is whey - and anyone whose powder is soy or pea says so,
+     which names a source and never reaches this line. */
+  if(a<0&&b>=0&&b!==0){
+    for(k=0;k<SAY_POWDERQ.length;k++)
+      if(q.indexOf(SAY_POWDERQ[k])>=0&&q.indexOf('חלבונ')>=0)return true;   // i18n-exempt: matched against the folded key, which is never displayed
+  }
+  /* ask for a powder, get the liquid it came from */
+  for(k=0;k<SAY_POWDERQ.length;k++){
+    if(q.indexOf(SAY_POWDERQ[k])<0)continue;
+    for(var m=0;m<SAY_LIQUIDR.length;m++)
+      if(f.s.indexOf(SAY_LIQUIDR[m])>=0)return true;
+    break;
+  }
+  return false;
+}
 function sayDerivedUnasked(f,q){
   if(!f||!f.s||!SAY_D)return false;
   var cooked=sayCooked(f.s),d;
@@ -6271,6 +6316,10 @@ function sayDerivedUnasked(f,q){
 }
 function sayScore(f,q,toks){
   toks=toks||foodTokens(q);
+  /* Not a low score - a refusal. A row that contradicts what was asked is not
+     a worse answer than the right one, it is a different food, and leaving it
+     rankable means it wins whenever nothing better exists. */
+  if(sayWrongKind(f,q))return -1;
   /* The longest word carries the meaning - ריקוטה, not 5% - so a name that
      misses it is not the food however many of the others it happens to
      contain. Past that, every word found counts, and more of them beats a
