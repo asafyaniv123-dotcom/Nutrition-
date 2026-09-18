@@ -6303,7 +6303,7 @@ function saySaidFrom(sv,grams,qty){
    spirulina at 57.5. So the line is measured rather than chosen, and it needs
    no list of names to keep up to date. */
 function sayIsConcentrate(f){return !!(f&&(+f.p||0)>=60);}
-function sayNoMatch(it,local){
+function sayNoMatch(it,local,est){
   var row=local&&typeof local==='object'?local:{amount:it.amount,unit:it.unit,g:1};
   row.q=row.q||it.food;
   row.food=null;
@@ -6312,6 +6312,12 @@ function sayNoMatch(it,local){
      evidence in the sentence and it is what makes adding this by hand a
      matter of reading a number instead of remembering one. */
   if(it.stated_by_user)row.said=it.stated_by_user;
+  /* THE MATCHER ALREADY ANSWERED THIS. It was shown sixty rows and said none
+     of them is this food; asking /estimate the same question is a second
+     round trip to learn what we were just told. Parked rather than applied,
+     because sayFillGaps is where an estimate belongs - after the cross-check
+     has had its four attempts at finding a real row. */
+  if(est)row.aiEst=est;
   return row;
 }
 /* A FIGURE THE PERSON READ OFF THEIR OWN POT OUTRANKS THE TABLE. It used to
@@ -6353,7 +6359,7 @@ function sayResolveAI(it,done){
          back the top of that same list shows the row it just rejected. A
          product the tables have never heard of is not the nearest thing in
          them. */
-      if(j.pick<0||!cands[j.pick]){done(sayNoMatch(it,local));return;}
+      if(j.pick<0||!cands[j.pick]){done(sayNoMatch(it,local,j.est));return;}
       var f=cands[j.pick],g=j.grams||0,sure=!!j.sure;
       /* The model IS shown the numbers - sayCandLine sends every candidate as
          "name [418kcal 83.1p 3.4c 6.8f]" - and still reached for the wrong
@@ -7049,6 +7055,11 @@ function sayFillGaps(){
     var row=_sayItems[i];
     /* matched, already estimated, already asking, or nothing to ask about */
     if(!row||row.food||row.est||row.esting||!row.q)continue;
+    /* The one /match already gave us, if it did. A worker that has not been
+       deployed yet sends none, and an estimate whose own macros did not add
+       up to its own calories is refused at the server rather than sent - so
+       the round trip below is still the answer in both cases. */
+    if(row.aiEst&&sayApplyEst(row,row.aiEst)){row.aiEst=null;sayPaint();continue;}
     sayEstimate(i);
   }
 }
@@ -7112,6 +7123,23 @@ function sayCross(depth){
     })
     .catch(function(){sayCrossDone('off');});
 }
+/* A synthetic row, shaped exactly like one out of the tables so that
+   everything downstream keeps working - but carrying est so it can never be
+   mistaken for one.
+
+   ONE PLACE, because two answers now arrive by two routes: /estimate, and the
+   est that /match hands back with a refusal. Written out twice, one of the
+   two eventually stops stamping est:1 - and est:1 is the entire difference on
+   this screen between a guess and a reading. */
+function sayApplyEst(row,e){
+  if(!row||!e||!e.per100||!(e.per100.kcal>0))return false;
+  row.food={n:row.q,k:e.per100.kcal,p:e.per100.p,c:e.per100.c,f:e.per100.f,est:1};
+  row.est=1;row.assumed=e.assumed||'';
+  row.alts=[];
+  if(row.unit==='g'){row.g=1;row.gsrc='exact';}
+  else{row.g=e.serving_g>0?e.serving_g:100;row.gsrc='ai';}
+  return true;
+}
 function sayEstimate(i){
   var row=_sayItems&&_sayItems[i];
   if(!row)return;
@@ -7127,14 +7155,7 @@ function sayEstimate(i){
         showToast(j&&j.why?j.why:''+_t('לא הצלחתי להעריך את זה')+'');
         sayPaint();return;
       }
-      /* A synthetic row, shaped exactly like one out of the tables so that
-         everything downstream keeps working - but carrying est so it can
-         never be mistaken for one. */
-      row.food={n:row.q,k:j.per100.kcal,p:j.per100.p,c:j.per100.c,f:j.per100.f,est:1};
-      row.est=1;row.assumed=j.assumed||'';
-      row.alts=[];
-      if(row.unit==='g'){row.g=1;row.gsrc='exact';}
-      else{row.g=j.serving_g>0?j.serving_g:100;row.gsrc='ai';}
+      sayApplyEst(row,j);
       sayPaint();
     })
     .catch(function(){row.esting=false;showToast(''+_t('אין חיבור כרגע')+'');sayPaint();});
