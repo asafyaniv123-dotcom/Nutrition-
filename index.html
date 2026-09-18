@@ -349,6 +349,22 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* A note on a lift: written once, read for years. Quiet enough to ignore and
    always in the same place. */
 /* Adding an exercise, with what you mean to lift. */
+/* The generator sheet: cards like the rest of כושר, chips that are already
+   answered rather than empty. */
+.gn-c{background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;
+  box-shadow:0 4px 16px rgba(200,180,160,.1)}
+.gn-h{font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:6px}
+.gn-s{font-size:11px;color:var(--muted-soft);line-height:1.6;margin-bottom:11px}
+.gn-w{display:flex;flex-wrap:wrap;gap:7px}
+.gn-m,.gn-e{border:1.5px solid var(--line-strong);background:var(--card);border-radius:13px;
+  padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);
+  cursor:pointer;display:flex;align-items:center;gap:6px}
+.gn-m.on,.gn-e.on{border-color:var(--green-500);background:var(--green-50);color:var(--green-700)}
+.gn-n{font-size:10px;font-weight:700;opacity:.75;font-variant-numeric:tabular-nums}
+.gn-g{font-size:11px;color:var(--muted);text-align:center;margin:2px 0 10px}
+.gn-go{width:100%;min-height:50px;border:none;border-radius:15px;font-family:inherit;
+  font-size:14px;font-weight:800;cursor:pointer;color:var(--white);
+  background:linear-gradient(135deg,var(--green-500),var(--green-700))}
 .ax-ov{position:fixed;inset:0;z-index:410;background:rgba(74,67,64,.62);
   display:flex;align-items:center;justify-content:center;padding:20px}
 .ax{width:100%;max-width:330px;background:var(--card);border-radius:20px;padding:16px;
@@ -10766,6 +10782,7 @@ function renderFitness(){
   else if(_fitView==='start')document.getElementById('content').innerHTML=renderFitStart();
   else if(_fitView==='weights')document.getElementById('content').innerHTML=renderFitWeights();
   else if(_fitView==='stats')document.getElementById('content').innerHTML=renderFitStats();
+  else if(_fitView==='build')renderFitBuild();
   else if(_fitView==='timer')renderFitTimer();
   else if(_fitView==='steps')renderFitSteps();
   else if(_fitView==='steps-setup')renderFitStepsSetup();
@@ -10910,6 +10927,238 @@ function fitWeekStats(weeksAgo){
   return out;
 }
 
+/* ── A WORKOUT THE APP BUILDS FOR YOU ──
+   The selection half. Nothing here draws anything; it answers "which
+   exercises, and how many sets of each", and the screen is a separate piece.
+
+   Every muscle group the weekly band applies to, taken from the library
+   rather than written down again - whatever muscleGroupOf can return, less
+   the two the band's own footnote says it does not measure. */
+function bandGroups(){
+  var all=exAll(),seen={},out=[],i,g;
+  for(i=0;i<all.length;i++){
+    g=muscleGroupOf(all[i].n);
+    if(g==='אירובי'||g==='אחר')continue;   // i18n-exempt: library keys, compared and never shown
+    if(!seen[g]){seen[g]=1;out.push(g);}
+  }
+  return out;
+}
+/* What each muscle is SHORT this week: the band's floor minus what is already
+   logged. This subtraction is the whole point - without it a Thursday session
+   prescribes a full week of volume on top of a full week of work. */
+function fitDeficit(weekStats){
+  var now=weekStats||fitWeekStats(0),gs=bandGroups(),out=[],i,done;
+  for(i=0;i<gs.length;i++){
+    done=+now.byMuscle[gs[i]]||0;
+    out.push({m:gs[i],done:done,short:Math.max(0,SETS_BAND.lo-done)});
+  }
+  /* furthest behind first, and between two equally behind, the one you have
+     done least of */
+  out.sort(function(a,b){return (b.short-a.short)||(a.done-b.done);});
+  return out;
+}
+/* Three exercises is a session for one muscle; three sets is one exercise.
+   Both are ceilings on the arithmetic rather than prescriptions - the sets
+   actually given come from the deficit. */
+var GEN_MAX_PER_MUSCLE=3,GEN_SETS_PER_EX=3;
+/* A SESSION IS NOT A WEEK. On a week with nothing logged every muscle is
+   short by the whole band, and handing all of that over at once is as wrong
+   as ignoring what is already done. Three muscles proposed, six sets the most
+   any one of them is asked for here - the rest of its week is the rest of its
+   week. Both are chosen numbers, not measured ones. */
+var GEN_MAX_MUSCLES=3,GEN_MAX_SETS=6;
+function genPick(opt){
+  opt=opt||{};
+  var muscles=opt.muscles||[],equip=opt.equip||[],emph=opt.emphasis||'';
+  var have={},i,j,k;
+  for(i=0;i<equip.length;i++)have[equip[i]]=1;
+  /* ALL of an exercise's equipment, not any of it: a bench press needs a bar
+     AND a bench, and having one of the two does not make it half-possible. */
+  var doable=function(e){
+    var q=e.q||[];
+    for(var z=0;z<q.length;z++)if(!have[q[z]])return false;
+    return true;
+  };
+  /* The id IS the priority. RAW is ordered from the movement most people
+     build a session around to the ones that finish it off, and the id is that
+     position - so this needs no new field and nothing to keep in sync. */
+  var pos=function(e){var n=parseInt(String(e.id||'').replace(/^x/,''),10);return isFinite(n)?n:1e9;};
+  var all=exAll(),out=[],used={},asked={};
+  for(i=0;i<muscles.length;i++){
+    /* Fold the way muscleGroupOf folds. bandGroups returns rolled-up names
+       and muscleGroupOf only ever returns those, so a caller passing גב רחב
+       used to match nothing and come back as "none available" - which reads
+       as a missing dumbbell rather than a name that does not survive the
+       rollup. Two muscles that fold together are asked for once. */
+    var m=MUSCLE_ROLLUP[muscles[i]]||muscles[i];
+    if(asked[m])continue;
+    asked[m]=1;
+    /* The sets map and the emphasis arrive in the caller's words as well, so
+       both are read by the folded name AND by the one that was passed. */
+    var sm=opt.sets||{},raw=muscles[i];
+    var want=(sm[m]!==undefined)?(+sm[m]||0):((sm[raw]!==undefined)?(+sm[raw]||0):SETS_BAND.lo);
+    /* however far behind it is, one session asks for one session's worth */
+    if(want>GEN_MAX_SETS)want=GEN_MAX_SETS;
+    if(m===(MUSCLE_ROLLUP[emph]||emph))want+=GEN_SETS_PER_EX;
+    if(want<=0)continue;
+    var cands=[];
+    for(j=0;j<all.length;j++)
+      if(!used[all[j].n]&&muscleGroupOf(all[j].n)===m&&doable(all[j]))cands.push(all[j]);
+    cands.sort(function(a,b){return pos(a)-pos(b);});
+    var n=Math.min(GEN_MAX_PER_MUSCLE,Math.max(1,Math.ceil(want/GEN_SETS_PER_EX)));
+    var picked=cands.slice(0,n);
+    /* A muscle with nothing available says so, rather than being dropped in
+       silence - "no chest exercise with what you have" is information. */
+    if(!picked.length){out.push({m:m,none:true});continue;}
+    /* The shortfall is split over what was actually FOUND, so a muscle with
+       one machine available still gets its sets rather than a third of them. */
+    var per=Math.max(2,Math.min(5,Math.round(want/picked.length)));
+    for(k=0;k<picked.length;k++){
+      used[picked[k].n]=1;
+      out.push({m:m,name:picked[k].n,id:picked[k].id,sets:per});
+    }
+  }
+  return out;
+}
+/* Into the shape the workout screen already speaks, so what comes out is an
+   ordinary session you can swap, remove and add to - never a locked
+   prescription. The reps come from the goal, which already carries them. */
+function genToWorkout(rows,goalV){
+  var g=null,i;
+  for(i=0;i<(FIT_GOALS||[]).length;i++)if(FIT_GOALS[i].v===goalV)g=FIT_GOALS[i];
+  if(!g)g=(FIT_GOALS||[])[1]||{lo:8,hi:15};
+  var reps=Math.round((g.lo+g.hi)/2),out=[];
+  for(i=0;i<rows.length;i++){
+    if(rows[i].none)continue;
+    out.push({name:rows[i].name,targetSets:rows[i].sets,targetReps:reps,
+              plan:[],sets:[],warm:[],ss:null});
+  }
+  return out;
+}
+
+/* ── THE SCREEN THAT REACHES THE GENERATOR ──
+   It opens on an answer rather than a question: the muscles under the band
+   this week are already chosen, with how many sets each is short printed
+   beside it. The chips exist to disagree with. */
+var _gen=null,GEN_EQUIP_KEY='fit_equip';
+/* What each answer to "where are you training" actually means, in the
+   equipment words the library uses. */
+var GEN_EQUIP={
+  gym:['מוט','משקולות יד','קטלבל','פולי','מכונה','משקל גוף','ספסל','מתח','גומייה','כדור פיזיו','מזרן','מכשיר אירובי','סמית׳','מוט EZ','מוט טרפז','פלטה','רצועות TRX','מדרגה','מזחלת','חבל קרב'],   // i18n-exempt: library equipment keys, compared against q and never shown
+  home:['משקל גוף','מזרן','גומייה','משקולות יד','ספסל','מדרגה','כדור פיזיו'],   // i18n-exempt: same
+  none:['משקל גוף','מזרן']   // i18n-exempt: same
+};
+function genEquip(){
+  var v;try{v=localStorage.getItem(GEN_EQUIP_KEY);}catch(e){}
+  return GEN_EQUIP[v]?v:'gym';   // i18n-exempt: a stored key, not a label
+}
+/* The label for one of the three, alone in a function - the shape
+   weightUnit() established, and the shape find-translated-data allows. The
+   keys stay bare data: they are stored and compared, never shown. */
+function genEquipLabel(v){
+  if(v==='home')return ''+_t('בבית')+'';
+  if(v==='none')return ''+_t('בלי ציוד')+'';
+  return ''+_t('חדר כושר')+'';
+}
+function genEquipSet(v){
+  if(_gen)_gen.equip=v;
+  /* Remembered, so the question is asked once rather than every session. */
+  try{localStorage.setItem(GEN_EQUIP_KEY,v);}catch(e){}
+  renderFitness();
+}
+function genOpen(){
+  var d=fitDeficit(),on={},i,n=0;
+  /* Chosen for you: the THREE furthest behind, not all of them. fitDeficit is
+     already sorted that way, and the rest are one tap away. */
+  for(i=0;i<d.length&&n<GEN_MAX_MUSCLES;i++)if(d[i].short>0){on[d[i].m]=d[i].short;n++;}
+  _gen={def:d,on:on,equip:genEquip(),emphasis:''};
+  _fitView='build';renderFitness();
+}
+function genToggle(m){
+  if(!_gen)return;
+  if(_gen.on[m]!==undefined){
+    delete _gen.on[m];
+    if(_gen.emphasis===m)_gen.emphasis='';
+  }else{
+    var i,sh=SETS_BAND.lo;
+    for(i=0;i<_gen.def.length;i++)if(_gen.def[i].m===m)sh=_gen.def[i].short;
+    /* A muscle you add by hand that is already full still gets a session's
+       worth - you asked for it on purpose. */
+    _gen.on[m]=sh>0?sh:GEN_SETS_PER_EX;
+  }
+  renderFitness();
+}
+function genEmph(m){
+  if(!_gen)return;
+  _gen.emphasis=(_gen.emphasis===m)?'':m;
+  renderFitness();
+}
+function genBuild(){
+  if(!_gen)return;
+  var ms=[],k;
+  for(k in _gen.on)if(_gen.on.hasOwnProperty(k))ms.push(k);
+  if(!ms.length){showToast(''+_t('בחר שריר אחד לפחות')+'');return;}
+  var rows=genPick({muscles:ms,equip:GEN_EQUIP[_gen.equip]||GEN_EQUIP.gym,
+                    sets:_gen.on,emphasis:_gen.emphasis});
+  var exs=genToWorkout(rows,fitGoal().v);
+  if(!exs.length){showToast(''+_t('אין תרגילים מתאימים לציוד שבחרת')+'');return;}
+  /* An ordinary workout from here on. Nothing marks it as generated, because
+     nothing about it is different once it exists. */
+  _fitWorkout={templateIdx:-1,name:''+_t('אימון שנבנה לך')+'',startTime:Date.now(),
+               exercises:exs,currentEx:0};
+  _gen=null;_fitPinned=false;
+  _fitView='workout';renderFitness();
+}
+function renderFitBuild(){
+  if(!_gen)genOpen();
+  if(!_gen)return;
+  var g=_gen,h='<div style="padding-bottom:24px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('אימון שנבנה לך')+'</div>';
+  h+='<button onclick="_gen=null;_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;color:var(--ink-soft);cursor:pointer;font-family:inherit">'+_t('חזרה')+'</button>';
+  h+='</div>';
+
+  /* ── what is short, already chosen ── */
+  h+='<div class="gn-c"><div class="gn-h">'+_t('מה חסר לך השבוע')+'</div>';
+  var short=g.def.filter(function(x){return x.short>0;});
+  h+='<div class="gn-s">'+(short.length
+      ? _t('בחרתי את אלה שהכי מאחור. אפשר להוריד ולהוסיף.')
+      : _t('הכול בתוך הטווח השבוע. בחר מה בא לך לעבוד.'))+'</div>';
+  h+='<div class="gn-w">';
+  for(var i=0;i<g.def.length;i++){
+    var d=g.def[i],on=g.on[d.m]!==undefined;
+    h+='<button class="gn-m'+(on?' on':'')+'" onclick="genToggle(\''+d.m+'\')">'+
+       esc(_t(d.m))+'<span class="gn-n">'+(d.short>0?_t('{n} סטים',{n:d.short}):'&#10003;')+'</span></button>';
+  }
+  h+='</div></div>';
+
+  /* ── where, remembered ── */
+  h+='<div class="gn-c"><div class="gn-h">'+_t('איפה אתה מתאמן')+'</div>';
+  h+='<div class="gn-w">';
+  var EQ=['gym','home','none'];   // i18n-exempt: stored keys, drawn through genEquipLabel
+  for(var e=0;e<EQ.length;e++)
+    h+='<button class="gn-e'+(g.equip===EQ[e]?' on':'')+'" onclick="genEquipSet(\''+EQ[e]+'\')">'+genEquipLabel(EQ[e])+'</button>';
+  h+='</div></div>';
+
+  /* ── one muscle to lean on, optional ── */
+  var chosen=[];
+  for(var k in g.on)if(g.on.hasOwnProperty(k))chosen.push(k);
+  if(chosen.length>1){
+    h+='<div class="gn-c"><div class="gn-h">'+_t('דגש')+'</div>';
+    h+='<div class="gn-s">'+_t('שריר אחד שיקבל קצת יותר. לא חובה.')+'</div>';
+    h+='<div class="gn-w">';
+    for(var c=0;c<chosen.length;c++)
+      h+='<button class="gn-e'+(g.emphasis===chosen[c]?' on':'')+'" onclick="genEmph(\''+chosen[c]+'\')">'+esc(_t(chosen[c]))+'</button>';
+    h+='</div></div>';
+  }
+
+  /* The goal is not asked for - it already has a screen, and a second place
+     to answer one question is two answers that can disagree. */
+  h+='<div class="gn-g">'+_t('לפי המטרה שלך: {g}',{g:fitGoal().t})+'</div>';
+  h+='<button class="gn-go" onclick="genBuild()">'+_t('בנה לי אימון')+'</button>';
+  return void(document.getElementById('content').innerHTML=h+'</div>');
+}
+
 /* The heaviest honest single from every lift you have done, best first. */
 function fitBestLifts(limit){
   var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
@@ -10999,7 +11248,10 @@ function exWeightCommit(name){
    once changes here too. */
 var FIT_AREAS;langOn(function(){FIT_AREAS=[
   {id:'start',t:''+_t('אימון חדש')+'',s:''+_t('להתחיל עכשיו')+'',g:'ter',ic:'<path d="M6.5 9v6"/><path d="M17.5 9v6"/><path d="M3.5 10.5v3"/><path d="M20.5 10.5v3"/><path d="M6.5 12h11"/>'},
-  /* Second, because it is the other thing you reach for while standing in a
+  /* Right under "new workout", because it is the same intention with the
+     thinking already done. */
+  {id:'build',t:''+_t('אימון שנבנה לך')+'',s:''+_t('לפי מה שחסר לך השבוע')+'',g:'grn',ic:'<path d="M12 3.5v17"/><path d="M5 8.5l7-5 7 5"/><path d="M5 15.5l7 5 7-5"/>'},
+  /* Then, because it is the other thing you reach for while standing in a
      gym - and the only one of these you open DURING a set rather than around
      it. A stopwatch face for an icon: a ring and a hand. */
   {id:'timer',t:''+_t('סטופר וטיימרים')+'',s:''+_t('EMOM, Tabata, אינטרוולים')+'',g:'ter',ic:'<circle cx="12" cy="13" r="7.5"/><path d="M12 13V8.8"/><path d="M9.6 3.5h4.8"/><path d="M18.4 6.2l1.4-1.4"/>'},
