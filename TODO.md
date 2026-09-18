@@ -1122,7 +1122,51 @@ number.** If the target should move, it moves where he can see it move.
 **Decide before building: A or B.** Everything above the last item is true
 either way, so it can start immediately.
 
-## A workout the app builds for you (2026-09-14) — FIRST THING AFTER THE FREEZE
+## A workout the app builds for you (2026-09-14) — BUILT AND RELEASED 18/09
+
+**It is in the app**, as a door in the כושר grid right under "new workout".
+All three of the decisions below were followed: it proposes the muscles rather
+than asking, it remembers the equipment, and the output is an ordinary workout
+you can edit rather than a prescription. The goal is not asked for either —
+`fitGoal()` already holds it and has its own screen.
+
+Built in two pieces: the selection (`fitDeficit`, `genPick`, `genToWorkout`)
+with 31 assertions in `tools/test-generator.mjs`, then the screen. Neither
+needed new exercise data, and the "which exercise is the primary one" question
+turned out to need none either: RAW is already ordered from the movement most
+people build a session around to the ones that finish it off, and the id is
+that position.
+
+### ONE DECISION MADE WITHOUT HIM, and it is the thing to look at first
+
+The trap below is real and the subtraction fixes it. But it has a TWIN the
+subtraction cannot see: on a week with nothing logged the deficit IS the whole
+band, so the first screenshot proposed all eleven muscle groups, most of them
+asking for ten sets. A correct deficit handed over as an absurd workout.
+
+Two ceilings, both on the PROPOSAL rather than on what you can ask for:
+
+- **Three muscles are pre-selected**, the ones furthest behind. The rest stay
+  on screen, one tap away.
+- **Six sets** is the most any one muscle is asked for in a single session,
+  however far behind it is.
+
+`GEN_MAX_MUSCLES` and `GEN_MAX_SETS`. Both are numbers I chose rather than
+measured, both are under test so they cannot drift, and both are worth
+arguing with once he has used it.
+
+### What is NOT built
+
+- No **per-session spreading** of the week's deficit. Six sets is a flat
+  ceiling, not "the shortfall divided by the sessions you have left" — which
+  would need to know how many sessions are left, and the weekly planner rolls
+  over rather than being a schedule.
+- It does not avoid an exercise you did **yesterday**. It avoids repeating one
+  within the same generated session, and nothing more.
+
+---
+
+## A workout the app builds for you — the original note (2026-09-14)
 
 His idea, in his words: in כושר, an option where the app **prepares a workout
 for you** — it asks which muscles you want to work, how many sets and reps
