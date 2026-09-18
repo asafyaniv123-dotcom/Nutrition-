@@ -228,7 +228,10 @@ export default {
 
     /* Ask Gemini the same question with the same system prompt. Returns the
        raw text, or null - what a failure MEANS is the caller's business. */
-    async function geminiText(system, user, maxTokens) {
+    /* A question for Gemini, as PARTS - so the same one helper carries a
+       sentence and a photograph. geminiText below is the text-only shape the
+       three text routes already use, unchanged. */
+    async function geminiAsk(system, parts, maxTokens, think) {
       if (!env.GEMINI_KEY) return null;
       let r;
       try {
@@ -239,11 +242,16 @@ export default {
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: system }] },
-              contents: [{ role: 'user', parts: [{ text: user }] }],
+              contents: [{ role: 'user', parts }],
               generationConfig: {
                 maxOutputTokens: maxTokens || 1200,
                 temperature: 0,
-                thinkingConfig: { thinkingBudget: 0 },
+                /* Off for a sentence, ON for a photograph. /vision says why and
+                   it is the only reason worth the cost: reading small print is
+                   the one place in this app where the model has to look rather
+                   than transcribe, and a misread label is simply a wrong
+                   number. */
+                ...(think ? {} : { thinkingConfig: { thinkingBudget: 0 } }),
                 responseMimeType: 'application/json',
               },
             }),
@@ -253,9 +261,13 @@ export default {
       if (!r.ok) return null;
       let j;
       try { j = await r.json(); } catch { return null; }
-      const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
-      const text = parts.map((p) => p.text || '').join('').trim();
+      const out = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+      const text = out.map((p) => p.text || '').join('').trim();
       return text || null;
+    }
+    /* The text-only shape the three sentence routes use. */
+    function geminiText(system, user, maxTokens) {
+      return geminiAsk(system, [{ text: user }], maxTokens, false);
     }
 
     if (url.pathname === '/health') {
@@ -1571,7 +1583,8 @@ export default {
        and it would sit on screen in the same typeface as the measured rows
        with nothing to say it was invented. */
     if (url.pathname === '/see' && req.method === 'POST') {
-      if (!env.AI_KEY) return json({ error: 'photos are not configured' }, 503);
+      /* EITHER provider can look at a picture. */
+      if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'photos are not configured' }, 503);
 
       let b;
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
@@ -1700,7 +1713,12 @@ export default {
         ' "label":{"basis":"100g|100ml|serving","serving_g":330,"kcal":37,"protein":7.1,\n' +
         '          "carbs":2.1,"fat":0} or omit}';
 
-      let r;
+      /* The question, once, in the order that matters: the picture first and
+         the question after it. The model reads parts in order, and a question
+         asked before the evidence arrives is answered from the question. */
+      const ASK = 'What food is in this picture, and how much of each?';
+      const NOTE = note ? 'What they wrote: ' + note : '';
+      let r, why = '', by = 'anthropic';
       try {
         r = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -1719,27 +1737,44 @@ export default {
               role: 'user',
               content: [
                 { type: 'image', source: { type: 'base64', media_type: mime, data } },
-                ...(note ? [{ type: 'text', text: 'What they wrote: ' + note }] : []),
-                { type: 'text', text: 'What food is in this picture, and how much of each?' },
+                ...(NOTE ? [{ type: 'text', text: NOTE }] : []),
+                { type: 'text', text: ASK },
               ],
             }],
           }),
         });
       } catch {
-        return json({ error: 'could not reach the model' }, 502);
+        r = null;   /* both failures meet below, where Gemini is asked */
       }
-      if (!r.ok) {
+      if (r && !r.ok) {
         /* The API's own sentence, not only its number: a 400 here is
            usually something structural in the request we sent, and the
            code alone is indistinguishable from a genuine refusal. */
-        let why = '';
         try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
-        return json({ error: 'the model refused', status: r.status, why }, 502);
       }
 
-      let d;
-      try { d = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
-      const text = ((d && d.content) || []).map((c) => c.text || '').join('').trim();
+      /* WHOEVER ANSWERS. Same bytes, different envelope: Anthropic wants
+         source.base64, Gemini wants inlineData - and thinking stays ON here,
+         which is the one difference from the three text routes. */
+      let text = '';
+      if (r && r.ok) {
+        let d = null;
+        try { d = await r.json(); } catch { d = null; }
+        text = d ? ((d.content || []).map((c) => c.text || '').join('').trim()) : '';
+      }
+      if (!text) {
+        const g = await geminiAsk(SYSTEM, [
+          { inlineData: { mimeType: mime, data } },
+          ...(NOTE ? [{ text: NOTE }] : []),
+          { text: ASK },
+        ], 1400, true);
+        if (g) { text = g; by = 'gemini'; }
+      }
+      if (!text) {
+        return (r && !r.ok)
+          ? json({ error: 'the model refused', status: r.status, why }, 502)
+          : json({ error: 'could not reach the model' }, 502);
+      }
       let out;
       try { out = JSON.parse(text.replace(/^```(?:json)?|```$/g, '').trim()); }
       catch { return json({ ok: false, why: 'unreadable' }); }
