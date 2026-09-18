@@ -33,6 +33,115 @@ const CORS = {
    "unreadable" when a perfectly good answer was sitting in front of it.
    Strings are tracked as strings, because a brace inside a food name is not
    a brace. */
+/* ── ANTHROPIC'S TOOL PROTOCOL <-> GEMINI'S ──
+   Pure, and exported at the bottom, so a whole multi-turn exchange can be
+   driven in node with no network. */
+
+/* Gemini's signatures, out. They live on tool_use blocks so the app can carry
+   them without knowing, and Anthropic must never be handed a block with an
+   unknown field in it - which matters precisely because the provider can
+   change mid-conversation, on a history that already has them. */
+function stripGemSig(messages) {
+  return (Array.isArray(messages) ? messages : []).map((m) => {
+    if (!m || !Array.isArray(m.content)) return m;
+    return {
+      ...m,
+      content: m.content.map((b) => {
+        if (!b || b.type !== 'tool_use' || !b._gem_sig) return b;
+        const { _gem_sig, ...rest } = b;
+        return rest;
+      }),
+    };
+  });
+}
+
+/* tools -> functionDeclarations. The only real difference is the name of the
+   schema field; Gemini reads the same JSON Schema underneath. */
+function toGeminiTools(tools) {
+  const decl = (Array.isArray(tools) ? tools : []).map((t) => ({
+    name: t.name,
+    description: t.description || '',
+    parameters: t.input_schema || { type: 'object', properties: {} },
+  }));
+  return decl.length ? [{ functionDeclarations: decl }] : undefined;
+}
+
+/* A tool-call id that decodes. Gemini matches results to calls by NAME and
+   has no id of its own, so the name is carried inside the id the app is
+   handed - and read back out when the app returns it on a tool_result. The
+   worker keeps no state between turns and does not need to. */
+function geminiCallId(name, i) { return 'gem:' + name + ':' + i; }
+function nameFromCallId(id) {
+  const m = /^gem:([^:]+):/.exec(String(id || ''));
+  return m ? m[1] : '';
+}
+
+/* messages -> contents. Roles are renamed, content blocks become parts, and a
+   tool_result finds its function's name through the id it carries. */
+function toGeminiContents(messages) {
+  const out = [];
+  for (const msg of Array.isArray(messages) ? messages : []) {
+    const role = msg.role === 'assistant' ? 'model' : 'user';
+    const blocks = Array.isArray(msg.content)
+      ? msg.content
+      : [{ type: 'text', text: String(msg.content || '') }];
+    const parts = [];
+    for (const b of blocks) {
+      if (!b) continue;
+      if (b.type === 'text' && b.text) parts.push({ text: b.text });
+      else if (b.type === 'tool_use') {
+        const part = { functionCall: { name: b.name, args: b.input || {} } };
+        /* the signature Gemini gave us, returned unread */
+        if (b._gem_sig) part.thoughtSignature = b._gem_sig;
+        parts.push(part);
+      } else if (b.type === 'tool_result') {
+        /* An OBJECT, not the string the app sent. Anthropic takes the result
+           as text; Gemini reads response as structured data, and handing it
+           a quoted blob gets a model squinting at its own answer. */
+        let value = b.content;
+        if (typeof value === 'string') {
+          try { value = JSON.parse(value); } catch { value = { result: value }; }
+        }
+        if (value === null || typeof value !== 'object') value = { result: value };
+        parts.push({
+          functionResponse: { name: nameFromCallId(b.tool_use_id), response: value },
+        });
+      }
+    }
+    if (parts.length) out.push({ role, parts });
+  }
+  return out;
+}
+
+/* And back: one Gemini candidate becomes the content array and stop_reason
+   the app already knows how to read. */
+function fromGeminiContent(candidate) {
+  const parts = (((candidate || {}).content) || {}).parts || [];
+  const content = [];
+  let calls = 0;
+  for (const p of parts) {
+    if (p && p.text) content.push({ type: 'text', text: p.text });
+    else if (p && p.functionCall) {
+      const block = {
+        type: 'tool_use',
+        id: geminiCallId(p.functionCall.name, calls++),
+        name: p.functionCall.name,
+        input: p.functionCall.args || {},
+      };
+      /* Gemini signs its function calls and demands the signature back when
+         the call is echoed in a later turn. Anthropic's protocol has nowhere
+         to put it, so it rides inside the block - which works because the app
+         hands the content array back verbatim without reading it. */
+      const sig = p.thoughtSignature || p.thought_signature;
+      if (sig) block._gem_sig = sig;
+      content.push(block);
+    }
+  }
+  /* The app branches on tool_use blocks being PRESENT rather than on this
+     string, but it goes back honestly anyway. */
+  return { content, stop_reason: calls ? 'tool_use' : 'end_turn' };
+}
+
 function firstJson(raw) {
   const text = String(raw || '');
   const start = text.indexOf('{');
@@ -265,6 +374,51 @@ export default {
       const text = out.map((p) => p.text || '').join('').trim();
       return text || null;
     }
+    /* Why the last geminiTurn gave up. A failure that does not say why sent
+       me looking in the wrong place for an hour this morning; a failure
+       wearing the OTHER provider's reason is worse still. */
+    let gemWhy = '';
+    /* A whole tool-using turn, in Anthropic's shape on both sides. The app
+       never learns which provider answered. */
+    async function geminiTurn(system, tools, messages, maxTokens) {
+      gemWhy = '';
+      if (!env.GEMINI_KEY) { gemWhy = 'no gemini key'; return null; }
+      let r;
+      try {
+        r = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: system }] },
+              contents: toGeminiContents(messages),
+              tools: toGeminiTools(tools),
+              generationConfig: {
+                maxOutputTokens: maxTokens || 900,
+                temperature: 0,
+                thinkingConfig: { thinkingBudget: 0 },
+                /* NO responseMimeType here. Asking for JSON and offering
+                   tools at the same time is a contradiction: a tool call is
+                   not JSON text, and the model has to be free to make one. */
+              },
+            }),
+          },
+        );
+      } catch (e) { gemWhy = 'could not reach gemini'; return null; }
+      if (!r.ok) {
+        try { gemWhy = (await r.text()).slice(0, 300); } catch { gemWhy = 'gemini ' + r.status; }
+        return null;
+      }
+      let j;
+      try { j = await r.json(); } catch { gemWhy = 'gemini sent no json'; return null; }
+      const cand = (j.candidates || [])[0];
+      if (!cand) { gemWhy = 'gemini sent no candidate: ' + JSON.stringify(j).slice(0, 200); return null; }
+      const out = fromGeminiContent(cand);
+      if (!out.content.length) { gemWhy = 'gemini sent an empty turn: ' + JSON.stringify(cand).slice(0, 200); return null; }
+      return out;
+    }
+
     /* The text-only shape the three sentence routes use. */
     function geminiText(system, user, maxTokens) {
       return geminiAsk(system, [{ text: user }], maxTokens, false);
@@ -1246,7 +1400,8 @@ export default {
 
        Secrets: AI_KEY. Optional: ASK_DAILY_CAP (default 120/IP/day). */
     if (url.pathname === '/ask' && req.method === 'POST') {
-      if (!env.AI_KEY) return json({ error: 'asking is not configured' }, 503);
+      /* EITHER provider, now that Gemini can use the tools too. */
+      if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'asking is not configured' }, 503);
 
       let b;
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
@@ -1343,7 +1498,7 @@ export default {
         'Never give medical advice; for anything clinical say it is a question for\n' +
         'a dietitian or a doctor.';
 
-      let r;
+      let r, detail = '';
       try {
         r = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -1358,20 +1513,31 @@ export default {
             temperature: 0,
             system: SYSTEM,
             tools: TOOLS,
-            messages,
+            /* Gemini's signatures come off here and nowhere else. */
+            messages: stripGemSig(messages),
           }),
         });
       } catch {
-        return json({ error: 'could not reach the model' }, 502);
+        r = null;   /* both failures meet below, where Gemini is asked */
       }
-      if (!r.ok) {
-        let detail = '';
+      if (r && !r.ok) {
         try { detail = (await r.text()).slice(0, 200); } catch {}
-        return json({ error: 'the model refused', status: r.status, detail }, 502);
       }
 
-      let out;
-      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
+      /* WHOEVER ANSWERS - and with Gemini the whole turn comes back already
+         translated into Anthropic's shape, so the return below is unchanged
+         and the app never learns who was asked. */
+      let out = null;
+      if (r && r.ok) { try { out = await r.json(); } catch { out = null; } }
+      if (!out || !Array.isArray(out.content) || !out.content.length) {
+        const g = await geminiTurn(SYSTEM, TOOLS, messages, 900);
+        if (g) out = g;
+      }
+      if (!out) {
+        return (r && !r.ok)
+          ? json({ error: 'the model refused', status: r.status, detail, gem_why: gemWhy }, 502)
+          : json({ error: 'could not reach the model', gem_why: gemWhy }, 502);
+      }
 
       /* The content array goes back untouched: the app has to append it to the
          conversation verbatim, tool_use blocks and all, or the next turn is
@@ -2375,7 +2541,8 @@ export default {
       });
     }
     if (url.pathname === '/analyze' && req.method === 'POST') {
-      if (!env.AI_KEY) return json({ error: 'analysis is not configured' }, 503);
+      /* EITHER provider, now that Gemini can use the tools too. */
+      if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'analysis is not configured' }, 503);
 
       let b;
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
@@ -2486,7 +2653,7 @@ export default {
         '  tables, and then leave row empty. Prefer a table row every time.\n' +
         '- You never state a figure for the whole dish. The app adds it up.';
 
-      let r;
+      let r, why = '';
       try {
         r = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -2501,23 +2668,34 @@ export default {
             temperature: 0,
             system: SYSTEM,
             tools: TOOLS,
-            messages,
+            /* Gemini's signatures come off here and nowhere else. */
+            messages: stripGemSig(messages),
           }),
         });
       } catch {
-        return json({ error: 'could not reach the model' }, 502);
+        r = null;   /* both failures meet below, where Gemini is asked */
       }
-      if (!r.ok) {
+      if (r && !r.ok) {
         /* The API's own sentence, not only its number: a 400 here is
            usually something structural in the request we sent, and the
            code alone is indistinguishable from a genuine refusal. */
-        let why = '';
         try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
-        return json({ error: 'the model refused', status: r.status, why }, 502);
       }
 
-      let out;
-      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
+      /* WHOEVER ANSWERS - and with Gemini the whole turn comes back already
+         translated into Anthropic's shape, so the return below is unchanged
+         and the app never learns who was asked. */
+      let out = null;
+      if (r && r.ok) { try { out = await r.json(); } catch { out = null; } }
+      if (!out || !Array.isArray(out.content) || !out.content.length) {
+        const g = await geminiTurn(SYSTEM, TOOLS, messages, 1500);
+        if (g) out = g;
+      }
+      if (!out) {
+        return (r && !r.ok)
+          ? json({ error: 'the model refused', status: r.status, why, gem_why: gemWhy }, 502)
+          : json({ error: 'could not reach the model', gem_why: gemWhy }, 502);
+      }
 
       return json({
         ok: true,
@@ -2565,4 +2743,6 @@ export default {
 };
 
 // Exported for the test harness; unused by the Worker runtime itself.
-export { signJWT, localNow, toMin, subKey, b64url };
+export { signJWT, localNow, toMin, subKey, b64url,
+         toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
+         stripGemSig };
