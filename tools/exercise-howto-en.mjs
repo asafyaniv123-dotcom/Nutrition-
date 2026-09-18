@@ -1779,5 +1779,148 @@ export const EN = {
       'Hold and breathe normally for the time.'],
   m: ['Hips dropping — that loads the lower back, and it is the moment to stop.',
       'Hips rising to make it easier, which takes the load off the stomach.',
-      'A plate sitting on your waist rather than between your shoulder blades.'] }
+      'A plate sitting on your waist rather than between your shoulder blades.'] },
+'לחיצת חזה בסמית׳': {
+  s: ['Set a bench under the bar so the bar tracks over the middle of your chest.',
+      'Lie down, grip a little wider than your shoulders, and turn the bar to unhook it.',
+      'Lower to mid-chest, elbows about 45 degrees from your body.',
+      'Press up, and hook the bar back at the end of the set.'],
+  m: ['A bench that is not centred, so the bar comes down on your neck or your stomach.',
+      'Elbows flared to 90 degrees — that loads the shoulder joint.',
+      'Bouncing the bar off your chest — the fixed track does not forgive that.'] },
+
+'לחיצת כתפיים בסמית׳': {
+  s: ['Set a bench or stand under the bar so it sits in front of your upper chest.',
+      'Grip a little wider than your shoulders and unhook the bar.',
+      'Press up until your arms are almost straight.',
+      'Lower under control to about chin height.'],
+  m: ['Standing too far from the track, which forces an arch in the lower back.',
+      'Lowering behind your neck — that loads the shoulder joint.',
+      'Snapping the elbow straight at the top.'] },
+
+'סקוואט בסמית׳': {
+  s: ['Set the bar across your upper traps and unhook it.',
+      'Feet slightly forward of the bar, about shoulder width.',
+      'Lower under control until your thighs are parallel, or as far as is comfortable.',
+      'Drive up through the whole foot until your hips are straight.'],
+  m: ['Feet directly under the bar, which pushes the knee forward — that loads the knee joint.',
+      'Leaning on the track instead of holding yourself up.',
+      'Heels lifting off the floor at the bottom.'] },
+
+'הרמת עקבים בסמית׳': {
+  s: ['Put a step or a plate under the bar and set the bar across your upper traps.',
+      'Stand with the balls of your feet on the edge, heels hanging.',
+      'Rise up as far as you can and hold the top for a moment.',
+      'Lower slowly until your calves are fully stretched below the step.'],
+  m: ['Fast bouncing, which uses the tendon rather than the muscle.',
+      'Bending the knees as you go, to help.',
+      'A short range that never drops below the step.'] },
+
+'כפיפת מרפק במוט EZ': {
+  s: ['Take an EZ bar underhand on the inner bends, about shoulder width.',
+      'Stand tall with your elbows against your ribs.',
+      'Curl up to the top without moving your upper arm.',
+      'Lower slowly until your arms are almost straight.'],
+  m: ['Rocking your body back to lift — that loads the lower back.',
+      'Elbows travelling forward at the end of the curl.',
+      'A partial range that never returns to straight at the bottom.'] },
+
+'כפיפת עכביש': {
+  s: ['Set a bench to an incline and lie face down on it.',
+      'Arms hanging straight down holding the bar, chest against the bench.',
+      'Curl up to the top without moving your upper arm.',
+      'Lower slowly until your arms are fully straight.'],
+  m: ['Lifting your chest off the bench to add momentum.',
+      'Arms swinging back instead of hanging straight down.',
+      'A partial range — here the full stretch at the bottom is the whole point.'] },
+
+'כפיפת מרפק הפוכה': {
+  s: ['Take an EZ bar overhand, palms facing down.',
+      'Stand tall with your elbows against your ribs.',
+      'Curl up to the top without bending your wrist.',
+      'Lower slowly until your arms are almost straight.'],
+  m: ['Bending the wrist up to help — that loads the wrist joint.',
+      'Too much weight for this grip, so the hands give out first.',
+      'Rocking your body back to lift.'] },
+
+'מתח אחיזה רחבה': {
+  s: ['Take the bar clearly wider than your shoulders, palms facing forward.',
+      'Start from straight arms, shoulders pulled down and back.',
+      'Pull until your chin passes the bar, elbows travelling down and out.',
+      'Lower slowly and under control until your arms are straight.'],
+  m: ['A grip so wide that the range shrinks to half.',
+      'Swinging your body for momentum.',
+      'Dropping on the way down — that loads the shoulder joint at the bottom.'] },
+
+'מתח אחיזה ניטרלית': {
+  s: ['Take two parallel handles with your palms facing each other.',
+      'Start from straight arms, shoulders pulled down.',
+      'Pull until your upper chest comes towards the handles, elbows driving to your ribs.',
+      'Lower slowly until your arms are straight.'],
+  m: ['Swinging your body for momentum.',
+      'A partial range that never reaches full extension at the bottom.',
+      'Shoulders rising towards your ears at the bottom.'] },
+
+'מתח במשקל': {
+  s: ['Wear a dipping belt with a plate, or hold a dumbbell between your feet.',
+      'Take the bar a little wider than your shoulders, arms straight.',
+      'Pull until your chin passes the bar, without letting the weight swing.',
+      'Lower slowly until your arms are straight.'],
+  m: ['Adding weight before you have a full range without it.',
+      'Letting the weight swing, which pulls you off the line.',
+      'Dropping on the way down with the load — that loads the shoulder joint.'] },
+
+'תלייה על המוט': {
+  s: ['Take the bar about shoulder width, palms facing forward.',
+      'Lift your feet off the floor and let yourself hang.',
+      'Keep your shoulders active — pulled down a little rather than up at your ears.',
+      'Hold and breathe normally for the time.'],
+  m: ['Shoulders going completely slack up to your ears — that loads the shoulder joint.',
+      'Swinging instead of hanging still.',
+      'Carrying on past the point where the grip is already slipping.'] },
+
+'מקבילים במשקל': {
+  s: ['Wear a dipping belt with a plate, or hold a dumbbell between your feet.',
+      'Take the bars with straight arms, shoulders pulled down.',
+      'Lower until your elbow is at about a right angle, and no deeper.',
+      'Press back up until your arms are almost straight.'],
+  m: ['Adding weight before you have full control without it.',
+      'Going too deep under load — that loads the shoulder joint.',
+      'Shoulders rising towards your ears at the bottom.'] },
+
+'לחיצת פלטה': {
+  s: ['Press both palms against the two faces of a plate, at chest height.',
+      'Squeeze your palms together for the whole set.',
+      'Push the plate straight out in front of you until your arms are straight.',
+      'Bring it back to your chest slowly, without stopping the squeeze.'],
+  m: ['Stopping the squeeze between your palms — then there is no resistance at all.',
+      'Raising it above shoulder height instead of pushing straight out.',
+      'A plate too heavy to hold, which slips out of your hands.'] },
+
+'הרמת גב במשקל': {
+  s: ['Set the pad so it sits just below your hip bone.',
+      'Hold a plate against your chest, body in a straight line from head to heels.',
+      'Bend at the hips until you feel the hamstring stretch, without rounding your back.',
+      'Come up to the straight line and stop — not past it.'],
+  m: ['Adding weight before the unloaded version has a full, clean range.',
+      'Rising past the straight line under load — that loads the lower back.',
+      'Holding the plate behind your neck, which adds leverage against your back.'] },
+
+'הרמה קדמית בפלטה': {
+  s: ['Hold a plate with both hands at three and nine o\'clock, arms straight down.',
+      'Stand tall, stomach braced, feet hip width.',
+      'Raise the plate forward to about eye height.',
+      'Lower slowly until it is back in front of your thighs.'],
+  m: ['Leaning your torso back to lift — that loads the lower back.',
+      'Bending your elbows, which shortens the arm and the difficulty.',
+      'Swinging the plate up instead of raising it under control.'] },
+
+'גלגלת אמות': {
+  s: ['Hold the roller with both hands, arms straight out in front at shoulder height.',
+      'The weight hangs on the rope down to the floor.',
+      'Turn the handle hand over hand to wind the rope up and raise the weight.',
+      'Wind the other way to lower it slowly.'],
+  m: ['Letting your arms drop from shoulder height as they tire.',
+      'Dropping the weight instead of winding it back down — that is half the work.',
+      'Too much weight, which forces your arms down straight away.'] }
 };
