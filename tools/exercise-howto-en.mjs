@@ -1164,5 +1164,121 @@ export const EN = {
       'Set the dumbbell down under control and swap sides.'],
   m: ['Leaning away to balance — that cancels the work the obliques are there to do.',
       'The shoulder on the loaded side dropping.',
-      'Dropping the dumbbell at the end instead of setting it down.'] }
+      'Dropping the dumbbell at the end instead of setting it down.'] },
+'פרפר בפולי מלמטה למעלה': {
+  s: ['Set both pulleys low and take a handle in each hand.',
+      'Step forward into a split stance, arms down and out, elbows softly bent and fixed there.',
+      'Bring your hands up and in until they meet at upper-chest height.',
+      'Let them back along the same arc under control, until you feel the stretch across your chest.'],
+  m: ['Bending and straightening the elbow as you go — that is a press, not a fly.',
+      'Standing up and leaning back to finish the movement — that loads the lower back.',
+      'Letting it snap back, which gives up the useful half.'] },
+
+'פרפר בפולי מלמעלה למטה': {
+  s: ['Set both pulleys high and take a handle in each hand.',
+      'Step forward into a split stance and lean your torso slightly forward.',
+      'Bring your hands down and in until they meet in front of your stomach.',
+      'Let them back up and out under control until you feel the stretch.'],
+  m: ['Bending the elbow as you go, which turns it into a triceps extension.',
+      'Pulling with your back instead of closing with your chest.',
+      'Elbows opening behind the line of your body at the end of the rep — that loads the shoulder joint.'] },
+
+'פולי עליון אחיזה רחבה': {
+  s: ['Set the thigh pad so you are not lifted off the seat.',
+      'Take a grip clearly wider than your shoulders, palms facing forward.',
+      'Pull the bar to your upper chest with your elbows travelling straight down.',
+      'Come back up under control until your shoulder blades open again.'],
+  m: ['A grip so wide that the elbow cannot get below shoulder height.',
+      'Pulling behind your neck — a shoulder risk with nothing to show for it.',
+      'Leaning far back, which turns it into a row.'] },
+
+'פולי עליון אחיזה תחתונה': {
+  s: ['Set the thigh pad and take the bar with an underhand grip about shoulder width.',
+      'Sit tall, chest open, arms straight overhead.',
+      'Pull the bar to your upper chest, elbows travelling down close to your ribs.',
+      'Come back up under control until your arms are almost straight.'],
+  m: ['Curling with the elbow — this is a back exercise, not a biceps one.',
+      'Leaning back to finish the pull.',
+      'Letting the wrist bend back under load — that loads the wrist joint.'] },
+
+'פולי עליון ביד אחת': {
+  s: ['Attach a single handle to the high pulley and sit or kneel beneath it.',
+      'Hold it in one hand, arm straight overhead, the other hand on your thigh.',
+      'Pull the handle towards the ribs on that side, elbow travelling down and back.',
+      'Come back up under control until the shoulder blade opens.'],
+  m: ['Twisting your torso on every pull instead of keeping it still.',
+      'Pulling with the arm alone, with no movement at the shoulder blade.',
+      'Leaning your body sideways to add range.'] },
+
+'משיכת פולי בזרוע ישרה': {
+  s: ['Stand facing a high pulley and take the bar or rope with straight arms.',
+      'Step back, lean your torso slightly forward, stomach braced.',
+      'Sweep your hands down in an arc to your thighs without bending your elbow.',
+      'Let them back up under control until your arms are in front of your face.'],
+  m: ['Bending the elbow as you go — that is a triceps extension.',
+      'Standing up and rising on every rep to add force.',
+      'Too much weight, which makes a straight arm impossible.'] },
+
+'חתירה בפולי ביד אחת': {
+  s: ['Sit facing a low pulley with a single handle, feet on the platform.',
+      'Hold it in one hand, arm straight, back upright.',
+      'Row the handle to your ribs, elbow travelling back close to your body.',
+      'Let it out under control until your arm is straight and the shoulder blade stretches.'],
+  m: ['Turning your body back with the pull — that loads the lower back.',
+      'Leaning far back instead of pulling with the arm and the shoulder blade.',
+      'Pulling too high, to your chest instead of your ribs.'] },
+
+'חתירה בפולי אחיזה רחבה': {
+  s: ['Sit facing a low pulley with a long bar, feet on the platform.',
+      'Grip wider than your shoulders, palms facing down, back upright.',
+      'Row the bar to your lower chest with your elbows out at shoulder height.',
+      'Let it out under control until your arms are straight.'],
+  m: ['Pulling to your stomach instead of your chest — that is the regular row.',
+      'Shoulders rising towards your ears at the end of the pull.',
+      'Rocking your torso back and forth to build momentum.'] },
+
+'משיכת כתפיים בפולי': {
+  s: ['Stand facing a low pulley and hold a bar or two handles with straight arms.',
+      'Step back until the cable is taut, shoulders relaxed and low.',
+      'Lift your shoulders straight up towards your ears and hold for a moment.',
+      'Lower slowly until your shoulders are all the way down again.'],
+  m: ['Rolling the shoulders in a circle — that loads the shoulder joint and adds nothing.',
+      'Bending the elbow, which turns it into a pull.',
+      'A short range that never returns to a full hang at the bottom.'] },
+
+'הרחקת כתף בהטיה': {
+  s: ['Stand beside the pulley post and hold something solid with the near hand.',
+      'Lean your body away from it, with a low-pulley handle in the far hand.',
+      'Raise that arm out to the side up to shoulder height, elbow softly bent.',
+      'Lower slowly until your hand crosses in front of your body.'],
+  m: ['Raising above shoulder height — the traps take the work.',
+      'Swinging your body to start the movement.',
+      'Turning the palm down at the top — that loads the shoulder joint.'] },
+
+'הרמה קדמית בפולי': {
+  s: ['Stand with your back to a low pulley, the handle between your legs or at your side.',
+      'Arm straight down, stomach braced, feet hip width.',
+      'Raise that arm forward to shoulder height.',
+      'Lower slowly until the handle returns to your side.'],
+  m: ['Leaning your torso back to lift — that loads the lower back.',
+      'Raising above shoulder height, which hands the work to the traps.',
+      'Bending the elbow, which shortens the arm and the difficulty.'] },
+
+'פרפר הפוך בפולי': {
+  s: ['Set two pulleys at chest height and cross the cables — the right one into your left hand and the other way round.',
+      'Stand in the middle, arms straight out in front, elbows softly bent.',
+      'Open your arms out to the sides and back, to the line of your shoulders.',
+      'Let them back under control until your hands cross again.'],
+  m: ['Bending the elbow and pulling, which turns it into a row.',
+      'Shoulders rising towards your ears as you open.',
+      'Standing up and leaning back to open wider.'] },
+
+'חתירה אנכית בפולי': {
+  s: ['Stand facing a low pulley and take the bar with a shoulder-width grip.',
+      'Arms straight down, bar close to your body.',
+      'Pull the bar up along your body to chest height, elbows leading.',
+      'Lower it under control until your arms are straight.'],
+  m: ['Pulling above shoulder height — that loads the shoulder joint.',
+      'Letting the wrists bend under the bar — that loads the wrist joint.',
+      'Rocking your body back to help the pull.'] }
 };
