@@ -117,6 +117,14 @@ setTimeout(function(){
     R.bakeForBake=sayWrongKind(bake,foodKey('אבקת אפיה'));
     R.bakeWouldBe=sayAmount({food:bake,amount:12.5,unit:'g',g:1});
 
+    /* ── a dead service is not a bad sentence ──
+       The exact bodies /parse returns in each case. */
+    R.downRefused=sayAiDown({error:'the model refused',status:400,why:'credit'});
+    R.down502=sayAiDown({__status:502,error:'the model refused'});
+    R.downNothing=sayAiDown(null);
+    R.notDownEmpty=sayAiDown({__status:200,ok:true,items:[]});
+    R.notDownQuota=sayAiDown({__status:200,error:'too many for today'});
+
     /* ── the whole chain: rows -> meals -> the day ── */
     var d='2099-01-02';
     localStorage.removeItem('day_'+d);
@@ -221,6 +229,14 @@ ok(got.bakeForBake === false, 'and asking for אבקת אפיה still gets אב�
 ok(got.bakeWouldBe.kcal === 10 && got.bakeWouldBe.p === 0,
    'which matters because 12.5 g of it is exactly the ' + got.bakeWouldBe.kcal +
    ' kcal and ' + got.bakeWouldBe.p + ' g of protein he was shown');
+
+console.log('');
+console.log('a dead service is not a badly written sentence');
+ok(got.downRefused === true, 'the worker saying "the model refused" is the service');
+ok(got.down502 === true, 'so is a 502');
+ok(got.downNothing === true, 'and so is nothing coming back at all');
+ok(got.notDownEmpty === false, 'but a clean 200 with no items is the sentence — rephrasing is the right advice there');
+ok(got.notDownQuota === false, 'and the daily quota is neither, which it already had its own message for');
 
 console.log('');
 console.log('rows into the day');
