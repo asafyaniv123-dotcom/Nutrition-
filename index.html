@@ -6355,18 +6355,21 @@ function sayResolveAI(it,done){
          them. */
       if(j.pick<0||!cands[j.pick]){done(sayNoMatch(it,local));return;}
       var f=cands[j.pick],g=j.grams||0,sure=!!j.sure;
-      /* The model is sent sixty NAMES and no numbers, so nothing tells it
-         that "ביצה שלמה מיובשת" is 605 kcal per 100 g and the row beside it
-         is 143. One egg in a pancake came back as egg powder: 303 kcal
+      /* The model IS shown the numbers - sayCandLine sends every candidate as
+         "name [418kcal 83.1p 3.4c 6.8f]" - and still reached for the wrong
+         form. This comment used to say the opposite, from a time when only
+         names went out, and it was believed twice today before anyone
+         checked. One egg in a pancake came back as egg powder: 303 kcal
          instead of 72, and a meal of 657 where its own rows say 425.
          The local scorer had it right - an unasked dried form costs 2500
          there - so when the model's pick carries a form nobody asked for
          and the local pick does not, the local one stands. */
       if(sayDerivedUnasked(f,foodKey(q))&&local&&local.food&&
          !sayDerivedUnasked(local.food,foodKey(q))){f=local.food;g=0;sure=false;}
-      /* And the same override for a CONCENTRATE. The model is choosing among
-         sixty names with no numbers beside them, so nothing tells it that the
-         row it likes is 83 g of protein per 100 g. Asked for "יוגורט" once,
+      /* And the same override for a CONCENTRATE - which the model can SEE is
+         one, since the macros go out beside every name. Choosing it anyway is
+         a worse error than choosing it blind, and an argument for the guard
+         rather than against it. Asked for "יוגורט" once,
          it answered with pea protein isolate: 150 g of it is 627 kcal and
          125 g of protein, which is where a day of 137.5 g came from. Unless
          the question actually asked for a powder, a concentrate is the wrong
