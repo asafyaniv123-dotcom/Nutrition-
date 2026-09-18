@@ -7030,6 +7030,27 @@ function sayTotalHTML(){
 var _sayText='',_sayXState='';
 function sayCrossDone(state){
   _sayXState=state;_sayBusy=false;sayPaint();
+  sayFillGaps();
+}
+/* ── A ROW NOTHING COULD MATCH FILLS ITSELF IN ──
+   Everything here was already built and only ever reached by pressing a
+   button, so the ordinary outcome of an unmatched row was a red tag and no
+   numbers. It runs AFTER the cross-check because sayCross re-matches rows
+   with better terms up to four times, and estimating first would spend a call
+   on a row about to match properly a moment later.
+
+   What it does NOT do is make a guess look like a measurement. sayEstimate
+   stamps est:1, which the chip, the log and the day summary all read. The
+   rule was never "do not guess" - it is "never let a guess pass for a
+   reading". */
+function sayFillGaps(){
+  if(!_sayItems||!SYNC_SERVER)return;
+  for(var i=0;i<_sayItems.length;i++){
+    var row=_sayItems[i];
+    /* matched, already estimated, already asking, or nothing to ask about */
+    if(!row||row.food||row.est||row.esting||!row.q)continue;
+    sayEstimate(i);
+  }
 }
 function sayCross(depth){
   /* No rows, or nowhere to ask: there is nothing to wait for, so show what we
