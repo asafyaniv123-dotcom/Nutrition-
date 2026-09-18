@@ -133,6 +133,24 @@ setTimeout(function(){
     R.notDownEmpty=sayAiDown({__status:200,ok:true,items:[]});
     R.notDownQuota=sayAiDown({__status:200,error:'too many for today'});
 
+    /* ── which rows ask to be estimated, and which are left alone ──
+       sayEstimate is stubbed: what is under test is the CHOOSING, not the
+       network call it would make. */
+    var asked=[];
+    var realEst=window.sayEstimate;
+    window.sayEstimate=function(n){asked.push(n);};
+    _sayItems=[
+      {q:'חזה עוף',food:chicken,amount:200,unit:'g',g:1},   /* matched — leave it */
+      {q:'שקשוקה של אמא',food:null,amount:1,unit:'unit',g:100},   /* nothing — ask */
+      {q:'עוגה של העבודה',food:null,est:1,amount:1,unit:'unit',g:100},  /* already a guess */
+      {q:'משהו',food:null,esting:true,amount:1,unit:'unit',g:100},      /* already asking */
+      {q:'',food:null,amount:1,unit:'unit',g:100}            /* nothing to ask about */
+    ];
+    sayFillGaps();
+    R.asked=asked.slice();
+    window.sayEstimate=realEst;
+    _sayItems=null;
+
     /* ── the whole chain: rows -> meals -> the day ── */
     var d='2099-01-02';
     localStorage.removeItem('day_'+d);
@@ -248,6 +266,12 @@ ok(got.down502 === true, 'so is a 502');
 ok(got.downNothing === true, 'and so is nothing coming back at all');
 ok(got.notDownEmpty === false, 'but a clean 200 with no items is the sentence — rephrasing is the right advice there');
 ok(got.notDownQuota === false, 'and the daily quota is neither, which it already had its own message for');
+
+console.log('');
+console.log('a row nothing could match fills itself in');
+ok(JSON.stringify(got.asked) === '[1]',
+   'exactly the unmatched row is estimated — not the matched one, not one already guessed, ' +
+   'not one already asking, not one with no question (asked ' + JSON.stringify(got.asked) + ')');
 
 console.log('');
 console.log('rows into the day');

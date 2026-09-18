@@ -1395,7 +1395,10 @@ export default {
 
        Secrets: AI_KEY. Optional: EST_DAILY_CAP (default 120/IP/day). */
     if (url.pathname === '/estimate' && req.method === 'POST') {
-      if (!env.AI_KEY) return json({ error: 'estimating is not configured' }, 503);
+      /* EITHER provider will do. This used to refuse when Anthropic was
+         unconfigured, which stopped being the right question the moment there
+         was a second one to ask. */
+      if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'estimating is not configured' }, 503);
 
       let b;
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
@@ -1447,7 +1450,7 @@ export default {
         '  script.\n' +
         '- No prose, no markdown fence, JSON only.';
 
-      let r;
+      let r, why = '', by = 'anthropic';
       try {
         r = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -1465,20 +1468,31 @@ export default {
           }),
         });
       } catch {
-        return json({ error: 'could not reach the model' }, 502);
+        r = null;   /* both failures meet below, where Gemini is asked */
       }
-      if (!r.ok) {
+      if (r && !r.ok) {
         /* The API's own sentence, not only its number: a 400 here is
            usually something structural in the request we sent, and the
            code alone is indistinguishable from a genuine refusal. */
-        let why = '';
         try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
-        return json({ error: 'the model refused', status: r.status, why }, 502);
       }
 
-      let out;
-      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
-      const rawTxt = ((out.content || []).find((c) => c.type === 'text') || {}).text || '';
+      /* WHOEVER ANSWERS, the same order and the same prompt as /parse. */
+      let rawTxt = '';
+      if (r && r.ok) {
+        let out = null;
+        try { out = await r.json(); } catch { out = null; }
+        rawTxt = out ? (((out.content || []).find((c) => c.type === 'text') || {}).text || '') : '';
+      }
+      if (!rawTxt) {
+        const g = await geminiText(SYSTEM, food, 500);
+        if (g) { rawTxt = g; by = 'gemini'; }
+      }
+      if (!rawTxt) {
+        return (r && !r.ok)
+          ? json({ error: 'the model refused', status: r.status, why }, 502)
+          : json({ error: 'could not reach the model' }, 502);
+      }
       const m = firstJson(rawTxt);
       let p;
       try { p = JSON.parse(m || rawTxt); } catch { return json({ error: 'unreadable' }, 502); }
@@ -1512,6 +1526,7 @@ export default {
 
       return json({
         ok: true,
+        by,
         per100,
         serving_g: serving,
         kcal_low: num(p && p.kcal_low, 6000),
