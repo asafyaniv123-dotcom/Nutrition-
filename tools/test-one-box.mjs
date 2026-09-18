@@ -23,6 +23,10 @@ const lift = (a, b) => {
 };
 
 const ctx = { console };
+/* _picShots is module state oneGo() reads on its way past. Stubbed to the
+   empty array it holds before a photo is taken, which is the state this
+   harness is asking about anyway. */
+ctx._picShots = [];
 vm.createContext(ctx);
 vm.runInContext(lift('function sayIsSentence(t){', 'function oneHits('), ctx);
 vm.runInContext(lift('function oneHits(q){', 'var _oneAsked'), ctx);

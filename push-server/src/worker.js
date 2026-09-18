@@ -142,6 +142,34 @@ function fromGeminiContent(candidate) {
   return { content, stop_reason: calls ? 'tool_use' : 'end_turn' };
 }
 
+/* An estimate the app can show, or nothing at all.
+   The same clamps and the same Atwater check /estimate applies to its own
+   reply, in one place rather than two, because the moment two routes check
+   the same thing separately they start disagreeing about it.
+   Inconsistent arithmetic returns NULL rather than a low-confidence row: the
+   app still has /estimate behind this, so refusing costs one round trip and
+   buys never printing four macros that do not add up to their own calories. */
+function cleanEst(e) {
+  if (!e || typeof e !== 'object') return null;
+  const num = (v, hi) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 && n <= hi ? Math.round(n * 10) / 10 : 0;
+  };
+  const src = e.per100 && typeof e.per100 === 'object' ? e.per100 : {};
+  const per100 = {
+    kcal: num(src.kcal, 900),
+    p: num(src.p, 100),
+    c: num(src.c, 100),
+    f: num(src.f, 100),
+  };
+  if (!per100.kcal) return null;
+  const calc = 4 * per100.p + 4 * per100.c + 9 * per100.f;
+  if (!(calc > 0) || Math.abs(calc - per100.kcal) / per100.kcal > 0.35) return null;
+  let serving = Number(e.serving_g);
+  if (!Number.isFinite(serving) || serving <= 0 || serving > 3000) serving = 0;
+  return { per100, serving_g: serving, assumed: String(e.assumed || '').slice(0, 240) };
+}
+
 function firstJson(raw) {
   const text = String(raw || '');
   const start = text.indexOf('{');
@@ -918,9 +946,13 @@ export default {
        to go. The app also shows which row was chosen, so the choice stays
        checkable.
 
-       Secrets: AI_KEY. Optional: MATCH_DAILY_CAP (default 200/IP/day). */
+       Secrets: AI_KEY, GEMINI_KEY (either will do). Optional:
+       MATCH_DAILY_CAP (default 200/IP/day). */
     if (url.pathname === '/match' && req.method === 'POST') {
-      if (!env.AI_KEY) return json({ error: 'matching is not configured' }, 503);
+      /* EITHER provider. Gemini has answered this route since the fallback
+         went in; the guard was still asking only about Anthropic, so a worker
+         with no Anthropic key at all would 503 a question Gemini can answer. */
+      if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'matching is not configured' }, 503);
 
       let b;
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
@@ -950,7 +982,7 @@ export default {
         'You match a written food to one row of a food table, and say what one\n' +
         'serving of it weighs. The written food may be in any language.\n' +
         'Reply with JSON only:\n' +
-        '{"picks":[0,4],"grams":200,"sure":true,"terms":["",""]}\n' +
+        '{"picks":[0,4],"grams":200,"sure":true,"terms":["",""],"est":null}\n' +
         '- picks: 0-based indexes of the rows that are this food, best first,\n' +
         '  at most the number asked for. [] if none of them is. Do not pad the\n' +
         '  list with near misses - two right answers beat five vague ones.\n' +
@@ -969,7 +1001,14 @@ export default {
         '- grams: for the FIRST pick, what ONE of the unit the user means\n' +
         '  weighs - a pot, a bottle,\n' +
         '  a slice, a scoop. Use the packaged size when the row names one\n' +
-        '  ("350 מל" is 350). null if you genuinely do not know.\n' +
+        '  ("350 \u05de\u05dc" is 350). null if you genuinely do not know.\n' +
+        /* 160 g is the tin. The brine goes down the sink, and it was going
+           into the log. */
+        '- A TIN OR A JAR IS WEIGHED DRAINED. What was eaten is the solid, not\n' +
+        '  the brine, the oil or the syrup it was packed in. A standard tuna\n' +
+        '  tin is about 160 g gross and 112-120 g drained, and it is the\n' +
+        '  DRAINED figure that goes in grams. The same for olives, sweetcorn,\n' +
+        '  chickpeas, artichokes and tinned fruit.\n' +
         '- sure: false if you are guessing at either field.\n' +
         /* The rows offered are whatever a string match could reach, so a query
            in another language arrives with a shortlist that never contained
@@ -988,11 +1027,26 @@ export default {
            "ribeye steak cooked" as a T-bone, while the app's own scorer had
            both right. The rule for a named brand was here; the rule for an
            UNnamed one never was. */
-        '- WHEN NO BRAND IS NAMED, PREFER THE PLAIN TABLE ROW. A row carrying a\n' +
-        '  company or a supermarket product name is the answer only when the\n' +
-        '  query named it. "2 eggs" is eggs, not one dairy\u2019s packaged eggs.\n' +
-        '  The plain row is what was meant, and its numbers were measured\n' +
-        '  rather than declared on a packet.\n' +
+        '- WHEN NO BRAND IS NAMED, PREFER THE PLAIN TABLE ROW - BUT ONLY\n' +
+        '  BETWEEN ROWS THAT ARE THE SAME FOOD. A row carrying a company or a\n' +
+        '  supermarket product name is the answer only when the query named it.\n' +
+        '  "2 eggs" is eggs, not one dairy\u2019s packaged eggs. The plain row is\n' +
+        '  what was meant, and its numbers were measured rather than declared\n' +
+        '  on a packet. This rule chooses BETWEEN two rows for one food. It\n' +
+        '  never reaches for a DIFFERENT food because that food\u2019s row is\n' +
+        '  plainer.\n' +
+        /* The rule above, read without that precondition, is exactly what
+           answered a spelt roll with cooked spelt grain: no brand was named,
+           and the plainest row in the sixty was the grain. */
+        '- AN INGREDIENT IS NOT THE DISH, AND THIS OUTRANKS THE RULE ABOVE. A\n' +
+        '  row naming what the food is MADE OF is not that food, however many\n' +
+        '  of the query\u2019s words it carries: the grain under a bread, the\n' +
+        '  flour under a cake, the milk under a cheese, the potato under a\n' +
+        '  crisp. A spelt ROLL is a baked good; \u05db\u05d5\u05e1\u05de\u05d9\u05df \u05de\u05d1\u05d5\u05e9\u05dc is a cooked\n' +
+        '  grain, and it is plainer only because it is something else. If a row\n' +
+        '  for the PREPARED food is in the list, even a branded one, that row\n' +
+        '  is the answer. If none is, answer [] and estimate instead - an\n' +
+        '  honest estimate of a roll beats an exact figure for grain.\n' +
         /* A different cut with similar numbers is the worst kind of wrong
            answer here: nothing about it looks wrong. */
         '- A CUT OF MEAT IS NAMED, NOT TRANSLATED, and a different cut is a\n' +
@@ -1007,8 +1061,31 @@ export default {
         '  reverse. Raw chicken breast is 22.5 g of protein per 100 g and\n' +
         '  cooked is 31: this is not a shade of meaning, it is a third of the\n' +
         '  answer.\n' +
-        '- Never return calories, protein, carbohydrate or fat. You do not know\n' +
-        '  them and they are not wanted; the app has them already.\n' +
+        /* Measured on the live route: a tin of tuna came back as the oil
+           row, sure:true, with nothing in the query naming oil. */
+        '- AND SO DOES THE PACKING MEDIUM, WHEN THE QUERY NAMES ONE. Tuna in\n' +
+        '  oil is 198 kcal per 100 g and tuna in water is 86; choosing between\n' +
+        '  them more than doubles the answer. If the query says oil, brine,\n' +
+        '  water or syrup, take the row that says the same. IF IT NAMES NONE,\n' +
+        '  take the row packed in water or brine and set sure:false - an\n' +
+        '  unstated medium is a real uncertainty, and reporting it as certain\n' +
+        '  is what puts a hundred calories nobody mentioned into the log.\n' +
+        '- Never return calories, protein, carbohydrate or fat FOR A ROW YOU\n' +
+        '  PICKED. You do not know them and they are not wanted; the app has\n' +
+        '  the measured figures already. est below is the one exception, and\n' +
+        '  it applies only when you picked nothing at all.\n' +
+        /* A row from the tables was weighed in a laboratory; this is a guess,
+           and the app marks it as one wherever it is shown. What it replaces
+           is not a measurement - it is a second round trip to /estimate to
+           ask a different route the question this one has just answered. */
+        '- est: your own figures for the food in the QUERY, and ONLY when picks\n' +
+        '  is []. {"per100":{"kcal":0,"p":0,"c":0,"f":0},"serving_g":0,\n' +
+        '  "assumed":""} - per 100 g AS EATEN, what one of the unit the user\n' +
+        '  means weighs, and one short sentence in ' + langName(b && b.lang) + '\n' +
+        '  naming what you took the food to be and the portion you assumed.\n' +
+        '  Keep the macros consistent with the energy: protein and carbohydrate\n' +
+        '  about 4 kcal per gram, fat about 9. Omit est entirely when you\n' +
+        '  picked a row.\n' +
         '- No prose, no markdown fence, JSON only.';
 
       const list = cands.map((n, i) => i + '. ' + n).join('\n');
@@ -1089,8 +1166,14 @@ export default {
         .filter(Boolean)
         .slice(0, 4);
 
-      // note: no nutrition field exists in this reply, by design
-      return json({ ok: true, by, pick, picks, grams, terms, sure: parsed && parsed.sure !== false });
+      /* ITS OWN FIGURES, AND ONLY WHERE THERE IS NOTHING BETTER. Dropped
+         whenever a row WAS picked rather than trusted to be absent: a picked
+         row carries measured numbers and they win, and a contract the server
+         does not enforce is one the next model version breaks quietly. */
+      const est = picks.length ? null : cleanEst(parsed && parsed.est);
+
+      // note: no nutrition field for a PICKED row exists in this reply, by design
+      return json({ ok: true, by, pick, picks, grams, terms, est, sure: parsed && parsed.sure !== false });
     }
 
     /* ── /cross ──────────────────────────────────────────────────────────
@@ -2745,4 +2828,4 @@ export default {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig };
+         stripGemSig, cleanEst };

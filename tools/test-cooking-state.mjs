@@ -40,8 +40,12 @@ const lift = (from, to) => {
 const code =
   lift('function foodName(f){', 'function foodsLoad(then){') +
   '\n' + lift('var FOOD_STOP=', 'SCANNING A BARCODE').replace(/\/\*[^*]*$/, '') +
-  '\n' + lift('var SAY_DERIVED=', 'function sayCandLine(') +
-  '\n' + lift('function sayScore(f,q,toks){', 'function sayResolve(it){');
+  /* ONE contiguous range, rather than two that skip the middle. Between
+     sayCandLine and sayScore sit sayWrongKind, saySrcOf, sayAskedPowder and
+     the three word lists they read — added with the protein-powder guard,
+     and stepped straight over by the two ranges this replaces. The harness
+     threw "sayWrongKind is not defined" and had done since. */
+  '\n' + lift('var SAY_DERIVED=', 'function sayResolve(it){');
 
 const ctx = { _foods: null, console };
 vm.createContext(ctx);

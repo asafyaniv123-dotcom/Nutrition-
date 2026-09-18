@@ -25,8 +25,17 @@ vm.runInContext('var _sayText="",_picNote="",_picPartial=null,SYNC_SERVER="x",ap
    functions that answer that have to be here - lifted, because a stub would
    test the stub. */
 vm.runInContext(cut('function mealByClock(){', 'var _sayCat'), ctx);
-vm.runInContext(cut('function picServingG(t){', '/* ── READ THE PACKET FIRST'), ctx);
-vm.runInContext(cut('function picVision(dataUrl,note){', '/* The tables answer'), ctx);
+/* picVision reads picServingWeight, which sits ABOVE picServingG in the
+   file — so a lift starting at picServingG left it undefined, picVision threw
+   inside its own .then, and the catch routed to picSee. Every routing check
+   below was failing for that reason and none of them said so. */
+vm.runInContext(cut('function picServingWeight(j){', '/* ── READ THE PACKET FIRST'), ctx);
+/* And saySaidFrom, which the items loop calls on every row. Lifted rather
+   than stubbed: it is where the half-scoop arithmetic lives, and a stub
+   would be testing the stub. picVision passes it two arguments, so the qty
+   multiplier stays at one - which is right for a weight in grams. */
+vm.runInContext(cut('function saySaidFrom(', 'function sayIsConcentrate('), ctx);
+vm.runInContext(cut('function picVision(', '/* The tables answer'), ctx);
 
 let bad = 0;
 const check = (what, ok, detail) => { if (!ok) bad++; console.log('  ' + (ok ? 'PASS' : 'FAIL') + '  ' + what + (detail ? '   ' + detail : '')); };

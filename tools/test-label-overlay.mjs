@@ -36,7 +36,7 @@ ctx._picPartialCases = {
   useless: { basis: '100g' },
 };
 
-const fn = lift('function picLabelOverlay(row){', 'function picByTable(j,items){');
+const fn = lift('function picLabelOverlay(', 'function picByTable(j,items){');
 vm.runInContext('var _picPartial=null;\n' + fn, ctx);
 
 let bad = 0;

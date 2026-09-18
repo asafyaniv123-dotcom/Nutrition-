@@ -41,7 +41,11 @@ const ctxA = vm.createContext({ console });
 vm.runInContext('function langOn(f){f();}function _t(s){return s;}var _picPartial=null;', ctxA);
 vm.runInContext(cut(a, 'function picNum(', 'function picFromLabel(', 'picNum'), ctxA);
 vm.runInContext(cut(a, 'function picFromLabel(', 'function picLabelOverlay(', 'picFromLabel'), ctxA);
-vm.runInContext(cut(a, 'function picLabelOverlay(row){', 'function picByTable(', 'picLabelOverlay'), ctxA);
+/* Anchored on the NAME, not the argument list. picLabelOverlay grew two
+   arguments when the typed path learned to keep a figure read off a packet,
+   and this harness had been lifting it by its old signature — so it stopped
+   running at all, which is the one failure a test cannot report about itself. */
+vm.runInContext(cut(a, 'function picLabelOverlay(', 'function picByTable(', 'picLabelOverlay'), ctxA);
 
 /* The row the tables actually resolve this packet to, and the object really is
    shared between screens - so the "did not mutate" assertion below is not
