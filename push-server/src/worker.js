@@ -226,6 +226,38 @@ export default {
 
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
+    /* Ask Gemini the same question with the same system prompt. Returns the
+       raw text, or null - what a failure MEANS is the caller's business. */
+    async function geminiText(system, user, maxTokens) {
+      if (!env.GEMINI_KEY) return null;
+      let r;
+      try {
+        r = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: system }] },
+              contents: [{ role: 'user', parts: [{ text: user }] }],
+              generationConfig: {
+                maxOutputTokens: maxTokens || 1200,
+                temperature: 0,
+                thinkingConfig: { thinkingBudget: 0 },
+                responseMimeType: 'application/json',
+              },
+            }),
+          },
+        );
+      } catch { return null; }
+      if (!r.ok) return null;
+      let j;
+      try { j = await r.json(); } catch { return null; }
+      const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+      const text = parts.map((p) => p.text || '').join('').trim();
+      return text || null;
+    }
+
     if (url.pathname === '/health') {
       // booleans only, never the values themselves.
       //
@@ -609,7 +641,7 @@ export default {
         '- Never return calories, protein, carbohydrate or fat. You do not know them.\n' +
         '- No prose, no markdown fence, JSON only.';
 
-      let r;
+      let r, why = '', by = 'anthropic';
       try {
         r = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -627,20 +659,32 @@ export default {
           }),
         });
       } catch {
-        return json({ error: 'could not reach the model' }, 502);
+        r = null;   /* both failures meet below, where Gemini is asked */
       }
-      if (!r.ok) {
+      if (r && !r.ok) {
         /* The API's own sentence, not only its number: a 400 here is
            usually something structural in the request we sent, and the
            code alone is indistinguishable from a genuine refusal. */
-        let why = '';
         try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
-        return json({ error: 'the model refused', status: r.status, why }, 502);
       }
 
-      let out;
-      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
-      const raw = ((out.content || []).find((c) => c.type === 'text') || {}).text || '';
+      /* WHOEVER ANSWERS. Anthropic first, then Gemini with the same prompt -
+         which today is every time, because the account is out of credit. */
+      let raw = '';
+      if (r && r.ok) {
+        let out = null;
+        try { out = await r.json(); } catch { out = null; }
+        raw = out ? (((out.content || []).find((c) => c.type === 'text') || {}).text || '') : '';
+      }
+      if (!raw) {
+        const g = await geminiText(SYSTEM, text, 1200);
+        if (g) { raw = g; by = 'gemini'; }
+      }
+      if (!raw) {
+        return (r && !r.ok)
+          ? json({ error: 'the model refused', status: r.status, why }, 502)
+          : json({ error: 'could not reach the model' }, 502);
+      }
 
       // it is told to send JSON only, but a fence or a sentence around it is
       // the classic failure and is cheaper to survive than to argue about
@@ -678,7 +722,7 @@ export default {
         .filter(Boolean)
         .slice(0, 20);
 
-      return json({ ok: true, items,
+      return json({ ok: true, by, items,
         meal_type: ['drink', 'snack'].indexOf(parsed && parsed.meal_type) >= 0 ? parsed.meal_type : 'unspecified' });
     }
 

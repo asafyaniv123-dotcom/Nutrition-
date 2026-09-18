@@ -91,9 +91,17 @@ setTimeout(function(){
     /* the half scoop, whose 12.5 the model had already halved for us */
     var pw={n:'תוסף חלבון, אבקה, כולל MERITENE',k:355,p:31,c:50,f:3};
     var rowP={food:pw,amount:0.5,unit:'unit',g:30,q:'אבקת חלבון'};
-    sayWithSaid(rowP,{food:'אבקת חלבון',stated_by_user:{calories_kcal:null,protein_g:12.5,
+    /* 25 is what a WHOLE scoop has - which is what the person said and what
+       the prompt asks for. Half of one is 12.5, and the app does that
+       arithmetic rather than hoping the model did it. */
+    sayWithSaid(rowP,{food:'אבקת חלבון',stated_by_user:{calories_kcal:null,protein_g:25,
                       carbohydrates_g:null,fat_g:null}});
     R.powSaid=sayAmount(rowP);
+    /* and in GRAMS the amount is the weight, so it must not multiply */
+    var rowG={food:yog,amount:150,unit:'g',g:1,q:'יוגורט'};
+    sayWithSaid(rowG,{food:'יוגורט',stated_by_user:{calories_kcal:null,protein_g:13,
+                      carbohydrates_g:null,fat_g:null}});
+    R.gramsSaid=sayAmount(rowG);
 
     /* ── and the guard that would have stopped the 137.5 ── */
     var pea={n:'חלבון, אפונה, PEA PROTEIN',k:418,p:83.1,c:3.4,f:6.8};
@@ -208,7 +216,10 @@ ok(near(got.yogSaid.p, 13, 0.15), 'and his stated 13 wins. The .1 is the per-100
 ok(got.yogKcalKept === got.yogTable.kcal,
    'while the energy he said nothing about keeps the measured value (got ' +
    got.yogKcalKept + ', table ' + got.yogTable.kcal + ')');
-ok(near(got.powSaid.p, 12.5), 'the half scoop carries the 12.5 the model had already halved (got ' + got.powSaid.p + ')');
+ok(near(got.powSaid.p, 12.5, 0.15),
+   'a scoop of 25 taken by halves is 12.5 — the app halves it, not the model (got ' + got.powSaid.p + ')');
+ok(near(got.gramsSaid.p, 13, 0.15),
+   'while 13 stated for 150 GRAMS stays 13 — in grams the amount is the weight, not a count (got ' + got.gramsSaid.p + ')');
 
 console.log('');
 console.log('and a concentrate is not an answer to a food question');

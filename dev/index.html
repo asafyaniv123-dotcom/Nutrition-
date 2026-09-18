@@ -6280,13 +6280,20 @@ function matchCacheGet(q){
    ONE function because there are two callers. The typed path used to drop
    this figure whenever the match succeeded while the photo path applied it,
    and a rule that lives in one of two copies is the rule in half the app. */
-function saySaidFrom(sv,grams){
+function saySaidFrom(sv,grams,qty){
   if(!sv)return null;
+  /* THE FIGURE IS FOR ONE. The prompt has always said so - "the figure FOR
+     ONE of whatever amount and unit say" - and this read it as the figure for
+     the whole portion. The two are the same thing whenever the amount is 1,
+     which is every case anyone had tried, so it took half a scoop and a
+     second provider to show. Anthropic had been quietly halving 25 to 12.5
+     before answering; Gemini returns the 25 the contract asks for. */
+  var n=(qty>0)?qty:1;
   var said={basis:'serving',serving_g:grams>0?grams:100};
-  if(sv.calories_kcal!==null&&sv.calories_kcal!==undefined)said.kcal=sv.calories_kcal;
-  if(sv.protein_g!==null&&sv.protein_g!==undefined)said.p=sv.protein_g;
-  if(sv.carbohydrates_g!==null&&sv.carbohydrates_g!==undefined)said.c=sv.carbohydrates_g;
-  if(sv.fat_g!==null&&sv.fat_g!==undefined)said.f=sv.fat_g;
+  if(sv.calories_kcal!==null&&sv.calories_kcal!==undefined)said.kcal=sv.calories_kcal*n;
+  if(sv.protein_g!==null&&sv.protein_g!==undefined)said.p=sv.protein_g*n;
+  if(sv.carbohydrates_g!==null&&sv.carbohydrates_g!==undefined)said.c=sv.carbohydrates_g*n;
+  if(sv.fat_g!==null&&sv.fat_g!==undefined)said.f=sv.fat_g*n;
   if(said.kcal===undefined&&said.p===undefined&&said.c===undefined&&said.f===undefined)return null;
   return said;
 }
@@ -6314,7 +6321,11 @@ function sayNoMatch(it,local){
    catching up. */
 function sayWithSaid(row,it){
   if(!row||!row.food||!it||!it.stated_by_user)return row;
-  var said=saySaidFrom(it.stated_by_user,row.amount*(row.unit==='g'?1:row.g));
+  /* ONLY COUNTABLE UNITS MULTIPLY. In grams the amount IS the weight, and
+     "150 גרם יוגורט שיש בו 13 גרם חלבון" states 13 for those 150 - so
+     multiplying by 150 would be this same bug pointing the other way. */
+  var said=saySaidFrom(it.stated_by_user,row.amount*(row.unit==='g'?1:row.g),
+                       row.unit==='g'?1:row.amount);
   if(said)picLabelOverlay(row,said,'said');
   return row;
 }
