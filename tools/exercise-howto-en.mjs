@@ -1565,5 +1565,103 @@ export const EN = {
       'Come back slowly to a light stretch, without letting the weight pull you.'],
   m: ['Pulling with your arms instead of contracting your stomach.',
       'Craning your neck forward to reach — that loads the neck.',
-      'A short range that never reaches the squeeze at the end.'] }
+      'A short range that never reaches the squeeze at the end.'] },
+'שכיבות סמיכה בשיפוע שלילי': {
+  s: ['Put your feet on a bench or step and your hands on the floor a little wider than your shoulders.',
+      'Body in a straight line from head to heels, stomach and glutes braced.',
+      'Lower until your chest nearly touches the floor, elbows back rather than out to the sides.',
+      'Press up without snapping the elbow straight.'],
+  m: ['Hips dropping — a sign the stomach is not braced, and it loads the lower back.',
+      'Feet set too high, which turns it into a shoulder exercise.',
+      'Craning your neck forward to reach the floor.'] },
+
+'שכיבות סמיכה רחבות': {
+  s: ['Hands on the floor clearly wider than your shoulders, fingers pointing forward.',
+      'Body in a straight line from head to heels, stomach braced.',
+      'Lower until your chest nearly touches, elbows at about 45 degrees rather than 90.',
+      'Press back up along the same path.'],
+  m: ['A stance so wide that the elbow opens to 90 degrees — that loads the shoulder joint.',
+      'A partial range, going only halfway down.',
+      'Hips rising to shorten the movement.'] },
+
+'חתירה הפוכה': {
+  s: ['Set a bar at about waist height and lie underneath it, hands a little wider than your shoulders.',
+      'Body in a straight line from head to heels, heels on the floor.',
+      'Pull your chest to the bar, elbows back and shoulder blades drawing together.',
+      'Lower slowly until your arms are straight.'],
+  m: ['Hips dropping on the way up — a sign the stomach is not braced.',
+      'A pull that stops before your chest reaches the bar.',
+      'Leading with your neck instead of getting your chest there.'] },
+
+'לחיצת כתפיים בעמידת ידיים': {
+  s: ['Put your hands on the floor a little wider than your shoulders, about a stride from the wall.',
+      'Kick up into a handstand with your heels resting against the wall.',
+      'Lower slowly until your head lightly touches the floor, elbows forward rather than out to the sides.',
+      'Press back up until your arms are straight.'],
+  m: ['Elbows flaring out to the sides — that loads the shoulder joint.',
+      'A big arch in the lower back to help the press — that loads the lower back.',
+      'Dropping fast onto your head instead of lowering under control.'] },
+
+'שכיבות סמיכה יהלום': {
+  s: ['Hands under your chest with your thumbs and index fingers touching to make a triangle.',
+      'Body in a straight line from head to heels, stomach braced.',
+      'Lower until your chest touches your hands, elbows close to your ribs.',
+      'Press up until your arms are almost straight.'],
+  m: ['Elbows flaring out, which hands the work to the chest.',
+      'The wrists under pressure at this angle — that loads the wrist joint.',
+      'Hips rising to shorten the movement.'] },
+
+'סקוואט סיסי': {
+  s: ['Stand tall, holding something solid with one hand if you need it.',
+      'Rise onto the balls of your feet and let your knees travel forward.',
+      'Lean back with your body in a straight line from knee to head, and lower slowly.',
+      'Come up by squeezing your quads, without bending at the hips.'],
+  m: ['Bending at the hips instead of holding the straight line from knee to head.',
+      'Going down fast — the knee is in an unforgiving range here.',
+      'Going deeper than the knee is ready for.'] },
+
+'ישיבת קיר': {
+  s: ['Lean your back against a wall and walk your feet forward.',
+      'Slide down until your knees are at a right angle, knees above your ankles.',
+      'Keep your whole back against the wall, hands free.',
+      'Hold the position and breathe normally for the time.'],
+  m: ['Knees out past your toes — that loads the knee joint.',
+      'Resting your hands on your thighs, which takes some of the load away.',
+      'Holding your breath instead of breathing normally.'] },
+
+'כפיפה נורדית': {
+  s: ['Kneel on a mat and hook your ankles under something solid, or have someone hold them.',
+      'Body in a straight line from knee to head, hands ready in front of your chest.',
+      'Lower forward as slowly as you can control, resisting with your hamstrings.',
+      'Catch yourself with your hands and push lightly to return, or pull back up by squeezing.'],
+  m: ['Bending at the hips instead of holding the straight line from knee to head.',
+      'Free-falling the moment control runs out — stop before that point.',
+      'Starting at full range before you have the strength to control it.'] },
+
+'היפ ת׳ראסט ברגל אחת': {
+  s: ['Sit on the floor with your upper back resting against a bench.',
+      'One foot on the floor with the knee at a right angle, the other leg lifted.',
+      'Drive your hips up to a straight line from knee to shoulder and squeeze your glutes.',
+      'Lower under control, stopping before your hips touch the floor.'],
+  m: ['The hips dropping on the side of the lifted leg — they should stay level.',
+      'Arching your lower back at the top instead of squeezing the glutes — that loads the lower back.',
+      'The foot too far out, which hands the work to the hamstrings.'] },
+
+'סקוואט קוזאק': {
+  s: ['Stand with your feet much wider than your shoulders, toes turned out a little.',
+      'Shift your weight onto one leg and lower down over it.',
+      'Go as deep as the groin of the straight leg allows, keeping that leg straight and its heel down.',
+      'Drive through the bent heel and come back to the middle.'],
+  m: ['The heel of the bent leg lifting — that shortens the range and pushes the knee forward.',
+      'Rounding your back to get lower.',
+      'Forcing depth before the groin allows it — that loads the adductors.'] },
+
+'הרמת קדמת השוק': {
+  s: ['Lean your back against a wall and walk your heels forward, a little way out from it.',
+      'Legs straight, heels on the floor.',
+      'Raise the fronts of your feet as far as they will go and hold for a moment.',
+      'Lower slowly until your toes touch the floor.'],
+  m: ['Bending the knee to help the lift.',
+      'The heel coming off the floor as you go.',
+      'A short range that never reaches the top.'] }
 };
