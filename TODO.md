@@ -2168,6 +2168,37 @@ want a rule for what belongs there before starting.
 
 ## The exercise instructions, and the direction they were painted in
 
+**FINISHED 18/09 — 232 of 235, in both languages.** The library went from 103
+carrying instructions to 232 in nine batches overnight, free weights first,
+then cable, machine, bodyweight, core and the tail. Each batch was verified by
+rebuilding `data/exercises.json` from its source and diffing the result
+against the shipped file FIELD BY FIELD: same 235 rows, every non-cue field
+identical, and exactly the batch's own exercises gaining cues.
+`test-exercise-search` stayed at 101 of 101 throughout, and the language
+template never moved — these are data, not strings.
+
+**Three are left, and all three on purpose:**
+
+- **פאוור קלין** and **סנאץ׳** — Olympic lifts. Four lines cannot carry either
+  responsibly; an under-specified cue there does not produce a sloppy rep but a
+  bar overhead in the wrong place. The app shows nothing rather than something,
+  which is the right thing for it to show here.
+- **שחייה** — four strokes, each its own discipline, coached in the water.
+  "Get in the pool and swim" is filler dressed as instruction. It stays in the
+  library because a swim is a session worth logging, and since the cardio entry
+  of 18/09 takes a distance and a duration, it now can be.
+
+**And one thing found on the way, which mattered more than the batch that
+found it.** Running `tools/build-exercises.mjs` for the first time since the
+seven exercises added on 17/09 produced **228 rows where the file had 235**.
+Those seven had been written straight into the JSON and never into `RAW`,
+along with their names in ten languages and their instructions — so the build
+had been silently LOSSY ever since, and the next person to run it would have
+deleted all seven without a word. Everything was lifted back out of the JSON
+into the source, and a RAW row may now name more than one muscle, which is
+what made the shortcut tempting in the first place: a lunge is quadriceps AND
+glutes, and there was no way to say so in a row.
+
 ### Counted first
 
 96 of the 228 exercises carry instructions: **384 step lines and 241
