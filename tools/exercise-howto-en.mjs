@@ -1021,5 +1021,148 @@ export const EN = {
       'Close slowly — do not let the band snap you back.'],
   m: ['Letting the knees fall inward between reps.',
       'Compensating with the torso instead of opening from the hip.',
-      'A band so stiff it shortens the range to a couple of centimetres.'] }
+      'A band so stiff it shortens the range to a couple of centimetres.'] },
+'לחיצת חזה בשיפוע שלילי במשקולות': {
+  s: ['Set the bench to a decline and hook your feet under the pads.',
+      'Lie back with the dumbbells over your lower chest, palms facing forward.',
+      'Lower them to the sides of your lower chest until your elbow is just below shoulder height.',
+      'Press back up over the same point, without clashing the dumbbells together.'],
+  m: ['Lifting your head off the bench to look — that loads the neck.',
+      'Lowering to mid-chest instead of to the lower chest.',
+      'Standing up fast at the end of the set with your head still low, which makes you dizzy.'] },
+
+'לחיצת חזה על הרצפה במשקולות': {
+  s: ['Lie on the floor with the dumbbells on your thighs and roll them to your chest as you lie back.',
+      'Knees bent or legs straight, dumbbells over your chest.',
+      'Lower until the back of your upper arm touches the floor, and stop there.',
+      'Press up out of the pause, without bouncing the elbow.'],
+  m: ['Bouncing the elbow off the floor — that loads the elbow joint.',
+      'Elbows flared out to the sides instead of about 45 degrees from your body.',
+      'Lifting your hips off the floor to press more.'] },
+
+'פרפר בשיפוע במשקולות': {
+  s: ['Set the bench to a modest incline and lie back with the dumbbells over your chest.',
+      'Palms facing each other, elbows softly bent and held at that angle.',
+      'Open your arms out to the sides in a wide arc until you feel the stretch across your chest.',
+      'Close along the same arc until the dumbbells are back over your chest.'],
+  m: ['Bending and straightening the elbow as you go — that is a press, not a fly.',
+      'Opening too far, below the level of the bench — that loads the shoulder joint.',
+      'Too much weight, which shrinks the arc down to a small movement.'] },
+
+'חתירה בשתי משקולות': {
+  s: ['A dumbbell in each hand, feet hip width, knees softly bent.',
+      'Hinge forward with a flat back until your torso is close to parallel with the floor.',
+      'Row both dumbbells to your ribs, elbows travelling back close to your body.',
+      'Lower them under control until your arms are straight.'],
+  m: ['A rounded back — the main risk in any bent-over row.',
+      'Standing up as you pull, in order to move more weight.',
+      'Pulling with the arms alone, with no movement at the shoulder blades.'] },
+
+'חתירת סיל': {
+  s: ['Lie face down on a raised bench with the dumbbells hanging beneath you.',
+      'Arms straight down, chest resting on the bench.',
+      'Row the dumbbells to your ribs without lifting your chest off the bench.',
+      'Lower them under control until your arms are straight.'],
+  m: ['Lifting your chest off the bench to help — that is the one thing this exercise exists to prevent.',
+      'Kicking with your legs for momentum.',
+      'A partial range that never reaches full extension at the bottom.'] },
+
+'הרמת Y': {
+  s: ['Hinge forward, or lie face down on an inclined bench, with light dumbbells.',
+      'Arms hanging straight down, thumbs pointing up.',
+      'Raise your arms forward and up on a diagonal until they form a Y above your head.',
+      'Lower them slowly along the same path.'],
+  m: ['Too much weight — the lower traps are small, and the movement turns into a pull.',
+      'Shoulders rising towards your ears at the top.',
+      'Lifting your torso to get the arms higher.'] },
+
+'לחיצת כתפיים בישיבה': {
+  s: ['Sit on a bench with a back rest, dumbbells at shoulder height, palms facing forward.',
+      'Back against the rest, stomach braced.',
+      'Press up until your arms are almost straight, without clashing the dumbbells.',
+      'Lower under control until your elbow is level with your shoulder.'],
+  m: ['A big arch in the lower back, which turns it into an incline press.',
+      'Elbows drifting back behind the line of your body — that loads the shoulder joint.',
+      'Snapping the elbow straight at the top.'] },
+
+'כפיפת זוטמן': {
+  s: ['A dumbbell in each hand, arms at your sides, palms facing forward.',
+      'Curl up with your elbows tucked against your ribs.',
+      'At the top, turn your palms over to face down.',
+      'Lower slowly in that reversed grip, and turn back at the bottom.'],
+  m: ['Dropping fast through the reversed grip — that lowering is the whole exercise.',
+      'Swinging the elbow forward to help on the way up.',
+      'Choosing the weight for the way up rather than for the way down.'] },
+
+'סקאל קראשר במשקולות': {
+  s: ['Lie on a bench with a dumbbell in each hand over your chest, palms facing each other.',
+      'Bring your arms back to a slight angle and keep your elbows fixed there.',
+      'Bend at the elbow only and lower the dumbbells to the sides of your head.',
+      'Straighten the elbow again without moving your upper arm.'],
+  m: ['Elbows flaring out to the sides — that loads the elbow joint.',
+      'Moving the upper arm, which turns it into a press.',
+      'Lowering onto your head instead of past its sides.'] },
+
+'לאנג׳ לאחור': {
+  s: ['Stand tall with a dumbbell in each hand at your sides.',
+      'Step back with one leg and lower your hips straight down.',
+      'Go down until your back knee is close to the floor and your front knee is over your foot.',
+      'Drive through your front heel to stand back up.'],
+  m: ['The front knee travelling inwards — that loads the knee joint.',
+      'Landing on the back knee instead of lowering onto it.',
+      'Leaning your torso forward, which shifts the load to the lower back.'] },
+
+'דדליפט רומני במשקולות': {
+  s: ['Stand with a dumbbell in each hand in front of your thighs, feet hip width.',
+      'Soften your knees and keep them at that angle throughout.',
+      'Push your hips back and lower the dumbbells along your legs until you feel the hamstring stretch.',
+      'Come up by driving your hips forward, until you are standing tall.'],
+  m: ['Rounding the lower back once the stretch runs out — that is where the rep ends.',
+      'Bending the knees further on the way down, which turns it into a squat.',
+      'Letting the dumbbells drift away from your legs — that loads the lower back.'] },
+
+'דדליפט על רגל אחת': {
+  s: ['Stand on one leg with a dumbbell in the opposite hand.',
+      'Soften the knee of the standing leg and keep your hips level.',
+      'Hinge forward from the hips and let your free leg rise behind you, in line with your back.',
+      'Come up by driving your hips forward, without touching the floor with the free leg.'],
+  m: ['The hip of the free leg opening out to the side — it should stay facing the floor.',
+      'Rounding the lower back instead of hinging from the hips.',
+      'Adding weight before the balance is steady.'] },
+
+'סקוואט סומו': {
+  s: ['Stand with your feet wider than your shoulders, toes turned out.',
+      'Hold a single dumbbell with both hands in front of you.',
+      'Lower straight down with your knees tracking over your toes.',
+      'Drive up through your heels until your hips are straight.'],
+  m: ['Knees travelling inwards — that loads the knee joint.',
+      'Leaning your torso forward instead of going straight down.',
+      'Toes and knees pointing in different directions.'] },
+
+'הרמת עקבים ברגל אחת': {
+  s: ['Stand on one foot on a step with a dumbbell in the hand on that side.',
+      'Hold something steady with your other hand for balance.',
+      'Rise up onto the ball of your foot and hold the top for a moment.',
+      'Lower slowly until the heel is stretched below the level of the step.'],
+  m: ['Fast bouncing, which uses the tendon rather than the muscle.',
+      'Bending the knee as you go, to help.',
+      'A short range that never drops below the step.'] },
+
+'כפיפה צידית': {
+  s: ['Stand tall with a dumbbell in one hand and the other hand on your waist.',
+      'Feet hip width, hips still.',
+      'Lean your torso towards the dumbbell without turning it.',
+      'Come back to upright by squeezing the opposite side.'],
+  m: ['Turning your torso as you lean — that loads the spine.',
+      'A dumbbell in both hands, which cancels the resistance on one side.',
+      'Leaning forward instead of leaning sideways.'] },
+
+'נשיאת מזוודה': {
+  s: ['Pick a single dumbbell up from the floor on one side, with a flat back.',
+      'Stand tall, shoulders level, the other hand free.',
+      'Walk in a straight line with normal steps, without leaning away to the other side.',
+      'Set the dumbbell down under control and swap sides.'],
+  m: ['Leaning away to balance — that cancels the work the obliques are there to do.',
+      'The shoulder on the loaded side dropping.',
+      'Dropping the dumbbell at the end instead of setting it down.'] }
 };
