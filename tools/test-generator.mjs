@@ -109,6 +109,22 @@ setTimeout(function(){exLoad(function(){
     var names=many.filter(function(r){return r.name;}).map(function(r){return r.name;});
     R.dupes=names.length-(new Set(names)).size;
 
+    /* ── a session is not a week ──
+       Nothing logged, so every muscle is short by the whole band - and the
+       screen still has to propose a session rather than the week. */
+    localStorage.setItem('fit_log','[]');
+    genOpen();
+    var chosen=[];for(var k in _gen.on)if(_gen.on.hasOwnProperty(k))chosen.push(k);
+    R.proposed=chosen.length;
+    R.proposedShort=chosen.every(function(m){return _gen.on[m]===SETS_BAND.lo;});
+    _gen=null;_fitView='home';
+    /* and however far behind a muscle is, one session asks for one session */
+    var big=genPick({muscles:['חזה'],equip:GYM,sets:{'חזה':20}});
+    R.cappedSets=big.reduce(function(a,r){return a+(r.sets||0);},0);
+    R.cappedEx=big.length;
+    var bigEmph=genPick({muscles:['חזה'],equip:GYM,sets:{'חזה':20},emphasis:'חזה'});
+    R.cappedEmph=bigEmph.reduce(function(a,r){return a+(r.sets||0);},0);
+
     /* ── and out the other end, as a session the screen already speaks ── */
     var w=genToWorkout(many,'size');
     R.wLen=w.length;
@@ -196,6 +212,14 @@ ok(got.homeNames.length > 0, got.homeNames.length + ' exercises found with nothi
 ok(got.homeAllDoable === true, 'and every one of them needs nothing else: ' + got.homeNames.join(', '));
 ok(Array.isArray(got.homeNone), 'a muscle with nothing available is reported rather than dropped' +
    (got.homeNone.length ? ' (' + got.homeNone.join(', ') + ')' : ' (none this time)'));
+
+console.log('');
+console.log('a session is not a week');
+ok(got.proposed === 3, 'an empty week proposes THREE muscles, not all eleven (got ' + got.proposed + ')');
+ok(got.proposedShort === true, 'each carrying its real shortfall, which is the whole band');
+ok(got.cappedSets === 6, 'a muscle twenty sets behind is asked for six in one session (got ' + got.cappedSets + ')');
+ok(got.cappedEx === 2, 'which is two exercises, not seven (got ' + got.cappedEx + ')');
+ok(got.cappedEmph === 9, 'and emphasis adds on top of the cap rather than being swallowed by it (got ' + got.cappedEmph + ')');
 
 console.log('');
 console.log('and out as a session the workout screen already speaks');
