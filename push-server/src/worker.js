@@ -848,7 +848,12 @@ export default {
       const list = cands.map((n, i) => i + '. ' + n).join('\n');
       const unitWord = String((b && b.unit) || 'unit').slice(0, 12);
 
-      let r;
+      /* Built once and handed to whichever provider answers. It carries the
+         sixty rows and the unit the person meant; a second copy for a second
+         provider is how two prompts that agree today disagree next month. */
+      const USER = 'FOOD: ' + q + '\nUNIT THE USER MEANS: ' + unitWord +
+                   '\nHOW MANY TO NAME: ' + want + '\nROWS:\n' + list;
+      let r, why = '', by = 'anthropic';
       try {
         r = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -865,26 +870,36 @@ export default {
             system: SYSTEM,
             messages: [{
               role: 'user',
-              content: 'FOOD: ' + q + '\nUNIT THE USER MEANS: ' + unitWord +
-                       '\nHOW MANY TO NAME: ' + want + '\nROWS:\n' + list,
+              content: USER,
             }],
           }),
         });
       } catch {
-        return json({ error: 'could not reach the model' }, 502);
+        r = null;   /* both failures meet below, where Gemini is asked */
       }
-      if (!r.ok) {
+      if (r && !r.ok) {
         /* The API's own sentence, not only its number: a 400 here is
            usually something structural in the request we sent, and the
            code alone is indistinguishable from a genuine refusal. */
-        let why = '';
         try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
-        return json({ error: 'the model refused', status: r.status, why }, 502);
       }
 
-      let out;
-      try { out = await r.json(); } catch { return json({ error: 'bad reply' }, 502); }
-      const raw = ((out.content || []).find((c) => c.type === 'text') || {}).text || '';
+      /* WHOEVER ANSWERS, the same order and the same prompt as /parse. */
+      let raw = '';
+      if (r && r.ok) {
+        let out = null;
+        try { out = await r.json(); } catch { out = null; }
+        raw = out ? (((out.content || []).find((c) => c.type === 'text') || {}).text || '') : '';
+      }
+      if (!raw) {
+        const g = await geminiText(SYSTEM, USER, 500);
+        if (g) { raw = g; by = 'gemini'; }
+      }
+      if (!raw) {
+        return (r && !r.ok)
+          ? json({ error: 'the model refused', status: r.status, why }, 502)
+          : json({ error: 'could not reach the model' }, 502);
+      }
       const m = firstJson(raw);
       let parsed;
       try { parsed = JSON.parse(m || raw); } catch { return json({ error: 'unreadable' }, 502); }
@@ -909,7 +924,7 @@ export default {
         .slice(0, 4);
 
       // note: no nutrition field exists in this reply, by design
-      return json({ ok: true, pick, picks, grams, terms, sure: parsed && parsed.sure !== false });
+      return json({ ok: true, by, pick, picks, grams, terms, sure: parsed && parsed.sure !== false });
     }
 
     /* ── /cross ──────────────────────────────────────────────────────────
