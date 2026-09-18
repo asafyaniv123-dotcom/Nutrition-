@@ -1494,5 +1494,76 @@ export const EN = {
       'Drive up through the whole foot until your hips are straight.'],
   m: ['Your heels lifting off the platform at the bottom.',
       'Knees travelling inwards — that loads the knee joint.',
-      'Your back coming away from the pad at the bottom.'] }
+      'Your back coming away from the pad at the bottom.'] },
+'סקוואט בחגורה': {
+  s: ['Fasten the belt around your hips and attach it to the load.',
+      'Stand on the platforms about shoulder width and hold the handles.',
+      'Squat down under control, knees tracking over your toes.',
+      'Drive up through the whole foot until your hips are straight.'],
+  m: ['Pulling with your arms instead of letting your legs do the work.',
+      'A belt sitting on your waist rather than your hips — that loads the lower back.',
+      'Knees travelling inwards — that loads the knee joint.'] },
+
+'כפיפת ברך בעמידה': {
+  s: ['Set the machine so the pad sits above the Achilles tendon, not on your calf.',
+      'Stand tall with your hip against the support and hold the handles.',
+      'Curl your knee until your heel comes towards your backside.',
+      'Lower slowly until your leg is almost straight.'],
+  m: ['Tipping your hips forward to help — that loads the lower back.',
+      'A pad sitting high on the calf, which shortens the range.',
+      'Letting it drop on the way down, which gives up the useful half.'] },
+
+'הרמת ירך אחורית': {
+  s: ['Tuck your feet under the pads and kneel with your knees on the pad.',
+      'Body in a straight line from knee to head, hands on your chest.',
+      'Lower forward slowly, resisting with your hamstrings.',
+      'Pull yourself back up by squeezing the hamstrings, without jerking.'],
+  m: ['Rounding your back, or bending at the hips, instead of holding the straight line.',
+      'Going down too fast, which turns it into a fall.',
+      'Pushing off the floor with your hands on every rep, which hides what the hamstrings can actually do.'] },
+
+'היפ ת׳ראסט במכונה': {
+  s: ['Sit in the machine with your back on the pad and the top pad across your hip bones.',
+      'Feet on the platform about hip width, knees at a right angle at the top.',
+      'Drive your hips up to a straight line from knee to shoulder and squeeze your glutes.',
+      'Lower under control, stopping just before the weight settles.'],
+  m: ['Arching your lower back at the top instead of squeezing the glutes — that loads the lower back.',
+      'A pad sitting on your ribs rather than your hips.',
+      'Feet too far out, which hands the work to the hamstrings.'] },
+
+'בעיטת ישבן במכונה': {
+  s: ['Set the machine so the pad sits above the knee of the working leg.',
+      'Lean forward onto the pads, stomach braced.',
+      'Push the leg back until it is in line with your back.',
+      'Bring it back slowly until the leg is under your body again.'],
+  m: ['Arching the lower back to get the leg higher — that loads the lower back.',
+      'Turning your hips out instead of keeping them facing forward.',
+      'Swinging it fast, which skips the squeeze.'] },
+
+'קירוב ירך במכונה': {
+  s: ['Sit in the machine and rest your thighs against the inner pads.',
+      'Set the starting width to a comfortable stretch, not a maximum one.',
+      'Bring your legs together until the pads almost touch.',
+      'Open slowly back to the stretch, without letting the weight throw you.'],
+  m: ['Starting too wide — that loads the groin.',
+      'Leaning back and lifting your hips off the seat to close.',
+      'Letting it snap open — that is where the risk is.'] },
+
+'הרמת עקבים בלחיצת רגליים': {
+  s: ['Sit in the leg press and place the balls of your feet on the edge of the platform.',
+      'Legs almost straight but not locked, catches released.',
+      'Push the platform away with the balls of your feet as far as it goes, and hold for a moment.',
+      'Lower slowly until your calves are fully stretched.'],
+  m: ['Bending the knee as you go, which turns it into a short leg press.',
+      'A short range that never reaches the stretch at the bottom.',
+      'Feet placed too high on the platform, so they slip.'] },
+
+'כפיפות בטן במכונה': {
+  s: ['Set the seat so the machine pivot is level with your hip joint.',
+      'Hold the handles or pads, back against the rest.',
+      'Curl your torso forward from the chest, not from the waist.',
+      'Come back slowly to a light stretch, without letting the weight pull you.'],
+  m: ['Pulling with your arms instead of contracting your stomach.',
+      'Craning your neck forward to reach — that loads the neck.',
+      'A short range that never reaches the squeeze at the end.'] }
 };
