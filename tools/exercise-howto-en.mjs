@@ -1387,5 +1387,112 @@ export const EN = {
       'Let it back up along the same path under control.'],
   m: ['Turning from the lower back alone while the hips stay locked — that loads the spine.',
       'Bending your elbows and pulling with your arms instead of turning through your body.',
-      'Letting it snap back up, which gives up control at the top.'] }
+      'Letting it snap back up, which gives up control at the top.'] },
+'לחיצת חזה בשיפוע במכונה': {
+  s: ['Set the seat height so the handles sit at upper-chest level.',
+      'Sit with your back against the pad and your feet flat on the floor.',
+      'Press forward and up until your arms are almost straight.',
+      'Come back under control until your elbow is just behind the line of your body.'],
+  m: ['A seat set too low, which turns it into an overhead press — that loads the shoulder joint.',
+      'Lifting your back off the pad to press more.',
+      'Snapping the elbow straight at the end.'] },
+
+'מתח במכונת סיוע': {
+  s: ['Choose an assistance weight — the higher it is, the easier the rep.',
+      'Take the bar a little wider than your shoulders and kneel or stand on the pad.',
+      'Pull until your chin passes the bar, elbows driving down to your ribs.',
+      'Lower slowly until your arms are fully straight.'],
+  m: ['Bouncing off the pad to start the pull.',
+      'Dropping on the way down — that is where most of the benefit is.',
+      'So much assistance that the set ends before your back has worked.'] },
+
+'משיכת גב במכונה': {
+  s: ['Set the thigh pad so you are not lifted off the seat.',
+      'Take the handles, sit tall, chest open.',
+      'Pull the handles to your upper chest, elbows travelling down and back.',
+      'Come back up under control until your shoulder blades open.'],
+  m: ['Leaning far back, which turns it into a row.',
+      'Pulling with your hands instead of leading with your elbows.',
+      'Shoulders rising towards your ears at the top.'] },
+
+'חתירה בתמיכת חזה': {
+  s: ['Set the pad so your chest rests against it and the handles are within reach.',
+      'Feet planted, chest against the pad for the whole set.',
+      'Row the handles to your ribs with your elbows travelling back.',
+      'Let them out under control until your arms are straight and your shoulder blades stretch.'],
+  m: ['Lifting your chest off the pad to pull more — that is the one thing this exercise exists to prevent.',
+      'Pulling with the arms alone, with no movement at the shoulder blades.',
+      'Shoulders rising towards your ears at the end of the pull.'] },
+
+'חתירה גבוהה במכונה': {
+  s: ['Set the seat so the handles are at shoulder height or a little above.',
+      'Chest against the pad, overhand grip on the handles.',
+      'Pull the handles down and back with your elbows at shoulder height.',
+      'Let them out under control until your arms are straight.'],
+  m: ['Pulling to your stomach instead of your upper chest — that is the low row.',
+      'Tucking your elbows in, which hands the work to the lats.',
+      'Rising off the seat to pull more.'] },
+
+'משיכת כתפיים במכונה': {
+  s: ['Set the machine so the handles are within reach with straight arms.',
+      'Stand or sit tall with your shoulders relaxed and low.',
+      'Lift your shoulders straight up towards your ears and hold for a moment.',
+      'Lower slowly until they hang completely.'],
+  m: ['Rolling the shoulders in a circle — that loads the shoulder joint and adds nothing.',
+      'Bending the elbow, which turns it into a pull.',
+      'A short range that never returns to a full hang.'] },
+
+'הרמת גב 45 מעלות': {
+  s: ['Set the pad so it sits just below your hip bone.',
+      'Cross your arms on your chest, body in a straight line from head to heels.',
+      'Bend at the hips until you feel the hamstring stretch, without rounding your back.',
+      'Come up to the straight line and stop — not past it.'],
+  m: ['Rising past the straight line — that loads the lower back.',
+      'A pad set too high, which blocks the hips from moving.',
+      'Rounding your back on the way down instead of hinging at the hips.'] },
+
+'הרחקת כתף במכונה': {
+  s: ['Set the seat so your shoulder joint lines up with the machine pivot.',
+      'Sit tall with your forearms or elbows against the pads.',
+      'Raise your arms out to the sides up to shoulder height.',
+      'Lower slowly until the pads are almost back against your body.'],
+  m: ['Raising above shoulder height — the traps take the work.',
+      'Rising off the seat to help.',
+      'Letting it drop on the way down, which gives up the useful half.'] },
+
+'כפיפת מרפק במכונה': {
+  s: ['Set the seat so your elbows rest on the pad in line with the machine pivot.',
+      'Take the handles with your arms almost straight.',
+      'Curl up to the top without lifting your elbows off the pad.',
+      'Lower slowly until your arms are almost straight again.'],
+  m: ['Elbows lifting off the pad on the way up.',
+      'Rising off the seat to help.',
+      'A partial range that never returns to straight at the bottom.'] },
+
+'פשיטת מרפק במכונה': {
+  s: ['Set the seat so your elbows line up with the machine pivot.',
+      'Sit tall with your back against the pad and take the handles.',
+      'Straighten your elbows until your arms are fully extended.',
+      'Let them back slowly until the elbow returns to where it started.'],
+  m: ['Leaning your body forward to push with your bodyweight.',
+      'Elbows drifting off the pad, which turns it into a pull.',
+      'Snapping the elbow straight at the end.'] },
+
+'לחיצת רגליים ברגל אחת': {
+  s: ['Sit in the leg press and place one foot in the middle of the platform.',
+      'Keep the other leg out of the way, back and hips against the pad.',
+      'Release the catches and lower until your knee is at about a right angle.',
+      'Press back through the whole foot, without locking the knee.'],
+  m: ['Your hips lifting off the pad at the bottom — that loads the lower back.',
+      'The knee travelling inwards — that loads the knee joint.',
+      'Pushing with the toes only, so the heel lifts off the platform.'] },
+
+'סקוואט מטוטלת': {
+  s: ['Stand in the machine with your shoulders under the pads and your feet on the platform.',
+      'Feet about shoulder width, back against the pad.',
+      'Release the catches and lower under control, knees tracking over your toes.',
+      'Drive up through the whole foot until your hips are straight.'],
+  m: ['Your heels lifting off the platform at the bottom.',
+      'Knees travelling inwards — that loads the knee joint.',
+      'Your back coming away from the pad at the bottom.'] }
 };
