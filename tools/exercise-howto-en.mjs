@@ -1663,5 +1663,121 @@ export const EN = {
       'Lower slowly until your toes touch the floor.'],
   m: ['Bending the knee to help the lift.',
       'The heel coming off the floor as you go.',
-      'A short range that never reaches the top.'] }
+      'A short range that never reaches the top.'] },
+'סופרמן': {
+  s: ['Lie face down on a mat, arms straight out in front and legs straight behind.',
+      'Forehead close to the mat, eyes down.',
+      'Lift your arms, chest and legs off the mat together, and hold for a moment.',
+      'Lower everything slowly until it lightly touches the mat.'],
+  m: ['Lifting your head and looking forward — that loads the neck.',
+      'Lifting as high as possible instead of squeezing under control — that loads the lower back.',
+      'Holding your breath instead of breathing normally.'] },
+
+'בירד דוג': {
+  s: ['Get on all fours, hands under your shoulders and knees under your hips.',
+      'Brace your stomach so your back stays flat and still.',
+      'Reach one arm forward and the opposite leg back, to a line with your back.',
+      'Bring them back under control and change sides.'],
+  m: ['Your hips turning to the side as the leg rises — they should stay level with the floor.',
+      'Arching the lower back to get the leg higher.',
+      'Moving fast, which turns it into a rock rather than control.'] },
+
+'כפיפות בטן הפוכות': {
+  s: ['Lie on your back on a mat, hands at your sides or under your hips.',
+      'Lift your legs until your knees are at a right angle above your hips.',
+      'Roll your hips off the mat and bring your knees towards your chest.',
+      'Lower your hips slowly until they touch the mat again.'],
+  m: ['Swinging your legs for momentum instead of rolling your hips.',
+      'Pushing off the floor with your hands to lift your hips.',
+      'Arching your lower back on the way down — that loads the lower back.'] },
+
+'סיטאפ': {
+  s: ['Lie on your back on a mat, knees bent and feet flat on the floor.',
+      'Hands on your chest, or beside your head without pulling.',
+      'Come up to sitting, rolling your back up one vertebra at a time.',
+      'Lower slowly in the same order until your back is back on the mat.'],
+  m: ['Pulling your head with your hands — that loads the neck.',
+      'Throwing your arms for momentum instead of rolling your back up.',
+      'Your feet lifting off the floor, which gives away that momentum is doing the work.'] },
+
+'הולו הולד': {
+  s: ['Lie on your back on a mat and press your lower back into it.',
+      'Lift your head, shoulders and legs a little off the mat, arms overhead.',
+      'Lower your legs only as far as your lower back stays pressed down.',
+      'Hold the position and breathe normally for the time.'],
+  m: ['The lower back coming off the mat — lower the legs less.',
+      'Tucking your chin hard into your chest — that loads the neck.',
+      'Holding your breath instead of breathing normally.'] },
+
+'דד באג': {
+  s: ['Lie on your back on a mat, arms straight above your chest and knees at a right angle above your hips.',
+      'Press your lower back into the mat and keep it there.',
+      'Lower one arm overhead and the opposite leg towards the floor.',
+      'Bring them back to the middle under control and change sides.'],
+  m: ['The lower back coming off the mat — a smaller range is better.',
+      'Lowering the arm and leg on the same side instead of opposite ones.',
+      'Moving fast, which skips the control.'] },
+
+'וי אפ': {
+  s: ['Lie on your back on a mat, arms straight overhead and legs straight.',
+      'Brace your stomach and lift your arms and legs at the same time.',
+      'Bring your hands to your feet so your body makes a V.',
+      'Lower everything slowly until it lightly touches the mat.'],
+  m: ['Bending your knees to reach — that is a crunch.',
+      'Swinging your arms for momentum.',
+      'Dropping back onto the mat instead of lowering under control.'] },
+
+'בעיטות רפרוף': {
+  s: ['Lie on your back on a mat with your hands under your hips.',
+      'Lift both legs a little off the mat, legs straight.',
+      'Kick up and down alternately in small movements.',
+      'Keep your lower back pressed into the mat the whole time.'],
+  m: ['The lower back coming off the mat — raise your legs higher.',
+      'Big fast kicks instead of small controlled ones.',
+      'Lifting your head to watch your feet — that loads the neck.'] },
+
+'כפיפות אופניים': {
+  s: ['Lie on your back on a mat, hands beside your head without pulling.',
+      'Lift your shoulders a little and bring one knee towards your chest.',
+      'Turn your torso so the opposite elbow comes towards that knee.',
+      'Change sides under control, without putting your shoulders down.'],
+  m: ['Pulling your head with your hands — that loads the neck.',
+      'Turning from the elbows instead of from the torso.',
+      'Going fast, which turns it into a rock.'] },
+
+'סיטאפ בשיפוע שלילי': {
+  s: ['Hook your feet under the pads of a decline bench.',
+      'Hands on your chest, rolling your back off the bench one vertebra at a time.',
+      'Come up to sitting without pulling on your head.',
+      'Lower slowly until your back is back on the bench.'],
+  m: ['Dropping backwards instead of lowering under control — that loads the lower back.',
+      'Pulling your head with your hands — that loads the neck.',
+      'Too steep a decline before you have the strength to control the way down.'] },
+
+'הרמת ברכיים בתלייה': {
+  s: ['Hang from a pull-up bar with straight arms, shoulders pulled down away from your ears.',
+      'Brace your stomach to stop yourself swinging.',
+      'Raise your knees towards your chest, rolling your hips up a little.',
+      'Lower slowly until your legs are straight, without losing control.'],
+  m: ['Swinging your body for momentum — the stomach stops working.',
+      'Raising the knees without rolling the hips, which turns it into a hip flexor exercise.',
+      'Shoulders rising towards your ears in the hang.'] },
+
+'רגליים למוט': {
+  s: ['Hang from a pull-up bar with straight arms, shoulders pulled down.',
+      'Brace your stomach and bring your legs slightly forward to stop the swing.',
+      'Raise your straight legs until your toes touch the bar.',
+      'Lower slowly back to a full hang, under control.'],
+  m: ['A big swing doing most of the work instead of your stomach.',
+      'Bending your knees to reach — that is a knee raise.',
+      'Dropping on the way down — that loads the shoulder joint at the bottom.'] },
+
+'פלאנק עם משקל': {
+  s: ['Rest on your forearms and toes, elbows under your shoulders.',
+      'Have someone set a plate on your upper back, between your shoulder blades.',
+      'Body in a straight line from head to heels, stomach and glutes braced.',
+      'Hold and breathe normally for the time.'],
+  m: ['Hips dropping — that loads the lower back, and it is the moment to stop.',
+      'Hips rising to make it easier, which takes the load off the stomach.',
+      'A plate sitting on your waist rather than between your shoulder blades.'] }
 };
