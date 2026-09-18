@@ -1922,5 +1922,148 @@ export const EN = {
       'Wind the other way to lower it slowly.'],
   m: ['Letting your arms drop from shoulder height as they tire.',
       'Dropping the weight instead of winding it back down — that is half the work.',
-      'Too much weight, which forces your arms down straight away.'] }
+      'Too much weight, which forces your arms down straight away.'] },
+'חתירה ברצועות': {
+  s: ['Set the straps and take the handles with straight arms.',
+      'Walk your feet forward and lean back until your body is in a straight line, heels down.',
+      'Pull your chest towards the handles, elbows back and shoulder blades drawing together.',
+      'Lower slowly until your arms are straight.'],
+  m: ['Hips dropping on the way up — a sign the stomach is not braced.',
+      'Pulling with the arms alone, with no movement at the shoulder blades.',
+      'Standing too upright, which takes almost all the resistance away.'] },
+
+'דדליפט במוט טרפז': {
+  s: ['Stand in the middle of the bar, feet hip width.',
+      'Take both handles, set your back flat and your chest open.',
+      'Push the floor away with your legs and stand up.',
+      'Lower under control until the bar touches the floor.'],
+  m: ['A rounded lower back — stop the set.',
+      'Your hips rising before your chest, which turns it into a hinge.',
+      'Leaning back at the lockout — that loads the lower back.'] },
+
+'פתיחת גומייה': {
+  s: ['Hold a band with both hands about shoulder width, arms straight in front of your chest.',
+      'Stand tall with your shoulders down.',
+      'Open your arms out to the sides until the band touches your chest.',
+      'Bring them back slowly to where you started.'],
+  m: ['Bending your elbows and pulling, which turns it into a row.',
+      'Shoulders rising towards your ears as you open.',
+      'A band too strong for you, which forces momentum instead of control.'] },
+
+'סיבוב חיצוני של הכתף': {
+  s: ['Anchor a band at elbow height and stand side-on to it.',
+      'Elbow against your ribs and bent to a right angle, forearm across your stomach.',
+      'Turn your forearm out away from your body without moving your elbow.',
+      'Bring it back slowly across your stomach.'],
+  m: ['The elbow drifting away from your ribs — the shoulder stops doing the work.',
+      'A band that is too strong — this exercise is meant for a light load.',
+      'Turning your whole body instead of just the forearm.'] },
+
+'מקבילים על ספסל': {
+  s: ['Sit on the edge of a bench with your hands beside your hips, gripping the edge.',
+      'Slide your hips forward off the bench, legs bent or straight.',
+      'Lower until your elbow is at about a right angle, elbows back rather than out.',
+      'Press back up until your arms are almost straight.'],
+  m: ['Going too deep — that loads the shoulder joint at this angle.',
+      'Elbows flaring out to the sides.',
+      'Hips drifting away from the bench, which shifts the load to the front of the shoulder.'] },
+
+'סקוואט לקופסה': {
+  s: ['Set a box or step behind you at a height that gives the depth you want.',
+      'Bar across your upper traps, feet about shoulder width.',
+      'Push your hips back and lower until you sit lightly on the box.',
+      'Stand up off the box through the whole foot, without rocking.'],
+  m: ['Dropping onto the box instead of sitting down under control — that loads the spine.',
+      'Relaxing completely on the box and then rocking up out of it.',
+      'Knees travelling inwards as you stand — that loads the knee joint.'] },
+
+'ירידות מדרגה': {
+  s: ['Stand on a step with one foot, the other hanging off the side.',
+      'Stomach braced, hands free or at your sides.',
+      'Lower slowly until the heel of the hanging leg lightly touches the floor.',
+      'Come back up by driving through the heel of the standing leg.'],
+  m: ['Landing on the hanging leg to help — it is only meant to touch.',
+      'The knee travelling inwards on the way down — that loads the knee joint.',
+      'Too high a step before you can control the way down.'] },
+
+'הליכה צידית בגומייה': {
+  s: ['Put a band around your shins or above your knees.',
+      'Soften your knees and hips, feet about hip width.',
+      'Step sideways in small steps, keeping tension in the band.',
+      'Walk several steps each way without losing the bend.'],
+  m: ['Standing up as you go, which takes the work away from the glutes.',
+      'Dragging the trailing leg instead of stepping with it.',
+      'Knees travelling inwards, which cancels the tension in the band.'] },
+
+'צדפה': {
+  s: ['Lie on your side with a band above your knees, knees bent and feet together.',
+      'Hips square to the floor, head resting on your lower arm.',
+      'Open your top knee upwards without letting your hips move.',
+      'Close slowly until your knees touch.'],
+  m: ['Rolling your hips back to open wider — then the glutes are not working.',
+      'Your feet coming apart, which gives away that the hips turned.',
+      'Moving fast, which skips the squeeze.'] },
+
+'פלאנק קופנהגן': {
+  s: ['Lie on your side and rest your top leg on a bench, ankle or knee on the pad.',
+      'Prop yourself on your forearm, elbow under your shoulder.',
+      'Lift your hips to a straight line from head to bottom leg.',
+      'Hold and breathe normally, then lower slowly.'],
+  m: ['Hips dropping — that loads the adductors, and it is the moment to stop.',
+      'Starting with the ankle on the bench before the knee version holds — that is the long lever.',
+      'Turning your torso forward instead of staying on your side.'] },
+
+'הליכה בשיפוע': {
+  s: ['Set the treadmill to an incline and a speed you can walk at without holding on.',
+      'Stand tall, eyes forward, arms swinging freely.',
+      'Walk at a normal stride — an effort you could still speak short sentences at.',
+      'Bring the incline and speed down gradually at the end rather than stopping dead.'],
+  m: ['Holding the rail, which takes a large part of the effort away.',
+      'An incline so steep that the stride becomes a climb on your toes.',
+      'Leaning forward onto the console instead of standing tall.'] },
+
+'אופני התנגדות': {
+  s: ['Set the seat height so your knee is almost straight at the bottom of the pedal stroke.',
+      'Hold the handles, back straight, stomach braced.',
+      'Push and pull with your legs and arms together — the resistance rises with your effort.',
+      'Slow down gradually at the end rather than stopping dead.'],
+  m: ['A seat too low, which closes the knee to a sharp angle — that loads the knee joint.',
+      'Working with the legs only, which leaves half the machine out of it.',
+      'Starting at full effort — the resistance here builds very fast.'] },
+
+'סקי ארג': {
+  s: ['Stand facing the machine and take both handles above head height.',
+      'Feet about hip width, knees softly bent.',
+      'Pull down through your stomach and hips, finishing with your hands behind your thighs.',
+      'Come back up under control to the starting position.'],
+  m: ['Pulling with your arms alone — the power here comes from your stomach and hips.',
+      'Rounding your back at the end of the pull — that loads the lower back.',
+      'Hands stopping at chest height instead of carrying on behind your thighs.'] },
+
+'קפיצה לקופסה': {
+  s: ['Pick a box you are sure you can land on, and stand about a stride from it.',
+      'Feet hip width, knees softly bent and arms back.',
+      'Jump and land on the box with both feet, knees soft.',
+      'Step down off the box rather than jumping down.'],
+  m: ['Jumping down off the box — that landing loads the knee joint over and over.',
+      'Too high a box, which makes you tuck your knees to your chest instead of jumping.',
+      'Landing with locked legs instead of soft knees.'] },
+
+'דחיפת מזחלת': {
+  s: ['Load the sled and take the uprights high or low, whichever is available.',
+      'Arms straight, body leaning forward in a line from head to heels.',
+      'Push in short, frequent steps, driving the floor backwards.',
+      'Slow down and stop at a distance you decided in advance, not when your legs give out.'],
+  m: ['A rounded back under load — that loads the lower back.',
+      'Steps too long, which lose the momentum between one and the next.',
+      'Arms bending and the body standing up, which takes the drive away from your legs.'] },
+
+'חבלי קרב': {
+  s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
+      'Step back until the ropes are nearly taut, stomach braced.',
+      'Swing your arms alternately up and down in continuous waves.',
+      'Slow down gradually at the end of the set rather than dropping the ropes.'],
+  m: ['Standing up and losing the bend in your knees as you tire.',
+      'Moving from the shoulders alone — the waves here start at your hips.',
+      'Holding your breath instead of breathing normally.'] }
 };
