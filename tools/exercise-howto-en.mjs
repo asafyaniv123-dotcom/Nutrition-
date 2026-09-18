@@ -1280,5 +1280,112 @@ export const EN = {
       'Lower it under control until your arms are straight.'],
   m: ['Pulling above shoulder height — that loads the shoulder joint.',
       'Letting the wrists bend under the bar — that loads the wrist joint.',
-      'Rocking your body back to help the pull.'] }
+      'Rocking your body back to help the pull.'] },
+'כפיפת פטיש בחבל': {
+  s: ['Attach a rope to a low pulley and hold both ends, palms facing each other.',
+      'Stand tall with your elbows against your ribs.',
+      'Curl up to the top without turning your palms.',
+      'Lower slowly until your arms are straight.'],
+  m: ['Swinging the elbow forward, which turns it into a pull.',
+      'Rocking your body back on the way up.',
+      'A partial range that never returns to straight at the bottom.'] },
+
+'כפיפת מרפק בפולי מאחור': {
+  s: ['Attach a single handle at shoulder height and turn your back to the pulley.',
+      'Step forward until your arm is stretched behind the line of your body.',
+      'Bend the elbow and pull the handle forward and up, without moving your upper arm.',
+      'Lower slowly until your arm is back behind you, under stretch.'],
+  m: ['Bringing the upper arm forward, which cancels the stretch the exercise is built around.',
+      'Leaning your torso forward on the way up.',
+      'Too much weight, which drags the shoulder back instead of staying at the elbow — that loads the shoulder joint.'] },
+
+'פשיטת מרפק בפולי ביד אחת': {
+  s: ['Attach a single handle to a high pulley and take it in one hand.',
+      'Stand tall with your elbow against your ribs, bent to a right angle.',
+      'Straighten the elbow downwards until your arm is fully extended.',
+      'Let it back up slowly until your forearm returns to where it started.'],
+  m: ['Moving the elbow back and forth — the upper arm should stay put.',
+      'Leaning your body forward to push with your bodyweight.',
+      'Snapping the elbow straight at the bottom.'] },
+
+'פשיטת מרפק בפולי אחיזה תחתונה': {
+  s: ['Attach a straight bar to a high pulley and hold it underhand, palms facing up.',
+      'Stand tall with your elbows against your ribs.',
+      'Straighten your elbows downwards until your arms are fully extended, without turning your palms.',
+      'Let it back up slowly until your forearms are back where they started.'],
+  m: ['Letting the wrists bend under load — that loads the wrist joint.',
+      'Elbows drifting forward, which turns it into a pull.',
+      'Too much weight for this grip, so the hands give out before the muscle does.'] },
+
+'פשיטת מרפק מעל הראש בחבל': {
+  s: ['Attach a rope to a low pulley, take both ends and turn your back to it.',
+      'Bring your hands overhead with your elbows bent and the rope behind your head.',
+      'Straighten your elbows up and forward until your arms are fully extended.',
+      'Bend back slowly until you feel the stretch behind your head.'],
+  m: ['Elbows flaring out to the sides — that loads the elbow joint.',
+      'Arching your lower back to finish the extension.',
+      'Letting the upper arm drop, which turns it into a pull.'] },
+
+'בעיטת טרייספס בפולי': {
+  s: ['Attach a single handle to a low pulley and hinge forward with a flat back.',
+      'Bring your upper arm in line with your back, elbow bent.',
+      'Straighten the elbow back until your arm is fully extended, and hold for a moment.',
+      'Bend back slowly without letting the upper arm drop.'],
+  m: ['The upper arm falling on every rep — the whole exercise depends on it not moving.',
+      'Turning the shoulder back to add to the extension.',
+      'Too much weight, which forces you to swing.'] },
+
+'משיכה בין הרגליים': {
+  s: ['Attach a rope to a low pulley, turn your back to it and pass the rope between your legs.',
+      'Step forward until the cable is taut, feet about shoulder width.',
+      'Push your hips back with a flat back until you feel the hamstring stretch.',
+      'Drive your hips forward to standing and squeeze your glutes.'],
+  m: ['Squatting instead of hinging at the hips — the knees take the work.',
+      'Pulling with your arms instead of letting your hips make the movement.',
+      'Leaning back at the top — that loads the lower back.'] },
+
+'בעיטת ישבן בפולי': {
+  s: ['Attach an ankle strap to a low pulley and stand facing it.',
+      'Hold the frame, soften the standing knee, stomach braced.',
+      'Kick the free leg back until it is in line with your back.',
+      'Bring it back slowly until the leg is under your body again.'],
+  m: ['Arching the lower back to get the leg higher — that loads the lower back.',
+      'Turning your hips out instead of keeping them facing forward.',
+      'Bending the knee, which turns it into a leg curl.'] },
+
+'קירוב ירך בפולי': {
+  s: ['Attach an ankle strap to a low pulley and stand side-on to it.',
+      'The leg nearest the pulley is the working one; hold the frame for balance.',
+      'Pull that leg in, across the front of the other one.',
+      'Let it back out slowly until you feel the stretch in the groin.'],
+  m: ['Turning your hips to add range.',
+      'Leaning your body to the other side to balance.',
+      'Letting it snap back out — that is where the load is.'] },
+
+'הרחקת ירך בפולי': {
+  s: ['Attach an ankle strap to a low pulley and stand side-on to it.',
+      'The leg furthest from the pulley is the working one; hold the frame for balance.',
+      'Raise that leg out to the side without bending the knee.',
+      'Bring it back slowly until your legs almost touch.'],
+  m: ['Leaning your torso to the other side to get the leg higher.',
+      'Turning your hips so the leg rises forward instead of out to the side.',
+      'Too much weight, which turns it into a movement of the whole hip.'] },
+
+'לחיצת פאלוף': {
+  s: ['Attach a handle at chest height and stand side-on to the pulley.',
+      'Hold it in both hands against your breastbone, feet about shoulder width.',
+      'Push your hands straight out until your arms are extended, without letting your body turn.',
+      'Bring them back to your chest slowly, still resisting the turn.'],
+  m: ['Letting your torso turn towards the pulley — that is the one thing this exercise exists to prevent.',
+      'Leaning sideways instead of standing upright.',
+      'Holding your breath instead of breathing through it.'] },
+
+'חיתוך עצים בפולי': {
+  s: ['Set the pulley high and stand side-on to it, handle in both hands.',
+      'Feet wider than your shoulders, arms straight.',
+      'Pull the handle diagonally down and across, turning through your waist and hips together.',
+      'Let it back up along the same path under control.'],
+  m: ['Turning from the lower back alone while the hips stay locked — that loads the spine.',
+      'Bending your elbows and pulling with your arms instead of turning through your body.',
+      'Letting it snap back up, which gives up control at the top.'] }
 };
