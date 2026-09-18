@@ -227,10 +227,52 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
     if (url.pathname === '/health') {
-      // booleans only - never the values themselves
-      // booleans only, never the values - enough to tell a missing key from a
-      // broken one without publishing anything about either
-      return json({ ok: true, configured: !!env.VAPID_JWK, ai: !!env.AI_KEY, time: new Date().toISOString() });
+      // booleans only, never the values themselves.
+      //
+      // `ai` says a key is CONFIGURED and nothing more, which is true from the
+      // moment one is set and stays true forever after. On 18 September the
+      // account ran out of credit: /parse and /match returned 502 all morning
+      // and this route went on saying ok:true, ai:true. A check that stays
+      // green while the thing it checks is dead is worse than no check.
+      //
+      // So ai_checked says out loud that nobody asked, and ?deep=1 actually
+      // asks - one token, and the upstream status and message come back as
+      // they are. That is what tells "no credit" apart from "wrong key" apart
+      // from "the model is down", and none of it publishes the key.
+      const health = { ok: true, configured: !!env.VAPID_JWK, ai: !!env.AI_KEY,
+                       ai_checked: false, time: new Date().toISOString() };
+      if (url.searchParams.get('deep') !== '1' || !env.AI_KEY) return json(health);
+      health.ai_checked = true;
+      try {
+        const probe = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 1,
+            temperature: 0,
+            messages: [{ role: 'user', content: 'hi' }],
+          }),
+        });
+        health.ai_live = probe.ok;
+        if (!probe.ok) {
+          health.ai_status = probe.status;
+          let body = null;
+          try { body = await probe.json(); } catch { body = null; }
+          // the provider's own words, which is the whole point of asking
+          health.ai_why = (body && body.error && body.error.message) || 'no message';
+          health.ok = false;
+        }
+      } catch (e) {
+        health.ai_live = false;
+        health.ai_why = 'could not reach the provider';
+        health.ok = false;
+      }
+      return json(health);
     }
 
     if (url.pathname === '/subscribe' && req.method === 'POST') {

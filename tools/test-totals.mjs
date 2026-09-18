@@ -105,6 +105,18 @@ setTimeout(function(){
     /* what 150 g of that row would have been - the number he saw */
     R.peaWouldBe=sayAmount({food:pea,amount:150,unit:'g',g:1});
 
+    /* ── asked for protein powder, offered leavening ──
+       אבקת אפיה is 0 g of protein and 80 kcal per 100 g; twelve and a half
+       grams of it is the 10 kcal he was shown for half a scoop. */
+    var bake={n:'אבקת אפיה',p:0,k:80,c:46,f:0,s:foodKey('אבקת אפיה')};
+    var whey={n:'אבקת חלבון בטעם וניל, אול אין',p:75.8,k:380,c:8,f:5,s:foodKey('אבקת חלבון בטעם וניל')};
+    R.bakeRefused=sayWrongKind(bake,foodKey('אבקת חלבון'));
+    R.bakeRefusedScoop=sayWrongKind(bake,foodKey('חצי סקופ אבקת חלבון'));
+    R.wheyKept=sayWrongKind(whey,foodKey('אבקת חלבון'));
+    /* and a question that really is about leavening still gets it */
+    R.bakeForBake=sayWrongKind(bake,foodKey('אבקת אפיה'));
+    R.bakeWouldBe=sayAmount({food:bake,amount:12.5,unit:'g',g:1});
+
     /* ── the whole chain: rows -> meals -> the day ── */
     var d='2099-01-02';
     localStorage.removeItem('day_'+d);
@@ -199,6 +211,16 @@ ok(got.askedPowder === true && got.askedScoop === true, 'but "אבקת חלבו�
 ok(got.peaWouldBe.p > 120 && got.peaWouldBe.kcal > 600,
    'which matters because 150 g of it is ' + got.peaWouldBe.p + ' g of protein and ' +
    got.peaWouldBe.kcal + ' kcal — the row behind the 137.5');
+
+console.log('');
+console.log('asked for protein powder, offered leavening');
+ok(got.bakeRefused === true, 'אבקת אפיה is refused for "אבקת חלבון"');
+ok(got.bakeRefusedScoop === true, 'and for "חצי סקופ אבקת חלבון"');
+ok(got.wheyKept === false, 'while a real protein powder is kept');
+ok(got.bakeForBake === false, 'and asking for אבקת אפיה still gets אבקת אפיה');
+ok(got.bakeWouldBe.kcal === 10 && got.bakeWouldBe.p === 0,
+   'which matters because 12.5 g of it is exactly the ' + got.bakeWouldBe.kcal +
+   ' kcal and ' + got.bakeWouldBe.p + ' g of protein he was shown');
 
 console.log('');
 console.log('rows into the day');
