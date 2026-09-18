@@ -5701,6 +5701,19 @@ function picByTable(j,items){
     });
   });
 }
+/* Is this the SERVICE failing rather than the sentence? The worker answers a
+   provider that refused with a 5xx and its own "the model refused", so either
+   is enough - and neither can be produced by a sentence nobody could read.
+
+   The provider's reason goes to the console, never to the screen: it names a
+   billing state, and this app is served publicly. */
+function sayAiDown(j){
+  if(!j)return true;   // nothing came back at all
+  var down=(+j.__status>=500)||j.error==='the model refused';   // i18n-exempt: the worker's own error code, compared and never shown
+  if(down&&j.why&&typeof console!=='undefined'&&console.warn)
+    try{console.warn('parse unavailable: '+j.why);}catch(e){}
+  return down;
+}
 function picFail(msg){
   _picBusy=false;_sayBusy=false;_sayErr=msg;sayPaint();
 }
@@ -6126,11 +6139,18 @@ function sayGo(){
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({text:text,lang:appLang()})
-  }).then(function(r){return r.json();})
+  /* The HTTP status is carried through, because the body alone cannot tell a
+     sentence nobody could read from a provider that is not answering - and
+     the difference is the whole of what the reader should do next. */
+  }).then(function(r){return r.json().then(function(j){
+      if(j&&typeof j==='object')j.__status=r.status;
+      return j;
+    },function(){return {__status:r.status};});})
     .then(function(j){
       _sayBusy=false;
       if(!j||!j.ok||!j.items||!j.items.length){
         _sayErr=(j&&j.error==='too many for today')?''+_t('הגעת למכסה היומית של הפירוק.')+''
+               :sayAiDown(j)?''+_t('הפירוק לא זמין כרגע. אפשר לחפש ידנית.')+''
                :''+_t('לא הצלחתי לקרוא את זה. נסה לנסח אחרת, או חפש ידנית.')+'';
         sayPaint();return;
       }
