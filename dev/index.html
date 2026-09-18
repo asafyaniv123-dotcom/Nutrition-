@@ -10910,6 +10910,107 @@ function fitWeekStats(weeksAgo){
   return out;
 }
 
+/* ── A WORKOUT THE APP BUILDS FOR YOU ──
+   The selection half. Nothing here draws anything; it answers "which
+   exercises, and how many sets of each", and the screen is a separate piece.
+
+   Every muscle group the weekly band applies to, taken from the library
+   rather than written down again - whatever muscleGroupOf can return, less
+   the two the band's own footnote says it does not measure. */
+function bandGroups(){
+  var all=exAll(),seen={},out=[],i,g;
+  for(i=0;i<all.length;i++){
+    g=muscleGroupOf(all[i].n);
+    if(g==='אירובי'||g==='אחר')continue;   // i18n-exempt: library keys, compared and never shown
+    if(!seen[g]){seen[g]=1;out.push(g);}
+  }
+  return out;
+}
+/* What each muscle is SHORT this week: the band's floor minus what is already
+   logged. This subtraction is the whole point - without it a Thursday session
+   prescribes a full week of volume on top of a full week of work. */
+function fitDeficit(weekStats){
+  var now=weekStats||fitWeekStats(0),gs=bandGroups(),out=[],i,done;
+  for(i=0;i<gs.length;i++){
+    done=+now.byMuscle[gs[i]]||0;
+    out.push({m:gs[i],done:done,short:Math.max(0,SETS_BAND.lo-done)});
+  }
+  /* furthest behind first, and between two equally behind, the one you have
+     done least of */
+  out.sort(function(a,b){return (b.short-a.short)||(a.done-b.done);});
+  return out;
+}
+/* Three exercises is a session for one muscle; three sets is one exercise.
+   Both are ceilings on the arithmetic rather than prescriptions - the sets
+   actually given come from the deficit. */
+var GEN_MAX_PER_MUSCLE=3,GEN_SETS_PER_EX=3;
+function genPick(opt){
+  opt=opt||{};
+  var muscles=opt.muscles||[],equip=opt.equip||[],emph=opt.emphasis||'';
+  var have={},i,j,k;
+  for(i=0;i<equip.length;i++)have[equip[i]]=1;
+  /* ALL of an exercise's equipment, not any of it: a bench press needs a bar
+     AND a bench, and having one of the two does not make it half-possible. */
+  var doable=function(e){
+    var q=e.q||[];
+    for(var z=0;z<q.length;z++)if(!have[q[z]])return false;
+    return true;
+  };
+  /* The id IS the priority. RAW is ordered from the movement most people
+     build a session around to the ones that finish it off, and the id is that
+     position - so this needs no new field and nothing to keep in sync. */
+  var pos=function(e){var n=parseInt(String(e.id||'').replace(/^x/,''),10);return isFinite(n)?n:1e9;};
+  var all=exAll(),out=[],used={},asked={};
+  for(i=0;i<muscles.length;i++){
+    /* Fold the way muscleGroupOf folds. bandGroups returns rolled-up names
+       and muscleGroupOf only ever returns those, so a caller passing גב רחב
+       used to match nothing and come back as "none available" - which reads
+       as a missing dumbbell rather than a name that does not survive the
+       rollup. Two muscles that fold together are asked for once. */
+    var m=MUSCLE_ROLLUP[muscles[i]]||muscles[i];
+    if(asked[m])continue;
+    asked[m]=1;
+    /* The sets map and the emphasis arrive in the caller's words as well, so
+       both are read by the folded name AND by the one that was passed. */
+    var sm=opt.sets||{},raw=muscles[i];
+    var want=(sm[m]!==undefined)?(+sm[m]||0):((sm[raw]!==undefined)?(+sm[raw]||0):SETS_BAND.lo);
+    if(m===(MUSCLE_ROLLUP[emph]||emph))want+=GEN_SETS_PER_EX;
+    if(want<=0)continue;
+    var cands=[];
+    for(j=0;j<all.length;j++)
+      if(!used[all[j].n]&&muscleGroupOf(all[j].n)===m&&doable(all[j]))cands.push(all[j]);
+    cands.sort(function(a,b){return pos(a)-pos(b);});
+    var n=Math.min(GEN_MAX_PER_MUSCLE,Math.max(1,Math.ceil(want/GEN_SETS_PER_EX)));
+    var picked=cands.slice(0,n);
+    /* A muscle with nothing available says so, rather than being dropped in
+       silence - "no chest exercise with what you have" is information. */
+    if(!picked.length){out.push({m:m,none:true});continue;}
+    /* The shortfall is split over what was actually FOUND, so a muscle with
+       one machine available still gets its sets rather than a third of them. */
+    var per=Math.max(2,Math.min(5,Math.round(want/picked.length)));
+    for(k=0;k<picked.length;k++){
+      used[picked[k].n]=1;
+      out.push({m:m,name:picked[k].n,id:picked[k].id,sets:per});
+    }
+  }
+  return out;
+}
+/* Into the shape the workout screen already speaks, so what comes out is an
+   ordinary session you can swap, remove and add to - never a locked
+   prescription. The reps come from the goal, which already carries them. */
+function genToWorkout(rows,goalV){
+  var g=null,i;
+  for(i=0;i<(FIT_GOALS||[]).length;i++)if(FIT_GOALS[i].v===goalV)g=FIT_GOALS[i];
+  if(!g)g=(FIT_GOALS||[])[1]||{lo:8,hi:15};
+  var reps=Math.round((g.lo+g.hi)/2),out=[];
+  for(i=0;i<rows.length;i++){
+    if(rows[i].none)continue;
+    out.push({name:rows[i].name,targetSets:rows[i].sets,targetReps:reps,
+              plan:[],sets:[],warm:[],ss:null});
+  }
+  return out;
+}
+
 /* The heaviest honest single from every lift you have done, best first. */
 function fitBestLifts(limit){
   var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
