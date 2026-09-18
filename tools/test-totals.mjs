@@ -74,6 +74,37 @@ setTimeout(function(){
     r4.amount=300;
     R.a4=sayAmount(r4);            /* 300g of a 150g portion IS 50 - correct */
 
+    /* ── HIS SENTENCE, with the figures /parse actually returns for it ──
+       "אכלתי יוגורט שיש בו 13 גרם חלבון עם חצי סקופ של אבקת חלבון
+        (שיש בסקופ שלם 25 גרם חלבון) ואפרסק."
+       -> {יוגורט, 1 unit, stated 13 g} {אבקת חלבון, 0.5 unit, stated 12.5}
+          {אפרסק, 1 unit}
+       and /match answers יוגורט 3% at 150 g, a powder at 30 g, אפרסק at 150. */
+    var yog={n:'יוגורט 3% שומן תנובה',k:65,p:4.7,c:6.3,f:3};
+    var rowY={food:yog,amount:1,unit:'unit',g:150,q:'יוגורט'};
+    R.yogTable=sayAmount(rowY);        /* the table alone: about 7 g */
+    sayWithSaid(rowY,{food:'יוגורט',stated_by_user:{calories_kcal:null,protein_g:13,
+                      carbohydrates_g:null,fat_g:null}});
+    R.yogSaid=sayAmount(rowY);         /* his own 13, not the table's 7 */
+    R.yogKcalKept=R.yogSaid.kcal;      /* nothing was stated about energy */
+
+    /* the half scoop, whose 12.5 the model had already halved for us */
+    var pw={n:'תוסף חלבון, אבקה, כולל MERITENE',k:355,p:31,c:50,f:3};
+    var rowP={food:pw,amount:0.5,unit:'unit',g:30,q:'אבקת חלבון'};
+    sayWithSaid(rowP,{food:'אבקת חלבון',stated_by_user:{calories_kcal:null,protein_g:12.5,
+                      carbohydrates_g:null,fat_g:null}});
+    R.powSaid=sayAmount(rowP);
+
+    /* ── and the guard that would have stopped the 137.5 ── */
+    var pea={n:'חלבון, אפונה, PEA PROTEIN',k:418,p:83.1,c:3.4,f:6.8};
+    R.peaIsConc=sayIsConcentrate(pea);
+    R.yogIsConc=sayIsConcentrate(yog);
+    R.askedYog=sayAskedPowder(foodKey('יוגורט'));
+    R.askedPowder=sayAskedPowder(foodKey('אבקת חלבון'));
+    R.askedScoop=sayAskedPowder(foodKey('חצי סקופ'));
+    /* what 150 g of that row would have been - the number he saw */
+    R.peaWouldBe=sayAmount({food:pea,amount:150,unit:'g',g:1});
+
     /* ── the whole chain: rows -> meals -> the day ── */
     var d='2099-01-02';
     localStorage.removeItem('day_'+d);
@@ -149,6 +180,25 @@ ok(near(got.per100.p, 16.7), 'stored per 100 g as 16.7 for a 150 g portion (got 
 ok(near(got.a3.p, 25), 'and read back out as the 25 g that was stated (got ' + got.a3.p + ')');
 ok(got.a3.kcal === 200, 'with its 200 kcal intact (got ' + got.a3.kcal + ')');
 ok(near(got.a4.p, 50, 0.15), 'correcting the weight to 300 g really is 50 g — scaled, not doubled. The .1 is the per-100g value carrying one decimal, not an error (got ' + got.a4.p + ')');
+
+console.log('');
+console.log('his sentence: a figure read off the pot outranks the table');
+ok(near(got.yogTable.p, 7.1), 'the table alone gives a 150 g yogurt 7.1 g of protein (got ' + got.yogTable.p + ')');
+ok(near(got.yogSaid.p, 13, 0.15), 'and his stated 13 wins. The .1 is the per-100g store carrying one decimal — 13 over 1.5 is 8.7, and 8.7 back over 1.5 is 13.05 (got ' + got.yogSaid.p + ')');
+ok(got.yogKcalKept === got.yogTable.kcal,
+   'while the energy he said nothing about keeps the measured value (got ' +
+   got.yogKcalKept + ', table ' + got.yogTable.kcal + ')');
+ok(near(got.powSaid.p, 12.5), 'the half scoop carries the 12.5 the model had already halved (got ' + got.powSaid.p + ')');
+
+console.log('');
+console.log('and a concentrate is not an answer to a food question');
+ok(got.peaIsConc === true, 'pea protein isolate at 83.1 g/100 g is a concentrate');
+ok(got.yogIsConc === false, 'a yogurt is not');
+ok(got.askedYog === false, '"יוגורט" does not ask for a powder');
+ok(got.askedPowder === true && got.askedScoop === true, 'but "אבקת חלבון" and "סקופ" do');
+ok(got.peaWouldBe.p > 120 && got.peaWouldBe.kcal > 600,
+   'which matters because 150 g of it is ' + got.peaWouldBe.p + ' g of protein and ' +
+   got.peaWouldBe.kcal + ' kcal — the row behind the 137.5');
 
 console.log('');
 console.log('rows into the day');
