@@ -186,6 +186,55 @@ setTimeout(function(){
     R.skipSets=_fitWorkout.exercises[0].targetSets;
     R.skipReps=_fitWorkout.exercises[0].targetReps;
     APP_UNITS=units0;
+    /* I: out of a workout without ending it, and back into it */
+    _fitWorkout={name:'ערב רגליים',date:new Date().toISOString(),startTime:Date.now()-20*60000,
+                 currentEx:0,exercises:[mk('סקוואט')]};
+    _fitWorkout.exercises[0].ss=null;
+    _fitView='workout';
+    R.noneLogged=fitwSetsLogged();
+    /* nothing logged: the card still offers the way back, and replacing it
+       asks nothing */
+    R.resumeEmpty=fitResumeHTML().indexOf('ערב רגליים')>=0;
+    var asked=0;window.confirm=function(){asked++;return false;};
+    R.okWhenEmpty=fitwReplaceOK();
+    R.askedWhenEmpty=asked;
+
+    /* now log something into it */
+    _fitWorkout.exercises[0].sets.push({weight:80,reps:8});
+    _fitWorkout.exercises[0].warm.push({weight:40,reps:10});
+    R.logged=fitwSetsLogged();          /* the warm-up counts: it is work done */
+
+    /* leaving keeps it, in memory and on disk */
+    fitwSave();
+    fitBack();
+    R.viewAfterBack=_fitView;
+    R.stillLive=!!_fitWorkout;
+    R.stillOnDisk=!!localStorage.getItem('fit_active');
+    R.setsAfterBack=_fitWorkout&&_fitWorkout.exercises[0].sets.length;
+
+    /* and the home says so, with what is in it */
+    var card=fitResumeHTML();
+    R.cardName=card.indexOf('ערב רגליים')>=0;
+    /* the card says SETS, so one set - not the two that fitwSetsLogged
+       counts, which includes the warm-up */
+    R.cardSets=/1 /.test(card)||/אחד/.test(card);
+    R.cardMins=/20/.test(card);
+
+    /* replacing it now ASKS, and a no leaves the workout alone */
+    asked=0;
+    R.refused=fitwReplaceOK();
+    R.askedWhenLogged=asked;
+    startEmptyWorkout();
+    R.survivedRefusal=_fitWorkout&&_fitWorkout.name==='ערב רגליים';
+    /* and a yes lets it through */
+    window.confirm=function(){return true;};
+    startEmptyWorkout();
+    R.replacedOnYes=_fitWorkout&&_fitWorkout.exercises.length===0;
+    /* an empty workout draws no card at all */
+    R.noCardWhenEmpty=fitResumeHTML()==='';
+    fitwClear();
+    R.noCardWhenNone=fitResumeHTML()==='';
+
     window.renderFitness=realRender;
   }catch(e){R.threw=String(e&&e.message||e);}
   fetch('/r',{method:'POST',body:JSON.stringify(R)});
@@ -277,6 +326,26 @@ console.log('skipping it is the old behaviour exactly');
 ok(got.skipSeedW==='','an exercise never done seeds nothing (got "'+got.skipSeedW+'")');
 ok(got.skipPlan===0,'and with nothing typed there is no plan (got '+got.skipPlan+')');
 ok(got.skipSets===3&&got.skipReps===10,'3x10, as before (got '+got.skipSets+'x'+got.skipReps+')');
+
+console.log('');
+console.log('out of a workout without ending it');
+ok(got.noneLogged === 0, 'a fresh workout has nothing logged in it');
+ok(got.resumeEmpty === true, 'and the home still offers the way back to it');
+ok(got.okWhenEmpty === true && got.askedWhenEmpty === 0,
+   'replacing it asks nothing, because nothing would be lost');
+ok(got.logged === 2, 'a set and a warm-up are both work done (got ' + got.logged + ')');
+ok(got.viewAfterBack === 'home', 'back lands on the fitness home (got ' + got.viewAfterBack + ')');
+ok(got.stillLive === true, 'the workout is still live');
+ok(got.stillOnDisk === true, 'and still on disk, so a reload finds it');
+ok(got.setsAfterBack === 1, 'with the set still in it (got ' + got.setsAfterBack + ')');
+ok(got.cardName === true, 'the home card names the workout');
+ok(got.cardSets === true && got.cardMins === true, 'and says how long and how much is in it');
+ok(got.refused === false && got.askedWhenLogged === 1,
+   'replacing it now ASKS exactly once (asked ' + got.askedWhenLogged + ')');
+ok(got.survivedRefusal === true, 'and a no leaves the workout exactly where it was');
+ok(got.replacedOnYes === true, 'a yes lets the new one through');
+ok(got.noCardWhenEmpty === true, 'a workout with no exercises draws no card');
+ok(got.noCardWhenNone === true, 'and neither does no workout at all');
 
 console.log('');
 console.log('a note on a lift');

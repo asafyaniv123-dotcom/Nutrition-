@@ -349,6 +349,16 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* A note on a lift: written once, read for years. Quiet enough to ignore and
    always in the same place. */
 /* Adding an exercise, with what you mean to lift. */
+/* The workout you left open. Warm rather than neutral, because it is the one
+   thing on this screen that is already running. */
+.fw-res{display:flex;width:100%;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer;
+  border:none;border-radius:18px;padding:13px 15px;font-family:inherit;text-align:start;
+  background:linear-gradient(135deg,#fef0e8,#fae0d0);box-shadow:0 4px 16px rgba(224,138,114,.16)}
+.fw-res-x{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.fw-res-t{font-size:13.5px;font-weight:800;color:var(--ink)}
+.fw-res-s{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.fw-res-g{flex-shrink:0;font-size:12px;font-weight:800;color:var(--terra-500)}
+
 /* The generator sheet: cards like the rest of כושר, chips that are already
    answered rather than empty. */
 .gn-c{background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;
@@ -10743,6 +10753,32 @@ function fitwSave(){
   }catch(e){}
 }
 function fitwClear(){ _fitWorkout=null; _fitTgtOpen=-1; try{localStorage.removeItem(FITW_KEY);}catch(e){} }
+/* ── LEAVING A WORKOUT WITHOUT ENDING IT ──
+   There was no way out of a live workout except to finish it, and leaving
+   כושר did not help: enterModule restores an active workout and puts you
+   back in it. So the whole fitness home - the timer, the numbers, the weights
+   list - was unreachable until the workout was over.
+
+   Leaving costs nothing. fitwSave persists the workout whole on every
+   mutation, so it is already on disk before this runs. */
+function fitBack(){ _fitView='home'; renderFitness(); }
+/* How much there is to lose, which is the only thing that decides whether
+   replacing this workout needs to ask. */
+function fitwSetsLogged(){
+  if(!_fitWorkout||!_fitWorkout.exercises)return 0;
+  var n=0,i;
+  for(i=0;i<_fitWorkout.exercises.length;i++)
+    n+=((_fitWorkout.exercises[i].sets||[]).length)+((_fitWorkout.exercises[i].warm||[]).length);
+  return n;
+}
+/* Starting a second workout while one is live used to be impossible from
+   inside the module. Now that the home is reachable mid-session it is one
+   tap away, so the three doors that start one ask first - and only when
+   something would actually be lost. */
+function fitwReplaceOK(){
+  if(!_fitWorkout||!fitwSetsLogged())return true;
+  return confirm(''+_t('יש אימון פעיל שכבר נרשמו בו סטים. להתחיל חדש במקומו?')+'');
+}
 function fitwRestore(){
   var o=null;
   try{o=JSON.parse(localStorage.getItem(FITW_KEY)||'null');}catch(e){}
@@ -11102,6 +11138,7 @@ function genBuild(){
                     sets:_gen.on,emphasis:_gen.emphasis});
   var exs=genToWorkout(rows,fitGoal().v);
   if(!exs.length){showToast(''+_t('אין תרגילים מתאימים לציוד שבחרת')+'');return;}
+  if(!fitwReplaceOK())return;
   /* An ordinary workout from here on. Nothing marks it as generated, because
      nothing about it is different once it exists. */
   _fitWorkout={templateIdx:-1,name:''+_t('אימון שנבנה לך')+'',startTime:Date.now(),
@@ -12105,6 +12142,22 @@ function wtKindWhat(k){
   if(k==='tabata')return ''+_t('עבודה קצרה ומנוחה קצרה, שמונה פעמים. ברירת המחדל היא 20 ו-10.')+'';
   return ''+_t('עבודה, מנוחה, מספר סבבים — מה שתגדיר.')+'';
 }
+/* What is waiting, if anything is. Drawn above the doors because an open
+   workout is the one thing on this screen that is happening NOW. */
+function fitResumeHTML(){
+  if(!_fitWorkout||!_fitWorkout.exercises||!_fitWorkout.exercises.length)return '';
+  var w=_fitWorkout,mins=Math.floor((Date.now()-w.startTime)/60000),n=0,i;
+  /* SETS, not everything logged. fitwSetsLogged counts warm-ups too, which is
+     right for "is there anything to lose" and wrong beside the word סטים -
+     logSet files a warm-up in its own list exactly so that nothing counts it
+     as one. */
+  for(i=0;i<w.exercises.length;i++)n+=(w.exercises[i].sets||[]).length;
+  return '<button class="fw-res" onclick="_fitView=\'workout\';renderFitness()">'+
+    '<span class="fw-res-x"><span class="fw-res-t">'+esc(w.name)+'</span>'+
+    '<span class="fw-res-s">'+_t('{n} דקות',{n:mins})+' &middot; '+
+      (n?_t('{n} סטים',{n:n}):_t('עוד לא נרשם כלום'))+'</span></span>'+
+    '<span class="fw-res-g">'+_t('המשך')+' &#8250;</span></button>';
+}
 function renderFitHome(){
   var templates=loadTemplates();
   var log=loadWorkoutLog();
@@ -12118,6 +12171,10 @@ function renderFitHome(){
      So the entry is a set of doors, in the same shape the app already uses
      for its areas on the home screen, and each thing lives behind the one
      that names it. Nothing was deleted - it moved. */
+  /* A workout left open a moment ago. This is the other half of the back
+     button - without it, leaving a workout would strand it somewhere only a
+     reload could find. */
+  h+=fitResumeHTML();
   h+=fitAreaGridHTML();
   /* 4. the goal, at the bottom. It is a setting - it decides how the advice
         above reads, but it is answered once and then left alone, and it was
@@ -12141,6 +12198,7 @@ function renderFitHome(){
    down first: you turn up, you do things, you want them recorded. It starts
    with nothing in it and the picker opens straight away. */
 function startEmptyWorkout(){
+  if(!fitwReplaceOK())return;
   _fitWorkout={templateIdx:-1,name:''+_t('אימון חדש')+'',startTime:Date.now(),exercises:[],currentEx:0};
   _fitView='workout';renderFitness();
   workoutAddExercise();
@@ -14640,6 +14698,7 @@ function deleteFitTemplate(idx){
 
 function startWorkout(tplIdx){
   var templates=loadTemplates();var t=templates[tplIdx];if(!t)return;
+  if(!fitwReplaceOK())return;
   _fitWorkout={
     templateIdx:tplIdx,name:t.name,startTime:Date.now(),
     exercises:t.exercises.map(function(ex){
@@ -15831,7 +15890,10 @@ function renderFitWorkout(){
       '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px">'+_t('אימון חדש')+'</div>'+
       '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:18px">'+_t('הוסף את התרגיל הראשון וההקלטה מתחילה.')+'</div>'+
       '<button onclick="workoutAddExercise()" style="width:100%;background:linear-gradient(135deg,var(--terra-200),var(--terra-500));border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;color:var(--white)">'+_t('+ הוסף תרגיל')+'</button>'+
-      '<button onclick="fitwClear();_fitView=&quot;home&quot;;renderFitness()" style="width:100%;background:none;border:none;padding:12px 0 0;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--muted)">'+_t('ביטול')+'</button>'+
+      /* Two different intentions, and they used to share one button: "I am
+         not doing this" throws the workout away, "not now" does not. */
+      '<button onclick="fitBack()" style="width:100%;background:none;border:none;padding:12px 0 0;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--ink-soft)">&#8249; '+_t('חזרה לכושר')+'</button>'+
+      '<button onclick="fitwClear();_fitView=&quot;home&quot;;renderFitness()" style="width:100%;background:none;border:none;padding:8px 0 0;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--muted)">'+_t('ביטול')+'</button>'+
       '</div></div>';
     return;
   }
@@ -15842,7 +15904,12 @@ function renderFitWorkout(){
 
   // Header bar
   h+='<div style="background:linear-gradient(135deg,#fef0e8,#fae0d0);border-radius:18px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">';
-  h+='<div><div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(w.name)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">&#9200; '+_t('{n} דקות',{n:elapsed})+'</div></div>';
+  /* Back to כושר, not out of the workout. The workout stays live and the
+     home now has a card that returns to it. */
+  h+='<div style="display:flex;align-items:center;gap:10px;min-width:0">';
+  h+='<button onclick="fitBack()" aria-label="'+_t('חזרה')+'" style="flex-shrink:0;width:30px;height:30px;border:none;border-radius:10px;background:rgba(255,255,255,.66);color:var(--terra-500);font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;line-height:1;padding:0">&#8249;</button>';
+  h+='<div style="min-width:0"><div style="font-size:14px;font-weight:800;color:var(--ink)">'+esc(w.name)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">&#9200; '+_t('{n} דקות',{n:elapsed})+'</div></div>';
+  h+='</div>';
   h+='<div style="font-size:11px;color:var(--terra-500);font-weight:700">'+nfmt(w.currentEx+1)+' / '+nfmt(w.exercises.length)+'</div>';
   h+='</div>';
 
