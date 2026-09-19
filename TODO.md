@@ -6,6 +6,82 @@ section — git already keeps that.
 
 ---
 
+## One line to write anything, anywhere in the app (2026-09-19)
+
+> *"אני רוצה שלכל האפליקציה תהיה שורת כתיבה שמשתמש יוכל לכתוב שם מה שהוא ירצה
+> והמלל ינווט לאזור הנכון. נגיד: תוסיף לי בתכנון זמן …. תוסיף לי בארוחות…. כך
+> שלא חייב להכנס לאזור אם מדובר רק בהזנה שלמשתמש אין באמת צורך לראות ויזואלית.
+> בהמשך נהפוך את זה למנוע מעניין יותר."*
+
+**The point is the last clause.** Logging something should not require
+visiting the place where it is kept. Opening an area should be for *looking*.
+Entering data should take one sentence from wherever you are.
+
+**The reminder entry below is the first thing this bar does, not a separate
+feature.** Build them together: one bar, one router, and reminders are one of
+its destinations.
+
+### The shape: route, then hand over
+
+1. **Route.** The sentence goes to a small server endpoint (the same pattern
+   as `/parse` and `/say` in `push-server/src/worker.js`, with the same per-IP
+   daily cap). It answers with **one intent from a closed list**, e.g.
+   `meal.add`, `plan.add`, `reminder.add`, plus the fields it found. It must
+   never answer with free text that the app then has to interpret.
+2. **Hand over.** Each area already knows how to understand its own
+   sentences. A meal goes on to the existing `/parse`, which already turns
+   *"200g chicken and rice"* into food rows. The router decides *where*, and the
+   area decides *what*.
+3. **Save through the area's own functions**, the ones its screen already
+   calls. Something saved from the bar must be byte-identical to the same thing
+   entered by hand. Otherwise there are two ways to write the same data and
+   they drift apart.
+4. **Confirm in one line, with undo and a way in.** *"Added to Tuesday's plan:
+   dentist 16:00 · Undo · Open"*. **Open** is the answer to "I did want to see
+   it after all".
+
+### Rules it has to keep
+
+- **Not sure means ask, never guess.** A sentence that could be a meal or a
+  plan item gets two chips to choose from. Something filed silently in the
+  wrong place is worse than nothing, because the person stops trusting the
+  bar.
+- **Days through `appNow()` / `dayShift()`.** *"Yesterday"* typed at 01:00
+  means the day before the day the person is still living in.
+- **Eleven languages in and out.** The router gets the reader's language and
+  today's app date. The confirmation line goes through `_t` / `dfmt`.
+- **Offline or over the cap:** keep the sentence as a draft and say so. Never
+  drop what someone wrote.
+
+### Start small
+
+Three destinations first: **meals, time planning, reminders.** They are the
+three he named. Add the rest (a set in fitness, a note on a person, a line in
+the journal) one at a time, each with its own intent. That is also how to
+tell whether the router is good before it has twenty choices.
+
+### "A more interesting engine" later
+
+Written down so nobody builds today's version in a way that blocks it:
+
+- **Questions, not only entries.** *"How much protein did I eat this week?"*
+  is the same bar answered by reading data instead of writing it.
+- **One sentence, several things.** *"Ran 5k and had a shake after"* is a
+  workout and a meal.
+- **It feeds the spine.** What was said to the bar during the day is exactly
+  what the evening reflection can ask about.
+- **Voice.** A microphone on the bar where the browser offers dictation. The
+  wake word is native work (see the reminder entry below).
+
+### Where it sits in the design
+
+**Where the bar lives is a design question**, and it goes through the design
+flow (library → directions → the phone). It is not decided here. What is
+decided: it is **one** bar, reachable from every screen, and it never covers
+the thing the person is looking at.
+
+---
+
 ## "Hi Better Me, remind me…" — reminders said in one sentence (2026-09-19)
 
 > *"שאולי תהיה אפשרות לעשות תזכורות לעצמך (שיכנס גם באנשים שלי וגם בתכנון זמן)
