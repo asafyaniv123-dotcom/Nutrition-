@@ -6414,10 +6414,31 @@ function sayTermCands(cands,terms){
   }
   return out.slice(0,60);
 }
+/* sayApplyEst writes onto a row, and on this path the row is the local
+   resolve - which already carries q, amount, unit and the alternatives. This
+   only guarantees the shape when sayResolve found nothing at all. */
+function row0(local,it){
+  if(local&&typeof local==='object'){local.q=local.q||it.food;return local;}
+  return {q:it.food,amount:it.amount,unit:it.unit||'unit',g:1,food:null,alts:[]};
+}
 function sayResolveAI(it,done){
   var local=sayResolve(it);
   var q=it.food;
   var qk=foodKey(q);
+  /* THE NUMBERS CAME WITH THE SENTENCE. /parse now computes kcal/p/c/f for
+     every free-text item except one the person named a brand for - measured
+     at 3% against the laboratory rows and 0% run to run, where the portion
+     guess alone moves the answer by more than that. So the tables stop being
+     the thing this path depends on, and stay what they are good at: the
+     search box, a barcode, a product whose packet was actually read.
+     A branded query sends no est, and everything below runs exactly as it
+     did - which is the whole carve-out, because a product's declared figures
+     are the one thing a model cannot know. */
+  /* AND WHAT HE READ OFF HIS OWN PACKET STILL OUTRANKS IT. sayWithSaid puts
+     a stated figure over the row it belongs to, and an estimate is the
+     weakest evidence in the chain - so a sentence carrying "13 גרם חלבון"
+     keeps the 13 rather than being told what a yogurt usually holds. */
+  if(it&&it.est&&sayApplyEst(row0(local,it),it.est)){done(sayWithSaid(local,it));return;}
   /* What /parse decided about this item, read once. An older worker sends no
      flags at all, and then this is simply false and the word list decides as
      it always did. */
@@ -7190,6 +7211,12 @@ function sayCross(depth){
            the overlay away - the stated figure applied, and then vanished if
            /cross happened to answer before you looked. */
         if(row.src==='label'||row.src==='said')continue;
+        /* AN ESTIMATE IS NOT A ROW CHOICE. /cross exists to fix which ROW was
+           picked, and a row whose numbers the model computed never picked
+           one - swapping it for a table row here would replace the figures
+           with different figures and leave est:1 sitting on top of them,
+           which is a measurement wearing a guess's label. */
+        if(row.est)continue;
         /* Its words, our scorer. The first term is its best reading of what
            the food IS; the rest are fallbacks when that one finds nothing. */
         var t,alt=null;
