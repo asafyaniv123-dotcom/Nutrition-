@@ -783,6 +783,17 @@ export default {
         '- amount: a number. If none is given use 1.\n' +
         '- unit: one of g, unit, slice, cup, tbsp, tsp. Use "unit" for whole things\n' +
         '  (an egg, an apple, a roll) and "g" only when grams are actually stated.\n' +
+        /* Measured: "חלה" with no quantity came back as one unit, and one
+           unit of challah is a 500 g loaf. That is literally correct and
+           nobody means it. Rice already had this right - it answers
+           "1 cup" - because a cup is the obvious way to say a portion of
+           rice and there was no obvious way to say a portion of bread. */
+        '- A FOOD NORMALLY EATEN AS PART OF SOMETHING LARGER DEFAULTS TO THE\n' +
+        '  PART, not the whole, when no quantity is given. "חלה" is one\n' +
+        '  SLICE, not a 500 g loaf; so are bread, cake, pizza, watermelon and\n' +
+        '  melon. Answer amount 1 and unit "slice". Keep "unit" for a thing\n' +
+        '  eaten whole - an egg, an apple, a roll, a pot of yogurt - and use\n' +
+        '  the whole thing only when they actually say so ("חלה שלמה").\n' +
         '- Split "לחם עם גבינה" into two items. Keep "סלט יווני" as one.\n' +
         /* A brand split off into its own item is how "שייק חלבון של מולר" lost
            the word that identified it and came back as another company's
@@ -1213,6 +1224,18 @@ export default {
         '  on a packet. This rule chooses BETWEEN two rows for one food. It\n' +
         '  never reaches for a DIFFERENT food because that food\u2019s row is\n' +
         '  plainer.\n' +
+        /* Measured: 64 rows of the national table name the producers the
+           food was SAMPLED from. Without this rule the brand rule above
+           reads them as branded and the only good row for a plain food is
+           the one the model is taught to avoid. */
+        '- A GENERIC ROW MAY NAME THE PRODUCERS IT WAS SAMPLED FROM, AND\n' +
+        '  THAT DOES NOT MAKE IT A BRAND ROW. The national tables measure a\n' +
+        '  plain food by buying it from several bakeries or dairies and\n' +
+        '  listing them: "חלה, ברמן, ודש, אנג\u2019ל, טוב טעם, אילת" is PLAIN\n' +
+        '  CHALLAH, not Angel\u2019s challah, and it is the right answer for\n' +
+        '  "חלה". THREE OR MORE companies in one name is a sample and counts\n' +
+        '  as the plain row; ONE company is a product and needs to have been\n' +
+        '  asked for.\n' +
         /* The rule above, read without that precondition, is exactly what
            answered a spelt roll with cooked spelt grain: no brand was named,
            and the plainest row in the sixty was the grain. */
