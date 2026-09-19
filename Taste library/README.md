@@ -74,6 +74,11 @@ with the project.
   the content, in earth tones the app already has tokens for. Also the third
   reference to point at light-as-realism.
 
+- **components/coverflow-carousel.tsx** (+ `.md`) — a 3D ring of cards, the
+  centre one facing you and the rest raked away, suggested for the week's
+  photos. The first entry that is code rather than a picture: kept to read,
+  not installed, since the app is not React.
+
 ## What is emerging
 
 Seven entries in, three things have been said more than once. None of them is a
