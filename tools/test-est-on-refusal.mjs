@@ -71,6 +71,23 @@ ok(/return json\(\{ ok: true, by, pick, picks, grams, terms, est,/.test(MATCH),
    'est rides back with the refusal');
 
 console.log('');
+console.log('no rows at all is a question, not an error');
+/* The shortlist is built by string matching, so a query in a script the
+   tables do not use reaches nothing — and /match used to refuse the empty
+   list with a 400, which skipped the terms that exist to rescue exactly that.
+   鶏肉 reached 0 of 7,240 rows and got a 400; شوفان survived only because it
+   happened to reach ONE row through an aka entry. Measured after the change:
+   鶏肉 -> terms ["עוף","חזה עוף","עוף שלם"] -> בשר עוף, חזה, לא מבושל. */
+ok(/const askTermsOnly = !cands\.length;/.test(MATCH),
+   'an empty candidate list sets the terms-only question');
+ok(!/if \(!cands\.length\) return json\(\{ error: 'no candidates' \}, 400\);/.test(MATCH),
+   'and is no longer refused outright');
+ok(/ROWS: none - a plain text search of the table found nothing/.test(MATCH),
+   'the model is told there is nothing to choose between');
+ok(/Answer picks:\[\] and give TERMS/.test(MATCH),
+   'and asked for the one thing still worth answering');
+
+console.log('');
 console.log('cleanEst: a guess that does not add up is not shown');
 /* 215 kcal, 12.7 p, 38 c, 2 f — the אנג׳ל spelt roll, which is the row that
    was in the list all along and is a fair target for an estimate of one. */

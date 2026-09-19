@@ -964,7 +964,14 @@ export default {
         .map((c) => String(c || '').replace(/\s+/g, ' ').trim().slice(0, 120))
         .filter(Boolean)
         .slice(0, 80);
-      if (!cands.length) return json({ error: 'no candidates' }, 400);
+      /* NO ROWS IS A QUESTION, NOT AN ERROR. The shortlist is built by string
+         matching, so a query in a script the tables do not use reaches
+         nothing at all - and refusing here skipped the terms that exist to
+         rescue exactly that. 鶏肉 got a 400; شوفان survived only because it
+         happened to reach one row through an aka entry. With no rows there is
+         nothing to pick, and naming the words the table WOULD use is the
+         whole of the answer. */
+      const askTermsOnly = !cands.length;
 
       // how many rows to name back: one to log a food, a handful to search
       let want = Number(b && b.n);
@@ -1094,8 +1101,15 @@ export default {
       /* Built once and handed to whichever provider answers. It carries the
          sixty rows and the unit the person meant; a second copy for a second
          provider is how two prompts that agree today disagree next month. */
-      const USER = 'FOOD: ' + q + '\nUNIT THE USER MEANS: ' + unitWord +
-                   '\nHOW MANY TO NAME: ' + want + '\nROWS:\n' + list;
+      const USER = askTermsOnly
+        /* Nothing to choose between, so do not ask it to choose. The one
+           useful question left is the vocabulary one. */
+        ? 'FOOD: ' + q + '\nUNIT THE USER MEANS: ' + unitWord +
+          '\nROWS: none - a plain text search of the table found nothing for' +
+          ' these words.\nAnswer picks:[] and give TERMS: the words this food' +
+          ' would be written under in that table.'
+        : 'FOOD: ' + q + '\nUNIT THE USER MEANS: ' + unitWord +
+          '\nHOW MANY TO NAME: ' + want + '\nROWS:\n' + list;
       let r, why = '', by = 'anthropic';
       try {
         r = await fetch('https://api.anthropic.com/v1/messages', {
