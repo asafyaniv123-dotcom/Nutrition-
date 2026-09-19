@@ -6,6 +6,61 @@ section — git already keeps that.
 
 ---
 
+## "Hi Better Me, remind me…" — reminders said in one sentence (2026-09-19)
+
+> *"שאולי תהיה אפשרות לעשות תזכורות לעצמך (שיכנס גם באנשים שלי וגם בתכנון זמן)
+> שאתה לדוגמה אומר hi better me תזכיר לי לאחל לנועה בהצלחה במבחן ביום חמישי הקרוב
+> בשעה 11:00. וזה יישמר אוטומטית ותצוף תזכורת"*
+
+A general idea, not a spec yet. **One sentence in, three things out:** a
+reminder at a time, an entry on that day in תכנון זמן, and a note on the
+person in האנשים שלי. The person should never fill a form. Saying it is the
+whole act, which is the same principle as the evening reflection.
+
+### What already exists to build it from
+
+- **Parsing a free sentence is already a pattern here.** The push server's
+  `/parse` and `/say` send a person's own words to Gemini and get structure
+  back, with a per-IP daily cap. A reminder parser has the same shape: return
+  `{what, who, when}` and let the app file it.
+- **The push server already wakes every minute** (`crons = ["* * * * *"]` in
+  `push-server/wrangler.toml`). Firing at 11:00 on Thursday is a KV lookup per
+  minute, not new infrastructure.
+- **Both destinations exist**: `planForDate` / `planDayHTML` for the day, and
+  the people list (`pplMatch` can find נועה by name).
+
+### What has to be decided or built
+
+- **"Thursday" is a day question.** Resolve it with `appNow()` / `dayShift()`,
+  never `new Date()`. Said at 01:00 on a Wednesday night, "this Thursday" means
+  the Thursday of the day the person is still living in (see `CLAUDE.md` on
+  04:00). The parser should get today's app date passed in, not guess it.
+- **Confirm before saving, in one line.** *"Thursday 24 Sep, 11:00: wish Noa
+  luck on her exam"*, shown for a moment with an undo. A misheard date that
+  saves silently is worse than no feature.
+- **Today's push has no content.** The server sends one payload-less push a
+  day and the service worker shows fixed text. A reminder has to carry its own
+  words, so it needs an encrypted payload, or the worker fetching the text
+  when the push arrives.
+- **The person may not be in the list.** Offer to add them, never create one
+  silently.
+- **Eleven languages.** The parser has to accept a sentence in any of them,
+  and the confirmation line comes back through `_t` / `dfmt`.
+
+### "Hi Better Me" is native work
+
+A web page cannot listen for a wake word. It hears only while it is open and a
+button is held. `SpeechRecognition` is not used anywhere in the app today.
+Inside the App Store wrapper the honest route is **Siri / App Intents**
+(*"Hey Siri, remind me in Better Me…"*) and the Android equivalent, not an app
+listening all the time. Until then the web version is a text box, plus a
+microphone button where the browser offers dictation. That is the same
+sentence and the same parser, so nothing built now is thrown away. See
+`APPSTORE.md` §4: reminders depend on native push the same way the evening
+reminder does.
+
+---
+
 ## A long press is its own state — the undecided finger (2026-09-16)
 
 > *"שכשלוחצים לחיצה ארוכה כן יהיה אפקט שונה … בין אם זה שהצבע הדק יסתובב סביב
