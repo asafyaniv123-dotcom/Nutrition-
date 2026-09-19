@@ -6361,8 +6361,15 @@ function sayRowByName(n){
    Returns null when there is nothing usable, which is a real answer: it
    reaches sayNoMatch and the estimate, and it is the only honest reply when
    the tables hold no protein powder and the question asked for one. */
-function sayGuarded(f,g,sure,local,qk){
+function sayGuarded(f,g,sure,local,qk,askedPowder){
   if(!f)return null;
+  /* The question asked for a powder if the WORDS say so or if /parse says so.
+     sayAskedPowder scans for אבקה/אבקת/סקופ/powder/scoop, and a word list is
+     the thing that rots: "שייק חלבון" asks for a powder and matches none of
+     it. This widens the question; it never weakens an answer, because the
+     only thing it can do is stop the concentrate guard firing on a query that
+     really was about a concentrate. */
+  var asked=(askedPowder===true)||sayAskedPowder(qk);
   /* NOT A PREFERENCE. sayWrongKind means this row contradicts what was asked
      - a protein powder answered with baking powder, which holds none. The
      local pick stands if it survives; otherwise nothing does. */
@@ -6389,14 +6396,32 @@ function sayGuarded(f,g,sure,local,qk){
      627 kcal and 125 g of protein, which is where a day of 137.5 g came
      from. Unless the question asked for a powder, a concentrate is the wrong
      kind of thing. */
-  if(sayIsConcentrate(f)&&!sayAskedPowder(qk)&&local&&local.food&&!sayIsConcentrate(local.food))
+  if(sayIsConcentrate(f)&&!asked&&local&&local.food&&!sayIsConcentrate(local.food))
     return {f:local.food,g:0,s:false};
   return {f:f,g:g,s:sure};
+}
+/* The rows the table's OWN words reach, added behind the ones the person's
+   words reached. /parse names 2-4 of them per item now, which is the same
+   trick /match's terms already play one round trip later - and for a query in
+   another script it is the difference between sixty candidates and none. */
+function sayTermCands(cands,terms){
+  if(!terms||!terms.length)return cands;
+  var have={},out=cands.slice(),i,k,more;
+  for(i=0;i<cands.length;i++)have[cands[i].n]=1;
+  for(i=0;i<terms.length&&i<4;i++){
+    more=sayCandidates(terms[i],25);
+    for(k=0;k<more.length;k++)if(!have[more[k].n]){have[more[k].n]=1;out.push(more[k]);}
+  }
+  return out.slice(0,60);
 }
 function sayResolveAI(it,done){
   var local=sayResolve(it);
   var q=it.food;
   var qk=foodKey(q);
+  /* What /parse decided about this item, read once. An older worker sends no
+     flags at all, and then this is simply false and the word list decides as
+     it always did. */
+  var pw=!!(it&&it.flags&&it.flags.powder);
   var hit=matchCacheGet(q);
   /* A REMEMBERED ANSWER IS STILL AN ANSWER, and it is checked like one. This
      line used to return before any guard ran, which is how a phone that once
@@ -6406,7 +6431,7 @@ function sayResolveAI(it,done){
      the cache and asked again properly, so the poison clears itself on the
      next query rather than waiting for someone to remember to bump a number. */
   if(hit){
-    var kept=sayGuarded(sayRowByName(hit.n),hit.g,hit.s,local,qk);
+    var kept=sayGuarded(sayRowByName(hit.n),hit.g,hit.s,local,qk,pw);
     /* AND THE CACHE LEARNS. The guards rarely come back with nothing - they
        come back with the local pick - so returning that while leaving
        אבקת אפיה in storage would run the override again on every read for
@@ -6420,7 +6445,9 @@ function sayResolveAI(it,done){
     matchCachePut(q,null);
   }
   if(!SYNC_SERVER){done(local);return;}
-  var cands=sayCandidates(q,60);
+  /* BEHIND the direct hits, never instead of them: what the person actually
+     typed is the better evidence and keeps its place. */
+  var cands=sayTermCands(sayCandidates(q,60),it&&it.search_terms);
   if(!cands.length){done(local);return;}
   var names=cands.map(sayCandLine);
   var t=setTimeout(function(){t=0;done(local);},9000);   // never hang the panel
@@ -6445,7 +6472,7 @@ function sayResolveAI(it,done){
          contradicts the question - so a pick of אבקת אפיה for a protein
          powder was taken as written. It does not pick that today; it did
          exactly that once, which is the only reason the guard exists. */
-      var ok=sayGuarded(f,g,sure,local,qk);
+      var ok=sayGuarded(f,g,sure,local,qk,pw);
       if(!ok){done(sayNoMatch(it,local,j.est));return;}
       f=ok.f;g=ok.g;sure=ok.s;
       matchCachePut(q,{n:f.n,g:g,s:sure});

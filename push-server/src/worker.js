@@ -368,7 +368,7 @@ export default {
     /* A question for Gemini, as PARTS - so the same one helper carries a
        sentence and a photograph. geminiText below is the text-only shape the
        three text routes already use, unchanged. */
-    async function geminiAsk(system, parts, maxTokens, think) {
+    async function geminiAsk(system, parts, maxTokens, think, schema) {
       if (!env.GEMINI_KEY) return null;
       let r;
       try {
@@ -390,6 +390,12 @@ export default {
                    number. */
                 ...(think ? {} : { thinkingConfig: { thinkingBudget: 0 } }),
                 responseMimeType: 'application/json',
+                /* A SCHEMA RATHER THAN A HOPE, where the caller has one.
+                   responseMimeType alone still lets the model choose its own
+                   field names, and every field is read by name on the way
+                   out. Optional, so the routes that have not been given one
+                   behave exactly as before. */
+                ...(schema ? { responseSchema: schema } : {}),
               },
             }),
           },
@@ -448,8 +454,8 @@ export default {
     }
 
     /* The text-only shape the three sentence routes use. */
-    function geminiText(system, user, maxTokens) {
-      return geminiAsk(system, [{ text: user }], maxTokens, false);
+    function geminiText(system, user, maxTokens, schema) {
+      return geminiAsk(system, [{ text: user }], maxTokens, false, schema);
     }
 
     if (url.pathname === '/health') {
@@ -745,7 +751,10 @@ export default {
     }
 
     if (url.pathname === '/parse' && req.method === 'POST') {
-      if (!env.AI_KEY) return json({ error: 'parsing is not configured' }, 503);
+      /* EITHER provider. This still asked only about Anthropic, so a worker
+         with no Anthropic key would 503 a question Gemini answers every time
+         today. Same guard /match and /estimate already carry. */
+      if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'parsing is not configured' }, 503);
 
       let b;
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
@@ -767,7 +776,9 @@ export default {
         'You split a description of a meal into its items. It may be written\n' +
         'in any language.\n' +
         'Reply with JSON only:\n' +
-        '{"items":[{"food":"","amount":1,"unit":"","stated_by_user":null}]}\n' +
+        '{"items":[{"food":"","search_terms":["",""],"amount":1,"unit":"",\n' +
+        '  "flags":{"powder":false,"cooked":false,"raw":false},\n' +
+        '  "stated_by_user":null,"est":null}]}\n' +
         '- food: the food alone, in the language it was written, no quantity words.\n' +
         '- amount: a number. If none is given use 1.\n' +
         '- unit: one of g, unit, slice, cup, tbsp, tsp. Use "unit" for whole things\n' +
@@ -832,8 +843,110 @@ export default {
         '  handful of nuts), and "unspecified" for everything else. Do not\n' +
         '  guess breakfast, lunch or dinner from the food - only the hour says\n' +
         '  that, and you cannot see it.\n' +
-        '- Never return calories, protein, carbohydrate or fat. You do not know them.\n' +
+        /* THE SHORTLIST IS BUILT BY STRING MATCHING, so a query in a script
+           the tables do not use reaches nothing and this whole pipeline stops
+           before the model can help: 鶏肉 found 0 of 7,240 rows. /match can
+           already rescue that with terms, but only AFTER a failed round trip.
+           Naming the words here means the first search is the right one. */
+        '- search_terms: 2-4 words IN HEBREW that this food would be filed\n' +
+        '  under in an official food table, best first. The tables are written\n' +
+        '  in Hebrew whatever language the person types in, so this is the one\n' +
+        '  thing a plain text search cannot do for itself. "Greek yogurt" is\n' +
+        '  ["\u05d9\u05d5\u05d2\u05d5\u05e8\u05d8","\u05d9\u05d5\u05d2\u05d5\u05e8\u05d8 \u05d9\u05d5\u05d5\u05e0\u05d9"]; "\u05d7\u05e6\u05d9 \u05e1\u05e7\u05d5\u05e4 \u05d7\u05dc\u05d1\u05d5\u05df" is\n' +
+        '  ["\u05d0\u05d1\u05e7\u05ea \u05d7\u05dc\u05d1\u05d5\u05df","\u05d7\u05dc\u05d1\u05d5\u05df \u05de\u05d9 \u05d2\u05d1\u05d9\u05e0\u05d4"]. Names only - no weights, no\n' +
+        '  quantities, no descriptions. Give these for every item, including\n' +
+        '  ones already written in Hebrew.\n' +
+        /* The app decides whether a question is about a powder by scanning it
+           for אבקה/אבקת/סקופ/powder/scoop. That is a word list, and a list is
+           the thing that rots: "שייק חלבון" and "וויי אחרי אימון" both ask for
+           a powder and match none of it. The flag is judgement instead.
+           It does NOT switch a guard off - see the app side. */
+        '- flags, about the food itself rather than the sentence:\n' +
+        '  powder: true if this is a protein powder, a supplement, an isolate\n' +
+        '    or any concentrate sold as a powder - INCLUDING when the words\n' +
+        '    "\u05d0\u05d1\u05e7\u05d4" or "scoop" never appear ("\u05e9\u05d9\u05d9\u05e7 \u05d7\u05dc\u05d1\u05d5\u05df", "whey").\n' +
+        '  cooked / raw: true only when the text actually says so. Both false\n' +
+        '    when it does not; never guess from the food.\n' +
+        /* A dish from a restaurant is not in any table and never will be, and
+           the round trip to /estimate that follows is one we can already
+           answer here. A plain ingredient is NOT this: the tables have it
+           measured, and a guess would be replacing data with an opinion. */
+        '- est, and ONLY for a composite or one-off dish no food table would\n' +
+        '  carry - a restaurant plate, a home-made stew, "the shawarma from\n' +
+        '  the place by the office". Never for a plain ingredient, a supermarket\n' +
+        '  product or anything a table would hold: those are measured, and an\n' +
+        '  estimate would be replacing data with an opinion.\n' +
+        '  {"per100":{"kcal":0,"p":0,"c":0,"f":0},"serving_g":0,"assumed":""}\n' +
+        '  per 100 g AS EATEN, what one portion weighs, and one short sentence\n' +
+        '  naming what you took it to be. Keep the macros consistent with the\n' +
+        '  energy: protein and carbohydrate about 4 kcal per gram, fat about 9.\n' +
+        '  null for every other item.\n' +
+        '- Never return calories, protein, carbohydrate or fat for an item\n' +
+        '  that is NOT carrying est. You do not know them, and the app has the\n' +
+        '  measured figures.\n' +
         '- No prose, no markdown fence, JSON only.';
+
+      /* A SCHEMA RATHER THAN A HOPE, the same reason /vision gives: asking for
+         JSON still lets the model choose its own field names, and every field
+         below is read by name on the other side. Gemini-only, because it is
+         the provider that can enforce it - but it enforces what the prompt
+         already says to BOTH, so this is not a second contract. */
+      const PSCHEMA = {
+        type: 'OBJECT',
+        properties: {
+          items: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                food: { type: 'STRING' },
+                search_terms: { type: 'ARRAY', items: { type: 'STRING' } },
+                amount: { type: 'NUMBER' },
+                unit: { type: 'STRING', enum: ['g', 'unit', 'slice', 'cup', 'tbsp', 'tsp'] },
+                flags: {
+                  type: 'OBJECT',
+                  properties: {
+                    powder: { type: 'BOOLEAN' },
+                    cooked: { type: 'BOOLEAN' },
+                    raw: { type: 'BOOLEAN' },
+                  },
+                  required: ['powder', 'cooked', 'raw'],
+                },
+                stated_by_user: {
+                  type: 'OBJECT',
+                  nullable: true,
+                  properties: {
+                    calories_kcal: { type: 'NUMBER', nullable: true },
+                    protein_g: { type: 'NUMBER', nullable: true },
+                    carbohydrates_g: { type: 'NUMBER', nullable: true },
+                    fat_g: { type: 'NUMBER', nullable: true },
+                  },
+                },
+                est: {
+                  type: 'OBJECT',
+                  nullable: true,
+                  properties: {
+                    per100: {
+                      type: 'OBJECT',
+                      properties: {
+                        kcal: { type: 'NUMBER' }, p: { type: 'NUMBER' },
+                        c: { type: 'NUMBER' }, f: { type: 'NUMBER' },
+                      },
+                      required: ['kcal', 'p', 'c', 'f'],
+                    },
+                    serving_g: { type: 'NUMBER' },
+                    assumed: { type: 'STRING' },
+                  },
+                  required: ['per100', 'serving_g', 'assumed'],
+                },
+              },
+              required: ['food', 'search_terms', 'amount', 'unit', 'flags'],
+            },
+          },
+          meal_type: { type: 'STRING', enum: ['drink', 'snack', 'unspecified'] },
+        },
+        required: ['items', 'meal_type'],
+      };
 
       let r, why = '', by = 'anthropic';
       try {
@@ -871,7 +984,7 @@ export default {
         raw = out ? (((out.content || []).find((c) => c.type === 'text') || {}).text || '') : '';
       }
       if (!raw) {
-        const g = await geminiText(SYSTEM, text, 1200);
+        const g = await geminiText(SYSTEM, text, 1400, PSCHEMA);
         if (g) { raw = g; by = 'gemini'; }
       }
       if (!raw) {
@@ -891,6 +1004,24 @@ export default {
         .map((it) => {
           const food = String((it && it.food) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
           if (!food) return null;
+          /* A QUANTITY IS NOT A FOOD. "שייק חלבון 25 גרם של מולר" came back
+             as the shake plus a second item called "25 גרם" - the leftover
+             of a number the prompt correctly kept inside the product name.
+             On screen that is a row with a red tag, one tap from being
+             estimated into the day. The prompt rule is right and stays;
+             this is the check behind it, because a rule the server cannot
+             enforce holds only until the next model version. */
+          if (/^[\d.,\s]*(?:g|kg|ml|l|oz|lb|גרם|גר|ק"ג|קג|מל|ליטר|כף|כפית|כוס|יחידה|יחידות|סקופ)?$/i.test(food)) return null;
+          /* AND A DECLARED FIGURE IS NOT A FOOD. Measured over three runs,
+             the model emits "25 גרם חלבון" as its own item in two of them.
+             That one is worse than a bare "25 גרם" because it MATCHES: it
+             finds a protein row and logs 25 g of powder nobody ate, which
+             is the 137.5 g day arriving through a different door. The
+             prompt says this belongs in stated_by_user, and the first item
+             shows it was understood - the leftover is emitted anyway.
+             Narrow on purpose: every real food carrying these words
+             (אבקת חלבון, חלבון מי גבינה) begins with something but a digit. */
+          if (/^[\d.,\s]+(?:g|גרם|גר|mg|מג)?\s*(?:של\s*)?(?:חלבון|חלבונים|protein|פחמימה|פחמימות|carb|carbs|carbohydrates?|שומן|שומנים|fat|קלוריות|קלוריה|calories|kcal|cal)$/i.test(food)) return null;
           let amount = Number(it && it.amount);
           if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) amount = 1;
           const unit = UNITS.includes(it && it.unit) ? it.unit : 'unit';
@@ -911,12 +1042,52 @@ export default {
           } : null;
           const anySaid = said && (said.calories_kcal !== null || said.protein_g !== null ||
                                    said.carbohydrates_g !== null || said.fat_g !== null);
-          return { food, amount, unit, stated_by_user: anySaid ? said : null };
+          /* THE WORDS TO SEARCH WITH. Cleaned like any other free text: a
+             weight or a quantity smuggled in here would be searched for and
+             find nothing, which is worse than sending nothing at all. */
+          const terms = (Array.isArray(it && it.search_terms) ? it.search_terms : [])
+            .map((t) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 40))
+            .filter((t) => t.length > 1)
+            .slice(0, 4);
+          /* Booleans, and never inferred from each other: cooked and raw are
+             both false for a sentence that says neither, which is most of
+             them. The app treats "said nothing" and "said no" identically
+             here and must keep being able to. */
+          const fl = (it && it.flags && typeof it.flags === 'object') ? it.flags : {};
+          const flags = { powder: fl.powder === true, cooked: fl.cooked === true, raw: fl.raw === true };
+          /* Through the SAME cleaner /match's est goes through - the clamps
+             and the Atwater check in one place rather than three, because the
+             moment they are written out separately they start disagreeing. */
+          const est = cleanEst(it && it.est);
+          return { food, search_terms: terms, amount, unit, flags, est,
+                   stated_by_user: anySaid ? said : null };
         })
         .filter(Boolean)
         .slice(0, 20);
 
-      return json({ ok: true, by, items,
+      /* ONE FOOD, SPLIT IN TWO. The model keeps trying to give the figure
+         the person quoted an item of its own; with the two filters above
+         closing the obvious shapes it emits a bare duplicate instead, and
+         "שייק חלבון 25 גרם של מולר" came back as the same shake twice — one
+         carrying said=25 and one carrying nothing. Logged, that is the
+         shake counted twice.
+         Collapsed only when name, amount AND unit all match: someone who
+         really ate two writes "2 יוגורט", which is ONE item of amount 2.
+         The survivor keeps whichever stated_by_user exists, because that
+         figure sits on only one of the halves. */
+      const seenItem = new Map();
+      const merged = [];
+      for (const it of items) {
+        const k = it.food + "\u0000" + it.amount + "\u0000" + it.unit;
+        const had = seenItem.get(k);
+        if (!had) { seenItem.set(k, it); merged.push(it); continue; }
+        if (!had.stated_by_user && it.stated_by_user) had.stated_by_user = it.stated_by_user;
+        if (!had.search_terms.length && it.search_terms.length) had.search_terms = it.search_terms;
+        if (!had.est && it.est) had.est = it.est;
+        had.flags.powder = had.flags.powder || it.flags.powder;
+      }
+
+      return json({ ok: true, by, items: merged,
         meal_type: ['drink', 'snack'].indexOf(parsed && parsed.meal_type) >= 0 ? parsed.meal_type : 'unspecified' });
     }
 
