@@ -79,6 +79,11 @@ with the project.
   photos. The first entry that is code rather than a picture: kept to read,
   not installed, since the app is not React.
 
+- **neumorphic-glow-home.jpg** and **neumorphic-glow-controls.jpg** — one white
+  material pushed out and pressed in, with a single coloured light behind the
+  one element that carries a value. Sent for the nutrition tubes; the notes
+  record why the light reads as light and where the style fails (contrast).
+
 ## What is emerging
 
 Seven entries in, three things have been said more than once. None of them is a
