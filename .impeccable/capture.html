@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>capture</title>
+<style>
+  html,body{margin:0;height:100%;background:#efeaf8;overflow:hidden}
+  /* the comp keeps 30pt of phone status bar above the page */
+  iframe{position:absolute;left:0;top:30px;width:100%;height:calc(100% - 30px);border:0}
+</style>
+<!-- the phone's own status bar, which the comp shows and the page never draws -->
+<div style="position:absolute;left:0;right:0;top:0;height:30px;font:600 13px -apple-system,'Segoe UI',sans-serif;color:#1e2233;background:rgba(236,230,248,.9)">
+  <span style="position:absolute;left:25px;top:9px">21:40</span>
+  <span style="position:absolute;right:22px;top:10px;width:20px;height:9px;border:1.3px solid #1e2233;border-radius:2.5px"></span>
+  <span style="position:absolute;right:23.5px;top:11.5px;width:14px;height:6px;background:#1e2233;border-radius:1px"></span>
+  <svg style="position:absolute;right:47px;top:8px" width="15" height="12" viewBox="0 0 15 12"><path d="M1.5 5a9 9 0 0 1 12 0M4 7.5a5.5 5.5 0 0 1 7 0M6.5 10a1.5 1.5 0 0 1 2 0" fill="none" stroke="#1e2233" stroke-width="1.8" stroke-linecap="round"/></svg>
+  <svg style="position:absolute;right:67px;top:8px" width="16" height="11" viewBox="0 0 16 11"><rect x="0" y="7" width="3" height="4" rx=".7" fill="#1e2233"/><rect x="4.3" y="5" width="3" height="6" rx=".7" fill="#1e2233"/><rect x="8.6" y="2.5" width="3" height="8.5" rx=".7" fill="#1e2233"/><rect x="12.9" y="0" width="3" height="11" rx=".7" fill="#1e2233"/></svg>
+</div>
+<iframe id="f" src="/dev/?layout=fan&nolive=1"></iframe>
+<script>
+const f = document.getElementById('f');
+const q = new URLSearchParams(location.search);
+if (q.get('w')) { f.style.width = q.get('w') + 'px'; f.style.height = '672px'; }
+/* headless Chrome will not make a window narrower than ~500px, so the phone is
+   pinned to 376px here rather than trusted to the window size */
+f.style.width = (q.get('w') || 376) + 'px'; f.style.height = '642px';
+f.addEventListener('load', () => setTimeout(() => {
+  const w = f.contentWindow;
+  if (q.get('lang') && w.langSet) { try { w.langSet(q.get('lang')); } catch (e) {} }
+  setTimeout(() => go(w), 3000);
+}, 4500));
+function go(w) {
+  try {
+    /* the DEV badge exists only in the dev copy; the stable app the comp describes has none */
+    [...w.document.body.children].forEach(e => { if (/^DEV/.test(e.textContent || '') && e.style.position === 'fixed') e.remove(); });
+    /* the comp shows someone with a filled profile, so no "starting target" note */
+    if (q.get('profiled') !== '0') w.targetsAreGuessed = () => false;
+    const d = w.loadDay(w.curDate);
+    d.meals = [
+      { name: q.get('lang') === 'he' ? 'ארוחת בוקר' : 'Breakfast', kcal: 520, p: 38, c: 55, f: 16, time: '08:20' },
+      { name: q.get('lang') === 'he' ? 'ארוחת צהריים' : 'Lunch', kcal: 680, p: 52, c: 70, f: 20, time: '13:40' },
+      { name: q.get('lang') === 'he' ? 'חטיף' : 'Snack', kcal: 280, p: 14, c: 25, f: 9, time: '19:10' }
+    ];
+    d.water = 1500;
+    w.saveDay(w.curDate, d);
+    if(q.get('home')!=='1')w.enterModule('nutrition');
+    const sc = q.get('scroll'); if (sc) setTimeout(() => w.scrollTo(0, +sc), 800);
+  } catch (e) { document.title = 'ERR ' + e.message; }
+}
+</script>
