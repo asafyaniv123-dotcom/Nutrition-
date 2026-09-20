@@ -10609,6 +10609,32 @@ setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove();},
 sndOpening();
 var currentModule=null; // null = home, 'nutrition', 'endofday'
 
+/* ── A NEW VERSION, WITHOUT BEING TOLD ──
+   The page asks the server whether the file it is running from has changed,
+   and reloads itself if it has. The stored data is untouched by a reload, so
+   nothing is lost - but a half-written sentence would be, hence the guards. */
+var _verTag='',_verAt=0;
+function verWatch(){
+  if(!navigator.onLine)return;
+  var now=Date.now();
+  if(_verAt&&now-_verAt<300000)return;      // five minutes between asks
+  _verAt=now;
+  /* not while anyone is writing, and not while anything is written */
+  var ae=document.activeElement;
+  if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable))return;
+  var live=document.querySelectorAll('input,textarea'),i;
+  for(i=0;i<live.length;i++)if(live[i].value&&String(live[i].value).trim())return;
+  fetch(location.pathname+'?v='+now,{method:'HEAD',cache:'no-store'}).then(function(r){
+    var tag=r.headers.get('etag')||r.headers.get('last-modified')||'';
+    if(!tag)return;
+    if(!_verTag){_verTag=tag;return;}       // the first answer is the baseline
+    if(tag!==_verTag)location.reload();
+  },function(){});
+}
+addEventListener('visibilitychange',function(){if(!document.hidden)verWatch();});
+/* the baseline is taken once the page has settled, so the first ask never
+   competes with the boot */
+setTimeout(verWatch,4000);
 function goHome(){
   jrnlFlush();
   document.body.classList.remove('mod-nutrition');
