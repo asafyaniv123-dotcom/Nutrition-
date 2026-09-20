@@ -2411,6 +2411,31 @@ html body.mod-nutrition .addbar,html body.mod-nutrition .addbar-w{background:var
   box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
 html body.mod-nutrition .addbar:active,html body.mod-nutrition .addbar-w:active{
   box-shadow:inset 5px 6px 11px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+/* ── THE DAY AS FIVE MARKS ── */
+.kind-row{display:flex;gap:6px;margin-top:4px}
+.kind-cell{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+  border:none;background:none;padding:8px 2px;border-radius:16px;cursor:pointer;font-family:inherit}
+.kind-disc{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;
+  background:var(--surface);color:var(--muted)}
+.kind-disc svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.kind-name{font-size:9px;font-weight:700;color:var(--muted);line-height:1.2;text-align:center;
+  overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.kind-kcal{font-size:11px;font-weight:800;color:var(--ink);line-height:1}
+.kind-cell.has .kind-name{color:var(--ink)}
+.kind-cell.open{background:var(--surface)}
+.kind-open{margin-top:10px}
+html body.mod-nutrition .kind-disc{background:var(--nu-ground);color:var(--nu-muted);
+  box-shadow:-3px -3px 7px var(--nu-lit),4px 5px 10px var(--nu-shade-soft)}
+html body.mod-nutrition .kind-name{color:var(--nu-muted)}
+html body.mod-nutrition .kind-cell.has .kind-name,html body.mod-nutrition .kind-kcal{color:var(--nu-ink)}
+html body.mod-nutrition .kind-cell.open{background:none}
+html body.mod-nutrition .kind-cell.open .kind-disc{box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+/* lit: the same four colours the tubes use, and the drink takes the water's */
+html body.mod-nutrition .kind-cell.log-ic-breakfast .kind-disc{color:#c9962f;box-shadow:-3px -3px 7px var(--nu-lit),4px 5px 10px var(--nu-shade-soft),0 0 13px 3px rgba(249,206,147,.9)}
+html body.mod-nutrition .kind-cell.log-ic-lunch .kind-disc{color:#5f9b63;box-shadow:-3px -3px 7px var(--nu-lit),4px 5px 10px var(--nu-shade-soft),0 0 13px 3px rgba(191,215,180,.9)}
+html body.mod-nutrition .kind-cell.log-ic-dinner .kind-disc{color:#5a7fb8;box-shadow:-3px -3px 7px var(--nu-lit),4px 5px 10px var(--nu-shade-soft),0 0 13px 3px rgba(178,205,237,.9)}
+html body.mod-nutrition .kind-cell.log-ic-snack .kind-disc{color:#c4726c;box-shadow:-3px -3px 7px var(--nu-lit),4px 5px 10px var(--nu-shade-soft),0 0 13px 3px rgba(253,183,167,.9)}
+html body.mod-nutrition .kind-cell.log-ic-drink .kind-disc{color:#4d7fbe;box-shadow:-3px -3px 7px var(--nu-lit),4px 5px 10px var(--nu-shade-soft),0 0 13px 3px rgba(178,205,237,.9)}
 /* ── THE KIND OF MEAL ── five chips, the chosen one pressed into the surface
    rather than painted a different colour: the interface stays one material. */
 .add-kinds{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px}
@@ -9138,6 +9163,20 @@ function whoRowHTML(lbl,n,v,lim,ceil,val,cap){
 var _whoOpen=false;
 /* water: closed by default, so the amounts are not on screen all day */
 var _waterOpen=false;
+/* which kind is showing its meals; nothing is open when the screen is drawn */
+var _openKind='';
+function kindOpen(k){
+  var day=loadDay(curDate),any=false;
+  for(var i=0;i<day.meals.length;i++)if(mealKind(day.meals[i])===k){any=true;break;}
+  if(!any){_addKind=k;addSetMode('find');return;}
+  _openKind=(_openKind===k?'':k);
+  renderToday();
+}
+/* One meal, drawn the same way wherever it is asked for. */
+function logItemHTML(m){
+  return '<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+mealIcon(m)+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+(m.est?'<span class="log-est">'+_t('הערכה')+'</span>':'')+'</div><div class="log-time">'+fmtClock(m.time)+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:var(--muted)">'+_t('{p}ח {c}פ {f}ש',{p:m.p,c:m.c,f:m.f})+'</div><div class="log-kcal">'+nfmt(m.kcal)+'</div><button class="log-del" onclick="deleteMeal('+m.id+')">&times;</button></div></div>';
+}
+
 function waterToggle(){_waterOpen=!_waterOpen;renderToday();}
 function whoToggle(el){_whoOpen=!!el.open;}
 function whoCardHTML(day){
@@ -9409,20 +9448,38 @@ function renderToday(){
     +'<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div id="meal-photo-prev" style="display:none"><img id="meal-photo-img" style="width:44px;height:44px;object-fit:cover;border-radius:8px"></div><button onclick="document.getElementById(\'meal-photo-inp\').click()" style="background:var(--surface);border:1.5px dashed var(--violet-300);border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">&#x1F4F7; '+_t('תמונה')+'</button><input id="meal-photo-inp" type="file" accept="image/*" style="display:none" onchange="handleMealPhoto(this)"><button onclick="clearMealPhoto()" id="meal-photo-clear" style="display:none;background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:16px">&times;</button></div>'
     +'<button id="save-lib-btn" class="lib-save-btn'+(saveToLib?' saved':'')+'" onclick="toggleSaveToLib()">'+(saveToLib?''+_t('✓ ישמר לספרייה')+'':''+_t('שמור לספרייה')+'')+'</button><button class="addbtn" onclick="addManual()">'+_t('הוסף')+' &#10003;</button></div></div>';
 
+  /* ── THE DAY AS FIVE MARKS ──
+     One row of kinds instead of a list that grows all day. A kind holding
+     something is lit in its own colour and carries its total; an empty one is
+     the plain material. Pressing a full kind opens it, pressing it again
+     closes it, and pressing an empty one starts adding that kind - a control
+     that answers nothing reads as broken. */
   var logHTML='';
-  if(day.meals.length>0){
-    logHTML='<div class="log-card"><div class="log-title">'+_t('ארוחות היום')+'</div>';
-    /* grouped by kind, in the order of the day; a kind with nothing in it
-       draws no heading */
-    var _byKind={},_ki,_kk,_grp;
-    for(var _gi=0;_gi<day.meals.length;_gi++){var _gm=day.meals[_gi],_gk=mealKind(_gm);
-      (_byKind[_gk]=_byKind[_gk]||[]).push(_gm);}
-    var _order=[];for(_ki=0;_ki<MEAL_KINDS.length;_ki++)_order.push(MEAL_KINDS[_ki].k);
-    for(_ki=0;_ki<_order.length;_ki++){_kk=_order[_ki];_grp=_byKind[_kk];if(!_grp)continue;
-    logHTML+='<div class="log-group">'+mealKindLabel(_kk)+'</div>';
-    for(var mi2=0;mi2<_grp.length;mi2++){var m=_grp[mi2];logHTML+='<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+mealIcon(m)+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+(m.est?'<span class="log-est">'+_t('הערכה')+'</span>':'')+'</div><div class="log-time">'+fmtClock(m.time)+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:var(--muted)">'+_t('{p}ח {c}פ {f}ש',{p:m.p,c:m.c,f:m.f})+'</div><div class="log-kcal">'+nfmt(m.kcal)+'</div><button class="log-del" onclick="deleteMeal('+m.id+')">&times;</button></div></div>';}}
+  var _byKind={},_ki,_kk,_grp,_gm,_gk;
+  for(var _gi=0;_gi<day.meals.length;_gi++){_gm=day.meals[_gi];_gk=mealKind(_gm);
+    (_byKind[_gk]=_byKind[_gk]||[]).push(_gm);}
+  logHTML='<div class="log-card"><div class="log-title">'+_t('ארוחות היום')+'</div>';
+  logHTML+='<div class="kind-row">';
+  for(_ki=0;_ki<MEAL_KINDS.length;_ki++){
+    var _w=MEAL_KINDS[_ki];_kk=_w.k;_grp=_byKind[_kk];
+    var _has=!!(_grp&&_grp.length);
+    var _kc=0;if(_has)for(var _ji=0;_ji<_grp.length;_ji++)_kc+=(_grp[_ji].kcal||0);
+    logHTML+='<button class="kind-cell'+(_has?' has log-ic-'+_kk:'')+(_openKind===_kk&&_has?' open':'')+'" '+
+      'onclick="kindOpen(&quot;'+_kk+'&quot;)" aria-expanded="'+(_openKind===_kk&&_has?'true':'false')+'">'+
+      '<span class="kind-disc"><svg viewBox="0 0 24 24">'+_w.d+'</svg></span>'+
+      '<span class="kind-name">'+mealKindLabel(_kk)+'</span>'+
+      (_has?'<span class="kind-kcal">'+nfmt(Math.round(_kc))+'</span>':'')+
+      '</button>';
+  }
+  logHTML+='</div>';
+  _grp=_byKind[_openKind];
+  if(_grp&&_grp.length){
+    logHTML+='<div class="kind-open">';
+    for(var mi2=0;mi2<_grp.length;mi2++){var m=_grp[mi2];logHTML+=logItemHTML(m);}
     logHTML+='</div>';
   }
+  logHTML+='</div>';
+
 
   /* Only one body is ever non-empty, so this concatenation is really a
      switch. Nothing at all is drawn until a way has been chosen. */
