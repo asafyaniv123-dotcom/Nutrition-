@@ -2384,6 +2384,15 @@ body.mod-nutrition .wb{height:12px;border-radius:6px;background:#eaecf3;overflow
   box-shadow:inset 2px 3px 6px rgba(150,158,180,.5),inset -2px -2px 5px rgba(255,255,255,.92)}
 body.mod-nutrition .wf{background:var(--nu-water);border-radius:6px;box-shadow:0 0 16px rgba(124,178,240,.8)}
 html body.mod-nutrition .wadd{color:#4d7fbe;font-weight:800}
+/* ── THE MICROPHONE ── quiet until it is listening, and then it breathes.
+   The pulse is the only thing on the screen that says a recording is running,
+   so it does not stop for reduced motion; it fades instead. */
+.mic-btn{display:inline-flex;align-items:center;justify-content:center}
+.mic-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mic-btn.on{color:var(--terra-500,#c4726c);animation:micPulse 1.4s cubic-bezier(.4,0,.6,1) infinite}
+@keyframes micPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.93)}}
+@media (prefers-reduced-motion:reduce){.mic-btn.on{animation:micFade 1.4s ease-in-out infinite}}
+@keyframes micFade{0%,100%{opacity:1}50%{opacity:.55}}
 /* ── THE ADD ROW ── a line you write in, sitting above the tab bar where the
    thumb already is. Pressed into the surface, because it takes something. */
 .addbar-wrap{position:fixed;left:0;right:0;bottom:calc(74px + env(safe-area-inset-bottom));z-index:145;
@@ -6275,6 +6284,50 @@ var _oneAsked=false;
    scrollHeight rather than counted in characters, because the wrap depends on
    the font, the language and the width of the phone - Arabic and German do
    not break where Hebrew does. */
+/* ── SPEAK IT ──
+   Fills #fdb-q with what was said and leaves the existing parse button to do
+   the rest. Interim results are written as they arrive so the line is visibly
+   listening; the final result replaces them. */
+var _micOn=false,_micRec=null;
+function micCan(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition);}
+function micLang(){
+  var c='he';try{c=localStorage.getItem(LANG_KEY)||'he';}catch(e){}
+  var M={he:'he-IL',en:'en-US',ar:'ar',de:'de-DE',es:'es-ES',fr:'fr-FR',it:'it-IT',
+         ja:'ja-JP',pt:'pt-BR','zh-Hans':'zh-CN','zh-Hant':'zh-TW'};
+  return M[c]||c||'he-IL';
+}
+function micPaint(){
+  var b=document.getElementById('mic-btn');
+  if(b)b.className='one-ic mic-btn'+(_micOn?' on':'');
+}
+function micStop(){
+  _micOn=false;
+  if(_micRec){try{_micRec.stop();}catch(e){}}
+  micPaint();
+}
+function micToggle(){
+  if(_micOn){micStop();return;}
+  if(!micCan())return;
+  var R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var box=document.getElementById('fdb-q');if(!box)return;
+  var base=box.value?box.value.replace(/\s+$/,'')+' ':'';
+  _micRec=new R();
+  _micRec.lang=micLang();
+  _micRec.interimResults=true;
+  _micRec.continuous=false;
+  _micRec.onresult=function(ev){
+    var said='';
+    for(var i=ev.resultIndex;i<ev.results.length;i++)said+=ev.results[i][0].transcript;
+    box.value=base+said;
+    /* the same two things typing does, so the parse button and the box's own
+       height do not care where the words came from */
+    fdbType(box.value);oneGrow(box);
+  };
+  _micRec.onerror=function(){micStop();};
+  _micRec.onend=function(){micStop();};
+  _micOn=true;micPaint();
+  try{_micRec.start();}catch(e){micStop();}
+}
 function oneGrow(el){
   if(!el)return;
   el.style.height='auto';
@@ -9245,6 +9298,10 @@ function renderToday(){
            changing what Enter means would be worse than a short box -
            and Shift+Enter is the new line, as in every chat box. */
         '<textarea class="fdb-in one-in" id="fdb-q" rows="2" placeholder="'+_t('מה אכלת? שם של מאכל, או משפט שלם')+'" oninput="fdbType(this.value);oneGrow(this)" onkeydown="if(event.key===&#39;Enter&#39;&&!event.shiftKey){event.preventDefault();oneGo();}">'+esc(_fdbQ)+'</textarea>'+
+        /* only where the browser can actually hear: a button that does nothing
+           is worse than no button */
+        (micCan()?'<button class="one-ic mic-btn" id="mic-btn" onclick="micToggle()" title="'+_t('דיבור')+'" aria-label="'+_t('דיבור')+'">'+
+          '<svg viewBox="0 0 24 24"><path d="M12 3.5a2.8 2.8 0 0 1 2.8 2.8v5a2.8 2.8 0 0 1-5.6 0v-5A2.8 2.8 0 0 1 12 3.5z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3.5"/></svg></button>':'')+
         '<label class="one-ic" title="'+_t('צילום')+'" aria-label="'+_t('צילום')+'">&#x1F4F7;'+
         '<input type="file" accept="image/*" capture="environment" hidden onchange="picPick(this)"></label>'+
         /* The same control minus one attribute. capture is the whole
