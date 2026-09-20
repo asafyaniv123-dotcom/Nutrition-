@@ -1570,6 +1570,73 @@ export default {
        that answers.
 
        Secrets: GEMINI_KEY. Optional: SAY_DAILY_CAP (default 80/IP/day). */
+    if (url.pathname === '/transcribe' && req.method === 'POST') {
+      if (!env.GEMINI_KEY) return json({ error: 'the assistant is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const mime = String((b && b.mime) || '').slice(0, 40);
+      const data = String((b && b.data) || '');
+      const lang = String((b && b.lang) || 'he').slice(0, 8);
+      if (!/^audio\//.test(mime)) return json({ error: 'not audio' }, 400);
+      /* about 3 MB of base64, which is minutes of speech at the bitrates a
+         phone records at. A longer clip is a different feature. */
+      if (!data || data.length > 4000000) return json({ error: 'audio too long' }, 413);
+
+      const cap = Number(env.TRANSCRIBE_DAILY_CAP || 60);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'tr:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      /* Transcribe, do not interpret. The next step is /parse, and a model
+         that "helpfully" turns speech into a tidy food list here would be
+         guessing twice on the same words with nobody able to see the first
+         guess. */
+      const SYSTEM =
+        'You transcribe a short spoken note about food, in ' + lang + '.\n' +
+        '- Write exactly what was said, in the same language it was said in.\n' +
+        '- Keep numbers and units as spoken.\n' +
+        '- No punctuation you did not hear, no headings, no preamble, no\n' +
+        '  commentary, and never an answer to what was said.\n' +
+        '- If there is no speech, return an empty string.';
+
+      let r;
+      try {
+        r = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM }] },
+              contents: [{ role: 'user', parts: [{ inlineData: { mimeType: mime, data } }] }],
+              generationConfig: {
+                maxOutputTokens: 700,
+                temperature: 0,
+                thinkingConfig: { thinkingBudget: 0 },
+              },
+            }),
+          },
+        );
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) {
+        let why = '';
+        try { why = (await r.text()).slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
+
+      let j;
+      try { j = await r.json(); } catch { return json({ error: 'bad answer' }, 502); }
+      const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+      const text = parts.map((p) => p.text || '').join('').trim();
+      return json({ text });
+    }
+
     if (url.pathname === '/say' && req.method === 'POST') {
       if (!env.GEMINI_KEY) return json({ error: 'the assistant is not configured' }, 503);
 
