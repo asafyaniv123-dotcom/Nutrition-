@@ -1570,6 +1570,137 @@ export default {
        that answers.
 
        Secrets: GEMINI_KEY. Optional: SAY_DAILY_CAP (default 80/IP/day). */
+    if (url.pathname === '/plan' && req.method === 'POST') {
+      if (!env.GEMINI_KEY) return json({ error: 'the assistant is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const lang = String((b && b.lang) || 'he').slice(0, 8);
+      const now = String((b && b.now) || '').slice(0, 40);
+      const tz = String((b && b.tz) || '').slice(0, 60);
+      const cal = Array.isArray(b && b.calendar) ? b.calendar.slice(0, 120) : [];
+      const turns = Array.isArray(b && b.turns) ? b.turns.slice(-24) : [];
+      if (!turns.length) return json({ error: 'nothing to plan' }, 400);
+
+      const cap = Number(env.PLAN_DAILY_CAP || 60);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'pl:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      /* Asaf's contract, verbatim in substance. The one change is the
+         language line: he wrote "answer in Hebrew" for himself, and the app
+         has eleven readers. */
+      const SYSTEM =
+        'You are a time-planning assistant inside an app. Your goal: build the person a precise,\n' +
+        'realistic schedule that puts everything that matters to them in the right places.\n' +
+        'ALWAYS answer in this language: ' + lang + '.\n' +
+        '\n' +
+        'WHAT YOU GET each time: the current date, time and timezone; existing calendar events if\n' +
+        'any; and the conversation so far.\n' +
+        '\n' +
+        'STEPS, in order, skipping none:\n' +
+        '1. GATHER. Find out: the date range to plan; work or shifts with exact dates and hours;\n' +
+        '   one-off events (meetings, occasions, trips) with time and place; goals - how much time\n' +
+        '   a day or a week for each area (study, projects, reading and so on); workouts - kind,\n' +
+        '   how often, the rest gap needed, preferred hour, place; meals - which are at a fixed\n' +
+        '   hour and which are flexible, and cooking; sleep - the minimum hours; the home address\n' +
+        '   and where the activities are, so travel time can be worked out.\n' +
+        '   Rules for this step:\n' +
+        '   - ONE TOPIC per message, with at most 2-3 questions.\n' +
+        '   - Never set a day or an hour for an area the person has not talked about. Do not assume.\n' +
+        '   - Existing calendar events may be out of date. Ask whether they can be trusted before\n' +
+        '     using them.\n' +
+        '   - If something looks contradictory (a meeting at the same hour as another event), ask\n' +
+        '     before going on.\n' +
+        '2. PROPOSE A WEEKLY SKELETON: show a typical week and ask for approval before planning in full.\n' +
+        '3. PLAN IN FULL, day after day, only once the skeleton is approved.\n' +
+        '\n' +
+        'PLACEMENT RULES:\n' +
+        '- TRAVEL: every activity away from home gets a travel event there and a travel event back.\n' +
+        '  An activity at home starts only after the return leg has ended. If the travel time is\n' +
+        '  not known, ask.\n' +
+        '- SLEEP: keep the minimum the person asked for. After a day that ends late, do not put\n' +
+        '  anything early the next morning.\n' +
+        '- REST BETWEEN WORKOUTS: keep the gap the person asked for, and check it again whenever a\n' +
+        '  workout moves.\n' +
+        '- BUSY DAYS (a long shift, an event, a trip): lighten the load. One short block beats\n' +
+        '  cramming.\n' +
+        '- MEALS: only at the hours the person fixed. Never schedule a meal they called flexible.\n' +
+        '- HOLIDAYS, TRIPS AND EVENTS: skip blocks that make no sense that day.\n' +
+        '- Never schedule anything that makes no sense. When there is no good answer, leave the\n' +
+        '  time empty and say so.\n' +
+        '- HONESTY: if the goals do not fit the hours available, say exactly what is missing and\n' +
+        '  how much.\n' +
+        '\n' +
+        'ANSWER FORMAT. Return JSON only - no text before or after, no code fences. Exactly one of:\n' +
+        '{"type":"question","message":"…","options":["…","…"]}\n' +
+        '{"type":"skeleton","message":"…","days":[{"day":"…","blocks":[{"start":"08:00","end":"09:15","title":"…","category":"workout"}]}]}\n' +
+        '{"type":"schedule","message":"…","events":[{"date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","title":"…","emoji":"🚗","category":"travel","location":"…"}],"gaps":["…"]}\n' +
+        'category is one of: work, meeting, travel, study, project, workout, meal, reading, social, rest, other.\n' +
+        'The emoji is fixed per category: 🔴 work, 🔵 meeting, 🚗 travel, 📚 study, 💻 project,\n' +
+        '💪 workout, 🍽️ meal, 📖 reading, 🟢 social, 😴 rest.';
+
+      const head =
+        'Now: ' + (now || 'unknown') + (tz ? ' (' + tz + ')' : '') + '\n' +
+        'Existing calendar events: ' + (cal.length ? JSON.stringify(cal) : 'none supplied');
+
+      const contents = [{ role: 'user', parts: [{ text: head }] }];
+      for (const t of turns) {
+        const who = t && t.role === 'bot' ? 'model' : 'user';
+        const text = String((t && t.text) || '').slice(0, 4000);
+        if (text) contents.push({ role: who, parts: [{ text }] });
+      }
+
+      let r;
+      try {
+        r = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM }] },
+              contents,
+              generationConfig: {
+                maxOutputTokens: 4000,
+                temperature: 0.3,
+                responseMimeType: 'application/json',
+                thinkingConfig: { thinkingBudget: 0 },
+              },
+            }),
+          },
+        );
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) {
+        let why = '';
+        try { why = (await r.text()).slice(0, 200); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
+
+      let j;
+      try { j = await r.json(); } catch { return json({ error: 'bad answer' }, 502); }
+      const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+      const raw = parts.map((p) => p.text || '').join('').trim();
+
+      /* One of three shapes or nothing. An answer the app would have to guess
+         at is worse than an error it can show. */
+      let out;
+      try { out = JSON.parse(raw.replace(/^\u0060{3}[a-z]*\s*|\u0060{3}$/g, '')); }
+      catch { return json({ error: 'not json', raw: raw.slice(0, 300) }, 502); }
+      const kind = out && out.type;
+      const ok =
+        (kind === 'question' && typeof out.message === 'string') ||
+        (kind === 'skeleton' && Array.isArray(out.days)) ||
+        (kind === 'schedule' && Array.isArray(out.events));
+      if (!ok) return json({ error: 'unexpected shape', raw: raw.slice(0, 300) }, 502);
+      return json(out);
+    }
+
     if (url.pathname === '/transcribe' && req.method === 'POST') {
       if (!env.GEMINI_KEY) return json({ error: 'the assistant is not configured' }, 503);
 

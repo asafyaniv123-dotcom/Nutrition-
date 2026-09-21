@@ -2480,6 +2480,46 @@ html body.mod-home .home-menu i{background:var(--nu-muted)}
 /* the little dot that says today has no reflection yet - amber is the clock
    now, so this one takes the reflection's own blue */
 html body.mod-home .hub-dot{background:#4d7fbe;box-shadow:0 0 10px 2px rgba(178,205,237,.9)}
+/* ── THE PLANNER YOU TALK TO ── a section of תכנון זמן, in the app's own
+   material: a panel in a different one would announce itself as bolted on. */
+.pb{background:var(--card);border-radius:16px;padding:14px 15px;margin-bottom:10px;
+  box-shadow:0 2px 10px rgba(200,180,160,.08)}
+.pb-open{font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:12px}
+.pb-go{width:100%;border:none;border-radius:12px;padding:12px;font-family:inherit;font-size:13px;
+  font-weight:800;color:var(--white);cursor:pointer;
+  background:linear-gradient(135deg,var(--violet-300),var(--violet-500))}
+/* one line of the conversation. What the person said sits on the reading
+   side; what the planner said sits opposite, the way a conversation reads. */
+.pb-me{font-size:12.5px;font-weight:700;color:var(--ink);background:var(--surface);
+  border-radius:14px;padding:9px 12px;margin:0 0 8px auto;max-width:86%;width:fit-content}
+.pb-it{font-size:12.5px;color:var(--ink);line-height:1.6;margin-bottom:10px;max-width:92%}
+.pb-wait{color:var(--muted)}
+.pb-err{font-size:12px;font-weight:700;color:var(--terra-500);margin-bottom:10px}
+/* a week, or the days themselves - the same rows either way */
+.pb-week{margin:4px 0 12px}
+.pb-day{margin-bottom:10px}
+.pb-dn{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:5px}
+.pb-bl{display:flex;align-items:baseline;gap:7px;padding:6px 9px;border-radius:10px;
+  background:var(--surface);margin-bottom:4px}
+.pb-em{font-size:11px;flex-shrink:0}
+.pb-t{font-size:10px;font-weight:800;color:var(--muted);direction:ltr;unicode-bidi:isolate;flex-shrink:0}
+.pb-w{font-size:12px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* what did not fit. It is the honest half of the answer, so it is not small. */
+.pb-gaps{background:var(--surface);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.pb-gh{font-size:10.5px;font-weight:800;color:var(--muted);margin-bottom:5px}
+.pb-g{font-size:12px;color:var(--ink);line-height:1.55;margin-bottom:3px}
+.pb-opts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.pb-opt{border:none;border-radius:999px;padding:8px 13px;font-family:inherit;font-size:12px;
+  font-weight:700;cursor:pointer;background:var(--surface);color:var(--ink)}
+.pb-opt:active{transform:scale(.97)}
+.pb-yes{background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white)}
+.pb-row{display:flex;gap:7px;align-items:center}
+.pb-in{flex:1;min-width:0;border:none;border-radius:12px;padding:11px 12px;background:var(--surface);
+  font-family:inherit;font-size:12.5px;color:var(--ink)}
+.pb-send{border:none;border-radius:12px;padding:11px 15px;font-family:inherit;font-size:12.5px;
+  font-weight:800;cursor:pointer;background:var(--violet-500);color:var(--white)}
+.pb-new{margin-top:10px;border:none;background:none;font-family:inherit;font-size:11px;
+  font-weight:700;color:var(--muted);cursor:pointer;padding:4px}
 /* ── NUTRITION, IN ONE SOFT WHITE MATERIAL ──
    Approved 20 Sep: tubes-light-inside, then the panels page, then light
    behind the icons (.impeccable/mocks/screen/glow-i2-both.png). The fill
@@ -21002,7 +21042,7 @@ function planSecsGet(){
     var x=localStorage.getItem(PLAN_SECS_KEY),o=x?JSON.parse(x):null;
     if(o&&typeof o==='object'){_planSecs=o;return o;}
   }catch(e){}
-  _planSecs={week:true,month:false,day:false};   // the middle horizon first
+  _planSecs={week:true,month:false,day:false,bot:false};   // the middle horizon first
   return _planSecs;
 }
 function planSecsSave(){
@@ -21022,6 +21062,137 @@ function planSecHeadHTML(k,title,sub,open){
     '<span style="font-size:13px;color:var(--muted-soft);display:inline-block;transform:rotate('+(open?'180deg':'0deg')+');transition:transform .18s">&#9662;</span>'+
     '</button>';
 }
+/* ── THE PLANNER YOU TALK TO ──
+   Asaf's own contract, asked of the model by /plan. The answer is always one
+   of three shapes, and the route refuses anything else, so this only has to
+   draw - never to guess what came back. */
+var _planTurns=[],_planBusy=false,_planErr='',_planSaid='';
+function planBotReset(){_planTurns=[];_planErr='';_planSaid='';renderPlanning();}
+function planBotLast(){
+  for(var i=_planTurns.length-1;i>=0;i--)
+    if(_planTurns[i].role==='bot'&&_planTurns[i].data)return _planTurns[i].data;
+  return null;
+}
+function planBotType(v){_planSaid=v;}
+function planBotSend(text){
+  var t=String(text||'').trim();
+  if(!t||_planBusy)return;
+  _planTurns.push({role:'user',text:t});
+  _planSaid='';_planErr='';_planBusy=true;renderPlanning();
+  var d=appNow();
+  fetch(SYNC_SERVER+'/plan',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      lang:appLang(),
+      now:wkStamp(d)+' '+dpHM(d.getHours(),d.getMinutes()),
+      tz:(Intl.DateTimeFormat().resolvedOptions().timeZone||''),
+      calendar:planBotCalendar(),
+      turns:_planTurns.map(function(x){return {role:x.role,text:x.role==='bot'?JSON.stringify(x.data):x.text};})
+    })
+  }).then(function(r){return r.json();}).then(function(j){
+    _planBusy=false;
+    if(!j||!j.type){_planErr=''+_t('משהו השתבש')+'';renderPlanning();return;}
+    _planTurns.push({role:'bot',data:j});
+    renderPlanning();
+  },function(){_planBusy=false;_planErr=''+_t('משהו השתבש')+'';renderPlanning();});
+}
+/* what the app already knows about the days ahead, so the planner does not
+   ask about things it can see - and can ask whether they are still true */
+function planBotCalendar(){
+  var out=[],i,k,d=appNow();
+  for(k=0;k<14;k++){
+    var date=wkStamp(new Date(d.getFullYear(),d.getMonth(),d.getDate()+k));
+    var all=dpAll(date);
+    for(i=0;i<all.length;i++){
+      var it=all[i];
+      if(it.hour===null)continue;
+      out.push({date:date,start:dpHM(it.hour,it.min||0),title:it.w});
+      if(out.length>=60)return out;
+    }
+  }
+  return out;
+}
+function planBotHTML(){
+  var last=planBotLast(),h='<div class="pb">';
+  if(!_planTurns.length){
+    h+='<div class="pb-open">'+_t('ספר לי מה יש לך בשבוע, ואבנה לוח שמחזיק את הכול.')+'</div>'+
+       '<button class="pb-go" onclick="planBotSend(&quot;'+esc(_t('בוא נתכנן את השבוע הקרוב'))+'&quot;)">'+
+       _t('בוא נתכנן')+'</button></div>';
+    return h;
+  }
+  /* the conversation, oldest first */
+  var i;
+  for(i=0;i<_planTurns.length;i++){
+    var t=_planTurns[i];
+    if(t.role==='user'){h+='<div class="pb-me">'+esc(t.text)+'</div>';continue;}
+    if(t.data&&t.data.message)h+='<div class="pb-it">'+esc(t.data.message)+'</div>';
+  }
+  if(_planBusy)h+='<div class="pb-it pb-wait">'+_t('חושב…')+'</div>';
+  if(_planErr)h+='<div class="pb-err">'+_planErr+'</div>';
+
+  if(last&&last.type==='skeleton'&&Array.isArray(last.days)){
+    h+='<div class="pb-week">';
+    for(i=0;i<last.days.length;i++){
+      var dy=last.days[i],bl=dy&&dy.blocks||[],bi;
+      h+='<div class="pb-day"><div class="pb-dn">'+esc(dy.day||'')+'</div>';
+      for(bi=0;bi<bl.length;bi++)
+        h+='<div class="pb-bl"><span class="pb-em">'+planBotEmoji(bl[bi].category)+'</span>'+
+           '<span class="pb-t">'+esc(bl[bi].start||'')+'–'+esc(bl[bi].end||'')+'</span>'+
+           '<span class="pb-w">'+esc(bl[bi].title||'')+'</span></div>';
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+  if(last&&last.type==='schedule'&&Array.isArray(last.events)){
+    var by={},order=[];
+    for(i=0;i<last.events.length;i++){
+      var ev=last.events[i],dk=ev.date||'';
+      if(!by[dk]){by[dk]=[];order.push(dk);}
+      by[dk].push(ev);
+    }
+    h+='<div class="pb-week">';
+    for(i=0;i<order.length;i++){
+      var day=by[order[i]],ei;
+      h+='<div class="pb-day"><div class="pb-dn">'+esc(fmtDate(order[i]))+'</div>';
+      for(ei=0;ei<day.length;ei++)
+        h+='<div class="pb-bl"><span class="pb-em">'+planBotEmoji(day[ei].category)+'</span>'+
+           '<span class="pb-t">'+esc(day[ei].start||'')+'–'+esc(day[ei].end||'')+'</span>'+
+           '<span class="pb-w">'+esc(day[ei].title||'')+'</span></div>';
+      h+='</div>';
+    }
+    h+='</div>';
+    if(Array.isArray(last.gaps)&&last.gaps.length){
+      h+='<div class="pb-gaps"><div class="pb-gh">'+_t('מה לא נכנס')+'</div>';
+      for(i=0;i<last.gaps.length;i++)h+='<div class="pb-g">'+esc(last.gaps[i])+'</div>';
+      h+='</div>';
+    }
+  }
+  /* what the person can say next */
+  if(!_planBusy){
+    if(last&&last.type==='question'&&Array.isArray(last.options)&&last.options.length){
+      h+='<div class="pb-opts">';
+      for(i=0;i<last.options.length;i++)
+        h+='<button class="pb-opt" onclick="planBotSend(&quot;'+esc(String(last.options[i]).replace(/"/g,''))+'&quot;)">'+
+           esc(last.options[i])+'</button>';
+      h+='</div>';
+    }
+    if(last&&last.type==='skeleton')
+      h+='<div class="pb-opts"><button class="pb-opt pb-yes" onclick="planBotSend(&quot;'+esc(_t('השלד מאושר, תכנן את הימים'))+'&quot;)">'+
+         _t('אשר את השלד')+'</button></div>';
+    h+='<div class="pb-row">'+
+       '<input class="pb-in" id="pb-in" value="'+esc(_planSaid)+'" placeholder="'+_t('אפשר גם לכתוב')+'" '+
+       'oninput="planBotType(this.value)" onkeydown="if(event.key===&#39;Enter&#39;){planBotSend(this.value);}">'+
+       '<button class="pb-send" onclick="planBotSend(document.getElementById(&quot;pb-in&quot;).value)">'+_t('שלח')+'</button>'+
+       '</div>';
+    if(_planTurns.length)h+='<button class="pb-new" onclick="planBotReset()">'+_t('להתחיל מחדש')+'</button>';
+  }
+  return h+'</div>';
+}
+/* the emoji is fixed per category - DATA, so it is never translated */
+var PLAN_EMOJI={work:'\uD83D\uDD34',meeting:'\uD83D\uDD35',travel:'\uD83D\uDE97',study:'\uD83D\uDCDA',
+  project:'\uD83D\uDCBB',workout:'\uD83D\uDCAA',meal:'\uD83C\uDF7D\uFE0F',reading:'\uD83D\uDCD6',
+  social:'\uD83D\uDFE2',rest:'\uD83D\uDE34'};
+function planBotEmoji(c){return PLAN_EMOJI[c]||'\u2022';}
 function renderPlanning(){
   document.getElementById('hdr-title').textContent=''+_t('תכנון זמן')+'';
   dpRailClear();
@@ -21030,6 +21201,9 @@ function renderPlanning(){
   if(!_dpDate)_dpDate=todayStr();
   var h='<div style="padding-bottom:30px">';
   h+='<div style="font-size:11.5px;color:var(--muted);line-height:1.65;margin:2px 2px 14px">'+_t('תכנון הוא לא רשימה. זו החלטה מה חשוב, לפני שהזמן מחליט במקומך.')+'</div>';
+
+  h+=planSecHeadHTML('bot',''+_t('מתכנן')+'',''+_t('לספר מה יש בשבוע, ולקבל לוח')+'',o.bot);
+  if(o.bot)h+='<div id="plan-sec-bot">'+planBotHTML()+'</div>';
 
   h+=planSecHeadHTML('month',''+_t('החודש')+'',''+_t('מה החודש צריך להחזיק, ומתי')+'',o.month);
   if(o.month)h+='<div id="plan-sec-month">'+planMonthHTML()+'</div>';

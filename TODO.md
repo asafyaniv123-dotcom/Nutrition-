@@ -6,6 +6,58 @@ section — git already keeps that.
 
 ---
 
+## A planner you talk to, inside תכנון זמן (2026-09-21)
+
+> *"אני רוצה שתוסיף את זה לאזור תכנון זמן שלנו ב better me כאופציה"* — with a
+> full system prompt for it, written by Asaf.
+
+An assistant that interviews you, proposes a weekly skeleton, and only then
+lays out real days. Its whole contract is in his prompt and the shape of its
+answers is fixed: it returns **JSON only**, one of three kinds.
+
+```
+{"type":"question", "message":"…","options":[…]}
+{"type":"skeleton", "message":"…","days":[{"day":"ראשון","blocks":[{start,end,title,category}]}]}
+{"type":"schedule", "message":"…","events":[{date,start,end,title,emoji,category,location}],"gaps":[…]}
+```
+
+`category` is a closed list: work, meeting, travel, study, project, workout,
+meal, reading, social, rest, other — each with a fixed emoji.
+
+**The rules that make it worth building** are the ones about refusing to
+invent. It asks about one topic per message. It never sets a day or an hour
+for something the person has not mentioned. It treats the calendar it is
+handed as possibly stale and asks before trusting it. Every activity outside
+the home gets a travel event there and back, and an activity at home cannot
+start until the return leg ends. It keeps the sleep minimum and the rest gap
+between workouts. **And when the goals do not fit the hours, it says so and
+names what is missing rather than compressing the day into a lie.**
+
+### Three pieces, in this order
+
+1. **The route.** `/plan` on the worker, same shape as `/parse` and `/say`:
+   his prompt as the system instruction, the conversation as the contents, a
+   per-IP daily cap. It must be forced to answer with one of the three JSON
+   shapes and nothing else.
+2. **The conversation.** A panel in תכנון זמן: the question, its options as
+   chips, a free line for anything else, and the answers kept so the next turn
+   has them. The skeleton renders as a week; the schedule as days.
+3. **Writing it in.** The last and the hardest: turning `events[]` into the
+   app's own plan. `dpAll()` reads a week's tasks plus what the month put on
+   the date, and the hour for a task lives in `loadDPlan(date).hours[id]`, so
+   an event is a task plus an hour, not a row of its own. Nothing is written
+   until the person presses something.
+
+**Not decided yet:** whether the planner may overwrite a day that already has
+items, or only fill the gaps. Ask before building step 3.
+
+**i18n:** the assistant answers in the reader's language, not only Hebrew —
+the prompt says Hebrew because Asaf wrote it for himself. Every fixed string
+in the panel needs its eleven answers, and the categories are DATA with
+labels produced at display, never translated in the declaration.
+
+---
+
 ## One line to write anything, anywhere in the app (2026-09-19)
 
 > *"אני רוצה שלכל האפליקציה תהיה שורת כתיבה שמשתמש יוכל לכתוב שם מה שהוא ירצה
