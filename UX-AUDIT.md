@@ -86,3 +86,35 @@ right-to-left, which makes *earlier* the right-hand side and the nav arrows
 correct; or the control can be treated as a pair of physical buttons whose
 meaning is fixed. **Which one this app wants is a design decision, not a defect**,
 so it is written down rather than changed.
+
+### Measured 23 Sep: the soft-white world's muted text fails contrast, everywhere
+
+Not a hobbies defect — the same two lines are declared in `mod-nutrition`,
+`mod-fitness`, `mod-closet`, `mod-home` and `mod-hobbies`, so the number is
+identical in all five:
+
+| | value | on `--nu-ground` #e9e7e3 | WCAG AA needs |
+|---|---|---|---|
+| `--nu-ink` | `#4a453f` | **7.68 : 1** | 4.5 ✓ |
+| `--nu-muted` | `#7d766d` | **3.63 : 1** | 4.5 ✗ |
+
+Everything muted is below the floor: section labels, the card's grey line,
+the kicker, the `×` and the month names. The ink is fine. This is the cost
+DESIGN.md predicted when the direction was approved — *grey-on-grey type fails
+contrast, now structural* — and it is now measured rather than predicted.
+
+**What it would take**, ratio against the same ground:
+
+    #7d766d   3.63   what ships
+    #736d64   4.15   still short
+    #6d675e   4.53   the first value that passes
+    #6a645c   4.74   passes with room
+
+It is one token repeated in five blocks, and the change makes the text
+**darker, not greyer** — the opposite of the sweep that was rejected on
+20 Sep. It is still a change to a palette Asaf approved and looked at, so it
+is written down rather than made. **Open: his call.**
+
+One thing in that family WAS changed, because it is not shared: the heat
+map's month labels were 8.5px, the smallest type in the app, and they are
+new. They are 10px now.
