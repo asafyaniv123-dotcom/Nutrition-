@@ -350,6 +350,24 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .fw-ps.same{color:var(--ink)}
 .fw-ps.beat{background:linear-gradient(135deg,var(--green-200),var(--green-500));color:var(--white)}
 /* how long to rest */
+/* ── LAST TIME, AND HOW IT IS DONE ──
+   Two squares over the entry boxes. Equal columns rather than measured ones:
+   whatever the numbers turn out to be, the pair stays a pair. */
+.fx-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:2px 0 12px}
+.fx-box{display:flex;flex-direction:column;justify-content:center;gap:3px;min-height:92px;
+  background:#faf6f1;border:none;border-radius:14px;padding:11px 12px;text-align:start;
+  font-family:inherit}
+.fx-h{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.06em}
+.fx-big{font-size:15px;font-weight:800;color:var(--ink);direction:ltr;text-align:start}
+.fx-none{font-size:11.5px;color:var(--muted-soft)}
+.fx-eff{font-size:10.5px;color:var(--muted)}
+.fx-eff b{font-weight:800;color:var(--terra-500)}
+.fx-ago{font-size:9.5px;color:var(--muted-soft)}
+/* the door to the explanation: centred, because there is one thing in it */
+.fx-how{align-items:center;justify-content:center;gap:6px;cursor:pointer;text-align:center}
+.fx-how .fx-h{color:var(--terra-500)}
+.fx-how:active{transform:scale(.985)}
+.fx-bulb{font-size:26px;line-height:1}
 .fw-restset{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .fw-restset>span{font-size:10px;font-weight:800;color:var(--muted)}
 .fw-rb{border:none;border-radius:9px;padding:5px 10px;font-size:10.5px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--muted)}
@@ -15800,6 +15818,39 @@ function exPrevHTML(ex){
 /* ── LAST TIME, AS A REFERENCE ──
    Not a prefill - that is exPrefill's job and it gets overwritten the moment
    you type. This stays put while you decide, which is when it is wanted. */
+/* ── THE TWO SQUARES ABOVE THE BOXES ──
+   Last time on the leading side, the explanation beside it. They are the same
+   size on purpose: one is what you did, the other is how it is done, and
+   neither outranks the other while you are standing at the machine. */
+function exLastBoxHTML(ex){
+  var prev=exLastTime(ex.name);
+  var h='<div class="fx-box"><span class="fx-h">'+_t('בפעם שעברה')+'</span>';
+  if(!prev||!prev.sets||!prev.sets.length)
+    return h+'<span class="fx-none">'+_t('עדיין אין')+'</span></div>';
+  /* the SAME set number, because the third set of the day is compared with
+     the third and not with the warm-up */
+  var same=prev.sets[ex.sets.length]||prev.sets[prev.sets.length-1];
+  /* weight times reps, the shape every set row on this screen already uses -
+     so no noun has to agree with a number */
+  h+='<span class="fx-big">'+fmtWeight(same.weight)+' \u00d7 '+nfmt(same.reps)+'</span>';
+  /* how hard it was, on whichever scale this person reads. The store is
+     always RPE; effortFromRPE turns it into the one on their screen, so the
+     number here and the row of ten below it never disagree. */
+  var eff=effortFromRPE(same.rpe);
+  if(eff!=='')h+='<span class="fx-eff">'+(effortScale()==='rir'?'RIR':'RPE')+' <b>'+nfmt(eff)+'</b></span>';
+  var ago=prev.date?agoText(new Date(prev.date).getTime()):'';
+  if(ago)h+='<span class="fx-ago">'+esc(ago)+'</span>';
+  return h+'</div>';
+}
+/* Empty on purpose. Asaf asked for the place to exist now and the explanation
+   to arrive later; a button that answers nothing at all reads as broken, so
+   it says so. */
+function exHowBoxHTML(){
+  return '<button class="fx-box fx-how" onclick="exHowOpen()">'+
+    '<span class="fx-bulb">\uD83D\uDCA1</span>'+
+    '<span class="fx-h">'+_t('איך עושים')+'</span></button>';
+}
+function exHowOpen(){showToast(_t('בקרוב'));}
 function exLastLine(ex){
   var prev=exLastTime(ex.name);
   if(!prev||!prev.sets||!prev.sets.length)return '';
@@ -16888,11 +16939,12 @@ function renderFitWorkout(){
   h+='<div style="font-size:11px;color:var(--terra-500);font-weight:700">'+nfmt(w.currentEx+1)+' / '+nfmt(w.exercises.length)+'</div>';
   h+='</div>';
 
-  /* ── EXERCISE TABS, DRAWN LAST ──
-     Navigation between exercises rather than part of one, so it belongs
-     under the thumb and not above the work. Assembled here, where the
-     screen is built in order, and appended after the nav buttons. */
-  var tabsHTML='<div style="display:flex;gap:5px;overflow-x:auto;margin-top:14px;padding-bottom:2px">';
+  /* ── EXERCISE TABS ──
+     Assembled here and drawn first, above the exercise card. They used to sit
+     at the bottom, under the thumb, on the argument that they are navigation
+     and not part of the work - but you cannot see where you are in a workout
+     from a strip below the fold. */
+  var tabsHTML='<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px">';
   for(var ei=0;ei<w.exercises.length;ei++){
     var done=w.exercises[ei].sets.length>=w.exercises[ei].targetSets;
     var isCur=ei===w.currentEx;
@@ -16901,6 +16953,10 @@ function renderFitWorkout(){
   // adding one mid-session: the plan meets the gym more often than not
   tabsHTML+='<button onclick="workoutAddExercise()" style="flex-shrink:0;border:1.5px dashed #e0d8ce;background:none;border-radius:10px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;color:var(--muted);font-family:inherit">+</button>';
   tabsHTML+='</div>';
+
+  /* first, not last: which exercise you are on is the question you ask
+     before any of the numbers below mean anything */
+  h+=tabsHTML;
 
   // Current exercise
   var prKey=ex.name;
@@ -16982,7 +17038,8 @@ function renderFitWorkout(){
   /* The boxes open holding what you did on this same set last time, so the
      ordinary case - do it again - is one tap and nothing typed. */
   var pf=exPrefill(ex);
-  h+='<div style="margin-top:12px">'+exLastLine(ex)+
+  h+='<div class="fx-row">'+exLastBoxHTML(ex)+exHowBoxHTML()+'</div>';
+  h+='<div style="margin-top:12px">'+
      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">';
   h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('משקל')+' ('+weightUnit()+')'+'</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="0" value="'+(pf.w===''||pf.w===undefined?'':edWeightVal(pf.w))+'" oninput="plateHint()" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
   h+='<div><div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px">'+_t('חזרות')+'</div><input id="fit-r" class="mtnm" type="number" placeholder="'+ex.targetReps+'" value="'+pf.r+'" style="width:100%;padding:10px;border-radius:10px;font-size:16px;font-weight:700"></div>';
@@ -17036,7 +17093,6 @@ function renderFitWorkout(){
     h+='<button onclick="finishWorkout()" style="flex:1;background:linear-gradient(135deg,var(--green-200),var(--green-500));border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--white)">'+_t('סיים אימון')+' &#10003;</button>';
   }
   h+='</div>';
-  h+=tabsHTML;
   h+=fitPhotoBlockHTML(w.photo,'fitLivePhoto','fitLiveClearPhoto');
   h+='</div>';
   document.getElementById('content').innerHTML=h;
