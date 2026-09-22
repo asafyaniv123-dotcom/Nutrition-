@@ -355,8 +355,15 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
    whatever the numbers turn out to be, the pair stays a pair. */
 /* the lift's own rectangle - same material as the card below it, shallower,
    because it is a heading and not a workspace */
-.fx-name{background:var(--card);border-radius:20px;padding:14px 16px 12px;margin-bottom:9px;
+.fx-name{display:flex;align-items:stretch;gap:10px;
+  background:var(--card);border-radius:20px;padding:14px 16px 12px;margin-bottom:9px;
   box-shadow:0 4px 16px rgba(200,180,160,.1)}
+/* the name and its target take the room that is left */
+.fx-nm{flex:1;min-width:0}
+/* the bulb is a square on the far side of the name, not a row in it */
+.fx-name .fx-how{flex:0 0 74px;min-height:0;padding:8px 6px;gap:4px}
+.fx-name .fx-bulb{font-size:21px}
+.fx-name .fx-how .fx-h{font-size:8.5px;text-align:center;letter-spacing:.02em}
 .fx-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 12px}
 .fx-box{display:flex;flex-direction:column;justify-content:center;gap:3px;min-height:92px;
   background:#faf6f1;border:none;border-radius:14px;padding:11px 12px;text-align:start;
@@ -374,6 +381,13 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 #xh-ov .xd-steps{margin-top:2px}
 .fx-how:active{transform:scale(.985)}
 .fx-bulb{font-size:26px;line-height:1}
+/* the machine, drawn at whatever size the square leaves it */
+.fx-gear{align-items:center;justify-content:center;gap:7px;cursor:pointer;text-align:center}
+.fx-gear .fx-h{color:var(--terra-500)}
+.fx-gear:active{transform:scale(.985)}
+.fx-art{display:block;width:100%;line-height:0}
+.fx-art .pl-svg{width:100%;max-width:100%}
+.fx-art .pl-svg.sm{width:52px}
 .fw-restset{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .fw-restset>span{font-size:10px;font-weight:800;color:var(--muted)}
 .fw-rb{border:none;border-radius:9px;padding:5px 10px;font-size:10.5px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--muted)}
@@ -11646,6 +11660,10 @@ function barSwitchHTML(kind){
 function plateHint(){
   var box=document.getElementById('fit-plates');
   if(box)box.innerHTML=plateVisualHTML();
+  /* the same drawing is in the panel the machine square opens, and the
+     switches that call this live in BOTH copies */
+  var sheet=document.getElementById('xg-body');
+  if(sheet)sheet.innerHTML=plateVisualHTML();
 }
 /* Which effort was tapped for the set being entered, or null. Screen
    state, not workout state: it belongs to the set you have not logged
@@ -15850,6 +15868,49 @@ function exLastBoxHTML(ex){
   if(ago)h+='<span class="fx-ago">'+esc(ago)+'</span>';
   return h+'</div>';
 }
+/* ── WHAT YOU ARE LIFTING IT WITH ──
+   The drawing loadKind() already decides: a bar with its discs, a pin stack,
+   a dumbbell - or, for bodyweight and a band, nothing to draw, which the
+   heading says on its own. The heading is loadLabel(), so the square names
+   the machine in every language without a word of its own. */
+function exGearBoxHTML(ex){
+  var kind=loadKind(ex.name),art='';
+  if(kind==='stack')art=stackSvg();
+  else if(kind==='fixed')art=bellSvg();
+  else if(kind==='bar'||kind==='plate'){
+    /* the weight the boxes open on, so the square shows the bar as it will
+       be loaded rather than as an empty one */
+    var w=parseFloat(exPrefill(ex).w),bar=(kind==='bar')?barWeight():0;
+    var r=(isFinite(w)&&w>bar)?plateSplit(w,bar):{plates:[],left:0};
+    art=plateSvg(r.plates,bar);
+  }
+  return '<button class="fx-box fx-gear" onclick="exGearOpen()">'+
+    '<span class="fx-h">'+esc(loadLabel(kind))+'</span>'+
+    (art?'<span class="fx-art">'+art+'</span>':'')+'</button>';
+}
+/* The panel is plateVisualHTML() unchanged - the drawing, the split, and the
+   three switches that change which bar, which discs and which machine. */
+var _exGearOn=false;
+function exGearOpen(){_exGearOn=true;exGearPaint();}
+function exGearClose(){
+  _exGearOn=false;
+  var o=document.getElementById('xg-ov');if(o)o.remove();
+  document.body.style.overflow='';
+  /* the square itself changes when the machine does */
+  renderFitness();
+}
+function exGearPaint(){
+  if(!_exGearOn)return;
+  var ex=_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx];
+  if(!ex){exGearClose();return;}
+  var html='<div class="fc-ov" id="xg-ov" onclick="if(event.target===this)exGearClose()">'+
+    '<div class="fc-sheet"><div class="fc-hd"><span>'+esc(exLabel(ex.name))+'</span>'+
+    '<button class="fc-x" onclick="exGearClose()">&times;</button></div>'+
+    '<div id="xg-body">'+plateVisualHTML()+'</div></div></div>';
+  var old=document.getElementById('xg-ov');
+  if(old){old.outerHTML=html;}
+  else{document.body.insertAdjacentHTML('beforeend',html);document.body.style.overflow='hidden';}
+}
 function exHowBoxHTML(){
   return '<button class="fx-box fx-how" onclick="exHowOpen()">'+
     '<span class="fx-bulb">\uD83D\uDCA1</span>'+
@@ -17018,6 +17079,7 @@ function renderFitWorkout(){
   /* the lift itself, in its own rectangle: what it is called, what it is for
      today, and the two things you might want to do to it */
   h+='<div class="fx-name">';
+  h+='<div class="fx-nm">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
   h+='<div style="font-size:17px;font-weight:800;color:var(--ink)">'+esc(exLabel(ex.name))+'</div>';
   h+='<div style="display:flex;align-items:center;gap:10px">';
@@ -17041,8 +17103,12 @@ function renderFitWorkout(){
     }
   })();
   h+='</div>';
-  /* Straight under the name: what you did last time, and how it is done. */
-  h+='<div class="fx-row">'+exLastBoxHTML(ex)+exHowBoxHTML()+'</div>';
+  /* how it is done, on the far side of the name it belongs to */
+  h+=exHowBoxHTML();
+  h+='</div>';
+  /* Straight under it: what you did last time, and what you are lifting
+     it with. */
+  h+='<div class="fx-row">'+exLastBoxHTML(ex)+exGearBoxHTML(ex)+'</div>';
   /* and then the card the set is actually written in */
   h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
   /* The note sits with the lift itself, above the sets - it is a setup
