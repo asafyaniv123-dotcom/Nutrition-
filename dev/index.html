@@ -928,6 +928,27 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 .cl-x{position:absolute;top:0;inset-inline-end:0;width:15px;height:15px;border:none;border-radius:50%;background:rgba(190,178,166,.85);color:var(--white);font-size:11px;line-height:15px;padding:0;cursor:pointer;font-family:inherit}
 .cl-add,.cl-empty{flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px dashed #ebe4dc;border-radius:11px;color:#cdc3b8;font-size:14px;font-weight:800;cursor:pointer;background:none}
 .cl-empty{flex:1;font-size:11.5px;border:none;justify-content:flex-start;padding:7px 2px;color:#c4b9ad;font-weight:700}
+/* every garment of one kind, as squares */
+.cl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.cl-sq{position:relative;aspect-ratio:1;border:none;border-radius:18px;overflow:hidden;
+  background:var(--card);cursor:pointer;padding:9px;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 12px rgba(200,180,160,.14)}
+.cl-sq.on{outline:2px solid var(--violet-500);outline-offset:-2px}
+.cl-sq.add{border:1.5px dashed #e5ddd4;background:none;box-shadow:none;
+  color:#c4b9ad;font-size:20px;font-weight:800}
+.cl-sq .cl-img{position:relative}
+.cl-sq .cl-img.ink{position:absolute}
+html body.mod-closet .cl-sq{background:var(--nu-ground);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+html body.mod-closet .cl-sq.on{outline:none;
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+html body.mod-closet .cl-sq.add{border:1.5px dashed rgba(176,168,156,.5);
+  box-shadow:none;color:var(--nu-muted)}
+html body.mod-closet .cl-h2,html body.mod-closet .cl-back{color:var(--nu-ink)}
+/* the gutter name is a door now, not a caption */
+.cl-lab{border:none;background:none;padding:0;font-family:inherit;cursor:pointer;display:block}
+
 /* what is on the line, big enough to judge */
 .cl-sheet-w{position:fixed;inset:0;z-index:400}
 .cl-sh-back{position:absolute;inset:0;background:rgba(58,50,46,.34)}
@@ -14639,6 +14660,10 @@ function closetSheetPaint(){
     document.body.appendChild(el);
   }
   el.innerHTML=closetSheetHTML();
+  /* photoImg ships a placeholder for anything in IndexedDB and hydratePhotos
+     is what puts the src in. Every other surface called it; this one never
+     did, so the picture behind the dialog was always blank. */
+  hydratePhotos(el);
   if(!_clSheet)document.body.style.overflow='';
   else document.body.style.overflow='hidden';
 }
@@ -14778,13 +14803,15 @@ function closetRowHTML(cat,cell){
   var solo=!!cat.solo;
   var off=(!solo&&CLOSET_SOLO_HIDES.indexOf(cat.k)>=0&&closetSoloOn());
   h+='<div class="cl-row'+(off?' off':'')+'">';
-  h+='<div class="cl-lab"><span class="cl-rt">'+cat.t+'</span>'+
+  h+='<button class="cl-lab" onclick="closetCatOpen(&quot;'+cat.k+'&quot;)"><span class="cl-rt">'+cat.t+'</span>'+
      (list.length>1?'<span class="cl-rn" id="cl-n-'+cat.k+'">'+
-        (solo?(sel===0?''+_t('ללא')+'':sel+'/'+list.length):(sel+1)+'/'+list.length)+'</span>':'')+'</div>';
+        (solo?(sel===0?''+_t('ללא')+'':sel+'/'+list.length):(sel+1)+'/'+list.length)+'</span>':'')+'</button>';
   if(!list.length){
     /* Nothing in it yet, so it is a line of text rather than a box held open
        the height of a garment you have not photographed. */
-    h+='<label class="cl-empty">+ '+cat.one+
+    /* the gutter already names the row, so the affordance is a plus - with
+       the word kept as its label, because "+" alone says nothing aloud */
+    h+='<label class="cl-empty" aria-label="'+cat.one+'">+'+
        '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+cat.k+'&quot;)"></label>';
     return h+'</div>';
   }
@@ -14805,13 +14832,22 @@ function closetRowHTML(cat,cell){
        the width follows the garment's own measured aspect, clamped so one
        bad measurement cannot make a row run away. */
     var t=lookTrim(list[i].ref),measured=(t!==LOOK_FULL);
-    var cw=measured?Math.round(CH*Math.max(.45,Math.min(2.4,t.a||1))):CH;
+    /* Contain, never stretch. The height is the category's; if the garment's
+       own aspect would make it wider than a row can hold, the width takes
+       over and the height follows it down. A shoe is wide and flat, and this
+       is the difference between a shoe and a tower. */
+    var cw=CH,chh=CH;
+    if(measured){
+      var ar=Math.max(.3,Math.min(3.4,t.a||1)),WMAX=Math.round(CH*1.6);
+      cw=Math.round(chh*ar);
+      if(cw>WMAX){cw=WMAX;chh=Math.round(WMAX/ar);}
+    }
     var img=measured
       ? photoImg(list[i].ref,'class="cl-img ink" style="width:'+(100/t.w).toFixed(2)+'%;height:'+(100/t.h).toFixed(2)+
           '%;left:'+(-t.x/t.w*100).toFixed(2)+'%;top:'+(-t.y/t.h*100).toFixed(2)+'%"')
       : photoImg(list[i].ref,'class="cl-img"');
     h+='<span class="cl-cell">';
-    h+='<button class="cl-it'+(on?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,'+at+')" style="width:'+cw+'px;height:'+CH+'px">'+
+    h+='<button class="cl-it'+(on?' on':'')+'" onclick="closetPick(&quot;'+cat.k+'&quot;,'+at+')" style="width:'+cw+'px;height:'+chh+'px">'+
        img+'</button>';
     h+='</span>';
   }
@@ -15174,9 +15210,49 @@ function closetShareOutfit(id){
     showToast(_t('✓ ירד|הורדת קובץ'));
   },function(){showToast(_t('לא הצלחתי להכין את תמונת הלוק'));});
 }
+/* ── EVERYTHING OF ONE KIND ──
+   A strip answers "which one am I wearing". It cannot answer "what else do I
+   have", because seeing the tenth shirt means rolling past nine. The category
+   name is a door to that question: every garment of the kind, as squares, at
+   the size the kind deserves. */
+var _clCat='';
+function closetCatOpen(k){_clCat=k;_closetView='cat';renderCloset();}
+function closetCatHTML(){
+  var cat=closetCat(_clCat),list=closetOf(_clCat),i;
+  var h='<button class="cl-back" onclick="_closetView=&quot;home&quot;;renderCloset()">&#8249; '+_t('הארון')+'</button>';
+  h+='<div class="cl-h2">'+cat.t+'</div>';
+  if(!list.length)h+='<div class="cl-none">'+_t('עוד אין כאן אף אחד.')+'</div>';
+  h+='<div class="cl-grid">';
+  for(i=0;i<list.length;i++){
+    var sel=closetSelOf(_clCat),at=cat.solo?i+1:i;
+    var t=lookTrim(list[i].ref),measured=(t!==LOOK_FULL);
+    var img=measured
+      ? photoImg(list[i].ref,'class="cl-img ink" style="width:'+(100/t.w).toFixed(2)+'%;height:'+(100/t.h).toFixed(2)+
+          '%;left:'+(-t.x/t.w*100).toFixed(2)+'%;top:'+(-t.y/t.h*100).toFixed(2)+'%"')
+      : photoImg(list[i].ref,'class="cl-img"');
+    /* the one on the body is marked, because that is the question you arrive
+       with even when you came to look at the others */
+    h+='<button class="cl-sq'+(at===sel?' on':'')+'" onclick="closetSheet(&quot;'+_clCat+'&quot;,'+at+')">'+img+'</button>';
+  }
+  h+='<label class="cl-sq add">+'+
+     '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+_clCat+'&quot;)"></label>';
+  return h+'</div>';
+}
 function renderCloset(){
   document.getElementById('hdr-title').textContent=''+_t('הארון שלי')+'';
   var h='<div style="padding-bottom:24px">';
+
+  if(_closetView==='cat'){
+    document.getElementById('content').innerHTML=h+closetCatHTML()+'</div>';
+    hydratePhotos();
+    (function(){
+      var refs=closetOf(_clCat).map(function(it){return it.ref;});
+      if(refs.length)lookMeasure(refs).then(function(changed){
+        if(changed&&_closetView==='cat')renderCloset();
+      });
+    })();
+    return;
+  }
 
   if(_closetView==='outfits'){
     var fits=loadOutfits();
