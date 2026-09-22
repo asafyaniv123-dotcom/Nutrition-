@@ -1576,6 +1576,14 @@ export default {
       let b;
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
       const lang = String((b && b.lang) || 'he').slice(0, 8);
+      /* the language's own name, because a bare code is a weak thing to ask a
+         model to obey - it answered Asaf in mixed German once */
+      const LANG_NAME = { he: 'Hebrew (\u05e2\u05d1\u05e8\u05d9\u05ea)', en: 'English', de: 'German (Deutsch)',
+        es: 'Spanish (Espa\u00f1ol)', fr: 'French (Fran\u00e7ais)', it: 'Italian (Italiano)',
+        pt: 'Portuguese (Portugu\u00eas)', ja: 'Japanese (\u65e5\u672c\u8a9e)',
+        'zh-Hans': 'Simplified Chinese (\u7b80\u4f53\u4e2d\u6587)',
+        'zh-Hant': 'Traditional Chinese (\u7e41\u9ad4\u4e2d\u6587)', ar: 'Arabic (\u0627\u0644\u0639\u0631\u0628\u064a\u0629)' };
+      const langName = LANG_NAME[lang] || lang;
       const now = String((b && b.now) || '').slice(0, 40);
       const tz = String((b && b.tz) || '').slice(0, 60);
       const cal = Array.isArray(b && b.calendar) ? b.calendar.slice(0, 120) : [];
@@ -1596,7 +1604,10 @@ export default {
       const SYSTEM =
         'You are a time-planning assistant inside an app. Your goal: build the person a precise,\n' +
         'realistic schedule that puts everything that matters to them in the right places.\n' +
-        'ALWAYS answer in this language: ' + lang + '.\n' +
+        'LANGUAGE. Write EVERY word of EVERY answer in ' + langName + '. That includes the\n' +
+        'message, the option labels, the day names, the block titles and the event titles. Never\n' +
+        'mix in a word from another language, and never transliterate a foreign word into this\n' +
+        'script. If you do not know a term in this language, describe it in this language.\n' +
         '\n' +
         'WHAT YOU GET each time: the current date, time and timezone; existing calendar events if\n' +
         'any; and the conversation so far.\n' +
@@ -1607,7 +1618,11 @@ export default {
         '   a day or a week for each area (study, projects, reading and so on); workouts - kind,\n' +
         '   how often, the rest gap needed, preferred hour, place; meals - which are at a fixed\n' +
         '   hour and which are flexible, and cooking; sleep - the minimum hours; the home address\n' +
-        '   and where the activities are, so travel time can be worked out.\n' +
+        '   and where the activities are, so travel time can be worked out;\n' +
+        '   PEOPLE - is there anyone they want to see this week, and if so WHERE and FOR HOW LONG.\n' +
+        '   Seeing someone is a plan with a place and a length, exactly like a workout: it needs\n' +
+        '   travel both ways when it is not at home, and it cannot overlap work or sleep. Use the\n' +
+        '   social category for it. Ask about it as its own topic, not as an afterthought.\n' +
         '   Rules for this step:\n' +
         '   - ONE TOPIC per message, with at most 2-3 questions.\n' +
         '   - Never set a day or an hour for an area the person has not talked about. Do not assume.\n' +
@@ -1640,6 +1655,7 @@ export default {
         '{"type":"skeleton","message":"…","days":[{"day":"…","blocks":[{"start":"08:00","end":"09:15","title":"…","category":"workout"}]}]}\n' +
         '{"type":"schedule","message":"…","events":[{"date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","title":"…","emoji":"🚗","category":"travel","location":"…"}],"gaps":["…"]}\n' +
         'category is one of: work, meeting, travel, study, project, workout, meal, reading, social, rest, other.\n' +
+        'Answer in ' + langName + ', every word of it.\n' +
         'The emoji is fixed per category: 🔴 work, 🔵 meeting, 🚗 travel, 📚 study, 💻 project,\n' +
         '💪 workout, 🍽️ meal, 📖 reading, 🟢 social, 😴 rest.';
 

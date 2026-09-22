@@ -2480,6 +2480,33 @@ html body.mod-home .home-menu i{background:var(--nu-muted)}
 /* the little dot that says today has no reflection yet - amber is the clock
    now, so this one takes the reflection's own blue */
 html body.mod-home .hub-dot{background:#4d7fbe;box-shadow:0 0 10px 2px rgba(178,205,237,.9)}
+/* ── THE PLANNER: THE LINE THAT OPENS IT ──
+   One row on the planning screen, quieter than the three horizons beside it,
+   because it is a door and not a section. */
+.pb-open-row{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  background:var(--card);border:none;border-radius:16px;padding:13px 15px;margin-bottom:8px;
+  cursor:pointer;font-family:inherit;text-align:start;box-shadow:0 2px 10px rgba(200,180,160,.08)}
+.pb-open-row:active{transform:scale(.995)}
+.pb-open-t{font-size:13.5px;font-weight:800;color:var(--ink)}
+.pb-open-s{font-size:10px;color:var(--muted)}
+/* ── THE WINDOW ── over the page, not on it. It has its own scroll, so the
+   plan underneath does not move while a conversation is going on. */
+.pbo{position:fixed;inset:0;z-index:400;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(60,52,44,.34);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.pbo-sheet{width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;
+  background:var(--surface);border-radius:22px 22px 0 0;overflow:hidden;
+  box-shadow:0 -10px 40px rgba(80,66,52,.28)}
+.pbo-hd{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;flex-shrink:0;
+  background:var(--surface)}
+.pbo-t{flex:1;font-size:15px;font-weight:800;color:var(--ink)}
+.pbo-x{width:34px;height:34px;border:none;border-radius:50%;background:var(--card);color:var(--muted);
+  font-size:20px;line-height:1;cursor:pointer;font-family:inherit}
+.pbo-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:0 14px max(18px,calc(env(safe-area-inset-bottom) + 12px))}
+/* inside the window the panel needs no card of its own */
+.pbo-body .pb{background:none;box-shadow:none;padding:0;margin:0}
+/* it is in the plan, and one press takes it back out */
+.pb-in-t{font-size:12px;font-weight:800;color:var(--green-600,#4f8a5e);align-self:center;margin-inline-end:4px}
 /* ── THE PLANNER YOU TALK TO ── a section of תכנון זמן, in the app's own
    material: a panel in a different one would announce itself as bolted on. */
 .pb{background:var(--card);border-radius:16px;padding:14px 15px;margin-bottom:10px;
@@ -21067,7 +21094,7 @@ function planSecHeadHTML(k,title,sub,open){
    of three shapes, and the route refuses anything else, so this only has to
    draw - never to guess what came back. */
 var _planTurns=[],_planBusy=false,_planErr='',_planSaid='';
-function planBotReset(){_planTurns=[];_planErr='';_planSaid='';renderPlanning();}
+function planBotReset(){_planTurns=[];_planErr='';_planSaid='';planBotPaint();}
 function planBotLast(){
   for(var i=_planTurns.length-1;i>=0;i--)
     if(_planTurns[i].role==='bot'&&_planTurns[i].data)return _planTurns[i].data;
@@ -21078,7 +21105,7 @@ function planBotSend(text){
   var t=String(text||'').trim();
   if(!t||_planBusy)return;
   _planTurns.push({role:'user',text:t});
-  _planSaid='';_planErr='';_planBusy=true;renderPlanning();
+  _planSaid='';_planErr='';_planBusy=true;planBotPaint();
   var d=appNow();
   fetch(SYNC_SERVER+'/plan',{
     method:'POST',headers:{'Content-Type':'application/json'},
@@ -21091,10 +21118,10 @@ function planBotSend(text){
     })
   }).then(function(r){return r.json();}).then(function(j){
     _planBusy=false;
-    if(!j||!j.type){_planErr=''+_t('משהו השתבש')+'';renderPlanning();return;}
+    if(!j||!j.type){_planErr=''+_t('משהו השתבש')+'';planBotPaint();return;}
     _planTurns.push({role:'bot',data:j});
-    renderPlanning();
-  },function(){_planBusy=false;_planErr=''+_t('משהו השתבש')+'';renderPlanning();});
+    planBotPaint();
+  },function(){_planBusy=false;_planErr=''+_t('משהו השתבש')+'';planBotPaint();});
 }
 /* what the app already knows about the days ahead, so the planner does not
    ask about things it can see - and can ask whether they are still true */
@@ -21111,6 +21138,90 @@ function planBotCalendar(){
     }
   }
   return out;
+}
+/* ── THE WINDOW ──
+   The conversation lives over the page, not on it. It repaints itself; the
+   plan behind is rebuilt once, when the window closes, so whatever was
+   written into it appears then rather than flickering on every turn. */
+function planBotOpen(){
+  if(document.getElementById('pb-sheet'))return;
+  var w=document.createElement('div');
+  w.className='pbo';w.id='pb-sheet';
+  w.innerHTML='<div class="pbo-sheet">'+
+    '<div class="pbo-hd"><span class="pbo-t">'+_t('מתכנן')+'</span>'+
+    '<button class="pbo-x" onclick="planBotClose()" aria-label="'+_t('סגור')+'">&times;</button></div>'+
+    '<div class="pbo-body" id="pb-body">'+planBotHTML()+'</div></div>';
+  document.body.appendChild(w);
+}
+function planBotClose(){
+  var w=document.getElementById('pb-sheet');
+  if(w)w.parentNode.removeChild(w);
+  planBotPaint();
+}
+/* the sheet redraws itself; the screen underneath does not */
+function planBotPaint(){
+  var b=document.getElementById('pb-body');
+  if(b)b.innerHTML=planBotHTML();
+  else renderPlanning();
+}
+/* the category decides the colour it wears in the week view */
+var PLAN_COLOR={work:'ind',meeting:'blu',travel:'gry',study:'olv',project:'plm',
+  workout:'ter',meal:'amb',reading:'tea',social:'ros',rest:'lav',other:'cly'};
+var _planBotSnap=null,_planBotIn=0;
+function planBotMin(hhmm){
+  var m=/^(\d{1,2}):(\d{2})$/.exec(String(hhmm||'').trim());
+  if(!m)return null;
+  var h=+m[1],mi=+m[2];
+  if(h<0||h>23||mi<0||mi>59)return null;
+  return h*60+mi;
+}
+/* Straight into the plan, the way Asaf asked - and only ever adding. */
+function planBotApply(){
+  var l=planBotLast();
+  if(!l||l.type!=='schedule'||!Array.isArray(l.events))return;
+  var weeks={},days={},snap=[],seen={},i,n=0;
+  function keep(k){if(seen[k])return;seen[k]=1;var v=null;try{v=localStorage.getItem(k);}catch(e){}snap.push({k:k,v:v});}
+  for(i=0;i<l.events.length;i++){
+    var ev=l.events[i]||{};
+    var date=String(ev.date||'');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))continue;
+    var st=planBotMin(ev.start),en=planBotMin(ev.end);
+    if(st===null)continue;
+    var title=String(ev.title||'').trim();
+    if(!title)continue;
+    var sun=weekSunday(new Date(date+'T12:00:00')),wk=wkKey(sun);
+    if(!weeks[wk]){keep(wk);weeks[wk]={sun:sun,o:loadWeek(sun)};}
+    if(!days[date]){keep(dpKey(date));days[date]=loadDPlan(date);}
+    var id='b'+Date.now().toString(36)+i.toString(36)+Math.random().toString(36).slice(2,5);
+    var hour=Math.floor(st/60);
+    weeks[wk].o.tasks.push({
+      id:id,w:title,d:date,
+      s:(hour<12?'m':(hour<18?'n':'e')),
+      c:PLAN_COLOR[ev.category]||'cly',
+      bot:1
+    });
+    days[date].hours[id]=hour;
+    days[date].mins[id]=st-hour*60;
+    if(en!==null&&en>st)days[date].ends[id]=en;
+    n++;
+  }
+  if(!n)return;
+  for(var k in weeks)if(weeks.hasOwnProperty(k))saveWeek(weeks[k].sun,weeks[k].o);
+  for(var d in days)if(days.hasOwnProperty(d))saveDPlan(d,days[d]);
+  _planBotSnap=snap;_planBotIn=n;
+  planBotPaint();
+  showToast(''+_t('נוסף ללוח')+'');
+}
+/* one press puts every key back the way it was */
+function planBotUndo(){
+  if(!_planBotSnap)return;
+  for(var i=0;i<_planBotSnap.length;i++){
+    var e=_planBotSnap[i];
+    try{if(e.v===null)localStorage.removeItem(e.k);else localStorage.setItem(e.k,e.v);}catch(x){}
+  }
+  _planBotSnap=null;_planBotIn=0;
+  planBotPaint();
+  showToast(''+_t('בוטל')+'');
 }
 function planBotHTML(){
   var last=planBotLast(),h='<div class="pb">';
@@ -21161,6 +21272,12 @@ function planBotHTML(){
       h+='</div>';
     }
     h+='</div>';
+    h+='<div class="pb-opts">'+
+       (_planBotSnap
+         ?'<span class="pb-in-t">'+_t('נוסף ללוח')+'</span>'+
+          '<button class="pb-opt" onclick="planBotUndo()">'+_t('בטל')+'</button>'
+         :'<button class="pb-opt pb-yes" onclick="planBotApply()">'+_t('להוסיף ללוח')+'</button>')+
+       '</div>';
     if(Array.isArray(last.gaps)&&last.gaps.length){
       h+='<div class="pb-gaps"><div class="pb-gh">'+_t('מה לא נכנס')+'</div>';
       for(i=0;i<last.gaps.length;i++)h+='<div class="pb-g">'+esc(last.gaps[i])+'</div>';
@@ -21202,8 +21319,9 @@ function renderPlanning(){
   var h='<div style="padding-bottom:30px">';
   h+='<div style="font-size:11.5px;color:var(--muted);line-height:1.65;margin:2px 2px 14px">'+_t('תכנון הוא לא רשימה. זו החלטה מה חשוב, לפני שהזמן מחליט במקומך.')+'</div>';
 
-  h+=planSecHeadHTML('bot',''+_t('מתכנן')+'',''+_t('לספר מה יש בשבוע, ולקבל לוח')+'',o.bot);
-  if(o.bot)h+='<div id="plan-sec-bot">'+planBotHTML()+'</div>';
+  h+='<button class="pb-open-row" onclick="planBotOpen()">'+
+       '<span class="pb-open-t">'+_t('מתכנן')+'</span>'+
+       '<span class="pb-open-s">'+_t('לספר מה יש בשבוע, ולקבל לוח')+'</span></button>';
 
   h+=planSecHeadHTML('month',''+_t('החודש')+'',''+_t('מה החודש צריך להחזיק, ומתי')+'',o.month);
   if(o.month)h+='<div id="plan-sec-month">'+planMonthHTML()+'</div>';
