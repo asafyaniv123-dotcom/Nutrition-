@@ -2438,6 +2438,29 @@ html body.mod-fitness .fg-n{color:var(--nu-muted)}
 html body.mod-fitness .fw-res{background:var(--nu-ground);border:none;
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 
+/* who you know from this place: a line, not a section */
+.pph{display:flex;align-items:center;gap:8px;width:100%;border:none;cursor:pointer;
+  font-family:inherit;text-align:start;background:none;padding:11px 14px;margin:12px 0 0}
+.pph-t{flex:1;min-width:0;font-size:12px;font-weight:800}
+.pph-n{font-size:11px;font-weight:800;border-radius:999px;padding:2px 9px;direction:ltr}
+.pph-c{font-size:11px}
+.pph-l{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.pph-r{display:flex;align-items:center;gap:10px;width:100%;border:none;cursor:pointer;
+  font-family:inherit;text-align:start;border-radius:14px;padding:9px 11px}
+.pph-x{flex:1;min-width:0;display:flex;flex-direction:column}
+.pph-nm{font-size:12.5px;font-weight:800}
+.pph-s{font-size:10.5px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;unicode-bidi:plaintext}
+html body.mod-fitness .pph{background:var(--nu-ground);border-radius:16px;color:var(--nu-ink);
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+html body.mod-fitness .pph-n{background:var(--nu-ground);color:var(--nu-muted);
+  box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 6px var(--nu-shade-soft)}
+html body.mod-fitness .pph-c{color:var(--nu-muted)}
+html body.mod-fitness .pph-r{background:var(--nu-ground);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+html body.mod-fitness .pph-nm{color:var(--nu-ink)}
+html body.mod-fitness .pph-s{color:var(--nu-muted)}
+
 /* ── HOME, IN THE SAME SOFT WHITE MATERIAL ──
    Approved 20 Sep. Layout untouched: the app already placed סיום יום in the
    hub and already draws a name under every petal. This is the material only,
@@ -12459,12 +12482,15 @@ function fitRowHTML(a){
     '<span class="fr-s">'+a.s+'</span></span>'+
     '<span class="fr-c">&#8250;</span></button>';
 }
-function fitAreaGridHTML(){
+/* mid is drawn between the hero and the doors: visible on the way in,
+   and never above the thing 90% of visits came for. */
+function fitAreaGridHTML(mid){
   var h='',i;
   /* The first area is the hero by position, not by id, so reordering
      FIT_AREAS reorders the screen and nothing here has to know which one
      is the important one. */
   if(FIT_AREAS.length)h+=fitHeroHTML(FIT_AREAS[0]);
+  h+=mid||'';
   h+='<div class="fr-list">';
   for(i=1;i<FIT_AREAS.length;i++)h+=fitRowHTML(FIT_AREAS[i]);
   return h+'</div>';
@@ -13324,7 +13350,8 @@ function renderFitHome(){
   /* the week first: which days happened is the question you ask before the
      button that starts another one means anything */
   h+=fitWeekStripHTML();
-  h+=fitAreaGridHTML();
+  /* the people you know from the gym, in the gym */
+  h+=fitAreaGridHTML(pplHereHTML('חדר כושר'));   // i18n-exempt: a stored place key, not a label - PEOPLE_PLACES keeps the Hebrew and translates only where it is shown
   /* 4. the goal, at the bottom. It is a setting - it decides how the advice
         above reads, but it is answered once and then left alone, and it was
         taking the top of the screen from the workouts. */
@@ -21874,6 +21901,56 @@ function savePeople(arr){try{localStorage.setItem('people_v2',JSON.stringify(arr
 
 function daysSince(ts){if(!ts)return null;return Math.floor((Date.now()-ts)/(1000*60*60*24));}
 
+/* ── WHO YOU KNOW FROM HERE ──
+   Everyone whose "where you know each other from" is this place. */
+function pplAtPlace(place){
+  var people=loadPeople(),k=pplKey(place),out=[],i;
+  if(!k)return out;
+  for(i=0;i<people.length;i++)
+    if(pplKey(people[i].place)===k)out.push({p:people[i],i:i});
+  return out;
+}
+/* The one line that brings a face back: what is happening with them now, else
+   the last thing you wrote down about them, else what you said you love. A
+   person you met once has only ever filled one of these, which is the point -
+   the line is whichever one exists rather than a field nobody filled. */
+function pplOneLine(p){
+  if(p.currentUpdate)return p.currentUpdate;
+  var m=p.memories||[];
+  if(m.length)return m[m.length-1].content;
+  if(p.whatILove)return p.whatILove;
+  return p.relationship?labelOf(p.relationship):'';
+}
+var _pplHereOpen=false;
+function pplHereToggle(){_pplHereOpen=!_pplHereOpen;renderFitness();}
+/* enterModule resets the people screen to its own home, so the person is
+   chosen AFTER it rather than before - setting it first would be overwritten
+   and the tap would land on the list. */
+function pplHereGo(i){
+  enterModule('people');
+  _personIdx=i;_peopleView='person';
+  renderPeople();
+}
+function pplHereHTML(place){
+  var rows=pplAtPlace(place);
+  if(!rows.length)return '';
+  /* The count is a badge the number draws itself, so the sentence beside it
+     never has to agree with it - no plural, in any of the eleven. */
+  var h='<button class="pph" onclick="pplHereToggle()">'+
+    '<span class="pph-t">'+_t('מי שאתה מכיר מכאן')+'</span>'+
+    '<span class="pph-n">'+nfmt(rows.length)+'</span>'+
+    '<span class="pph-c">'+(_pplHereOpen?'&#8963;':'&#8964;')+'</span></button>';
+  if(!_pplHereOpen)return h;
+  h+='<div class="pph-l">';
+  for(var i=0;i<rows.length;i++){
+    var p=rows[i].p,line=pplOneLine(p);
+    h+='<button class="pph-r" onclick="pplHereGo('+rows[i].i+')">'+
+       personAvatar(p,30)+
+       '<span class="pph-x"><span class="pph-nm">'+esc(p.name)+'</span>'+
+       (line?'<span class="pph-s">'+esc(line)+'</span>':'')+'</span></button>';
+  }
+  return h+'</div>';
+}
 function renderPeople(){
   document.getElementById('hdr-title').textContent=''+_t('האנשים שלי')+'';
   if(_peopleView==='person')renderPersonPage();
