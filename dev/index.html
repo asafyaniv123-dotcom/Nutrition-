@@ -931,9 +931,13 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
 /* every garment of one kind, as squares */
 .cl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
 .cl-sq{position:relative;aspect-ratio:1;border:none;border-radius:18px;overflow:hidden;
-  background:var(--card);cursor:pointer;padding:9px;font-family:inherit;
+  background:var(--card);cursor:pointer;padding:0;font-family:inherit;
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 3px 12px rgba(200,180,160,.14)}
+/* the frame the garment actually occupies: its own proportions, centred,
+   inside a square that never changes shape */
+.cl-sq-in{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  overflow:hidden}
 .cl-sq.on{outline:2px solid var(--violet-500);outline-offset:-2px}
 .cl-sq.add{border:1.5px dashed #e5ddd4;background:none;box-shadow:none;
   color:#c4b9ad;font-size:20px;font-weight:800}
@@ -15232,7 +15236,12 @@ function closetCatHTML(){
       : photoImg(list[i].ref,'class="cl-img"');
     /* the one on the body is marked, because that is the question you arrive
        with even when you came to look at the others */
-    h+='<button class="cl-sq'+(at===sel?' on':'')+'" onclick="closetSheet(&quot;'+_clCat+'&quot;,'+at+')">'+img+'</button>';
+    /* as wide as the square allows, as tall as the garment's aspect makes
+       it - or the other way round for something taller than it is wide */
+    var ar=measured?Math.max(.3,Math.min(3.4,t.a||1)):1;
+    var fw=ar>=1?82:Math.round(82*ar), fh=ar>=1?Math.round(82/ar):82;
+    h+='<button class="cl-sq'+(at===sel?' on':'')+'" onclick="closetSheet(&quot;'+_clCat+'&quot;,'+at+')">'+
+       '<span class="cl-sq-in" style="width:'+fw+'%;height:'+fh+'%">'+img+'</span></button>';
   }
   h+='<label class="cl-sq add">+'+
      '<input type="file" accept="image/*" multiple style="display:none" onchange="closetAdd(this,&quot;'+_clCat+'&quot;)"></label>';
