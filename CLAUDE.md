@@ -129,7 +129,12 @@ the rest.
    September in Hebrew and the ninth of November in American English, and a
    raw `5` sits beside `٥` on the same Arabic screen. `_t` now formats any
    hole whose value is an actual number, so a whole sentence only has to
-   pass the number in.
+   pass the number in. **A percent sign is a unit too** — Arabic writes `٪`
+   and French puts a space in front of it — so a percentage comes from
+   `pfmt()`, never from `nfmt(n)+'%'`. And the rule has a mirror image: a
+   number a MACHINE reads must never be formatted. `style.height = "٥٠%"` is
+   not a CSS length and the browser discards it; `find-formatted-css.mjs`
+   is the check, and the bars it was written for had shipped.
 5. **Options a person chooses between must stay distinct in every
    language.** The daily reflection opens with a five-point mood scale, and
    Spanish put *Bien* under faces three and four while Arabic put *لا بأس*
@@ -145,7 +150,7 @@ the rest.
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
 
-**Ten checks are tools rather than prose**, and all should only ever go down:
+**Eleven checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments
     node tools/find-translated-data.mjs        # _t() results used as data, not shown
@@ -160,7 +165,25 @@ translation falls back to readable text rather than to `fitness.set.add`.
                                                # which does not know the day ends at 04:00
     node tools/find-crowd-address.mjs          # Hebrew speaking to a crowd in an
                                                # app that addresses one person
+    node tools/find-formatted-css.mjs          # a reader's number used as a machine's,
+                                               # and a percent sign welded on by hand
     node tools/build-lang-template.mjs --check # the template still matches the app
+
+`find-formatted-css.mjs` is the newest, and the bug it was written for had
+shipped. `nfmt` writes numbers the way the READER writes them, so in Arabic
+it answers `٥٠` — and `style.height = "٥٠%"` is not a CSS length, so the
+browser silently discards it. The daily summary's four macro bars were built
+that way and had been drawing at **zero height** for every Arabic reader.
+Nothing could see it: Hebrew and English happen to use the digits CSS
+accepts, so the only broken build was the one nobody opened.
+
+It reads the QUESTION the number answers — inside `style="…"` a machine
+reads it and it must never be formatted; followed by a bare `%` a person
+reads it and the sign is a **unit**, so it comes from `pfmt()`. Its first
+version demanded the closing quote too (`+'%'`) and therefore matched one
+site in three, which is how a detector reports almost nothing and gets
+believed. Against the revision that has the bug it finds **4**; against the
+fix, **0**.
 
 The newest one has the same shape as the units check and the same origin. This
 app's day ends at **04:00**: `appNow()`, `todayStr()` and `dayShift()` carry
