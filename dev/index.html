@@ -366,6 +366,8 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* the door to the explanation: centred, because there is one thing in it */
 .fx-how{align-items:center;justify-content:center;gap:6px;cursor:pointer;text-align:center}
 .fx-how .fx-h{color:var(--terra-500)}
+/* the steps in the sheet lead, so the first one needs no gap above it */
+#xh-ov .xd-steps{margin-top:2px}
 .fx-how:active{transform:scale(.985)}
 .fx-bulb{font-size:26px;line-height:1}
 .fw-restset{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
@@ -15842,15 +15844,59 @@ function exLastBoxHTML(ex){
   if(ago)h+='<span class="fx-ago">'+esc(ago)+'</span>';
   return h+'</div>';
 }
-/* Empty on purpose. Asaf asked for the place to exist now and the explanation
-   to arrive later; a button that answers nothing at all reads as broken, so
-   it says so. */
 function exHowBoxHTML(){
   return '<button class="fx-box fx-how" onclick="exHowOpen()">'+
     '<span class="fx-bulb">\uD83D\uDCA1</span>'+
-    '<span class="fx-h">'+_t('איך עושים')+'</span></button>';
+    '<span class="fx-h">'+_t('איך מבצעים')+'</span></button>';
 }
-function exHowOpen(){showToast(_t('בקרוב'));}
+/* The library is fetched on demand and exAll() is empty until it lands, so
+   the press waits for it rather than reporting that nothing is written. */
+var _exHowOn=false;
+function exHowOpen(){_exHowOn=true;exLoad(exHowPaint);}
+function exHowClose(){
+  _exHowOn=false;
+  var o=document.getElementById('xh-ov');if(o)o.remove();
+  document.body.style.overflow='';
+}
+/* A workout stores the exercise as its id, so the library entry has to be
+   found again - and an exercise somebody typed themselves is not in there at
+   all, which is a real case and not an error. */
+function exByName(nm){
+  var a=exAll(),i;
+  for(i=0;i<a.length;i++)if(a[i].n===nm)return a[i];
+  return null;
+}
+function exHowPaint(){
+  if(!_exHowOn)return;
+  var ex=_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx];
+  if(!ex){exHowClose();return;}
+  var e=exByName(ex.name),how=e?exHow(e):null,b='',j;
+  if(how&&how.s&&how.s.length){
+    b+='<ol class="xd-steps">';
+    for(j=0;j<how.s.length;j++)b+='<li>'+esc(how.s[j])+'</li>';
+    b+='</ol>';
+    if(how.k&&how.k.length){
+      b+='<div class="xd-h warn">'+_t('טעויות נפוצות')+'</div><ul class="xd-miss">';
+      for(j=0;j<how.k.length;j++)b+='<li>'+esc(how.k[j])+'</li>';
+      b+='</ul>';
+    }
+    /* Not the language being read. Saying which one it is costs a line and
+       turns "why is this gibberish" into "ah, it is in Hebrew". */
+    if(how.lang!==appLang()){
+      var lname=how.lang,li;
+      for(li=0;li<LANGS.length;li++)if(LANGS[li].code===how.lang)lname=LANGS[li].name;
+      b+='<div class="xd-lang">'+_t('ההסבר עוד לא נכתב בשפה שלך. מה שמופיע כאן הוא ב{lang}.',{lang:lname})+'</div>';
+    }
+  } else {
+    b+='<div class="xd-none">'+_t('ההסבר לתרגיל הזה עוד לא נכתב.')+'</div>';
+  }
+  var html='<div class="fc-ov" id="xh-ov" onclick="if(event.target===this)exHowClose()">'+
+    '<div class="fc-sheet"><div class="fc-hd"><span>'+esc(exLabel(ex.name))+'</span>'+
+    '<button class="fc-x" onclick="exHowClose()">&times;</button></div>'+b+'</div></div>';
+  var old=document.getElementById('xh-ov');
+  if(old){old.outerHTML=html;}
+  else{document.body.insertAdjacentHTML('beforeend',html);document.body.style.overflow='hidden';}
+}
 function exLastLine(ex){
   var prev=exLastTime(ex.name);
   if(!prev||!prev.sets||!prev.sets.length)return '';
