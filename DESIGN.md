@@ -477,18 +477,22 @@ tick when answered.
 - **Don't** place two accent hues on one card.
 - **Don't** spend the amber hub dot on anything but "today's reflection is unwritten".
 - **Don't** let a `:active` transform drop a centring `translateX(-50%)`.
-- **Don't** carry any `body.mod-nutrition` rule, token or material onto another screen.
+- **Don't** treat the incumbent world below as the target. It is what the app
+  is being converted OUT of; the soft white is the destination.
 
 ---
 
 # In progress: the Nutrition world
 
-> **Not the app's system.** Everything below is scoped to `body.mod-nutrition`,
-> which `enterModule` sets and `goHome` clears. It was approved 20 Sep 2026 for
-> the nutrition screen only and has not been adopted anywhere else. It is
-> recorded here because it ships in `dev/index.html` today, not because it wins.
-> Do not blend it with the incumbent world above, and do not extend it to another
-> surface without a decision.
+> **This is the app's system now.** Approved for nutrition on 20 Sep 2026, and
+> approved as the app's DEFAULT on 22 Sep after it had carried nutrition, the
+> home hub, כושר and the closet. It lives on `body.soft`, which every screen
+> carries; an area's own `body.mod-*` block keeps only what is genuinely its
+> own - the tubes, the fan, the recess, the week strip.
+>
+> The cream-and-violet world recorded above is not the target. It is what the
+> app is being converted out of, and it is still what most screens wear: 60 of
+> 65 on 22 Sep. Read it to recognise what has not been converted yet.
 
 ## Overview
 
@@ -561,8 +565,9 @@ control: the trough is pressed, the chosen segment is raised out of it.
 ## Do's and Don'ts
 
 ### Do:
-- **Do** scope every rule to `body.mod-nutrition`, `html`-prefixed where it must
-  outrank `body.night`.
+- **Do** put anything the whole app shares on `body.soft`, and scope to
+  `body.mod-<area>` only what belongs to one area. `html`-prefix where a rule
+  must outrank `body.night`.
 - **Do** keep the header opaque — a see-through sticky header let the list run under
   its own title once already.
 - **Do** make a row divider light (`1px solid rgba(255,255,255,.9)` over
@@ -571,4 +576,5 @@ control: the trough is pressed, the chosen segment is raised out of it.
 ### Don't:
 - **Don't** add a border, a white card, or a second material.
 - **Don't** tint an empty channel.
-- **Don't** let this world's tokens or shadows appear outside `body.mod-nutrition`.
+- **Don't** declare the six tokens again in a new area block. They are on
+  `body.soft`; four copies were already three too many.
