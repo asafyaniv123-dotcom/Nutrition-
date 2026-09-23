@@ -2905,7 +2905,7 @@ html body.mod-planning .mo-span{height:15px;border-radius:7px;
   background:var(--nu-ground);border-inline-start:2.5px solid var(--c);
   box-shadow:-1px -1px 3px var(--nu-lit),1.5px 2px 4px var(--nu-shade-soft)}
 html body.mod-planning .mo-span-t{inset-inline:6px 14px;top:50%;
-  transform:translateY(-50%);font-size:8px;color:var(--nu-ink)}
+  transform:translateY(-50%);font-size:8px;color:var(--ink,var(--nu-ink))}
 html body.mod-planning .mo-span-r,html body.mod-planning .mo-span-d.s{display:none}
 html body.mod-planning .mo-span-d.e{width:7px;height:7px;bottom:auto;top:50%;
   margin-top:-3.5px;inset-inline-end:3px;opacity:.5}
@@ -20185,19 +20185,30 @@ function wkGridIn(tasks,date,slot){
    them. Only bg and tx change here; every k stays exactly where it was, so a
    task already painted 'ter' is still 'ter' and nobody's week is repainted.
    The dot is untouched: it is what the twelve swatches at the bottom show. */
+/* THREE TONES, AND THEY ARE NOT INTERCHANGEABLE.
+   bg  - the solid block a month task is made of
+   tx  - the text ON that block, so it is near white for a dark block
+   dot - the saturated mark: a swatch, a seam, the dot in a day item
+   ink - the same colour written as a WORD lying on the plaster. Text needs a
+         darker tone than a block does; these are exactly the tx values the
+         palette had before the blocks arrived, when they were tuned as dark
+         text on a light card, so they go back to the job they were written
+         for. Measured against the plaster, the weakest of the twelve is the
+         green at 5.5:1 and the strongest the rose at 6.9:1, so every one of
+         them clears AA for small text with room to spare. */
 var WK_COLORS=[
-  {k:'lav',bg:'#9a8fc4',dot:PAL.violet500,tx:'#fdfcfb'},
-  {k:'ter',bg:'#c07a5e',dot:PAL.terra500,tx:'#fdf7f3'},
-  {k:'grn',bg:'#8fae87',dot:PAL.green600,tx:'#fbfdfa'},
-  {k:'blu',bg:'#8fb6d4',dot:PAL.water500,tx:'#fbfdff'},
-  {k:'amb',bg:'#e2b862',dot:'#c98b3f',tx:'#4a3a1c'},
-  {k:'gry',bg:'#a9a29a',dot:'#8d847d',tx:'#fbfaf8'},
-  {k:'ros',bg:'#cf8195',dot:'#e0728c',tx:'#fffafb'},
-  {k:'tea',bg:'#6faaa2',dot:'#4fa89b',tx:'#fafefd'},
-  {k:'ind',bg:'#8b93cf',dot:'#7b86d6',tx:'#fcfcff'},
-  {k:'olv',bg:'#a3ae72',dot:'#93a352',tx:'#3d4322'},
-  {k:'cly',bg:'#b8927a',dot:'#b0805f',tx:'#fffbf8'},
-  {k:'plm',bg:'#b183ac',dot:'#b06aa8',tx:'#fffbfe'}
+  {k:'lav',bg:'#9a8fc4',dot:PAL.violet500,tx:'#fdfcfb',ink:'#5b4f6b'},
+  {k:'ter',bg:'#c07a5e',dot:PAL.terra500,tx:'#fdf7f3',ink:'#7a4f40'},
+  {k:'grn',bg:'#8fae87',dot:PAL.green600,tx:'#fbfdfa',ink:'#3f6349'},
+  {k:'blu',bg:'#8fb6d4',dot:PAL.water500,tx:'#fbfdff',ink:'#2f5a73'},
+  {k:'amb',bg:'#e2b862',dot:'#c98b3f',tx:'#4a3a1c',ink:'#6d5530'},
+  {k:'gry',bg:'#a9a29a',dot:'#8d847d',tx:'#fbfaf8',ink:'#57504a'},
+  {k:'ros',bg:'#cf8195',dot:'#e0728c',tx:'#fffafb',ink:'#78394a'},
+  {k:'tea',bg:'#6faaa2',dot:'#4fa89b',tx:'#fafefd',ink:'#2f5f58'},
+  {k:'ind',bg:'#8b93cf',dot:'#7b86d6',tx:'#fcfcff',ink:'#454c85'},
+  {k:'olv',bg:'#a3ae72',dot:'#93a352',tx:'#3d4322',ink:'#545c33'},
+  {k:'cly',bg:'#b8927a',dot:'#b0805f',tx:'#fffbf8',ink:'#6b4f3c'},
+  {k:'plm',bg:'#b183ac',dot:'#b06aa8',tx:'#fffbfe',ink:'#6b3f66'}
 ];
 var _wkNewColor='lav',_wkPick='';
 function wkColor(k){
@@ -22179,13 +22190,14 @@ function moPlaceSpans(){
     var first=null;
     for(j=0;j<list.length;j++)if(list[j].el.getAttribute('data-spanfirst'))first=list[j].el;
     var src=first||list[0].el;
-    var col=src.getAttribute('data-spancol');
+    var col=src.getAttribute('data-spancol'),ink=src.getAttribute('data-spanink')||col;
     var bar=document.createElement('div');
     bar.className='mo-span';
     /* the run's colour, for whatever the stylesheet wants to do with it - the
        seam at its start, the handle at its end. Assigned to the label inline,
        as it was, no stylesheet could reach it. */
     bar.style.setProperty('--c',col);
+    bar.style.setProperty('--ink',ink);
     bar.style.left=(a.left-gb.left)+'px';
     bar.style.width=(b.right-a.left)+'px';
     bar.style.top=(top-gb.top)+'px';
@@ -22268,12 +22280,13 @@ function planMonthHTML(){
            second walk of the data. */
         h+='<div class="mo-chip mo-seg" data-span="'+esc(wt[t].id)+'"'+
            ' data-spanfirst="'+(ed.first?'1':'')+'" data-spancol="'+wc.dot+'"'+
+           ' data-spanink="'+wc.ink+'"'+
            ' data-spanw="'+esc(wt[t].w)+'" data-spansun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
            ' data-spanstart="'+esc(wt[t].d)+'">&nbsp;</div>';
       }else{
         /* The same grab point a run has, so a one-day task can become a longer
            one without first having to be one somewhere else. */
-        h+='<div class="mo-chip mo-k-wk" style="--c:'+wc.dot+'">'+esc(wt[t].w)+
+        h+='<div class="mo-chip mo-k-wk" style="--c:'+wc.dot+';color:'+wc.ink+'">'+esc(wt[t].w)+
            '<div data-mostretch="'+esc(wt[t].id)+'" data-mostart="'+esc(wt[t].d)+'"'+
            ' data-mosun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
            ' style="position:absolute;inset-inline-end:-2px;top:50%;margin-top:-8px;width:16px;height:16px;'+
@@ -22288,7 +22301,7 @@ function planMonthHTML(){
     for(t=0;t<di.length;t++){
       if(shown>=MO_CELL_MAX){extra+=di.length-t;break;}
       var dc=wkColor(di[t].c);
-      h+='<div class="mo-chip mo-k-dy" style="--c:'+dc.dot+'">'+esc(di[t].w)+'</div>';
+      h+='<div class="mo-chip mo-k-dy" style="--c:'+dc.dot+';color:'+dc.ink+'">'+esc(di[t].w)+'</div>';
       shown++;
     }
     if(extra>0)h+='<div class="mo-more">+'+nfmt(extra)+'</div>';
