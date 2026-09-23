@@ -1371,6 +1371,12 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .wk-hcell{text-align:center;min-width:0;padding:2px 0;border-radius:8px}
 .wk-hcell.today{background:linear-gradient(135deg,var(--violet-100),var(--violet-200))}
 .wk-dn{font-size:9.5px;font-weight:800;color:var(--ink);line-height:1.15;white-space:nowrap;letter-spacing:-.2px}
+/* an all-day thing in the head: the same block as everywhere else, only
+   small enough that seven of them fit across a phone */
+.wk-hchip{margin-top:3px;border-radius:5px;padding:2px 3px;font-size:7.5px;
+  font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;unicode-bidi:plaintext}
+.wk-hmore{font-size:7px;font-weight:700;color:var(--muted-soft);margin-top:2px}
 .wk-dd{font-size:8.5px;color:var(--muted);line-height:1.2;white-space:nowrap}
 .wk-table{flex:1;min-width:0;position:relative;height:34vh;min-height:250px;background:var(--card);border:1.5px solid var(--line-strong);border-radius:14px;overflow:hidden}
 .wk-bands{position:absolute;inset:0;pointer-events:none;z-index:0}
@@ -20442,12 +20448,20 @@ function planWeekHTML(){
     swatches:wkSwatches("_wkNewColor='%K%';renderPlanWeek()",_wkNewColor),
     panel:_wkPick?plPanelHTML(pool,_wkPick,"wkSetColor('%ID%','%K%')"):''});
 
-  // day names and dates, above the table
+  // day names and dates, above the table - and under them whatever this day
+  // holds that has no hour, which is where the month's tasks land
   h+='<div class="wk-head">';
   for(i=0;i<7;i++){
-    var d=wkDateOf(_wkSun,i);
-    h+='<div class="wk-hcell'+(wkStamp(d)===today?' today':'')+'">';
-    h+='<div class="wk-dn">'+WK_SHORT[i]+'</div><div class="wk-dd">'+wkShort(d)+'</div></div>';
+    var d=wkDateOf(_wkSun,i),ds=wkStamp(d);
+    h+='<div class="wk-hcell'+(ds===today?' today':'')+'">';
+    h+='<div class="wk-dn">'+WK_SHORT[i]+'</div><div class="wk-dd">'+wkShort(d)+'</div>';
+    var ad=wkAllDayOn(ds);
+    for(t=0;t<ad.length&&t<WK_HEAD_MAX;t++){
+      var ac=wkColor(ad[t].c);
+      h+='<div class="wk-hchip" style="background:'+ac.soft+';color:'+ac.ink+'">'+esc(ad[t].w)+'</div>';
+    }
+    if(ad.length>WK_HEAD_MAX)h+='<div class="wk-hmore">+'+nfmt(ad.length-WK_HEAD_MAX)+'</div>';
+    h+='</div>';
   }
   h+='</div>';
 
@@ -22121,6 +22135,18 @@ function loadMonth(m){
 }
 function saveMonth(m,o){planPush(moKey(m));try{localStorage.setItem(moKey(m),JSON.stringify(o));}catch(e){}}
 // Every month task sitting on this date, whichever month record holds it.
+/* WHAT THIS DAY HOLDS WITH NO HOUR ON IT.
+   The month's tasks, which never carry one, and anything written straight
+   into the day without a time. Week tasks are not here: they already have a
+   band on this board, which is what a week task is. */
+var WK_HEAD_MAX=2;
+function wkAllDayOn(date){
+  var out=moTasksOn(date),dp=null,i;
+  try{dp=loadDPlan(date);}catch(e){}
+  if(dp)for(i=0;i<dp.items.length;i++)
+    if(typeof dp.items[i].h!=='number')out.push(dp.items[i]);
+  return out;
+}
 function moTasksOn(date){
   var m=new Date(date+'T12:00:00'),wk=loadMonth(moFirst(m)),out=[],i;
   for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].d===date)out.push(wk.tasks[i]);
