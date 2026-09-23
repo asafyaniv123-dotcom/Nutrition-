@@ -2902,7 +2902,10 @@ html body.mod-people .ppl-tf img,html body.mod-people .ppl-tf>div{border:2px sol
    Their photo IS the card. It fills the surface and fades into the plaster at
    the bottom, where the name sits. With no photo the card keeps its shape and
    its hue blooms from the top instead, with the initial in it. */
-.pp-face{position:relative;display:block;width:100%;aspect-ratio:4/5;max-height:340px;
+/* max-height 420, not 340: at 340 the cap beat the 4/5 aspect and the card
+   came out wider than it was tall, so a portrait photograph was cropped to a
+   strip and scaled up to fill it. A face is a portrait. */
+.pp-face{position:relative;display:block;width:100%;aspect-ratio:4/5;max-height:420px;
   border-radius:26px;overflow:hidden;background:var(--nu-ground);margin-bottom:16px;
   box-shadow:-6px -6px 15px var(--nu-lit),8px 10px 22px var(--nu-shade)}
 .pp-face-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
@@ -23007,16 +23010,18 @@ function epPhotoPick(input){
   if(input)input.value='';
   if(!f)return;
   showToast(''+_t('מכין')+'&hellip;');
-  /* 1080, not 360. The old number was right while a person's photograph was
-     only ever a 48px circle; it fills a 340px card across the whole screen
-     now, which is about 1290 device pixels on a dense phone. A photograph
-     saved before this is still 360 and cannot be un-shrunk - adding it again
-     is what fixes an old one. */
+  /* MEASURED FROM THE CARD, not guessed from the file. The card is 362 CSS px
+     across on a 390px phone, so at a device pixel ratio of 3 it wants 1170
+     pixels; 1600 on the long side of a portrait carries 1280 across the 4:5
+     crop, which clears it and never upscales. The first attempt at this said
+     1080 and still fell short, because a portrait's LONG side is its height.
+     A photograph saved before this keeps the size it was saved at - adding it
+     again is what fixes an old one. */
   vbScale(f,function(d){
     if(!d){showToast(''+_t('לא הצלחתי לקרוא את התמונה')+'');return;}
     _epAvatar=d;
     epPaintAvatar();
-  },1080);
+  },1600,0.9);
 }
 function epPhotoClear(){_epAvatar='';epPaintAvatar();}
 function epPaintAvatar(){
@@ -24187,7 +24192,7 @@ function vbSaveText(){
 
 // Fit the photo inside VB_MAX and re-encode as JPEG - a 4MB camera shot comes
 // out around 60KB, which is what lets a boardful of them live in localStorage.
-function vbScale(file,cb,max){
+function vbScale(file,cb,max,q){
   var reader=new FileReader();
   reader.onload=function(e){
     var img=new Image();
@@ -24197,7 +24202,10 @@ function vbScale(file,cb,max){
       cv.width=Math.max(1,Math.round(img.width*s));
       cv.height=Math.max(1,Math.round(img.height*s));
       cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-      try{cb(cv.toDataURL('image/jpeg',0.8));}catch(err){cb(null);}
+      /* the caller's quality, or the old default for the six that never
+         passed one. A face shows blocking on smooth skin where a plate of
+         food does not, so it asks for more. */
+      try{cb(cv.toDataURL('image/jpeg',q||0.8));}catch(err){cb(null);}
     };
     img.onerror=function(){cb(null);};
     img.src=e.target.result;
