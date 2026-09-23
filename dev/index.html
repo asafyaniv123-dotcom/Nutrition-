@@ -3104,6 +3104,14 @@ html body.mod-planning .pb-dot.on{background:var(--nu-amber);
   box-shadow:0 0 7px 2px rgba(240,169,46,.55)}
 html body.mod-planning .pb-stage-t{color:var(--nu-muted)}
 html body.mod-planning .pb-q{color:var(--nu-ink)}
+html body.mod-planning .pb-back{background:var(--nu-ground);color:var(--nu-muted);
+  box-shadow:inset 2px 2px 4px var(--nu-shade-soft),inset -1px -1px 3px var(--nu-lit)}
+/* while the next question is on its way the rows stay put, and the one you
+   pressed is the one that is lit */
+html body.mod-planning .pb-ans-l.waiting .pb-ans{opacity:.55}
+html body.mod-planning .pb-ans.on{opacity:1;color:var(--nu-ink);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft),
+    inset 0 0 0 1.5px var(--nu-amber)}
 html body.mod-planning .pb-ans{background:var(--nu-ground);color:var(--nu-ink);
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 /* pressed rather than raised: saying "you choose" is stepping back, and the
@@ -3663,6 +3671,15 @@ html body.mod-home .hub-dot{background:#4d7fbe;box-shadow:0 0 10px 2px rgba(178,
 .pb-new{margin-top:10px;border:none;background:none;font-family:inherit;font-size:11px;
   font-weight:700;color:var(--muted);cursor:pointer;padding:4px}
 .pb-feet{display:flex;gap:14px;flex-wrap:wrap}
+/* ── THE THREAD ── what you have answered, as one line you can tap back into.
+   Not a transcript: a transcript pushes the question down the card, and the
+   question is the thing you came to answer. */
+.pb-trail{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+  margin:0 0 14px;padding-bottom:2px}
+.pb-trail::-webkit-scrollbar{display:none}
+.pb-back{flex-shrink:0;max-width:150px;border:none;border-radius:9px;padding:5px 9px;
+  font-family:inherit;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
 /* ── ONE QUESTION, AT THE SIZE OF A QUESTION ── */
 .pb-q{font-size:19px;font-weight:800;line-height:1.42;margin:2px 0 18px}
 /* and its answers as rows. A row is a thing you press; a chip is a thing you
@@ -22864,7 +22881,29 @@ function planProfileMerge(add){
 function planProfileHas(){var p=planProfile(),k;for(k in p)return true;return false;}
 function planProfileClear(){try{localStorage.removeItem(PLAN_PROF);}catch(e){}planBotPaint();}
 
-var _planTurns=[],_planBusy=false,_planErr='',_planSaid='';
+var _planTurns=[],_planBusy=false,_planErr='',_planSaid='',_planPending='';
+/* ── THE WAY BACK ──
+   No network: the question that asked for this answer is already sitting in
+   _planTurns, so going back is truncating an array and repainting. That is
+   what stops a mistap from costing the whole interview. */
+function planBotBack(k){
+  if(_planBusy||k<=0||k>=_planTurns.length)return;
+  _planTurns=_planTurns.slice(0,k);
+  _planErr='';_planSaid='';planBotPaint();
+}
+/* what you have answered, oldest to newest. A LINE, not a transcript: the
+   question stays at the top of the card, which is where the focus belongs. */
+function planTrailHTML(){
+  var h='',k,n=0;
+  for(k=1;k<_planTurns.length;k++)if(_planTurns[k].role==='user')n++;
+  if(!n)return '';
+  h+='<div class="pb-trail" id="pb-trail">';
+  for(k=1;k<_planTurns.length;k++){
+    if(_planTurns[k].role!=='user')continue;
+    h+='<button class="pb-back" onclick="planBotBack('+k+')">'+esc(_planTurns[k].text)+'</button>';
+  }
+  return h+'</div>';
+}
 function planBotReset(){_planTurns=[];_planErr='';_planSaid='';planBotPaint();}
 function planBotLast(){
   for(var i=_planTurns.length-1;i>=0;i--)
@@ -22876,6 +22915,7 @@ function planBotSend(text){
   var t=String(text||'').trim();
   if(!t||_planBusy)return;
   _planTurns.push({role:'user',text:t});
+  _planPending=t;
   _planSaid='';_planErr='';_planBusy=true;planBotPaint();
   var d=appNow();
   fetch(SYNC_SERVER+'/plan',{
@@ -22890,11 +22930,11 @@ function planBotSend(text){
     })
   }).then(function(r){return r.json();}).then(function(j){
     _planBusy=false;
-    if(!j||!j.type){_planErr=''+_t('משהו השתבש')+'';planBotPaint();return;}
+    if(!j||!j.type){_planPending='';_planErr=''+_t('משהו השתבש')+'';planBotPaint();return;}
     _planTurns.push({role:'bot',data:j});
     planProfileMerge(j.remember);
-    planBotPaint();
-  },function(){_planBusy=false;_planErr=''+_t('משהו השתבש')+'';planBotPaint();});
+    _planPending='';planBotPaint();
+  },function(){_planBusy=false;_planPending='';_planErr=''+_t('משהו השתבש')+'';planBotPaint();});
 }
 /* what the app already knows about the days ahead, so the planner does not
    ask about things it can see - and can ask whether they are still true */
@@ -22934,8 +22974,12 @@ function planBotClose(){
 /* the sheet redraws itself; the screen underneath does not */
 function planBotPaint(){
   var b=document.getElementById('pb-body');
-  if(b)b.innerHTML=planBotHTML();
-  else renderPlanning();
+  if(!b){renderPlanning();return;}
+  b.innerHTML=planBotHTML();
+  /* the newest answer is the one worth seeing, and in this app the trail runs
+     right to left, where "the end" is a negative scrollLeft */
+  var tr=document.getElementById('pb-trail');
+  if(tr)tr.scrollLeft=(getComputedStyle(tr).direction==='rtl'?-1:1)*tr.scrollWidth;
 }
 /* the category decides the colour it wears in the week view */
 var PLAN_COLOR={work:'ind',meeting:'blu',travel:'gry',study:'olv',project:'plm',
@@ -23010,6 +23054,7 @@ function planBotHTML(){
     if(last.stageName)h+='<span class="pb-stage-t">'+esc(last.stageName)+'</span>';
     h+='</div>';
   }
+  h+=planTrailHTML();
   if(!_planTurns.length){
     h+='<div class="pb-open">'+_t('ספר לי מה יש לך בשבוע, ואבנה לוח שמחזיק את הכול.')+'</div>'+
        '<button class="pb-go" onclick="planBotSend(&quot;'+esc(_t('בוא נתכנן את השבוע הקרוב'))+'&quot;)">'+
@@ -23067,34 +23112,48 @@ function planBotHTML(){
       h+='</div>';
     }
   }
-  if(_planBusy)h+='<div class="pb-it pb-wait">'+_t('חושב…')+'</div>';
   /* what the person can say next */
-  if(!_planBusy){
+  {
     var opts=(isQ&&Array.isArray(last.options))?last.options:[];
     var skip=(isQ&&last.skip)?String(last.skip):'';
     if(opts.length||skip){
       /* rows, not chips. With one question on the screen there is room to read
          each answer without squinting at it, and a row is a thing you press
          rather than a tag you notice. */
-      h+='<div class="pb-ans-l">';
-      for(i=0;i<opts.length;i++)
-        h+='<button class="pb-ans" onclick="planBotSend(&quot;'+esc(String(opts[i]).replace(/"/g,''))+'&quot;)">'+
-           esc(opts[i])+'</button>';
+      /* THEY STAY WHILE THE NEXT QUESTION IS ON ITS WAY. Measured before this
+         changed: three rows and a text field before a tap, zero of them 350ms
+         later, for the next two to four seconds. An empty card is what made
+         the wait feel like being stuck. */
+      var ansRow=function(label,cls){
+        var pend=_planBusy&&label===_planPending;
+        return '<button class="pb-ans'+(cls?' '+cls:'')+(pend?' on':'')+'"'+
+          (_planBusy?' disabled':'')+
+          ' onclick="planBotSend(&quot;'+esc(String(label).replace(/"/g,''))+'&quot;)">'+
+          esc(label)+'</button>';
+      };
+      h+='<div class="pb-ans-l'+(_planBusy?' waiting':'')+'">';
+      for(i=0;i<opts.length;i++)h+=ansRow(opts[i],'');
       /* the hinge of the whole thing: no preference is not a missing answer,
          it is permission for the planner to choose. So it is SENT like any
          other answer, and only drawn quieter than the ones that pin a time. */
-      if(skip)h+='<button class="pb-ans skip" onclick="planBotSend(&quot;'+esc(skip.replace(/"/g,''))+'&quot;)">'+
-         esc(skip)+'</button>';
+      if(skip)h+=ansRow(skip,'skip');
       h+='</div>';
     }
-    if(last&&last.type==='skeleton')
-      h+='<div class="pb-opts"><button class="pb-opt pb-yes" onclick="planBotSend(&quot;'+esc(_t('השלד מאושר, תכנן את הימים'))+'&quot;)">'+
-         _t('אשר את השלד')+'</button></div>';
-    h+='<div class="pb-row">'+
-       '<input class="pb-in" id="pb-in" value="'+esc(_planSaid)+'" placeholder="'+_t('אפשר גם לכתוב')+'" '+
-       'oninput="planBotType(this.value)" onkeydown="if(event.key===&#39;Enter&#39;){planBotSend(this.value);}">'+
-       '<button class="pb-send" onclick="planBotSend(document.getElementById(&quot;pb-in&quot;).value)">'+_t('שלח')+'</button>'+
-       '</div>';
+    if(_planBusy)h+='<div class="pb-it pb-wait">'+_t('חושב…')+'</div>';
+  }
+  if(!_planBusy&&last&&last.type==='skeleton')
+    h+='<div class="pb-opts"><button class="pb-opt pb-yes" onclick="planBotSend(&quot;'+esc(_t('השלד מאושר, תכנן את הימים'))+'&quot;)">'+
+       _t('אשר את השלד')+'</button></div>';
+  /* the row for the answer nobody listed stays on the screen while the next
+     question is on its way - it is only unpressable. Hiding it was another
+     sixty pixels of the card collapsing under you at every tap. */
+  h+='<div class="pb-row">'+
+     '<input class="pb-in" id="pb-in" value="'+esc(_planSaid)+'" placeholder="'+_t('אפשר גם לכתוב')+'"'+
+     (_planBusy?' disabled':'')+' '+
+     'oninput="planBotType(this.value)" onkeydown="if(event.key===&#39;Enter&#39;){planBotSend(this.value);}">'+
+     '<button class="pb-send"'+(_planBusy?' disabled':'')+' onclick="planBotSend(document.getElementById(&quot;pb-in&quot;).value)">'+_t('שלח')+'</button>'+
+     '</div>';
+  if(!_planBusy){
     h+='<div class="pb-feet">';
     if(_planTurns.length)h+='<button class="pb-new" onclick="planBotReset()">'+_t('להתחיל מחדש')+'</button>';
     /* a memory you cannot reach the end of is not a feature */
