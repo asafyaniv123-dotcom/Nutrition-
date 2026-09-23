@@ -2848,7 +2848,7 @@ html body.mod-planning .mo-grid{background:var(--nu-ground);border-radius:22px;
   box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
 /* A DAY IS NOT AN OBJECT. It is a number and whatever lies under it. */
 html body.mod-planning .mo-cell{background:none;border:none;border-radius:0;
-  min-height:58px;padding:5px 4px 7px;gap:3px;position:relative;
+  min-height:76px;padding:7px 4px 9px;gap:3px;position:relative;
   align-items:center}
 /* THE WEEKS. One hairline the full width of the board and nothing vertical.
    A row is always seven cells, the leading blanks included, so the eighth cell
@@ -2916,6 +2916,32 @@ html body.mod-planning .mo-span-r,html body.mod-planning .mo-span-d.s{display:no
 html body.mod-planning .mo-span-d.e{width:7px;height:7px;bottom:auto;top:50%;
   margin-top:-3.5px;inset-inline-end:3px;opacity:.38}
 
+
+/* ── THE ADD BAR ── one row above the board where five sat under it ── */
+.pl-bar{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+/* the plus sits on the LEFT, which in this app's direction is the end of the
+   row - so it is written first and ordered last */
+.pl-add{order:1;width:36px;height:36px;flex-shrink:0;border:none;border-radius:50%;padding:0;
+  font-size:21px;font-weight:700;line-height:1;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center}
+.pl-strip{flex:1;min-width:0;min-height:36px;display:flex;align-items:center;gap:6px;
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:none;border-radius:13px;padding:5px 8px}
+.pl-strip::-webkit-scrollbar{display:none}
+/* a pill is a handle, not text to select: dragging one with a mouse otherwise
+   sweeps a selection across the board behind it */
+.pl-pill{display:flex;align-items:center;gap:5px;flex-shrink:0;border-radius:9px;
+  padding:4px 8px;font-size:11px;font-weight:700;cursor:grab;touch-action:none;
+  max-width:140px;-webkit-user-select:none;user-select:none}
+.pl-pill-dot{width:8px;height:8px;border-radius:50%;border:none;padding:0;flex-shrink:0;
+  cursor:pointer}
+.pl-pill-w{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-empty{font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.pl-panel{margin:-3px 0 11px}
+.pl-comp{margin-bottom:14px}
+.pl-lbl{font-size:10px;font-weight:700;flex-shrink:0}
+.pl-go{border:none;border-radius:13px;padding:0 17px;font-size:20px;font-weight:700;
+  cursor:pointer;font-family:inherit;flex-shrink:0}
 
 /* ── THE DOORS ── one builder, three of them, and the planner's row above ── */
 .pl-intro{font-size:11.5px;font-weight:600;line-height:1.65;margin:2px 4px 16px}
@@ -2993,6 +3019,18 @@ html body.mod-planning .mtin::placeholder{color:var(--nu-muted);font-weight:600}
 html body.mod-planning .wk-swatch{box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 6px var(--nu-shade-soft)}
 html body.mod-planning .wk-swatch.on{transform:scale(1.14);
   box-shadow:0 0 0 2px var(--nu-ground),0 0 0 3.5px rgba(176,168,156,.75)}
+html body.mod-planning .pl-add{background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+html body.mod-planning .pl-add.on{
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-planning .pl-strip{background:var(--nu-ground);
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-planning .pl-strip.hot{background:rgba(240,169,46,.14)}
+html body.mod-planning .pl-pill{
+  box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 5px var(--nu-shade-soft)}
+html body.mod-planning .pl-empty,html body.mod-planning .pl-lbl{color:var(--nu-muted)}
+html body.mod-planning .pl-go{background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 html body.mod-planning .dp-rail-add{background:var(--nu-ground)!important;color:var(--nu-muted);
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 
@@ -20397,6 +20435,13 @@ function planWeekHTML(){
   h+='<button onclick="wkShift(1)" class="pl-step">&#8250;</button>';
   h+='</div>';
 
+  var pool=[];
+  for(t=0;t<wk.tasks.length;t++)if(!wk.tasks[t].d)pool.push(wk.tasks[t]);
+  h+=planAddBarHTML({k:'wk',pool:pool,pick:'wkPick',
+    ph:_t("משימה או פגישה"),add:'wkAdd()',
+    swatches:wkSwatches("_wkNewColor='%K%';renderPlanWeek()",_wkNewColor),
+    panel:_wkPick?plPanelHTML(pool,_wkPick,"wkSetColor('%ID%','%K%')"):''});
+
   // day names and dates, above the table
   h+='<div class="wk-head">';
   for(i=0;i<7;i++){
@@ -20502,26 +20547,6 @@ function planWeekHTML(){
     if(!anyDay)h+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;padding:4px 2px">'+_t('אין כאן כלום עדיין. גרור לכאן משימה מלמטה.')+'</div>';
     h+='</div>';
   }
-
-  // the pool
-  var pool=[];
-  for(t=0;t<wk.tasks.length;t++)if(!wk.tasks[t].d)pool.push(wk.tasks[t]);
-  h+='<div style="margin-top:22px">';
-  h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:var(--muted);margin-bottom:9px">'+_t('מה אתה רוצה שיקרה השבוע')+'</div>';
-  h+='<div id="wk-pool" class="wk-pool">';
-  for(t=0;t<pool.length;t++)h+=wkTaskHTML(pool[t]);
-  if(!pool.length)h+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;padding:8px 2px">'+_t('כתוב למטה, ואז גרור לרצועה שבה זה יקרה.')+'</div>';
-  h+='</div>';
-
-  h+='<div style="display:flex;align-items:center;gap:9px;margin-top:12px">';
-  h+='<div style="font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0">'+_t('צבע')+'</div>';
-  h+=wkSwatches("_wkNewColor='%K%';renderPlanWeek()",_wkNewColor);
-  h+='</div>';
-  h+=taskLibHTML();
-  h+='<div style="display:flex;gap:8px;margin-top:8px">';
-  h+='<input id="wk-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="'+_t("משימה או פגישה")+'" onkeydown="if(event.key===\'Enter\')wkAdd()">';
-  h+='<button onclick="wkAdd()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:var(--white);flex-shrink:0;font-family:inherit">+</button>';
-  h+='</div></div>';
 
   h+='</div>';
   return h;
@@ -21859,6 +21884,61 @@ function taskLibStar(text,color){
   return '<button onclick="taskLibSave(\''+esc(text).replace(/'/g,"\\'")+'\',\''+(color||'lav')+'\')" '+
     'style="background:none;border:none;color:#d8cfc7;font-size:13px;cursor:pointer;flex-shrink:0;font-family:inherit;padding:2px 3px">&#9734;</button>';
 }
+/* ── THE ADD BAR ──
+   One row above the board where five used to sit under it. o carries only
+   what differs between the month and the week:
+     k        'mo' or 'wk', which is also which panel is open
+     pool     what is written but not placed yet
+     pick     the name of the function that opens a pill's own panel
+     ph       the input's placeholder
+     add      the call that adds what was typed
+     swatches the colour row for a NEW task
+     panel    the tapped pill's own row - colour and star - or '' */
+var _plComp='';
+function plCompToggle(k){
+  _plComp=(_plComp===k?'':k);
+  planRerender();
+  if(_plComp)setTimeout(function(){var e=document.getElementById(k+'-in');if(e)e.focus();},60);
+}
+function plPillHTML(t,pick){
+  var c=wkColor(t.c);
+  /* data-task is the whole contract with the drag system; the dot is a button
+     so that tapping it is a tap, which is how the drag system reads it too */
+  return '<div class="pl-pill" data-task="'+t.id+'" style="background:'+c.soft+';color:'+c.ink+'">'+
+    '<button class="pl-pill-dot" style="background:'+c.dot+'" onclick="'+pick+'(\''+t.id+'\')"></button>'+
+    '<span class="pl-pill-w">'+esc(t.w)+'</span></div>';
+}
+function planAddBarHTML(o){
+  var h='',i;
+  h+='<div class="pl-bar">';
+  h+='<button class="pl-add'+(_plComp===o.k?' on':'')+'" onclick="plCompToggle(\''+o.k+'\')">+</button>';
+  h+='<div id="'+o.k+'-pool" class="wk-pool pl-strip">';
+  for(i=0;i<o.pool.length;i++)h+=plPillHTML(o.pool[i],o.pick);
+  if(!o.pool.length)h+='<div class="pl-empty">'+_t('כתוב בפלוס, ואז גרור ללוח.')+'</div>';
+  h+='</div></div>';
+  if(o.panel)h+='<div class="wk-picker pl-panel">'+o.panel+'</div>';
+  if(_plComp===o.k){
+    h+='<div class="pl-comp">';
+    h+='<div style="display:flex;gap:8px">';
+    h+='<input id="'+o.k+'-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="'+o.ph+'" onkeydown="if(event.key===\'Enter\')'+o.add+'">';
+    h+='<button class="pl-go" onclick="'+o.add+'">+</button>';
+    h+='</div>';
+    h+='<div style="display:flex;align-items:center;gap:9px;margin-top:10px">';
+    h+='<div class="pl-lbl">'+_t('צבע')+'</div>'+o.swatches+'</div>';
+    h+=taskLibHTML();
+    h+='</div>';
+  }
+  return h;
+}
+/* the tapped pill's own row, built only when the pill is one of the unplaced
+   ones: a task sitting on the board draws its own picker where it sits */
+function plPanelHTML(pool,id,setCall){
+  var i;
+  for(i=0;i<pool.length;i++)if(pool[i].id===id)
+    return wkSwatches(setCall.replace('%ID%',id),pool[i].c||'lav')+taskLibStar(pool[i].w,pool[i].c);
+  return '';
+}
+
 function taskLibHTML(){
   var l=loadTaskLib(),h='',i,c;
   h+='<div class="qacard" style="margin-top:16px"><button class="qatog" onclick="_tlOpen=!_tlOpen;planRerender()">';
@@ -22246,6 +22326,13 @@ function planMonthHTML(){
   h+='<button onclick="moShift(1)" class="pl-step">&#8250;</button>';
   h+='</div>';
 
+  var pool=[];
+  for(t=0;t<mo.tasks.length;t++)if(!mo.tasks[t].d)pool.push(mo.tasks[t]);
+  h+=planAddBarHTML({k:'mo',pool:pool,pick:'moPick',
+    ph:_t("משהו לחודש הזה"),add:'moAdd()',
+    swatches:wkSwatches("_moNewColor='%K%';renderPlanMonth()",_moNewColor),
+    panel:_moPick?plPanelHTML(pool,_moPick,"moSetColor('%ID%','%K%')"):''});
+
   h+='<div class="mo-head">';
   // single letters: "ראש" and "שלי" are worse than no abbreviation at all
   for(i=0;i<7;i++)h+='<div class="mo-hd">'+[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''][i]+'</div>';
@@ -22315,25 +22402,7 @@ function planMonthHTML(){
   h+='<div style="font-size:9.5px;color:var(--muted-soft);text-align:center;margin-top:8px">'+_t('לחיצה על יום פותחת אותו כאן')+' &middot; '+_t('לחיצה כפולה יורדת ללוח היומי שלו')+'</div>';
 
   h+=moDayPanelHTML();
-
-  var pool=[];
-  for(t=0;t<mo.tasks.length;t++)if(!mo.tasks[t].d)pool.push(mo.tasks[t]);
-  h+='<div style="margin-top:20px">';
-  h+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:var(--muted);margin-bottom:9px">'+_t('מה אתה רוצה שיקרה החודש')+'</div>';
-  h+='<div id="mo-pool" class="wk-pool">';
-  for(t=0;t<pool.length;t++)h+=moTaskHTML(pool[t]);
-  if(!pool.length)h+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;padding:8px 2px">'+_t('כתוב למטה, ואז גרור ליום. אפשר גם להשאיר בלי תאריך.')+'</div>';
   h+='</div>';
-
-  h+='<div style="display:flex;align-items:center;gap:9px;margin-top:12px">';
-  h+='<div style="font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0">'+_t('צבע')+'</div>';
-  h+=wkSwatches("_moNewColor='%K%';renderPlanMonth()",_moNewColor);
-  h+='</div>';
-  h+=taskLibHTML();
-  h+='<div style="display:flex;gap:8px;margin-top:8px">';
-  h+='<input id="mo-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="'+_t("משהו לחודש הזה")+'" onkeydown="if(event.key===\'Enter\')moAdd()">';
-  h+='<button onclick="moAdd()" style="background:linear-gradient(135deg,var(--violet-300),var(--violet-500));border:none;border-radius:11px;padding:0 17px;font-size:19px;font-weight:700;cursor:pointer;color:var(--white);flex-shrink:0;font-family:inherit">+</button>';
-  h+='</div></div></div>';
 
   return h;
 }
