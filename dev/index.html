@@ -3021,6 +3021,9 @@ html body.mod-people .ep-av-b{border:none;background:var(--nu-ground);color:var(
   border-radius:13px;
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 html body.mod-people .ep-av-x{color:var(--nu-muted)}
+/* said where you are standing when you pick it, not discovered later */
+.ep-av-warn{display:block;font-size:11px;font-weight:600;color:var(--terra-500);
+  line-height:1.6;max-width:200px}
 
 /* ── ADDING SOMEBODY ── */
 .pp-add{width:100%;border:none;cursor:pointer;font-family:inherit;font-size:13px;
@@ -23020,10 +23023,27 @@ function epPhotoPick(input){
   vbScale(f,function(d){
     if(!d){showToast(''+_t('לא הצלחתי לקרוא את התמונה')+'');return;}
     _epAvatar=d;
+    /* How wide the picture ACTUALLY came out. vbScale only ever shrinks, so a
+       photograph that arrives at 500px stays 500px however large the cap is -
+       and a WhatsApp forward or a contact thumbnail very often does. The card
+       wants about 1100 across on a phone, so anything under that will be
+       stretched, and the screen says so rather than quietly blurring. */
+    _epAvatarW=0;
+    var m=new Image();
+    m.onload=function(){_epAvatarW=m.naturalWidth;epPaintAvatar();};
+    m.onerror=function(){epPaintAvatar();};
+    m.src=d;
     epPaintAvatar();
   },1600,0.9);
 }
-function epPhotoClear(){_epAvatar='';epPaintAvatar();}
+function epPhotoClear(){_epAvatar='';_epAvatarW=0;epPaintAvatar();}
+/* the width of the picture waiting to be saved, or 0 when there is none */
+var _epAvatarW=0;
+/* What the card needs across, in real pixels, on the phone in your hand. */
+function faceWantsPx(){
+  var w=Math.min(430,(document.querySelector('.app')||{clientWidth:390}).clientWidth)-28;
+  return Math.round(w*(window.devicePixelRatio||1));
+}
 function epPaintAvatar(){
   var box=document.getElementById('ep-av');
   if(!box)return;
@@ -23042,6 +23062,10 @@ function epAvatarInner(){
     '<label class="ep-av-b">'+(ref?''+_t('החלף תמונה')+'':''+_t('הוסף תמונה')+'')+
     '<input type="file" accept="image/*" style="display:none" onchange="epPhotoPick(this)"></label>'+
     (ref?'<button type="button" class="ep-av-x" onclick="epPhotoClear()">'+_t('הסר')+'</button>':'')+
+    (_epAvatarW&&_epAvatarW<faceWantsPx()
+      ? '<span class="ep-av-warn">'+
+        _t('התמונה הזאת קטנה מדי ({n} פיקסלים) ותיראה מטושטשת. נסה את המקור.',{n:_epAvatarW})+
+        '</span>' : '')+
     '</div>';
 }
 function epAvatarHTML(){
@@ -23368,8 +23392,8 @@ function selectFreq(val){
   for(var i=0;i<freqs.length;i++){
     var btn=document.getElementById('freq-btn-'+freqs[i]);
     if(!btn)continue;
-    if(freqs[i]===val){btn.style.background='linear-gradient(135deg,var(--violet-300),var(--violet-500))';btn.style.color=PAL.card;}
-    else{btn.style.background=PAL.surface;btn.style.color=PAL.inkSoft;}
+    /* the class says chosen; nothing is painted by hand any more */
+    btn.classList.toggle('on',freqs[i]===val);
   }
 }
 
