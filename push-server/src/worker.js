@@ -1727,9 +1727,13 @@ export default {
         'named in ' + langName + '. The app shows them, so the person can see how far along this is;\n' +
         'an interview with no visible end is the one people walk out of.\n' +
         'skip is the way out, and it is what makes this feel flexible instead of interrogating.\n' +
-        'Whenever the answer you are asking for is a PREFERENCE, put the no-preference answer in\n' +
-        'skip - "no preference, you choose" in ' + langName + ' - and NOT in options. Leave skip out\n' +
-        'when the answer is a fact you genuinely need, like a work shift.\n' +
+        'It means ONE thing and only that: "no preference, you choose" in ' + langName + '. So:\n' +
+        '- Use it ONLY when you are asking for a PREFERENCE, and put it in skip, never in options.\n' +
+        '- NEVER use it on a question of fact. "I have none", "nothing else", "I do not know" are\n' +
+        '  real answers to a real question - they belong in options, and that question has no skip.\n' +
+        '- NEVER let skip repeat something already in options, in meaning or in wording. Two rows\n' +
+        '  saying the same thing is a person being asked to choose between identical answers.\n' +
+        '- No two options may mean the same thing either.\n' +
         '\n' +
         'WHAT TO REMEMBER. Any answer may also carry "remember": an object of facts worth keeping\n' +
         'for next time - waking hours, routine lengths, the hard anchors and their travel, each\n' +
