@@ -2641,6 +2641,61 @@ body.mod-hobbies .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 .hbb-new button:active{box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 
+/* ── TEMPORARY: the layout switcher ──
+   Deleted with the three layouts that lose. */
+.hb-try{display:flex;align-items:center;gap:7px;margin:0 4px 12px}
+.hb-try-b{border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:800;
+  min-width:34px;color:var(--nu-muted);background:var(--nu-ground);border-radius:11px;padding:7px 11px;
+  box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+.hb-try-b.on{color:var(--nu-ink);
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+
+/* ── OPTION 1 · HIERARCHY ──
+   Only the chosen hobby is a tile. The others are a dot and a name lying on
+   the bare plaster, so the row reads as one thing chosen out of several
+   rather than as four equal buttons. */
+.hbk-v1{align-items:center;gap:6px}
+.hbk-r{flex:0 0 auto;display:flex;align-items:center;gap:8px;border:none;cursor:pointer;
+  font-family:inherit;background:none;border-radius:16px;padding:10px 12px;
+  white-space:nowrap}
+.hbk-r .hbk-n{font-size:12.5px;font-weight:700;color:var(--nu-muted);margin:0}
+.hbk-r .hbk-o{margin:0;width:9px;height:9px;flex:0 0 9px}
+.hbk-r.on{background:var(--nu-ground);padding:12px 16px;
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.hbk-r.on .hbk-n{color:var(--nu-ink);font-weight:800}
+
+/* ── OPTION 2 · TOPOLOGY ──
+   One channel pressed into the page with the hobbies as segments inside it
+   and the chosen one raised out - the idiom כושר already uses for its doors,
+   and תזונה for its tabs. */
+.hbk-tray{border-radius:22px;padding:7px;background:var(--nu-ground);
+  display:flex;align-items:center;gap:6px;
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+.hbk-v2{flex:1;min-width:0;gap:4px;padding:0}
+.hbk-sg{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:7px;
+  border:none;cursor:pointer;font-family:inherit;background:none;border-radius:16px;
+  padding:11px 13px;white-space:nowrap}
+.hbk-sg .hbk-n{font-size:12.5px;font-weight:700;color:var(--nu-muted);margin:0}
+.hbk-sg .hbk-o{margin:0;width:8px;height:8px;flex:0 0 8px}
+.hbk-sg.on{background:var(--nu-ground);
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.hbk-sg.on .hbk-n{color:var(--nu-ink);font-weight:800}
+.hbk-tray .hbk-add{background:none;flex:0 0 40px}
+.hbk-tray .hbk-add i{width:34px;height:34px;font-size:19px}
+
+/* ── OPTION 3 · DENSITY ──
+   The tile goes entirely. A row of lights, and only the one you are looking
+   at says its name. */
+.hbk-v3{align-items:center;gap:4px;padding:10px 2px}
+.hbk-lm{flex:0 0 auto;display:flex;align-items:center;gap:9px;border:none;cursor:pointer;
+  font-family:inherit;background:none;padding:10px 11px;white-space:nowrap}
+.hbk-lm .hbk-o{margin:0;width:15px;height:15px;flex:0 0 15px;opacity:.5}
+.hbk-lm.on .hbk-o{width:17px;height:17px;flex:0 0 17px;opacity:1}
+.hbk-lm .hbk-n{font-size:13px;font-weight:800;color:var(--nu-ink);margin:0}
+.hbk-v3 .hbk-add{background:none}
+.hbk-v3 .hbk-add i{width:34px;height:34px;font-size:19px;
+  box-shadow:-3px -3px 6px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+
 /* a label belongs under the thing it names */
 .hb-lab{display:flex;justify-content:space-between;align-items:center;
   font-size:11.5px;font-weight:600;color:var(--nu-muted);margin:5px 8px 18px}
@@ -18875,22 +18930,60 @@ function hbHeatHTML(name,log){
          _t('יותר')+'</div>';
 }
 
-function renderHabits(){
-  var list=loadHabits(),log=loadHabitLog(),today=todayStr(),r0=hbRun();
-  var h='<div style="padding-bottom:22px">';
-  var i;
+/* ── WHICH HOBBY: FOUR WAYS OF ASKING ──
+   0 is what ships. 1, 2 and 3 are the options, each committed to a different
+   primary axis. Edit mode always falls back to 0, because the × and the
+   palette need somewhere to live and the question is about the resting row. */
+var _hbStripV=0;
+function hbStripSet(v){_hbStripV=v;renderHabits();}
+function hbStripHTML(list,log,today,r0){
+  var v=_habitEdit?0:_hbStripV, h='', i, nm, onToday, hue;
+  /* the dot is lit for a hobby that happened today, and for one that is
+     happening now - otherwise starting a timer and then looking at another
+     hobby leaves nothing on screen saying the first one is still counting */
+  function lit(n){return !!log[habitDayKey(n,today)]||!!(r0&&r0.h===n);}
+  var plus='<button class="hbk-add" onclick="hbAddOpen()" aria-label="'+
+           _t('הוסף תחביב')+'"><i>+</i></button>';
 
-  /* ── WHICH ONE ──
-     Raised at rest and raised FURTHER when chosen, because a hobby is not a
-     setting. The dot underneath answers a different question from the
-     selection: it is amber when the hobby was practised today. */
-  if(_hbSel>=list.length)_hbSel=0;
-  if(list.length)h+='<div class="hbk">';
+  if(v===1){
+    /* HIERARCHY: one tile, and the rest waiting beside it */
+    h+='<div class="hbk hbk-v1">';
+    for(i=0;i<list.length;i++){
+      nm=list[i];onToday=lit(nm);
+      h+='<button class="hbk-r'+(i===_hbSel?' on':'')+(onToday?' today':'')+
+         '" style="--hue:'+hbHue(nm)+'" onclick="hbPick('+i+')">'+
+         '<span class="hbk-o"></span><span class="hbk-n">'+esc(nm)+'</span></button>';
+    }
+    return h+plus+'</div>';
+  }
+  if(v===2){
+    /* TOPOLOGY: one trough, the chosen one raised inside it */
+    h+='<div class="hbk-tray"><div class="hbk hbk-v2">';
+    for(i=0;i<list.length;i++){
+      nm=list[i];onToday=lit(nm);
+      h+='<button class="hbk-sg'+(i===_hbSel?' on':'')+(onToday?' today':'')+
+         '" style="--hue:'+hbHue(nm)+'" onclick="hbPick('+i+')">'+
+         '<span class="hbk-o"></span><span class="hbk-n">'+esc(nm)+'</span></button>';
+    }
+    return h+'</div>'+plus+'</div>';
+  }
+  if(v===3){
+    /* DENSITY: lamps, and only the chosen one says its name */
+    h+='<div class="hbk hbk-v3">';
+    for(i=0;i<list.length;i++){
+      nm=list[i];onToday=lit(nm);
+      h+='<button class="hbk-lm'+(i===_hbSel?' on':'')+(onToday?' today':'')+
+         '" style="--hue:'+hbHue(nm)+'" onclick="hbPick('+i+')" aria-label="'+esc(nm)+'">'+
+         '<span class="hbk-o"></span>'+
+         (i===_hbSel?'<span class="hbk-n">'+esc(nm)+'</span>':'')+'</button>';
+    }
+    return h+plus+'</div>';
+  }
+
+  /* 0 - what ships */
+  h+='<div class="hbk">';
   for(i=0;i<list.length;i++){
-    /* the dot is lit for a hobby that happened today, and for one that is
-       happening now - otherwise starting a timer and then looking at another
-       hobby leaves nothing on screen saying the first one is still counting */
-    var nm=list[i],onToday=!!log[habitDayKey(nm,today)]||!!(r0&&r0.h===nm);
+    nm=list[i];onToday=lit(nm);
     /* the hue rides on the tile as a variable, so the dot, its glow and the
        edit ring all read the same value and none of them is written twice */
     h+='<button class="hbk-d'+(i===_hbSel?' on':'')+(onToday?' today':'')+
@@ -18901,10 +18994,31 @@ function renderHabits(){
        (_habitEdit?'<span class="hbk-x" onclick="event.stopPropagation();hbDel('+i+')">&#x2715;</span>':'')+
        '</button>';
   }
-  if(list.length)
-    h+='<button class="hbk-add" onclick="hbAddOpen()" aria-label="'+
-       _t('הוסף תחביב')+'"><i>+</i></button>';
-  if(list.length)h+='</div>';
+  return h+plus+'</div>';
+}
+function renderHabits(){
+  var list=loadHabits(),log=loadHabitLog(),today=todayStr(),r0=hbRun();
+  var h='<div style="padding-bottom:22px">';
+  var i;
+
+  /* ── WHICH ONE ──
+     Raised at rest and raised FURTHER when chosen, because a hobby is not a
+     setting. The dot underneath answers a different question from the
+     selection: it is amber when the hobby was practised today. */
+  if(_hbSel>=list.length)_hbSel=0;
+  /* ── TEMPORARY: four ways of asking "which hobby" ──
+     Here so Asaf can see each one on the real screen rather than in a
+     screenshot. Goes away the moment he picks. */
+  /* Numbers, not words: a temporary control must not add eleven translations
+     it will never need. Asaf has the names in chat. */
+  if(list.length){
+    h+='<div class="hb-try">';
+    for(var tv=0;tv<4;tv++)
+      h+='<button class="hb-try-b'+(_hbStripV===tv?' on':'')+
+         '" onclick="hbStripSet('+tv+')">'+nfmt(tv)+'</button>';
+    h+='</div>';
+  }
+  if(list.length)h+=hbStripHTML(list,log,today,r0);
   if(_habitEdit&&_hbPal>=0&&_hbPal<list.length){
     h+='<div class="hb-pal">';
     for(var pc=0;pc<HB_HUES.length;pc++)
