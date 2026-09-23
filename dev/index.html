@@ -3097,6 +3097,16 @@ html body.mod-planning .pb-in::placeholder{color:var(--nu-muted)}
 html body.mod-planning .pb-send{background:var(--nu-ground);color:var(--nu-ink);border-radius:14px;
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 html body.mod-planning .pb-new{color:var(--nu-muted)}
+html body.mod-planning .pb-dot{background:var(--nu-shade-soft)}
+html body.mod-planning .pb-dot.done{background:var(--nu-muted)}
+/* the stage you are in is the one thing lit, which is what amber means here */
+html body.mod-planning .pb-dot.on{background:var(--nu-amber);
+  box-shadow:0 0 7px 2px rgba(240,169,46,.55)}
+html body.mod-planning .pb-stage-t{color:var(--nu-muted)}
+/* pressed rather than raised: saying "you choose" is stepping back, and the
+   chips that pin a time are the ones that stand out of the surface */
+html body.mod-planning .pb-skip{background:var(--nu-ground);color:var(--nu-muted);
+  box-shadow:inset 2px 3px 5px var(--nu-shade),inset -2px -2px 4px var(--nu-lit)}
 /* it is in the plan: an amber dot, the app's word for something that is live */
 html body.mod-planning .pb-in-t{color:var(--nu-ink);display:inline-flex;align-items:center;gap:5px}
 html body.mod-planning .pb-in-t::before{content:"";width:5px;height:5px;border-radius:50%;
@@ -3645,6 +3655,17 @@ html body.mod-home .hub-dot{background:#4d7fbe;box-shadow:0 0 10px 2px rgba(178,
   font-weight:800;cursor:pointer;background:var(--violet-500);color:var(--white)}
 .pb-new{margin-top:10px;border:none;background:none;font-family:inherit;font-size:11px;
   font-weight:700;color:var(--muted);cursor:pointer;padding:4px}
+.pb-feet{display:flex;gap:14px;flex-wrap:wrap}
+/* ── HOW FAR ALONG THIS IS ── five stages, five dots ── */
+.pb-stage{display:flex;align-items:center;gap:9px;margin:0 0 14px}
+.pb-dots{display:flex;gap:5px;flex-shrink:0}
+.pb-dot{width:5px;height:5px;border-radius:50%;background:var(--line-strong)}
+.pb-stage-t{font-size:10.5px;font-weight:700;color:var(--muted);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ── AND THE WAY OUT ── an answer, drawn quieter than the ones that pin ── */
+.pb-skip{border:none;border-radius:999px;padding:8px 13px;font-family:inherit;font-size:12px;
+  font-weight:700;cursor:pointer;background:none;color:var(--muted)}
+.pb-skip:active{transform:scale(.97)}
 /* ── NUTRITION, IN ONE SOFT WHITE MATERIAL ──
    Approved 20 Sep: tubes-light-inside, then the panels page, then light
    behind the icons (.impeccable/mocks/screen/glow-i2-both.png). The fill
@@ -22801,6 +22822,33 @@ function planSecHeadHTML(k,title,sub,open){
    Asaf's own contract, asked of the model by /plan. The answer is always one
    of three shapes, and the route refuses anything else, so this only has to
    draw - never to guess what came back. */
+/* ── WHAT THE PLANNER KEEPS BETWEEN CONVERSATIONS ──
+   When you wake, when you sleep, what cannot move: true next month too, and
+   asking it again every time is what makes an assistant feel like a form.
+
+   The blob is OPAQUE. The model writes it and the model reads it; nothing
+   here looks inside. That is what lets its shape grow without touching the
+   worker - and it is why it is capped, and why there is a way to clear it. */
+var PLAN_PROF='plan_profile',PLAN_PROF_MAX=6000,PLAN_STAGES=5;
+function planProfile(){
+  try{var x=localStorage.getItem(PLAN_PROF),o=x?JSON.parse(x):null;
+    return(o&&typeof o==='object'&&!Array.isArray(o))?o:{};}catch(e){return{};}
+}
+function planProfileMerge(add){
+  if(!add||typeof add!=='object'||Array.isArray(add))return;
+  var p=planProfile(),k,n=0;
+  for(k in add)if(Object.prototype.hasOwnProperty.call(add,k)){p[k]=add[k];n++;}
+  if(!n)return;
+  try{
+    var t=JSON.stringify(p);
+    /* past this it has stopped being a memory and started being a transcript */
+    if(t.length>PLAN_PROF_MAX)return;
+    localStorage.setItem(PLAN_PROF,t);
+  }catch(e){}
+}
+function planProfileHas(){var p=planProfile(),k;for(k in p)return true;return false;}
+function planProfileClear(){try{localStorage.removeItem(PLAN_PROF);}catch(e){}planBotPaint();}
+
 var _planTurns=[],_planBusy=false,_planErr='',_planSaid='';
 function planBotReset(){_planTurns=[];_planErr='';_planSaid='';planBotPaint();}
 function planBotLast(){
@@ -22822,12 +22870,14 @@ function planBotSend(text){
       now:wkStamp(d)+' '+dpHM(d.getHours(),d.getMinutes()),
       tz:(Intl.DateTimeFormat().resolvedOptions().timeZone||''),
       calendar:planBotCalendar(),
+      profile:planProfile(),
       turns:_planTurns.map(function(x){return {role:x.role,text:x.role==='bot'?JSON.stringify(x.data):x.text};})
     })
   }).then(function(r){return r.json();}).then(function(j){
     _planBusy=false;
     if(!j||!j.type){_planErr=''+_t('משהו השתבש')+'';planBotPaint();return;}
     _planTurns.push({role:'bot',data:j});
+    planProfileMerge(j.remember);
     planBotPaint();
   },function(){_planBusy=false;_planErr=''+_t('משהו השתבש')+'';planBotPaint();});
 }
@@ -22932,7 +22982,19 @@ function planBotUndo(){
   showToast(''+_t('בוטל')+'');
 }
 function planBotHTML(){
-  var last=planBotLast(),h='<div class="pb">';
+  var last=planBotLast(),h='<div class="pb">',si;
+  /* how far along this is. Five dots and the name of the stage you are in -
+     the name arrives already written in the reader's language, because the
+     model wrote it. */
+  var stg=(last&&last.type==='question')?Math.round(+last.stage||0):0;
+  if(stg>=1&&stg<=PLAN_STAGES){
+    h+='<div class="pb-stage"><div class="pb-dots">';
+    for(si=1;si<=PLAN_STAGES;si++)
+      h+='<span class="pb-dot'+(si===stg?' on':(si<stg?' done':''))+'"></span>';
+    h+='</div>';
+    if(last.stageName)h+='<span class="pb-stage-t">'+esc(last.stageName)+'</span>';
+    h+='</div>';
+  }
   if(!_planTurns.length){
     h+='<div class="pb-open">'+_t('ספר לי מה יש לך בשבוע, ואבנה לוח שמחזיק את הכול.')+'</div>'+
        '<button class="pb-go" onclick="planBotSend(&quot;'+esc(_t('בוא נתכנן את השבוע הקרוב'))+'&quot;)">'+
@@ -22994,11 +23056,18 @@ function planBotHTML(){
   }
   /* what the person can say next */
   if(!_planBusy){
-    if(last&&last.type==='question'&&Array.isArray(last.options)&&last.options.length){
+    var opts=(last&&last.type==='question'&&Array.isArray(last.options))?last.options:[];
+    var skip=(last&&last.type==='question'&&last.skip)?String(last.skip):'';
+    if(opts.length||skip){
       h+='<div class="pb-opts">';
-      for(i=0;i<last.options.length;i++)
-        h+='<button class="pb-opt" onclick="planBotSend(&quot;'+esc(String(last.options[i]).replace(/"/g,''))+'&quot;)">'+
-           esc(last.options[i])+'</button>';
+      for(i=0;i<opts.length;i++)
+        h+='<button class="pb-opt" onclick="planBotSend(&quot;'+esc(String(opts[i]).replace(/"/g,''))+'&quot;)">'+
+           esc(opts[i])+'</button>';
+      /* the hinge of the whole thing: no preference is not a missing answer,
+         it is permission for the planner to choose. So it is SENT like any
+         other answer, and only drawn quieter than the ones that pin a time. */
+      if(skip)h+='<button class="pb-skip" onclick="planBotSend(&quot;'+esc(skip.replace(/"/g,''))+'&quot;)">'+
+         esc(skip)+'</button>';
       h+='</div>';
     }
     if(last&&last.type==='skeleton')
@@ -23009,7 +23078,11 @@ function planBotHTML(){
        'oninput="planBotType(this.value)" onkeydown="if(event.key===&#39;Enter&#39;){planBotSend(this.value);}">'+
        '<button class="pb-send" onclick="planBotSend(document.getElementById(&quot;pb-in&quot;).value)">'+_t('שלח')+'</button>'+
        '</div>';
+    h+='<div class="pb-feet">';
     if(_planTurns.length)h+='<button class="pb-new" onclick="planBotReset()">'+_t('להתחיל מחדש')+'</button>';
+    /* a memory you cannot reach the end of is not a feature */
+    if(planProfileHas())h+='<button class="pb-new" onclick="planProfileClear()">'+_t('לשכוח מה שסיפרתי')+'</button>';
+    h+='</div>';
   }
   return h+'</div>';
 }
