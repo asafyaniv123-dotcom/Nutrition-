@@ -1619,17 +1619,29 @@ export default {
         '\n' +
         'HOW TO TALK. You are leading someone through their own life, not filling in a form. Never\n' +
         'fire a hard question at them ("which day and hour do you want to train?") when you have not\n' +
-        'yet earned the answer. Ask about ONE TOPIC per message, 2-3 questions at most, and always\n' +
-        'offer concrete choices so they can tap instead of type. Move forward: if an answer is vague,\n' +
+        'yet earned the answer. Move forward: if an answer is vague,\n' +
         'take a sensible default, SAY what you assumed, and go on. Never ask twice for something you\n' +
         'already have - from the profile, from the calendar, or from earlier in this conversation.\n' +
         'What you already have you CONFIRM in one short line, and only if it might have changed.\n' +
+        '\n' +
+        'THE SHAPE OF A QUESTION. The app shows your question on a card, on its own, in large type,\n' +
+        'with the options as rows under it. So:\n' +
+        '- ASK EXACTLY ONE QUESTION. Never two, never a numbered list, never a paragraph. The\n' +
+        '  message is the question and nothing else - no preamble, no "great!", no restating what\n' +
+        '  they just said. One sentence, under 15 words. If a stage needs three things, that is\n' +
+        '  three cards, one after the other.\n' +
+        '- OPTIONS ARE ANSWERS, not sentences: 2 to 6 words, the way a person would actually reply,\n' +
+        '  and 3 to 5 of them. Never invent a condition nobody mentioned. Where a stage below\n' +
+        '  already lists the answers, use that list.\n' +
+        '- The person can always write their own answer instead, so never add "or something else"\n' +
+        '  as an option and never apologise for the list being short.\n' +
         '\n' +
         'GATHERING, IN FIVE STAGES. Work through them in order. Say which stage you are in with the\n' +
         'stage and stageName fields on every question.\n' +
         '\n' +
         'STAGE 1 - THE FRAME AND THE WAKING HOURS.\n' +
-        '   How far ahead are we planning: tomorrow, a week, a month, three months?\n' +
+        '   How far ahead are we planning? The options are exactly: tomorrow, this week, this\n' +
+        '   month, three months.\n' +
         '   What do the basic hours look like: when do they get up, when do they aim to sleep, and\n' +
         '   how long do the morning and the evening routines take?\n' +
         '\n' +
@@ -1749,9 +1761,15 @@ export default {
         if (text) contents.push({ role: who, parts: [{ text }] });
       }
 
-      let r;
-      try {
-        r = await fetch(
+      /* Hebrew and Arabic are the pair that actually collide here - both RTL,
+         and a real answer came back reading "שגרת הבוקר وشגרת הערב". Narrow on
+         purpose: a general script test would trip over the Latin digits and
+         clock times these answers legitimately carry. */
+      const LEAK = { he: /[\u0600-\u06FF]/, ar: /[\u0590-\u05FF]/ };
+      const leaks = (t) => !!(LEAK[lang] && LEAK[lang].test(String(t || '')));
+
+      const askModel = () =>
+        fetch(
           'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
           {
             method: 'POST',
@@ -1768,6 +1786,10 @@ export default {
             }),
           },
         );
+
+      let r;
+      try {
+        r = await askModel();
       } catch {
         return json({ error: 'could not reach the model' }, 502);
       }
@@ -1777,10 +1799,25 @@ export default {
         return json({ error: 'the model refused', status: r.status, why }, 502);
       }
 
-      let j;
-      try { j = await r.json(); } catch { return json({ error: 'bad answer' }, 502); }
-      const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
-      const raw = parts.map((p) => p.text || '').join('').trim();
+      const readRaw = async (res) => {
+        let k;
+        try { k = await res.json(); } catch { return null; }
+        const ps = (((k.candidates || [])[0] || {}).content || {}).parts || [];
+        return ps.map((p) => p.text || '').join('').trim();
+      };
+
+      let raw = await readRaw(r);
+      if (raw === null) return json({ error: 'bad answer' }, 502);
+      /* one retry, and only for the one thing worth retrying */
+      if (leaks(raw)) {
+        try {
+          const r2 = await askModel();
+          if (r2.ok) {
+            const raw2 = await readRaw(r2);
+            if (raw2 !== null && !leaks(raw2)) raw = raw2;
+          }
+        } catch { /* keep what we have */ }
+      }
 
       /* One of three shapes or nothing. An answer the app would have to guess
          at is worse than an error it can show. */

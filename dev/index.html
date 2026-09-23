@@ -3103,6 +3103,13 @@ html body.mod-planning .pb-dot.done{background:var(--nu-muted)}
 html body.mod-planning .pb-dot.on{background:var(--nu-amber);
   box-shadow:0 0 7px 2px rgba(240,169,46,.55)}
 html body.mod-planning .pb-stage-t{color:var(--nu-muted)}
+html body.mod-planning .pb-q{color:var(--nu-ink)}
+html body.mod-planning .pb-ans{background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+/* pressed rather than raised: saying "you choose" is stepping back, and the
+   answers that pin a time are the ones that stand out of the surface */
+html body.mod-planning .pb-ans.skip{color:var(--nu-muted);
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 /* pressed rather than raised: saying "you choose" is stepping back, and the
    chips that pin a time are the ones that stand out of the surface */
 html body.mod-planning .pb-skip{background:var(--nu-ground);color:var(--nu-muted);
@@ -3656,6 +3663,14 @@ html body.mod-home .hub-dot{background:#4d7fbe;box-shadow:0 0 10px 2px rgba(178,
 .pb-new{margin-top:10px;border:none;background:none;font-family:inherit;font-size:11px;
   font-weight:700;color:var(--muted);cursor:pointer;padding:4px}
 .pb-feet{display:flex;gap:14px;flex-wrap:wrap}
+/* ── ONE QUESTION, AT THE SIZE OF A QUESTION ── */
+.pb-q{font-size:19px;font-weight:800;line-height:1.42;margin:2px 0 18px}
+/* and its answers as rows. A row is a thing you press; a chip is a thing you
+   notice. With one question on the screen there is room for rows. */
+.pb-ans-l{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.pb-ans{width:100%;text-align:start;border:none;border-radius:15px;padding:14px 16px;
+  font-family:inherit;font-size:13.5px;font-weight:700;line-height:1.4;cursor:pointer}
+.pb-ans:active{transform:translateY(.5px)}
 /* ── HOW FAR ALONG THIS IS ── five stages, five dots ── */
 .pb-stage{display:flex;align-items:center;gap:9px;margin:0 0 14px}
 .pb-dots{display:flex;gap:5px;flex-shrink:0}
@@ -23001,15 +23016,13 @@ function planBotHTML(){
        _t('בוא נתכנן')+'</button></div>';
     return h;
   }
-  /* the conversation, oldest first */
-  var i;
-  for(i=0;i<_planTurns.length;i++){
-    var t=_planTurns[i];
-    if(t.role==='user'){h+='<div class="pb-me">'+esc(t.text)+'</div>';continue;}
-    if(t.data&&t.data.message)h+='<div class="pb-it">'+esc(t.data.message)+'</div>';
-  }
-  if(_planBusy)h+='<div class="pb-it pb-wait">'+_t('חושב…')+'</div>';
+  var i,isQ=!!(last&&last.type==='question');
   if(_planErr)h+='<div class="pb-err">'+_planErr+'</div>';
+  /* THE QUESTION, at the size of a question. There is no transcript above it:
+     the planner is holding every answer already, and a conversation you scroll
+     back through is a chat - this is an interview with an end. */
+  if(last&&last.message)
+    h+='<div class="'+(isQ?'pb-q':'pb-it')+'">'+esc(last.message)+'</div>';
 
   if(last&&last.type==='skeleton'&&Array.isArray(last.days)){
     h+='<div class="pb-week">';
@@ -23054,19 +23067,23 @@ function planBotHTML(){
       h+='</div>';
     }
   }
+  if(_planBusy)h+='<div class="pb-it pb-wait">'+_t('חושב…')+'</div>';
   /* what the person can say next */
   if(!_planBusy){
-    var opts=(last&&last.type==='question'&&Array.isArray(last.options))?last.options:[];
-    var skip=(last&&last.type==='question'&&last.skip)?String(last.skip):'';
+    var opts=(isQ&&Array.isArray(last.options))?last.options:[];
+    var skip=(isQ&&last.skip)?String(last.skip):'';
     if(opts.length||skip){
-      h+='<div class="pb-opts">';
+      /* rows, not chips. With one question on the screen there is room to read
+         each answer without squinting at it, and a row is a thing you press
+         rather than a tag you notice. */
+      h+='<div class="pb-ans-l">';
       for(i=0;i<opts.length;i++)
-        h+='<button class="pb-opt" onclick="planBotSend(&quot;'+esc(String(opts[i]).replace(/"/g,''))+'&quot;)">'+
+        h+='<button class="pb-ans" onclick="planBotSend(&quot;'+esc(String(opts[i]).replace(/"/g,''))+'&quot;)">'+
            esc(opts[i])+'</button>';
       /* the hinge of the whole thing: no preference is not a missing answer,
          it is permission for the planner to choose. So it is SENT like any
          other answer, and only drawn quieter than the ones that pin a time. */
-      if(skip)h+='<button class="pb-skip" onclick="planBotSend(&quot;'+esc(skip.replace(/"/g,''))+'&quot;)">'+
+      if(skip)h+='<button class="pb-ans skip" onclick="planBotSend(&quot;'+esc(skip.replace(/"/g,''))+'&quot;)">'+
          esc(skip)+'</button>';
       h+='</div>';
     }
