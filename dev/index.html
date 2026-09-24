@@ -4357,6 +4357,33 @@ body.night .tb-j{background:rgba(255,255,255,.07);color:#8f86ae;border-color:rgb
 .vb-empty{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:inherit}
 .vb-add{background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:12px;padding:7px 14px;font-size:11px;font-weight:700;color:var(--violet-500);cursor:pointer;font-family:inherit}
 .vb-hint{text-align:center;font-size:9px;color:var(--muted-soft);margin-top:10px;line-height:1.6}
+/* ── THE YES/NO SHEET ──
+   It carries its own tokens, because it is asked from every area and lands on
+   the body rather than inside one. */
+/* 950, not 400. Driven rather than reasoned: the exercise picker is 440 and
+   sat ON TOP of the question, so a הסר asked from inside it could not be
+   pressed - elementFromPoint at the centre of the button returned the picker.
+   A question is the most modal thing the app can show, so it goes above every
+   overlay in the file; the only higher number is a drag ghost that ignores
+   pointers. */
+.cf-ov{position:fixed;inset:0;z-index:950;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(74,67,64,.45);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.cf-card{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+  --nu-shade-soft:rgba(176,168,156,.28);--nu-ink:#4a453f;--nu-muted:#6d675e;--nu-amber:#f0a92e;
+  width:100%;max-width:340px;border-radius:24px;padding:22px 20px 20px;background:var(--nu-ground);
+  box-shadow:-6px -6px 16px var(--nu-lit),8px 10px 26px rgba(120,110,98,.35)}
+.cf-q{font-size:14.5px;font-weight:700;line-height:1.55;color:var(--nu-ink);text-align:center;
+  margin-bottom:20px}
+.cf-row{display:flex;gap:10px}
+.cf-yes{position:relative;flex:1;border:none;border-radius:15px;padding:14px;font-family:inherit;
+  font-size:14px;font-weight:800;cursor:pointer;background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.cf-yes::after{content:"";position:absolute;left:50%;transform:translateX(-50%);
+  width:min(46%,110px);bottom:-5px;height:2px;border-radius:2px;background:var(--nu-amber);
+  box-shadow:0 0 9px 2px rgba(240,169,46,.6)}
+.cf-no{flex:1;border:none;border-radius:15px;padding:14px;font-family:inherit;font-size:13.5px;
+  font-weight:700;cursor:pointer;background:var(--nu-ground);color:var(--nu-muted);
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 /* ── THE BOOK, IN THE SOFT WHITE MATERIAL ──
    It renders in one place - #home-book, on אני - so these are written in that
    material directly rather than dressed twice. It was the last thing on that
@@ -13018,16 +13045,58 @@ function saveEditSet(){
 }
 /* Removing a workout from the log. Asks first, because there is no undo and
    the whole session goes at once. */
+/* ── THE APP'S OWN YES/NO ──
+   Four native confirm() dialogs were still in the file. A native dialog
+   writes its buttons in the BROWSER's language rather than the app's, looks
+   like nothing else on the screen, stops the page while it is up, and freezes
+   the tab under automation.
+
+   It goes on the BODY rather than into the screen that asked. A sheet built
+   inside #me-screen or .app has its z-index flattened by that screen's
+   stacking context - three sheets were sitting under the tab bar because of
+   exactly that - and on the body nothing is above it.
+
+   The tokens are declared on the card itself, so it carries this material
+   into whichever area asked the question. */
+function askConfirm(msg,yesLabel,onYes){
+  var old=document.getElementById('cf-ov');
+  if(old&&old.parentNode)old.parentNode.removeChild(old);
+  var ov=document.createElement('div');
+  ov.className='cf-ov';ov.id='cf-ov';
+  ov.innerHTML='<div class="cf-card">'+
+    '<div class="cf-q">'+esc(String(msg||''))+'</div>'+
+    '<div class="cf-row">'+
+      '<button class="cf-yes" id="cf-yes">'+esc(String(yesLabel||''))+'</button>'+
+      '<button class="cf-no" id="cf-no">'+esc(_t('ביטול'))+'</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  var close=function(){
+    var e=document.getElementById('cf-ov');
+    if(e&&e.parentNode)e.parentNode.removeChild(e);
+  };
+  document.getElementById('cf-no').onclick=close;
+  document.getElementById('cf-yes').onclick=function(){
+    close();
+    if(typeof onYes==='function')onYes();
+  };
+  /* the scrim answers no, the card does not */
+  ov.onclick=function(ev){if(ev.target===ov)close();};
+}
 function deleteWorkout(i){
   var log=loadWorkoutLog();
   var e=log[i];
   if(!e)return;
-  if(!confirm(_t('למחוק את האימון {name}? אי אפשר לבטל.',{name:e.name})))return;
-  log.splice(i,1);
-  saveWorkoutLog(log);
-  if(_fitSummaryEntry===e)_fitSummaryEntry=null;
-  _fitView='history';
-  renderFitness();
+  askConfirm(_t('למחוק את האימון {name}? אי אפשר לבטל.',{name:e.name}),_t('מחק'),function(){
+    /* read again: the answer arrives after the question, and confirm() used
+       to make that impossible to get wrong */
+    var log2=loadWorkoutLog(),e2=log2[i];
+    if(!e2)return;
+    log2.splice(i,1);
+    saveWorkoutLog(log2);
+    if(_fitSummaryEntry===e2||_fitSummaryEntry===e)_fitSummaryEntry=null;
+    _fitView='history';
+    renderFitness();
+  });
 }
 
 /* ── WHAT GOES ON THE BAR ──
@@ -13665,9 +13734,12 @@ function fitwSetsLogged(){
    inside the module. Now that the home is reachable mid-session it is one
    tap away, so the three doors that start one ask first - and only when
    something would actually be lost. */
-function fitwReplaceOK(){
-  if(!_fitWorkout||!fitwSetsLogged())return true;
-  return confirm(''+_t('יש אימון פעיל שכבר נרשמו בו סטים. להתחיל חדש במקומו?')+'');
+/* Asks, then runs - rather than answering. Three doors call it and each one
+   hands over the rest of its own work, because the answer no longer comes
+   back on the same line. */
+function fitwReplaceAsk(go){
+  if(!_fitWorkout||!fitwSetsLogged()){go();return;}
+  askConfirm(''+_t('יש אימון פעיל שכבר נרשמו בו סטים. להתחיל חדש במקומו?')+'',_t('להתחיל'),go);
 }
 function fitwRestore(){
   var o=null;
@@ -14028,13 +14100,14 @@ function genBuild(){
                     sets:_gen.on,emphasis:_gen.emphasis});
   var exs=genToWorkout(rows,fitGoal().v);
   if(!exs.length){showToast(''+_t('אין תרגילים מתאימים לציוד שבחרת')+'');return;}
-  if(!fitwReplaceOK())return;
-  /* An ordinary workout from here on. Nothing marks it as generated, because
-     nothing about it is different once it exists. */
-  _fitWorkout={templateIdx:-1,name:''+_t('אימון שנבנה לך')+'',startTime:Date.now(),
-               exercises:exs,currentEx:0};
-  _gen=null;_fitPinned=false;
-  _fitView='workout';renderFitness();
+  fitwReplaceAsk(function(){
+    /* An ordinary workout from here on. Nothing marks it as generated,
+       because nothing about it is different once it exists. */
+    _fitWorkout={templateIdx:-1,name:''+_t('אימון שנבנה לך')+'',startTime:Date.now(),
+                 exercises:exs,currentEx:0};
+    _gen=null;_fitPinned=false;
+    _fitView='workout';renderFitness();
+  });
 }
 function renderFitBuild(){
   if(!_gen)genOpen();
@@ -15120,10 +15193,11 @@ function renderFitHome(){
    down first: you turn up, you do things, you want them recorded. It starts
    with nothing in it and the picker opens straight away. */
 function startEmptyWorkout(){
-  if(!fitwReplaceOK())return;
-  _fitWorkout={templateIdx:-1,name:''+_t('אימון חדש')+'',startTime:Date.now(),exercises:[],currentEx:0};
-  _fitView='workout';renderFitness();
-  workoutAddExercise();
+  fitwReplaceAsk(function(){
+    _fitWorkout={templateIdx:-1,name:''+_t('אימון חדש')+'',startTime:Date.now(),exercises:[],currentEx:0};
+    _fitView='workout';renderFitness();
+    workoutAddExercise();
+  });
 }
 /* ── CHANGING YOUR MIND MID-WORKOUT ──
    The machine is taken, or the shoulder says no. Both answers live here. */
@@ -15160,8 +15234,19 @@ function wxRemove(i){
   if(!ex)return;
   /* It asks only when there is something to lose - a confirmation on an empty
      exercise is a dialog for its own sake. */
-  if(ex.sets&&ex.sets.length&&
-     !confirm(_t('להסיר את {name}? {n} סטים שנרשמו בו יימחקו.',{name:exLabel(ex.name),n:ex.sets.length})))return;
+  if(ex.sets&&ex.sets.length){
+    askConfirm(_t('להסיר את {name}? {n} סטים שנרשמו בו יימחקו.',{name:exLabel(ex.name),n:ex.sets.length}),
+      _t('הסר'),function(){wxRemoveGo(i);});
+    return;
+  }
+  wxRemoveGo(i);
+}
+/* What removing one actually does, once nothing is left to ask. Everything it
+   needs is read here rather than carried across the question. */
+function wxRemoveGo(i){
+  if(!_fitWorkout)return;
+  var exs=_fitWorkout.exercises;
+  if(!exs[i])return;
   exs.splice(i,1);
   wxLoneSuper();
   if(!exs.length){_fitWorkout.currentEx=0;renderFitness();return;}
@@ -17699,20 +17784,24 @@ function deleteFitTemplate(idx){
 
 function startWorkout(tplIdx){
   var templates=loadTemplates();var t=templates[tplIdx];if(!t)return;
-  if(!fitwReplaceOK())return;
-  _fitWorkout={
-    templateIdx:tplIdx,name:t.name,startTime:Date.now(),
-    exercises:t.exercises.map(function(ex){
-      // the planned rows come with it, so each set's boxes open on what you
-      // meant to lift rather than on nothing
-      var plan=tplRows(ex);
-      return{name:ex.name,targetSets:plan.length,
-             targetReps:(plan[0]&&plan[0].r)||ex.reps||10,
-             plan:plan,sets:[],warm:[],ss:null};
-    }),
-    currentEx:0
-  };
-  _fitView='workout';renderFitness();
+  fitwReplaceAsk(function(){
+    /* the routine is read again on the way through, because the question
+       stands open between the tap and the answer */
+    var t2=loadTemplates()[tplIdx]||t;
+    _fitWorkout={
+      templateIdx:tplIdx,name:t2.name,startTime:Date.now(),
+      exercises:t2.exercises.map(function(ex){
+        // the planned rows come with it, so each set's boxes open on what you
+        // meant to lift rather than on nothing
+        var plan=tplRows(ex);
+        return{name:ex.name,targetSets:plan.length,
+               targetReps:(plan[0]&&plan[0].r)||ex.reps||10,
+               plan:plan,sets:[],warm:[],ss:null};
+      }),
+      currentEx:0
+    };
+    _fitView='workout';renderFitness();
+  });
 }
 
 /* ── WHAT YOU DID LAST TIME ──
@@ -25124,7 +25213,7 @@ function renderBookWidget(){
     h+='</div>';
 
     // Finish book button
-    h+='<button class="bk-done" onclick="if(confirm(_t(\'סיימת לקרוא את הספר?\')))finishBook()">'+_t('✓ סיימת לקרוא ספר זה')+'</button>';
+    h+='<button class="bk-done" onclick="askConfirm(_t(\'סיימת לקרוא את הספר?\'),_t(\'סיימתי\'),finishBook)">'+_t('✓ סיימת לקרוא ספר זה')+'</button>';
 
     // Edit overlay trigger
     h+='<button onclick="openBookEdit()" style="display:none"></button>';
