@@ -30,6 +30,18 @@
  *     var RF_BODY=['אנרגטי','עייף',…];                    bare data, Rule 3
  *     var RF_MOODS;langOn(function(){RF_MOODS=[{…l:_t('קשה')…},…]});
  *
+ * A THIRD SHAPE WAS ADDED AFTER IT MISSED ONE. Both shapes above are NAMED
+ * lists. The door and the planner's local card build their rows as anonymous
+ * array literals instead:
+ *
+ *     rows=[[_t('מחר|אפשרות'),'horizon'],[_t('השבוע'),'horizon'],…]
+ *
+ * so they were invisible here, and "tomorrow" shipped in lower case between
+ * "This week" and "Three months". I found that by looking at the screen,
+ * which is the wrong instrument. Against the revision that carried it this
+ * file now reports 6 lists disagreeing about capitals - in Spanish, French,
+ * Italian, Portuguese among them - and against the fix, none.
+ *
  * WHAT IT DELIBERATELY DOES NOT CHECK. Lists whose Hebrew already repeats a
  * word - that is the author's business and not a translation fault - and
  * single-item lists, which cannot collide.
@@ -62,6 +74,56 @@ while ((m = wrapped.exec(src))) {
   if (items.length < 2) continue;
   if (!items.every((s) => /[֐-׿]/.test(s))) continue;
   lists.set(m[1], items);
+}
+
+/* shape three: an anonymous array of rows, built when the screen is drawn.
+   rows=[[_t('א'),…],[_t('ב'),…]]  or  f([_t('א'),_t('ב')])
+
+   Scanned with brackets rather than matched with a regex: these literals
+   nest, and a regex reads the wrong closing bracket. An array is a list of
+   options when EVERY top-level element begins with a Hebrew _t('…') -
+   directly, or as the first element of a nested array. That is the shape of
+   a row of choices; prose does not look like it. */
+{
+  const lineOf = (i) => src.slice(0, i).split('\n').length;
+  const elemKey = /^\s*\[?\s*_t\(\s*'([^']*)'/;
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] !== '[') continue;
+    /* find the matching ], ignoring brackets inside quotes */
+    let d = 0, q = '', end = -1;
+    for (let j = i; j < src.length && j < i + 4000; j++) {
+      const c = src[j];
+      if (q) { if (c === '\\') j++; else if (c === q) q = ''; continue; }
+      if (c === "'" || c === '"') { q = c; continue; }
+      if (c === '[') d++;
+      else if (c === ']') { d--; if (!d) { end = j; break; } }
+    }
+    if (end < 0) continue;
+    const body = src.slice(i + 1, end);
+    if ((body.match(/_t\(/g) || []).length < 2) continue;
+    /* split on top-level commas only */
+    const parts = []; let depth = 0, quo = '', start = 0;
+    for (let j = 0; j < body.length; j++) {
+      const c = body[j];
+      if (quo) { if (c === '\\') j++; else if (c === quo) quo = ''; continue; }
+      if (c === "'" || c === '"') { quo = c; continue; }
+      if (c === '[' || c === '(' || c === '{') depth++;
+      else if (c === ']' || c === ')' || c === '}') depth--;
+      else if (c === ',' && !depth) { parts.push(body.slice(start, j)); start = j + 1; }
+    }
+    parts.push(body.slice(start));
+    if (parts.length < 2) continue;
+    const keys = [];
+    let ok = true;
+    for (const p of parts) {
+      const k = elemKey.exec(p);
+      if (!k || !/[\u0590-\u05FF]/.test(k[1])) { ok = false; break; }
+      keys.push(k[1]);
+    }
+    if (!ok || keys.length < 2) continue;
+    lists.set('rows@' + lineOf(i), keys);
+    i = end;
+  }
 }
 
 const LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', 'ar'];
