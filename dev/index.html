@@ -23204,6 +23204,62 @@ function planProfileMerge(add){
 function planProfileHas(){var p=planProfile(),k;for(k in p)return true;return false;}
 function planProfileClear(){try{localStorage.removeItem(PLAN_PROF);}catch(e){}planBotPaint();}
 
+/* ── STAGE ONE, WITHOUT THE MODEL ──
+   Measured: 1.9 to 3.9 seconds per answer, and the first four answers are the
+   four facts a model is not needed for. They are collected here instead, in
+   the same grammar and instantly, and land in plan_profile - which the model
+   already reads and is already told never to ask twice for. */
+var _plWarm=-1;                       /* -1 = not in the local cards */
+function plWarmNeeded(){
+  var p=planProfile();
+  return !(p&&p.wake&&p.routines);    /* answered once, never asked again */
+}
+function plWarmStart(){_plWarm=0;planBotPaint();}
+function plWarmPick(field,value,label){
+  var add={};add[field==='waking'?'wake':field]=label||value;
+  planProfileMerge(add);
+  _plWarm++;
+  if(_plWarm>=3){
+    _plWarm=-1;
+    /* the horizon is her first sentence; everything else is already in the
+       profile, so the model opens at stage two */
+    planBotSend(planProfile().horizon||value);
+    return;
+  }
+  planBotPaint();
+}
+function plWarmHTML(){
+  var h='<div class="pb-stage"><div class="pb-dots">';
+  for(var i=0;i<3;i++)h+='<span class="pb-dot'+(i===_plWarm?' on':(i<_plWarm?' done':''))+'"></span>';
+  h+='</div></div>';
+  var rows=[],q='';
+  if(_plWarm===0){
+    q=_t('לאיזה טווח לתכנן?');
+    rows=[[_t('מחר'),'horizon'],[_t('השבוע'),'horizon'],[_t('החודש'),'horizon'],
+          [_t('שלושה חודשים'),'horizon']];
+  }else if(_plWarm===1){
+    q=_t('מתי היום שלך מתחיל ונגמר?');
+    rows=[['06:00 – 22:00','waking'],['06:30 – 23:00','waking'],
+          ['07:00 – 23:00','waking'],['08:00 – 00:00','waking'],[_t('לא קבוע'),'waking']];
+  }else{
+    q=_t('כמה זמן לוקחת ההתארגנות, בוקר וערב?');
+    rows=[[_t('חצי שעה בבוקר, חצי שעה בערב'),'routines'],
+          [_t('שעה בבוקר, חצי שעה בערב'),'routines'],
+          [_t('שעה בבוקר, שעה בערב'),'routines'],
+          [_t('רבע שעה בבוקר, רבע שעה בערב'),'routines']];
+  }
+  h+='<div class="pb-q">'+q+'</div><div class="pb-ans-l">';
+  for(var j=0;j<rows.length;j++){
+    var lbl=String(rows[j][0]);
+    /* wake and sleep are one answer, and the profile wants them apart */
+    var fld=rows[j][1];
+    h+='<button class="pb-ans" onclick="plWarmPick(&quot;'+fld+'&quot;,&quot;'+esc(lbl.replace(/"/g,''))+'&quot;)">'+
+       esc(lbl)+'</button>';
+  }
+  h+='</div>';
+  return h;
+}
+
 var _planTurns=[],_planBusy=false,_planErr='',_planSaid='',_planPending='';
 /* ── THE WAY BACK ──
    No network: the question that asked for this answer is already sitting in
@@ -23227,7 +23283,7 @@ function planTrailHTML(){
   }
   return h+'</div>';
 }
-function planBotReset(){_planTurns=[];_planErr='';_planSaid='';planBotPaint();}
+function planBotReset(){_planTurns=[];_planErr='';_planSaid='';_plWarm=-1;planBotPaint();}
 function planBotLast(){
   for(var i=_planTurns.length-1;i>=0;i--)
     if(_planTurns[i].role==='bot'&&_planTurns[i].data)return _planTurns[i].data;
@@ -23378,9 +23434,12 @@ function planBotHTML(){
     h+='</div>';
   }
   h+=planTrailHTML();
+  /* the three local cards, when there is anything left to ask locally */
+  if(_plWarm>=0)return h+plWarmHTML()+'</div>';
   if(!_planTurns.length){
     h+='<div class="pb-open">'+_t('ספר לי מה יש לך בשבוע, ואבנה לוח שמחזיק את הכול.')+'</div>'+
-       '<button class="pb-go" onclick="planBotSend(&quot;'+esc(_t('בוא נתכנן את השבוע הקרוב'))+'&quot;)">'+
+       '<button class="pb-go" onclick="'+(plWarmNeeded()?'plWarmStart()':
+         'planBotSend(&quot;'+esc(_t('בוא נתכנן את השבוע הקרוב'))+'&quot;)')+'">'+
        _t('בוא נתכנן')+'</button></div>';
     return h;
   }
