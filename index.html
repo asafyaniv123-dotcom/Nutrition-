@@ -4131,7 +4131,12 @@ html body.mod-nutrition .wadd{color:#4d7fbe;font-weight:800}
 @keyframes micFade{0%,100%{opacity:1}50%{opacity:.55}}
 /* ── THE ADD ROW ── a line you write in, sitting above the tab bar where the
    thumb already is. Pressed into the surface, because it takes something. */
-.addbar-wrap{position:fixed;left:0;right:0;bottom:calc(74px + env(safe-area-inset-bottom));z-index:145;
+/* 74px cleared a bar that is 84 tall, so the bottom ten pixels of "add a
+   meal" sat inside it: measured, a press there returns the tab bar's Me
+   button rather than the add bar. The z-index cannot settle it - this wrap
+   lives inside .app, which is a z-index:1 stacking context, so its 145 is
+   flattened the same way the book's sheets were. Moving it up is the fix. */
+.addbar-wrap{position:fixed;left:0;right:0;bottom:calc(88px + env(safe-area-inset-bottom));z-index:145;
   display:flex;align-items:center;gap:8px;padding:0 18px}
 .addbar{flex:1;display:flex;align-items:center;gap:10px;border:none;border-radius:22px;padding:14px 16px;
   font-family:inherit;font-size:13px;font-weight:700;text-align:start;cursor:pointer;
@@ -25625,11 +25630,16 @@ function vbOpenText(id){
   if(inp)inp.value=it?it.text:'';
   vbPaintSwatches();
   ov.style.display='flex';
+  /* the bar goes, or it is drawn over שמירה - #me-screen is a z-index:1
+     stacking context and flattens this sheet's 200 along with everything
+     else inside it */
+  document.body.classList.add('sheet-open');
   if(inp&&inp.focus)setTimeout(function(){inp.focus();},60);
 }
 
 function vbCloseText(){
   var ov=document.getElementById('vb-text-overlay');if(ov)ov.style.display='none';
+  document.body.classList.remove('sheet-open');
   _vbEditId=null;
 }
 
