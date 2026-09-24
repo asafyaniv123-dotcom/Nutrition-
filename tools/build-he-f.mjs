@@ -55,6 +55,18 @@ const W = {
    ("חושב…"), impersonal sentences ("צריך לאשר הרשאה"), and adjectives whose
    subject is a masculine noun ("פירוק בטוח", "הגיבוי מוכן"). */
 const FIX = {
+  /* Found by rendering every area in the feminine and scanning what was
+     actually on the screen, not by reading the table. The rule fires on an
+     imperative at the START of a clause, and these four stand where it does
+     not look: after "+ ", after "ואז", and after a full stop inside a longer
+     sentence. One of them had been HALF feminised - "כתבי בפלוס, ואז גרור
+     ללוח" - which is worse than not at all. */
+  '+ הוסף אדם': '+ הוסיפי אדם',
+  'כתוב בפלוס, ואז גרור ללוח.': 'כתבי בפלוס, ואז גררי ללוח.',
+  'יעד התחלתי. מלא פרטים בפרופיל ואחשב אותו לפיך':
+    'יעד התחלתי. מלאי פרטים בפרופיל ואחשב אותו לפייך',
+  'מלא את כל הפרטים למעלה ואחשב לך יעד קלוריות ומאקרו.':
+    'מלאי את כל הפרטים למעלה ואחשב לך יעד קלוריות ומאקרו.',
   'בדיוק מה שאתה שורף': 'בדיוק מה שאת שורפת',
   'איפה אתה מתאמן': 'איפה את מתאמנת',
   'כמה אתה מרים בכל תרגיל': 'כמה את מרימה בכל תרגיל',
