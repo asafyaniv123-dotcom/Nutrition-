@@ -68,9 +68,16 @@ Two traps specific to this file. **Write patch scripts as files**, never as
 And **`{ … }` blocks overlap `style="…"` attributes**, so an edit reached
 through both gets applied twice.
 
-**Never touch:** `index.html` (release only), and the game inside
-`<script id="game-src">` — a standalone document with its own `:root`. Every
-pass should assert it comes through byte-identical.
+**Never touch:** `index.html` (release only).
+
+The game that used to live inside `<script id="game-src">` — a standalone
+document with its own `:root` — is **gone**: `game-src` appears zero times in
+both copies. The rule that guarded it stayed here after it left, and on
+24 Sep a release gate that asserted "it comes through byte-identical" happily
+reported *identical* on a slice of **length zero**. A guard whose subject has
+been removed is worse than no guard, because it answers. If a standalone
+document is ever embedded again, bring the rule back and make it assert the
+slice is non-empty first.
 
 **The open work is written down.** `TODO.md` holds what Asaf has asked for and
 is not built yet; `I18N.md` and `UX-AUDIT.md` hold the internationalisation and
