@@ -38,6 +38,21 @@ const W = [
   'לחץ','קבע','בדוק','אשר','צרף','עצור','שלח','דלג','חזור','סיים','גלול','הוסף',
   'הזן','הקלד','הכנס','התחל','הפעל','העלה','השלם','הרחב','הגדר','הצג','קום','זכור',
   'תקן','חפש','סרוק','בטל','הורד','החלף','מלא',
+  /* Added after one of them shipped on the first screen of the reflection:
+     it opened with בוא, and this list had never heard of it. Found by
+     asking the KEY SET which common masculine forms stand alone in it,
+     rather than by adding to the list from memory. */
+  'בוא','תן','שים',
+  /* ספר is four books and one 'tell me' - the planner's opening line. The
+     word is here and the four books are named below, because leaving it
+     out is how the verb shipped. */
+  'ספר',
+  /* DELIBERATELY ABSENT, each for a reason that has to hold on its own,
+     because a list is the thing that rots:
+       ספר   is the noun in all five keys that hold it - ספר המתכונים
+       לך    is the dative, and לְךָ and לָךְ are the same letters unpointed
+       שלך   the same, in 47 keys; אותך the same, in 12
+       עשה, תדע, תעשה   whose subject is the app or the day, not her */
   'אתה','שאתה','ואתה','תוכל','תרצה','תקבל','תמצא','תבחר','תכתוב','תרשום','תוסיף',
   'מרגיש','נמצא','יכול','צריך','חושב','מתאמן','אוהב','זוכר','מוכן','בטוח','עייף',
   'שורף','קורא','לוקח','אוכל','הולך','עובד','לומד','מחפש','בוחר','כותב',
@@ -47,6 +62,9 @@ const RE = new RegExp('(^|[^' + HEB + '])(' + W.join('|') + ')(?![' + HEB + '])'
 /* Not the app talking to her. Each one is here for a reason that has to hold
    up on its own, because a list is the thing that rots. */
 const ALLOW = new Set([
+  /* ספר the NOUN. The fifth key holding that word - ספר לי מה יש לך בשבוע -
+     is the verb, and is not here. */
+  '+ הוסף ספר','ספר המתכונים','ספר המתכונים ריק','✓ סיימת לקרוא ספר זה',
   'חושב…',                                                     /* the app thinking */
   'חושב מהחלבון שהמוצר מצהיר עליו ומהערך ל־100 גרם — לא הערכה.',/* the app thinking */
   'מחפש','מחפש…','מחפש גם לפי המשמעות…',                        /* the app searching */

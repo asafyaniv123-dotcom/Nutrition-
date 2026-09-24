@@ -46,6 +46,10 @@ const W = {
   'הפעל': 'הפעילי', 'העלה': 'העלי', 'השלם': 'השלימי', 'הרחב': 'הרחיבי',
   'הגדר': 'הגדירי', 'הצג': 'הציגי', 'קום': 'קומי', 'זכור': 'זכרי',
   'תקן': 'תקני', 'חפש': 'חפשי', 'סרוק': 'סרקי', 'בטל': 'בטלי',
+  /* בוא is a cohortative rather than a plain imperative - "let's take a
+     moment" - and it is how the reflection opens, which is the first
+     sentence of the thing the app is for. */
+  'בוא': 'בואי', 'תן': 'תני', 'שים': 'שימי',
 };
 /* WRITTEN BY HAND. Every sentence that addresses her in any way other than a
    plain opening imperative - because agreement runs through a whole sentence
@@ -55,6 +59,11 @@ const W = {
    ("חושב…"), impersonal sentences ("צריך לאשר הרשאה"), and adjectives whose
    subject is a masculine noun ("פירוק בטוח", "הגיבוי מוכן"). */
 const FIX = {
+  /* ספר is the verb here and a book in four other keys, so it cannot be a
+     rule: ספרי is 'my books', and ספר המתכונים would become 'my recipe
+     books'. This is the planner's first sentence. */
+  'ספר לי מה יש לך בשבוע, ואבנה לוח שמחזיק את הכול.':
+    'ספרי לי מה יש לך בשבוע, ואבנה לוח שמחזיק את הכול.',
   /* Found by rendering every area in the feminine and scanning what was
      actually on the screen, not by reading the table. The rule fires on an
      imperative at the START of a clause, and these four stand where it does
