@@ -4352,6 +4352,9 @@ body.night .tb-j{background:rgba(255,255,255,.07);color:#8f86ae;border-color:rgb
 .vb-empty{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:inherit}
 .vb-add{background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:12px;padding:7px 14px;font-size:11px;font-weight:700;color:var(--violet-500);cursor:pointer;font-family:inherit}
 .vb-hint{text-align:center;font-size:9px;color:var(--muted-soft);margin-top:10px;line-height:1.6}
+.bk-page{font-size:15px;font-weight:700;color:var(--violet-500)}
+.bk-bar{height:100%;background:linear-gradient(90deg,var(--violet-300),var(--violet-500));border-radius:3px;transition:width .4s}
+.bk-pct{text-align:center;font-size:10px;color:var(--violet-500);font-weight:700}
 .bk-add{border-radius:14px;padding:10px 24px;font-size:13px}
 /* ── אני, IN THE SAME SOFT WHITE MATERIAL ──
    The half of the bar that was left behind. Everything here keeps its place,
@@ -9780,7 +9783,7 @@ function sayPaint(){
             h+='<div><span>'+esc(pp.label)+(pp.src==='ai'?' <i>'+_t('הערכה')+'</i>':'')+'</span>'+
                '<span>'+pp.g+'g &middot; '+pp.kcal+'</span></div>';
           }
-          h+='</div><div class="sr-src">'+row.measured+''+_t('% מהקלוריות מערכים מדודים במאגר.')+'</div>';
+          h+='</div><div class="sr-src">'+_t('{p} מהקלוריות מערכים מדודים במאגר.',{p:pfmt(row.measured)})+'</div>';
         }
         if(row.aiG)
           h+='<div class="sr-src">'+_t('כמה יש בצלחת נאמד מהתמונה. זה החלק הכי קשה לצלם נכון — אם המשקל נראה רחוק, תקן אותו.')+'</div>';
@@ -10804,7 +10807,7 @@ function anCardHTML(){
   var CONF={high:''+_t('פירוק בטוח')+'',medium:''+_t('פירוק סביר')+'',low:''+_t('פירוק גס')+''};
   var h='<div class="est-card">';
   h+='<div class="est-hd"><span class="est-tag">'+_t('פירוק')+'</span>'+
-     '<span class="est-conf">'+(CONF[_an.conf]||CONF.low)+' &middot; '+_an.measured+''+_t('% מהמאגר')+'</span>'+
+     '<span class="est-conf">'+(CONF[_an.conf]||CONF.low)+' &middot; '+_t('{p} מהמאגר',{p:pfmt(_an.measured)})+'</span>'+
      '<button class="est-x" onclick="anClose()">&times;</button></div>';
   h+='<div class="an-dish">'+esc(_an.dish)+'</div>';
   if(_an.assumed)h+='<div class="est-as">'+esc(_an.assumed)+'</div>';
@@ -24973,15 +24976,15 @@ function renderBookWidget(){
     // Title
     h+='<div style="text-align:center;width:100%">';
     h+='<div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:3px">'+esc(book.title)+'</div>';
-    h+='<div style="font-size:12px;color:var(--muted)">'+(function(pg){return book.total?_t('עמוד {n} מתוך {total}',{n:pg,total:book.total}):_t('עמוד {n}',{n:pg});})('<span style="font-size:15px;font-weight:700;color:var(--violet-500)">'+book.page+'</span>')+'</div>';
+    h+='<div style="font-size:12px;color:var(--muted)">'+(function(pg){return book.total?_t('עמוד {n} מתוך {total}',{n:pg,total:book.total}):_t('עמוד {n}',{n:pg});})('<span id="bk-page" class="bk-page">'+nfmt(book.page)+'</span>')+'</div>';
     h+='</div>';
 
     // Progress bar
     if(book.total>0){
       h+='<div style="width:100%">';
       h+='<div style="height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:4px">';
-      h+='<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--violet-300),var(--violet-500));border-radius:3px;transition:width .4s"></div></div>';
-      h+='<div style="text-align:center;font-size:10px;color:var(--violet-500);font-weight:700">'+pct+''+_t('% הושלם')+'</div>';
+      h+='<div id="bk-bar" class="bk-bar" style="width:'+pct+'%"></div></div>';
+      h+='<div id="bk-pct" class="bk-pct">'+_t('{p} הושלם',{p:pfmt(pct)})+'</div>';
       h+='</div>';
     }
 
@@ -25040,7 +25043,7 @@ function renderBookWidget(){
         if(b.cover)h+='<img src="'+b.cover+'" style="width:40px;height:56px;object-fit:contain;border-radius:6px;box-shadow:2px 2px 6px rgba(74,67,64,.15);flex-shrink:0">';
         else h+='<div style="width:40px;height:56px;background:linear-gradient(145deg,var(--violet-300),var(--violet-500));border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:18px">&#x1F4D5;</span></div>';
         h+='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(b.title)+'</div>';
-        h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+b.finishedDate+(b.quotes&&b.quotes.length?' &middot; '+_t('{n} משפטים',{n:b.quotes.length})+'':'')+'</div></div>';
+        h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+bkDay(b.finishedDate)+(b.quotes&&b.quotes.length?' &middot; '+_t('{n} משפטים',{n:b.quotes.length})+'':'')+'</div></div>';
         h+='<button onclick="event.stopPropagation();deleteLibraryBook('+bi+')" style="background:none;border:none;cursor:pointer;color:var(--terra-200);font-size:15px;padding:4px">&times;</button>';
         h+='</div>';
         if(isOpen){
@@ -25102,6 +25105,16 @@ function renderBookWidget(){
   el.innerHTML=h;
 }
 
+/* finishedDate is whatever todayStr() wrote - 2026-09-25 - and it was
+   printed exactly like that, in every language. A date is the same rule as a
+   number: fmtDay is the one place that knows the reader's order. Anything
+   that is not a stored day is handed back untouched rather than turned into
+   an Invalid Date. */
+function bkDay(ds){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(ds||'')))return ds||'';
+  var d=new Date(ds+'T12:00:00');
+  return isNaN(d.getTime())?ds:fmtDay(d);
+}
 function loadBookLibrary(){try{var x=localStorage.getItem('book_library');return x?JSON.parse(x):[]; }catch(e){return[];}}
 function saveBookLibrary(arr){try{localStorage.setItem('book_library',JSON.stringify(arr));}catch(e){}}
 
@@ -25174,14 +25187,19 @@ function onBookPageSlide(val){
   // Live update the display while dragging
   var book=loadBook();
   book.page=parseInt(val)||0;
-  var disp=document.querySelector('#home-book [style*="font-size:15px;font-weight:700;color:var(--violet-500)"]');
-  if(disp)disp.textContent=book.page;
+  /* These three used to be found by searching for their own inline style
+     TEXT, one of which named a colour - so repainting the widget broke the
+     slider silently. Ids cannot be repainted away. */
+  var disp=document.getElementById('bk-page');
+  if(disp)disp.textContent=nfmt(book.page);
   if(book.total>0){
     var pct=Math.round(book.page/book.total*100);
-    var bar=document.querySelector('#home-book [style*="transition:width .4s"]');
+    var bar=document.getElementById('bk-bar');
+    /* the WIDTH is read by the browser, so it stays a bare Latin number -
+       the other half of the same rule */
     if(bar)bar.style.width=pct+'%';
-    var pctLbl=document.querySelector('#home-book [style*="font-size:10px;color:var(--violet-500);font-weight:700"]');
-    if(pctLbl)pctLbl.textContent=pct+''+_t('% הושלם')+'';
+    var pctLbl=document.getElementById('bk-pct');
+    if(pctLbl)pctLbl.textContent=_t('{p} הושלם',{p:pfmt(pct)});
   }
 }
 function onBookPageChange(val){

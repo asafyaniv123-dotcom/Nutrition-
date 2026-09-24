@@ -30,6 +30,10 @@
  * anything has not been tested:
  *   against 96dd83b (the hobbies commit)  4 findings
  *   against the fix                       0 findings
+ *
+ * Rule 3 was added later, for the same bug worn with a _t() in the middle:
+ *   against the revision before it        4 findings
+ *   against the fix                       0 findings
  */
 import fs from 'fs';
 
@@ -96,6 +100,31 @@ while ((m = PCT.exec(src))) {
   });
 }
 
+/* ── 3. the percent sign hiding inside a translation key ──
+   Rule 2 sees `nfmt(b.pct)+'%'`. It cannot see the same bug with a _t()
+   between the two halves:
+
+       row.measured +''+ _t('% מהקלוריות מערכים מדודים במאגר.')
+
+   A key that BEGINS with a percent sign is always this: the sign is only
+   there because a value was glued in front of it at the call site, so the
+   value never reached pfmt and the translator cannot move the sign across
+   it or put a space in front of it. Arabic answered one of these with ٪
+   and French with a bare %, which is exactly the half-fix the shape
+   forces - the sign turns Arabic while the digits in front stay Latin.
+
+   The Arabic and full-width signs are read too, in case a key is ever
+   written in one. */
+const PCT_KEY = /_t\(\s*'([%٪﹪％][^']*)'/g;
+while ((m = PCT_KEY.exec(src))) {
+  findings.push({
+    line: lineOf(m.index),
+    rule: 'percent',
+    what: 'in key',
+    text: "_t('" + m[1].slice(0, 34) + (m[1].length > 34 ? "…" : "") + "')",
+  });
+}
+
 if (!findings.length) {
   console.log('no reader-formatted number used as a machine number');
   process.exit(0);
@@ -105,7 +134,9 @@ console.log('\nA NUMBER FORMATTED FOR A READER, USED AS A MACHINE VALUE\n');
 for (const f of findings) {
   const why = f.rule === 'style'
     ? 'inside style="…" — CSS wants a bare Latin number'
-    : "a bare '%' — the sign is a unit; pfmt() knows the reader's";
+    : f.what === 'in key'
+      ? 'a key starting with % — the value in front of it never reached pfmt'
+      : "a bare '%' — the sign is a unit; pfmt() knows the reader's";
   console.log('  line ' + String(f.line).padStart(6) + '  ' + f.what.padEnd(10) + why);
   console.log('           ' + f.text);
 }
