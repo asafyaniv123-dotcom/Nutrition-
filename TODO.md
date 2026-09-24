@@ -11,19 +11,23 @@ section — git already keeps that.
 > *"משימות למחר כי זה היום האחרון לקראת המשתמשת הראשונה: לעשות מסך כניסה,
 > לסגור סיום יום, לדייק את המתכנן, לעצב עמודים שלא עוצבו"* — 24 בספטמבר.
 
-מחר, ה-25 בספטמבר, הוא היום האחרון לפני שאדם אחר פותח את האפליקציה הזו.
-ארבעה דברים, לפי הסדר שבו הוא אמר אותם:
+שלושה מהארבעה נסגרו ב-24 בספטמבר ויצאו מכאן אל ההיסטוריה של git:
+הדלת נבנתה ונבדקה בשישה מסלולים, שלב 1 של המתכנן נעשה קלף מקומי בלי רשת,
+ותובנות, סיום יום והיומן עברו לחומר הרך — עם היומן, כל מודול שאפשר להיכנס
+אליו נושא בלוק mod-* משלו.
 
-1. **מסך כניסה.** אין אחד. נבדק: אין firstRun, אין welcome, אין signin —
-   אפס. מי שפותחת את האפליקציה נוחתת ישר במסך הבית בלי שדבר הסביר לה מה זה.
-2. **לסגור את סיום יום.** האזור שהוא עמוד השדרה של המוצר, והיחיד שהושאר
-   בכוונה לאחרון.
-3. **לדייק את המתכנן.** הפלואו נבנה ותוקן ב-23 ו-24 בספטמבר; מה שנשאר פתוח
-   הוא ההמתנה עצמה — 2 עד 4 שניות לכל תשובה, כי כל תשובה שואלת מודל.
-   המהלך שמוחק כארבע נסיעות מכל שיחה: שלב 1 כולו (טווח, שעת קימה ושינה,
-   אורך שגרה) כרטיסייה מקומית מיידית בלי רשת, והשיחה מתחילה בשלב 2.
-4. **לעצב עמודים שלא עוצבו.** תובנות נעשה ב-24 בספטמבר. צריך מעבר על מה
-   שנשאר.
+**מה שנשאר פתוח:**
+
+- **ההמתנה שנשארה במתכנן.** ארבע נסיעות נמחקו, אבל כל תשובה משלב 2 והלאה
+  עדיין עולה 2 עד 4 שניות. הדרך הבאה היא לא מקומית — היא לתת למודל לשאול
+  פחות: שאלה אחת שאוספת שתי עובדות במקום שתי כרטיסיות.
+- **find-duplicate-options לא רואה רשימות שנבנות בזמן ריצה.** הוא קורא
+  רשימות שמוכרזות יחד בקוד, אז "tomorrow" באות קטנה בין "This week"
+  ל-"Three months" עבר דרכו. מצאתי את זה בעין. אותה עיוורון קיימת לכל
+  שורת אפשרויות שנבנית מקריאות _t נפרדות.
+- **המילון הנשי מכסה 178 מפתחות, ועשרה נשארו בזכר בכוונה** — הקול של
+  האפליקציה עצמה, משפטים סתמיים, ותארים שהנושא שלהם שם עצם זכרי. אם
+  ייכתבו מחרוזות חדשות שפונות אליה, הן צריכות להיכנס ל-FIX ב-build-he-f.
 
 ---
 
@@ -1474,158 +1478,6 @@ more than a background. `paintSky()` does two jobs at once: it paints the sky
 from one of six phases, and it toggles `body.night`, which **17 CSS rules**
 depend on. Take the sky away and either the whole night theme goes with it or
 the tab bar stays dark under a light screen.
-
----
-
-## The day summary is a page, not a feed (2026-09-12)
-
-Asaf, with a photograph of a bullet-journal spread as the reference:
-
-> *"סיכום היום מבחינתי צריך להראות כמו עמוד אחד יפה ומסודר שמארגן לעצמו את כל
-> המידע שכתבת בו. בלי צורך לגלול למטה אלא אם כתבת הרבה."*
-
-**What the reference actually does**, which is the part worth copying and not
-the handwriting: a bordered box holds the picture on the LEFT, and the facts
-sit BESIDE it on the right as short unlabelled lines — title, author, pages,
-rating, language, format. A rule under them. Then one date line. Then the prose
-runs the full width underneath. Everything is on one page and the eye takes the
-whole day in a single look.
-
-**What we render today**, counted in the source rather than guessed: FOURTEEN
-stacked `.sm-sec` cards in this order — the weekday strip, the title, mood and
-body stars, הרגע הכי טוב, זרימת היום, תזונה with four bars and water, the
-planned workout, steps, השיר של היום, לאן הלך הזמן with its four rows, הייתי
-עושה אחרת, הכרת תודה, משפט שתפס, יום מוצלח. A stack of fourteen cards IS the
-scroll he is describing. Nothing is wrong with any one of them; the shape is
-wrong.
-
-**The photo is a full-width hero** (`.sm-hero-ph`) with the title under it. He
-wants it boxed on the left with the day's facts beside it.
-
-**And the vlog already exists in there** — `vlogPlayerHTML(vlg)` renders near
-the TOP as a player. He wants it at the BOTTOM, and as an offer to watch rather
-than a player sitting open. That part is small and precise.
-
-### Why this goes BEFORE the freeze rather than into it
-
-The freeze exists to find out whether the workflow is a pleasure. סיום יום is
-the spine of this app — it is the thing the other areas feed. If the page that
-closes the day is a fourteen-card scroll, the freeze week will measure how it
-feels to read a chore, and the answer will be the shape rather than the
-content.
-
-### How to build it without a sixth round
-
-The home board took six rounds today because I built and shipped and asked him
-to react. The lesson was cheap to learn and expensive to ignore: **a static
-preview first, with his own real data in it, before any of it reaches the app.**
-Two or three layouts of the same day, he points at one, then it gets built.
-
-### What goes beside the photo — answered
-
-I proposed "the day rating" and was wrong: there is no day rating any more.
-Ten questions became four at `499888a`, and the grade went into the bank.
-**Never propose a field without checking it is still asked.**
-
-- **The caption under the photo, and only if one was written.** One exists
-  already (`.sm-cap`) but it sits under a full-width hero; it moves under the
-  boxed one.
-- **THE PAGE SHOWS WHAT THE PERSON ACTUALLY TRACKS, AND NOTHING ELSE.** His
-  words: if someone follows their nutrition then the nutrition graph belongs in
-  the summary so they can see what they ate; if they do not follow it, the graph
-  has no meaning there at all. And the reason, which is the part to hold on to:
-  *"שהוא לא ירגיש מופסד כי הוא לא עוקב אחרי משהו"* — a section standing empty
-  tells a person they are failing at something they never chose to do.
-
-  The machinery for this already exists and is not being used this way: the
-  areas drawer decides what is on the board, and `sumSecOn()` already filters
-  sections. The summary should be composed from what is ON rather than from a
-  fixed list with holes in it.
-
-- Eleven languages: a two-column head is the kind of layout German breaks.
-
-### The three previews exist — waiting on him (2026-09-13)
-
-<https://claude.ai/code/artifact/f80cebca-c4dc-48a9-861d-e4342eda5e8e>
-
-Nothing in `dev/index.html`; the generator is a scratchpad `.mjs`, and its
-Hebrew stays out of the shipped file because a preview's Hebrew broke the
-unwrapped-hebrew baseline once already.
-
-**The number the whole thing turns on, measured on the real overlay** with a
-full day seeded through `saveSummary()`: `scrollH 1510` in a `456` sheet —
-**3.31 screens**, nine sections. What the three layouts come out at:
-
-| | יום מלא | יום שקט |
-|---|---|---|
-| א · the reference | 798px · 1.75 | 210px · 0.46 |
-| ב · numbers as a strip | 655px · 1.44 | 268px · 0.59 |
-| ג · the photo leads | 844px · 1.85 | 249px · 0.55 |
-
-**"A day with almost nothing in it" is no longer a decide-while-building.** It
-is the second row of that table, and it is rendered: every block is conditional
-on having content, so a day with one answer out of four comes out at half a
-screen rather than the same page with holes in it. That is the same rule as
-*"שהוא לא ירגיש מופסד"*, seen from the other side — and a layout that only
-looks right with every field filled has not been tested against the brief.
-
-**The photo is on the LEFT**, because he wrote *"בצד שמאל"* — which in an RTL
-row means the photo column comes second. Worth knowing that the RTL-native
-reading would put it on the right, and it is a one-line change if he wants it
-mirrored; the same question he answered "leave it" on for the board.
-
-### He chose א׳ — and caught that its head was built on fields that mostly do not exist
-
-> *"אהבתי את א׳ אבל לשים לב שהשאלות הקבועות אין לנו את ה״מזג״ ו״איך הרגיש
-> הגוף״ … להכין את עצמך לכל אפשרות שהמשתמש יפעל באפליקציה."*
-
-He was right, and reading the source rather than my own memory says how right.
-**`RF_STAGE1` is `moment`, `photo`, `song`, `quote`. That is the whole fixed
-set.** `mood` is a card in the bank; `bodyFeelings` is a **multi-select over
-`RF_BODY`**, not a rating; `dayRating` is 1–10 and is also in the bank. So the
-head I built stood on two fields that are usually absent, and one of them is
-not a number even when present. *Never propose a field without checking it is
-still asked* — written down here once already, about the day rating, and
-repeated anyway.
-
-**That kills the fixed page, not just the fixed head.** 4 fixed + 22 bank
-questions in 12 kinds, and a person may answer 26 or one. The page has to be
-composed. The rule in the preview, in three tiers:
-
-1. **Atomic → a line beside the photo**, capped at **six**, which is the height
-   of the picture box. Everything past six drops to a compact strip under the
-   rule, so the head stays the same height whether you answered four questions
-   or twenty-six.
-2. **Shaped → a block.** The clock, the flow, the timeline, the food. A picture
-   does not become a line.
-3. **Written → prose, grouped by `SUM_SECS`'s own taxonomy** — הרגעים הטובים,
-   תובנות, אנרגיה, הכרת תודה. Nine text answers land as three legible groups
-   instead of nine identical cards, using a grouping the app already has.
-
-Measured across five personas: typical **822px**, every question answered
-**1629px**, no-nutrition **636px**, one answer **151px**, vlog only **141px**.
-The maximal day is longer than today's 3.31 screens — as it should be, because
-that person *did* write a lot. The head is 155–172px in all of them.
-
-### Three things to fix in the app, found while reading it
-
-- **`rfAnswered(q)` already exists** and already knows, per kind, what counts as
-  answered — including that an explicit "no" on a branch **is** an answer. The
-  overlay ignores it and uses a hand-written list of `if(sum.x)` instead. Compose
-  from `rfAnswered` over `RF_STAGE1.concat(RF_STAGE2)` filtered by `sumSecOn`.
-  Same bug class as `6546b08`, where the water bar divided by a literal 3000
-  while the four bars beside it read `TARGETS`.
-- **The journal never reaches the summary.** `jrnl_<date>` is its own key and
-  appears in **no `SUM_SECS` row**, so a day someone wrote a page about shows
-  none of it on the page that is supposed to be that day.
-- **`sum.body` is dead.** Only `finishInterview` writes it — the old
-  `QUESTIONS` path — and the overlay still renders it as five stars beside
-  `sum.mood`. Nothing in the reflection writes it; `bodyFeelings` is the live
-  field and has a different shape.
-
-**Still open:** a person who tracks food but never reflects has **no summary
-page at all** — `renderSummaryOverlay` returns early unless there is a `sum_`
-record or a vlog, so the nutrition they did log has nowhere to appear.
 
 ---
 
