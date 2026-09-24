@@ -27717,7 +27717,7 @@ function doorHTML(){
   }
   if(step==='came'){
     h+='<div class="dr-q">'+_t('מה הביא אותך לכאן?')+'</div>';
-    h+='<div class="dr-why">'+_t('זה מה שיעמוד ראשון במסך הבית שלך.')+'</div>';
+    h+='<div class="dr-why">'+_t('זה יסומן לך מראש בשאלה הבאה.')+'</div>';
     var rows=[];
     for(i=0;i<HOME_AREAS.length;i++){a=HOME_AREAS[i];
       if(a.fixed)continue;
@@ -27748,20 +27748,6 @@ function doorHTML(){
   return h+'</div>';
 }
 
-/* The order the ring is read in: what brought her, then the rest of what she
-   chose in the order she chose it, then everything else as declared. */
-function homeOrder(list){
-  var chosen=null,came='';
-  try{chosen=JSON.parse(localStorage.getItem(AREAS_KEY)||'null');}catch(e){}
-  try{came=localStorage.getItem(CAME_KEY)||'';}catch(e){}
-  if(!Array.isArray(chosen)||!chosen.length)return list;   /* never chose: unchanged */
-  var rank=function(id){
-    if(id===came)return -1;
-    var k=chosen.indexOf(id);
-    return k<0?999:k;
-  };
-  return list.slice().sort(function(a,b){return rank(a.id)-rank(b.id);});
-}
 function areaDef(id){for(var i=0;i<HOME_AREAS.length;i++)if(HOME_AREAS[i].id===id)return HOME_AREAS[i];return null;}
 function areasChosen(){
   var raw=null;try{raw=localStorage.getItem(AREAS_KEY);}catch(e){}
@@ -28137,12 +28123,6 @@ function renderHomeGrid(){
   for(i=0;i<HOME_AREAS.length;i++){a=HOME_AREAS[i];if(areaShown(a.id))on[on.length]=a;}
   var hub=null,rest=[];
   for(i=0;i<on.length;i++)if(on[i].id==='endofday')hub=on[i];else rest.push(on[i]);
-  /* WHAT SHE CHOSE GOES FIRST. The board used to walk HOME_AREAS in
-     declaration order, so her answer at the door decided what APPEARED and
-     not what came first. It is a ring with סיום יום at its centre, so first
-     means first around the hub - and the one thing that brought her here is
-     first of all. Someone who never chose keeps the order they have had. */
-  rest=homeOrder(rest);
   g.className='home-board';
   var h='';
   /* The width the board really got, not the width it asked for. */
