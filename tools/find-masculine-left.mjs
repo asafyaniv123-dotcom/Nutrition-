@@ -47,6 +47,14 @@ const W = [
      word is here and the four books are named below, because leaving it
      out is how the verb shipped. */
   'ספר',
+  /* המשך is the reflection's own continue button, and a noun in three
+     greetings, which are named below. */
+  'המשך',
+  'הראה','שאל','תאר',
+  /* NOT קרא, and not by an allowance: it names the assistant's own action
+     in all three keys that hold it - קרא את היום, קרא {from} עד {to} - the
+     same case as קורא above, and the set grows with every tool the
+     assistant learns. A list that has to grow with a feature rots. */
   /* DELIBERATELY ABSENT, each for a reason that has to hold on its own,
      because a list is the thing that rots:
        ספר   is the noun in all five keys that hold it - ספר המתכונים
@@ -60,11 +68,22 @@ const W = [
 const RE = new RegExp('(^|[^' + HEB + '])(' + W.join('|') + ')(?![' + HEB + '])');
 
 /* Not the app talking to her. Each one is here for a reason that has to hold
-   up on its own, because a list is the thing that rots. */
+   up on its own, because a list is the thing that rots.
+
+   A WEAKNESS TO KNOW ABOUT: an allowance excuses a whole KEY, not the word it
+   was written for, so a key allowed for one reason is invisible if it later
+   turns out to carry a different masculine word. One already did - "שאל על
+   אוכל — מה יש בזה?" is here because אוכל is food, and nobody noticed that
+   שאל is also an imperative to her. The generator turned it anyway, so it did
+   not ship, but nothing here would have said so. An allowance should name the
+   word it excuses; that is a change to make before this list grows further. */
 const ALLOW = new Set([
   /* ספר the NOUN. The fifth key holding that word - ספר לי מה יש לך בשבוע -
      is the verb, and is not here. */
   '+ הוסף ספר','ספר המתכונים','ספר המתכונים ריק','✓ סיימת לקרוא ספר זה',
+  /* המשך the NOUN - a continuation, not an instruction. */
+  'המשך יום טוב','שיהיה המשך יום מצוין',
+  'כאב בגב תחתון בדדליפט או סקוואט: עצור לגמרי. אלה התרגילים שבהם המשך פוגע.',
   'חושב…',                                                     /* the app thinking */
   'חושב מהחלבון שהמוצר מצהיר עליו ומהערך ל־100 גרם — לא הערכה.',/* the app thinking */
   'מחפש','מחפש…','מחפש גם לפי המשמעות…',                        /* the app searching */

@@ -50,6 +50,14 @@ const W = {
      moment" - and it is how the reflection opens, which is the first
      sentence of the thing the app is for. */
   'בוא': 'בואי', 'תן': 'תני', 'שים': 'שימי',
+  /* המשך is the button under every question of the reflection, and it is
+     also a noun in three greetings. The rule only fires at a clause
+     opening, which keeps 'שיהיה המשך' and 'שבהם המשך' out of its way;
+     'המשך יום טוב' opens its own string and is named in KEEP. */
+  'המשך': 'המשיכי',
+  /* the last screen of the reflection, the button that asks the assistant
+     anything, and two placeholders */
+  'הראה': 'הראי', 'שאל': 'שאלי', 'תאר': 'תארי',
 };
 /* WRITTEN BY HAND. Every sentence that addresses her in any way other than a
    plain opening imperative - because agreement runs through a whole sentence
@@ -159,7 +167,11 @@ const FIX = {
 };
 
 /* Keys that must not change at all, whatever the table says. */
-const KEEP = new Set([]);
+const KEEP = new Set([
+  /* המשך the NOUN, opening its own string, where the rule would otherwise
+     read it as the imperative and write 'המשיכי יום טוב'. */
+  'המשך יום טוב',
+]);
 
 const HEB = '֐-׿';
 const bounded = (w) =>
