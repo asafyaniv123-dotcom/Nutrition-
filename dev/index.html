@@ -23362,17 +23362,26 @@ function planProfileClear(){try{localStorage.removeItem(PLAN_PROF);}catch(e){}pl
    four facts a model is not needed for. They are collected here instead, in
    the same grammar and instantly, and land in plan_profile - which the model
    already reads and is already told never to ask twice for. */
-var _plWarm=-1;                       /* -1 = not in the local cards */
-function plWarmNeeded(){
-  var p=planProfile();
-  return !(p&&p.wake&&p.routines);    /* answered once, never asked again */
+var _plWarm=-1,_plCards=[];           /* -1 = not in the local cards */
+/* WHICH OF THE THREE ARE STILL WORTH ASKING. The range is a different answer
+   this Tuesday than it was last Tuesday; when she wakes is not. So the range
+   is asked every time and the other two once - which is also what stops the
+   second conversation from silently always planning "the coming week". */
+function plWarmCards(){
+  var p=planProfile(),c=['horizon'];
+  if(!p.wake)c.push('waking');
+  if(!p.routines)c.push('routines');
+  return c;
 }
-function plWarmStart(){_plWarm=0;planBotPaint();}
+/* Frozen at the start, and read from there afterwards. Asking plWarmCards()
+   again between presses reads a profile the last press just wrote to, so the
+   list shortens under the index walking it and the last card is skipped. */
+function plWarmStart(){_plCards=plWarmCards();_plWarm=0;planBotPaint();}
 function plWarmPick(field,value,label){
   var add={};add[field==='waking'?'wake':field]=label||value;
   planProfileMerge(add);
   _plWarm++;
-  if(_plWarm>=3){
+  if(_plWarm>=_plCards.length){
     _plWarm=-1;
     /* the horizon is her first sentence; everything else is already in the
        profile, so the model opens at stage two */
@@ -23382,15 +23391,18 @@ function plWarmPick(field,value,label){
   planBotPaint();
 }
 function plWarmHTML(){
+  /* STAGE ONE OF FIVE, and it says so. These cards used to draw three dots
+     of their own and fill them, so the next card - the model's, drawing five
+     and lighting the second - read as the bar falling back to the start. */
   var h='<div class="pb-stage"><div class="pb-dots">';
-  for(var i=0;i<3;i++)h+='<span class="pb-dot'+(i===_plWarm?' on':(i<_plWarm?' done':''))+'"></span>';
-  h+='</div></div>';
-  var rows=[],q='';
-  if(_plWarm===0){
+  for(var i=1;i<=PLAN_STAGES;i++)h+='<span class="pb-dot'+(i===1?' on':'')+'"></span>';
+  h+='</div><span class="pb-stage-t">'+_t('המסגרת')+'</span></div>';
+  var rows=[],q='',kind=_plCards[_plWarm]||'horizon';
+  if(kind==='horizon'){
     q=_t('לאיזה טווח לתכנן?');
     rows=[[_t('מחר|אפשרות'),'horizon'],[_t('השבוע'),'horizon'],[_t('החודש'),'horizon'],
           [_t('שלושה חודשים'),'horizon']];
-  }else if(_plWarm===1){
+  }else if(kind==='waking'){
     q=_t('מתי היום שלך מתחיל ונגמר?');
     rows=[['06:00 – 22:00','waking'],['06:30 – 23:00','waking'],
           ['07:00 – 23:00','waking'],['08:00 – 00:00','waking'],[_t('לא קבוע'),'waking']];
@@ -23592,8 +23604,7 @@ function planBotHTML(){
   if(_plWarm>=0)return h+plWarmHTML()+'</div>';
   if(!_planTurns.length){
     h+='<div class="pb-open">'+_t('ספר לי מה יש לך בשבוע, ואבנה לוח שמחזיק את הכול.')+'</div>'+
-       '<button class="pb-go" onclick="'+(plWarmNeeded()?'plWarmStart()':
-         'planBotSend(&quot;'+esc(_t('בוא נתכנן את השבוע הקרוב'))+'&quot;)')+'">'+
+       '<button class="pb-go" onclick="plWarmStart()">'+
        _t('בוא נתכנן')+'</button></div>';
     return h;
   }
