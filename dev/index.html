@@ -2783,6 +2783,57 @@ body.mod-hobbies .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
 .hbn-x{background:none;border:none;cursor:pointer;color:var(--nu-muted);font-size:13px;
   padding:0;flex:0 0 auto;font-family:inherit}
 
+/* ── THE DOOR, IN THE SAME SOFT WHITE MATERIAL ──
+   The first thing anyone sees, so it is the material itself: one card of
+   plaster, the question at a size you can read, and the answers as rows. The
+   grammar is the planner's on purpose - she meets it here and again there. */
+.door{position:fixed;inset:0;z-index:9998;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  display:flex;align-items:center;justify-content:center;padding:26px 18px;
+  background:#e9e7e3}
+html body.mod-door{
+  --nu-ground:#e9e7e3;
+  --nu-lit:rgba(255,255,255,.95);
+  --nu-shade:rgba(176,168,156,.44);
+  --nu-shade-soft:rgba(176,168,156,.28);
+  --nu-ink:#4a453f; --nu-muted:#6d675e; --nu-amber:#f0a92e;
+}
+.dr-card{width:100%;max-width:440px;margin:auto}
+.dr-dots{display:flex;gap:5px;margin-bottom:22px}
+.dr-dot{width:5px;height:5px;border-radius:50%;background:var(--nu-shade-soft)}
+.dr-dot.done{background:var(--nu-muted)}
+.dr-dot.on{background:var(--nu-amber);box-shadow:0 0 7px 2px rgba(240,169,46,.55)}
+.dr-hi{font-size:27px;font-weight:800;letter-spacing:-.5px;color:var(--nu-ink);margin-bottom:12px}
+.dr-lead{font-size:14px;font-weight:600;line-height:1.7;color:var(--nu-muted);margin-bottom:26px}
+.dr-q{font-size:21px;font-weight:800;line-height:1.4;color:var(--nu-ink);margin-bottom:8px}
+.dr-sub{font-size:12px;font-weight:600;line-height:1.6;color:var(--nu-muted);margin-bottom:16px}
+.dr-q+.dr-ans,.dr-q+.dr-in{margin-top:14px}
+.dr-ans{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.dr-row{width:100%;text-align:start;border:none;border-radius:16px;padding:15px 17px;
+  font-family:inherit;font-size:14px;font-weight:700;line-height:1.4;cursor:pointer;
+  background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.dr-row:active{transform:translateY(.5px)}
+/* chosen is pressed, which is what chosen looks like everywhere in this app */
+.dr-row.on{color:var(--nu-ink);
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+.dr-in{width:100%;border:none;border-radius:16px;padding:15px 17px;font-family:inherit;
+  font-size:15px;font-weight:700;color:var(--nu-ink);background:var(--nu-ground);
+  margin-bottom:16px;
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+.dr-in::placeholder{color:var(--nu-muted);font-weight:600}
+/* the one action carries the lamp, the same as everywhere else it means
+   "press this, something happens" */
+.dr-go{position:relative;width:100%;border:none;border-radius:16px;padding:16px;
+  font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;margin-top:4px;
+  background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.dr-go::before{content:"";position:absolute;left:50%;transform:translateX(-50%);
+  width:min(46%,150px);bottom:-8px;height:5px;border-radius:3px;background:var(--nu-ground);
+  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+.dr-go::after{content:"";position:absolute;left:50%;transform:translateX(-50%);
+  width:min(40%,132px);bottom:-6.5px;height:2px;border-radius:2px;background:var(--nu-amber);
+  box-shadow:0 0 9px 2px rgba(240,169,46,.6),0 5px 16px 3px rgba(240,169,46,.28)}
+
 /* ── תובנות, IN THE SAME SOFT WHITE MATERIAL ──
    Four screens that had forty inline styles and not one class between them.
    The category colour survives because it is information - it is the only
@@ -27267,6 +27318,175 @@ var HOME_AREAS;langOn(function(){HOME_AREAS=[
   {id:'closet',color:'#b07aa1',title:''+_t('הארון שלי')+'',sub:''+_t('לצלם בגדים ולהרכיב לוקים')+'',fresh:true,
    svg:'<svg viewBox="0 0 24 24"><path d="M9 3.4h6l3.2 3.1-2.3 2.2-.9-.8v12.7H7l0-12.7-.9.8L3.8 6.5Z"/></svg>'}
 ];});
+/* ── THE DOOR ──
+   Five cards, and every answer goes into a setting the app already had. */
+var DOOR_KEY='app_onboarded',CAME_KEY='app_came_for';
+function doorDone(){
+  try{
+    if(localStorage.getItem(DOOR_KEY)==='1')return true;
+    /* Nobody who has been using this app has an onboarding flag, because
+       until today there was nothing to set one. So "no flag" cannot mean
+       "new": anything the app could only have written by being USED means
+       the door has already been walked through. */
+    var mark=[GREET_NAME_KEY,AREAS_KEY,SUMREM_KEY,PROFILE_KEY,TARGETS_KEY],i,k;
+    for(i=0;i<mark.length;i++)if(localStorage.getItem(mark[i])){doorSkip();return true;}
+    for(i=0;i<localStorage.length;i++){
+      k=localStorage.key(i)||'';
+      if(k.indexOf('day_')===0||k.indexOf('dplan_')===0||k.indexOf('sum_')===0){doorSkip();return true;}
+    }
+    return false;
+  }catch(e){return true;}   /* no storage at all: never trap anyone behind it */
+}
+function doorSkip(){try{localStorage.setItem(DOOR_KEY,'1');}catch(e){}}
+
+var _doorStep=0,_doorPick=[],_doorSteps=[];
+/* The cards, as a list. The gender card is in it only where the app can
+   actually honour the answer: Hebrew marks gender on the verb and has the
+   feminine text to switch to, and English marks none and has none. */
+function doorSteps(){
+  var a=['hi'];
+  if(appLang()==='he')a.push('gender');
+  return a.concat(['name','came','focus','remind']);
+}
+
+function doorOpen(){
+  if(document.getElementById('door'))return;
+  _doorStep=0;_doorPick=[];_doorSteps=doorSteps();
+  var w=document.createElement('div');
+  w.id='door';w.className='door';
+  document.body.appendChild(w);
+  document.body.classList.add('mod-door');
+  doorPaint();
+}
+function doorPaint(){
+  var w=document.getElementById('door');
+  if(!w)return;
+  w.innerHTML=doorHTML();
+  w.scrollTop=0;
+  if(_doorSteps[_doorStep]==='name')
+    setTimeout(function(){var e=document.getElementById('door-name');if(e)e.focus();},80);
+}
+function doorNext(){
+  _doorStep++;
+  if(_doorStep>=_doorSteps.length)doorFinish();else doorPaint();
+}
+
+/* how to address her. Asked first, so every card after it is already right -
+   and answered by pressing one of two rows, which is the whole question. */
+function doorGender(g){
+  genderSet(g,function(){doorNext();});
+}
+function doorName(){
+  var e=document.getElementById('door-name');
+  var v=e?String(e.value||'').trim().slice(0,24):'';
+  /* greet_name already exists and is already what the app greets you by,
+     so the door writes THAT rather than a second name. */
+  if(v)greetSetName(v);
+  doorNext();
+}
+/* what brought her. It is remembered, and it pre-ticks the next card, so the
+   list she is asked to confirm already starts somewhere true. */
+function doorCame(id){
+  try{localStorage.setItem(CAME_KEY,id);}catch(e){}
+  _doorPick=[id];
+  doorNext();
+}
+function doorToggle(id){
+  var k=_doorPick.indexOf(id);
+  if(k>=0)_doorPick.splice(k,1);else _doorPick.push(id);
+  doorPaint();
+}
+/* home_areas already means "what is around", and סיום יום is already fixed in
+   it, so this writes the list the app has rather than a second one. */
+function doorAreas(){
+  var on=[],i;
+  for(i=0;i<HOME_AREAS.length;i++){
+    var a=HOME_AREAS[i];
+    if(a.fixed||_doorPick.indexOf(a.id)>=0)on.push(a.id);
+  }
+  try{localStorage.setItem(AREAS_KEY,JSON.stringify(on));}catch(e){}
+  areasMarkSeen();
+  doorNext();
+}
+function doorRemind(time){
+  var o=loadSumRem();
+  if(time){o.on=true;o.time=time;}else{o.on=false;}
+  saveSumRem(o);
+  doorNext();
+}
+function doorFinish(){
+  try{localStorage.setItem(DOOR_KEY,'1');}catch(e){}
+  var w=document.getElementById('door');
+  if(w)w.parentNode.removeChild(w);
+  document.body.classList.remove('mod-door');
+  /* not the fan. A fan is a menu, and the first minute here should be one
+     small honest answer. */
+  enterModule('endofday');
+}
+
+function doorRowsHTML(rows){
+  var h='<div class="dr-ans">',i;
+  for(i=0;i<rows.length;i++)
+    h+='<button class="dr-row'+(rows[i][2]?' on':'')+'" onclick="'+rows[i][1]+'">'+rows[i][0]+'</button>';
+  return h+'</div>';
+}
+function doorHTML(){
+  var h='<div class="dr-card">',i,a,step=_doorSteps[_doorStep];
+  if(_doorStep>0){
+    h+='<div class="dr-dots">';
+    for(i=1;i<_doorSteps.length;i++)
+      h+='<span class="dr-dot'+(i===_doorStep?' on':(i<_doorStep?' done':''))+'"></span>';
+    h+='</div>';
+  }
+  if(step==='hi'){
+    h+='<div class="dr-hi">'+_t('נעים להכיר')+'</div>';
+    h+='<div class="dr-lead">'+_t('זו אפליקציה שעוזרת לעצור בסוף היום ולהסתכל עליו. כל מה שנרשם בה נשאר על הטלפון הזה בלבד.')+'</div>';
+    h+='<button class="dr-go" onclick="doorNext()">'+_t('נתחיל')+'</button>';
+    return h+'</div>';
+  }
+  if(step==='gender'){
+    h+='<div class="dr-q">'+_t('איך לפנות אליך?')+'</div>';
+    h+=doorRowsHTML([[_t('בלשון נקבה'),"doorGender('f')",0],
+                     [_t('בלשון זכר'),"doorGender('m')",0]]);
+    return h+'</div>';
+  }
+  if(step==='name'){
+    h+='<div class="dr-q">'+_t('איך קוראים לך?')+'</div>';
+    h+='<input id="door-name" class="dr-in" value="'+esc(greetName())+'" placeholder="'+_t('השם שלך')+'" '+
+       'onkeydown="if(event.key===&#39;Enter&#39;)doorName()">';
+    h+='<button class="dr-go" onclick="doorName()">'+_t('אפשר להמשיך')+'</button>';
+    return h+'</div>';
+  }
+  if(step==='came'){
+    h+='<div class="dr-q">'+_t('מה הביא אותך לכאן?')+'</div>';
+    var rows=[];
+    for(i=0;i<HOME_AREAS.length;i++){a=HOME_AREAS[i];
+      if(a.fixed)continue;
+      rows.push([esc(a.title),"doorCame('"+a.id+"')",0]);
+    }
+    h+=doorRowsHTML(rows);
+    return h+'</div>';
+  }
+  if(step==='focus'){
+    h+='<div class="dr-q">'+_t('במה בא לך להתרכז?')+'</div>';
+    h+='<div class="dr-sub">'+_t('אלה יהיו מה שמופיע מסביב לסיום היום. אפשר לשנות בכל רגע.')+'</div>';
+    var rs=[];
+    for(i=0;i<HOME_AREAS.length;i++){a=HOME_AREAS[i];
+      if(a.fixed)continue;
+      rs.push([esc(a.title),"doorToggle('"+a.id+"')",_doorPick.indexOf(a.id)>=0]);
+    }
+    h+=doorRowsHTML(rs);
+    h+='<button class="dr-go" onclick="doorAreas()">'+_t('אפשר להמשיך')+'</button>';
+    return h+'</div>';
+  }
+  h+='<div class="dr-q">'+_t('מתי להזכיר לך לעצור?')+'</div>';
+  h+=doorRowsHTML([['20:00',"doorRemind('20:00')",0],
+                   ['21:00',"doorRemind('21:00')",0],
+                   ['22:00',"doorRemind('22:00')",0],
+                   [_t('בלי תזכורת'),"doorRemind('')",0]]);
+  return h+'</div>';
+}
+
 function areaDef(id){for(var i=0;i<HOME_AREAS.length;i++)if(HOME_AREAS[i].id===id)return HOME_AREAS[i];return null;}
 function areasChosen(){
   var raw=null;try{raw=localStorage.getItem(AREAS_KEY);}catch(e){}
@@ -28572,13 +28792,19 @@ function tbSync(){
   (function(){
     var code=appLang();
     langApply(code);
-    /* Hebrew is its own key and carries no dictionary; everything else needs
-       one fetched - including a language nobody chose, which is now the
-       common case rather than an impossible one. */
-    if(code!=='he')langLoad(code,function(){langRepaint();});
+    /* Hebrew USED to be its own key and carry no dictionary. It still is for
+       anyone the app speaks to in the masculine - but a woman who answered
+       the door reads an overlay, and that is a fetch like any other. */
+    if(code!=='he'||appGender()==='f')langLoad(code,function(){langRepaint();});
   })();
   // Hide app initially
   document.querySelector('.app').style.display='none';
+  /* ── THE DOOR ──
+     Under the splash rather than over it, so it is simply what is there when
+     the splash lifts: no second animation, and nothing interrupting anything. */
+  (function(){
+    try{ if(!doorDone())doorOpen(); }catch(e){}
+  })();
 })();
 </script>
 
