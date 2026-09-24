@@ -4834,8 +4834,38 @@ function langSet(code){
   langApply(code);
   langLoad(code,function(){langRepaint();});
 }
+/* ── WHO THE APP IS TALKING TO ──
+   Hebrew marks gender on the verb; every string here was written in the
+   masculine singular. The answer is kept apart from the language, because
+   someone reading in German has a gender too - Hebrew is only the first
+   shipped language that has to know it. Unset means the app speaks the way
+   it always has, so nothing changes for anyone who never answers. */
+var GENDER_KEY='app_gender';
+function appGender(){
+  try{var v=localStorage.getItem(GENDER_KEY);if(v==='f'||v==='m')return v;}catch(e){}
+  return '';
+}
+function genderSet(g,cb){
+  try{localStorage.setItem(GENDER_KEY,g==='f'?'f':'m');}catch(e){}
+  /* the dictionary in hand is now the wrong one */
+  langLoad(appLang(),function(){langApply(appLang());langRepaint();cb&&cb();});
+}
 function langLoad(code,cb){
-  if(!code||code==='he'){_lang=HE;cb&&cb();return;}
+  if(!code||code==='he'){
+    /* the feminine Hebrew is an OVERLAY on HE, not a language: it carries only
+       the keys whose Hebrew changes, so anything it does not answer falls
+       through to the masculine text and a plural key keeps its categories. */
+    if(appGender()!=='f'){_lang=HE;cb&&cb();return;}
+    fetch(appBase()+'data/he-f.json')
+      .then(function(r){return r.json();})
+      .then(function(j){
+        var o={},k;
+        for(k in HE)o[k]=HE[k];
+        for(k in j)o[k]=j[k];
+        _lang=o;cb&&cb();
+      },function(){_lang=HE;cb&&cb();});
+    return;
+  }
   fetch(appBase()+'data/lang/'+code+'.json')
     .then(function(r){return r.json();})
     .then(function(j){_lang=j;cb&&cb();},function(){_lang=null;cb&&cb();});
