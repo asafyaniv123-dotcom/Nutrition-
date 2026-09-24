@@ -2976,6 +2976,14 @@ html body.mod-door{
 .dr-lead{font-size:14px;font-weight:600;line-height:1.7;color:var(--nu-muted);margin-bottom:26px}
 .dr-q{font-size:21px;font-weight:800;line-height:1.4;color:var(--nu-ink);margin-bottom:8px}
 .dr-sub{font-size:12px;font-weight:600;line-height:1.6;color:var(--nu-muted);margin-bottom:16px}
+/* why the question is being asked. A door that asks without saying why reads
+   as a form, and the gender card needs it most: it is the most personal thing
+   asked here and its reason is the least obvious. */
+.dr-why{font-size:12px;font-weight:600;line-height:1.6;color:var(--nu-muted);margin:6px 0 4px}
+/* a way past. "No reminder" and an empty name were already ways through; the
+   two cards that had none are the two someone might simply not want to answer. */
+.dr-skip{display:block;margin:14px auto 0;background:none;border:none;font-family:inherit;
+  font-size:12px;font-weight:700;color:var(--nu-muted);cursor:pointer;padding:6px 10px}
 .dr-q+.dr-ans,.dr-q+.dr-in{margin-top:14px}
 .dr-ans{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
 .dr-row{width:100%;text-align:start;border:none;border-radius:16px;padding:15px 17px;
@@ -27693,12 +27701,15 @@ function doorHTML(){
   }
   if(step==='gender'){
     h+='<div class="dr-q">'+_t('איך לפנות אליך?')+'</div>';
+    h+='<div class="dr-why">'+_t('בעברית כל משפט נושא מגדר, אז זה משנה איך כל מסך מדבר אלייך.')+'</div>';
     h+=doorRowsHTML([[_t('בלשון נקבה'),"doorGender('f')",0],
                      [_t('בלשון זכר'),"doorGender('m')",0]]);
+    h+='<button class="dr-skip" onclick="doorNext()">'+_t('נדלג כרגע')+'</button>';
     return h+'</div>';
   }
   if(step==='name'){
     h+='<div class="dr-q">'+_t('איך קוראים לך?')+'</div>';
+    h+='<div class="dr-why">'+_t('רק כדי שהאפליקציה תדע לפנות אלייך בשם. אפשר גם בלי.')+'</div>';
     h+='<input id="door-name" class="dr-in" value="'+esc(greetName())+'" placeholder="'+_t('השם שלך')+'" '+
        'onkeydown="if(event.key===&#39;Enter&#39;)doorName()">';
     h+='<button class="dr-go" onclick="doorName()">'+_t('אפשר להמשיך')+'</button>';
@@ -27706,12 +27717,14 @@ function doorHTML(){
   }
   if(step==='came'){
     h+='<div class="dr-q">'+_t('מה הביא אותך לכאן?')+'</div>';
+    h+='<div class="dr-why">'+_t('זה מה שיעמוד ראשון במסך הבית שלך.')+'</div>';
     var rows=[];
     for(i=0;i<HOME_AREAS.length;i++){a=HOME_AREAS[i];
       if(a.fixed)continue;
       rows.push([esc(a.title),"doorCame('"+a.id+"')",0]);
     }
     h+=doorRowsHTML(rows);
+    h+='<button class="dr-skip" onclick="doorNext()">'+_t('נדלג כרגע')+'</button>';
     return h+'</div>';
   }
   if(step==='focus'){
@@ -27727,6 +27740,7 @@ function doorHTML(){
     return h+'</div>';
   }
   h+='<div class="dr-q">'+_t('מתי להזכיר לך לעצור?')+'</div>';
+  h+='<div class="dr-why">'+_t('זה הדבר היחיד שהאפליקציה תעשה מיוזמתה.')+'</div>';
   h+=doorRowsHTML([['20:00',"doorRemind('20:00')",0],
                    ['21:00',"doorRemind('21:00')",0],
                    ['22:00',"doorRemind('22:00')",0],
@@ -27734,6 +27748,20 @@ function doorHTML(){
   return h+'</div>';
 }
 
+/* The order the ring is read in: what brought her, then the rest of what she
+   chose in the order she chose it, then everything else as declared. */
+function homeOrder(list){
+  var chosen=null,came='';
+  try{chosen=JSON.parse(localStorage.getItem(AREAS_KEY)||'null');}catch(e){}
+  try{came=localStorage.getItem(CAME_KEY)||'';}catch(e){}
+  if(!Array.isArray(chosen)||!chosen.length)return list;   /* never chose: unchanged */
+  var rank=function(id){
+    if(id===came)return -1;
+    var k=chosen.indexOf(id);
+    return k<0?999:k;
+  };
+  return list.slice().sort(function(a,b){return rank(a.id)-rank(b.id);});
+}
 function areaDef(id){for(var i=0;i<HOME_AREAS.length;i++)if(HOME_AREAS[i].id===id)return HOME_AREAS[i];return null;}
 function areasChosen(){
   var raw=null;try{raw=localStorage.getItem(AREAS_KEY);}catch(e){}
@@ -28109,6 +28137,12 @@ function renderHomeGrid(){
   for(i=0;i<HOME_AREAS.length;i++){a=HOME_AREAS[i];if(areaShown(a.id))on[on.length]=a;}
   var hub=null,rest=[];
   for(i=0;i<on.length;i++)if(on[i].id==='endofday')hub=on[i];else rest.push(on[i]);
+  /* WHAT SHE CHOSE GOES FIRST. The board used to walk HOME_AREAS in
+     declaration order, so her answer at the door decided what APPEARED and
+     not what came first. It is a ring with סיום יום at its centre, so first
+     means first around the hub - and the one thing that brought her here is
+     first of all. Someone who never chose keeps the order they have had. */
+  rest=homeOrder(rest);
   g.className='home-board';
   var h='';
   /* The width the board really got, not the width it asked for. */
