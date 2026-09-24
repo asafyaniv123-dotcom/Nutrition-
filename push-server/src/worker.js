@@ -1662,8 +1662,14 @@ export default {
         '\n' +
         'STAGE 2 - THE HARD ANCHORS, the things that cannot move.\n' +
         '   Standing commitments with a day and an hour already fixed: work shifts, studies,\n' +
-        '   standing meetings, classes, collecting children.\n' +
-        '   How much travel each anchor needs, including slack for traffic and parking.\n' +
+        '   standing meetings, classes, collecting children - and how much travel each one needs,\n' +
+        '   including slack for traffic and parking.\n' +
+        '   ASK THAT AS ONE QUESTION. A row naming a category with no time in it - "I have fixed\n' +
+        '   work hours", "I have classes" - is not an answer, it is a second question waiting to be\n' +
+        '   asked, and it costs a whole extra wait to ask it. Offer the common shapes whole:\n' +
+        '   "Sunday to Thursday 09:00-17:00, half an hour each way", "shifts that change week to\n' +
+        '   week", "studies two evenings, fifteen minutes away", "nothing fixed this week". If none\n' +
+        '   of them fits, the person writes their own, which is always available.\n' +
         '\n' +
         'STAGE 3 - FITNESS, HOBBIES AND FREE TIME. This is where the interrogation used to start,\n' +
         '   so go gently and in this order:\n' +
