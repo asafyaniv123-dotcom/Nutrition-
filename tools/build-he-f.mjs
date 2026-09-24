@@ -58,6 +58,17 @@ const W = {
   /* the last screen of the reflection, the button that asks the assistant
      anything, and two placeholders */
   'הראה': 'הראי', 'שאל': 'שאלי', 'תאר': 'תארי',
+  /* Twenty-one more, found by asking the key set for the first word of
+     every key the overlay does not answer - 821 distinct words, read once -
+     rather than by walking into them one screen at a time. Each was checked
+     against EVERY key that holds it, not only the ones that open with it. */
+  'הסר': 'הסירי', 'העתק': 'העתיקי', 'גע': 'געי',
+  'הבחן': 'הבחיני', 'החזק': 'החזיקי', 'הישאר': 'הישארי',
+  'הצפן': 'הצפיני', 'התמקד': 'התמקדי', 'נקה': 'נקי',
+  'סנכרן': 'סנכרני', 'עדכן': 'עדכני', 'רד': 'רדי',
+  'שכפל': 'שכפלי', 'שתף': 'שתפי', 'תכנן': 'תכנני',
+  'בנה': 'בני', 'ותר': 'ותרי', 'הרכב': 'הרכיבי',
+  'החזר': 'החזירי', 'הפוך': 'הפכי', 'קצץ': 'קצצי',
 };
 /* WRITTEN BY HAND. Every sentence that addresses her in any way other than a
    plain opening imperative - because agreement runs through a whole sentence
@@ -79,6 +90,15 @@ const FIX = {
      sentence. One of them had been HALF feminised - "כתבי בפלוס, ואז גרור
      ללוח" - which is worse than not at all. */
   '+ הוסף אדם': '+ הוסיפי אדם',
+  /* The same two shapes as the four above, found by the check after the
+     twenty-one words joined the rule: a verb after "+ ", which is not a
+     clause opening the rule can see, and two verbs standing mid-sentence
+     after ו and after או. The second one had been HALF turned - סיימי with
+     שמור and בנה left behind it - which is the worse state. */
+  '+ הרכב ארוחה חדשה': '+ הרכיבי ארוחה חדשה',
+  '+ בנה אימון מראש': '+ בני אימון מראש',
+  'סיים אימון חדש ושמור אותו, או בנה אחד מראש.':
+    'סיימי אימון חדש ושמרי אותו, או בני אחד מראש.',
   'החלף מצלמה': 'החליפי מצלמה',
   'או הקלד את הספרות שמתחת לפסים': 'או הקלידי את הספרות שמתחת לפסים',
   'ואז לחץ סרוק': 'ואז לחצי סרוק',

@@ -51,6 +51,14 @@ const W = [
      greetings, which are named below. */
   'המשך',
   'הראה','שאל','תאר',
+  /* Twenty-one found by reading the first word of every unanswered key,
+     which is a bounded question the key set can answer - walking the
+     screens had been finding them one at a time. הסר was the one that
+     looked like a bug in this file and was not: it simply sat missing from
+     this list, beside הוסף, which is here. */
+  'הסר','העתק','גע','הבחן','החזק','הישאר','הצפן',
+  'התמקד','נקה','סנכרן','עדכן','רד','שכפל','שתף',
+  'תכנן','בנה','ותר','הרכב','החזר','הפוך','קצץ',
   /* NOT קרא, and not by an allowance: it names the assistant's own action
      in all three keys that hold it - קרא את היום, קרא {from} עד {to} - the
      same case as קורא above, and the set grows with every tool the
