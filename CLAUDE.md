@@ -150,7 +150,7 @@ the rest.
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
 
-**Eleven checks are tools rather than prose**, and all should only ever go down:
+**Twelve checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments
     node tools/find-translated-data.mjs        # _t() results used as data, not shown
@@ -167,6 +167,8 @@ translation falls back to readable text rather than to `fitness.set.add`.
                                                # app that addresses one person
     node tools/find-formatted-css.mjs          # a reader's number used as a machine's,
                                                # and a percent sign welded on by hand
+    node tools/find-masculine-left.mjs      # a sentence the app still says to HER
+                                               # in the masculine, or turns only halfway
     node tools/build-lang-template.mjs --check # the template still matches the app
 
 `find-formatted-css.mjs` is the newest, and the bug it was written for had
