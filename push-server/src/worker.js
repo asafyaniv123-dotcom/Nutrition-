@@ -1584,6 +1584,10 @@ export default {
         'zh-Hans': 'Simplified Chinese (\u7b80\u4f53\u4e2d\u6587)',
         'zh-Hant': 'Traditional Chinese (\u7e41\u9ad4\u4e2d\u6587)', ar: 'Arabic (\u0627\u0644\u0639\u0631\u0628\u064a\u0629)' };
       const langName = LANG_NAME[lang] || lang;
+      /* The app has been asking people how to address them since the door
+         existed, and never told the model. In Hebrew that is the difference
+         between speaking to her and speaking to nobody. */
+      const gender = (b && b.gender) === 'f' ? 'feminine' : (b && b.gender) === 'm' ? 'masculine' : '';
       const now = String((b && b.now) || '').slice(0, 40);
       const tz = String((b && b.tz) || '').slice(0, 60);
       const cal = Array.isArray(b && b.calendar) ? b.calendar.slice(0, 120) : [];
@@ -1612,7 +1616,11 @@ export default {
         'WHAT YOU GET each time: the current date, time and timezone; existing calendar events if\n' +
         'any; what you were told to remember from earlier conversations; and the conversation so far.\n' +
         '\n' +
-        'VOICE. Every screen of this app speaks to ONE person, in one form. Never write a slashed\n' +
+        'VOICE. Every screen of this app speaks to ONE person, in one form. Address that person\n' +
+        'DIRECTLY - "how many times a week do you want to train", never "how many times a week are\n' +
+        'workouts planned" and never an impersonal plural. In a language that marks gender on the\n' +
+        'verb, use the one named below; if none is named, use the plainest form the language\n' +
+        'allows. Never write a slashed\n' +
         'or bracketed alternative for grammatical gender - not "\u05de\u05e2\u05d3\u05d9\u05e3/\u05d4", not "preferido(a)", not any of\n' +
         'its shapes in any language. Choose the plainest single form the language allows and keep\n' +
         'it. This applies to the message, the option labels, the skip label and every title.\n' +
@@ -1630,9 +1638,16 @@ export default {
         '  message is the question and nothing else - no preamble, no "great!", no restating what\n' +
         '  they just said. One sentence, under 15 words. If a stage needs three things, that is\n' +
         '  three cards, one after the other.\n' +
-        '- OPTIONS ARE ANSWERS, not sentences: 2 to 6 words, the way a person would actually reply,\n' +
-        '  and 3 to 5 of them. Never invent a condition nobody mentioned. Where a stage below\n' +
-        '  already lists the answers, use that list.\n' +
+        '- OPTIONS ARE ANSWERS, not sentences: the way a person would actually reply, and 3 to 5\n' +
+        '  of them. Never invent a condition nobody mentioned. Where a stage below already lists\n' +
+        '  the answers, use that list.\n' +
+        '- AN ANSWER MAY CARRY THE FACT THAT TRAVELS WITH IT. One question does not mean one fact.\n' +
+        '  When two things are always said in the same breath, ask once and let each row answer\n' +
+        '  both: the days AND the hours, the length of a workout AND the time around it, where you\n' +
+        '  are meeting someone AND for how long, which project AND roughly how long it needs.\n' +
+        '  A row like "Sunday to Thursday, 09:00-17:00, half an hour each way" is ONE answer to\n' +
+        '  ONE question. Splitting that into two cards costs a person two waits to say one thing.\n' +
+        '  The rows may be longer than the question; that is fine, and it is why they are rows.\n' +
         '- The person can always write their own answer instead, so never add "or something else"\n' +
         '  as an option and never apologise for the list being short.\n' +
         '\n' +
@@ -1755,6 +1770,7 @@ export default {
       const head =
         'Now: ' + (now || 'unknown') + (tz ? ' (' + tz + ')' : '') + '\n' +
         'Existing calendar events: ' + (cal.length ? JSON.stringify(cal) : 'none supplied') + '\n' +
+        (gender ? 'Address this person in the ' + gender + ' where the language marks it.\n' : '') +
         'Already known about this person: ' + (prof || 'nothing yet') +
         (prof ? '\nDo not ask any of that again. Confirm it in one short line only if it may have changed.' : '');
 
