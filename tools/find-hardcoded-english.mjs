@@ -1,5 +1,19 @@
 /* Find English written straight into the markup.
  *
+ * WHAT IT CANNOT SEE, and one of them shipped. This reads the text BETWEEN
+ * tags, so English held in a JavaScript CONSTANT is invisible to it. The
+ * daily reminder - the only message the app sends without being asked, and
+ * the one the door promises her at 21:00 - was two such constants:
+ *
+ *     var SUMREM_MSG_TITLE='Daily reflection';
+ *     var SUMREM_MSG="It's time for your daily reflection";
+ *
+ * On a Hebrew screen it arrived in English. Found by reading the reminder
+ * card, not by any check. Widening this scan to JavaScript string literals
+ * is not free - the file is full of English identifiers, CSS and API names -
+ * so the honest note is that a user-facing sentence must go through _t at
+ * the point it is SHOWN, and a constant is the place that rule gets broken.
+ *
  * This is the hole the other checks cannot cover. find-unwrapped-hebrew looks
  * for HEBREW that never reaches _t(), which is most of what gets missed - but
  * a hardcoded ENGLISH word has no key to be missing, and no language file can

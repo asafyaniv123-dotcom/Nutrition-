@@ -95,6 +95,11 @@ const FIX = {
      clause opening the rule can see, and two verbs standing mid-sentence
      after ו and after או. The second one had been HALF turned - סיימי with
      שמור and בנה left behind it - which is the worse state. */
+  /* ותקבל is a future, not an imperative, so the table cannot reach it -
+     and it is the sentence on the card that offers her the daily reminder,
+     which had read קבעי … ותקבל since the overlay was first written. */
+  'קבע שעה קבועה, ותקבל תזכורת יומית לסכם את היום.':
+    'קבעי שעה קבועה, ותקבלי תזכורת יומית לסכם את היום.',
   '+ הרכב ארוחה חדשה': '+ הרכיבי ארוחה חדשה',
   '+ בנה אימון מראש': '+ בני אימון מראש',
   'סיים אימון חדש ושמור אותו, או בנה אחד מראש.':
@@ -195,7 +200,11 @@ const KEEP = new Set([
 
 const HEB = '֐-׿';
 const bounded = (w) =>
-  new RegExp('(^|(?<=[.,:!?—–\-] )|(?<=^ו)|(?<=[.,:!?] ו))' + w + '(?![' + HEB + '])', 'g');
+  /* the fourth alternative is a ו that is itself preceded by a space: a verb
+     carrying the commonest prefix in Hebrew. Without it five sentences came
+     out HALF turned - קבעי שעה קבועה, ותקבל תזכורת - and the check could not
+     see them either, for the same reason. The ו stays; only the verb changes. */
+  new RegExp('(^|(?<=[.,:!?—–\-] )|(?<=^ו)|(?<=[.,:!?] ו)|(?<=[ ]ו))' + w + '(?![' + HEB + '])', 'g');
 const RULES = Object.keys(W)
   .sort((a, b) => b.length - a.length)          // longest first: שאתה before אתה
   .map((w) => [bounded(w), '$1' + W[w]]);

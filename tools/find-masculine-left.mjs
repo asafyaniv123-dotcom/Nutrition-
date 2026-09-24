@@ -73,7 +73,13 @@ const W = [
   'מרגיש','נמצא','יכול','צריך','חושב','מתאמן','אוהב','זוכר','מוכן','בטוח','עייף',
   'שורף','קורא','לוקח','אוכל','הולך','עובד','לומד','מחפש','בוחר','כותב',
 ];
-const RE = new RegExp('(^|[^' + HEB + '])(' + W.join('|') + ')(?![' + HEB + '])');
+/* THE ו IS PART OF THE BOUNDARY, NOT PART OF THE WORD.
+   ו is the commonest prefix in Hebrew and it hid a half-turned sentence in
+   plain sight: the reminder card reads "קבעי שעה קבועה, ותקבל תזכורת" -
+   קבע turned and ותקבל did not - and the first version of this line asked for
+   a NON-Hebrew character in front of the word, which the ו is not. One
+   optional ו after the boundary is the whole fix. */
+const RE = new RegExp('(^|[^' + HEB + '])ו?(' + W.join('|') + ')(?![' + HEB + '])');
 
 /* Not the app talking to her. Each one is here for a reason that has to hold
    up on its own, because a list is the thing that rots.
@@ -114,6 +120,10 @@ const ALLOW = new Set([
   'תרגיל שלא מרגיש נכון אחרי שתי ניסיונות — החלף אותו היום ותברר אחר כך.',
   'כתוב לפחות מספר אחד.',                                       /* מספר = a number */
   'לאן הולך הזמן',
+  /* מלא here is the ADJECTIVE - full width - not the imperative "fill".
+     It only became visible when the boundary learned to read past a ו, and
+     it is the one false positive that cost. */
+  'החזק את הברקוד בתוך המסגרת, קרוב ומלא רוחב',
   'בוקר מלא באנרגיה',
   'גיבוי מלא עם התמונות',
   'עדיף אימון קצר שהיה מאשר אימון מלא שלא.',

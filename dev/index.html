@@ -4357,6 +4357,28 @@ body.night .tb-j{background:rgba(255,255,255,.07);color:#8f86ae;border-color:rgb
 .vb-empty{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:none;border:none;cursor:pointer;color:var(--muted);font-family:inherit}
 .vb-add{background:linear-gradient(135deg,var(--violet-100),var(--violet-200));border:1.5px dashed var(--violet-500);border-radius:12px;padding:7px 14px;font-size:11px;font-weight:700;color:var(--violet-500);cursor:pointer;font-family:inherit}
 .vb-hint{text-align:center;font-size:9px;color:var(--muted-soft);margin-top:10px;line-height:1.6}
+/* ── THE EVENING REMINDER ──
+   The last thing the door asks is when to remind her to stop, so this is the
+   next thing the app will say to her without being asked. It floats over
+   whatever is open, on the body, so it declares its own tokens the way the
+   yes/no sheet does - and the action under it carries the lamp. */
+.srb{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+  --nu-shade-soft:rgba(176,168,156,.28);--nu-ink:#4a453f;--nu-muted:#6d675e;--nu-amber:#f0a92e;
+  pointer-events:auto;width:100%;max-width:420px;display:flex;align-items:center;gap:10px;
+  border-radius:20px;padding:13px 14px;background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 22px rgba(120,110,98,.30)}
+.srb-moon{font-size:20px;flex-shrink:0;filter:grayscale(.35)}
+.srb-t{flex:1;font-size:13px;font-weight:700;line-height:1.5;color:var(--nu-ink)}
+.srb-go{position:relative;background:var(--nu-ground);color:var(--nu-ink);border:none;
+  border-radius:13px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer;
+  flex-shrink:0;font-family:inherit;
+  box-shadow:-3px -3px 6px var(--nu-lit),3px 4px 8px var(--nu-shade-soft)}
+.srb-go::after{content:"";position:absolute;left:50%;transform:translateX(-50%);
+  width:min(62%,54px);bottom:-4px;height:2px;border-radius:2px;background:var(--nu-amber);
+  box-shadow:0 0 8px 2px rgba(240,169,46,.6)}
+.srb-x{background:none;border:none;color:var(--nu-muted);font-size:19px;cursor:pointer;
+  padding:0 2px;flex-shrink:0;font-family:inherit}
+
 /* ── THE REFLECTION'S TIMELINE, AND THE SCORE ON A PAST DAY ──
    Four places the source still named the old palette, all behind conditions
    the paint sweep never drew: the timeline is a question only some evenings
@@ -20610,9 +20632,19 @@ function deleteHabitGoal(idx){
 // Universal reminder engine: OS notification where the browser supports it,
 // in-app banner everywhere else. Runs while the app is open or in a live tab.
 var SUMREM_KEY='sum_reminder';
-// Wording of the daily nudge - shown in the OS notification and the in-app banner alike.
-var SUMREM_MSG_TITLE='Daily reflection';
-var SUMREM_MSG="It's time for your daily reflection";
+/* Wording of the daily nudge - shown in the OS notification and the in-app
+   banner alike. FUNCTIONS, not constants: a top-level var holding a call to
+   the translator is
+   evaluated while the page is still booting, before a dictionary has been
+   fetched, and answers Hebrew for the life of the tab - which is what
+   find-frozen-translations exists to catch. Asked at the moment of sending,
+   they follow both the language and the voice.
+
+   They used to be English string literals, in an app where every other
+   sentence goes through _t, and the notification the door promises at 21:00
+   arrived on a Hebrew screen reading "It's time for your daily reflection". */
+function sumRemTitle(){return _t('תזכורת לסיכום יום');}
+function sumRemMsg(){return _t('עוד לא עצרת לסכם את היום.');}
 
 function loadSumRem(){try{var x=localStorage.getItem(SUMREM_KEY);var o=x?JSON.parse(x):null;if(!o)return{on:false,time:'21:00',last:''};return{on:!!o.on,time:o.time||'21:00',last:o.last||''};}catch(e){return{on:false,time:'21:00',last:''};}}
 function saveSumRem(o){try{localStorage.setItem(SUMREM_KEY,JSON.stringify(o));}catch(e){}}
@@ -20655,11 +20687,11 @@ function sumRemBanner(msg){
   var d=document.createElement('div');
   d.id='sumrem-banner';
   d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:900;display:flex;justify-content:center;padding:10px 12px;pointer-events:none';
-  d.innerHTML='<div style="pointer-events:auto;background:linear-gradient(135deg,var(--violet-300),var(--violet-500));color:var(--white);border-radius:18px;padding:12px 14px;box-shadow:0 8px 28px rgba(74,67,64,.28);width:100%;max-width:420px;display:flex;align-items:center;gap:10px">'+
-    '<span style="font-size:20px;flex-shrink:0">&#x1F319;</span>'+
-    '<div style="flex:1;font-size:13px;font-weight:700;line-height:1.5">'+esc(msg)+'</div>'+
-    '<button onclick="sumRemGo()" style="background:var(--card);color:var(--violet-500);border:none;border-radius:11px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0">'+_t('סיכום')+'</button>'+
-    '<button onclick="sumRemDismiss()" style="background:none;border:none;color:rgba(255,255,255,.85);font-size:19px;cursor:pointer;padding:0 2px;flex-shrink:0">&times;</button>'+
+  d.innerHTML='<div class="srb">'+
+    '<span class="srb-moon">&#x1F319;</span>'+
+    '<div class="srb-t">'+esc(msg)+'</div>'+
+    '<button class="srb-go" onclick="sumRemGo()">'+_t('סיכום')+'</button>'+
+    '<button class="srb-x" onclick="sumRemDismiss()">&times;</button>'+
   '</div>';
   document.body.appendChild(d);
 }
@@ -20669,8 +20701,8 @@ function sumRemGo(){sumRemDismiss();enterModule('endofday');window.scrollTo(0,0)
 function sumRemFire(){
   var o=loadSumRem();
   o.last=todayStr();saveSumRem(o);
-  sumRemShowOS(SUMREM_MSG_TITLE,SUMREM_MSG);
-  if(!document.hidden)sumRemBanner(SUMREM_MSG);
+  sumRemShowOS(sumRemTitle(),sumRemMsg());
+  if(!document.hidden)sumRemBanner(sumRemMsg());
   renderSumRem();
 }
 
@@ -20794,8 +20826,11 @@ function sumRemAsk(){
 }
 
 function sumRemTest(){
-  var ok=sumRemShowOS(SUMREM_MSG_TITLE,SUMREM_MSG);
-  sumRemBanner(SUMREM_MSG+(ok?'':' (in-app only)'));
+  var ok=sumRemShowOS(sumRemTitle(),sumRemMsg());
+  sumRemBanner(sumRemMsg());
+  /* it used to glue " (in-app only)" onto the sentence, in English and as a
+     fragment. What it actually means has its own sentence already. */
+  if(!ok)showToast(''+_t('הדפדפן הזה לא תומך בהתראות מערכת. התזכורת תוצג בתוך האפליקציה.')+'');
 }
 
 function renderSumRem(){

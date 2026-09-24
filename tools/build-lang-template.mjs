@@ -12,6 +12,12 @@
  * strings says so rather than leaving them to be discovered by a blank screen.
  * A plural key - one whose value in HE is an object - is emitted with the
  * categories the target locale needs, not the ones Hebrew happens to use.
+  *
+ * IT READS COMMENTS TOO. The scan is a regular expression over the whole
+ * file, so a comment that contains the characters _t('…') hands over a key
+ * - and a lone ellipsis duly appeared in the template, unanswered in ten
+ * languages, from a sentence explaining why something should not be a
+ * constant. Write about the translator without spelling its call.
  */
 import fs from 'fs';
 
