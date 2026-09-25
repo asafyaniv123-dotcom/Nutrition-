@@ -23163,6 +23163,15 @@ function jrnlFlush(){
   var el=document.getElementById('jrnl-text');
   if(el&&_jrnlDate)saveJournal(_jrnlDate,el.value);
 }
+/* The journal saves itself 450ms after the last keystroke, which is almost
+   always enough - but if the screen locks inside that window the timeout never
+   runs and the last sentence is gone. jrnlFlush cancels the timer and writes
+   at once, and it already guards on the box being there, so the page going
+   away is simply another reason to call it. Same seam as the reflection, one
+   window narrower. */
+document.addEventListener('visibilitychange',function(){if(document.hidden)try{jrnlFlush();}catch(e){}});
+window.addEventListener('pagehide',function(){try{jrnlFlush();}catch(e){}});
+
 function jrnlGo(d){jrnlFlush();_jrnlDate=d;_jrnlQ='';renderJournal();window.scrollTo(0,0);}
 function jrnlShift(n){
   jrnlFlush();
