@@ -10,11 +10,17 @@
    Deliberately no caching while we iterate: a stale cache on a single-file
    app is far more painful than a network round-trip. */
 
-// Kept in sync with SUMREM_MSG / SUMREM_MSG_TITLE in index.html. Duplicated
-// rather than imported because pushes carry no payload: the text has to
-// already be here when the server wakes this worker.
-var MSG_TITLE = 'Daily reflection';
-var MSG_BODY = "It's time for your daily reflection";
+// THE FALLBACK ONLY. The real sentence comes from the page, which stashes it
+// in the sumrem-config cache when it subscribes - already translated and
+// already in the voice the reader chose, neither of which this worker can
+// work out for itself. These two are what shows if that cache is empty or
+// unreadable, and they are the app's own English rather than a third wording.
+//
+// They were the ONLY text here until 25 September, so the notification that
+// arrives with the app closed - the whole point of a push - was in English on
+// every screen in every language.
+var MSG_TITLE = 'Reminder to close the day';
+var MSG_BODY = "You haven't stopped to close the day yet.";
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();
@@ -31,20 +37,31 @@ self.addEventListener('fetch', function (e) {
 
 self.addEventListener('push', function (e) {
   // Payload-less by design; if one ever arrives, prefer it.
-  var body = MSG_BODY;
+  var pushed = null;
   if (e.data) {
-    try { body = e.data.text() || MSG_BODY; } catch (err) {}
+    try { pushed = e.data.text() || null; } catch (err) {}
   }
   // iOS revokes push permission from a web app that receives a push without
-  // showing a notification, so this must always resolve to a visible one.
+  // showing a notification, so EVERY path below ends in one - including the
+  // one where the cache cannot be read at all.
   e.waitUntil(
-    self.registration.showNotification(MSG_TITLE, {
-      body: body,
-      icon: 'assets/logo.png',
-      badge: 'assets/logo.png',
-      tag: 'sumrem',
-      renotify: true,
-    })
+    (async function () {
+      var title = MSG_TITLE, body = pushed || MSG_BODY;
+      try {
+        // the page left the sentence here when it subscribed: already in the
+        // reader's language, and already in the voice she chose
+        var cfg = await readConfig();
+        if (cfg && cfg.title) title = cfg.title;
+        if (!pushed && cfg && cfg.body) body = cfg.body;
+      } catch (err) {}
+      return self.registration.showNotification(title, {
+        body: body,
+        icon: 'assets/logo.png',
+        badge: 'assets/logo.png',
+        tag: 'sumrem',
+        renotify: true,
+      });
+    })()
   );
 });
 
