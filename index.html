@@ -28268,7 +28268,25 @@ function doorAreas(){
 function doorRemind(time){
   var o=loadSumRem();
   if(time){o.on=true;o.time=time;}else{o.on=false;}
+  /* Chosen after the hour has already passed means tomorrow, not now - without
+     this, answering the door at 22:00 and picking 21:00 fires the reminder
+     onto the first screen she is ever shown. sumRemToggle has always guarded
+     this; the door did not. */
+  o.last=(o.on&&nowHHMM()>=o.time)?todayStr():'';
   saveSumRem(o);
+  /* AND IT HAS TO BE REGISTERED, or the sentence above this question is not
+     true. The door used to write the time and walk on: no permission asked,
+     no subscription on the server, so at 21:00 nothing reached her unless the
+     app happened to be open. Her tap is the gesture the browser needs, and it
+     comes straight after the line explaining why. */
+  if(o.on){
+    try{
+      if(('Notification' in window)&&Notification.permission==='default')sumRemAsk();
+      else if(typeof sumRemPushSync==='function')sumRemPushSync();
+    }catch(e){}
+  }else{
+    try{if(typeof sumRemPushSync==='function')sumRemPushSync();}catch(e){}
+  }
   doorNext();
 }
 function doorFinish(){
