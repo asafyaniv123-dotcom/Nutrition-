@@ -20823,11 +20823,24 @@ function pushStashConfig(o){
   if(!('caches' in window))return;
   try{
     caches.open('sumrem-config').then(function(c){
-      c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ()}),
+      /* the WORDS travel with it. A push carries no payload, so the text has
+         to be inside the service worker when it wakes - and the worker has no
+         dictionary and no idea who it is speaking to. This is the only place
+         that knows both, so it says the sentence here. */
+      c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ(),
+        title:sumRemTitle(),body:sumRemMsg()}),
         {headers:{'Content-Type':'application/json'}}));
     });
   }catch(e){}
 }
+
+/* The sentence is STORED, so it has to be stored again whenever the language
+   or the voice changes - otherwise the notification that arrives at 21:00 keeps
+   speaking the language she left, and keeps addressing her the way she used to
+   be addressed. langApply runs these on both, which is why one hook covers it. */
+langOn(function(){
+  try{var o=loadSumRem();if(o&&o.on)pushStashConfig(o);}catch(e){}
+});
 
 function sumRemPushSync(){
   var o=loadSumRem();
