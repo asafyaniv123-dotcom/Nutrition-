@@ -25496,7 +25496,7 @@ function deleteLibraryBook(idx){
 function openBookQuote(){
   var ov=document.getElementById('book-quote-overlay');
   if(ov)ov.style.display='flex';
-  document.body.classList.add('sheet-open');
+  document.body.classList.add('sheet-open');_bkSheetMine=true;
 }
 function closeBookQuote(){
   var ov=document.getElementById('book-quote-overlay');
@@ -25506,11 +25506,19 @@ function closeBookQuote(){
 /* Two sheets share the class, and renderBookWidget rebuilds both every time
    it draws - so "is one still open" is asked of the DOM rather than kept in a
    flag that a rebuild would leave stale. */
+/* Eight places set body.sheet-open, so clearing it because OUR sheet is shut
+   would pull it out from under somebody else's - and this runs at the end of
+   every draw of the widget. It remembers whether it was us, which needs no
+   list of the other seven. */
+var _bkSheetMine=false;
 function bkSheetSync(){
   var a=document.getElementById('book-edit-overlay'),
       b=document.getElementById('book-quote-overlay');
   var up=(a&&a.style.display==='flex')||(b&&b.style.display==='flex');
-  if(!up)document.body.classList.remove('sheet-open');
+  if(up)return;
+  if(!_bkSheetMine)return;
+  _bkSheetMine=false;
+  document.body.classList.remove('sheet-open');
 }
 function saveBookQuote(){
   var txt=document.getElementById('book-quote-text');
@@ -25556,7 +25564,7 @@ function onBookPageChange(val){
 function openBookEdit(){
   var ov=document.getElementById('book-edit-overlay');
   if(ov)ov.style.display='flex';
-  document.body.classList.add('sheet-open');
+  document.body.classList.add('sheet-open');_bkSheetMine=true;
 }
 function closeBookEdit(){
   var ov=document.getElementById('book-edit-overlay');
@@ -25858,14 +25866,16 @@ function vbOpenText(id){
   ov.style.display='flex';
   /* the bar goes, or it is drawn over שמירה - #me-screen is a z-index:1
      stacking context and flattens this sheet's 200 along with everything
-     else inside it */
-  document.body.classList.add('sheet-open');
+     else inside it. Remembered, because eight places share this class and
+     closing ours must not clear somebody else's. */
+  document.body.classList.add('sheet-open');_vbSheetMine=true;
   if(inp&&inp.focus)setTimeout(function(){inp.focus();},60);
 }
 
+var _vbSheetMine=false;
 function vbCloseText(){
   var ov=document.getElementById('vb-text-overlay');if(ov)ov.style.display='none';
-  document.body.classList.remove('sheet-open');
+  if(_vbSheetMine){_vbSheetMine=false;document.body.classList.remove('sheet-open');}
   _vbEditId=null;
 }
 
@@ -29667,8 +29677,16 @@ function tbSync(){
     '<div id="trip-toggle-strip" style="width:100%;max-width:380px;margin-top:16px"></div>'+
     '<div class="home-date" id="home-date"></div>'+
 
-    '<div id="home-sumrem" style="width:100%;max-width:380px;margin-top:16px"></div>'+
-'<div id="home-backup" style="width:100%;max-width:380px;margin-bottom:20px"></div>';
+    /* The reminder card and the backup card were here. Asaf asked for both to
+       go: the reminder is set at the door now, so a second place to set it is
+       a second thing to read; and nothing should offer to take the data off
+       the phone.
+
+       The two renderers are untouched and still begin by looking for their
+       slot, so with the slots gone they return at once - no card, no sheet
+       behind it, and no code left running. renderSumRem is still called from
+       the places that write the reminder, and still does nothing. */
+    '';
   document.body.appendChild(home);
 
   var me=document.createElement('div');
