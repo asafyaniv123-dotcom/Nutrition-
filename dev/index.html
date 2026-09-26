@@ -5575,7 +5575,7 @@ function langLoad(code,cb){
        the keys whose Hebrew changes, so anything it does not answer falls
        through to the masculine text and a plural key keeps its categories. */
     if(appGender()!=='f'){_lang=HE;cb&&cb();return;}
-    fetch(appBase()+'data/he-f.json')
+    fetch(liveBase()+'data/he-f.json')
       .then(function(r){return r.json();})
       .then(function(j){
         var o={},k;
@@ -5585,7 +5585,7 @@ function langLoad(code,cb){
       },function(){_lang=HE;cb&&cb();});
     return;
   }
-  fetch(appBase()+'data/lang/'+code+'.json')
+  fetch(liveBase()+'data/lang/'+code+'.json')
     .then(function(r){return r.json();})
     .then(function(j){_lang=j;cb&&cb();},function(){_lang=null;cb&&cb();});
 }
@@ -6803,6 +6803,24 @@ function cancelLib(){pendingLib=null;render();}
 function appBase(){
   return location.pathname.replace(/[^\/]*$/,'').replace(/(^|\/)dev\/$/,'$1');
 }
+/* ── WHERE THE DATA COMES FROM ──
+   appBase() strips "/dev/", which is right for finding the site root and was
+   wrong for everything we fetch: both copies read data/, assets/ and vendor/
+   from that root, so a language file edited for a dev experiment was live on
+   the stable app the moment Pages built - no release, no diff, no way back.
+
+   The app itself never had that problem, because it is two files. This gives
+   the data the same shape: dev reads the working copy, and the stable app
+   reads a snapshot that only release.sh writes. Decided at runtime from the
+   path, like PUSH_SERVER and the DEV badge, so the two copies of this file
+   stay byte-identical.
+
+   One directory instead of data-stable/ + assets-stable/ + vendor-stable/:
+   three parallel names are three chances to forget one. The tools are
+   untouched - they read data/, which is still the working copy. */
+function liveBase(){
+  return appBase()+(window.__DEV__?'':'stable/');
+}
 /* ── HOW YOU COUNT A FOOD ──
    Everything here is stored per 100 g, which is the right way to store it and
    the wrong way to be asked about it. Nobody weighs a bread roll. Asking
@@ -6926,7 +6944,7 @@ function foodsLoad(then){
   if(_foodsState==='ready'){then();return;}
   if(_foodsState==='loading')return;
   _foodsState='loading';fdbPaint();
-  var base=appBase();
+  var base=liveBase();
   Promise.all(FOOD_FILES.map(function(f,idx){
     return fetch(base+f)
       .then(function(r){return r.ok?r.json():null;})
@@ -7368,7 +7386,7 @@ function scanLibLoad(){
   _scanLib=new Promise(function(res,rej){
     if(window.Html5Qrcode){res();return;}
     var s=document.createElement('script');
-    s.src=appBase()+'vendor/html5-qrcode.min.js';
+    s.src=liveBase()+'vendor/html5-qrcode.min.js';
     s.onload=function(){window.Html5Qrcode?res():rej(new Error('loaded but empty'));};
     s.onerror=function(){rej(new Error('script failed'));};
     document.head.appendChild(s);
@@ -12723,7 +12741,7 @@ function sndToggle(){
 var _sndEls={};
 function sndEl(name){
   if(_sndEls[name])return _sndEls[name];
-  var a=new Audio(appBase()+'assets/'+name);
+  var a=new Audio(liveBase()+'assets/'+name);
   a.preload='auto';
   _sndEls[name]=a;
   return a;
@@ -18491,7 +18509,7 @@ function exLoad(cb){
   if(_exState==='ready')return cb&&cb();
   if(_exState==='loading'){setTimeout(function(){exLoad(cb);},120);return;}
   _exState='loading';
-  fetch(appBase()+'data/exercises.json').then(function(r){return r.json();}).then(function(j){
+  fetch(liveBase()+'data/exercises.json').then(function(r){return r.json();}).then(function(j){
     _exDB=j;_exState='ready';
     /* Whatever is on the screen was drawn while exLabel could only fall
        back to the stored Hebrew id. It is translatable now, so redraw it -

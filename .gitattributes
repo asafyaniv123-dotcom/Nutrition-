@@ -1,0 +1,24 @@
+# The snapshot has to stay byte-identical to the working copy.
+#
+# release.sh compares data/ with stable/data/ and refuses to be quiet when they
+# differ - that comparison is the whole guarantee that nothing reaches her
+# without a release. core.autocrlf is true here and there was no .gitattributes,
+# so a fresh clone checks both trees out as CRLF, and then the first tool that
+# rewrites a language file (node writes LF) leaves data/ as LF and stable/ as
+# CRLF. Every file then "differs", the release cries wolf on twelve untouched
+# dictionaries, and a guard that cries wolf is a guard that gets ignored.
+#
+# Pinning them to LF keeps checkout and the tools agreeing. The blobs are
+# already stored LF, so nothing is re-normalized by adding this.
+data/**/*.json        text eol=lf
+data/**/*.csv         text eol=lf
+data/**/*.md          text eol=lf
+stable/data/**/*.json text eol=lf
+stable/data/**/*.csv  text eol=lf
+stable/data/**/*.md   text eol=lf
+
+# Sounds and images are compared the same way, and must never be touched at all.
+stable/assets/**      binary
+assets/**             binary
+stable/vendor/**      binary
+vendor/**             binary
