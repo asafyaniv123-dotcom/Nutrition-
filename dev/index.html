@@ -20819,10 +20819,16 @@ function localTZ(){
 }
 
 // The service worker cannot read localStorage, so leave it what a resubscribe needs.
+/* Cache Storage is per ORIGIN, and the two copies share one - so without a
+   namespace dev writes the config the stable app's service worker reads, and
+   hands it a blank server and whatever hour was typed into a test. The
+   localStorage shim already does this for keys; this is the same idea for the
+   one cache we keep. */
+var SUMREM_CACHE=window.__DEV__?'dev:sumrem-config':'sumrem-config';
 function pushStashConfig(o){
   if(!('caches' in window))return;
   try{
-    caches.open('sumrem-config').then(function(c){
+    caches.open(SUMREM_CACHE).then(function(c){
       /* the WORDS travel with it. A push carries no payload, so the text has
          to be inside the service worker when it wakes - and the worker has no
          dictionary and no idea who it is speaking to. This is the only place

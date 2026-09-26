@@ -104,9 +104,15 @@ self.addEventListener('pushsubscriptionchange', function (e) {
 });
 
 // The page stashes what the resubscribe needs, since the SW cannot read localStorage.
+// Both copies share an origin, so the cache needs the same namespace the page
+// gives it. There is no window and no __DEV__ here, so the worker asks its own
+// path - which is what keeps the two copies of this file byte-identical.
+var SUMREM_CACHE = /\/dev\//.test(self.location.pathname)
+  ? 'dev:sumrem-config' : 'sumrem-config';
+
 async function readConfig() {
   try {
-    var cache = await caches.open('sumrem-config');
+    var cache = await caches.open(SUMREM_CACHE);
     var res = await cache.match('config');
     return res ? await res.json() : null;
   } catch (err) {
