@@ -12,7 +12,25 @@ Two published copies of the same app, both served by GitHub Pages from `main`:
 **Edit `dev/index.html`, never `index.html`.** The root copy is the app being
 used for real; it changes only through a release. When the user is happy with
 dev, `./release.sh` shows the diff and `./release.sh --go` copies
-`dev/index.html` + `dev/sw.js` to the root and commits.
+`dev/index.html` + `dev/sw.js` to the root, refreshes `stable/`, and commits.
+
+**And `data/` is not the app's data — `stable/data/` is.** For a long time it
+was: `appBase()` strips `/dev/`, so *both* copies fetched `data/`, `assets/`
+and `vendor/` from the root, and a language file edited for a dev experiment
+was on her phone the moment Pages built — no release, no diff, no way back.
+Since 1 September `data/lang` alone changed in 191 commits. So the data now has
+the shape the app always had: `liveBase()` sends dev to the working copy and
+the stable app to `stable/`, a snapshot only `release.sh` writes. **The twelve
+tools are unchanged — they read `data/`, which is still where you edit.** One
+snapshot directory rather than `data-stable/` + `assets-stable/` +
+`vendor-stable/`, because three parallel names are three chances to forget one.
+
+Two consequences worth keeping in mind. A release's dry run now *names* every
+data file that would start reaching her, which is the half it used to be blind
+to. And `.gitattributes` pins both trees to LF: `core.autocrlf` is true here,
+so without it a fresh clone checks both out as CRLF, the first tool to rewrite
+a dictionary leaves `data/` as LF, and the release then cries wolf on twelve
+untouched files — a guard that cries wolf is a guard that gets ignored.
 
 The two `index.html` files are byte-identical by design, so a release is a plain
 copy with nothing to merge. Everything dev-specific is decided at runtime from
@@ -24,11 +42,23 @@ the `/dev/` path:
   the console re-copies the real data over the sandbox.
 - `PUSH_SERVER` is blank in dev, so only the stable app subscribes to the daily
   push - otherwise the phone would get two notifications every evening.
+- `liveBase()` answers `stable/` for the stable app and the working copy for
+  dev. `sw.js` makes the same decision from `self.location.pathname` (`IS_DEV`),
+  which is what lets both copies of it stay byte-identical.
+- `SUMREM_CACHE` namespaces the one Cache Storage entry. **Cache Storage is per
+  ORIGIN, not per path**, so before this dev wrote the config the stable app's
+  service worker reads — handing it a blank server, which makes
+  `pushsubscriptionchange` return early and the reminder stop arriving one day
+  with no visible cause. Storage is per device, so this never reached her; it
+  reached every device that opened both, which is every device we test on.
 - a small `DEV` badge sits in the top-left corner.
 
 `manifest.json` and `dev/manifest.json` differ (different app name and theme
 colour) and are *not* copied by a release - that difference is what makes the
-phone install them as two separate icons.
+phone install them as two separate icons. Because they are never copied, the
+stable one points at `stable/assets/logo.png` directly; dev's points at its own
+`dev/assets/`. Both were found on the wire, not by reading, and they are the
+reason the rule has no exception list: an exception list is what rots.
 
 ## How we work
 
