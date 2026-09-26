@@ -356,7 +356,23 @@
          screen again and the finding would be a duplicate */
       if (after && Math.abs(after.innerHTML.length - html) < 40) continue;
       pressed++;
-      var res = await window.__sweep();
+      /* LOOK CHEAPLY FIRST. A full __sweep scrolls up to 24 folds with a
+         260ms settle on each, and the screen it lands on is often a sheet
+         whose scrollHeight is the whole document behind it - so one press
+         could cost minutes. A crawl of twenty controls then never finishes,
+         and an unfinished crawl reports nothing at all: the 150-second run
+         that motivated this pressed ONE control of twenty-seven.
+
+         So: one viewport scan per press, which is milliseconds, and the full
+         sweep only when that first look is not clean. The screens this is
+         walking are mostly clean now, so the expensive read is the exception
+         rather than the rule. A finding that sits below the first fold still
+         gets a full sweep, because the viewport scan that found its
+         neighbours triggers one. What is genuinely lost is a screen whose
+         ONLY defect is below the fold - recorded here rather than hidden,
+         and __sweep is still the tool to point at a named screen. */
+      var quick = window.__scan();
+      var res = quick.clean === false || quick.blind ? await window.__sweep() : quick;
       if (!res.clean) found.push({ via: labels[i], white: res.white, old: res.old, low: res.low });
       /* Back to where we started. NOT history.back(): this is one page, and
          the first version of this walked the browser straight out of the app
