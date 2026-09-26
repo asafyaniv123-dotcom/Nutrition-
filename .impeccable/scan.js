@@ -23,7 +23,23 @@
    and the DEV badge, which is never on her screen. */
 (function () {
   var SKIP = /ar-ic|areas-|cdisc|cpetal|chub-ic|macro-|rf-card|rf-board|ins-cat|ins-row|ins-ic|wk-swatch|tube|wtube/;
+  /* THE OLD PALETTE, AS A SURFACE. Every violet, terracotta and green that
+     was chosen to be FILLED with. A background, a border or a stroke in one
+     of these is still the old world. */
   var OLD = /166, 144, 207|201, 188, 224|232, 223, 245|240, 234, 250|247, 242, 251|107, 90, 146|224, 138, 114|243, 185, 168|224, 196, 187|143, 199, 158/;
+  /* AND THE SAME PALETTE, AS TEXT - which is not the same question.
+     --violet-700 (107,90,146) and --terra-700 (152,73,44) exist for exactly
+     one purpose, spelled out in the file above them: "readable as text". They
+     are where the 140 fills-read-as-text were sent, deliberately, because
+     several of them are the MACRO figures and violet IS calories. Reporting
+     them forever as "old palette" is a detector that cries wolf on its own
+     fix - eight .fdb-rk calorie figures on one food search - and a check that
+     always fires is a check that stops being read.
+
+     So text is asked the narrower question. A -700 as a BACKGROUND is still
+     caught, by OLD above, because a colour chosen to be read is not a colour
+     to be filled with either. */
+  var OLD_TEXT = /166, 144, 207|201, 188, 224|232, 223, 245|240, 234, 250|247, 242, 251|224, 138, 114|243, 185, 168|224, 196, 187|143, 199, 158/;
 
   function P(c) {
     var m = String(c).match(/rgba?\(([^)]+)\)/); if (!m) return null;
@@ -211,8 +227,17 @@
       if (cs.backgroundColor === 'rgb(255, 255, 255)' && r.width > 40 && r.height > 20)
         white.push(cl.slice(0, 22) || el.tagName.toLowerCase());
 
-      if (OLD.test(cs.backgroundColor) || OLD.test(cs.color) ||
-          OLD.test(cs.backgroundImage || '') || OLD.test(cs.borderTopColor) || OLD.test(cs.stroke || ''))
+      /* A BORDER COLOUR ON AN ELEMENT WITH NO BORDER IS NOT A COLOUR.
+         border-color defaults to currentColor, so getComputedStyle answers
+         with the TEXT colour for every element that never set a border - and
+         the check then reported eight calorie figures as an old-palette
+         border. Ask the width first. Same for a stroke: an SVG with
+         stroke:none still answers a colour. */
+      var bw = parseFloat(cs.borderTopWidth) || parseFloat(cs.borderInlineStartWidth) || 0;
+      var borderOld = bw > 0 && (OLD.test(cs.borderTopColor) || OLD.test(cs.borderInlineStartColor || ''));
+      var strokeOld = cs.stroke && cs.stroke !== 'none' && OLD.test(cs.stroke);
+      if (OLD.test(cs.backgroundColor) || OLD_TEXT.test(cs.color) ||
+          OLD.test(cs.backgroundImage || '') || borderOld || strokeOld)
         old.push((cl.slice(0, 22) || el.tagName.toLowerCase()) + ' «' + (el.textContent || '').trim().slice(0, 10) + '»');
 
       var t = '';
@@ -283,6 +308,23 @@
          an ancestor that clips. The chart's target label had one (the svg is
          overflow:hidden) and lost its last digit; these have none and lose
          nothing. */
+      /* AN ELLIPSIS IS THE HANDLING, NOT THE DEFECT. A row that declares
+         text-overflow:ellipsis with nowrap is saying "a long name gets cut
+         and shows a …", which is a decision, not an accident. .fdb-rn on the
+         food search is exactly that, and it was reported for overflowing its
+         own box by 3px - which is the ellipsis doing its job. The chart label
+         this check was written for had no ellipsis and simply lost its last
+         digit; that distinction is the whole difference.
+
+         AND WHAT THIS CHECK CANNOT SEE, written down so nobody re-discovers
+         it: it measures the ELEMENT's rect, not the text's. A block child of
+         an overflow:hidden box fills that box exactly, so its rect always
+         fits while its text is cut - and the check says nothing. Planted and
+         confirmed: an inline-block whose own rect is wider is caught at 96px,
+         the same string in a plain div is not caught at all. What would find
+         the second is a Range over the text nodes, which is a different and
+         slower instrument. */
+      if (cs.textOverflow === 'ellipsis' && /nowrap/.test(cs.whiteSpace)) continue;
       var clipper = null, up = el;
       for (var cd = 0; cd < 4 && up && up !== document.documentElement; cd++) {
         var ucs = getComputedStyle(up);
