@@ -140,6 +140,26 @@
       if (r.right < 0 || r.left > innerWidth || r.bottom < 0 || r.top > innerHeight) continue;
       cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
+      /* A THING BEHIND SOMETHING ELSE IS NOT ON THE SCREEN. Two findings kept
+         coming back and neither was real: "Better Me" at 1.25:1, which is the
+         home logo still in the layout under an area's full-screen splash, and
+         the tab bar's "Me" at 1.73:1 whenever a sheet's dimmed overlay is over
+         it. Both are perfectly fine where a person can see them; the only
+         reason they measure badly is that the scanner was reading a colour
+         nobody is looking at.
+
+         elementFromPoint at the middle asks the browser the question directly
+         - WHAT IS ON TOP HERE - and a hit that is neither this element nor
+         inside it means something covers it. Cheaper and more honest than a
+         z-index walk, and it costs one hit test per visible element. The
+         centre can fall outside the viewport for a tall element, so it is
+         clamped; a null answer (off-screen, or a point with nothing in it) is
+         not treated as covered, because "I could not tell" must never read as
+         "skip it". */
+      var cx = Math.min(Math.max(r.left + r.width / 2, 1), innerWidth - 1);
+      var cy = Math.min(Math.max(r.top + r.height / 2, 1), innerHeight - 1);
+      var top = document.elementFromPoint(cx, cy);
+      if (top && top !== el && !el.contains(top) && !top.contains(el)) continue;
       /* A THING MID-ANIMATION IS NOT A THING TO MEASURE. The area splash
          lands one word at a time - .ps-w is opacity:0 with a staggered
          ps-word animation - and a sweep that arrives during it reads five
