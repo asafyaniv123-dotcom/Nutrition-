@@ -366,6 +366,51 @@ if (HOLE.length) {
       " + _t('" + f.key + "')");
 }
 
+/* ── A KEY THAT STOPS AT A PREPOSITION AND HANDS OVER THE REST ──
+
+   The mirror of HOLE, directly above. That one finds a value glued in FRONT
+   of a key that has a hole; this one finds a key with NO hole followed by a
+   raw value:
+
+       _t('✓ נקבע ל-') + v              the reminder hour, confirmed back
+       _t('אזכיר לך ב-') + dpFmt(due)   the planner
+       _t('יוצא ב־') + o.exportedAt     a backup's stamp
+
+   All three were live, and the PAIR rule at the top of this file could not
+   see any of them, because what follows the plus is a VARIABLE rather than a
+   second _t(). It only ever looked for fragment + fragment.
+
+   Two harms travel together here, which is why it is worth its own rule. The
+   translator is handed "Set for" with nowhere to put the time and no way to
+   reach a word order that puts it first - Japanese wanted {time}に設定しました
+   and could not say it. And the value arrives raw: fmtClock had existed all
+   along, its own comment reading "Never shown raw", while an Arabic reader
+   was shown 21:00 in Latin digits and an American reader 21:00 rather than
+   9:00 PM. The export stamp was a bare ISO 2026-09-26.
+
+   Against the revision that has the bug it finds 3; against the fix, 0.
+
+   Narrowed three ways, each so it reports a defect rather than a habit:
+   1. A tail that is itself a _t() is the PAIR rule's ground, at the top.
+   2. A key that already has a hole is fine - the hole is the whole point.
+   3. The tail must be an identifier or a call. A string literal after the
+      plus is markup ('</div>') or punctuation, not a sentence continuing. */
+const TAIL = [];
+const TAIL_RE =
+  /_t\((['"])((?:(?!\1).)*)\1\s*\)\s*\+\s*(?:(['"])\3\s*\+\s*)?([A-Za-z_$][\w.$]*(?:\([^()]*\))?)/g;
+for (const m of app.matchAll(TAIL_RE)) {
+  const key = m[2], tail = m[4];
+  if (key.indexOf('{') >= 0) continue;        // it has a hole: nothing is glued on
+  if (/^_t\b/.test(tail)) continue;           // two fragments: the pair rule's
+  TAIL.push({ line: app.slice(0, m.index).split(LF).length, key, tail });
+}
+if (TAIL.length) {
+  console.log('');
+  console.log('a key that hands the rest of its sentence to a value: ' + TAIL.length);
+  for (const f of TAIL)
+    console.log('    line ' + String(f.line).padStart(6) + "  _t('" + f.key + "') + " + f.tail);
+}
+
 /* group by line so a three-part sentence shows as one finding */
 if (LONE.length) {
   console.log('');
@@ -392,4 +437,4 @@ for (const r of rows.slice(0, 22)) {
 /* This check printed its findings and exited 0, so nothing it found could
    ever fail a build - and the one finding it always had, a worked example, is
    why. With that example no longer reported, it can say so properly. */
-if (rows.length || BR.length || LONE.length || PLU.length || CNT.length || HOLE.length) process.exit(1);
+if (rows.length || BR.length || LONE.length || PLU.length || CNT.length || HOLE.length || TAIL.length) process.exit(1);
