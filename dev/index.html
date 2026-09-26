@@ -12321,12 +12321,18 @@ function renderHistory(){
     days.push({date:s,kcal:kcal,p:p,deficit:deficit,label:fmtDayShort(dt),isToday:s===todayStr()});
   }
   var active=days.filter(function(d){return d.kcal>0;});
-  function makeSVG(series,refs,minV,maxV,h){
+  /* text-anchor is relative to the inline direction, so "end" anchors on the
+   LEFT under dir=rtl and the text grows the wrong way. It cut the last digit
+   off the chart's target label and quietly left-aligned the whole Y axis. The
+   SVG keeps its own direction so bidi text stays in order; only the side is
+   chosen. */
+function chartEndAnchor(){return document.documentElement.dir==='rtl'?'start':'end';}
+function makeSVG(series,refs,minV,maxV,h){
     var W=320,H=h||145,PL=40,PR=12,PT=14,PB=26,cW=W-PL-PR,cH=H-PT-PB;
     function xp(i){return PL+i*(cW/6);}function yp(v){return PT+cH*(1-(v-minV)/(maxV-minV));}
     var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block" xmlns="http://www.w3.org/2000/svg">';
-    for(var gi=0;gi<=4;gi++){var gv=minV+(maxV-minV)*gi/4;var gy=yp(gv);s+='<line x1="'+PL+'" y1="'+gy+'" x2="'+(PL+cW)+'" y2="'+gy+'" stroke="#f2ede6" stroke-width="1"/><text x="'+(PL-3)+'" y="'+(gy+3)+'" text-anchor="end" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(Math.round(gv))+'</text>';}
-    for(var ri=0;ri<refs.length;ri++){var r=refs[ri];if(r.v>=minV&&r.v<=maxV){var ry=yp(r.v);s+='<line x1="'+PL+'" y1="'+ry+'" x2="'+(PL+cW)+'" y2="'+ry+'" stroke="'+r.col+'" stroke-width="1.5" stroke-dasharray="5,3"/>';if(r.lbl)s+='<text x="'+(PL+cW-2)+'" y="'+(ry-3)+'" text-anchor="end" font-size="8" fill="'+r.col+'">'+r.lbl+'</text>';}}
+    for(var gi=0;gi<=4;gi++){var gv=minV+(maxV-minV)*gi/4;var gy=yp(gv);s+='<line x1="'+PL+'" y1="'+gy+'" x2="'+(PL+cW)+'" y2="'+gy+'" stroke="#f2ede6" stroke-width="1"/><text x="'+(PL-3)+'" y="'+(gy+3)+'" text-anchor="'+chartEndAnchor()+'" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(Math.round(gv))+'</text>';}
+    for(var ri=0;ri<refs.length;ri++){var r=refs[ri];if(r.v>=minV&&r.v<=maxV){var ry=yp(r.v);s+='<line x1="'+PL+'" y1="'+ry+'" x2="'+(PL+cW)+'" y2="'+ry+'" stroke="'+r.col+'" stroke-width="1.5" stroke-dasharray="5,3"/>';if(r.lbl)s+='<text x="'+(PL+cW-2)+'" y="'+(ry-3)+'" text-anchor="'+chartEndAnchor()+'" font-size="8" fill="'+r.col+'">'+r.lbl+'</text>';}}
     for(var si=0;si<series.length;si++){var ser=series[si];if(si===0&&ser.pts.length>1){var ap='M'+xp(ser.pts[0].i)+','+yp(ser.pts[0].v);for(var pi=1;pi<ser.pts.length;pi++)ap+=' L'+xp(ser.pts[pi].i)+','+yp(ser.pts[pi].v);ap+=' L'+xp(ser.pts[ser.pts.length-1].i)+','+(PT+cH)+' L'+xp(ser.pts[0].i)+','+(PT+cH)+' Z';s+='<path d="'+ap+'" fill="'+ser.col+'" opacity="0.15"/>';}if(ser.pts.length>1){var lp='M'+xp(ser.pts[0].i)+','+yp(ser.pts[0].v);for(var pi2=1;pi2<ser.pts.length;pi2++)lp+=' L'+xp(ser.pts[pi2].i)+','+yp(ser.pts[pi2].v);s+='<path d="'+lp+'" fill="none" stroke="'+ser.col+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';}for(var dp=0;dp<ser.pts.length;dp++)s+='<circle cx="'+xp(ser.pts[dp].i)+'" cy="'+yp(ser.pts[dp].v)+'" r="4" fill="'+ser.col+'" stroke="#fff" stroke-width="2"/>';}
     for(var di=0;di<days.length;di++)s+='<text x="'+xp(di)+'" y="'+(H-5)+'" text-anchor="middle" font-size="9" fill="'+(days[di].isToday?PAL.violet500:PAL.muted)+'" font-weight="'+(days[di].isToday?'700':'400')+'">'+days[di].label+'</text>';
     s+='</svg>';return s;
@@ -12367,8 +12373,8 @@ function renderHistory(){
       function xp3(i){return PL+i*(cW/n);}
       function yp3(v){return PT+cH*(1-v/maxV);}
       var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block" xmlns="http://www.w3.org/2000/svg">';
-      for(var gi2=0;gi2<=3;gi2++){var gv2=maxV*gi2/3;var gy2=yp3(gv2);s+='<line x1="'+PL+'" y1="'+gy2+'" x2="'+(PL+cW)+'" y2="'+gy2+'" stroke="#f2ede6" stroke-width="1"/><text x="'+(PL-3)+'" y="'+(gy2+3)+'" text-anchor="end" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(Math.round(gv2))+'</text>';}
-      refs.forEach(function(r){if(r.v<=maxV){var ry2=yp3(r.v);s+='<line x1="'+PL+'" y1="'+ry2+'" x2="'+(PL+cW)+'" y2="'+ry2+'" stroke="'+r.col+'" stroke-width="1.5" stroke-dasharray="5,3"/>';if(r.lbl)s+='<text x="'+(PL+cW-2)+'" y="'+(ry2-3)+'" text-anchor="end" font-size="8" fill="'+r.col+'">'+r.lbl+'</text>';}});
+      for(var gi2=0;gi2<=3;gi2++){var gv2=maxV*gi2/3;var gy2=yp3(gv2);s+='<line x1="'+PL+'" y1="'+gy2+'" x2="'+(PL+cW)+'" y2="'+gy2+'" stroke="#f2ede6" stroke-width="1"/><text x="'+(PL-3)+'" y="'+(gy2+3)+'" text-anchor="'+chartEndAnchor()+'" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(Math.round(gv2))+'</text>';}
+      refs.forEach(function(r){if(r.v<=maxV){var ry2=yp3(r.v);s+='<line x1="'+PL+'" y1="'+ry2+'" x2="'+(PL+cW)+'" y2="'+ry2+'" stroke="'+r.col+'" stroke-width="1.5" stroke-dasharray="5,3"/>';if(r.lbl)s+='<text x="'+(PL+cW-2)+'" y="'+(ry2-3)+'" text-anchor="'+chartEndAnchor()+'" font-size="8" fill="'+r.col+'">'+r.lbl+'</text>';}});
       if(pts.length>1){
         var ap2='M'+xp3(0)+','+yp3(pts[0].v);for(var pi5=1;pi5<pts.length;pi5++)ap2+=' L'+xp3(pi5)+','+yp3(pts[pi5].v);
         ap2+=' L'+xp3(pts.length-1)+','+(PT+cH)+' L'+xp3(0)+','+(PT+cH)+' Z';
@@ -20344,7 +20350,7 @@ function renderFitProgress(){
         var gv=minW+(maxW-minW)*gi/3;
         var gy=yp2(gv);
         svg+='<line x1="'+PL+'" y1="'+gy+'" x2="'+(PL+cW)+'" y2="'+gy+'" stroke="#f2ede6" stroke-width="1"/>';
-        svg+='<text x="'+(PL-3)+'" y="'+(gy+3)+'" text-anchor="end" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(Math.round(gv))+'</text>';
+        svg+='<text x="'+(PL-3)+'" y="'+(gy+3)+'" text-anchor="'+chartEndAnchor()+'" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(Math.round(gv))+'</text>';
       }
       // Area
       var aPath='M'+xp2(0)+','+yp2(wDisp[0]);
@@ -28316,7 +28322,7 @@ function meLine(id,rows,pick,col,fmt){
     s+='<circle class="me-pt" cx="'+xp(pts[i].i).toFixed(1)+'" cy="'+yp(pts[i].v).toFixed(1)+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="2" '+
        'onclick="meRead(\''+id+'\',\''+pts[i].date+'\',\''+fmt(pts[i].v)+'\')"/>';
   var lastP=pts[pts.length-1];
-  s+='<text x="'+(xp(lastP.i)-6).toFixed(1)+'" y="'+(yp(lastP.v)-9).toFixed(1)+'" text-anchor="end" font-size="10" font-weight="700" fill="'+ME_INK+'">'+fmt(lastP.v)+'</text>';
+  s+='<text x="'+(xp(lastP.i)-6).toFixed(1)+'" y="'+(yp(lastP.v)-9).toFixed(1)+'" text-anchor="'+chartEndAnchor()+'" font-size="10" font-weight="700" fill="'+ME_INK+'">'+fmt(lastP.v)+'</text>';
   for(i=0;i<rows.length;i+=Math.ceil(rows.length/7))
     s+='<text x="'+xp(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="8" fill="'+ME_MUTE+'">'+meDow(rows[i].d)+'</text>';
   s+='</svg>';
