@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>מסך טלפון</title>
+<!--
+  One phone, so a sweep measures the layout that exists.
+
+  The browser here opens at 1280x495 and the extension's resize did not reach
+  it. Sweeping at that size measures a layout nobody has: the ring spreads,
+  the drawer sits beside the content instead of over it, and every overflow
+  finding is about a screen that is not the screen. So the app runs in a frame
+  the size of her phone, same-origin, and the scanner is injected INTO the
+  frame - __sweep and __crawl then read the real geometry.
+
+  Drive it from the parent: F.go('nutrition'), F.sweep(), F.crawl().
+-->
+<style>
+  html,body{margin:0;height:100%;background:#e9e7e3;
+    font:400 13px/1.5 "Segoe UI",system-ui,sans-serif;color:#6d675e}
+  .wrap{display:flex;gap:14px;align-items:flex-start;padding:10px}
+  iframe{width:390px;height:844px;border:0;border-radius:26px;background:#e9e7e3;
+    box-shadow:-6px -6px 14px rgba(255,255,255,.95),8px 10px 22px rgba(176,168,156,.45)}
+  #log{font:11px/1.45 ui-monospace,Consolas,monospace;white-space:pre-wrap;
+    max-height:844px;overflow:auto;flex:1;min-width:0}
+</style>
+<div class="wrap">
+  <iframe id="app" src="/dev/index.html"></iframe>
+  <div id="log">…</div>
+</div>
+<script>
+var F = {
+  frame: function(){ return document.getElementById('app'); },
+  win:   function(){ return this.frame().contentWindow; },
+  log:   function(o){ document.getElementById('log').textContent =
+                        typeof o === 'string' ? o : JSON.stringify(o, null, 1); return o; },
+
+  /* a fresh load, then the splash, then the scanner injected into the frame */
+  go: async function(area){
+    var f = this.frame();
+    f.src = '/dev/index.html' + (area ? '?go=' + area : '');
+    await new Promise(function(r){ f.onload = r; });
+    await new Promise(function(r){ setTimeout(r, 3600); });
+    return await this.arm();
+  },
+  arm: async function(){
+    var w = this.win();
+    if (typeof w.__sweep === 'function') return 'already armed';
+    /* cache-busted: the scanner is edited several times a night, and arming
+       from a cached copy is how a fix to the instrument gets tested against
+       the instrument it replaced */
+    var t = await fetch('/.impeccable/scan.js?v=' + Date.now()).then(function(r){ return r.text(); });
+    var s = w.document.createElement('script');
+    s.textContent = t;
+    w.document.head.appendChild(s);
+    return typeof w.__sweep;
+  },
+  sweep: async function(){ await this.arm(); return this.log(await this.win().__sweep()); },
+  crawl: async function(n, ms){ await this.arm(); return this.log(await this.win().__crawl(n||30, ms||40000)); },
+  /* press something inside the frame by CSS selector or by visible text */
+  tap: async function(sel, wait){
+    var d = this.win().document, el = d.querySelector(sel);
+    if (!el) {
+      var all = d.querySelectorAll('button,[onclick],a,.tb,.ex-tab,.gp');
+      for (var i = 0; i < all.length; i++)
+        if ((all[i].textContent || '').trim().indexOf(sel) === 0) { el = all[i]; break; }
+    }
+    if (!el) return 'not found: ' + sel;
+    el.click();
+    await new Promise(function(r){ setTimeout(r, wait || 1400); });
+    return 'tapped ' + sel;
+  }
+};
+</script>
+</html>
