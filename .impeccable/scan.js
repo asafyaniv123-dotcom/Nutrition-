@@ -140,6 +140,24 @@
       if (r.right < 0 || r.left > innerWidth || r.bottom < 0 || r.top > innerHeight) continue;
       cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
+      /* A THING MID-ANIMATION IS NOT A THING TO MEASURE. The area splash
+         lands one word at a time - .ps-w is opacity:0 with a staggered
+         ps-word animation - and a sweep that arrives during it reads five
+         words at 1.05:1 and calls them a defect. They are not: half a second
+         later they are white on the area's colour. The opacity===0 test above
+         only catches the word that has not started; it cannot catch the one
+         at 0.43.
+
+         getAnimations is the precise question - IS THIS MOVING RIGHT NOW -
+         rather than a threshold on opacity, which would also hide text that
+         is genuinely too faint. Asked only when the element is not fully
+         opaque, so the common case pays nothing. */
+      if (cs.opacity !== '1' && el.getAnimations) {
+        var anim = el.getAnimations();
+        var moving = false;
+        for (var q = 0; q < anim.length; q++) if (anim[q].playState === 'running') { moving = true; break; }
+        if (moving) continue;
+      }
       /* An SVG's className is an SVGAnimatedString, not a string, so reading
          it the obvious way returns '' and the skip list never matches - which
          is how the fan's identity icons kept being reported as old palette
