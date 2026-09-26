@@ -25165,6 +25165,33 @@ function loadInsights(){try{var x=localStorage.getItem('insights_data');return x
 function saveInsights(obj){try{localStorage.setItem('insights_data',JSON.stringify(obj));}catch(e){}}
 function insKey(catId,qIdx){return catId+'__'+qIdx;}
 
+/* ── WHAT IS WRITTEN BUT NOT YET AN INSIGHT ──
+   Its own key, so loadInsights never sees it and no count, list or streak can
+   ever include it. A draft becomes an entry only through saveInsEntry, which
+   deletes it in the same breath. */
+var INS_DRAFT_KEY='insights_draft';
+function loadInsDrafts(){try{var x=localStorage.getItem(INS_DRAFT_KEY);return x?JSON.parse(x):{};}catch(e){return{};}}
+function saveInsDrafts(o){try{localStorage.setItem(INS_DRAFT_KEY,JSON.stringify(o));}catch(e){}}
+function insDraftHold(){
+  try{
+    if(typeof _insView==='undefined'||_insView!=='entry')return;
+    var t=document.getElementById('ins-text');if(!t)return;
+    var f=document.getElementById('ins-changed-from'),
+        w=document.getElementById('ins-changed-why'),
+        d=loadInsDrafts(),k=insKey(_insCat,_insQ),
+        text=String(t.value||'').trim(),
+        from=String((f&&f.value)||'').trim(),
+        why=String((w&&w.value)||'').trim();
+    /* Emptying a box has to delete its draft. Otherwise clearing a field is
+       undone on the next visit by the very thing meant to protect it. */
+    if(!text&&!from&&!why){if(d[k]){delete d[k];saveInsDrafts(d);}return;}
+    d[k]={text:text,from:from,why:why,at:Date.now()};
+    saveInsDrafts(d);
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',function(){if(document.hidden)insDraftHold();});
+window.addEventListener('pagehide',insDraftHold);
+
 /* One line drawing per category. Data, not labels - nothing here is ever
    translated, and the seven are told apart by this and by their colour. */
 var INS_ICON={
@@ -25278,18 +25305,21 @@ function renderInsEntry(){
   var cat=INSIGHTS_CATS.find(function(c){return c.id===_insCat;});
   if(!cat){_insView='q';renderInsights();return;}
   var q=cat.questions[_insQ];
+  /* read before the markup is built, so the boxes are drawn already holding it
+     rather than filled in afterwards - no flash of an empty field */
+  var draft=loadInsDrafts()[insKey(_insCat,_insQ)]||{};
   document.getElementById('hdr-title').textContent=''+_t('תובנה חדשה')+'';
   var h='<div style="padding-bottom:30px">';
   h+='<button class="ins-back" onclick="_insView=\'q\';renderInsights()">&#8249; '+esc(q)+'</button>';
   h+='<div class="ins-ask" style="--c:'+cat.color+'">'+esc(q)+'</div>';
   h+='<div class="ins-lbl">'+_t('התובנה שלך')+'</div>';
-  h+='<textarea id="ins-text" class="ins-ta" rows="5" placeholder="'+_t("כתוב כאן...")+'"></textarea>';
+  h+='<textarea id="ins-text" class="ins-ta" rows="5" placeholder="'+_t("כתוב כאן...")+'">'+esc(draft.text||'')+'</textarea>';
   h+='<div class="ins-was">';
   h+='<div class="ins-was-h">'+_t('שיניתי דעה? (אופציונלי)')+'</div>';
   h+='<div class="ins-lbl">'+_t('פעם חשבתי:')+'</div>';
-  h+='<input id="ins-changed-from" class="ins-in" placeholder="'+_t("מה היתה הדעה הקודמת...")+'">';
+  h+='<input id="ins-changed-from" class="ins-in" value="'+esc(draft.from||'')+'" placeholder="'+_t("מה היתה הדעה הקודמת...")+'">';
   h+='<div class="ins-lbl">'+_t('מה שינה את דעתי:')+'</div>';
-  h+='<input id="ins-changed-why" class="ins-in" placeholder="'+_t("מה התקיים, מה קרה...")+'">';
+  h+='<input id="ins-changed-why" class="ins-in" value="'+esc(draft.why||'')+'" placeholder="'+_t("מה התקיים, מה קרה...")+'">';
   h+='</div>';
   h+='<button class="ins-add" onclick="saveInsEntry()">'+_t('שמור')+'</button>';
   h+='</div>';
@@ -25306,6 +25336,9 @@ function saveInsEntry(){
   if(!data[key])data[key]=[];
   data[key].push({text:textInp.value.trim(),date:Date.now(),changedFrom:changedFrom.trim()||null,changedWhy:changedWhy.trim()||null});
   saveInsights(data);
+  /* it is an entry now, so the draft must go - otherwise the next visit to
+     this question offers her what she already saved, as if unsaved */
+  try{var dr=loadInsDrafts();if(dr[key]){delete dr[key];saveInsDrafts(dr);}}catch(e){}
   showToast(''+_t('תובנה נשמרה')+' ✓');
   _insView='q';renderInsights();
 }
