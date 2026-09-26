@@ -67,6 +67,13 @@
   --line-strong:#ece5da; /* a divider that separates, was also #e6e1d6 */
   --surface:#f5f0eb;    /* the page itself */
   --panel:#fbf7f2;      /* a raised sheet */
+  /* THE PAGE, AS A PROPERTY RATHER THAN A LITERAL. The body carries
+     style="background:var(--page)" in the markup so the page is painted
+     before the stylesheet parses - and an inline style cannot be overridden
+     by a rule, but the property it NAMES still resolves from the cascade.
+     This value is var(--surface), which is exactly what the attribute said
+     before, so nothing moves until a module block redefines it. */
+  --page:var(--surface);
   --card:#ffffff;       /* what sits on the page */
   --white:#ffffff;      /* text ON a colour — stays light if the app goes dark */
 
@@ -6257,12 +6264,67 @@ html body.mod-door{--cta-fill:var(--ink);--cta-shadow:none;
      from that shadow, its radius and the dimmed overlay behind it - not from
      being a lighter colour than the page - so the token can move alone. */
   --panel:var(--nu-ground);
+  /* AND THE PAGE UNDER ALL OF IT. Ten of the twelve blocks set
+     `.app{background:var(--nu-ground)}` - but .app is only as tall as its
+     content, and the BODY was still #f5f0eb. On any screen shorter than the
+     viewport the bottom of the phone was the old page colour, with a visible
+     seam where .app ends. Found by screenshot on the כושר hub: .app ran
+     0-474 and everything below it was rgb(245,240,235).
+
+     Writing `background` here does nothing, and that was my first attempt:
+     the body carries `style="background:var(--surface)"` in the MARKUP, and
+     an inline style beats every rule. It is there so the page is painted
+     before the stylesheet has parsed, which is worth keeping.
+
+     So the same move --cta-fill made, for the same reason: an inline style
+     cannot be overridden, but a custom property NAMED in one still resolves
+     from the cascade. --page is declared at :root as var(--surface) - today's
+     painted value exactly, so nothing outside these blocks moves - and here
+     as the ground. The attribute reads var(--page) and follows.
+
+     It is NOT set in this rule, because this rule includes mod-home and the
+     home screen must not move. See the rule below. */
   /* The old palette's third tier of text, #7a6f68, named by 115 rules. On
      this ground it is 3.95:1, and nothing lighter than --nu-muted clears the
      floor - 4.19, 3.90, 3.63 for the values between. The material has two
      readable tiers, not three, so the tier collapses rather than being
      chased one class at a time. */
   --muted-soft:var(--nu-muted)}
+
+/* ── THE PAGE, EVERYWHERE EXCEPT HOME ──
+   Eleven blocks, not twelve, and the missing one is deliberate rather than
+   forgotten. `.home` has `background:none` - it always has - so the colour
+   behind the ring IS the body's, and moving --page there repaints the whole
+   home screen from #f5f0eb to #e9e7e3. Measured: of 560 sample points on
+   that screen, 35 see the body directly, and the rest see elements that are
+   themselves transparent over it.
+
+   Asaf's rule for that screen is readability repairs only, each one
+   reported, and a page colour is not a readability repair. So home keeps the
+   cream it has always had, the other eleven get the ground, and the
+   difference is a question for him rather than a decision of mine.
+
+   A named exception is the thing that rots, so it is written here in full
+   rather than left as an absence to be rediscovered. */
+html body.mod-me,
+html body.mod-nutrition,
+html body.mod-fitness,
+html body.mod-closet,
+html body.mod-hobbies,
+html body.mod-people,
+html body.mod-planning,
+html body.mod-insights,
+html body.mod-endofday,
+html body.mod-journal,
+html body.mod-door{--page:var(--nu-ground)}
+/* And home says its own value, LAST, rather than staying silent. goHome()
+   removes only mod-nutrition, mod-fitness and mod-closet, so a body arriving
+   home from planning still carries mod-planning - the same leftover the
+   comment on showMain already describes - and an absence would let that
+   leftover decide what colour the home screen is. Silence is not a default
+   when another class can speak. Written after the eleven so equal
+   specificity resolves in home's favour whatever else is on the body. */
+html body.mod-home{--page:var(--surface)}
 
 /* Water's label is 13px bold at 3.69:1 on the ground - not large text, so
    4.5:1 applies. Darkened to the smallest value that clears it rather than
@@ -6395,7 +6457,7 @@ html body.mod-journal .set-country{background:var(--nu-ground);border:none;color
 })();
 </script>
 </head>
-<body style="background:var(--surface)">
+<body style="background:var(--page)">
 
 <div id="splash" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(120% 60% at 50% 0%,rgba(255,226,181,.35),transparent 60%),linear-gradient(160deg,#E2924C 0%,#D97D3D 32%,#C96A2E 65%,#B85A28 100%);animation:splash-fade-out .6s ease-in forwards;animation-delay:2.5s">
   <div style="display:flex;align-items:baseline;direction:ltr">
