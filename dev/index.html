@@ -599,6 +599,37 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
    no colour and reads the same to everyone.
 
    And the number fields were boxes with a 1px border. A field is a channel. */
+/* ── מעקב משקלים ──
+   A row answers both questions at once now: the number for "what goes on the
+   bar", the six bars and the delta for "am I getting stronger". The history
+   was always in the log - exSessions returns it - and the screen used to keep
+   the last number and drop the rest. */
+.exw{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+  --nu-shade-soft:rgba(176,168,156,.28);--nu-ink:#4a453f;--nu-muted:#6d675e;
+  background:var(--nu-ground);border-radius:22px;padding:4px 16px;margin-bottom:12px;
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.exw-r{display:flex;align-items:center;gap:12px;padding:13px 0}
+.exw-r+.exw-r{box-shadow:inset 0 1px 0 var(--nu-lit),inset 0 2px 0 var(--nu-shade-soft)}
+/* the last six sessions. Flat draws flat rather than empty: six equal bars
+   say "I have not moved", which is information. */
+.exw-sp{display:flex;align-items:flex-end;gap:3px;width:52px;height:26px;flex:0 0 52px}
+.exw-sp i{display:block;flex:1;border-radius:2px;background:var(--nu-ground);
+  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+.exw-sp i.on{background:#4a4340;box-shadow:none}
+.exw-sp-0{opacity:.35}
+.exw-n{font-size:14.5px;color:var(--nu-ink);font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exw-m{font-size:11.5px;color:var(--nu-muted);margin-top:3px;font-weight:600}
+.exw-m b{font-weight:800;direction:ltr;display:inline-block}
+.exw-m b.up{color:var(--green-700)}
+.exw-m b.dn{color:var(--terra-700)}
+.exw-w{border:none;border-radius:13px;padding:11px 14px;cursor:pointer;font-family:inherit;
+  font-variant-numeric:tabular-nums;flex:0 0 auto;background:var(--nu-ground);
+  font-size:16px;font-weight:800;color:var(--nu-ink);
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.exw-w.empty{font-size:13px;font-weight:700;color:var(--nu-muted);
+  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+.exw-note{font-size:12.5px;color:#6d675e;line-height:1.65;margin-bottom:14px}
 .tm-card,.tm-n input,.tm-k,.tm-go{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);
   --nu-shade:rgba(176,168,156,.44);--nu-shade-soft:rgba(176,168,156,.28);
   --nu-ink:#4a453f;--nu-muted:#6d675e}
@@ -16561,6 +16592,36 @@ function loadExWeights(){
 function saveExWeights(o){try{localStorage.setItem(FIT_WEIGHTS_KEY,JSON.stringify(o));}catch(e){}}
 
 /* {w, at, manual} - or null when this exercise has never been given a weight */
+/* SIX SESSIONS AND A DELTA, from the log this screen already reads.
+   currentWeightFor keeps the last number and drops the rest; this keeps the
+   shape. Returns null when there is nothing to draw, so a row that has never
+   been logged stays a row and does not pretend to a history. */
+function exTrend(name){
+  var ss=[];try{ss=exSessions(name)||[];}catch(e){}
+  var pts=[],i;
+  for(i=0;i<ss.length;i++){
+    var v=(ss[i].top&&+ss[i].top.weight)||0;
+    if(v>0)pts.push({w:v,at:appDayOf(ss[i].date)});
+  }
+  if(pts.length<2)return null;
+  var last6=pts.slice(-6);
+  var lo=last6[0].w,hi=last6[0].w;
+  for(i=1;i<last6.length;i++){if(last6[i].w<lo)lo=last6[i].w;if(last6[i].w>hi)hi=last6[i].w;}
+  /* where it was when the run of six began, so the delta answers "since when" */
+  var from=last6[0],to=last6[last6.length-1];
+  return {pts:last6,lo:lo,hi:hi,d:Math.round((to.w-from.w)*100)/100,since:from.at};
+}
+/* the six bars. A flat run draws flat rather than collapsing to nothing:
+   lo===hi would make every height 0, and "I have not moved in six sessions"
+   is information, not an empty cell. */
+function exSparkHTML(t){
+  var h='<span class="exw-sp">',i;
+  for(i=0;i<t.pts.length;i++){
+    var pct=(t.hi>t.lo)?Math.round((t.pts[i].w-t.lo)/(t.hi-t.lo)*70)+30:70;
+    h+='<i'+(i===t.pts.length-1?' class="on"':'')+' style="height:'+pct+'%"></i>';
+  }
+  return h+'</span>';
+}
 function currentWeightFor(name){
   var manual=loadExWeights()[name]||null;
   var ss=[];try{ss=exSessions(name)||[];}catch(e){}
@@ -16731,7 +16792,23 @@ function renderFitWeights(){
   var names={},i,j;
   for(i=0;i<log.length;i++)for(j=0;j<(log[i].exercises||[]).length;j++)names[log[i].exercises[j].name]=1;
   var manual=loadExWeights();for(var k in manual)if(manual.hasOwnProperty(k))names[k]=1;
-  var list=Object.keys(names).sort();
+  /* BY WHEN IT WAS LAST DONE, not by the alphabet. She opens this screen
+     about the exercise she trained an hour ago, and alphabetically that is
+     buried among thirty. Never-logged names keep the alphabet and sit last. */
+  /* ONCE PER NAME, not once per comparison. currentWeightFor walks every
+     session of every workout in the log, and a comparator calls it twice
+     each time it is asked - four exercises is nothing and a year of
+     training is about sixty thousand passes to order one list. */
+  var _when={},_li;
+  for(_li in names)if(names.hasOwnProperty(_li)){
+    var _c=currentWeightFor(_li);_when[_li]=(_c&&_c.at)||'';
+  }
+  var list=Object.keys(names).sort(function(a,b){
+    var da=_when[a],db=_when[b];
+    if(da&&db&&da!==db)return da<db?1:-1;
+    if(da!==db)return da?-1:1;
+    return a<b?-1:(a>b?1:0);
+  });
 
   var h='<div style="padding-bottom:24px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
@@ -16745,14 +16822,30 @@ function renderFitWeights(){
     return h+'</div>';
   }
 
-  h+='<div style="background:var(--card);border-radius:20px;padding:8px 4px;margin-bottom:12px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
+  h+='<div class="exw">';
   for(i=0;i<list.length;i++){
     var nm=list[i],cw=currentWeightFor(nm);
-    h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;'+(i<list.length-1?'border-bottom:1px solid var(--line);':'')+'">';
+    var _tr=exTrend(nm);
+    h+='<div class="exw-r">';
+    h+=_tr?exSparkHTML(_tr):'<span class="exw-sp exw-sp-0"></span>';
     h+='<button onclick="_fitProgressEx=\''+esc(nm).replace(/'/g,"&#39;")+'\';_fitView=\'progress\';renderFitness()" '+
        'style="flex:1;min-width:0;text-align:start;background:none;border:none;padding:0;cursor:pointer;font-family:inherit">'+
-       '<div style="font-size:12.5px;color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(exLabel(nm))+'</div>'+
-       (cw?'<div style="font-size:9.5px;color:var(--muted-soft);margin-top:2px">'+(cw.manual?''+_t('הוקלד')+'':''+_t('מהאימון')+'')+' &middot; '+fmtDate(cw.at)+'</div>':'')+
+       '<div class="exw-n">'+esc(exLabel(nm))+'</div>'+
+       /* A VALUE AND A DATE, NOT A SENTENCE. "up 7.5 since 14 Sep" would be
+          a sentence and would need eleven answers; an arrow, a weight from
+          fmtWeight, a separator and a date from fmtDate need none and read
+          the same in every language. No movement means no arrow - a phrase
+          like "same weight" would have been another key. */
+       (cw?'<div class="exw-m">'+
+            /* THE DATE IS ALWAYS WHEN SHE LAST DID IT. It used to be the
+               start of the six-session run on rows that had a trend and
+               the last session on rows that did not - one column, one
+               size, one position, two different facts, and nothing saying
+               which. Read down the list it looked like a broken sort.
+               "Since when" is what the six bars are for. */
+            (_tr&&_tr.d?'<b class="'+(_tr.d>0?'up':'dn')+'">'+(_tr.d>0?'&#9650; ':'&#9660; ')+fmtWeight(Math.abs(_tr.d))+'</b> &middot; '
+                       :(cw.manual?''+_t('הוקלד')+'':''+_t('מהאימון')+'')+' &middot; ')+fmtDate(cw.at)+
+          '</div>':'')+
        '</button>';
     /* The row turns into its own editor rather than opening a dialog. The box
        carries the DISPLAY unit, so an imperial reader types and reads pounds
@@ -16766,13 +16859,12 @@ function renderFitWeights(){
       h+='</div>';
       continue;
     }
-    h+='<button onclick="exWeightEdit(\''+esc(nm).replace(/'/g,"&#39;")+'\')" style="background:var(--surface);border:none;border-radius:12px;padding:7px 12px;cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums">'+
-       (cw?'<span style="font-size:13px;font-weight:800;color:var(--ink)">'+fmtWeight(cw.w)+'</span>'
-          :'<span style="font-size:11px;color:var(--muted-soft)">'+_t('הוסף')+'</span>')+'</button>';
+    h+='<button class="exw-w'+(cw?'':' empty')+'" onclick="exWeightEdit(\''+esc(nm).replace(/'/g,"&#39;")+'\')">'+
+       (cw?fmtWeight(cw.w):''+_t('הוסף')+'')+'</button>';
     h+='</div>';
   }
   h+='</div>';
-  h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-bottom:14px">'+_t('המספר מתעדכן לבד מכל אימון שתסיים. אפשר גם להקליד אותו — והאימון הבא יעדכן מעליו.')+'</div>';
+  h+='<div class="exw-note">'+_t('המספר מתעדכן לבד מכל אימון שתסיים. אפשר גם להקליד אותו — והאימון הבא יעדכן מעליו.')+'</div>';
 
   /* the advice about what to do next time belongs with the weights, not on a
      hub you pass through */
