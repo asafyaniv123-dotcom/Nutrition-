@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>B · חוט דרך הכרטיסים</title>
+<style>
+  :root{--ground:#e9e7e3;--lit:rgba(255,255,255,.95);--shade:rgba(176,168,156,.45);
+    --shade-soft:rgba(176,168,156,.28);--ink:#4a453f;--muted:#8a827a;--amber:#f0a92e}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ground);
+    font:400 15px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif;color:var(--ink)}
+  .phone{position:absolute;left:0;top:0;width:376px;height:642px;background:var(--ground);
+    padding:16px 16px 12px;display:flex;flex-direction:column;overflow:hidden}
+  .cap{font-size:9px;letter-spacing:.16em;color:#b8afa5;font-weight:800;text-align:center;margin-bottom:4px}
+  .greet{font-size:12px;color:var(--muted)}
+  .name{font-size:22px;font-weight:800;letter-spacing:-.5px}
+
+  .disc{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;
+    background:var(--ground);width:38px;height:38px;
+    box-shadow:-3px -3px 8px var(--lit),4px 5px 11px var(--shade-soft),0 0 14px 3px var(--halo)}
+  .disc svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+
+  .fan{position:relative;height:214px;flex-shrink:0}
+  .petal{position:absolute;left:50%;top:60%;width:72px;margin-left:-36px;border:none;background:none;
+    padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:inherit;
+    transform:rotate(var(--a)) translateY(calc(var(--r) * -1)) rotate(calc(var(--a) * -1))}
+  .pname{font-size:8.5px;font-weight:700;color:var(--ink);line-height:1.15;text-align:center}
+  .hub{position:absolute;left:50%;top:60%;width:104px;height:104px;margin:-52px 0 0 -52px;border-radius:50%;
+    background:var(--ground);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;
+    border:none;cursor:pointer;font-family:inherit;
+    box-shadow:-6px -6px 15px var(--lit),8px 10px 22px var(--shade)}
+  .hub-ic{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;
+    background:var(--ground);
+    box-shadow:inset 3px 4px 8px var(--shade),inset -3px -3px 7px var(--lit),0 0 15px 3px var(--halo)}
+  .hub-ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .hub-t{font-size:11px;font-weight:800;color:var(--ink)}
+
+  .sched-h{font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--muted);margin:10px 4px 8px}
+  .stime{font-size:11.5px;font-weight:800;color:var(--muted);direction:ltr;unicode-bidi:isolate}
+  .stitle{flex:1;font-size:13px;font-weight:700}
+
+  /* ── A · a true time axis. An item sits at its own hour, so the empty
+     stretches of the day are as visible as the busy ones. ── */
+  .vday{position:relative;flex:1;min-height:0}
+  .vrail{position:absolute;top:0;bottom:0;inset-inline-start:8px;width:12px;border-radius:6px;background:#e4e1dc;
+    overflow:hidden;box-shadow:inset 2px 3px 6px rgba(168,160,148,.5),inset -2px -2px 5px rgba(255,255,255,.92)}
+  .vfill{position:absolute;left:0;right:0;top:0;height:var(--h);border-radius:6px;
+    background:linear-gradient(180deg,rgba(249,206,147,.22),rgba(240,169,46,.9))}
+  .vnow{position:absolute;inset-inline-start:7px;top:var(--p);width:14px;height:14px;margin-top:-7px;border-radius:50%;
+    background:var(--amber);box-shadow:0 0 12px 3px rgba(249,206,147,.95),inset 0 0 0 2px rgba(255,255,255,.85)}
+  .vitems{position:absolute;inset:0;inset-inline-start:30px}
+  .vitem{position:absolute;inset-inline-end:0;inset-inline-start:0;top:var(--p);margin-top:-16px;
+    display:flex;align-items:center;gap:10px;background:var(--ground);border-radius:16px;padding:8px 12px;
+    box-shadow:-4px -4px 10px var(--lit),5px 7px 15px var(--shade-soft)}
+  .vitem.done{box-shadow:inset 2px 3px 7px var(--shade-soft),inset -2px -2px 5px var(--lit)}
+  .vitem.done .stitle{color:var(--muted)}
+  .vdot{width:7px;height:7px;border-radius:50%;background:#cfc8bf;flex-shrink:0}
+
+  /* ── B · the thread runs through the cards ── */
+  .thread{position:relative;padding-inline-start:18px}
+  .thread::before{content:"";position:absolute;top:6px;bottom:6px;inset-inline-start:7px;width:3px;border-radius:2px;
+    background:#dcd6cd}
+  .trow{position:relative;display:flex;align-items:center;gap:10px;background:var(--ground);border-radius:16px;
+    padding:9px 12px;margin-bottom:7px;
+    box-shadow:-4px -4px 10px var(--lit),5px 7px 15px var(--shade-soft)}
+  .trow.done{box-shadow:inset 2px 3px 7px var(--shade-soft),inset -2px -2px 5px var(--lit)}
+  .trow.done .stitle{color:var(--muted)}
+  .tdot{position:absolute;inset-inline-start:-15px;width:9px;height:9px;border-radius:50%;background:#cfc8bf;
+    box-shadow:0 0 0 3px var(--ground)}
+  .tnow{position:relative;display:flex;align-items:center;gap:8px;margin:2px 0 9px}
+  .tnow-dot{position:absolute;inset-inline-start:-15px;width:13px;height:13px;border-radius:50%;background:var(--amber);
+    box-shadow:0 0 12px 3px rgba(249,206,147,.95),0 0 0 3px var(--ground)}
+  .tnow-t{font-size:10px;font-weight:800;color:var(--amber);margin-inline-start:4px}
+
+  .bar{margin-top:auto;display:flex;align-items:center;gap:8px;padding-top:10px}
+  .bar-pill{flex:1;text-align:center;font-size:14px;font-weight:800;padding:11px 6px;border-radius:22px;
+    background:var(--ground);color:var(--muted);
+    box-shadow:-5px -5px 12px var(--lit),6px 8px 17px var(--shade-soft)}
+  .bar-pill.on{color:var(--ink)}
+  .bar-j{width:48px;height:48px;border-radius:50%;background:var(--ground);display:flex;align-items:center;
+    justify-content:center;color:var(--muted);flex-shrink:0;
+    box-shadow:-4px -4px 10px var(--lit),5px 7px 16px var(--shade)}
+  .bar-j svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<div class="phone">
+  <div class="cap">B · חוט דרך הכרטיסים</div>
+  <div class="greet">בוקר טוב</div>
+  <div class="name">Better Me</div>
+  <div class="fan">
+      <button class="petal" style="--a:-84.00deg;--r:150px">
+        <span class="disc" style="color:#7d6aa8;--halo:rgba(191,178,224,.95)"><svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 7c0-1 1-1.5 1-2.5S9 3 9 3"/><path d="M13.5 7c0-1 1-1.5 1-2.5s-1-1.5-1-1.5"/></svg></span>
+        <span class="pname">תזונה</span>
+      </button>
+      <button class="petal" style="--a:-56.00deg;--r:150px">
+        <span class="disc" style="color:#b5715c;--halo:rgba(240,190,170,.95)"><svg viewBox="0 0 24 24"><path d="M3 9.5v5"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M21 9.5v5"/><path d="M6.5 12h11"/></svg></span>
+        <span class="pname">כושר</span>
+      </button>
+      <button class="petal" style="--a:-28.00deg;--r:150px">
+        <span class="disc" style="color:#5f9b63;--halo:rgba(191,215,180,.95)"><svg viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 1.9 1.9 0 0 0 1.5-3.1 1.9 1.9 0 0 1 1.5-3.1h2.1a3 3 0 0 0 2.9-3A8.8 8.8 0 0 0 12 3.2Z"/><circle cx="8.2" cy="10" r=".9"/><circle cx="12" cy="7.6" r=".9"/><circle cx="15.8" cy="10" r=".9"/></svg></span>
+        <span class="pname">תחביבים</span>
+      </button>
+      <button class="petal" style="--a:0.00deg;--r:150px">
+        <span class="disc" style="color:#7a716b;--halo:rgba(205,197,188,.95)"><svg viewBox="0 0 24 24"><path d="M9.2 17.6h5.6"/><path d="M10.2 20.4h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.4h5v-.4c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4Z"/></svg></span>
+        <span class="pname">תובנות</span>
+      </button>
+      <button class="petal" style="--a:28.00deg;--r:150px">
+        <span class="disc" style="color:#b5715c;--halo:rgba(240,190,170,.95)"><svg viewBox="0 0 24 24"><circle cx="9.2" cy="8.6" r="3.2"/><path d="M3.6 19.6a5.6 5.6 0 0 1 11.2 0"/><path d="M16.4 6.3a3.2 3.2 0 0 1 0 6.1"/><path d="M17.6 14.6a5.6 5.6 0 0 1 2.8 5"/></svg></span>
+        <span class="pname">האנשים שלי</span>
+      </button>
+      <button class="petal" style="--a:56.00deg;--r:150px">
+        <span class="disc" style="color:#4d7fbe;--halo:rgba(178,205,237,.95)"><svg viewBox="0 0 24 24"><rect x="3.6" y="5" width="16.8" height="15" rx="3"/><path d="M3.6 9.6h16.8"/><path d="M8 3.2v3.4"/><path d="M16 3.2v3.4"/></svg></span>
+        <span class="pname">תכנון זמן</span>
+      </button>
+      <button class="petal" style="--a:84.00deg;--r:150px">
+        <span class="disc" style="color:#a06b93;--halo:rgba(224,190,214,.95)"><svg viewBox="0 0 24 24"><path d="M9 3.4h6l3.2 3.1-2.3 2.2-.9-.8v12.7H7l0-12.7-.9.8L3.8 6.5Z"/></svg></span>
+        <span class="pname">הארון שלי</span>
+      </button>
+      <button class="hub">
+        <span class="hub-ic" style="color:#4d7fbe;--halo:rgba(178,205,237,.95)"><svg viewBox="0 0 24 24"><path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/></svg></span>
+        <span class="hub-t">סיום יום</span>
+      </button>
+  </div>
+  <div class="sched-h">הלוז של היום</div>
+  <div class="thread">
+      
+      <div class="trow done">
+        <span class="tdot"></span>
+        <span class="stime">07:00</span><span class="stitle">אימון כוח</span>
+      </div>
+      
+      <div class="trow done">
+        <span class="tdot"></span>
+        <span class="stime">11:00</span><span class="stitle">פגישה עם נועה</span>
+      </div>
+      <div class="tnow"><span class="tnow-dot"></span><span class="tnow-t">עכשיו</span></div>
+      <div class="trow">
+        <span class="tdot"></span>
+        <span class="stime">17:00</span><span class="stitle">לקנות מתנה</span>
+      </div>
+      
+      <div class="trow">
+        <span class="tdot"></span>
+        <span class="stime">20:00</span><span class="stitle">שיעור גיטרה</span>
+      </div>
+    </div>
+  <div class="bar">
+      <span class="bar-pill on">Better</span>
+      <span class="bar-j"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2.4"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/></svg></span>
+      <span class="bar-pill">Me</span>
+    </div>
+</div>
+</html>

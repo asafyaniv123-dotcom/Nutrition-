@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>תחביבים — four ways to keep a habit</title>
+<!--
+  The habit tracker asks three questions and the current table answers only
+  one of them well:
+     did I do it today          one tap, and the table makes you find a row
+     am I keeping it            the table is good at this
+     what am I trying this month  a note above the table
+  ?v=today|thread|ring|cards
+-->
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* sampled off the reference Asaf sent, not chosen by eye: the panel reads
+   #e4e7f6, a card face #e1e4f3, the shade under one #e4e5f7. Cool, not warm -
+   the same lightness the shipped world has and the opposite temperature,
+   which is the whole difference between airy and grey. */
+:root{--g:#e6e8f4;--lit:#ffffff;--sh:rgba(146,152,190,.40);
+  --shs:rgba(146,152,190,.24);--ink:#3c4254;--muted:#6b7288;--amber:#f0a92e;
+  --done:#7fb08a}
+*{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+html,body{margin:0;padding:0;background:#fff}
+.frame{position:absolute;left:0;top:0;width:376px;height:740px;overflow:hidden;
+  background:var(--g);font-family:Assistant,system-ui,sans-serif;color:var(--ink)}
+.pad{padding:0 14px}
+.raise{background:var(--g);box-shadow:-5px -5px 12px var(--lit),6px 8px 18px var(--shs)}
+.press{background:var(--g);box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit)}
+.hd{padding:24px 16px 10px}
+.hd-t{font-size:30px;font-weight:800;letter-spacing:-.6px;line-height:1}
+.hd-s{font-size:12px;font-weight:600;color:var(--muted);margin-top:6px}
+/* what I am trying this month, in my own words */
+.vow{border-radius:18px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;
+  font-weight:700;color:var(--ink);line-height:1.6}
+.vow b{font-size:9px;font-weight:800;letter-spacing:.09em;color:var(--muted);
+  display:block;margin-bottom:5px}
+.tag{position:absolute;top:9px;left:9px;z-index:5;font-size:9px;font-weight:800;
+  letter-spacing:.1em;color:var(--muted);background:var(--g);border-radius:999px;padding:5px 10px;
+  box-shadow:-2px -2px 5px var(--lit),2px 3px 6px var(--shs)}
+
+/* ══ A · TODAY FIRST ═══════════════════════════════════════════════════════
+   The screen's job is one tap. Today is a row of real buttons; the month is
+   evidence underneath, readable and not operable. */
+.t-lab{font-size:9px;font-weight:800;letter-spacing:.09em;color:var(--muted);margin:0 4px 8px}
+.t-row{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:16px}
+.t-b{border:none;border-radius:18px;padding:14px 6px 12px;font-family:inherit;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--g);
+  box-shadow:-4px -4px 9px var(--lit),5px 6px 13px var(--shs)}
+.t-b.on{box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit)}
+.t-ic{font-size:21px;line-height:1}
+.t-n{font-size:10px;font-weight:800;color:var(--muted);line-height:1.2;text-align:center}
+.t-b.on .t-n{color:var(--ink)}
+.t-b.on .t-ic{filter:none}
+/* the month, quiet */
+.grid{border-radius:20px;padding:12px 10px}
+.gr{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.gr:last-child{margin-bottom:0}
+.gr-n{width:66px;font-size:10px;font-weight:800;color:var(--muted);text-align:start;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-d{flex:1;display:flex;gap:2px}
+.d{flex:1;height:14px;border-radius:3px;background:#d9dcec;
+  box-shadow:inset 1px 1px 2px var(--sh)}
+.d.on{background:var(--done);box-shadow:none}
+.d.now{box-shadow:0 0 0 1.5px var(--amber)}
+
+/* ══ B · A THREAD PER HABIT ════════════════════════════════════════════════
+   A habit is a line you are trying not to break. */
+.th{border-radius:18px;padding:13px 14px;margin-bottom:10px}
+.th-hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.th-n{font-size:13.5px;font-weight:800}
+.th-s{font-size:10.5px;font-weight:800;color:var(--muted)}
+.th-s b{color:var(--ink)}
+.th-l{display:flex;align-items:center;gap:2px;height:20px}
+.th-d{flex:1;height:5px;border-radius:3px;background:#d9dcec}
+.th-d.on{background:var(--done)}
+/* today is the end of the thread, and it is a button */
+.th-t{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;
+  margin-inline-start:6px;background:var(--g);font-family:inherit;font-size:13px;color:var(--muted);
+  box-shadow:-3px -3px 7px var(--lit),3px 4px 9px var(--shs)}
+.th-t.on{color:var(--done);box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+
+/* ══ C · THE MONTH AS A RING ═══════════════════════════════════════════════ */
+.rings{display:flex;align-items:center;justify-content:center;padding:6px 0 4px}
+.ringkey{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}
+.rk{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;color:var(--muted)}
+.rk i{width:9px;height:9px;border-radius:50%;display:block}
+
+/* ══ D · ONE CARD PER HABIT ════════════════════════════════════════════════ */
+.cd{border-radius:20px;padding:15px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+.cd-x{flex:1;min-width:0}
+.cd-n{font-size:15px;font-weight:800}
+.cd-s{font-size:11px;font-weight:700;color:var(--muted);margin-top:3px}
+.cd-s b{color:var(--ink);font-size:13px}
+.cd-map{display:flex;gap:1.5px;margin-top:9px}
+.cd-map i{flex:1;height:9px;border-radius:2px;background:#d9dcec;display:block}
+.cd-map i.on{background:var(--done)}
+.cd-b{flex:0 0 auto;width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+  font-family:inherit;font-size:20px;color:var(--muted);background:var(--g);
+  box-shadow:-4px -4px 9px var(--lit),5px 6px 13px var(--shs)}
+.cd-b.on{color:var(--done);box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit)}
+.more{width:100%;border:none;border-radius:16px;padding:13px;font-size:12px;font-weight:800;
+  font-family:inherit;color:var(--muted);cursor:pointer;background:var(--g);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="frame" id="frame"></div>
+<script>
+var H=[
+ {n:'לקרוא',  ic:'📖', done:[1,1,1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,0],  streak:6,  today:1},
+ {n:'גיטרה',  ic:'🎸', done:[0,1,0,0,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,0],  streak:0,  today:0},
+ {n:'ציור',   ic:'🎨', done:[1,0,1,1,0,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1],  streak:2,  today:1},
+ {n:'לכתוב',  ic:'✎',      done:[0,0,1,0,0,0,1,0,0,0,1,1,0,0,1,0,0,1,1,0,0,0],  streak:0,  today:0}
+];
+var DAY=22, DAYS=30;
+var v=(location.search.match(/v=(\w+)/)||[])[1]||'today';
+var NAMES={today:'A · היום קודם',thread:'B · חוט',ring:'C · טבעת',cards:'D · כרטיסים'};
+
+function head(){
+  return '<div class="hd"><div class="hd-t">תחביבים</div>'+
+    '<div class="hd-s">ספטמבר · יום 22 מתוך 30</div></div>'+
+    '<div class="pad"><div class="vow press"><b>החודש אני</b>'+
+    'קורא עשרים דקות לפני השינה, ומנגן פעמיים בשבוע.</div></div>';
+}
+function monthGrid(){
+  var h='<div class="pad"><div class="t-lab">החודש</div><div class="grid press">',i,j;
+  for(i=0;i<H.length;i++){
+    h+='<div class="gr"><span class="gr-n">'+H[i].n+'</span><span class="gr-d">';
+    for(j=0;j<DAYS;j++){
+      var on=H[i].done[j%H[i].done.length];
+      h+='<i class="d'+(on?' on':'')+(j===DAY-1?' now':'')+'"></i>';
+    }
+    h+='</span></div>';
+  }
+  return h+'</div></div>';
+}
+var V={};
+/* A · today is a row of buttons, the month is evidence */
+V.today=function(){
+  var h=head()+'<div class="pad"><div class="t-lab">היום</div><div class="t-row">',i;
+  for(i=0;i<H.length;i++)
+    h+='<button class="t-b'+(H[i].today?' on':'')+'"><span class="t-ic">'+H[i].ic+'</span>'+
+       '<span class="t-n">'+H[i].n+'</span></button>';
+  return h+'</div></div>'+monthGrid();
+};
+/* B · a habit is a thread you are trying not to break */
+V.thread=function(){
+  var h=head()+'<div class="pad">',i,j;
+  for(i=0;i<H.length;i++){
+    h+='<div class="th press"><div class="th-hd"><span class="th-n">'+H[i].n+'</span>'+
+       '<span class="th-s">'+(H[i].streak?'<b>'+H[i].streak+'</b> ימים ברצף':'נקטע')+'</span></div>'+
+       '<div class="th-l">';
+    for(j=0;j<DAY-1;j++)h+='<i class="th-d'+(H[i].done[j%H[i].done.length]?' on':'')+'"></i>';
+    h+='<button class="th-t'+(H[i].today?' on':'')+'">'+(H[i].today?'✓':'·')+'</button>';
+    h+='</div></div>';
+  }
+  return h+'</div>';
+};
+/* C · the month is a cycle, so it is drawn as one */
+V.ring=function(){
+  var R=[118,96,74,52],SW=13,C=150,h=head()+'<div class="rings"><svg viewBox="0 0 300 300" style="width:290px;height:290px">',i,j;
+  for(i=0;i<H.length;i++){
+    for(j=0;j<DAYS;j++){
+      var a0=-90+j*(360/DAYS)+1.6, a1=-90+(j+1)*(360/DAYS)-1.6;
+      var r=R[i], x0=C+Math.cos(a0*Math.PI/180)*r, y0=C+Math.sin(a0*Math.PI/180)*r;
+      var x1=C+Math.cos(a1*Math.PI/180)*r, y1=C+Math.sin(a1*Math.PI/180)*r;
+      var on=H[i].done[j%H[i].done.length], now=(j===DAY-1);
+      h+='<path d="M'+x0.toFixed(1)+' '+y0.toFixed(1)+' A'+r+' '+r+' 0 0 1 '+x1.toFixed(1)+' '+y1.toFixed(1)+
+         '" stroke="'+(on?'#8fb48f':'#ddd9d3')+'" stroke-width="'+SW+'" fill="none" stroke-linecap="round"'+
+         (now?' opacity="1"':'')+'/>';
+      if(now)h+='<path d="M'+x0.toFixed(1)+' '+y0.toFixed(1)+' A'+r+' '+r+' 0 0 1 '+x1.toFixed(1)+' '+y1.toFixed(1)+
+         '" stroke="#f0a92e" stroke-width="'+(SW+4)+'" fill="none" stroke-linecap="round" opacity=".55"/>';
+    }
+  }
+  h+='<text x="150" y="156" text-anchor="middle" font-family="Assistant" font-size="26" font-weight="800" fill="#4a453f">22</text>';
+  h+='</svg></div><div class="pad"><div class="ringkey">';
+  for(i=0;i<H.length;i++)h+='<span class="rk"><i style="background:#8fb48f;opacity:'+(1-i*.18).toFixed(2)+'"></i>'+H[i].n+'</span>';
+  return h+'</div></div>';
+};
+/* D · one card per habit, and the streak is the headline */
+V.cards=function(){
+  var h=head()+'<div class="pad">',i,j;
+  for(i=0;i<H.length;i++){
+    h+='<div class="cd raise"><div class="cd-x"><div class="cd-n">'+H[i].n+'</div>'+
+       '<div class="cd-s">'+(H[i].streak?'<b>'+H[i].streak+'</b> ימים ברצף':'לא היום ולא אתמול')+'</div>'+
+       '<div class="cd-map">';
+    for(j=0;j<DAYS;j++)h+='<i class="'+(H[i].done[j%H[i].done.length]?'on':'')+'"></i>';
+    h+='</div></div><button class="cd-b'+(H[i].today?' on':'')+'">'+(H[i].today?'✓':'+')+'</button></div>';
+  }
+  return h+'<button class="more press">כל החודש</button></div>';
+};
+document.getElementById('frame').innerHTML='<div class="tag">'+NAMES[v]+'</div>'+(V[v]||V.today)();
+var f=document.getElementById('frame');
+var k=Math.min(1,(window.innerHeight-6)/740);
+f.style.transformOrigin='top left';
+f.style.transform='scale('+k+')';
+</script>
+</body>
+</html>

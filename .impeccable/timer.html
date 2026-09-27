@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>הטיימר — הגדרה ושעון</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Read from the file before anything was drawn.
+
+  "The timer" is TWO screens wearing one name, and that is why neither is
+  designed:
+
+    renderFitTimer()  - the SETUP. Two .tm-card slabs with a flat
+                        0 4px 16px rgba(200,180,160,.1) drop shadow, a
+                        terracotta GRADIENT on the chosen kind
+                        (.tm-k.on, the same bug class as the purple
+                        "parse this for me"), number inputs drawn as
+                        1px-bordered boxes instead of channels, and
+                        labels at 9.5px.
+    .wtov / .wt-*     - the RUNNING CLOCK. rgba(74,67,64,.96), a dark
+                        floating slab 214px wide with white-on-white-16%
+                        buttons and a 40px face. A different world from
+                        the page under it.
+
+  The brief: the phone is ON THE FLOOR or on a bench, not in her hand. She
+  reads it from a plank or mid-burpee, about a metre and a half away, for
+  half a second. Three things have to survive that distance - WHICH PHASE,
+  HOW LONG LEFT, HOW MANY ROUNDS REMAIN. Setup is the opposite: done once
+  before she starts, never during.
+
+  So a 40px face inside a 214px floating slab is the wrong size for the one
+  moment it exists for. Direction ב makes the running clock the WHOLE
+  SCREEN; the floating slab survives only for when she walks away from it,
+  and is then the same design at a smaller size - not a second design.
+
+  Real values, from WT_PRESETS: tabata 20/10 x 8, prep 10.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --ink-btn:#4a4340; --muted:#6d675e; --amber:#f0a92e;
+    --terra700:#98492c; --green700:#397339;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+    --press-lg:inset 3px 4px 9px var(--shade), inset -3px -3px 7px var(--lit);
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--ground);color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:22px 26px 8px;max-width:1300px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:6px;max-width:88ch;line-height:1.75}
+  .sub b{color:var(--ink)}
+  .row{display:flex;gap:22px;justify-content:center;align-items:flex-start;
+    padding:18px 24px 44px;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:9px;width:390px}
+  .cap{font-size:12px;font-weight:800;letter-spacing:.09em;color:var(--muted)}
+  .cap b{color:var(--ink)}
+  .why{font-size:12.5px;line-height:1.7;color:var(--muted);text-align:center;
+    min-height:72px;padding:0 4px}
+  .why b{color:var(--ink)}
+  .phone{width:390px;height:844px;border-radius:26px;overflow:hidden;background:var(--ground);
+    box-shadow:-6px -6px 14px var(--lit),8px 10px 22px var(--shade);
+    padding:16px;display:flex;flex-direction:column;gap:13px;position:relative}
+
+  .back{align-self:flex-start;border-radius:13px;padding:10px 15px;background:var(--ground);
+    box-shadow:var(--raise);font-size:12.5px;font-weight:800;color:var(--muted)}
+
+  /* ── setup, in the material ── */
+  .s-card{background:var(--ground);border-radius:22px;padding:17px;box-shadow:var(--raise-lg)}
+  .s-h{font-size:12.5px;font-weight:800;color:var(--muted);letter-spacing:.06em;margin-bottom:12px}
+  .s-two{display:flex;gap:10px}
+  .s-go{flex:1;border-radius:15px;padding:16px 10px;background:var(--ground);box-shadow:var(--raise);
+    text-align:center}
+  .s-go-i{font-size:19px;line-height:1;color:var(--muted)}
+  .s-go-t{font-size:13.5px;font-weight:800;margin-top:7px}
+  .s-kinds{display:flex;gap:7px;margin-bottom:12px}
+  .s-k{flex:1;border-radius:13px;padding:11px 4px;text-align:center;font-size:12.5px;font-weight:800;
+    color:var(--muted);background:var(--ground);box-shadow:var(--raise)}
+  /* chosen = PRESSED, not a gradient. The material's own way of saying "this
+     one", and it costs no colour. */
+  .s-k.on{box-shadow:var(--press);color:var(--ink)}
+  .s-what{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:14px}
+  .s-nums{display:flex;gap:9px;margin-bottom:14px}
+  .s-n{flex:1}
+  .s-n-l{font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:6px;text-align:center}
+  /* a field is a CHANNEL, not a box with a border */
+  .s-n-v{background:var(--ground);border-radius:13px;padding:13px 6px;text-align:center;
+    font-size:22px;font-weight:800;direction:ltr;box-shadow:var(--press-sm);
+    font-variant-numeric:tabular-nums}
+  .s-start{width:100%;border-radius:16px;padding:16px;background:var(--ink-btn);color:#fff;
+    font-size:15px;font-weight:800;text-align:center}
+
+  /* ── the running clock ── */
+  .r-phase{font-size:15px;font-weight:800;letter-spacing:.22em;color:var(--muted);text-align:center}
+  .r-face{font-size:138px;font-weight:800;line-height:.95;text-align:center;direction:ltr;
+    letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+  .r-of{font-size:15px;font-weight:700;color:var(--muted);text-align:center;margin-top:10px}
+  /* the phase is carried by LIGHT IN A CHANNEL - amber is never a letter */
+  .r-track{height:16px;border-radius:9px;background:var(--ground);box-shadow:var(--press-lg);
+    overflow:hidden;margin:22px 0 20px}
+  .r-fill{height:100%;border-radius:9px;background:var(--amber);box-shadow:var(--press-sm)}
+  .r-pips{display:flex;gap:7px;justify-content:center}
+  .r-pip{flex:1;height:9px;border-radius:5px;background:var(--ground);box-shadow:var(--press-sm)}
+  .r-pip.done{background:var(--ink-btn);box-shadow:none}
+  .r-pip.now{background:var(--amber)}
+  .r-ctrl{display:flex;gap:11px;margin-top:auto}
+  .r-b{flex:1;border-radius:17px;padding:19px;text-align:center;font-size:15px;font-weight:800;
+    background:var(--ground);box-shadow:var(--raise);color:var(--ink)}
+  .r-b.stop{background:var(--ink-btn);color:#fff;box-shadow:none}
+  .r-next{background:var(--ground);border-radius:15px;padding:13px 15px;box-shadow:var(--raise);
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;font-weight:700;color:var(--muted)}
+  .r-next b{color:var(--ink);direction:ltr}
+  /* and the same design, small, for when she walks away from it */
+  .r-pill{position:absolute;inset-inline:64px;bottom:22px;background:var(--ground);
+    border-radius:19px;padding:11px 15px;box-shadow:-4px -4px 9px var(--lit),5px 7px 16px var(--shade);
+    display:flex;align-items:center;gap:13px}
+  .r-pill-n{font-size:26px;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums}
+  .r-pill-s{font-size:11.5px;font-weight:700;color:var(--muted);flex:1}
+  .r-pill-x{border-radius:11px;padding:8px 13px;background:var(--ground);box-shadow:var(--press-sm);
+    font-size:12px;font-weight:800;color:var(--muted)}
+
+  /* ── the honest now ── */
+  .n-card{background:var(--ground);border-radius:18px;padding:14px;
+    box-shadow:0 4px 16px rgba(200,180,160,.1)}
+  .n-h{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:10px}
+  .n-go{flex:1;border-radius:12px;padding:12px;text-align:center;font-size:12.5px;font-weight:800;
+    background:#f3f1ed;color:var(--ink)}
+  .n-k{flex:1;border-radius:11px;padding:9px 4px;text-align:center;font-size:11.5px;font-weight:800;
+    background:#f3f1ed;color:var(--muted)}
+  .n-k.on{background:linear-gradient(135deg,#f3b9a8,#e08a72);color:#fff}
+  .n-what{font-size:10.5px;color:var(--muted);line-height:1.6;margin-bottom:11px}
+  .n-n-l{font-size:9.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
+  .n-n-v{border:1px solid rgba(140,133,125,.28);border-radius:10px;padding:9px;text-align:center;
+    font-size:16px;font-weight:800;direction:ltr;background:#f3f1ed}
+  .n-start{width:100%;border-radius:13px;padding:13px;background:var(--ink-btn);color:#fff;
+    font-size:13px;font-weight:800;text-align:center}
+  .n-ov{position:absolute;inset-inline:88px;bottom:150px;background:rgba(74,67,64,.96);
+    color:#fff;border-radius:20px;padding:12px 14px;box-shadow:0 10px 30px rgba(74,67,64,.4)}
+  .n-ov-f{font-size:40px;font-weight:800;text-align:center;direction:ltr;line-height:1.1;margin-bottom:9px}
+  .n-ov-r{display:flex;gap:6px;margin-bottom:6px}
+  .n-ov-b{flex:1;border-radius:10px;padding:9px 6px;text-align:center;font-size:12px;font-weight:800;
+    background:rgba(255,255,255,.16)}
+  .n-ov-m{flex:1;border-radius:10px;padding:7px 6px;text-align:center;font-size:10.5px;font-weight:800;
+    background:rgba(255,255,255,.1)}
+  .tagline{font-size:11.5px;color:var(--muted);text-align:center}
+</style>
+
+<header>
+  <h1>הטיימר — הגדרה, ושעון</h1>
+  <p class="sub">
+    "הטיימר" הוא <b>שני מסכים בשם אחד</b>, וזאת הסיבה ששניהם לא מעוצבים.
+    <b>ההגדרה</b> (<code>renderFitTimer</code>): כרטיסים שטוחים עם צל־נפילה ישן,
+    שבב נבחר ב<b>גרדיאנט טרקוטה</b> — אותה מחלקה בדיוק כמו הכפתור הסגול —
+    שדות מספר במסגרת 1px במקום ערוץ, ותוויות ב-9.5px.
+    <b>השעון הרץ</b> (<code>.wtov</code>): לוח כהה צף ברוחב 214px עם ספרות 40px,
+    <code>rgba(74,67,64,.96)</code>, עולם אחר מהדף שמתחתיו.
+    <br>הכתבה: הטלפון <b>על הרצפה או על הספסל</b>, לא ביד. היא קוראת אותו מפלאנק
+    או באמצע ברפי, ממטר וחצי, חצי שנייה. שלושה דברים חייבים לשרוד את המרחק —
+    <b>איזה שלב · כמה נשאר · כמה סבבים</b>. ספרות של 40px בתוך לוח של 214px הן
+    הגודל הלא נכון לרגע היחיד שלשמו הן קיימות.
+  </p>
+</header>
+
+<div class="row">
+
+  <!-- ══ A ══ -->
+  <div class="col">
+    <div class="cap"><b>א</b> · ההגדרה</div>
+    <div class="phone">
+      <div class="back">‹ חזרה</div>
+
+      <div class="s-card">
+        <div class="s-h">בלי לוח זמנים</div>
+        <div class="s-two">
+          <div class="s-go"><div class="s-go-i">↑</div><div class="s-go-t">סופר למעלה</div></div>
+          <div class="s-go"><div class="s-go-i">↓</div><div class="s-go-t">סופר למטה</div></div>
+        </div>
+      </div>
+
+      <div class="s-card">
+        <div class="s-h">עם לוח זמנים</div>
+        <div class="s-kinds">
+          <div class="s-k">EMOM</div><div class="s-k">AMRAP</div>
+          <div class="s-k on">Tabata</div><div class="s-k">אינטרוולים</div>
+        </div>
+        <div class="s-what">עבודה קצרה ומנוחה קצרה, שמונה פעמים. ברירת המחדל היא 20 ו-10.</div>
+        <div class="s-nums">
+          <div class="s-n"><div class="s-n-l">עבודה</div><div class="s-n-v">20</div></div>
+          <div class="s-n"><div class="s-n-l">מנוחה</div><div class="s-n-v">10</div></div>
+          <div class="s-n"><div class="s-n-l">סבבים</div><div class="s-n-v">8</div></div>
+          <div class="s-n"><div class="s-n-l">היכון</div><div class="s-n-v">10</div></div>
+        </div>
+        <div class="s-start">התחילי ›</div>
+      </div>
+
+      <div style="margin-top:auto;font-size:12.5px;color:var(--muted);text-align:center;line-height:1.7">
+        השבב הנבחר הוא <b style="color:var(--ink)">לחוץ</b>, לא צבוע.<br>
+        השדה הוא <b style="color:var(--ink)">ערוץ</b>, לא קופסה עם מסגרת.
+      </div>
+    </div>
+    <p class="why">
+      אותו מסך, בניב. שתי מחיקות עושות את רוב העבודה: <b>הגרדיאנט</b> יוצא —
+      "זה הנבחר" נאמר בלחיצה, שזאת השפה של החומר וזה לא עולה צבע —
+      ו<b>המסגרות</b> יוצאות, כי שדה אצלנו הוא ערוץ. התוויות עולות מ-9.5 ל-11.5.
+    </p>
+  </div>
+
+  <!-- ══ B ══ -->
+  <div class="col">
+    <div class="cap"><b>ב</b> · השעון הרץ — כל המסך</div>
+    <div class="phone">
+      <div class="back">‹ Tabata · 20 / 10</div>
+
+      <div style="margin-top:46px">
+        <div class="r-phase">עבודה</div>
+        <div class="r-face" style="margin-top:14px">0:14</div>
+        <div class="r-of">סבב 3 מתוך 8</div>
+      </div>
+
+      <div class="r-track"><div class="r-fill" style="width:70%"></div></div>
+
+      <div class="r-pips">
+        <div class="r-pip done"></div><div class="r-pip done"></div><div class="r-pip now"></div>
+        <div class="r-pip"></div><div class="r-pip"></div><div class="r-pip"></div>
+        <div class="r-pip"></div><div class="r-pip"></div>
+      </div>
+
+      <div class="r-next" style="margin-top:20px">
+        <span>אחר כך</span><span>מנוחה <b>0:10</b></span>
+      </div>
+
+      <div class="r-ctrl">
+        <div class="r-b">השהי</div>
+        <div class="r-b stop">סיימי</div>
+      </div>
+
+      <div class="r-pill">
+        <div class="r-pill-n">0:14</div>
+        <div class="r-pill-s">עבודה · סבב 3/8</div>
+        <div class="r-pill-x">השהי</div>
+      </div>
+    </div>
+    <p class="why">
+      ספרות של <b>138px</b> במקום 40, מילת שלב אחת, ושמונה פסים שאומרים כמה נשאר —
+      הכול קריא מהרצפה. השלב נישא ב<b>אור בערוץ</b>, לא באות צבעונית.
+      והלוח הצף למטה הוא <b>אותו עיצוב בגודל קטן</b>, לרגע שבה היא הולכת לרשום
+      סט — לא עיצוב שני.
+    </p>
+  </div>
+
+  <!-- ══ NOW ══ -->
+  <div class="col">
+    <div class="cap">היום</div>
+    <div class="phone">
+      <div class="back" style="box-shadow:none;background:#f3f1ed;width:100%;text-align:center">‹ חזרה</div>
+
+      <div class="n-card">
+        <div class="n-h">בלי לוח זמנים</div>
+        <div style="display:flex;gap:8px"><div class="n-go">סופר למעלה</div><div class="n-go">סופר למטה</div></div>
+      </div>
+
+      <div class="n-card">
+        <div class="n-h">עם לוח זמנים</div>
+        <div style="display:flex;gap:6px;margin-bottom:9px">
+          <div class="n-k">EMOM</div><div class="n-k">AMRAP</div>
+          <div class="n-k on">Tabata</div><div class="n-k">אינטרוולים</div>
+        </div>
+        <div class="n-what">עבודה קצרה ומנוחה קצרה, שמונה פעמים. ברירת המחדל היא 20 ו-10.</div>
+        <div style="display:flex;gap:8px;margin-bottom:11px">
+          <div style="flex:1"><div class="n-n-l">עבודה</div><div class="n-n-v">20</div></div>
+          <div style="flex:1"><div class="n-n-l">מנוחה</div><div class="n-n-v">10</div></div>
+          <div style="flex:1"><div class="n-n-l">סבבים</div><div class="n-n-v">8</div></div>
+          <div style="flex:1"><div class="n-n-l">היכון</div><div class="n-n-v">10</div></div>
+        </div>
+        <div class="n-start">התחל</div>
+      </div>
+
+      <div class="tagline" style="margin-top:14px">ומה שהיא רואה כשזה רץ:</div>
+
+      <div class="n-ov">
+        <div class="n-ov-f">0:14</div>
+        <div class="n-ov-r"><div class="n-ov-b">השהה</div><div class="n-ov-b">אפס</div><div class="n-ov-b">סגור</div></div>
+        <div class="n-ov-r"><div class="n-ov-m">סופר למעלה</div><div class="n-ov-m">סופר למטה</div></div>
+      </div>
+    </div>
+    <p class="why">
+      גרדיאנט טרקוטה על השבב הנבחר, ארבע קופסאות עם מסגרת, תוויות ב-9.5px —
+      ולוח כהה צף של 214px שבו ה<b>ספרה</b> קטנה מכפתור "השהה". זה הדבר
+      היחיד במסך שקוראים ממטר וחצי, והוא הקטן ביותר.
+    </p>
+  </div>
+
+</div>
+</html>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>תחביבים</title>
+<!--
+  THE SOURCE OF TRUTH for the hobbies screen. This is not a picture of a
+  design; it is the markup and the CSS that ship. dev/index.html takes this
+  block verbatim and renderHabits() emits exactly this tree.
+
+  Glass here has THICKNESS, which is what the flat round lost: a lit top rim,
+  a dimmer bottom rim, a hairline edge, and three shadows at three distances -
+  contact, lift and the deep one that puts it in a room.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── THE HOBBIES WORLD ──
+   Cream ground, one violet bloom, glass on top. Colour never fills a surface:
+   it arrives as light in the corner and as the heat in the map. */
+.hb{
+  --cream:#ece6da; --cream-hi:#f4efe5; --cream-lo:#ddd4c4;
+  --ink:#2e2923; --ink-2:#4f4940; --muted:#6f6659;
+  --vio:#7b76b8; --vio-2:#9e9ad0; --vio-3:#c5c2e4; --vio-4:#e2e0f1;
+  --amber:#f0a92e;
+  --rim:rgba(255,255,255,.96); --rim-lo:rgba(255,255,255,.45);
+  --cast:rgba(118,100,76,.30); --cast-deep:rgba(118,100,76,.50);
+  position:relative;min-height:100%;padding:0 0 28px;
+  font-family:Assistant,system-ui,sans-serif;color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+/* the ground, and the one bloom */
+.hb-sky{position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(76% 44% at 4% 2%,rgba(150,144,208,.60),rgba(150,144,208,.20) 42%,transparent 72%),
+    radial-gradient(120% 60% at 62% 0%,var(--cream-hi),transparent 60%),
+    linear-gradient(170deg,var(--cream) 0%,var(--cream) 52%,var(--cream-lo) 100%)}
+/* the grain the glass needs: frosted glass over a perfectly smooth field is
+   just a pale rectangle, because the blur has nothing to smear. Static SVG
+   noise, the same device the home hub's disc already uses. */
+.hb-grain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.42;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.34'/%3E%3C/svg%3E");
+  background-size:160px 160px}
+.hb-in{position:relative;z-index:1;padding:0 16px}
+
+/* ── GLASS, WITH THICKNESS ── */
+.hb-g{position:relative;border-radius:26px;
+  background:linear-gradient(158deg,rgba(255,255,255,.60),rgba(255,255,255,.30));
+  -webkit-backdrop-filter:blur(20px) saturate(1.18);backdrop-filter:blur(20px) saturate(1.18);
+  box-shadow:
+    inset 0 1.2px 0 var(--rim),
+    inset 0 -1.2px 0 var(--rim-lo),
+    inset 0 0 0 1px rgba(255,255,255,.34),
+    0 1px 2px rgba(118,100,76,.10),
+    0 10px 20px -10px var(--cast),
+    0 34px 56px -34px var(--cast-deep)}
+/* the lit one: a warm line laid along the lower edge, and the glass warms */
+.hb-g.lit{background:linear-gradient(158deg,rgba(255,255,255,.66),rgba(255,247,232,.40))}
+.hb-g.lit::after{content:"";position:absolute;inset-inline:16px;bottom:-1px;height:2px;
+  border-radius:2px;background:linear-gradient(90deg,rgba(240,169,46,0),var(--amber) 22%,#ffd98a 50%,var(--amber) 78%,rgba(240,169,46,0));
+  box-shadow:0 0 12px 1.5px rgba(240,169,46,.62),0 0 28px 6px rgba(240,169,46,.26)}
+
+/* ── HEAD ── */
+.hb-hd{padding:26px 4px 16px;text-align:start}
+.hb-t{font-size:31px;font-weight:800;letter-spacing:-.8px;line-height:1.05}
+.hb-s{font-size:12.5px;font-weight:600;color:var(--muted);margin-top:7px}
+
+/* ── THE SELECTOR, WHICH CARRIES THE COMPARISON ──
+   Each pill says its hobby and how much it has had, so the difference between
+   hobbies is readable without opening anything. */
+.hb-pills{display:flex;gap:9px;margin-bottom:14px}
+.hb-p{flex:1;min-width:0;border:none;cursor:pointer;font-family:inherit;
+  border-radius:20px;padding:12px 8px 11px;text-align:center;
+  background:linear-gradient(158deg,rgba(255,255,255,.42),rgba(255,255,255,.20));
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.80),inset 0 0 0 1px rgba(255,255,255,.28),
+             0 6px 14px -9px var(--cast)}
+.hb-p-n{display:block;font-size:13.5px;font-weight:800;color:var(--ink-2);line-height:1.2}
+.hb-p-h{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-top:3px;
+  unicode-bidi:plaintext}
+.hb-p.on{background:linear-gradient(158deg,rgba(255,255,255,.72),rgba(255,250,240,.42));
+  box-shadow:inset 0 1.2px 0 var(--rim),inset 0 0 0 1px rgba(255,255,255,.42),
+             0 10px 20px -10px var(--cast),0 26px 44px -30px var(--cast-deep)}
+.hb-p.on .hb-p-n{color:var(--ink)}
+.hb-p.on::after{content:"";position:absolute}
+.hb-p{position:relative}
+.hb-p.on::before{content:"";position:absolute;inset-inline:22%;bottom:-1px;height:2px;
+  border-radius:2px;background:linear-gradient(90deg,rgba(240,169,46,0),var(--amber),rgba(240,169,46,0));
+  box-shadow:0 0 10px 1px rgba(240,169,46,.6)}
+
+/* ── THE TIMER ── the only thing you have to do */
+.hb-go{display:flex;align-items:center;gap:14px;width:100%;border:none;cursor:pointer;
+  font-family:inherit;text-align:start;padding:18px 18px;margin-bottom:12px}
+.hb-go-x{flex:1;min-width:0}
+.hb-go-k{font-size:11px;font-weight:800;letter-spacing:.09em;color:var(--muted)}
+.hb-go-n{font-size:17px;font-weight:800;margin-top:3px}
+.hb-clock{font-size:30px;font-weight:800;letter-spacing:-1px;direction:ltr;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+
+/* ── THE YEAR ── the map, not a streak */
+.hb-lab{font-size:11px;font-weight:800;letter-spacing:.09em;color:var(--muted);margin:0 6px 9px}
+.hb-map{padding:16px 16px 13px;margin-bottom:12px}
+.hb-grid{display:flex;gap:3px;direction:ltr;justify-content:space-between}
+.hb-col{display:flex;flex-direction:column;gap:3px;flex:1}
+.hb-cell{width:100%;aspect-ratio:1;border-radius:2.5px;background:var(--vio-4);
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.5)}
+.hb-cell.l1{background:var(--vio-3)}
+.hb-cell.l2{background:var(--vio-2)}
+.hb-cell.l3{background:var(--vio)}
+.hb-cell.now{box-shadow:0 0 0 1.5px var(--amber),0 0 8px 1px rgba(240,169,46,.7)}
+.hb-key{display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:11px;
+  font-size:11px;font-weight:700;color:var(--muted);direction:ltr}
+.hb-key i{width:9px;height:9px;border-radius:2.5px;display:block;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.5)}
+
+/* ── WHERE THE TIME WENT ── */
+.hb-bd{padding:16px 18px 14px}
+.hb-r{display:flex;align-items:center;gap:11px;margin-bottom:11px}
+.hb-r:last-child{margin-bottom:0}
+.hb-r-n{width:80px;font-size:12px;font-weight:800;color:var(--ink-2);text-align:start;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-r-b{flex:1;height:9px;border-radius:5px;background:rgba(255,255,255,.55);
+  box-shadow:inset 0 1px 2px rgba(118,100,76,.14)}
+.hb-r-b i{display:block;height:100%;border-radius:5px;
+  background:linear-gradient(90deg,var(--vio-2),var(--vio));
+  box-shadow:0 1px 3px -1px rgba(90,84,150,.55)}
+.hb-r-v{width:44px;font-size:11.5px;font-weight:800;color:var(--muted);text-align:end;direction:ltr}
+.hb-none{font-size:12px;font-weight:600;color:var(--muted);line-height:1.7;padding:2px 2px 0}
+</style>
+</head>
+<body style="margin:0;background:#ece6da">
+<div class="hb" id="hb" style="min-height:100vh">
+  <div class="hb-sky"></div>
+  <div class="hb-grain"></div>
+  <div class="hb-in">
+
+    <div class="hb-hd">
+      <div class="hb-t">התחביבים שלי</div>
+      <div class="hb-s">מה שממלא לי את הזמן</div>
+    </div>
+
+    <div class="hb-pills" id="hb-pills">
+      <button class="hb-p on"><span class="hb-p-n">גיטרה</span><span class="hb-p-h">31 שעות</span></button>
+      <button class="hb-p"><span class="hb-p-n">ציור</span><span class="hb-p-h">16 שעות</span></button>
+      <button class="hb-p"><span class="hb-p-n">קריאה</span><span class="hb-p-h">38 שעות</span></button>
+    </div>
+
+    <button class="hb-g lit hb-go" id="hb-go">
+      <span class="hb-go-x">
+        <span class="hb-go-k">רץ עכשיו</span>
+        <span class="hb-go-n">גיטרה</span>
+      </span>
+      <span class="hb-clock" id="hb-clock">12:41</span>
+    </button>
+
+    <div class="hb-lab">השנה</div>
+    <div class="hb-g hb-map">
+      <div class="hb-grid" id="hb-grid"></div>
+      <div class="hb-key">פחות
+        <i style="background:var(--vio-4)"></i><i style="background:var(--vio-3)"></i>
+        <i style="background:var(--vio-2)"></i><i style="background:var(--vio)"></i>יותר</div>
+    </div>
+
+    <div class="hb-lab">על מה הזמן הלך</div>
+    <div class="hb-g hb-bd" id="hb-bd">
+      <div class="hb-r"><span class="hb-r-n">טכניקה</span>
+        <span class="hb-r-b"><i style="width:44%"></i></span><span class="hb-r-v">44%</span></div>
+      <div class="hb-r"><span class="hb-r-n">שירים</span>
+        <span class="hb-r-b"><i style="width:38%"></i></span><span class="hb-r-v">38%</span></div>
+      <div class="hb-r"><span class="hb-r-n">תיאוריה</span>
+        <span class="hb-r-b"><i style="width:18%"></i></span><span class="hb-r-v">18%</span></div>
+    </div>
+
+  </div>
+</div>
+<script>
+/* the map, drawn the way the app will draw it: one column per week, seven
+   rows, shaded by minutes. Seeded here so the picture is stable to judge. */
+(function(){
+  var W=26,g=document.getElementById('hb-grid'),h='',w,d,s=13;
+  function r(){s=(s*9301+49297)%233280;return s/233280;}
+  for(w=0;w<W;w++){
+    h+='<span class="hb-col">';
+    for(d=0;d<7;d++){
+      var v=r(),lv=v>.84?3:v>.66?2:v>.42?1:0;
+      var now=(w===W-1&&d===2);
+      h+='<i class="hb-cell'+(lv?' l'+lv:'')+(now?' now':'')+'"></i>';
+    }
+    h+='</span>';
+  }
+  g.innerHTML=h;
+})();
+</script>
+</body>
+</html>

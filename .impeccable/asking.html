@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>איך האפליקציה שואלת</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Asaf: "she entered nutrition and it immediately lets her add, without asking
+  what her goal is. We need to work out how we navigate our users, not have
+  them hunt for things like how to enter a goal."
+  Measured before drawing:
+    - the app has NO first run. onboard/welcome/firstRun: zero. Not one
+      question has ever been asked, in any area.
+    - TARGETS_DEFAULT = {kcal:1975, p:155, c:200, f:60, water:3000}. Michal's
+      rings have been filling against somebody else's numbers since 26 Sep.
+    - profileTargets() needs SIX answers: birth, height, weight, sex,
+      activity, goal. She has given none.
+    - targetsAreGuessed() already exists, and already renders a button saying
+      so - but it lives INSIDE the macro card, below the composer and below
+      "today's meals". It was not in his screenshot at all.
+    - the only other door is a pill labelled "אישי", fifth in a scrolling row.
+  So the notice is not missing. It is buried and passive, and the screen
+  opens by offering an action instead of asking a question.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --ink-btn:#4a4340; --muted:#6d675e; --amber:#f0a92e;
+    --violet700:#5a4a86; --violet500:#a690cf;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--ground);color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:22px 26px 8px;max-width:1300px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:6px;max-width:86ch;line-height:1.75}
+  .sub b{color:var(--ink)}
+  .facts{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .fact{background:var(--ground);border-radius:13px;padding:9px 13px;box-shadow:var(--raise);
+    font-size:12.5px;color:var(--muted)}
+  .fact b{color:var(--ink);font-weight:800}
+  .row{display:flex;gap:22px;justify-content:center;align-items:flex-start;
+    padding:18px 24px 44px;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:9px;width:390px}
+  .cap{font-size:12px;font-weight:800;letter-spacing:.09em;color:var(--muted)}
+  .cap b{color:var(--ink)}
+  .why{font-size:12.5px;line-height:1.7;color:var(--muted);text-align:center;
+    min-height:76px;padding:0 4px}
+  .why b{color:var(--ink)}
+  .phone{width:390px;height:844px;border-radius:26px;overflow:hidden;background:var(--ground);
+    box-shadow:-6px -6px 14px var(--lit),8px 10px 22px var(--shade);
+    padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .title{font-size:25px;font-weight:800;letter-spacing:-.02em}
+  .date{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .tabs{display:flex;gap:6px;overflow:hidden}
+  .tab{flex-shrink:0;border-radius:12px;padding:8px 13px;font-size:12.5px;font-weight:700;
+    background:var(--ground);color:var(--muted);box-shadow:var(--raise)}
+  .tab.on{color:#fff;background:var(--ink-btn);box-shadow:none}
+  .sec{font-size:15px;font-weight:800;margin-top:2px}
+  .cta{width:100%;border-radius:15px;padding:14px;background:var(--ink-btn);color:#fff;
+    font-size:14.5px;font-weight:800;text-align:center}
+  .field{background:var(--ground);border-radius:14px;padding:13px;box-shadow:var(--press-sm);
+    font-size:13.5px;color:var(--muted)}
+  .sq{width:54px;height:54px;border-radius:15px;background:var(--ground);box-shadow:var(--raise);
+    display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 auto}
+  .mealrow{display:flex;gap:9px;justify-content:space-between}
+  .meal{flex:1;text-align:center}
+  .meal-d{width:100%;aspect-ratio:1;border-radius:19px;background:var(--ground);box-shadow:var(--raise);
+    display:flex;align-items:center;justify-content:center;font-size:19px}
+  .meal-t{font-size:10.5px;color:var(--muted);margin-top:5px;font-weight:700}
+  .bars{display:flex;gap:11px;background:var(--ground);border-radius:20px;padding:15px;
+    box-shadow:var(--raise-lg)}
+  .bar{flex:1;text-align:center}
+  .bar-t{height:96px;border-radius:9px;background:var(--ground);box-shadow:var(--press);
+    position:relative;overflow:hidden}
+  .bar-f{position:absolute;inset:auto 0 0 0;border-radius:9px}
+  .bar-v{font-size:11px;font-weight:800;margin-top:6px;direction:ltr}
+  .bar-l{font-size:10.5px;color:var(--muted);font-weight:700}
+
+  /* ── the ask ── */
+  .ask{background:var(--ground);border-radius:24px;padding:20px 18px;box-shadow:var(--raise-lg)}
+  .ask-k{font-size:11px;font-weight:800;letter-spacing:.11em;color:var(--muted)}
+  .ask-q{font-size:20px;font-weight:800;margin-top:7px;line-height:1.35;letter-spacing:-.01em}
+  .ask-s{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.6}
+  .opts{display:flex;flex-direction:column;gap:9px;margin-top:15px}
+  .opt{display:flex;align-items:center;gap:12px;background:var(--ground);border-radius:15px;
+    padding:14px 15px;box-shadow:var(--raise)}
+  .opt.on{box-shadow:var(--press)}
+  .opt-d{width:9px;height:9px;border-radius:5px;background:var(--ground);box-shadow:var(--press-sm);flex:0 0 auto}
+  .opt.on .opt-d{background:var(--amber)}
+  .opt-t{font-size:14px;font-weight:700}
+  .opt-s{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .skip{text-align:center;font-size:12.5px;color:var(--muted);padding:4px}
+  .steps{display:flex;gap:6px;justify-content:center;margin-top:14px}
+  .step{width:24px;height:5px;border-radius:3px;background:var(--ground);box-shadow:var(--press-sm)}
+  .step.on{background:var(--amber);box-shadow:var(--press-sm)}
+  .dim{opacity:.4;pointer-events:none}
+
+  .hint{background:var(--ground);border-radius:15px;padding:12px 14px;box-shadow:var(--raise);
+    display:flex;align-items:center;gap:11px}
+  .hint-t{font-size:12.5px;font-weight:700;flex:1;line-height:1.5}
+  .hint-g{width:4px;align-self:stretch;border-radius:2px;background:var(--amber)}
+
+  /* ── the honest "now" ── */
+  .n-white{background:#fbf9f6;border-radius:20px;padding:15px;
+    box-shadow:0 2px 10px rgba(120,110,100,.10)}
+  .n-grad{width:100%;border-radius:14px;padding:14px;text-align:center;color:#fff;
+    font-size:14.5px;font-weight:800;
+    background:linear-gradient(135deg,#a690cf,#a690cf99)}
+  .n-in{background:#fff;border:1px solid #ece7e0;border-radius:12px;padding:12px;
+    font-size:13.5px;color:var(--ink)}
+  .n-sq{width:54px;height:54px;border-radius:14px;background:#fff;border:1px solid #ece7e0;
+    display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 auto}
+  .tagline{font-size:11.5px;color:var(--muted);text-align:center}
+</style>
+
+<header>
+  <h1>איך האפליקציה שואלת</h1>
+  <p class="sub">
+    מיכל נכנסה לתזונה והמסך הציע לה <b>להוסיף</b>. הוא לא שאל אותה שום דבר —
+    והטבעות כבר היו מלאות במספרים של מישהו אחר. מדדתי לפני שציירתי:
+  </p>
+  <div class="facts">
+    <div class="fact">ריצה ראשונה באפליקציה: <b>אין. אפס שאלות, בכל האזורים.</b></div>
+    <div class="fact">היעד שהיא נמדדת מולו: <b>1975 קק״ל · 155ג חלבון</b> — ברירת מחדל</div>
+    <div class="fact">מה שצריך כדי לחשב לה יעד: <b>6 תשובות</b>, נתנה <b>0</b></div>
+    <div class="fact">ההודעה "יעד התחלתי" <b>קיימת</b> — קבורה מתחת לשני מסכים</div>
+    <div class="fact">הדלת היחידה: פילון בשם <b>"אישי"</b>, חמישי בשורה נגללת</div>
+  </div>
+  <p class="sub" style="margin-top:12px">
+    אז זה לא חסר. זה <b>קבור ופסיבי</b>, והמסך נפתח בהצעת פעולה במקום בשאלה.
+    שלוש דרכים לתקן, ואני ממליץ על <b>א</b>.
+  </p>
+</header>
+
+<div class="row">
+
+  <!-- ══ A ══ -->
+  <div class="col">
+    <div class="cap"><b>א</b> · האזור שואל, במקום שבו התשובה חשובה</div>
+    <div class="phone">
+      <div>
+        <div class="title">היום</div>
+        <div class="date">יום ראשון, 27 בספטמבר</div>
+      </div>
+      <div class="tabs">
+        <div class="tab on">יומי</div><div class="tab">היסטוריה</div>
+        <div class="tab">מתכונים</div><div class="tab">אישי</div>
+      </div>
+
+      <div class="ask">
+        <div class="ask-k">רגע לפני שמתחילים</div>
+        <div class="ask-q">למה את מכוונת?</div>
+        <div class="ask-s">שאלה אחת עכשיו, וכל המספרים במסך הזה יהיו שלך במקום של מישהו אחר.</div>
+        <div class="opts">
+          <div class="opt on"><div class="opt-d"></div>
+            <div><div class="opt-t">לרדת במשקל</div><div class="opt-s">גירעון מתון, חלבון גבוה</div></div></div>
+          <div class="opt"><div class="opt-d"></div>
+            <div><div class="opt-t">לשמור על המשקל</div><div class="opt-s">איזון סביב מה שאת שורפת</div></div></div>
+          <div class="opt"><div class="opt-d"></div>
+            <div><div class="opt-t">לבנות שריר</div><div class="opt-s">עודף קטן, חלבון גבוה</div></div></div>
+        </div>
+        <div class="steps"><div class="step on"></div><div class="step"></div><div class="step"></div></div>
+      </div>
+
+      <div class="skip">אחר כך · אני רק רוצה לרשום משהו</div>
+
+      <div class="dim" style="display:flex;flex-direction:column;gap:12px">
+        <div class="sec">ארוחות היום</div>
+        <div class="mealrow">
+          <div class="meal"><div class="meal-d">☀</div><div class="meal-t">בוקר</div></div>
+          <div class="meal"><div class="meal-d">🍴</div><div class="meal-t">צהריים</div></div>
+          <div class="meal"><div class="meal-d">☾</div><div class="meal-t">ערב</div></div>
+          <div class="meal"><div class="meal-d">◔</div><div class="meal-t">חטיף</div></div>
+          <div class="meal"><div class="meal-d">▯</div><div class="meal-t">משקה</div></div>
+        </div>
+        <div class="field">הוסף ארוחה</div>
+      </div>
+    </div>
+    <p class="why">
+      שאלה <b>אחת</b>, במסך שבו התשובה משנה, עם "אחר כך" אמיתי. שלושה פסים אומרים
+      שיש עוד שתיים ושזה נגמר. האזור ממשיך לשאול עד שנענה — ואז השאלה נעלמת לתמיד.
+      <b>כל אזור מקבל חריץ לשאלה הראשונה שלו</b>, וזה מה שהופך את זה לתשובה ולא לתיקון.
+    </p>
+  </div>
+
+  <!-- ══ B ══ -->
+  <div class="col">
+    <div class="cap"><b>ב</b> · ריצה ראשונה, לפני הכול</div>
+    <div class="phone" style="justify-content:center;gap:0">
+      <div style="text-align:center;padding:0 6px">
+        <div style="font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--muted)">שאלה 3 מתוך 6</div>
+        <div style="font-size:27px;font-weight:800;margin-top:12px;letter-spacing:-.02em">כמה את זזה בשבוע?</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:9px;line-height:1.65">
+          זה מה שקובע כמה את שורפת ביום רגיל.
+        </div>
+      </div>
+      <div class="opts" style="margin-top:26px">
+        <div class="opt"><div class="opt-d"></div><div><div class="opt-t">כמעט לא</div><div class="opt-s">יום יושב</div></div></div>
+        <div class="opt"><div class="opt-d"></div><div><div class="opt-t">קצת</div><div class="opt-s">1–2 אימונים</div></div></div>
+        <div class="opt on"><div class="opt-d"></div><div><div class="opt-t">בינוני</div><div class="opt-s">3–4 אימונים</div></div></div>
+        <div class="opt"><div class="opt-d"></div><div><div class="opt-t">הרבה</div><div class="opt-s">5–6 אימונים</div></div></div>
+        <div class="opt"><div class="opt-d"></div><div><div class="opt-t">כל יום</div><div class="opt-s">או עבודה פיזית</div></div></div>
+      </div>
+      <div class="steps" style="margin-top:26px">
+        <div class="step on"></div><div class="step on"></div><div class="step on"></div>
+        <div class="step"></div><div class="step"></div><div class="step"></div>
+      </div>
+      <div class="cta" style="margin-top:22px">הבא</div>
+      <div class="skip" style="margin-top:10px">דלג על הכול</div>
+    </div>
+    <p class="why">
+      התשובה המקובלת: שש שאלות לפני שראתה משהו. נותן את כל המספרים מיד — אבל
+      זה <b>קיר לפני הדלת</b>, הוא עולה פי כמה בזמן ובאחת־עשרה שפות, ורוב
+      האנשים מדלגים. ואז חזרנו בדיוק למצב של היום.
+    </p>
+  </div>
+
+  <!-- ══ NOW ══ -->
+  <div class="col">
+    <div class="cap">מה שהיא ראתה</div>
+    <div class="phone">
+      <div>
+        <div class="title">היום</div>
+        <div class="date">יום ראשון, 27 בספטמבר</div>
+      </div>
+      <div class="tabs">
+        <div class="tab">‹</div><div class="tab">אישי</div><div class="tab">מתכונים</div>
+        <div class="tab on">יומי</div><div class="tab">היסטוריה</div>
+      </div>
+
+      <div class="n-white" style="display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:15px;font-weight:800">🍴 אוכל</div><div style="color:var(--muted)">✕</div>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end">
+          <div class="tab">☀ ארוחת בוקר</div><div class="tab">🍴 ארוחת צהריים</div>
+          <div class="tab">☾ ארוחת ערב</div><div class="tab">◔ חטיף</div><div class="tab">▯ משקה</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:stretch">
+          <div class="n-sq">📊</div><div class="n-sq">🖼️</div><div class="n-sq">📷</div>
+          <div class="n-sq" style="color:#2f6ad0">🎙</div>
+          <div class="n-in" style="flex:1">אמריקנו קר בלי חלב בלי סוכר</div>
+        </div>
+        <div class="n-grad">פרק לי את זה</div>
+      </div>
+
+      <div class="sec">ארוחות היום</div>
+      <div class="mealrow">
+        <div class="meal"><div class="meal-d">☀</div><div class="meal-t">בוקר</div></div>
+        <div class="meal"><div class="meal-d">🍴</div><div class="meal-t">צהריים</div></div>
+        <div class="meal"><div class="meal-d">☾</div><div class="meal-t">ערב</div></div>
+        <div class="meal"><div class="meal-d">◔</div><div class="meal-t">חטיף</div></div>
+        <div class="meal"><div class="meal-d">▯</div><div class="meal-t">משקה</div></div>
+      </div>
+      <div class="field">🔍 הוסף ארוחה</div>
+
+      <div class="tagline">…ורק הרבה מתחת לקפל:</div>
+      <div class="bars">
+        <div class="bar"><div class="bar-t"><div class="bar-f" style="height:8%;background:var(--violet500)"></div></div>
+          <div class="bar-v">5 / 1975</div><div class="bar-l">קק״ל</div></div>
+        <div class="bar"><div class="bar-t"><div class="bar-f" style="height:1%;background:#e08a72"></div></div>
+          <div class="bar-v">0 / 155</div><div class="bar-l">חלבון</div></div>
+        <div class="bar"><div class="bar-t"><div class="bar-f" style="height:1%;background:#8fc79e"></div></div>
+          <div class="bar-v">1 / 200</div><div class="bar-l">פחמימה</div></div>
+        <div class="bar"><div class="bar-t"><div class="bar-f" style="height:1%;background:#e8c162"></div></div>
+          <div class="bar-v">0 / 60</div><div class="bar-l">שומן</div></div>
+      </div>
+      <div class="hint" style="opacity:.75">
+        <div class="hint-g"></div>
+        <div class="hint-t">יעד התחלתי. מלא פרטים בפרופיל ואחשב אותו לפיך</div>
+      </div>
+    </div>
+    <p class="why">
+      ההודעה קיימת — <b>בשורה האחרונה של המסך</b>, אחרי שכבר הסתכלה על ארבעה
+      פסים שנראים סמכותיים. וזה גם הגיליון מהצילום: לבן על החומר הרך, כפתור
+      גרדיאנט סגול, ארבעה ריבועים לבנים ומיקרופון בכחול של iOS.
+    </p>
+  </div>
+
+</div>
+</html>

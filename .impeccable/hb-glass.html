@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>תחביבים — timer, heat map, breakdown</title>
+<!--
+  Asaf's brief, from the video:
+    1 zero-admin  - a timer logs the session as a by-product, no form
+    2 a heat map  - not a streak. A missed day is not a failure, and the map
+                    says "I am someone who does this" rather than "you broke it"
+    3 a breakdown - where inside the hobby the time went
+  Three arrangements of those three, in the glass-on-cream world.
+  ?v=timer|deep|map
+-->
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* sampled off the reference: ground #e9e3d7, glass #e7e4dc, violet #918fb6 */
+:root{--cream:#e9e3d7;--cream-lo:#ded5c6;--ink:#3b352f;--muted:#8a8073;
+  --vio:#918fb6;--vio-lo:#b9b7d4;--amber:#f0a92e;
+  --h1:#e3dfd4;--h2:#cdc8d8;--h3:#a9a5c6;--h4:#8481ad}
+*{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+html,body{margin:0;padding:0;background:#fff}
+.frame{position:absolute;left:0;top:0;width:376px;height:740px;overflow:hidden;
+  font-family:Assistant,system-ui,sans-serif;color:var(--ink);
+  background:radial-gradient(130% 70% at 50% 0%,#f2ece1,var(--cream) 46%,var(--cream-lo) 100%)}
+/* the one big pane everything sits on */
+.slab{position:absolute;inset:14px 12px 12px;border-radius:30px;
+  background:rgba(255,255,255,.34);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 22px 46px -26px rgba(120,104,84,.5);
+  padding:18px 14px;overflow:hidden;display:flex;flex-direction:column}
+.hd{font-size:26px;font-weight:800;letter-spacing:-.5px;margin-bottom:2px}
+.hd-s{font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:14px}
+.lab{font-size:9px;font-weight:800;letter-spacing:.09em;color:var(--muted);margin:0 2px 8px}
+/* a glass card */
+.gc{border-radius:20px;padding:14px 15px;margin-bottom:10px;position:relative;overflow:hidden;
+  background:rgba(255,255,255,.46);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 20px -14px rgba(120,104,84,.55)}
+/* the violet bleeds through one pane, never fills it */
+.gc.vio::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(78% 120% at 8% 40%,rgba(145,143,182,.55),transparent 70%)}
+.gc>*{position:relative}
+.n{font-size:15px;font-weight:800}
+.s{font-size:11px;font-weight:600;color:var(--muted);margin-top:3px}
+.s b{color:var(--ink);font-size:12.5px}
+
+/* ── THE HEAT MAP ── weeks across, days down, shaded by minutes ── */
+.hm{display:flex;gap:3px;margin-top:11px;direction:ltr}
+.hmw{display:flex;flex-direction:column;gap:3px}
+.hmd{width:9px;height:9px;border-radius:2.5px;background:var(--h1)}
+.hmd.l1{background:var(--h2)}.hmd.l2{background:var(--h3)}.hmd.l3{background:var(--h4)}
+/* today is the one lit square: light inside the glass, the world's own idea */
+.hmd.now{box-shadow:0 0 0 1.5px var(--amber),0 0 8px 1px rgba(240,169,46,.75)}
+.hmk{display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:8px;
+  font-size:9px;font-weight:700;color:var(--muted);direction:ltr}
+.hmk i{width:9px;height:9px;border-radius:2.5px;display:block}
+
+/* ── THE TIMER ── the only thing you have to do ── */
+.go{display:flex;align-items:center;gap:12px;border:none;width:100%;cursor:pointer;
+  font-family:inherit;text-align:start;border-radius:22px;padding:15px 16px;margin-bottom:10px;
+  background:rgba(255,255,255,.52);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 10px 24px -16px rgba(120,104,84,.6)}
+.go-ic{width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;font-size:20px;background:rgba(255,255,255,.7);
+  box-shadow:inset 0 1px 0 #fff,0 6px 14px -8px rgba(120,104,84,.6)}
+.go-x{flex:1;min-width:0}
+.go-p{font-size:17px;color:var(--muted);flex-shrink:0}
+/* the one that is running */
+.go.run{background:rgba(255,255,255,.62)}
+.go.run::after{content:"";position:absolute;inset-inline:18px;bottom:0;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,rgba(240,169,46,0),var(--amber),rgba(240,169,46,0));
+  box-shadow:0 0 12px 2px rgba(240,169,46,.6)}
+.go.run{position:relative}
+.clock{font-size:15px;font-weight:800;color:var(--ink);direction:ltr}
+
+/* ── THE BREAKDOWN ── where inside the hobby the time went ── */
+.bd{margin-top:12px}
+.bdr{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.bdn{width:74px;font-size:10.5px;font-weight:700;color:var(--muted);text-align:start}
+.bdb{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.55);overflow:hidden}
+.bdb i{display:block;height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--vio-lo),var(--vio))}
+.bdv{width:42px;font-size:10px;font-weight:800;color:var(--ink);text-align:end;direction:ltr}
+
+.tag{position:absolute;top:8px;left:8px;z-index:9;font-size:9px;font-weight:800;
+  letter-spacing:.1em;color:var(--muted);background:rgba(255,255,255,.6);border-radius:999px;
+  padding:5px 10px;backdrop-filter:blur(6px)}
+.back{font-size:11px;font-weight:700;color:var(--muted);background:none;border:none;
+  padding:0 0 10px;cursor:pointer;font-family:inherit;display:block}
+</style>
+</head>
+<body>
+<div class="frame" id="frame"></div>
+<script>
+var HOB=[
+ {n:'גיטרה', ic:'🎸', min:1840, week:210, run:1,
+  parts:[['טכניקה',44],['תיאוריה',18],['שירים',38]]},
+ {n:'ציור',  ic:'🎨', min:960,  week:75,
+  parts:[['אנטומיה',52],['נוף',26],['דיוקנאות',22]]},
+ {n:'קריאה', ic:'📖', min:2310, week:150,
+  parts:[['עיון',61],['פרוזה',39]]}
+];
+/* a year of days, seeded so the picture is the same every time it is judged */
+function heat(seed,weeks){
+  var h='<div class="hm">',w,d,s=seed;
+  function r(){s=(s*9301+49297)%233280;return s/233280;}
+  for(w=0;w<weeks;w++){
+    h+='<div class="hmw">';
+    for(d=0;d<7;d++){
+      var v=r(), lv=v>.82?3:v>.66?2:v>.44?1:0;
+      var now=(w===weeks-1&&d===2);
+      h+='<i class="hmd'+(lv?' l'+lv:'')+(now?' now':'')+'"></i>';
+    }
+    h+='</div>';
+  }
+  return h+'</div>';
+}
+function key(){
+  return '<div class="hmk">פחות<i style="background:var(--h1)"></i>'+
+    '<i style="background:var(--h2)"></i><i style="background:var(--h3)"></i>'+
+    '<i style="background:var(--h4)"></i>יותר</div>';
+}
+function hrs(m){return Math.floor(m/60)+' שעות';}
+function timerRow(o,i){
+  return '<button class="go'+(o.run?' run':'')+'">'+
+    '<span class="go-ic">'+o.ic+'</span>'+
+    '<span class="go-x"><span class="n">'+o.n+'</span>'+
+    '<span class="s">'+(o.run?'רץ עכשיו':'השבוע <b>'+o.week+'</b> דקות')+'</span></span>'+
+    (o.run?'<span class="clock">12:41</span>':'<span class="go-p">&#9654;</span>')+'</button>';
+}
+function breakdown(o){
+  var h='<div class="bd">',i;
+  for(i=0;i<o.parts.length;i++)
+    h+='<div class="bdr"><span class="bdn">'+o.parts[i][0]+'</span>'+
+       '<span class="bdb"><i style="width:'+o.parts[i][1]+'%"></i></span>'+
+       '<span class="bdv">'+o.parts[i][1]+'%</span></div>';
+  return h+'</div>';
+}
+var V={};
+/* A · the timer leads. Tap a hobby and it is already being recorded. */
+V.timer=function(){
+  var h='<div class="hd">תחביבים</div><div class="hd-s">הקש כדי להתחיל — הזמן נרשם לבד</div>',i;
+  for(i=0;i<HOB.length;i++)h+=timerRow(HOB[i],i);
+  h+='<div class="lab" style="margin-top:8px">השנה</div>';
+  h+='<div class="gc">'+heat(7,26)+key()+'</div>';
+  return h;
+};
+/* B · one hobby, in depth. The hub is a list; this is what a hobby opens to. */
+V.deep=function(){
+  var o=HOB[0];
+  return '<button class="back">&#8249; תחביבים</button>'+
+    '<div class="hd">'+o.n+'</div>'+
+    '<div class="hd-s">'+hrs(o.min)+' מאז שהתחלת</div>'+
+    timerRow(o,0)+
+    '<div class="lab" style="margin-top:12px">השנה</div>'+
+    '<div class="gc">'+heat(11,26)+key()+'</div>'+
+    '<div class="lab">על מה הזמן הלך</div>'+
+    '<div class="gc vio">'+breakdown(o)+'</div>';
+};
+/* C · the map leads. The record is the screen; the timer is always one tap. */
+V.map=function(){
+  var h='<div class="hd">תחביבים</div><div class="hd-s">כל יום שעשית משהו</div>',i;
+  for(i=0;i<HOB.length;i++){
+    h+='<div class="gc'+(i===0?' vio':'')+'">'+
+       '<div style="display:flex;align-items:baseline;justify-content:space-between">'+
+       '<span class="n">'+HOB[i].ic+' '+HOB[i].n+'</span>'+
+       '<span class="s"><b>'+hrs(HOB[i].min)+'</b></span></div>'+
+       heat(5+i*4,22)+'</div>';
+  }
+  h+=timerRow({n:'להתחיל עכשיו',ic:'⏱',week:0,run:0},0);
+  return h;
+};
+var v=(location.search.match(/v=(\w+)/)||[])[1]||'timer';
+var NAMES={timer:'A · טיימר קודם',deep:'B · תחביב לעומק',map:'C · המפה קודם'};
+document.getElementById('frame').innerHTML=
+  '<div class="tag">'+NAMES[v]+'</div><div class="slab">'+(V[v]||V.timer)()+'</div>';
+var f=document.getElementById('frame');
+var k=Math.min(1,(window.innerHeight-6)/740);
+f.style.transformOrigin='top left';
+f.style.transform='scale('+k+')';
+</script>
+</body>
+</html>

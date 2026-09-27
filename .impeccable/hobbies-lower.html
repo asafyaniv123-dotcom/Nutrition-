@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>תחביבים — החצי התחתון</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Read from renderHabits() before anything was drawn. The code admits it
+  itself, in a comment above the block:
+
+      "The month's intentions and the notes page predate this screen and are
+       not in the design. Deleting somebody's writing to make room for a
+       layout is not a redesign, so they keep their place, in the material."
+
+  So the material is there - .hbn IS a real pressed channel on --nu-ground.
+  What is missing is the design. Measured:
+
+    11.5px   the intentions text, the notebook textarea, .hbb-em
+    12px     the sub-topic names
+    14x14    the intention checkbox - the only control in the block, at a
+             third of any touch-target floor
+    13px     the delete x, with background:none;border:none;padding:0 -
+             a glyph with no target at all
+    rows=4   fixed, for "the notebook" - the largest writing surface there is
+    104px    a HARD column for a sub-topic's name, so a long one truncates
+
+  And two shape problems no single number shows:
+
+    - .hbb-n is --nu-muted while .hbb-v is --nu-ink: the sub-topic's NAME is
+      quieter than its percentage. Backwards. The name is what she reads.
+    - "what I want from this month" and "notebook" are the same pressed
+      channel, same radius, same padding, same 11.5px. One is a checklist and
+      one is free writing, and nothing on screen says so.
+
+  WHAT THIS HALF IS FOR: the top half answers "start" and "how much this
+  year". This half is where the hobby becomes personal - where the time went,
+  what she wants from the month, and her own handwriting. It is the reflective
+  half, visited occasionally rather than daily. It should read like PAPER, not
+  like three more grey slabs.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --muted:#6d675e; --amber:#f0a92e;
+    --hue:#7c9ec4;                     /* the chosen hobby's hue, as hbHue() gives it */
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 3px 4px 8px var(--shade), inset -3px -3px 7px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+    --seam:inset 0 1px 0 var(--lit), inset 0 2px 0 var(--shade-soft);
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--ground);color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:22px 26px 8px;max-width:1300px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:6px;max-width:88ch;line-height:1.75}
+  .sub b{color:var(--ink)}
+  .m{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+  .mi{background:var(--ground);border-radius:12px;padding:8px 12px;box-shadow:var(--press-sm);
+    font-size:12.5px;color:var(--muted)}
+  .mi b{color:var(--ink);font-weight:800;direction:ltr;display:inline-block}
+  .row{display:flex;gap:22px;justify-content:center;align-items:flex-start;
+    padding:18px 24px 44px;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:9px;width:390px}
+  .cap{font-size:12px;font-weight:800;letter-spacing:.09em;color:var(--muted)}
+  .cap b{color:var(--ink)}
+  .why{font-size:12.5px;line-height:1.7;color:var(--muted);text-align:center;
+    min-height:84px;padding:0 4px}
+  .why b{color:var(--ink)}
+  .phone{width:390px;height:844px;border-radius:26px;overflow:hidden;background:var(--ground);
+    box-shadow:-6px -6px 14px var(--lit),8px 10px 22px var(--shade);
+    padding:16px;display:flex;flex-direction:column;gap:9px}
+
+  /* what sits above, drawn quiet so the eye goes to the half under test */
+  .above{opacity:.42;pointer-events:none;display:flex;flex-direction:column;gap:9px}
+  .hbc{border-radius:22px;padding:16px 18px;box-shadow:var(--raise-lg);display:flex;
+    align-items:center;gap:12px}
+  .hbc-t{font-size:26px;font-weight:800;letter-spacing:-.02em;flex:1}
+  .hbc-k{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted)}
+  .hbc-ic{width:15px;height:15px;border-radius:8px;background:var(--hue)}
+  .heat{height:64px;border-radius:14px;box-shadow:var(--press);display:flex;gap:3px;
+    padding:9px;align-items:flex-start;overflow:hidden}
+  .heat i{display:block;width:8px;border-radius:2px;background:var(--ground);
+    box-shadow:var(--press-sm);height:8px}
+  .lab{display:flex;justify-content:space-between;font-size:12px;font-weight:800;
+    color:var(--muted);padding:0 4px}
+
+  /* ── A: one spread ── */
+  .sp{background:var(--ground);border-radius:24px;box-shadow:var(--raise-lg);
+    padding:4px 18px 18px;flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .sp-h{font-size:12px;font-weight:800;letter-spacing:.11em;color:var(--muted);
+    padding:17px 0 12px}
+  .sp-h + .sp-h{box-shadow:var(--seam)}
+  .pt{display:flex;align-items:center;gap:12px;padding:8px 0}
+  .pt-n{flex:1;min-width:0;font-size:14.5px;font-weight:700;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pt-b{width:76px;flex:0 0 76px;height:10px;border-radius:5px;background:var(--ground);
+    box-shadow:var(--press-sm);overflow:hidden}
+  .pt-b i{display:block;height:100%;border-radius:5px;background:var(--hue)}
+  .pt-v{width:44px;flex:0 0 44px;text-align:end;font-size:13.5px;font-weight:800;
+    color:var(--muted);direction:ltr;font-variant-numeric:tabular-nums}
+  .addline{display:flex;align-items:center;gap:11px;margin-top:10px;
+    background:var(--ground);border-radius:13px;padding:11px 13px;box-shadow:var(--press-sm)}
+  .addline span{flex:1;font-size:13.5px;color:var(--muted)}
+  .addline i{width:30px;height:30px;border-radius:15px;background:var(--ground);
+    box-shadow:var(--raise);display:flex;align-items:center;justify-content:center;
+    font-style:normal;font-size:17px;color:var(--muted);flex:0 0 auto}
+  .gl{display:flex;align-items:center;gap:13px;padding:9px 0}
+  .gl + .gl{box-shadow:var(--seam)}
+  /* 24px, and it has a real target around it */
+  .gb{width:24px;height:24px;flex:0 0 24px;border-radius:8px;background:var(--ground);
+    box-shadow:var(--press-sm)}
+  .gb.on{background:var(--hue);box-shadow:none;position:relative}
+  .gb.on::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;color:#fff;font-size:14px;font-weight:800}
+  .gt{flex:1;font-size:15px;line-height:1.45}
+  .gt.done{color:var(--muted);text-decoration:line-through}
+  .gx{width:30px;height:30px;flex:0 0 30px;border-radius:9px;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;font-size:16px}
+  .nb{flex:1;background:var(--ground);border-radius:15px;box-shadow:var(--press);
+    padding:15px;font-size:15px;line-height:1.85;color:var(--ink);min-height:112px;
+    overflow:hidden}
+  .nb.empty{color:var(--muted)}
+
+  /* ── B: three, ranked ── */
+  .b-data{background:var(--ground);border-radius:19px;padding:15px 16px;box-shadow:var(--raise)}
+  .b-mid{background:var(--ground);border-radius:19px;padding:14px 16px;box-shadow:var(--press-sm)}
+  .b-big{background:var(--ground);border-radius:19px;padding:16px;box-shadow:var(--press);flex:1;
+    font-size:15px;line-height:1.85;overflow:hidden}
+
+  /* ── the honest now ── */
+  .n-hbb{border-radius:20px;padding:16px 16px 14px;background:var(--ground);
+    box-shadow:-4px -4px 9px var(--lit),5px 6px 13px var(--shade-soft)}
+  .n-r{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+  .n-n{width:104px;flex:0 0 104px;font-size:12px;font-weight:700;color:var(--muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .n-b{flex:1;height:9px;border-radius:5px;background:var(--ground);box-shadow:var(--press-sm)}
+  .n-b i{display:block;height:100%;border-radius:5px;background:var(--hue)}
+  .n-v{width:40px;flex:0 0 40px;font-size:11.5px;font-weight:700;color:var(--ink);
+    direction:ltr;text-align:end}
+  .n-new{display:flex;gap:8px;align-items:center;margin-top:15px}
+  .n-new span{flex:1;font-size:12.5px;color:var(--muted);font-weight:600}
+  .n-new i{width:38px;height:38px;border-radius:19px;background:var(--ground);box-shadow:var(--raise);
+    display:flex;align-items:center;justify-content:center;font-style:normal;color:var(--muted)}
+  .n-hbn{border-radius:20px;padding:14px 15px;background:var(--ground);box-shadow:var(--press)}
+  .n-g{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .n-gb{width:14px;height:14px;flex:0 0 14px;border-radius:4px;background:var(--ground);
+    box-shadow:var(--press-sm)}
+  .n-gb.on{background:var(--hue);box-shadow:none}
+  .n-gt{flex:1;font-size:11.5px;line-height:1.4}
+  .n-gx{color:var(--muted);font-size:13px;flex:0 0 auto}
+  .n-in{font-size:11.5px;color:var(--muted);line-height:1.8}
+  .n-ta{font-size:11.5px;line-height:1.8;color:var(--ink);min-height:82px}
+</style>
+
+<header>
+  <h1>תחביבים — החצי התחתון</h1>
+  <p class="sub">
+    החצי הזה <b>כבר קיבל את החומר</b> — <code>.hbn</code> הוא ערוץ לחוץ אמיתי על
+    <code>--nu-ground</code>. הקוד עצמו מודה מה חסר, בהערה מעל הבלוק:
+    <i>"…predate this screen and are not in the design"</i>. מה שזה אומר במספרים:
+  </p>
+  <div class="m">
+    <div class="mi">טקסט הכוונות, המחברת והריק — <b>11.5px</b></div>
+    <div class="mi">תיבת הסימון — <b>14×14</b></div>
+    <div class="mi">איקס המחיקה — <b>13px</b>, בלי שום יעד</div>
+    <div class="mi">המחברת — <b>rows=4</b> קבוע</div>
+    <div class="mi">שם תת-נושא — עמודה קשיחה של <b>104px</b></div>
+  </div>
+  <p class="sub" style="margin-top:12px">
+    ושתי בעיות צורה ששום מספר לא מראה. <code>.hbb-n</code> הוא
+    <code>--nu-muted</code> בזמן ש-<code>.hbb-v</code> הוא <code>--nu-ink</code> —
+    כלומר <b>שם תת-הנושא שקט מהאחוז שלו</b>, והפוך: השם הוא מה שקוראים.
+    ו"מה שאני רוצה מהחודש הזה" ו"מחברת" הם <b>אותו ערוץ בדיוק</b> — אותו רדיוס,
+    אותו ריפוד, אותם 11.5px. אחד הוא רשימת סימון והשני כתיבה חופשית, ושום דבר
+    על המסך לא אומר את זה.
+    <br>למה החצי הזה קיים: החצי העליון עונה על "להתחיל" ו"כמה השנה". <b>החצי הזה
+    הוא המקום שבו התחביב נעשה אישי</b> — לאן הזמן הלך, מה היא רוצה מהחודש,
+    וכתב היד שלה. הוא צריך להיקרא כמו <b>נייר</b>, לא כמו עוד שלושה לוחות אפורים.
+  </p>
+</header>
+
+<div class="row">
+
+  <!-- ══ A ══ -->
+  <div class="col">
+    <div class="cap"><b>א</b> · גיליון אחד</div>
+    <div class="phone">
+      <div class="above">
+        <div class="hbc"><div><div class="hbc-k">להתחיל</div><div class="hbc-t">גיטרה</div></div>
+          <div class="hbc-ic"></div></div>
+        <div class="heat">
+          <i style="height:8px"></i><i style="height:8px;background:var(--hue);box-shadow:none"></i>
+          <i></i><i style="background:var(--hue);box-shadow:none"></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="lab"><span>השנה</span><span>הוסף זמן ליום</span></div>
+      </div>
+
+      <div class="sp">
+        <div class="sp-h">על מה הזמן הלך</div>
+        <div class="pt"><div class="pt-n">אקורדים</div><div class="pt-b"><i style="width:46%"></i></div><div class="pt-v">46%</div></div>
+        <div class="pt"><div class="pt-n">שירים שאני אוהבת</div><div class="pt-b"><i style="width:31%"></i></div><div class="pt-v">31%</div></div>
+        <div class="pt"><div class="pt-n">תיאוריה</div><div class="pt-b"><i style="width:15%"></i></div><div class="pt-v">15%</div></div>
+        <div class="pt"><div class="pt-n">אילתור</div><div class="pt-b"><i style="width:8%"></i></div><div class="pt-v">8%</div></div>
+        <div class="addline"><span>הוסיפי תת-נושא</span><i>+</i></div>
+
+        <div class="sp-h">מה שאני רוצה מהחודש הזה</div>
+        <div class="gl"><div class="gb on"></div><div class="gt done">להיות עקבית</div><div class="gx">×</div></div>
+        <div class="gl"><div class="gb"></div><div class="gt">לבטוח בתהליך</div><div class="gx">×</div></div>
+        <div class="gl"><div class="gb"></div><div class="gt">לנגן שיר שלם בלי לעצור</div><div class="gx">×</div></div>
+        <div class="addline"><span>הוסיפי כוונה</span><i>+</i></div>
+
+        <div class="sp-h">מחברת</div>
+        <div class="nb">
+          האצבעות כבר לא כואבות אחרי עשרים דקות. המעבר מ-G ל-C עדיין נתקע,
+          אבל פעם אחת היום הוא יצא בלי לחשוב.
+        </div>
+      </div>
+    </div>
+    <p class="why">
+      שלושת הלוחות נעשים <b>גיליון אחד</b>, והכותרות מפרידות ביניהם בתפר של אור
+      במקום בשלושה משטחים. טקסט הכתיבה עולה ל-<b>15px</b> עם רווח שורה נדיב —
+      זה מה שקוראים כשחוזרים. תיבת הסימון עולה ל-<b>24px</b>, והשם חוזר להיות
+      כהה מהאחוז. <b>המחברת גדלה עם מה שכתוב בה.</b>
+    </p>
+  </div>
+
+  <!-- ══ B ══ -->
+  <div class="col">
+    <div class="cap"><b>ב</b> · שלושה, אבל בהיררכיה</div>
+    <div class="phone">
+      <div class="above">
+        <div class="hbc"><div><div class="hbc-k">להתחיל</div><div class="hbc-t">גיטרה</div></div>
+          <div class="hbc-ic"></div></div>
+        <div class="heat">
+          <i style="height:8px"></i><i style="height:8px;background:var(--hue);box-shadow:none"></i>
+          <i></i><i style="background:var(--hue);box-shadow:none"></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="lab"><span>השנה</span><span>הוסף זמן ליום</span></div>
+      </div>
+
+      <div class="b-data">
+        <div class="pt" style="padding:6px 0"><div class="pt-n" style="font-size:13.5px">אקורדים</div><div class="pt-b"><i style="width:46%"></i></div><div class="pt-v">46%</div></div>
+        <div class="pt" style="padding:6px 0"><div class="pt-n" style="font-size:13.5px">שירים שאני אוהבת</div><div class="pt-b"><i style="width:31%"></i></div><div class="pt-v">31%</div></div>
+        <div class="pt" style="padding:6px 0"><div class="pt-n" style="font-size:13.5px">תיאוריה</div><div class="pt-b"><i style="width:15%"></i></div><div class="pt-v">15%</div></div>
+        <div class="pt" style="padding:6px 0"><div class="pt-n" style="font-size:13.5px">אילתור</div><div class="pt-b"><i style="width:8%"></i></div><div class="pt-v">8%</div></div>
+        <div class="addline"><span>הוסיפי תת-נושא</span><i>+</i></div>
+      </div>
+      <div class="lab"><span>על מה הזמן הלך</span></div>
+
+      <div class="b-mid">
+        <div class="gl" style="padding:7px 0"><div class="gb on"></div><div class="gt" style="font-size:14px">להיות עקבית</div><div class="gx">×</div></div>
+        <div class="gl" style="padding:7px 0"><div class="gb"></div><div class="gt" style="font-size:14px">לבטוח בתהליך</div><div class="gx">×</div></div>
+        <div class="gl" style="padding:7px 0"><div class="gb"></div><div class="gt" style="font-size:14px">לנגן שיר שלם בלי לעצור</div><div class="gx">×</div></div>
+        <div class="addline" style="box-shadow:var(--raise)"><span>הוסיפי כוונה</span><i>+</i></div>
+      </div>
+      <div class="lab"><span>מה שאני רוצה מהחודש הזה</span></div>
+
+      <div class="b-big">
+        האצבעות כבר לא כואבות אחרי עשרים דקות. המעבר מ-G ל-C עדיין נתקע,
+        אבל פעם אחת היום הוא יצא בלי לחשוב.
+      </div>
+      <div class="lab"><span>מחברת</span></div>
+    </div>
+    <p class="why">
+      נשארים שלושה, אבל מדורגים לפי מה שעושים איתם: תת-נושאים <b>מורמים</b>
+      (מסתכלים), כוונות <b>ערוץ רדוד</b> (מסמנים), המחברת <b>ערוץ עמוק וגדול</b>
+      (כותבים). שומר על הכותרות מתחת, כמו בשאר המסך — ומשנה פחות.
+    </p>
+  </div>
+
+  <!-- ══ NOW ══ -->
+  <div class="col">
+    <div class="cap">היום</div>
+    <div class="phone">
+      <div class="above" style="opacity:.42">
+        <div class="hbc"><div><div class="hbc-k">להתחיל</div><div class="hbc-t">גיטרה</div></div>
+          <div class="hbc-ic"></div></div>
+        <div class="heat">
+          <i style="height:8px"></i><i style="height:8px;background:var(--hue);box-shadow:none"></i>
+          <i></i><i style="background:var(--hue);box-shadow:none"></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i>
+          <i style="background:var(--hue);box-shadow:none"></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="lab"><span>השנה</span><span>הוסף זמן ליום</span></div>
+      </div>
+
+      <div class="n-hbb">
+        <div class="n-r"><div class="n-n">אקורדים</div><div class="n-b"><i style="width:46%"></i></div><div class="n-v">46%</div></div>
+        <div class="n-r"><div class="n-n">שירים שאני אוהבת</div><div class="n-b"><i style="width:31%"></i></div><div class="n-v">31%</div></div>
+        <div class="n-r"><div class="n-n">תיאוריה</div><div class="n-b"><i style="width:15%"></i></div><div class="n-v">15%</div></div>
+        <div class="n-r" style="margin-bottom:0"><div class="n-n">אילתור</div><div class="n-b"><i style="width:8%"></i></div><div class="n-v">8%</div></div>
+        <div class="n-new"><span>הוסף תת-נושא</span><i>+</i></div>
+      </div>
+      <div class="lab"><span>על מה הזמן הלך</span></div>
+
+      <div class="n-hbn">
+        <div class="n-g"><div class="n-gb on"></div><div class="n-gt" style="color:var(--muted);text-decoration:line-through">להיות עקבי</div><div class="n-gx">×</div></div>
+        <div class="n-g"><div class="n-gb"></div><div class="n-gt">לבטוח בתהליך</div><div class="n-gx">×</div></div>
+        <div class="n-g"><div class="n-gb"></div><div class="n-gt">לנגן שיר שלם בלי לעצור</div><div class="n-gx">×</div></div>
+        <div class="n-in">הוסף...</div>
+      </div>
+      <div class="lab"><span>מה שאני רוצה מהחודש הזה</span></div>
+
+      <div class="n-hbn">
+        <div class="n-ta">האצבעות כבר לא כואבות אחרי עשרים דקות. המעבר מ-G ל-C עדיין נתקע,
+        אבל פעם אחת היום הוא יצא בלי לחשוב.</div>
+      </div>
+      <div class="lab"><span>מחברת</span></div>
+    </div>
+    <p class="why">
+      החומר נכון, והגודל לא. שני הלוחות התחתונים זהים לחלוטין אף שאחד הוא
+      רשימת סימון והשני כתיבה. <b>"הוסף..." הוא שורה ריקה</b> שאין בה שום רמז
+      שאפשר להקליד בה, והסימון הוא ריבוע של <b>14 פיקסלים</b>.
+    </p>
+  </div>
+
+</div>
+</html>
