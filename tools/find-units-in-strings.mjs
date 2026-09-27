@@ -86,14 +86,47 @@ for (const m of app.matchAll(/_t\((['"])(.*?)\1\s*[,)]/g)) {
   found.get(key).n++;
 }
 
+/* AND THE SHAPE THIS CHECK COULD NOT SEE, WHICH IS THE ONE IT WAS WRITTEN FOR.
+ *
+ * Everything above reads translatable STRINGS. A unit can also be welded on in
+ * code, where there is no string to read:
+ *
+ *     function fmtGrams(n){ return nfmt(n) + 'g';  }
+ *     function fmtMg(n)   { return nfmt(n) + 'mg'; }
+ *
+ * Both shipped. An Arabic reader's nutrition day said ٠g / ٦٠g - Arabic-Indic
+ * digits, a Latin unit - on the same card whose millilitres already said مل,
+ * because volume goes through _t and grams did not.
+ *
+ * The UNITS list above did not contain 'g', and that is this check's own
+ * header coming true a second time: the list was written for the units that
+ * had already gone wrong. A bare 'g' cannot be scanned for in prose - it is a
+ * letter - but this SHAPE can: a quoted unit concatenated straight onto the
+ * output of a formatter. That is precise, and it has no false positives to
+ * trade against.
+ */
+const FORMATTERS = ['nfmt', 'pfmt', 'dfmt', 'fmtWeight', 'fmtGrams', 'fmtMg', 'fmtDist'];
+const CODE_UNITS = ['g', 'mg', 'kg', 'lb', 'ml', 'l', 'km', 'm', 'cm', 'mm', 'oz'];
+const welded = [];
+for (const m of app.matchAll(/\b([a-zA-Z]+)\([^()]*\)\s*\+\s*(['"])([^'"]{1,4})\2/g)) {
+  if (FORMATTERS.indexOf(m[1]) < 0) continue;
+  if (CODE_UNITS.indexOf(m[3]) < 0) continue;
+  welded.push({ line: app.slice(0, m.index).split(LF).length, fn: m[1], unit: m[3] });
+}
+
 console.log('translatable strings carrying a unit: ' + found.size);
-if (!found.size) {
+console.log('units welded onto a formatter in code: ' + welded.length);
+if (!found.size && !welded.length) {
   console.log('');
-  console.log('  none — every unit comes from weightUnit(), fmtWeight() or fmtDist().');
+  console.log('  none — every unit comes from weightUnit(), gramUnit(), mgUnit(),');
+  console.log('  fmtWeight() or fmtDist().');
   process.exit(0);
 }
 console.log('');
 for (const [key, v] of found)
   console.log('  line ' + String(v.line).padStart(6) + '  x' + v.n +
               '  [' + v.units.join(' ') + ']  ' + JSON.stringify(key));
+for (const w of welded)
+  console.log('  line ' + String(w.line).padStart(6) + '  ' + w.fn +
+              "() + '" + w.unit + "'  — the number knows its reader, the unit does not");
 process.exit(1);
