@@ -16097,86 +16097,91 @@ function plateDefs(plates,maxP){
   return d;
 }
 function plateSvg(plates,bar){
-  /* H grows for the ground shadow; mid and PH are pinned to the old numbers
-     so every plate, sleeve and collar stays exactly where it was. */
-  var W=250,H=106,mid=46,PH=92;
-  /* Height by weight, the way the real discs are - a 25 towers over a 1.25 -
-     but on a square root so the small ones stay big enough to see. Nothing
-     is allowed under 22px tall or 7px wide: below that the difference
-     between two plates is a couple of pixels, which is not a difference
-     anyone can act on while holding one. */
+  /* THE PROJECTION. The axis rises fourteen degrees to the right, which is the
+     reference photograph's angle, and a disc threaded on it projects to an
+     ellipse whose long axis is its diameter and whose short axis is the
+     diameter foreshortened. FORE is that foreshortening: at 1 the plates
+     would be circles seen face-on and you could not read the stack; at 0
+     they collapse to the flat bar this replaces. */
+  var W=250,H=132,cx=125,cy=62,DEG=-14,FORE=0.30;
+  var A=DEG*Math.PI/180, ux=Math.cos(A), uy=Math.sin(A);
   var maxP=plateSet()[0]||25;
-  var g='',i,p,ph,pw,col,edge,x,prx,hx,shw,shy;
+  var g='',i,p,ph,pw,col,run,d0,d1,hx,lo;
 
-  /* THE BAR IS STEEL, not a grey stripe. Light down the upper edge, the
-     shadow under it, the knurled centre a shade deeper - the same light this
-     whole app is lit by, at the scale of a drawing. */
-  g+='<defs><linearGradient id="plbar" x1="0" y1="0" x2="0" y2="1">'+
-     '<stop offset="0" stop-color="#e2ddd6"/><stop offset=".45" stop-color="#b3aca4"/>'+
-     '<stop offset="1" stop-color="#7e7871"/></linearGradient>'+
-     '<linearGradient id="plknr" x1="0" y1="0" x2="0" y2="1">'+
-     '<stop offset="0" stop-color="#b8b1a9"/><stop offset="1" stop-color="#6d665f"/></linearGradient>'+
+  /* a point at distance d along the axis, on the given side */
+  function P(d,side){return [cx+d*ux*side, cy+d*uy*side];}
+  /* one cylinder: far face, the band between, near face. rot puts the
+     ellipse's short axis along the bar, which is what makes it a disc
+     threaded on it rather than a coin lying beside it. */
+  function cyl(dIn,dOut,rad,side,fill,face,rim){
+    var a=P(dIn,side), b=P(dOut,side), mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
+    var len=Math.abs(dOut-dIn), deg=DEG*side;
+    var o='';
+    o+='<ellipse cx="'+a[0].toFixed(1)+'" cy="'+a[1].toFixed(1)+'" rx="'+(rad*FORE).toFixed(1)+'" ry="'+rad.toFixed(1)+'" transform="rotate('+deg+' '+a[0].toFixed(1)+' '+a[1].toFixed(1)+')" fill="'+rim+'"/>';
+    o+='<rect x="'+(mx-len/2).toFixed(1)+'" y="'+(my-rad).toFixed(1)+'" width="'+len.toFixed(1)+'" height="'+(rad*2).toFixed(1)+'" transform="rotate('+deg+' '+mx.toFixed(1)+' '+my.toFixed(1)+')" fill="'+fill+'"/>';
+    o+='<ellipse cx="'+b[0].toFixed(1)+'" cy="'+b[1].toFixed(1)+'" rx="'+(rad*FORE).toFixed(1)+'" ry="'+rad.toFixed(1)+'" transform="rotate('+deg+' '+b[0].toFixed(1)+' '+b[1].toFixed(1)+')" fill="'+face+'"/>';
+    return o;
+  }
+
+  /* one gradient per distinct weight, as before */
+  g+='<defs>'+plateDefs(plates,maxP)+
+     '<linearGradient id="plbar" x1="0" y1="0" x2="0" y2="1">'+
+     '<stop offset="0" stop-color="#ded8d1"/><stop offset=".5" stop-color="#b0a9a1"/>'+
+     '<stop offset="1" stop-color="#7c766f"/></linearGradient>'+
+     '<filter id="plgnd" x="-60%" y="-500%" width="220%" height="1100%">'+
+     '<feGaussianBlur stdDeviation="6"/></filter>'+
      '<filter id="plsh" x="-40%" y="-40%" width="180%" height="180%">'+
-     '<feDropShadow dx="1.2" dy="2" stdDeviation="1.8" flood-color="#8c8279" flood-opacity=".5"/>'+
-     '</filter>'+plateDefs(plates,maxP)+'</defs>';
-  g+='<rect x="6" y="'+(mid-3.5)+'" width="'+(W-12)+'" height="7" rx="3.5" fill="url(#plbar)" filter="url(#plsh)"/>';
-  g+='<rect x="'+(W/2-30)+'" y="'+(mid-5.5)+'" width="60" height="11" rx="5.5" fill="url(#plknr)"/>';
+     '<feDropShadow dx="1.2" dy="2.2" stdDeviation="1.8" flood-color="#8c8279" flood-opacity=".45"/>'+
+     '</filter></defs>';
 
-  /* Plates outward from the sleeve, heaviest inboard, mirrored. */
-  var offL=W/2-32, offR=W/2+32, run=0;
-  /* The offset ACCUMULATES the widths already drawn. Multiplying by the
-     current plate's width - which is what this did first - puts every disc
-     on top of the one before it whenever the widths differ, so a 25 and a 5
-     overlapped and the lighter plate painted over the heavier one. On screen
-     that read as the plates being loaded in the wrong order. */
+  /* how far the plates reach, so the shadow and the bar can be sized to the
+     load rather than to the canvas */
+  var reach=32, tall=22;
   for(i=0;i<plates.length;i++){
     p=plates[i];
-    ph=Math.max(22,Math.round(PH*0.94*Math.sqrt(p/maxP)));
-    pw=p>=20?15:p>=10?13:p>=5?10:7;
-    col=PLATE_COLOR[p]||'#9a938c';
-    /* A DISC SEEN EDGE-ON, not a swatch. Its own colour runs light at the top
-       into dark at the bottom, it casts on the plaster, and a hairline of its
-       own lighter tone sits along the upper edge. The 1.4px stroke is gone:
-       the light separates them now, and an outline on top of a gradient reads
-       as a drawing of a plate rather than a plate. */
-    edge=plateEdge(col);
-    /* rx is HALF THE WIDTH, which is the profile of a disc turned edge-on.
-       At 3px they were slabs; rounded they are plates, and it costs nothing -
-       every height, offset and colour is exactly as it was. The highlight
-       inset by a pixel so it follows the curve instead of crossing it. */
-    prx=pw/2; hx=plateLit(plateTone(col,.16),1.3);
-    g+='<rect x="'+(offL-run-pw)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="'+prx+'" fill="url(#plg'+String(p).replace('.','_')+')" filter="url(#plsh)"/>';
-    /* THE SLIVER OF UPPER SURFACE. The machines are seen from above, so each
-       one shows a little of its top; a rounded rectangle without it is still
-       a rectangle. This ellipse is what makes it a disc with thickness. */
-    g+='<ellipse cx="'+(offL-run-pw/2)+'" cy="'+(mid-ph/2+pw/5)+'" rx="'+(pw/2-0.6)+'" ry="'+(pw/4)+'" fill="'+hx+'" opacity=".92"/>';
-    g+='<rect x="'+(offR+run)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="'+prx+'" fill="url(#plg'+String(p).replace('.','_')+')" filter="url(#plsh)"/>';
-    g+='<ellipse cx="'+(offR+run+pw/2)+'" cy="'+(mid-ph/2+pw/5)+'" rx="'+(pw/2-0.6)+'" ry="'+(pw/4)+'" fill="'+hx+'" opacity=".92"/>';
-    run+=pw+3;
+    reach+=(p>=20?15:p>=10?13:p>=5?10:7)+3;
+    tall=Math.max(tall,Math.max(22,Math.round(92*0.94*Math.sqrt(p/maxP))));
   }
 
-  /* The collar goes OUTSIDE the plates, which is the end that holds them on.
-     The first version drew it over the innermost plate. */
-  if(plates.length){
-    g+='<rect x="'+(offL-run-4)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="url(#plknr)" filter="url(#plsh)"/>';
-    g+='<rect x="'+(offR+run-2)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="url(#plknr)" filter="url(#plsh)"/>';
+  /* the ground, under the mass */
+  g+='<ellipse cx="'+cx+'" cy="'+(cy+tall/2+11)+'" rx="'+Math.round(34+reach*0.55)+'" ry="6.4" fill="#8c8279" opacity=".3" filter="url(#plgnd)"/>';
+
+  /* the bar itself, one long cylinder with a thicker knurled middle */
+  g+=cyl(-112,112,3.6,1,'url(#plbar)','#cfc8c0','#8a837c');
+  g+=cyl(-30,30,5.4,1,'url(#plbar)','#a49d95','#7d766f');
+
+  /* RIGHT SIDE FIRST, OUTSIDE IN: the axis rises to the right, so out there
+     is further away and has to go down before the plates in front of it. */
+  run=0;
+  var right=[];
+  for(i=0;i<plates.length;i++){
+    p=plates[i]; ph=Math.max(22,Math.round(92*0.94*Math.sqrt(p/maxP)));
+    pw=p>=20?15:p>=10?13:p>=5?10:7;
+    col=plateTone(PLATE_COLOR[p]||'#9a938c',.16);
+    hx=plateLit(col,1.16); lo=plateLit(col,.70);
+    d0=32+run; d1=d0+pw;
+    right.push(cyl(d0,d1,ph/2,1,'url(#plg'+String(p).replace('.','_')+')',hx,lo));
+    run+=pw+3;
   }
-  if(bar)g+='<text x="'+(W/2)+'" y="'+(mid+4)+'" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">'+nfmt(bar)+'</text>';
-  /* THE CONTACT SHADOW, prepended so it paints behind everything. Every
-     rendered machine on this screen sits on one of these; the bar sat on
-     nothing, which is most of why it read as a drawing beside them. Its
-     width follows the load, so a bar with six plates casts wider than a bare
-     one - the shadow is of THIS bar and not a decoration under it. */
-  /* UNDER THE MASS. The plates are the weight; the sleeves either side hold
-     nothing, and a shadow that ran the bar's full width read as a stripe
-     drawn under a diagram. A bare bar still casts a little, which is why
-     there is a floor of 30. */
-  shw=Math.round(30+run*1.35); shy=mid+PH*0.47+6;
-  g='<ellipse cx="'+(W/2)+'" cy="'+shy+'" rx="'+shw+'" ry="6.2" fill="#8c8279" opacity=".3" filter="url(#plgnd)"/>'+g;
-  /* A POOL, NOT A LINE. At 3.4 against an ellipse this wide the blur never
-     reached the ends and they stayed hard. */
-  g='<defs><filter id="plgnd" x="-60%" y="-500%" width="220%" height="1100%">'+
-    '<feGaussianBlur stdDeviation="6"/></filter></defs>'+g;
+  if(plates.length)right.push(cyl(32+run,32+run+5,11,1,'url(#plbar)','#a49d95','#7d766f'));
+  for(i=right.length-1;i>=0;i--)g+=right[i];
+
+  /* LEFT SIDE, INSIDE OUT, for the same reason mirrored. */
+  run=0;
+  for(i=0;i<plates.length;i++){
+    p=plates[i]; ph=Math.max(22,Math.round(92*0.94*Math.sqrt(p/maxP)));
+    pw=p>=20?15:p>=10?13:p>=5?10:7;
+    col=plateTone(PLATE_COLOR[p]||'#9a938c',.16);
+    hx=plateLit(col,1.16); lo=plateLit(col,.70);
+    d0=32+run; d1=d0+pw;
+    g+=cyl(d0,d1,ph/2,-1,'url(#plg'+String(p).replace('.','_')+')',hx,lo);
+    run+=pw+3;
+  }
+  if(plates.length)g+=cyl(32+run,32+run+5,11,-1,'url(#plbar)','#a49d95','#7d766f');
+
+  /* the bar's own weight, on the knurl and turned with it */
+  if(bar)g+='<text x="'+cx+'" y="'+(cy+3.5)+'" transform="rotate('+DEG+' '+cx+' '+cy+')" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">'+nfmt(bar)+'</text>';
+
   return '<svg class="pl-svg" viewBox="0 0 '+W+' '+H+'" role="img">'+g+'</svg>';
 }
 /* TOWARD THE GROUND, not toward grey. The IPF hues are competition colours
