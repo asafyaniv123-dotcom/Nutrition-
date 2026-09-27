@@ -16097,14 +16097,16 @@ function plateDefs(plates,maxP){
   return d;
 }
 function plateSvg(plates,bar){
-  var W=250,H=92,mid=H/2;
+  /* H grows for the ground shadow; mid and PH are pinned to the old numbers
+     so every plate, sleeve and collar stays exactly where it was. */
+  var W=250,H=106,mid=46,PH=92;
   /* Height by weight, the way the real discs are - a 25 towers over a 1.25 -
      but on a square root so the small ones stay big enough to see. Nothing
      is allowed under 22px tall or 7px wide: below that the difference
      between two plates is a couple of pixels, which is not a difference
      anyone can act on while holding one. */
   var maxP=plateSet()[0]||25;
-  var g='',i,p,ph,pw,col,edge,x,prx,hx;
+  var g='',i,p,ph,pw,col,edge,x,prx,hx,shw,shy;
 
   /* THE BAR IS STEEL, not a grey stripe. Light down the upper edge, the
      shadow under it, the knurled centre a shade deeper - the same light this
@@ -16129,7 +16131,7 @@ function plateSvg(plates,bar){
      that read as the plates being loaded in the wrong order. */
   for(i=0;i<plates.length;i++){
     p=plates[i];
-    ph=Math.max(22,Math.round(H*0.94*Math.sqrt(p/maxP)));
+    ph=Math.max(22,Math.round(PH*0.94*Math.sqrt(p/maxP)));
     pw=p>=20?15:p>=10?13:p>=5?10:7;
     col=PLATE_COLOR[p]||'#9a938c';
     /* A DISC SEEN EDGE-ON, not a swatch. Its own colour runs light at the top
@@ -16144,9 +16146,12 @@ function plateSvg(plates,bar){
        inset by a pixel so it follows the curve instead of crossing it. */
     prx=pw/2; hx=plateLit(plateTone(col,.16),1.3);
     g+='<rect x="'+(offL-run-pw)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="'+prx+'" fill="url(#plg'+String(p).replace('.','_')+')" filter="url(#plsh)"/>';
-    g+='<rect x="'+(offL-run-pw+1)+'" y="'+(mid-ph/2+1)+'" width="'+(pw-2)+'" height="1.4" rx=".7" fill="'+hx+'" opacity=".8"/>';
+    /* THE SLIVER OF UPPER SURFACE. The machines are seen from above, so each
+       one shows a little of its top; a rounded rectangle without it is still
+       a rectangle. This ellipse is what makes it a disc with thickness. */
+    g+='<ellipse cx="'+(offL-run-pw/2)+'" cy="'+(mid-ph/2+pw/5)+'" rx="'+(pw/2-0.6)+'" ry="'+(pw/4)+'" fill="'+hx+'" opacity=".92"/>';
     g+='<rect x="'+(offR+run)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="'+prx+'" fill="url(#plg'+String(p).replace('.','_')+')" filter="url(#plsh)"/>';
-    g+='<rect x="'+(offR+run+1)+'" y="'+(mid-ph/2+1)+'" width="'+(pw-2)+'" height="1.4" rx=".7" fill="'+hx+'" opacity=".8"/>';
+    g+='<ellipse cx="'+(offR+run+pw/2)+'" cy="'+(mid-ph/2+pw/5)+'" rx="'+(pw/2-0.6)+'" ry="'+(pw/4)+'" fill="'+hx+'" opacity=".92"/>';
     run+=pw+3;
   }
 
@@ -16157,6 +16162,15 @@ function plateSvg(plates,bar){
     g+='<rect x="'+(offR+run-2)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="url(#plknr)" filter="url(#plsh)"/>';
   }
   if(bar)g+='<text x="'+(W/2)+'" y="'+(mid+4)+'" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">'+nfmt(bar)+'</text>';
+  /* THE CONTACT SHADOW, prepended so it paints behind everything. Every
+     rendered machine on this screen sits on one of these; the bar sat on
+     nothing, which is most of why it read as a drawing beside them. Its
+     width follows the load, so a bar with six plates casts wider than a bare
+     one - the shadow is of THIS bar and not a decoration under it. */
+  shw=Math.round(68+run*1.9); shy=mid+PH*0.47+5;
+  g='<ellipse cx="'+(W/2)+'" cy="'+shy+'" rx="'+shw+'" ry="4.6" fill="#8c8279" opacity=".26" filter="url(#plgnd)"/>'+g;
+  g='<defs><filter id="plgnd" x="-25%" y="-300%" width="150%" height="700%">'+
+    '<feGaussianBlur stdDeviation="3.4"/></filter></defs>'+g;
   return '<svg class="pl-svg" viewBox="0 0 '+W+' '+H+'" role="img">'+g+'</svg>';
 }
 /* TOWARD THE GROUND, not toward grey. The IPF hues are competition colours
