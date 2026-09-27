@@ -16081,6 +16081,21 @@ function loadLabel(k){
    here rather than inventing one. */
 var PLATE_COLOR={25:'#C0392B',20:'#2A6FB5',15:'#E3B505',10:'#2E8B57',
                  5:'#EDEAE4',2.5:'#C0392B',1.25:'#B8B5B0'};
+/* ONE GRADIENT PER DISTINCT WEIGHT, not per drawn plate: a bar with four
+   tens carries one definition, and the id has to survive a decimal point
+   because 2.5 and 1.25 are real plates and a dot is not valid in one. */
+function plateDefs(plates,maxP){
+  var seen={},d='',i,p,col,lo,hi;
+  for(i=0;i<plates.length;i++){
+    p=plates[i]; if(seen[p])continue; seen[p]=1;
+    col=plateTone(PLATE_COLOR[p]||'#9a938c',.16);
+    hi=plateLit(col,1.14); lo=plateLit(col,.72);
+    d+='<linearGradient id="plg'+String(p).replace('.','_')+'" x1="0" y1="0" x2=".35" y2="1">'+
+       '<stop offset="0" stop-color="'+hi+'"/><stop offset=".5" stop-color="'+col+'"/>'+
+       '<stop offset="1" stop-color="'+lo+'"/></linearGradient>';
+  }
+  return d;
+}
 function plateSvg(plates,bar){
   var W=250,H=92,mid=H/2;
   /* Height by weight, the way the real discs are - a 25 towers over a 1.25 -
@@ -16091,9 +16106,19 @@ function plateSvg(plates,bar){
   var maxP=plateSet()[0]||25;
   var g='',i,p,ph,pw,col,edge,x;
 
-  /* The bar: two sleeves and a knurled centre. */
-  g+='<rect x="6" y="'+(mid-3.5)+'" width="'+(W-12)+'" height="7" rx="3.5" fill="#a49b92"/>';
-  g+='<rect x="'+(W/2-30)+'" y="'+(mid-5.5)+'" width="60" height="11" rx="5.5" fill="#79726b"/>';
+  /* THE BAR IS STEEL, not a grey stripe. Light down the upper edge, the
+     shadow under it, the knurled centre a shade deeper - the same light this
+     whole app is lit by, at the scale of a drawing. */
+  g+='<defs><linearGradient id="plbar" x1="0" y1="0" x2="0" y2="1">'+
+     '<stop offset="0" stop-color="#e2ddd6"/><stop offset=".45" stop-color="#b3aca4"/>'+
+     '<stop offset="1" stop-color="#7e7871"/></linearGradient>'+
+     '<linearGradient id="plknr" x1="0" y1="0" x2="0" y2="1">'+
+     '<stop offset="0" stop-color="#b8b1a9"/><stop offset="1" stop-color="#6d665f"/></linearGradient>'+
+     '<filter id="plsh" x="-40%" y="-40%" width="180%" height="180%">'+
+     '<feDropShadow dx="1.2" dy="2" stdDeviation="1.8" flood-color="#8c8279" flood-opacity=".5"/>'+
+     '</filter>'+plateDefs(plates,maxP)+'</defs>';
+  g+='<rect x="6" y="'+(mid-3.5)+'" width="'+(W-12)+'" height="7" rx="3.5" fill="url(#plbar)" filter="url(#plsh)"/>';
+  g+='<rect x="'+(W/2-30)+'" y="'+(mid-5.5)+'" width="60" height="11" rx="5.5" fill="url(#plknr)"/>';
 
   /* Plates outward from the sleeve, heaviest inboard, mirrored. */
   var offL=W/2-32, offR=W/2+32, run=0;
@@ -16107,22 +16132,47 @@ function plateSvg(plates,bar){
     ph=Math.max(22,Math.round(H*0.94*Math.sqrt(p/maxP)));
     pw=p>=20?15:p>=10?13:p>=5?10:7;
     col=PLATE_COLOR[p]||'#9a938c';
-    /* Its own colour, darkened - not a grey rim. The 5 kg disc is white in
-       the IPF code and vanished on a light panel with a grey edge. */
+    /* A DISC SEEN EDGE-ON, not a swatch. Its own colour runs light at the top
+       into dark at the bottom, it casts on the plaster, and a hairline of its
+       own lighter tone sits along the upper edge. The 1.4px stroke is gone:
+       the light separates them now, and an outline on top of a gradient reads
+       as a drawing of a plate rather than a plate. */
     edge=plateEdge(col);
-    g+='<rect x="'+(offL-run-pw)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="3" fill="'+col+'" stroke="'+edge+'" stroke-width="1.4"/>';
-    g+='<rect x="'+(offR+run)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="3" fill="'+col+'" stroke="'+edge+'" stroke-width="1.4"/>';
+    g+='<rect x="'+(offL-run-pw)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="3" fill="url(#plg'+String(p).replace('.','_')+')" filter="url(#plsh)"/>';
+    g+='<rect x="'+(offL-run-pw)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="1.6" rx=".8" fill="'+plateLit(plateTone(col,.16),1.3)+'" opacity=".85"/>';
+    g+='<rect x="'+(offR+run)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="'+ph+'" rx="3" fill="url(#plg'+String(p).replace('.','_')+')" filter="url(#plsh)"/>';
+    g+='<rect x="'+(offR+run)+'" y="'+(mid-ph/2)+'" width="'+pw+'" height="1.6" rx=".8" fill="'+plateLit(plateTone(col,.16),1.3)+'" opacity=".85"/>';
     run+=pw+3;
   }
 
   /* The collar goes OUTSIDE the plates, which is the end that holds them on.
      The first version drew it over the innermost plate. */
   if(plates.length){
-    g+='<rect x="'+(offL-run-4)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="#6b645e"/>';
-    g+='<rect x="'+(offR+run-2)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="#6b645e"/>';
+    g+='<rect x="'+(offL-run-4)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="url(#plknr)" filter="url(#plsh)"/>';
+    g+='<rect x="'+(offR+run-2)+'" y="'+(mid-11)+'" width="6" height="22" rx="2.5" fill="url(#plknr)" filter="url(#plsh)"/>';
   }
   if(bar)g+='<text x="'+(W/2)+'" y="'+(mid+4)+'" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">'+nfmt(bar)+'</text>';
   return '<svg class="pl-svg" viewBox="0 0 '+W+' '+H+'" role="img">'+g+'</svg>';
+}
+/* TOWARD THE GROUND, not toward grey. The IPF hues are competition colours
+   and they are meant to be loud across a gym; on a plaster panel at 90px
+   they read as swatches. Sixteen percent of the ground mixed in is enough to
+   make them objects and nowhere near enough to make a red anything but red -
+   and red is the part that carries the information. */
+function plateTone(hex,k){
+  var m=/^#([0-9a-f]{6})$/i.exec(hex);
+  if(!m)return hex;
+  var v=parseInt(m[1],16),c=[(v>>16)&255,(v>>8)&255,v&255],G=[233,231,227],i,o='#';
+  for(i=0;i<3;i++)o+=('0'+Math.round(c[i]+(G[i]-c[i])*k).toString(16)).slice(-2);
+  return o;
+}
+/* the same colour, lighter or darker, for the two faces of one disc */
+function plateLit(hex,k){
+  var m=/^#([0-9a-f]{6})$/i.exec(hex);
+  if(!m)return hex;
+  var v=parseInt(m[1],16),c=[(v>>16)&255,(v>>8)&255,v&255],i,o='#';
+  for(i=0;i<3;i++)o+=('0'+Math.round(Math.max(0,Math.min(255,c[i]*k))).toString(16)).slice(-2);
+  return o;
 }
 /* A darker version of the plate's own colour, so a white disc gets a grey-
    brown rim and a red one a darker red, instead of every disc sharing one
