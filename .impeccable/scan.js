@@ -236,9 +236,19 @@
       var bw = parseFloat(cs.borderTopWidth) || parseFloat(cs.borderInlineStartWidth) || 0;
       var borderOld = bw > 0 && (OLD.test(cs.borderTopColor) || OLD.test(cs.borderInlineStartColor || ''));
       var strokeOld = cs.stroke && cs.stroke !== 'none' && OLD.test(cs.stroke);
-      if (OLD.test(cs.backgroundColor) || OLD_TEXT.test(cs.color) ||
-          OLD.test(cs.backgroundImage || '') || borderOld || strokeOld)
-        old.push((cl.slice(0, 22) || el.tagName.toLowerCase()) + ' «' + (el.textContent || '').trim().slice(0, 10) + '»');
+      /* AND IT SAYS WHICH PROPERTY MATCHED. A finding that names only the
+         element sends you hunting: "content has-fab «כן כתבתי מ»" cost a
+         dozen queries on the סיום יום screen because four properties could
+         have produced it and the report named none of them. The reason is
+         one string and it turns a hunt into a read. */
+      var why = OLD.test(cs.backgroundColor) ? 'bg ' + cs.backgroundColor
+              : OLD_TEXT.test(cs.color)      ? 'text ' + cs.color
+              : OLD.test(cs.backgroundImage || '') ? 'gradient'
+              : borderOld ? 'border ' + bw + 'px'
+              : strokeOld ? 'stroke ' + cs.stroke : '';
+      if (why)
+        old.push((cl.slice(0, 22) || el.tagName.toLowerCase()) + ' «' +
+                 (el.textContent || '').trim().slice(0, 10) + '» ' + why);
 
       var t = '';
       for (var n = 0; n < el.childNodes.length; n++) if (el.childNodes[n].nodeType === 3) t += el.childNodes[n].nodeValue;
