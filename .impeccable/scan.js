@@ -22,7 +22,19 @@
        verified as seven distinct hues and not a leftover
    and the DEV badge, which is never on her screen. */
 (function () {
-  var SKIP = /ar-ic|areas-|cdisc|cpetal|chub-ic|macro-|rf-card|rf-board|ins-cat|ins-row|ins-ic|wk-swatch|tube|wtube/;
+  /* The list is the things whose colour IS the information, and Asaf named
+     them: the four macros, the evening's paper spread, area identity, the
+     seven insight categories, and the planner's twelve colour swatches.
+     wk-swatch was already here; the rest of the planner was not, and a task
+     wearing the colour you chose for it reported as old palette on every
+     sweep - pl-pill, mo-chip, wk-chip, wk-hchip, wk-dot, dp-rail-chip, all
+     painted from WK_COLORS.
+
+     Measured before adding them, because a skip list is a promise that
+     nothing there needs checking: all twelve of that palette's inks on their
+     own soft fills read 4.60 to 5.20, every one of them over 4.5. The palette
+     answers the question this check would have asked. */
+  var SKIP = /ar-ic|areas-|cdisc|cpetal|chub-ic|macro-|rf-card|rf-board|ins-cat|ins-row|ins-ic|wk-swatch|wk-chip|wk-hchip|wk-dot|pl-pill|mo-chip|mo-span|dp-rail-chip|tube|wtube/;
   /* THE OLD PALETTE, AS A SURFACE. Every violet, terracotta and green that
      was chosen to be FILLED with. A background, a border or a stroke in one
      of these is still the old world. */
