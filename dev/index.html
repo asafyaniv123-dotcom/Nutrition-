@@ -16088,11 +16088,18 @@ function plateDefs(plates,maxP){
   var seen={},d='',i,p,col,lo,hi;
   for(i=0;i<plates.length;i++){
     p=plates[i]; if(seen[p])continue; seen[p]=1;
-    col=plateTone(PLATE_COLOR[p]||'#9a938c',.16);
+    col=plateTone(PLATE_COLOR[p]||'#9a938c',.22);
     hi=plateLit(col,1.14); lo=plateLit(col,.72);
     d+='<linearGradient id="plg'+String(p).replace('.','_')+'" x1="0" y1="0" x2=".35" y2="1">'+
        '<stop offset="0" stop-color="'+hi+'"/><stop offset=".5" stop-color="'+col+'"/>'+
        '<stop offset="1" stop-color="'+lo+'"/></linearGradient>';
+    /* THE FACE, LIT. It used to be one flat lighter tone, and a cylinder with
+       a solid end cap is a drawing of a cylinder. Same light as the rest of
+       the material: upper left down to lower right. */
+    d+='<linearGradient id="plf'+String(p).replace('.','_')+'" x1=".15" y1="0" x2=".8" y2="1">'+
+       '<stop offset="0" stop-color="'+plateLit(col,1.22)+'"/>'+
+       '<stop offset=".55" stop-color="'+plateLit(col,1.04)+'"/>'+
+       '<stop offset="1" stop-color="'+plateLit(col,.82)+'"/></linearGradient>';
   }
   return d;
 }
@@ -16121,6 +16128,13 @@ function plateSvg(plates,bar){
     o+='<rect x="'+(mx-len/2).toFixed(1)+'" y="'+(my-rad).toFixed(1)+'" width="'+len.toFixed(1)+'" height="'+(rad*2).toFixed(1)+'" transform="rotate('+deg+' '+mx.toFixed(1)+' '+my.toFixed(1)+')" fill="'+fill+'"/>';
     o+='<ellipse cx="'+b[0].toFixed(1)+'" cy="'+b[1].toFixed(1)+'" rx="'+(rad*FORE).toFixed(1)+'" ry="'+rad.toFixed(1)+'" transform="rotate('+deg+' '+b[0].toFixed(1)+' '+b[1].toFixed(1)+')" fill="'+face+'"/>';
     return o;
+  }
+
+  /* the steel centre of the outermost plate, on the face that is visible */
+  function hub(d,rad,side){
+    var a=P(d,side), deg=DEG*side, r=Math.max(3.2,rad*0.19);
+    return '<ellipse cx="'+a[0].toFixed(1)+'" cy="'+a[1].toFixed(1)+'" rx="'+(r*FORE*2.1).toFixed(1)+'" ry="'+r.toFixed(1)+'" transform="rotate('+deg+' '+a[0].toFixed(1)+' '+a[1].toFixed(1)+')" fill="#9a938b"/>'+
+           '<ellipse cx="'+a[0].toFixed(1)+'" cy="'+a[1].toFixed(1)+'" rx="'+(r*FORE*1.25).toFixed(1)+'" ry="'+(r*0.6).toFixed(1)+'" transform="rotate('+deg+' '+a[0].toFixed(1)+' '+a[1].toFixed(1)+')" fill="#6f6862"/>';
   }
 
   /* one gradient per distinct weight, as before */
@@ -16157,10 +16171,14 @@ function plateSvg(plates,bar){
   for(i=0;i<plates.length;i++){
     p=plates[i]; ph=Math.max(22,Math.round(92*0.94*Math.sqrt(p/maxP)));
     pw=p>=20?15:p>=10?13:p>=5?10:7;
-    col=plateTone(PLATE_COLOR[p]||'#9a938c',.16);
-    hx=plateLit(col,1.16); lo=plateLit(col,.70);
+    col=plateTone(PLATE_COLOR[p]||'#9a938c',.22);
+    hx='url(#plf'+String(p).replace('.','_')+')'; lo=plateLit(col,.70);
     d0=32+run; d1=d0+pw;
-    right.push(cyl(d0,d1,ph/2,1,'url(#plg'+String(p).replace('.','_')+')',hx,lo));
+    right.push(cyl(d0,d1,ph/2,1,'url(#plg'+String(p).replace('.','_')+')',hx,lo)+
+      /* THE HUB, on the outermost plate only - it is the one face you can see
+         into, and a steel centre is what makes it a weight plate rather than
+         a coloured disc. */
+      (i===plates.length-1?hub(d1,ph/2,1):''));
     run+=pw+3;
   }
   if(plates.length)right.push(cyl(32+run,32+run+5,11,1,'url(#plbar)','#a49d95','#7d766f'));
@@ -16171,10 +16189,11 @@ function plateSvg(plates,bar){
   for(i=0;i<plates.length;i++){
     p=plates[i]; ph=Math.max(22,Math.round(92*0.94*Math.sqrt(p/maxP)));
     pw=p>=20?15:p>=10?13:p>=5?10:7;
-    col=plateTone(PLATE_COLOR[p]||'#9a938c',.16);
-    hx=plateLit(col,1.16); lo=plateLit(col,.70);
+    col=plateTone(PLATE_COLOR[p]||'#9a938c',.22);
+    hx='url(#plf'+String(p).replace('.','_')+')'; lo=plateLit(col,.70);
     d0=32+run; d1=d0+pw;
-    g+=cyl(d0,d1,ph/2,-1,'url(#plg'+String(p).replace('.','_')+')',hx,lo);
+    g+=cyl(d0,d1,ph/2,-1,'url(#plg'+String(p).replace('.','_')+')',hx,lo)+
+      (i===plates.length-1?hub(d1,ph/2,-1):'');
     run+=pw+3;
   }
   if(plates.length)g+=cyl(32+run,32+run+5,11,-1,'url(#plbar)','#a49d95','#7d766f');
