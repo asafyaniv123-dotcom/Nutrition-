@@ -1595,13 +1595,22 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
      too - and .pw-red and .bld-p are both one class, so the later one simply
      won and the photograph vanished. */
   background-size:100% 100%;background-repeat:no-repeat;
-  font-family:inherit;font-weight:800;font-size:14px;
+  /* 12.5, not 14: the number now carries a pill around it, and at 14 a
+     "1.25" ran wider than the 52px disc it is printed on. */
+  font-family:inherit;font-weight:800;font-size:12.5px;
   display:flex;align-items:center;justify-content:center;
   filter:drop-shadow(2px 4px 6px rgba(140,130,121,.45))}
 /* the weight sits on the rubber, not on the steel hub in the middle */
-.bld-p b{position:absolute;top:20%;left:0;right:0;text-align:center;
-  text-shadow:0 1px 2px rgba(0,0,0,.4)}
-.bld-p.pw-white b,.bld-p.pw-yellow b,.bld-p.pw-silver b{text-shadow:0 1px 2px rgba(255,255,255,.55)}
+/* THE WEIGHT, ON A GROUND OF ITS OWN. Measured over all six photographs,
+   the band the number sat in holds both a blown specular highlight and deep
+   shadow, so white scored 1.00:1 on every one of them and dark ink under
+   2.1:1 - no ink at all is legible on that rubber, which is what Asaf was
+   reading off the screen. At 82% black this pill clears 9.9:1 over even the
+   brightest pixel in the set. A text-shadow cannot do this: it softens an
+   edge, it does not supply a background. */
+.bld-p b,.bld-c b{background:rgba(24,20,17,.82);color:#fff;line-height:1;
+  padding:.30em .52em;border-radius:.62em;letter-spacing:-.01em;
+  box-shadow:0 1px 2px rgba(0,0,0,.28)}
 .bld-p:active{box-shadow:inset 2px 3px 6px rgba(0,0,0,.3),inset -1px -1px 3px rgba(255,255,255,.2)}
 .bld-ghost{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-50%) scale(1.12);
   opacity:.96;box-shadow:-4px -4px 10px rgba(255,255,255,.7),
@@ -1611,12 +1620,10 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .bld-on{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
 .bld-c{position:relative;border:none;border-radius:50%;width:40px;height:40px;
   background-size:100% 100%;background-repeat:no-repeat;
-  font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;
+  font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   filter:drop-shadow(1px 3px 5px rgba(140,130,121,.4))}
-.bld-c b{position:absolute;top:19%;left:0;right:0;text-align:center;
-  text-shadow:0 1px 2px rgba(0,0,0,.4)}
-.bld-c.pw-white b,.bld-c.pw-yellow b,.bld-c.pw-silver b{text-shadow:0 1px 2px rgba(255,255,255,.55)}
+
 /* the way off the bar, as a badge rather than a character sitting beside the
    number - a disc with "25 x" written across it is not a plate */
 .bld-c::after{content:"\00d7";position:absolute;top:-3px;inset-inline-end:-3px;
@@ -15981,7 +15988,6 @@ function bldGrab(ev,p){
      photograph, that inline paint would wipe the photograph itself. */
   g.className='bld-p bld-ghost pw-'+(PLATE_PIC[p]||'silver');
   g.innerHTML='<b>'+nfmt(p)+'</b>';
-  g.style.color=plateInk(p);
   document.body.appendChild(g);
   var moved=false;
   function inDrop(e){
@@ -16028,9 +16034,6 @@ var BLD_D={25:74,20:68,15:62,10:56,5:48,2.5:41,1.25:36};
    weight the code does not name falls to silver, which says the colour
    carries nothing here rather than inventing one. */
 var PLATE_PIC={25:'red',20:'blue',15:'yellow',10:'green',5:'white',2.5:'red',1.25:'silver'};
-/* the stub of bar emerging from the outermost plate's hub, running outward.
-   It starts a little INSIDE the hub so there is no seam where it meets the
-   hole, and it is short: past the collar a real sleeve ends. */
 function rackHTML(){
   if(!_rackOpen)return '<button class="pl-k" onclick="rackOpen()">'+_t('הרכב את המוט')+'</button>';
   var all=plateSetAll(),h='<div class="bld">',i,p,col;
@@ -16055,7 +16058,7 @@ function rackHTML(){
       p=_bld[i];col=PLATE_COLOR[p]||'#9a938c';
       /* the x is a corner badge in CSS now, not a character beside the number:
          a disc with "25 x" written across it is not a plate. */
-      h+='<button class="bld-c pw-'+(PLATE_PIC[p]||'silver')+'" onclick="bldDrop('+i+')" style="color:'+plateInk(p)+'" '+
+      h+='<button class="bld-c pw-'+(PLATE_PIC[p]||'silver')+'" onclick="bldDrop('+i+')" '+
          'aria-label="'+_t('הורד פלטה')+'"><b>'+nfmt(p)+'</b></button>';
     }
     h+='</div>';
@@ -16065,8 +16068,11 @@ function rackHTML(){
     p=all[i];col=PLATE_COLOR[p]||'#9a938c';
     /* the real disc, not a coloured circle - these are the six photographs,
        and the thing a person drags should be the thing she is putting on */
-    h+='<button class="bld-p pw-'+(PLATE_PIC[p]||'silver')+'" onpointerdown="bldGrab(event,'+p+')" '+
-       'style="color:'+plateInk(p)+'"><b>'+nfmt(p)+'</b></button>';
+    /* NO INLINE COLOUR. It beat the class, and the pill the number now sits
+       on is dark for every weight - plateInk would put dark ink on it for
+       three of the seven. */
+    h+='<button class="bld-p pw-'+(PLATE_PIC[p]||'silver')+'" onpointerdown="bldGrab(event,'+p+')">'+
+       '<b>'+nfmt(p)+'</b></button>';
   }
   h+='</div><div class="bld-row">'+
      (_bld.length?'<button class="pl-k" onclick="bldClear()">'+_t('רוקן')+'</button>':'')+
