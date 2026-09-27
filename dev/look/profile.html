@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>פרטים אישיים — שתי גרסאות</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Read from renderProfile() before anything was drawn. This is the screen
+  asking.html sends her to, and it is the most "old web" screen in the app.
+
+  MEASURED, not assumed (ground #e9e7e3):
+
+    .pf-recc       #c9c1ba   1.44:1  at 9px   - the line that tells her what
+                                                her CURRENT target is, i.e.
+                                                the entire point of the
+                                                comparison. Invisible.
+    .pf-recc.chg   #c98b3f   2.35:1  at 9px
+    .pf-water .chg #c98b3f   2.35:1  at 10px
+    .pf-row  border-bottom   #f7f3ee  1.12:1  - LIGHTER than the ground it
+    .pf-derived border-top   #f7f3ee  1.12:1    divides. Not a line at all.
+
+  AND THE SHAPE:
+    - 1.5px solid var(--line) on five different components: every input,
+      every activity row, every goal chip, both sex buttons. Our language is
+      a CHANNEL for a field and PRESSED for a choice; not one border.
+    - every selected state is linear-gradient(135deg, violet-50, violet-100)
+      with border-color:violet-700. Third time tonight, same bug class as the
+      purple "parse this for me" and the terracotta timer chip.
+    - .pf-lbl is a HARD 78px rail and .pf-note a hard 52px rail, so the input
+      is squeezed between two rigid columns in eleven languages. German's
+      "Geburtsdatum" has 78px.
+    - type: 12.5 / 11.5 / 10.5 / 10 / 9. The recommendation - the whole
+      reason to be on this screen - is four numbers at 17px.
+
+  AND THE STRUCTURE, which is the thing asking.html cares about: a person
+  arriving here for the first time meets six unlabelled cards of form fields,
+  and the "recommended target" card sits at the BOTTOM saying "fill in
+  everything above and I will calculate". No progress, no "two more and you
+  are there", no reason to keep going.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --ink-btn:#4a4340; --muted:#6d675e; --amber:#f0a92e;
+    /* the four macro hues, at the depth that reads as TEXT on the ground */
+    --violet700:#5a4a86; --terra700:#98492c; --green700:#397339; --amber700:#806423;
+    --water700:#2f6a8e;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+    --seam:inset 0 1px 0 var(--lit), inset 0 2px 0 var(--shade-soft);
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--ground);color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:22px 26px 8px;max-width:1300px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:6px;max-width:88ch;line-height:1.75}
+  .sub b{color:var(--ink)}
+  table.meas{border-collapse:collapse;margin-top:13px;font-size:13px}
+  table.meas td{padding:5px 14px 5px 0;color:var(--muted)}
+  table.meas td:first-child{color:var(--ink);font-weight:700}
+  table.meas td.n{direction:ltr;font-variant-numeric:tabular-nums;font-weight:800;color:var(--ink)}
+  .row{display:flex;gap:22px;justify-content:center;align-items:flex-start;
+    padding:18px 24px 44px;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:9px;width:390px}
+  .cap{font-size:12px;font-weight:800;letter-spacing:.09em;color:var(--muted)}
+  .cap b{color:var(--ink)}
+  .why{font-size:12.5px;line-height:1.7;color:var(--muted);text-align:center;
+    min-height:88px;padding:0 4px}
+  .why b{color:var(--ink)}
+  .phone{width:390px;height:844px;border-radius:26px;overflow:hidden;background:var(--ground);
+    box-shadow:-6px -6px 14px var(--lit),8px 10px 22px var(--shade);
+    padding:16px;display:flex;flex-direction:column;gap:11px}
+
+  /* ── shared, in the material ── */
+  .card{background:var(--ground);border-radius:21px;padding:16px;box-shadow:var(--raise-lg)}
+  .cttl{font-size:12.5px;font-weight:800;letter-spacing:.09em;color:var(--muted);margin-bottom:13px}
+  .fr{display:flex;align-items:center;gap:11px;padding:9px 0}
+  .fr + .fr{box-shadow:var(--seam)}
+  .fl{flex:1;min-width:0;font-size:14px;font-weight:700}
+  .fn{font-size:12px;color:var(--muted);font-weight:700;margin-top:2px}
+  /* a field is a CHANNEL, sized by its content, not caged between two rails */
+  .fv{background:var(--ground);border-radius:12px;padding:10px 14px;box-shadow:var(--press-sm);
+    font-size:17px;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums;
+    flex:0 0 auto;min-width:76px;text-align:center}
+  .fv small{font-size:11.5px;font-weight:700;color:var(--muted)}
+  .fv.empty{color:var(--muted);font-size:14px;font-weight:700}
+  .two{display:flex;gap:8px;flex:0 0 auto}
+  .pick{border-radius:12px;padding:10px 16px;font-size:13.5px;font-weight:800;color:var(--muted);
+    background:var(--ground);box-shadow:var(--raise)}
+  .pick.on{box-shadow:var(--press);color:var(--ink)}
+
+  .acts{display:flex;flex-direction:column;gap:8px}
+  .act{display:flex;align-items:center;gap:12px;border-radius:14px;padding:12px 13px;
+    background:var(--ground);box-shadow:var(--raise)}
+  .act.on{box-shadow:var(--press)}
+  .act-n{width:26px;height:26px;flex:0 0 26px;border-radius:13px;background:var(--ground);
+    box-shadow:var(--press-sm);display:flex;align-items:center;justify-content:center;
+    font-size:12.5px;font-weight:800;color:var(--muted)}
+  .act.on .act-n{background:var(--ink-btn);color:#fff;box-shadow:none}
+  .act-t{font-size:14px;font-weight:800}
+  .act-s{font-size:12px;color:var(--muted);margin-inline-start:auto;text-align:end;font-weight:700}
+
+  .goals{display:flex;flex-wrap:wrap;gap:8px}
+  .goal{flex:1 1 calc(50% - 4px);border-radius:14px;padding:13px 8px;text-align:center;
+    font-size:13.5px;font-weight:800;color:var(--muted);background:var(--ground);box-shadow:var(--raise)}
+  .goal.on{box-shadow:var(--press);color:var(--ink)}
+  .goaln{font-size:12.5px;color:var(--muted);line-height:1.65;margin-top:11px}
+
+  /* the payoff, given the weight it deserves */
+  .recs{display:flex;gap:9px}
+  .rec{flex:1;text-align:center;background:var(--ground);border-radius:14px;padding:12px 4px;
+    box-shadow:var(--press-sm)}
+  .recv{font-size:21px;font-weight:800;line-height:1.1;direction:ltr;
+    font-variant-numeric:tabular-nums}
+  .recl{font-size:12px;color:var(--muted);margin-top:4px;font-weight:700}
+  .recc{font-size:11.5px;color:var(--muted);margin-top:6px;font-weight:700;direction:ltr}
+  .recc.chg{color:var(--amber700)}
+  .bmr{font-size:12.5px;color:var(--muted);font-weight:700;line-height:1.6;margin-bottom:14px}
+  .water{margin-top:13px;padding-top:12px;box-shadow:var(--seam);font-size:13px;font-weight:700;
+    color:var(--water700)}
+  .apply{width:100%;margin-top:14px;border-radius:15px;padding:15px;background:var(--ink-btn);
+    color:#fff;font-size:14.5px;font-weight:800;text-align:center}
+  .hint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.6}
+
+  /* ── A only: the live answer at the top ── */
+  .live{background:var(--ground);border-radius:21px;padding:16px;box-shadow:var(--raise-lg)}
+  .live-k{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--muted)}
+  .live-q{font-size:16px;font-weight:800;margin-top:7px;line-height:1.4}
+  .steps{display:flex;gap:6px;margin-top:14px}
+  .step{flex:1;height:7px;border-radius:4px;background:var(--ground);box-shadow:var(--press-sm)}
+  .step.on{background:var(--ink-btn);box-shadow:none}
+  .step.now{background:var(--amber)}
+  .ghost{opacity:.4}
+
+  /* ── the honest now ── */
+  .n-card{background:var(--ground);border-radius:20px;padding:15px;
+    box-shadow:0 4px 16px rgba(200,180,160,.1)}
+  .n-cttl{font-size:12px;font-weight:800;color:var(--ink);margin-bottom:10px}
+  .n-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f7f3ee}
+  .n-row:last-of-type{border-bottom:none}
+  .n-lbl{flex:0 0 78px;font-size:12.5px;font-weight:700}
+  .n-in{flex:1;min-width:0;border:1.5px solid rgba(140,133,125,.3);border-radius:10px;
+    padding:9px 10px;font-size:16px;font-weight:700;text-align:center;background:var(--ground)}
+  .n-note{flex:0 0 52px;font-size:10.5px;color:var(--muted);font-weight:700}
+  .n-sex{flex:1;border:1.5px solid rgba(140,133,125,.3);border-radius:10px;padding:8px 4px;
+    text-align:center;font-size:12px;font-weight:800;color:var(--muted);background:var(--ground)}
+  .n-sex.on{border-color:#5a4a86;color:#5a4a86;background:linear-gradient(135deg,#f4f1fa,#e6e0f4)}
+  .n-act{display:flex;align-items:center;gap:10px;border:1.5px solid rgba(140,133,125,.3);
+    border-radius:14px;padding:10px 11px;background:var(--ground);margin-bottom:6px}
+  .n-act.on{border-color:#5a4a86;background:linear-gradient(135deg,#f4f1fa,#e6e0f4)}
+  .n-actn{width:24px;height:24px;flex:0 0 24px;border-radius:12px;background:rgba(140,133,125,.3);
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;
+    color:var(--muted)}
+  .n-act.on .n-actn{background:var(--ink);color:#fff}
+  .n-actt{font-size:12.5px;font-weight:800}
+  .n-acts{font-size:10.5px;color:var(--muted);margin-inline-start:auto;text-align:end}
+  .n-goal{flex:1 1 calc(50% - 3px);border:1.5px solid rgba(140,133,125,.3);border-radius:14px;
+    padding:11px 6px;text-align:center;font-size:11.5px;font-weight:800;color:var(--muted);
+    background:var(--ground)}
+  .n-goal.on{border-color:#5a4a86;color:#5a4a86;background:linear-gradient(135deg,#f4f1fa,#e6e0f4)}
+  .n-need{font-size:11px;color:var(--muted);line-height:1.6}
+  .n-recv{font-size:17px;font-weight:800;line-height:1.2}
+  .n-recl{font-size:10px;color:var(--muted);margin-top:2px}
+  .n-recc{font-size:9px;color:#c9c1ba;margin-top:5px;font-weight:700}
+  .n-recc.chg{color:#c98b3f}
+</style>
+
+<header>
+  <h1>פרטים אישיים</h1>
+  <p class="sub">
+    זה המסך ש-<code>asking.html</code> שולח אליו, והוא המסך <b>הכי "אינטרנט ישן"</b>
+    באפליקציה. נמדד על הרקע <code>#e9e7e3</code>, לא הונח:
+  </p>
+  <table class="meas">
+    <tr><td>.pf-recc</td><td><code>#c9c1ba</code></td><td class="n">1.44:1</td><td>ב-9px —
+      <b style="color:var(--ink)">זאת השורה שאומרת לה מה היעד הנוכחי שלה</b>, כלומר כל הפואנטה של ההשוואה</td></tr>
+    <tr><td>.pf-recc.chg</td><td><code>#c98b3f</code></td><td class="n">2.35:1</td><td>ב-9px</td></tr>
+    <tr><td>.pf-water .chg</td><td><code>#c98b3f</code></td><td class="n">2.35:1</td><td>ב-10px</td></tr>
+    <tr><td>.pf-row גבול</td><td><code>#f7f3ee</code></td><td class="n">1.12:1</td><td><b style="color:var(--ink)">בהיר מהרקע שהוא מפריד</b> — זה לא קו</td></tr>
+    <tr><td>.pf-derived גבול</td><td><code>#f7f3ee</code></td><td class="n">1.12:1</td><td>אותו דבר</td></tr>
+  </table>
+  <p class="sub" style="margin-top:14px">
+    והצורה: <b>מסגרת 1.5px על חמישה רכיבים שונים</b> — כל שדה, כל שורת פעילות,
+    כל שבב מטרה ושני כפתורי המין. וכל מצב נבחר הוא
+    <code>linear-gradient(135deg, violet-50, violet-100)</code> — <b>פעם שלישית
+    הלילה</b> אותה מחלקת באג, אחרי הסגול של "פרק לי את זה" והטרקוטה של הטיימר.
+    התווית היא מסילה קשיחה של <b>78px</b> וההערה <b>52px</b>, כך שהשדה נמעך
+    ביניהן באחת־עשרה שפות. וגדלים: 12.5 / 11.5 / 10.5 / 10 / <b>9</b>.
+    <br>והמבנה, שזה מה שמעניין את <code>asking</code>: מי שמגיעה לכאן בפעם
+    הראשונה פוגשת שישה כרטיסים של שדות, וכרטיס "יעד מומלץ" — <b>כל הסיבה
+    להיות כאן</b> — יושב <b>בתחתית</b> ואומר "מלא את כל הפרטים למעלה". בלי
+    התקדמות, בלי "עוד שניים ואת שם", בלי סיבה להמשיך.
+  </p>
+</header>
+
+<div class="row">
+
+  <!-- ══ A ══ -->
+  <div class="col">
+    <div class="cap"><b>א</b> · התשובה למעלה, ומתמלאת</div>
+    <div class="phone">
+      <div class="live">
+        <div class="live-k">עוד שתי תשובות</div>
+        <div class="live-q">כשתסיימי, כאן יופיע יעד הקלוריות והמאקרו שחושב עבורך.</div>
+        <div class="steps">
+          <div class="step on"></div><div class="step on"></div><div class="step on"></div>
+          <div class="step on"></div><div class="step now"></div><div class="step"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cttl">מי את</div>
+        <div class="fr"><div class="fl">שם<div class="fn">לברכה בבית</div></div>
+          <div class="fv" style="min-width:120px">מיכל</div></div>
+        <div class="fr"><div class="fl">תאריך לידה<div class="fn">34 שנים</div></div>
+          <div class="fv">14.3.1992</div></div>
+        <div class="fr"><div class="fl">מין</div>
+          <div class="two"><div class="pick">זכר</div><div class="pick on">נקבה</div></div></div>
+        <div class="fr"><div class="fl">גובה</div><div class="fv">168<small> ס״מ</small></div></div>
+        <div class="fr"><div class="fl">משקל<div class="fn">BMI 23.1</div></div>
+          <div class="fv">65.2<small> ק״ג</small></div></div>
+      </div>
+
+      <div class="card">
+        <div class="cttl">פעילות גופנית</div>
+        <div class="acts">
+          <div class="act"><div class="act-n">1</div><div class="act-t">כמעט ללא</div>
+            <div class="act-s">יום יושבני</div></div>
+          <div class="act"><div class="act-n">2</div><div class="act-t">קלה</div>
+            <div class="act-s">1–2 אימונים בשבוע</div></div>
+          <div class="act on"><div class="act-n">3</div><div class="act-t">בינונית</div>
+            <div class="act-s">3–4 אימונים בשבוע</div></div>
+          <div class="act"><div class="act-n">4</div><div class="act-t">גבוהה</div>
+            <div class="act-s">5–6 אימונים בשבוע</div></div>
+          <div class="act"><div class="act-n">5</div><div class="act-t">מאוד גבוהה</div>
+            <div class="act-s">כל יום, או עבודה פיזית</div></div>
+        </div>
+      </div>
+
+      <div class="card ghost">
+        <div class="cttl">מטרה</div>
+        <div class="goals">
+          <div class="goal">ירידה במשקל</div><div class="goal">חיטוב</div>
+          <div class="goal">שמירה על המשקל</div><div class="goal">עלייה במסה</div>
+        </div>
+      </div>
+    </div>
+    <p class="why">
+      <b>התשובה עולה לראש המסך</b> ומתמלאת תוך כדי — שישה פסים אומרים כמה נשאר
+      ולמה בכלל להמשיך. שדה הוא <b>ערוץ בגודל התוכן</b>, לא קופסה בין שתי
+      מסילות; נבחר הוא <b>לחוץ</b>, לא גרדיאנט סגול. התוויות עולות מ-10.5 ל-12.
+    </p>
+  </div>
+
+  <!-- ══ B ══ -->
+  <div class="col">
+    <div class="cap"><b>ב</b> · אותו טופס, בניב</div>
+    <div class="phone">
+      <div class="card">
+        <div class="cttl">פרטים אישיים</div>
+        <div class="fr"><div class="fl">שם<div class="fn">לברכה בבית</div></div>
+          <div class="fv" style="min-width:120px">מיכל</div></div>
+        <div class="fr"><div class="fl">תאריך לידה<div class="fn">34 שנים</div></div>
+          <div class="fv">14.3.1992</div></div>
+        <div class="fr"><div class="fl">מין</div>
+          <div class="two"><div class="pick">זכר</div><div class="pick on">נקבה</div></div></div>
+        <div class="fr"><div class="fl">גובה</div><div class="fv">168<small> ס״מ</small></div></div>
+        <div class="fr"><div class="fl">משקל<div class="fn">BMI 23.1</div></div>
+          <div class="fv">65.2<small> ק״ג</small></div></div>
+      </div>
+
+      <div class="card">
+        <div class="cttl">מטרה</div>
+        <div class="goals">
+          <div class="goal on">ירידה במשקל</div><div class="goal">חיטוב</div>
+          <div class="goal">שמירה על המשקל</div><div class="goal">עלייה במסה</div>
+        </div>
+        <div class="goaln">גירעון של 15% — ירידה יציבה</div>
+      </div>
+
+      <div class="card">
+        <div class="cttl">יעד מומלץ</div>
+        <div class="bmr">שריפה במנוחה 1,405 · עם הפעילות 2,180 קק״ל ליום</div>
+        <div class="recs">
+          <div class="rec"><div class="recv" style="color:var(--violet700)">1,855</div>
+            <div class="recl">קק״ל</div><div class="recc chg">כעת 1,975</div></div>
+          <div class="rec"><div class="recv" style="color:var(--terra700)">124ג</div>
+            <div class="recl">חלבון</div><div class="recc chg">כעת 155ג</div></div>
+          <div class="rec"><div class="recv" style="color:var(--green700)">175ג</div>
+            <div class="recl">פחמימה</div><div class="recc chg">כעת 200ג</div></div>
+          <div class="rec"><div class="recv" style="color:var(--amber700)">52ג</div>
+            <div class="recl">שומן</div><div class="recc chg">כעת 60ג</div></div>
+        </div>
+        <div class="water">מים 2,300 מ״ל <span style="color:var(--amber700)">(כעת 3,000)</span></div>
+        <div class="apply">עדכני את היעדים לפי זה</div>
+        <div class="hint">עד שתלחצי, שום דבר במעקב לא משתנה.</div>
+      </div>
+    </div>
+    <p class="why">
+      אותו סדר בדיוק, רק בחומר: ערוצים במקום מסגרות, לחוץ במקום גרדיאנט,
+      ו<b>"כעת 1,975" עולה מ-1.44:1 ב-9px ל-4.5:1 ב-11.5px</b>. משנה פחות —
+      אבל לא נוגע בשאלה שלשמה היא הגיעה לכאן מלכתחילה.
+    </p>
+  </div>
+
+  <!-- ══ NOW ══ -->
+  <div class="col">
+    <div class="cap">היום</div>
+    <div class="phone" style="gap:10px">
+      <div class="n-card">
+        <div class="n-cttl">פרטים אישיים</div>
+        <div class="n-row"><div class="n-lbl">שם</div><div class="n-in">מיכל</div><div class="n-note">לברכה בבית</div></div>
+        <div class="n-row"><div class="n-lbl">תאריך לידה</div><div class="n-in">14.3.1992</div><div class="n-note">34 שנים</div></div>
+        <div class="n-row"><div class="n-lbl">מין</div>
+          <div style="display:flex;gap:6px;flex:1"><div class="n-sex">זכר</div><div class="n-sex on">נקבה</div></div>
+          <div class="n-note"></div></div>
+        <div class="n-row"><div class="n-lbl">גובה</div><div class="n-in">168</div><div class="n-note">ס״מ</div></div>
+        <div class="n-row"><div class="n-lbl">משקל</div><div class="n-in">65.2</div><div class="n-note">ק״ג</div></div>
+        <div style="margin-top:12px;padding-top:11px;border-top:1px solid #f7f3ee;
+          font-size:11px;color:var(--muted);font-weight:700">BMI 23.1</div>
+      </div>
+
+      <div class="n-card">
+        <div class="n-cttl">פעילות גופנית</div>
+        <div class="n-act"><div class="n-actn">1</div><div class="n-actt">כמעט ללא</div><div class="n-acts">יום יושבני, בלי אימונים</div></div>
+        <div class="n-act"><div class="n-actn">2</div><div class="n-actt">קלה</div><div class="n-acts">1–2 אימונים בשבוע</div></div>
+        <div class="n-act on"><div class="n-actn">3</div><div class="n-actt">בינונית</div><div class="n-acts">3–4 אימונים בשבוע</div></div>
+        <div class="n-act"><div class="n-actn">4</div><div class="n-actt">גבוהה</div><div class="n-acts">5–6 אימונים בשבוע</div></div>
+        <div class="n-act" style="margin-bottom:0"><div class="n-actn">5</div><div class="n-actt">מאוד גבוהה</div><div class="n-acts">כל יום, או עבודה פיזית</div></div>
+      </div>
+
+      <div class="n-card">
+        <div class="n-cttl">מטרה</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <div class="n-goal on">ירידה במשקל</div><div class="n-goal">חיטוב</div>
+          <div class="n-goal">שמירה על המשקל</div><div class="n-goal">עלייה במסה</div>
+        </div>
+        <div style="font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:9px">גירעון של 15% — ירידה יציבה</div>
+      </div>
+
+      <div class="n-card">
+        <div class="n-cttl">יעד מומלץ</div>
+        <div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:14px">שריפה במנוחה 1,405 · עם הפעילות 2,180 קק״ל ליום</div>
+        <div style="display:flex;gap:7px;text-align:center">
+          <div style="flex:1"><div class="n-recv" style="color:#a690cf">1,855</div><div class="n-recl">קק״ל</div><div class="n-recc chg">כעת 1,975</div></div>
+          <div style="flex:1"><div class="n-recv" style="color:#e08a72">124ג</div><div class="n-recl">חלבון</div><div class="n-recc chg">כעת 155ג</div></div>
+          <div style="flex:1"><div class="n-recv" style="color:#8fc79e">175ג</div><div class="n-recl">פחמימה</div><div class="n-recc chg">כעת 200ג</div></div>
+          <div style="flex:1"><div class="n-recv" style="color:#e8c162">52ג</div><div class="n-recl">שומן</div><div class="n-recc chg">כעת 60ג</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="why">
+      חמש מסגרות 1.5px, גרדיאנט סגול על כל מצב נבחר, מפרידים
+      <b>בהירים מהרקע</b>, ו"כעת 1,975" ב-<b>9 פיקסלים ביחס 1.44:1</b> —
+      המספר שאמור לומר לה מה משתנה, בלתי נראה.
+    </p>
+  </div>
+
+</div>
+</html>

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>מעקב משקלים — שתי גרסאות</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Read from renderFitWeights() before anything was drawn.
+
+  WHAT IT IS TODAY: a header row, then one card holding a flat ALPHABETICAL
+  list of every exercise ever logged. Each row is the name at 12.5px, a line
+  at 9.5px saying "from the workout - date", and a pill carrying the weight at
+  13px. Rows are separated by border-bottom:1px solid var(--line). The card's
+  shadow is 0 4px 16px rgba(200,180,160,.1) - the old drop shadow, not the
+  material. Then a 10px footnote, then fitProgressCardHTML().
+
+  THE THING THAT DECIDES THE DESIGN: a person opens this screen asking one of
+  two questions - "am I getting stronger?" or, standing in a gym, "what did I
+  put on the bar last time?". A flat alphabetical list of current numbers
+  answers the second badly (the exercise she trained today is buried among
+  thirty) and the first NOT AT ALL.
+
+  And it has no excuse. exSessions(name) already returns every session for an
+  exercise with .top.weight and .date - currentWeightFor() calls it and throws
+  all of it away except the last number. The history is already in hand. The
+  screen simply does not show it.
+
+  So neither direction below invents data. Both draw what is already there.
+
+  (One thing checked and cleared along the way: the Hebrew here is masculine -
+  "כמה אתה מרים בכל תרגיל" - and that is CORRECT. Hebrew is its own key and
+  data/he-f.json is the feminine overlay; it answers all 25 of the bare-"אתה"
+  keys in the file, and "בחר תרגיל" reaches Michal as "בחרי תרגיל".)
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --ink-btn:#4a4340; --muted:#6d675e; --amber:#f0a92e;
+    --green700:#397339; --terra700:#98492c;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+    --seam:inset 0 1px 0 var(--lit), inset 0 2px 0 var(--shade-soft);
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--ground);color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:22px 26px 8px;max-width:1300px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:6px;max-width:88ch;line-height:1.75}
+  .sub b{color:var(--ink)}
+  .row{display:flex;gap:22px;justify-content:center;align-items:flex-start;
+    padding:18px 24px 44px;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:9px;width:390px}
+  .cap{font-size:12px;font-weight:800;letter-spacing:.09em;color:var(--muted)}
+  .cap b{color:var(--ink)}
+  .why{font-size:12.5px;line-height:1.7;color:var(--muted);text-align:center;
+    min-height:78px;padding:0 4px}
+  .why b{color:var(--ink)}
+  .phone{width:390px;height:844px;border-radius:26px;overflow:hidden;background:var(--ground);
+    box-shadow:-6px -6px 14px var(--lit),8px 10px 22px var(--shade);
+    padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .ttl{font-size:19px;font-weight:800;letter-spacing:-.01em}
+  .tsub{font-size:12px;color:var(--muted);margin-top:2px}
+  .back{border-radius:12px;padding:9px 14px;background:var(--ground);box-shadow:var(--raise);
+    font-size:12.5px;font-weight:800;color:var(--muted)}
+
+  /* ── A: the row that tells movement ── */
+  .a-list{background:var(--ground);border-radius:22px;padding:4px 16px;box-shadow:var(--raise-lg)}
+  .a-r{display:flex;align-items:center;gap:12px;padding:14px 0}
+  .a-r + .a-r{box-shadow:var(--seam)}
+  .a-x{flex:1;min-width:0}
+  .a-n{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .a-m{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:5px;align-items:center}
+  .a-up{color:var(--green700);font-weight:800;direction:ltr}
+  .a-flat{color:var(--muted);font-weight:700}
+  /* the shape of the last six sessions, from data the screen already holds */
+  .spark{display:flex;align-items:flex-end;gap:3px;height:26px;width:52px;flex:0 0 auto}
+  .spark i{display:block;flex:1;border-radius:2px;background:var(--ground);box-shadow:var(--press-sm)}
+  .spark i.on{background:var(--ink-btn);box-shadow:none}
+  .a-w{border-radius:13px;padding:10px 13px;background:var(--ground);box-shadow:var(--raise);
+    font-size:16px;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums;flex:0 0 auto}
+  .a-w small{font-size:11px;font-weight:700;color:var(--muted)}
+  .a-add{border-radius:13px;padding:11px 14px;background:var(--ground);box-shadow:var(--press-sm);
+    font-size:12.5px;font-weight:700;color:var(--muted);flex:0 0 auto}
+  .sortrow{display:flex;gap:7px}
+  .sort{border-radius:12px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--muted);
+    background:var(--ground);box-shadow:var(--raise)}
+  .sort.on{box-shadow:var(--press);color:var(--ink)}
+  .note{font-size:12px;color:var(--muted);line-height:1.65;padding:0 4px}
+
+  /* ── B: a card per exercise ── */
+  .b-c{background:var(--ground);border-radius:20px;padding:15px 16px;box-shadow:var(--raise-lg)}
+  .b-top{display:flex;justify-content:space-between;align-items:flex-start}
+  .b-n{font-size:15px;font-weight:800}
+  .b-m{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .b-w{font-size:26px;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums;line-height:1}
+  .b-w small{font-size:12px;font-weight:700;color:var(--muted)}
+  .b-d{font-size:12px;font-weight:800;color:var(--green700);direction:ltr;margin-top:4px;text-align:end}
+  .b-ch{height:56px;margin-top:13px;border-radius:12px;background:var(--ground);box-shadow:var(--press);
+    padding:8px 10px;display:flex;align-items:flex-end;gap:5px}
+  .b-ch i{display:block;flex:1;border-radius:3px;background:var(--ink-btn)}
+  .b-ch i.last{background:var(--amber)}
+
+  /* ── the honest now ── */
+  .n-card{background:var(--ground);border-radius:20px;padding:8px 4px;
+    box-shadow:0 4px 16px rgba(200,180,160,.1)}
+  .n-r{display:flex;align-items:center;gap:10px;padding:10px 12px;
+    border-bottom:1px solid rgba(140,133,125,.2)}
+  .n-r:last-child{border-bottom:none}
+  .n-n{font-size:12.5px;font-weight:600;flex:1;min-width:0;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .n-m{font-size:9.5px;color:var(--muted);margin-top:2px}
+  .n-w{border-radius:12px;padding:7px 12px;background:#f3f1ed;font-size:13px;font-weight:800;
+    direction:ltr;flex:0 0 auto}
+  .n-add{border-radius:12px;padding:7px 12px;background:#f3f1ed;font-size:11px;color:var(--muted);flex:0 0 auto}
+  .n-note{font-size:10px;color:var(--muted);line-height:1.6}
+  .n-back{border-radius:10px;padding:6px 12px;background:#f3f1ed;font-size:11px;color:var(--muted)}
+</style>
+
+<header>
+  <h1>מעקב משקלים</h1>
+  <p class="sub">
+    מה שיש היום: כרטיס אחד ובתוכו רשימה <b>לפי א־ב</b> של כל תרגיל שנרשם אי פעם.
+    שם ב-12.5px, שורה ב-9.5px שאומרת "מהאימון · תאריך", וגלולה עם המשקל ב-13px.
+    שורות מופרדות ב-<code>border-bottom:1px solid</code>, והכרטיס נושא את צל
+    הנפילה הישן.
+    <br>מה שמכריע את העיצוב: אדם פותח את המסך הזה עם אחת משתי שאלות —
+    <b>"אני מתחזקת?"</b> או, עומדת בחדר כושר, <b>"כמה שמתי בפעם שעברה?"</b>.
+    רשימה אלפביתית של מספרים נוכחיים עונה על השנייה רע — התרגיל שהיא עשתה היום
+    קבור בין שלושים — ועל הראשונה <b>בכלל לא</b>.
+    <br>ואין לזה תירוץ: <code>exSessions(name)</code> כבר מחזיר את כל ההיסטוריה
+    של כל תרגיל עם <code>top.weight</code> ותאריך. <code>currentWeightFor()</code>
+    קורא לו <b>וזורק את הכול חוץ מהמספר האחרון</b>. שתי הגרסאות למטה לא ממציאות
+    שום נתון — הן מציירות את מה שכבר ביד.
+  </p>
+</header>
+
+<div class="row">
+
+  <!-- ══ A ══ -->
+  <div class="col">
+    <div class="cap"><b>א</b> · השורה מספרת תנועה</div>
+    <div class="phone">
+      <div class="top">
+        <div><div class="ttl">מעקב משקלים</div><div class="tsub">כמה את מרימה בכל תרגיל</div></div>
+        <div class="back">‹ חזרה</div>
+      </div>
+
+      <div class="sortrow">
+        <div class="sort on">אחרונים</div><div class="sort">לפי א־ב</div><div class="sort">הכי זזו</div>
+      </div>
+
+      <div class="a-list">
+        <div class="a-r">
+          <div class="spark"><i style="height:40%"></i><i style="height:48%"></i><i style="height:56%"></i><i style="height:70%"></i><i style="height:82%"></i><i class="on" style="height:100%"></i></div>
+          <div class="a-x"><div class="a-n">לחיצת חזה במוט</div>
+            <div class="a-m"><span class="a-up">▲ 7.5</span><span>· מאז 14.9</span></div></div>
+          <div class="a-w">52.5<small> ק״ג</small></div>
+        </div>
+        <div class="a-r">
+          <div class="spark"><i style="height:62%"></i><i style="height:62%"></i><i style="height:74%"></i><i style="height:74%"></i><i style="height:88%"></i><i class="on" style="height:100%"></i></div>
+          <div class="a-x"><div class="a-n">סקוואט</div>
+            <div class="a-m"><span class="a-up">▲ 10</span><span>· מאז 2.9</span></div></div>
+          <div class="a-w">70<small> ק״ג</small></div>
+        </div>
+        <div class="a-r">
+          <div class="spark"><i style="height:80%"></i><i style="height:80%"></i><i style="height:80%"></i><i style="height:80%"></i><i style="height:80%"></i><i class="on" style="height:80%"></i></div>
+          <div class="a-x"><div class="a-n">חתירה בכבל</div>
+            <div class="a-m"><span class="a-flat">אותו משקל</span><span>· שישה אימונים</span></div></div>
+          <div class="a-w">40<small> ק״ג</small></div>
+        </div>
+        <div class="a-r">
+          <div class="spark"><i style="height:55%"></i><i style="height:70%"></i><i style="height:70%"></i><i style="height:85%"></i><i style="height:85%"></i><i class="on" style="height:100%"></i></div>
+          <div class="a-x"><div class="a-n">לחיצת כתפיים בשיכוב</div>
+            <div class="a-m"><span class="a-up">▲ 5</span><span>· מאז 7.9</span></div></div>
+          <div class="a-w">22.5<small> ק״ג</small></div>
+        </div>
+        <div class="a-r">
+          <div class="spark"><i style="height:35%"></i><i style="height:52%"></i><i style="height:52%"></i><i style="height:68%"></i><i style="height:84%"></i><i class="on" style="height:100%"></i></div>
+          <div class="a-x"><div class="a-n">דדליפט</div>
+            <div class="a-m"><span class="a-up">▲ 15</span><span>· מאז 21.8</span></div></div>
+          <div class="a-w">85<small> ק״ג</small></div>
+        </div>
+        <div class="a-r">
+          <div class="spark" style="opacity:.35"><i style="height:18%"></i><i style="height:18%"></i><i style="height:18%"></i><i style="height:18%"></i><i style="height:18%"></i><i style="height:18%"></i></div>
+          <div class="a-x"><div class="a-n">כפיפת מרפקים</div>
+            <div class="a-m"><span>עוד לא נרשם</span></div></div>
+          <div class="a-add">הוסיפי</div>
+        </div>
+      </div>
+
+      <div class="note">
+        המספר מתעדכן לבד מכל אימון שתסיימי. אפשר גם להקליד אותו —
+        והאימון הבא יעדכן מעליו.
+      </div>
+    </div>
+    <p class="why">
+      אותה רשימה, אבל כל שורה עונה על <b>שתי</b> השאלות בבת אחת: המספר הגדול
+      למה שמים על המוט, ושישה פסים + דלתא ל"אני מתחזקת?". ממוינת <b>לפי אחרונים</b>,
+      כי התרגיל שהיא עשתה היום הוא זה שהיא מחפשת. כארבע־עשרה שורות במסך.
+    </p>
+  </div>
+
+  <!-- ══ B ══ -->
+  <div class="col">
+    <div class="cap"><b>ב</b> · כרטיס לכל תרגיל</div>
+    <div class="phone">
+      <div class="top">
+        <div><div class="ttl">מעקב משקלים</div><div class="tsub">כמה את מרימה בכל תרגיל</div></div>
+        <div class="back">‹ חזרה</div>
+      </div>
+
+      <div class="sortrow">
+        <div class="sort on">אחרונים</div><div class="sort">לפי א־ב</div><div class="sort">הכי זזו</div>
+      </div>
+
+      <div class="b-c">
+        <div class="b-top">
+          <div><div class="b-n">לחיצת חזה במוט</div><div class="b-m">מהאימון · לפני יומיים</div></div>
+          <div style="text-align:end"><div class="b-w">52.5<small> ק״ג</small></div><div class="b-d">▲ 7.5 מאז 14.9</div></div>
+        </div>
+        <div class="b-ch">
+          <i style="height:38%"></i><i style="height:38%"></i><i style="height:50%"></i><i style="height:50%"></i>
+          <i style="height:62%"></i><i style="height:74%"></i><i style="height:74%"></i><i style="height:86%"></i>
+          <i class="last" style="height:100%"></i>
+        </div>
+      </div>
+
+      <div class="b-c">
+        <div class="b-top">
+          <div><div class="b-n">סקוואט</div><div class="b-m">מהאימון · לפני חמישה ימים</div></div>
+          <div style="text-align:end"><div class="b-w">70<small> ק״ג</small></div><div class="b-d">▲ 10 מאז 2.9</div></div>
+        </div>
+        <div class="b-ch">
+          <i style="height:56%"></i><i style="height:56%"></i><i style="height:68%"></i><i style="height:68%"></i>
+          <i style="height:68%"></i><i style="height:82%"></i><i style="height:82%"></i><i style="height:92%"></i>
+          <i class="last" style="height:100%"></i>
+        </div>
+      </div>
+
+      <div class="b-c">
+        <div class="b-top">
+          <div><div class="b-n">חתירה בכבל</div><div class="b-m">מהאימון · לפני יומיים</div></div>
+          <div style="text-align:end"><div class="b-w">40<small> ק״ג</small></div>
+            <div class="b-d" style="color:var(--muted)">אותו משקל · שישה אימונים</div></div>
+        </div>
+        <div class="b-ch">
+          <i style="height:78%"></i><i style="height:78%"></i><i style="height:78%"></i><i style="height:78%"></i>
+          <i style="height:78%"></i><i style="height:78%"></i><i style="height:78%"></i><i style="height:78%"></i>
+          <i class="last" style="height:78%"></i>
+        </div>
+      </div>
+
+      <div class="b-c">
+        <div class="b-top">
+          <div><div class="b-n">לחיצת כתפיים בשיכוב</div><div class="b-m">הוקלד · 21.9</div></div>
+          <div style="text-align:end"><div class="b-w">22.5<small> ק״ג</small></div><div class="b-d">▲ 5 מאז 7.9</div></div>
+        </div>
+        <div class="b-ch">
+          <i style="height:50%"></i><i style="height:50%"></i><i style="height:64%"></i><i style="height:64%"></i>
+          <i style="height:78%"></i><i style="height:78%"></i><i style="height:78%"></i><i style="height:90%"></i>
+          <i class="last" style="height:100%"></i>
+        </div>
+      </div>
+
+      <div class="note" style="margin-top:auto">
+        המספר מתעדכן לבד מכל אימון שתסיימי.
+      </div>
+    </div>
+    <p class="why">
+      כל תרגיל מקבל את הצורה המלאה של ההתקדמות, לא רמז. יפה יותר וקריא יותר —
+      אבל <b>ארבעה תרגילים במסך במקום ארבעה־עשר</b>, וזה מסך שמגיעים אליו
+      כדי למצוא תרגיל מסוים. עדיף כמסך של תרגיל <b>אחד</b>, שכבר קיים.
+    </p>
+  </div>
+
+  <!-- ══ NOW ══ -->
+  <div class="col">
+    <div class="cap">היום</div>
+    <div class="phone">
+      <div class="top">
+        <div class="ttl" style="font-size:15px">מעקב משקלים</div>
+        <div class="n-back">חזרה</div>
+      </div>
+
+      <div class="n-card">
+        <div class="n-r"><div style="flex:1;min-width:0"><div class="n-n">דדליפט</div><div class="n-m">מהאימון · 26.9</div></div><div class="n-w">85 ק״ג</div></div>
+        <div class="n-r"><div style="flex:1;min-width:0"><div class="n-n">חתירה בכבל</div><div class="n-m">מהאימון · 25.9</div></div><div class="n-w">40 ק״ג</div></div>
+        <div class="n-r"><div style="flex:1;min-width:0"><div class="n-n">כפיפת מרפקים</div><div class="n-m"></div></div><div class="n-add">הוסף</div></div>
+        <div class="n-r"><div style="flex:1;min-width:0"><div class="n-n">לחיצת חזה במוט</div><div class="n-m">מהאימון · 25.9</div></div><div class="n-w">52.5 ק״ג</div></div>
+        <div class="n-r"><div style="flex:1;min-width:0"><div class="n-n">לחיצת כתפיים בשיכוב</div><div class="n-m">הוקלד · 21.9</div></div><div class="n-w">22.5 ק״ג</div></div>
+        <div class="n-r"><div style="flex:1;min-width:0"><div class="n-n">סקוואט</div><div class="n-m">מהאימון · 22.9</div></div><div class="n-w">70 ק״ג</div></div>
+      </div>
+
+      <div class="n-note">המספר מתעדכן לבד מכל אימון שתסיים. אפשר גם להקליד אותו — והאימון הבא יעדכן מעליו.</div>
+    </div>
+    <p class="why">
+      לפי א־ב, בלי שום היסטוריה, עם קו אפור בין שורות ו-9.5px מתחת לכל שם.
+      המספר — הדבר היחיד שבשבילו באים — הוא <b>13px</b>, קטן מהכותרת.
+      וההיסטוריה של כל שורה כבר בזיכרון, ונזרקת.
+    </p>
+  </div>
+
+</div>
+</html>

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>היסטוריית אימונים — שתי גרסאות</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Read from renderFitHistory() before anything was drawn.
+
+  WHAT IT IS TODAY: a title row, then one card per workout, newest first,
+  forever. Each card is name (14px/700), then a DELETE x in terracotta with
+  margin-inline-start:auto, then the date (10px); a row of three facts at
+  11px; and a wrap of 10px chips, one per exercise with its best weight.
+  Card shadow 0 2px 10px rgba(200,180,160,.1) - the old drop shadow.
+
+  TWO THINGS THE CODE ITSELF SHOWS:
+
+  1. A HAZARD, not a style problem. The whole card is a click target
+     (onclick="fitOpenSummary(i)"), and a 44px destructive x sits ON its
+     face, second in the reading order, in the only strong colour on the
+     screen. deleteWorkout() is reachable by a thumb aiming at the card.
+     It needs event.stopPropagation() precisely because it is in the way.
+
+  2. The screen has no idea what a history is FOR. Forty identical cards in
+     one column answer "what did I do on the 14th" badly and "have I been
+     showing up" not at all - and showing up is the question a person opens
+     a history with. fitWeekStripHTML() already draws seven days as dots on
+     the fitness home, so the app can already say it; this screen just does
+     not ask.
+
+  Neither direction invents data. Volume, duration, exercise count and date
+  are all in the log already.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --ink-btn:#4a4340; --muted:#6d675e; --amber:#f0a92e;
+    --terra700:#98492c; --green700:#397339;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+    --seam:inset 0 1px 0 var(--lit), inset 0 2px 0 var(--shade-soft);
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--ground);color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:22px 26px 8px;max-width:1300px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:6px;max-width:88ch;line-height:1.75}
+  .sub b{color:var(--ink)}
+  .row{display:flex;gap:22px;justify-content:center;align-items:flex-start;
+    padding:18px 24px 44px;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:9px;width:390px}
+  .cap{font-size:12px;font-weight:800;letter-spacing:.09em;color:var(--muted)}
+  .cap b{color:var(--ink)}
+  .why{font-size:12.5px;line-height:1.7;color:var(--muted);text-align:center;
+    min-height:82px;padding:0 4px}
+  .why b{color:var(--ink)}
+  .phone{width:390px;height:844px;border-radius:26px;overflow:hidden;background:var(--ground);
+    box-shadow:-6px -6px 14px var(--lit),8px 10px 22px var(--shade);
+    padding:16px;display:flex;flex-direction:column;gap:12px}
+
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .ttl{font-size:19px;font-weight:800;letter-spacing:-.01em}
+  .back{border-radius:12px;padding:9px 14px;background:var(--ground);box-shadow:var(--raise);
+    font-size:12.5px;font-weight:800;color:var(--muted)}
+
+  /* ── the rhythm panel, shared by A ── */
+  .rh{background:var(--ground);border-radius:22px;padding:17px;box-shadow:var(--raise-lg)}
+  .rh-t{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+  .rh-n{font-size:30px;font-weight:800;line-height:1;letter-spacing:-.02em}
+  .rh-n small{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
+  .rh-s{font-size:12.5px;color:var(--muted);font-weight:700}
+  .grid{display:flex;flex-direction:column;gap:6px}
+  .gw{display:flex;gap:6px;align-items:center}
+  .gl{font-size:10.5px;color:var(--muted);font-weight:700;width:34px;flex:0 0 auto}
+  .gd{flex:1;height:19px;border-radius:6px;background:var(--ground);box-shadow:var(--press-sm)}
+  .gd.on{background:var(--ink-btn);box-shadow:none}
+  .gd.now{background:var(--amber);box-shadow:var(--press-sm)}
+  .rh-k{display:flex;gap:14px;margin-top:13px;font-size:11.5px;color:var(--muted);font-weight:700;
+    align-items:center;justify-content:center}
+  .kd{width:13px;height:13px;border-radius:4px;background:var(--ink-btn);
+    display:inline-block;vertical-align:-2px;margin-inline-end:5px}
+  .kd.e{background:var(--ground);box-shadow:var(--press-sm)}
+  .kd.a{background:var(--amber)}
+
+  .mon{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--muted);
+    padding:4px 4px 0}
+  /* ── A: cards, tightened, with nothing destructive on the face ── */
+  .c{background:var(--ground);border-radius:19px;padding:14px 16px;box-shadow:var(--raise)}
+  .c-t{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .c-n{font-size:15px;font-weight:800}
+  .c-d{font-size:12px;color:var(--muted);font-weight:700;flex:0 0 auto}
+  .c-f{display:flex;gap:9px;margin-top:11px}
+  .c-fi{flex:1;background:var(--ground);border-radius:11px;padding:9px 4px;text-align:center;
+    box-shadow:var(--press-sm)}
+  .c-fv{font-size:15px;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums}
+  .c-fl{font-size:10.5px;color:var(--muted);font-weight:700;margin-top:2px}
+  .c-x{display:flex;flex-wrap:wrap;gap:5px;margin-top:11px}
+  .ch{background:var(--ground);border-radius:9px;padding:5px 9px;font-size:11.5px;font-weight:700;
+    color:var(--muted);box-shadow:var(--raise)}
+
+  /* ── B: the timeline ── */
+  .tl{position:relative;padding-inline-end:26px}
+  .tl::before{content:"";position:absolute;inset-block:6px;inset-inline-end:8px;width:4px;
+    border-radius:2px;background:var(--ground);box-shadow:var(--press-sm)}
+  .tl-i{position:relative;margin-bottom:12px}
+  .tl-i::before{content:"";position:absolute;inset-inline-end:-24px;top:17px;width:16px;height:16px;
+    border-radius:8px;background:var(--ink-btn)}
+  .tl-gap{position:relative;padding:11px 0 11px 0;margin-bottom:12px;
+    font-size:12px;color:var(--muted);font-weight:700}
+  .tl-gap::before{content:"";position:absolute;inset-inline-end:-21px;top:16px;width:10px;height:10px;
+    border-radius:5px;background:var(--ground);box-shadow:var(--press-sm)}
+
+  /* ── the honest now ── */
+  .n-c{background:var(--ground);border-radius:18px;padding:14px 16px;
+    box-shadow:0 2px 10px rgba(200,180,160,.1)}
+  .n-t{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px}
+  .n-n{font-size:14px;font-weight:700}
+  .n-x{color:var(--terra700);font-size:15px;margin-inline-start:auto}
+  .n-d{font-size:10px;color:var(--muted)}
+  .n-f{display:flex;gap:14px;font-size:11px;color:var(--muted)}
+  .n-f b{color:var(--ink);font-weight:700}
+  .n-ch{background:#f3f1ed;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:600;
+    color:var(--muted)}
+  .n-back{border-radius:10px;padding:6px 12px;background:#f3f1ed;font-size:11px;
+    font-weight:700;color:var(--muted)}
+</style>
+
+<header>
+  <h1>היסטוריית אימונים</h1>
+  <p class="sub">
+    מה שיש היום: כרטיס לכל אימון, מהחדש לישן, לנצח. שם ב-14px, אחריו
+    <b>איקס מחיקה בטרקוטה</b>, אחריו התאריך ב-10px; שורת שלוש עובדות ב-11px;
+    ושבבים ב-10px, אחד לכל תרגיל.
+    <br>שני דברים שהקוד עצמו מראה. <b>הראשון הוא סיכון, לא סגנון:</b> כל
+    הכרטיס הוא יעד לחיצה (<code>onclick="fitOpenSummary(i)"</code>), ואיקס
+    הרסני בגובה 44px יושב <b>על פניו</b>, שני בסדר הקריאה, בצבע החזק היחיד
+    במסך. הוא זקוק ל-<code>stopPropagation</code> בדיוק כי הוא בדרך.
+    <br><b>והשני:</b> למסך אין מושג בשביל מה היסטוריה. ארבעים כרטיסים זהים
+    בטור אחד עונים רע על "מה עשיתי ב-14" ו<b>בכלל לא</b> על "אני מגיעה?" —
+    וזאת השאלה שאיתה פותחים היסטוריה. <code>fitWeekStripHTML()</code> כבר
+    מצייר שבעה ימים כנקודות בבית של כושר, אז האפליקציה כבר יודעת להגיד את זה.
+    המסך הזה פשוט לא שואל.
+  </p>
+</header>
+
+<div class="row">
+
+  <!-- ══ A ══ -->
+  <div class="col">
+    <div class="cap"><b>א</b> · הקצב קודם, האימונים אחריו</div>
+    <div class="phone">
+      <div class="top"><div class="ttl">היסטוריית אימונים</div><div class="back">‹ חזרה</div></div>
+
+      <div class="rh">
+        <div class="rh-t">
+          <div><div class="rh-n">14<small> אימונים</small></div>
+            <div class="rh-s" style="margin-top:5px">בשמונה השבועות האחרונים</div></div>
+          <div class="rh-s">3 השבוע</div>
+        </div>
+        <div class="grid">
+          <div class="gw"><span class="gl">השבוע</span>
+            <span class="gd on"></span><span class="gd"></span><span class="gd on"></span>
+            <span class="gd"></span><span class="gd now"></span><span class="gd"></span><span class="gd"></span></div>
+          <div class="gw"><span class="gl">שעבר</span>
+            <span class="gd on"></span><span class="gd"></span><span class="gd on"></span>
+            <span class="gd"></span><span class="gd on"></span><span class="gd"></span><span class="gd"></span></div>
+          <div class="gw"><span class="gl">14.9</span>
+            <span class="gd on"></span><span class="gd"></span><span class="gd on"></span>
+            <span class="gd"></span><span class="gd"></span><span class="gd on"></span><span class="gd"></span></div>
+          <div class="gw"><span class="gl">7.9</span>
+            <span class="gd"></span><span class="gd on"></span><span class="gd"></span>
+            <span class="gd"></span><span class="gd on"></span><span class="gd"></span><span class="gd"></span></div>
+          <div class="gw"><span class="gl">31.8</span>
+            <span class="gd on"></span><span class="gd"></span><span class="gd on"></span>
+            <span class="gd on"></span><span class="gd"></span><span class="gd"></span><span class="gd"></span></div>
+        </div>
+        <div class="rh-k">
+          <span><i class="kd"></i>התאמנת</span>
+          <span><i class="kd a"></i>היום</span>
+          <span><i class="kd e"></i>לא</span>
+        </div>
+      </div>
+
+      <div class="mon">ספטמבר</div>
+
+      <div class="c">
+        <div class="c-t"><div class="c-n">פלג גוף עליון</div><div class="c-d">לפני יומיים</div></div>
+        <div class="c-f">
+          <div class="c-fi"><div class="c-fv">5</div><div class="c-fl">תרגילים</div></div>
+          <div class="c-fi"><div class="c-fv">48</div><div class="c-fl">דקות</div></div>
+          <div class="c-fi"><div class="c-fv">4,280</div><div class="c-fl">ק״ג נפח</div></div>
+        </div>
+        <div class="c-x">
+          <div class="ch">לחיצת חזה 52.5</div><div class="ch">חתירה 40</div>
+          <div class="ch">כתפיים 22.5</div><div class="ch">מתח</div><div class="ch">מרפקים 12.5</div>
+        </div>
+      </div>
+
+      <div class="c">
+        <div class="c-t"><div class="c-n">רגליים</div><div class="c-d">יום חמישי</div></div>
+        <div class="c-f">
+          <div class="c-fi"><div class="c-fv">4</div><div class="c-fl">תרגילים</div></div>
+          <div class="c-fi"><div class="c-fv">55</div><div class="c-fl">דקות</div></div>
+          <div class="c-fi"><div class="c-fv">6,110</div><div class="c-fl">ק״ג נפח</div></div>
+        </div>
+        <div class="c-x">
+          <div class="ch">סקוואט 70</div><div class="ch">דדליפט 85</div>
+          <div class="ch">מכרעים 20</div><div class="ch">שוקיים 60</div>
+        </div>
+      </div>
+    </div>
+    <p class="why">
+      הלוח למעלה עונה על <b>"אני מגיעה?"</b> בלי מילה אחת — חמישה שבועות
+      בגובה 140px. שלוש העובדות של כל אימון הופכות לשלושה <b>ערוצים</b> שאפשר
+      לקרוא במבט, וה<b>איקס ההרסני יורד מפני הכרטיס</b> אל תוך הסיכום, שם הוא
+      ליד "פתח מחדש" — כלומר ליד ההחלטה, לא ליד האגודל.
+    </p>
+  </div>
+
+  <!-- ══ B ══ -->
+  <div class="col">
+    <div class="cap"><b>ב</b> · ציר זמן — גם מה שלא קרה</div>
+    <div class="phone">
+      <div class="top"><div class="ttl">היסטוריית אימונים</div><div class="back">‹ חזרה</div></div>
+
+      <div class="tl">
+        <div class="tl-i">
+          <div class="c">
+            <div class="c-t"><div class="c-n">פלג גוף עליון</div><div class="c-d">25.9</div></div>
+            <div class="c-f">
+              <div class="c-fi"><div class="c-fv">5</div><div class="c-fl">תרגילים</div></div>
+              <div class="c-fi"><div class="c-fv">48</div><div class="c-fl">דקות</div></div>
+              <div class="c-fi"><div class="c-fv">4,280</div><div class="c-fl">ק״ג נפח</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tl-gap">יומיים בלי אימון</div>
+
+        <div class="tl-i">
+          <div class="c">
+            <div class="c-t"><div class="c-n">רגליים</div><div class="c-d">22.9</div></div>
+            <div class="c-f">
+              <div class="c-fi"><div class="c-fv">4</div><div class="c-fl">תרגילים</div></div>
+              <div class="c-fi"><div class="c-fv">55</div><div class="c-fl">דקות</div></div>
+              <div class="c-fi"><div class="c-fv">6,110</div><div class="c-fl">ק״ג נפח</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tl-gap">שישה ימים בלי אימון</div>
+
+        <div class="tl-i">
+          <div class="c">
+            <div class="c-t"><div class="c-n">פלג גוף עליון</div><div class="c-d">15.9</div></div>
+            <div class="c-f">
+              <div class="c-fi"><div class="c-fv">5</div><div class="c-fl">תרגילים</div></div>
+              <div class="c-fi"><div class="c-fv">44</div><div class="c-fl">דקות</div></div>
+              <div class="c-fi"><div class="c-fv">3,900</div><div class="c-fl">ק״ג נפח</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="why">
+      הציר הופך את ה<b>היעדרות</b> לדבר שרואים — "שישה ימים בלי אימון" הוא
+      מידע שרשימה לא יכולה להראות לעולם. אבל הוא עולה הרבה גובה לכל שורה,
+      ו<b>שלושה אימונים במסך</b>. שווה כ<b>שכבה על גבי א</b>, לא במקומו.
+    </p>
+  </div>
+
+  <!-- ══ NOW ══ -->
+  <div class="col">
+    <div class="cap">היום</div>
+    <div class="phone" style="gap:10px">
+      <div class="top"><div class="ttl" style="font-size:15px">היסטוריית אימונים</div>
+        <div class="n-back">‹ חזרה</div></div>
+
+      <div class="n-c">
+        <div class="n-t"><div class="n-n">פלג גוף עליון</div><div class="n-x">×</div><div class="n-d">25 בספטמבר</div></div>
+        <div class="n-f"><span>5 תרגילים</span><span>48 דקות</span><b>4,280 ק״ג נפח</b></div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">
+          <div class="n-ch">לחיצת חזה 52.5 ק״ג</div><div class="n-ch">חתירה 40 ק״ג</div>
+          <div class="n-ch">כתפיים 22.5 ק״ג</div><div class="n-ch">מתח</div><div class="n-ch">מרפקים 12.5 ק״ג</div>
+        </div>
+      </div>
+
+      <div class="n-c">
+        <div class="n-t"><div class="n-n">רגליים</div><div class="n-x">×</div><div class="n-d">22 בספטמבר</div></div>
+        <div class="n-f"><span>4 תרגילים</span><span>55 דקות</span><b>6,110 ק״ג נפח</b></div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">
+          <div class="n-ch">סקוואט 70 ק״ג</div><div class="n-ch">דדליפט 85 ק״ג</div>
+          <div class="n-ch">מכרעים 20 ק״ג</div><div class="n-ch">שוקיים 60 ק״ג</div>
+        </div>
+      </div>
+
+      <div class="n-c">
+        <div class="n-t"><div class="n-n">פלג גוף עליון</div><div class="n-x">×</div><div class="n-d">15 בספטמבר</div></div>
+        <div class="n-f"><span>5 תרגילים</span><span>44 דקות</span><b>3,900 ק״ג נפח</b></div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">
+          <div class="n-ch">לחיצת חזה 45 ק״ג</div><div class="n-ch">חתירה 35 ק״ג</div>
+          <div class="n-ch">כתפיים 17.5 ק״ג</div><div class="n-ch">מתח</div><div class="n-ch">מרפקים 10 ק״ג</div>
+        </div>
+      </div>
+
+      <div class="n-c">
+        <div class="n-t"><div class="n-n">רגליים</div><div class="n-x">×</div><div class="n-d">9 בספטמבר</div></div>
+        <div class="n-f"><span>4 תרגילים</span><span>51 דקות</span><b>5,420 ק״ג נפח</b></div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">
+          <div class="n-ch">סקוואט 60 ק״ג</div><div class="n-ch">דדליפט 70 ק״ג</div>
+          <div class="n-ch">מכרעים 16 ק״ג</div><div class="n-ch">שוקיים 50 ק״ג</div>
+        </div>
+      </div>
+
+      <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:auto">
+        …וכך הלאה, עד האימון הראשון
+      </div>
+    </div>
+    <p class="why">
+      האיקס האדום הוא הדבר השני שקוראים בכל כרטיס, על גבי משטח שכולו יעד
+      לחיצה. ארבעים כרטיסים זהים בטור אחד, בלי חודשים, בלי קצב, ובלי שום
+      דרך לדעת אם השבוע היה טוב מהקודם.
+    </p>
+  </div>
+
+</div>
+</html>
