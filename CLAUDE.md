@@ -187,7 +187,7 @@ the rest.
 Hebrew is its own key, so the Hebrew build carries no dictionary and a missing
 translation falls back to readable text rather than to `fitness.set.add`.
 
-**Twelve checks are tools rather than prose**, and all should only ever go down:
+**Thirteen checks are tools rather than prose**, and all should only ever go down:
 
     node tools/find-glued-sentences.mjs        # sentences built from fragments
     node tools/find-translated-data.mjs        # _t() results used as data, not shown
@@ -206,10 +206,40 @@ translation falls back to readable text rather than to `fitness.set.add`.
                                                # and a percent sign welded on by hand
     node tools/find-masculine-left.mjs      # a sentence the app still says to HER
                                                # in the masculine, or turns only halfway
+    node tools/find-unreadable-tokens.mjs      # a colour named "readable as text"
+                                               # that measures 2.8:1
     node tools/build-lang-template.mjs --check # the template still matches the app
 
-`find-formatted-css.mjs` is the newest, and the bug it was written for had
-shipped. `nfmt` writes numbers the way the READER writes them, so in Arabic
+**`find-unreadable-tokens.mjs` is the newest, and it exists because a COMMENT
+was being used as evidence.** Five palette tokens carry the note *"readable as
+text"*. Over one night three of them turned out not to be, each found by
+accident on a different screen: `--terra-700` was 3.21:1 in thirteen places,
+`--amber-700` 2.83 in eleven, `--green-700` 2.82 in five. The comment stopped
+being evidence the first time it was wrong; this is the assertion that
+replaces it.
+
+It also reads every token used as a `color:` anywhere, not only the ones that
+claim to be readable — which is what turned up **41 more sites** where a green,
+amber, water or indigo FILL was being read as text, the same bug the 140
+violet and terracotta ones were. Against the revision before the fix it finds
+10; against the fix, 0.
+
+Two things make it cheap, and both are worth knowing. `--card`, `--panel` and
+`--page` all resolve to `--nu-ground` inside the twelve module blocks, so the
+app has essentially **one background** and one number per token answers the
+question. And a token a module block redefines never paints its `:root` value,
+so the check reads those overrides from the file rather than carrying a list.
+
+Its own first two versions were wrong the same way, which is the lesson worth
+keeping: **the braces in a comment are not structure.** This file's comments
+are prose *about* CSS, and one of them contains the literal text
+`.app{background:var(--nu-ground)}`. Both early versions read that closing
+brace as the end of a rule, put `--muted-soft` outside every module block, and
+reported 127 uses of a value that never paints. Any structural scan of this
+file blanks comments first.
+
+`find-formatted-css.mjs` was the newest before it, and the bug it was written
+for had shipped. `nfmt` writes numbers the way the READER writes them, so in Arabic
 it answers `٥٠` — and `style.height = "٥٠%"` is not a CSS length, so the
 browser silently discards it. The daily summary's four macro bars were built
 that way and had been drawing at **zero height** for every Arabic reader.
