@@ -73,13 +73,54 @@ const W = [
   'מרגיש','נמצא','יכול','צריך','חושב','מתאמן','אוהב','זוכר','מוכן','בטוח','עייף',
   'שורף','קורא','לוקח','אוכל','הולך','עובד','לומד','מחפש','בוחר','כותב',
 ];
+/* THE SECOND PERSON FUTURE, WHICH TAKES A PREFIX THE REST CANNOT.
+   These are the members of W that begin with ת and mean "you will …".
+   Named rather than pattern-matched: תקן is in W as the IMPERATIVE "fix",
+   and a rule that read every ת-word as a future would take it too.
+
+   תלחץ and תסיים were missing, and were found by asking the key set which
+   ת-forms it holds behind a Hebrew prefix - not from memory. They cannot be
+   derived from the imperatives above either: the rule holds for pa'al and
+   pi'el (לחץ -> תלחץ, סיים -> תסיים) and breaks for hif'il, where the vowel
+   moves and הוסף gives "תוסף" rather than תוסיף. That is why תוסיף and
+   תוכל sit in W by hand. */
+const FUT = ['תוכל','תרצה','תקבל','תמצא','תבחר','תכתוב','תרשום','תוסיף','תלחץ','תסיים'];
+/* and they are ordinary members of W as well, so a BARE one is caught by the
+   ו-boundary like every other word. Leaving them out of W cost a real
+   finding: "עצרי את הסט עכשיו. אל תסיים אותו." turns its first verb and not
+   its second, which is the shape this whole tool exists for. */
+for (const f of FUT) if (!W.includes(f)) W.push(f);
 /* THE ו IS PART OF THE BOUNDARY, NOT PART OF THE WORD.
    ו is the commonest prefix in Hebrew and it hid a half-turned sentence in
    plain sight: the reminder card reads "קבעי שעה קבועה, ותקבל תזכורת" -
    קבע turned and ותקבל did not - and the first version of this line asked for
    a NON-Hebrew character in front of the word, which the ו is not. One
-   optional ו after the boundary is the whole fix. */
-const RE = new RegExp('(^|[^' + HEB + '])ו?(' + W.join('|') + ')(?![' + HEB + '])');
+   optional ו after the boundary is the whole fix.
+
+   ש IS NOT THE SAME PREFIX, and finding that out is worth more than the bug
+   that started it. The profile's recommendation card renders its button as
+   "עדכני את היעדים לפי זה" and the line immediately beneath it as "עד
+   שתלחץ, שום דבר במעקב לא משתנה." - one card, two genders - and this scan
+   called the file clean, because the character in front of תלחץ is ש.
+
+   The obvious repair, allowing ו?כ?ש in front of the WHOLE list, is wrong.
+   It took the count to 13 and four of those are not the app addressing her:
+   "תרגיל שעובד על אותו שריר" is the EXERCISE working, "מה שצריך להיעלם" is
+   impersonal, "האפליקציות שלך כותבים" is the apps writing. ו+verb keeps the
+   subject; ש+participle opens a RELATIVE CLAUSE whose subject is the thing
+   just named.
+
+   Where ש is unambiguous is in front of a ת-FUTURE - תלחץ, תוסיף, תרשום,
+   תרצה, תסיים are second person and nothing else. So it gets its own
+   pattern rather than widening the first one. Nine sentences were hiding
+   behind that letter, on five screens: the closet's "בגד שתוסיף", the
+   streak's "כל דבר שתרשום היום", the weights screen's "מכל אימון שתסיים",
+   the journal, and this card. */
+const RE  = new RegExp('(^|[^' + HEB + '])ו?(' + W.join('|') + ')(?![' + HEB + '])');
+const REF = new RegExp('(^|[^' + HEB + '])ו?כ?ש(' + FUT.join('|') + ')(?![' + HEB + '])');
+/* both patterns, asked as one question */
+const reHit  = s => RE.test(s) || REF.test(s);
+const reFind = s => RE.exec(s) || REF.exec(s);
 
 /* Not the app talking to her. Each one is here for a reason that has to hold
    up on its own, because a list is the thing that rots.
@@ -164,8 +205,8 @@ const half = [], missed = [];
 for (const k of keysOf(SRC)) {
   if (ALLOW.has(k)) continue;
   const v = over[k];
-  if (v !== undefined) { if (RE.test(v)) half.push([k, v]); }
-  else if (RE.test(k)) missed.push(k);
+  if (v !== undefined) { if (reHit(v)) half.push([k, v]); }
+  else if (reHit(k)) missed.push(k);
 }
 
 for (const [k, v] of half) console.log('  half turned  ' + v);
