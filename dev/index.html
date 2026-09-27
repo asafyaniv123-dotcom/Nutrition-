@@ -1558,6 +1558,25 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
    saying a thing is open to receive - not by growing a coloured outline */
 .bld-drop.hot{box-shadow:inset 2px 3px 7px var(--nu-shade,rgba(176,168,156,.44)),
              inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+/* the rack. direction:ltr because the plates are placed with left offsets
+   and a mirrored coordinate system would put the stack on the wrong sleeve */
+.bld-rk{position:relative;width:100%;overflow:hidden;direction:ltr}
+.bld-rk-i{position:absolute;inset:0;transform-origin:50% 50%}
+.bld-rk-bar{position:absolute;left:8px;right:8px;top:50%;height:11px;margin-top:-5.5px;
+  border-radius:6px;
+  background:linear-gradient(180deg,#e2ddd6 0%,#b3aca4 46%,#7e7871 100%);
+  box-shadow:0 3px 7px rgba(140,130,121,.4)}
+/* THE SAME DISC AS THE PALETTE, seen face on. Not foreshortened, so not
+   squashed - which is the whole reason this replaced the drawn ellipses. */
+.bld-rk-d{position:absolute;transform:translate(-50%,-50%);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:inherit;font-weight:800;line-height:1;
+  box-shadow:-3px -3px 8px rgba(255,255,255,.85),
+             4px 6px 13px rgba(140,130,121,.5),
+             inset 0 3px 4px rgba(255,255,255,.34),
+             inset 0 -4px 8px rgba(0,0,0,.24)}
+.bld-rk-d::after{content:"";position:absolute;inset:14%;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.2)}
 .bld-t{text-align:center;font-size:16px;font-weight:800;margin:8px 0 2px}
 .bld-t i{font-style:normal;font-weight:600;font-size:12.5px;color:var(--muted)}
 .bld-pal{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:12px}
@@ -15978,6 +15997,42 @@ function bldGrab(ev,p){
   document.addEventListener('pointerup',up);
   document.addEventListener('pointercancel',up);
 }
+/* THE RACK, FROM THE SAME DISC AS THE PALETTE.
+   Every plate here is the .bld-p disc seen face on - lit, ringed, numbered -
+   laid along a diagonal. Nothing is foreshortened, so nothing is squashed,
+   and it cannot drift from the palette because it IS the palette's disc.
+
+   The diameters are the real proportions, floored so a 1.25 is still a thing
+   you can read rather than a dot. The step between centres is a drawing
+   decision: touching discs hide each other, and an exploded stack is how a
+   diagram shows what is on the bar. The chips underneath carry the exact
+   list, so the picture owes nothing to arithmetic. */
+var BLD_D={25:96,20:88,15:80,10:70,5:60,2.5:50,1.25:44};
+function bldRackHTML(plates){
+  var STEP=38, W=344, H=150, mid=H/2, i, p, d, c, off=[], far=34;
+  for(i=0;i<plates.length;i++){
+    d=BLD_D[plates[i]]||62;
+    c=34+i*STEP;
+    off.push({p:plates[i],d:d,c:c});
+    far=Math.max(far,c+d/2);
+  }
+  /* shrink to fit rather than spill: twelve a side is allowed */
+  var k=Math.min(1,(W/2-6)/far);
+  var h='<div class="bld-rk" style="height:'+H+'px"><div class="bld-rk-i" style="transform:rotate(-13deg) scale('+k.toFixed(3)+')">';
+  h+='<span class="bld-rk-bar"></span>';
+  /* right side outside-in, left side inside-out: the far end goes down first
+     so the near plates land on top of it */
+  for(i=off.length-1;i>=0;i--)h+=bldDiscHTML(off[i],1,mid);
+  for(i=0;i<off.length;i++)h+=bldDiscHTML(off[i],-1,mid);
+  return h+'</div></div>';
+}
+function bldDiscHTML(o,side,mid){
+  var col=PLATE_COLOR[o.p]||'#9a938c';
+  return '<span class="bld-rk-d" style="width:'+o.d+'px;height:'+o.d+'px;'+
+    'left:calc(50% + '+(o.c*side)+'px);top:'+mid+'px;'+
+    'background:'+col+';color:'+plateInk(o.p)+';'+
+    'font-size:'+Math.max(11,Math.round(o.d*0.26))+'px">'+nfmt(o.p)+'</span>';
+}
 function rackHTML(){
   if(!_rackOpen)return '<button class="pl-k" onclick="rackOpen()">'+_t('הרכב את המוט')+'</button>';
   var all=plateSetAll(),h='<div class="bld">',i,p,col;
@@ -15988,7 +16043,7 @@ function rackHTML(){
      the sentence underneath names the discs; here the picture IS the answer -
      you are choosing plates - so it has to show which ones, in their own
      colours, with their weights on them. */
-  h+='<div class="bld-drop" id="bld-drop">'+plateSvg(_bld,bldBar())+'</div>';
+  h+='<div class="bld-drop" id="bld-drop">'+bldRackHTML(_bld)+'</div>';
   h+='<div class="bld-t">'+(_bld.length
       ?fmtWeight(bldTotal())+' <i>'+_t('{n} לכל צד',{n:_bld.length})+'</i>'
       :_t('המוט לבדו'))+'</div>';
