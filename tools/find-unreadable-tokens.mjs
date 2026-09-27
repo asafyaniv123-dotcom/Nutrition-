@@ -105,7 +105,14 @@ for (const t of Object.keys(hex)) {
   if (t === '--white') continue;                 /* text ON a fill, by design */
   if (overridden.has(t)) continue;               /* the block decides, not :root */
   const esc = t.replace(/-/g, '\\-');
-  const uses = (src.match(new RegExp('color:\\s*var\\(' + esc + '\\)', 'g')) || []).length;
+  /* `color:` and nothing else. border-color, border-inline-start-color,
+     outline-color, caret-color and text-decoration-color all END with the
+     same eight characters, and the first version of this check reported a
+     2px green RULE as green TEXT the first time one was written - on the
+     patch that was fixing a contrast defect. A colour on an edge is measured
+     against 3:1 as a graphical object, not 4.5 as a letter, and this check
+     does not ask about edges. */
+  const uses = (src.match(new RegExp('(^|[^-a-z])color:\\s*var\\(' + esc + '\\)', 'g')) || []).length;
   if (!uses && !claims.has(t)) continue;         /* neither read nor claimed */
   const r = ratio(hex[t], GROUND);
   if (r >= FLOOR) continue;
