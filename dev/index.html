@@ -3124,11 +3124,27 @@ html body.mod-fitness .fg{background:var(--nu-ground);border-radius:20px;padding
   box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
 html body.mod-fitness .fg-k{color:var(--nu-muted)}
 html body.mod-fitness .fg-r{color:var(--nu-ink)}
+/* RAISED WHEN IT IS NOT CHOSEN. Measured, this rule computed
+   box-shadow:none on a background identical to the ground behind it, so the
+   four goals read as labels rather than as something to press. Chosen is
+   already pressed, by the same list that presses every other chosen control
+   in this material - this is the other half of that sentence. */
 html body.mod-fitness .fg-b{border:none;background:var(--nu-ground);color:var(--nu-muted);
-  font-size:10.5px;border-radius:12px;padding:9px 4px}
+  font-size:10.5px;border-radius:12px;padding:9px 4px;
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 html body.mod-fitness .fg-b.on{background:var(--nu-ground);color:var(--nu-ink);
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 html body.mod-fitness .fg-n{color:var(--nu-muted)}
+/* IN THE QUESTION CARD A CHIP IS THE ANSWER, not a setting. 10.5px suits a
+   row at the bottom of a hub that is answered once and left alone; the one
+   control a person is being asked to use gets the size of a thing you tap.
+
+   HERE, not with the other .fq rules: `.fq .fg-b` is (0,2,0) and
+   `html body.mod-fitness .fg-b` is (0,2,2), so the card's own block lost
+   and the chips measured 10.5px anyway. Inside the module it is (0,3,2),
+   and it is also the truth about its scope - .fq holds .pf-goal chips in
+   תזונה and .fg-b chips only here. */
+html body.mod-fitness .fq .fg-b{font-size:13px;padding:13px 8px}
 /* the workout you walked away from, in the same material */
 html body.mod-fitness .fw-res{background:var(--nu-ground);border:none;
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
@@ -7636,8 +7652,9 @@ function profSet(field,val){
   p[field]=val;
   p.updatedAt=new Date().toISOString();
   /* answering reopens it: she put the question off this morning and then
-     answered it anyway, so the next one should be there. */
-  if(p.fqOff)delete p.fqOff;
+     answered it anyway, so the next one should be there. Only תזונה's own
+     dismissal - כושר's is a different question and she did not answer it. */
+  if(p.fqOff&&typeof p.fqOff==='object')delete p.fqOff.nutrition;
   saveProfile(p);
   if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
   render();
@@ -7674,7 +7691,7 @@ function profHeight(){
   var p=loadProfile();
   if(f.value.trim()===''&&i.value.trim()===''){delete p.height;}
   else p.height=fromDisplayHeight(parseFloat(f.value),parseFloat(i.value));
-  if(p.fqOff)delete p.fqOff;
+  if(p.fqOff&&typeof p.fqOff==='object')delete p.fqOff.nutrition;
   saveProfile(p);
   if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
   render();
@@ -7700,7 +7717,7 @@ function profNum(field,el){
     }
   }
   p.updatedAt=new Date().toISOString();
-  if(p.fqOff)delete p.fqOff;
+  if(p.fqOff&&typeof p.fqOff==='object')delete p.fqOff.nutrition;
   saveProfile(p);
   if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
   render();
@@ -7776,33 +7793,89 @@ function fqStepHTML(k,p){
 }
 /* todayStr, not new Date: this app's day ends at 04:00, and a question put
    off at half past midnight was put off TONIGHT, not tomorrow morning. */
-function fqLater(){
+function fqLater(area){
   var p=loadProfile();
-  p.fqOff=todayStr();
+  if(!p.fqOff||typeof p.fqOff!=='object')p.fqOff={};
+  p.fqOff[area]=todayStr();
   saveProfile(p);
-  render();
+  /* each area repaints itself - render() draws תזונה and renderFitness()
+     draws כושר, and calling the wrong one replaces the screen you are on */
+  if(area==='fitness')renderFitness();else render();
+}
+/* ── THE FRAME EVERY AREA'S FIRST QUESTION IS DRAWN IN ──
+   One place knows what the card looks like, so a second area cannot invent
+   a second way of asking. An area supplies the question, the reason and the
+   body; the kicker, the dots and the "later" are the same everywhere.
+
+   THE DOTS ONLY APPEAR WHEN THERE IS MORE THAN ONE. A row of a single dot
+   answers nothing a person was wondering about. */
+function fqFrameHTML(o){
+  var h='<div class="fq"><div class="fq-k">'+_t('לפני שנתחיל')+'</div>',i;
+  h+='<div class="fq-q">'+o.q+'</div>';
+  if(o.why)h+='<div class="fq-s">'+o.why+'</div>';
+  h+='<div class="fq-body">'+o.body+'</div>';
+  if(o.total>1){
+    h+='<div class="fq-dots">';
+    for(i=0;i<o.total;i++)h+='<span class="fq-dot'+(i<o.done?' on':'')+'"></span>';
+    h+='</div>';
+  }
+  h+='<button class="fq-later" onclick="fqLater(\u0027'+o.area+'\u0027)">'+_t('אחר כך')+'</button>';
+  return h+'</div>';
+}
+/* WHICH AREA WAS PUT OFF, not whether something was. fqOff was a plain date
+   string when only תזונה asked; a leftover string now reads as "not
+   dismissed", which is the safe direction - the question comes back rather
+   than staying hidden. */
+function fqOffToday(area){
+  var o=loadProfile().fqOff;
+  return !!(o&&typeof o==='object'&&o[area]===todayStr());
 }
 function fqCardHTML(){
-  var p=loadProfile(),left=fqPending(p),i,h;
+  var p=loadProfile(),left=fqPending(p);
   if(!left.length)return '';
-  if(p.fqOff===todayStr())return '';
-  h='<div class="fq"><div class="fq-k">'+_t('לפני שנתחיל')+'</div>';
-  h+='<div class="fq-q">'+fqQuestion(left[0])+'</div>';
-  /* the reason, once. After the first answer she has seen the numbers move
-     and the sentence has done its work. */
-  if(left.length===FQ_ORDER.length)
-    h+='<div class="fq-s">'+_t('תשובה אחת, והמספרים במסך הזה יהיו שלך במקום של מישהו אחר')+'</div>';
-  h+='<div class="fq-body">'+fqStepHTML(left[0],p)+'</div>';
+  if(fqOffToday('nutrition'))return '';
   /* THE DOTS SAY THE COUNT, and no sentence does. A number beside a noun is
      a plural in eleven languages and Arabic has six categories of it; a row
      that fills up answers "how many are left" and "does this end" in every
      one of them without a word. */
-  h+='<div class="fq-dots">';
-  for(i=0;i<FQ_ORDER.length;i++)
-    h+='<span class="fq-dot'+(left.indexOf(FQ_ORDER[i])<0?' on':'')+'"></span>';
+  return fqFrameHTML({
+    area:'nutrition',
+    q:fqQuestion(left[0]),
+    /* the reason, once. After the first answer she has seen the numbers move
+       and the sentence has done its work. */
+    why:(left.length===FQ_ORDER.length)
+        ?''+_t('תשובה אחת, והמספרים במסך הזה יהיו שלך במקום של מישהו אחר')+'':'',
+    body:fqStepHTML(left[0],p),
+    done:FQ_ORDER.length-left.length,
+    total:FQ_ORDER.length
+  });
+}
+/* ── כושר ASKS ITS OWN ──
+   fitGoal() answers FIT_GOALS[1] when nothing is stored, with the comment
+   "building muscle is what most people mean" - so every rep range, the rest
+   timer, the weight step and the workout the app BUILDS are decided by an
+   answer she never gave. The door is a row of chips at the bottom of a
+   scrolling hub, which is the same distance as "אישי, fifth in a row". */
+function fitGoalChosen(){
+  var v;try{v=localStorage.getItem(FIT_GOAL_KEY);}catch(e){}
+  for(var i=0;i<FIT_GOALS.length;i++)if(FIT_GOALS[i].v===v)return true;
+  return false;
+}
+function fqFitHTML(){
+  if(fitGoalChosen())return '';
+  if(fqOffToday('fitness'))return '';
+  var h='<div class="fg-row">',i;
+  /* the same .fg-b chips the setting at the bottom uses, with none lit -
+     because none IS chosen, which is the whole point of asking */
+  for(i=0;i<FIT_GOALS.length;i++)
+    h+='<button class="fg-b" onclick="fitGoalSet(&quot;'+FIT_GOALS[i].v+'&quot;)">'+FIT_GOALS[i].t+'</button>';
   h+='</div>';
-  h+='<button class="fq-later" onclick="fqLater()">'+_t('אחר כך')+'</button>';
-  return h+'</div>';
+  return fqFrameHTML({
+    area:'fitness',
+    q:''+_t('למה אתה מתאמן?')+'',
+    why:''+_t('תשובה אחת, וטווח החזרות והמנוחה יהיו שלך במקום ברירת מחדל')+'',
+    body:h,done:0,total:1
+  });
 }
 /* ── FROM THE DETAILS TO A TARGET ──
    Mifflin-St Jeor for the resting burn, scaled by how much you move, then
@@ -18338,6 +18411,9 @@ function renderFitHome(){
   var templates=loadTemplates();
   var log=loadWorkoutLog();
   var h='<div style="padding-bottom:20px">';
+  /* FIRST, above the doors, because the answer changes what is behind every
+     one of them. It draws nothing once the goal is chosen. */
+  h+=fqFitHTML();
 
   /* ── the areas ──
      כושר used to be one screen with nine things stacked on it: start a
@@ -18364,7 +18440,9 @@ function renderFitHome(){
   h+='<div class="fg-row">';
   for(var gi=0;gi<FIT_GOALS.length;gi++){
     var G=FIT_GOALS[gi];
-    h+='<button class="fg-b'+(G.v===fg.v?' on':'')+'" onclick="fitGoalSet(&quot;'+G.v+'&quot;)">'+G.t+'</button>';
+    /* lit only if she actually chose. fitGoal() falls back to מסת שריר, so
+       before this the setting showed a goal nobody picked as the answer. */
+    h+='<button class="fg-b'+((fitGoalChosen()&&G.v===fg.v)?' on':'')+'" onclick="fitGoalSet(&quot;'+G.v+'&quot;)">'+G.t+'</button>';
   }
   h+='</div><div class="fg-n">'+esc(fg.n)+'</div></div>';
 
@@ -22048,6 +22126,11 @@ function fitGoal(){
 }
 function fitGoalSet(v){
   try{localStorage.setItem(FIT_GOAL_KEY,v);}catch(e){}
+  /* she answered, so the question this area was still asking is done */
+  try{var _p=loadProfile();
+    if(_p.fqOff&&typeof _p.fqOff==='object'&&_p.fqOff.fitness){
+      delete _p.fqOff.fitness;saveProfile(_p);}
+  }catch(e){}
   var g=fitGoal();
   // the rest timer follows the goal unless it has been set by hand
   try{if(localStorage.getItem(REST_KEY)===null)localStorage.setItem(REST_KEY,String(g.rest));}catch(e){}
