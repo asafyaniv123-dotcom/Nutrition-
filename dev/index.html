@@ -971,6 +971,29 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .pf-act.on .pf-actn{background:var(--cta-fill);color:var(--white);box-shadow:none}
 .pf-actt{font-size:14px;font-weight:800;color:var(--nu-ink)}
 .pf-acts2{font-size:12px;color:var(--nu-muted);font-weight:700;margin-inline-start:auto;text-align:end}
+/* ── THE AREA'S OWN FIRST QUESTION ──
+   The frame only. Every control inside it is .pf-goal, .pf-sex, .pf-act or
+   .pf-in, so "chosen" is said here exactly the way the profile screen says
+   it and there is no second grammar for it. */
+.fq{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+  --nu-shade-soft:rgba(176,168,156,.28);--nu-ink:#4a453f;--nu-muted:#6d675e;
+  --nu-amber:#f0a92e;display:block;background:var(--nu-ground);border-radius:20px;
+  padding:16px 15px 12px;margin-bottom:12px;
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.fq-k{font-size:11px;font-weight:800;letter-spacing:.11em;color:var(--nu-muted)}
+.fq-q{font-size:19px;font-weight:800;color:var(--nu-ink);margin-top:7px;letter-spacing:-.012em}
+.fq-s{font-size:12.5px;color:var(--nu-muted);line-height:1.65;margin-top:8px}
+.fq-body{margin-top:13px}
+.fq-body .pf-row{padding-top:0}
+/* a groove per question, and the answered ones carry light. Position and
+   the groove do the work; the colour is the last thing said, not the only
+   thing - which is why an unanswered one is still visibly a slot. */
+.fq-dots{display:flex;gap:6px;justify-content:center;margin-top:15px}
+.fq-dot{width:19px;height:5px;border-radius:3px;background:var(--nu-ground);
+  box-shadow:inset 1px 2px 3px var(--nu-shade),inset -1px -1px 2px var(--nu-lit)}
+.fq-dot.on{background:var(--nu-amber);box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+.fq-later{display:block;margin:10px auto 0;border:none;background:none;font-family:inherit;
+  font-size:12.5px;font-weight:700;color:var(--nu-muted);cursor:pointer;padding:6px 12px}
 .pf-goals{display:flex;flex-wrap:wrap;gap:8px}
 .pf-goal{flex:1 1 calc(50% - 4px);min-width:0;border:none;border-radius:14px;padding:13px 8px;background:var(--nu-ground);font-size:13.5px;font-weight:800;color:var(--nu-muted);cursor:pointer;font-family:inherit;line-height:1.3;box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 .pf-goaln{font-size:12.5px;color:var(--nu-muted);line-height:1.65;margin-top:11px}
@@ -7582,17 +7605,30 @@ function profileBMI(p){
   if(!h||!w||h<80||h>250||w<20||w>400)return null;
   return Math.round(w/Math.pow(h/100,2)*10)/10;
 }
+/* render(), NOT renderProfile(). These three are reached from the profile
+   screen AND from the question the area asks at the top of תזונה, and
+   renderProfile writes #content - the element that screen is standing on.
+   render() repaints whichever screen is actually open, and on the profile
+   screen that is renderProfile. */
 function profSet(field,val){
   var p=loadProfile();
   p[field]=val;
   p.updatedAt=new Date().toISOString();
+  /* answering reopens it: she put the question off this morning and then
+     answered it anyway, so the next one should be there. */
+  if(p.fqOff)delete p.fqOff;
   saveProfile(p);
-  renderProfile();
+  if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
+  render();
 }
 /* Two boxes in imperial, one in metric. The stored value is centimetres in
    both, so nothing downstream has to know which was used. */
-function heightRowHTML(p){
-  var h='<div class="pf-row"><label class="pf-lbl">'+_t('גובה')+'</label>';
+/* lbl is an argument because the question at the top of תזונה already
+   says "what is your height?" and does not want to say it twice. Everything
+   else about this row - two boxes in imperial, one in metric, centimetres
+   stored either way - is the reason it is reused rather than rewritten. */
+function heightRowHTML(p,lbl){
+  var h='<div class="pf-row">'+(lbl===''?'':'<label class="pf-lbl">'+(lbl||_t('גובה'))+'</label>');
   if(APP_UNITS==='imperial'){
     var d=p.height!==undefined?toDisplayHeight(p.height):{ft:'',inch:''};
     h+='<input class="pf-in" id="pf-ft" type="number" inputmode="numeric" step="1" min="0" placeholder="0" value="'+d.ft+'" onchange="profHeight()" aria-label="ft">'+
@@ -7613,8 +7649,10 @@ function profHeight(){
   var p=loadProfile();
   if(f.value.trim()===''&&i.value.trim()===''){delete p.height;}
   else p.height=fromDisplayHeight(parseFloat(f.value),parseFloat(i.value));
+  if(p.fqOff)delete p.fqOff;
   saveProfile(p);
-  renderProfile();
+  if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
+  render();
 }
 function profNum(field,el){
   var p=loadProfile(),v=el.value.trim();
@@ -7637,10 +7675,110 @@ function profNum(field,el){
     }
   }
   p.updatedAt=new Date().toISOString();
+  if(p.fqOff)delete p.fqOff;
   saveProfile(p);
-  renderProfile();
+  if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
+  render();
 }
 
+/* ── THE AREA ASKS ──
+   One question at a time, above the bars it is about to change. The order
+   is the order of a conversation, not of the formula: what she is aiming at
+   first, because that is the only one she has an opinion about, and the
+   measurements after it. */
+var FQ_ORDER=['goal','sex','birth','height','weight','activity'];
+/* ANSWERED MEANS USABLE, not merely present. Each line here is the same
+   test profileTargets makes of the same field, so the card retires itself
+   exactly when the target can be worked out and never one field early.
+   Driving it is what found this: a birth year of 0001 is a filled date and
+   an age of 2025, so the question left and the screen went quietly back to
+   someone else's 1975 kcal. */
+function fqHas(p,k){
+  if(k==='goal')return !!goalDef(p.goal);
+  if(k==='sex')return p.sex==='m'||p.sex==='f';
+  if(k==='birth')return profileAge(p.birth)!==null;
+  if(k==='height')return parseFloat(p.height)>0;
+  if(k==='weight')return parseFloat(p.weight)>0;
+  return !!p.activity;
+}
+function fqPending(p){
+  var out=[],i;
+  for(i=0;i<FQ_ORDER.length;i++)
+    if(!fqHas(p,FQ_ORDER[i]))out.push(FQ_ORDER[i]);
+  return out;
+}
+function fqQuestion(k){
+  /* Hebrew is the source and the source is masculine, as everywhere here;
+     data/he-f.json answers the two that inflect. נולדת and שלך are the
+     same word in both, which is why only two of the six are overlaid. */
+  if(k==='goal')return ''+_t('למה אתה מכוון?')+'';
+  if(k==='sex')return ''+_t('מה המין שלך?')+'';
+  if(k==='birth')return ''+_t('מתי נולדת?')+'';
+  if(k==='height')return ''+_t('מה הגובה שלך?')+'';
+  if(k==='weight')return ''+_t('מה המשקל שלך?')+'';
+  return ''+_t('כמה אתה זז בשבוע?')+'';
+}
+function fqStepHTML(k,p){
+  var h='',i;
+  if(k==='goal'){
+    h+='<div class="pf-goals">';
+    for(i=0;i<GOALS.length;i++)
+      h+='<button class="pf-goal" onclick="profSet(\u0027goal\u0027,\u0027'+GOALS[i].v+'\u0027)">'+GOALS[i].t+'</button>';
+    return h+'</div>';
+  }
+  if(k==='sex')
+    return '<div class="pf-sexes">'+
+      '<button class="pf-sex" onclick="profSet(\u0027sex\u0027,\u0027m\u0027)">'+_t('זכר')+'</button>'+
+      '<button class="pf-sex" onclick="profSet(\u0027sex\u0027,\u0027f\u0027)">'+_t('נקבה')+'</button></div>';
+  if(k==='birth')
+    return '<div class="pf-row"><input class="pf-in" type="date" value="" onchange="profSet(\u0027birth\u0027,this.value)"></div>';
+  /* the profile screen's own row, label dropped: two boxes in imperial and
+     one in metric, and centimetres stored either way */
+  if(k==='height')return heightRowHTML({},'');
+  if(k==='weight')
+    /* no placeholder. On the profile screen "0" sits behind a label that
+       already says what the box is; under a question it reads as an answer
+       of zero. */
+    return '<div class="pf-row"><input class="pf-in" type="number" inputmode="decimal" step="0.1" value="" onchange="profNum(\u0027weight\u0027,this)">'+
+      '<span class="pf-note">'+weightUnit()+'</span></div>';
+  h+='<div class="pf-acts">';
+  for(i=0;i<ACT_LEVELS.length;i++)
+    h+='<button class="pf-act" onclick="profSet(\u0027activity\u0027,'+ACT_LEVELS[i].v+')">'+
+       '<span class="pf-actn">'+nfmt(ACT_LEVELS[i].v)+'</span>'+
+       '<span class="pf-actt">'+ACT_LEVELS[i].t+'</span>'+
+       '<span class="pf-acts2">'+ACT_LEVELS[i].s+'</span></button>';
+  return h+'</div>';
+}
+/* todayStr, not new Date: this app's day ends at 04:00, and a question put
+   off at half past midnight was put off TONIGHT, not tomorrow morning. */
+function fqLater(){
+  var p=loadProfile();
+  p.fqOff=todayStr();
+  saveProfile(p);
+  render();
+}
+function fqCardHTML(){
+  var p=loadProfile(),left=fqPending(p),i,h;
+  if(!left.length)return '';
+  if(p.fqOff===todayStr())return '';
+  h='<div class="fq"><div class="fq-k">'+_t('לפני שנתחיל')+'</div>';
+  h+='<div class="fq-q">'+fqQuestion(left[0])+'</div>';
+  /* the reason, once. After the first answer she has seen the numbers move
+     and the sentence has done its work. */
+  if(left.length===FQ_ORDER.length)
+    h+='<div class="fq-s">'+_t('תשובה אחת, והמספרים במסך הזה יהיו שלך במקום של מישהו אחר')+'</div>';
+  h+='<div class="fq-body">'+fqStepHTML(left[0],p)+'</div>';
+  /* THE DOTS SAY THE COUNT, and no sentence does. A number beside a noun is
+     a plural in eleven languages and Arabic has six categories of it; a row
+     that fills up answers "how many are left" and "does this end" in every
+     one of them without a word. */
+  h+='<div class="fq-dots">';
+  for(i=0;i<FQ_ORDER.length;i++)
+    h+='<span class="fq-dot'+(left.indexOf(FQ_ORDER[i])<0?' on':'')+'"></span>';
+  h+='</div>';
+  h+='<button class="fq-later" onclick="fqLater()">'+_t('אחר כך')+'</button>';
+  return h+'</div>';
+}
 /* ── FROM THE DETAILS TO A TARGET ──
    Mifflin-St Jeor for the resting burn, scaled by how much you move, then
    moved off maintenance by the goal. The formula carries one constant that
@@ -7660,8 +7798,15 @@ function profNum(field,el){
 var ACT_FACTOR={1:1.2,2:1.375,3:1.55,4:1.725,5:1.9};
 var PROT_PER_KG={1:1.2,2:1.5,3:1.7,4:1.9,5:2.0};
 function profileTargets(p){
+  /* THE SAME SIX TESTS THE QUESTION CARD MAKES. Sweeping all 729
+     combinations of right/wrong/absent, the old line here disagreed with
+     fqPending on three, and every one was this side being loose: !p.sex is
+     false for "x", so the Mifflin constant fell through to -161, and !w is
+     false for -3, so the resting burn came out negative. Both answered with
+     a number. One test now, so they cannot drift. */
+  var _i;
+  for(_i=0;_i<FQ_ORDER.length;_i++)if(!fqHas(p,FQ_ORDER[_i]))return null;
   var age=profileAge(p.birth),h=parseFloat(p.height),w=parseFloat(p.weight);
-  if(age===null||!h||!w||!p.sex||!p.activity||!p.goal)return null;
   var bmr=10*w+6.25*h-5*age+(p.sex==='m'?5:-161);
   var tdee=bmr*(ACT_FACTOR[p.activity]||1.2);
   var g=goalDef(p.goal);
@@ -7678,15 +7823,30 @@ function targetsMatch(rec){
   return rec&&rec.kcal===TARGETS.kcal&&rec.p===TARGETS.p&&
          rec.c===TARGETS.c&&rec.f===TARGETS.f&&rec.water===TARGETS.water;
 }
+/* THE FIRST TIME THE SIX ARE COMPLETE, the numbers on תזונה stop being
+   someone else's - without her having to find a screen and press a button,
+   which is the whole thing that failed. It fires ONCE: targetsAreCustom
+   goes true the moment anything is stored, so afterwards the "יעד מומלץ"
+   card and its button own the figure and a person who set their own keeps
+   it. Returns whether it actually did anything, so only a real change is
+   announced. */
+function targetsAutoApply(){
+  if(targetsAreCustom())return false;
+  var t=profileTargets(loadProfile());
+  if(!t)return false;
+  try{localStorage.setItem(TARGETS_KEY,JSON.stringify({kcal:t.kcal,p:t.p,c:t.c,f:t.f,water:t.water}));}catch(e){}
+  loadTargets();
+  return true;
+}
 function applyTargets(){
   var t=profileTargets(loadProfile());
   if(!t)return;
   try{localStorage.setItem(TARGETS_KEY,JSON.stringify({kcal:t.kcal,p:t.p,c:t.c,f:t.f,water:t.water}));}catch(e){}
-  loadTargets();renderProfile();showToast(''+_t('היעדים עודכנו')+'');
+  loadTargets();render();showToast(''+_t('היעדים עודכנו')+'');
 }
 function resetTargets(){
   try{localStorage.removeItem(TARGETS_KEY);}catch(e){}
-  loadTargets();renderProfile();showToast(''+_t('חזרה ליעדים המקוריים')+'');
+  loadTargets();render();showToast(''+_t('חזרה ליעדים המקוריים')+'');
 }
 
 function renderProfile(){
@@ -14336,7 +14496,10 @@ function renderToday(){
   _c.classList.add('has-fab');
   /* The ask bar and the WHO quality card were taken off this screen on
      20 Sep at Asaf's request. Their builders are still in the file. */
-  _c.innerHTML=macroHTML+pillsHTML+waterHTML+addHTML+logHTML+addBarHTML();
+  /* FIRST, above the bars it is about to change. It draws nothing once the
+     six are answered, so this costs one empty string for the life of the
+     app afterwards. */
+  _c.innerHTML=fqCardHTML()+macroHTML+pillsHTML+waterHTML+addHTML+logHTML+addBarHTML();
   renderAddKinds();
   if(_askOpen)askPaint();
   if(fdbOpen)fdbPaint();
