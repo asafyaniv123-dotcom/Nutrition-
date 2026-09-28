@@ -14288,6 +14288,43 @@ function renderAddKinds(){
   e.innerHTML=h;
 }
 function addKindsHTML(){return '<div class="add-kinds" id="add-kinds"></div>';}
+/* ── A MOMENT THAT CLOSED ──
+   Which slots have already been announced today. The record IS the
+   mechanism: a slot announces itself the first time it is full and its name
+   is not in here, and never again that day - which is what makes it a
+   moment rather than a badge, and what stops the next meal celebrating the
+   same target a second time.
+
+   todayStr, not new Date. This app's day ends at 04:00, so a protein target
+   closed at 23:50 would otherwise be congratulated again ten minutes later
+   under a new wall-clock date. */
+var CLOSED_KEY='closed_v1';
+function closedToday(){
+  try{
+    var o=JSON.parse(localStorage.getItem(CLOSED_KEY)||'null');
+    if(o&&o.day===todayStr()&&o.at&&o.at.length!==undefined)return o;
+  }catch(e){}
+  return {day:todayStr(),at:[]};
+}
+/* True the FIRST time in a day that this slot is full, false every time
+   after. It writes only when it answers true, so asking costs nothing. */
+function closeMoment(slot,pct){
+  if(!(pct>=100))return false;
+  var o=closedToday();
+  if(o.at.indexOf(slot)>=0)return false;
+  o.at.push(slot);
+  try{localStorage.setItem(CLOSED_KEY,JSON.stringify(o));}catch(e){}
+  return true;
+}
+/* ONE PER RENDER. showToast removes the one before it, so two at once means
+   one was never seen. The second slot stays unmarked and takes the next
+   render, which any tap produces. */
+function closeAnnounce(list){
+  var i;
+  for(i=0;i<list.length;i++)
+    if(closeMoment(list[i].k,list[i].pct)){showToast('\u2713 '+list[i].msg);return true;}
+  return false;
+}
 function renderToday(){
   if(interviewStep>=0){renderInterview();return;}
   var day=loadDay(curDate);
@@ -14301,6 +14338,19 @@ function renderToday(){
   var cp=Math.min(100,Math.round(c/TARGETS.c*100));
   var fp=Math.min(100,Math.round(f/TARGETS.f*100));
   var wp=Math.min(100,Math.round(water/TARGETS.water*100));
+
+  /* THE MOMENT SOMETHING CLOSED. curDate, because renderToday draws
+     whichever day the arrows are on and a walk back through last week must
+     not congratulate her once per day. Protein and water only - both are
+     floors, and both are unambiguously good to reach. Calories, carbs and
+     fat are ceilings for the goal this app most often computes, and
+     "you closed your calorie target" said to someone in a deficit
+     congratulates her for the thing she was trying not to do. */
+  if(curDate===todayStr())
+    closeAnnounce([
+      {k:'p',    pct:pp, msg:''+_t('סגרת את יעד החלבון')+''},
+      {k:'water',pct:wp, msg:''+_t('שתית את כל המים להיום')+''}
+    ]);
 
   var macroHTML='<div class="macro-card"><div class="macro-title">'+_t('התקדמות מול היעד')+'</div>';
   /* Only while it is genuinely a guess; filling the profile and applying
