@@ -38,10 +38,32 @@
  * Usage:  node tools/find-unreadable-tokens.mjs [path]   (default dev/index.html)
  * Exits non-zero when it finds anything.
  *
+ * A COLOUR CHOSEN BY A TERNARY counts too. The steps card writes
+ *   'color:'+(last?'var(--green-500)':'var(--muted)')
+ * so the literal `color:var(--green-500)` is nowhere in the file - grep
+ * answered 0 while the screen measured 1.57:1 on today's own letter. What is
+ * read now is the QUESTION: after any `color:`, every var(--token) up to the
+ * end of that declaration is a colour that can be painted as text. Nothing is
+ * listed, so a fourth way of writing it is covered in advance.
+ *
  * TESTED, the way CLAUDE.md demands:
  *   against the revision before the fix   2  (--green-700, --indigo-600)
  *   against the revision before tonight   4  (+ --terra-700, --amber-700)
  *   against the fix                       0
+ *
+ * AND AGAIN, after it was taught to read a ternary. The numbers are the
+ * point: this check reported NOTHING on a file that had six, for as long as
+ * the colours were chosen by a conditional.
+ *
+ *   the version above, on 28 Sep before the fix   0   believed, and wrong
+ *   this version, on the same file                6
+ *   this version, on the fix                      0
+ *
+ * The six were --green-500 on today's own letter in the seven-day strip at
+ * 1.57:1, --green-500 and --terra-500 on an 18px delta, --terra-500 on a
+ * stale-figure line and on .mic-err, --green-600 on "it is in the plan" and
+ * on a 20px icon, and --amber-500 / --line inside starsHTML - which turned
+ * out to have no callers at all.
  */
 import fs from 'fs';
 
@@ -100,6 +122,42 @@ const claims = new Set();
 for (const m of src.matchAll(/(--[a-z0-9-]+)\s*:[^;]*;\s*\/\*[^*]*readable as text/g))
   claims.add(m[1]);
 
+/* EVERY TOKEN A `color:` CAN RESOLVE TO, not only the one written straight
+   after it. The steps card paints today's letter with
+   'color:'+(last?'var(--green-500)':'var(--muted)') - so the literal
+   `color:var(--green-500)` appears nowhere in the file and grep answered 0
+   while the screen measured 1.57:1. Same shape as the plural ternary the
+   glued-sentences check was taught to see.
+
+   So: find each `color:`, then take every var(--token) up to the end of that
+   declaration. The window ends at the first ; or " because a declaration ends
+   there in CSS and in a JS string alike - and NOT at a ', which is what the
+   branches of the ternary are quoted with. A ternary, a nested ternary and a
+   plain value all fall out of this, and a fourth way of writing it is covered
+   before anyone invents it. */
+const colorWindows = [];
+/* [^-a-z.] - the DOT is the addition. wt.color followed by a ternary's
+   colon is a property access, not a declaration, and it made --line look
+   like text when it was painting a 2px border. */
+for (const m of src.matchAll(/(^|[^-a-z.])color:/g)) {
+  const from = m.index + m[0].length;
+  let end = src.length;
+  /* ; " and } - a declaration ends at all three, and the LAST one is what
+     the first version forgot: the final declaration of a CSS rule has no
+     semicolon, so its window ran on into the rules that follow and counted
+     their tokens as this one's. Not ', because that is what the branches of
+     the ternary are quoted with. */
+  for (const ch of [';', '"', '}']) {
+    const i = src.indexOf(ch, from);
+    if (i >= 0 && i < end) end = i;
+  }
+  colorWindows.push(src.slice(from, Math.min(end, from + 400)));
+}
+const textUses = t => {
+  const re = new RegExp('var\\(' + t.replace(/-/g, '\\-') + '\\s*[,)]');
+  return colorWindows.filter(w => re.test(w)).length;
+};
+
 const findings = [];
 for (const t of Object.keys(hex)) {
   if (t === '--white') continue;                 /* text ON a fill, by design */
@@ -112,7 +170,7 @@ for (const t of Object.keys(hex)) {
      patch that was fixing a contrast defect. A colour on an edge is measured
      against 3:1 as a graphical object, not 4.5 as a letter, and this check
      does not ask about edges. */
-  const uses = (src.match(new RegExp('(^|[^-a-z])color:\\s*var\\(' + esc + '\\)', 'g')) || []).length;
+  const uses = textUses(t);
   if (!uses && !claims.has(t)) continue;         /* neither read nor claimed */
   const r = ratio(hex[t], GROUND);
   if (r >= FLOOR) continue;
