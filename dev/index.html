@@ -23380,7 +23380,35 @@ function renderFitProgress(){
 }
 
 /* ── HABIT TRACKER ── */
-function loadHabits(){try{var x=localStorage.getItem('habits_list');return x?JSON.parse(x):[''+_t('שתיית מים')+'',''+_t('אימון')+'',''+_t('קריאה')+''];}catch(e){return[];}}
+/* EVERY HOBBY SHE HAS EVER TICKED, derived rather than remembered. A tick is
+   keyed by the hobby's name - habitDayKey is habit+'__'+date - so the log
+   knows the names even when the list was never saved. */
+function habitsUsed(){
+  var log=loadHabitLog(),out=[],k,n,cut;
+  for(k in log){
+    if(!Object.prototype.hasOwnProperty.call(log,k)||!log[k])continue;
+    cut=k.lastIndexOf('__');
+    if(cut<1)continue;
+    n=k.slice(0,cut);
+    if(n&&out.indexOf(n)<0)out.push(n);
+  }
+  return out;
+}
+/* NOTHING STORED MEANS NOTHING WAS CHOSEN. It used to mean water, training
+   and reading - three hobbies nobody picked, drawn with her own streak grid
+   under them, and two of them already tracked elsewhere: water has a card in
+   תזונה with a target, and training is a whole area. It was also the only
+   guess in this app that turns into HER DATA, because those three strings
+   get written into habits_list the first time she edits anything, in
+   whichever language was loaded at that second.
+
+   Falling back to what she has TICKED rather than to nothing, because the
+   log is keyed by name: a list that was never saved can still have been
+   used, and an empty screen would hide real history. */
+function loadHabits(){
+  try{var x=localStorage.getItem('habits_list');if(x)return JSON.parse(x);}catch(e){}
+  return habitsUsed();
+}
 function saveHabits(arr){try{localStorage.setItem('habits_list',JSON.stringify(arr));}catch(e){}}
 /* A legacy key carries a bare day number and no month. The grid never lets
    you tick a future day, so a day LATER than today was ticked in an earlier
@@ -23900,7 +23928,20 @@ function renderHabits(){
   if(sel&&sel.scrollIntoView)try{sel.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}
   if(running)hbTickStart();
 }
-function loadHabitGoals(){try{var x=localStorage.getItem('habit_goals');return x?JSON.parse(x):[{text:''+_t('להיות עקבי')+'',done:false},{text:''+_t('לבטוח בתהליך')+'',done:false}];}catch(e){return[];}}
+/* EMPTY, because the label above this list says "מה שאני רוצה מהחודש הזה"
+   and the app does not know. It used to answer with two first-person
+   sentences - להיות עקבי, לבטוח בתהליך - sitting in her notebook with tick
+   boxes beside them, which is a different thing from offering a calorie
+   target: it is writing in her voice.
+
+   No fallback to past use is needed here, the way the hobby list needs one.
+   habit_goals IS the store and saveHabitGoals runs on every add, toggle and
+   delete, so anything she has ever touched is already saved. A list she
+   never touched was never hers. */
+function loadHabitGoals(){
+  try{var x=localStorage.getItem('habit_goals');if(x)return JSON.parse(x);}catch(e){}
+  return [];
+}
 function saveHabitGoals(arr){try{localStorage.setItem('habit_goals',JSON.stringify(arr));}catch(e){}}
 function loadHabitNotes(){try{return localStorage.getItem('habit_notes')||'';}catch(e){return '';}}
 function saveHabitNotes(v){try{localStorage.setItem('habit_notes',v);}catch(e){}}
