@@ -19,13 +19,18 @@
 # byte-identical between the copies - the dev behaviour is switched on at
 # runtime by the /dev/ path, not by the build.
 set -euo pipefail
+# A SILENT EXIT MUST NOT LOOK LIKE A FINISHED DRY RUN. This script printed a
+# page of filenames and then died on line 40 for eleven days, and the output
+# was indistinguishable from success. Whatever goes wrong next, it says so.
+trap 'echo; echo "release.sh FAILED at line $LINENO - nothing was published" >&2' ERR
 cd "$(dirname "$0")"
 
 changed=0
 for f in index.html sw.js; do
   if ! cmp -s "dev/$f" "$f"; then
     changed=1
-    echo "would update $f  ($(diff <(tr ';' '\n' < "$f") <(tr ';' '\n' < "dev/$f") | grep -c '^[<>]') changed fragments)"
+    frags=$({ diff <(tr ';' '\n' < "$f") <(tr ';' '\n' < "dev/$f") || true; } | grep -c '^[<>]' || true)
+    echo "would update $f  ($frags changed fragments)"
   fi
 done
 
@@ -37,7 +42,10 @@ for d in data assets vendor; do
   if ! diff -rq "$d" "stable/$d" >/dev/null 2>&1; then
     data_changed=1
     echo "would update stable/$d:"
-    diff -rq "$d" "stable/$d" 2>&1 | sed 's/^/    /'
+    # diff returns 1 because there ARE differences - that is why this line is
+    # running. Swallowed inside the braces, so the pipeline's status is sed's
+    # and pipefail has nothing to kill the script with.
+    { diff -rq "$d" "stable/$d" 2>&1 || true; } | sed 's/^/    /'
   fi
 done
 # An "if" rather than "[ … ] && changed=1": under set -e that one-liner only
