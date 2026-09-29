@@ -22,6 +22,17 @@
 var MSG_TITLE = 'Reminder to close the day';
 var MSG_BODY = "You haven't stopped to close the day yet.";
 
+// Both copies share an origin, so the cache needs the same namespace the page
+// gives it. There is no window and no __DEV__ here, so the worker asks its own
+// path - which is what keeps the two copies of this file byte-identical.
+var IS_DEV = /\/dev\//.test(self.location.pathname);
+var SUMREM_CACHE = IS_DEV ? 'dev:sumrem-config' : 'sumrem-config';
+// The notification's picture resolves against this worker's own scope, so dev
+// already gets dev/assets/. The stable app would get the working copy, where a
+// replaced logo reaches her with no release - so it reads the snapshot, the
+// same one liveBase() sends the page to.
+var ICON = IS_DEV ? 'assets/logo.png' : 'stable/assets/logo.png';
+
 self.addEventListener('install', function (e) {
   self.skipWaiting();
 });
@@ -56,8 +67,8 @@ self.addEventListener('push', function (e) {
       } catch (err) {}
       return self.registration.showNotification(title, {
         body: body,
-        icon: 'assets/logo.png',
-        badge: 'assets/logo.png',
+        icon: ICON,
+        badge: ICON,
         tag: 'sumrem',
         renotify: true,
       });
@@ -106,7 +117,7 @@ self.addEventListener('pushsubscriptionchange', function (e) {
 // The page stashes what the resubscribe needs, since the SW cannot read localStorage.
 async function readConfig() {
   try {
-    var cache = await caches.open('sumrem-config');
+    var cache = await caches.open(SUMREM_CACHE);
     var res = await cache.match('config');
     return res ? await res.json() : null;
   } catch (err) {
