@@ -2051,6 +2051,12 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .mo-cell.hot{border-color:var(--green-700);background:var(--green-50)}
 .mo-n{font-size:9px;font-weight:700;color:#b8afa7;line-height:1}
 .mo-chip{border-radius:4px;padding:2px 3px;font-size:7.5px;line-height:1.2;font-weight:700;overflow:hidden;word-break:break-word}
+/* the selected chip, and the row that stands where the pool stands */
+.mo-chip-sel{outline:2px solid var(--violet-700);outline-offset:1px}
+.pl-sel{display:flex;gap:7px;align-items:center;min-height:46px;margin-bottom:4px}
+.pl-sel-b{flex:1;background:var(--card);border:1px solid var(--line-strong);border-radius:12px;padding:10px 6px;font:700 12.5px/1 inherit;color:var(--ink);cursor:pointer}
+.pl-sel-d{color:var(--terra-700)}
+.pl-sel-s{font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:11px;padding:0 2px}
 /* ── A RUN ACROSS DAYS ──
    The per-day chip stays in the flow so the cell reserves the right height in
    the right order, but it paints nothing: the visible bar is drawn over the
@@ -24971,12 +24977,13 @@ function planWeekHTML(){
   h+='<button onclick="wkShift(1)" class="pl-step">&#8250;</button>';
   h+='</div>';
 
-  var pool=[];
-  for(t=0;t<wk.tasks.length;t++)if(!wk.tasks[t].d)pool.push(wk.tasks[t]);
-  h+=planAddBarHTML({k:'wk',pool:pool,pick:'wkPick',
-    ph:_t("משימה או פגישה"),add:'wkAdd()',
+  /* the same pool the month draws: one strip of undated things for the whole
+     screen, whichever board you are looking at */
+  var pool=loadPool().tasks;
+  h+=planAddBarHTML({k:'pl',pool:pool,pick:'wkPick',
+    ph:_t("משימה או פגישה"),add:'poolAdd()',
     swatches:wkSwatches("_wkNewColor='%K%';renderPlanWeek()",_wkNewColor),
-    panel:_wkPick?plPanelHTML(pool,_wkPick,"wkSetColor('%ID%','%K%')"):''});
+    panel:_wkPick?plPanelHTML(pool,_wkPick,"poolSetColor('%ID%','%K%')"):''});
 
   // day names and dates, above the table - and under them whatever this day
   // holds that has no hour, which is where the month's tasks land
@@ -25175,15 +25182,11 @@ function wkPlacePoint(){
   fromRight=Math.max(16,Math.min(pr.width-16,fromRight));
   p.style.right=(fromRight-9)+'px';
 }
-function wkAdd(){
-  var el=document.getElementById('wk-in');
-  if(!el||!el.value.trim())return;
-  var wk=loadWeek(_wkSun);
-  wk.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),d:'',s:'',c:_wkNewColor});
-  saveWeek(_wkSun,wk);renderPlanWeek();
-  setTimeout(function(){var e=document.getElementById('wk-in');if(e)e.focus();},40);
-}
 function wkAssign(id,date,slot){
+  /* out of the pool onto a band, or off the board and back into it */
+  if(!date&&poolHas(id)){renderPlanWeek();return;}
+  if(!date){wkToPool(id);renderPlanWeek();return;}
+  if(poolHas(id)){poolToWeek(id,date,slot||'m');renderPlanWeek();return;}
   /* a task with no day cannot repeat from one */
   if(!date){var _w=loadWeek(_wkSun),_i;for(_i=0;_i<_w.tasks.length;_i++)if(_w.tasks[_i].id===id){delete _w.tasks[_i].ev;delete _w.tasks[_i].len;}saveWeek(_wkSun,_w);}
   var wk=loadWeek(_wkSun),i;
@@ -26525,7 +26528,7 @@ function tlSetColor(id,k){
    shows up in that day's grid, where it can be given an hour - and that hour
    is stored on the day, never written back. Nothing written on a day or in a
    week ever climbs into the month. */
-var _moMonth=null,_moNewColor='lav',_moPick='',_moDrag=null;
+var _moMonth=null,_moPick='',_moDrag=null;   /* _moNewColor went with the month's own composer */
 
 /* ── THE JOURNAL ──
    A page a day with nothing on it. סיום יום asks questions; this asks
@@ -26668,6 +26671,136 @@ function renderJournal(){
 
 function moFirst(d){var x=new Date(d);x.setHours(12,0,0,0);x.setDate(1);return x;}
 function moKey(m){return 'mplan_'+m.getFullYear()+'-'+(m.getMonth()<9?'0':'')+(m.getMonth()+1);}
+/* ── ONE POOL FOR THE WHOLE SCREEN ──
+   What has no date yet. It is not the month's and not the week's, because
+   "sometime this month" and "sometime this week" are the same sentence with
+   a different guess in it, and having two of them is what gave the screen
+   five places to write. */
+var PL_POOL_KEY='plan_pool';
+function loadPool(){
+  try{var x=localStorage.getItem(PL_POOL_KEY),o=x?JSON.parse(x):null;
+    return(o&&Array.isArray(o.tasks))?o:{tasks:[]};}catch(e){return{tasks:[]};}
+}
+function savePool(o){planPush(PL_POOL_KEY);try{localStorage.setItem(PL_POOL_KEY,JSON.stringify(o));}catch(e){}}
+function poolAdd(){
+  var el=document.getElementById('pl-in');
+  if(!el||!el.value.trim())return;
+  var p=loadPool();
+  p.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                w:el.value.trim(),c:_wkNewColor||'lav'});
+  savePool(p);renderPlanning();
+  setTimeout(function(){var e=document.getElementById('pl-in');if(e)e.focus();},40);
+}
+function poolDel(id){
+  var p=loadPool(),out=[],i;
+  for(i=0;i<p.tasks.length;i++)if(p.tasks[i].id!==id)out.push(p.tasks[i]);
+  p.tasks=out;savePool(p);renderPlanning();
+}
+/* take it OUT, or answer null. Placing is a move rather than a copy, so the
+   pool never shows something that is already on a board. */
+function poolTake(id){
+  var p=loadPool(),i,t=null,out=[];
+  for(i=0;i<p.tasks.length;i++){if(p.tasks[i].id===id)t=p.tasks[i];else out.push(p.tasks[i]);}
+  if(t){p.tasks=out;savePool(p);}
+  return t;
+}
+function poolPut(t){
+  if(!t)return;
+  var p=loadPool(),i;
+  for(i=0;i<p.tasks.length;i++)if(p.tasks[i].id===t.id)return;   // already there
+  p.tasks.push({id:t.id,w:t.w,c:t.c||'lav'});savePool(p);
+}
+function poolHas(id){
+  var p=loadPool(),i;
+  for(i=0;i<p.tasks.length;i++)if(p.tasks[i].id===id)return true;
+  return false;
+}
+/* A DAY DECIDES ITS OWN WEEK. The month board reaches five of them, so the
+   record is found from the date rather than from whichever week the week
+   board happens to be showing. */
+function poolToWeek(id,date,slot){
+  var t=poolTake(id);if(!t||!date)return;
+  var sun=weekSunday(new Date(date+'T12:00:00')),wk=loadWeek(sun);
+  wk.tasks.push({id:t.id,w:t.w,c:t.c||'lav',d:date,s:slot||''});
+  saveWeek(sun,wk);
+}
+/* and back out again, from whichever week holds it */
+function wkToPool(id){
+  var d=null,sun,wk,i,out=[],t=null;
+  /* the week board's own record first, then the month's five */
+  var suns=[_wkSun],k;
+  for(k=-1;k<6;k++)suns.push(wkDateOf(weekSunday(moFirst(_moMonth||appNow())),k*7));
+  for(k=0;k<suns.length;k++){
+    sun=suns[k];if(!sun)continue;
+    wk=loadWeek(sun);out=[];t=null;
+    for(i=0;i<wk.tasks.length;i++){if(wk.tasks[i].id===id)t=wk.tasks[i];else out.push(wk.tasks[i]);}
+    if(t){wk.tasks=out;saveWeek(sun,wk);poolPut(t);return true;}
+  }
+  return false;
+}
+/* ── THE MOVE OFF THE MONTH STORE ──
+   Runs on every render and does nothing after the first: a month record is
+   marked once it has been emptied. Dated tasks go to the week their date
+   belongs to and keep their id, so an hour already written against that id on
+   a day still finds them. Undated ones, and the week records' own undated
+   ones, go to the pool. Nothing is thrown away here - a task that cannot be
+   read is left exactly where it is. */
+function planMigrate(){
+  var moved=0,i,k,raw,o;
+  for(k=0;k<localStorage.length;k++){
+    var key=localStorage.key(k);
+    if(!key||key.indexOf('mplan_')!==0)continue;
+    try{raw=localStorage.getItem(key);o=raw?JSON.parse(raw):null;}catch(e){continue;}
+    if(!o||o.mig||!Array.isArray(o.tasks)||!o.tasks.length){
+      if(o&&!o.mig){o.mig=1;try{localStorage.setItem(key,JSON.stringify(o));}catch(e){}}
+      continue;
+    }
+    for(i=0;i<o.tasks.length;i++){
+      var t=o.tasks[i];if(!t||!t.w)continue;
+      if(t.d){
+        var sun=weekSunday(new Date(t.d+'T12:00:00')),wk=loadWeek(sun),dup=false,q;
+        for(q=0;q<wk.tasks.length;q++)if(wk.tasks[q].id===t.id)dup=true;
+        if(!dup){wk.tasks.push({id:t.id,w:t.w,c:t.c||'lav',d:t.d,s:''});saveWeek(sun,wk);}
+      } else poolPut(t);
+      moved++;
+    }
+    o.tasks=[];o.mig=1;
+    try{localStorage.setItem(key,JSON.stringify(o));}catch(e){}
+    k=-1;   // localStorage.key order is not stable across a write
+  }
+  /* the week records used to hold their own pool; it is the same pool now */
+  var sun2=weekSunday(appNow()),n;
+  for(n=-8;n<=8;n++){
+    var sd=wkDateOf(sun2,n*7),w2=loadWeek(sd),keep=[],ch=false;
+    for(i=0;i<w2.tasks.length;i++){
+      if(w2.tasks[i].d)keep.push(w2.tasks[i]);
+      else{poolPut(w2.tasks[i]);ch=true;moved++;}
+    }
+    if(ch){w2.tasks=keep;saveWeek(sd,w2);}
+  }
+  return moved;
+}
+/* WHICH TASK ON THE MONTH IS SELECTED, or ''. A selected task turns the pool
+   strip into a row of full-size buttons and turns the next day tapped into
+   the end of its run - which is the stretch that a 16px handle on a 46px cell
+   was never going to give anyone. */
+var _moSel='';
+function moSelOpen(id){_moSel=(_moSel===id?'':id);renderPlanMonth();}
+function moSelClose(){_moSel='';renderPlanMonth();}
+function moSelAct(what){
+  var id=_moSel;if(!id)return;
+  _moSel='';
+  if(what==='del'){
+    /* it may sit in any of the weeks this month touches */
+    var sun2=weekSunday(moFirst(_moMonth||appNow())),n,i;
+    for(n=-1;n<6;n++){
+      var sd=wkDateOf(sun2,n*7),w2=loadWeek(sd),out=[],hit=false;
+      for(i=0;i<w2.tasks.length;i++){if(w2.tasks[i].id===id)hit=true;else out.push(w2.tasks[i]);}
+      if(hit){w2.tasks=out;saveWeek(sd,w2);break;}
+    }
+  } else if(what==='ret') wkToPool(id);
+  renderPlanMonth();
+}
 function loadMonth(m){
   try{var x=localStorage.getItem(moKey(m));var o=x?JSON.parse(x):null;
     return(o&&Array.isArray(o.tasks))?o:{tasks:[]};}catch(e){return{tasks:[]};}
@@ -26727,6 +26860,25 @@ var _moOpen='';
 function moOpenDay(date){_moOpen=(_moOpen===date?'':date);renderPlanMonth();}
 var MO_DBL_MS=380,_moTapAt=0,_moTapDate='';
 function moCellTap(date){
+  /* THE SECOND HALF OF THE GESTURE. With a task selected a day is not a day
+     to open, it is where that task should end - counted in days from where it
+     starts, and capped by the same WK_MAX_LEN the week board uses. */
+  if(_moSel){
+    var t=null,sun=weekSunday(moFirst(_moMonth||appNow())),n,i,sd,w2,holder=null;
+    for(n=-1;n<6&&!t;n++){
+      sd=wkDateOf(sun,n*7);w2=loadWeek(sd);
+      for(i=0;i<w2.tasks.length;i++)if(w2.tasks[i].id===_moSel){t=w2.tasks[i];holder=sd;}
+    }
+    if(t&&t.d){
+      var a=new Date(t.d+'T12:00:00'),b=new Date(date+'T12:00:00');
+      var days=Math.round((b-a)/86400000)+1;
+      if(days<1)days=1;
+      if(days>WK_MAX_LEN)days=WK_MAX_LEN;
+      if(days>1)t.len=days;else delete t.len;
+      saveWeek(holder,w2);
+    }
+    _moSel='';renderPlanMonth();return;
+  }
   var now=Date.now();
   if(_moTapDate===date&&(now-_moTapAt)<MO_DBL_MS){
     _moTapAt=0;_moTapDate='';
@@ -26736,16 +26888,6 @@ function moCellTap(date){
   }
   _moTapAt=now;_moTapDate=date;
   moOpenDay(date);
-}
-function moDayAdd(){
-  var el=document.getElementById('mo-day-in');
-  if(!el||!el.value.trim()||!_moOpen)return;
-  var dp=loadDPlan(_moOpen);
-  dp.items.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-                 w:el.value.trim(),c:_moNewColor||'lav'});
-  saveDPlan(_moOpen,dp);
-  renderPlanMonth();
-  setTimeout(function(){var e=document.getElementById('mo-day-in');if(e)e.focus();},40);
 }
 /* only the day's own items can be removed here - a week or month task is not
    this day's to delete, and deleting it from here would take it off the other
@@ -26775,10 +26917,10 @@ function moDayPanelHTML(){
     if(it.src==='day')h+='<button onclick="moDayDel(\''+it.id+'\')" style="background:none;border:none;color:var(--terra-700);font-size:15px;cursor:pointer;font-family:inherit;padding:0 2px">&times;</button>';
     h+='</div>';
   }
-  h+='<div style="display:flex;gap:8px;margin-top:12px">';
-  h+='<input id="mo-day-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="'+_t("משהו ליום הזה")+'" onkeydown="if(event.key===&quot;Enter&quot;)moDayAdd()">';
-  h+='<button onclick="moDayAdd()" style="background:var(--cta-fill);border:none;border-radius:12px;padding:0 15px;font-size:17px;color:var(--white);cursor:pointer;font-family:inherit">+</button>';
-  h+='</div>';
+  /* THE FIFTH BOX IS GONE. Writing here wrote into the day store, which is a
+     third owner reached from the month - the shape this whole change exists
+     to remove. What this day holds is read here; what it should hold is
+     written in the one strip above, or by the hour on the day board. */
   h+='<button onclick="planOpenDay(\''+_moOpen+'\')" style="width:100%;margin-top:10px;background:var(--surface);border:none;border-radius:12px;padding:9px;font-size:11.5px;color:var(--ink-soft);cursor:pointer;font-family:inherit">'+_t('לתכנן את היום הזה לפי שעות')+' &#8250;</button>';
   return h+'</div>';
 }
@@ -26891,12 +27033,22 @@ function planMonthHTML(){
   h+='<button onclick="moShift(1)" class="pl-step">&#8250;</button>';
   h+='</div>';
 
-  var pool=[];
-  for(t=0;t<mo.tasks.length;t++)if(!mo.tasks[t].d)pool.push(mo.tasks[t]);
-  h+=planAddBarHTML({k:'mo',pool:pool,pick:'moPick',
-    ph:_t("משהו לחודש הזה"),add:'moAdd()',
-    swatches:wkSwatches("_moNewColor='%K%';renderPlanMonth()",_moNewColor),
-    panel:_moPick?plPanelHTML(pool,_moPick,"moSetColor('%ID%','%K%')"):''});
+  /* THE SELECTED TASK'S ROW STANDS WHERE THE POOL STANDS. One strip, so the
+     board below never moves under the finger that is using it. */
+  if(_moSel){
+    h+='<div class="pl-sel">'+
+       '<button class="pl-sel-b" onclick="moSelAct(\'ret\')">'+_t('החזר')+'</button>'+
+       '<button class="pl-sel-b pl-sel-d" onclick="moSelAct(\'del\')">'+_t('מחק')+'</button>'+
+       '<button class="pl-sel-b" onclick="moSelClose()">'+_t('ביטול')+'</button>'+
+       '</div>'+
+       '<div class="pl-sel-s">'+_t('הקש על יום מאוחר יותר כדי למתוח עד אליו')+'</div>';
+  } else {
+    var pool=loadPool().tasks;
+    h+=planAddBarHTML({k:'pl',pool:pool,pick:'moPick',
+      ph:_t("משימה או פגישה"),add:'poolAdd()',
+      swatches:wkSwatches("_wkNewColor='%K%';renderPlanning()",_wkNewColor),
+      panel:_moPick?plPanelHTML(pool,_moPick,"poolSetColor('%ID%','%K%')"):''});
+  }
 
   h+='<div class="mo-head">';
   // single letters: "ראש" and "שלי" are worse than no abbreviation at all
@@ -26909,14 +27061,10 @@ function planMonthHTML(){
     var st=year+'-'+(mi<9?'0':'')+(mi+1)+'-'+(i<10?'0':'')+i;
     h+='<div class="mo-cell'+(st===today?' today':'')+(st===_moOpen?' mo-open':'')+'" data-date="'+st+'" onclick="moCellTap(\''+st+'\')">';
     h+='<div class="mo-n">'+nfmt(i)+'</div>';
+    /* the month's own tasks used to be drawn here, above the week's. They no
+       longer exist: planMigrate moved them into the week their date belongs
+       to, which is what gave them a delete and a stretch. */
     var shown=0;
-    for(t=0;t<mo.tasks.length;t++){
-      if(mo.tasks[t].d!==st)continue;
-      if(shown>=MO_CELL_MAX)break;
-      var cc=wkColor(mo.tasks[t].c);
-      h+='<div class="mo-chip" style="background:'+cc.soft+';color:'+cc.ink+'">'+esc(mo.tasks[t].w)+'</div>';
-      shown++;
-    }
     /* the week's tasks come after the month's and read quieter: this screen is
        the month's plan, and the week is context on it rather than a second
        list competing with it */
@@ -26933,6 +27081,7 @@ function planMonthHTML(){
            is on the element, so placing it is a read of the DOM rather than a
            second walk of the data. */
         h+='<div class="mo-chip mo-seg" data-span="'+esc(wt[t].id)+'"'+
+           ' onclick="event.stopPropagation();moSelOpen(&quot;'+esc(wt[t].id)+'&quot;)"'+
            ' data-spanfirst="'+(ed.first?'1':'')+'" data-spancol="'+wc.dot+'"'+
            ' data-spanink="'+wc.ink+'" data-spansoft="'+wc.soft+'"'+
            ' data-spanw="'+esc(wt[t].w)+'" data-spansun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
@@ -26942,7 +27091,9 @@ function planMonthHTML(){
            one without first having to be one somewhere else. */
         /* the one difference left is not a look: this one can be dragged
            longer, and the grab point needs room at its end */
-        h+='<div class="mo-chip mo-grabs" style="background:'+wc.soft+';color:'+wc.ink+'">'+esc(wt[t].w)+
+        h+='<div class="mo-chip mo-grabs'+(_moSel===wt[t].id?' mo-chip-sel':'')+'"'+
+           ' onclick="event.stopPropagation();moSelOpen(&quot;'+esc(wt[t].id)+'&quot;)"'+
+           ' style="background:'+wc.soft+';color:'+wc.ink+'">'+esc(wt[t].w)+
            '<div data-mostretch="'+esc(wt[t].id)+'" data-mostart="'+esc(wt[t].d)+'"'+
            ' data-mosun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
            ' style="position:absolute;inset-inline-end:-2px;top:50%;margin-top:-8px;width:16px;height:16px;'+
@@ -26972,53 +27123,32 @@ function planMonthHTML(){
   return h;
 }
 
-function moTaskHTML(t){
-  var c=wkColor(t.c),h='';
-  h+='<div class="wk-task" data-task="'+t.id+'" style="border-inline-start:4px solid '+c.dot+'">';
-  h+='<div class="wk-grip">&#8942;&#8942;</div>';
-  h+='<button class="wk-dot" style="background:'+c.dot+'" onclick="moPick(\''+t.id+'\')"></button>';
-  h+='<div style="flex:1;min-width:0;font-size:13.5px;color:var(--ink);line-height:1.45">'+esc(t.w)+'</div>';
-  if(!t.d)h+=taskLibStar(t.w,t.c);
-  if(t.d)h+='<button onclick="moAssign(\''+t.id+'\',\'\')" style="background:none;border:none;color:var(--violet-700);font-size:11px;cursor:pointer;flex-shrink:0;font-family:inherit">'+_t('החזר')+'</button>';
-  h+='<button onclick="moDel(\''+t.id+'\')" style="background:none;border:none;color:var(--terra-700);font-size:15px;cursor:pointer;flex-shrink:0;font-family:inherit">&times;</button>';
-  h+='</div>';
-  if(_moPick===t.id)h+='<div class="wk-picker">'+wkSwatches("moSetColor('"+t.id+"','%K%')",t.c||'lav')+'</div>';
-  return h;
-}
 function moShift(dir){
   _moMonth=new Date(_moMonth.getFullYear(),_moMonth.getMonth()+dir,1,12);
   _moPick='';renderPlanMonth();
 }
-function moAdd(){
-  var el=document.getElementById('mo-in');
-  if(!el||!el.value.trim())return;
-  var mo=loadMonth(_moMonth);
-  mo.tasks.push({id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),d:'',c:_moNewColor});
-  saveMonth(_moMonth,mo);renderPlanMonth();
-  setTimeout(function(){var e=document.getElementById('mo-in');if(e)e.focus();},40);
-}
+/* A DROP ON A DAY IS A PLACEMENT OUT OF THE POOL. There is nothing else it
+   could be any more: the board draws the pool and the weeks, and a task
+   already on a week is moved by selecting it rather than by this. */
 function moAssign(id,date){
-  var mo=loadMonth(_moMonth),i;
-  for(i=0;i<mo.tasks.length;i++)if(mo.tasks[i].id===id)mo.tasks[i].d=date||'';
-  saveMonth(_moMonth,mo);renderPlanMonth();
+  if(date)poolToWeek(id,date,'');
+  renderPlanMonth();
 }
+/* the shelf, straight onto a day - the same one-way street, one step earlier */
 function moFromLib(libId,date){
-  var t=taskLibFind(libId);if(!t)return;
-  var mo=loadMonth(_moMonth);
-  mo.tasks.push({id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-                 w:t.w,d:date||'',c:t.c||'lav'});
-  saveMonth(_moMonth,mo);renderPlanMonth();
+  var t=taskLibFind(libId);if(!t||!date)return;
+  var sun=weekSunday(new Date(date+'T12:00:00')),wk=loadWeek(sun);
+  wk.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+                 w:t.w,c:t.c||'lav',d:date,s:''});
+  saveWeek(sun,wk);renderPlanMonth();
 }
-function moDel(id){
-  var mo=loadMonth(_moMonth),out=[],i;
-  for(i=0;i<mo.tasks.length;i++)if(mo.tasks[i].id!==id)out.push(mo.tasks[i]);
-  mo.tasks=out;saveMonth(_moMonth,mo);renderPlanMonth();
-}
+function moDel(id){poolDel(id);}
 function moPick(id){_moPick=(_moPick===id?'':id);renderPlanMonth();}
-function moSetColor(id,k){
-  var mo=loadMonth(_moMonth),i;
-  for(i=0;i<mo.tasks.length;i++)if(mo.tasks[i].id===id)mo.tasks[i].c=k;
-  saveMonth(_moMonth,mo);_moPick='';renderPlanMonth();
+/* one colour setter for the one pool, so the two boards cannot disagree */
+function poolSetColor(id,k){
+  var p=loadPool(),i;
+  for(i=0;i<p.tasks.length;i++)if(p.tasks[i].id===id)p.tasks[i].c=k;
+  savePool(p);_moPick='';_wkPick='';renderPlanning();
 }
 
 /* ── the drag ── */
@@ -27621,6 +27751,7 @@ function planBotEmoji(c){return PLAN_EMOJI[c]||'\u2022';}
 function renderPlanning(){
   document.getElementById('hdr-title').textContent=''+_t('תכנון זמן')+'';
   dpRailClear();
+  planMigrate();                 // no-op after the first time
   if(_planStep===-1)return renderPlanHistory();
   var o=planSecsGet();
   if(!_dpDate)_dpDate=todayStr();
