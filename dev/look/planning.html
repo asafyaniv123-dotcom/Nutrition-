@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>תכנון זמן</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e9e7e3">
+<!--
+  THE PLANNING AREA: what is broken, and the one decision left.
+
+  Michal's three complaints turned out to be one root. This page shows the
+  measurements, then lets him FEEL the two candidate gestures rather than
+  look at a picture of them - a decision about a gesture cannot be made from
+  a screenshot, which is why both boards below actually work.
+
+  Nothing here is part of the app. A release copies dev/index.html and
+  dev/sw.js and nothing else.
+-->
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --ink-soft:#5c574f; --muted:#6d675e;
+    /* the app's own values, read out of dev/index.html rather than eyeballed:
+       #a8503c was mine and measures 4.4:1, which is under the floor */
+    --amber:#f0a92e; --green700:#397339; --terra700:#98492c; --violet700:#6b5a92;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+  }
+  *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--ground);color:var(--ink);
+    font:400 16px/1.6 Assistant,"Segoe UI",system-ui,-apple-system,sans-serif}
+  .wrap{max-width:620px;margin:0 auto;
+    padding:calc(28px + env(safe-area-inset-top)) 18px calc(60px + env(safe-area-inset-bottom))}
+  h1{font-size:27px;font-weight:800;letter-spacing:-.02em}
+  .lede{color:var(--muted);font-size:14.5px;margin-top:9px;line-height:1.7}
+  .lede b{color:var(--ink)}
+  .grp{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--muted);
+    margin:34px 0 12px}
+  .card{background:var(--ground);border-radius:19px;padding:17px 18px;
+    box-shadow:var(--raise);margin-bottom:12px}
+  .cn{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .cw{font-size:14px;color:var(--muted);line-height:1.7}
+  .cw b{color:var(--ink);font-weight:700}
+  .cw+.cw{margin-top:9px}
+  .num{display:inline-block;background:var(--ground);border-radius:8px;padding:1px 8px;
+    box-shadow:var(--press-sm);font-weight:800;color:var(--ink);font-size:13.5px;
+    direction:ltr;font-variant-numeric:tabular-nums}
+  .was{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+  .now{color:var(--green700);font-weight:800;direction:ltr;display:inline-block}
+  .bad{color:var(--terra700);font-weight:800}
+  /* the page's own type, not a monospace stack: these are identifiers read
+     inside Hebrew sentences, and a second typeface in the line is noise */
+  code{font:700 12.5px/1.5 inherit;background:var(--ground);
+    box-shadow:var(--press-sm);border-radius:6px;padding:1px 6px;direction:ltr;
+    display:inline-block;color:var(--ink-soft)}
+
+  table.t{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+  table.t th{text-align:start;font-weight:800;color:var(--muted);font-size:11.5px;
+    letter-spacing:.04em;padding:0 0 7px}
+  table.t td{padding:9px 0;border-top:1px solid rgba(176,168,156,.3);
+    color:var(--ink-soft);line-height:1.5;vertical-align:top}
+  table.t td:first-child{font-weight:700;color:var(--ink);padding-inline-end:10px}
+
+  /* ── the phone-sized boards ── */
+  .phone{width:337px;max-width:100%;margin:14px auto 0}
+  .bar{display:flex;align-items:center;gap:7px;padding:5px;border-radius:15px;
+    box-shadow:var(--press-sm);min-height:46px;margin-bottom:11px;overflow-x:auto}
+  .pill{flex:0 0 auto;display:flex;align-items:center;gap:6px;border-radius:11px;
+    padding:7px 11px;font-size:12.5px;font-weight:700;cursor:grab;
+    box-shadow:var(--raise);background:var(--ground);touch-action:none;user-select:none}
+  .pill .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .pill.armed{box-shadow:var(--press);color:var(--ink)}
+  .pill.ghost{position:fixed;z-index:99;pointer-events:none;opacity:.92;cursor:grabbing}
+  .hint{font-size:11.5px;color:var(--muted);padding:0 4px;line-height:1.5}
+
+  /* THE BOARD AS IT ACTUALLY SHIPS. mod-planning already took the boxes off
+     the month - no borders, one hairline per week, today marked by an amber
+     dot beside a darkened number rather than by amber text. Drawing the old
+     boxed version here would have him comparing two designs instead of two
+     gestures. */
+  .mhead{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px}
+  .mhead div{text-align:center;font-size:10px;font-weight:800;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cell{min-height:76px;padding:7px 4px 9px;display:flex;flex-direction:column;
+    align-items:center;gap:3px;position:relative;overflow:hidden;cursor:default}
+  .grid .cell:nth-child(n+8){border-top:1px solid rgba(176,168,156,.26)}
+  .cell.hot{background:rgba(240,169,46,.14);border-radius:11px}
+  .cell .n{font-size:9.5px;font-weight:700;color:var(--muted);text-align:center;
+    font-variant-numeric:tabular-nums;line-height:1}
+  .cell.today .n{color:var(--ink);font-weight:800}
+  .cell.today .n::after{content:"";display:inline-block;width:5px;height:5px;
+    border-radius:50%;background:var(--amber);margin-inline-start:4px;
+    vertical-align:1px;box-shadow:0 0 7px 2px rgba(240,169,46,.6)}
+  .chip{border-radius:5px;padding:2px 4px;line-height:1.25;max-width:100%;
+    align-self:stretch;overflow:hidden;cursor:pointer;font-weight:700}
+  .chip.sel{box-shadow:var(--press-sm)}
+  .chip.mid{border-start-start-radius:0;border-end-start-radius:0}
+  .chip.notlast{border-start-end-radius:0;border-end-end-radius:0}
+
+  .acts{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:8px 4px 0}
+  .act{border:none;background:var(--ground);border-radius:11px;padding:8px 13px;
+    font:700 12px/1 inherit;color:var(--ink);box-shadow:var(--raise);cursor:pointer}
+  .act:active{box-shadow:var(--press-sm)}
+  .act.del{color:var(--terra700)}
+  .say{font-size:12px;color:var(--muted);padding:9px 4px 0;line-height:1.6;min-height:34px}
+  .say b{color:var(--ink)}
+
+  .verdict{font-size:13.5px;color:var(--muted);margin-top:13px;padding:14px 16px;
+    background:var(--ground);border-radius:15px;box-shadow:var(--press-sm);line-height:1.75}
+  .verdict b{color:var(--ink)}
+  .rule{font-size:13.5px;color:var(--muted);margin-top:30px;padding:16px 18px;
+    background:var(--ground);border-radius:16px;box-shadow:var(--press-sm);line-height:1.75}
+  .rule b{color:var(--ink)}
+  a.back{display:inline-block;margin-bottom:18px;color:var(--muted);
+    text-decoration:none;font-size:13px;font-weight:700}
+  .sizecmp{display:flex;gap:10px;align-items:flex-end;margin-top:12px}
+  .sizecmp>div{border-radius:9px;padding:6px;box-shadow:var(--press-sm);width:46px;text-align:center}
+</style>
+
+<div class="wrap">
+  <a class="back" href="index.html">‹ מה השתנה</a>
+  <h1>תכנון זמן</h1>
+  <p class="lede">
+    שלוש התלונות של מיכל — <b>יותר מדי מקומות להוסיף</b>, <b>לא ברור איך
+    למתוח קו על כמה ימים</b>, ו<b>משימה שאי אפשר למחוק</b> — יצאו שורש אחד.
+    כאן מה שנמדד, ואחר כך שני הלוחות שאפשר ממש לגעת בהם.
+    <br><b>שום דבר מזה עדיין לא נבנה.</b>
+  </p>
+
+  <div class="grp">מה נמדד</div>
+
+  <div class="card">
+    <div class="cn">המשימה שלא נמחקת</div>
+    <div class="cw">
+      <code>moTaskHTML</code> — הפונקציה שמציירת משימה חודשית עם ה-<b>×</b> —
+      <b class="bad">אין לה אף קורא</b>. קוד מת. והיא היחידה שאי פעם ציירה את
+      הכפתור של <code>moDel</code>.
+    </div>
+    <table class="t">
+      <tr><th>מצב</th><th>איך מצוירת</th><th>איך מוחקים</th></tr>
+      <tr><td>עוד לא על יום</td><td>גלולה במאגר, עם <code>data-task</code></td>
+          <td>רק גרירה לפח שמופיע תוך כדי</td></tr>
+      <tr><td>הונחה על יום</td><td>צ׳יפ קירח, <b class="bad">בלי</b> <code>data-task</code></td>
+          <td><b class="bad">בשום דרך</b></td></tr>
+    </table>
+    <div class="cw">
+      בלי <code>data-task</code> הגרירה לא מרימה אותה, אז אין פח. בפאנל היום
+      היא מקבלת תווית ״מהחודש״ ו-× מצויר רק ל-<code>src==='day'</code>.
+      <br>נמדד על המסך החי: <span class="num">1</span> צ׳יפ,
+      <span class="num">0</span> אלמנטים עם <code>data-task</code>,
+      <span class="num">0</span> כפתורי מחיקה.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cn">המתיחה — חצי מהמשימות לא יכולות בכלל</div>
+    <div class="cw">
+      <code>moStretchTo</code> כותב ל-<code>saveWeek</code> — <b>המחסן
+      השבועי</b>. אז על הלוח החודשי משימה שבועית מקבלת ידית ונמתחת עד
+      <span class="num">7</span> ימים, ומשימה חודשית לא מקבלת ידית בכלל.
+      <br>זה לא ״לא ברור איך״. זה שלחצי מהדברים על הלוח זה פשוט בלתי אפשרי,
+      ואין שום דבר שאומר לה איזה חצי.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cn">שבע דלתות, שלושה מחסנים</div>
+    <div class="cw">
+      שבעה מקומות בקוד יוצרים משימה, לשלושה מחסנים:
+      <code>mplan_</code> · <code>wplan_</code> · <code>dplan_</code>.
+      המחסן החודשי הוא החריג שמייצר את שלושת הבאגים — הוא היחיד שלא נמתח,
+      לא מקבל שעה, ועכשיו גם לא נמחק.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cn">ועוד משהו שנמדד תוך כדי</div>
+    <div class="cw">
+      הכתב בתאי החודש הוא <b class="bad">7.5px</b>. התא ברוחב
+      <span class="num">46</span> פיקסלים, אז מילה שלמה נכנסת — אבל אי אפשר
+      לקרוא אותה. הנה זה לצד <span class="num">10</span>:
+    </div>
+    <div class="sizecmp">
+      <div><div style="font-size:9.5px;font-weight:700;color:var(--muted)">14</div>
+        <div style="background:#ddd6ee;color:#4b3a72;border-radius:5px;padding:2px 3px;margin-top:2px;font-size:7.5px;line-height:1.25">ישיבת צוות</div></div>
+      <div><div style="font-size:9.5px;font-weight:700;color:var(--muted)">14</div>
+        <div style="background:#ddd6ee;color:#4b3a72;border-radius:5px;padding:2px 3px;margin-top:2px;font-size:10px;line-height:1.25">ישיבת צוות</div></div>
+      <div style="box-shadow:none;width:auto;text-align:start;font-size:12px;color:var(--muted);padding-top:18px">
+        השמאלי הוא מה שיש היום</div>
+    </div>
+  </div>
+
+  <div class="grp">המודל שבחרת — מאגר אחד, שלושה לוחות</div>
+
+  <div class="card">
+    <div class="cw">
+      <b>המחסן החודשי נעלם.</b> מה שאין לו תאריך יושב ב<b>מאגר אחד</b>
+      משותף למסך כולו. ברגע שהוא מונח על יום — הוא הופך למשימה של
+      <b>השבוע שהיום הזה שייך אליו</b>, ובזה מקבל בחינם את שלושת הדברים
+      שחסרו: מחיקה, מתיחה, ושעה אם רוצים.
+    </div>
+    <div class="cw">
+      אז הלוח החודשי נשאר בדיוק מה שאתה רצית שיהיה — <b>המקום שבו מחליטים
+      מתי, ומותחים על פני ימים</b> — בלי להיות מחסן שלישי שאפשר להיתקע בו.
+      <br>״לחדש דרכון החודש״ בלי תאריך? יושב במאגר. זה בדיוק מה שהוא.
+    </div>
+  </div>
+
+  <div class="grp">מה שנשאר להחליט — המחווה</div>
+  <p class="lede" style="margin-bottom:2px">
+    שני הלוחות למטה <b>עובדים</b>. נסה את שניהם באצבע, לא בעין.
+  </p>
+
+  <div class="card">
+    <div class="cn">א׳ · גרירה</div>
+    <div class="cw">מה שיש היום, רק שהמאגר משותף. תופסים גלולה, גוררים לתא.</div>
+    <div class="phone" id="boardA"></div>
+    <div class="say" id="sayA"></div>
+    <div class="verdict">
+      <b>מה שמדדתי:</b> ברשת ריקה המאגר והשבוע האחרון נכנסים יחד למסך
+      (<span class="num">320</span> מתוך <span class="num">779</span> פיקסלים).
+      בחודש עמוס התאים גדלים, והרגע שבו צריך לגרור מהמאגר לשורה החמישית
+      הוא הרגע שבו שניהם כבר לא על המסך יחד.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cn">ב׳ · הקשה לבחור, הקשה להניח</div>
+    <div class="cw">
+      מקישים על גלולה — היא נדלקת. מקישים על יום — היא נוחתת. אין גרירה,
+      אז <b>לא משנה כמה רחוק הם אחד מהשני</b>.
+      <br>ואותה מחווה עושה גם את המתיחה: הקשה על משימה שכבר מונחת פותחת
+      שורת פעולות, והקשה על יום אחר מותחת אליו.
+    </div>
+    <div class="phone" id="boardB"></div>
+    <div class="say" id="sayB"></div>
+    <div class="verdict">
+      <b>למה זה מעניין:</b> המחיקה מפסיקה להיות כפתור בגודל
+      <span class="num">15</span>px בתוך תא של <span class="num">46</span>px,
+      והופכת לכפתור מלא בשורה. וזה גם עונה לשאלה שאין לה תשובה טובה בגרירה —
+      <b>איך מוחקים משהו שכבר על הלוח</b>.
+    </div>
+  </div>
+
+  <p class="rule">
+    <b>הכול ב-dev בלבד, ושום דבר מזה עוד לא נבנה.</b>
+    המשימה התקועה של מיכל יושבת על היציב, שאין בו אף אחד
+    מ-<span class="num">124</span> הקומיטים — אז היא תשתחרר ביחד עם השאר,
+    כשתאשר.
+  </p>
+</div>
+
+<script>
+/* ── one small board, built twice with a different gesture ──
+   Same data, same drawing, so what he is comparing is the gesture and not
+   two different mockups. */
+/* WK_COLORS, copied out of dev/index.html. The four I had invented were close
+   enough to look right and wrong enough that he would have been choosing a
+   gesture while looking at a palette the app does not own. */
+var COLORS={lav:{soft:'#cec9d8',ink:'#5b4f6b',dot:'#7b6aa8'},
+            blu:{soft:'#cad6de',ink:'#2f5a73',dot:'#3d7ca8'},
+            grn:{soft:'#cad4c4',ink:'#3d6047',dot:'#4a7d4a'},
+            ter:{soft:'#dbc2b6',ink:'#6f483a',dot:'#b0644a'}};
+var DAYS=['א','ב','ג','ד','ה','ו','ש'];
+var TODAY=29, LEAD=2, LAST=31;      /* September 2026 starts on Tuesday */
+
+function seed(){
+  return {
+    pool:[{id:'p1',w:'לחדש דרכון',c:'lav'},
+          {id:'p2',w:'ערב עם דנה',c:'blu'},
+          {id:'p3',w:'להגיש דוח',c:'grn'}],
+    placed:[{id:'a1',w:'חופשה',c:'ter',day:14,len:4},
+            {id:'a2',w:'רופא שיניים',c:'blu',day:23,len:1}]
+  };
+}
+
+function Board(host, say, mode){
+  var st=seed(), armed=null, armedPlaced=null, drag=null;
+  var el=document.createElement('div'); host.appendChild(el);
+
+  function tell(t){ say.innerHTML=t; }
+  function find(id){ for(var i=0;i<st.placed.length;i++) if(st.placed[i].id===id) return st.placed[i]; return null; }
+
+  /* which placed tasks paint on this day, and where in their own run it is */
+  function on(day){
+    var out=[],i,t;
+    for(i=0;i<st.placed.length;i++){ t=st.placed[i];
+      if(day>=t.day && day<t.day+(t.len||1)) out.push(t); }
+    return out;
+  }
+
+  function draw(){
+    var h='',i,c;
+    /* the pool, or the action row when something placed is armed */
+    if(armedPlaced){
+      var t=find(armedPlaced);
+      h+='<div class="acts">'+
+         '<button class="act" data-act="ret">החזר למאגר</button>'+
+         '<button class="act del" data-act="del">מחק</button>'+
+         '<button class="act" data-act="cancel">ביטול</button>'+
+         '</div>';
+    } else {
+      h+='<div class="bar" id="bar">';
+      if(!st.pool.length) h+='<div class="hint">המאגר ריק. הכול משובץ.</div>';
+      for(i=0;i<st.pool.length;i++){ c=COLORS[st.pool[i].c];
+        h+='<div class="pill'+(armed===st.pool[i].id?' armed':'')+'" data-pill="'+st.pool[i].id+'"'+
+           ' style="'+(armed===st.pool[i].id?'':'background:'+c.soft+';color:'+c.ink)+'">'+
+           '<span class="dot" style="background:'+c.dot+'"></span>'+st.pool[i].w+'</div>';
+      }
+      h+='</div>';
+    }
+    h+='<div class="mhead">';
+    for(i=0;i<7;i++) h+='<div>'+DAYS[i]+'</div>';
+    h+='</div><div class="grid">';
+    for(i=0;i<LEAD;i++) h+='<div class="cell blank"></div>';
+    for(i=1;i<=LAST;i++){
+      h+='<div class="cell'+(i===TODAY?' today':'')+'" data-day="'+i+'">';
+      h+='<div class="n">'+i+'</div>';
+      var list=on(i),j,t2,cc,first,last;
+      for(j=0;j<list.length;j++){ t2=list[j]; cc=COLORS[t2.c];
+        first=(i===t2.day); last=(i===t2.day+(t2.len||1)-1);
+        h+='<div class="chip'+(armedPlaced===t2.id?' sel':'')+(first?'':' mid')+(last?'':' notlast')+'"'+
+           ' data-chip="'+t2.id+'" style="background:'+cc.soft+';color:'+cc.ink+';font-size:10px">'+
+           (first?t2.w:'&nbsp;')+'</div>';
+      }
+      h+='</div>';
+    }
+    h+='</div>';
+    el.innerHTML=h;
+  }
+
+  /* ── the two gestures ── */
+  function place(id,day){
+    var i,t;
+    for(i=0;i<st.pool.length;i++) if(st.pool[i].id===id){
+      t=st.pool.splice(i,1)[0];
+      st.placed.push({id:t.id,w:t.w,c:t.c,day:day,len:1});
+      tell('<b>'+t.w+'</b> נחת על ה-'+day+'. עכשיו הוא משימה של השבוע הזה — יש לו מחיקה, מתיחה ושעה.');
+      armed=null; draw(); return;
+    }
+  }
+  function stretch(id,day){
+    var t=find(id); if(!t) return;
+    if(day<t.day){ tell('מתיחה היא קדימה מהיום שהמשימה מתחילה בו.'); return; }
+    t.len=Math.min(day-t.day+1,7);
+    tell('<b>'+t.w+'</b> נמתח על '+t.len+' ימים, מה-'+t.day+' עד ה-'+(t.day+t.len-1)+'.');
+    armedPlaced=null; draw();
+  }
+
+  el.addEventListener('click',function(e){
+    var b=e.target.closest('[data-act]');
+    if(b){
+      var t=find(armedPlaced);
+      if(b.dataset.act==='del'){ st.placed=st.placed.filter(function(x){return x.id!==armedPlaced;});
+        tell('<b>'+(t?t.w:'')+'</b> נמחק. מכל יום שהוא כיסה.'); }
+      else if(b.dataset.act==='ret'){ st.placed=st.placed.filter(function(x){return x.id!==armedPlaced;});
+        if(t) st.pool.push({id:t.id,w:t.w,c:t.c});
+        tell('<b>'+(t?t.w:'')+'</b> חזר למאגר, בלי תאריך.'); }
+      else tell('');
+      armedPlaced=null; draw(); return;
+    }
+    if(mode!=='tap') {
+      /* in drag mode a placed chip still needs a way out, so tapping it
+         opens the same action row - which is itself an argument */
+      var ch0=e.target.closest('[data-chip]');
+      if(ch0){ armedPlaced=ch0.dataset.chip; armed=null;
+        tell('בחרת משימה שעל הלוח.'); draw(); }
+      return;
+    }
+    var pill=e.target.closest('[data-pill]');
+    if(pill){
+      armed=(armed===pill.dataset.pill)?null:pill.dataset.pill; armedPlaced=null;
+      tell(armed?'עכשיו הקש על יום.':'');
+      draw(); return;
+    }
+    var chip=e.target.closest('[data-chip]');
+    if(chip){
+      armedPlaced=(armedPlaced===chip.dataset.chip)?null:chip.dataset.chip; armed=null;
+      tell(armedPlaced?'הקש על יום מאוחר יותר כדי למתוח, או בחר פעולה.':'');
+      draw(); return;
+    }
+    var cell=e.target.closest('[data-day]');
+    if(cell){
+      var day=+cell.dataset.day;
+      if(armed) place(armed,day);
+      else if(armedPlaced) stretch(armedPlaced,day);
+      else tell('בחר קודם משימה מהמאגר.');
+    }
+  });
+
+  /* drag, for board א */
+  if(mode==='drag'){
+    el.addEventListener('pointerdown',function(e){
+      var pill=e.target.closest?e.target.closest('[data-pill]'):null;
+      if(!pill) return;
+      var r=pill.getBoundingClientRect();
+      var g=pill.cloneNode(true); g.className='pill ghost';
+      g.style.width=r.width+'px'; g.style.left=r.left+'px'; g.style.top=r.top+'px';
+      document.body.appendChild(g);
+      pill.style.opacity='.3';
+      drag={id:pill.dataset.pill,g:g,src:pill,dx:e.clientX-r.left,dy:e.clientY-r.top};
+      window.addEventListener('pointermove',move);
+      window.addEventListener('pointerup',up);
+      e.preventDefault();
+    });
+  }
+  function hot(x,y){
+    var cs=el.querySelectorAll('[data-day]'),i,r;
+    for(i=0;i<cs.length;i++){ r=cs[i].getBoundingClientRect();
+      if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return cs[i]; }
+    return null;
+  }
+  function move(e){
+    if(!drag) return;
+    drag.g.style.left=(e.clientX-drag.dx)+'px';
+    drag.g.style.top=(e.clientY-drag.dy)+'px';
+    var c=hot(e.clientX,e.clientY),all=el.querySelectorAll('[data-day]'),i;
+    for(i=0;i<all.length;i++) all[i].classList.toggle('hot',all[i]===c);
+  }
+  function up(e){
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',up);
+    if(!drag) return;
+    var c=hot(e.clientX,e.clientY);
+    drag.g.remove(); drag.src.style.opacity='';
+    var id=drag.id; drag=null;
+    if(c) place(id,+c.dataset.day);
+    else { tell('לא נחת על יום. נשאר במאגר.'); draw(); }
+  }
+
+  draw();
+  tell(mode==='tap' ? 'הקש על משימה במאגר, ואז על יום.' : 'תפוס גלולה וגרור אותה לתא.');
+}
+
+Board(document.getElementById('boardA'), document.getElementById('sayA'), 'drag');
+Board(document.getElementById('boardB'), document.getElementById('sayB'), 'tap');
+</script>
+</html>
