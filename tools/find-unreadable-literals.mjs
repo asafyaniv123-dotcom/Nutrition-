@@ -22,8 +22,20 @@
 //   node tools/find-unreadable-literals.mjs [file]
 //
 // Calibration, recorded because a detector that has never caught anything has
-// not been tested: against the revision before the fix it finds 7; against
-// the fix, 0.
+// not been tested: against the revision before the seven were fixed it finds
+// 74; after them, 68.
+//
+// READ THAT 68 THE RIGHT WAY. It is not 68 things a person can see. A rule is
+// only a defect when it PAINTS, and most of these are states that were not on
+// screen: `.on`, `.reach`, `.swipe-del`, a ghost mid-drag. A live check that
+// walks the real DOM across eight areas - planted with a known 1.47:1 case
+// first, so it was shown to detect - found ZERO on what was actually
+// rendered. The seven that were fixed were the ones that paint.
+//
+// So this is a list to WORK THROUGH by driving each state, not a number to
+// report. Its own live counterpart got one thing wrong that is worth knowing:
+// it read a background's rgb and ignored its alpha, so it called .stk-today
+// 2.72:1 where the composite is 3.62:1. Both fail; only one is the truth.
 import fs from 'fs';
 
 const FILE = process.argv[2] || 'dev/index.html';
