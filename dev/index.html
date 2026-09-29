@@ -27055,7 +27055,9 @@ function moPlaceSpans(){
 
 function planMonthHTML(){
   if(!_moMonth)_moMonth=moFirst(appNow());
-  var mo=loadMonth(_moMonth),i,t;
+  /* loadMonth is only the migration’s business now - drawing the board
+     reads the pool and the weeks. */
+  var i,t;
   var wkCache={};                       // one loadWeek per week the month touches
   var year=_moMonth.getFullYear(),mi=_moMonth.getMonth();
   var first=new Date(year,mi,1,12),days=new Date(year,mi+1,0).getDate();
@@ -27066,7 +27068,19 @@ function planMonthHTML(){
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
   h+='<button onclick="moShift(-1)" class="pl-step">&#8249;</button>';
   h+='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:var(--ink)">'+dfmt(new Date(year,mi,1),{year:'numeric',month:'long'})+'</div>';
-  h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+_t('{done} מתוך {n} משובצים',{done:mo.tasks.filter(function(x){return x.d;}).length,n:mo.tasks.length})+'</div></div>';
+  /* WHAT IS ON A DAY, AGAINST EVERYTHING THERE IS. It used to read mo.tasks,
+     which planMigrate empties and nothing refills - so it could only ever say
+     zero of zero, on a month with thirty things in it. Counted per id, since
+     a run covering nine days is one thing rather than nine. */
+  var _placed={},_pd;
+  for(_pd=1;_pd<=days;_pd++){
+    var _ds=year+'-'+(mi<9?'0':'')+(mi+1)+'-'+(_pd<10?'0':'')+_pd;
+    var _on=moWeekTasksOn(_ds,wkCache),_q;
+    for(_q=0;_q<_on.length;_q++)_placed[_on[_q].id]=1;
+  }
+  var _nPlaced=0,_k2;for(_k2 in _placed)_nPlaced++;
+  var _nPool=loadPool().tasks.length;
+  h+='<div style="font-size:10px;color:var(--muted);margin-top:2px">'+_t('{done} מתוך {n} משובצים',{done:_nPlaced,n:_nPlaced+_nPool})+'</div></div>';
   h+='<button onclick="moShift(1)" class="pl-step">&#8250;</button>';
   h+='</div>';
 
