@@ -16195,8 +16195,58 @@ function ssNewId(exs){
   for(i=0;i<exs.length;i++)if(typeof exs[i].ss==='number'&&exs[i].ss>m)m=exs[i].ss;
   return m+1;
 }
+/* WHICH EXERCISE'S CHOOSER IS OPEN, or null. Inline like _rackOpen and
+   _addEx rather than a sheet: the decision is made while looking at the
+   exercise, and a sheet would cover the thing being decided about. */
+var _ssPick=null;
+function ssPickOpen(i){_ssPick=i;renderFitness();}
+function ssPickClose(){_ssPick=null;renderFitness();}
+/* Every exercise that could join this one: anything not already in its
+   group. A member of the group is not a candidate because it is already the
+   answer. */
+function ssCandidates(i){
+  var exs=_fitWorkout?_fitWorkout.exercises:[],g=ssGroup(i),out=[],j;
+  for(j=0;j<exs.length;j++)if(g.indexOf(j)<0)out.push(j);
+  return out;
+}
+/* MOVE THE PARTNER, DO NOT LOOSEN THE MODEL. j slides to sit directly after
+   i and the two are joined, so a group stays contiguous and ssNextIn stays
+   an index step. Removing j first shifts i down by one when j came before
+   it, which is the whole of the arithmetic here. */
+function ssPairWith(i,j){
+  if(!_fitWorkout)return;
+  var exs=_fitWorkout.exercises;
+  if(i<0||j<0||i>=exs.length||j>=exs.length||i===j)return;
+  var moved=exs.splice(j,1)[0];
+  var base=(j<i)?i-1:i;
+  exs.splice(base+1,0,moved);
+  /* the group this exercise already belongs to, or a new one - so asking
+     twice gives a giant set rather than throwing the first partner away */
+  var id=exs[base].ss!=null?exs[base].ss:ssNewId(exs);
+  exs[base].ss=id; exs[base+1].ss=id;
+  _fitWorkout.currentEx=base;
+  _ssPick=null;
+  renderFitness();
+}
+/* A partner that is not in the workout yet. Same picker as wxSwap, inserted
+   directly after this exercise, carrying last time's weight as a PLAN row -
+   never as a set, because nobody has done it. */
+function ssPairNew(i){
+  exPickInto(function(name){
+    if(!_fitWorkout)return;
+    var exs=_fitWorkout.exercises;
+    if(i<0||i>=exs.length)return;
+    var prev=exLastTime(name),first=prev&&prev.sets&&prev.sets[0];
+    var reps=(first&&first.reps>0)?first.reps:10;
+    var ex={name:name,targetSets:3,targetReps:reps,plan:[],sets:[],warm:[],ss:null};
+    if(first&&first.weight>0)ex.plan=[{w:first.weight,r:reps}];
+    exs.splice(i+1,0,ex);
+    ssPairWith(i,i+1);
+  });
+}
 /* Joining always links this exercise to the one after it, because that is the
-   only pairing that keeps a group adjacent. */
+   only pairing that keeps a group adjacent - ssPairWith is how any OTHER
+   exercise becomes the one after it. */
 function ssJoin(i){
   if(!_fitWorkout)return;
   var exs=_fitWorkout.exercises;
@@ -22475,16 +22525,33 @@ function renderFitWorkout(){
   h+='<button class="wx-b" onclick="wxRemove('+w.currentEx+')" title="'+_t('הסר תרגיל')+'" aria-label="'+_t('הסר תרגיל')+'">&#215;</button>';
   h+='</div></div>';
   h+=fitTgtHTML(ex);
-  /* The link is always to the NEXT exercise, so there is nothing to choose
-     and no way to build a group that is not adjacent. */
+  /* A group is still contiguous; what changed is that any exercise can be
+     made the next one. */
   (function(){
     var i=_fitWorkout.currentEx, exs=_fitWorkout.exercises;
     var lbl=ssLabel(i);
     if(lbl)h+='<div style="display:inline-block;font-size:10px;font-weight:800;color:var(--violet-700);background:var(--violet-50);border-radius:7px;padding:2px 8px;margin-bottom:9px">'+_t('סופרסט')+' '+lbl+'</div>';
-    if(i<exs.length-1){
-      var joined=exs[i].ss!=null&&exs[i].ss===exs[i+1].ss;
-      h+='<div><button onclick="ssJoin('+i+')" style="background:none;border:none;padding:0 0 9px;margin:0;font:inherit;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px">'+
-        (joined?_t('פרק את הסופרסט'):_t('סופרסט עם')+' '+esc(exs[i+1].name))+'</button></div>';
+    var quiet='background:none;border:none;padding:0 0 9px;margin:0;font:inherit;'+
+      'font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px';
+    if(_ssPick===i){
+      /* the candidates, as the same chips the exercise row already uses */
+      h+='<div class="ex-chips" style="margin-bottom:6px">';
+      var cand=ssCandidates(i),ci;
+      for(ci=0;ci<cand.length;ci++)
+        h+='<button class="ex-chip" onclick="ssPairWith('+i+','+cand[ci]+')">'+esc(exs[cand[ci]].name)+'</button>';
+      h+='<button class="ex-chip" onclick="ssPairNew('+i+')">+ '+_t('הוסף תרגיל')+'</button>';
+      h+='</div>';
+      h+='<div><button onclick="ssPickClose()" style="'+quiet+'">'+_t('ביטול')+'</button></div>';
+    } else {
+      /* breaking is offered only where there is something to break, and it
+         is the pair with the NEXT one - the group is contiguous, so that is
+         the only link this exercise owns going forward */
+      if(i<exs.length-1&&exs[i].ss!=null&&exs[i].ss===exs[i+1].ss)
+        h+='<div><button onclick="ssJoin('+i+')" style="'+quiet+'">'+_t('פרק את הסופרסט')+'</button></div>';
+      /* always offered, even in a workout of one: the chooser can add the
+         partner from the library, so there is never nothing to pick */
+      else
+        h+='<div><button onclick="ssPickOpen('+i+')" style="'+quiet+'">'+_t('סופרסט עם')+'&hellip;</button></div>';
     }
   })();
   h+='</div>';
