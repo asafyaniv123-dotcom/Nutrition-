@@ -24878,7 +24878,15 @@ function wkIsEcho(t,date){return !!t&&t.d!==date&&wkOnDay(t,date);}
 
    The bar sits at the bottom of its band so the chips that float at the top
    of a cell keep their place. */
-var WK_MAX_LEN=7;
+/* A MONTH, NOT A WEEK. This was 7, and the reason was real: a run lived in
+   one week's record and nothing looked for it outside that record, so seven
+   was the longest thing that could be drawn. Both of those are fixed below,
+   and the honest cap is the horizon the month board is about. A week of
+   leave that starts on a Thursday is nine days, and refusing to say so was
+   the app being wrong rather than being careful. */
+var WK_MAX_LEN=31;
+/* how many weeks back a run can still be reaching from */
+var MO_SPAN_BACK=Math.ceil(WK_MAX_LEN/7);
 function wkLenOf(t){var n=+((t&&t.len)||1);return n>1?Math.min(n,WK_MAX_LEN):1;}
 /* which column a date is in this week, or -1 */
 function wkColIndex(date){
@@ -24899,16 +24907,27 @@ function wkSetLen(id,n){
 var WK_SPAN_H=11;
 /* Which stretched tasks land in each band, in draw order, so a bar can be
    told its row and the chips below can be told how many rows to clear. */
+/* WHERE A RUN SITS IN THE WEEK ON SCREEN, or null. A run that began in an
+   earlier week is not absent from this one - it is a bar with no start in it.
+   One answer, so the two places that draw cannot drift apart. */
+function wkSpanSeg(t){
+  var len=wkLenOf(t);
+  if(len<2||!t.d)return null;
+  var ci=wkColIndex(t.d);
+  if(ci<0){
+    var off=wkDayIndex(wkStamp(_wkSun))-wkDayIndex(t.d);
+    if(off<=0||off>=len)return null;      // not in this week at all
+    len-=off;ci=0;
+  }
+  if(ci+len>7)len=7-ci;                   // a week is as long as a week
+  return len<1?null:{ci:ci,len:len};
+}
 function wkSpanRows(tasks){
-  var rows={m:[],n:[],e:[]},i,t,len,ci;
+  var rows={m:[],n:[],e:[]},i,t,seg;
   for(i=0;i<tasks.length;i++){
     t=tasks[i];
-    len=wkLenOf(t);
-    if(len<2||!t.d)continue;
-    ci=wkColIndex(t.d);
-    if(ci<0)continue;
-    if(ci+len>7)len=7-ci;
-    if(len<2)continue;
+    seg=wkSpanSeg(t);
+    if(!seg||seg.len<2)continue;
     (rows[wkSlotOf(t)]||rows.m).push(t.id);
   }
   return rows;
@@ -24918,16 +24937,13 @@ function wkSpanRows(tasks){
    inset-inline-start rather than left: the week reads right to left, so the
    logical property is the one that puts Sunday where Sunday is. */
 function wkSpanBarsHTML(tasks){
-  var h="",i,t,ci,len,band,BANDS={m:0,n:1,e:2};
+  var h="",i,t,ci,len,seg,band,BANDS={m:0,n:1,e:2};
   var rows=wkSpanRows(tasks);
   for(i=0;i<tasks.length;i++){
     t=tasks[i];
-    len=wkLenOf(t);
-    if(len<2||!t.d)continue;
-    ci=wkColIndex(t.d);
-    if(ci<0)continue;
-    if(ci+len>7)len=7-ci;                    // a week is as long as a week
-    if(len<2)continue;
+    seg=wkSpanSeg(t);
+    if(!seg||seg.len<2)continue;
+    ci=seg.ci;len=seg.len;
     band=BANDS[wkSlotOf(t)]||0;
     /* Top of the band, one row down for each bar already there - so two spans
        in the same band sit under each other rather than on each other. */
@@ -26926,10 +26942,20 @@ function moDayPanelHTML(){
 }
 
 function moWeekTasksOn(date,cache){
-  var sun=weekSunday(new Date(date+"T12:00:00")),k=wkStamp(sun);
-  if(!cache[k])cache[k]=loadWeek(sun);
-  var tasks=(cache[k]&&cache[k].tasks)||[],out=[],i;
-  for(i=0;i<tasks.length;i++)if(wkCoversDay(tasks[i],date))out.push(tasks[i]);
+  var sun=weekSunday(new Date(date+"T12:00:00")),out=[],back,i;
+  /* A RUN MAY HAVE STARTED IN AN EARLIER WEEK'S RECORD. Only a run can reach
+     forward like that - a repeat is still its own week's business, which is
+     what it was before and what the second clause keeps. The cache means the
+     thirty-one days of a month still cost one load per week touched. */
+  for(back=0;back<=MO_SPAN_BACK;back++){
+    var s2=wkDateOf(sun,-7*back),k2=wkStamp(s2);
+    if(!cache[k2])cache[k2]=loadWeek(s2);
+    var tasks=(cache[k2]&&cache[k2].tasks)||[];
+    for(i=0;i<tasks.length;i++){
+      if(back>0&&wkLenOf(tasks[i])<2)continue;
+      if(wkCoversDay(tasks[i],date))out.push(tasks[i]);
+    }
+  }
   return out;
 }
 
@@ -27003,13 +27029,24 @@ function moPlaceSpans(){
     bar.appendChild(rail);
     var ds=document.createElement('div');ds.className='mo-span-d s';ds.style.background=col;
     var de=document.createElement('div');de.className='mo-span-d e mo-grab-e';de.style.background=ink;
-    /* Only the row that ends the run can be dragged - a continuation's far end
-       is a row break, not the end of anything. */
+    /* Only the row that ENDS the run can be dragged - a continuation's far end
+       is a row break, not the end of anything. rowKeys is measured, so "last"
+       is the lowest bar on screen. */
+    var rowKeys=Object.keys(runs[id]).map(Number).sort(function(x,y){return x-y;});
+    var isLastRow=(Number(row)===rowKeys[rowKeys.length-1]);
     var lastSeg=list[list.length-1].el;
-    de.classList.add('grab');
-    de.setAttribute('data-mostretch',id);
-    de.setAttribute('data-mosun',lastSeg.getAttribute('data-spansun')||'');
-    de.setAttribute('data-mostart',lastSeg.getAttribute('data-spanstart')||'');
+    if(isLastRow){
+      /* THE WEEK THE TASK LIVES IN, not the week this row is. moStretchTo
+         loads the record this names and looks for the id in it; on any row
+         after the first that record is the wrong one, and the drag would do
+         nothing at all without saying so. */
+      var startD=lastSeg.getAttribute('data-spanstart')||'';
+      de.classList.add('grab');
+      de.setAttribute('data-mostretch',id);
+      de.setAttribute('data-mosun',startD?wkStamp(weekSunday(new Date(startD+'T12:00:00')))
+                                         :(lastSeg.getAttribute('data-spansun')||''));
+      de.setAttribute('data-mostart',startD);
+    }
     bar.appendChild(ds);bar.appendChild(de);
     layer.appendChild(bar);
   }
@@ -27221,9 +27258,10 @@ function moMove(e){
     var to=cell.getAttribute('data-date');
     var diff=Math.round((new Date(to+'T12:00:00')-new Date(_moStretch.start+'T12:00:00'))/86400000);
     if(diff<0)diff=0;
-    /* len is week-relative and the task lives in one week's record, so the run
-       stops at its own Saturday rather than pretending to continue. */
-    var max=Math.min(6-_moStretch.dow,WK_MAX_LEN-1);
+    /* It used to stop at its own Saturday, because nothing outside that week's
+       record would have looked for it. moWeekTasksOn does now, so a finger
+       dragged down a row carries the run into the next week. */
+    var max=WK_MAX_LEN-1;
     if(diff>max)diff=max;
     moStretchTo(_moStretch.sun,_moStretch.id,diff+1);
     return;
