@@ -139,6 +139,12 @@ say(tasks.every(t => !everywhere.get(t.id) || everywhere.get(t.id).t.id === t.id
     'every task kept its id, so an hour written against it still finds it');
 say(JSON.parse(store[MONTH]).tasks.length === 0 && JSON.parse(store[MONTH]).mig === 1,
     'the month record is emptied and marked');
+/* the only thing here with no way back, unless it keeps a copy */
+const kept = JSON.parse(store[MONTH]).was || [];
+say(kept.length === tasks.length,
+    'the record keeps what it moved: ' + kept.length + ' of ' + tasks.length);
+say(JSON.stringify(kept) === JSON.stringify(tasks),
+    'and keeps it verbatim, so rolling the app back restores the month exactly');
 
 console.log('\n' + (fail ? fail + ' assertion(s) failed' : 'nothing lost, nothing duplicated, idempotent'));
 process.exit(fail ? 1 : 0);
