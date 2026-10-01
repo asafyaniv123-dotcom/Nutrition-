@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>המספר והתמונה</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e9e7e3">
+<!--
+  THE DATE OVER THE PHOTO, FOUR WAYS.
+  Asaf: "it bothers me on Me that the date numbers hide the photos."
+  The scrim is what hides them, and it is there for a reason the code says out
+  loud: the picture used to be drawn INSTEAD of the number, so the one day you
+  could see at a glance was the one day you could not name. So this is not
+  "remove it", it is "how little can it be".
+  The thumbnails are stand-ins, not her photos - there are none on this
+  machine. What they have to carry is what a real photo carries: detail, a
+  bright one, a dark one, and one with both.
+-->
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --ink-soft:#5c574f; --muted:#6d675e;
+    --amber:#f0a92e; --green700:#397339; --terra700:#98492c; --violet700:#6b5a92;
+    --violet500:#8f7fc4;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+  }
+  *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--ground);color:var(--ink);
+    font:400 16px/1.6 Assistant,"Segoe UI",system-ui,-apple-system,sans-serif}
+  .wrap{max-width:620px;margin:0 auto;
+    padding:calc(28px + env(safe-area-inset-top)) 18px calc(60px + env(safe-area-inset-bottom))}
+  h1{font-size:27px;font-weight:800;letter-spacing:-.02em}
+  .lede{color:var(--muted);font-size:14.5px;margin-top:9px;line-height:1.7}
+  .lede b{color:var(--ink)}
+  .card{background:var(--ground);border-radius:19px;padding:17px 18px;
+    box-shadow:var(--raise);margin-bottom:12px}
+  .cn{font-size:17px;font-weight:800;margin-bottom:6px;display:flex;align-items:baseline;gap:9px}
+  .tag{margin-inline-start:auto;font-size:10.5px;font-weight:800;color:var(--muted);
+    padding:3px 9px;border-radius:20px;box-shadow:var(--press-sm)}
+  .cw{font-size:14px;color:var(--muted);line-height:1.7}
+  .cw b{color:var(--ink);font-weight:700}
+  .num{display:inline-block;background:var(--ground);border-radius:8px;padding:1px 8px;
+    box-shadow:var(--press-sm);font-weight:800;color:var(--ink);font-size:13.5px;
+    direction:ltr;font-variant-numeric:tabular-nums}
+  a.back{display:inline-block;margin-bottom:18px;color:var(--muted);
+    text-decoration:none;font-size:13px;font-weight:700}
+  .rule{font-size:13.5px;color:var(--muted);margin-top:30px;padding:16px 18px;
+    background:var(--ground);border-radius:16px;box-shadow:var(--press-sm);line-height:1.75}
+  .rule b{color:var(--ink)}
+
+  /* ── the calendar, at the size it actually is ── */
+  .pane{width:313px;max-width:100%;margin:14px auto 0;padding:14px;
+    border-radius:18px;box-shadow:var(--press-sm)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal-dh{text-align:center;font-size:9.5px;font-weight:800;color:var(--muted);padding-bottom:4px}
+  .cal-d{width:100%;aspect-ratio:1;border:none;border-radius:50%;background:none;cursor:pointer;
+    font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--ink);font-family:inherit;padding:0}
+  .cal-d.has{background:linear-gradient(135deg,#ddd6ee,#cec9d8)}
+  .cal-d.has-photo{padding:0;overflow:hidden;position:relative}
+  .cal-d.has-photo .ph{position:absolute;inset:0;border-radius:50%;background-size:cover;
+    background-position:center}
+  .cal-d-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:11.5px;font-weight:800;color:#fff;border-radius:50%;
+    text-shadow:0 1px 3px rgba(0,0,0,.55)}
+
+  /* א — what there is now */
+  .vA .cal-d-num{background:radial-gradient(circle at 50% 50%,rgba(0,0,0,.48),rgba(0,0,0,.10) 72%)}
+  /* ב — a disc only as big as the digits */
+  .vB .cal-d-num{background:none}
+  .vB .cal-d-num span{display:flex;align-items:center;justify-content:center;
+    width:19px;height:19px;border-radius:50%;background:rgba(0,0,0,.55)}
+  /* ג — down at the hem, so the middle of the picture is never touched */
+  .vC .cal-d-num{background:none;align-items:flex-end;padding-bottom:1px}
+  .vC .cal-d-num span{display:flex;align-items:center;justify-content:center;
+    min-width:17px;height:14px;padding:0 4px;border-radius:7px;background:rgba(0,0,0,.6);
+    font-size:10px}
+  /* ד — no scrim at all, the digits carry their own edge */
+  .vD .cal-d-num{background:none;
+    text-shadow:0 0 2px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,.9),0 0 7px rgba(0,0,0,.7)}
+
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);
+    margin-top:12px;padding:0 2px;line-height:1.5}
+  .legend b{color:var(--ink)}
+  .sizecmp{display:flex;gap:16px;align-items:center;justify-content:center;margin-top:14px}
+  .sizecmp>div{text-align:center;font-size:10.5px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <a class="back" href="index.html">‹ מה השתנה</a>
+  <h1>המספר והתמונה</h1>
+  <p class="lede">
+    הסקרים הוא מה שמסתיר — <b>רדיאל שחור ב-48% על אמצע המעגל</b>. הוא שם
+    מסיבה שכתובה בקוד: קודם התמונה צוירה <b>במקום</b> המספר, אז היום היחיד
+    שאפשר לראות היה היחיד שאי אפשר לקרוא.
+    <br>אז השאלה היא לא ״להוריד״ אלא <b>כמה קטן הוא יכול להיות</b>. ארבע
+    אפשרויות, בגודל האמיתי של התא.
+  </p>
+  <p class="lede" style="margin-top:10px">
+    <b>הדמויות הן תחליפים</b>, לא התמונות שלה — אין כאלה במכונה הזאת. מה
+    שהן חייבות לשאת זה מה שתמונה אמיתית נושאת: פרטים, אחת בהירה, אחת כהה,
+    ואחת עם שתיהן. הן נבחרו כך בכוונה.
+  </p>
+
+  <div class="card">
+    <div class="cn">א׳ · מה שיש היום<span class="tag">הקיים</span></div>
+    <div class="cw">רדיאל מ-48% במרכז ל-10% בשוליים, על כל המעגל.</div>
+    <div class="pane vA" data-cal></div>
+    <div class="legend"><span><b>המספר:</b> קריא על כל התמונות</span>
+      <span><b>התמונה:</b> האמצע מוחשך תמיד</span></div>
+  </div>
+
+  <div class="card">
+    <div class="cn">ב׳ · דיסקית בגודל הספרות<span class="tag">מומלץ</span></div>
+    <div class="cw">
+      עיגול של <span class="num">19</span> פיקסלים מאחורי הספרות בלבד. מכסה
+      בערך <span class="num">20%</span> משטח התא במקום את כולו.
+    </div>
+    <div class="pane vB" data-cal></div>
+    <div class="legend"><span><b>המספר:</b> אותה קריאוּת</span>
+      <span><b>התמונה:</b> השוליים נקיים לגמרי</span></div>
+  </div>
+
+  <div class="card">
+    <div class="cn">ג׳ · המספר בשוליים התחתונים</div>
+    <div class="cw">
+      גלולה קטנה בתחתית. <b>אמצע התמונה לא נוגעים בו בכלל</b> — ושם יושב
+      בדרך כלל מה שצילמת.
+    </div>
+    <div class="pane vC" data-cal></div>
+    <div class="legend"><span><b>המספר:</b> קטן יותר, <span class="num">10</span>px</span>
+      <span><b>התמונה:</b> המרכז שלם</span></div>
+  </div>
+
+  <div class="card">
+    <div class="cn">ד׳ · בלי סקרים בכלל</div>
+    <div class="cw">
+      רק הילה שחורה סביב הספרות עצמן. <b>הכי פחות מכסה — והכי שביר:</b>
+      על תמונה בהירה ועמוסה פרטים זה בדיוק מה שהיה קודם.
+    </div>
+    <div class="pane vD" data-cal></div>
+    <div class="legend"><span><b>המספר:</b> תלוי בתמונה</span>
+      <span><b>התמונה:</b> שלמה</span></div>
+  </div>
+
+  <p class="rule">
+    <b>שום דבר מזה עוד לא נבנה.</b> תגיד איזו, ואני בונה אותה ב-dev
+    ומודד אותה על המסך לפני שהיא יוצאת.
+    <br>ואם אף אחת לא מדברת אליך — תגיד מה מפריע, וזה יותר שימושי מבחירה.
+  </p>
+</div>
+
+<script>
+/* ── stand-in photographs ──
+   Not decoration: the question is whether white digits survive, so what
+   matters is luminance. Three bright, three dark, three mixed, each with
+   detail - a flat wash would make every option look fine. */
+var PHOTOS = [
+  'radial-gradient(circle at 30% 25%,#fff8e7 0 18%,#f0d9a8 40%,#c9a46a 100%)',
+  'linear-gradient(145deg,#2a2622 0 40%,#5b4a3a 70%,#8a6a42 100%)',
+  'conic-gradient(from 20deg,#7fa8c4,#cfe1ef 25%,#486a84 55%,#dfeaf2 80%,#5d8099)',
+  'radial-gradient(circle at 70% 70%,#fdfdfb 0 22%,#d6d2c9 45%,#9a938c 100%)',
+  'linear-gradient(35deg,#1f2b1c 0 35%,#4a7d4a 65%,#bcd9b4 100%)',
+  'conic-gradient(from 200deg,#f0a92e,#f7e3b8 30%,#a8623a 60%,#fbe9cf 85%,#c98b3f)',
+  'radial-gradient(circle at 45% 60%,#efe7f6 0 20%,#9a8fc4 50%,#4b3a72 100%)',
+  'linear-gradient(120deg,#fbf7f2 0 45%,#e2d6c8 72%,#b8927a 100%)',
+  'conic-gradient(from 90deg,#243c48,#6faaa2 30%,#c0d2cd 55%,#2f5f58 80%,#9ed3ad)'
+];
+/* which days of the month carry one */
+var WITH_PHOTO = {3:0,5:1,9:2,12:3,15:4,18:5,21:6,24:7,27:8};
+var WITH_DOT   = {2:1,7:1,8:1,14:1,19:1,22:1,28:1};
+var DN = ['א','ב','ג','ד','ה','ו','ש'];
+var TODAY = 29;
+
+function build(pane){
+  var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+          '<span style="font-size:15px;color:var(--muted)">&#8249;</span>'+
+          '<span style="font-size:13px;font-weight:700">ספטמבר 2026</span>'+
+          '<span style="font-size:15px;color:var(--muted)">&#8250;</span></div>';
+  h += '<div class="cal-grid">';
+  for (var i = 0; i < 7; i++) h += '<div class="cal-dh">' + DN[i] + '</div>';
+  for (var p = 0; p < 2; p++) h += '<div></div>';          /* September 2026 opens on Tuesday */
+  for (var day = 1; day <= 30; day++) {
+    var label = (day === TODAY) ? '<strong>' + day + '</strong>' : String(day);
+    if (day in WITH_PHOTO) {
+      h += '<button class="cal-d has-photo">' +
+             '<span class="ph" style="background-image:' + PHOTOS[WITH_PHOTO[day]] + '"></span>' +
+             '<span class="cal-d-num"><span>' + label + '</span></span>' +
+           '</button>';
+    } else if (day in WITH_DOT) {
+      h += '<button class="cal-d has">' + label +
+           '<span style="width:4px;height:4px;border-radius:50%;background:var(--violet500);margin-top:1px"></span>' +
+           '</button>';
+    } else {
+      h += '<button class="cal-d">' + label + '</button>';
+    }
+  }
+  h += '</div>';
+  pane.innerHTML = h;
+}
+[].forEach.call(document.querySelectorAll('[data-cal]'), build);
+</script>
+</html>
