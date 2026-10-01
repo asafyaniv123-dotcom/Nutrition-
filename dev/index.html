@@ -454,9 +454,18 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   box-shadow:-2px -2px 5px var(--nu-lit,rgba(255,255,255,.95)),2px 3px 6px var(--nu-shade-soft,rgba(176,168,156,.28))}
 .fw-ps.fw-mine.sel{box-shadow:inset 1px 2px 4px var(--nu-shade,rgba(176,168,156,.44)),inset -1px -1px 3px var(--nu-lit,rgba(255,255,255,.95))}
 .fw-ps-pr{font-style:normal;color:var(--amber-700);margin-inline-start:4px;font-size:10px}
+/* the effort, in the same terracotta the lit button wears - so the number
+   beside the reps is never read as more reps */
+.fw-ps-rpe{font-style:normal;color:var(--terra-700);margin-inline-start:5px;font-size:9.5px;
+  font-weight:800;vertical-align:2px}
 /* and the buttons a selection opens - full size, which is the whole reason
    selecting is its own step */
-.fw-sel,.fw-sel-ed{display:flex;gap:7px;align-items:center;margin-top:10px}
+.fw-sel{display:flex;gap:7px;align-items:center;margin-top:10px}
+/* the editor stacks: the two numbers, the ten taps, then the two buttons -
+   ten effort buttons cannot share a row with anything and stay tappable */
+.fw-sel-ed{display:flex;flex-direction:column;gap:9px;margin-top:10px}
+.fw-sel-ed .fw-sel{margin-top:0}
+.fw-sel-nums{display:flex;gap:6px;align-items:center}
 /* 44, measured: at 40 these were the shortest buttons on the screen, and the
    whole reason selecting is its own step is that the targets can be full size */
 .fw-sel-b{flex:1;min-height:44px;border:none;border-radius:11px;background:var(--card);
@@ -16120,8 +16129,18 @@ function edWeightVal(kg){
 var _setSel=null;
 function setSelOpen(i){_setSel=(_setSel===i?null:i);_editSet=-1;renderFitness();}
 function setSelClose(){_setSel=null;_editSet=-1;renderFitness();}
-function editSet(i){_editSet=(_editSet===i?-1:i);renderFitness();}
-function cancelEditSet(){_editSet=-1;renderFitness();}
+function editSet(i){
+  _editSet=(_editSet===i?-1:i);
+  /* opened on what is already stored, so a set that was logged at 8 does not
+     quietly lose it the moment you fix a typo in the reps */
+  _edRpe=null;
+  if(_editSet>=0&&_fitWorkout){
+    var _st=_fitWorkout.exercises[_fitWorkout.currentEx].sets[_editSet];
+    if(_st){var _e=effortFromRPE(_st.rpe);if(_e!=='')_edRpe=_e;}
+  }
+  renderFitness();
+}
+function cancelEditSet(){_editSet=-1;_edRpe=null;renderFitness();}
 function saveEditSet(){
   if(!_fitWorkout||_editSet<0)return;
   var ex=_fitWorkout.exercises[_fitWorkout.currentEx];
@@ -16133,7 +16152,9 @@ function saveEditSet(){
   /* The box shows the display unit, so convert back before storing. */
   st.weight=fromDisplayWeight(parseFloat(w?w.value:0)||0);
   st.reps=reps;
-  _editSet=-1;
+  /* the row speaks the reader's scale; the store only ever speaks RPE */
+  if(_edRpe===null)delete st.rpe; else st.rpe=effortToRPE(_edRpe);
+  _editSet=-1;_edRpe=null;
   renderFitness();
 }
 /* Removing a workout from the log. Asks first, because there is no undo and
@@ -16951,6 +16972,12 @@ function fitGo(ei){
   renderFitness();
 }
 function rpePick(v){_fitRpe=(_fitRpe===v)?null:v;renderFitness();}
+/* THE SAME THING FOR A SET ALREADY LOGGED. Its own variable, because the add
+   form's row is still on screen underneath and the two must not answer for
+   each other. Held in the READER's scale, like _fitRpe, and converted at the
+   store's edge. */
+var _edRpe=null;
+function edRpePick(v){_edRpe=(_edRpe===v)?null:v;renderFitness();}
 function toggleWarm(){_fitWarm=!_fitWarm;renderFitness();}
 function removeWarm(idx){
   if(!_fitWorkout)return;
@@ -21322,6 +21349,11 @@ function exPrevHTML(ex,curPR){
       s=mySets[i];
       h+='<button class="fw-ps fw-mine'+(_setSel===i?' sel':'')+'" onclick="setSelOpen('+i+')">'+
          (isCardioEx(ex.name)?cardioRowHTML(s):num(s))+
+         /* WITHOUT THIS THE TAP HAS NO ANSWER. Nothing on the screen said what
+            a logged set's effort was, so there was no way to tell whether it
+            took - or what it was, an hour later. */
+         (function(){var e=effortFromRPE(s.rpe);
+           return e===''?'':'<i class="fw-ps-rpe">'+nfmt(e)+'</i>';})()+
          ((curPR&&s.weight>curPR)?'<i class="fw-ps-pr">&#9733;</i>':'')+'</button>';
     }
     h+='</div>';
@@ -21329,12 +21361,23 @@ function exPrevHTML(ex,curPR){
       if(_editSet===_setSel){
         /* the same two boxes the row used to open, in the one place a set is
            now edited - so ed-w and ed-r still exist exactly once */
+        var _sc2=effortScale(),_lo2=(_sc2==='rir')?0:1,_hi2=(_sc2==='rir')?9:10,_v2;
         h+='<div class="fw-sel-ed">'+
-           '<input id="ed-w" class="mtnm" type="number" step="0.5" value="'+edWeightVal(mySets[_setSel].weight)+'">'+
-           '<span class="fw-sel-x">&times;</span>'+
-           '<input id="ed-r" class="mtnm" type="number" value="'+mySets[_setSel].reps+'">'+
-           '<button class="fw-sel-b go" onclick="saveEditSet()">'+_t('שמור')+'</button>'+
-           '<button class="fw-sel-b" onclick="cancelEditSet()">'+_t('ביטול')+'</button>'+
+           '<div class="fw-sel-nums">'+
+             '<input id="ed-w" class="mtnm" type="number" step="0.5" value="'+edWeightVal(mySets[_setSel].weight)+'">'+
+             '<span class="fw-sel-x">&times;</span>'+
+             '<input id="ed-r" class="mtnm" type="number" value="'+mySets[_setSel].reps+'">'+
+           '</div>';
+        /* the same ten taps the add form offers, and the same switch beside
+           them - a set is corrected in the scale it was logged in */
+        h+='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc2==='rir'?'RIR':'RPE')+'</button><div class="rpe-row">';
+        for(_v2=_lo2;_v2<=_hi2;_v2++)
+          h+='<button class="rpe-b'+(_edRpe===_v2?' on':'')+'" onclick="edRpePick('+_v2+')">'+nfmt(_v2)+'</button>';
+        h+='</div></div>';
+        h+='<div class="fw-sel">'+
+             '<button class="fw-sel-b go" onclick="saveEditSet()">'+_t('שמור')+'</button>'+
+             '<button class="fw-sel-b" onclick="cancelEditSet()">'+_t('ביטול')+'</button>'+
+           '</div>'+
            '</div>';
       } else {
         h+='<div class="fw-sel">'+
