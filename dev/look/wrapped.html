@@ -115,6 +115,34 @@
   .srow .fill{display:block;height:100%;border-radius:5px}
   .srow .v{font-size:11px;opacity:.7;min-width:52px;text-align:end}
   .hint{text-align:center;font-size:11.5px;color:var(--muted);margin-top:10px}
+
+  /* ── the one thing you carry into next week ── */
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);
+    border-radius:999px;padding:7px 12px;font:700 12.5px/1.35 inherit;color:#fff;
+    cursor:pointer;text-align:start}
+  .chip:hover{background:rgba(255,255,255,.17)}
+  .chip.on{background:#fff;color:#1a1512;border-color:#fff}
+  .carry{width:100%;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.17);
+    border-radius:14px;padding:12px 13px;color:#fff;font:400 15px/1.5 inherit;
+    resize:none;min-height:76px}
+  .carry::placeholder{color:rgba(255,255,255,.45)}
+  .carry:focus{outline:none;border-color:rgba(255,255,255,.42);background:rgba(255,255,255,.13)}
+  .keep{width:100%;border:0;border-radius:13px;padding:13px;cursor:pointer;
+    background:#fff;color:#1a1512;font:800 15px/1 inherit}
+  .keep:disabled{background:rgba(255,255,255,.2);color:rgba(255,255,255,.5);cursor:default}
+  .kept{background:rgba(255,255,255,.08);border-radius:14px;padding:13px 14px;font-size:13px;
+    line-height:1.65;opacity:.9}
+  .kept b{display:block;font-size:15.5px;margin-bottom:5px}
+
+  /* the two places it comes back, drawn in the app's own material */
+  .ret{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+  .ret>div{flex:1 1 220px;background:var(--ground);border-radius:15px;padding:13px 14px;
+    box-shadow:var(--press-sm)}
+  .ret .rh{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--muted);
+    margin-bottom:8px}
+  .ret .rb{font-size:14px;line-height:1.55}
+  .ret .rb i{font-style:normal;color:var(--terra700);font-weight:700}
 </style>
 
 <div class="wrap">
@@ -140,6 +168,26 @@
       <br><b>השירים</b> — כולם, עם היום שבו בחרת אותם.
       <br><b>לאן הזמן הלך</b> — החלוקה של השבוע.
       <br><b>המכתב</b> — מה שהמאמן ראה, בסוף.
+      <br><b>לשבוע הבא</b> — דבר אחד שלוקחים איתך.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cn">ומה שהופך את זה למשהו ולא ליומן</div>
+    <div class="cw">
+      משפט שנכתב בסוף סיכום ונשאר שם הוא יומן שאף אחד לא פותח. זה חוזר
+      בשני מקומות, ובשבוע הבא הסיכום נפתח בשאלה אם זה קרה.
+    </div>
+    <div class="ret" style="margin-top:12px">
+      <div>
+        <div class="rh">כרטיס הבית · כל בוקר</div>
+        <div class="rb">יום שלישי, 7 באוקטובר<br><i>לתכנן ארוחה אחת עם חלבון לפני שיוצאים</i></div>
+      </div>
+      <div>
+        <div class="rh">סיום היום · בראש</div>
+        <div class="rb">לקחת לשבוע הזה:<br><i>לתכנן ארוחה אחת עם חלבון לפני שיוצאים</i><br>
+          <span style="color:var(--muted);font-size:12.5px">קרה היום?&nbsp; כן · לא</span></div>
+      </div>
     </div>
   </div>
 
@@ -281,7 +329,40 @@ var PAGES = [
       'מהתלם, וכל השאר היו כמעט מדויקים. בדיוק בימים שהתאמנת גם אכלת הכי נקי וגם נתת ' +
       'את הציונים הכי גבוהים — זה לא מקרי. לשבוע הבא, דבר אחד: לתכנן מראש ארוחה אחת ' +
       'עם חלבון לפני שיוצאים. המשקל כבר סיפר את הסיפור הזה בעצמו.</div></div>' },
+  { ph: 0, kick: 'לשבוע הבא', ttl: 'דבר אחד<br>שלוקחים איתך',
+    note: 'לא רשימה. משפט אחד שיופיע לך כל בוקר, ושאפתח איתו את הסיכום הבא ' +
+      'כדי לשאול אם קרה.',
+    carry: true },
 ];
+
+/* The blank box at the end of seven pages is where a person stops, so the
+   three chips are things she already said this week - two from "מה הייתי
+   עושה אחרת" and one from the letter - and tapping one fills the box. */
+var CARRY_SUGGEST = [
+  'לתכנן ארוחה אחת עם חלבון לפני שיוצאים',
+  'לישון לפני אחת',
+  'להפסיק לדחות את השיחה הזאת',
+];
+var carry = '', carrySaved = false;
+
+function carryHTML() {
+  if (carrySaved) {
+    return '<div class="kept"><b>״' + esc(carry) + '״</b>' +
+      'יופיע מחר בבוקר בכרטיס הבית, ויחכה לך בראש סיום היום. ' +
+      'בעוד שבוע אשאל אותך אם זה קרה.</div>';
+  }
+  return '<div class="chips">' + CARRY_SUGGEST.map(function (s, i) {
+      return '<button class="chip' + (carry === s ? ' on' : '') +
+        '" data-s="' + i + '">' + s + '</button>';
+    }).join('') + '</div>' +
+    '<textarea class="carry" id="carry" placeholder="או כתבי משפט משלך…">' +
+    esc(carry) + '</textarea>' +
+    '<button class="keep" id="keep"' + (carry.trim() ? '' : ' disabled') + '>' +
+    'קחי את זה לשבוע הבא</button>';
+}
+function esc(t) {
+  return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 var at = 0;
 function draw() {
@@ -296,7 +377,8 @@ function draw() {
       (p.note ? '<div class="note">' + p.note + '</div>' : '') +
       /* the nav bar is 58px tall and sits over the body, so the last line of
          a page that scrolls has to be able to clear it */
-      (p.body || '') + '<div style="height:62px;flex:0 0 auto"></div></div></div>';
+      (p.body || '') + (p.carry ? carryHTML() : '') +
+      '<div style="height:62px;flex:0 0 auto"></div></div></div>';
   });
   h += '<div class="nav">' +
     '<button id="prev"' + (at === 0 ? ' disabled' : '') + '>‹ הקודם</button>' +
@@ -304,6 +386,23 @@ function draw() {
   d.innerHTML = h;
   d.querySelector('#prev').onclick = function () { if (at > 0) { at--; draw(); } };
   d.querySelector('#next').onclick = function () { if (at < PAGES.length - 1) { at++; draw(); } };
+
+  /* draw() rebuilds the whole deck, so what she typed has to survive it:
+     carry is the state and the box is drawn from it, never the reverse */
+  var box = d.querySelector('#carry');
+  if (box) {
+    var keep = d.querySelector('#keep');
+    box.oninput = function () { carry = box.value; keep.disabled = !carry.trim(); };
+    keep.onclick = function () { if (carry.trim()) { carrySaved = true; draw(); } };
+    d.querySelectorAll('.chip').forEach(function (c) {
+      c.onclick = function () {
+        carry = CARRY_SUGGEST[+c.dataset.s];
+        draw();
+        var b = document.getElementById('deck').querySelector('#carry');
+        if (b) { b.focus(); b.setSelectionRange(carry.length, carry.length); }
+      };
+    });
+  }
 }
 draw();
 </script>
