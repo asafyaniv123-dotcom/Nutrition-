@@ -3444,6 +3444,116 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       });
     }
 
+    /* ── THE WEEKLY LETTER ──
+       The app draws the week's charts itself. This says what they mean, in
+       four to six sentences, and the prompt spends most of its length on
+       what not to write - no figure already on the screen, no sentence that
+       would fit anyone else's week, no guilt.
+       Plain text, not a tool: nothing here reaches her food log, so there is
+       no shape to enforce. */
+    if (url.pathname === '/week' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'the coach is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+
+      const from = String((b && b.from) || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) return json({ error: 'bad week' }, 400);
+      const LANG = langName(b && b.lang);
+      const units = (b && b.units) === 'imperial' ? 'imperial' : 'metric';
+      const gender = (b && b.gender) === 'f' ? 'f' : (b && b.gender) === 'm' ? 'm' : '';
+      const targets = (b && b.targets) || {};
+      /* seven, and seven is the whole point - more would be another feature */
+      const days = (Array.isArray(b && b.days) ? b.days : []).slice(0, 7);
+      if (!days.length) return json({ error: 'nothing to look at' }, 400);
+      const weights = (Array.isArray(b && b.weights) ? b.weights : []).slice(-14);
+
+      /* READ ONCE A WEEK. Anything past a handful of calls in a day is a
+         loop, not a person, so the cap is small on purpose. */
+      const cap = Number(env.WEEK_DAILY_CAP || 8);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const today = new Date().toISOString().slice(0, 10);
+      const ipKey = 'wk:' + today + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      /* kept in coach/week-prompt.txt so the repo and the worker cannot
+         drift apart */
+      const SYSTEM = `You write one short weekly letter to someone using "Better Me". You are the same coach they talk to every day, looking back over their week.
+
+You are given, for each of the seven days: what they ate against their targets, whether they trained, how they rated the day, their steps, and their morning weight. You are given the weekly averages and the targets themselves. The app has already computed every number and is already showing the charts above your words, so you never repeat a figure they can see - you say what it MEANS.
+
+Write in the reader's language, addressing them in the grammatical gender you are given. Hebrew marks it on the verb, so it shows in every sentence.
+
+## What the letter is
+Four to six sentences. No headings, no bullet list, no emoji beyond one at most. It reads like a person who watched the week, not like a report.
+
+1. Open with the one thing that actually characterises the week. Not "you logged 6 days" - something they would recognise: the protein held every day except the two they went out, the weight is flat but the average moved, the weekend is where it goes.
+2. Name one thing that went well, specifically enough that it is clearly about THIS week.
+3. Name one thing worth changing, and make it a single concrete action for next week - not a principle. "Put 40 g of protein in the first meal" rather than "watch your protein".
+4. Close in a way that does not demand anything.
+
+## What you never do
+- Never total or re-state figures the charts already show. One number, at most, and only if the sentence needs it to make sense.
+- Never praise a deficit for being large, and never suggest making up for a heavy week. If the week was heavy, say it plainly and move on.
+- Never speak about a single day's weight. The weekly average is the only weight that means anything.
+- Never say "keep it up" or anything that would fit any week. If the sentence would be true of someone else's week, it is the wrong sentence.
+- No guilt. Ever.
+
+## When there is not much there
+If they logged two or three days, say so without reproach and write about what those days show. A short honest letter beats a padded one. If there is genuinely nothing to say, say that the week was quiet and that next week will have more to go on - in one sentence, not four.`;
+
+      const WHO = gender === 'f' ? 'a woman - address her in the feminine'
+                : gender === 'm' ? 'a man - address him in the masculine'
+                : 'someone whose gender is not recorded - write so it does not show';
+      const STATE =
+        'Answer in ' + LANG + '. Units are ' + units + '.\n' +
+        'You are writing to: ' + WHO + '\n' +
+        'The week starting ' + from + '.\n' +
+        'Daily targets: ' + JSON.stringify(targets) + '\n' +
+        'The seven days: ' + JSON.stringify(days) + '\n' +
+        'Morning weigh-ins: ' + (weights.length ? JSON.stringify(weights) : 'none recorded');
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-5',
+            max_tokens: 700,
+            system: SYSTEM,
+            messages: [{ role: 'user', content: STATE }],
+          }),
+        });
+      } catch {
+        return json({ error: 'the coach could not be reached' }, 502);
+      }
+      if (!r.ok) {
+        let why = '';
+        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+        return json({ error: 'the coach refused', why }, 502);
+      }
+      let d;
+      try { d = await r.json(); } catch { return json({ error: 'unreadable answer' }, 502); }
+      const text = ((d && d.content) || []).map((c) => c.text || '').join('').trim();
+      /* AN EMPTY ANSWER AND WHY. "no answer" said the text was empty and
+         nothing about the cause, which is the difference between a refusal,
+         a truncation and a block of a kind we do not read. */
+      if (!text) return json({ error: 'no answer',
+        stop: (d && d.stop_reason) || '',
+        kinds: ((d && d.content) || []).map((c) => c && c.type).join(','),
+        n: ((d && d.content) || []).length }, 502);
+      const u = (d && d.usage) || {};
+      return json({ ok: true, text: text.slice(0, 2000),
+                    usage: { in: u.input_tokens || 0, out: u.output_tokens || 0 } });
+    }
+
     if (url.pathname === '/analyze' && req.method === 'POST') {
       /* EITHER provider, now that Gemini can use the tools too. */
       if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'analysis is not configured' }, 503);
