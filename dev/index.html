@@ -5100,6 +5100,27 @@ body.sheet-open .tabbar{display:none}
 .me-top{text-align:center;margin-bottom:18px}
 .me-logo{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1;direction:ltr;background:linear-gradient(135deg,var(--violet-500),var(--terra-500));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .me-sub{font-size:11.5px;color:var(--muted);margin-top:7px}
+/* ── THE WEEKLY SUMMARY ── */
+.wk-card{display:block;width:100%;text-align:start;border:none;cursor:pointer;font-family:inherit;
+  background:var(--nu-ground,#e9e7e3);border-radius:17px;padding:14px 16px;margin-bottom:14px;
+  box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.wk-card:active{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+.wk-card-t{display:block;font-size:15px;font-weight:800;color:var(--nu-ink,#4a453f)}
+.wk-card-s{display:block;font-size:11.5px;color:var(--nu-muted,#6d675e);margin-top:4px}
+.wk-ov{position:fixed;inset:0;z-index:440;background:rgba(74,67,64,.62);
+  display:flex;align-items:flex-end;justify-content:center}
+.wk-sheet{width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:var(--nu-ground,#e9e7e3);
+  border-radius:22px 22px 0 0;padding:16px 14px calc(26px + env(safe-area-inset-bottom))}
+.wk-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
+.wk-ttl{font-size:19px;font-weight:800;color:var(--nu-ink,#4a453f)}
+.wk-sub{font-size:11.5px;color:var(--nu-muted,#6d675e);margin-top:3px}
+.wk-x{background:none;border:none;font-size:12.5px;font-weight:700;color:var(--nu-muted,#6d675e);
+  cursor:pointer;font-family:inherit;min-height:44px;padding:0 6px;flex:0 0 auto}
+.wk-letter{margin-top:4px;padding:15px 16px;border-radius:16px;background:#f3f1ed;
+  font-size:14.5px;line-height:1.85;color:var(--nu-ink,#4a453f);
+  box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.wk-wait{color:var(--nu-muted,#6d675e);font-size:13.5px}
+.wk-err{color:var(--terra-700);font-size:13px}
 .me-range{display:flex;gap:5px;background:rgba(255,255,255,.6);border-radius:13px;padding:4px;margin-bottom:14px}
 .me-rb{flex:1;border:none;border-radius:10px;padding:8px 4px;font-family:inherit;font-size:11.5px;font-weight:700;color:var(--muted);background:none;cursor:pointer}
 .me-rb.on{background:var(--card);color:var(--ink);box-shadow:0 2px 7px rgba(200,180,160,.2)}
@@ -31999,6 +32020,54 @@ var ME_C=['#7c5cc4','#d4553a','#0f7fa5','#b8791a'];
 var ME_INK='#4a453f',ME_MUTE='#6d675e',ME_GRID='rgba(176,168,156,.5)';
 var _meRange=14;
 
+/* ── THE WEEKLY SUMMARY ──
+   Sunday to Saturday, because weekStartOf already decides that everywhere
+   else in this app. Available once there is a week between the earliest day
+   on record and today - nobody is asked when they started. */
+var WK_SUM_KEY='wk_';
+/* THE EARLIEST DAY ANYTHING WAS WRITTEN. Scanned once and remembered, since
+   it only ever moves backwards and localStorage has hundreds of keys. */
+var _wkFirst=null;
+function wkFirstDay(){
+  if(_wkFirst!==null)return _wkFirst;
+  var best='',i,k;
+  try{
+    for(i=0;i<localStorage.length;i++){
+      k=localStorage.key(i);
+      if(!k)continue;
+      var m=/^(?:day|sum)_(\d{4}-\d{2}-\d{2})$/.exec(k);
+      if(m&&(!best||m[1]<best))best=m[1];
+    }
+  }catch(e){}
+  _wkFirst=best;
+  return best;
+}
+/* the Sunday of the last week that has FINISHED - this week is still being
+   lived in and a summary of it would be a summary of a fragment */
+function wkLastComplete(){
+  return weekStartOf(dayShift(-7));
+}
+function wkReady(){
+  var first=wkFirstDay();
+  if(!first)return false;
+  /* a week between the first day and today, or there is nothing to look back on */
+  var days=Math.round((new Date(todayStr()+'T12:00:00')-new Date(first+'T12:00:00'))/86400000);
+  if(days<7)return false;
+  var wk=wkLastComplete();
+  if(wk<first)return false;
+  var seen='';try{seen=localStorage.getItem('wk_seen')||'';}catch(e){}
+  return seen!==wk;
+}
+/* the seven rows of one week, in the shape meDayList already answers in, so
+   the same chart builders draw them */
+function wkDayList(from){
+  var out=[],i,s2,d;
+  for(i=0;i<7;i++){
+    s2=dayShift(i,from);d=new Date(s2+'T12:00:00');
+    out.push({date:s2,d:d,sum:loadSummary(s2),day:loadDay(s2),steps:stepsOf(s2)});
+  }
+  return out;
+}
 function meDayList(n){
   var out=[],i,d,s;
   for(i=n-1;i>=0;i--){
@@ -32077,11 +32146,85 @@ function meCard(id,title,sub,body){
   return h+body+'</div>';
 }
 
+var _wkRev='';           /* the week being looked at, or '' */
+var _wkRevText='',_wkRevBusy=false,_wkRevErr='';
+function wkRevOpen(from){
+  _wkRev=from;_wkRevText='';_wkRevErr='';_wkRevBusy=false;
+  try{localStorage.setItem('wk_seen',from);}catch(e){}
+  var got=null;try{got=JSON.parse(localStorage.getItem(WK_SUM_KEY+from)||'null');}catch(e){}
+  if(got&&got.text)_wkRevText=got.text; else wkFetch(from);
+  renderMe();
+}
+function wkRevClose(){_wkRev='';renderMe();}
+/* THE LETTER, ONCE. Written when the week is first opened and kept, because
+   a second reading of the same week should say the same thing - and because
+   asking again costs a call for a paragraph nobody asked to be rewritten. */
+function wkFetch(from){
+  _wkRevBusy=true;_wkRevErr='';
+  var rows=wkDayList(from),p=loadProfile(),days=[],i;
+  for(i=0;i<rows.length;i++){
+    var r=rows[i],m=r.day.meals||[],k=0,pr=0,c=0,ft=0,j;
+    for(j=0;j<m.length;j++){k+=m[j].kcal||0;pr+=m[j].p||0;c+=m[j].c||0;ft+=m[j].f||0;}
+    days.push({d:r.date,kcal:Math.round(k),p:Math.round(pr),c:Math.round(c),f:Math.round(ft),
+      trained:!!trainedOn(r.date,r.sum),rating:(r.sum&&r.sum.dayRating)||null,steps:r.steps||0});
+  }
+  fetch(SYNC_SERVER+'/week',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({from:from,lang:appLang(),units:APP_UNITS,
+      gender:appGender()||(p.sex||''),
+      targets:{kcal:TARGETS.kcal,p:TARGETS.p,c:TARGETS.c,f:TARGETS.f},
+      days:days,weights:coachWeights()})
+  }).then(function(r){return r.json();}).then(function(j2){
+    _wkRevBusy=false;
+    if(j2&&j2.ok&&j2.text){
+      _wkRevText=j2.text;
+      try{localStorage.setItem(WK_SUM_KEY+from,JSON.stringify({text:j2.text,at:Date.now()}));}catch(e){}
+    } else _wkRevErr=''+_t('לא הצלחתי לענות כרגע.')+'';
+    renderMe();
+  },function(){_wkRevBusy=false;_wkRevErr=''+_t('לא הצלחתי לענות כרגע.')+'';renderMe();});
+}
+/* the one card that says there is something to read */
+function wkCardHTML(){
+  if(_wkRev||!wkReady())return '';
+  var wk=wkLastComplete();
+  return '<button class="wk-card" onclick="wkRevOpen(\''+wk+'\')">'+
+    '<span class="wk-card-t">'+_t('הסיכום השבועי שלך מוכן')+'</span>'+
+    '<span class="wk-card-s">'+fmtDate(wk)+' &ndash; '+fmtDate(dayShift(6,wk))+'</span>'+
+    '</button>';
+}
+function wkRevHTML(){
+  if(!_wkRev)return '';
+  var rows=wkDayList(_wkRev),h='';
+  h+='<div class="wk-ov" onclick="if(event.target===this)wkRevClose()"><div class="wk-sheet">';
+  h+='<div class="wk-hd"><div><div class="wk-ttl">'+_t('השבוע שלך')+'</div>'+
+     '<div class="wk-sub">'+fmtDate(_wkRev)+' &ndash; '+fmtDate(dayShift(6,_wkRev))+'</div></div>'+
+     '<button class="wk-x" onclick="wkRevClose()">'+_t('סגור')+'</button></div>';
+  /* the charts first and from what is already stored, so nothing is blank
+     while the letter is being written */
+  h+=meCard('wkcal',''+_t('קלוריות')+'',''+_t('היעד')+' '+nfmt(TARGETS.kcal),
+    meLine('wkcal',rows,function(x){
+      var k=Math.round((x.day.meals||[]).reduce(function(a,m){return a+(m.kcal||0);},0));
+      return k>0?k:null;},ME_C[1],function(v){return nfmt(Math.round(v));}));
+  h+=meCard('wkpro',''+_t('חלבון')+'',''+_t('היעד')+' '+nfmt(TARGETS.p),
+    meLine('wkpro',rows,function(x){
+      var q=Math.round((x.day.meals||[]).reduce(function(a,m){return a+(m.p||0);},0));
+      return q>0?q:null;},ME_C[0],function(v){return nfmt(Math.round(v));}));
+  h+=meCard('wkstep',''+_t('צעדים')+'','',
+    meBars('wkstep',rows,function(x){return x.steps||0;},ME_C[2],function(v){return nfmt(Math.round(v));}));
+  /* and under them, what it means */
+  h+='<div class="wk-letter">';
+  if(_wkRevBusy)h+='<div class="wk-wait">'+_t('כותב לך על השבוע')+'&hellip;</div>';
+  else if(_wkRevErr)h+='<div class="wk-err">'+esc(_wkRevErr)+'</div>';
+  else h+=mdLite(_wkRevText||'');
+  h+='</div>';
+  return h+'</div></div>';
+}
 function renderMe(){
   var rows=meDayList(_meRange),i,r;
   var done=rows.filter(function(x){return x.sum&&x.sum.done;}).length;
   var h='<div class="me-wrap">';
 
+  h+=wkCardHTML();
   h+='<div class="me-top"><div class="me-logo">Me</div>';
   h+='<div class="me-sub">'+_t('מה שהימים מצטברים אליו')+'</div></div>';
 
@@ -32125,7 +32268,7 @@ function renderMe(){
   h+='<div id="home-book" class="me-slot"></div>';
 
   h+='</div>';
-  document.getElementById('me-screen').innerHTML=h;
+  document.getElementById('me-screen').innerHTML=h+wkRevHTML();
   // the widgets render into the slots by id, exactly as they did on the home screen
   var cal=document.getElementById('home-cal');
   if(cal){cal.innerHTML=buildHomeCalHTML();hydratePhotos(cal);}
