@@ -3430,8 +3430,12 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         assumption: String(it.assumption || '').slice(0, 200),
       })).filter((it) => it.name);
 
+      /* what the turn cost, as the API counted it - estimates of this were
+         out by a factor of two in both directions */
+      const u = (d && d.usage) || {};
       return json({
         ok: true,
+        usage: { in: u.input_tokens || 0, out: u.output_tokens || 0 },
         action: ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none',
         date: at,
         items,
