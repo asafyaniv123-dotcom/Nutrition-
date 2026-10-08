@@ -587,12 +587,20 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .co{margin:4px 0 14px}
 .co-list{max-height:52vh;overflow-y:auto;padding:2px 2px 8px;display:flex;flex-direction:column;gap:9px}
 .co-empty{font-size:13px;color:var(--nu-muted,#6d675e);text-align:center;padding:26px 10px;line-height:1.7}
-.co-u{align-self:flex-end;max-width:82%;background:var(--nu-ground,#e9e7e3);border-radius:15px 15px 4px 15px;
+/* HIS WORDS ARE PRESSED INTO A WARMER SURFACE, the coach's sit on a lighter
+   one. The shadow alone said this and said it too quietly to read while
+   scrolling. Measured: ink is 6.72:1 on the sand and 8.41:1 on the light. */
+.co-u{align-self:flex-end;max-width:82%;background:#e2d8c8;border-radius:15px 15px 4px 15px;
   padding:10px 13px;font-size:14px;line-height:1.6;color:var(--nu-ink,#4a453f);
-  box-shadow:inset 1px 2px 4px var(--nu-shade,rgba(176,168,156,.44)),inset -1px -1px 3px var(--nu-lit,rgba(255,255,255,.95))}
-.co-a{align-self:flex-start;max-width:88%;background:var(--nu-ground,#e9e7e3);border-radius:15px 15px 15px 4px;
+  box-shadow:inset 1px 2px 4px var(--nu-shade,rgba(176,168,156,.44)),inset -1px -1px 3px rgba(255,255,255,.8)}
+/* muted measures 3.97:1 on the sand, so nothing muted goes inside it */
+.co-u .co-pc{color:var(--nu-ink,#4a453f)}
+.co-a{align-self:flex-start;max-width:88%;background:#f3f1ed;border-radius:15px 15px 15px 4px;
   padding:11px 14px;font-size:14px;line-height:1.75;color:var(--nu-ink,#4a453f);
   box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+/* what he sent, in the bubble that sent it */
+.co-shots{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.co-img{width:92px;height:92px;object-fit:cover;border-radius:10px;display:block}
 .co-a b{font-weight:800}
 .co-wait{color:var(--nu-muted,#6d675e);letter-spacing:.2em}
 .co-q{margin-top:8px;padding-top:8px;border-top:1px solid rgba(176,168,156,.3);
@@ -11143,12 +11151,24 @@ function coachSend(){
   var el=document.getElementById('co-in');
   var text=el?el.value.trim():'';
   if(!text&&!_coachPics.length)return;
-  var d=todayStr(),rec=loadCoach(d);
-  rec.turns.push({role:'user',text:text,pics:_coachPics.length,at:Date.now()});
-  saveCoach(d,rec);
+  var d=todayStr();
   var pics=_coachPics.slice();_coachPics=[];
   if(el)el.value='';
   _coachBusy=true;_coachErr='';coachPaint();
+  /* INTO INDEXEDDB, NOT INTO THE TURN. A picture is tens of kilobytes and
+     localStorage holds about five megabytes for the whole app - the day
+     photos were moved out for exactly this reason. The turn keeps keys. */
+  Promise.all(pics.map(function(p){return photoPut(p);})).then(function(keys){
+    var rec=loadCoach(d);
+    rec.turns.push({role:'user',text:text,
+      pics:keys.filter(function(k){return !!k;}),at:Date.now()});
+    saveCoach(d,rec);
+    coachPaint();
+    coachPost(d,text,pics,rec);
+  });
+}
+/* the turn is on the record and the pictures are stored; now ask */
+function coachPost(d,text,pics,rec){
 
   var day=loadDay(d),logged=[],i;
   for(i=0;i<day.meals.length;i++){var m=day.meals[i];
@@ -11223,8 +11243,14 @@ function coachInnerHTML(){
   for(i=0;i<rec.turns.length;i++){
     var t=rec.turns[i];
     if(t.role==='user'){
-      h+='<div class="co-u">'+(t.text?esc(t.text):'')+
-         (t.pics?'<span class="co-pc">'+_t('תמונה')+(t.pics>1?' ×'+nfmt(t.pics):'')+'</span>':'')+
+      var ks=Array.isArray(t.pics)?t.pics:[];
+      h+='<div class="co-u">'+
+         (ks.length?'<span class="co-shots">'+ks.map(function(k){
+            return photoImg(k,'class="co-img" alt=""');}).join('')+'</span>':'')+
+         /* an older turn kept a NUMBER here, before the pictures were stored */
+         (!ks.length&&t.pics?'<span class="co-pc">'+_t('תמונה')+
+            (t.pics>1?' \u00d7'+nfmt(t.pics):'')+'</span>':'')+
+         (t.text?esc(t.text):'')+
          '</div>';
     } else {
       h+='<div class="co-a">'+mdLite(t.text||'')+
@@ -11267,7 +11293,7 @@ function mdLite(t){
 }
 function coachPaint(){
   var box=document.getElementById('co-wrap');
-  if(box)box.innerHTML=coachInnerHTML();
+  if(box){box.innerHTML=coachInnerHTML();hydratePhotos(box);}
   var sc=document.getElementById('co-list');
   if(sc)sc.scrollTop=sc.scrollHeight;
 }
@@ -15005,6 +15031,10 @@ function renderToday(){
   /* the bars first, because they are what the chat changes, then the chat,
      then what the day already holds */
   _c.innerHTML=fqCardHTML()+macroHTML+pillsHTML+waterHTML+coachHTML()+logHTML;
+  /* the chat's pictures live in IndexedDB; innerHTML alone leaves empty imgs */
+  (function(){var _co=document.getElementById('co-wrap');
+    if(_co){hydratePhotos(_co);var _l=document.getElementById('co-list');
+      if(_l)_l.scrollTop=_l.scrollHeight;}})();
   renderAddKinds();
   if(_askOpen)askPaint();
   if(fdbOpen)fdbPaint();
