@@ -89,6 +89,14 @@
   .swatch{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:5px;
     vertical-align:-1px}
 
+  /* ── the figures, each against the week before it ── */
+  .figs{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .fig{background:rgba(255,255,255,.07);border-radius:13px;padding:11px 12px}
+  .fig b{font-size:23px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  .fig em{font-style:normal;font-size:11.5px;font-weight:800;margin-inline-start:6px}
+  .fig span{font-size:11.5px;opacity:.72;display:block;margin-top:4px}
+  .up{color:#a8d8a2} .dn{color:#f0b3a2}
+
   /* ── the words ── */
   .said{background:rgba(255,255,255,.07);border-radius:14px;padding:12px 14px}
   .said .q{font-size:14.5px;line-height:1.6}
@@ -158,6 +166,9 @@ function pic(a, b, c, seed) {
   return "url('data:image/svg+xml;utf8," + encodeURIComponent(s + '</svg>') + "')";
 }
 var DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+/* the first letter is not an initial here: ראשון, רביעי both give ר and
+   שני, שלישי, שישי, שבת all give ש. Hebrew numbers its days instead. */
+var DAY_MARK = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 var SHOTS = [
   { ph: pic('#ffe9c2', '#e0a85c', '#7a4a1e', 1), cap: 'ארוחת בוקר על המרפסת', d: 0 },
   { ph: pic('#1e2a22', '#4a7d4a', '#bcd9b4', 2), cap: 'הליכה בפארק אחרי העבודה', d: 1 },
@@ -195,7 +206,8 @@ function chart() {
   var W = 272, H = 136, PL = 4, PR = 4, PT = 12, PB = 18;
   var cW = W - PL - PR, cH = H - PT - PB;
   var lo = Math.min.apply(null, WEIGHTS) - 0.4, hi = Math.max.apply(null, WEIGHTS) + 0.4;
-  var xp = function (i) { return PL + cW * i / 6; };
+  /* the week reads right to left, so Sunday is the rightmost point */
+  var xp = function (i) { return PL + cW * (6 - i) / 6; };
   var yp = function (v) { return PT + cH - cH * (v - lo) / (hi - lo); };
   var avg = WEIGHTS.reduce(function (a, b) { return a + b; }, 0) / 7;
   var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '">';
@@ -212,9 +224,9 @@ function chart() {
   s += '<polyline fill="none" stroke="#8fb6d4" stroke-width="1.8" stroke-opacity=".75" ' +
        'stroke-dasharray="3,3" points="' +
        RATING.map(function (v, i) { return xp(i).toFixed(1) + ',' + ry(v).toFixed(1); }).join(' ') + '"/>';
-  DAYS.forEach(function (d, i) {
+  DAY_MARK.forEach(function (d, i) {
     s += '<text x="' + xp(i).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="middle" ' +
-         'font-size="8.5" fill="#fff" fill-opacity=".55">' + d[0] + '</text>';
+         'font-size="9" fill="#fff" fill-opacity=".55">' + d + '</text>';
   });
   s += '</svg>';
   return '<div class="chart">' + s +
@@ -231,7 +243,16 @@ var PAGES = [
     body: carousel() },
   { ph: 4, kick: 'ההתקדמות', ttl: 'ירדת חצי קילו,<br>והאמצע היה רועש',
     note: 'שני הימים באמצע עלו ואז חזרו — זה מים, לא שומן. הממוצע השבועי הוא מה שזז.',
-    body: chart() },
+    body: chart() + '<div class="figs">' + [
+      ['60.3', 'ק״ג', '−0.5', 'up', 'מהשבוע שעבר'],
+      ['6', 'מתוך 7', '+2', 'up', 'ימים שסיכמת'],
+      ['3', 'אימונים', '+1', 'up', 'מהשבוע שעבר'],
+      ['7.4', 'ממוצע', '+0.6', 'up', 'הציון שנתת ליום'],
+    ].map(function (f) {
+      return '<div class="fig"><b>' + f[0] + '</b>' +
+        '<em class="' + f[3] + '">' + f[2] + '</em>' +
+        '<span>' + f[1] + ' · ' + f[4] + '</span></div>';
+    }).join('') + '</div>' },
   { ph: 2, kick: 'מה שאמרת', ttl: 'שישה דברים<br>שכתבת לעצמך',
     body: '<div class="split">' + SAID.map(function (s) {
       return '<div class="said"><div class="q">' + s.q + '</div><div class="w">' + s.w + '</div></div>';
