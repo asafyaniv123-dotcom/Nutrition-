@@ -7971,13 +7971,22 @@ var ACT_FACTOR={1:1.2,2:1.375,3:1.55,4:1.725,5:1.9};
    a day. The floor RAISES the figure and reports that it did, because a
    number quietly changed is the same problem as a number quietly invented. */
 var FLOOR_KCAL={f:1200,m:1500};
-/* GRAMS PER KILO, BY HOW MUCH SHE TRAINS. One step lower than it was, all
-   the way up. Morton 2018 found no further benefit for lean mass past about
-   1.6 g/kg, and with the deficit bonus on top the old ladder put FOUR of
-   these five rungs above that line - the top one at 2.4, which is more than
-   a lean trained athlete cutting is given. Now 1.6 is the middle and 2.2
-   (5 + recomp) is the ceiling, which is where a ceiling belongs. */
-var PROT_PER_KG={1:1.0,2:1.2,3:1.4,4:1.6,5:1.8};
+/* GRAMS PER KILO, BY HOW MUCH SHE TRAINS.
+   The range is 1.6 to 2.2 and the default is 1.8, which is the middle rung
+   with no goal bonus on it.
+   It was 1.0 to 1.8 here, and the goal bonus put the answer anywhere from
+   1.1 to 2.2 - so the FLOOR was the part that was wrong: someone training
+   twice a week and holding their weight was handed 1.2, which is under
+   every recommendation for a person who lifts at all.
+   Morton 2018 keeps the ceiling where it is. No further benefit for lean
+   mass past about 1.6, so 2.2 is already generous and is reached only by
+   training five times a week while recomping - the one case that earns it. */
+var PROT_PER_KG={1:1.6,2:1.7,3:1.8,4:1.9,5:2.0};
+/* STATED, NOT IMPLIED. The ladder and the goal bonus are added as before and
+   the sum is clamped, so "1.6 to 2.2" is true for all twenty combinations of
+   five rungs and four goals - and stays true when a bonus is next changed,
+   without anyone having to recompute the corners. */
+var PROT_MIN=1.6,PROT_MAX=2.2;
 function profileTargets(p){
   /* THE SAME SIX TESTS THE QUESTION CARD MAKES. Sweeping all 729
      combinations of right/wrong/absent, the old line here disagreed with
@@ -7997,7 +8006,9 @@ function profileTargets(p){
      she is never shown a figure that was moved without her */
   var floored=false, fl=FLOOR_KCAL[p.sex]||1200;
   if(kcal<fl){kcal=fl;floored=true;}
-  var prot=Math.round(w*((PROT_PER_KG[p.activity]||1.5)+g.p));
+  var _ppk=(PROT_PER_KG[p.activity]||PROT_MIN)+g.p;
+  if(_ppk<PROT_MIN)_ppk=PROT_MIN; if(_ppk>PROT_MAX)_ppk=PROT_MAX;
+  var prot=Math.round(w*_ppk);
   var fat=Math.round(kcal*0.25/9);
   var carb=Math.round((kcal-prot*4-fat*9)/4);
   if(carb<0)carb=0;
