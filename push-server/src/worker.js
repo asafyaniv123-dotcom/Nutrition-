@@ -3203,6 +3203,244 @@ export default {
         model: VMODEL,
       });
     }
+    /* ── THE COACH ──
+       One box. Words, a photograph, or both, and a correction said the same
+       way. Everything the model needs to answer is sent every turn - the
+       targets, what is already logged today, what is left - because it keeps
+       nothing between calls and guessing is worse than being told.
+
+       IT NEVER ADDS UP. Per-item numbers are its job; the app sums them and
+       writes "what is left" underneath from its own figures. If the model
+       totalled anything, two numbers would sit on one screen and one of them
+       would be wrong.
+
+       AND IT IS NOT GIVEN A CLOCK. This app's day ends at 04:00, so the day
+       is sent, never derived - something eaten at 01:30 belongs to the day
+       the person is still living in. */
+    if (url.pathname === '/coach' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'the coach is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+
+      const day = String((b && b.day) || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: 'bad day' }, 400);
+      const LANG = langName(b && b.lang);
+      const units = (b && b.units) === 'imperial' ? 'imperial' : 'metric';
+      const targets = (b && b.targets) || {};
+      /* capped, because they are sent whole on every turn and a long day is
+         still a day - sixty rows is more than anyone logs */
+      const logged = Array.isArray(b && b.logged) ? b.logged.slice(0, 60) : [];
+      const left = (b && b.left) || {};
+      const history = (Array.isArray(b && b.history) ? b.history : []).slice(-12);
+      const message = String((b && b.message) || '').replace(/\s+/g, ' ').trim().slice(0, 1500);
+      const images = Array.isArray(b && b.images) ? b.images.slice(0, 4) : [];
+      if (!message && !images.length) return json({ error: 'nothing to read' }, 400);
+
+      /* the same gate /see uses, per image: base64 and nothing else, because
+         this string is handed to the model API verbatim */
+      for (const im of images) {
+        const data = String((im && im.data) || '');
+        const mime = String((im && im.mime) || 'image/jpeg');
+        if (!/^image\/(jpeg|png|webp)$/.test(mime)) return json({ error: 'bad image type' }, 400);
+        if (!/^[A-Za-z0-9+/]+=*$/.test(data)) return json({ error: 'bad image' }, 400);
+        if (data.length < 500) return json({ error: 'bad image' }, 400);
+        if (data.length > 900000) return json({ error: 'image too large' }, 413);
+      }
+
+      /* Its own budget, and an image costs several times a sentence - so the
+         cap counts pictures, not turns. A text-only turn spends one. */
+      const cap = Number(env.COACH_DAILY_CAP || 120);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const today = new Date().toISOString().slice(0, 10);
+      const ipKey = 'co:' + today + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      const spend = Math.max(1, images.length * 3);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + spend), { expirationTtl: 172800 });
+
+      const SYSTEM =
+        'You are the nutrition coach inside Better Me. Someone tells you what\n' +
+        'they ate - in words, in photographs, or both - and you turn it into\n' +
+        'rows of food with numbers on them.\n' +
+        '\n' +
+        'Answer in ' + LANG + '. Short, written for a phone held in one hand.\n' +
+        'Units are ' + units + '.\n' +
+        '\n' +
+        'YOU NEVER ADD ANYTHING UP.\n' +
+        'Do not total the items. Do not say what is left for the day. Do not\n' +
+        'write percentages. The app sums what you return and writes the\n' +
+        'remaining figures underneath your message from its own numbers. A\n' +
+        'total from you would sit beside a different one and one of you would\n' +
+        'be wrong. Per-item numbers are yours; everything that adds up is not.\n' +
+        '\n' +
+        'THE DATE is given to you. Use it. Never work one out from a clock:\n' +
+        'this day ends at 04:00, so food at 01:30 belongs to the day the\n' +
+        'person is still living in. When they say yesterday, or name a day,\n' +
+        'set date to that day.\n' +
+        '\n' +
+        'ITEMS\n' +
+        'One row per food. The name in the reader\'s language.\n' +
+        'quantity is what you believe was eaten, said the way a person says\n' +
+        'it: "150 g cooked", "half a pita", "a cup".\n' +
+        'assumption is one short clause naming anything you decided rather\n' +
+        'than read. Empty when nothing was assumed. Never hide one to keep\n' +
+        'the answer tidy.\n' +
+        'id: invent one for a new row, and COPY IT EXACTLY when you change a\n' +
+        'row that already exists.\n' +
+        '\n' +
+        'LABELS AND PACKAGES\n' +
+        'Read the per-100g column and the package size, then compute for the\n' +
+        'amount actually eaten, and say so in assumption.\n' +
+        'A branded product is its package: use the printed figures. "PRO 20"\n' +
+        'means twenty grams of protein in the unit. It does not mean twenty\n' +
+        'percent. Every NN in a product name is the claim on the packet.\n' +
+        '\n' +
+        'ONE QUESTION, AT MOST\n' +
+        'Only about something you cannot see that moves a number a lot: oil\n' +
+        'in the pan, a sauce, butter, milk in the coffee, a shared portion.\n' +
+        'Ask it AND LOG ANYWAY, with your best assumption named. A question\n' +
+        'is never a reason to return nothing - they are standing in a\n' +
+        'kitchen, not filling in a form. Otherwise leave question empty.\n' +
+        '\n' +
+        'CORRECTIONS\n' +
+        '"I only ate half", "it was chicken not pork", "there were no chips"\n' +
+        'change rows that exist: action update, the ORIGINAL ids, only the\n' +
+        'rows that change. Never answer a correction with add - that is how a\n' +
+        'meal gets counted twice, silently.\n' +
+        '\n' +
+        'ADVICE\n' +
+        'Asked what to eat, or whether there is room: answer from what is\n' +
+        'left, two or three options with a calorie and protein estimate each.\n' +
+        'action none, items empty. Shown a menu, the same.\n' +
+        'Asked why, answer with the sources.\n' +
+        '\n' +
+        'MOVEMENT\n' +
+        'The target already includes the training this person normally does.\n' +
+        'Do not hand back the calories of an ordinary session. On a genuinely\n' +
+        'unusual day estimate the extra and say what it does to the deficit.\n' +
+        '\n' +
+        'WEIGHT\n' +
+        'One morning is noise. Speak in the weekly average and the direction,\n' +
+        'and name the ordinary reasons a number jumps - salt, a late meal,\n' +
+        'alcohol, travel - without turning it into a warning.\n' +
+        '\n' +
+        'VOICE\n' +
+        'Honest and warm. No guilt, ever. Never suggest earning food back or\n' +
+        'eating less to make up for a day; if the deficit is already large,\n' +
+        'say so and say to eat. An emoji where it carries something.\n' +
+        'ONE practical remark at the end of a logging reply. One. Three is a\n' +
+        'lecture.';
+
+      const TOOL = {
+        name: 'reply',
+        description: 'The coach\'s answer, and whatever it changes about the day.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['add', 'update', 'delete', 'none'] },
+            date: { type: 'string', description: 'YYYY-MM-DD, the day these rows belong to' },
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  quantity: { type: 'string' },
+                  calories: { type: 'number' },
+                  protein: { type: 'number' },
+                  carbs: { type: 'number' },
+                  fat: { type: 'number' },
+                  assumption: { type: 'string' },
+                },
+                required: ['id', 'name', 'quantity', 'calories', 'protein', 'carbs', 'fat'],
+              },
+            },
+            question: { type: 'string' },
+            message: { type: 'string', description: 'what the person reads, in their language' },
+          },
+          required: ['action', 'date', 'items', 'message'],
+        },
+      };
+
+      /* Everything it needs, every turn. It keeps nothing between calls. */
+      const STATE =
+        'Today is ' + day + '.\n' +
+        'Targets: ' + JSON.stringify(targets) + '\n' +
+        'Already logged today: ' + JSON.stringify(logged) + '\n' +
+        'Left of each target: ' + JSON.stringify(left);
+
+      const msgs = [];
+      for (const t of history) {
+        const role = (t && t.role) === 'assistant' ? 'assistant' : 'user';
+        const text = String((t && t.text) || '').slice(0, 1200);
+        if (text) msgs.push({ role, content: text });
+      }
+      const content = [];
+      for (const im of images)
+        content.push({ type: 'image', source: { type: 'base64', media_type: String(im.mime || 'image/jpeg'), data: String(im.data) } });
+      content.push({ type: 'text', text: STATE + '\n\n' + (message || '(no words, only the picture)') });
+      msgs.push({ role: 'user', content });
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            /* Sonnet: it is looking at plates and reading labels, not
+               matching a word against a table. */
+            model: 'claude-sonnet-5',
+            max_tokens: 1600,
+            system: SYSTEM,
+            tools: [TOOL],
+            tool_choice: { type: 'tool', name: 'reply' },
+            messages: msgs,
+          }),
+        });
+      } catch {
+        return json({ error: 'the coach could not be reached' }, 502);
+      }
+      if (!r.ok) {
+        let why = '';
+        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+        return json({ error: 'the coach refused', why }, 502);
+      }
+      let d;
+      try { d = await r.json(); } catch { return json({ error: 'unreadable answer' }, 502); }
+      const use = ((d && d.content) || []).find((c) => c && c.type === 'tool_use' && c.name === 'reply');
+      if (!use || !use.input) return json({ error: 'no answer' }, 502);
+
+      const out = use.input;
+      /* The tool fixes the SHAPE, not the values: a date is still a string it
+         chose, and this one is written into a day of her food. */
+      const at = /^\d{4}-\d{2}-\d{2}$/.test(String(out.date || '')) ? out.date : day;
+      const items = (Array.isArray(out.items) ? out.items : []).slice(0, 30).map((it) => ({
+        id: String(it.id || '').slice(0, 40) || ('c' + Math.random().toString(36).slice(2, 8)),
+        name: String(it.name || '').slice(0, 120),
+        quantity: String(it.quantity || '').slice(0, 80),
+        calories: Math.max(0, Math.round(Number(it.calories) || 0)),
+        protein: Math.max(0, Math.round((Number(it.protein) || 0) * 10) / 10),
+        carbs: Math.max(0, Math.round((Number(it.carbs) || 0) * 10) / 10),
+        fat: Math.max(0, Math.round((Number(it.fat) || 0) * 10) / 10),
+        assumption: String(it.assumption || '').slice(0, 200),
+      })).filter((it) => it.name);
+
+      return json({
+        ok: true,
+        action: ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none',
+        date: at,
+        items,
+        question: String(out.question || '').slice(0, 300),
+        message: String(out.message || '').slice(0, 4000),
+      });
+    }
+
     if (url.pathname === '/analyze' && req.method === 'POST') {
       /* EITHER provider, now that Gemini can use the tools too. */
       if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'analysis is not configured' }, 503);
