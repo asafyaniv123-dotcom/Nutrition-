@@ -58,6 +58,11 @@ The app renders `message`, then appends its own **נשאר להיום** block co
 from the stores. The model's text and the app's numbers never overlap, so
 they cannot disagree.
 
+**Except when `action` is `none`.** Nothing was logged, so nothing moved, and
+a block repeating the same four figures under an answer about a recipe is
+noise — the model was already handed `left` and quotes it where it matters.
+The block appears only after `add`, `update` or `delete`.
+
 ### The four actions
 
 | action | what the app does |
