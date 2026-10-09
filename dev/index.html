@@ -5107,6 +5107,11 @@ body.sheet-open .tabbar{display:none}
 .wk-card:active{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .wk-card-t{display:block;font-size:15px;font-weight:800;color:var(--nu-ink,#4a453f)}
 .wk-card-s{display:block;font-size:11.5px;color:var(--nu-muted,#6d675e);margin-top:4px}
+/* a week not yet read. The dot is the only thing that changes once it has
+   been - the card itself is permanent. */
+.wk-card{position:relative}
+.wk-card.nu::after{content:'';position:absolute;inset-block-start:15px;inset-inline-end:16px;
+  width:9px;height:9px;border-radius:50%;background:var(--nu-amber,#f0a92e)}
 .wk-ov{position:fixed;inset:0;z-index:440;background:rgba(74,67,64,.62);
   display:flex;align-items:flex-end;justify-content:center}
 .wk-sheet{width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:var(--nu-ground,#e9e7e3);
@@ -32139,38 +32144,45 @@ var _meRange=14;
    else in this app. Available once there is a week between the earliest day
    on record and today - nobody is asked when they started. */
 var WK_SUM_KEY='wk_';
-/* THE EARLIEST DAY ANYTHING WAS WRITTEN. Scanned once and remembered, since
-   it only ever moves backwards and localStorage has hundreds of keys. */
-var _wkFirst=null;
-function wkFirstDay(){
-  if(_wkFirst!==null)return _wkFirst;
-  var best='',i,k;
-  try{
-    for(i=0;i<localStorage.length;i++){
-      k=localStorage.key(i);
-      if(!k)continue;
-      var m=/^(?:day|sum)_(\d{4}-\d{2}-\d{2})$/.exec(k);
-      if(m&&(!best||m[1]<best))best=m[1];
-    }
-  }catch(e){}
-  _wkFirst=best;
-  return best;
-}
+/* The scan for the earliest day ever written used to live here, memoised,
+   and the readiness gate was the only thing that called it. The gate now
+   asks about the week it is offering instead of about how long ago somebody
+   started, so the scan is gone rather than left to be rewired wrongly. */
 /* the Sunday of the last week that has FINISHED - this week is still being
    lived in and a summary of it would be a summary of a fragment */
 function wkLastComplete(){
   return weekStartOf(dayShift(-7));
 }
+/* IS THERE A WEEK TO READ. The old gate asked two questions that both had
+   the wrong answer.
+
+   It counted seven days from the FIRST record, which says nothing about
+   whether the week being summarised holds anything - somebody who wrote one
+   day a month ago passed it, and somebody who filled last week solid but
+   started six days ago did not. What matters is the week itself, so that is
+   what is counted: two days with something in them.
+
+   And it went false once wk_seen matched, which deleted the only way in.
+   Open the summary once and the card vanished until next Sunday, with no
+   route back to a week you were in the middle of. Seen is a BADGE now,
+   not a gate - wkCardNew answers it, and the card stays. */
+function wkDaysWritten(from){
+  var rows=wkDayList(from),i,r,n=0;
+  for(i=0;i<rows.length;i++){
+    r=rows[i];
+    if((r.sum&&(r.sum.done||r.sum.dayRating||r.sum.photo||r.sum.moment))||
+       (r.day&&r.day.meals&&r.day.meals.length)||r.steps)n++;
+  }
+  return n;
+}
 function wkReady(){
-  var first=wkFirstDay();
-  if(!first)return false;
-  /* a week between the first day and today, or there is nothing to look back on */
-  var days=Math.round((new Date(todayStr()+'T12:00:00')-new Date(first+'T12:00:00'))/86400000);
-  if(days<7)return false;
   var wk=wkLastComplete();
-  if(wk<first)return false;
+  if(!wk)return false;
+  return wkDaysWritten(wk)>=2;
+}
+function wkCardNew(){
   var seen='';try{seen=localStorage.getItem('wk_seen')||'';}catch(e){}
-  return seen!==wk;
+  return seen!==wkLastComplete();
 }
 /* the seven rows of one week, in the shape meDayList already answers in, so
    the same chart builders draw them */
@@ -32652,9 +32664,12 @@ function wkFetch(from){
 /* the one card that says there is something to read */
 function wkCardHTML(){
   if(_wkDeck||!wkReady())return '';
-  var wk=wkLastComplete();
-  return '<button class="wk-card" onclick="wkDeckOpen(\''+wk+'\')">'+
-    '<span class="wk-card-t">'+_t('הסיכום השבועי שלך מוכן')+'</span>'+
+  var wk=wkLastComplete(),isNew=wkCardNew();
+  /* the card STAYS once the week exists. Only the wording and the dot know
+     whether it has been read - a one-shot entry point is a week you cannot
+     get back into. */
+  return '<button class="wk-card'+(isNew?' nu':'')+'" onclick="wkDeckOpen(\''+wk+'\')">'+
+    '<span class="wk-card-t">'+(isNew?''+_t('הסיכום השבועי שלך מוכן')+'':''+_t('השבוע שלך')+'')+'</span>'+
     '<span class="wk-card-s">'+fmtDate(wk)+' &ndash; '+fmtDate(dayShift(6,wkDate(wk)))+'</span>'+
     '</button>';
 }
