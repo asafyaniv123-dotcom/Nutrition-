@@ -16245,7 +16245,18 @@ function verWatch(){
     var tag=r.headers.get('etag')||r.headers.get('last-modified')||'';
     if(!tag)return;
     if(!_verTag){_verTag=tag;return;}       // the first answer is the baseline
-    if(tag!==_verTag)location.reload();
+    if(tag===_verTag)return;
+    /* A PLAIN RELOAD CAN COME BACK FROM THE CACHE, and then this never
+       fires again. Pages serves the document with max-age=600, so a
+       location.reload() inside that window can hand back the very file we
+       just found to be stale - and the reloaded page takes its baseline
+       from a no-store HEAD, which is the NEW tag, so it is satisfied and
+       stops asking. Permanently old, and quiet about it.
+
+       A URL the cache has never seen cannot do that. The old _v is
+       stripped first so it does not accumulate, and go= survives. */
+    var s=location.search.replace(/([?&])_v=\d+&?/,'$1').replace(/[?&]$/,'');
+    location.replace(location.pathname+s+(s?'&':'?')+'_v='+now+location.hash);
   },function(){});
 }
 addEventListener('visibilitychange',function(){if(!document.hidden)verWatch();});
