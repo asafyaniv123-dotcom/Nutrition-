@@ -32218,14 +32218,27 @@ function wkDaysWritten(from){
   }
   return n;
 }
-function wkReady(){
-  var wk=wkLastComplete();
-  if(!wk)return false;
-  return wkDaysWritten(wk)>=2;
+/* THE MOST RECENT FINISHED WEEK THAT ACTUALLY HOLDS SOMETHING.
+   Looking only at LAST week is right for somebody who logs every day and
+   wrong for everybody else. Come back after a fortnight away and the week
+   worth reading is the one you were here for - offering nothing instead is
+   the app forgetting on your behalf. Eight weeks back, then give up.
+   It stops at the first week that qualifies, so the common case reads one
+   week and not eight. */
+var WK_LOOK_BACK=8;
+function wkBestWeek(){
+  var wk=wkLastComplete(),i;
+  for(i=0;i<WK_LOOK_BACK;i++){
+    if(!wk)return '';
+    if(wkDaysWritten(wk)>=2)return wk;
+    wk=dayShift(-7,wkDate(wk));
+  }
+  return '';
 }
+function wkReady(){return !!wkBestWeek();}
 function wkCardNew(){
   var seen='';try{seen=localStorage.getItem('wk_seen')||'';}catch(e){}
-  return seen!==wkLastComplete();
+  return seen!==wkBestWeek();
 }
 /* the seven rows of one week, in the shape meDayList already answers in, so
    the same chart builders draw them */
@@ -32706,8 +32719,10 @@ function wkFetch(from){
 }
 /* the one card that says there is something to read */
 function wkCardHTML(){
-  if(_wkDeck||!wkReady())return '';
-  var wk=wkLastComplete(),isNew=wkCardNew();
+  if(_wkDeck)return '';
+  var wk=wkBestWeek();
+  if(!wk)return '';
+  var isNew=wkCardNew();
   /* the card STAYS once the week exists. Only the wording and the dot know
      whether it has been read - a one-shot entry point is a week you cannot
      get back into. */
