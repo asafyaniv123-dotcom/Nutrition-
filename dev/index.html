@@ -32436,9 +32436,11 @@ function wkFigs(from){
   }
   if(a.weight!==null){
     dw=(b.weight!==null)?(toDisplayWeight(a.weight)-toDisplayWeight(b.weight)):null;
-    row(fmtWeight(a.weight),
-        (dw!==null&&Math.abs(dw)>=0.05)?sgn(Math.round(dw*10)/10,1):'',
-        dw!==null&&dw<=0,_t('מול שבוע שעבר'));
+    /* with no weigh-in last week there is no delta, and "מול שבוע שעבר"
+       under a number that is compared to nothing is a label that lies */
+    var dwTxt=(dw!==null&&Math.abs(dw)>=0.05)?sgn(Math.round(dw*10)/10,1):'';
+    row(fmtWeight(a.weight),dwTxt,dw!==null&&dw<=0,
+        dwTxt?''+_t('מול שבוע שעבר')+'':''+_t('משקל')+'');
   }
   row(nfmt(a.closed),a.closed!==b.closed?sgn(a.closed-b.closed):'',
       a.closed>=b.closed,_t('ימים שסיכמת',{n:a.closed}));
@@ -32465,7 +32467,10 @@ function wkDayName(d){
 function wkPages(from){
   var d=wkData(from),p=[],i,c=wkCarry(),shots=d.shots;
   function bg(n){return shots.length?shots[n%shots.length].ref:'';}
-  var dates=fmtDate(from)+' \u2013 '+fmtDate(dayShift(6,wkDate(from)));
+  /* the SHORT date: fmtDate spells the weekday out, and "\u05d9\u05d5\u05dd \u05e8\u05d0\u05e9\u05d5\u05df, 27
+     \u05d1\u05e1\u05e4\u05d8\u05de\u05d1\u05e8 \u2013 \u05d9\u05d5\u05dd \u05e9\u05d1\u05ea, 3 \u05d1\u05d0\u05d5\u05e7\u05d8\u05d5\u05d1\u05e8" at .14em tracking is a kicker that fills
+     the line it is meant to sit quietly above */
+  var dates=fmtDayShort(wkDate(from))+' \u2013 '+fmtDayShort(wkDate(dayShift(6,wkDate(from))));
 
   /* 1 - the week, and every photograph in it */
   var note1=[],body1='';
@@ -32613,7 +32618,7 @@ function wkCarryKeep(){
   var t=(_wkCarryTxt||'').trim();
   if(!t)return;
   wkCarrySave(t,dayShift(7,wkDate(_wkDeck)));
-  toast(''+_t('נשמר. נתראה עם זה כל ערב.')+'');
+  showToast(''+_t('נשמר. נתראה עם זה כל ערב.')+'');
   wkDeckClose();
 }
 
