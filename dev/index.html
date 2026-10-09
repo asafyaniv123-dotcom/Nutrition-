@@ -7724,6 +7724,76 @@ html body.mod-journal .set-country{background:var(--nu-ground);border:none;color
     raw.removeItem(SEEDED);seed();location.reload();
   };
 
+  /* A WEEK THAT EXISTS, so the weekly summary has something to be.
+     It writes through the app's own writers - saveSummary, photoPutKeyed,
+     logWeight - rather than inventing a stored shape, because a fixture
+     invented from memory files your own mistake as a bug. Into the last
+     FINISHED week, which is the one the summary offers. */
+  function demoPic(a,c2,c3,seed2){
+    var s='<svg xmlns="http://www.w3.org/2000/svg" width="420" height="540">'+
+      '<defs><radialGradient id="g" cx="40%" cy="28%"><stop offset="0%" stop-color="'+a+'"/>'+
+      '<stop offset="55%" stop-color="'+c2+'"/><stop offset="100%" stop-color="'+c3+'"/>'+
+      '</radialGradient></defs><rect width="420" height="540" fill="url(#g)"/>',i,x,y;
+    for(i=0;i<40;i++){
+      x=(seed2*41+i*67)%420;y=(seed2*59+i*89)%540;
+      s+='<ellipse cx="'+x+'" cy="'+y+'" rx="'+(12+(i%6)*13)+'" ry="'+(9+(i%4)*11)+
+         '" fill="'+[a,c2,c3][i%3]+'" opacity=".26"/>';
+    }
+    return 'data:image/svg+xml;utf8,'+encodeURIComponent(s+'</svg>');
+  }
+  window.__devDemoWeek=function(){
+    var sun=weekStartOf(dayShift(-7)),days=[],i;
+    for(i=0;i<7;i++)days.push(dayShift(i,new Date(sun+'T12:00:00')));
+    var PALS=[['#ffe9c2','#e0a85c','#7a4a1e'],['#1e2a22','#4a7d4a','#bcd9b4'],
+              ['#e9dcf2','#9a8fc4','#3f3060'],['#fdf2e6','#d8b48c','#6b4a32'],
+              ['#cfe4ef','#5d8fab','#20384a'],['#f6e0d6','#c0795e','#53291a']];
+    /* The Hebrew below is somebody's DIARY, not the app's voice - the same
+       exemption a recipe body gets. It stands in for what a person wrote,
+       so translating it would be translating her. It also never reaches a
+       user: this whole block is behind the /dev/ guard at the top. Each
+       line says so itself, because a list kept somewhere else rots. */
+    var CAP=['ארוחת בוקר על המרפסת','הליכה בפארק אחרי העבודה','ישבנו עד שהחשיך', // i18n-exempt: demo diary
+             'אפיתי בלי מתכון','יום ארוך מדי','ארוחת ערב בחוץ'];                   // i18n-exempt: demo diary
+    var SONG=['הכול עובר','Nightcall','','אם תלכי','','רקיע','שקיעה'];            // i18n-exempt: demo diary
+    var MOM=['הקפה הראשון היה שקט','ההליכה הארוכה','ישבנו במרפסת עד שהחשיך',      // i18n-exempt: demo diary
+             'אפיתי בלי מתכון ויצא','','הצחוק בארוחה','הבוקר היה שקט וזה הספיק'];  // i18n-exempt: demo diary
+    var DIFF=['','לצאת מוקדם יותר','','להפסיק לדחות את השיחה הזאת','לישון לפני אחת','','']; // i18n-exempt: demo diary
+    var TAKE=['','לקום בלי טלפון','','לתכנן ארוחה אחת עם חלבון לפני שיוצאים','','לכתוב לה','']; // i18n-exempt: demo diary
+    var QUOTE=['','','','','מי שלא עושה טעויות לא מחליט כלום','','']; // i18n-exempt: demo diary
+    var RATE=[8,8,5,9,6,8,8],KG=[61.2,61.0,61.5,61.6,61.1,60.8,60.7];
+    var jobs=[];
+    for(i=0;i<7;i++)(function(n){
+      var d=days[n],rec=loadSummary(d)||{};
+      rec.done=true;rec.dayRating=RATE[n];
+      if(SONG[n])rec.song=SONG[n];
+      if(MOM[n])rec.moment=MOM[n];
+      if(DIFF[n])rec.differently=DIFF[n];
+      if(TAKE[n])rec.takeawayForTomorrow=TAKE[n];
+      if(QUOTE[n])rec.quote=QUOTE[n];
+      var clk=new Array(25),h=0;
+      for(h=0;h<25;h++)clk[h]=h<8?'sleep':(h<16?'work':(h<19?'social':'other'));
+      rec.timeclock=clk;
+      if(n<6){
+        var key='demo-wk-'+n;
+        rec.photo=key;rec.photoCaption=CAP[n];
+        jobs.push(photoPutKeyed(key,demoPic(PALS[n][0],PALS[n][1],PALS[n][2],n+1)));
+      }
+      saveSummary(d,rec);
+      logWeight(KG[n],d);
+    })(i);
+    /* the sentence carried into the week after, and some evenings answered,
+       so page one can show how it went rather than only offering the box */
+    try{
+      raw.setItem(P+'wk_carry',JSON.stringify(
+        {text:'לתכנן ארוחה אחת עם חלבון לפני שיוצאים','for':sun,at:Date.now()})); // i18n-exempt: demo diary
+      var ticks={};
+      for(i=0;i<7;i++)ticks[days[i]]=(i!==2&&i!==4);
+      raw.setItem(P+'wk_tick',JSON.stringify(ticks));
+      raw.removeItem(P+'wk_seen');
+    }catch(e){}
+    return Promise.all(jobs);
+  };
+
   document.addEventListener('DOMContentLoaded',function(){
     var b=document.createElement('div');
     /* THE BUILD, ON SCREEN. "Nothing changed" and "that is not there" are
@@ -7750,17 +7820,40 @@ html body.mod-journal .set-country{background:var(--nu-ground);border:none;color
       'min-height:30px;padding:0 12px;'+
       'background:'+(isolated?PAL.violet500:'#c0392b')+';color:#fff;border-radius:9px;'+
       'font:700 11px/1 -apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.5px;opacity:.9';
-    /* THE SANDBOX IS SEEDED ONCE, so a dev opened in September is still
-       looking at September. __devReseed is the cure and it needs a console,
-       which a phone does not have - and the phone is where this is tested.
-       Two taps, because one tap on a badge you brush past would throw the
-       sandbox away without being asked. */
-    var armed=0;
-    b.addEventListener('click',function(){
-      if(Date.now()<armed){b.textContent='…';window.__devReseed();return;}
-      armed=Date.now()+2500;
-      b.textContent='RESEED?';
-      setTimeout(function(){if(Date.now()>=armed)b.textContent=LABEL;},2600);
+    /* A PANEL, NOT A TIMED DOUBLE TAP. The phone has no console, the
+       sandbox is seeded once from whatever the jar held at the time, and
+       reseeding an empty jar produces another empty sandbox - which is
+       exactly the state that made the weekly summary look broken when it
+       was working. So the badge opens two explicit choices instead of
+       racing a 2.5 second window. */
+    var panel=null;
+    function closePanel(){if(panel){panel.remove();panel=null;}}
+    function mkBtn(label,fn){
+      var x=document.createElement('button');
+      x.textContent=label;
+      x.style.cssText='display:block;width:100%;text-align:start;border:0;cursor:pointer;'+
+        'background:none;color:#fff;font:700 12px/1 inherit;padding:11px 12px;min-height:42px';
+      x.addEventListener('click',function(ev){ev.stopPropagation();fn(x);});
+      return x;
+    }
+    b.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      if(panel){closePanel();return;}
+      panel=document.createElement('div');
+      panel.style.cssText='position:fixed;top:calc(38px + env(safe-area-inset-top));'+
+        'inset-inline-end:6px;z-index:9999;min-width:168px;border-radius:11px;overflow:hidden;'+
+        'background:rgba(26,21,18,.96);box-shadow:0 10px 30px rgba(0,0,0,.4);'+
+        'font-family:-apple-system,BlinkMacSystemFont,sans-serif';
+      panel.addEventListener('click',function(e2){e2.stopPropagation();});
+      panel.appendChild(mkBtn('RESEED FROM REAL DATA',function(x){
+        x.textContent='…';window.__devReseed();
+      }));
+      panel.appendChild(mkBtn('WRITE A DEMO WEEK',function(x){
+        x.textContent='…';
+        window.__devDemoWeek().then(function(){location.reload();});
+      }));
+      document.body.appendChild(panel);
+      setTimeout(function(){document.addEventListener('click',closePanel,{once:true});},0);
     });
     document.body.appendChild(b);
   });
