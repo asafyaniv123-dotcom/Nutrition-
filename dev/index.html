@@ -5184,8 +5184,8 @@ body.sheet-open .tabbar{display:none}
    is rotated onto the face of a cylinder and the whole cylinder turns; the
    stage is pulled back by the radius so the front card sits at z=0 and is
    the one in focus. */
-.wkd-ring{position:relative;height:236px;margin:6px -20px 0;
-  perspective:900px;touch-action:pan-y;cursor:grab;overflow:hidden}
+.wkd-ring{position:relative;height:242px;margin:6px -20px 0;
+  perspective:720px;touch-action:pan-y;cursor:grab;overflow:hidden}
 .wkd-ring.grab{cursor:grabbing}
 .wkd-stage{position:absolute;inset:0;transform-style:preserve-3d;
   transition:transform .42s cubic-bezier(.22,.61,.36,1)}
@@ -7828,6 +7828,11 @@ html body.mod-journal .set-country{background:var(--nu-ground);border:none;color
     var TAKE=['','לקום בלי טלפון','','לתכנן ארוחה אחת עם חלבון לפני שיוצאים','','לכתוב לה','']; // i18n-exempt: demo diary
     var QUOTE=['','','','','מי שלא עושה טעויות לא מחליט כלום','','']; // i18n-exempt: demo diary
     var RATE=[8,8,5,9,6,8,8],KG=[61.2,61.0,61.5,61.6,61.1,60.8,60.7];
+    /* name, kcal, protein, carbs, fat, time - four a day, roughly 1,900 */
+    var MEALS=[['יוגורט וגרנולה',320,22,38,8,'08:10'],     // i18n-exempt: demo diary
+               ['סלט עם חזה עוף',540,46,30,24,'13:20'],    // i18n-exempt: demo diary
+               ['תפוח ושקדים',210,6,24,11,'16:40'],        // i18n-exempt: demo diary
+               ['סלמון, אורז וברוקולי',690,44,62,27,'20:05']]; // i18n-exempt: demo diary
     var jobs=[];
     for(i=0;i<7;i++)(function(n){
       var d=days[n],rec=loadSummary(d)||{};
@@ -7847,6 +7852,21 @@ html body.mod-journal .set-country{background:var(--nu-ground);border:none;color
       }
       saveSummary(d,rec);
       logWeight(KG[n],d);
+      /* and it has to EAT: the plate and the macro split are drawn from
+         day_<date>.meals, so a week of summaries with no food left the
+         nutrition page with nothing on it. Written through saveDay, and
+         only when the day holds no meals already - a demo must not eat
+         on top of somebody's real food. */
+      var day=loadDay(d);
+      if(!day.meals||!day.meals.length){
+        day.meals=[];
+        for(var mi=0;mi<MEALS.length;mi++)
+          day.meals.push({kind:'meal',name:MEALS[mi][0],kcal:MEALS[mi][1],
+            p:MEALS[mi][2],c:MEALS[mi][3],f:MEALS[mi][4],
+            id:Date.now()+n*10+mi,time:MEALS[mi][5],src:'demo'});
+        day.water=6;
+        saveDay(d,day);
+      }
     })(i);
     /* the sentence carried into the week after, and some evenings answered,
        so page one can show how it went rather than only offering the box */
@@ -32766,7 +32786,7 @@ function wkDeckRingHTML(shots){
   var n=shots.length,i,h;
   if(!n)return '';
   if(_wkDeckRing>=n)_wkDeckRing=0;
-  var step=360/n,R=Math.max(150,Math.min(240,80/Math.tan(Math.PI/Math.max(n,3))));
+  var step=360/n,R=Math.max(172,Math.min(250,80/Math.tan(Math.PI/Math.max(n,3))));
   h='<div class="wkd-ring" id="wkd-ring" data-n="'+n+'" data-r="'+Math.round(R)+'">'+
     '<div class="wkd-stage" id="wkd-stage">';
   for(i=0;i<n;i++)
@@ -32912,10 +32932,13 @@ function wkPages(from){
      Each carries its own count, so each inflects on its own; a noun glued
      to a number with a separator cannot. */
   if(d.meals)
-    eaten='<div class="wkd-note">'+_t('{n} ארוחות השבוע',{n:d.meals})+'<br>'+
+    eaten='<div class="wkd-note">'+
       _t('{n} קלוריות ביום בממוצע',{n:Math.round(d.mac.kcal/(d.ateDays||1))})+'</div>';
+  /* the kicker already says תזונה, so the title states a fact like every
+     other page does - "5 שירים", "168 שעות" */
   if(ch||figs||plate)
-    p.push({kick:''+_t('תזונה')+'',ttl:lbl||''+_t('תזונה')+'',
+    p.push({kick:''+_t('תזונה')+'',
+            ttl:d.meals?_t('{n} ארוחות השבוע',{n:d.meals}):(lbl||''+_t('תזונה')+''),
             body:(plate||'')+eaten+(ch||'')+figs,ref:bg(2)});
 
   /* 4 - everything that was written, not the best line of it */
