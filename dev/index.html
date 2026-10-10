@@ -597,11 +597,14 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .co-frame{border:1px solid rgba(240,169,46,.38);border-radius:17px;
   background:rgba(255,255,255,.26);padding:8px 8px 4px;
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 1px 0 rgba(240,169,46,.07)}
-/* the top and bottom of the scroll, so a cut-off line reads as "there is
-   more" rather than as the end */
+/* A fade only where something IS hidden. Painted unconditionally it made
+   the first message of a short conversation look cut off, which is the
+   opposite of what it is for - coachEdges puts the classes on. */
 .co-frame{position:relative}
 .co-frame::before,.co-frame::after{content:'';position:absolute;inset-inline:9px;height:14px;
-  pointer-events:none;z-index:2}
+  pointer-events:none;z-index:2;opacity:0;transition:opacity .18s}
+.co-frame.up::before{opacity:1}
+.co-frame.down::after{opacity:1}
 .co-frame::before{top:9px;background:linear-gradient(to bottom,rgba(233,231,227,.85),transparent)}
 .co-frame::after{bottom:5px;background:linear-gradient(to top,rgba(233,231,227,.85),transparent)}
 .co-list{max-height:52vh;overflow-y:auto;padding:2px 2px 8px;display:flex;flex-direction:column;gap:9px;
@@ -11740,12 +11743,25 @@ function mdLite(t){
   e=e.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
   return e.replace(/\n/g,'<br>');
 }
+/* which ends of the conversation have more beyond them */
+function coachEdges(){
+  var sc=document.getElementById('co-list');
+  if(!sc)return;
+  var fr=sc.parentNode,over=sc.scrollHeight-sc.clientHeight;
+  if(!fr||!fr.classList)return;
+  fr.classList.toggle('up',over>2&&sc.scrollTop>2);
+  fr.classList.toggle('down',over>2&&sc.scrollTop<over-2);
+}
 function coachPaint(){
   var box=document.getElementById('co-wrap');
   if(box){box.innerHTML=coachInnerHTML();hydratePhotos(box);}
   var sc=document.getElementById('co-list');
-  if(sc)sc.scrollTop=sc.scrollHeight;
+  if(sc){
+    sc.scrollTop=sc.scrollHeight;
+    sc.addEventListener('scroll',coachEdges);
+  }
   coachGrow(document.getElementById('co-in'));
+  coachEdges();
 }
 function picShrink(file,done){
   var reader=new FileReader();
@@ -15484,7 +15500,8 @@ function renderToday(){
   /* the chat's pictures live in IndexedDB; innerHTML alone leaves empty imgs */
   (function(){var _co=document.getElementById('co-wrap');
     if(_co){hydratePhotos(_co);var _l=document.getElementById('co-list');
-      if(_l)_l.scrollTop=_l.scrollHeight;}})();
+      if(_l){_l.scrollTop=_l.scrollHeight;_l.addEventListener('scroll',coachEdges);}
+      coachGrow(document.getElementById('co-in'));coachEdges();}})();
   renderAddKinds();
   if(_askOpen)askPaint();
   if(fdbOpen)fdbPaint();
