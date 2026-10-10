@@ -3287,7 +3287,13 @@ Never do your own math for daily totals or remaining amounts. The app computes t
 3. Hypothetical or question ("יש לי מקום ל...?", "מה לאכול?", a menu photo, a recipe, "במה להחליף", "למה יצא יבש") → answer only (action: none)
 4. Activity screenshot, steps, workout, or weight → answer only, giving context
 5. Late addition ("אתמול גם שתיתי...") → log to the correct date
+6. Which meal it was ("זאת הייתה ארוחת בוקר", "תעביר את זה לערב", "זה היה חטיף") → action: update on the existing ids, changing only `meal`. Keep every other value exactly as it is, and do not re-estimate the food.
 If unsure whether they ate it or are only asking, ask in one short line and do not log yet.
+
+## Which meal of the day
+- Each item carries an optional `meal`: breakfast, lunch, dinner, snack or drink. Today's log shows what each item is filed under now.
+- Leave it out and the app files it by the clock, which is usually right. Set it when they SAY which meal it was ("אכלתי בבוקר", "ארוחת ערב") or when they ask you to move something.
+- A drink on its own is `drink`; something small between meals is `snack`. Do not argue with them about which meal it was - if they say it was breakfast, it was breakfast.
 
 ## How to estimate food
 - Break meals into items. Give each item a realistic portion and state the assumption ("הנחתי כ-150 גרם מבושל").
@@ -3348,6 +3354,14 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                   carbs: { type: 'number' },
                   fat: { type: 'number' },
                   assumption: { type: 'string' },
+                  meal: {
+                    type: 'string',
+                    enum: ['breakfast', 'lunch', 'dinner', 'snack', 'drink'],
+                    description:
+                      'Which meal of the day this belongs to. Leave it out and the app '
+                      + 'files it by the clock; set it when they say which meal it was, '
+                      + 'or when moving something already logged.',
+                  },
                 },
                 required: ['id', 'name', 'quantity', 'calories', 'protein', 'carbs', 'fat'],
               },
@@ -3428,6 +3442,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         carbs: Math.max(0, Math.round((Number(it.carbs) || 0) * 10) / 10),
         fat: Math.max(0, Math.round((Number(it.fat) || 0) * 10) / 10),
         assumption: String(it.assumption || '').slice(0, 200),
+        /* one of the five or nothing: an unknown slot would be written
+           into her day and then shown as a meal that does not exist */
+        meal: ['breakfast', 'lunch', 'dinner', 'snack', 'drink']
+          .indexOf(String(it.meal || '')) >= 0 ? String(it.meal) : '',
       })).filter((it) => it.name);
 
       /* what the turn cost, as the API counted it - estimates of this were

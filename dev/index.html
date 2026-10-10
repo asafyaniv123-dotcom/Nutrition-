@@ -11496,12 +11496,16 @@ function coachLeft(d){
 /* WRITES INTO THE DAY EVERY OTHER SCREEN ALREADY READS. No second store for
    a meal: the bars above, today's list below, the summary and the weekly
    review all read day_<date>.meals and keep working without being told. */
+function coachMealOk(k){
+  for(var i=0;i<MEAL_KINDS.length;i++)if(MEAL_KINDS[i].k===k)return k;
+  return '';
+}
 /* Returns the ids it ADDED, so the reply can offer to re-file them. An
    empty array means nothing was added - which is not the same as nothing
    happening, since update and delete also change the day. */
 function coachApply(j){
   if(!j||j.action==='none'||!j.items||!j.items.length)return [];
-  var d=j.date||todayStr(),day=loadDay(d),i,q,added=[];
+  var d=j.date||todayStr(),day=loadDay(d),i,q,added=[],moved=[];
   if(j.action==='add'){
     for(i=0;i<j.items.length;i++){q=j.items[i];
       /* THE CLOCK TIME, which was missing. kind is left empty on purpose -
@@ -11510,16 +11514,23 @@ function coachApply(j){
          12, and filed EVERY meal the coach ever logged as lunch. */
       day.meals.push({id:q.id,src:'coach',name:q.name,amount:q.quantity,
         kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',
-        kind:'',time:fmtTime(),at:Date.now()});
+        kind:coachMealOk(q.meal),time:fmtTime(),at:Date.now()});
       added.push(q.id);}
   } else if(j.action==='update'){
     for(i=0;i<day.meals.length;i++){
       for(q=0;q<j.items.length;q++) if(day.meals[i].id===j.items[q].id){
-        var u=j.items[q];
-        day.meals[i].name=u.name;day.meals[i].amount=u.quantity;
-        day.meals[i].kcal=u.calories;day.meals[i].p=u.protein;
-        day.meals[i].c=u.carbs;day.meals[i].f=u.fat;
-        day.meals[i].note=u.assumption||'';
+        var u=j.items[q],mk=coachMealOk(u.meal);
+        if(mk){day.meals[i].kind=mk;moved.push(u.id);}
+        /* MOVING IS NOT RE-ESTIMATING. "זאת הייתה ארוחת בוקר" changes the
+           slot and nothing else; writing the numbers back on every update
+           would let a slot change quietly restate the food. */
+        if(u.name!==undefined&&u.name!=='')day.meals[i].name=u.name;
+        if(u.quantity!==undefined&&u.quantity!=='')day.meals[i].amount=u.quantity;
+        if(typeof u.calories==='number')day.meals[i].kcal=u.calories;
+        if(typeof u.protein==='number')day.meals[i].p=u.protein;
+        if(typeof u.carbs==='number')day.meals[i].c=u.carbs;
+        if(typeof u.fat==='number')day.meals[i].f=u.fat;
+        if(u.assumption!==undefined)day.meals[i].note=u.assumption||'';
       }
     }
   } else if(j.action==='delete'){
@@ -11532,7 +11543,7 @@ function coachApply(j){
     day.meals=keep;
   }
   saveDay(d,day);
-  return added;
+  return added.length?added:moved;
 }
 /* One tap moves everything that turn logged to another meal of the day.
    The coach guesses from the clock and the clock is often wrong about a
@@ -11612,7 +11623,9 @@ function coachPost(d,text,pics,rec){
   var day=loadDay(d),logged=[],i;
   for(i=0;i<day.meals.length;i++){var m=day.meals[i];
     logged.push({id:m.id||('m'+i),name:m.name||'',quantity:m.amount||'',
-      calories:m.kcal||0,protein:m.p||0,carbs:m.c||0,fat:m.f||0});}
+      calories:m.kcal||0,protein:m.p||0,carbs:m.c||0,fat:m.f||0,
+      /* where it is filed NOW - it cannot move what it cannot see */
+      meal:mealKind(m)});}
   var hist=[];
   for(i=0;i<rec.turns.length-1;i++)
     if(rec.turns[i].text)hist.push({role:rec.turns[i].role,text:rec.turns[i].text});
