@@ -585,7 +585,47 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* half the card each, which is what a number you type deserves */
 /* ── THE COACH ── one material, like everything else on this screen */
 .co{margin:4px 0 14px}
-.co-list{max-height:52vh;overflow-y:auto;padding:2px 2px 8px;display:flex;flex-direction:column;gap:9px}
+/* ── THE EDGE OF THE CHAT ──
+   Scrolling inside the conversation and scrolling the page looked exactly
+   alike, so there was no telling which one was happening. A hairline of
+   lit amber draws the box: 1px, low alpha, and a wash so faint it reads as
+   a change of surface rather than a panel. The amber is the app's own
+   accent; it carries no state here, only the boundary.
+
+   It is not a contrast surface - nothing is read ON the border - so the
+   token floor for text does not apply to it. */
+.co-frame{border:1px solid rgba(240,169,46,.38);border-radius:17px;
+  background:rgba(255,255,255,.26);padding:8px 8px 4px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 1px 0 rgba(240,169,46,.07)}
+/* A fade only where something IS hidden. Painted unconditionally it made
+   the first message of a short conversation look cut off, which is the
+   opposite of what it is for - coachEdges puts the classes on. */
+.co-frame{position:relative}
+.co-frame::before,.co-frame::after{content:'';position:absolute;inset-inline:9px;height:14px;
+  pointer-events:none;z-index:2;opacity:0;transition:opacity .18s}
+.co-frame.up::before{opacity:1}
+.co-frame.down::after{opacity:1}
+.co-frame::before{top:9px;background:linear-gradient(to bottom,rgba(233,231,227,.85),transparent)}
+.co-frame::after{bottom:5px;background:linear-gradient(to top,rgba(233,231,227,.85),transparent)}
+.co-list{max-height:52vh;overflow-y:auto;padding:2px 2px 8px;display:flex;flex-direction:column;gap:9px;
+  overscroll-behavior:contain}
+/* ── WHERE THE MEAL WENT ──
+   The coach files by the clock and the clock is often wrong about a late
+   breakfast. One tap moves everything that turn logged. */
+.co-kinds{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none;
+  align-self:stretch}
+.co-kinds::-webkit-scrollbar{display:none}
+.co-kind{flex:0 0 auto;display:flex;align-items:center;gap:5px;cursor:pointer;
+  border:none;border-radius:11px;min-height:38px;padding:0 11px;font-family:inherit;
+  font-size:11.5px;font-weight:700;color:var(--nu-muted,#6d675e);
+  background:var(--nu-ground,#e9e7e3);
+  box-shadow:-2px -2px 5px var(--nu-lit,rgba(255,255,255,.95)),
+             2px 3px 7px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.co-kind svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.co-kind.on{color:var(--nu-ink,#4a453f);
+  box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),
+             inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .co-empty{font-size:13px;color:var(--nu-muted,#6d675e);text-align:center;padding:26px 10px;line-height:1.7}
 /* HIS WORDS ARE PRESSED INTO A WARMER SURFACE, the coach's sit on a lighter
    one. The shadow alone said this and said it too quietly to read while
@@ -618,8 +658,9 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .co-thumb img{width:100%;height:100%;object-fit:cover;display:block;border-radius:11px}
 .co-thumb span{position:absolute;inset-block-start:2px;inset-inline-end:3px;width:17px;height:17px;
   border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:12px;line-height:17px}
-.co-bar{display:flex;gap:8px;align-items:center;margin-top:10px}
-.co-in{flex:1;min-width:0;min-height:46px;padding:12px 14px;border-radius:14px;border:none;
+.co-bar{display:flex;gap:8px;align-items:flex-end;margin-top:10px}
+.co-in{flex:1;min-width:0;min-height:46px;max-height:30vh;padding:12px 14px;border-radius:14px;
+  border:none;resize:none;overflow-y:auto;display:block;
   font:400 16px/1.4 inherit;color:var(--nu-ink,#4a453f);background:var(--nu-ground,#e9e7e3);
   box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .co-cam,.co-go{flex:0 0 auto;width:46px;height:46px;border:none;border-radius:14px;cursor:pointer;
@@ -11455,22 +11496,41 @@ function coachLeft(d){
 /* WRITES INTO THE DAY EVERY OTHER SCREEN ALREADY READS. No second store for
    a meal: the bars above, today's list below, the summary and the weekly
    review all read day_<date>.meals and keep working without being told. */
+function coachMealOk(k){
+  for(var i=0;i<MEAL_KINDS.length;i++)if(MEAL_KINDS[i].k===k)return k;
+  return '';
+}
+/* Returns the ids it ADDED, so the reply can offer to re-file them. An
+   empty array means nothing was added - which is not the same as nothing
+   happening, since update and delete also change the day. */
 function coachApply(j){
-  if(!j||j.action==='none'||!j.items||!j.items.length)return false;
-  var d=j.date||todayStr(),day=loadDay(d),i,q;
+  if(!j||j.action==='none'||!j.items||!j.items.length)return [];
+  var d=j.date||todayStr(),day=loadDay(d),i,q,added=[],moved=[];
   if(j.action==='add'){
     for(i=0;i<j.items.length;i++){q=j.items[i];
+      /* THE CLOCK TIME, which was missing. kind is left empty on purpose -
+         mealKind then resolves it from the window the time falls in - but
+         with no time at all kindFromTime read NaN, defaulted the hour to
+         12, and filed EVERY meal the coach ever logged as lunch. */
       day.meals.push({id:q.id,src:'coach',name:q.name,amount:q.quantity,
         kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',
-        kind:'',at:Date.now()});}
+        kind:coachMealOk(q.meal),time:fmtTime(),at:Date.now()});
+      added.push(q.id);}
   } else if(j.action==='update'){
     for(i=0;i<day.meals.length;i++){
       for(q=0;q<j.items.length;q++) if(day.meals[i].id===j.items[q].id){
-        var u=j.items[q];
-        day.meals[i].name=u.name;day.meals[i].amount=u.quantity;
-        day.meals[i].kcal=u.calories;day.meals[i].p=u.protein;
-        day.meals[i].c=u.carbs;day.meals[i].f=u.fat;
-        day.meals[i].note=u.assumption||'';
+        var u=j.items[q],mk=coachMealOk(u.meal);
+        if(mk){day.meals[i].kind=mk;moved.push(u.id);}
+        /* MOVING IS NOT RE-ESTIMATING. "זאת הייתה ארוחת בוקר" changes the
+           slot and nothing else; writing the numbers back on every update
+           would let a slot change quietly restate the food. */
+        if(u.name!==undefined&&u.name!=='')day.meals[i].name=u.name;
+        if(u.quantity!==undefined&&u.quantity!=='')day.meals[i].amount=u.quantity;
+        if(typeof u.calories==='number')day.meals[i].kcal=u.calories;
+        if(typeof u.protein==='number')day.meals[i].p=u.protein;
+        if(typeof u.carbs==='number')day.meals[i].c=u.carbs;
+        if(typeof u.fat==='number')day.meals[i].f=u.fat;
+        if(u.assumption!==undefined)day.meals[i].note=u.assumption||'';
       }
     }
   } else if(j.action==='delete'){
@@ -11483,11 +11543,46 @@ function coachApply(j){
     day.meals=keep;
   }
   saveDay(d,day);
-  return true;
+  return added.length?added:moved;
+}
+/* One tap moves everything that turn logged to another meal of the day.
+   The coach guesses from the clock and the clock is often wrong about a
+   late breakfast or an early dinner. */
+function coachKindSet(ids,k){
+  var d=todayStr(),day=loadDay(d),i,j2;
+  for(i=0;i<day.meals.length;i++)
+    for(j2=0;j2<ids.length;j2++)
+      if(day.meals[i].id===ids[j2])day.meals[i].kind=k;
+  saveDay(d,day);
+  render();
+}
+/* the chips, lit on whatever those meals are filed under now */
+function coachKindsHTML(ids){
+  var d=todayStr(),day=loadDay(d),cur='',i,j2,w,h='';
+  for(i=0;i<day.meals.length&&!cur;i++)
+    for(j2=0;j2<ids.length;j2++)
+      if(day.meals[i].id===ids[j2]){cur=mealKind(day.meals[i]);break;}
+  if(!cur)return '';
+  var arg=esc(JSON.stringify(ids)).replace(/"/g,'&quot;');
+  h='<div class="co-kinds">';
+  for(i=0;i<MEAL_KINDS.length;i++){
+    w=MEAL_KINDS[i];
+    h+='<button class="co-kind'+(w.k===cur?' on':'')+
+       '" onclick="coachKindSet('+arg+',&quot;'+w.k+'&quot;)">'+
+       '<svg viewBox="0 0 24 24">'+w.d+'</svg>'+mealKindLabel(w.k)+'</button>';
+  }
+  return h+'</div>';
 }
 function coachPick(){
   var el=document.getElementById('co-file');
   if(el)el.click();
+}
+/* grows to what is written in it, up to a third of the screen, and never
+   shows its own scrollbar before that */
+function coachGrow(el){
+  if(!el)return;
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,Math.round(window.innerHeight*0.3))+'px';
 }
 function coachDropPic(i){_coachPics.splice(i,1);coachPaint();}
 function coachFiles(input){
@@ -11528,7 +11623,9 @@ function coachPost(d,text,pics,rec){
   var day=loadDay(d),logged=[],i;
   for(i=0;i<day.meals.length;i++){var m=day.meals[i];
     logged.push({id:m.id||('m'+i),name:m.name||'',quantity:m.amount||'',
-      calories:m.kcal||0,protein:m.p||0,carbs:m.c||0,fat:m.f||0});}
+      calories:m.kcal||0,protein:m.p||0,carbs:m.c||0,fat:m.f||0,
+      /* where it is filed NOW - it cannot move what it cannot see */
+      meal:mealKind(m)});}
   var hist=[];
   for(i=0;i<rec.turns.length-1;i++)
     if(rec.turns[i].text)hist.push({role:rec.turns[i].role,text:rec.turns[i].text});
@@ -11553,10 +11650,13 @@ function coachPost(d,text,pics,rec){
         :''+_t('לא הצלחתי לענות כרגע.')+'';
       coachPaint();return;
     }
-    var changed=coachApply(j);
+    var added=coachApply(j);
+    var changed=!!(added&&added.length)||
+                (j.action==='update'||j.action==='delete')&&j.items&&j.items.length;
     var rec2=loadCoach(d);
     rec2.turns.push({role:'assistant',text:j.message||'',
-      q:j.question||'',changed:changed?1:0,at:Date.now()});
+      q:j.question||'',changed:changed?1:0,
+      ids:(added||[]).slice(0,12),at:Date.now()});
     saveCoach(d,rec2);
     /* the whole screen, because the bars above it have just moved */
     render();
@@ -11592,6 +11692,7 @@ function coachLeftHTML(d){
 }
 function coachInnerHTML(){
   var d=todayStr(),rec=loadCoach(d),h='',i;
+  h+='<div class="co-frame">';
   h+='<div class="co-list" id="co-list">';
   if(!rec.turns.length)
     h+='<div class="co-empty">'+_t('מה אכלת? אפשר גם לשאול')+'</div>';
@@ -11602,21 +11703,29 @@ function coachInnerHTML(){
       h+='<div class="co-u">'+
          (ks.length?'<span class="co-shots">'+ks.map(function(k){
             return photoImg(k,'class="co-img" alt=""');}).join('')+'</span>':'')+
-         /* an older turn kept a NUMBER here, before the pictures were stored */
-         (!ks.length&&t.pics?'<span class="co-pc">'+_t('תמונה')+
-            (t.pics>1?' \u00d7'+nfmt(t.pics):'')+'</span>':'')+
+         /* AN OLDER TURN KEPT A NUMBER HERE, before the pictures were
+            stored - so this branch is for a number and nothing else.
+            coachSend always writes pics as an array, and an empty array is
+            truthy, so testing the value itself put "תמונה" in front of
+            every message anyone ever typed without a photograph. */
+         (typeof t.pics==='number'&&t.pics>0
+            ?'<span class="co-pc">'+_t('תמונה')+
+             (t.pics>1?' \u00d7'+nfmt(t.pics):'')+'</span>':'')+
          (t.text?esc(t.text):'')+
          '</div>';
     } else {
       h+='<div class="co-a">'+mdLite(t.text||'')+
          (t.q?'<div class="co-q">'+esc(t.q)+'</div>':'')+'</div>';
       /* only when something moved - see the data model */
-      if(t.changed&&i===rec.turns.length-1)h+=coachLeftHTML(d);
+      if(t.changed&&i===rec.turns.length-1){
+        h+=coachLeftHTML(d);
+        if(Array.isArray(t.ids)&&t.ids.length)h+=coachKindsHTML(t.ids);
+      }
     }
   }
   if(_coachBusy)h+='<div class="co-a co-wait">&hellip;</div>';
   if(_coachErr)h+='<div class="co-err">'+esc(_coachErr)+'</div>';
-  h+='</div>';
+  h+='</div></div>';
   if(_coachPics.length){
     h+='<div class="co-strip">';
     for(i=0;i<_coachPics.length;i++)
@@ -11630,8 +11739,14 @@ function coachInnerHTML(){
      '<path d="M3 8.5h3.2l1.3-2h8l1.3 2H20a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"/>'+
      '<circle cx="12" cy="13.5" r="3.3"/></svg></button>';
   h+='<input id="co-file" type="file" accept="image/*" multiple style="display:none" onchange="coachFiles(this)">';
-  h+='<input id="co-in" class="co-in" type="text" placeholder="'+esc(_t('מה אכלת? אפשר גם לשאול'))+
-     '" onkeydown="if(event.key===&quot;Enter&quot;)coachSend()">';
+  /* A TEXTAREA, because Enter has to go down a line. An <input> cannot hold
+     a line break at all, so Enter had nothing to do but send - and sending
+     half a sentence is the one thing a chat must not do. The arrow sends;
+     a hardware keyboard can also use Ctrl or Cmd with Enter. */
+  h+='<textarea id="co-in" class="co-in" rows="1" placeholder="'+
+     esc(_t('מה אכלת? אפשר גם לשאול'))+'" oninput="coachGrow(this)"'+
+     ' onkeydown="if(event.key===&quot;Enter&quot;&&(event.ctrlKey||event.metaKey))'+
+     '{event.preventDefault();coachSend();}"></textarea>';
   h+='<button class="co-go" onclick="coachSend()"'+(_coachBusy?' disabled':'')+
      ' aria-label="'+esc(_t('שלח'))+'">&#8593;</button>';
   h+='</div>';
@@ -11646,11 +11761,25 @@ function mdLite(t){
   e=e.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
   return e.replace(/\n/g,'<br>');
 }
+/* which ends of the conversation have more beyond them */
+function coachEdges(){
+  var sc=document.getElementById('co-list');
+  if(!sc)return;
+  var fr=sc.parentNode,over=sc.scrollHeight-sc.clientHeight;
+  if(!fr||!fr.classList)return;
+  fr.classList.toggle('up',over>2&&sc.scrollTop>2);
+  fr.classList.toggle('down',over>2&&sc.scrollTop<over-2);
+}
 function coachPaint(){
   var box=document.getElementById('co-wrap');
   if(box){box.innerHTML=coachInnerHTML();hydratePhotos(box);}
   var sc=document.getElementById('co-list');
-  if(sc)sc.scrollTop=sc.scrollHeight;
+  if(sc){
+    sc.scrollTop=sc.scrollHeight;
+    sc.addEventListener('scroll',coachEdges);
+  }
+  coachGrow(document.getElementById('co-in'));
+  coachEdges();
 }
 function picShrink(file,done){
   var reader=new FileReader();
@@ -15389,7 +15518,8 @@ function renderToday(){
   /* the chat's pictures live in IndexedDB; innerHTML alone leaves empty imgs */
   (function(){var _co=document.getElementById('co-wrap');
     if(_co){hydratePhotos(_co);var _l=document.getElementById('co-list');
-      if(_l)_l.scrollTop=_l.scrollHeight;}})();
+      if(_l){_l.scrollTop=_l.scrollHeight;_l.addEventListener('scroll',coachEdges);}
+      coachGrow(document.getElementById('co-in'));coachEdges();}})();
   renderAddKinds();
   if(_askOpen)askPaint();
   if(fdbOpen)fdbPaint();
