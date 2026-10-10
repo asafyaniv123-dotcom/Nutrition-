@@ -1976,7 +1976,12 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .rf-flow-box{flex:1;min-width:0;background:var(--card);border:1.5px solid #e4ddd4;border-radius:14px;padding:7px 8px 7px 10px}
 .rf-flow-box:focus-within{border-color:var(--violet-700)}
 .rf-flow-line{display:flex;align-items:center;gap:4px}
-.rf-flow-in{flex:1;min-width:0;border:none;background:none;outline:none;padding:6px 4px;font-size:14px;color:var(--ink);font-family:inherit;unicode-bidi:plaintext}
+/* A TEXTAREA, not an input. An input is one line that scrolls sideways, so
+   a sentence longer than the box hid its own beginning - and the beginning
+   is the part you are trying to read. It wraps and grows instead. */
+.rf-flow-in{flex:1;min-width:0;border:none;background:none;outline:none;padding:6px 4px;
+  font-size:14px;line-height:1.5;color:var(--ink);font-family:inherit;unicode-bidi:plaintext;
+  resize:none;overflow:hidden;display:block;min-height:32px}
 .rf-flow-in::placeholder{color:#c9c0b8}
 .rf-flow-cam{background:none;border:none;padding:5px;cursor:pointer;color:var(--muted-soft);flex-shrink:0;line-height:0;font-family:inherit}
 .rf-flow-cam svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -2487,6 +2492,14 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
    does not scroll. */
 .sm2-hd{display:flex;gap:14px;align-items:flex-start;margin:30px 0 14px}
 .sm2-phc{flex-shrink:0;width:118px}
+/* a photograph on its own, over everything */
+.pv{position:fixed;inset:0;z-index:600;background:rgba(20,16,14,.92);
+  display:flex;align-items:center;justify-content:center;padding:18px;cursor:zoom-out}
+.pv img{max-width:100%;max-height:100%;border-radius:12px;display:block;
+  box-shadow:0 18px 50px rgba(0,0,0,.6)}
+.pv-x{position:absolute;inset-block-start:calc(10px + env(safe-area-inset-top));
+  inset-inline-end:10px;width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;font-family:inherit}
 .sm2-box{border:1.5px solid var(--line-strong);border-radius:5px;padding:5px;background:var(--card);line-height:0}
 .sm2-box img{width:100%;display:block;border-radius:2px;aspect-ratio:3/4;object-fit:cover}
 .sm2-fx{flex:1;min-width:0}
@@ -16365,7 +16378,8 @@ function summaryBodyHTML(dateStr){
   if(_q)facts+='<div class="sm2-q">'+esc(sum.quote.trim())+'</div>';
   if(hasPh){
     h+='<div class="sm2-hd"><div class="sm2-fx">'+facts+'</div><div class="sm2-phc">'+
-       '<div class="sm2-box">'+photoImg(sum.photo,'alt=""')+'</div>'+
+       '<div class="sm2-box">'+photoImg(sum.photo,'alt="" style="cursor:zoom-in" '+
+          'onclick="event.stopPropagation();photoOpen(&quot;'+esc(sum.photo)+'&quot;)"')+'</div>'+
        (sum.photoCaption?'<div class="sm2-cap">'+esc(sum.photoCaption)+'</div>':'')+
        '</div></div>';
   } else {
@@ -16387,7 +16401,10 @@ function summaryBodyHTML(dateStr){
   if(flowStops.length>0&&sumSecOn('flow')){
     h+='<div class="sm2-blk"><div class="sm2-pz-l">'+_t('זרימת היום')+'</div><div class="sm2-flw">';
     for(i=0;i<flowStops.length;i++){
-      if(flowStops[i].p)h+=photoImg(flowStops[i].p,'style="width:30px;height:30px;object-fit:cover;border-radius:8px"');
+      if(flowStops[i].p)
+        h+=photoImg(flowStops[i].p,'class="sm2-flw-ph" style="width:30px;height:30px;'+
+          'object-fit:cover;border-radius:8px;cursor:zoom-in" '+
+          'onclick="event.stopPropagation();photoOpen(&quot;'+esc(flowStops[i].p)+'&quot;)"');
       h+='<span>'+esc(flowStops[i].w)+'</span>';
       if(i<flowStops.length-1)h+='<i>&#8250;</i>';
     }
@@ -16450,6 +16467,27 @@ function summaryBodyHTML(dateStr){
 }
 /* The pictures, the clips and the clock all need the markup to be in the page
    before they can be filled in - so whoever put it there calls this. */
+/* ── A PICTURE, FULL SIZE ──
+   There was no way to look at one. The flow thumbnails are 30px in the
+   summary and the day photograph is a card; tapping either now opens it.
+   On BODY, because z-index inside the summary sheet is flattened. */
+function photoOpen(ref){
+  if(!ref)return;
+  photoClose();
+  var d=document.createElement('div');
+  d.id='pv-ov';d.className='pv';
+  d.onclick=photoClose;
+  d.innerHTML=photoImg(ref,'alt=""')+
+    '<button class="pv-x" aria-label="'+esc(_t('סגור'))+'">&times;</button>';
+  document.body.appendChild(d);
+  hydratePhotos(d);
+  document.body.style.overflow='hidden';
+}
+function photoClose(){
+  var e=document.getElementById('pv-ov');
+  if(e)e.remove();
+  document.body.style.overflow='';
+}
 function sumAfterPaint(root){
   hydratePhotos(root);hydrateVlogs(root);
   if(window._sumClockNeedsDraw){window._sumClockNeedsDraw=false;setTimeout(function(){drawSumClock(window._sumClockData);},30);}
@@ -32025,7 +32063,7 @@ function renderReflectStep(){
         h+='<button class="rf-flow-imgx" onclick="rfFlowPhotoClear('+i+')">&times;</button></div>';
       }
       h+='<div class="rf-flow-line">';
-      h+='<input class="rf-flow-in" id="rf-fl-'+i+'" value="'+esc(fl[i].w||'')+'" placeholder="'+(i===0?''+_t('איך התחיל')+'':(i===fl.length-1?''+_t('ואיך נגמר')+'':''+_t('ואז')+''))+'">';
+      h+='<textarea class="rf-flow-in" id="rf-fl-'+i+'" rows="1" oninput="rfFlowGrow(this)" placeholder="'+(i===0?''+_t('איך התחיל')+'':(i===fl.length-1?''+_t('ואיך נגמר')+'':''+_t('ואז')+''))+'">'+esc(fl[i].w||'')+'</textarea>';
       h+='<button class="rf-flow-cam" onclick="rfFlowPhoto('+i+')"><svg viewBox="0 0 24 24"><path d="M3.5 8.5a2 2 0 0 1 2-2h2l1.4-2h6.2l1.4 2h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/><circle cx="12" cy="12.8" r="3.6"/></svg></button>';
       h+='</div></div>';
       if(fl.length>1)h+='<button class="rf-flow-x" onclick="rfFlowDel('+i+')">&times;</button>';
@@ -32044,8 +32082,21 @@ function renderReflectStep(){
   }
 
   h+='</div></div></div>';
-  document.getElementById('content').innerHTML=h;
+  var _c2=document.getElementById('content');
+  _c2.innerHTML=h;
+  /* The pictures live in IndexedDB and arrive after paint. Without this the
+     flow anchors drew an empty box with a delete button on it, which is
+     what a photograph that "did not upload" looks like. */
+  hydratePhotos(_c2);
+  var _fl=_c2.querySelectorAll('.rf-flow-in'),_fi;
+  for(_fi=0;_fi<_fl.length;_fi++)rfFlowGrow(_fl[_fi]);
   if(window._clockNeedsInit){window._clockNeedsInit=false;setTimeout(function(){clockInitDrag();clockDraw();},30);}
+}
+/* an anchor grows to its sentence, with no scrollbar of its own */
+function rfFlowGrow(el){
+  if(!el)return;
+  el.style.height='auto';
+  el.style.height=Math.max(32,el.scrollHeight)+'px';
 }
 
 function rfChipsHTML(id,opts,sel){
