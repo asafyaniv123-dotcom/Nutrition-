@@ -5185,13 +5185,17 @@ body.sheet-open .tabbar{display:none}
    stage is pulled back by the radius so the front card sits at z=0 and is
    the one in focus. */
 .wkd-ring{position:relative;height:242px;margin:6px -20px 0;
-  perspective:720px;touch-action:pan-y;cursor:grab;overflow:hidden}
+  perspective:760px;touch-action:pan-y;cursor:grab;overflow:hidden}
 .wkd-ring.grab{cursor:grabbing}
-.wkd-stage{position:absolute;inset:0;transform-style:preserve-3d;
-  transition:transform .42s cubic-bezier(.22,.61,.36,1)}
-.wkd-stage.now{transition:none}
-.wkd-ri{position:absolute;top:8px;left:50%;width:160px;height:206px;margin-inline-start:-80px;
-  transform-style:preserve-3d;transition:opacity .42s}
+.wkd-stage{position:absolute;inset:0;transform-style:preserve-3d}
+/* Each card is placed from its own distance to the centre, so the card in
+   the middle sits at x=0 and STAYS there while its neighbours travel in to
+   it. Turning the whole ring as one body made the front photograph ride
+   round the circle, which read as the whole thing sliding sideways. */
+.wkd-ri{position:absolute;top:8px;left:50%;width:160px;height:206px;
+  transform-origin:50% 50%;will-change:transform;
+  transition:transform .44s cubic-bezier(.22,.61,.36,1),opacity .44s}
+.wkd-ri.now{transition:none}
 .wkd-ri img{width:100%;height:100%;object-fit:cover;border-radius:14px;display:block;
   background:rgba(255,255,255,.08);box-shadow:0 14px 32px rgba(0,0,0,.55)}
 .wkd-ring-cap{text-align:center;font-size:13px;line-height:1.5;min-height:38px;margin-top:4px}
@@ -32787,12 +32791,10 @@ function wkDeckRingHTML(shots){
   var n=shots.length,i,h;
   if(!n)return '';
   if(_wkDeckRing>=n)_wkDeckRing=0;
-  var step=360/n,R=Math.max(172,Math.min(250,80/Math.tan(Math.PI/Math.max(n,3))));
-  h='<div class="wkd-ring" id="wkd-ring" data-n="'+n+'" data-r="'+Math.round(R)+'">'+
+  h='<div class="wkd-ring" id="wkd-ring" data-n="'+n+'">'+
     '<div class="wkd-stage" id="wkd-stage">';
   for(i=0;i<n;i++)
-    h+='<div class="wkd-ri" data-i="'+i+'" style="transform:rotateY('+(i*step).toFixed(2)+
-       'deg) translateZ('+Math.round(R)+'px)">'+photoImg(shots[i].ref,'alt=""')+'</div>';
+    h+='<div class="wkd-ri" data-i="'+i+'">'+photoImg(shots[i].ref,'alt=""')+'</div>';
   h+='</div></div>';
   h+='<div class="wkd-ring-cap" id="wkd-ring-cap"></div>';
   h+='<div class="wkd-ring-nav"><button onclick="wkDeckRingTurn(-1)">&#8249;</button>'+
@@ -32800,20 +32802,40 @@ function wkDeckRingHTML(shots){
      '<button onclick="wkDeckRingTurn(1)">&#8250;</button></div>';
   return h;
 }
-/* the stage angle, the caption and the dots all follow one number */
+/* the shortest signed distance from the centre, so the far side of the
+   list is reached by going backwards rather than all the way round */
+function wkRingOff(i,pos,n){
+  var o=(i-pos)%n;
+  if(o>n/2)o-=n;
+  if(o<-n/2)o+=n;
+  return o;
+}
+/* Every card placed from its own offset. The one at the centre has offset
+   zero, which is x=0 - it does not move at all while the others come to
+   it. The live argument is a fractional offset while a finger is down. */
+var WK_RI_X=96,WK_RI_Z=88,WK_RI_DEG=42;
 function wkDeckRingPaint(shots,live){
-  var st=document.getElementById('wkd-stage'),ring=document.getElementById('wkd-ring');
-  if(!st||!ring)return;
-  var n=+ring.getAttribute('data-n'),R=+ring.getAttribute('data-r'),step=360/n,i,d;
-  st.className='wkd-stage'+(live!==undefined?' now':'');
-  st.style.transform='translateZ(-'+R+'px) rotateY('+
-    (-(_wkDeckRing*step)+(live||0)).toFixed(2)+'deg)';
-  var items=st.querySelectorAll('.wkd-ri');
+  var ring=document.getElementById('wkd-ring');
+  if(!ring)return;
+  var n=+ring.getAttribute('data-n'),items=ring.querySelectorAll('.wkd-ri');
+  /* RTL: the next photograph should arrive from the side the eye reads
+     towards, or "next" visibly goes backwards */
+  var dir=(document.documentElement.dir==='rtl')?-1:1;
+  var pos=_wkDeckRing+(live||0),i,o,a,el;
   for(i=0;i<items.length;i++){
-    d=Math.abs(((i-_wkDeckRing+n/2+n)%n)-n/2);   // steps away, either direction
-    items[i].style.opacity=String(Math.max(0.22,1-d*0.42));
+    el=items[i];
+    o=wkRingOff(i,pos,n);
+    a=Math.abs(o);
+    el.className='wkd-ri'+(live!==undefined?' now':'');
+    el.style.transform='translateX(calc(-50% + '+(o*WK_RI_X*dir).toFixed(1)+'px)) '+
+      'translateZ('+(-a*WK_RI_Z).toFixed(1)+'px) '+
+      'rotateY('+(-o*WK_RI_DEG*dir).toFixed(1)+'deg)';
+    el.style.opacity=String(Math.max(0,1-a*0.4));
+    el.style.zIndex=String(30-Math.round(a*10));
+    /* beyond two out it is behind everything and costs a layer */
+    el.style.visibility=(a>2.6)?'hidden':'visible';
   }
-  var cap=document.getElementById('wkd-ring-cap'),s=shots[_wkDeckRing];
+  var cap=document.getElementById('wkd-ring-cap'),s=shots[((Math.round(pos)%n)+n)%n];
   if(cap&&s)cap.innerHTML=(s.cap?esc(s.cap):'')+'<b>'+wkDayName(s.d)+'</b>';
   var dots=document.getElementById('wkd-ring-dots');
   if(dots){
@@ -32829,28 +32851,28 @@ function wkDeckRingTurn(d){
   _wkDeckRing=((_wkDeckRing+d)%n+n)%n;
   wkDeckRingPaint(window._wkShots||[]);
 }
-/* dragging turns it by hand and then lets go onto the nearest face */
+/* A finger moves it by the same measure the cards are laid out with, so
+   what is under the thumb stays under the thumb; letting go settles on the
+   nearest card. */
 function wkDeckRingDrag(shots){
   var ring=document.getElementById('wkd-ring');
   if(!ring)return;
-  var n=+ring.getAttribute('data-n'),step=360/n,x0=null,deg=0;
+  var n=+ring.getAttribute('data-n'),x0=null,frac=0;
+  var dir=(document.documentElement.dir==='rtl')?-1:1;
   ring.addEventListener('pointerdown',function(e){
-    x0=e.clientX;deg=0;ring.classList.add('grab');
+    x0=e.clientX;frac=0;ring.classList.add('grab');
     try{ring.setPointerCapture(e.pointerId);}catch(err){}
   });
   ring.addEventListener('pointermove',function(e){
     if(x0===null)return;
-    /* right-to-left: dragging the near card leftwards brings the next one
-       round, which is the direction the finger expects */
-    deg=(e.clientX-x0)*0.45;
-    wkDeckRingPaint(shots,deg);
+    frac=-(e.clientX-x0)/WK_RI_X*dir;
+    wkDeckRingPaint(shots,frac);
   });
   function up(){
     if(x0===null)return;
     x0=null;ring.classList.remove('grab');
-    var moved=Math.round(-deg/step);
-    _wkDeckRing=((_wkDeckRing+moved)%n+n)%n;
-    deg=0;wkDeckRingPaint(shots);
+    _wkDeckRing=((_wkDeckRing+Math.round(frac))%n+n)%n;
+    frac=0;wkDeckRingPaint(shots);
   }
   ring.addEventListener('pointerup',up);
   ring.addEventListener('pointercancel',up);
