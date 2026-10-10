@@ -5100,6 +5100,204 @@ body.sheet-open .tabbar{display:none}
 .me-top{text-align:center;margin-bottom:18px}
 .me-logo{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1;direction:ltr;background:linear-gradient(135deg,var(--violet-500),var(--terra-500));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .me-sub{font-size:11.5px;color:var(--muted);margin-top:7px}
+/* ── THE WEEKLY SUMMARY ── */
+.wk-card{display:block;width:100%;text-align:start;border:none;cursor:pointer;font-family:inherit;
+  background:var(--nu-ground,#e9e7e3);border-radius:17px;padding:14px 16px;margin-bottom:14px;
+  box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.wk-card:active{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+.wk-card-t{display:block;font-size:15px;font-weight:800;color:var(--nu-ink,#4a453f)}
+.wk-card-s{display:block;font-size:11.5px;color:var(--nu-muted,#6d675e);margin-top:4px}
+/* a week not yet read. The dot is the only thing that changes once it has
+   been - the card itself is permanent. */
+.wk-card{position:relative}
+.wk-card.nu::after{content:'';position:absolute;inset-block-start:15px;inset-inline-end:16px;
+  width:9px;height:9px;border-radius:50%;background:var(--nu-amber,#f0a92e)}
+.wk-ov{position:fixed;inset:0;z-index:440;background:rgba(74,67,64,.62);
+  display:flex;align-items:flex-end;justify-content:center}
+.wk-sheet{width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:var(--nu-ground,#e9e7e3);
+  border-radius:22px 22px 0 0;padding:16px 14px calc(26px + env(safe-area-inset-bottom))}
+.wk-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
+.wk-ttl{font-size:19px;font-weight:800;color:var(--nu-ink,#4a453f)}
+.wk-sub{font-size:11.5px;color:var(--nu-muted,#6d675e);margin-top:3px}
+.wk-x{background:none;border:none;font-size:12.5px;font-weight:700;color:var(--nu-muted,#6d675e);
+  cursor:pointer;font-family:inherit;min-height:44px;padding:0 6px;flex:0 0 auto}
+.wk-letter{margin-top:4px;padding:15px 16px;border-radius:16px;background:#f3f1ed;
+  font-size:14.5px;line-height:1.85;color:var(--nu-ink,#4a453f);
+  box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.wk-wait{color:var(--nu-muted,#6d675e);font-size:13.5px}
+.wk-err{color:var(--terra-700);font-size:13px}
+/* ── THE WEEK, AS SOMETHING YOU OPEN ──
+   A deck of full-screen pages, mounted on BODY rather than inside
+   #me-screen: z-index is flattened in there and the tab bar wins, which is
+   how a save button ended up underneath it once already.
+
+   The photograph is an <img> and not a background-image because the picture
+   lives in IndexedDB and arrives after paint - hydratePhotos fills src. */
+.wkd{position:fixed;inset:0;z-index:460;background:#171310;overflow:hidden}
+.wkd-pg{position:absolute;inset:0;display:none;flex-direction:column;color:#fff}
+.wkd-pg.on{display:flex}
+.wkd-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.74}
+.wkd-veil{position:absolute;inset:0;background:linear-gradient(to top,
+  rgba(14,11,9,.94) 0%,rgba(14,11,9,.66) 46%,rgba(14,11,9,.32) 100%)}
+.wkd-body{position:relative;flex:1;display:flex;flex-direction:column;gap:13px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(40px + env(safe-area-inset-top)) 20px 0}
+.wkd-kick{font-size:10.5px;font-weight:800;letter-spacing:.14em;opacity:.72}
+.wkd-ttl{font-size:26px;font-weight:800;line-height:1.14;letter-spacing:-.02em}
+.wkd-note{font-size:13px;line-height:1.62;opacity:.84}
+.wkd-tail{height:66px;flex:0 0 auto}
+.wkd-bars{position:absolute;inset-block-start:calc(12px + env(safe-area-inset-top));
+  inset-inline:14px;display:flex;gap:4px;z-index:6}
+.wkd-bar{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.3)}
+.wkd-bar.on{background:#fff}
+.wkd-x{position:absolute;inset-block-start:calc(20px + env(safe-area-inset-top));
+  inset-inline-end:10px;z-index:7;background:none;border:none;color:#fff;opacity:.72;
+  font-family:inherit;font-size:13px;font-weight:800;min-height:44px;padding:0 10px;cursor:pointer}
+.wkd-nav{position:absolute;inset-block-end:0;inset-inline:0;z-index:6;display:flex;
+  padding-bottom:env(safe-area-inset-bottom);
+  background:linear-gradient(to top,rgba(14,11,9,.9),transparent)}
+.wkd-nav button{flex:1;background:none;border:none;color:#fff;font-family:inherit;
+  font-size:13px;font-weight:800;min-height:58px;cursor:pointer;opacity:.62}
+.wkd-nav button:disabled{opacity:.16}
+/* the carousel: the rail is the full width and the inset is its own padding,
+   so a photograph being dragged travels all the way to the edge */
+.wkd-car{margin:2px -20px 0}
+.wkd-rail{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+  padding:0 20px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.wkd-rail::-webkit-scrollbar{display:none}
+.wkd-fr{flex:0 0 auto;width:188px;scroll-snap-align:center}
+.wkd-fr img{width:188px;height:236px;border-radius:15px;object-fit:cover;display:block;
+  background:rgba(255,255,255,.08);box-shadow:0 10px 26px rgba(0,0,0,.45)}
+.wkd-cap{font-size:12.5px;line-height:1.5;margin-top:8px;opacity:.9}
+.wkd-dy{font-size:10px;font-weight:800;letter-spacing:.08em;opacity:.6;margin-top:3px}
+/* ── THE COVER ──
+   A week opens on its own name, not on a photograph you are already half
+   way through. The three behind it are a stack, not a gallery. */
+.wkd-fan{position:relative;height:252px;margin-top:8px}
+.wkd-fan img{position:absolute;top:14px;left:50%;width:152px;height:196px;object-fit:cover;
+  border-radius:15px;box-shadow:0 16px 36px rgba(0,0,0,.55);
+  border:3px solid rgba(255,255,255,.92);background:rgba(255,255,255,.1)}
+.wkd-cover-n{font-size:13px;opacity:.86;line-height:1.7}
+
+/* ── THE RING ──
+   Photographs standing on a turntable rather than lying in a row. Each one
+   is rotated onto the face of a cylinder and the whole cylinder turns; the
+   stage is pulled back by the radius so the front card sits at z=0 and is
+   the one in focus. */
+.wkd-ring{position:relative;height:242px;margin:6px -20px 0;
+  perspective:760px;touch-action:pan-y;cursor:grab;overflow:hidden}
+.wkd-ring.grab{cursor:grabbing}
+.wkd-stage{position:absolute;inset:0;transform-style:preserve-3d}
+/* Each card is placed from its own distance to the centre, so the card in
+   the middle sits at x=0 and STAYS there while its neighbours travel in to
+   it. Turning the whole ring as one body made the front photograph ride
+   round the circle, which read as the whole thing sliding sideways. */
+.wkd-ri{position:absolute;top:8px;left:50%;width:160px;height:206px;
+  transform-origin:50% 50%;will-change:transform;
+  transition:transform .44s cubic-bezier(.22,.61,.36,1),opacity .44s}
+.wkd-ri.now{transition:none}
+.wkd-ri img{width:100%;height:100%;object-fit:cover;border-radius:14px;display:block;
+  background:rgba(255,255,255,.08);box-shadow:0 14px 32px rgba(0,0,0,.55)}
+.wkd-ring-cap{text-align:center;font-size:13px;line-height:1.5;min-height:38px;margin-top:4px}
+.wkd-ring-cap b{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;
+  opacity:.6;margin-top:4px}
+.wkd-ring-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:2px}
+.wkd-ring-nav button{background:rgba(255,255,255,.12);border:0;color:#fff;cursor:pointer;
+  width:44px;height:44px;border-radius:50%;font:700 17px/1 inherit}
+.wkd-ring-dots{display:flex;gap:5px}
+.wkd-ring-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3)}
+.wkd-ring-dots i.on{background:#fff}
+
+/* ── THE PLATE ──
+   How much of the plate each macro is, by calories rather than grams -
+   nine per gram of fat against four is the whole difference between the
+   two pictures, and calories are the one a plate actually shows. */
+.wkd-plate{display:flex;align-items:center;gap:16px;
+  background:rgba(255,255,255,.06);border-radius:15px;padding:14px 15px}
+.wkd-plate svg{flex:0 0 auto}
+.wkd-keys{display:flex;flex-direction:column;gap:9px;flex:1;min-width:0}
+.wkd-key{font-size:12.5px;line-height:1.3}
+.wkd-key b{display:block;font-size:14.5px;font-weight:800}
+.wkd-key u{text-decoration:none;display:inline-block;width:9px;height:9px;border-radius:50%;
+  margin-inline-end:6px;vertical-align:0}
+.wkd-key span{opacity:.62;font-size:11.5px}
+
+/* ── THE RECORDS ──
+   No artwork is stored - the evening asks for a title and an artist - so
+   the label is coloured from the title itself. The same song is the same
+   colour every week, which is what makes a shelf of them read as a shelf. */
+.wkd-recs{display:flex;flex-direction:column;gap:13px}
+.wkd-rec{display:flex;align-items:center;gap:14px}
+.wkd-disc{width:84px;height:84px;border-radius:50%;flex:0 0 auto;position:relative;
+  background:repeating-radial-gradient(circle at 50% 50%,
+      rgba(255,255,255,.055) 0 1px,rgba(255,255,255,0) 1px 3px),
+    radial-gradient(circle at 33% 27%,rgba(255,255,255,.16),rgba(255,255,255,0) 48%),#17120f;
+  box-shadow:0 8px 20px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.08)}
+.wkd-disc i{position:absolute;inset:27%;border-radius:50%;display:block;
+  box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.wkd-disc i::after{content:'';position:absolute;inset:40%;border-radius:50%;background:#17120f}
+.wkd-rec-t{min-width:0}
+.wkd-rec-t b{display:block;font-size:15.5px;font-weight:800;line-height:1.3}
+.wkd-rec-t span{display:block;font-size:12.5px;opacity:.72;margin-top:3px}
+.wkd-rec-t em{display:block;font-style:normal;font-size:10px;font-weight:800;
+  letter-spacing:.08em;opacity:.55;margin-top:5px}
+.wkd-chart{background:rgba(255,255,255,.06);border-radius:15px;padding:13px 12px 9px}
+.wkd-leg{display:flex;gap:14px;font-size:11px;opacity:.78;margin-top:9px;flex-wrap:wrap}
+.wkd-sw{display:inline-block;width:9px;height:9px;border-radius:50%;
+  margin-inline-end:5px;vertical-align:-1px}
+.wkd-figs{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.wkd-fig{background:rgba(255,255,255,.07);border-radius:13px;padding:11px 12px}
+.wkd-fig b{font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.15;
+  font-variant-numeric:tabular-nums}
+/* a pill: at 11px beside a 21px number a bare delta reads as part of it */
+.wkd-fig em{font-style:normal;font-size:11px;font-weight:800;margin-inline-start:7px;
+  background:rgba(255,255,255,.13);border-radius:7px;padding:2px 6px;vertical-align:3px}
+.wkd-fig span{font-size:11.5px;opacity:.72;display:block;margin-top:4px}
+.wkd-up{color:#a8d8a2}.wkd-dn{color:#f0b3a2}
+.wkd-list{display:flex;flex-direction:column;gap:8px}
+.wkd-said{background:rgba(255,255,255,.07);border-radius:14px;padding:12px 14px}
+.wkd-said q{quotes:none;font-size:14.5px;line-height:1.6;display:block}
+.wkd-said i{font-style:normal;display:block;font-size:10.5px;font-weight:800;
+  letter-spacing:.06em;opacity:.55;margin-top:6px}
+.wkd-song{display:flex;align-items:baseline;gap:9px;font-size:15.5px;font-weight:700}
+.wkd-song em{font-style:normal;font-size:11px;font-weight:700;opacity:.55;margin-inline-start:auto}
+.wkd-row{font-size:13px;display:flex;align-items:center;gap:9px}
+.wkd-row>span:first-child{min-width:52px}
+.wkd-track{flex:1;height:9px;border-radius:5px;background:rgba(255,255,255,.13);overflow:hidden}
+/* a span is inline and a width on it does nothing - five bars at zero */
+.wkd-fill{display:block;height:100%;border-radius:5px}
+.wkd-v{font-size:11px;opacity:.72;min-width:58px;text-align:end}
+.wkd-letter{font-size:14.5px;line-height:1.8;background:rgba(255,255,255,.07);
+  border-radius:14px;padding:13px 15px}
+.wkd-chips{display:flex;flex-wrap:wrap;gap:7px}
+.wkd-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:9px 13px;font-family:inherit;font-size:12.5px;font-weight:700;
+  color:#fff;cursor:pointer;text-align:start;min-height:42px}
+.wkd-chip.on{background:#fff;color:#1a1512;border-color:#fff}
+.wkd-in{width:100%;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.17);
+  border-radius:14px;padding:12px 13px;color:#fff;font-family:inherit;font-size:15px;
+  line-height:1.5;resize:none;min-height:78px}
+.wkd-in::placeholder{color:rgba(255,255,255,.45)}
+.wkd-in:focus{outline:none;border-color:rgba(255,255,255,.42);background:rgba(255,255,255,.13)}
+.wkd-keep{width:100%;border:0;border-radius:13px;min-height:50px;cursor:pointer;
+  background:#fff;color:#1a1512;font-family:inherit;font-size:15px;font-weight:800}
+.wkd-keep:disabled{background:rgba(255,255,255,.2);color:rgba(255,255,255,.5);cursor:default}
+/* ── and where that one sentence comes back ──
+   In סיום יום, in the app's own material. The home screen is not touched. */
+.carry{background:var(--nu-ground,#e9e7e3);border-radius:17px;padding:14px 16px;margin-bottom:12px;
+  box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),
+             inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+.carry-k{font-size:10.5px;font-weight:800;letter-spacing:.07em;color:var(--nu-muted,#6d675e)}
+.carry-t{font-size:15.5px;font-weight:700;line-height:1.5;color:var(--nu-ink,#4a453f);margin-top:6px}
+.carry-q{display:flex;align-items:center;gap:8px;margin-top:11px}
+.carry-q>span{font-size:11.5px;color:var(--nu-muted,#6d675e);margin-inline-end:auto}
+.carry-b{border:none;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;
+  min-height:40px;padding:0 17px;border-radius:11px;color:var(--nu-ink,#4a453f);
+  background:var(--nu-ground,#e9e7e3);
+  box-shadow:-2px -2px 5px var(--nu-lit,rgba(255,255,255,.95)),
+             2px 3px 7px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.carry-b.on{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),
+             inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .me-range{display:flex;gap:5px;background:rgba(255,255,255,.6);border-radius:13px;padding:4px;margin-bottom:14px}
 .me-rb{flex:1;border:none;border-radius:10px;padding:8px 4px;font-family:inherit;font-size:11.5px;font-weight:700;color:var(--muted);background:none;cursor:pointer}
 .me-rb.on{background:var(--card);color:var(--ink);box-shadow:0 2px 7px rgba(200,180,160,.2)}
@@ -7597,12 +7795,158 @@ html body.mod-journal .set-country{background:var(--nu-ground);border:none;color
     raw.removeItem(SEEDED);seed();location.reload();
   };
 
+  /* A WEEK THAT EXISTS, so the weekly summary has something to be.
+     It writes through the app's own writers - saveSummary, photoPutKeyed,
+     logWeight - rather than inventing a stored shape, because a fixture
+     invented from memory files your own mistake as a bug. Into the last
+     FINISHED week, which is the one the summary offers. */
+  function demoPic(a,c2,c3,seed2){
+    var s='<svg xmlns="http://www.w3.org/2000/svg" width="420" height="540">'+
+      '<defs><radialGradient id="g" cx="40%" cy="28%"><stop offset="0%" stop-color="'+a+'"/>'+
+      '<stop offset="55%" stop-color="'+c2+'"/><stop offset="100%" stop-color="'+c3+'"/>'+
+      '</radialGradient></defs><rect width="420" height="540" fill="url(#g)"/>',i,x,y;
+    for(i=0;i<40;i++){
+      x=(seed2*41+i*67)%420;y=(seed2*59+i*89)%540;
+      s+='<ellipse cx="'+x+'" cy="'+y+'" rx="'+(12+(i%6)*13)+'" ry="'+(9+(i%4)*11)+
+         '" fill="'+[a,c2,c3][i%3]+'" opacity=".26"/>';
+    }
+    return 'data:image/svg+xml;utf8,'+encodeURIComponent(s+'</svg>');
+  }
+  window.__devDemoWeek=function(){
+    var sun=weekStartOf(dayShift(-7)),days=[],i;
+    for(i=0;i<7;i++)days.push(dayShift(i,new Date(sun+'T12:00:00')));
+    var PALS=[['#ffe9c2','#e0a85c','#7a4a1e'],['#1e2a22','#4a7d4a','#bcd9b4'],
+              ['#e9dcf2','#9a8fc4','#3f3060'],['#fdf2e6','#d8b48c','#6b4a32'],
+              ['#cfe4ef','#5d8fab','#20384a'],['#f6e0d6','#c0795e','#53291a']];
+    /* The Hebrew below is somebody's DIARY, not the app's voice - the same
+       exemption a recipe body gets. It stands in for what a person wrote,
+       so translating it would be translating her. It also never reaches a
+       user: this whole block is behind the /dev/ guard at the top. Each
+       line says so itself, because a list kept somewhere else rots. */
+    var CAP=['ארוחת בוקר על המרפסת','הליכה בפארק אחרי העבודה','ישבנו עד שהחשיך', // i18n-exempt: demo diary
+             'אפיתי בלי מתכון','יום ארוך מדי','ארוחת ערב בחוץ'];                   // i18n-exempt: demo diary
+    var SONG=['הכול עובר','Nightcall','','אם תלכי','','רקיע','שקיעה'];            // i18n-exempt: demo diary
+    var ARTIST=['שלמה ארצי','Kavinsky','','כנסיית השכל','','אביב גפן','ריטה'];     // i18n-exempt: demo diary
+    var MOM=['הקפה הראשון היה שקט','ההליכה הארוכה','ישבנו במרפסת עד שהחשיך',      // i18n-exempt: demo diary
+             'אפיתי בלי מתכון ויצא','','הצחוק בארוחה','הבוקר היה שקט וזה הספיק'];  // i18n-exempt: demo diary
+    var DIFF=['','לצאת מוקדם יותר','','להפסיק לדחות את השיחה הזאת','לישון לפני אחת','','']; // i18n-exempt: demo diary
+    var TAKE=['','לקום בלי טלפון','','לתכנן ארוחה אחת עם חלבון לפני שיוצאים','','לכתוב לה','']; // i18n-exempt: demo diary
+    var QUOTE=['','','','','מי שלא עושה טעויות לא מחליט כלום','','']; // i18n-exempt: demo diary
+    var RATE=[8,8,5,9,6,8,8],KG=[61.2,61.0,61.5,61.6,61.1,60.8,60.7];
+    /* name, kcal, protein, carbs, fat, time - four a day, roughly 1,900 */
+    var MEALS=[['יוגורט וגרנולה',320,22,38,8,'08:10'],     // i18n-exempt: demo diary
+               ['סלט עם חזה עוף',540,46,30,24,'13:20'],    // i18n-exempt: demo diary
+               ['תפוח ושקדים',210,6,24,11,'16:40'],        // i18n-exempt: demo diary
+               ['סלמון, אורז וברוקולי',690,44,62,27,'20:05']]; // i18n-exempt: demo diary
+    var jobs=[];
+    for(i=0;i<7;i++)(function(n){
+      var d=days[n],rec=loadSummary(d)||{};
+      rec.done=true;rec.dayRating=RATE[n];
+      if(SONG[n]){rec.song=SONG[n];rec.songArtist=ARTIST[n]||'';}
+      if(MOM[n])rec.moment=MOM[n];
+      if(DIFF[n])rec.differently=DIFF[n];
+      if(TAKE[n])rec.takeawayForTomorrow=TAKE[n];
+      if(QUOTE[n])rec.quote=QUOTE[n];
+      var clk=new Array(25),h=0;
+      for(h=0;h<25;h++)clk[h]=h>=24?'none':(h<8?'sleep':(h<16?'work':(h<19?'social':'other')));
+      rec.timeclock=clk;
+      if(n<6){
+        var key='demo-wk-'+n;
+        rec.photo=key;rec.photoCaption=CAP[n];
+        jobs.push(photoPutKeyed(key,demoPic(PALS[n][0],PALS[n][1],PALS[n][2],n+1)));
+      }
+      saveSummary(d,rec);
+      logWeight(KG[n],d);
+      /* and it has to EAT: the plate and the macro split are drawn from
+         day_<date>.meals, so a week of summaries with no food left the
+         nutrition page with nothing on it. Written through saveDay, and
+         only when the day holds no meals already - a demo must not eat
+         on top of somebody's real food. */
+      var day=loadDay(d);
+      if(!day.meals||!day.meals.length){
+        day.meals=[];
+        for(var mi=0;mi<MEALS.length;mi++)
+          day.meals.push({kind:'meal',name:MEALS[mi][0],kcal:MEALS[mi][1],
+            p:MEALS[mi][2],c:MEALS[mi][3],f:MEALS[mi][4],
+            id:Date.now()+n*10+mi,time:MEALS[mi][5],src:'demo'});
+        day.water=6;
+        saveDay(d,day);
+      }
+    })(i);
+    /* the sentence carried into the week after, and some evenings answered,
+       so page one can show how it went rather than only offering the box */
+    try{
+      raw.setItem(P+'wk_carry',JSON.stringify(
+        {text:'לתכנן ארוחה אחת עם חלבון לפני שיוצאים','for':sun,at:Date.now()})); // i18n-exempt: demo diary
+      var ticks={};
+      for(i=0;i<7;i++)ticks[days[i]]=(i!==2&&i!==4);
+      raw.setItem(P+'wk_tick',JSON.stringify(ticks));
+      raw.removeItem(P+'wk_seen');
+    }catch(e){}
+    return Promise.all(jobs);
+  };
+
   document.addEventListener('DOMContentLoaded',function(){
     var b=document.createElement('div');
-    b.textContent=isolated?'DEV':'DEV ⚠ shared data';
-    b.style.cssText='position:fixed;top:4px;inset-inline-end:6px;z-index:9999;pointer-events:none;'+
-      'background:'+(isolated?PAL.violet500:'#c0392b')+';color:#fff;padding:4px 7px;border-radius:8px;'+
-      'font:700 9px/1 -apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.5px;opacity:.9';
+    /* THE BUILD, ON SCREEN. "Nothing changed" and "that is not there" are
+       the same sentence whether the fix did not work or never arrived, and
+       guessing between them cost two rounds. document.lastModified is the
+       Last-Modified of this very document, so it names the build with
+       nothing to remember to bump. */
+    var STAMP=(function(){
+      var d=new Date(document.lastModified);
+      if(!isFinite(d))return '';
+      function p(n){return (n<10?'0':'')+n;}
+      return ' ' + p(d.getDate()) + '/' + p(d.getMonth()+1) + ' ' +
+             p(d.getHours()) + ':' + p(d.getMinutes());
+    })();
+    var LABEL=(isolated?'DEV':'DEV ⚠ shared')+STAMP;
+    b.textContent=LABEL;
+    /* THE SAFE AREA, or it is invisible exactly where it is needed. The
+       installed app is standalone with viewport-fit=cover, so top:4px puts
+       this behind the phone's own clock - visible in a browser, gone on the
+       device. And it has to be big enough to hit: 9px type in 4px of
+       padding is a 30x17 target. */
+    b.style.cssText='position:fixed;top:calc(4px + env(safe-area-inset-top));'+
+      'inset-inline-end:6px;z-index:9999;cursor:pointer;display:flex;align-items:center;'+
+      'min-height:30px;padding:0 12px;'+
+      'background:'+(isolated?PAL.violet500:'#c0392b')+';color:#fff;border-radius:9px;'+
+      'font:700 11px/1 -apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.5px;opacity:.9';
+    /* A PANEL, NOT A TIMED DOUBLE TAP. The phone has no console, the
+       sandbox is seeded once from whatever the jar held at the time, and
+       reseeding an empty jar produces another empty sandbox - which is
+       exactly the state that made the weekly summary look broken when it
+       was working. So the badge opens two explicit choices instead of
+       racing a 2.5 second window. */
+    var panel=null;
+    function closePanel(){if(panel){panel.remove();panel=null;}}
+    function mkBtn(label,fn){
+      var x=document.createElement('button');
+      x.textContent=label;
+      x.style.cssText='display:block;width:100%;text-align:start;border:0;cursor:pointer;'+
+        'background:none;color:#fff;font:700 12px/1 inherit;padding:11px 12px;min-height:42px';
+      x.addEventListener('click',function(ev){ev.stopPropagation();fn(x);});
+      return x;
+    }
+    b.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      if(panel){closePanel();return;}
+      panel=document.createElement('div');
+      panel.style.cssText='position:fixed;top:calc(38px + env(safe-area-inset-top));'+
+        'inset-inline-end:6px;z-index:9999;min-width:168px;border-radius:11px;overflow:hidden;'+
+        'background:rgba(26,21,18,.96);box-shadow:0 10px 30px rgba(0,0,0,.4);'+
+        'font-family:-apple-system,BlinkMacSystemFont,sans-serif';
+      panel.addEventListener('click',function(e2){e2.stopPropagation();});
+      panel.appendChild(mkBtn('RESEED FROM REAL DATA',function(x){
+        x.textContent='…';window.__devReseed();
+      }));
+      panel.appendChild(mkBtn('WRITE A DEMO WEEK',function(x){
+        x.textContent='…';
+        window.__devDemoWeek().then(function(){location.reload();});
+      }));
+      document.body.appendChild(panel);
+      setTimeout(function(){document.addEventListener('click',closePanel,{once:true});},0);
+    });
     document.body.appendChild(b);
   });
 })();
@@ -8314,6 +8658,17 @@ var HE={
   '{n} ימים שרשמת בהם':{one:'יום אחד שרשמת בו',two:'יומיים שרשמת בהם',other:'{n} ימים שרשמת בהם'},
   '{n} פריטים נוספו':{one:'פריט אחד נוסף',two:'שני פריטים נוספו',other:'{n} פריטים נוספו'},
   '{n} אימונים':{one:'אימון אחד',two:'שני אימונים',other:'{n} אימונים'},
+  '{n} ימים שסיכמת':{one:'יום אחד שסיכמת',two:'יומיים שסיכמת',other:'{n} ימים שסיכמת'},
+  '{n} תמונות':{one:'תמונה אחת',two:'שתי תמונות',other:'{n} תמונות'},
+  '{n} שירים':{one:'שיר אחד',two:'שני שירים',other:'{n} שירים'},
+  '{n} שעות':{one:'שעה',two:'שעתיים',other:'{n} שעות'},
+  '{n} ארוחות השבוע':{one:'ארוחה אחת השבוע',two:'שתי ארוחות השבוע',other:'{n} ארוחות השבוע'},
+  '{n} קלוריות ביום בממוצע':{one:'קלוריה אחת ביום בממוצע',two:'שתי קלוריות ביום בממוצע',other:'{n} קלוריות ביום בממוצע'},
+  'קרה ב{n} ימים':{one:'קרה ביום אחד',two:'קרה ביומיים',other:'קרה ב{n} ימים'},
+  /* No hole: the figure is drawn by the markup beside the label, and the
+     label still has to agree with it - 1 / ימים is the bug this avoids. */
+  'ימים שסיכמת':{one:'יום שסיכמת',two:'ימים שסיכמת',other:'ימים שסיכמת'},
+  'אימונים':{one:'אימון',two:'אימונים',other:'אימונים'},
   'אפשר עד {n} תמונות בבת אחת.':{one:'אפשר תמונה אחת בבת אחת.',two:'אפשר שתי תמונות בבת אחת.',other:'אפשר עד {n} תמונות בבת אחת.'},
   '{n} לכל צד':{one:'פלטה אחת לכל צד',two:'שתי פלטות לכל צד',other:'{n} פלטות לכל צד'},
   'להסיר את {name}? {n} סטים שנרשמו בו יימחקו.':{one:'להסיר את {name}? הסט שנרשם בו יימחק.',two:'להסיר את {name}? שני הסטים שנרשמו בו יימחקו.',other:'להסיר את {name}? {n} סטים שנרשמו בו יימחקו.'},
@@ -16077,7 +16432,18 @@ function verWatch(){
     var tag=r.headers.get('etag')||r.headers.get('last-modified')||'';
     if(!tag)return;
     if(!_verTag){_verTag=tag;return;}       // the first answer is the baseline
-    if(tag!==_verTag)location.reload();
+    if(tag===_verTag)return;
+    /* A PLAIN RELOAD CAN COME BACK FROM THE CACHE, and then this never
+       fires again. Pages serves the document with max-age=600, so a
+       location.reload() inside that window can hand back the very file we
+       just found to be stale - and the reloaded page takes its baseline
+       from a no-store HEAD, which is the NEW tag, so it is satisfied and
+       stops asking. Permanently old, and quiet about it.
+
+       A URL the cache has never seen cannot do that. The old _v is
+       stripped first so it does not accumulate, and go= survives. */
+    var s=location.search.replace(/([?&])_v=\d+&?/,'$1').replace(/[?&]$/,'');
+    location.replace(location.pathname+s+(s?'&':'?')+'_v='+now+location.hash);
   },function(){});
 }
 addEventListener('visibilitychange',function(){if(!document.hidden)verWatch();});
@@ -31194,6 +31560,10 @@ function renderReflectHome(){
   }
   h+='</div>';
 
+  /* The one sentence carried out of the last weekly summary. It lives HERE
+     and not on the home screen, which is not ours to change. */
+  h+=wkCarryLine();
+
   h+='<button class="rf-secs-b" onclick="rfNightlyOpen()">'+rfNightlyLabel()+'</button>';
   h+='<button class="rf-secs-b" onclick="rfSecsOpen()">'+rfSecsLabel()+'</button>';
 
@@ -31999,6 +32369,78 @@ var ME_C=['#7c5cc4','#d4553a','#0f7fa5','#b8791a'];
 var ME_INK='#4a453f',ME_MUTE='#6d675e',ME_GRID='rgba(176,168,156,.5)';
 var _meRange=14;
 
+/* ── THE WEEKLY SUMMARY ──
+   Sunday to Saturday, because weekStartOf already decides that everywhere
+   else in this app. Available once there is a week between the earliest day
+   on record and today - nobody is asked when they started. */
+var WK_SUM_KEY='wk_';
+/* The scan for the earliest day ever written used to live here, memoised,
+   and the readiness gate was the only thing that called it. The gate now
+   asks about the week it is offering instead of about how long ago somebody
+   started, so the scan is gone rather than left to be rewired wrongly. */
+/* the Sunday of the last week that has FINISHED - this week is still being
+   lived in and a summary of it would be a summary of a fragment */
+function wkLastComplete(){
+  return weekStartOf(dayShift(-7));
+}
+/* IS THERE A WEEK TO READ. The old gate asked two questions that both had
+   the wrong answer.
+
+   It counted seven days from the FIRST record, which says nothing about
+   whether the week being summarised holds anything - somebody who wrote one
+   day a month ago passed it, and somebody who filled last week solid but
+   started six days ago did not. What matters is the week itself, so that is
+   what is counted: two days with something in them.
+
+   And it went false once wk_seen matched, which deleted the only way in.
+   Open the summary once and the card vanished until next Sunday, with no
+   route back to a week you were in the middle of. Seen is a BADGE now,
+   not a gate - wkCardNew answers it, and the card stays. */
+function wkDaysWritten(from){
+  var rows=wkDayList(from),i,r,n=0;
+  for(i=0;i<rows.length;i++){
+    r=rows[i];
+    if((r.sum&&(r.sum.done||r.sum.dayRating||r.sum.photo||r.sum.moment))||
+       (r.day&&r.day.meals&&r.day.meals.length)||r.steps)n++;
+  }
+  return n;
+}
+/* THE MOST RECENT FINISHED WEEK THAT ACTUALLY HOLDS SOMETHING.
+   Looking only at LAST week is right for somebody who logs every day and
+   wrong for everybody else. Come back after a fortnight away and the week
+   worth reading is the one you were here for - offering nothing instead is
+   the app forgetting on your behalf. Eight weeks back, then give up.
+   It stops at the first week that qualifies, so the common case reads one
+   week and not eight. */
+var WK_LOOK_BACK=8;
+function wkBestWeek(){
+  var wk=wkLastComplete(),i;
+  for(i=0;i<WK_LOOK_BACK;i++){
+    if(!wk)return '';
+    if(wkDaysWritten(wk)>=2)return wk;
+    wk=dayShift(-7,wkDate(wk));
+  }
+  return '';
+}
+function wkReady(){return !!wkBestWeek();}
+function wkCardNew(){
+  var seen='';try{seen=localStorage.getItem('wk_seen')||'';}catch(e){}
+  return seen!==wkBestWeek();
+}
+/* the seven rows of one week, in the shape meDayList already answers in, so
+   the same chart builders draw them */
+/* dayShift takes a DATE - the two callers that existed pass one. A week is
+   identified here by its Sunday as a string, so it is converted once, here,
+   rather than at four call sites. */
+function wkDate(ds){return new Date(ds+'T12:00:00');}
+function wkDayList(from){
+  var out=[],i,s2,d;
+  for(i=0;i<7;i++){
+    s2=dayShift(i,wkDate(from));d=new Date(s2+'T12:00:00');
+    out.push({date:s2,d:d,sum:loadSummary(s2),day:loadDay(s2),steps:stepsOf(s2)});
+  }
+  return out;
+}
 function meDayList(n){
   var out=[],i,d,s;
   for(i=n-1;i>=0;i--){
@@ -32077,11 +32519,660 @@ function meCard(id,title,sub,body){
   return h+body+'</div>';
 }
 
+/* ── THE WEEK, WHOLE ──
+   Seven pages, each one the whole of its dimension rather than a highlight:
+   every photograph of the week in a rail you drag, the movement as a chart
+   with the week's average on it, everything that was written - not the best
+   line of it.
+
+   A page with nothing in it is DROPPED rather than drawn empty. A week with
+   no songs has no songs page, which is what keeps the deck honest for a week
+   somebody barely used.
+
+   It mounts on body, never inside #me-screen, and repaints itself rather
+   than going through renderMe: z-index is flattened in there, and a redraw
+   of a screen nobody can see is work for nothing. */
+var _wkDeck='';          /* the week being read, or '' */
+var _wkAt=0;             /* which page */
+var _wkPages=null;
+var _wkRevText='',_wkRevBusy=false,_wkRevErr='';
+var _wkCarryTxt='';
+
+/* ONE SENTENCE, AND ONLY ONE. Not a list and not a history: the week you are
+   living in has exactly one, and next week's summary replaces it. 'for' is
+   the Sunday of the week it applies to, which is how that week's own summary
+   knows to ask whether it happened. */
+var WK_CARRY_KEY='wk_carry';
+var WK_TICK_KEY='wk_tick';
+function wkCarry(){
+  try{var o=JSON.parse(localStorage.getItem(WK_CARRY_KEY)||'null');
+      return (o&&o.text)?o:null;}catch(e){return null;}
+}
+function wkCarrySave(text,forWeek){
+  try{localStorage.setItem(WK_CARRY_KEY,
+      JSON.stringify({text:text,'for':forWeek,at:Date.now()}));}catch(e){}
+}
+/* The answer goes in its OWN store, never into sum_<date>: a day record
+   written by a tap would make the evening screen say the day had been
+   started when nothing had been. */
+function wkTicks(){
+  try{var o=JSON.parse(localStorage.getItem(WK_TICK_KEY)||'{}');
+      return (o&&typeof o==='object')?o:{};}catch(e){return {};}
+}
+function wkCarryTick(yes){
+  var t=wkTicks();t[todayStr()]=!!yes;
+  try{localStorage.setItem(WK_TICK_KEY,JSON.stringify(t));}catch(e){}
+  renderReflect();
+}
+/* the one line it comes back as, at the head of the evening */
+function wkCarryLine(){
+  var c=wkCarry();
+  if(!c)return '';
+  var a=wkTicks()[todayStr()];
+  return '<div class="carry"><div class="carry-k">'+_t('לקחת לשבוע הזה')+'</div>'+
+    '<div class="carry-t">'+esc(c.text)+'</div>'+
+    '<div class="carry-q"><span>'+_t('קרה היום?')+'</span>'+
+    '<button class="carry-b'+(a===true?' on':'')+'" onclick="wkCarryTick(1)">'+_t('כן')+'</button>'+
+    '<button class="carry-b'+(a===false?' on':'')+'" onclick="wkCarryTick(0)">'+_t('לא')+'</button>'+
+    '</div></div>';
+}
+
+/* which summary section a question belongs to, so a section switched off
+   stays off here too - read from SUM_SECS rather than from a second list */
+function wkSecOf(id){
+  var i;
+  for(i=0;i<SUM_SECS.length;i++)
+    if(SUM_SECS[i].ids&&SUM_SECS[i].ids.indexOf(id)>=0)return SUM_SECS[i].k;
+  return '';
+}
+var WK_SAID_IDS=['moment','impactfulMoment','proudOf','quote','recurringThought',
+                 'differently','takeawayForTomorrow','grateful'];
+
+/* everything one week holds, read once */
+function wkData(from){
+  var rows=wkDayList(from),W=loadWeights(),i,j,r,s,k,p2,c,sec,id,v,m;
+  var o={rows:rows,shots:[],said:[],songs:[],hours:{sleep:0,work:0,social:0,other:0},
+         hoursAny:false,closed:0,trained:0,ratings:[],weights:[],kcal:[],prot:[],
+         mac:{p:0,c:0,f:0,kcal:0},meals:0,ateDays:0};
+  for(i=0;i<rows.length;i++){
+    r=rows[i];s=r.sum||{};
+    if(s.done)o.closed++;
+    if(trainedOn(r.date,s))o.trained++;
+    if(s.dayRating)o.ratings.push(s.dayRating);
+    o.weights.push(W[r.date]||null);
+    k=0;p2=0;m=(r.day&&r.day.meals)||[];
+    for(j=0;j<m.length;j++){
+      k+=m[j].kcal||0;p2+=m[j].p||0;
+      o.mac.c+=m[j].c||0;o.mac.f+=m[j].f||0;
+    }
+    o.mac.p+=p2;o.mac.kcal+=k;o.meals+=m.length;
+    if(m.length)o.ateDays++;
+    o.kcal.push(k>0?Math.round(k):null);
+    o.prot.push(p2>0?Math.round(p2):null);
+    if(s.photo&&sumSecOn('photo'))
+      o.shots.push({ref:s.photo,cap:(s.photoCaption||'').trim(),d:r.d});
+    if(s.song&&sumSecOn('song'))
+      o.songs.push({t:s.song,a:(s.songArtist||'').trim(),d:r.d});
+    for(j=0;j<WK_SAID_IDS.length;j++){
+      id=WK_SAID_IDS[j];v=s[id];
+      if(typeof v!=='string'||!v.trim())continue;
+      sec=wkSecOf(id);
+      if(sec&&!sumSecOn(sec))continue;
+      o.said.push({q:v.trim(),w:sumLabelFor(id),d:r.d});
+    }
+    /* 24 SLOTS, NOT 25. The clock array is 25 long because it marks the
+       hours from 0:00 to 24:00, and 24:00 is the next day's 0:00 - counting
+       it gave 175 hours in a week that has 168. */
+    if(Array.isArray(s.timeclock)&&sumSecOn('time'))
+      for(j=0;j<24&&j<s.timeclock.length;j++){
+        c=s.timeclock[j];
+        if(o.hours[c]!==undefined){o.hours[c]++;o.hoursAny=true;}
+      }
+  }
+  return o;
+}
+/* the four figures of a week, so the same call answers for the week before */
+function wkStats(from){
+  var rows=wkDayList(from),W=loadWeights(),i,r,s,rat=[],
+      st={closed:0,trained:0,rating:null,weight:null};
+  for(i=0;i<rows.length;i++){
+    r=rows[i];s=r.sum||{};
+    if(s.done)st.closed++;
+    if(trainedOn(r.date,s))st.trained++;
+    if(s.dayRating)rat.push(s.dayRating);
+    if(W[r.date])st.weight=W[r.date];
+  }
+  if(rat.length)st.rating=Math.round(meAvg(rat)*10)/10;
+  return st;
+}
+
+/* ONE SERIES OVER THE SEVEN DAYS, on dark. Right to left when the page is,
+   because a week that reads backwards under a right-to-left title is a chart
+   nobody can use. A missing day is skipped, never drawn as a zero. */
+function wkChart(vals,col,fmt){
+  var pts=[],i,v,vs,lo,hi,pad,rtl,sum=0,avg,s;
+  for(i=0;i<vals.length;i++){
+    v=vals[i];
+    if(v!==null&&v!==undefined&&isFinite(v))pts.push({i:i,v:v});
+  }
+  if(pts.length<2)return '';
+  var W=272,H=136,PL=4,PR=4,PT=12,PB=18,cW=W-PL-PR,cH=H-PT-PB;
+  vs=pts.map(function(p){return p.v;});
+  lo=Math.min.apply(null,vs);hi=Math.max.apply(null,vs);
+  if(lo===hi){lo-=1;hi+=1;}
+  pad=(hi-lo)*0.18;lo-=pad;hi+=pad;
+  rtl=(document.documentElement.dir==='rtl');
+  function xp(n){return PL+cW*(rtl?(6-n):n)/6;}
+  function yp(n){return PT+cH-cH*(n-lo)/(hi-lo);}
+  for(i=0;i<vs.length;i++)sum+=vs[i];
+  avg=sum/vs.length;
+  s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" xmlns="http://www.w3.org/2000/svg">';
+  s+='<line x1="'+PL+'" y1="'+yp(avg).toFixed(1)+'" x2="'+(PL+cW)+'" y2="'+yp(avg).toFixed(1)+
+     '" stroke="#fff" stroke-opacity=".3" stroke-dasharray="5,4"/>';
+  s+='<polyline fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round" '+
+     'stroke-linecap="round" points="'+
+     pts.map(function(p){return xp(p.i).toFixed(1)+','+yp(p.v).toFixed(1);}).join(' ')+'"/>';
+  for(i=0;i<pts.length;i++)
+    s+='<circle cx="'+xp(pts[i].i).toFixed(1)+'" cy="'+yp(pts[i].v).toFixed(1)+
+       '" r="3.4" fill="'+col+'"/>';
+  /* 7 Jan 2024 is a Sunday, so meDow answers the day of the week and not the
+     day of some month - these are column marks, not dates */
+  for(i=0;i<7;i++)
+    s+='<text x="'+xp(i).toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle" font-size="9" '+
+       'fill="#fff" fill-opacity=".55">'+meDow(new Date(2024,0,7+i))+'</text>';
+  s+='</svg>';
+  return '<div class="wkd-chart">'+s+'<div class="wkd-leg">'+
+    '<span><span class="wkd-sw" style="background:'+col+'"></span>'+
+    fmt(pts[pts.length-1].v)+'</span>'+
+    '<span><span class="wkd-sw" style="background:rgba(255,255,255,.4)"></span>'+
+    _t('ממוצע השבוע')+' '+fmt(Math.round(avg*10)/10)+'</span></div></div>';
+}
+/* a figure and what it did against the week before. The delta is the point -
+   progress is a comparison, never a number standing on its own. */
+function wkFigs(from){
+  var a=wkStats(from),b=wkStats(dayShift(-7,wkDate(from))),out=[],dw;
+  function sgn(n,dec){
+    return nfmt(n,{signDisplay:'exceptZero',maximumFractionDigits:dec||0});
+  }
+  function row(val,delta,up,label){
+    out.push('<div class="wkd-fig"><b>'+val+'</b>'+
+      (delta?'<em class="'+(up?'wkd-up':'wkd-dn')+'">'+delta+'</em>':'')+
+      '<span>'+label+'</span></div>');
+  }
+  if(a.weight!==null){
+    dw=(b.weight!==null)?(toDisplayWeight(a.weight)-toDisplayWeight(b.weight)):null;
+    /* with no weigh-in last week there is no delta, and "מול שבוע שעבר"
+       under a number that is compared to nothing is a label that lies */
+    var dwTxt=(dw!==null&&Math.abs(dw)>=0.05)?sgn(Math.round(dw*10)/10,1):'';
+    row(fmtWeight(a.weight),dwTxt,dw!==null&&dw<=0,
+        dwTxt?''+_t('מול שבוע שעבר')+'':''+_t('משקל')+'');
+  }
+  row(nfmt(a.closed),a.closed!==b.closed?sgn(a.closed-b.closed):'',
+      a.closed>=b.closed,_t('ימים שסיכמת',{n:a.closed}));
+  if(a.trained||b.trained)
+    row(nfmt(a.trained),a.trained!==b.trained?sgn(a.trained-b.trained):'',
+        a.trained>=b.trained,_t('אימונים',{n:a.trained}));
+  if(a.rating!==null)
+    row(nfmt(a.rating),(b.rating!==null&&a.rating!==b.rating)?sgn(a.rating-b.rating,1):'',
+        b.rating===null||a.rating>=b.rating,_t('ציון ממוצע ליום'));
+  return out.length?'<div class="wkd-figs">'+out.join('')+'</div>':'';
+}
+
+/* ── THE PLATE ──
+   The share by CALORIES, not by grams: a gram of fat is nine and a gram of
+   protein is four, so the two pictures are different pictures, and the one
+   a plate shows is the calories. Drawn as a rim with three sectors inside
+   it rather than a pie, because the thing being described is a plate. */
+function wkPlateHTML(mac){
+  var kp=mac.p*4,kc=mac.c*4,kf=mac.f*9,tot=kp+kc+kf;
+  if(tot<=0)return '';
+  var R=52,CX=60,CY=60,parts=[
+    {k:kp,g:mac.p,col:'#e0906c',l:''+_t('חלבון')+''},
+    {k:kc,g:mac.c,col:'#8fc98a',l:''+_t('פחמימות')+''},
+    {k:kf,g:mac.f,col:'#eac36a',l:''+_t('שומן')+''}
+  ],i,a0=-Math.PI/2,a1,p,s='';
+  s+='<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">';
+  s+='<circle cx="60" cy="60" r="58" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3"/>';
+  for(i=0;i<parts.length;i++){
+    p=parts[i];
+    if(p.k<=0)continue;
+    a1=a0+(p.k/tot)*Math.PI*2;
+    /* a single sector that is the whole circle has no arc to draw */
+    if(p.k>=tot-0.0001){
+      s+='<circle cx="60" cy="60" r="'+R+'" fill="'+p.col+'" fill-opacity=".82"/>';
+    } else {
+      s+='<path fill="'+p.col+'" fill-opacity=".82" d="M'+CX+','+CY+
+         ' L'+(CX+R*Math.cos(a0)).toFixed(2)+','+(CY+R*Math.sin(a0)).toFixed(2)+
+         ' A'+R+','+R+' 0 '+((a1-a0)>Math.PI?1:0)+',1 '+
+         (CX+R*Math.cos(a1)).toFixed(2)+','+(CY+R*Math.sin(a1)).toFixed(2)+' Z"/>';
+    }
+    a0=a1;
+  }
+  s+='</svg>';
+  var keys='';
+  for(i=0;i<parts.length;i++){
+    p=parts[i];
+    keys+='<div class="wkd-key"><b><u style="background:'+p.col+'"></u>'+
+      pfmt(Math.round(p.k/tot*100))+'</b>'+p.l+
+      ' <span>'+fmtGrams(Math.round(p.g))+'</span></div>';
+  }
+  return '<div class="wkd-plate">'+s+'<div class="wkd-keys">'+keys+'</div></div>';
+}
+
+/* ── THE RECORDS ──
+   A stable colour per title, so the same song is the same record every
+   time it comes back. Not a hash anybody should rely on - it only has to
+   be repeatable and spread out. */
+function wkHue(t){
+  var h=0,i;
+  for(i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))%360;
+  return h;
+}
+function wkRecsHTML(songs){
+  var h='<div class="wkd-recs">',i,s,col;
+  for(i=0;i<songs.length;i++){
+    s=songs[i];
+    col='hsl('+wkHue(s.t)+',48%,44%)';
+    h+='<div class="wkd-rec"><div class="wkd-disc"><i style="background:'+col+'"></i></div>'+
+       '<div class="wkd-rec-t"><b>'+esc(s.t)+'</b>'+
+       (s.a?'<span>'+esc(s.a)+'</span>':'')+
+       '<em>'+wkDayName(s.d)+'</em></div></div>';
+  }
+  return h+'</div>';
+}
+
+/* ── THE RING ──
+   Each photograph is turned onto the face of a cylinder and the cylinder
+   turns. The stage is pushed back by the radius so the front card lands at
+   z=0, which is the one in focus; everything else fades with how far round
+   it is. Two cards cannot make a cylinder, so the radius has a floor. */
+var _wkDeckRing=0;
+function wkDeckRingHTML(shots){
+  var n=shots.length,i,h;
+  if(!n)return '';
+  if(_wkDeckRing>=n)_wkDeckRing=0;
+  h='<div class="wkd-ring" id="wkd-ring" data-n="'+n+'">'+
+    '<div class="wkd-stage" id="wkd-stage">';
+  for(i=0;i<n;i++)
+    h+='<div class="wkd-ri" data-i="'+i+'">'+photoImg(shots[i].ref,'alt=""')+'</div>';
+  h+='</div></div>';
+  h+='<div class="wkd-ring-cap" id="wkd-ring-cap"></div>';
+  h+='<div class="wkd-ring-nav"><button onclick="wkDeckRingTurn(-1)">&#8249;</button>'+
+     '<span class="wkd-ring-dots" id="wkd-ring-dots"></span>'+
+     '<button onclick="wkDeckRingTurn(1)">&#8250;</button></div>';
+  return h;
+}
+/* the shortest signed distance from the centre, so the far side of the
+   list is reached by going backwards rather than all the way round */
+function wkRingOff(i,pos,n){
+  var o=(i-pos)%n;
+  if(o>n/2)o-=n;
+  if(o<-n/2)o+=n;
+  return o;
+}
+/* Every card placed from its own offset. The one at the centre has offset
+   zero, which is x=0 - it does not move at all while the others come to
+   it. The live argument is a fractional offset while a finger is down. */
+/* 96px of offset against a 160px card left the neighbours peeking by about
+   35px, which reads as one photograph with shadows rather than a carousel
+   at rest. 114 shows enough of them to say what they are. */
+var WK_RI_X=114,WK_RI_Z=92,WK_RI_DEG=45;
+function wkDeckRingPaint(shots,live){
+  var ring=document.getElementById('wkd-ring');
+  if(!ring)return;
+  var n=+ring.getAttribute('data-n'),items=ring.querySelectorAll('.wkd-ri');
+  /* RTL: the next photograph should arrive from the side the eye reads
+     towards, or "next" visibly goes backwards */
+  var dir=(document.documentElement.dir==='rtl')?-1:1;
+  var pos=_wkDeckRing+(live||0),i,o,a,el;
+  for(i=0;i<items.length;i++){
+    el=items[i];
+    o=wkRingOff(i,pos,n);
+    a=Math.abs(o);
+    el.className='wkd-ri'+(live!==undefined?' now':'');
+    el.style.transform='translateX(calc(-50% + '+(o*WK_RI_X*dir).toFixed(1)+'px)) '+
+      'translateZ('+(-a*WK_RI_Z).toFixed(1)+'px) '+
+      'rotateY('+(-o*WK_RI_DEG*dir).toFixed(1)+'deg)';
+    el.style.opacity=String(Math.max(0,1-a*0.4));
+    el.style.zIndex=String(30-Math.round(a*10));
+    /* beyond two out it is behind everything and costs a layer */
+    el.style.visibility=(a>2.6)?'hidden':'visible';
+  }
+  var cap=document.getElementById('wkd-ring-cap'),s=shots[((Math.round(pos)%n)+n)%n];
+  if(cap&&s)cap.innerHTML=(s.cap?esc(s.cap):'')+'<b>'+wkDayName(s.d)+'</b>';
+  var dots=document.getElementById('wkd-ring-dots');
+  if(dots){
+    var dh='';
+    for(i=0;i<n;i++)dh+='<i class="'+(i===_wkDeckRing?'on':'')+'"></i>';
+    dots.innerHTML=dh;
+  }
+}
+function wkDeckRingTurn(d){
+  var ring=document.getElementById('wkd-ring');
+  if(!ring)return;
+  var n=+ring.getAttribute('data-n');
+  _wkDeckRing=((_wkDeckRing+d)%n+n)%n;
+  wkDeckRingPaint(window._wkShots||[]);
+}
+/* A finger moves it by the same measure the cards are laid out with, so
+   what is under the thumb stays under the thumb; letting go settles on the
+   nearest card. */
+function wkDeckRingDrag(shots){
+  var ring=document.getElementById('wkd-ring');
+  if(!ring)return;
+  var n=+ring.getAttribute('data-n'),x0=null,frac=0;
+  var dir=(document.documentElement.dir==='rtl')?-1:1;
+  ring.addEventListener('pointerdown',function(e){
+    x0=e.clientX;frac=0;ring.classList.add('grab');
+    try{ring.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  ring.addEventListener('pointermove',function(e){
+    if(x0===null)return;
+    frac=-(e.clientX-x0)/WK_RI_X*dir;
+    wkDeckRingPaint(shots,frac);
+  });
+  function up(){
+    if(x0===null)return;
+    x0=null;ring.classList.remove('grab');
+    _wkDeckRing=((_wkDeckRing+Math.round(frac))%n+n)%n;
+    frac=0;wkDeckRingPaint(shots);
+  }
+  ring.addEventListener('pointerup',up);
+  ring.addEventListener('pointercancel',up);
+  ring.addEventListener('pointerleave',up);
+}
+
+/* the weekday spelled out - meDow is one letter, which is right under a
+   chart and wrong beside a sentence */
+function wkDayName(d){
+  return [''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',
+          ''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''][d.getDay()];
+}
+
+/* ── THE PAGES ──
+   Built from what the week actually holds. Each carries the photograph it is
+   painted over; with no photographs at all the deck is still a deck, just a
+   dark one. */
+function wkPages(from){
+  var d=wkData(from),p=[],i,c=wkCarry(),shots=d.shots;
+  function bg(n){return shots.length?shots[n%shots.length].ref:'';}
+  /* the SHORT date: fmtDate spells the weekday out, and "\u05d9\u05d5\u05dd \u05e8\u05d0\u05e9\u05d5\u05df, 27
+     \u05d1\u05e1\u05e4\u05d8\u05de\u05d1\u05e8 \u2013 \u05d9\u05d5\u05dd \u05e9\u05d1\u05ea, 3 \u05d1\u05d0\u05d5\u05e7\u05d8\u05d5\u05d1\u05e8" at .14em tracking is a kicker that fills
+     the line it is meant to sit quietly above */
+  var dates=fmtDayShort(wkDate(from))+' \u2013 '+fmtDayShort(wkDate(dayShift(6,wkDate(from))));
+
+  /* 1 - THE COVER. A week opens on its own name. */
+  var note1=[],cover='';
+  note1.push(_t('{n} ימים שסיכמת',{n:d.closed}));
+  if(shots.length)note1.push(_t('{n} תמונות',{n:shots.length}));
+  if(d.songs.length)note1.push(_t('{n} שירים',{n:d.songs.length}));
+  if(d.trained)note1.push(_t('{n} אימונים',{n:d.trained}));
+  if(shots.length){
+    /* three at most, fanned - a stack, not a gallery; the gallery is next */
+    var TILT=['rotate(-8deg) translate(-54%,6px)','rotate(5deg) translate(-46%,0)',
+              'rotate(-1deg) translate(-50%,-4px)'];
+    cover='<div class="wkd-fan">';
+    for(i=0;i<Math.min(3,shots.length);i++)
+      cover+=photoImg(shots[i].ref,'alt="" style="transform:'+TILT[i]+'"');
+    cover+='</div>';
+  }
+  /* and if a sentence was carried INTO this week, how it went */
+  if(c&&c['for']===from){
+    var t=wkTicks(),yes=0,no=0,ans;
+    for(i=0;i<d.rows.length;i++){
+      ans=t[d.rows[i].date];
+      if(ans===true)yes++;else if(ans===false)no++;
+    }
+    if(yes||no)
+      cover+='<div class="wkd-said"><q>'+esc(c.text)+'</q><i>'+
+        (yes?_t('קרה ב{n} ימים',{n:yes}):''+_t('לא יצא השבוע')+'')+'</i></div>';
+  }
+  p.push({kick:dates,ttl:''+_t('סיכום השבוע')+'',
+          note:'<span class="wkd-cover-n">'+note1.join('<br>')+'</span>',
+          body:cover,ref:bg(0)});
+
+  /* 2 - the photographs, on a ring you turn */
+  if(shots.length){
+    window._wkShots=shots;
+    p.push({kick:''+_t('התמונות שלך')+'',ttl:_t('{n} תמונות',{n:shots.length}),
+            body:wkDeckRingHTML(shots),ref:bg(1),ring:1});
+  }
+
+  /* 3 - nutrition: the weight line, and the plate it came from */
+  var ch='',lbl='',haveW=0;
+  for(i=0;i<d.weights.length;i++)if(d.weights[i]!==null)haveW++;
+  if(haveW>=2){
+    ch=wkChart(d.weights,'#e0a85c',function(v){return fmtWeight(v);});
+    lbl=''+_t('משקל')+'';
+  } else if(d.ratings.length>=2){
+    ch=wkChart(d.rows.map(function(r){return (r.sum&&r.sum.dayRating)||null;}),'#8fb6d4',
+      function(v){return nfmt(v);});
+    lbl=''+_t('ציון היום')+'';
+  } else {
+    var haveP=0;
+    for(i=0;i<d.prot.length;i++)if(d.prot[i]!==null)haveP++;
+    if(haveP>=2){ch=wkChart(d.prot,'#a8d8a2',function(v){return nfmt(v);});lbl=''+_t('חלבון')+'';}
+  }
+  var figs=wkFigs(from),plate=wkPlateHTML(d.mac),eaten='';
+  /* TWO WHOLE SENTENCES, not one assembled from fragments and middots.
+     Each carries its own count, so each inflects on its own; a noun glued
+     to a number with a separator cannot. */
+  if(d.meals)
+    eaten='<div class="wkd-note">'+
+      _t('{n} קלוריות ביום בממוצע',{n:Math.round(d.mac.kcal/(d.ateDays||1))})+'</div>';
+  /* the kicker already says תזונה, so the title states a fact like every
+     other page does - "5 שירים", "168 שעות" */
+  if(ch||figs||plate)
+    p.push({kick:''+_t('תזונה')+'',
+            ttl:d.meals?_t('{n} ארוחות השבוע',{n:d.meals}):(lbl||''+_t('תזונה')+''),
+            body:(plate||'')+eaten+(ch||'')+figs,ref:bg(2)});
+
+  /* 4 - everything that was written, not the best line of it */
+  if(d.said.length){
+    var sh='<div class="wkd-list">';
+    for(i=0;i<d.said.length;i++)
+      sh+='<div class="wkd-said"><q>'+esc(d.said[i].q)+'</q><i>'+
+        wkDayName(d.said[i].d)+(d.said[i].w?' \u00b7 '+d.said[i].w:'')+'</i></div>';
+    p.push({kick:''+_t('מה שאמרת')+'',ttl:''+_t('מה שכתבת לעצמך')+'',
+            body:sh+'</div>',ref:bg(3)});
+  }
+
+  /* 5 - the songs, as records */
+  if(d.songs.length)
+    p.push({kick:''+_t('השירים שלך')+'',ttl:_t('{n} שירים',{n:d.songs.length}),
+            body:wkRecsHTML(d.songs),ref:bg(4)});
+
+  /* 5 - where the hours went */
+  if(d.hoursAny){
+    var TC={sleep:PAL.terra200,work:PAL.green500,social:'#c9b8f0',other:PAL.amber500};
+    var TL={sleep:''+_t('שינה')+'',work:''+_t('עבודה')+'',
+            social:''+_t('חברתי')+'',other:''+_t('אחר')+''};
+    var ks=['sleep','work','social','other'],tot=0,mx=1,hh='<div class="wkd-list">';
+    for(i=0;i<ks.length;i++){tot+=d.hours[ks[i]];if(d.hours[ks[i]]>mx)mx=d.hours[ks[i]];}
+    for(i=0;i<ks.length;i++){
+      if(!d.hours[ks[i]])continue;
+      hh+='<div class="wkd-row"><span>'+TL[ks[i]]+'</span>'+
+        '<span class="wkd-track"><span class="wkd-fill" style="width:'+
+        Math.round(d.hours[ks[i]]/mx*100)+'%;background:'+TC[ks[i]]+'"></span></span>'+
+        '<span class="wkd-v">'+_t('{n} שעות',{n:d.hours[ks[i]]})+'</span></div>';
+    }
+    p.push({kick:''+_t('לאן הלך הזמן')+'',ttl:_t('{n} שעות',{n:tot}),
+            note:''+_t('מתוך מה שסימנת על השעון.')+'',body:hh+'</div>',ref:bg(5)});
+  }
+
+  /* 6 - the letter */
+  var lh='';
+  if(_wkRevBusy)lh='<div class="wkd-letter">'+_t('כותב לך על השבוע')+'&hellip;</div>';
+  else if(_wkRevErr)lh='<div class="wkd-letter">'+esc(_wkRevErr)+'</div>';
+  else if(_wkRevText)lh='<div class="wkd-letter">'+mdLite(_wkRevText)+'</div>';
+  if(lh)p.push({kick:''+_t('ולסיום')+'',ttl:''+_t('מה שראיתי')+'',body:lh,ref:bg(6)});
+
+  /* 7 - the one thing you carry forward */
+  p.push({kick:''+_t('לשבוע הבא')+'',ttl:''+_t('דבר אחד שלוקחים איתך')+'',
+          note:''+_t('לא רשימה. משפט אחד שיחכה לך בראש סיום היום, ושאפתח איתו את הסיכום הבא.')+'',
+          body:wkCarryPage(d),ref:bg(7)});
+  return p;
+}
+/* THE BLANK BOX IS WHERE A PERSON STOPS, after seven pages of their own
+   week. So the chips are things they already wrote this week - what they
+   would have done differently, and what they said they would take to
+   tomorrow - and one tap fills the box. */
+function wkCarryPage(d){
+  var i,sug=[],seen={},s,h='';
+  for(i=d.rows.length-1;i>=0&&sug.length<3;i--){
+    s=d.rows[i].sum||{};
+    [s.differently,s.takeawayForTomorrow].forEach(function(v){
+      if(typeof v!=='string')return;
+      v=v.trim();
+      if(!v||v.length>70||seen[v]||sug.length>=3)return;
+      seen[v]=1;sug.push(v);
+    });
+  }
+  window._wkSug=sug;
+  if(sug.length){
+    h+='<div class="wkd-chips">';
+    for(i=0;i<sug.length;i++)
+      h+='<button class="wkd-chip'+(_wkCarryTxt===sug[i]?' on':'')+
+         '" onclick="wkCarryPick('+i+')">'+esc(sug[i])+'</button>';
+    h+='</div>';
+  }
+  h+='<textarea class="wkd-in" id="wkd-carry" placeholder="'+
+     esc(''+_t('או כתוב משפט משלך…')+'')+
+     '" oninput="_wkCarryTxt=this.value;wkCarrySync()">'+esc(_wkCarryTxt)+'</textarea>';
+  h+='<button class="wkd-keep" id="wkd-keep"'+(_wkCarryTxt.trim()?'':' disabled')+
+     ' onclick="wkCarryKeep()">'+_t('קח את זה לשבוע הבא')+'</button>';
+  return h;
+}
+/* the button follows the box without a repaint - redrawing while somebody is
+   typing moves the caret, which is a worse bug than a stale button */
+function wkCarrySync(){
+  var b=document.getElementById('wkd-keep');
+  if(b)b.disabled=!(_wkCarryTxt||'').trim();
+}
+function wkCarryPick(i){
+  var sug=window._wkSug||[],s=sug[i];
+  if(s===undefined)return;
+  _wkCarryTxt=s;
+  wkDeckPaint();
+  var b=document.getElementById('wkd-carry');
+  if(b){b.focus();try{b.setSelectionRange(s.length,s.length);}catch(e){}}
+}
+function wkCarryKeep(){
+  var t=(_wkCarryTxt||'').trim();
+  if(!t)return;
+  wkCarrySave(t,dayShift(7,wkDate(_wkDeck)));
+  showToast(''+_t('נשמר. נתראה עם זה כל ערב.')+'');
+  wkDeckClose();
+}
+
+/* THE LETTER, ONCE. Written when the week is first opened and kept, because
+   a second reading of the same week should say the same thing - and because
+   asking again costs a call for a paragraph nobody asked to be rewritten. */
+function wkFetch(from){
+  _wkRevBusy=true;_wkRevErr='';
+  var rows=wkDayList(from),p=loadProfile(),days=[],i;
+  for(i=0;i<rows.length;i++){
+    var r=rows[i],m=r.day.meals||[],k=0,pr=0,c=0,ft=0,j;
+    for(j=0;j<m.length;j++){k+=m[j].kcal||0;pr+=m[j].p||0;c+=m[j].c||0;ft+=m[j].f||0;}
+    days.push({d:r.date,kcal:Math.round(k),p:Math.round(pr),c:Math.round(c),f:Math.round(ft),
+      trained:!!trainedOn(r.date,r.sum),rating:(r.sum&&r.sum.dayRating)||null,steps:r.steps||0});
+  }
+  fetch(SYNC_SERVER+'/week',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({from:from,lang:appLang(),units:APP_UNITS,
+      gender:appGender()||(p.sex||''),
+      targets:{kcal:TARGETS.kcal,p:TARGETS.p,c:TARGETS.c,f:TARGETS.f},
+      days:days,weights:coachWeights()})
+  }).then(function(r){return r.json();}).then(function(j2){
+    _wkRevBusy=false;
+    if(j2&&j2.ok&&j2.text){
+      _wkRevText=j2.text;
+      try{localStorage.setItem(WK_SUM_KEY+from,JSON.stringify({text:j2.text,at:Date.now()}));}catch(e){}
+    } else _wkRevErr=''+_t('לא הצלחתי לענות כרגע.')+'';
+    wkDeckPaint();
+  },function(){_wkRevBusy=false;_wkRevErr=''+_t('לא הצלחתי לענות כרגע.')+'';wkDeckPaint();});
+}
+/* the one card that says there is something to read */
+function wkCardHTML(){
+  if(_wkDeck)return '';
+  var wk=wkBestWeek();
+  if(!wk)return '';
+  var isNew=wkCardNew();
+  /* the card STAYS once the week exists. Only the wording and the dot know
+     whether it has been read - a one-shot entry point is a week you cannot
+     get back into. */
+  return '<button class="wk-card'+(isNew?' nu':'')+'" onclick="wkDeckOpen(\''+wk+'\')">'+
+    '<span class="wk-card-t">'+(isNew?''+_t('הסיכום השבועי שלך מוכן')+'':''+_t('השבוע שלך')+'')+'</span>'+
+    '<span class="wk-card-s">'+fmtDate(wk)+' &ndash; '+fmtDate(dayShift(6,wkDate(wk)))+'</span>'+
+    '</button>';
+}
+
+function wkDeckOpen(from){
+  _wkDeck=from;_wkAt=0;_wkDeckRing=0;
+  _wkRevText='';_wkRevErr='';_wkRevBusy=false;
+  /* a sentence already written for the week AFTER this one is what the last
+     page should open holding, so re-reading a summary does not look blank */
+  var c=wkCarry(),nx=dayShift(7,wkDate(from));
+  _wkCarryTxt=(c&&c['for']===nx)?c.text:'';
+  try{localStorage.setItem('wk_seen',from);}catch(e){}
+  var got=null;try{got=JSON.parse(localStorage.getItem(WK_SUM_KEY+from)||'null');}catch(e){}
+  if(got&&got.text)_wkRevText=got.text; else wkFetch(from);
+  var el=document.getElementById('wk-deck');
+  if(!el){el=document.createElement('div');el.id='wk-deck';el.className='wkd';
+          document.body.appendChild(el);}
+  document.body.style.overflow='hidden';
+  wkDeckPaint();
+  renderMe();
+}
+function wkDeckClose(){
+  _wkDeck='';_wkPages=null;
+  var el=document.getElementById('wk-deck');
+  if(el)el.remove();
+  document.body.style.overflow='';
+  renderMe();
+}
+function wkDeckGo(n){
+  if(!_wkPages)return;
+  var to=_wkAt+n;
+  if(to<0||to>=_wkPages.length)return;
+  _wkAt=to;wkDeckPaint();
+}
+function wkDeckPaint(){
+  var el=document.getElementById('wk-deck');
+  if(!el||!_wkDeck)return;
+  var p=wkPages(_wkDeck),i,h='';
+  _wkPages=p;
+  if(_wkAt>=p.length)_wkAt=p.length-1;
+  h+='<div class="wkd-bars">';
+  for(i=0;i<p.length;i++)h+='<div class="wkd-bar'+(i===_wkAt?' on':'')+'"></div>';
+  h+='</div><button class="wkd-x" onclick="wkDeckClose()">'+_t('סגור')+'</button>';
+  for(i=0;i<p.length;i++){
+    h+='<div class="wkd-pg'+(i===_wkAt?' on':'')+'">';
+    if(p[i].ref)h+=photoImg(p[i].ref,'class="wkd-bg" alt=""');
+    h+='<div class="wkd-veil"></div><div class="wkd-body">'+
+       '<div class="wkd-kick">'+p[i].kick+'</div>'+
+       '<div class="wkd-ttl">'+p[i].ttl+'</div>'+
+       (p[i].note?'<div class="wkd-note">'+p[i].note+'</div>':'')+
+       (p[i].body||'')+'<div class="wkd-tail"></div></div></div>';
+  }
+  h+='<div class="wkd-nav">'+
+     '<button onclick="wkDeckGo(-1)"'+(_wkAt===0?' disabled':'')+'>&#8249; '+
+     _t('הקודם')+'</button>'+
+     '<button onclick="wkDeckGo(1)"'+(_wkAt===p.length-1?' disabled':'')+'>'+
+     _t('הבא')+' &#8250;</button></div>';
+  el.innerHTML=h;
+  hydratePhotos(el);
+  if(p[_wkAt]&&p[_wkAt].ring){
+    wkDeckRingPaint(window._wkShots||[]);
+    wkDeckRingDrag(window._wkShots||[]);
+  }
+}
 function renderMe(){
   var rows=meDayList(_meRange),i,r;
   var done=rows.filter(function(x){return x.sum&&x.sum.done;}).length;
   var h='<div class="me-wrap">';
 
+  h+=wkCardHTML();
   h+='<div class="me-top"><div class="me-logo">Me</div>';
   h+='<div class="me-sub">'+_t('מה שהימים מצטברים אליו')+'</div></div>';
 
