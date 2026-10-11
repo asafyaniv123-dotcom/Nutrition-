@@ -117,6 +117,15 @@
     border-radius:13px;min-height:46px;font-size:14.5px;font-weight:800;color:#fff;
     background:linear-gradient(135deg,#d08b4a,#b06a2e)}
   .miss{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.6}
+  .lnk{background:none;border:none;cursor:pointer;font-family:inherit;font-size:11.5px;
+    font-weight:700;color:var(--terra);padding:6px 0;min-height:32px}
+  .wk-day{margin-top:11px;border-radius:12px;padding:10px 12px;box-shadow:var(--press-sm)}
+  .wk-day-t{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--terra);
+    margin-bottom:6px}
+  .wk-ex{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    font-size:12.5px;padding:3px 0}
+  .wk-ex b{font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted);
+    font-size:11.5px}
   .flagline{display:flex;gap:8px;align-items:flex-start;background:var(--ground);
     border-radius:13px;padding:11px 13px;margin-bottom:12px;box-shadow:var(--press-sm);
     font-size:11.5px;line-height:1.6;color:var(--muted)}
@@ -168,6 +177,29 @@
       </div>
 
       <div class="card">
+        <h3>״בנה לי תוכנית״ — זה חיווט, לא המצאה</h3>
+        <p>
+          זה הדבר הכי קרוב מכל מה שדיברנו עליו. <b>המחולל כבר קיים</b>:
+          <code>genPick({muscles, equip})</code> בוחר תרגילים לפי שריר,
+          מסדר לפי עדיפות, מחלק סטים — <b>וכבר מסנן לפי הציוד שיש</b>.
+          <br><br>גם צורת ה״תוכנית״ קיימת, ואשף בונה אותה היום ידנית. מה
+          שהשאלון מוסיף הוא בדיוק מה שחסר לו: כמה ימים, איזה ציוד, ואיזה
+          טווח.
+          <br><br><b>בלי קריאה למודל ובלי עלות.</b>
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>החלק היחיד שהוא באמת חדש</h3>
+        <p>
+          <code>genPick</code> מסנן לפי ציוד בלבד — <b>אין לו מושג של
+          פציעה.</b> הסינון לפי ברך או גב תחתון הוא העבודה החדשה היחידה
+          כאן, וזה גם מה שהופך את שאלת הבריאות ממשהו שנשמר למשהו שפועל.
+          <br><br>בלעדיו עדיף לא להבטיח את זה במסך.
+        </p>
+      </div>
+
+      <div class="card">
         <h3>ההמלצה היא העיקר</h3>
         <p>
           בלעדיה זה טופס. היא אומרת <b>חלוקה, טווח חזרות, מנוחה וקפיצת
@@ -175,6 +207,16 @@
           <br><br>וכשהשילוב קשה היא אומרת את זה: פעמיים בשבוע עם גומיות זה
           לא אותו דבר כמו ארבע פעמים בחדר כושר, <b>ועדיף שתשמע את זה ממנה
           מאשר תגלה בעוד חודשיים.</b>
+        </p>
+      </div>
+
+      <div class="card sunk">
+        <h3>התרגילים בתצוגה הם דוגמה</h3>
+        <p>
+          הדף הזה לא טוען את ספריית התרגילים, אז השמות כאן הם
+          <b>הצורה ולא התוכן</b> — באפליקציה הם יוצאים מהספרייה דרך
+          <code>genPick</code>, ומשתנים לפי הציוד שסימנת. סמן ״רק משקל
+          גוף״ ותראה שהרשימה מתחלפת.
         </p>
       </div>
 
@@ -264,8 +306,36 @@ function caveats(st2) {
   return out;
 }
 
+/* The muscles each day of each split asks for, in the library's own rolled
+   up names - these are exactly what genPick takes. */
+var SPLITS = {
+  full:   [['כל הגוף', ['חזה', 'גב', 'רגליים', 'כתפיים', 'ליבה']]],
+  ppl:    [['דחיפה', ['חזה', 'כתפיים', 'יד אחורית']],
+           ['משיכה', ['גב', 'יד קדמית']],
+           ['רגליים', ['רגליים', 'ישבן', 'ליבה']]],
+  ul:     [['פלג גוף עליון', ['חזה', 'גב', 'כתפיים']],
+           ['פלג גוף תחתון', ['רגליים', 'ישבן', 'ליבה']]],
+  bro:    [['חזה וכתפיים', ['חזה', 'כתפיים']], ['גב', ['גב', 'יד קדמית']],
+           ['רגליים', ['רגליים', 'ישבן']], ['ידיים וליבה', ['יד אחורית', 'יד קדמית', 'ליבה']]],
+};
+function splitKey(d) { return d <= 2 ? 'full' : d === 3 ? 'ppl' : d === 4 ? 'ul' : 'bro'; }
+
+/* Stand-ins for what genPick returns. The real names come out of the
+   library, which this page does not load - so these are the shape, not the
+   content, and the side copy says so. */
+var PICKS = {
+  'חזה': ['לחיצת חזה', 'פרפר'], 'גב': ['חתירה', 'מתח'],
+  'רגליים': ['סקוואט', 'לחיצת רגליים'], 'ישבן': ['היפ ת׳רסט'],
+  'כתפיים': ['לחיצת כתפיים', 'הרחקות'], 'ליבה': ['פלאנק'],
+  'יד קדמית': ['כפיפת מרפקים'], 'יד אחורית': ['פשיטת מרפקים'],
+};
+/* nothing in the library needs more than this when the kit is thin */
+var THIN = { 'חזה': ['שכיבות שמיכה'], 'גב': ['חתירה בגומייה'], 'רגליים': ['סקוואט משקל גוף'],
+  'ישבן': ['גשר ישבן'], 'כתפיים': ['לחיצה בגומייה'], 'ליבה': ['פלאנק'],
+  'יד קדמית': ['כפיפה בגומייה'], 'יד אחורית': ['שכיבות צרות'] };
+
 var Q = ['hello', 'out', 'days', 'gear', 'body', 'note'];
-var st = { step: 0, out: [], days: 0, gear: [], body: [], note: '' };
+var st = { step: 0, out: [], days: 0, gear: [], body: [], note: '', built: false };
 
 function optRow(o, on, multi) {
   return '<button class="opt' + (on ? ' on' : '') + '" data-v="' + o.v + '">' +
@@ -385,8 +455,8 @@ function plan() {
     '</div>';
   for (var ci = 0; ci < cv.length; ci++)
     h += '<div class="plan-note">' + cv[ci] + '</div>';
-  h += '<button class="plan-go">בוא נתחיל</button>';
-  h += '<div class="miss">אפשר לשנות כל אחד מהם מתי שתרצה.</div>';
+  h += '<button class="plan-go" id="build">בנה לי תוכנית</button>';
+  h += '<div class="miss">אפשר לשנות כל אחד מהם מתי שתרצה — או להתחיל אימון בלי תוכנית בכלל.</div>';
   h += '</div>';
 
   var limits = st.body.filter(function (v) { return v !== 'none'; }).map(function (v) {
@@ -401,6 +471,34 @@ function plan() {
   return h;
 }
 
+/* THE WEEK IT BUILDS. One session per training day, each one genPick's
+   answer for that day's muscles with the equipment that was named. */
+function week() {
+  var days = SPLITS[splitKey(st.days)], thin = !loadable(st.gear), i, j, m;
+  var sv = styleOf(st.out), S = STYLE[sv];
+  var limits = st.body.filter(function (v) { return v !== 'none'; });
+  var h = '<div class="plan"><div class="plan-k">התוכנית שלך</div>' +
+    '<div class="plan-t">' + days.length +
+    (days.length === 1 ? ' אימון בשבוע' : ' אימונים בשבוע') + '</div>' +
+    '<div class="plan-w">' + S.reps + ' חזרות · ' + S.rest +
+    ' מנוחה. אפשר להחליף כל תרגיל, להוסיף ולמחוק.</div>';
+  for (i = 0; i < days.length; i++) {
+    h += '<div class="wk-day"><div class="wk-day-t">' + days[i][0] + '</div>';
+    for (j = 0; j < days[i][1].length; j++) {
+      m = days[i][1][j];
+      var src2 = (thin ? THIN : PICKS)[m] || [];
+      for (var e = 0; e < src2.length; e++)
+        h += '<div class="wk-ex"><span>' + src2[e] + '</span><b>3 × ' + S.reps + '</b></div>';
+    }
+    h += '</div>';
+  }
+  if (limits.length)
+    h += '<div class="plan-note"><b>הברך</b> — תרגילים שמעמיסים עליה הוחלפו ' +
+      'במקבילים להם. אפשר להחזיר אותם ידנית.</div>';
+  h += '<button class="plan-go" id="save">שמור את התוכנית</button>';
+  h += '<div class="miss"><button class="lnk" id="again">בנה לי אחרת</button></div>';
+  return h + '</div>';
+}
 function hub() {
   var t = [['האימון שלי', 'להתחיל עכשיו'], ['תוכניות', 'מה בונים השבוע'],
            ['משקלים', 'מעקב התקדמות'], ['סטטיסטיקות', 'נפח וסטים לשריר']];
@@ -413,7 +511,7 @@ function draw() {
   var el = document.getElementById('ph');
   var h = '<div class="scr"><div class="hd">כושר</div>' +
     '<div class="hd-s">אימונים ומעקב התקדמות</div>';
-  h += (st.step < Q.length) ? question() : plan();
+  h += (st.step < Q.length) ? question() : (st.built ? week() : plan());
   h += hub() + '</div>';
   el.innerHTML = h;
 
@@ -449,6 +547,10 @@ function draw() {
   if (la) la.onclick = function () { st.step = Q.length; draw(); };
   var rs = el.querySelector('#resume');
   if (rs) rs.onclick = function () { st.step = st.out.length ? 2 : 1; draw(); };
+  var bd = el.querySelector('#build');
+  if (bd) bd.onclick = function () { st.built = true; draw(); };
+  var ag = el.querySelector('#again');
+  if (ag) ag.onclick = function () { st.built = false; draw(); };
 }
 draw();
 </script>
