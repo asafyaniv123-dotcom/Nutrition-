@@ -117,11 +117,12 @@
 
 <div class="wrap">
   <a class="back" href="index.html">‹ מה השתנה</a>
-  <h1>קבלת פנים · ב׳, מדויק</h1>
+  <h1>קבלת פנים · שלוש שאלות</h1>
   <p class="lede">
     בחרת בכרטיס שנמס ואמרת שהוא לא מדויק. <b>התיקון העיקרי הוא לא עוד
     אפשרויות</b> — אלא ששתי שאלות שונות התערבבו לאחת.
-    <br>לחץ על התשובות. השאלה הראשונה היא בחירה מרובה.
+    <br><b>שלוש שאלות:</b> מה אתה רוצה שיקרה, איך מתאמנים בשביל זה, ומה
+    כואב. לחץ על התשובות — הראשונה היא בחירה מרובה.
   </p>
 
   <div class="row">
@@ -169,11 +170,12 @@
       </div>
 
       <div class="card sunk">
-        <h3>מה צריך הכרעה</h3>
+        <h3>שלוש, ולא חמש</h3>
         <p>
-          <b>חמש שאלות זה לא מעט.</b> הנקודות למטה מראות כמה נשאר ו״אחר כך״
-          תמיד שם — אבל אם זה מרגיש ארוך, אפשר לקצר לשלוש (תוצאה, סגנון,
-          בריאות) ולשאול ימים וניסיון מאוחר יותר.
+          ימים בשבוע וותק <b>לא נמחקו — הם זזו.</b> אף אחד לא קורא אותם
+          היום: הם מה שבניית תוכנית צריכה, והתוכנית עוד לא נבנתה. שאלה
+          שהתשובה שלה לא מפעילה כלום היא טופס, אז הן יישאלו איפה שהן
+          משמשות.
           <br><br><b>ושום דבר מזה לא נבנה.</b>
         </p>
       </div>
@@ -206,16 +208,10 @@ var WHY = {
   size:     'הטווח האמצעי הוא זה שבונה, וגם זה שמחזיק מסה כשיורדים בשומן.',
   endure:   'חזרות גבוהות ומנוחות קצרות — נוח למי שחוזר או בונה סיבולת.',
 };
-var DAYS = [
-  { v: '2', t: 'פעמיים בשבוע', s: 'כל הגוף בכל אימון' },
-  { v: '3', t: 'שלוש פעמים',   s: 'דחיפה, משיכה, רגליים' },
-  { v: '4', t: 'ארבע ומעלה',   s: 'חלוקה לפי קבוצות שריר' },
-];
-var LEVEL = [
-  { v: 'new',  t: 'מתחיל',         s: 'פחות משנה' },
-  { v: 'some', t: 'יש לי ניסיון',  s: 'שנה עד שלוש' },
-  { v: 'long', t: 'ותיק',          s: 'יותר משלוש שנים' },
-];
+/* Days per week and years of experience used to be questions four and
+   five. Nothing reads them yet - they are what a programme needs, and the
+   programme is not built - so they are asked where they are used instead
+   of here. A question whose answer nothing acts on is a form. */
 var BODY = [
   { v: 'knee',  t: 'ברך' }, { v: 'low',  t: 'גב תחתון' },
   { v: 'shldr', t: 'כתף' }, { v: 'wrist', t: 'מרפק או שורש כף יד' },
@@ -223,8 +219,8 @@ var BODY = [
   { v: 'none',  t: 'אין לי מגבלות' },
 ];
 
-var st = { step: 0, out: [], style: '', days: '', level: '', body: [], note: '' };
-var TOTAL = 5;
+var st = { step: 0, out: [], style: '', body: [], note: '' };
+var TOTAL = 3;
 
 function optRow(o, on, multi, tag) {
   return '<button class="opt' + (on ? ' on' : '') + '" data-v="' + o.v + '">' +
@@ -269,16 +265,6 @@ function question() {
         STYLE[i].v === rec ? 'מומלץ' : '');
     h += '</div>';
 
-  } else if (st.step === 2) {
-    h += '<div class="fq-q">כמה פעמים בשבוע?</div><div class="fq-body">';
-    for (i = 0; i < DAYS.length; i++) h += optRow(DAYS[i], st.days === DAYS[i].v, false, '');
-    h += '</div>';
-
-  } else if (st.step === 3) {
-    h += '<div class="fq-q">כמה זמן אתה מתאמן?</div><div class="fq-body">';
-    for (i = 0; i < LEVEL.length; i++) h += optRow(LEVEL[i], st.level === LEVEL[i].v, false, '');
-    h += '</div>';
-
   } else {
     h += '<div class="fq-q">יש משהו שכואב או מגביל?</div>' +
       '<div class="fq-s">כדי שלא אציע לך תרגיל שלא כדאי לך לעשות.</div>' +
@@ -297,10 +283,10 @@ function question() {
       'ובזמן אימון תעצור על כאב חד או במפרק.</div>';
   }
 
-  var canNext = (st.step === 0) ? st.out.length > 0
-    : (st.step === 1) ? true
-    : (st.step === 2) ? !!st.days
-    : (st.step === 3) ? !!st.level : true;
+  /* only the first question can be got wrong by leaving it empty: the
+     style has a recommendation already lit, and "nothing hurts" is a
+     legitimate silence */
+  var canNext = (st.step === 0) ? st.out.length > 0 : true;
   h += '<div class="fq-dots">';
   for (i = 0; i < TOTAL; i++) h += '<span class="fq-dot' + (i < st.step ? ' on' : '') + '"></span>';
   h += '</div>';
@@ -361,8 +347,6 @@ function draw() {
         if (k >= 0) st.out.splice(k, 1); else st.out.push(v);
         st.style = '';                       // the recommendation follows the outcomes
       } else if (st.step === 1) st.style = v;
-      else if (st.step === 2) st.days = v;
-      else if (st.step === 3) st.level = v;
       else {
         if (v === 'none') st.body = st.body.indexOf('none') >= 0 ? [] : ['none'];
         else {
