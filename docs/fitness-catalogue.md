@@ -1331,6 +1331,91 @@ Gastrocnemius ל-Soleus.
 
 ---
 
+# הטבלה · שריר לפי מפרק ותנועה (עמ׳ 126–127)
+
+**זה העמוד הכי שימושי במחברת לקוד.** ״סיכום שרירים פעילים ע״פ מפרקים
+ותנועות״ — טבלה שלמה שממפה כל תנועה לשריר האגוניסט (**מודגש**)
+ולסינרגיסטים. צבע = מישור: 🟦 סגיטלי · 🟩 פרונטלי · 🟨 הוריזונטלי.
+
+זה בדיוק מה ש-`genPick` צריך כדי לבחור לפי שריר בלי לנחש: תרגיל שואל
+״איזו תנועה״, והטבלה עונה ״אילו שרירים״.
+
+### כתף
+
+| תנועה | שרירים פעילים | הערה |
+|---|---|---|
+| **Flexion** (כופפי הכתף) | **Anterior Deltoid**, Pectoralis Major (Clavicular head), Coracobrachialis, Short head of Biceps | בכפיפה בשילוב סיבוב פנימי, גם הדלתואיד האמצעי פעיל |
+| **Extension** (פושטי הכתף) | **Latissimus Dorsi**, Pectoralis Major (Sternocostal head), Posterior Deltoid, Teres Major, Long head of Triceps | |
+| **Abduction** (מרחיקי הכתף) | **Deltoid**, Supraspinatus | בהרחקת כתף תוך סיבוב חיצוני, הדלתואיד האחורי אינו פעיל |
+| **Adduction** (מקרבי הכתף) | **Latissimus Dorsi**, Pectoralis Major (Sternocostal head), Posterior Deltoid, Teres Major, Long head of Triceps, Coracobrachialis | בקירוב כתף תוך סיבוב חיצוני, הדלתואיד האחורי פעיל |
+| **Horizontal Abduction** (מרחיקי כתף אופקיים) | **Posterior Deltoid**, Teres Minor, Infraspinatus | בהרחקה אופקית בשילוב סיבוב חיצוני, גם הדלתואיד האמצעי פעיל |
+| **Horizontal Adduction** (מקרבי כתף אופקיים) | **Pectoralis Major**, Anterior Deltoid, Short head of Biceps, Coracobrachialis | |
+| **Internal Rotation** | **Latissimus Dorsi**, Pectoralis Major, Anterior Deltoid, Subscapularis, Teres Major | |
+| **External Rotation** | **Posterior Deltoid**, Teres Minor, Infraspinatus | |
+
+### מרפק
+
+| תנועה | שרירים פעילים | הערה |
+|---|---|---|
+| **Flexion** (כופפי מרפק) | **Biceps Brachii**, Brachialis, Brachioradialis | בסופינציה הביצפס תמיד אגוניסט; בפרונציה הברכיאליס אגוניסט |
+| **Extension** (פושטי מרפק) | **Triceps Brachii** | |
+
+### שכמה–בית חזה
+
+| תנועה | שרירים פעילים | הערה |
+|---|---|---|
+| **Elevation** | **Upper Trapezius**, Levator Scapula, Rhomboids | |
+| **Depression** | **Lower Trapezius** | |
+| **Protraction** | **Serratus Anterior** | |
+| **Retraction** | **Trapezius**, Rhomboids | |
+| **Upward Rotation** | **Serratus Anterior**, Trapezius (Upper + Lower) | תנועה דו-מישורית, תלויה בהרחקת/כפיפת הכתף (כפיפה מעל 90°) |
+| **Downward Rotation** | **Rhomboids**, Levator Scapula | תנועה דו-מישורית, תלויה בקירוב/פשיטת כתף (פשיטה מעל 90°) |
+
+### שורש כף יד
+
+| תנועה | שרירים פעילים | הערה |
+|---|---|---|
+| **Palmar Flexion** | **Wrist Flexors** | כולל כפיפה של האצבעות |
+| **Dorsi Flexion** | **Wrist Extensors** | כולל פשיטה של האצבעות |
+
+### עמוד שדרה
+
+| תנועה | שרירים פעילים | הערה |
+|---|---|---|
+| **Flexion** (כופפי ע״ש) | **Abdominals** | |
+| **Extension** (פושטי ע״ש) | **Erector Spinae** | |
+| **Side Flexion** | **External + Internal Oblique**, Erector Spinae | השרירים יבצעו כפיפה צידית לאותו צד בו הם נמצאים |
+| **Rotation** | **External + Internal Oblique**, Erector Spinae | אלכסון פנימי מבצע רוטציה לאותו הצד בגוף; אלכסון חיצוני וזוקפי הגו מבצעים רוטציה לצד הנגדי |
+| **APT** (Anterior Pelvic Tilt) | **Ilio Psoas**, Rectus Femoris, Erector Spinae, Latissimus Dorsi | |
+| **PPT** (Posterior Pelvic Tilt) | **Gluteus Maximus**, Hamstrings, Abdominals | פרט לראש הקצר של Biceps Femoris |
+
+### ירך
+
+| תנועה | שרירים פעילים | הערה |
+|---|---|---|
+| **Flexion** (כופפי ירך) | **Ilio Psoas**, Rectus Femoris, Sartorius | |
+| **Extension** (פושטי ירך) | **Gluteus Maximus**, Hamstrings | פרט לראש הקצר של Biceps Femoris |
+| **Abduction** (מרחיקי ירך) | **Gluteus Medius**, Gluteus Minimus, Sartorius | מבצעים גם הרחקה אופקית |
+| **Adduction** (מקרבי ירך) | **Hip Adductors** | מבצעים גם קירוב אופקי |
+| **Internal Rotation** | **Gluteus Minimus** | |
+| **External Rotation** | **Gluteus Maximus**, Sartorius, Ilio Psoas | |
+
+### ברך
+
+| תנועה | שרירים פעילים |
+|---|---|
+| **Flexion** (כופפי ברך) | **Hamstrings** (Biceps Femoris, Semitendinosus, Semimembranosus), Gastrocnemius, Sartorius |
+| **Extension** (פושטי ברך) | **Quadriceps** (Rectus Femoris, Vastus Lateralis / Medialis / Intermedius) |
+
+### קרסול
+
+| תנועה | שרירים פעילים | הערה |
+|---|---|---|
+| **Plantar Flexion** | **Gastrocnemius**, Soleus, Tibialis Posterior | בברך ישרה Gastrocnemius הוא האגוניסט; בברך כפופה Soleus הוא האגוניסט |
+| **Dorsi Flexion** | **Tibialis Anterior** | |
+
+---
+
 ## עמודים שאינם תרגיל
 
 - **026, 035, 051** — לוחות אנטומיה (איור בלבד)
