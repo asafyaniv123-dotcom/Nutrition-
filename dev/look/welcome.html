@@ -229,18 +229,28 @@ function splitOf(d) {
   if (d === 4) return { t: 'פלג גוף עליון · תחתון, פעמיים כל אחד', w: 'ארבע פעמים מאפשרות לחזור על כל שריר פעמיים.' };
   return { t: 'חלוקה לפי קבוצות שריר', w: 'בחמישה אימונים יש מקום לתת לכל קבוצה יום.' };
 }
-/* the honest caveat, when the combination is a hard one */
-function caveat(st2) {
-  var g = st2.gear, only = g.length === 1;
+/* CAN THE EQUIPMENT BE LOADED IN KILOGRAMS. Bands and bodyweight cannot,
+   and a card that prints "קפיצת משקל 2.5 ק״ג" above a line saying there is
+   no weight to track is arguing with itself. */
+function loadable(g) {
+  if (!g.length) return true;
+  for (var i = 0; i < g.length; i++)
+    if (g[i] === 'gym' || g[i] === 'bar' || g[i] === 'dumb') return true;
+  return false;
+}
+/* EVERY caveat that applies, not the first that matches. Bands-only and
+   fat-with-mass are about different things and both are true at once. */
+function caveats(st2) {
+  var g = st2.gear, only = g.length === 1, out = [];
   if (only && g[0] === 'body')
-    return 'רק משקל גוף: אפשר להתקדם, אבל <b>עלייה בעומס נמדדת בחזרות ובקושי התרגיל ולא בקילוגרמים</b> — אז המעקב כאן יהיה אחר.';
+    out.push('רק משקל גוף: אפשר להתקדם, אבל <b>העומס עולה בחזרות ובקושי התרגיל ולא בקילוגרמים</b> — אז המעקב כאן נראה אחרת.');
   if (only && g[0] === 'band')
-    return 'גומיות בלבד: <b>אין מספר שאפשר לעקוב אחריו כמו משקל</b>, אז ההתקדמות תימדד בחזרות ובעובי הגומייה.';
+    out.push('גומיות בלבד: <b>אין מספר לעקוב אחריו כמו משקל</b>, אז ההתקדמות נמדדת בחזרות ובעובי הגומייה.');
   if (st2.days <= 2 && st2.out.indexOf('mass') >= 0)
-    return 'פעמיים בשבוע ומסת שריר: <b>זה אפשרי אבל איטי.</b> אם תוכל להוסיף אימון שלישי זה יכפיל כמעט את הקצב.';
+    out.push('פעמיים בשבוע ומסת שריר: <b>אפשרי אבל איטי.</b> אימון שלישי כמעט מכפיל את הקצב.');
   if (st2.out.indexOf('fat') >= 0 && st2.out.indexOf('mass') >= 0)
-    return 'שומן ומסה יחד: <b>עובד בעיקר בהתחלה, אחרי הפסקה, או כשיש מה להוריד.</b> אחרת זה שלב אחרי שלב, ואני אגיד לך מתי להחליף.';
-  return '';
+    out.push('שומן ומסה יחד: <b>עובד בעיקר בהתחלה, אחרי הפסקה, או כשיש מה להוריד.</b> אחרת זה שלב אחרי שלב, ואגיד לך מתי להחליף.');
+  return out;
 }
 
 var Q = ['out', 'days', 'gear', 'body', 'note'];
@@ -321,7 +331,7 @@ function plan() {
       '. בינתיים האזור עובד רגיל — אפשר לפתוח אימון בלי לענות על כלום.</div>' +
       '<button class="plan-go" id="resume">לענות עכשיו</button></div>';
 
-  var sv = styleOf(st.out), S = STYLE[sv], sp = splitOf(st.days), cv = caveat(st);
+  var sv = styleOf(st.out), S = STYLE[sv], sp = splitOf(st.days), cv = caveats(st);
   var names = st.out.map(function (v) {
     for (var i = 0; i < OUT.length; i++) if (OUT[i].v === v) return OUT[i].t;
     return v;
@@ -340,11 +350,13 @@ function plan() {
     '<div class="plan-r"><span>אימונים בשבוע</span><b>' + st.days + '</b></div>' +
     '<div class="plan-r"><span>טווח חזרות</span><b>' + S.reps + '</b></div>' +
     '<div class="plan-r"><span>מנוחה בין סטים</span><b>' + S.rest + '</b></div>' +
-    '<div class="plan-r"><span>קפיצת משקל</span><b>' + S.step + '</b></div>' +
+    '<div class="plan-r"><span>' + (loadable(st.gear) ? 'קפיצת משקל' : 'איך עולים') +
+      '</span><b>' + (loadable(st.gear) ? S.step : 'חזרות וקושי') + '</b></div>' +
     '<div class="plan-r"><span>ציוד</span><b style="font-weight:700;font-size:11.5px">' +
       gearNames.join(' · ') + '</b></div>' +
     '</div>';
-  if (cv) h += '<div class="plan-note">' + cv + '</div>';
+  for (var ci = 0; ci < cv.length; ci++)
+    h += '<div class="plan-note">' + cv[ci] + '</div>';
   h += '<button class="plan-go">בוא נתחיל</button>';
   h += '<div class="miss">אפשר לשנות כל אחד מהם מתי שתרצה.</div>';
   h += '</div>';
