@@ -69,7 +69,7 @@ const called = new Set(keys);
 const VIA_VARIABLE = ['SAY_DERIVED_NONE', 'PLAN_FEELINGS', 'RELATIONSHIP_TYPES',
                       'PEOPLE_FREQS', 'PEOPLE_DATE_TYPES',
                       'PEOPLE_PLACES', 'WIZ_NAME_OPTS', 'CLOSET_SEASONS',
-                      'PROG_DAY_OPTS', 'GENPROG_EXP', 'FIT_ME_LIMITS',
+                      'PROG_DAY_OPTS', 'GENPROG_EXP', 'FIT_ME_LIMITS', 'FIT_OUT',
                       /* Every reflection list, not just RF_IMPACT. The other
                          six were missing, so thirty answers to "what made you
                          put it off?" and "how does your body feel?" were

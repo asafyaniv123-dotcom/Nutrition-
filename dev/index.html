@@ -8368,6 +8368,40 @@ function fqCardHTML(){
    The goal and the equipment are NOT stored here. They have their own keys
    and their own screens, and a second place to answer one question is two
    answers that can disagree. */
+/* WHAT HE WANTS TO HAPPEN, in his words rather than the mechanism's.
+   "כוח או מסה או סיבולת" is a question only somebody who already trains can
+   answer, and the answer to it is exactly what the app is supposed to work
+   out. Seven outcomes, more than one allowed, each with the line that says
+   what it means. */
+var FIT_OUT=[['fat','לרדת באחוזי שומן','להיראות ולהרגיש רזה יותר'],
+             ['mass','לעלות במסת שריר','להוסיף נפח'],
+             ['strong','להתחזק','להרים יותר ממה שאני מרים היום'],
+             ['tone','להתחטב','אותו משקל, הרכב גוף אחר'],
+             ['cardio','סיבולת וכושר אירובי','לא להתנשף במדרגות'],
+             ['back','לחזור אחרי הפסקה','בזהירות, ובלי להיפצע'],
+             ['keep','פשוט להתמיד','בלי יעד מספרי']];
+/* each outcome points at a rep range; the commonest among what he picked
+   wins, and that is what gets stored as the goal - in the SAME key the
+   chips at the bottom of the hub set, so there is still one answer. */
+var FIT_OUT_STYLE={fat:'size',mass:'size',strong:'strength',tone:'size',
+                   cardio:'endure',back:'endure',keep:'size'};   // i18n-exempt: stored keys on both sides
+function fitMeStyle(){
+  var o=fitMe().out||[],c={},i,k,best='size',n=-1;   // i18n-exempt: a stored key
+  if(!o.length)return 'size';   // i18n-exempt: same
+  for(i=0;i<o.length;i++)if(FIT_OUT_STYLE[o[i]])c[FIT_OUT_STYLE[o[i]]]=(c[FIT_OUT_STYLE[o[i]]]||0)+1;
+  for(k in c)if(c.hasOwnProperty(k)&&c[k]>n){n=c[k];best=k;}
+  return best;
+}
+function fitMeOut(v){
+  var o=fitMe(),l=o.out||[],i=l.indexOf(v);
+  if(i>=0)l.splice(i,1);else l.push(v);
+  o.out=l;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  /* the goal follows the outcomes, so the rep range, the rest and the weight
+     step are never left on a default she did not give */
+  if(l.length)fitGoalSet(fitMeStyle());else renderFitness();
+}
+
 var FIT_ME_KEY='fit_me';
 function fitMe(){
   try{var x=localStorage.getItem(FIT_ME_KEY);var o=x?JSON.parse(x):null;
@@ -8415,7 +8449,7 @@ function fitMeNote(el){
   renderFitness();
 }
 
-var FIT_ME_ORDER=['goal','days','minutes','exp','equip','limits','note'];   // i18n-exempt: stored keys
+var FIT_ME_ORDER=['out','days','minutes','exp','equip','limits','note'];   // i18n-exempt: stored keys
 /* The body parts, as keys. Translated where the chip is drawn. */
 var FIT_ME_LIMITS=[['knee','ברך'],['low','גב תחתון'],['shldr','כתף'],
                    ['wrist','מרפק או שורש'],['neck','צוואר'],
@@ -8424,7 +8458,7 @@ var FIT_ME_LIMITS=[['knee','ברך'],['low','גב תחתון'],['shldr','כתף'
 /* ANSWERED MEANS USABLE, the same test fqHas makes of the profile. */
 function fitMeHas(k){
   var o=fitMe();
-  if(k==='goal')return fitGoalChosen();
+  if(k==='out')return !!(o.out&&o.out.length);
   if(k==='days')return +o.days>0;
   if(k==='minutes')return +o.minutes>0;
   if(k==='exp')return !!o.exp;
@@ -8516,19 +8550,10 @@ function fitGoalChosen(){
   for(var i=0;i<FIT_GOALS.length;i++)if(FIT_GOALS[i].v===v)return true;
   return false;
 }
-function fqFitHTML(){
-  if(fqOffToday('fitness'))return '';
-  var left=fitMePending();
-  if(!left.length)return '';
-  return fqFrameHTML({
-    area:'fitness',
-    q:fitMeQuestion(left[0]),
-    why:fitMeWhy(left[0]),
-    body:fitMeBody(left[0]),
-    done:FIT_ME_ORDER.length-left.length,
-    total:FIT_ME_ORDER.length
-  });
-}
+/* The hub no longer asks. A card that asks one question per visit reappears
+   for ever and never adds up to anything; כושר's questions are a screen now,
+   and the screen ends in a recommendation. See renderFitWelcome. */
+function fqFitHTML(){return '';}
 /* ── FROM THE DETAILS TO A TARGET ──
    Mifflin-St Jeor for the resting burn, scaled by how much you move, then
    moved off maintenance by the goal. The formula carries one constant that
@@ -18107,6 +18132,11 @@ function renderFitness(){
      lands, and returns at once once ready, so this asks exactly once. */
   if(typeof _exState!=='undefined'&&_exState==='idle')exLoad(function(){});
   document.getElementById('hdr-title').textContent=''+_t('כושר')+'';
+  /* FIRST ENTRY TAKES OVER THE AREA. Not a card inside the hub: the point of
+     these questions is that the area knows who it is talking to before it
+     shows her anything, and a card she can scroll past is not that. Put off
+     for the day with "אחר כך", and gone for good once answered. */
+  if(_fitView==='home'&&fitMePending().length&&!fqOffToday('fitness'))_fitView='welcome';
   if(_fitView==='home')renderFitHome();
   else if(_fitView==='editTemplate')renderFitEditTemplate();
   else if(_fitView==='workout')renderFitWorkout();
@@ -18122,6 +18152,7 @@ function renderFitness(){
   else if(_fitView==='stats')document.getElementById('content').innerHTML=renderFitStats();
   else if(_fitView==='build')renderFitBuild();
   else if(_fitView==='genprog')renderFitGenProg();
+  else if(_fitView==='welcome')renderFitWelcome();
   else if(_fitView==='timer')renderFitTimer();
   else if(_fitView==='steps')renderFitSteps();
   else if(_fitView==='steps-setup')renderFitStepsSetup();
@@ -18617,12 +18648,164 @@ function renderFitBuild(){
   return void(document.getElementById('content').innerHTML=h+'</div>');
 }
 
+/* ── THE DOOR TO כושר ──
+   Entered once. Seven questions, then the thing the questions were for: what
+   the app worked out, with its reasons, and then a week it actually built.
+
+   A screen rather than a card in the hub, because a card asks one question
+   per visit, reappears for ever, and never adds up to anything. */
+var _fitW=null;
+function fitWOpen(){
+  _fitW={built:false};
+  _fitView='welcome';renderFitness();
+}
+/* The greeting is not a question and is not stored - stepping past it is
+   just the first paint of the first question. */
+function fitWNext(){
+  var o=fitMe();o.started=1;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+function fitWBuild(){if(_fitW){_fitW.built=true;renderFitness();}}
+function fitWAgain(){if(_fitW){_fitW.built=false;renderFitness();}}
+function fitWSave(){
+  var me=fitMe();
+  var p=genProgram({days:+me.days||3,exp:me.exp||'new',minutes:+me.minutes||60,
+                    goal:fitGoal().v,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
+  if(!p.exercises.length){showToast(''+_t('לא מצאתי תרגילים עם הציוד שסימנת')+'');return;}
+  var progs=loadPrograms();progs.push(p);savePrograms(progs);
+  _fitProgIdx=progs.length-1;_fitW=null;
+  showToast('&#10003; '+_t('התוכנית נבנתה'));
+  _fitView='view-program';renderFitness();
+}
+
+/* EVERY caveat that applies, not the first that matches. Bands-only and
+   fat-with-mass are about different things and both can be true at once. */
+function fitWCaveats(){
+  var me=fitMe(),out=me.out||[],eq=genEquip(),sp=progSplitFor(+me.days||3,me.exp||'new');
+  var budget=progSetsPerSession(+me.minutes||60,PROG_SPLITS[sp].cap);
+  var per=Math.round(budget*(+me.days||3)/5),c=[];
+  if(eq==='none')   // i18n-exempt: a stored key
+    c.push(''+_t('רק משקל גוף: אפשר להתקדם, אבל העומס עולה בחזרות ובקושי התרגיל ולא במשקל — אז המעקב כאן נראה אחרת.')+'');
+  if(out.indexOf('fat')>=0&&out.indexOf('mass')>=0)   // i18n-exempt: stored keys
+    c.push(''+_t('שומן ומסה יחד: בעיקר בהתחלה, אחרי הפסקה, או כשיש מה להוריד. אחרת זה שלב אחרי שלב, ואגיד לך מתי להחליף.')+'');
+  /* the NUMBER decides this one rather than a hand-written pairing */
+  if(per<SETS_BAND.lo&&out.indexOf('mass')>=0)   // i18n-exempt: a stored key
+    c.push(''+_t('יוצאים בערך {n} סטים לשריר בשבוע, והטווח לגדילה מתחיל ב־{lo}. אימון נוסף או עשרים דקות יסגרו את הפער.',{n:per,lo:SETS_BAND.lo})+'');
+  return c;
+}
+function fitWRows(){
+  var me=fitMe(),g=fitGoal(),sp=progSplitFor(+me.days||3,me.exp||'new'),I=PROG_SPLITS[sp];
+  var loadable=genEquip()!=='none',h='';   // i18n-exempt: a stored key
+  h+='<div class="gn-s">'+_t('אימונים בשבוע')+': <b>'+nfmt(+me.days||3)+'</b></div>';
+  h+='<div class="gn-s">'+_t('כל שריר חוזר כל {lo}–{hi} שעות',{lo:I.lo,hi:I.hi})+'</div>';
+  h+='<div class="gn-s">'+_t('סטים באימון')+': <b>'+nfmt(progSetsPerSession(+me.minutes||60,I.cap))+'</b></div>';
+  h+='<div class="gn-s">'+_t('טווח חזרות')+': <b>'+nfmt(g.lo)+'–'+nfmt(g.hi)+'</b></div>';
+  h+='<div class="gn-s">'+_t('מנוחה בין סטים')+': <b>'+_t('{n} שניות',{n:g.rest})+'</b></div>';
+  h+='<div class="gn-s">'+_t('קושי')+': <b>RPE '+(GENPROG_RPE[me.exp]||'6–8')+'</b></div>';
+  h+='<div class="gn-s">'+(loadable
+      ?_t('קפיצת משקל')+': <b>'+fmtWeight(g.step)+'</b>'
+      :_t('איך עולים')+': <b>'+_t('חזרות וקושי')+'</b>')+'</div>';
+  return h;
+}
+
+function renderFitWelcome(){
+  if(!_fitW)_fitW={built:false};
+  var me=fitMe(),left=fitMePending(),i,h='<div style="padding-bottom:26px">';
+
+  /* ── the greeting ── */
+  if(!me.started){
+    h+='<div class="gn-c"><div class="gn-h">'+_t('כושר')+'</div>';
+    h+='<div style="font-size:19px;font-weight:800;color:var(--ink);margin-top:6px">'+_t('ברוך הבא לאזור הכושר')+'</div>';
+    h+='<div class="gn-s">'+_t('כאן אתה בונה אימון, עוקב אחרי המשקלים ורואה את ההתקדמות לאורך זמן. כמה שאלות קצרות, ואכוון את זה אליך.')+'</div>';
+    h+='<button class="gn-go" onclick="fitWNext()">'+_t('בוא נתחיל')+'</button>';
+    h+='<button class="fq-later" onclick="fqLater(\'fitness\');_fitView=\'home\';renderFitness()">'+_t('אחר כך')+'</button>';
+    return void(document.getElementById('content').innerHTML=h+'</div>');
+  }
+
+  /* ── the questions, one card, with the dots saying how many are left ── */
+  if(left.length){
+    var k=left[0];
+    h+='<div class="gn-c"><div class="gn-h">'+_t('לפני שנתחיל')+'</div>';
+    h+='<div style="font-size:18px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.35">'+fitMeQuestion(k)+'</div>';
+    h+='<div class="gn-s">'+fitMeWhy(k)+'</div>';
+    h+=fitMeBody(k);
+    h+='<div class="fq-dots">';
+    for(i=0;i<FIT_ME_ORDER.length;i++)
+      h+='<span class="fq-dot'+(i<FIT_ME_ORDER.length-left.length?' on':'')+'"></span>';
+    h+='</div>';
+    h+='<button class="fq-later" onclick="fqLater(\'fitness\');_fitView=\'home\';renderFitness()">'+_t('אחר כך')+'</button>';
+    h+='</div>';
+    return void(document.getElementById('content').innerHTML=h+'</div>');
+  }
+
+  /* ── THE PART THAT WAS MISSING: what it all adds up to ── */
+  var sp=progSplitFor(+me.days||3,me.exp||'new'),I=PROG_SPLITS[sp],names=[];
+  for(i=0;i<I.days.length;i++)names.push(progDayLabel(I.days[i][0]));
+
+  if(!_fitW.built){
+    h+='<div class="gn-c"><div class="gn-h">'+_t('מה שהבנתי')+'</div>';
+    h+='<div style="font-size:19px;font-weight:800;color:var(--ink);margin-top:6px">'+esc(names.join(' \u00b7 '))+'</div>';
+    /* why THIS split, in the one case where it is not obvious from the chips */
+    if(progSplitFor(+me.days||3,'adv')!==sp)
+      h+='<div class="gn-s">'+_t('בשלב הזה עדיף לחזור על כל שריר יותר פעמים, גם אם יש לך יותר ימים פנויים.')+'</div>';
+    h+=fitWRows();
+    h+='</div>';
+    var cv=fitWCaveats();
+    for(i=0;i<cv.length;i++)h+='<div class="gn-c"><div class="gn-s">'+cv[i]+'</div></div>';
+    /* what she told it, said back - the limits and the free line */
+    var lim=(me.limits||[]).filter(function(v){return v!=='none';}),ln=[],li;   // i18n-exempt: a stored key
+    for(li=0;li<FIT_ME_LIMITS.length;li++)
+      if(lim.indexOf(FIT_ME_LIMITS[li][0])>=0)ln.push(_t(FIT_ME_LIMITS[li][1]));
+    if(ln.length||me.note){
+      h+='<div class="gn-c"><div class="gn-h">'+_t('מה שסיפרת לי')+'</div>';
+      if(ln.length){
+        h+='<div class="gn-s">'+esc(ln.join(' \u00b7 '))+'</div>';
+        h+='<div class="gn-s">'+_t('רשום, ולא מסתיר שום תרגיל. אם משהו ברשימה לא מתאים לך — תחליף אותו.')+'</div>';
+      }
+      if(me.note)h+='<div class="gn-s">'+esc(me.note)+'</div>';
+      h+='</div>';
+    }
+    h+='<button class="gn-go" onclick="fitWBuild()">'+_t('בנה לי תוכנית')+'</button>';
+    h+='<div class="gn-g">'+_t('אפשר לשנות כל אחד מהם מתי שתרצה — או להתחיל אימון בלי תוכנית בכלל.')+'</div>';
+    return void(document.getElementById('content').innerHTML=h+'</div>');
+  }
+
+  /* ── and the week, with the real exercises ── */
+  var g=fitGoal(),reps=Math.round((g.lo+g.hi)/2);
+  var budget=progSetsPerSession(+me.minutes||60,I.cap);
+  h+='<div class="gn-c"><div class="gn-h">'+_t('התוכנית שלך')+'</div>';
+  h+='<div style="font-size:19px;font-weight:800;color:var(--ink);margin-top:6px">'+esc(names.join(' \u00b7 '))+'</div>';
+  h+='<div class="gn-s">'+_t('{n} חזרות',{n:reps})+' \u00b7 '+_t('{n} שניות',{n:g.rest})+'</div>';
+  h+='</div>';
+  for(i=0;i<I.days.length;i++){
+    var ms=I.days[i][1],per=Math.max(2,Math.round(budget/ms.length)),sets={},j;
+    for(j=0;j<ms.length;j++)sets[ms[j]]=per;
+    var rows=genPick({muscles:ms,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym,
+                      sets:sets,maxPerMuscle:I.perMuscle});
+    h+='<div class="gn-c"><div class="gn-h">'+esc(progDayLabel(I.days[i][0]))+'</div>';
+    for(j=0;j<rows.length;j++){
+      if(rows[j].none||!rows[j].name)continue;
+      h+='<div class="gn-s">'+esc(exLabel(rows[j].name))+' \u00b7 '+
+         _t('{n} סטים',{n:rows[j].sets})+'</div>';
+    }
+    h+='</div>';
+  }
+  h+='<div class="gn-c"><div class="gn-s">'+_t('אחרי שישה שבועות — שבוע הקלה, ואז ממשיכים. התוכנית מתחלפת כל 6–8 שבועות.')+'</div></div>';
+  h+='<button class="gn-go" onclick="fitWSave()">'+_t('שמור את התוכנית')+'</button>';
+  h+='<div class="gn-g"><button class="fq-later" onclick="fitWAgain()">'+_t('בנה לי אחרת')+'</button></div>';
+  return void(document.getElementById('content').innerHTML=h+'</div>');
+}
+
 /* ── THE SCREEN THAT REACHES THE PROGRAMME GENERATOR ──
    Three questions. Equipment is already answered on the build screen and
    remembered; the goal has a screen of its own and is read, not asked. */
 var _genProg=null;
 var GENPROG_DAYS=[1,2,3,4,5,6];
 var GENPROG_MINS=[30,45,60,90];
+/* RPE by experience, off page 137 of the notebook. Named rather than
+   repeated, now that two screens show it. */
+var GENPROG_RPE={'new':'4–6',back:'4–6',mid:'6–8',adv:'8–10'};   // i18n-exempt: stored keys and a pair of numbers
 /* מתקדם ALREADY MEANS SOMETHING ELSE in this app - "Progressing", about a
    trend - so reusing it here would have German say "Komme voran" where it
    means an experienced lifter. One key, one meaning; this one takes a
