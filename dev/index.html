@@ -18680,11 +18680,14 @@ function fitWNext(){
   renderFitness();
 }
 function fitWBuild(){if(_fitW){_fitW.built=true;renderFitness();}}
-function fitWAgain(){if(_fitW){_fitW.built=false;renderFitness();}}
+function fitWAgain(){if(_fitW){_fitW.built=false;_fitW.plan=null;renderFitness();}}
 function fitWSave(){
-  var me=fitMe();
-  var p=genProgram({days:+me.days||3,exp:me.exp||'new',minutes:+me.minutes||60,
-                    goal:fitGoal().v,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
+  /* the one that was DRAWN, not a fresh one - genPick's order is stable but
+     saving a second build would still be saving something she did not see */
+  var p=(_fitW&&_fitW.plan)||null;
+  if(!p){var me=fitMe();p=genProgram({days:+me.days||3,exp:me.exp||'new',
+      minutes:+me.minutes||60,goal:fitGoal().v,
+      equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});}
   if(!p.exercises.length){showToast(''+_t('לא מצאתי תרגילים עם הציוד שסימנת')+'');return;}
   var progs=loadPrograms();progs.push(p);savePrograms(progs);
   _fitProgIdx=progs.length-1;_fitW=null;
@@ -18784,24 +18787,35 @@ function renderFitWelcome(){
     return void(document.getElementById('content').innerHTML=h+'</div>');
   }
 
-  /* ── and the week, with the real exercises ── */
-  var g=fitGoal(),reps=Math.round((g.lo+g.hi)/2);
-  var budget=progSetsPerSession(+me.minutes||60,I.cap);
+  /* ── and the week ──
+     THE PREVIEW IS THE PLAN. It used to call genPick itself, which skipped
+     the trim genProgram does, and showed thirty sets under a card that had
+     just said twenty-four - with the saved plan matching neither. Built
+     once, drawn, and saved exactly as drawn. */
+  if(!_fitW.plan)_fitW.plan=genProgram({days:+me.days||3,exp:me.exp||'new',
+      minutes:+me.minutes||60,goal:fitGoal().v,
+      equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
+  var P=_fitW.plan,byDay={},order=[],j,ex;
+  for(j=0;j<P.exercises.length;j++){
+    ex=P.exercises[j];
+    if(!byDay[ex.day]){byDay[ex.day]=[];order.push(ex.day);}
+    byDay[ex.day].push(ex);
+  }
+  var total=0;
+  for(j=0;j<P.exercises.length;j++)total+=P.exercises[j].sets;
   h+='<div class="gn-c"><div class="gn-h">'+_t('התוכנית שלך')+'</div>';
   h+='<div style="font-size:19px;font-weight:800;color:var(--ink);margin-top:6px">'+esc(names.join(' \u00b7 '))+'</div>';
-  h+='<div class="gn-s">'+_t('{n} חזרות',{n:reps})+' \u00b7 '+_t('{n} שניות',{n:g.rest})+'</div>';
+  h+='<div class="gn-s">'+_t('{n} חזרות',{n:(P.exercises[0]||{}).targetReps||0})+' \u00b7 '+
+     _t('{n} שניות',{n:(P.exercises[0]||{}).rest||0})+'</div>';
   h+='</div>';
-  for(i=0;i<I.days.length;i++){
-    var ms=I.days[i][1],per=Math.max(2,Math.round(budget/ms.length)),sets={},j;
-    for(j=0;j<ms.length;j++)sets[ms[j]]=per;
-    var rows=genPick({muscles:ms,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym,
-                      sets:sets,maxPerMuscle:I.perMuscle});
-    h+='<div class="gn-c"><div class="gn-h">'+esc(progDayLabel(I.days[i][0]))+'</div>';
-    for(j=0;j<rows.length;j++){
-      if(rows[j].none||!rows[j].name)continue;
-      h+='<div class="gn-s">'+esc(exLabel(rows[j].name))+' \u00b7 '+
-         _t('{n} סטים',{n:rows[j].sets})+'</div>';
-    }
+  for(i=0;i<order.length;i++){
+    var day=byDay[order[i]],dsets=0;
+    for(j=0;j<day.length;j++)dsets+=day[j].sets;
+    h+='<div class="gn-c"><div class="gn-h">'+esc(progDayLabel(order[i]))+
+       ' \u00b7 '+_t('{n} סטים',{n:dsets})+'</div>';
+    for(j=0;j<day.length;j++)
+      h+='<div class="gn-s">'+esc(exLabel(day[j].name))+' \u00b7 '+
+         _t('{n} סטים',{n:day[j].sets})+'</div>';
     h+='</div>';
   }
   h+='<div class="gn-c"><div class="gn-s">'+_t('אחרי שישה שבועות — שבוע הקלה, ואז ממשיכים. התוכנית מתחלפת כל 6–8 שבועות.')+'</div></div>';
