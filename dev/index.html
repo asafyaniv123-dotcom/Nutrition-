@@ -8358,6 +8358,153 @@ function fqCardHTML(){
     total:FQ_ORDER.length
   });
 }
+/* ── WHAT כושר KNOWS ABOUT YOU ──
+   Page 132 of אימון התנגדות is a beginner-intake interview. Four of its eight
+   sections change what the generator produces; the rest are a human trainer's
+   context and belong to a person, not to an app that already has a nutrition
+   area. These are the four, plus the free line the notebook's own note asks
+   for - "listen, do not only ask".
+
+   The goal and the equipment are NOT stored here. They have their own keys
+   and their own screens, and a second place to answer one question is two
+   answers that can disagree. */
+var FIT_ME_KEY='fit_me';
+function fitMe(){
+  try{var x=localStorage.getItem(FIT_ME_KEY);var o=x?JSON.parse(x):null;
+      if(o&&typeof o==='object')return o;}catch(e){}
+  return {};
+}
+function fitMeSet(k,v){
+  var o=fitMe();o[k]=v;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+/* The equipment answer goes where the build screen already keeps it, and
+   only the FACT that it was asked is kept here - otherwise the same thing
+   is stored twice and the two can drift. */
+function fitMeEquip(v){
+  var o=fitMe();o.equipDone=1;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  genEquipSet(v);
+}
+/* a multi-select toggles rather than answers, and "nothing" clears the rest */
+function fitMeLimit(v){
+  var o=fitMe(),l=o.limits||[],i;
+  if(v==='none')l=(l.indexOf('none')>=0)?[]:['none'];   // i18n-exempt: a stored key, not a label
+  else{
+    l=l.filter(function(x){return x!=='none';});   // i18n-exempt: same
+    i=l.indexOf(v);if(i>=0)l.splice(i,1);else l.push(v);
+  }
+  o.limits=l;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+/* A step that may legitimately be empty needs a way to be finished, or it
+   asks for ever. "No limits" and "nothing to add" are answers. */
+function fitMeDone(k){
+  var o=fitMe();
+  if(k==='limits'&&!o.limits)o.limits=[];
+  o[k+'Done']=1;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+function fitMeNote(el){
+  var o=fitMe();
+  o.note=((el&&el.value)||'').trim();o.noteDone=1;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+
+var FIT_ME_ORDER=['goal','days','minutes','exp','equip','limits','note'];   // i18n-exempt: stored keys
+/* The body parts, as keys. Translated where the chip is drawn. */
+var FIT_ME_LIMITS=[['knee','ברך'],['low','גב תחתון'],['shldr','כתף'],
+                   ['wrist','מרפק או שורש'],['neck','צוואר'],
+                   ['heart','לב או לחץ דם'],['none','אין מגבלות']];
+
+/* ANSWERED MEANS USABLE, the same test fqHas makes of the profile. */
+function fitMeHas(k){
+  var o=fitMe();
+  if(k==='goal')return fitGoalChosen();
+  if(k==='days')return +o.days>0;
+  if(k==='minutes')return +o.minutes>0;
+  if(k==='exp')return !!o.exp;
+  if(k==='equip')return !!o.equipDone;
+  if(k==='limits')return !!o.limitsDone;
+  return !!o.noteDone;
+}
+function fitMePending(){
+  var out=[],i;
+  for(i=0;i<FIT_ME_ORDER.length;i++)if(!fitMeHas(FIT_ME_ORDER[i]))out.push(FIT_ME_ORDER[i]);
+  return out;
+}
+function fitMeQuestion(k){
+  if(k==='goal')return ''+_t('למה אתה מתאמן?')+'';
+  if(k==='days')return ''+_t('כמה פעמים בשבוע אתה יכול להתאמן')+'';
+  if(k==='minutes')return ''+_t('כמה זמן יש לך לאימון')+'';
+  if(k==='exp')return ''+_t('כמה אתה מתאמן היום')+'';
+  if(k==='equip')return ''+_t('איפה אתה מתאמן')+'';
+  if(k==='limits')return ''+_t('יש משהו שכואב או מגביל לך את התנועה?')+'';
+  return ''+_t('מה עוד כדאי שאדע?')+'';
+}
+function fitMeWhy(k){
+  if(k==='goal')return ''+_t('תשובה אחת, וטווח החזרות והמנוחה יהיו שלך במקום ברירת מחדל')+'';
+  if(k==='days')return ''+_t('יכול, לא רוצה. עדיף תוכנית שמתקיימת.')+'';
+  if(k==='minutes')return ''+_t('זה קובע כמה תרגילים נכנסים.')+'';
+  if(k==='exp')return ''+_t('זה קובע כמה מורכבת החלוקה.')+'';
+  if(k==='equip')return ''+_t('זה קובע אילו תרגילים בכלל אפשריים — ואין תשובה גרועה.')+'';
+  if(k==='limits')return ''+_t('לא כדי להסתיר תרגילים — כדי שיהיה רשום, ושתדע למה לשים לב.')+'';
+  return ''+_t('הרשימות למעלה לא מכסות הכול.')+'';
+}
+function fitMeBody(k){
+  var o=fitMe(),h='',i;
+  if(k==='goal'){
+    h='<div class="fg-row">';
+    for(i=0;i<FIT_GOALS.length;i++)
+      h+='<button class="fg-b" onclick="fitGoalSet(&quot;'+FIT_GOALS[i].v+'&quot;)">'+FIT_GOALS[i].t+'</button>';
+    return h+'</div>';
+  }
+  if(k==='days'){
+    h='<div class="fg-row">';
+    for(i=0;i<GENPROG_DAYS.length;i++)
+      h+='<button class="fg-b" onclick="fitMeSet(&quot;days&quot;,'+GENPROG_DAYS[i]+')">'+nfmt(GENPROG_DAYS[i])+'</button>';
+    return h+'</div>';
+  }
+  if(k==='minutes'){
+    h='<div class="fg-row">';
+    for(i=0;i<GENPROG_MINS.length;i++)
+      h+='<button class="fg-b" onclick="fitMeSet(&quot;minutes&quot;,'+GENPROG_MINS[i]+')">'+_t('{n} דקות',{n:GENPROG_MINS[i]})+'</button>';
+    return h+'</div>';
+  }
+  if(k==='exp'){
+    h='<div class="fg-row">';
+    for(i=0;i<GENPROG_EXP.length;i++)
+      h+='<button class="fg-b" onclick="fitMeSet(&quot;exp&quot;,&quot;'+GENPROG_EXP[i][0]+'&quot;)">'+esc(_t(GENPROG_EXP[i][1]))+'</button>';
+    return h+'</div>';
+  }
+  if(k==='equip'){
+    h='<div class="fg-row">';
+    var EQ=['gym','home','none'];   // i18n-exempt: stored keys, drawn through genEquipLabel
+    for(i=0;i<EQ.length;i++)
+      h+='<button class="fg-b" onclick="fitMeEquip(&quot;'+EQ[i]+'&quot;)">'+genEquipLabel(EQ[i])+'</button>';
+    return h+'</div>';
+  }
+  if(k==='limits'){
+    var on=o.limits||[];
+    h='<div class="fg-row">';
+    for(i=0;i<FIT_ME_LIMITS.length;i++)
+      h+='<button class="fg-b'+((on.indexOf(FIT_ME_LIMITS[i][0])>=0)?' on':'')+
+         '" onclick="fitMeLimit(&quot;'+FIT_ME_LIMITS[i][0]+'&quot;)">'+esc(_t(FIT_ME_LIMITS[i][1]))+'</button>';
+    h+='</div>';
+    /* THE SENTENCE HE ASKED FOR, and the notebook's own screening page backs
+       it: this is not a substitute for a person. */
+    h+='<div class="fq-s">'+_t('האפליקציה הזאת לא מחליפה רופא או פיזיותרפיסט. אם משהו כואב או שאתה לא בטוח — תשאל מישהו שמבין לפני שאתה מתחיל, ובזמן אימון תעצור על כאב חד או במפרק.')+'</div>';
+    h+='<button class="gn-go" onclick="fitMeDone(&quot;limits&quot;)">'+_t('המשך')+'</button>';
+    return h;
+  }
+  h='<textarea class="dp-ta" id="fitme-note" placeholder="'+esc(_t('במילים שלך…'))+'">'+esc(o.note||'')+'</textarea>';
+  h+='<button class="gn-go" onclick="fitMeNote(document.getElementById(&quot;fitme-note&quot;))">'+_t('סיימנו')+'</button>';
+  return h;
+}
 /* ── כושר ASKS ITS OWN ──
    fitGoal() answers FIT_GOALS[1] when nothing is stored, with the comment
    "building muscle is what most people mean" - so every rep range, the rest
@@ -8370,19 +8517,16 @@ function fitGoalChosen(){
   return false;
 }
 function fqFitHTML(){
-  if(fitGoalChosen())return '';
   if(fqOffToday('fitness'))return '';
-  var h='<div class="fg-row">',i;
-  /* the same .fg-b chips the setting at the bottom uses, with none lit -
-     because none IS chosen, which is the whole point of asking */
-  for(i=0;i<FIT_GOALS.length;i++)
-    h+='<button class="fg-b" onclick="fitGoalSet(&quot;'+FIT_GOALS[i].v+'&quot;)">'+FIT_GOALS[i].t+'</button>';
-  h+='</div>';
+  var left=fitMePending();
+  if(!left.length)return '';
   return fqFrameHTML({
     area:'fitness',
-    q:''+_t('למה אתה מתאמן?')+'',
-    why:''+_t('תשובה אחת, וטווח החזרות והמנוחה יהיו שלך במקום ברירת מחדל')+'',
-    body:h,done:0,total:1
+    q:fitMeQuestion(left[0]),
+    why:fitMeWhy(left[0]),
+    body:fitMeBody(left[0]),
+    done:FIT_ME_ORDER.length-left.length,
+    total:FIT_ME_ORDER.length
   });
 }
 /* ── FROM THE DETAILS TO A TARGET ──
@@ -18492,7 +18636,10 @@ var GENPROG_EXP=[['new','מתחיל'],['back','חוזר אחרי הפסקה'],
                  ['mid','בינוני'],['adv','מתקדם|ניסיון']];
 
 function genProgOpen(){
-  _genProg={days:3,minutes:60,exp:'new'};
+  /* Opens on what she already told the welcome questions, not on a default
+     she never gave. Only an unanswered one falls back. */
+  var me=fitMe();
+  _genProg={days:+me.days||3,minutes:+me.minutes||60,exp:me.exp||'new'};
   _fitView='genprog';renderFitness();
 }
 function genProgSet(k,v){
