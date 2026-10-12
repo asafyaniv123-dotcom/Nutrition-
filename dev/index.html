@@ -18680,6 +18680,26 @@ function fitWNext(){
   renderFitness();
 }
 function fitWBuild(){if(_fitW){_fitW.built=true;renderFitness();}}
+/* THE PLAN IS BUILT BEFORE ANYTHING IS SAID ABOUT IT. The recommendation
+   card used to quote a budget and the week under it listed whatever came
+   out, and the two did not always agree - a session of ten exercises has a
+   floor of twenty sets, so a budget of eighteen can never be met. Counting
+   the real plan is the only way a number on the card is true. */
+function fitWPlan(){
+  if(_fitW&&_fitW.plan)return _fitW.plan;
+  var me=fitMe();
+  var p=genProgram({days:+me.days||3,exp:me.exp||'new',minutes:+me.minutes||60,
+                    goal:fitGoal().v,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
+  if(_fitW)_fitW.plan=p;
+  return p;
+}
+/* the most any one session asks for, which is the honest "sets per session" */
+function fitWPerSession(p){
+  var by={},i,m=0;
+  for(i=0;i<p.exercises.length;i++)by[p.exercises[i].day]=(by[p.exercises[i].day]||0)+p.exercises[i].sets;
+  for(var k in by)if(by.hasOwnProperty(k)&&by[k]>m)m=by[k];
+  return m;
+}
 function fitWAgain(){if(_fitW){_fitW.built=false;_fitW.plan=null;renderFitness();}}
 function fitWSave(){
   /* the one that was DRAWN, not a fresh one - genPick's order is stable but
@@ -18698,9 +18718,14 @@ function fitWSave(){
 /* EVERY caveat that applies, not the first that matches. Bands-only and
    fat-with-mass are about different things and both can be true at once. */
 function fitWCaveats(){
-  var me=fitMe(),out=me.out||[],eq=genEquip(),sp=progSplitFor(+me.days||3,me.exp||'new');
-  var budget=progSetsPerSession(+me.minutes||60,PROG_SPLITS[sp].cap);
-  var per=Math.round(budget*(+me.days||3)/5),c=[];
+  var me=fitMe(),out=me.out||[],eq=genEquip(),c=[];
+  /* from the plan, not from the budget - the same number the card shows */
+  var p=fitWPlan(),nDays={},dn=0,k;
+  for(var z=0;z<p.exercises.length;z++)nDays[p.exercises[z].day]=1;
+  for(k in nDays)if(nDays.hasOwnProperty(k))dn++;
+  var tot=0;for(z=0;z<p.exercises.length;z++)tot+=p.exercises[z].sets;
+  /* the cycle repeats to fill the week, then spread over the groups it works */
+  var per=dn?Math.round(tot*((+me.days||3)/dn)/6):0;
   if(eq==='none')   // i18n-exempt: a stored key
     c.push(''+_t('רק משקל גוף: אפשר להתקדם, אבל העומס עולה בחזרות ובקושי התרגיל ולא במשקל — אז המעקב כאן נראה אחרת.')+'');
   if(out.indexOf('fat')>=0&&out.indexOf('mass')>=0)   // i18n-exempt: stored keys
@@ -18715,7 +18740,7 @@ function fitWRows(){
   var loadable=genEquip()!=='none',h='';   // i18n-exempt: a stored key
   h+='<div class="gn-s">'+_t('אימונים בשבוע')+': <b>'+nfmt(+me.days||3)+'</b></div>';
   h+='<div class="gn-s">'+_t('כל שריר חוזר כל {lo}–{hi} שעות',{lo:I.lo,hi:I.hi})+'</div>';
-  h+='<div class="gn-s">'+_t('סטים באימון')+': <b>'+nfmt(progSetsPerSession(+me.minutes||60,I.cap))+'</b></div>';
+  h+='<div class="gn-s">'+_t('סטים באימון')+': <b>'+nfmt(fitWPerSession(fitWPlan()))+'</b></div>';
   h+='<div class="gn-s">'+_t('טווח חזרות')+': <b>'+nfmt(g.lo)+'–'+nfmt(g.hi)+'</b></div>';
   h+='<div class="gn-s">'+_t('מנוחה בין סטים')+': <b>'+_t('{n} שניות',{n:g.rest})+'</b></div>';
   h+='<div class="gn-s">'+_t('קושי')+': <b>RPE '+(GENPROG_RPE[me.exp]||'6–8')+'</b></div>';
@@ -18792,10 +18817,7 @@ function renderFitWelcome(){
      the trim genProgram does, and showed thirty sets under a card that had
      just said twenty-four - with the saved plan matching neither. Built
      once, drawn, and saved exactly as drawn. */
-  if(!_fitW.plan)_fitW.plan=genProgram({days:+me.days||3,exp:me.exp||'new',
-      minutes:+me.minutes||60,goal:fitGoal().v,
-      equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
-  var P=_fitW.plan,byDay={},order=[],j,ex;
+  var P=fitWPlan(),byDay={},order=[],j,ex;
   for(j=0;j<P.exercises.length;j++){
     ex=P.exercises[j];
     if(!byDay[ex.day]){byDay[ex.day]=[];order.push(ex.day);}
