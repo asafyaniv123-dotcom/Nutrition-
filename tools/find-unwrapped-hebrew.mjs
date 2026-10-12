@@ -14,6 +14,8 @@
  *   data-t="…"        markup that langStatic() fills in
  *   var HE={ '…': …}  the Hebrew dictionary itself, where keys are the source
  *   a line marked      // i18n-exempt: <reason>
+ *   a value inside a collection named in build-lang-template's VIA_VARIABLE,
+ *     AND present in the template - data where written, text where drawn
  *
  * Everything else with a Hebrew letter in it is reported: string literals in
  * the script, and text nodes in the static markup.
@@ -71,6 +73,53 @@ function around(t){
   const a = Math.max(0, i - 12), out = t.slice(a, a + 56);
   return (a ? String.fromCharCode(8230) : '') + out + (a + 56 < t.length ? String.fromCharCode(8230) : '');
 }
+
+/* ── collections whose values reach _t through a variable ──────────────────
+   A list like WIZ_NAME_OPTS or PROG_DAY_OPTS is data where it is written and
+   text where it is drawn, so the look-behind below sees "[" and not "_t(".
+   Every key in every one of them was reported, which is a large part of the
+   noise in this report.
+
+   Two rules keep this from becoming the mistake described at the top of this
+   file. The list of collections is READ from build-lang-template rather than
+   copied, so the two cannot drift apart. And a literal is skipped only if it
+   is ALSO a key the builder emitted - a name sitting in one of these arrays
+   that never reached the template is still reported, because that is the
+   bug this check exists to find. */
+const viaVar = (() => {
+  const spans = [], keys = new Set();
+  try {
+    const t = fs.readFileSync('tools/build-lang-template.mjs', 'utf8');
+    const m = t.match(/const VIA_VARIABLE = \[([\s\S]*?)\];/);
+    if (!m) return { has: () => false, named: [] };
+    const named = [...m[1].matchAll(/'([A-Z_][A-Z0-9_]*)'/g)].map((x) => x[1]);
+    for (const n of named) {
+      const d = src.search(new RegExp('\\b(?:var|let|const)\\s+' + n + '\\s*='));
+      if (d < 0) continue;
+      const open = src.indexOf('[', d);
+      if (open < 0) continue;
+      let depth = 0, q = null, j = open;
+      for (; j < src.length; j++) {
+        const c = src[j];
+        if (q) { if (c === '\\') j++; else if (c === q) q = null; continue; }
+        if (c === '"' || c === "'" || c === '`') { q = c; continue; }
+        if (c === '[') depth++;
+        else if (c === ']') { depth--; if (!depth) break; }
+      }
+      spans.push([open, j]);
+    }
+    const tpl = JSON.parse(fs.readFileSync('data/lang/_template.json', 'utf8'));
+    for (const k of Object.keys(tpl.strings || tpl)) keys.add(k);
+    return {
+      named,
+      has: (at, text) => keys.has(text) && spans.some(([a, b]) => at >= a && at <= b),
+    };
+  } catch (e) {
+    /* no template yet, or the tool moved - report everything rather than
+       quietly skipping on a file that could not be read */
+    return { has: () => false, named: [] };
+  }
+})();
 
 const found = [];
 
@@ -132,6 +181,7 @@ for (const [a, b] of scripts) {
     const before = src.slice(Math.max(0, from - 3), from);
     if (before.endsWith('_t(')) continue;
     if (/\/\/\s*i18n-exempt/.test(lineAt(from))) continue;
+    if (viaVar.has(from, text)) continue;
     found.push({ line: lineOf(from), where: 'script', text: around(text) });
   }
 }

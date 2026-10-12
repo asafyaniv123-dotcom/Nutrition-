@@ -18164,6 +18164,11 @@ var GEN_MAX_MUSCLES=3,GEN_MAX_SETS=6;
 function genPick(opt){
   opt=opt||{};
   var muscles=opt.muscles||[],equip=opt.equip||[],emph=opt.emphasis||'';
+  /* How many exercises one muscle may have. Defaults to the ceiling this
+     always used, so every existing caller is unchanged; a programme passes
+     a smaller one, because a Full Body day wants one big movement per
+     muscle and not two of everything. */
+  var perMuscleCap=+opt.maxPerMuscle||GEN_MAX_PER_MUSCLE;
   var have={},i,j,k;
   for(i=0;i<equip.length;i++)have[equip[i]]=1;
   /* ALL of an exercise's equipment, not any of it: a bench press needs a bar
@@ -18199,7 +18204,7 @@ function genPick(opt){
     for(j=0;j<all.length;j++)
       if(!used[all[j].n]&&muscleGroupOf(all[j].n)===m&&doable(all[j]))cands.push(all[j]);
     cands.sort(function(a,b){return pos(a)-pos(b);});
-    var n=Math.min(GEN_MAX_PER_MUSCLE,Math.max(1,Math.ceil(want/GEN_SETS_PER_EX)));
+    var n=Math.min(perMuscleCap,Math.max(1,Math.ceil(want/GEN_SETS_PER_EX)));
     var picked=cands.slice(0,n);
     /* A muscle with nothing available says so, rather than being dropped in
        silence - "no chest exercise with what you have" is information. */
@@ -18228,6 +18233,118 @@ function genToWorkout(rows,goalV){
               plan:[],sets:[],warm:[],ss:null});
   }
   return out;
+}
+
+/* ── A WEEK, NOT A SESSION ──
+   genPick answers "which exercises for this one workout". The notebook asks
+   a different question and answers it with rules rather than taste: how many
+   days you have and how long you have been training TOGETHER decide the
+   split, the split decides how often each muscle comes round, and how long
+   you have decides how many sets fit in one session.
+
+   Pages 135-148 of אימון התנגדות; docs/fitness-catalogue.md has them written
+   out. Nothing here calls a model and nothing here costs anything. */
+
+/* The muscles each day asks for, in the LIBRARY'S OWN rolled-up names -
+   whatever muscleGroupOf can return, so genPick finds them. Writing רגליים
+   here would have matched nothing: the library splits the leg four ways and
+   has no such group.
+
+   Large groups first in every list. That is the notebook's ordering rule and
+   the reason these are not alphabetical. */
+var PROG_SPLITS={
+  full:{cap:26,lo:48,hi:72,perMuscle:1,
+        days:[['כל הגוף',['ארבע ראשי','גב','חזה','ירך אחורית','כתפיים','ליבה']]]},   // i18n-exempt: a day key and library muscle keys; the day is painted through progDayLabel and the muscles where the bar is drawn
+  ab:{cap:26,lo:72,hi:96,perMuscle:2,
+      days:[['פלג גוף עליון',['גב','חזה','כתפיים','יד אחורית','יד קדמית']],   // i18n-exempt: same
+            ['פלג גוף תחתון',['ארבע ראשי','ירך אחורית','ישבן','תאומים','ליבה']]]},   // i18n-exempt: same
+  abc:{cap:30,lo:96,hi:120,perMuscle:2,
+       days:[['דחיפה',['חזה','כתפיים','יד אחורית']],   // i18n-exempt: same
+             ['משיכה',['גב','יד קדמית']],   // i18n-exempt: same
+             ['רגליים',['ארבע ראשי','ירך אחורית','ישבן','תאומים','ליבה']]]}   // i18n-exempt: same
+};
+/* A day's name is STORED on every exercise of that day, so it is data and is
+   translated where it is shown - the same split progLabel makes for a plan's
+   name. Listed here so build-lang-template can see keys that only ever reach
+   _t through a variable; it is named in that tool's VIA_VARIABLE. */
+var PROG_DAY_OPTS=['כל הגוף','פלג גוף עליון','פלג גוף תחתון','דחיפה','משיכה','רגליים'];
+function progDayLabel(nm){
+  return (PROG_DAY_OPTS.indexOf(nm)>=0)?_t(nm):String(nm||'');
+}
+
+/* THE SPLIT HAS TWO CEILINGS AND TAKES THE LOWER ONE. The days are the
+   obvious one. The other is experience, and the notebook is explicit about
+   it: Full Body for beginners and for anyone coming back after a break, AB
+   from about six months, ABC for the advanced.
+
+   Reading the days alone is how somebody who has never trained but has five
+   free evenings gets handed a split that assumes he knows what he is doing. */
+var PROG_RANK={full:0,ab:1,abc:2};
+function progSplitFor(days,exp){
+  var d=(days<=2)?'full':(days<=4)?'ab':'abc';
+  var e=(exp==='new'||exp==='back')?'full':(exp==='mid')?'ab':'abc';
+  return (PROG_RANK[d]<=PROG_RANK[e])?d:e;
+}
+
+/* HOW MANY SETS FIT IN ONE SESSION. The cap is the notebook's - 26, or 30 in
+   ABC. The minutes are ours: about two and a half per set once rest is
+   counted. Six is a floor, because a session that prescribes four sets is
+   not worth opening the app for. */
+function progSetsPerSession(mins,cap){
+  var fromTime=Math.round((+mins||60)/2.5);
+  return Math.max(6,Math.min(cap||26,fromTime));
+}
+
+/* WHICH WEEK OF THE PROGRAMME THIS IS. The notebook drops the load by about
+   40% at six weeks and changes the programme between six and eight. Counted
+   in APP days from the day it was built, so a programme started at one in
+   the morning belongs to the day it was started on. */
+function progWeekNum(prog){
+  if(!prog||!prog.builtAt)return 0;
+  var a=new Date(prog.builtAt+'T12:00:00'),b=new Date(todayStr()+'T12:00:00');
+  if(isNaN(a.getTime())||isNaN(b.getTime()))return 0;
+  return Math.floor((b-a)/(7*864e5))+1;
+}
+
+/* The whole week, in the shape the programme screen already speaks - so what
+   comes out is an ordinary programme you can rename, reorder and edit, never
+   a locked prescription. */
+function genProgram(opt){
+  opt=opt||{};
+  var days=Math.max(1,Math.min(6,+opt.days||3));
+  var key=progSplitFor(days,opt.exp||'new'),sp=PROG_SPLITS[key];
+  var equip=opt.equip||GEN_EQUIP.gym;
+  var goalV=opt.goal||'size',g=null,i,j;
+  for(i=0;i<(FIT_GOALS||[]).length;i++)if(FIT_GOALS[i].v===goalV)g=FIT_GOALS[i];
+  if(!g)g=(FIT_GOALS||[])[1]||{lo:8,hi:15,rest:90};
+  var reps=Math.round((g.lo+g.hi)/2);
+  var budget=progSetsPerSession(opt.minutes,sp.cap),out=[];
+  for(i=0;i<sp.days.length;i++){
+    var dayName=sp.days[i][0],ms=sp.days[i][1];
+    /* the session's budget spread over that day's muscles, floor two - the
+       notebook's "at least two sets of every exercise" */
+    var per=Math.max(2,Math.round(budget/ms.length)),sets={};
+    for(j=0;j<ms.length;j++)sets[ms[j]]=per;
+    var rows=genPick({muscles:ms,equip:equip,sets:sets,maxPerMuscle:sp.perMuscle}),day=[];
+    for(j=0;j<rows.length;j++){
+      /* a muscle with nothing available is dropped from the programme rather
+         than written in as an empty row - the generator screen is where
+         "nothing with this equipment" is worth saying, not a saved plan */
+      if(rows[j].none||!rows[j].name)continue;
+      day.push({name:rows[j].name,sets:rows[j].sets,targetReps:reps,
+                baseWeight:0,rest:g.rest||90,note:'',day:dayName});
+    }
+    /* genPick floors every exercise at two sets and rounds, so a day can
+       come out above the budget it was handed. Trim from the END: the big
+       movements are first, which is the notebook's ordering rule and the
+       reason the last sets are the ones to lose. */
+    var tot=0;for(j=0;j<day.length;j++)tot+=day[j].sets;
+    for(j=day.length-1;j>=0&&tot>budget;j--)
+      while(day[j].sets>2&&tot>budget){day[j].sets--;tot--;}
+    for(j=0;j<day.length;j++)out.push(day[j]);
+  }
+  return {id:Date.now(),name:opt.name||'',splitType:key,daysPerWeek:days,
+          goal:goalV,builtAt:todayStr(),exercises:out};
 }
 
 /* ── THE SCREEN THAT REACHES THE GENERATOR ──
