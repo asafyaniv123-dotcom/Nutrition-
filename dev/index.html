@@ -8458,7 +8458,9 @@ var FIT_ME_LIMITS=[['knee','ברך'],['low','גב תחתון'],['shldr','כתף'
 /* ANSWERED MEANS USABLE, the same test fqHas makes of the profile. */
 function fitMeHas(k){
   var o=fitMe();
-  if(k==='out')return !!(o.out&&o.out.length);
+  /* more than one outcome is allowed, so picking one must not advance -
+     the step ends when she says it does, like the limits step */
+  if(k==='out')return !!o.outDone;
   if(k==='days')return +o.days>0;
   if(k==='minutes')return +o.minutes>0;
   if(k==='exp')return !!o.exp;
@@ -8472,7 +8474,7 @@ function fitMePending(){
   return out;
 }
 function fitMeQuestion(k){
-  if(k==='goal')return ''+_t('למה אתה מתאמן?')+'';
+  if(k==='out')return ''+_t('מה המטרה שלך?')+'';
   if(k==='days')return ''+_t('כמה פעמים בשבוע אתה יכול להתאמן')+'';
   if(k==='minutes')return ''+_t('כמה זמן יש לך לאימון')+'';
   if(k==='exp')return ''+_t('כמה אתה מתאמן היום')+'';
@@ -8481,7 +8483,7 @@ function fitMeQuestion(k){
   return ''+_t('מה עוד כדאי שאדע?')+'';
 }
 function fitMeWhy(k){
-  if(k==='goal')return ''+_t('תשובה אחת, וטווח החזרות והמנוחה יהיו שלך במקום ברירת מחדל')+'';
+  if(k==='out')return ''+_t('אפשר לבחור יותר מאחת. מהן אני מגיע לטווח החזרות, למנוחה ולקפיצת המשקל.')+'';
   if(k==='days')return ''+_t('יכול, לא רוצה. עדיף תוכנית שמתקיימת.')+'';
   if(k==='minutes')return ''+_t('זה קובע כמה תרגילים נכנסים.')+'';
   if(k==='exp')return ''+_t('זה קובע כמה מורכבת החלוקה.')+'';
@@ -8491,11 +8493,22 @@ function fitMeWhy(k){
 }
 function fitMeBody(k){
   var o=fitMe(),h='',i;
-  if(k==='goal'){
+  if(k==='out'){
+    /* WHAT HE WANTS TO HAPPEN, not which rep range he wants. Each one
+       carries the line that says what it means, because "להתחטב" and
+       "לרדת באחוזי שומן" are the same thing to somebody who has never
+       trained and different things to somebody who has. */
+    var on=o.out||[];
     h='<div class="fg-row">';
-    for(i=0;i<FIT_GOALS.length;i++)
-      h+='<button class="fg-b" onclick="fitGoalSet(&quot;'+FIT_GOALS[i].v+'&quot;)">'+FIT_GOALS[i].t+'</button>';
-    return h+'</div>';
+    for(i=0;i<FIT_OUT.length;i++)
+      h+='<button class="fg-b'+((on.indexOf(FIT_OUT[i][0])>=0)?' on':'')+
+         '" onclick="fitMeOut(&quot;'+FIT_OUT[i][0]+'&quot;)">'+esc(_t(FIT_OUT[i][1]))+
+         '<span class="gn-n" style="display:block;margin-top:3px">'+esc(_t(FIT_OUT[i][2]))+'</span></button>';
+    h+='</div>';
+    if(on.indexOf('fat')>=0&&on.indexOf('mass')>=0)   // i18n-exempt: stored keys
+      h+='<div class="gn-s" style="margin-top:9px">'+_t('שתיהן יחד — אפשרי. אגיד לך בהמלצה מה זה אומר.')+'</div>';
+    h+='<button class="gn-go" onclick="fitMeDone(&quot;out&quot;)"'+(on.length?'':' disabled')+'>'+_t('המשך')+'</button>';
+    return h;
   }
   if(k==='days'){
     h='<div class="fg-row">';
