@@ -17977,6 +17977,7 @@ function renderFitness(){
   else if(_fitView==='weights')document.getElementById('content').innerHTML=renderFitWeights();
   else if(_fitView==='stats')document.getElementById('content').innerHTML=renderFitStats();
   else if(_fitView==='build')renderFitBuild();
+  else if(_fitView==='genprog')renderFitGenProg();
   else if(_fitView==='timer')renderFitTimer();
   else if(_fitView==='steps')renderFitSteps();
   else if(_fitView==='steps-setup')renderFitStepsSetup();
@@ -18472,6 +18473,97 @@ function renderFitBuild(){
   return void(document.getElementById('content').innerHTML=h+'</div>');
 }
 
+/* ── THE SCREEN THAT REACHES THE PROGRAMME GENERATOR ──
+   Three questions. Equipment is already answered on the build screen and
+   remembered; the goal has a screen of its own and is read, not asked. */
+var _genProg=null;
+var GENPROG_DAYS=[1,2,3,4,5,6];
+var GENPROG_MINS=[30,45,60,90];
+/* מתקדם ALREADY MEANS SOMETHING ELSE in this app - "Progressing", about a
+   trend - so reusing it here would have German say "Komme voran" where it
+   means an experienced lifter. One key, one meaning; this one takes a
+   context. The other three are new words and need none. */
+/* No i18n-exempt here, on purpose. These labels DO reach _t, through the
+   loop below - so they are real keys, and the collection is named in
+   build-lang-template's VIA_VARIABLE so the builder emits them. Marking the
+   line exempt instead is what I did first, and it silenced the check on four
+   labels that would have shipped as Hebrew in ten languages. */
+var GENPROG_EXP=[['new','מתחיל'],['back','חוזר אחרי הפסקה'],
+                 ['mid','בינוני'],['adv','מתקדם|ניסיון']];
+
+function genProgOpen(){
+  _genProg={days:3,minutes:60,exp:'new'};
+  _fitView='genprog';renderFitness();
+}
+function genProgSet(k,v){
+  if(!_genProg)return;
+  _genProg[k]=(k==='exp')?v:+v;
+  renderFitness();
+}
+function genProgSave(){
+  if(!_genProg)return;
+  var p=genProgram({days:_genProg.days,exp:_genProg.exp,minutes:_genProg.minutes,
+                    goal:fitGoal().v,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
+  /* A programme with nothing in it is not saved. It happens when the kit
+     answers "none" and every muscle comes back empty, and a saved empty
+     plan is worse than being told. */
+  if(!p.exercises.length){showToast(''+_t('לא מצאתי תרגילים עם הציוד שסימנת')+'');return;}
+  var progs=loadPrograms();
+  progs.push(p);
+  savePrograms(progs);
+  _fitProgIdx=progs.length-1;
+  _genProg=null;
+  showToast('&#10003; '+_t('התוכנית נבנתה'));
+  _fitView='view-program';renderFitness();
+}
+
+function renderFitGenProg(){
+  if(!_genProg)genProgOpen();
+  if(!_genProg)return;
+  var g=_genProg,i,h='<div style="padding-bottom:24px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('בנה לי תוכנית')+'</div>';
+  h+='<button onclick="_genProg=null;_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;color:var(--ink-soft);cursor:pointer;font-family:inherit">'+_t('חזרה')+'</button>';
+  h+='</div>';
+
+  h+='<div class="gn-c"><div class="gn-h">'+_t('כמה פעמים בשבוע אתה יכול להתאמן')+'</div>';
+  h+='<div class="gn-s">'+_t('יכול, לא רוצה. עדיף תוכנית שמתקיימת.')+'</div><div class="gn-w">';
+  for(i=0;i<GENPROG_DAYS.length;i++)
+    h+='<button class="gn-e'+(g.days===GENPROG_DAYS[i]?' on':'')+'" onclick="genProgSet(\'days\','+GENPROG_DAYS[i]+')">'+nfmt(GENPROG_DAYS[i])+'</button>';
+  h+='</div></div>';
+
+  h+='<div class="gn-c"><div class="gn-h">'+_t('כמה זמן יש לך לאימון')+'</div>';
+  h+='<div class="gn-s">'+_t('זה קובע כמה תרגילים נכנסים.')+'</div><div class="gn-w">';
+  for(i=0;i<GENPROG_MINS.length;i++)
+    h+='<button class="gn-e'+(g.minutes===GENPROG_MINS[i]?' on':'')+'" onclick="genProgSet(\'minutes\','+GENPROG_MINS[i]+')">'+_t('{n} דקות',{n:GENPROG_MINS[i]})+'</button>';
+  h+='</div></div>';
+
+  h+='<div class="gn-c"><div class="gn-h">'+_t('כמה אתה מתאמן היום')+'</div>';
+  h+='<div class="gn-s">'+_t('זה קובע כמה מורכבת החלוקה.')+'</div><div class="gn-w">';
+  for(i=0;i<GENPROG_EXP.length;i++)
+    h+='<button class="gn-e'+(g.exp===GENPROG_EXP[i][0]?' on':'')+'" onclick="genProgSet(\'exp\',\''+GENPROG_EXP[i][0]+'\')">'+esc(_t(GENPROG_EXP[i][1]))+'</button>';
+  h+='</div></div>';
+
+  /* WHAT THE TWO CEILINGS DECIDED, before anything is built. The day names
+     are already translated keys, joined with a separator and never with a
+     conjunction. */
+  var key=progSplitFor(g.days,g.exp),sp=PROG_SPLITS[key],names=[];
+  for(i=0;i<sp.days.length;i++)names.push(progDayLabel(sp.days[i][0]));
+  h+='<div class="gn-c"><div class="gn-h">'+_t('החלוקה שיצאה')+'</div>';
+  h+='<div class="gn-s">'+esc(names.join(' \u00b7 '))+'</div>';
+  h+='<div class="gn-s">'+_t('כל שריר חוזר כל {lo}–{hi} שעות',{lo:sp.lo,hi:sp.hi})+'</div>';
+  /* Only the surprising case is explained. When the days are the limit that
+     is obvious from the chips; when the EXPERIENCE is the limit it looks
+     like the app ignored an answer, so it says why. */
+  if(progSplitFor(g.days,'adv')!==key)
+    h+='<div class="gn-s">'+_t('בשלב הזה עדיף לחזור על כל שריר יותר פעמים, גם אם יש לך יותר ימים פנויים.')+'</div>';
+  h+='</div>';
+
+  h+='<div class="gn-g">'+_t('לפי המטרה שלך: {g}',{g:fitGoal().t})+'</div>';
+  h+='<button class="gn-go" onclick="genProgSave()">'+_t('בנה לי תוכנית')+'</button>';
+  return void(document.getElementById('content').innerHTML=h+'</div>');
+}
+
 /* The heaviest honest single from every lift you have done, best first. */
 function fitBestLifts(limit){
   var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
@@ -18689,7 +18781,10 @@ function renderFitStart(){
   h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">'+_t('מעקב תוכניות')+'</div>';
+  h+='<div style="display:flex;gap:6px">';
+  h+='<button onclick="genProgOpen()" style="background:var(--violet-100);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-700);font-family:inherit">'+_t('בנה לי תוכנית')+'</button>';
   h+='<button onclick="startProgramWizard()" style="background:var(--cta-fill);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">'+_t('+ תוכנית')+'</button>';
+  h+='</div>';
   h+='</div>';
   if(progs.length===0)
     h+='<div style="text-align:center;padding:10px;font-size:12px;color:var(--muted-soft)">'+_t('הוסף תוכנית מחדר כושר')+'</div>';
