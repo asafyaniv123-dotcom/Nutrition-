@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>רמת הקושי — איך בוחרים אותה</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Read from dev/index.html before anything was drawn.
+
+  What ships: .rpe-row, ten .rpe-b buttons at min-width 26px and min-height
+  32px, in an overflow-x:auto strip under the weight and reps boxes. The
+  chosen one goes solid --terra-500 with white text.
+
+  The bug he reported is FIXED and is not what this page is about: tapping one
+  of those ten re-rendered the screen, which rebuilt the weight and reps boxes
+  from the stored set and erased what had just been typed. Four other controls
+  did the same. That is in dev already.
+
+  This page is the second half of what he asked for - "אני רוצה שה-workflow שם
+  יהיה טוב יותר. אני חושב על אולי כמו גלגלת שהמספרים מ1-10 מלמעלה למטה
+  ומחליקים כמו גלגל... ככה זה גם יעודד לשימוש."
+
+  THE BRIEF. She has just put the bar down. She is breathing hard, the phone
+  is in one hand, and this is optional - which is exactly why it loses. The
+  control has to be reachable with a thumb in one gesture and has to be worth
+  the gesture. "יעודד לשימוש" is the requirement, not the decoration.
+
+  Measured on the shipped screen at 390px wide: each of the ten buttons is
+  about 33px across. A thumb pad is 9-11mm, which is 34-42 CSS pixels. So the
+  row is at or below the floor, and the tap that misses lands on 7 or 9 and
+  looks deliberate.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    /* measured against the ground, not assumed: #8a8178 is 3.10:1 and every
+       label on this page is 10-12px, so it needs 4.5. This is 4.64. The same
+       mistake as the five palette tokens that carried the note "readable as
+       text" and were not. */
+    --ink:#4a453f; --muted:#6d675e; --faint:#6d655c;
+    --terra500:#c76a46; --terra700:#98492c; --amber:#f0a92e;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:Assistant,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:30px 16px 90px}
+  h1{font-size:27px;font-weight:800;margin:0 0 6px;letter-spacing:-.4px}
+  .lede{font-size:14.5px;line-height:1.75;color:var(--muted);margin:0 0 26px;max-width:62ch}
+  .lede b{color:var(--ink);font-weight:700}
+
+  .brief{border-radius:20px;padding:18px 20px;box-shadow:var(--press);margin-bottom:34px}
+  .brief h2{font-size:11px;letter-spacing:.1em;font-weight:800;color:var(--faint);margin:0 0 9px}
+  .brief p{font-size:14px;line-height:1.75;color:var(--muted);margin:0 0 9px}
+  .brief p:last-child{margin:0}
+  .brief b{color:var(--ink);font-weight:700}
+
+  .opt{margin-bottom:40px}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:.1em;font-weight:800;
+    color:var(--faint);margin-bottom:7px}
+  .opt h3{font-size:19px;font-weight:800;margin:0 0 7px;letter-spacing:-.2px}
+  .opt > p{font-size:13.5px;line-height:1.75;color:var(--muted);margin:0 0 16px;max-width:60ch}
+  .opt > p b{color:var(--ink);font-weight:700}
+
+  /* the phone the control actually lives in */
+  .phone{width:356px;max-width:100%;border-radius:24px;padding:16px 14px 18px;
+    box-shadow:var(--raise-lg);background:var(--ground)}
+  .fl{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--faint);margin-bottom:5px}
+  .boxes{display:grid;grid-template-columns:1fr 1fr 56px;gap:8px;margin-bottom:14px}
+  .box{border-radius:13px;padding:11px 10px;box-shadow:var(--press-sm);
+    font-size:17px;font-weight:800;color:var(--ink);min-height:46px;display:flex;align-items:center}
+  .plus{align-self:end;height:46px;border-radius:13px;border:none;background:none;
+    box-shadow:var(--raise);font:inherit;font-size:22px;font-weight:800;color:var(--ink);cursor:pointer}
+
+  /* ── א · what ships ───────────────────────────────────────────── */
+  .row-a{display:flex;gap:3px}
+  .b-a{flex:1 0 auto;min-width:26px;height:32px;border:1.5px solid rgba(176,168,156,.5);
+    background:#efece8;border-radius:8px;font:inherit;font-size:12px;font-weight:700;
+    color:var(--muted);cursor:pointer;padding:0}
+  .b-a.on{background:var(--terra500);border-color:var(--terra700);color:#fff}
+
+  /* ── the wheel ────────────────────────────────────────────────── */
+  .wheel{position:relative;height:180px;border-radius:16px;box-shadow:var(--press);
+    overflow:hidden}
+  /* the channel the chosen number sits in - the only lit thing on the screen,
+     which is the whole of the approved language */
+  .slot{position:absolute;left:8px;right:8px;top:72px;height:36px;border-radius:11px;
+    box-shadow:var(--press-sm);pointer-events:none;
+    background:linear-gradient(90deg,rgba(240,169,46,.13),rgba(240,169,46,.05))}
+  .scroller{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;
+    scrollbar-width:none;-ms-overflow-style:none;position:relative;z-index:1}
+  .scroller::-webkit-scrollbar{display:none}
+  .pad{height:72px}
+  .n{height:36px;scroll-snap-align:center;display:flex;align-items:center;
+    justify-content:center;gap:10px;font-size:15px;font-weight:700;color:var(--faint);
+    transition:color .14s,font-size .14s;cursor:pointer}
+  .n.mid{color:var(--ink);font-size:21px;font-weight:800}
+  .n .mean{font-size:12px;font-weight:600;color:var(--faint);transition:color .14s}
+  .n.mid .mean{color:var(--muted)}
+  /* the two next to the centre are legible, the rest fade - so the column
+     reads as a wheel rather than as a list */
+  .n.near{color:var(--muted)}
+
+  .out{margin-top:11px;font-size:12.5px;color:var(--muted);min-height:18px}
+  .out b{color:var(--ink);font-weight:800;font-size:14px}
+
+  .cost{margin-top:14px;border-radius:14px;padding:12px 14px;box-shadow:var(--press-sm);
+    font-size:12.5px;line-height:1.7;color:var(--muted);max-width:60ch}
+  .cost b{color:var(--ink);font-weight:700}
+
+  .rec{border-radius:20px;padding:20px;box-shadow:var(--raise-lg);margin-top:8px}
+  .rec h2{font-size:12px;letter-spacing:.1em;font-weight:800;color:var(--faint);margin:0 0 10px}
+  .rec p{font-size:14px;line-height:1.8;color:var(--muted);margin:0 0 10px}
+  .rec p:last-child{margin:0}
+  .rec b{color:var(--ink);font-weight:700}
+  @media (max-width:420px){ .wrap{padding:22px 14px 70px} h1{font-size:23px} }
+</style>
+
+<div class="wrap">
+  <h1>רמת הקושי — איך בוחרים אותה</h1>
+  <p class="lede">
+    הבאג שדיווחת עליו כבר מתוקן ב-dev: לחיצה על רמת הקושי ציירה מחדש את המסך
+    ומחקה את המשקל והחזרות שהקלדת. <b>ארבעה כפתורים נוספים עשו בדיוק את אותו
+    דבר</b> — מתג החימום, המעבר בין RPE ל-RIR, אורך המנוחה, ותיקון סט שכבר
+    נרשם. כולם תוקנו יחד.<br>
+    הדף הזה הוא החצי השני של מה שביקשת — הגלגלת. שלוש אפשרויות, כולן עובדות.
+    <b>גלול אותן באצבע.</b>
+  </p>
+
+  <div class="brief">
+    <h2>מה הרגע הזה באמת</h2>
+    <p>
+      הרגע הנחת את המוט. אתה נושם, הטלפון ביד אחת, והשדה הזה <b>לא
+      חובה</b> — ובדיוק לכן הוא מפסיד. הוא צריך להיות בהישג אגודל בתנועה
+      אחת, ולהיות שווה את התנועה.
+    </p>
+    <p>
+      נמדד על המסך הקיים ברוחב 390 פיקסל: כל אחד מעשרת הכפתורים יוצא
+      <b>בערך 33 פיקסל</b>. כרית אגודל היא 9–11 מ״מ, כלומר 34–42 פיקסל. אז
+      השורה יושבת על הרצפה או מתחתיה — והלחיצה שמחטיאה נוחתת על 7 או על 9
+      ונראית מכוונת.
+    </p>
+  </div>
+
+  <!-- ── א ──────────────────────────────────────────────────────── -->
+  <div class="opt">
+    <span class="tag">א · מה שיש היום</span>
+    <h3>עשרה כפתורים בשורה</h3>
+    <p>
+      כאן כאנטי-רפרנס, לא כהצעה. עשר מטרות קטנות בשורה אחת, ואין שום דבר
+      שאומר <b>מה 8 אומר</b> — וזו הסיבה האמיתית שלא ממלאים את זה.
+    </p>
+    <div class="phone">
+      <div class="boxes">
+        <div><div class="fl">משקל (ק״ג)</div><div class="box">82.5</div></div>
+        <div><div class="fl">חזרות</div><div class="box">8</div></div>
+        <button class="plus">+</button>
+      </div>
+      <div class="fl">RPE</div>
+      <div class="row-a" id="rowA"></div>
+    </div>
+  </div>
+
+  <!-- ── ב ──────────────────────────────────────────────────────── -->
+  <div class="opt">
+    <span class="tag">ב · הגלגלת</span>
+    <h3>מספרים בלבד, 1 למעלה ו-10 למטה</h3>
+    <p>
+      בדיוק מה שתיארת. המספר שבמרכז הוא הנבחר, והוא יושב <b>בתוך תעלה
+      לחוצה</b> — האור היחיד במסך, כמו בשאר השפה שאישרנו. מטרה אחת גדולה
+      במקום עשר קטנות, ואי אפשר להחטיא.
+    </p>
+    <div class="phone">
+      <div class="boxes">
+        <div><div class="fl">משקל (ק״ג)</div><div class="box">82.5</div></div>
+        <div><div class="fl">חזרות</div><div class="box">8</div></div>
+        <button class="plus">+</button>
+      </div>
+      <div class="fl">RPE</div>
+      <div class="wheel"><div class="slot"></div><div class="scroller" id="wB"></div></div>
+      <div class="out" id="oB"></div>
+    </div>
+  </div>
+
+  <!-- ── ג ──────────────────────────────────────────────────────── -->
+  <div class="opt">
+    <span class="tag">ג · הגלגלת שגם מלמדת</span>
+    <h3>ולידו — מה המספר הזה אומר</h3>
+    <p>
+      אותה גלגלת, ועוד דבר אחד: <b>כמה חזרות נשארו לך</b>. זה בדיוק מה
+      ש-RIR אומר, והמחברת כותבת את שניהם יחד — 0 זה כשל מלא, 2 זה היה אפשר
+      עוד שתיים. מי שלא יודע מה 8 אומר רואה את התשובה תוך כדי שהוא מגלגל,
+      ואחרי שלושה אימונים הוא כבר לא צריך אותה.
+    </p>
+    <p>
+      זו, לדעתי, התשובה האמיתית ל<b>״שיעודד לשימוש״</b>: לא מספרים יפים
+      יותר, אלא לדעת מה הם אומרים.
+    </p>
+    <div class="phone">
+      <div class="boxes">
+        <div><div class="fl">משקל (ק״ג)</div><div class="box">82.5</div></div>
+        <div><div class="fl">חזרות</div><div class="box">8</div></div>
+        <button class="plus">+</button>
+      </div>
+      <div class="fl">RPE</div>
+      <div class="wheel"><div class="slot"></div><div class="scroller" id="wC"></div></div>
+      <div class="out" id="oC"></div>
+    </div>
+    <div class="cost">
+      <b>המחיר, בכנות:</b> השורה היום תופסת 32 פיקסל. הגלגלת תופסת 180.
+      זה 148 פיקסל נוספים במסך שכבר ארוך — בערך שליש ממסך טלפון. אפשר
+      לכווץ אותה ל-108 (שלוש שורות במקום חמש) ואז המחיר הוא 76. אם זה מפריע,
+      אפשר גם לפתוח אותה רק בלחיצה על המספר, ואז היא לא תופסת כלום עד שצריך
+      אותה. תגיד מה מרגיש לך נכון.
+    </div>
+  </div>
+
+  <div class="rec">
+    <h2>מה הייתי בוחר</h2>
+    <p>
+      <b>ג.</b> הגלגלת פותרת את הבעיה הפיזית — מטרה אחת גדולה במקום עשר
+      שצרות מכרית אגודל — אבל לבד היא רק נוחה יותר. מה שהופך אותה למשהו
+      שממלאים הוא <b>המשפט שלידה</b>, כי השדה הזה לא נזנח בגלל שהוא קטן
+      אלא בגלל שהוא לא ברור.
+    </p>
+    <p>
+      אם המחיר בגובה מפריע — ג׳ בגרסה המכווצת, או ג׳ שנפתחת בלחיצה.
+      הגלגלת עצמה זהה בשלושתן.
+    </p>
+  </div>
+</div>
+
+<script>
+/* ── THE SCALE ──
+   RIR is exactly 10 - RPE, which is what effortToRPE in the app does, so the
+   two halves of the sentence can never disagree with the store. The low end
+   gets a word rather than a count, because "נשארו שבע" is not how anybody
+   describes a warm-up set. */
+var MEAN = {
+  1:'כמעט כלום', 2:'קל מאוד', 3:'קל', 4:'נוח', 5:'בינוני',
+  6:'נשארו ארבע', 7:'נשארו שלוש', 8:'נשארו שתיים', 9:'נשארה אחת', 10:'כשל מלא'
+};
+
+/* א, so the anti-reference is touchable rather than described */
+(function(){
+  var r = document.getElementById('rowA'), h = '';
+  for (var i = 1; i <= 10; i++) h += '<button class="b-a' + (i === 8 ? ' on' : '') + '">' + i + '</button>';
+  r.innerHTML = h;
+  r.addEventListener('click', function(e){
+    if (e.target.tagName !== 'BUTTON') return;
+    [].forEach.call(r.children, function(b){ b.classList.remove('on'); });
+    e.target.classList.add('on');
+  });
+})();
+
+/* ── the wheel ──
+   scroll-snap does the physics; this only reads which row ended up in the
+   middle and says so. No drag maths, no inertia of our own - the platform's
+   is better than anything written here and matches every other wheel on the
+   phone, which is the point of choosing this control at all. */
+function wheel(scrollerId, outId, withMeaning){
+  var sc = document.getElementById(scrollerId), out = document.getElementById(outId);
+  var h = '<div class="pad"></div>';
+  for (var i = 1; i <= 10; i++)
+    h += '<div class="n" data-v="' + i + '">' + i +
+         (withMeaning ? '<span class="mean">' + MEAN[i] + '</span>' : '') + '</div>';
+  h += '<div class="pad"></div>';
+  sc.innerHTML = h;
+  var rows = [].slice.call(sc.querySelectorAll('.n'));
+
+  function paint(){
+    var mid = sc.scrollTop + sc.clientHeight / 2, best = null, bestD = 1e9;
+    rows.forEach(function(el){
+      var c = el.offsetTop + el.offsetHeight / 2, d = Math.abs(c - mid);
+      if (d < bestD) { bestD = d; best = el; }
+    });
+    rows.forEach(function(el){
+      var c = el.offsetTop + el.offsetHeight / 2, d = Math.abs(c - mid);
+      el.classList.toggle('mid', el === best);
+      el.classList.toggle('near', el !== best && d < 56);
+    });
+    if (!best) return;
+    var v = +best.dataset.v;
+    out.innerHTML = withMeaning
+      ? 'נבחר <b>' + v + '</b> &middot; ' + MEAN[v]
+      : 'נבחר <b>' + v + '</b>';
+  }
+
+  /* a tap on a row is a legitimate way to choose too - a wheel you can only
+     scroll is a wheel that refuses the one gesture everybody tries first */
+  sc.addEventListener('click', function(e){
+    var el = e.target.closest ? e.target.closest('.n') : null;
+    if (!el) return;
+    sc.scrollTo({ top: el.offsetTop - (sc.clientHeight - el.offsetHeight) / 2, behavior: 'smooth' });
+  });
+  sc.addEventListener('scroll', paint, { passive: true });
+  /* opens on 8, which is where somebody logging a working set usually lands,
+     rather than on 1 - an empty wheel asks a question the person has to
+     answer before they can see what the answers look like */
+  var start = rows[7];
+  sc.scrollTop = start.offsetTop - (sc.clientHeight - start.offsetHeight) / 2;
+  paint();
+}
+wheel('wB', 'oB', false);
+wheel('wC', 'oC', true);
+</script>
+</html>
