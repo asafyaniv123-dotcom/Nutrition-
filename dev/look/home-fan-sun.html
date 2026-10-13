@@ -192,36 +192,51 @@ function markSVG(u,face){
    (face?FACE:'')+'</g></svg>';
 }
 
-/* ── the thin beam, sun -> button ───────────────────────────────────── */
+/* ── the shaft of light, sun -> button ──────────────────────────────────
+   "דמיינתי את הפסים לכיוון הכפתורים יותר רחבים ויותר שמזכירים קרני אור"
+
+   A STRIPE AND A SHAFT ARE NOT THE SAME DRAWING, and the first version drew
+   a stripe: constant width, two ends, an outline made of its own edge. A
+   shaft of light OPENS - narrow where it leaves the source, wide where it
+   arrives - and it has no edge at all, which is why it is a filled wedge
+   under a blur and not a stroke. Widening the stroke would only have made a
+   fatter stripe, the same mistake the long rays made twice already.
+
+   The angles are ~30 apart and the wedge is 2*atan(23/130) = 20 at its
+   widest, so they open without touching. Measured, not hoped. */
 var UID=0;
 function beams(mode,boost){
  var u=++UID, h='<svg class="rays" viewBox="0 0 374 300"><defs>', i, body='';
  for(i=0;i<P.length;i++){
    var dx=P[i].dx*K, dy=P[i].dy*K, L=Math.hypot(dx,dy),
        hue=(mode==='amber'?'#f0a92e':P[i].g),
-       /* leave the sun at its rim and stop short of the disc, so the beam
-          never draws over either object */
-       t0=(RHUB+3)/L, t1=(L-24)/L,
-       x0=CX+dx*t0, y0=CY+dy*t0, x1=CX+dx*t1, y1=CY+dy*t1;
+       ux=dx/L, uy=dy/L, px=-uy, py=ux,          /* along, and across */
+       /* leave the sun at its rim and stop at the disc's edge, so the light
+          arrives AT the button and never draws over it */
+       r0=RHUB+2, r1=L-19,
+       w0=4.5, w1=23;                            /* narrow at the sun, wide at the button */
+   var ax=CX+ux*r0, ay=CY+uy*r0, bx=CX+ux*r1, by=CY+uy*r1;
    h+='<linearGradient id="g'+u+'_'+i+'" gradientUnits="userSpaceOnUse" '+
-      'x1="'+x0.toFixed(1)+'" y1="'+y0.toFixed(1)+'" x2="'+x1.toFixed(1)+'" y2="'+y1.toFixed(1)+'">'+
-      '<stop offset="0" stop-color="'+hue+'" stop-opacity="'+(boost?.62:.42)+'"/>'+
-      '<stop offset=".55" stop-color="'+hue+'" stop-opacity="'+(boost?.40:.24)+'"/>'+
-      '<stop offset="1" stop-color="'+hue+'" stop-opacity="'+(boost?.62:.44)+'"/>'+
-      '</linearGradient>';
-   var d='M'+x0.toFixed(1)+' '+y0.toFixed(1)+'L'+x1.toFixed(1)+' '+y1.toFixed(1),
-       seg=Math.hypot(x1-x0,y1-y0);
-   /* three strokes: a wide soft halo, the beam, and a bright travelling core */
-   body+='<path d="'+d+'" stroke="'+hue+'" stroke-width="7" stroke-linecap="round" '+
-         'fill="none" opacity="'+(boost?.20:.13)+'" filter="url(#blur'+u+')"/>'+
-         '<path d="'+d+'" stroke="url(#g'+u+'_'+i+')" stroke-width="2.6" '+
-         'stroke-linecap="round" fill="none"/>'+
-         '<path class="pulse" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+(i*.18).toFixed(2)+'s" '+
-         'd="'+d+'" stroke="'+hue+'" stroke-width="2.6" stroke-linecap="round" fill="none" '+
-         'opacity="'+(boost?.75:.5)+'" stroke-dasharray="'+(seg*.22).toFixed(1)+' '+seg.toFixed(1)+'"/>';
+      'x1="'+ax.toFixed(1)+'" y1="'+ay.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+by.toFixed(1)+'">'+
+      '<stop offset="0" stop-color="'+hue+'" stop-opacity="'+(boost?.50:.34)+'"/>'+
+      '<stop offset=".45" stop-color="'+hue+'" stop-opacity="'+(boost?.30:.19)+'"/>'+
+      '<stop offset=".88" stop-color="'+hue+'" stop-opacity="'+(boost?.34:.22)+'"/>'+
+      '<stop offset="1" stop-color="'+hue+'" stop-opacity="0"/></linearGradient>';
+   var q=[[ax+px*w0,ay+py*w0],[bx+px*w1,by+py*w1],[bx-px*w1,by-py*w1],[ax-px*w0,ay-py*w0]];
+   body+='<path d="M'+q.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(1);}).join('L')+
+         'Z" fill="url(#g'+u+'_'+i+')"/>';
+   /* one brighter thread down the middle of the shaft, travelling outward -
+      a shaft of light has a core, and that is what makes it read as light
+      moving rather than as a painted triangle */
+   var d='M'+ax.toFixed(1)+' '+ay.toFixed(1)+'L'+bx.toFixed(1)+' '+by.toFixed(1),
+       seg=Math.hypot(bx-ax,by-ay);
+   body+='<path class="pulse" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+(i*.2).toFixed(2)+'s" '+
+         'd="'+d+'" stroke="'+hue+'" stroke-width="3.4" stroke-linecap="round" fill="none" '+
+         'opacity="'+(boost?.55:.34)+'" stroke-dasharray="'+(seg*.3).toFixed(1)+' '+seg.toFixed(1)+'"/>';
  }
- h+='<filter id="blur'+u+'" x="-40%" y="-40%" width="180%" height="180%">'+
-    '<feGaussianBlur stdDeviation="3"/></filter></defs>'+body+'</svg>';
+ h+='<filter id="blur'+u+'" x="-35%" y="-35%" width="170%" height="170%">'+
+    '<feGaussianBlur stdDeviation="4.2"/></filter></defs>'+
+    '<g filter="url(#blur'+u+')">'+body+'</g></svg>';
  return h;
 }
 function screen(mode,face,boost){
