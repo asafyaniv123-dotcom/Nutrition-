@@ -25510,11 +25510,14 @@ function fitRhythmHTML(log){
      choosing a plural form - each branch is a whole sentence of its own. */
   var line=(total>0)?_t('התאמנת {n} פעמים בחמישה השבועות האחרונים.',{n:total})
                     :''+_t('לא התאמנת בחמישה השבועות האחרונים.')+'';
-  var wkLine=(thisWeek>0)?_t('{n} מהם השבוע.',{n:thisWeek})
+  /* "אף אחד מהם" needs a them. With nothing in the five weeks the first
+     sentence has already said everything there is. */
+  var wkLine=(total===0)?''
+            :(thisWeek>0)?_t('{n} מהם השבוע.',{n:thisWeek})
                          :''+_t('אף אחד מהם השבוע.')+'';
   return '<div class="wh-rhw">'+
     '<div class="wh-rh-ttl">'+_t('הקצב שלך')+'</div>'+
-    '<div class="wh-rh-line">'+esc(line)+' <i>'+esc(wkLine)+'</i></div>'+
+    '<div class="wh-rh-line">'+esc(line)+(wkLine?' <i>'+esc(wkLine)+'</i>':'')+'</div>'+
     dh+'<div class="wh-rh">'+rows+'</div>'+
     /* only the two cells that MEAN something are in the key; an empty cell is
        the absence of a workout and needs no caption */
@@ -25529,8 +25532,13 @@ function renderFitHistory(){
   h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('היסטוריית אימונים')+'</div>';
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('חזרה')+'</button>';
   h+='</div>';
-  if(log.length===0){h+='<div style="text-align:center;padding:40px;color:var(--muted)">'+_t('עדיין לא ביצעת אימון')+'</div>';}
-  else h+=fitRhythmHTML(log);
+  /* ALWAYS, including with nothing logged. The panel answers "have I been
+     showing up", and "not yet" is an answer - the one worth seeing most. It
+     used to be replaced by a line of grey text, so the first thing a new
+     person met was the absence of the thing that is supposed to pull them
+     in. Five empty weeks say it better than a sentence about emptiness. */
+  h+=fitRhythmHTML(log);
+  if(log.length===0)h+='<div style="text-align:center;padding:28px 20px;color:var(--muted)">'+_t('עדיין לא ביצעת אימון')+'</div>';
   for(var i=log.length-1;i>=0;i--){
     var entry=log[i];var d=new Date(entry.date);
     var vol=entry.exercises.reduce(function(a,ex){return a+ex.sets.reduce(function(b,s){return b+(s.weight||0)*(s.reps||0);},0);},0);
