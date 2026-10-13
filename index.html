@@ -302,8 +302,20 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .tpl-del{border:none;border-radius:14px;padding:13px 12px;background:rgba(243,185,168,.2);color:var(--terra-700);font-size:12px;font-family:inherit;cursor:pointer}
 .fit-pick{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--line-strong);border-radius:12px;padding:12px 13px;background:var(--card);font-family:inherit;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;text-align:start}
 .fit-pick-c{color:var(--chev);font-size:15px}
-.ex-ov{position:fixed;inset:0;z-index:440;background:rgba(74,67,64,.62);display:flex;align-items:flex-end;justify-content:center}
-.ex-sheet{width:100%;max-width:480px;background:var(--panel);border-radius:22px 22px 0 0;padding:16px 14px calc(18px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
+/* height:100dvh as well as inset:0 - a fixed overlay is measured against the
+   LAYOUT viewport, which does not shrink when the keyboard opens, so the
+   bottom of this sheet was sitting behind the keyboard. dvh is the one that
+   tracks it. */
+.ex-ov{position:fixed;inset:0;height:100dvh;z-index:440;background:rgba(74,67,64,.62);display:flex;align-items:flex-end;justify-content:center}
+/* THE SEARCH BOX DOES NOT SCROLL AWAY. The sheet used to be the scroll
+   container itself, so the box you are typing in travelled up and off with
+   the results - and with the keyboard up there is barely a screen left, so
+   it left at the first keystroke and you had to scroll back for it. The
+   sheet is a column now: the header and the box hold still, #ex-body is the
+   only thing that moves. */
+.ex-sheet{width:100%;max-width:480px;background:var(--panel);border-radius:22px 22px 0 0;padding:16px 14px 0;max-height:88vh;max-height:88dvh;display:flex;flex-direction:column;overflow:hidden}
+.ex-hd,.ex-q{flex:0 0 auto}
+#ex-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(18px + env(safe-area-inset-bottom))}
 .ex-hd{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px}
 .ex-x{background:none;border:none;font-size:22px;line-height:1;color:var(--muted-soft);cursor:pointer;font-family:inherit;padding:0 4px}
 .ex-q{width:100%;border:1.5px solid var(--line-strong);border-radius:12px;padding:11px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--card);outline:none;text-align:start}
@@ -493,6 +505,12 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
    deep. Measured in the browser; the file said 12. */
 .fx-name .fx-how .fx-h{font-size:11.5px;text-align:center;letter-spacing:.02em}
 .fx-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 12px}
+/* WHAT IS LEFT OF THE PAIR once "last time" moved into the header. The
+   columns stay two: given the whole width the gear picture scales up with it
+   and the row went from about 180px to 346 - taller than the pair it
+   replaced, which is the opposite of the point. It keeps its column and the
+   other half is simply ground, which in one material reads as nothing. */
+.fx-row-one{grid-template-columns:1fr 1fr}
 /* ── THE THREE SQUARES, IN THE MATERIAL ──
    This painted a literal #faf6f1 with no shadow: a cream lighter than the
    ground, so the three boxes floated as pale rectangles on the plaster. It
@@ -714,6 +732,11 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   box-shadow:0 4px 16px rgba(200,180,160,.1)}
 .gn-h{font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:6px}
 .gn-s{font-size:11px;color:var(--muted-soft);line-height:1.6;margin-bottom:11px}
+/* an advice line, and the one that names a ceiling already passed. --terra-700
+   is the measured-readable warning colour the rest of the file uses. */
+.gn-a{font-size:11.5px;color:var(--ink-soft);line-height:1.6;margin-bottom:7px}
+.gn-a:last-child{margin-bottom:0}
+.gn-a.gn-warn{color:var(--terra-700);font-weight:700}
 .gn-w{display:flex;flex-wrap:wrap;gap:7px}
 .gn-m,.gn-e{border:1.5px solid var(--line-strong);background:var(--card);border-radius:13px;
   padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);
@@ -1047,6 +1070,46 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .rpe-row{display:flex;gap:3px;overflow-x:auto;padding-bottom:2px}
 .rpe-b{flex:1 0 auto;min-width:26px;min-height:32px;border:1.5px solid var(--line);background:var(--card);border-radius:8px;font:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;padding:0}
 .rpe-b.on{background:var(--terra-500);border-color:var(--terra-700);color:var(--white)}
+/* ── THE EFFORT WHEEL ──
+   What replaced the ten buttons above. 184px against their 32 is the price,
+   and it buys one target a thumb can hit instead of ten it cannot, plus the
+   word beside each number.
+   The channel is the only lit thing, which is the whole of this app's colour
+   language, and what lights it is effortTint - the same four colours the
+   workout summary has coloured logged sets with all along. */
+/* its own --nu-* like every other block in this file declares its own, rather
+   than leaning on an ancestor: the add form sits inside .fw-now and the
+   correction sheet does not, so an inherited value would paint one of them
+   and leave the other with nothing. */
+.ew{--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+  position:relative;height:184px;border-radius:16px;overflow:hidden;
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+.ew-slot{position:absolute;left:8px;right:8px;top:74px;height:36px;border-radius:11px;
+  pointer-events:none;transition:background .25s ease;
+  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+.ew-sc{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;position:relative;z-index:1;
+  scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
+.ew-sc::-webkit-scrollbar{display:none}
+.ew-pad{height:74px}
+/* perspective is written into each row's own transform rather than onto the
+   scroller: a perspective origin on a scrolling box travels with the scroll
+   and the cylinder shears. */
+.ew-n{height:36px;scroll-snap-align:center;display:flex;align-items:center;
+  justify-content:center;gap:11px;cursor:pointer;color:var(--ink);
+  transform-origin:50% 50%;backface-visibility:hidden;
+  transition:opacity .18s ease,transform .18s ease}
+.ew-num{font-size:16px;font-weight:800;min-width:22px;text-align:center;transition:font-size .18s ease}
+.ew-w{font-size:13px;font-weight:600;color:var(--muted);transition:font-size .18s ease}
+.ew-n.on .ew-num{font-size:23px}
+.ew-n.on .ew-w{font-size:14px}
+/* the count, on the chosen row and nowhere else. The dot is a ::before and
+   not markup: it is punctuation between two things that are each translated
+   on their own, so there is nothing here for a dictionary to get hold of and
+   nothing to glue a sentence out of. */
+.ew-sub{display:none;font-size:11.5px;font-weight:600;color:var(--muted-soft)}
+.ew-n.on .ew-sub{display:inline}
+.ew-n.on .ew-sub:not(:empty)::before{content:"\00b7";margin-inline-end:6px;opacity:.45}
+@media (prefers-reduced-motion:reduce){.ew-n{transition:none}.ew-sc{scroll-behavior:auto}}
 .addbtn{width:100%;background:var(--cta-fill);border:none;border-radius:11px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)}
 .lib-save-btn{width:100%;background:linear-gradient(135deg,var(--violet-100),var(--green-50));border:none;border-radius:11px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-700);margin-bottom:8px}
 .lib-save-btn.saved{background:var(--cta-fill);color:var(--white)}
@@ -1670,10 +1733,38 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .fit-last{font-size:10.5px;color:var(--muted);margin-bottom:7px;line-height:1.5}
 /* Two controls that must be reachable and must not compete with the lift's
    own name: full-size tap targets, drawn as quietly as a label. */
-.wx-b{background:none;border:none;font-family:inherit;cursor:pointer;
-  color:var(--muted);font-size:16px;line-height:1;padding:6px;border-radius:9px;
-  min-width:30px;min-height:30px}
-.wx-b:active{background:rgba(140,133,125,.14)}
+/* RAISED, LIKE EVERYTHING ELSE THAT CAN BE PRESSED. These were two bare
+   glyphs on the ground with no shell at all, and neither read as a button. */
+.wx-b{--nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28);
+  display:inline-flex;align-items:center;gap:4px;flex-shrink:0;
+  background:none;border:none;font-family:inherit;cursor:pointer;
+  color:var(--ink-soft);font-size:11px;font-weight:800;line-height:1;
+  padding:7px 10px;border-radius:11px;min-height:32px;
+  box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+.wx-b .wx-i{font-style:normal;font-size:14px;line-height:1;opacity:.75}
+.wx-b:active{box-shadow:inset 1px 2px 4px rgba(176,168,156,.44),inset -1px -1px 3px var(--nu-lit)}
+.wx-b.wx-del{color:var(--terra-700)}
+/* the superset action sits on its own line under the sets, with room above
+   it so it does not read as part of the row before it */
+.fx-ssrow{margin-top:2px}
+/* LAST TIME, IN THE HEADER, ON ONE LINE. In the record card below it is a
+   panel with a label above its chips; here it is a line, so it costs the
+   header one row rather than two and the move actually saves what it was
+   asked to save. No background either - a card inside a card reads as a
+   second thing, and this is a caption on the one it sits in. */
+.fw-prev-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  background:none;padding:0;margin:7px 0 9px}
+/* TODAY, now in the same rectangle. Flat like the line above it - a card
+   inside a card reads as a second thing, and both of these are captions on
+   the lift they sit with. */
+/* box-shadow:none MATTERS. .fw-prev is a sunken trough - a ground fill AND
+   an inset shadow. Taking the fill and leaving the shadow left an inset
+   outline with nothing inside it, floating in the middle of the card, which
+   is exactly "it is not really inside its rectangle". */
+.fx-nm .fw-prev{background:none;box-shadow:none;padding:0;margin:0 0 9px}
+.fx-nm .fw-prev-t{margin-bottom:5px}
+.fw-prev-top .fw-prev-t{margin:0;flex-shrink:0}
+.fw-prev-top .fw-prev-s{display:inline-flex;flex-wrap:wrap;gap:5px}
 .fit-last b{font-weight:800;color:var(--ink)}
 .fit-last i{font-style:normal;opacity:.75}
 /* ── THE RACK YOU LOAD BY HAND ──
@@ -8358,6 +8449,200 @@ function fqCardHTML(){
     total:FQ_ORDER.length
   });
 }
+/* ── WHAT כושר KNOWS ABOUT YOU ──
+   Page 132 of אימון התנגדות is a beginner-intake interview. Four of its eight
+   sections change what the generator produces; the rest are a human trainer's
+   context and belong to a person, not to an app that already has a nutrition
+   area. These are the four, plus the free line the notebook's own note asks
+   for - "listen, do not only ask".
+
+   The goal and the equipment are NOT stored here. They have their own keys
+   and their own screens, and a second place to answer one question is two
+   answers that can disagree. */
+/* WHAT HE WANTS TO HAPPEN, in his words rather than the mechanism's.
+   "כוח או מסה או סיבולת" is a question only somebody who already trains can
+   answer, and the answer to it is exactly what the app is supposed to work
+   out. Seven outcomes, more than one allowed, each with the line that says
+   what it means. */
+var FIT_OUT=[['fat','לרדת באחוזי שומן','להיראות ולהרגיש רזה יותר'],
+             ['mass','לעלות במסת שריר','להוסיף נפח'],
+             ['strong','להתחזק','להרים יותר ממה שאני מרים היום'],
+             ['tone','להתחטב','אותו משקל, הרכב גוף אחר'],
+             ['cardio','סיבולת וכושר אירובי','לא להתנשף במדרגות'],
+             ['back','לחזור אחרי הפסקה','בזהירות, ובלי להיפצע'],
+             ['keep','פשוט להתמיד','בלי יעד מספרי']];
+/* each outcome points at a rep range; the commonest among what he picked
+   wins, and that is what gets stored as the goal - in the SAME key the
+   chips at the bottom of the hub set, so there is still one answer. */
+var FIT_OUT_STYLE={fat:'size',mass:'size',strong:'strength',tone:'size',
+                   cardio:'endure',back:'endure',keep:'size'};   // i18n-exempt: stored keys on both sides
+function fitMeStyle(){
+  var o=fitMe().out||[],c={},i,k,best='size',n=-1;   // i18n-exempt: a stored key
+  if(!o.length)return 'size';   // i18n-exempt: same
+  for(i=0;i<o.length;i++)if(FIT_OUT_STYLE[o[i]])c[FIT_OUT_STYLE[o[i]]]=(c[FIT_OUT_STYLE[o[i]]]||0)+1;
+  for(k in c)if(c.hasOwnProperty(k)&&c[k]>n){n=c[k];best=k;}
+  return best;
+}
+function fitMeOut(v){
+  var o=fitMe(),l=o.out||[],i=l.indexOf(v);
+  if(i>=0)l.splice(i,1);else l.push(v);
+  o.out=l;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  /* the goal follows the outcomes, so the rep range, the rest and the weight
+     step are never left on a default she did not give */
+  if(l.length)fitGoalSet(fitMeStyle());else renderFitness();
+}
+
+var FIT_ME_KEY='fit_me';
+function fitMe(){
+  try{var x=localStorage.getItem(FIT_ME_KEY);var o=x?JSON.parse(x):null;
+      if(o&&typeof o==='object')return o;}catch(e){}
+  return {};
+}
+function fitMeSet(k,v){
+  var o=fitMe();o[k]=v;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+/* The equipment answer goes where the build screen already keeps it, and
+   only the FACT that it was asked is kept here - otherwise the same thing
+   is stored twice and the two can drift. */
+function fitMeEquip(v){
+  var o=fitMe();o.equipDone=1;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  genEquipSet(v);
+}
+/* a multi-select toggles rather than answers, and "nothing" clears the rest */
+function fitMeLimit(v){
+  var o=fitMe(),l=o.limits||[],i;
+  if(v==='none')l=(l.indexOf('none')>=0)?[]:['none'];   // i18n-exempt: a stored key, not a label
+  else{
+    l=l.filter(function(x){return x!=='none';});   // i18n-exempt: same
+    i=l.indexOf(v);if(i>=0)l.splice(i,1);else l.push(v);
+  }
+  o.limits=l;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+/* A step that may legitimately be empty needs a way to be finished, or it
+   asks for ever. "No limits" and "nothing to add" are answers. */
+function fitMeDone(k){
+  var o=fitMe();
+  if(k==='limits'&&!o.limits)o.limits=[];
+  o[k+'Done']=1;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+function fitMeNote(el){
+  var o=fitMe();
+  o.note=((el&&el.value)||'').trim();o.noteDone=1;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+
+var FIT_ME_ORDER=['out','days','minutes','exp','equip','limits','note'];   // i18n-exempt: stored keys
+/* The body parts, as keys. Translated where the chip is drawn. */
+var FIT_ME_LIMITS=[['knee','ברך'],['low','גב תחתון'],['shldr','כתף'],
+                   ['wrist','מרפק או שורש'],['neck','צוואר'],
+                   ['heart','לב או לחץ דם'],['none','אין מגבלות']];
+
+/* ANSWERED MEANS USABLE, the same test fqHas makes of the profile. */
+function fitMeHas(k){
+  var o=fitMe();
+  /* more than one outcome is allowed, so picking one must not advance -
+     the step ends when she says it does, like the limits step */
+  if(k==='out')return !!o.outDone;
+  if(k==='days')return +o.days>0;
+  if(k==='minutes')return +o.minutes>0;
+  if(k==='exp')return !!o.exp;
+  if(k==='equip')return !!o.equipDone;
+  if(k==='limits')return !!o.limitsDone;
+  return !!o.noteDone;
+}
+function fitMePending(){
+  var out=[],i;
+  for(i=0;i<FIT_ME_ORDER.length;i++)if(!fitMeHas(FIT_ME_ORDER[i]))out.push(FIT_ME_ORDER[i]);
+  return out;
+}
+function fitMeQuestion(k){
+  if(k==='out')return ''+_t('מה המטרה שלך?')+'';
+  if(k==='days')return ''+_t('כמה פעמים בשבוע אתה יכול להתאמן')+'';
+  if(k==='minutes')return ''+_t('כמה זמן יש לך לאימון')+'';
+  if(k==='exp')return ''+_t('כמה אתה מתאמן היום')+'';
+  if(k==='equip')return ''+_t('איפה אתה מתאמן')+'';
+  if(k==='limits')return ''+_t('יש משהו שכואב או מגביל לך את התנועה?')+'';
+  return ''+_t('מה עוד כדאי שאדע?')+'';
+}
+function fitMeWhy(k){
+  if(k==='out')return ''+_t('אפשר לבחור יותר מאחת. מהן אני מגיע לטווח החזרות, למנוחה ולקפיצת המשקל.')+'';
+  if(k==='days')return ''+_t('יכול, לא רוצה. עדיף תוכנית שמתקיימת.')+'';
+  if(k==='minutes')return ''+_t('זה קובע כמה תרגילים נכנסים.')+'';
+  if(k==='exp')return ''+_t('זה קובע כמה מורכבת החלוקה.')+'';
+  if(k==='equip')return ''+_t('זה קובע אילו תרגילים בכלל אפשריים — ואין תשובה גרועה.')+'';
+  if(k==='limits')return ''+_t('לא כדי להסתיר תרגילים — כדי שיהיה רשום, ושתדע למה לשים לב.')+'';
+  return ''+_t('הרשימות למעלה לא מכסות הכול.')+'';
+}
+function fitMeBody(k){
+  var o=fitMe(),h='',i;
+  if(k==='out'){
+    /* WHAT HE WANTS TO HAPPEN, not which rep range he wants. Each one
+       carries the line that says what it means, because "להתחטב" and
+       "לרדת באחוזי שומן" are the same thing to somebody who has never
+       trained and different things to somebody who has. */
+    var on=o.out||[];
+    h='<div class="fg-row">';
+    for(i=0;i<FIT_OUT.length;i++)
+      h+='<button class="fg-b'+((on.indexOf(FIT_OUT[i][0])>=0)?' on':'')+
+         '" onclick="fitMeOut(&quot;'+FIT_OUT[i][0]+'&quot;)">'+esc(_t(FIT_OUT[i][1]))+
+         '<span class="gn-n" style="display:block;margin-top:3px">'+esc(_t(FIT_OUT[i][2]))+'</span></button>';
+    h+='</div>';
+    if(on.indexOf('fat')>=0&&on.indexOf('mass')>=0)   // i18n-exempt: stored keys
+      h+='<div class="gn-s" style="margin-top:9px">'+_t('שתיהן יחד — אפשרי. אגיד לך בהמלצה מה זה אומר.')+'</div>';
+    h+='<button class="gn-go" onclick="fitMeDone(&quot;out&quot;)"'+(on.length?'':' disabled')+'>'+_t('המשך')+'</button>';
+    return h;
+  }
+  if(k==='days'){
+    h='<div class="fg-row">';
+    for(i=0;i<GENPROG_DAYS.length;i++)
+      h+='<button class="fg-b" onclick="fitMeSet(&quot;days&quot;,'+GENPROG_DAYS[i]+')">'+nfmt(GENPROG_DAYS[i])+'</button>';
+    return h+'</div>';
+  }
+  if(k==='minutes'){
+    h='<div class="fg-row">';
+    for(i=0;i<GENPROG_MINS.length;i++)
+      h+='<button class="fg-b" onclick="fitMeSet(&quot;minutes&quot;,'+GENPROG_MINS[i]+')">'+_t('{n} דקות',{n:GENPROG_MINS[i]})+'</button>';
+    return h+'</div>';
+  }
+  if(k==='exp'){
+    h='<div class="fg-row">';
+    for(i=0;i<GENPROG_EXP.length;i++)
+      h+='<button class="fg-b" onclick="fitMeSet(&quot;exp&quot;,&quot;'+GENPROG_EXP[i][0]+'&quot;)">'+esc(_t(GENPROG_EXP[i][1]))+'</button>';
+    return h+'</div>';
+  }
+  if(k==='equip'){
+    h='<div class="fg-row">';
+    var EQ=['gym','home','none'];   // i18n-exempt: stored keys, drawn through genEquipLabel
+    for(i=0;i<EQ.length;i++)
+      h+='<button class="fg-b" onclick="fitMeEquip(&quot;'+EQ[i]+'&quot;)">'+genEquipLabel(EQ[i])+'</button>';
+    return h+'</div>';
+  }
+  if(k==='limits'){
+    var on=o.limits||[];
+    h='<div class="fg-row">';
+    for(i=0;i<FIT_ME_LIMITS.length;i++)
+      h+='<button class="fg-b'+((on.indexOf(FIT_ME_LIMITS[i][0])>=0)?' on':'')+
+         '" onclick="fitMeLimit(&quot;'+FIT_ME_LIMITS[i][0]+'&quot;)">'+esc(_t(FIT_ME_LIMITS[i][1]))+'</button>';
+    h+='</div>';
+    /* THE SENTENCE HE ASKED FOR, and the notebook's own screening page backs
+       it: this is not a substitute for a person. */
+    h+='<div class="fq-s">'+_t('האפליקציה הזאת לא מחליפה רופא או פיזיותרפיסט. אם משהו כואב או שאתה לא בטוח — תשאל מישהו שמבין לפני שאתה מתחיל, ובזמן אימון תעצור על כאב חד או במפרק.')+'</div>';
+    h+='<button class="gn-go" onclick="fitMeDone(&quot;limits&quot;)">'+_t('המשך')+'</button>';
+    return h;
+  }
+  h='<textarea class="dp-ta" id="fitme-note" placeholder="'+esc(_t('במילים שלך…'))+'">'+esc(o.note||'')+'</textarea>';
+  h+='<button class="gn-go" onclick="fitMeNote(document.getElementById(&quot;fitme-note&quot;))">'+_t('סיימנו')+'</button>';
+  return h;
+}
 /* ── כושר ASKS ITS OWN ──
    fitGoal() answers FIT_GOALS[1] when nothing is stored, with the comment
    "building muscle is what most people mean" - so every rep range, the rest
@@ -8369,22 +8654,10 @@ function fitGoalChosen(){
   for(var i=0;i<FIT_GOALS.length;i++)if(FIT_GOALS[i].v===v)return true;
   return false;
 }
-function fqFitHTML(){
-  if(fitGoalChosen())return '';
-  if(fqOffToday('fitness'))return '';
-  var h='<div class="fg-row">',i;
-  /* the same .fg-b chips the setting at the bottom uses, with none lit -
-     because none IS chosen, which is the whole point of asking */
-  for(i=0;i<FIT_GOALS.length;i++)
-    h+='<button class="fg-b" onclick="fitGoalSet(&quot;'+FIT_GOALS[i].v+'&quot;)">'+FIT_GOALS[i].t+'</button>';
-  h+='</div>';
-  return fqFrameHTML({
-    area:'fitness',
-    q:''+_t('למה אתה מתאמן?')+'',
-    why:''+_t('תשובה אחת, וטווח החזרות והמנוחה יהיו שלך במקום ברירת מחדל')+'',
-    body:h,done:0,total:1
-  });
-}
+/* The hub no longer asks. A card that asks one question per visit reappears
+   for ever and never adds up to anything; כושר's questions are a screen now,
+   and the screen ends in a recommendation. See renderFitWelcome. */
+function fqFitHTML(){return '';}
 /* ── FROM THE DETAILS TO A TARGET ──
    Mifflin-St Jeor for the resting burn, scaled by how much you move, then
    moved off maintenance by the goal. The formula carries one constant that
@@ -8732,6 +9005,35 @@ var HE={
   '{n} שניות':{one:'שנייה',two:'שתי שניות',other:'{n} שניות'},
   '{n} דקות':{one:'דקה',two:'שתי דקות',other:'{n} דקות'},
   '{n} סטים':{one:'סט אחד',two:'שני סטים',other:'{n} סטים'},
+  /* How far from failure a set was, said beside the word on the effort wheel.
+     Hebrew has a dual and Arabic six categories, so this is a plural key and
+     not three strings with the digit written into them - a baked-in 2 shows
+     as 2 on a screen that writes ٢. */
+  '{n} חזרות מכשל':{one:'חזרה אחת מכשל',two:'שתי חזרות מכשל',other:'{n} חזרות מכשל'},
+  /* The advice lines. Neither 'one' nor 'two' can fire - both sentences only
+     appear once a ceiling of six or more has been passed - but a plural key
+     with a wrong branch in it is a trap waiting for the day the ceiling
+     changes, and Arabic has six categories to fill either way. */
+  '{n} סטים באימון אחד. ההמלצה היא עד {cap}.':{
+    one:'סט אחד באימון. ההמלצה היא עד {cap}.',
+    two:'שני סטים באימון אחד. ההמלצה היא עד {cap}.',
+    other:'{n} סטים באימון אחד. ההמלצה היא עד {cap}.'},
+  '{g}: {n} סטים באימון אחד. ההמלצה היא {lo} עד {hi}.':{
+    one:'{g}: סט אחד באימון. ההמלצה היא {lo} עד {hi}.',
+    two:'{g}: שני סטים באימון אחד. ההמלצה היא {lo} עד {hi}.',
+    other:'{g}: {n} סטים באימון אחד. ההמלצה היא {lo} עד {hi}.'},
+  '{g}: {n} סטים בשבוע. הטווח הוא {lo} עד {hi}.':{
+    one:'{g}: סט אחד בשבוע. הטווח הוא {lo} עד {hi}.',
+    two:'{g}: שני סטים בשבוע. הטווח הוא {lo} עד {hi}.',
+    other:'{g}: {n} סטים בשבוע. הטווח הוא {lo} עד {hi}.'},
+  '{ex}: {n} חזרות. הטווח למטרה שבחרת הוא {lo} עד {hi}.':{
+    one:'{ex}: חזרה אחת. הטווח למטרה שבחרת הוא {lo} עד {hi}.',
+    two:'{ex}: שתי חזרות. הטווח למטרה שבחרת הוא {lo} עד {hi}.',
+    other:'{ex}: {n} חזרות. הטווח למטרה שבחרת הוא {lo} עד {hi}.'},
+  'שבוע {n} בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.':{
+    one:'שבוע ראשון בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.',
+    two:'שבוע שני בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.',
+    other:'שבוע {n} בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.'},
   '{n} חזרות':{one:'חזרה אחת',two:'שתי חזרות',other:'{n} חזרות'},
   '{n} תרגילים':{one:'תרגיל אחד',two:'שני תרגילים',other:'{n} תרגילים'},
   /* The count on the button that ends the filter step. It is its own key
@@ -17173,6 +17475,16 @@ function effortScale(){
   return 'rpe';
 }
 function toggleEffort(){
+  /* THE HELD VALUES MEAN SOMETHING ELSE AFTER THIS LINE. _fitRpe and _edRpe
+     are kept in the READER's scale and converted only at the store's edge, so
+     flipping the scale without converting them turns a pending 2 from
+     "קל מאוד" into "קשה מאוד" - silently, on a set about to be logged or a
+     correction about to be saved. Found by switching the scale with an answer
+     already on the wheel; it was doing this to the ten buttons too, where the
+     lit one simply stayed lit and nothing said its meaning had moved.
+     RIR is exactly 10 - RPE, and the same subtraction converts either way. */
+  if(_fitRpe!==null&&_fitRpe!==undefined)_fitRpe=10-_fitRpe;
+  if(_edRpe!==null&&_edRpe!==undefined)_edRpe=10-_edRpe;
   try{localStorage.setItem(EFFORT_KEY,effortScale()==='rpe'?'rir':'rpe');}catch(e){}
   renderFitness();
 }
@@ -17809,8 +18121,151 @@ function fitGo(ei){
   if(!_fitWorkout)return;
   _fitWorkout.currentEx=ei;
   _fitPinned=true;
+  /* a different exercise is a different set of numbers */
+  if(typeof fitTypedClear==='function')fitTypedClear();
   renderFitness();
 }
+/* ── WHAT HAS BEEN TYPED AND NOT YET LOGGED ──
+   Everything on the workout screen redraws it, and a redraw rebuilt the two
+   boxes from the stored set - so typing a weight and then choosing an RPE
+   erased the weight. Reported from the gym, and RPE was only the button he
+   happened to press: the warm-up toggle, the RPE/RIR switch, the rest length
+   and correcting an already-logged set all did it too.
+   Held the moment it is typed rather than read off the DOM before each
+   redraw, because a redraw can also come from somewhere that never knew to
+   ask - and cleared only when the value stops being true: the set is logged,
+   or the exercise changes. */
+var _fitTyped=null;
+function fitTyped(){
+  var w=document.getElementById('fit-w'),r=document.getElementById('fit-r');
+  if(!w&&!r)return;
+  _fitTyped={w:w?w.value:'',r:r?r.value:''};
+}
+function fitTypedClear(){_fitTyped=null;}
+/* ── THE COLOUR OF AN EFFORT ──
+   These four have coloured logged sets in the workout summary since it was
+   written; this is that same function, lifted to the top level so the wheel
+   and the summary read ONE of it. A second palette for the same question is
+   how two screens come to disagree about what 8 is. */
+function effortColor(rpe){
+  if(rpe===null||rpe===undefined||!isFinite(rpe))return '#ADA79A';
+  if(rpe<6)return PAL.green700;
+  if(rpe<7.5)return '#E0A020';
+  if(rpe<9)return '#E0691E';
+  return '#D33A2C';
+}
+/* The band gives the hue and where you are on the scale gives the strength,
+   so all ten feel different without inventing a fifth colour. Measured: the
+   strongest tint leaves the ink on top at 5.27:1. */
+function effortTint(rpe,k){
+  var c=effortColor(rpe),a=(0.09+(rpe-1)/9*0.19)*k;
+  return 'rgba('+parseInt(c.slice(1,3),16)+','+parseInt(c.slice(3,5),16)+','+
+         parseInt(c.slice(5,7),16)+','+a.toFixed(3)+')';
+}
+/* THE WORDS. Plain, and all ten distinct - find-duplicate-options would
+   refuse two choices wearing the same label, and it would be right: asking
+   somebody to pick between two identical words is not a choice.
+   Inside langOn because a collection built at the top level calls _t() before
+   any dictionary has arrived and stays Hebrew for the life of the tab. */
+var EFFORT_WORD;langOn(function(){EFFORT_WORD={
+  1:''+_t('ממש קל')+'',2:''+_t('קל מאוד')+'',3:''+_t('קל')+'',4:''+_t('נוח')+'',
+  /* TWO OF THESE ALREADY MEAN SOMETHING ELSE. 'בינוני' is the EXPERIENCE
+     level and English answers it "Intermediate"; 'קשה' is the lowest mood on
+     the daily reflection, a rough day. One key cannot say both, so these two
+     carry a context after the bar - nothing shows it, and the Hebrew is
+     unchanged. 'קל' needs none: the summary's own RPE legend already uses it
+     for exactly this, so sharing the key is right rather than accidental. */
+  5:''+_t('בינוני|מאמץ')+'',6:''+_t('מאתגר')+'',7:''+_t('קשה|מאמץ')+'',8:''+_t('קשה מאוד')+'',
+  9:''+_t('על הגבול')+'',10:''+_t('כשל')+''
+};});
+var EW_ROW=36,EW_H=184;
+/* HOW FAR FROM FAILURE, for the rows where it is worth saying. No table:
+   RIR is exactly 10 - RPE, the same arithmetic effortToRPE does at the
+   store's edge, so this cannot drift from it. Seven to nine only - at ten
+   the count is zero and the word is already "כשל", and below seven the
+   number is large enough that nobody is counting. */
+function effortSub(rpe){
+  if(rpe==null||rpe<7||rpe>9)return '';
+  return _t('{n} חזרות מכשל',{n:10-rpe});
+}
+
+/* ── ONE WHEEL, TWO PLACES ──
+   The add form and the correction sheet ask the same question, so they get
+   the same control. `which` says where the answer goes - 'fit' for the set
+   being added, 'ed' for one being corrected - and the two must stay separate
+   because the add form's row is still on screen underneath.
+
+   IT OPENS ON "לא דורג". A wheel always has something in the middle, so
+   opening it on a number would file an effort nobody chose on every set
+   logged without touching it. The blank is a real position. */
+function effortWheelHTML(which){
+  var sc=effortScale(),lo=(sc==='rir')?0:1,hi=(sc==='rir')?9:10,v,h;   // i18n-exempt: a stored key
+  h='<div class="ew" data-for="'+which+'"><div class="ew-slot"></div>'+
+    '<div class="ew-sc" onscroll="effortWheelPaint(this)">'+
+    '<div class="ew-pad"></div>'+
+    '<div class="ew-n" data-v=""><span class="ew-num">&ndash;</span>'+
+    '<span class="ew-w">'+_t('לא דורג')+'</span></div>';
+  for(v=lo;v<=hi;v++)
+    h+='<div class="ew-n" data-v="'+v+'"><span class="ew-num">'+nfmt(v)+'</span>'+
+       '<span class="ew-w">'+esc((EFFORT_WORD&&EFFORT_WORD[effortToRPE(v)])||'')+'</span>'+
+       /* ON THE CHOSEN ROW ONLY - .ew-sub is hidden until .on. Printed on all
+          ten it would make every row long and the wheel stop scanning, which
+          is the thing a wheel is for. */
+       '<span class="ew-sub">'+esc(effortSub(effortToRPE(v)))+'</span></div>';
+  h+='<div class="ew-pad"></div></div></div>';
+  return h;
+}
+/* Reads which row ended up in the middle and says so. scroll-snap does the
+   physics - the platform's inertia is better than anything written here and
+   is what every other wheel on the phone feels like, which is the point of
+   choosing this control. NO RE-RENDER: the value goes straight into its
+   variable, so choosing an effort cannot erase the numbers beside it. That
+   bug is structurally impossible here rather than fixed. */
+function effortWheelPaint(sc){
+  var box=sc.parentNode,rows=sc.getElementsByClassName('ew-n');
+  var mid=sc.scrollTop+sc.clientHeight/2,best=null,bestD=1e9,i,el,d,a;
+  for(i=0;i<rows.length;i++){
+    el=rows[i];
+    /* distance from the centre IN ROWS, so the falloff does not change if
+       the wheel's height ever does */
+    d=(el.offsetTop+EW_ROW/2-mid)/EW_ROW;a=Math.abs(d);
+    if(a<bestD){bestD=a;best=el;}
+    el.style.transform='perspective(540px) rotateX('+(-Math.max(-62,Math.min(62,d*21))).toFixed(2)+
+      'deg) scale('+Math.max(0.78,1-a*0.073).toFixed(3)+')';
+    el.style.opacity=Math.max(0.22,1-a*0.26).toFixed(3);
+    if(a<0.5)el.className='ew-n on';else el.className='ew-n';
+  }
+  if(!best)return;
+  var raw=best.getAttribute('data-v'),v=(raw==='')?null:+raw;
+  var rpe=(v===null)?null:effortToRPE(v);
+  var slot=box.getElementsByClassName('ew-slot')[0];
+  slot.style.background=(rpe===null)?''
+    :'linear-gradient(90deg,'+effortTint(rpe,1)+','+effortTint(rpe,0.34)+')';
+  if(box.getAttribute('data-for')==='ed')_edRpe=v;else _fitRpe=v;   // i18n-exempt: a stored key
+}
+/* Every wheel on the screen opened on the value its variable already holds.
+   Called after the render writes innerHTML, because offsetTop is nothing
+   until the node is in the document. */
+function effortWheelSync(){
+  var all=document.getElementsByClassName('ew'),i,box,sc,want,rows,j,hit;
+  for(i=0;i<all.length;i++){
+    box=all[i];sc=box.getElementsByClassName('ew-sc')[0];
+    want=(box.getAttribute('data-for')==='ed')?_edRpe:_fitRpe;   // i18n-exempt: a stored key
+    rows=sc.getElementsByClassName('ew-n');hit=rows[0];
+    for(j=0;j<rows.length;j++)
+      if(rows[j].getAttribute('data-v')===(want===null||want===undefined?'':String(want)))hit=rows[j];
+    sc.scrollTop=hit.offsetTop-(sc.clientHeight-EW_ROW)/2;
+    effortWheelPaint(sc);
+  }
+}
+/* A TAP IS A CHOICE TOO. A wheel that only scrolls refuses the first gesture
+   everybody tries, and the row under a thumb is already the answer. */
+document.addEventListener('click',function(e){
+  var el=e.target&&e.target.closest?e.target.closest('.ew-n'):null;
+  if(!el)return;
+  var sc=el.parentNode;
+  sc.scrollTo({top:el.offsetTop-(sc.clientHeight-EW_ROW)/2,behavior:'smooth'});
+});
 function rpePick(v){_fitRpe=(_fitRpe===v)?null:v;renderFitness();}
 /* THE SAME THING FOR A SET ALREADY LOGGED. Its own variable, because the add
    form's row is still on screen underneath and the two must not answer for
@@ -17963,6 +18418,11 @@ function renderFitness(){
      lands, and returns at once once ready, so this asks exactly once. */
   if(typeof _exState!=='undefined'&&_exState==='idle')exLoad(function(){});
   document.getElementById('hdr-title').textContent=''+_t('כושר')+'';
+  /* FIRST ENTRY TAKES OVER THE AREA. Not a card inside the hub: the point of
+     these questions is that the area knows who it is talking to before it
+     shows her anything, and a card she can scroll past is not that. Put off
+     for the day with "אחר כך", and gone for good once answered. */
+  if(_fitView==='home'&&fitMePending().length&&!fqOffToday('fitness'))_fitView='welcome';
   if(_fitView==='home')renderFitHome();
   else if(_fitView==='editTemplate')renderFitEditTemplate();
   else if(_fitView==='workout')renderFitWorkout();
@@ -17977,6 +18437,8 @@ function renderFitness(){
   else if(_fitView==='weights')document.getElementById('content').innerHTML=renderFitWeights();
   else if(_fitView==='stats')document.getElementById('content').innerHTML=renderFitStats();
   else if(_fitView==='build')renderFitBuild();
+  else if(_fitView==='genprog')renderFitGenProg();
+  else if(_fitView==='welcome')renderFitWelcome();
   else if(_fitView==='timer')renderFitTimer();
   else if(_fitView==='steps')renderFitSteps();
   else if(_fitView==='steps-setup')renderFitStepsSetup();
@@ -18164,6 +18626,11 @@ var GEN_MAX_MUSCLES=3,GEN_MAX_SETS=6;
 function genPick(opt){
   opt=opt||{};
   var muscles=opt.muscles||[],equip=opt.equip||[],emph=opt.emphasis||'';
+  /* How many exercises one muscle may have. Defaults to the ceiling this
+     always used, so every existing caller is unchanged; a programme passes
+     a smaller one, because a Full Body day wants one big movement per
+     muscle and not two of everything. */
+  var perMuscleCap=+opt.maxPerMuscle||GEN_MAX_PER_MUSCLE;
   var have={},i,j,k;
   for(i=0;i<equip.length;i++)have[equip[i]]=1;
   /* ALL of an exercise's equipment, not any of it: a bench press needs a bar
@@ -18199,7 +18666,7 @@ function genPick(opt){
     for(j=0;j<all.length;j++)
       if(!used[all[j].n]&&muscleGroupOf(all[j].n)===m&&doable(all[j]))cands.push(all[j]);
     cands.sort(function(a,b){return pos(a)-pos(b);});
-    var n=Math.min(GEN_MAX_PER_MUSCLE,Math.max(1,Math.ceil(want/GEN_SETS_PER_EX)));
+    var n=Math.min(perMuscleCap,Math.max(1,Math.ceil(want/GEN_SETS_PER_EX)));
     var picked=cands.slice(0,n);
     /* A muscle with nothing available says so, rather than being dropped in
        silence - "no chest exercise with what you have" is information. */
@@ -18228,6 +18695,288 @@ function genToWorkout(rows,goalV){
               plan:[],sets:[],warm:[],ss:null});
   }
   return out;
+}
+
+/* ── A WEEK, NOT A SESSION ──
+   genPick answers "which exercises for this one workout". The notebook asks
+   a different question and answers it with rules rather than taste: how many
+   days you have and how long you have been training TOGETHER decide the
+   split, the split decides how often each muscle comes round, and how long
+   you have decides how many sets fit in one session.
+
+   Pages 135-148 of אימון התנגדות; docs/fitness-catalogue.md has them written
+   out. Nothing here calls a model and nothing here costs anything. */
+
+/* The muscles each day asks for, in the LIBRARY'S OWN rolled-up names -
+   whatever muscleGroupOf can return, so genPick finds them. Writing רגליים
+   here would have matched nothing: the library splits the leg four ways and
+   has no such group.
+
+   Large groups first in every list. That is the notebook's ordering rule and
+   the reason these are not alphabetical. */
+var PROG_SPLITS={
+  full:{cap:26,lo:48,hi:72,perMuscle:1,
+        days:[['כל הגוף',['ארבע ראשי','גב','חזה','ירך אחורית','כתפיים','ליבה']]]},   // i18n-exempt: a day key and library muscle keys; the day is painted through progDayLabel and the muscles where the bar is drawn
+  ab:{cap:26,lo:72,hi:96,perMuscle:2,
+      days:[['פלג גוף עליון',['גב','חזה','כתפיים','יד אחורית','יד קדמית']],   // i18n-exempt: same
+            ['פלג גוף תחתון',['ארבע ראשי','ירך אחורית','ישבן','תאומים','ליבה']]]},   // i18n-exempt: same
+  abc:{cap:30,lo:96,hi:120,perMuscle:2,
+       days:[['דחיפה',['חזה','כתפיים','יד אחורית']],   // i18n-exempt: same
+             ['משיכה',['גב','יד קדמית']],   // i18n-exempt: same
+             ['רגליים',['ארבע ראשי','ירך אחורית','ישבן','תאומים','ליבה']]]}   // i18n-exempt: same
+};
+/* A day's name is STORED on every exercise of that day, so it is data and is
+   translated where it is shown - the same split progLabel makes for a plan's
+   name. Listed here so build-lang-template can see keys that only ever reach
+   _t through a variable; it is named in that tool's VIA_VARIABLE. */
+var PROG_DAY_OPTS=['כל הגוף','פלג גוף עליון','פלג גוף תחתון','דחיפה','משיכה','רגליים'];
+
+/* ── THE NOTEBOOK, READ BACK WHILE YOU BUILD ──
+   Sets per muscle group IN ONE SESSION, from the Full Body / AB / ABC table
+   on p.140. The weekly band is SETS_BAND and is a different question; this
+   one is about the session in front of you. */
+var PROG_PER_SESSION={full:[2,6],ab:[5,10],abc:[5,20]};
+/* Reps by goal, p.137 and p.139: 1-6 for max and explosive strength, 6-30 for
+   hypertrophy (core 6-20), 15+ for muscular endurance. These are WIDER than
+   FIT_GOALS, and deliberately: FIT_GOALS is what the generator AIMS at, in the
+   middle of the band, and this is the band outside which the notebook would
+   actually object. Two numbers for one question is how a card and the screen
+   under it come to disagree, so they are different questions on purpose.
+   Endurance is written "15+" with no ceiling; 30 is the top of the stated
+   hypertrophy range rather than a number of its own. */
+var PROG_REPS={strength:[1,6],size:[6,30],endure:[15,30],general:[6,20]};
+/* p.138: ten to twenty sets per muscle per WEEK. SETS_BAND already holds it
+   for the welcome screen's caveats; named here so the advice reads the one
+   value rather than a second copy of it. */
+/* A GENERATED PROGRAMME NEEDS A NAME, and it was being saved without one -
+   an empty title on its own screen and a blank in "{name} נשמרה!". These are
+   WIZ_NAME_OPTS, the words the hand-built wizard already offers and progLabel
+   already translates, so this adds no key to any language file. */
+var GEN_PROG_NAME={strength:'תוכנית כוח',size:'תוכנית מסה',   // i18n-exempt: WIZ_NAME_OPTS entries, drawn through progLabel
+                   endure:'תוכנית כללית',general:'תוכנית כללית'};   // i18n-exempt: same
+/* Large groups before small, in every session - p.140, and the one ordering
+   rule the notebook states for every split. These are the rolled-up group
+   names muscleGroupOf answers with, not the library's own eighteen. */
+var PROG_BIG=['ארבע ראשי','ירך אחורית','ישבן','גב','חזה'];   // i18n-exempt: rolled-up group keys, compared against muscleGroupOf and drawn through _t
+
+/* WHAT THE NOTEBOOK WOULD SAY ABOUT THIS LIST. Takes [{name,sets}] and
+   answers [{t,s}] - t is 'warn' when a stated ceiling is passed and 'note'
+   when it is advice, and the caller decides how loudly to draw either.
+   Nothing here blocks anything: the notebook gives recommendations, and a
+   screen that refuses to save is a screen people learn to route around.
+
+   Reads the person's own answers for which ceiling applies, because 26 sets
+   is the cap for somebody training three days a week and 30 for somebody
+   training six - quoting one number at everybody is how a limit stops being
+   believed. */
+function progAdvice(rows,opt){
+  opt=opt||{};
+  var me=(typeof fitMe==='function')?fitMe():{};
+  var sp=progSplitFor(+me.days||3,me.exp||'new');
+  var I=PROG_SPLITS[sp]||PROG_SPLITS.full;
+  var band=PROG_PER_SESSION[sp]||PROG_PER_SESSION.full;
+  var goalV=(typeof fitGoal==='function'&&fitGoal().v)||'size';   // i18n-exempt: a stored key
+  var rband=PROG_REPS[goalV]||PROG_REPS.size;
+  var out=[],total=0,byG={},order=[],i,g,n,r,row;
+  /* one pass: the session's total, each group's share, and the two things the
+     notebook asks of an individual EXERCISE rather than of a group */
+  var thin=[],offReps=[];
+  for(i=0;i<rows.length;i++){
+    row=rows[i];
+    if(!row||!row.name)continue;
+    n=Math.max(0,parseInt(row.sets,10)||0);
+    if(!n)continue;
+    total+=n;
+    g=muscleGroupOf(row.name);
+    if(!byG.hasOwnProperty(g)){byG[g]=0;order.push(g);}
+    byG[g]+=n;
+    /* p.138-139, "לפחות 2 סטים מכל תרגיל" - of every EXERCISE. Counted per
+       GROUP this was invisible for a single-set exercise inside a group that
+       was otherwise well covered, which is nearly all of them. */
+    if(n<2)thin.push(row.name);
+    r=parseInt(row.reps,10)||0;
+    if(r&&(r<rband[0]||r>rband[1]))offReps.push([row.name,r]);
+  }
+  if(!total)return out;
+
+  /* the ceiling for the whole session, p.140 */
+  if(total>I.cap)
+    out.push({t:'warn',s:_t('{n} סטים באימון אחד. ההמלצה היא עד {cap}.',{n:total,cap:I.cap})});
+
+  /* and for each group inside it */
+  for(i=0;i<order.length;i++){
+    g=order[i];
+    if(byG[g]>band[1])
+      out.push({t:'warn',s:_t('{g}: {n} סטים באימון אחד. ההמלצה היא {lo} עד {hi}.',
+                              {g:_t(g),n:byG[g],lo:band[0],hi:band[1]})});
+  }
+
+  /* the two-set floor, named once with the first exercise that breaks it -
+     a list of six names is a list nobody reads */
+  if(thin.length)
+    out.push({t:'warn',s:_t('{ex}: סט אחד בלבד. המחברת מבקשת לפחות שניים מכל תרגיל.',
+                            {ex:exLabel(thin[0])})});
+
+  /* reps against the band for the goal, p.137 and p.139 */
+  if(offReps.length)
+    out.push({t:'warn',s:_t('{ex}: {n} חזרות. הטווח למטרה שבחרת הוא {lo} עד {hi}.',
+                            {ex:exLabel(offReps[0][0]),n:offReps[0][1],
+                             lo:rband[0],hi:rband[1]})});
+
+  /* TEN TO TWENTY SETS A WEEK PER MUSCLE, p.138. A week, not a session, so it
+     is asked only where one is known - opt.perWeek is how many times this
+     day comes round in a week. */
+  /* ONE GROUP, THE FURTHEST OUT. At four sessions of sixty minutes the budget
+     is ninety-six sets a week over ten groups, so the small ones land at
+     eight and every single one of them is under the floor - five lines all
+     saying the same thing, on a plan the app itself built. The furthest-out
+     group says it once, and acting on it moves the rest. */
+  if(opt.perWeek>0){
+    var wWorst='',wN=0,wD=0,wn,wd;
+    for(i=0;i<order.length;i++){
+      g=order[i];
+      wn=Math.round(byG[g]*opt.perWeek);
+      wd=(wn<SETS_BAND.lo)?(SETS_BAND.lo-wn):(wn>SETS_BAND.hi?(wn-SETS_BAND.hi):0);
+      if(wd>wD){wD=wd;wWorst=g;wN=wn;}
+    }
+    if(wWorst)
+      out.push({t:'warn',s:_t('{g}: {n} סטים בשבוע. הטווח הוא {lo} עד {hi}.',
+                              {g:_t(wWorst),n:wN,lo:SETS_BAND.lo,hi:SETS_BAND.hi})});
+  }
+
+  /* LARGE BEFORE SMALL, p.138-140. Reported on the first small group that
+     something large follows, not on every pair - one sentence a person can
+     act on beats four that say the same thing. */
+  var sawSmall='';
+  for(i=0;i<order.length;i++){
+    if(PROG_BIG.indexOf(order[i])<0){if(!sawSmall)sawSmall=order[i];}
+    else if(sawSmall){
+      out.push({t:'note',s:_t('{big} לפני {small} — קבוצות גדולות קודם, כשיש עוד כוח.',
+                              {big:_t(order[i]),small:_t(sawSmall)})});
+      break;
+    }
+  }
+
+  /* AND THE LARGE ONES GET MORE OF THEM, p.138-139 - a separate rule from the
+     order, and the one that decides how the budget is divided rather than
+     when each group is reached. */
+  var bigLow='',smallHigh='',bi,si;
+  for(i=0;i<order.length;i++){
+    g=order[i];
+    if(PROG_BIG.indexOf(g)>=0){if(!bigLow||byG[g]<byG[bigLow])bigLow=g;}
+    else if(!smallHigh||byG[g]>byG[smallHigh])smallHigh=g;
+  }
+  if(bigLow&&smallHigh&&byG[smallHigh]>byG[bigLow])
+    /* NO VERB, on purpose. "{small} מקבל" agrees with a hole: חזה מקבל but
+       יד קדמית מקבלת, and nothing in a dictionary can inflect a word it is
+       handed at runtime. Written as a preposition and two nouns it is right
+       for either gender, and every other language is free to put a verb back
+       in if its own grammar wants one. */
+    out.push({t:'note',s:_t('יותר סטים ל{small} מאשר ל{big} — בקבוצות הגדולות שמים יותר.',
+                            {small:_t(smallHigh),big:_t(bigLow)})});
+
+  /* SIX WEEKS, p.140: a deload of about forty percent, and a programme change
+     every six to eight. Both land at the same moment, so they are one
+     sentence - which is also the only way a translator can order them. */
+  if(opt.weeks>=6)
+    out.push({t:'note',s:_t('שבוע {n} בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.',
+                            {n:opt.weeks})});
+
+  /* FIVE LINES AT MOST. A panel that lists nine things is a panel that is
+     scrolled past, and the ones cut here are the gentlest by construction:
+     the warnings are pushed before the notes. */
+  return out.slice(0,5);
+}
+/* Drawn the same way wherever it appears, so the advice reads as one voice
+   rather than as a different feature on each screen. Returns '' when there is
+   nothing to say, which is what lets a caller append it unconditionally. */
+function progAdviceHTML(rows,title,opt){
+  var a=progAdvice(rows,opt),i,h;
+  if(!a.length)return '';
+  h='<div class="gn-c">';
+  h+='<div class="gn-h">'+esc(title||_t('מה שכדאי לדעת'))+'</div>';
+  for(i=0;i<a.length;i++)
+    h+='<div class="gn-a'+(a[i].t==='warn'?' gn-warn':'')+'">'+esc(a[i].s)+'</div>';
+  h+='</div>';
+  return h;
+}
+function progDayLabel(nm){
+  return (PROG_DAY_OPTS.indexOf(nm)>=0)?_t(nm):String(nm||'');
+}
+
+/* THE SPLIT HAS TWO CEILINGS AND TAKES THE LOWER ONE. The days are the
+   obvious one. The other is experience, and the notebook is explicit about
+   it: Full Body for beginners and for anyone coming back after a break, AB
+   from about six months, ABC for the advanced.
+
+   Reading the days alone is how somebody who has never trained but has five
+   free evenings gets handed a split that assumes he knows what he is doing. */
+var PROG_RANK={full:0,ab:1,abc:2};
+function progSplitFor(days,exp){
+  var d=(days<=2)?'full':(days<=4)?'ab':'abc';
+  var e=(exp==='new'||exp==='back')?'full':(exp==='mid')?'ab':'abc';
+  return (PROG_RANK[d]<=PROG_RANK[e])?d:e;
+}
+
+/* HOW MANY SETS FIT IN ONE SESSION. The cap is the notebook's - 26, or 30 in
+   ABC. The minutes are ours: about two and a half per set once rest is
+   counted. Six is a floor, because a session that prescribes four sets is
+   not worth opening the app for. */
+function progSetsPerSession(mins,cap){
+  var fromTime=Math.round((+mins||60)/2.5);
+  return Math.max(6,Math.min(cap||26,fromTime));
+}
+
+/* WHICH WEEK OF THE PROGRAMME THIS IS. The notebook drops the load by about
+   40% at six weeks and changes the programme between six and eight. Counted
+   in APP days from the day it was built, so a programme started at one in
+   the morning belongs to the day it was started on. */
+function progWeekNum(prog){
+  if(!prog||!prog.builtAt)return 0;
+  var a=new Date(prog.builtAt+'T12:00:00'),b=new Date(todayStr()+'T12:00:00');
+  if(isNaN(a.getTime())||isNaN(b.getTime()))return 0;
+  return Math.floor((b-a)/(7*864e5))+1;
+}
+
+/* The whole week, in the shape the programme screen already speaks - so what
+   comes out is an ordinary programme you can rename, reorder and edit, never
+   a locked prescription. */
+function genProgram(opt){
+  opt=opt||{};
+  var days=Math.max(1,Math.min(6,+opt.days||3));
+  var key=progSplitFor(days,opt.exp||'new'),sp=PROG_SPLITS[key];
+  var equip=opt.equip||GEN_EQUIP.gym;
+  var goalV=opt.goal||'size',g=null,i,j;
+  for(i=0;i<(FIT_GOALS||[]).length;i++)if(FIT_GOALS[i].v===goalV)g=FIT_GOALS[i];
+  if(!g)g=(FIT_GOALS||[])[1]||{lo:8,hi:15,rest:90};
+  var reps=Math.round((g.lo+g.hi)/2);
+  var budget=progSetsPerSession(opt.minutes,sp.cap),out=[];
+  for(i=0;i<sp.days.length;i++){
+    var dayName=sp.days[i][0],ms=sp.days[i][1];
+    /* the session's budget spread over that day's muscles, floor two - the
+       notebook's "at least two sets of every exercise" */
+    var per=Math.max(2,Math.round(budget/ms.length)),sets={};
+    for(j=0;j<ms.length;j++)sets[ms[j]]=per;
+    var rows=genPick({muscles:ms,equip:equip,sets:sets,maxPerMuscle:sp.perMuscle}),day=[];
+    for(j=0;j<rows.length;j++){
+      /* a muscle with nothing available is dropped from the programme rather
+         than written in as an empty row - the generator screen is where
+         "nothing with this equipment" is worth saying, not a saved plan */
+      if(rows[j].none||!rows[j].name)continue;
+      day.push({name:rows[j].name,sets:rows[j].sets,targetReps:reps,
+                baseWeight:0,rest:g.rest||90,note:'',day:dayName});
+    }
+    /* genPick floors every exercise at two sets and rounds, so a day can
+       come out above the budget it was handed. Trim from the END: the big
+       movements are first, which is the notebook's ordering rule and the
+       reason the last sets are the ones to lose. */
+    var tot=0;for(j=0;j<day.length;j++)tot+=day[j].sets;
+    for(j=day.length-1;j>=0&&tot>budget;j--)
+      while(day[j].sets>2&&tot>budget){day[j].sets--;tot--;}
+    for(j=0;j<day.length;j++)out.push(day[j]);
+  }
+  return {id:Date.now(),name:opt.name||GEN_PROG_NAME[goalV]||'התוכנית שלי',splitType:key,daysPerWeek:days,   // i18n-exempt: a WIZ_NAME_OPTS entry, drawn through progLabel
+          goal:goalV,builtAt:todayStr(),exercises:out};
 }
 
 /* ── THE SCREEN THAT REACHES THE GENERATOR ──
@@ -18352,6 +19101,304 @@ function renderFitBuild(){
      to answer one question is two answers that can disagree. */
   h+='<div class="gn-g">'+_t('לפי המטרה שלך: {g}',{g:fitGoal().t})+'</div>';
   h+='<button class="gn-go" onclick="genBuild()">'+_t('בנה לי אימון')+'</button>';
+  return void(document.getElementById('content').innerHTML=h+'</div>');
+}
+
+/* ── THE DOOR TO כושר ──
+   Entered once. Seven questions, then the thing the questions were for: what
+   the app worked out, with its reasons, and then a week it actually built.
+
+   A screen rather than a card in the hub, because a card asks one question
+   per visit, reappears for ever, and never adds up to anything. */
+var _fitW=null;
+function fitWOpen(){
+  _fitW={built:false};
+  _fitView='welcome';renderFitness();
+}
+/* The greeting is not a question and is not stored - stepping past it is
+   just the first paint of the first question. */
+function fitWNext(){
+  var o=fitMe();o.started=1;
+  try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
+  renderFitness();
+}
+function fitWBuild(){if(_fitW){_fitW.built=true;renderFitness();}}
+/* THE PLAN IS BUILT BEFORE ANYTHING IS SAID ABOUT IT. The recommendation
+   card used to quote a budget and the week under it listed whatever came
+   out, and the two did not always agree - a session of ten exercises has a
+   floor of twenty sets, so a budget of eighteen can never be met. Counting
+   the real plan is the only way a number on the card is true. */
+function fitWPlan(){
+  if(_fitW&&_fitW.plan)return _fitW.plan;
+  var me=fitMe();
+  var p=genProgram({days:+me.days||3,exp:me.exp||'new',minutes:+me.minutes||60,
+                    goal:fitGoal().v,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
+  if(_fitW)_fitW.plan=p;
+  return p;
+}
+/* the most any one session asks for, which is the honest "sets per session" */
+function fitWPerSession(p){
+  var by={},i,m=0;
+  for(i=0;i<p.exercises.length;i++)by[p.exercises[i].day]=(by[p.exercises[i].day]||0)+p.exercises[i].sets;
+  for(var k in by)if(by.hasOwnProperty(k)&&by[k]>m)m=by[k];
+  return m;
+}
+function fitWAgain(){if(_fitW){_fitW.built=false;_fitW.plan=null;renderFitness();}}
+function fitWSave(){
+  /* the one that was DRAWN, not a fresh one - genPick's order is stable but
+     saving a second build would still be saving something she did not see */
+  var p=(_fitW&&_fitW.plan)||null;
+  if(!p){var me=fitMe();p=genProgram({days:+me.days||3,exp:me.exp||'new',
+      minutes:+me.minutes||60,goal:fitGoal().v,
+      equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});}
+  if(!p.exercises.length){showToast(''+_t('לא מצאתי תרגילים עם הציוד שסימנת')+'');return;}
+  var progs=loadPrograms();progs.push(p);savePrograms(progs);
+  _fitProgIdx=progs.length-1;_fitW=null;
+  showToast('&#10003; '+_t('התוכנית נבנתה'));
+  _fitView='view-program';renderFitness();
+}
+
+/* EVERY caveat that applies, not the first that matches. Bands-only and
+   fat-with-mass are about different things and both can be true at once. */
+function fitWCaveats(){
+  var me=fitMe(),out=me.out||[],eq=genEquip(),c=[];
+  /* from the plan, not from the budget - the same number the card shows */
+  var p=fitWPlan(),nDays={},dn=0,k;
+  for(var z=0;z<p.exercises.length;z++)nDays[p.exercises[z].day]=1;
+  for(k in nDays)if(nDays.hasOwnProperty(k))dn++;
+  var tot=0;for(z=0;z<p.exercises.length;z++)tot+=p.exercises[z].sets;
+  /* the cycle repeats to fill the week, then spread over the groups it works */
+  var per=dn?Math.round(tot*((+me.days||3)/dn)/6):0;
+  if(eq==='none')   // i18n-exempt: a stored key
+    c.push(''+_t('רק משקל גוף: אפשר להתקדם, אבל העומס עולה בחזרות ובקושי התרגיל ולא במשקל — אז המעקב כאן נראה אחרת.')+'');
+  if(out.indexOf('fat')>=0&&out.indexOf('mass')>=0)   // i18n-exempt: stored keys
+    c.push(''+_t('שומן ומסה יחד: בעיקר בהתחלה, אחרי הפסקה, או כשיש מה להוריד. אחרת זה שלב אחרי שלב, ואגיד לך מתי להחליף.')+'');
+  /* the NUMBER decides this one rather than a hand-written pairing */
+  if(per<SETS_BAND.lo&&out.indexOf('mass')>=0)   // i18n-exempt: a stored key
+    c.push(''+_t('יוצאים בערך {n} סטים לשריר בשבוע, והטווח לגדילה מתחיל ב־{lo}. אימון נוסף או עשרים דקות יסגרו את הפער.',{n:per,lo:SETS_BAND.lo})+'');
+  return c;
+}
+function fitWRows(){
+  var me=fitMe(),g=fitGoal(),sp=progSplitFor(+me.days||3,me.exp||'new'),I=PROG_SPLITS[sp];
+  var loadable=genEquip()!=='none',h='';   // i18n-exempt: a stored key
+  h+='<div class="gn-s">'+_t('אימונים בשבוע')+': <b>'+nfmt(+me.days||3)+'</b></div>';
+  h+='<div class="gn-s">'+_t('כל שריר חוזר כל {lo}–{hi} שעות',{lo:I.lo,hi:I.hi})+'</div>';
+  h+='<div class="gn-s">'+_t('סטים באימון')+': <b>'+nfmt(fitWPerSession(fitWPlan()))+'</b></div>';
+  h+='<div class="gn-s">'+_t('טווח חזרות')+': <b>'+nfmt(g.lo)+'–'+nfmt(g.hi)+'</b></div>';
+  h+='<div class="gn-s">'+_t('מנוחה בין סטים')+': <b>'+_t('{n} שניות',{n:g.rest})+'</b></div>';
+  h+='<div class="gn-s">'+_t('קושי')+': <b>RPE '+(GENPROG_RPE[me.exp]||'6–8')+'</b></div>';
+  h+='<div class="gn-s">'+(loadable
+      ?_t('קפיצת משקל')+': <b>'+fmtWeight(g.step)+'</b>'
+      :_t('איך עולים')+': <b>'+_t('חזרות וקושי')+'</b>')+'</div>';
+  return h;
+}
+
+function renderFitWelcome(){
+  if(!_fitW)_fitW={built:false};
+  var me=fitMe(),left=fitMePending(),i,h='<div style="padding-bottom:26px">';
+
+  /* ── the greeting ── */
+  if(!me.started){
+    h+='<div class="gn-c"><div class="gn-h">'+_t('כושר')+'</div>';
+    h+='<div style="font-size:19px;font-weight:800;color:var(--ink);margin-top:6px">'+_t('ברוך הבא לאזור הכושר')+'</div>';
+    h+='<div class="gn-s">'+_t('כאן אתה בונה אימון, עוקב אחרי המשקלים ורואה את ההתקדמות לאורך זמן. כמה שאלות קצרות, ואכוון את זה אליך.')+'</div>';
+    h+='<button class="gn-go" onclick="fitWNext()">'+_t('בוא נתחיל')+'</button>';
+    h+='<button class="fq-later" onclick="fqLater(\'fitness\');_fitView=\'home\';renderFitness()">'+_t('אחר כך')+'</button>';
+    return void(document.getElementById('content').innerHTML=h+'</div>');
+  }
+
+  /* ── the questions, one card, with the dots saying how many are left ── */
+  if(left.length){
+    var k=left[0];
+    h+='<div class="gn-c"><div class="gn-h">'+_t('לפני שנתחיל')+'</div>';
+    h+='<div style="font-size:18px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.35">'+fitMeQuestion(k)+'</div>';
+    h+='<div class="gn-s">'+fitMeWhy(k)+'</div>';
+    h+=fitMeBody(k);
+    h+='<div class="fq-dots">';
+    for(i=0;i<FIT_ME_ORDER.length;i++)
+      h+='<span class="fq-dot'+(i<FIT_ME_ORDER.length-left.length?' on':'')+'"></span>';
+    h+='</div>';
+    h+='<button class="fq-later" onclick="fqLater(\'fitness\');_fitView=\'home\';renderFitness()">'+_t('אחר כך')+'</button>';
+    h+='</div>';
+    return void(document.getElementById('content').innerHTML=h+'</div>');
+  }
+
+  /* ── THE PART THAT WAS MISSING: what it all adds up to ── */
+  var sp=progSplitFor(+me.days||3,me.exp||'new'),I=PROG_SPLITS[sp],names=[];
+  for(i=0;i<I.days.length;i++)names.push(progDayLabel(I.days[i][0]));
+
+  if(!_fitW.built){
+    h+='<div class="gn-c"><div class="gn-h">'+_t('מה שהבנתי')+'</div>';
+    h+='<div style="font-size:19px;font-weight:800;color:var(--ink);margin-top:6px">'+esc(names.join(' \u00b7 '))+'</div>';
+    /* why THIS split, in the one case where it is not obvious from the chips */
+    if(progSplitFor(+me.days||3,'adv')!==sp)
+      h+='<div class="gn-s">'+_t('בשלב הזה עדיף לחזור על כל שריר יותר פעמים, גם אם יש לך יותר ימים פנויים.')+'</div>';
+    h+=fitWRows();
+    h+='</div>';
+    var cv=fitWCaveats();
+    for(i=0;i<cv.length;i++)h+='<div class="gn-c"><div class="gn-s">'+cv[i]+'</div></div>';
+    /* what she told it, said back - the limits and the free line */
+    var lim=(me.limits||[]).filter(function(v){return v!=='none';}),ln=[],li;   // i18n-exempt: a stored key
+    for(li=0;li<FIT_ME_LIMITS.length;li++)
+      if(lim.indexOf(FIT_ME_LIMITS[li][0])>=0)ln.push(_t(FIT_ME_LIMITS[li][1]));
+    if(ln.length||me.note){
+      h+='<div class="gn-c"><div class="gn-h">'+_t('מה שסיפרת לי')+'</div>';
+      if(ln.length){
+        h+='<div class="gn-s">'+esc(ln.join(' \u00b7 '))+'</div>';
+        h+='<div class="gn-s">'+_t('רשום, ולא מסתיר שום תרגיל. אם משהו ברשימה לא מתאים לך — תחליף אותו.')+'</div>';
+      }
+      if(me.note)h+='<div class="gn-s">'+esc(me.note)+'</div>';
+      h+='</div>';
+    }
+    h+='<button class="gn-go" onclick="fitWBuild()">'+_t('בנה לי תוכנית')+'</button>';
+    h+='<div class="gn-g">'+_t('אפשר לשנות כל אחד מהם מתי שתרצה — או להתחיל אימון בלי תוכנית בכלל.')+'</div>';
+    return void(document.getElementById('content').innerHTML=h+'</div>');
+  }
+
+  /* ── and the week ──
+     THE PREVIEW IS THE PLAN. It used to call genPick itself, which skipped
+     the trim genProgram does, and showed thirty sets under a card that had
+     just said twenty-four - with the saved plan matching neither. Built
+     once, drawn, and saved exactly as drawn. */
+  var P=fitWPlan(),byDay={},order=[],j,ex;
+  for(j=0;j<P.exercises.length;j++){
+    ex=P.exercises[j];
+    if(!byDay[ex.day]){byDay[ex.day]=[];order.push(ex.day);}
+    byDay[ex.day].push(ex);
+  }
+  var total=0;
+  for(j=0;j<P.exercises.length;j++)total+=P.exercises[j].sets;
+  h+='<div class="gn-c"><div class="gn-h">'+_t('התוכנית שלך')+'</div>';
+  h+='<div style="font-size:19px;font-weight:800;color:var(--ink);margin-top:6px">'+esc(names.join(' \u00b7 '))+'</div>';
+  h+='<div class="gn-s">'+_t('{n} חזרות',{n:(P.exercises[0]||{}).targetReps||0})+' \u00b7 '+
+     _t('{n} שניות',{n:(P.exercises[0]||{}).rest||0})+'</div>';
+  h+='</div>';
+  for(i=0;i<order.length;i++){
+    var day=byDay[order[i]],dsets=0;
+    for(j=0;j<day.length;j++)dsets+=day[j].sets;
+    h+='<div class="gn-c"><div class="gn-h">'+esc(progDayLabel(order[i]))+
+       ' \u00b7 '+_t('{n} סטים',{n:dsets})+'</div>';
+    for(j=0;j<day.length;j++)
+      h+='<div class="gn-s">'+esc(exLabel(day[j].name))+' \u00b7 '+
+         _t('{n} סטים',{n:day[j].sets})+'</div>';
+    h+='</div>';
+  }
+  h+='<div class="gn-c"><div class="gn-s">'+_t('אחרי שישה שבועות — שבוע הקלה, ואז ממשיכים. התוכנית מתחלפת כל 6–8 שבועות.')+'</div></div>';
+  h+='<button class="gn-go" onclick="fitWSave()">'+_t('שמור את התוכנית')+'</button>';
+  h+='<div class="gn-g"><button class="fq-later" onclick="fitWAgain()">'+_t('בנה לי אחרת')+'</button></div>';
+  return void(document.getElementById('content').innerHTML=h+'</div>');
+}
+
+/* ── THE SCREEN THAT REACHES THE PROGRAMME GENERATOR ──
+   Three questions. Equipment is already answered on the build screen and
+   remembered; the goal has a screen of its own and is read, not asked. */
+var _genProg=null;
+var GENPROG_DAYS=[1,2,3,4,5,6];
+var GENPROG_MINS=[30,45,60,90];
+/* RPE by experience, off page 137 of the notebook. Named rather than
+   repeated, now that two screens show it. */
+var GENPROG_RPE={'new':'4–6',back:'4–6',mid:'6–8',adv:'8–10'};   // i18n-exempt: stored keys and a pair of numbers
+/* מתקדם ALREADY MEANS SOMETHING ELSE in this app - "Progressing", about a
+   trend - so reusing it here would have German say "Komme voran" where it
+   means an experienced lifter. One key, one meaning; this one takes a
+   context. The other three are new words and need none. */
+/* No i18n-exempt here, on purpose. These labels DO reach _t, through the
+   loop below - so they are real keys, and the collection is named in
+   build-lang-template's VIA_VARIABLE so the builder emits them. Marking the
+   line exempt instead is what I did first, and it silenced the check on four
+   labels that would have shipped as Hebrew in ten languages. */
+var GENPROG_EXP=[['new','מתחיל'],['back','חוזר אחרי הפסקה'],
+                 ['mid','בינוני'],['adv','מתקדם|ניסיון']];
+
+function genProgOpen(){
+  /* Opens on what she already told the welcome questions, not on a default
+     she never gave. Only an unanswered one falls back. */
+  var me=fitMe();
+  _genProg={days:+me.days||3,minutes:+me.minutes||60,exp:me.exp||'new'};
+  _fitView='genprog';renderFitness();
+}
+function genProgSet(k,v){
+  if(!_genProg)return;
+  _genProg[k]=(k==='exp')?v:+v;
+  renderFitness();
+}
+function genProgSave(){
+  if(!_genProg)return;
+  var p=genProgram({days:_genProg.days,exp:_genProg.exp,minutes:_genProg.minutes,
+                    goal:fitGoal().v,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
+  /* A programme with nothing in it is not saved. It happens when the kit
+     answers "none" and every muscle comes back empty, and a saved empty
+     plan is worse than being told. */
+  if(!p.exercises.length){showToast(''+_t('לא מצאתי תרגילים עם הציוד שסימנת')+'');return;}
+  var progs=loadPrograms();
+  progs.push(p);
+  savePrograms(progs);
+  _fitProgIdx=progs.length-1;
+  _genProg=null;
+  showToast('&#10003; '+_t('התוכנית נבנתה'));
+  _fitView='view-program';renderFitness();
+}
+
+function renderFitGenProg(){
+  if(!_genProg)genProgOpen();
+  if(!_genProg)return;
+  var g=_genProg,i,h='<div style="padding-bottom:24px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('בנה לי תוכנית')+'</div>';
+  h+='<button onclick="_genProg=null;_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;color:var(--ink-soft);cursor:pointer;font-family:inherit">'+_t('חזרה')+'</button>';
+  h+='</div>';
+
+  h+='<div class="gn-c"><div class="gn-h">'+_t('כמה פעמים בשבוע אתה יכול להתאמן')+'</div>';
+  h+='<div class="gn-s">'+_t('יכול, לא רוצה. עדיף תוכנית שמתקיימת.')+'</div><div class="gn-w">';
+  for(i=0;i<GENPROG_DAYS.length;i++)
+    h+='<button class="gn-e'+(g.days===GENPROG_DAYS[i]?' on':'')+'" onclick="genProgSet(\'days\','+GENPROG_DAYS[i]+')">'+nfmt(GENPROG_DAYS[i])+'</button>';
+  h+='</div></div>';
+
+  h+='<div class="gn-c"><div class="gn-h">'+_t('כמה זמן יש לך לאימון')+'</div>';
+  h+='<div class="gn-s">'+_t('זה קובע כמה תרגילים נכנסים.')+'</div><div class="gn-w">';
+  for(i=0;i<GENPROG_MINS.length;i++)
+    h+='<button class="gn-e'+(g.minutes===GENPROG_MINS[i]?' on':'')+'" onclick="genProgSet(\'minutes\','+GENPROG_MINS[i]+')">'+_t('{n} דקות',{n:GENPROG_MINS[i]})+'</button>';
+  h+='</div></div>';
+
+  h+='<div class="gn-c"><div class="gn-h">'+_t('כמה אתה מתאמן היום')+'</div>';
+  h+='<div class="gn-s">'+_t('זה קובע כמה מורכבת החלוקה.')+'</div><div class="gn-w">';
+  for(i=0;i<GENPROG_EXP.length;i++)
+    h+='<button class="gn-e'+(g.exp===GENPROG_EXP[i][0]?' on':'')+'" onclick="genProgSet(\'exp\',\''+GENPROG_EXP[i][0]+'\')">'+esc(_t(GENPROG_EXP[i][1]))+'</button>';
+  h+='</div></div>';
+
+  /* WHAT THE TWO CEILINGS DECIDED, before anything is built. The day names
+     are already translated keys, joined with a separator and never with a
+     conjunction. */
+  var key=progSplitFor(g.days,g.exp),sp=PROG_SPLITS[key],names=[];
+  for(i=0;i<sp.days.length;i++)names.push(progDayLabel(sp.days[i][0]));
+  h+='<div class="gn-c"><div class="gn-h">'+_t('החלוקה שיצאה')+'</div>';
+  h+='<div class="gn-s">'+esc(names.join(' \u00b7 '))+'</div>';
+  h+='<div class="gn-s">'+_t('כל שריר חוזר כל {lo}–{hi} שעות',{lo:sp.lo,hi:sp.hi})+'</div>';
+  /* Only the surprising case is explained. When the days are the limit that
+     is obvious from the chips; when the EXPERIENCE is the limit it looks
+     like the app ignored an answer, so it says why. */
+  if(progSplitFor(g.days,'adv')!==key)
+    h+='<div class="gn-s">'+_t('בשלב הזה עדיף לחזור על כל שריר יותר פעמים, גם אם יש לך יותר ימים פנויים.')+'</div>';
+  h+='</div>';
+
+  /* WHAT SHE TOLD IT, said back. A limit that is recorded and never
+     mentioned again is a question that was asked for nothing - and the
+     sentence is explicit that it is not filtering anything, because that
+     is the promise the health question makes. */
+  var me=fitMe(),lim=(me.limits||[]).filter(function(v){return v!=='none';}),ln=[],li;   // i18n-exempt: a stored key, not a label
+  for(li=0;li<FIT_ME_LIMITS.length;li++)
+    if(lim.indexOf(FIT_ME_LIMITS[li][0])>=0)ln.push(_t(FIT_ME_LIMITS[li][1]));
+  if(ln.length||me.note){
+    h+='<div class="gn-c"><div class="gn-h">'+_t('מה שסיפרת לי')+'</div>';
+    if(ln.length){
+      h+='<div class="gn-s">'+esc(ln.join(' \u00b7 '))+'</div>';
+      h+='<div class="gn-s">'+_t('רשום, ולא מסתיר שום תרגיל. אם משהו ברשימה לא מתאים לך — תחליף אותו.')+'</div>';
+    }
+    if(me.note)h+='<div class="gn-s">'+esc(me.note)+'</div>';
+    h+='</div>';
+  }
+  h+='<div class="gn-g">'+_t('לפי המטרה שלך: {g}',{g:fitGoal().t})+'</div>';
+  h+='<button class="gn-go" onclick="genProgSave()">'+_t('בנה לי תוכנית')+'</button>';
   return void(document.getElementById('content').innerHTML=h+'</div>');
 }
 
@@ -18572,7 +19619,10 @@ function renderFitStart(){
   h+='<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">'+_t('מעקב תוכניות')+'</div>';
+  h+='<div style="display:flex;gap:6px">';
+  h+='<button onclick="genProgOpen()" style="background:var(--violet-100);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--violet-700);font-family:inherit">'+_t('בנה לי תוכנית')+'</button>';
   h+='<button onclick="startProgramWizard()" style="background:var(--cta-fill);border:none;border-radius:10px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">'+_t('+ תוכנית')+'</button>';
+  h+='</div>';
   h+='</div>';
   if(progs.length===0)
     h+='<div style="text-align:center;padding:10px;font-size:12px;color:var(--muted-soft)">'+_t('הוסף תוכנית מחדר כושר')+'</div>';
@@ -21817,6 +22867,28 @@ function renderViewProgram(){
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('חזרה')+'</button>';
   h+='</div>';
 
+  /* "בדוק את האימון שלי" - the same notebook reading, asked of a plan that
+     already exists rather than of one being typed. PER DAY, because a
+     programme is a week and summing the week into one session would quote a
+     ceiling against a number that was never a session's. */
+  var advDays={},advOrder=[],aek,aex;
+  for(aek=0;aek<prog.exercises.length;aek++){
+    aex=prog.exercises[aek];
+    var ad=aex.day||'';
+    if(!advDays.hasOwnProperty(ad)){advDays[ad]=[];advOrder.push(ad);}
+    advDays[ad].push({name:aex.name,sets:aex.sets,reps:aex.targetReps});
+  }
+  /* HOW OFTEN THIS DAY COMES ROUND. The cycle repeats to fill the week, so a
+     two-day cycle trained four times a week is each day twice - which is what
+     turns a session's sets into the week's, and the week is the number the
+     notebook's 10-20 is about. */
+  var advPer=advOrder.length?((+prog.daysPerWeek||advOrder.length)/advOrder.length):0;
+  var advWeeks=(typeof progWeekNum==='function')?progWeekNum(prog):0;
+  for(aek=0;aek<advOrder.length;aek++)
+    h+=progAdviceHTML(advDays[advOrder[aek]],
+                      advOrder[aek]?progDayLabel(advOrder[aek]):'',
+                      {perWeek:advPer,weeks:advWeeks});
+
   for(var ei=0;ei<prog.exercises.length;ei++){
     var ex=prog.exercises[ei];
     var exLog=loadProgLog(prog.id,ex.name);
@@ -22031,6 +23103,13 @@ function renderFitEditTemplate(){
   for(var ei=0;ei<_tpl.exercises.length;ei++)h+=tplBlockHTML(_tpl.exercises[ei],ei);
   if(!_tpl.exercises.length)h+='<div class="tpl-empty">'+_t('עוד אין תרגילים. הוסף את הראשון.')+'</div>';
   h+='<button class="tpl-addex" onclick="tplAddExercise()">'+_t('+ הוסף תרגיל')+'</button>';
+  /* AS IT IS BUILT, not after it is saved. The numbers come out of the same
+     notebook the generator builds from, and reading them back while there is
+     still a decision to make is the whole point - afterwards it is a report. */
+  h+=progAdviceHTML(_tpl.exercises.map(function(ex){
+       var pr=tplRows(ex);
+       return {name:ex.name,sets:pr.length,reps:(pr[0]&&pr[0].r)||0};
+     }));
   h+='<div class="tpl-btns">';
   h+='<button class="tpl-save" onclick="tplSave()">'+_t('שמור')+'</button>';
   h+='<button class="tpl-cancel" onclick="tplCancel()">'+_t('ביטול')+'</button>';
@@ -22164,30 +23243,65 @@ function exNoteHTML(ex,i){
    Two rows of the same chips in one card. They exist to be compared, and a
    chip row against a stack of tall rows does not compare at a glance.
    A tap selects one of today's and opens full-size buttons under it. */
-function exPrevHTML(ex,curPR){
+/* WHAT YOU LIFTED LAST TIME, lifted out of the record card so it can be
+   drawn in the exercise's own header instead. It is the one number you want
+   BEFORE you type - it is the question the two boxes are answering - and it
+   was sitting under the note, the warm-ups and every set logged so far, in a
+   card that grows all session. Its own function now, because the header and
+   the record both had a claim on it and copying it would have been two of
+   them. */
+function exLastHTML(ex){
   var prev=exLastTime(ex.name),mySets=(ex.sets||[]),h,i,s;
-  if(!prev&&!mySets.length)
-    return '<div class="fw-prev none">'+_t('הפעם הראשונה שאתה עושה את זה')+' &mdash; '+_t('מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.')+'</div>';
+  if(!prev)
+    return mySets.length?'':'<div class="fw-prev none">'+_t('הפעם הראשונה שאתה עושה את זה')+' &mdash; '+_t('מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.')+'</div>';
   /* the numbers go through the reader's own unit and digits, which the raw
      s.weight here never did - an imperial reader was shown kilograms */
   var num=function(st){return (st.weight?nfmt(edWeightVal(st.weight))+'&times;':'')+nfmt(st.reps);};
-  h='<div class="fw-prev">';
-  if(prev){
-    h+='<div class="fw-prev-t">'+_t('בפעם הקודמת')+' &middot; '+agoText(prev.date)+'</div><div class="fw-prev-s">';
-    for(i=0;i<prev.sets.length;i++){
-      s=prev.sets[i];
-      var mine=mySets[i];
-      var better=mine&&((mine.weight>s.weight)||(mine.weight===s.weight&&mine.reps>s.reps));
-      var same=mine&&mine.weight===s.weight&&mine.reps===s.reps;
-      h+='<span class="fw-ps'+(better?' beat':(same?' same':''))+'">'+num(s)+'</span>';
-    }
-    h+='</div>';
+  /* ONE LINE. The label used to sit above the chips, so moving this up added
+     two rows to the header to take two off the card below - which is not
+     saving space, it is moving it. Label and chips share a row now, and the
+     ago-text goes with the label because "last time" without "when" is the
+     half that invites the wrong comparison. */
+  h='<div class="fw-prev fw-prev-top">';
+  h+='<span class="fw-prev-t">'+_t('בפעם הקודמת')+' &middot; '+agoText(prev.date)+'</span><span class="fw-prev-s">';
+  for(i=0;i<prev.sets.length;i++){
+    s=prev.sets[i];
+    var mine=mySets[i];
+    /* still compared against TODAY, so a set you have already beaten is
+       marked even though the row has moved up the screen */
+    var better=mine&&((mine.weight>s.weight)||(mine.weight===s.weight&&mine.reps>s.reps));
+    var same=mine&&mine.weight===s.weight&&mine.reps===s.reps;
+    /* HOW HARD IT FELT, which the 92px square used to carry and which would
+       otherwise have been lost when it went. Same chip the sets logged today
+       use, so one shape says "a set" everywhere on this screen. */
+    var eff=effortFromRPE(s.rpe);
+    h+='<span class="fw-ps'+(better?' beat':(same?' same':''))+'">'+num(s)+
+       (eff===''?'':'<i class="fw-ps-rpe">&middot;'+nfmt(eff)+'</i>')+'</span>';
   }
+  return h+'</span></div>';
+}
+function exPrevHTML(ex,curPR){
+  var mySets=(ex.sets||[]),h,i,s;
+  /* last time is drawn in the header now; what is left here is TODAY, which
+     is the part that grows */
+  if(!mySets.length)return '';
+  var num=function(st){return (st.weight?nfmt(edWeightVal(st.weight))+'&times;':'')+nfmt(st.reps);};
+  h='<div class="fw-prev">';
   if(mySets.length){
     h+='<div class="fw-prev-t fw-mine-t">'+_t('היום')+'</div><div class="fw-prev-s">';
     for(i=0;i<mySets.length;i++){
       s=mySets[i];
-      h+='<button class="fw-ps fw-mine'+(_setSel===i?' sel':'')+'" onclick="setSelOpen('+i+')">'+
+      /* THE WHOLE CHIP CARRIES THE EFFORT, in the four colours the workout
+         summary has coloured logged sets with all along - the same
+         effortColor the wheel reads, so a chip, a wheel and a summary cannot
+         disagree about what 8 looks like. A WASH and not a fill: those
+         colours measure 1.84 to 3.85 against the cream, so a solid chip
+         would need dark text anyway, and a wash keeps a row of them reading
+         as one row rather than as four unrelated buttons. A set with no
+         effort keeps the plain chip - nothing to say, nothing said. */
+      var _tint=(s.rpe==null||!isFinite(s.rpe))?''
+        :' style="background:'+effortTint(s.rpe,1)+';color:var(--ink)"';
+      h+='<button class="fw-ps fw-mine'+(_setSel===i?' sel':'')+'"'+_tint+' onclick="setSelOpen('+i+')">'+
          (isCardioEx(ex.name)?cardioRowHTML(s):num(s))+
          /* WITHOUT THIS THE TAP HAS NO ANSWER. Nothing on the screen said what
             a logged set's effort was, so there was no way to tell whether it
@@ -22208,12 +23322,11 @@ function exPrevHTML(ex,curPR){
              '<span class="fw-sel-x">&times;</span>'+
              '<input id="ed-r" class="mtnm" type="number" value="'+mySets[_setSel].reps+'">'+
            '</div>';
-        /* the same ten taps the add form offers, and the same switch beside
-           them - a set is corrected in the scale it was logged in */
-        h+='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc2==='rir'?'RIR':'RPE')+'</button><div class="rpe-row">';
-        for(_v2=_lo2;_v2<=_hi2;_v2++)
-          h+='<button class="rpe-b'+(_edRpe===_v2?' on':'')+'" onclick="edRpePick('+_v2+')">'+nfmt(_v2)+'</button>';
-        h+='</div></div>';
+        /* the same wheel the add form offers, and the same switch beside it -
+           a set is corrected in the scale it was logged in */
+        h+='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc2==='rir'?'RIR':'RPE')+'</button>';
+        h+=effortWheelHTML('ed');   // i18n-exempt: a stored key
+        h+='</div>';
         h+='<div class="fw-sel">'+
              '<button class="fw-sel-b go" onclick="saveEditSet()">'+_t('שמור')+'</button>'+
              '<button class="fw-sel-b" onclick="cancelEditSet()">'+_t('ביטול')+'</button>'+
@@ -22234,32 +23347,11 @@ function exPrevHTML(ex,curPR){
 /* ── LAST TIME, AS A REFERENCE ──
    Not a prefill - that is exPrefill's job and it gets overwritten the moment
    you type. This stays put while you decide, which is when it is wanted. */
-/* ── THE TWO SQUARES ABOVE THE BOXES ──
-   Last time on the leading side, the explanation beside it. They are the same
-   size on purpose: one is what you did, the other is how it is done, and
-   neither outranks the other while you are standing at the machine. */
-function exLastBoxHTML(ex){
-  var prev=exLastTime(ex.name);
-  var h='<div class="fx-box"><span class="fx-h">'+_t('בפעם שעברה')+'</span>';
-  if(!prev||!prev.sets||!prev.sets.length)
-    return h+'<span class="fx-none">'+_t('עדיין אין')+'</span></div>';
-  /* the SAME set number, because the third set of the day is compared with
-     the third and not with the warm-up */
-  var same=prev.sets[ex.sets.length]||prev.sets[prev.sets.length-1];
-  /* weight times reps, the shape every set row on this screen already uses -
-     so no noun has to agree with a number. A run has neither, and says the
-     distance, the minutes and the pace instead - the same sentence its own
-     set rows use. */
-  h+='<span class="fx-big">'+(isCardioEx(ex.name)?cardioRowHTML(same):fmtWeight(same.weight)+' \u00d7 '+nfmt(same.reps))+'</span>';
-  /* how hard it was, on whichever scale this person reads. The store is
-     always RPE; effortFromRPE turns it into the one on their screen, so the
-     number here and the row of ten below it never disagree. */
-  var eff=effortFromRPE(same.rpe);
-  if(eff!=='')h+='<span class="fx-eff">'+(effortScale()==='rir'?'RIR':'RPE')+' <b>'+nfmt(eff)+'</b></span>';
-  var ago=prev.date?agoText(new Date(prev.date).getTime()):'';
-  if(ago)h+='<span class="fx-ago">'+esc(ago)+'</span>';
-  return h+'</div>';
-}
+/* THE TWO SQUARES ABOVE THE BOXES were a pair: what you did last time, and
+   how the thing is loaded. The first moved into the one line in the exercise
+   header - it was 92px of card saying what a line now says - so only the gear
+   picture is left, and it takes the row. exLastBoxHTML went with it rather
+   than staying unreferenced: it was called from exactly one place. */
 /* ── WHAT YOU ARE LIFTING IT WITH ──
    The drawing loadKind() already decides: a bar with its discs, a pin stack,
    a dumbbell - or, for bodyweight and a band, nothing to draw, which the
@@ -22742,42 +23834,112 @@ function exLabel(nm){
   for(i=0;i<a.length;i++)if(a[i].n===nm)return exTitle(a[i]);
   return nm;
 }
+/* EVERYTHING A ROW ANSWERS TO, folded into one normalised string the way the
+   food table does it: its stored name, all eleven translations - so
+   Kniebeuge, スクワット, 深蹲 and sentadilla all reach the squat - the words
+   people say for it in the room, and the muscle and kit it belongs to, which
+   is what lets "מכונה חזה" work at all. Built once per row and kept on it;
+   exLoad replaces the whole database, so a stale key cannot survive. */
+function exKey(e){
+  if(e._s)return e._s;
+  var s=e.n+' '+(e.en||''),k,i;
+  if(e.t)for(k in e.t)if(e.t.hasOwnProperty(k))s+=' '+e.t[k];
+  if(e.aka)for(i=0;i<e.aka.length;i++)s+=' '+e.aka[i];
+  /* AND THE FAMILY'S WORDS. The room's name for a movement is written on one
+     row - שראגס on משיכת כתפיים במשקולות, פולאפ on מתח - so without this it
+     finds one of five shrugs and one of seven pull-ups, and the rest look
+     missing. A variant is spelled as its parent's name plus a kit, so the
+     name boundary is the relationship; 72 of the 235 rows inherit this way
+     and every one of them was read. */
+  var all=exAll(),j,p,q;
+  /* A family name is sometimes a row's name and sometimes only an aka: there
+     is no row called לחיצת חזה or משיכת כתפיים, just לחיצת חזה במוט and
+     משיכת כתפיים במשקולות, each holding the bare name in its own list. Both
+     count as the parent. */
+  function exLeads(parent,child){
+    return child.length>parent.length&&child.slice(0,parent.length)===parent&&
+           child.charAt(parent.length)===' ';
+  }
+  for(j=0;j<all.length;j++){
+    p=all[j];
+    if(p===e||!p.aka||!p.aka.length)continue;
+    q=exLeads(p.n,e.n);
+    if(!q)for(i=0;i<p.aka.length;i++)if(exLeads(p.aka[i],e.n)){q=true;break;}
+    if(q)for(i=0;i<p.aka.length;i++)s+=' '+p.aka[i];
+  }
+  if(e.m)for(i=0;i<e.m.length;i++)s+=' '+e.m[i];
+  if(e.q)for(i=0;i<e.q.length;i++)s+=' '+e.q[i];
+  e._s=foodKey(s);
+  return e._s;
+}
+/* Hebrew's construct state changes only the final letter - מכונה becomes
+   מכונת, לחיצה becomes לחיצת - so a word typed one way has to reach a row
+   that spells it the other. Tried only as a FALLBACK and only on the query,
+   so no stored key moves and a search can only gain answers. The four-letter
+   floor is the same guard foodKey uses on the final letterforms. */
+function exStem(w){
+  return /^[א-ת]{4,}[הת]$/.test(w)?w.slice(0,-1):w;
+}
+function exWords(q){
+  var w=foodKey(q||'').split(' '),out=[],i;
+  for(i=0;i<w.length;i++)if(w[i])out.push(w[i]);
+  return out;
+}
+/* EVERY WORD HAS TO LAND, IN ANY ORDER. It used to be one literal substring,
+   and that is why "לחיצת חזה מכונה" found nothing: the library spells every
+   machine exercise "במכונה", so dropping the ב lost all thirty-four of them
+   at once, and "לאנץ בולגרי" could never reach a row called סקוואט בולגרי
+   however it was spelled. Measured on the 235 rows: every one still finds
+   itself, and the widest query returns 16. */
 function exMatch(e,q){
-  if(!q)return true;
-  q=q.toLowerCase();
-  if(e.n.toLowerCase().indexOf(q)>=0)return true;
-  /* Every language's name, not just Hebrew and English - so Kniebeuge,
-     スクワット, 深蹲 and sentadilla all reach the squat whatever the
-     interface is set to. */
-  var t=e.t,k;
-  if(t)for(k in t)if(t[k]&&String(t[k]).toLowerCase().indexOf(q)>=0)return true;
-  else if((e.en||'').toLowerCase().indexOf(q)>=0)return true;
-  /* The other words people say for it. The lat pulldown was in this list from
-     the first day and nobody could find it, because it is called פולי עליון
-     here and פול דאון in the room. Searched, never displayed. */
-  var a=e.aka,i;
-  if(a)for(i=0;i<a.length;i++)if(a[i].toLowerCase().indexOf(q)>=0)return true;
-  return false;
+  var w=exWords(q),s=exKey(e),i;
+  for(i=0;i<w.length;i++)
+    if(s.indexOf(w[i])<0&&s.indexOf(exStem(w[i]))<0)return false;
+  return true;
 }
 /* How well a row answers what was typed - lower is better. Only ever called
    on rows exMatch has already accepted, so one of the branches always hits. */
-function exRank(e,q){
-  /* The name ON SCREEN first, then any other language, then the words it
-     merely answers to - the same order the food search settled on. */
-  var n=exTitle(e).toLowerCase(),a=e.aka,t=e.t,i,k;
+/* The name ON SCREEN first, then any other language, then the words it
+   merely answers to - the same order the food search settled on. `fold` says
+   which spelling is being compared, and the caller asks twice. */
+function exRankTiers(n,a,t,q,fold){
+  var i,k,v,y;
+  function f(s){return fold?foodKey(s||''):String(s||'').toLowerCase();}
   if(n===q)return 0;
   if(n.indexOf(q)===0)return 1;
   if(n.indexOf(q)>=0)return 2;
-  if(t)for(k in t){
-    var v=String(t[k]||'').toLowerCase();
-    if(v===q||v.indexOf(q)===0)return 3;
-  }
-  if(t)for(k in t)if(String(t[k]||'').toLowerCase().indexOf(q)>=0)return 4;
-  if(a)for(i=0;i<a.length;i++){
-    var y=a[i].toLowerCase();
-    if(y===q||y.indexOf(q)===0)return 5;
-  }
+  if(t)for(k in t){v=f(t[k]);if(v===q||v.indexOf(q)===0)return 3;}
+  if(t)for(k in t)if(f(t[k]).indexOf(q)>=0)return 4;
+  if(a)for(i=0;i<a.length;i++){y=f(a[i]);if(y===q||y.indexOf(q)===0)return 5;}
   return 6;
+}
+/* ASKED TWICE, AS WRITTEN FIRST. Ranking everything through foodKey moved
+   rows past each other that were already in the right order, because the
+   folds collide on purpose: סקוט really is the Scott bench AND a spelling of
+   סקוואט, so "כפיפה בסקוט" contains the folded query outright while the squat
+   - which folds to סקואט - does not, and the preacher curl won a word that
+   means squat. No single ordering of one comparison holds both.
+   So: the spelling as typed decides first, which is what this did before
+   today and got right; the fold only orders the rows that answered nothing as
+   written, and sits below every one of them. A row reached only through the
+   fold can never outrank a row reached as it was typed. */
+function exRank(e,q){
+  var w=exWords(q),qq=w.join(' ');
+  if(!qq)return 99;
+  var nm=exTitle(e),raw=String(q||'').toLowerCase(),r;
+  raw=raw.replace(/^\s+/,'').replace(/\s+$/,'');
+  r=exRankTiers(nm.toLowerCase(),e.aka,e.t,raw,false);
+  if(r<6)return r;
+  var n=foodKey(nm);
+  r=exRankTiers(n,e.aka,e.t,qq,true);
+  if(r<6)return 6+r;
+  /* Typed out of order, or in the construct state, so no phrase tier could
+     hit at all. The row whose own NAME holds every word comes before one that
+     holds some, and both before a row answering only through kit or muscle. */
+  var hit=0,i;
+  for(i=0;i<w.length;i++)
+    if(n.indexOf(w[i])>=0||n.indexOf(exStem(w[i]))>=0)hit++;
+  return 12+(w.length-hit);
 }
 /* The chosen filters are stored as the data words the database uses, never as
    translated labels - they are compared against e.m and e.q, and translated
@@ -23489,18 +24651,36 @@ function renderFitWorkout(){
   if(curPR>0)h+='<div style="font-size:10px;color:var(--amber-700);font-weight:700">PR: '+fmtWeight(curPR)+'</div>';
   /* On the exercise, not in a settings screen: the moment you want to change
      it is the moment you are looking at it. */
-  h+='<button class="wx-b" onclick="wxSwap('+w.currentEx+')" title="'+_t('החלף תרגיל')+'" aria-label="'+_t('החלף תרגיל')+'">&#8646;</button>';
-  h+='<button class="wx-b" onclick="wxRemove('+w.currentEx+')" title="'+_t('הסר תרגיל')+'" aria-label="'+_t('הסר תרגיל')+'">&#215;</button>';
+  /* A WORD, NOT A GLYPH. ⇆ is not read as "swap" by anybody who has not been
+     told, and a × at 16px with no background reads as decoration. Both carry
+     their word now and both sit in the raised shell this app gives anything
+     that can be pressed - the icon stays beside the word because it is what
+     the eye finds second time round. */
+  h+='<button class="wx-b" onclick="wxSwap('+w.currentEx+')" aria-label="'+_t('החלף תרגיל')+'">'+
+     '<i class="wx-i">&#8646;</i>'+_t('החלף')+'</button>';
+  h+='<button class="wx-b wx-del" onclick="wxRemove('+w.currentEx+')" aria-label="'+_t('הסר תרגיל')+'">'+
+     '<i class="wx-i">&#215;</i>'+_t('הסר')+'</button>';
   h+='</div></div>';
   h+=fitTgtHTML(ex);
+  /* EVERYTHING ABOUT THIS LIFT, IN ONE RECTANGLE - what you did last time
+     and what you have done so far today. Both are what the two boxes are
+     being asked about, so both belong where you are looking when you decide.
+     Measured before this moved: today's sets were sitting 1145px down the
+     page, past the boxes, the wheel, the plate picture and the rest timer. */
+  h+=exLastHTML(ex);
+  h+=exPrevHTML(ex,curPR);
   /* A group is still contiguous; what changed is that any exercise can be
      made the next one. */
   (function(){
     var i=_fitWorkout.currentEx, exs=_fitWorkout.exercises;
     var lbl=ssLabel(i);
     if(lbl)h+='<div style="display:inline-block;font-size:10px;font-weight:800;color:var(--violet-700);background:var(--violet-50);border-radius:7px;padding:2px 8px;margin-bottom:9px">'+_t('סופרסט')+' '+lbl+'</div>';
-    var quiet='background:none;border:none;padding:0 0 9px;margin:0;font:inherit;'+
-      'font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px';
+    /* THE SAME SHELL AS החלף AND הסר, two rows above in this card. These
+       were background:none, border:none, underlined 10px text - an underline
+       is a link's affordance on a page of links, and on a card of raised
+       surfaces it reads as a caption somebody forgot to style. They are small
+       actions on this lift, which is precisely what those two are, so they
+       get that button rather than a third style for one kind of thing. */
     if(_ssPick===i){
       /* the candidates, as the same chips the exercise row already uses */
       h+='<div class="ex-chips" style="margin-bottom:6px">';
@@ -23509,17 +24689,19 @@ function renderFitWorkout(){
         h+='<button class="ex-chip" onclick="ssPairWith('+i+','+cand[ci]+')">'+esc(exs[cand[ci]].name)+'</button>';
       h+='<button class="ex-chip" onclick="ssPairNew('+i+')">+ '+_t('הוסף תרגיל')+'</button>';
       h+='</div>';
-      h+='<div><button onclick="ssPickClose()" style="'+quiet+'">'+_t('ביטול')+'</button></div>';
+      h+='<div class="fx-ssrow"><button class="wx-b" onclick="ssPickClose()">'+_t('ביטול')+'</button></div>';
     } else {
       /* breaking is offered only where there is something to break, and it
          is the pair with the NEXT one - the group is contiguous, so that is
          the only link this exercise owns going forward */
       if(i<exs.length-1&&exs[i].ss!=null&&exs[i].ss===exs[i+1].ss)
-        h+='<div><button onclick="ssJoin('+i+')" style="'+quiet+'">'+_t('פרק את הסופרסט')+'</button></div>';
+        h+='<div class="fx-ssrow"><button class="wx-b wx-del" onclick="ssJoin('+i+')">'+
+           '<i class="wx-i">&#10005;</i>'+_t('פרק את הסופרסט')+'</button></div>';
       /* always offered, even in a workout of one: the chooser can add the
          partner from the library, so there is never nothing to pick */
       else
-        h+='<div><button onclick="ssPickOpen('+i+')" style="'+quiet+'">'+_t('סופרסט עם')+'&hellip;</button></div>';
+        h+='<div class="fx-ssrow"><button class="wx-b" onclick="ssPickOpen('+i+')">'+
+           '<i class="wx-i">&#8644;</i>'+_t('סופרסט עם')+'&hellip;</button></div>';
     }
   })();
   h+='</div>';
@@ -23528,11 +24710,15 @@ function renderFitWorkout(){
   h+='</div>';
   /* Straight under it: what you did last time, and what you are lifting
      it with. */
-  /* held, not drawn: "last time" and the gear card are REFERENCE, the same
-     as the note and the previous session's chips, and those are already in
-     the record card below. Drawn here they pushed the log-set button down
-     into the tab bar's strip - above the fold and still untappable. */
-  var _ref='<div class="fx-row">'+exLastBoxHTML(ex)+exGearBoxHTML(ex)+'</div>';
+  /* THE "LAST TIME" SQUARE IS GONE. It was 92px of card saying what the one
+     line in the header above now says - the comparable set, the effort and
+     the ago - and he was pointing at it both times he asked for this to move
+     up and take less room. The gear picture keeps the row and takes the
+     width the pair used to share.
+     The gear card is still REFERENCE and still drawn below: put beside the
+     form it pushed the log-set button down into the tab bar's strip, above
+     the fold and untappable. */
+  var _ref='<div class="fx-row fx-row-one">'+exGearBoxHTML(ex)+'</div>';
   /* and then the card the set is actually written in */
   h+='<div class="fw-now">';
   /* The note sits with the lift itself, above the sets - it is a setup
@@ -23544,7 +24730,6 @@ function renderFitWorkout(){
      the record gets. It used to sit under all of it. */
   var _hd=h;h='';
   h+=exNoteHTML(ex,w.currentEx);
-  h+=exPrevHTML(ex,curPR);
 
   // Warm-up rows come first, because that is the order they happen in, and
   // they are drawn quieter so the working sets still read as the real list.
@@ -23583,8 +24768,13 @@ function renderFitWorkout(){
         This one is `auto` over a single 56px button. Measured the same way
         after: the boxes stay above 100px each. */
      '<div class="fw-fields">';
-  h+='<div><div class="fw-fl">'+_t('משקל')+' ('+weightUnit()+')'+'</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="&ndash;" value="'+(pf.w===''||pf.w===undefined?'':edWeightVal(pf.w))+'" oninput="plateHint()" style="width:100%;min-height:46px;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700"></div>';
-  h+='<div><div class="fw-fl">'+_t('חזרות')+'</div><input id="fit-r" class="mtnm" type="number" placeholder="'+nfmt(ex.targetReps)+'" value="'+pf.r+'" style="width:100%;min-height:46px;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700"></div>';
+  /* what was typed wins over what was stored, for exactly as long as it has
+     not been logged - see _fitTyped */
+  var _boxW=(_fitTyped&&_fitTyped.w!==undefined)?_fitTyped.w
+          :((pf.w===''||pf.w===undefined)?'':edWeightVal(pf.w));
+  var _boxR=(_fitTyped&&_fitTyped.r!==undefined)?_fitTyped.r:pf.r;
+  h+='<div><div class="fw-fl">'+_t('משקל')+' ('+weightUnit()+')'+'</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="&ndash;" value="'+esc(_boxW)+'" oninput="fitTyped();plateHint()" style="width:100%;min-height:46px;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700"></div>';
+  h+='<div><div class="fw-fl">'+_t('חזרות')+'</div><input id="fit-r" class="mtnm" type="number" placeholder="'+nfmt(ex.targetReps)+'" value="'+esc(_boxR)+'" oninput="fitTyped()" style="width:100%;min-height:46px;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700"></div>';
   /* SAVES WHAT IS BESIDE IT. The numbers are typed and the set is logged
      without the eye leaving the row - logSet re-renders and exPrefill opens
      the boxes on the same values, so pressing it again is one tap. */
@@ -23595,20 +24785,14 @@ function renderFitWorkout(){
      straight at the word that is wrong. */
   h+='</div>';
   var _sc=effortScale();
+  /* A WHEEL, NOT TEN BUTTONS. Measured at 390px the ten came out about 33px
+     across and a thumb pad is 34-42, so the row sat at or below the floor and
+     the tap that missed landed on 7 or 9 and looked deliberate. One big
+     target instead, and the word beside each number, because this field was
+     never skipped for being small - it was skipped for being unclear. */
   h+='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc==='rir'?'RIR':'RPE')+'</button>';
-  /* Ten taps rather than a number field. This value is one of ten and it
-     is optional, and a keyboard sliding up over the set you have just
-     finished is the wrong price for it. Tapping the one that is already
-     lit clears it, because "I did not mean to answer" has to be reachable
-     without a keyboard either. */
-  h+='<div class="rpe-row">';
-  var _lo=(_sc==='rir')?0:1,_hi=(_sc==='rir')?9:10,_v;
-  for(_v=_lo;_v<=_hi;_v++)
-    h+='<button class="rpe-b'+(_fitRpe===_v?' on':'')+'" onclick="rpePick('+_v+')">'+nfmt(_v)+'</button>';
-  /* closes .rpe-row and .fw-effort. The third close that used to follow
-     belonged to the three-column grid, and the pair now closes itself the
-     moment reps are done. */
-  h+='</div></div>';
+  h+=effortWheelHTML('fit');   // i18n-exempt: a stored key
+  h+='</div>';
   /* The toggle used to sit ON the button it changes, "because the decision
      is made at the moment of pressing, not before". The button moved up into
      the row with the numbers and there is no room for a word beside it, so
@@ -23642,6 +24826,16 @@ function renderFitWorkout(){
   h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
   h+='</div>';
   h+=addExHTML();
+  /* A workout grows mid-session more often than it survives the plan, so the
+     same notebook reading belongs here too - counted off what each exercise
+     is SET to do, which is the decision still open, rather than off what has
+     been logged, which is already behind you.
+     ABOVE the nav buttons, not below: drawn under "finish workout" it is
+     advice arriving after the decision it was meant to inform. */
+  h+=progAdviceHTML(w.exercises.map(function(ex){
+       return {name:ex.name,sets:(+ex.targetSets||(ex.sets&&ex.sets.length)||0),
+               reps:+ex.targetReps||0};
+     }));
   // Nav buttons
   h+='<div style="display:flex;gap:8px">';
   if(w.currentEx>0)h+='<button onclick="_fitWorkout.currentEx--;renderFitness()" style="flex:1;background:var(--surface);border:none;border-radius:14px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('אחור')+'</button>';
@@ -23655,6 +24849,7 @@ function renderFitWorkout(){
   h+='</div>';
   document.getElementById('content').innerHTML=h;
   hydratePhotos();
+  effortWheelSync();   // offsetTop is nothing until the node is in the document
   plateHint();   // the boxes open prefilled, so the line has something to say already
 }
 
@@ -23748,6 +24943,9 @@ function logSet(){
   var shown=parseFloat(w?w.value:0)||0;
   var weight=fromDisplayWeight(shown);
   var reps=parseInt(r?r.value:0)||0;
+  /* LOGGED, so what was typed is now stored and exPrefill owns the boxes
+     again. Left in place it would pin them to the set before last. */
+  fitTypedClear();
   /* The box may be speaking RIR; the store only ever speaks RPE. */
   /* The row holds the reader's own scale - RPE or RIR - exactly as the
      box did, so it converts the same way. */
@@ -23960,13 +25158,9 @@ function renderFitSummary(){
   var prs=loadPRs();
 
   // RPE color by spec: <6 green, 6-7.4 amber, 7.5-8.9 orange, ≥9 coral, null gray
-  function rpeColor(rpe){
-    if(rpe===null||rpe===undefined)return '#ADA79A';
-    if(rpe<6)return PAL.green700;
-    if(rpe<7.5)return '#E0A020';
-    if(rpe<9)return '#E0691E';
-    return '#D33A2C';
-  }
+  /* lifted to the top level as effortColor, so the wheel and this screen
+     cannot drift apart about what 8 looks like */
+  var rpeColor=effortColor;
 
   // Totals — volume only on weighted exercises (spec 4.1)
   var totalSets=0,rpeSum=0,rpeCount=0,totalVol=0;
