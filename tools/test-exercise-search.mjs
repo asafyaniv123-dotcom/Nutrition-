@@ -43,6 +43,13 @@ const UI = opt('ui', 'he');
 const ctx = { console };
 vm.createContext(ctx);
 vm.runInContext('function appLang(){return ' + JSON.stringify(UI) + ';}', ctx);
+/* The matcher normalises through foodKey now - the same fold the food table
+   uses, so the geresh, the final letters and ten other alphabets are answered
+   in one place rather than two that drift. A revision old enough not to have
+   it simply runs without it. */
+const fk0 = src.indexOf('var HEB_FINALS=');
+const fk1 = src.indexOf('function foodSearch', fk0);
+if (fk0 >= 0 && fk1 > fk0) vm.runInContext(src.slice(fk0, fk1), ctx);
 vm.runInContext(src.slice(a, b), ctx);
 if (!/function exTitle/.test(src)) vm.runInContext('function exTitle(e){return e&&e.n||"";}', ctx);
 const match = (e, q) => vm.runInContext('exMatch', ctx)(e, q);
@@ -56,6 +63,11 @@ const rank = (e, q) => hasRank ? vm.runInContext('exRank', ctx)(e, q.toLowerCase
 
 const db = JSON.parse(fs.readFileSync(DATA, 'utf8'));
 const EX = db.exercises;
+/* exKey walks the whole table to inherit a family's words - שראגס is written
+   on one shrug of five and פולאפ on one pull-up of seven - so the matcher
+   needs the table, not just the row it was handed. */
+ctx.__EX = EX;
+vm.runInContext('function exAll(){return __EX;}', ctx);
 
 /* ── the table has to describe itself honestly ────────────────────────── */
 let bad = 0;
@@ -120,6 +132,37 @@ const PROBES = [
   ['סמית', 'לחיצת חזה בסמית׳'], ['אי זי', 'כפיפת מרפק במוט EZ'],
   ['פק דק', 'פרפר במכונה'], ['קרוסאובר', 'פרפר בפולי'],
   ['תאומים', 'הרמת עקבים בעמידה'], ['נורדיק', 'כפיפה נורדית'],
+  /* REPORTED MISSING ON 13/10, and every one of them is the same shape: the
+     words are SPLIT across the stored name, so a matcher comparing the query
+     as one literal substring could never answer them however they were
+     spelled. "לחיצת חזה מכונה" lost all 34 machine exercises at once, because
+     the table spells every one of them "במכונה" and the ב was not typed. */
+  ['לאנץ בולגרי', 'סקוואט בולגרי'], ['לאנג׳ בולגרי', 'סקוואט בולגרי'],
+  ['מכרע בולגרי', 'סקוואט בולגרי'], ['לאנץ', 'לאנג׳'], ['מכרע', 'לאנג׳'],
+  ['לחיצת חזה מכונה', 'לחיצת חזה במכונה'], ['מכונת חזה', 'לחיצת חזה במכונה'],
+  ['חתירה מכונה', 'חתירה במכונה'],
+  /* like טרייספס above, this names a MUSCLE and a piece of kit rather than a
+     movement, and the table holds several that answer it equally well; the
+     probe only asserts the pair of words reaches a shoulder machine at all,
+     which before today it did not. */
+  ['מכונת כתפיים', 'משיכת כתפיים במכונה'],
+  /* typed the way a phone writes it, with the straight apostrophe the Hebrew
+     keyboard actually produces rather than the geresh the table is written in */
+  ["לאנג'", 'לאנג׳'], ["היפ ת'ראסט", 'היפ ת׳ראסט'], ['היפ טראסט', 'היפ ת׳ראסט'],
+  /* and in the other order, which a person types as often as not */
+  ['press chest', 'לחיצת חזה במכונה'], ['בולגרי סקוואט', 'סקוואט בולגרי'],
+  ['שרוגים', 'משיכת כתפיים במשקולות'], ['כתף צדדית', 'הרחקת כתף'],
+  ['כתף אחורית', 'פרפר הפוך'],
+];
+
+/* A FAMILY ANSWERS, NOT ONE ROW OF IT. The room's word for a movement is
+   written on a single row - שראגס on the dumbbell shrug, בנץ on the barbell
+   press - so before the key inherited along the name, typing it returned one
+   exercise and the other eleven looked missing. The number is the least the
+   family may return, not the most. */
+const FAMILIES = [
+  ['שראגס', 5], ['בנץ', 10], ['פולאפ', 4], ['דיפס', 3], ['סקווט', 8],
+  ['לאנץ', 5], ['פול דאון', 4], ['מכונה', 17],
 ];
 
 /* The same movement asked for in every language it now has a name in. This is
@@ -167,7 +210,12 @@ for (const [q, want, open] of CROSS) {
     if (!open) wrong++;
   }
 }
-bad += none + wrong;
+let thin = 0;
+for (const [q, least] of FAMILIES) {
+  const n = EX.filter((e) => match(e, q)).length;
+  if (n < least) { console.log('  THIN   ' + q.padEnd(16) + ' returned ' + n + ', the family has at least ' + least); thin++; }
+}
+bad += none + wrong + thin;
 
 const byM = {};
 for (const e of EX) byM[e.m[0]] = (byM[e.m[0]] || 0) + 1;

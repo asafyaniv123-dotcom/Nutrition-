@@ -302,8 +302,20 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .tpl-del{border:none;border-radius:14px;padding:13px 12px;background:rgba(243,185,168,.2);color:var(--terra-700);font-size:12px;font-family:inherit;cursor:pointer}
 .fit-pick{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--line-strong);border-radius:12px;padding:12px 13px;background:var(--card);font-family:inherit;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;text-align:start}
 .fit-pick-c{color:var(--chev);font-size:15px}
-.ex-ov{position:fixed;inset:0;z-index:440;background:rgba(74,67,64,.62);display:flex;align-items:flex-end;justify-content:center}
-.ex-sheet{width:100%;max-width:480px;background:var(--panel);border-radius:22px 22px 0 0;padding:16px 14px calc(18px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
+/* height:100dvh as well as inset:0 - a fixed overlay is measured against the
+   LAYOUT viewport, which does not shrink when the keyboard opens, so the
+   bottom of this sheet was sitting behind the keyboard. dvh is the one that
+   tracks it. */
+.ex-ov{position:fixed;inset:0;height:100dvh;z-index:440;background:rgba(74,67,64,.62);display:flex;align-items:flex-end;justify-content:center}
+/* THE SEARCH BOX DOES NOT SCROLL AWAY. The sheet used to be the scroll
+   container itself, so the box you are typing in travelled up and off with
+   the results - and with the keyboard up there is barely a screen left, so
+   it left at the first keystroke and you had to scroll back for it. The
+   sheet is a column now: the header and the box hold still, #ex-body is the
+   only thing that moves. */
+.ex-sheet{width:100%;max-width:480px;background:var(--panel);border-radius:22px 22px 0 0;padding:16px 14px 0;max-height:88vh;max-height:88dvh;display:flex;flex-direction:column;overflow:hidden}
+.ex-hd,.ex-q{flex:0 0 auto}
+#ex-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(18px + env(safe-area-inset-bottom))}
 .ex-hd{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px}
 .ex-x{background:none;border:none;font-size:22px;line-height:1;color:var(--muted-soft);cursor:pointer;font-family:inherit;padding:0 4px}
 .ex-q{width:100%;border:1.5px solid var(--line-strong);border-radius:12px;padding:11px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--card);outline:none;text-align:start}
@@ -23349,42 +23361,112 @@ function exLabel(nm){
   for(i=0;i<a.length;i++)if(a[i].n===nm)return exTitle(a[i]);
   return nm;
 }
+/* EVERYTHING A ROW ANSWERS TO, folded into one normalised string the way the
+   food table does it: its stored name, all eleven translations - so
+   Kniebeuge, スクワット, 深蹲 and sentadilla all reach the squat - the words
+   people say for it in the room, and the muscle and kit it belongs to, which
+   is what lets "מכונה חזה" work at all. Built once per row and kept on it;
+   exLoad replaces the whole database, so a stale key cannot survive. */
+function exKey(e){
+  if(e._s)return e._s;
+  var s=e.n+' '+(e.en||''),k,i;
+  if(e.t)for(k in e.t)if(e.t.hasOwnProperty(k))s+=' '+e.t[k];
+  if(e.aka)for(i=0;i<e.aka.length;i++)s+=' '+e.aka[i];
+  /* AND THE FAMILY'S WORDS. The room's name for a movement is written on one
+     row - שראגס on משיכת כתפיים במשקולות, פולאפ on מתח - so without this it
+     finds one of five shrugs and one of seven pull-ups, and the rest look
+     missing. A variant is spelled as its parent's name plus a kit, so the
+     name boundary is the relationship; 72 of the 235 rows inherit this way
+     and every one of them was read. */
+  var all=exAll(),j,p,q;
+  /* A family name is sometimes a row's name and sometimes only an aka: there
+     is no row called לחיצת חזה or משיכת כתפיים, just לחיצת חזה במוט and
+     משיכת כתפיים במשקולות, each holding the bare name in its own list. Both
+     count as the parent. */
+  function exLeads(parent,child){
+    return child.length>parent.length&&child.slice(0,parent.length)===parent&&
+           child.charAt(parent.length)===' ';
+  }
+  for(j=0;j<all.length;j++){
+    p=all[j];
+    if(p===e||!p.aka||!p.aka.length)continue;
+    q=exLeads(p.n,e.n);
+    if(!q)for(i=0;i<p.aka.length;i++)if(exLeads(p.aka[i],e.n)){q=true;break;}
+    if(q)for(i=0;i<p.aka.length;i++)s+=' '+p.aka[i];
+  }
+  if(e.m)for(i=0;i<e.m.length;i++)s+=' '+e.m[i];
+  if(e.q)for(i=0;i<e.q.length;i++)s+=' '+e.q[i];
+  e._s=foodKey(s);
+  return e._s;
+}
+/* Hebrew's construct state changes only the final letter - מכונה becomes
+   מכונת, לחיצה becomes לחיצת - so a word typed one way has to reach a row
+   that spells it the other. Tried only as a FALLBACK and only on the query,
+   so no stored key moves and a search can only gain answers. The four-letter
+   floor is the same guard foodKey uses on the final letterforms. */
+function exStem(w){
+  return /^[א-ת]{4,}[הת]$/.test(w)?w.slice(0,-1):w;
+}
+function exWords(q){
+  var w=foodKey(q||'').split(' '),out=[],i;
+  for(i=0;i<w.length;i++)if(w[i])out.push(w[i]);
+  return out;
+}
+/* EVERY WORD HAS TO LAND, IN ANY ORDER. It used to be one literal substring,
+   and that is why "לחיצת חזה מכונה" found nothing: the library spells every
+   machine exercise "במכונה", so dropping the ב lost all thirty-four of them
+   at once, and "לאנץ בולגרי" could never reach a row called סקוואט בולגרי
+   however it was spelled. Measured on the 235 rows: every one still finds
+   itself, and the widest query returns 16. */
 function exMatch(e,q){
-  if(!q)return true;
-  q=q.toLowerCase();
-  if(e.n.toLowerCase().indexOf(q)>=0)return true;
-  /* Every language's name, not just Hebrew and English - so Kniebeuge,
-     スクワット, 深蹲 and sentadilla all reach the squat whatever the
-     interface is set to. */
-  var t=e.t,k;
-  if(t)for(k in t)if(t[k]&&String(t[k]).toLowerCase().indexOf(q)>=0)return true;
-  else if((e.en||'').toLowerCase().indexOf(q)>=0)return true;
-  /* The other words people say for it. The lat pulldown was in this list from
-     the first day and nobody could find it, because it is called פולי עליון
-     here and פול דאון in the room. Searched, never displayed. */
-  var a=e.aka,i;
-  if(a)for(i=0;i<a.length;i++)if(a[i].toLowerCase().indexOf(q)>=0)return true;
-  return false;
+  var w=exWords(q),s=exKey(e),i;
+  for(i=0;i<w.length;i++)
+    if(s.indexOf(w[i])<0&&s.indexOf(exStem(w[i]))<0)return false;
+  return true;
 }
 /* How well a row answers what was typed - lower is better. Only ever called
    on rows exMatch has already accepted, so one of the branches always hits. */
-function exRank(e,q){
-  /* The name ON SCREEN first, then any other language, then the words it
-     merely answers to - the same order the food search settled on. */
-  var n=exTitle(e).toLowerCase(),a=e.aka,t=e.t,i,k;
+/* The name ON SCREEN first, then any other language, then the words it
+   merely answers to - the same order the food search settled on. `fold` says
+   which spelling is being compared, and the caller asks twice. */
+function exRankTiers(n,a,t,q,fold){
+  var i,k,v,y;
+  function f(s){return fold?foodKey(s||''):String(s||'').toLowerCase();}
   if(n===q)return 0;
   if(n.indexOf(q)===0)return 1;
   if(n.indexOf(q)>=0)return 2;
-  if(t)for(k in t){
-    var v=String(t[k]||'').toLowerCase();
-    if(v===q||v.indexOf(q)===0)return 3;
-  }
-  if(t)for(k in t)if(String(t[k]||'').toLowerCase().indexOf(q)>=0)return 4;
-  if(a)for(i=0;i<a.length;i++){
-    var y=a[i].toLowerCase();
-    if(y===q||y.indexOf(q)===0)return 5;
-  }
+  if(t)for(k in t){v=f(t[k]);if(v===q||v.indexOf(q)===0)return 3;}
+  if(t)for(k in t)if(f(t[k]).indexOf(q)>=0)return 4;
+  if(a)for(i=0;i<a.length;i++){y=f(a[i]);if(y===q||y.indexOf(q)===0)return 5;}
   return 6;
+}
+/* ASKED TWICE, AS WRITTEN FIRST. Ranking everything through foodKey moved
+   rows past each other that were already in the right order, because the
+   folds collide on purpose: סקוט really is the Scott bench AND a spelling of
+   סקוואט, so "כפיפה בסקוט" contains the folded query outright while the squat
+   - which folds to סקואט - does not, and the preacher curl won a word that
+   means squat. No single ordering of one comparison holds both.
+   So: the spelling as typed decides first, which is what this did before
+   today and got right; the fold only orders the rows that answered nothing as
+   written, and sits below every one of them. A row reached only through the
+   fold can never outrank a row reached as it was typed. */
+function exRank(e,q){
+  var w=exWords(q),qq=w.join(' ');
+  if(!qq)return 99;
+  var nm=exTitle(e),raw=String(q||'').toLowerCase(),r;
+  raw=raw.replace(/^\s+/,'').replace(/\s+$/,'');
+  r=exRankTiers(nm.toLowerCase(),e.aka,e.t,raw,false);
+  if(r<6)return r;
+  var n=foodKey(nm);
+  r=exRankTiers(n,e.aka,e.t,qq,true);
+  if(r<6)return 6+r;
+  /* Typed out of order, or in the construct state, so no phrase tier could
+     hit at all. The row whose own NAME holds every word comes before one that
+     holds some, and both before a row answering only through kit or muscle. */
+  var hit=0,i;
+  for(i=0;i<w.length;i++)
+    if(n.indexOf(w[i])>=0||n.indexOf(exStem(w[i]))>=0)hit++;
+  return 12+(w.length-hit);
 }
 /* The chosen filters are stored as the data words the database uses, never as
    translated labels - they are compared against e.m and e.q, and translated
