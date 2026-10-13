@@ -1062,8 +1062,13 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .wtr-mid{margin:auto 0 0;padding-top:14px}
 /* tracking is a Latin habit - Hebrew has no capitals to space out, and .2em
    turned מנוחה into מ נ ו ח ה */
+/* width:100% is not decoration. This is a block in a centring flex column,
+   so without it the line shrinks to its content - and its content while the
+   coach's word is up is an EMPTY span, since the phase word is hidden
+   underneath it. The cue is positioned against this box: it had 61px to sit
+   in and "HALF WAY THERE" is 182px of ink, so it spilled out of the ring. */
 .wtr-phase{text-align:center;font-size:15.5px;font-weight:800;letter-spacing:.05em;
-  color:var(--nu-muted);position:relative}
+  color:var(--nu-muted);position:relative;width:100%}
 /* :first-child, because the cue is a span in here too. Without it the rule
    below hid the coach's word along with the phase word it replaces - and won
    on specificity, so the word never appeared. */
@@ -20628,7 +20633,10 @@ function wtNames(){
   var saved=wtPlanLoad();
   if(saved&&saved.kind===_wtKind&&saved.names&&saved.names.length)
     return saved.names.slice(0);
-  return [];
+  /* TWO EMPTY ROWS, not none. The rows drawn are exactly what this returns -
+     the renderer used to append a trailing empty one of its own, and with
+     the + button pushing one as well, a single tap produced two. */
+  return ['',''];
 }
 function wtNamesEdit(){
   if(!_wtNamesTmp)_wtNamesTmp=wtNames();
@@ -20643,6 +20651,7 @@ function wtNameAdd(){ wtNamesEdit().push(''); renderFitness(); }
 function wtNameDel(i){
   var a=wtNamesEdit();
   if(i>=0&&i<a.length)a.splice(i,1);
+  if(!a.length)a.push('');   /* never nothing: there would be no way back */
   renderFitness();
 }
 /* what actually reaches the plan: the blanks fall out, so three rows with
@@ -20709,11 +20718,9 @@ function renderFitTimer(){
      whole of the timer as it was. */
   h+='<div class="tm-h" style="margin-bottom:5px">'+_t('מה עושים בכל סבב')+'</div>';
   h+='<div class="tm-sub">'+esc(_t('אפשר לדלג. אם תרשום פחות שמות ממספר הסבבים, הם יחזרו במחזור.'))+'</div>';
+  /* exactly the rows the list holds. Adding one is the + button's job and
+     nobody else's. */
   var nm=wtNames(),ni;
-  /* one empty row waiting, and never fewer than two - an empty list with a
-     single box reads like a required field */
-  if(nm.length<2)nm=nm.concat(['','']).slice(0,2);
-  else nm=nm.concat(['']);
   for(ni=0;ni<nm.length;ni++){
     h+='<div class="tm-row"><span class="tm-rn">'+nfmt(ni+1)+'</span>'+
        '<input type="text" value="'+esc(nm[ni])+'" maxlength="40" '+
@@ -24267,7 +24274,17 @@ function wtWrite(sec,run,at){
   el=document.getElementById('wt-cue');
   if(el){
     cueOn=!!_wtCueWord&&Date.now()<_wtCueUntil;
-    if(cueOn&&el.textContent!==_wtCueWord)el.textContent=_wtCueWord;
+    if(cueOn&&el.textContent!==_wtCueWord){
+      el.textContent=_wtCueWord;
+      /* and then it is MADE to fit. The width above is the fix; this is the
+         guarantee, because the next long word is not going to be measured
+         by anyone. Only ever shrinks. */
+      el.style.fontSize='';
+      if(el.scrollWidth>el.clientWidth&&el.clientWidth>0){
+        p=parseFloat(getComputedStyle(el).fontSize)*(el.clientWidth/el.scrollWidth)*.97;
+        el.style.fontSize=p.toFixed(1)+'px';
+      }
+    }
     el.className='wtr-cue'+(cueOn?' on':'');
     wrap=document.getElementById('wt-phw');
     if(wrap)wrap.className='wtr-phase'+(cueOn?' cued':'');
