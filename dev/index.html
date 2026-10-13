@@ -967,7 +967,7 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .exw-w.empty{font-size:13px;font-weight:700;color:var(--nu-muted);
   box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
 .exw-note{font-size:12.5px;color:#6d675e;line-height:1.65;margin-bottom:14px}
-.tm-card,.tm-n input,.tm-k,.tm-go,.tm-row input,.tm-x,.tm-add{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);
+.tm-card,.tm-n input,.tm-k,.tm-go,.tm-row input,.tm-x,.tm-add,.tm-cyc{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);
   --nu-shade:rgba(176,168,156,.44);--nu-shade-soft:rgba(176,168,156,.28);
   --nu-ink:#4a453f;--nu-muted:#6d675e}
 .tm-card{background:var(--nu-ground);border-radius:20px;padding:17px;margin-bottom:12px;
@@ -1011,6 +1011,9 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;
   background:var(--nu-ground);color:var(--nu-muted);
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.tm-cyc{font-size:12px;font-weight:700;color:var(--nu-muted);line-height:1.6;
+  margin:-6px 0 13px;padding:9px 12px;border-radius:12px;background:var(--nu-ground);
+  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
 .tm-add{width:100%;border:none;border-radius:13px;padding:11px;margin-bottom:14px;
   font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;
   background:var(--nu-ground);color:var(--nu-muted);
@@ -1072,8 +1075,13 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* :first-child, because the cue is a span in here too. Without it the rule
    below hid the coach's word along with the phase word it replaces - and won
    on specificity, so the word never appeared. */
-.wtr-phase>span:first-child{display:inline-block;transition:opacity .25s ease}
-.wtr-phase.cued>span:first-child{opacity:0}
+/* THEY TAKE TURNS, they do not cross. Both sit on the same centred line, so
+   a crossfade puts one word through the other - half a second of "כפיפות"
+   and "LET'S GO" on top of each other, which reads as a rendering fault.
+   Out fast and at once; back only after the cue has finished leaving. */
+.wtr-phase>span:first-child{display:inline-block;
+  transition:opacity .22s ease .28s}
+.wtr-phase.cued>span:first-child{opacity:0;transition:opacity .1s ease 0s}
 /* THE COACH'S WORD, over the phase line and not instead of it: absolutely
    positioned, so a 30px word appearing for a second and a half moves nothing
    underneath it. The band above is empty anyway - it is what the word is
@@ -20619,6 +20627,7 @@ function wtKindPick(k){
   if(saved&&saved.kind===k)_wtTmp={work:saved.work,rest:saved.rest,rounds:saved.rounds,prep:saved.prep};
   else _wtTmp=null;
   _wtNamesTmp=null;      /* the names belong to the shape, like the numbers */
+  _wtHadNames=wtNamesClean().length>0;
   renderFitness();
 }
 /* ── THE NAMES, WHILE SHE IS TYPING THEM ──
@@ -20646,12 +20655,50 @@ function wtNameSet(i,v){
   var a=wtNamesEdit();
   while(a.length<=i)a.push('');
   a[i]=v;
+  wtRoundsFollow();
 }
-function wtNameAdd(){ wtNamesEdit().push(''); renderFitness(); }
+/* ── THE EXERCISES SET THE ROUNDS ──
+   He wrote two exercises and got a list of five, because the rounds were
+   still the Tabata preset's eight and the names were quietly cycling to fill
+   them. Two exercises is a workout of two exercises.
+
+   Cycling stays - eight rounds of two alternating exercises is a real
+   workout - but it has to be asked for, by raising the rounds AFTER writing
+   the names. Last edit wins, and the line under the rows says out loud when
+   they are going to repeat.
+
+   The box is written in place and nothing is repainted: a repaint on a
+   keystroke takes the caret with it. */
+/* ── THE FIRST EXERCISE MAKES IT ONE ROUND ──
+   A round is a pass through the list, so a list of three exercises is three
+   exercises - once. Picking Tabata and then writing three names used to
+   leave rounds at eight, which is twenty-four intervals nobody asked for.
+   Only on the TRANSITION from no names to some: after that the box is his,
+   and raising it is how a repeat gets asked for. */
+var _wtHadNames=false;
+function wtRoundsFollow(){
+  var k=wtNamesClean().length,cur,el;
+  if(_wtKind==='amrap')return;
+  if(k&&!_wtHadNames){
+    cur=wtNums();
+    _wtTmp={work:cur.work,rest:cur.rest,rounds:1,prep:cur.prep};
+    el=document.getElementById('tm-n-rounds');
+    if(el)el.value=1;
+  }
+  _wtHadNames=!!k;
+  wtCycNote();
+}
+/* and the line that says a repeat is a repeat */
+function wtCycNote(){
+  var el=document.getElementById('tm-cyc'),k=wtNamesClean().length;
+  if(el)el.style.display=(k&&(wtNums().rounds|0)>1)?'':'none';
+}
+function wtNameAdd(){ wtNamesEdit().push(''); wtRoundsFollow(); renderFitness(); }
 function wtNameDel(i){
   var a=wtNamesEdit();
   if(i>=0&&i<a.length)a.splice(i,1);
   if(!a.length)a.push('');   /* never nothing: there would be no way back */
+  wtRoundsFollow();
   renderFitness();
 }
 /* what actually reaches the plan: the blanks fall out, so three rows with
@@ -20673,10 +20720,17 @@ function wtNumSet(field,v){
   var cur=wtNums();
   _wtTmp={work:cur.work,rest:cur.rest,rounds:cur.rounds,prep:cur.prep};
   if(!isFinite(n)||n<0)n=0;
-  if(field==='work')_wtTmp.work=Math.min(3600,Math.max(1,n));
+  /* no floor of 1 while he is TYPING. Clearing the box to retype it used to
+     land on 1 on the keystroke that emptied it, which is how three exercises
+     ended up as one round. wtPlanStart puts the floor back at the only
+     moment it matters. */
+  if(field==='work')_wtTmp.work=Math.min(3600,n);
   if(field==='rest')_wtTmp.rest=Math.min(3600,n);
-  if(field==='rounds')_wtTmp.rounds=Math.min(99,Math.max(1,n));
+  if(field==='rounds')_wtTmp.rounds=Math.min(99,n);
   if(field==='prep')_wtTmp.prep=Math.min(60,n);
+  /* last, and in place rather than by repainting: he is typing in the box
+     next to this line, and a repaint would take the caret with it */
+  if(field==='rounds')wtCycNote();
 }
 function wtGo(){
   var n=wtNums();
@@ -20717,7 +20771,7 @@ function renderFitTimer(){
      than behind a door of its own: not touching it and pressing start is the
      whole of the timer as it was. */
   h+='<div class="tm-h" style="margin-bottom:5px">'+_t('מה עושים בכל סבב')+'</div>';
-  h+='<div class="tm-sub">'+esc(_t('אפשר לדלג. אם תרשום פחות שמות ממספר הסבבים, הם יחזרו במחזור.'))+'</div>';
+  h+='<div class="tm-sub">'+esc(_t('אפשר לדלג. סבב אחד הוא מעבר אחד על כל הרשימה.'))+'</div>';
   /* exactly the rows the list holds. Adding one is the + button's job and
      nobody else's. */
   var nm=wtNames(),ni;
@@ -20730,6 +20784,12 @@ function renderFitTimer(){
        '</div>';
   }
   h+='<button class="tm-add" onclick="wtNameAdd()">'+_t('+ עוד שורה')+'</button>';
+  /* ONLY when he has raised the rounds himself above the number of exercises.
+     Then they do repeat, and a repeat nobody mentioned is the thing that
+     looked like a bug. */
+  h+='<div class="tm-cyc" id="tm-cyc"'+
+     ((wtNamesClean().length&&(n.rounds|0)>1)?'':' style="display:none"')+
+     '>'+esc(_t('יותר מסבב אחד — כל הרשימה תחזור על עצמה מההתחלה.'))+'</div>';
   h+='<button class="tm-start" onclick="wtGo()">'+_t('התחל')+'</button>';
   h+='</div>';
 
@@ -20738,7 +20798,7 @@ function renderFitTimer(){
 }
 function wtNumHTML(field,label,val,hint){
   return '<label class="tm-n"><span>'+label+(hint?' <i>'+hint+'</i>':'')+'</span>'+
-    '<input type="number" inputmode="numeric" value="'+val+'" '+
+    '<input type="number" inputmode="numeric" id="tm-n-'+field+'" value="'+val+'" '+
     'oninput="wtNumSet(\''+field+'\',this.value)"></label>';
 }
 function wtKindWhat(k){
@@ -23874,10 +23934,11 @@ var WT_PLAN_KEY='fit_wtplan';
    eight rounds is plank, sit-ups, plank, sit-ups... which is what a person
    means when they say "forty seconds of plank and then forty of sit-ups".
    Empty is the old timer, unchanged. */
-function wtNameFor(round){
+/* the name of the exercise at a position in the list */
+function wtNameAt(i){
   var p=_wtPlan;
-  if(!p||!p.names||!p.names.length||round<1)return '';
-  return p.names[(round-1)%p.names.length]||'';
+  if(!p||!p.names||!p.names.length||i<0)return '';
+  return p.names[i%p.names.length]||'';
 }
 function wtPlanLoad(){
   try{
@@ -23894,6 +23955,21 @@ function wtPlanLabel(kind){
 /* WHERE IN THE SCHEDULE, from elapsed time alone. Deriving it rather than
    counting it is what makes a locked screen cost nothing: come back in round
    three and you are in round three, at the right second. */
+/* HOW MANY WORK INTERVALS THERE ARE. A round is a pass through the whole
+   list, so three exercises over two rounds is six - and with no list at all
+   a round IS an interval, which is how the timer has always worked. */
+function wtExCount(p){
+  p=p||_wtPlan;
+  return (p&&p.names&&p.names.length)?p.names.length:0;
+}
+function wtIntervals(p){
+  p=p||_wtPlan;
+  if(!p)return 0;
+  var k=wtExCount(p);
+  return k?k*Math.max(1,p.rounds):Math.max(1,p.rounds);
+}
+/* WHERE IN THE SCHEDULE, from elapsed time alone. idx is the interval, and
+   the round and the exercise are both read off it. */
 function wtAt(elapsed){
   var p=_wtPlan;
   if(!p)return null;
@@ -23901,15 +23977,20 @@ function wtAt(elapsed){
      ten THOUSANDTHS of a second and every round started ten seconds early -
      which looks like nothing at all on a screen you are not watching. */
   var prep=(p.prep||0)*1000;
-  if(elapsed<prep)return {phase:'prep',left:Math.ceil((prep-elapsed)/1000),round:0};
-  var t=elapsed-prep,cyc=(p.work+p.rest)*1000;
-  if(cyc<=0)return {phase:'done',left:0,round:p.rounds};
-  var round=Math.floor(t/cyc)+1;
-  if(round>p.rounds)return {phase:'done',left:0,round:p.rounds};
+  if(elapsed<prep)return {phase:'prep',left:Math.ceil((prep-elapsed)/1000),
+                          round:0,idx:-1,ex:wtExCount(p)?0:-1};
+  var t=elapsed-prep,cyc=(p.work+p.rest)*1000,total=wtIntervals(p),k=wtExCount(p);
+  function at(ph,left,idx){
+    return {phase:ph,left:left,idx:idx,
+            round:k?Math.floor(idx/k)+1:idx+1,
+            ex:k?idx%k:-1};
+  }
+  if(cyc<=0)return at('done',0,total-1);
+  var idx=Math.floor(t/cyc);
+  if(idx>=total)return at('done',0,total-1);
   var inCyc=t%cyc;
-  if(inCyc<p.work*1000)
-    return {phase:'work',left:Math.ceil((p.work*1000-inCyc)/1000),round:round};
-  return {phase:'rest',left:Math.ceil((cyc-inCyc)/1000),round:round};
+  if(inCyc<p.work*1000)return at('work',Math.ceil((p.work*1000-inCyc)/1000),idx);
+  return at('rest',Math.ceil((cyc-inCyc)/1000),idx);
 }
 function wtPhaseLabel(ph){
   /* |טיימר: an INTERVAL, not the life area. Plain 'עבודה' is answered 仕事
@@ -24193,11 +24274,13 @@ function wtScreenHTML(run,at){
      she is in, so its height never moves. */
   if(plan&&_wtPlan.names&&_wtPlan.names.length)
     h+='<div class="wtr-list" id="wt-list"></div>';
-  /* one pip per round, while a pip is still a pip. Past sixteen they are
-     slivers and the line above already says 3 of 20. */
-  if(plan&&_wtPlan.rounds>1&&_wtPlan.rounds<=16){
+  /* One pip per interval, while a pip is still a pip. With a list of
+     exercises the list already shows where she is, so the pips only appear
+     when there is no list - two answers to one question is how a screen
+     stops being read. */
+  if(plan&&!wtExCount()&&wtIntervals()>1&&wtIntervals()<=16){
     h+='<div class="wtr-pips" id="wt-pips">';
-    for(i=0;i<_wtPlan.rounds;i++)h+='<span class="wtr-pip"></span>';
+    for(i=0;i<wtIntervals();i++)h+='<span class="wtr-pip"></span>';
     h+='</div>';
   }
   /* "אחר כך" is what the list would have said, so it goes when the list is
@@ -24258,7 +24341,7 @@ function wtWrite(sec,run,at){
      "work": she already knew it was work; what she cannot remember is which
      of the eight this one is. Rest stays "rest", because rest is not an
      exercise. */
-  nm=(at&&at.phase==='work')?wtNameFor(at.round):'';
+  nm=(at&&at.phase==='work')?wtNameAt(at.ex):'';
   if(el){
     el.textContent=(nm&&_wtFull)?'':
       (at?wtPhaseLabel(at.phase)
@@ -24267,8 +24350,12 @@ function wtWrite(sec,run,at){
     if(nm&&_wtFull)el.textContent=nm;
   }
   el=document.getElementById('wt-of');
-  if(el)el.textContent=(at&&(at.phase==='work'||at.phase==='rest'))
-    ?_t('סבב {n} מתוך {total}',{n:at.round,total:_wtPlan.rounds}):'';
+  /* with a list, the list itself says which exercise - so this line carries
+     the ROUND, and only when there is more than one. "סבב 1 מתוך 1" is noise
+     on a screen that is meant to be read in half a second. */
+  if(el)el.textContent=(at&&(at.phase==='work'||at.phase==='rest')&&
+      (!wtExCount()||_wtPlan.rounds>1))
+    ?_t('סבב {n} מתוך {total}',{n:at.round,total:Math.max(1,_wtPlan.rounds)}):'';
   /* the coach word, driven from state rather than written once: a repaint
      between the word appearing and the word fading would otherwise lose it */
   el=document.getElementById('wt-cue');
@@ -24314,8 +24401,8 @@ function wtWrite(sec,run,at){
     span=pips.children;
     for(i=0;i<span.length;i++)
       span[i].className='wtr-pip'+
-        (at.phase==='done'||i+1<at.round?' done'
-          :(i+1===at.round&&at.phase!=='prep')?' now':'');
+        (at.phase==='done'||i<at.idx?' done'
+          :(i===at.idx&&at.phase!=='prep')?' now':'');
   }
   el=document.getElementById('wt-next');
   if(el&&plan)el.textContent=at&&at.phase==='work'
@@ -24326,11 +24413,14 @@ function wtWrite(sec,run,at){
      ends, so the list is the same height in round one and round eight. */
   el=document.getElementById('wt-list');
   if(el&&plan&&at){
-    var R=_wtPlan.rounds,cur=Math.max(1,Math.min(R,at.round||1)),W=Math.min(5,R);
-    var first=Math.max(1,Math.min(R-W+1,cur-2)),r,hh='';
+    /* THE LIST IS THE EXERCISES, not the intervals - one pass, with the one
+       she is on raised. A window of five around it, so eight exercises do
+       not make a list she has to scroll mid-burpee. */
+    var K=wtExCount(),cur=Math.max(0,Math.min(K-1,at.ex<0?0:at.ex)),W=Math.min(5,K);
+    var first=Math.max(0,Math.min(K-W,cur-2)),r,hh='';
     for(r=first;r<first+W;r++)
       hh+='<div class="wtr-li'+(r<cur?' done':r===cur?' now':'')+'">'+
-          '<em>'+nfmt(r)+'</em><span>'+esc(wtNameFor(r))+'</span></div>';
+          '<em>'+nfmt(r+1)+'</em><span>'+esc(wtNameAt(r))+'</span></div>';
     if(hh!==el.getAttribute('data-h')){el.innerHTML=hh;el.setAttribute('data-h',hh);}
   }
 }
