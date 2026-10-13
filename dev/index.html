@@ -1039,7 +1039,22 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* tracking is a Latin habit - Hebrew has no capitals to space out, and .2em
    turned מנוחה into מ נ ו ח ה */
 .wtr-phase{text-align:center;font-size:15.5px;font-weight:800;letter-spacing:.05em;
-  color:var(--nu-muted)}
+  color:var(--nu-muted);position:relative}
+/* :first-child, because the cue is a span in here too. Without it the rule
+   below hid the coach's word along with the phase word it replaces - and won
+   on specificity, so the word never appeared. */
+.wtr-phase>span:first-child{display:inline-block;transition:opacity .25s ease}
+.wtr-phase.cued>span:first-child{opacity:0}
+/* THE COACH'S WORD, over the phase line and not instead of it: absolutely
+   positioned, so a 30px word appearing for a second and a half moves nothing
+   underneath it. The band above is empty anyway - it is what the word is
+   for. */
+.wtr-cue{position:absolute;inset-inline:0;top:50%;white-space:nowrap;
+  transform:translateY(-50%) scale(.93);opacity:0;pointer-events:none;
+  font-size:30px;font-weight:800;letter-spacing:.02em;color:var(--nu-ink);
+  direction:ltr;text-transform:uppercase;
+  transition:opacity .28s ease,transform .28s ease}
+.wtr-cue.on{opacity:1;transform:translateY(-50%) scale(1)}
 /* THE DIGITS GET THE WIDTH THE SCREEN HAS. Four glyphs (0:14) and five
    (10:00) are not the same width, and a face that reflows mid-round is worse
    than one that is a little smaller - so the length picks the size once and
@@ -1055,21 +1070,31 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
    from the floor when a word does not. It is also why the last ten seconds
    get no red digits - the channel already says it, and a second colour would
    be a second language. */
-.wtr-track{height:16px;border-radius:9px;background:var(--nu-ground);overflow:hidden;
+/* no overflow:hidden - the fill never exceeds the track, and clipping it
+   would cut off the glow, which is the part that makes the light look lit */
+.wtr-track{height:16px;border-radius:9px;background:var(--nu-ground);
   margin-top:24px;
   box-shadow:inset 3px 4px 9px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+/* THE LIGHT MOVES, it does not step. The width is written five times a
+   second, and a .25s linear glide turns those five jumps into one continuous
+   travel - the eye reads a bar that is draining rather than a bar being
+   redrawn. The colour cross-fades for the same reason: work going to rest
+   used to snap from amber to ink in one frame. */
 .wtr-fill{height:100%;border-radius:9px;background:var(--nu-amber);
-  box-shadow:inset 1px 2px 4px rgba(176,168,156,.5)}
+  box-shadow:inset 1px 2px 4px rgba(176,168,156,.45),0 0 11px rgba(240,169,46,.55);
+  transition:width .25s linear,background-color .45s ease,box-shadow .45s ease}
 /* WORK IS LIT, REST IS DARK - measured, not reasoned about. A rest fill one
    shade off the channel it sits in is not a fill at a metre and a half; it
    reads as a bar that has stopped working. These are the two values the pips
    already carry, so it is one vocabulary and not two. */
-.wtr-fill.rest{background:var(--nu-ink);box-shadow:none}
+.wtr-fill.rest{background:var(--nu-ink);
+  box-shadow:inset 1px 2px 4px rgba(0,0,0,.18),0 0 0 rgba(240,169,46,0)}
 .wtr-pips{display:flex;gap:6px;justify-content:center;margin-top:16px}
 .wtr-pip{flex:1;height:9px;border-radius:5px;background:var(--nu-ground);
-  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit);
+  transition:background-color .4s ease,box-shadow .4s ease}
 .wtr-pip.done{background:var(--nu-ink);box-shadow:none}
-.wtr-pip.now{background:var(--nu-amber);box-shadow:none}
+.wtr-pip.now{background:var(--nu-amber);box-shadow:0 0 9px rgba(240,169,46,.5)}
 .wtr-next{text-align:center;margin-top:18px;border-radius:15px;padding:13px 15px;
   font-size:13px;font-weight:700;color:var(--nu-muted);background:var(--nu-ground);
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
@@ -23735,12 +23760,46 @@ function wtPhaseLabel(ph){
   return ph==='prep'?''+_t('היכון')+'':ph==='work'?''+_t('עבודה|טיימר')+'':
          ph==='rest'?''+_t('מנוחה|טיימר')+'':''+_t('סיימת')+'';
 }
-/* A different noise for the end than for a round, because they mean different
-   things and you are not looking at the screen. */
-function wtBeep(times){
-  restBeep();
-  if(times>1)setTimeout(restBeep,420);
-  if(times>2)setTimeout(restBeep,840);
+/* ── WHAT GETS SAID, AND WHEN ──
+   _wtCued is emptied on every phase change, so each line fires once per
+   phase and a pause-and-resume does not repeat it.
+
+   "a beep three seconds before an exercise starts" and "a beep in the last
+   three seconds of an exercise" are THE SAME EVENT seen from either side,
+   which is why there is one rule and not two: the last three seconds of
+   whatever is running.
+
+   The two spoken lines inside a work phase are guarded by length, not
+   wishful ordering. Half way is only meaningful from twenty seconds up, and
+   "ten seconds" would land on top of it at exactly twenty - so it waits for
+   twenty-five, where half way is at thirteen and the two are three seconds
+   apart, which is longer than either takes to say. */
+var _wtCued={};
+function wtCues(at){
+  var p=_wtPlan,half;
+  if(!p)return;
+  if(at.left<=3&&at.left>=1&&!_wtCued['t'+at.left]){
+    _wtCued['t'+at.left]=1;
+    wtSound('tick');
+  }
+  if(at.phase!=='work')return;
+  half=Math.ceil(p.work/2);
+  /* the upper guard matters: without it, resuming a work phase that is
+     already past half way announces half way */
+  if(p.work>=20&&!_wtCued.half&&at.left<=half&&at.left>half-3){
+    _wtCued.half=1;wtCue('half');
+  }
+  if(p.work>=25&&!_wtCued.ten&&at.left<=10&&at.left>7){
+    _wtCued.ten=1;wtCue('ten');
+  }
+}
+function wtPhaseSound(phase){
+  _wtCued={};
+  if(phase==='work'){wtSound('go');wtCue('go');return;}
+  /* REST, only where there is one. With rest at zero a work phase is
+     followed by a work phase, and "Rest" into the next round is a lie. */
+  if(phase==='rest'){wtSound('rest');wtCue('rest');return;}
+  if(phase==='done'){wtSound('done');_wtCueWord='';_wtCueUntil=0;}
 }
 function wtPlanStart(kind,work,rest,rounds,prep){
   _wtPlan={kind:kind,work:Math.max(1,work|0),rest:Math.max(0,rest|0),
@@ -23749,9 +23808,11 @@ function wtPlanStart(kind,work,rest,rounds,prep){
   _wtMode='plan';_wtPhase='';_wtRound=0;_wtPaused=0;
   _wtFrom=Date.now();
   _wtOpen=true;
+  _wtCued={};_wtCueWord='';_wtCueUntil=0;
   if(_wtIv)clearInterval(_wtIv);
   _wtIv=setInterval(wtTick,200);
   wtLockOn();
+  sndPrime();
   wtTick();
 }
 /* seconds on the clock right now, whichever way it is counting */
@@ -23793,6 +23854,7 @@ function wtStart(){
   if(_wtIv)clearInterval(_wtIv);
   _wtIv=setInterval(wtTick,200);
   wtLockOn();
+  sndPrime();
   wtTick();
 }
 function wtPause(){
@@ -23858,11 +23920,14 @@ function wtTick(){
     var at=wtAt((_wtPaused||Date.now())-_wtFrom);
     if(!at){wtReset();return;}
     /* the noise happens on the CHANGE, which is the only moment it means
-       anything - and it is how you follow this without looking */
+       anything - and it is how you follow this without looking. It fires on
+       the FIRST phase too: with no preparation time, the first thing that
+       happens is a work phase, and "Let's go" is the whole point of it. */
     if(at.phase!==_wtPhase||at.round!==_wtRound){
-      if(_wtPhase)wtBeep(at.phase==='done'?3:1);
       _wtPhase=at.phase;_wtRound=at.round;
+      wtPhaseSound(at.phase);
     }
+    wtCues(at);
     if(at.phase==='done'){
       if(_wtIv){clearInterval(_wtIv);_wtIv=null;}
       _wtPaused=0;
@@ -23871,13 +23936,20 @@ function wtTick(){
     wtPaint();
     return;
   }
-  if(_wtMode==='down'&&wtSecs()<=0){
-    if(_wtIv){clearInterval(_wtIv);_wtIv=null;}
-    _wtPaused=0;_wtEnd=0;
-    wtLockOff();
-    restBeep();               /* the noise this app already makes at zero */
-    wtPaint();
-    return;
+  if(_wtMode==='down'){
+    var dsec=wtSecs();
+    if(dsec<=0){
+      if(_wtIv){clearInterval(_wtIv);_wtIv=null;}
+      _wtPaused=0;_wtEnd=0;
+      wtLockOff();
+      wtSound('done');
+      _wtCued={};
+      wtPaint();
+      return;
+    }
+    /* the same last three seconds. A plain countdown ends in the same way a
+       phase does, so it should sound the same way. */
+    if(dsec<=3&&!_wtCued['t'+dsec]){_wtCued['t'+dsec]=1;wtSound('tick');}
   }
   wtPaint();
 }
@@ -23904,9 +23976,15 @@ function wtPaint(){
     at=wtAt((_wtPaused||Date.now())-_wtFrom);
     sec=at?at.left:0;
   }
+  /* the PHASE is deliberately not in here. Nothing in the skeleton depends
+     on it - the fill's colour, the pips and the next line are all written by
+     wtWrite - and rebuilding the DOM at a phase change restarts every CSS
+     transition from nothing, which is precisely the sharpness this screen
+     was asked to lose. Reaching 'done' still rebuilds, through the run flag,
+     because that one does change the buttons. */
   var sig=(_wtFull?'F':'P')+'|'+_wtMode+'|'+_wtSet+'|'+
           (_wtPlan?_wtPlan.kind+':'+_wtPlan.rounds+':'+_wtPlan.rest:'')+'|'+
-          (run?'r':_wtPaused?'p':'i')+'|'+(at?at.phase:'');
+          (run?'r':_wtPaused?'p':'i');
   if(!el||sig!==_wtSig){
     if(!el){
       document.body.insertAdjacentHTML('beforeend','<div id="wt"></div>');
@@ -23927,7 +24005,8 @@ function wtScreenHTML(run,at){
     (plan?'<span class="wtr-ttl">'+esc(wtPlanLabel(_wtPlan.kind))+' &#183; '+
       wtFace(_wtPlan.work)+(_wtPlan.rest>0?' / '+wtFace(_wtPlan.rest):'')+'</span>':'')+
     '</div>';
-  h+='<div class="wtr-mid"><div class="wtr-phase" id="wt-ph"></div>'+
+  h+='<div class="wtr-mid"><div class="wtr-phase" id="wt-phw">'+
+     '<span id="wt-ph"></span><span class="wtr-cue" id="wt-cue"></span></div>'+
      '<div class="wtr-face" id="wt-face"></div>'+
      '<div class="wtr-of" id="wt-of"></div></div>';
   if(plan||_wtMode==='down')
@@ -23976,7 +24055,7 @@ function wtPillHTML(run){
 }
 /* WHAT CHANGES, five times a second: four strings and a width. */
 function wtWrite(sec,run,at){
-  var plan=(_wtMode==='plan'&&!!_wtPlan),p,el,i,pips,left,span;
+  var plan=(_wtMode==='plan'&&!!_wtPlan),p,el,i,pips,left,span,wrap,cueOn;
   var face=wtFace(sec);
   el=document.getElementById('wt-face');
   if(el){
@@ -23995,6 +24074,16 @@ function wtWrite(sec,run,at){
   el=document.getElementById('wt-of');
   if(el)el.textContent=(at&&(at.phase==='work'||at.phase==='rest'))
     ?_t('סבב {n} מתוך {total}',{n:at.round,total:_wtPlan.rounds}):'';
+  /* the coach word, driven from state rather than written once: a repaint
+     between the word appearing and the word fading would otherwise lose it */
+  el=document.getElementById('wt-cue');
+  if(el){
+    cueOn=!!_wtCueWord&&Date.now()<_wtCueUntil;
+    if(cueOn&&el.textContent!==_wtCueWord)el.textContent=_wtCueWord;
+    el.className='wtr-cue'+(cueOn?' on':'');
+    wrap=document.getElementById('wt-phw');
+    if(wrap)wrap.className='wtr-phase'+(cueOn?' cued':'');
+  }
   /* the channel: how much of THIS phase is left, which is what a glance at a
      bar is asking. For a plain countdown it is the length she chose. */
   el=document.getElementById('wt-fill');
@@ -24033,22 +24122,125 @@ function restSet(n){
   // has these buttons, so only it needs redrawing
   if(typeof _fitView!=='undefined'&&_fitView==='workout')renderFitness();
 }
+/* ── ONE CONTEXT FOR THE WHOLE APP ──
+   This used to build a new AudioContext per beep and close it 900ms later.
+   That was fine for one noise a minute and is not fine for three blips in
+   the last three seconds of every phase: Safari allows about six live
+   contexts and then refuses, silently - a sound that stops working halfway
+   through a Tabata with nothing in the console. One context, reused, and
+   resumed on the way in because iOS suspends it the moment the page goes to
+   the background. */
+var _snd=null;
+function sndCtx(){
+  if(typeof sndOn==='function'&&!sndOn())return null;
+  try{
+    var C=window.AudioContext||window.webkitAudioContext;
+    if(!C)return null;
+    if(!_snd)_snd=new C();
+    if(_snd.state==='suspended')_snd.resume();
+    return _snd;
+  }catch(e){return null;}
+}
+/* one tone, scheduled. Built rather than loaded, like the beep it replaces:
+   a file would have to be fetched, and this has to work in a basement gym. */
+function sndTone(a,freq,at,dur,vol,type){
+  try{
+    var o=a.createOscillator(),g=a.createGain(),t=a.currentTime+at;
+    o.type=type||'sine';
+    o.frequency.setValueAtTime(freq,t);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol,t+0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(a.destination);
+    o.start(t);o.stop(t+dur+0.04);
+  }catch(e){}
+}
+/* THE GESTURE. iOS hands out an audio context and a voice only inside a tap,
+   so both are taken on the tap that starts the clock - not at the first
+   moment they are wanted, which is four minutes later with the phone face
+   down on the floor. */
+var _sndPrimed=false;
+function sndPrime(){
+  sndCtx();
+  if(_sndPrimed)return;
+  try{
+    var S=window.speechSynthesis;
+    if(!S||!window.SpeechSynthesisUtterance)return;
+    _sndPrimed=true;
+    var u=new SpeechSynthesisUtterance(' ');
+    u.volume=0;S.speak(u);
+  }catch(e){}
+}
 function restBeep(){
+  var a=sndCtx();
+  if(!a)return;
+  /* unchanged on purpose: this is the noise the rest timer has always made */
+  sndTone(a,660,0,0.15,0.25);
+  sndTone(a,880,0.18,0.15,0.25);
+}
+/* ── FOUR NOISES, BECAUSE THEY MEAN FOUR THINGS ──
+   The old clock played the same two tones once for "a round changed" and
+   three times for "it is over", which is a difference you have to count -
+   and counting is exactly what you cannot do in the middle of a burpee.
+   A phase that STARTS rises. One that ENDS falls. The last three seconds
+   are a dry blip, small on purpose: they are a metronome, not an alarm.
+   The end of the whole schedule is the only chord. */
+function wtSound(kind){
+  var a=sndCtx();
+  if(!a)return;
+  if(kind==='tick'){ sndTone(a,1120,0,0.07,0.16,'triangle'); return; }
+  if(kind==='go'){   sndTone(a,620,0,0.11,0.30); sndTone(a,988,0.11,0.17,0.30); return; }
+  if(kind==='rest'){ sndTone(a,880,0,0.13,0.22); sndTone(a,554,0.13,0.22,0.22); return; }
+  if(kind==='done'){ sndTone(a,660,0,0.16,0.26); sndTone(a,880,0.17,0.16,0.26);
+                     sndTone(a,1174,0.34,0.34,0.26); return; }
+}
+/* ── THE VOICE ──
+   English in every build. That is his decision and it has a reason behind
+   it: these four are gym register, they are the same four words in a London
+   and a Tel Aviv gym, and the English TTS voice is the best one installed on
+   every phone - Hebrew and Arabic voices are noticeably worse, and a coach
+   that sounds wrong is worse than no coach. The same four words go on the
+   screen at 30px, which is what covers a silenced phone. */
+var WT_SAY={go:"Let's go",half:'Half way there',ten:'10 seconds',rest:'Rest'};   // i18n-exempt: the coach's four words are English in every build, by decision - see the note above
+var _wtVoice=null,_wtVoiceSet=false;
+function wtVoice(){
+  if(_wtVoiceSet)return _wtVoice;
+  try{
+    var v=window.speechSynthesis.getVoices()||[],i;
+    /* getVoices() is empty until the list has loaded, so this is NOT cached
+       on a first call that found nothing - caching it there is how an app
+       ends up permanently on the fallback voice. */
+    if(!v.length)return null;
+    _wtVoiceSet=true;
+    for(i=0;i<v.length;i++)if(/^en[-_]/i.test(v[i].lang)&&v[i].localService){_wtVoice=v[i];break;}
+    if(!_wtVoice)for(i=0;i<v.length;i++)if(/^en[-_]/i.test(v[i].lang)){_wtVoice=v[i];break;}
+  }catch(e){}
+  return _wtVoice;
+}
+function wtSay(line){
   if(typeof sndOn==='function'&&!sndOn())return;
   try{
-    var C=window.AudioContext||window.webkitAudioContext;if(!C)return;
-    var a=new C();
-    [0,0.18].forEach(function(off,i){
-      var o=a.createOscillator(),g=a.createGain();
-      o.type='sine';o.frequency.value=i?880:660;
-      g.gain.setValueAtTime(0.0001,a.currentTime+off);
-      g.gain.exponentialRampToValueAtTime(0.25,a.currentTime+off+0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+off+0.15);
-      o.connect(g);g.connect(a.destination);
-      o.start(a.currentTime+off);o.stop(a.currentTime+off+0.2);
-    });
-    setTimeout(function(){try{a.close();}catch(e){}},900);
+    var S=window.speechSynthesis;
+    if(!S||!window.SpeechSynthesisUtterance)return;
+    /* cancel first: a queue is worse than a miss here. "Half way there"
+       arriving while "10 seconds" is due has already stopped being true.
+       Only when there is something to cancel, though - cancel() straight
+       before speak() with nothing speaking is a known way to lose the
+       utterance in Chrome, and that is the common case here. */
+    if(S.speaking||S.pending)S.cancel();
+    var u=new SpeechSynthesisUtterance(line),v=wtVoice();
+    u.lang='en-US';u.rate=1.05;
+    if(v)u.voice=v;
+    S.speak(u);
   }catch(e){}
+}
+/* and the same word, big, for a phone on silent. Held in state rather than
+   written into the DOM, so a repaint cannot lose it mid-word. */
+var _wtCueWord='',_wtCueUntil=0;
+function wtCue(key){
+  _wtCueWord=WT_SAY[key]||'';
+  _wtCueUntil=Date.now()+1800;
+  wtSay(_wtCueWord);
 }
 /* BY HAND, whether or not a set was logged. The automatic start is right most
    of the time and wrong exactly when a set was not detected - and then there
