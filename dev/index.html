@@ -2007,6 +2007,11 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .rf-bar-f{height:100%;background:linear-gradient(90deg,var(--violet-300),var(--violet-500));border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1)}
 .rf-body{flex:1;display:flex;flex-direction:column;justify-content:center;padding:26px 0 10px;animation:rf-in .4s cubic-bezier(.2,.7,.3,1)}
 @keyframes rf-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+/* which day this is being written for, above the question and only when it is
+   not today. --terra-700 is the measured-readable warning colour; this is not
+   a warning but it is the one line that must not be skimmed. */
+.rf-forday{font-size:11.5px;font-weight:800;color:var(--terra-700);
+  letter-spacing:.04em;margin-bottom:9px}
 .rf-q{font-size:25px;font-weight:800;line-height:1.35;color:var(--ink);letter-spacing:-.3px}
 .rf-sub{font-size:13px;color:var(--muted);line-height:1.65;margin-top:10px}
 .rf-field{margin-top:30px}
@@ -2504,6 +2509,21 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .sm-cap{font-size:12.5px;color:var(--ink-soft);text-align:center;font-style:italic;margin:-4px 0 12px;line-height:1.6}
 /* choosing what a day is made of */
 .rf-secs-b{width:100%;background:var(--card);border:none;border-radius:16px;padding:13px;margin-top:12px;font-family:inherit;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;box-shadow:0 2px 10px rgba(200,180,160,.1)}
+/* A DAY IN THE WEEK STRIP, AND IT OPENS. It was a div with the same geometry;
+   it is a button now and nothing about how it looks changed, because the
+   hollow dot was already saying "nothing written here" perfectly well - what
+   it was missing was being pressable. 26px is under a thumb pad on its own,
+   so the row gets padding above and below it to tap into rather than seven
+   taller bars, which would make the week louder than the writing under it. */
+.rf-wkdot{position:relative;flex:1;height:26px;border-radius:8px;border:1.5px solid transparent;
+  padding:0;font:inherit;cursor:pointer;-webkit-appearance:none;appearance:none}
+/* 26px IS BELOW THE THUMB. A pad is 9-11mm, which is 34-42 CSS pixels, and a
+   taller bar would make the week louder than the writing underneath it - the
+   strip is a glance, not a chart. So the target grows and the drawing does
+   not: an invisible child reaching 8px above and below, which hit-testing
+   counts and the eye never sees. 26 drawn, 42 tappable. */
+.rf-wkdot::before{content:'';position:absolute;inset:-8px 0}
+.rf-wkdot:active{transform:scale(.94)}
 /* ── the card the day is handed to you on ──
    The stage owns the perspective so the card can keep a clean transform, and
    pan-y means a vertical scroll still scrolls while only a press-and-drag
@@ -32537,6 +32557,15 @@ function rfFaceMini(m){
 
 function rfRec(d){return loadSummary(d)||null;}
 
+/* OPEN A DAY FROM THE WEEK STRIP. A day with something in it reopens where it
+   was left; an empty one starts. A day in the future is not offered - the
+   strip ends at today - and is refused here as well, because a guard that
+   lives only in the drawing is a guard one caller away from being gone. */
+function rfPickDay(d){
+  if(!d||d>todayStr())return;
+  if(rfRec(d))rfResume(d);else rfStart(d);
+}
+
 // Every answer is written the moment it is given - there is no submit step,
 // and closing the app mid-way loses nothing.
 function rfSave(patch){
@@ -32556,7 +32585,13 @@ function rfProgress(){return Math.round(_rfStep/rfSteps().length*100);}
 
 function enterReflect(){_rfDate=todayStr();_rfView='home';renderReflect();}
 function renderReflect(){
-  document.getElementById('hdr-title').textContent=''+_t('סיום יום')+'';
+  /* THE HEADER SAYS WHICH DAY, whenever it is not today. The failure this
+     prevents is writing tonight's thoughts into Tuesday and only noticing
+     later - and the summary is the one thing in this app whose entire value
+     is that it is true. The step screen says it again below; either alone
+     could be scrolled past. */
+  document.getElementById('hdr-title').textContent=
+    rfIsToday()?''+_t('סיום יום')+'':_t('משלים את {d}',{d:fmtDate(_rfDate)});
   if(_rfView==='home')renderReflectHome();
   else if(_rfView==='intro')renderReflectIntro();
   else if(_rfView==='step')renderReflectStep();
@@ -32731,12 +32766,18 @@ function weekCardHTML(){
   /* the arc: one dot a day, coloured by how the day felt, hollow if unwritten.
      Seven dots is not a chart and is not pretending to be one - it is the
      shape of the week at a glance. */
+  /* AND EACH ONE OPENS ITS DAY. A hollow dot already said "nothing written
+     here"; pressing it is the sentence the drawing was already making. The
+     label names the day in full rather than just the weekday, because the
+     thing being opened is a date and not a habit. */
   h+='<div style="display:flex;gap:6px;margin-bottom:16px">';
   for(i=0;i<days.length;i++){
     var rec=days[i].r,mood=rec&&rec.mood?Math.max(1,Math.min(5,rec.mood)):0;
     var col=mood?RF_MOODS[mood-1].c:"transparent";
     var bd=mood?"transparent":"var(--line-strong)";
-    h+='<div title="'+dayName(days[i].d)+'" style="flex:1;height:26px;border-radius:8px;background:'+col+';border:1.5px solid '+bd+'"></div>';
+    h+='<button class="rf-wkdot" onclick="rfPickDay(&quot;'+days[i].d+'&quot;)" '+
+       'aria-label="'+esc(fmtDate(days[i].d))+'" title="'+esc(fmtDate(days[i].d))+'" '+
+       'style="background:'+col+';border-color:'+bd+'"></button>';
   }
   h+='</div>';
 
@@ -33039,9 +33080,14 @@ function rfNightlyClose(){
   var e=document.getElementById('rf-nightly');if(e)e.remove();
   document.body.style.overflow='';
 }
-function rfStart(){_rfDate=todayStr();_rfStage=1;_rfStep=0;_rfView='intro';renderReflect();}
-function rfResume(){
-  _rfDate=todayStr();
+/* A DAY, NOT ALWAYS TODAY. Both of these took todayStr() and nothing else;
+   everything downstream of them already reads _rfDate, so this is the whole
+   of what was nailed down. The default stays today, so every existing caller
+   means what it meant. */
+function rfIsToday(){return (_rfDate||todayStr())===todayStr();}
+function rfStart(d){_rfDate=d||todayStr();_rfStage=1;_rfStep=0;_rfView='intro';renderReflect();}
+function rfResume(d){
+  _rfDate=d||todayStr();
   var r=rfRec(_rfDate);
   _rfStage=(r&&r.lastStage)||1;
   _rfStep=Math.min(rfSteps().length-1,(r&&r.lastStep)||0);
@@ -33102,6 +33148,16 @@ function renderReflectStep(){
   h+='<div class="rf-bar"><div class="rf-bar-f" style="width:'+rfProgress()+'%"></div></div>';
   h+='<button class="rf-skip" onclick="rfSkip()">'+_t('דלג')+'</button>';
   h+='</div><div class="rf-body">';
+  /* SAID TWICE ON PURPOSE, and this one says the CONVENTION rather than just
+     the date. Twenty-four of the twenty-six questions contain the word היום,
+     because they were written for the evening of the day they ask about -
+     "מה היה הרגע הכי טוב שלך היום?" - and rewriting them would cost the
+     warmth of the one case that matters most, which is today.
+     So the frame carries it instead: this line says the questions are about
+     that day, and היום inside them reads as that day. Naming the convention
+     is honest; pretending there is no mismatch is not.
+     On today it says nothing at all. */
+  if(!rfIsToday())h+='<div class="rf-forday">'+esc(_t('השאלות כאן מדברות על {d}',{d:fmtDate(_rfDate)}))+'</div>';
   h+='<div class="rf-q">'+q.q+'</div>';
   if(q.sub)h+='<div class="rf-sub">'+q.sub+'</div>';
   h+='<div class="rf-field">';
