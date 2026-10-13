@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>הפאנל שלא אמר מה הוא</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  "לא הבנתי את עמודת המלבנים הזאת בסיכומי האימון"
+  Read from fitRhythmHTML in dev/index.html before anything was drawn.
+
+  What it actually is: five rows of seven, oldest week at the top, this week
+  at the bottom. A dark cell is a day you trained. The amber one is today.
+  The big number on the right is every workout in those 35 days; the smaller
+  one on the left is this week's.
+
+  None of that is written anywhere on it. Two bare numbers flanking 35
+  unlabelled rectangles, and the only way to know which is which is to read
+  the source.
+
+  The comment above the CSS says the panel "answers 'have I been showing up'
+  before the first card". That is exactly right, and exactly what the panel
+  never says out loud. It is not a bad drawing - it is a drawing with its
+  caption missing.
+
+  So none of the options below changes the picture. They change how much of
+  it is said.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --muted:#6d675e; --faint:#6d655c; --amber:#f0a92e;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:Assistant,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:30px 16px 90px}
+  h1{font-size:27px;font-weight:800;margin:0 0 6px;letter-spacing:-.4px}
+  .lede{font-size:14.5px;line-height:1.75;color:var(--muted);margin:0 0 28px;max-width:62ch}
+  .lede b{color:var(--ink);font-weight:700}
+  .opt{margin-bottom:40px}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:.1em;font-weight:800;color:var(--faint);margin-bottom:7px}
+  .opt h3{font-size:19px;font-weight:800;margin:0 0 7px;letter-spacing:-.2px}
+  .opt > p{font-size:13.5px;line-height:1.75;color:var(--muted);margin:0 0 15px;max-width:60ch}
+  .opt > p b{color:var(--ink);font-weight:700}
+  .phone{width:356px;max-width:100%;border-radius:24px;padding:16px 14px;box-shadow:var(--raise-lg)}
+
+  /* ── the panel, exactly as it ships ──────────────────────────── */
+  .rhw{background:var(--ground);border-radius:22px;padding:17px;
+    box-shadow:var(--raise-lg);display:grid;grid-template-columns:auto 1fr auto;
+    gap:14px;align-items:center}
+  .rhn,.rht{font-size:26px;font-weight:800;line-height:1;direction:ltr;
+    font-variant-numeric:tabular-nums;color:var(--ink)}
+  .rht{font-size:19px;color:var(--muted)}
+  .rh{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .wk{display:flex;gap:5px}
+  .d{flex:1;height:14px;border-radius:5px;background:var(--ground);box-shadow:var(--press-sm)}
+  .d.on{background:#4a4340;box-shadow:none}
+  .d.now{background:var(--amber);box-shadow:var(--press-sm)}
+
+  /* ── what the options add, and nothing else ──────────────────── */
+  .rhw.said{display:block}
+  .said .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px}
+  .said .ttl{font-size:13px;font-weight:800;color:var(--ink)}
+  .said .sub{font-size:11.5px;font-weight:700;color:var(--faint)}
+  .said .foot{display:flex;gap:9px;margin-top:13px}
+  .said .fact{flex:1;text-align:center;border-radius:11px;padding:8px 4px;box-shadow:var(--press-sm)}
+  .said .fact b{display:block;font-size:19px;font-weight:800;color:var(--ink);line-height:1.2}
+  .said .fact span{font-size:10.5px;font-weight:700;color:var(--faint)}
+  .said .line{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.6;margin-bottom:13px}
+  .said .line i{font-style:normal;color:var(--muted);font-weight:600}
+
+  /* THE AXIS, ON THE SAME GRID AS THE ROWS. The day letters were a plain flex
+     row while each week sits inside .rowlab, which is narrower by the label -
+     so the letters ran 55px wider than the columns they name, and an axis
+     that does not line up is worse than no axis. Both are the same two-column
+     grid now, and the letters get an empty cell where the label goes. */
+  .dh{display:grid;grid-template-columns:1fr auto;gap:9px;margin-bottom:6px}
+  .dh .row{display:flex;gap:5px}
+  .dh .row span{flex:1;text-align:center;font-size:9px;font-weight:800;color:var(--faint)}
+  .dh em{min-width:46px}
+  .rowlab{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center}
+  .rowlab em,.dh em{font-style:normal;font-size:9.5px;font-weight:800;color:var(--faint);
+    white-space:nowrap;min-width:46px;text-align:start}
+  .key{display:flex;gap:14px;margin-top:12px;font-size:10.5px;font-weight:700;color:var(--faint)}
+  .key i{display:inline-block;width:12px;height:9px;border-radius:3px;margin-inline-end:5px;vertical-align:middle}
+  .key .k1{background:#4a4340}
+  .key .k2{background:var(--amber)}
+  .key .k3{background:var(--ground);box-shadow:var(--press-sm)}
+
+  .note{margin-top:13px;border-radius:14px;padding:12px 14px;box-shadow:var(--press-sm);
+    font-size:12.5px;line-height:1.7;color:var(--muted);max-width:60ch}
+  .note b{color:var(--ink);font-weight:700}
+  .rec{border-radius:20px;padding:20px;box-shadow:var(--raise-lg);margin-top:10px}
+  .rec h2{font-size:12px;letter-spacing:.1em;font-weight:800;color:var(--faint);margin:0 0 10px}
+  .rec p{font-size:14px;line-height:1.8;color:var(--muted);margin:0 0 10px}
+  .rec p:last-child{margin:0}
+  .rec b{color:var(--ink);font-weight:700}
+  @media (max-width:420px){ .wrap{padding:22px 14px 70px} h1{font-size:23px} }
+</style>
+
+<div class="wrap">
+  <h1>הפאנל שלא אמר מה הוא</h1>
+  <p class="lede">
+    קודם מה הוא באמת: <b>חמש שורות של שבעה</b>. השבוע הכי ישן למעלה, השבוע
+    הזה למטה. מלבן כהה הוא יום שהתאמנת בו, הענברי הוא היום. המספר הגדול הוא
+    כל האימונים ב-35 הימים האלה, הקטן הוא של השבוע הזה.<br>
+    <b>שום דבר מזה לא כתוב עליו.</b> ההערה בקוד אומרת שהוא עונה על ״האם אני
+    מגיע״ — וזה בדיוק מה שהוא לא אומר בקול. זה לא ציור רע; זו כותרת חסרה.
+    אף אחת מהאפשרויות לא משנה את הציור.
+  </p>
+
+  <!-- ── א ─────────────────────────────────────────────────────── -->
+  <div class="opt">
+    <span class="tag">א · מה שיש היום</span>
+    <h3>שני מספרים ו-35 מלבנים</h3>
+    <p>כאן כאנטי-רפרנס. נסה לקרוא אותו בלי מה שכתוב למעלה.</p>
+    <div class="phone"><div class="rhw" id="a"></div></div>
+  </div>
+
+  <!-- ── ב ─────────────────────────────────────────────────────── -->
+  <div class="opt">
+    <span class="tag">ב · אותו פאנל, עם מילים</span>
+    <h3>כותרת, ולכל מספר המילה שלו</h3>
+    <p>
+      השינוי הקטן ביותר שעונה על מה שאמרת. הרשת לא זזה בכלל — היא רק מקבלת
+      כותרת, ושני המספרים יורדים למטה עם המילה שלהם. <b>אין פה מידע חדש,
+      רק הפסקה של ניחוש.</b>
+    </p>
+    <div class="phone"><div class="rhw said" id="b"></div></div>
+  </div>
+
+  <!-- ── ג ─────────────────────────────────────────────────────── -->
+  <div class="opt">
+    <span class="tag">ג · משפט במקום מספרים</span>
+    <h3>הפאנל אומר את זה בעברית</h3>
+    <p>
+      המספרים מפסיקים להיות חידה כי המשפט נושא אותם. הרשת נשארת מתחת
+      כתמונה — <b>היא כבר לא צריכה להיקרא כדי שתדע את התשובה</b>, היא רק
+      מראה איך היא נראית.
+    </p>
+    <div class="phone"><div class="rhw said" id="c"></div></div>
+  </div>
+
+  <!-- ── ד ─────────────────────────────────────────────────────── -->
+  <div class="opt">
+    <span class="tag">ד · ושהרשת עצמה תהיה קריאה</span>
+    <h3>ימי השבוע למעלה, והשורה של השבוע מסומנת</h3>
+    <p>
+      ג׳ ועוד: אותיות הימים מעל, ״השבוע״ ו״לפני חודש״ בקצה השורות, ומקרא
+      קטן לשלושת המצבים. עכשיו <b>אפשר באמת לקרוא אותה</b> — איזה ימים אתה
+      נוטה לפספס, והאם זה נהיה צפוף או דליל.
+    </p>
+    <p><b>המחיר:</b> יותר דיו על פאנל שתפקידו להיות מבט חטוף.</p>
+    <div class="phone"><div class="rhw said" id="d"></div></div>
+    <div class="note">
+      כל הנתונים כאן אמיתיים בצורתם: 7 אימונים ב-35 יום, אחד השבוע, היום
+      ענברי. אותה פונקציה שמציירת באפליקציה.
+    </div>
+  </div>
+
+  <div class="rec">
+    <h2>מה הייתי בוחר</h2>
+    <p>
+      <b>ג.</b> השאלה שהפאנל קיים בשבילה היא ״האם אני מגיע״, וזו שאלה שעונים
+      עליה <b>במשפט</b>, לא בשני מספרים שצריך לפענח. הרשת אחר כך היא הנאה,
+      לא עבודה.
+    </p>
+    <p>
+      ד׳ נכונה אם אתה רוצה לקרוא <b>דפוסים</b> — איזה ימים נופלים. אבל זה
+      תפקיד של מסך ״המספרים שלי״, לא של פאנל שיושב מעל רשימה. אם תרצה אותה,
+      אני אבנה אותה שם.
+    </p>
+  </div>
+</div>
+
+<script>
+/* THE SAME SHAPE THE APP BUILDS. fitRhythmHTML walks five weeks back from
+   today's weekday and fills a cell for every day with a workout in it; this
+   is that walk with a fixed set of days, so the picture below is the picture
+   on the phone and not an impression of it. */
+var TRAINED = [2, 4, 6, 9, 13, 16, 20];   // days ago, 7 of them in 35
+var TODAY_DOW = 2;                         // Tuesday, like the screenshot
+var DAYS = ['א','ב','ג','ד','ה','ו','ש'];
+
+function grid(withAxis){
+  var h = '', wk, dy, ago, cls;
+  if (withAxis) {
+    h += '<div class="dh"><div class="row">';
+    for (dy = 0; dy < 7; dy++) h += '<span>' + DAYS[dy] + '</span>';
+    h += '</div><em></em></div>';
+  }
+  h += '<div class="rh">';
+  for (wk = 4; wk >= 0; wk--) {
+    var row = '<div class="wk">';
+    for (dy = 0; dy < 7; dy++) {
+      /* days ago, counted the way dayShift does it: this week's row holds
+         today, and every row above it is seven more days back */
+      ago = (TODAY_DOW - dy) + wk * 7;
+      cls = 'd';
+      if (ago >= 0 && TRAINED.indexOf(ago) >= 0) cls += ' on';
+      if (ago === 0) cls = 'd now';
+      row += '<span class="' + cls + '"></span>';
+    }
+    row += '</div>';
+    if (withAxis) {
+      var lab = wk === 0 ? 'השבוע' : (wk === 4 ? 'לפני חודש' : '');
+      h += '<div class="rowlab">' + row + '<em>' + lab + '</em></div>';
+    } else h += row;
+  }
+  return h + '</div>';
+}
+
+/* א — exactly what ships: the grid between two unexplained numbers */
+document.getElementById('a').innerHTML =
+  '<div class="rhn">7</div>' + grid(false) + '<div class="rht">1</div>';
+
+/* ב — the same grid, with a heading and the two numbers given their words */
+document.getElementById('b').innerHTML =
+  '<div class="top"><span class="ttl">הקצב שלך</span><span class="sub">חמישה שבועות אחרונים</span></div>' +
+  grid(false) +
+  '<div class="foot"><div class="fact"><b>7</b><span>אימונים</span></div>' +
+  '<div class="fact"><b>1</b><span>השבוע</span></div></div>';
+
+/* ג — the sentence carries the numbers and the grid becomes the picture */
+document.getElementById('c').innerHTML =
+  '<div class="top"><span class="ttl">הקצב שלך</span></div>' +
+  '<div class="line">התאמנת <b>7 פעמים</b> בחמישה השבועות האחרונים. <i>אחד מהם השבוע.</i></div>' +
+  grid(false);
+
+/* ד — the same sentence, over a grid you can actually read */
+document.getElementById('d').innerHTML =
+  '<div class="top"><span class="ttl">הקצב שלך</span></div>' +
+  '<div class="line">התאמנת <b>7 פעמים</b> בחמישה השבועות האחרונים. <i>אחד מהם השבוע.</i></div>' +
+  grid(true) +
+  '<div class="key"><span><i class="k1"></i>התאמנת</span>' +
+  '<span><i class="k2"></i>היום</span><span><i class="k3"></i>לא</span></div>';
+</script>
+</html>
