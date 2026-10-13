@@ -800,12 +800,25 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .wh-rhw,.wh-c,.wh-del{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);
   --nu-shade:rgba(176,168,156,.44);--nu-shade-soft:rgba(176,168,156,.28);
   --nu-ink:#4a453f;--nu-muted:#6d675e;--nu-amber:#f0a92e}
+/* a block now, not a three-column grid: the two numbers that used to flank
+   the rows are a sentence above them */
 .wh-rhw{background:var(--nu-ground);border-radius:22px;padding:17px;margin-bottom:14px;
-  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft);
-  display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
-.wh-rhn,.wh-rht{font-size:26px;font-weight:800;line-height:1;direction:ltr;
-  font-variant-numeric:tabular-nums;color:var(--nu-ink)}
-.wh-rht{font-size:19px;color:var(--nu-muted)}
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.wh-rh-ttl{font-size:13px;font-weight:800;color:var(--nu-ink);margin-bottom:7px}
+.wh-rh-line{font-size:13.5px;font-weight:700;color:var(--nu-ink);line-height:1.6;margin-bottom:13px}
+.wh-rh-line i{font-style:normal;color:var(--nu-muted);font-weight:600}
+/* the axis and the rows share one grid, so a letter sits over its column */
+.wh-dh{display:grid;grid-template-columns:1fr auto;gap:9px;margin-bottom:6px}
+.wh-dh .wh-wk span{flex:1;text-align:center;font-size:9px;font-weight:800;color:var(--nu-muted);
+  background:none;box-shadow:none;height:auto;border-radius:0}
+.wh-rowlab{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center}
+.wh-rowlab em,.wh-dh em{font-style:normal;font-size:9.5px;font-weight:800;color:var(--nu-muted);
+  white-space:nowrap;min-width:42px;text-align:start;direction:ltr}
+.wh-key{display:flex;gap:14px;margin-top:12px;font-size:10.5px;font-weight:700;color:var(--nu-muted)}
+.wh-key i{display:inline-block;width:12px;height:9px;border-radius:3px;
+  margin-inline-end:5px;vertical-align:middle}
+.wh-key .k-on{background:#4a4340}
+.wh-key .k-now{background:var(--nu-amber)}
 .wh-rh{display:flex;flex-direction:column;gap:5px;min-width:0}
 .wh-wk{display:flex;gap:5px}
 .wh-d{flex:1;height:14px;border-radius:5px;background:var(--nu-ground);
@@ -9039,6 +9052,13 @@ var HE={
      not three strings with the digit written into them - a baked-in 2 shows
      as 2 on a screen that writes ٢. */
   '{n} חזרות מכשל':{one:'חזרה אחת מכשל',two:'שתי חזרות מכשל',other:'{n} חזרות מכשל'},
+  /* The rhythm panel's sentence. Both carry a count, so both inflect - and
+     Hebrew's dual means "פעמיים" and "שניים", not "2 פעמים" and "2 מהם". */
+  'התאמנת {n} פעמים בחמישה השבועות האחרונים.':{
+    one:'התאמנת פעם אחת בחמישה השבועות האחרונים.',
+    two:'התאמנת פעמיים בחמישה השבועות האחרונים.',
+    other:'התאמנת {n} פעמים בחמישה השבועות האחרונים.'},
+  '{n} מהם השבוע.':{one:'אחד מהם השבוע.',two:'שניים מהם השבוע.',other:'{n} מהם השבוע.'},
   /* The advice lines. Neither 'one' nor 'two' can fire - both sentences only
      appear once a ceiling of six or more has been passed - but a plural key
      with a wrong branch in it is a trap waiting for the day the ceiling
@@ -25442,24 +25462,68 @@ function renderFitSummary(){
    The days come from dayShift, not from new Date(): this app's day ends at
    04:00, and a session logged at one in the morning belongs to the day she
    is still living in. */
+/* ── THE PANEL THAT NOW SAYS WHAT IT IS ──
+   Five rows of seven: the oldest week at the top, this week at the bottom, a
+   filled cell for a day with a workout in it.
+
+   It used to be exactly that between two bare numbers, and nothing on it said
+   which number was which, that a row was a week, or what the amber cell meant
+   - the only way to learn any of it was to read this function. The comment
+   above its CSS says the panel "answers 'have I been showing up' before the
+   first card", which is right and was precisely what it never said out loud.
+
+   EVERY ROW CARRIES ITS DATE, because "לפני חודש" says roughly-where and a
+   person reading a grid of days wants where. fmtDayShort is dfmt, so the row
+   reads 11.10 for one reader and 10/11 for another without this code knowing
+   which. */
 function fitRhythmHTML(log){
   var on={},i;
   for(i=0;i<log.length;i++)if(log[i].date)on[appDayOf(log[i].date)]=1;
-  var dow=appNow().getDay(), today=todayStr(), h='<div class="wh-rh">', wk, dy, total=0, thisWeek=0;
+  var dow=appNow().getDay(), today=todayStr(), wk, dy, total=0, thisWeek=0;
+  var rows='';
   for(wk=4;wk>=0;wk--){
-    h+='<div class="wh-wk">';
+    var first=dayShift(0-dow-wk*7), row='<div class="wh-wk">';
     for(dy=0;dy<7;dy++){
       var d=dayShift(dy-dow-wk*7), did=!!on[d], now=(d===today);
       if(did){total++;if(wk===0)thisWeek++;}
-      h+='<span class="wh-d'+(did?' on':'')+(now?' now':'')+'"></span>';
+      row+='<span class="wh-d'+(did?' on':'')+(now?' now':'')+'"></span>';
     }
-    h+='</div>';
+    row+='</div>';
+    /* the date of the day the row STARTS on - a week is named by where it
+       begins, the way a calendar names it */
+    rows+='<div class="wh-rowlab">'+row+'<em>'+fmtDayShort(new Date(first+'T12:00:00'))+'</em></div>';
   }
-  h+='</div>';
-  /* the two counts are numbers, not sentences - nfmt writes them the way the
-     reader writes them and nothing else is said */
-  return '<div class="wh-rhw"><div class="wh-rhn">'+nfmt(total)+'</div>'+h+
-         '<div class="wh-rht">'+nfmt(thisWeek)+'</div></div>';
+  /* the letters, over the columns they name, on the same two-column grid as
+     the rows - an axis that does not line up is worse than no axis */
+  var dh='<div class="wh-dh"><div class="wh-wk">';
+  /* TRANSLATED WHERE IT IS DRAWN, not into a variable. A named array of _t()
+     results is what find-translated-data is written to catch, and it is right
+     to: a list that is held is a list something will one day compare. The
+     month view indexes the same seven inline for the same reason. */
+  for(dy=0;dy<7;dy++)
+    dh+='<span>'+[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''][dy]+'</span>';   // i18n-exempt: the weekday initials the month view already draws this way
+  dh+='</div><em></em></div>';
+
+  /* THE SENTENCE, which is the answer the panel exists for. Two sentences and
+     not one with two holes: the second one is about this week and has a
+     different shape when the week is still empty. Neither is a ternary
+     choosing a plural form - each branch is a whole sentence of its own. */
+  var line=(total>0)?_t('התאמנת {n} פעמים בחמישה השבועות האחרונים.',{n:total})
+                    :''+_t('לא התאמנת בחמישה השבועות האחרונים.')+'';
+  /* "אף אחד מהם" needs a them. With nothing in the five weeks the first
+     sentence has already said everything there is. */
+  var wkLine=(total===0)?''
+            :(thisWeek>0)?_t('{n} מהם השבוע.',{n:thisWeek})
+                         :''+_t('אף אחד מהם השבוע.')+'';
+  return '<div class="wh-rhw">'+
+    '<div class="wh-rh-ttl">'+_t('הקצב שלך')+'</div>'+
+    '<div class="wh-rh-line">'+esc(line)+(wkLine?' <i>'+esc(wkLine)+'</i>':'')+'</div>'+
+    dh+'<div class="wh-rh">'+rows+'</div>'+
+    /* only the two cells that MEAN something are in the key; an empty cell is
+       the absence of a workout and needs no caption */
+    '<div class="wh-key"><span><i class="k-on"></i>'+_t('התאמנת')+'</span>'+
+    '<span><i class="k-now"></i>'+_t('היום')+'</span></div>'+
+    '</div>';
 }
 function renderFitHistory(){
   var log=loadWorkoutLog();
@@ -25468,8 +25532,13 @@ function renderFitHistory(){
   h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('היסטוריית אימונים')+'</div>';
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('חזרה')+'</button>';
   h+='</div>';
-  if(log.length===0){h+='<div style="text-align:center;padding:40px;color:var(--muted)">'+_t('עדיין לא ביצעת אימון')+'</div>';}
-  else h+=fitRhythmHTML(log);
+  /* ALWAYS, including with nothing logged. The panel answers "have I been
+     showing up", and "not yet" is an answer - the one worth seeing most. It
+     used to be replaced by a line of grey text, so the first thing a new
+     person met was the absence of the thing that is supposed to pull them
+     in. Five empty weeks say it better than a sentence about emptiness. */
+  h+=fitRhythmHTML(log);
+  if(log.length===0)h+='<div style="text-align:center;padding:28px 20px;color:var(--muted)">'+_t('עדיין לא ביצעת אימון')+'</div>';
   for(var i=log.length-1;i>=0;i--){
     var entry=log[i];var d=new Date(entry.date);
     var vol=entry.exercises.reduce(function(a,ex){return a+ex.sets.reduce(function(b,s){return b+(s.weight||0)*(s.reps||0);},0);},0);
