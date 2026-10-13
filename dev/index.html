@@ -505,6 +505,12 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
    deep. Measured in the browser; the file said 12. */
 .fx-name .fx-how .fx-h{font-size:11.5px;text-align:center;letter-spacing:.02em}
 .fx-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 12px}
+/* WHAT IS LEFT OF THE PAIR once "last time" moved into the header. The
+   columns stay two: given the whole width the gear picture scales up with it
+   and the row went from about 180px to 346 - taller than the pair it
+   replaced, which is the opposite of the point. It keeps its column and the
+   other half is simply ground, which in one material reads as nothing. */
+.fx-row-one{grid-template-columns:1fr 1fr}
 /* ── THE THREE SQUARES, IN THE MATERIAL ──
    This painted a literal #faf6f1 with no shadow: a cream lighter than the
    ground, so the three boxes floated as pale rectangles on the plaster. It
@@ -23233,7 +23239,12 @@ function exLastHTML(ex){
        marked even though the row has moved up the screen */
     var better=mine&&((mine.weight>s.weight)||(mine.weight===s.weight&&mine.reps>s.reps));
     var same=mine&&mine.weight===s.weight&&mine.reps===s.reps;
-    h+='<span class="fw-ps'+(better?' beat':(same?' same':''))+'">'+num(s)+'</span>';
+    /* HOW HARD IT FELT, which the 92px square used to carry and which would
+       otherwise have been lost when it went. Same chip the sets logged today
+       use, so one shape says "a set" everywhere on this screen. */
+    var eff=effortFromRPE(s.rpe);
+    h+='<span class="fw-ps'+(better?' beat':(same?' same':''))+'">'+num(s)+
+       (eff===''?'':'<i class="fw-ps-rpe">&middot;'+nfmt(eff)+'</i>')+'</span>';
   }
   return h+'</span></div>';
 }
@@ -23294,32 +23305,11 @@ function exPrevHTML(ex,curPR){
 /* ── LAST TIME, AS A REFERENCE ──
    Not a prefill - that is exPrefill's job and it gets overwritten the moment
    you type. This stays put while you decide, which is when it is wanted. */
-/* ── THE TWO SQUARES ABOVE THE BOXES ──
-   Last time on the leading side, the explanation beside it. They are the same
-   size on purpose: one is what you did, the other is how it is done, and
-   neither outranks the other while you are standing at the machine. */
-function exLastBoxHTML(ex){
-  var prev=exLastTime(ex.name);
-  var h='<div class="fx-box"><span class="fx-h">'+_t('בפעם שעברה')+'</span>';
-  if(!prev||!prev.sets||!prev.sets.length)
-    return h+'<span class="fx-none">'+_t('עדיין אין')+'</span></div>';
-  /* the SAME set number, because the third set of the day is compared with
-     the third and not with the warm-up */
-  var same=prev.sets[ex.sets.length]||prev.sets[prev.sets.length-1];
-  /* weight times reps, the shape every set row on this screen already uses -
-     so no noun has to agree with a number. A run has neither, and says the
-     distance, the minutes and the pace instead - the same sentence its own
-     set rows use. */
-  h+='<span class="fx-big">'+(isCardioEx(ex.name)?cardioRowHTML(same):fmtWeight(same.weight)+' \u00d7 '+nfmt(same.reps))+'</span>';
-  /* how hard it was, on whichever scale this person reads. The store is
-     always RPE; effortFromRPE turns it into the one on their screen, so the
-     number here and the row of ten below it never disagree. */
-  var eff=effortFromRPE(same.rpe);
-  if(eff!=='')h+='<span class="fx-eff">'+(effortScale()==='rir'?'RIR':'RPE')+' <b>'+nfmt(eff)+'</b></span>';
-  var ago=prev.date?agoText(new Date(prev.date).getTime()):'';
-  if(ago)h+='<span class="fx-ago">'+esc(ago)+'</span>';
-  return h+'</div>';
-}
+/* THE TWO SQUARES ABOVE THE BOXES were a pair: what you did last time, and
+   how the thing is loaded. The first moved into the one line in the exercise
+   header - it was 92px of card saying what a line now says - so only the gear
+   picture is left, and it takes the row. exLastBoxHTML went with it rather
+   than staying unreferenced: it was called from exactly one place. */
 /* ── WHAT YOU ARE LIFTING IT WITH ──
    The drawing loadKind() already decides: a bar with its discs, a pin stack,
    a dumbbell - or, for bodyweight and a band, nothing to draw, which the
@@ -24672,11 +24662,15 @@ function renderFitWorkout(){
   h+='</div>';
   /* Straight under it: what you did last time, and what you are lifting
      it with. */
-  /* held, not drawn: "last time" and the gear card are REFERENCE, the same
-     as the note and the previous session's chips, and those are already in
-     the record card below. Drawn here they pushed the log-set button down
-     into the tab bar's strip - above the fold and still untappable. */
-  var _ref='<div class="fx-row">'+exLastBoxHTML(ex)+exGearBoxHTML(ex)+'</div>';
+  /* THE "LAST TIME" SQUARE IS GONE. It was 92px of card saying what the one
+     line in the header above now says - the comparable set, the effort and
+     the ago - and he was pointing at it both times he asked for this to move
+     up and take less room. The gear picture keeps the row and takes the
+     width the pair used to share.
+     The gear card is still REFERENCE and still drawn below: put beside the
+     form it pushed the log-set button down into the tab bar's strip, above
+     the fold and untappable. */
+  var _ref='<div class="fx-row fx-row-one">'+exGearBoxHTML(ex)+'</div>';
   /* and then the card the set is actually written in */
   h+='<div class="fw-now">';
   /* The note sits with the lift itself, above the sets - it is a setup
