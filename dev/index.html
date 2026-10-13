@@ -1976,6 +1976,11 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .cal-d.has{background:linear-gradient(135deg,var(--violet-100),var(--violet-200))}
 .cal-d.today{font-weight:700;color:var(--violet-700)}
 .cal-d.has-photo{padding:0;overflow:hidden;position:relative}
+/* AN EMPTY DAY THAT CAN STILL BE WRITTEN. It looks the same as it did -
+   this is a month of days and a ring around every unwritten one would turn a
+   calendar into a to-do list. What changed is that it answers a tap. */
+.cal-d-new{color:var(--muted-soft)}
+.cal-d-new:active{background:var(--surface)}
 .cal-d.has-photo img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 /* A photographed day is still a day in a calendar. The picture used to be
    drawn INSTEAD of the number, so the one day you can see at a glance was the
@@ -2589,6 +2594,10 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .summary-sheet{background:var(--panel);border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;padding:18px 16px max(40px,calc(env(safe-area-inset-bottom) + 28px));position:relative;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .summary-pull{width:40px;height:4px;background:var(--violet-300);border-radius:2px;margin:0 auto 14px}
 .summary-close{position:absolute;top:16px;inset-inline-end:16px;background:rgba(255,255,255,.8);border:none;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;color:var(--muted)}
+/* the way back into the questions, at the foot of the sheet where a person
+   ends up after reading the day */
+.summary-edit{display:block;width:100%;margin:18px 0 4px;padding:14px;border:none;border-radius:16px;
+  background:var(--cta-fill);color:var(--white);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
 /* ── the composed summary page ──
    The sheet itself is the paper now, so these blocks sit ON it rather than
    each being a card. Border, fill and shadow are spent where they mean
@@ -15362,6 +15371,23 @@ function finishInterview(){
 function calPrev(){calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);render();}
 function calNext(){calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);render();}
 function openSummary(d){renderSummaryOverlay(d);}
+/* FROM THE MONTH IN "אני" STRAIGHT INTO THAT DAY'S QUESTIONS. The week strip
+   inside סיום יום does the same thing and stays, but the month is where he
+   already looks at days - and a door nobody finds is not a door.
+   Everything open is closed first: this leaves the module it is called from,
+   and a sheet left behind would sit over the screen it arrives at with
+   nothing to dismiss it. */
+function rfOpenDay(d){
+  if(!d||d>todayStr())return;
+  closeSummary();
+  var c=document.getElementById('daycard-ov');if(c)c.remove();
+  document.body.classList.remove('sheet-open');
+  /* enterModule puts סיום יום on TODAY on the way in - that is what it is
+     for - and then the day asked for replaces it. One render each, and the
+     second is the one that stays. */
+  enterModule('endofday');
+  rfPickDay(d);
+}
 function closeSummary(){
   var ov=document.getElementById('sum-overlay');if(ov)ov.remove();
   if(!document.getElementById('daycard-ov'))document.body.classList.remove('sheet-open');
@@ -16259,8 +16285,16 @@ function buildHomeCalHTML(){
          '<span class="cal-d-num"><span>'+label+'</span></span></button>';
     } else if(canOpen){
       h+='<button class="cal-d'+(sum?' has':'')+(isT?' today':'')+'" onclick="openSummary(\''+ds+'\')">'+label+dotRow+'</button>';
+    } else if(ds<=todayStr()){
+      /* A DAY WITH NOTHING ON IT IS A DAY YOU CAN STILL WRITE. It was a plain
+         div because a tap that silently does nothing is worse than no tap -
+         and that is still true, which is why this one is not silent: it opens
+         the questions for that day, from zero. A future day stays a div;
+         there is nothing to say about it yet. */
+      h+='<button class="cal-d cal-d-new'+(isT?' today':'')+'" onclick="rfOpenDay(\''+ds+'\')" '+
+         'aria-label="'+esc(_t('השאלות כאן מדברות על {d}',{d:fmtDate(ds)}))+'">'+label+'</button>';
     } else {
-      h+='<div class="cal-d'+(isT?' today':'')+'">'+label+'</div>';
+      h+='<div class="cal-d">'+label+'</div>';
     }
   }
   h+='</div></div>';
@@ -16824,8 +16858,19 @@ function renderSummaryOverlay(dateStr){
      this the bar covers the foot of the sheet and swallows the touches there.
      Every other sheet in the app already does this. */
   document.body.classList.add('sheet-open');
+  /* AND A WAY BACK INTO THE QUESTIONS. The sheet could only be read: a day
+     already written had no route to its own answers, and a day that only ate
+     or only has a clip had no route to being written at all. One button, and
+     the word changes with what is behind the day, because "edit" on an empty
+     day is a lie about what is there. A future day never gets here - the
+     calendar does not make it a button. */
+  var _hasSum=!!loadSummary(dateStr);
+  var _edit=(dateStr<=todayStr())
+    ? '<button class="summary-edit" onclick="rfOpenDay(\''+dateStr+'\')">'+
+      (_hasSum?_t('ערוך את הסיכום'):_t('כתוב את היום הזה'))+'</button>'
+    : '';
   div.innerHTML='<div class="summary-sheet"><div class="summary-pull"></div>'+
-    '<button class="summary-close" onclick="closeSummary()">&times;</button>'+body+'</div>';
+    '<button class="summary-close" onclick="closeSummary()">&times;</button>'+body+_edit+'</div>';
   document.body.appendChild(div);
   sumAfterPaint(div);
 }
