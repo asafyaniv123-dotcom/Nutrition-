@@ -8943,6 +8943,18 @@ var HE={
     one:'{g}: סט אחד באימון. ההמלצה היא {lo} עד {hi}.',
     two:'{g}: שני סטים באימון אחד. ההמלצה היא {lo} עד {hi}.',
     other:'{g}: {n} סטים באימון אחד. ההמלצה היא {lo} עד {hi}.'},
+  '{g}: {n} סטים בשבוע. הטווח הוא {lo} עד {hi}.':{
+    one:'{g}: סט אחד בשבוע. הטווח הוא {lo} עד {hi}.',
+    two:'{g}: שני סטים בשבוע. הטווח הוא {lo} עד {hi}.',
+    other:'{g}: {n} סטים בשבוע. הטווח הוא {lo} עד {hi}.'},
+  '{ex}: {n} חזרות. הטווח למטרה שבחרת הוא {lo} עד {hi}.':{
+    one:'{ex}: חזרה אחת. הטווח למטרה שבחרת הוא {lo} עד {hi}.',
+    two:'{ex}: שתי חזרות. הטווח למטרה שבחרת הוא {lo} עד {hi}.',
+    other:'{ex}: {n} חזרות. הטווח למטרה שבחרת הוא {lo} עד {hi}.'},
+  'שבוע {n} בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.':{
+    one:'שבוע ראשון בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.',
+    two:'שבוע שני בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.',
+    other:'שבוע {n} בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.'},
   '{n} חזרות':{one:'חזרה אחת',two:'שתי חזרות',other:'{n} חזרות'},
   '{n} תרגילים':{one:'תרגיל אחד',two:'שני תרגילים',other:'{n} תרגילים'},
   /* The count on the button that ends the filter step. It is its own key
@@ -18020,8 +18032,27 @@ function fitGo(ei){
   if(!_fitWorkout)return;
   _fitWorkout.currentEx=ei;
   _fitPinned=true;
+  /* a different exercise is a different set of numbers */
+  if(typeof fitTypedClear==='function')fitTypedClear();
   renderFitness();
 }
+/* ── WHAT HAS BEEN TYPED AND NOT YET LOGGED ──
+   Everything on the workout screen redraws it, and a redraw rebuilt the two
+   boxes from the stored set - so typing a weight and then choosing an RPE
+   erased the weight. Reported from the gym, and RPE was only the button he
+   happened to press: the warm-up toggle, the RPE/RIR switch, the rest length
+   and correcting an already-logged set all did it too.
+   Held the moment it is typed rather than read off the DOM before each
+   redraw, because a redraw can also come from somewhere that never knew to
+   ask - and cleared only when the value stops being true: the set is logged,
+   or the exercise changes. */
+var _fitTyped=null;
+function fitTyped(){
+  var w=document.getElementById('fit-w'),r=document.getElementById('fit-r');
+  if(!w&&!r)return;
+  _fitTyped={w:w?w.value:'',r:r?r.value:''};
+}
+function fitTypedClear(){_fitTyped=null;}
 function rpePick(v){_fitRpe=(_fitRpe===v)?null:v;renderFitness();}
 /* THE SAME THING FOR A SET ALREADY LOGGED. Its own variable, because the add
    form's row is still on screen underneath and the two must not answer for
@@ -18492,6 +18523,18 @@ var PROG_DAY_OPTS=['כל הגוף','פלג גוף עליון','פלג גוף ת�
    on p.140. The weekly band is SETS_BAND and is a different question; this
    one is about the session in front of you. */
 var PROG_PER_SESSION={full:[2,6],ab:[5,10],abc:[5,20]};
+/* Reps by goal, p.137 and p.139: 1-6 for max and explosive strength, 6-30 for
+   hypertrophy (core 6-20), 15+ for muscular endurance. These are WIDER than
+   FIT_GOALS, and deliberately: FIT_GOALS is what the generator AIMS at, in the
+   middle of the band, and this is the band outside which the notebook would
+   actually object. Two numbers for one question is how a card and the screen
+   under it come to disagree, so they are different questions on purpose.
+   Endurance is written "15+" with no ceiling; 30 is the top of the stated
+   hypertrophy range rather than a number of its own. */
+var PROG_REPS={strength:[1,6],size:[6,30],endure:[15,30],general:[6,20]};
+/* p.138: ten to twenty sets per muscle per WEEK. SETS_BAND already holds it
+   for the welcome screen's caveats; named here so the advice reads the one
+   value rather than a second copy of it. */
 /* A GENERATED PROGRAMME NEEDS A NAME, and it was being saved without one -
    an empty title on its own screen and a blank in "{name} נשמרה!". These are
    WIZ_NAME_OPTS, the words the hand-built wizard already offers and progLabel
@@ -18513,23 +18556,37 @@ var PROG_BIG=['ארבע ראשי','ירך אחורית','ישבן','גב','חז�
    is the cap for somebody training three days a week and 30 for somebody
    training six - quoting one number at everybody is how a limit stops being
    believed. */
-function progAdvice(rows){
+function progAdvice(rows,opt){
+  opt=opt||{};
   var me=(typeof fitMe==='function')?fitMe():{};
   var sp=progSplitFor(+me.days||3,me.exp||'new');
   var I=PROG_SPLITS[sp]||PROG_SPLITS.full;
   var band=PROG_PER_SESSION[sp]||PROG_PER_SESSION.full;
-  var out=[],total=0,byG={},order=[],i,g,n;
+  var goalV=(typeof fitGoal==='function'&&fitGoal().v)||'size';   // i18n-exempt: a stored key
+  var rband=PROG_REPS[goalV]||PROG_REPS.size;
+  var out=[],total=0,byG={},order=[],i,g,n,r,row;
+  /* one pass: the session's total, each group's share, and the two things the
+     notebook asks of an individual EXERCISE rather than of a group */
+  var thin=[],offReps=[];
   for(i=0;i<rows.length;i++){
-    if(!rows[i]||!rows[i].name)continue;
-    n=Math.max(0,parseInt(rows[i].sets,10)||0);
+    row=rows[i];
+    if(!row||!row.name)continue;
+    n=Math.max(0,parseInt(row.sets,10)||0);
+    if(!n)continue;
     total+=n;
-    g=muscleGroupOf(rows[i].name);
+    g=muscleGroupOf(row.name);
     if(!byG.hasOwnProperty(g)){byG[g]=0;order.push(g);}
     byG[g]+=n;
+    /* p.138-139, "לפחות 2 סטים מכל תרגיל" - of every EXERCISE. Counted per
+       GROUP this was invisible for a single-set exercise inside a group that
+       was otherwise well covered, which is nearly all of them. */
+    if(n<2)thin.push(row.name);
+    r=parseInt(row.reps,10)||0;
+    if(r&&(r<rband[0]||r>rband[1]))offReps.push([row.name,r]);
   }
   if(!total)return out;
 
-  /* the ceiling for the whole session */
+  /* the ceiling for the whole session, p.140 */
   if(total>I.cap)
     out.push({t:'warn',s:_t('{n} סטים באימון אחד. ההמלצה היא עד {cap}.',{n:total,cap:I.cap})});
 
@@ -18539,13 +18596,44 @@ function progAdvice(rows){
     if(byG[g]>band[1])
       out.push({t:'warn',s:_t('{g}: {n} סטים באימון אחד. ההמלצה היא {lo} עד {hi}.',
                               {g:_t(g),n:byG[g],lo:band[0],hi:band[1]})});
-    else if(byG[g]===1)
-      out.push({t:'note',s:_t('{g}: סט אחד בלבד. פחות משניים כמעט לא נספר.',{g:_t(g)})});
   }
 
-  /* LARGE BEFORE SMALL. Reported on the first small group that something
-     large follows, not on every pair - one sentence a person can act on
-     beats four that say the same thing. */
+  /* the two-set floor, named once with the first exercise that breaks it -
+     a list of six names is a list nobody reads */
+  if(thin.length)
+    out.push({t:'warn',s:_t('{ex}: סט אחד בלבד. המחברת מבקשת לפחות שניים מכל תרגיל.',
+                            {ex:exLabel(thin[0])})});
+
+  /* reps against the band for the goal, p.137 and p.139 */
+  if(offReps.length)
+    out.push({t:'warn',s:_t('{ex}: {n} חזרות. הטווח למטרה שבחרת הוא {lo} עד {hi}.',
+                            {ex:exLabel(offReps[0][0]),n:offReps[0][1],
+                             lo:rband[0],hi:rband[1]})});
+
+  /* TEN TO TWENTY SETS A WEEK PER MUSCLE, p.138. A week, not a session, so it
+     is asked only where one is known - opt.perWeek is how many times this
+     day comes round in a week. */
+  /* ONE GROUP, THE FURTHEST OUT. At four sessions of sixty minutes the budget
+     is ninety-six sets a week over ten groups, so the small ones land at
+     eight and every single one of them is under the floor - five lines all
+     saying the same thing, on a plan the app itself built. The furthest-out
+     group says it once, and acting on it moves the rest. */
+  if(opt.perWeek>0){
+    var wWorst='',wN=0,wD=0,wn,wd;
+    for(i=0;i<order.length;i++){
+      g=order[i];
+      wn=Math.round(byG[g]*opt.perWeek);
+      wd=(wn<SETS_BAND.lo)?(SETS_BAND.lo-wn):(wn>SETS_BAND.hi?(wn-SETS_BAND.hi):0);
+      if(wd>wD){wD=wd;wWorst=g;wN=wn;}
+    }
+    if(wWorst)
+      out.push({t:'warn',s:_t('{g}: {n} סטים בשבוע. הטווח הוא {lo} עד {hi}.',
+                              {g:_t(wWorst),n:wN,lo:SETS_BAND.lo,hi:SETS_BAND.hi})});
+  }
+
+  /* LARGE BEFORE SMALL, p.138-140. Reported on the first small group that
+     something large follows, not on every pair - one sentence a person can
+     act on beats four that say the same thing. */
   var sawSmall='';
   for(i=0;i<order.length;i++){
     if(PROG_BIG.indexOf(order[i])<0){if(!sawSmall)sawSmall=order[i];}
@@ -18555,13 +18643,42 @@ function progAdvice(rows){
       break;
     }
   }
-  return out;
+
+  /* AND THE LARGE ONES GET MORE OF THEM, p.138-139 - a separate rule from the
+     order, and the one that decides how the budget is divided rather than
+     when each group is reached. */
+  var bigLow='',smallHigh='',bi,si;
+  for(i=0;i<order.length;i++){
+    g=order[i];
+    if(PROG_BIG.indexOf(g)>=0){if(!bigLow||byG[g]<byG[bigLow])bigLow=g;}
+    else if(!smallHigh||byG[g]>byG[smallHigh])smallHigh=g;
+  }
+  if(bigLow&&smallHigh&&byG[smallHigh]>byG[bigLow])
+    /* NO VERB, on purpose. "{small} מקבל" agrees with a hole: חזה מקבל but
+       יד קדמית מקבלת, and nothing in a dictionary can inflect a word it is
+       handed at runtime. Written as a preposition and two nouns it is right
+       for either gender, and every other language is free to put a verb back
+       in if its own grammar wants one. */
+    out.push({t:'note',s:_t('יותר סטים ל{small} מאשר ל{big} — בקבוצות הגדולות שמים יותר.',
+                            {small:_t(smallHigh),big:_t(bigLow)})});
+
+  /* SIX WEEKS, p.140: a deload of about forty percent, and a programme change
+     every six to eight. Both land at the same moment, so they are one
+     sentence - which is also the only way a translator can order them. */
+  if(opt.weeks>=6)
+    out.push({t:'note',s:_t('שבוע {n} בתוכנית — זמן לשבוע הקלה, ולהחליף תוכנית תוך שבועיים.',
+                            {n:opt.weeks})});
+
+  /* FIVE LINES AT MOST. A panel that lists nine things is a panel that is
+     scrolled past, and the ones cut here are the gentlest by construction:
+     the warnings are pushed before the notes. */
+  return out.slice(0,5);
 }
 /* Drawn the same way wherever it appears, so the advice reads as one voice
    rather than as a different feature on each screen. Returns '' when there is
    nothing to say, which is what lets a caller append it unconditionally. */
-function progAdviceHTML(rows,title){
-  var a=progAdvice(rows),i,h;
+function progAdviceHTML(rows,title,opt){
+  var a=progAdvice(rows,opt),i,h;
   if(!a.length)return '';
   h='<div class="gn-c">';
   h+='<div class="gn-h">'+esc(title||_t('מה שכדאי לדעת'))+'</div>';
@@ -22546,11 +22663,18 @@ function renderViewProgram(){
     aex=prog.exercises[aek];
     var ad=aex.day||'';
     if(!advDays.hasOwnProperty(ad)){advDays[ad]=[];advOrder.push(ad);}
-    advDays[ad].push({name:aex.name,sets:aex.sets});
+    advDays[ad].push({name:aex.name,sets:aex.sets,reps:aex.targetReps});
   }
+  /* HOW OFTEN THIS DAY COMES ROUND. The cycle repeats to fill the week, so a
+     two-day cycle trained four times a week is each day twice - which is what
+     turns a session's sets into the week's, and the week is the number the
+     notebook's 10-20 is about. */
+  var advPer=advOrder.length?((+prog.daysPerWeek||advOrder.length)/advOrder.length):0;
+  var advWeeks=(typeof progWeekNum==='function')?progWeekNum(prog):0;
   for(aek=0;aek<advOrder.length;aek++)
     h+=progAdviceHTML(advDays[advOrder[aek]],
-                      advOrder[aek]?progDayLabel(advOrder[aek]):'');
+                      advOrder[aek]?progDayLabel(advOrder[aek]):'',
+                      {perWeek:advPer,weeks:advWeeks});
 
   for(var ei=0;ei<prog.exercises.length;ei++){
     var ex=prog.exercises[ei];
@@ -22770,7 +22894,8 @@ function renderFitEditTemplate(){
      notebook the generator builds from, and reading them back while there is
      still a decision to make is the whole point - afterwards it is a report. */
   h+=progAdviceHTML(_tpl.exercises.map(function(ex){
-       return {name:ex.name,sets:tplRows(ex).length};
+       var pr=tplRows(ex);
+       return {name:ex.name,sets:pr.length,reps:(pr[0]&&pr[0].r)||0};
      }));
   h+='<div class="tpl-btns">';
   h+='<button class="tpl-save" onclick="tplSave()">'+_t('שמור')+'</button>';
@@ -24394,8 +24519,13 @@ function renderFitWorkout(){
         This one is `auto` over a single 56px button. Measured the same way
         after: the boxes stay above 100px each. */
      '<div class="fw-fields">';
-  h+='<div><div class="fw-fl">'+_t('משקל')+' ('+weightUnit()+')'+'</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="&ndash;" value="'+(pf.w===''||pf.w===undefined?'':edWeightVal(pf.w))+'" oninput="plateHint()" style="width:100%;min-height:46px;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700"></div>';
-  h+='<div><div class="fw-fl">'+_t('חזרות')+'</div><input id="fit-r" class="mtnm" type="number" placeholder="'+nfmt(ex.targetReps)+'" value="'+pf.r+'" style="width:100%;min-height:46px;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700"></div>';
+  /* what was typed wins over what was stored, for exactly as long as it has
+     not been logged - see _fitTyped */
+  var _boxW=(_fitTyped&&_fitTyped.w!==undefined)?_fitTyped.w
+          :((pf.w===''||pf.w===undefined)?'':edWeightVal(pf.w));
+  var _boxR=(_fitTyped&&_fitTyped.r!==undefined)?_fitTyped.r:pf.r;
+  h+='<div><div class="fw-fl">'+_t('משקל')+' ('+weightUnit()+')'+'</div><input id="fit-w" class="mtnm" type="number" step="0.5" placeholder="&ndash;" value="'+esc(_boxW)+'" oninput="fitTyped();plateHint()" style="width:100%;min-height:46px;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700"></div>';
+  h+='<div><div class="fw-fl">'+_t('חזרות')+'</div><input id="fit-r" class="mtnm" type="number" placeholder="'+nfmt(ex.targetReps)+'" value="'+esc(_boxR)+'" oninput="fitTyped()" style="width:100%;min-height:46px;padding:12px 10px;border-radius:12px;font-size:16px;font-weight:700"></div>';
   /* SAVES WHAT IS BESIDE IT. The numbers are typed and the set is logged
      without the eye leaving the row - logSet re-renders and exPrefill opens
      the boxes on the same values, so pressing it again is one tap. */
@@ -24460,7 +24590,8 @@ function renderFitWorkout(){
      ABOVE the nav buttons, not below: drawn under "finish workout" it is
      advice arriving after the decision it was meant to inform. */
   h+=progAdviceHTML(w.exercises.map(function(ex){
-       return {name:ex.name,sets:(+ex.targetSets||(ex.sets&&ex.sets.length)||0)};
+       return {name:ex.name,sets:(+ex.targetSets||(ex.sets&&ex.sets.length)||0),
+               reps:+ex.targetReps||0};
      }));
   // Nav buttons
   h+='<div style="display:flex;gap:8px">';
@@ -24568,6 +24699,9 @@ function logSet(){
   var shown=parseFloat(w?w.value:0)||0;
   var weight=fromDisplayWeight(shown);
   var reps=parseInt(r?r.value:0)||0;
+  /* LOGGED, so what was typed is now stored and exPrefill owns the boxes
+     again. Left in place it would pin them to the set before last. */
+  fitTypedClear();
   /* The box may be speaking RIR; the store only ever speaks RPE. */
   /* The row holds the reader's own scale - RPE or RIR - exactly as the
      box did, so it converts the same way. */
