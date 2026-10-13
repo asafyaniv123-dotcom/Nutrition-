@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>ב׳ — צבע, מילים, ועומק</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  He picked ב - the second wheel on effort-g.html, the one where the light in
+  the channel takes its heat from the number - and asked for three things:
+
+    1. colours, "כי בסיכום יש צבעים אז הגיוני שלכל מספר יהיה צבע"
+    2. "נשאר 4" is too hard to read; call it קשה
+    3. prettier: the rows above and below faded and smaller, "כמו שעשינו
+       בארון שלי", and feeling more 3D
+
+  All three are answered from things the app ALREADY has rather than invented:
+
+    rpeColor() is in dev/index.html inside the workout summary and has been
+    colouring logged sets for months - green under 6, #E0A020 under 7.5,
+    #E0691E under 9, #D33A2C at 9 and up. Those are the colours he has been
+    looking at. Inventing a second palette for the same question is how a
+    wheel and a summary come to disagree about what 8 is.
+
+    The closet's carousel fades what is not chosen: opacity .22 and
+    scale(.78) under html body.mod-closet, with a .2s ease on both. The far
+    end of this wheel lands on the same two numbers.
+
+  MEASURED, not assumed: three of those four colours are too pale to be TEXT
+  on the cream - amber is 1.84:1, orange 2.74, red 3.85. So the colour is the
+  LIGHT IN THE CHANNEL and the number stays ink, which is also what the
+  approved language says: one material, and the only colour is light in a
+  pressed channel. The page prints the worst contrast it produces.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#e9e7e3; --lit:rgba(255,255,255,.95);
+    --shade:rgba(176,168,156,.44); --shade-soft:rgba(176,168,156,.28);
+    --ink:#4a453f; --muted:#6d675e; --faint:#6d655c;
+    --raise:-3px -3px 7px var(--lit), 3px 4px 9px var(--shade-soft);
+    --raise-lg:-4px -4px 9px var(--lit), 5px 6px 13px var(--shade-soft);
+    --press:inset 2px 3px 6px var(--shade), inset -2px -2px 5px var(--lit);
+    --press-sm:inset 1px 2px 4px var(--shade), inset -1px -1px 3px var(--lit);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:Assistant,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:30px 16px 90px}
+  h1{font-size:27px;font-weight:800;margin:0 0 6px;letter-spacing:-.4px}
+  .lede{font-size:14.5px;line-height:1.75;color:var(--muted);margin:0 0 28px;max-width:62ch}
+  .lede b{color:var(--ink);font-weight:700}
+
+  .stage{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start;margin-bottom:34px}
+  .phone{width:356px;max-width:100%;border-radius:24px;padding:16px 14px 18px;
+    box-shadow:var(--raise-lg)}
+  .fl{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--faint);margin-bottom:5px}
+  .boxes{display:grid;grid-template-columns:1fr 1fr 56px;gap:8px;margin-bottom:14px}
+  .box{border-radius:13px;padding:11px 10px;box-shadow:var(--press-sm);
+    font-size:17px;font-weight:800;color:var(--ink);min-height:46px;display:flex;align-items:center}
+  .plus{align-self:end;height:46px;border-radius:13px;border:none;background:none;
+    box-shadow:var(--raise);font:inherit;font-size:22px;font-weight:800;color:var(--ink);cursor:pointer}
+
+  /* ── the wheel ────────────────────────────────────────────────── */
+  .wheel{position:relative;height:184px;border-radius:16px;box-shadow:var(--press);overflow:hidden}
+  .slot{position:absolute;left:8px;right:8px;top:74px;height:36px;border-radius:11px;
+    box-shadow:var(--press-sm);pointer-events:none;transition:background .25s ease}
+  .scroller{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;
+    scrollbar-width:none;-ms-overflow-style:none;position:relative;z-index:1}
+  .scroller::-webkit-scrollbar{display:none}
+  /* THE CYLINDER. perspective is written into each row's own transform rather
+     than onto the scroller, because a perspective origin on a scrolling box
+     travels with the scroll and the cylinder shears. Per-row is stable and
+     the difference at this size is not visible. */
+  .n{height:36px;scroll-snap-align:center;display:flex;align-items:center;
+    justify-content:center;gap:11px;cursor:pointer;color:var(--ink);
+    transform-origin:50% 50%;backface-visibility:hidden;will-change:transform,opacity;
+    transition:opacity .18s ease,transform .18s ease,color .18s ease}
+  .n .num{font-size:16px;font-weight:800;min-width:22px;text-align:center;
+    transition:font-size .18s ease}
+  .n .mean{font-size:13px;font-weight:600;color:var(--muted);transition:font-size .18s ease}
+  .n.mid .num{font-size:23px}
+  .n.mid .mean{font-size:14px}
+
+  .out{margin-top:12px;font-size:12.5px;color:var(--muted);min-height:18px;
+    display:flex;align-items:center;gap:7px}
+  .out b{color:var(--ink);font-weight:800;font-size:14px}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+  .side{flex:1 1 300px;min-width:280px}
+  .card{border-radius:18px;padding:16px 18px;box-shadow:var(--press-sm);margin-bottom:14px}
+  .card h2{font-size:11px;letter-spacing:.1em;font-weight:800;color:var(--faint);margin:0 0 10px}
+  .card p{font-size:13px;line-height:1.75;color:var(--muted);margin:0 0 9px}
+  .card p:last-child{margin:0}
+  .card b{color:var(--ink);font-weight:700}
+
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  td{padding:5px 0;color:var(--muted);vertical-align:middle}
+  td.v{width:30px;font-weight:800;color:var(--ink);font-size:14px}
+  td.c{width:26px}
+  td.c i{display:block;width:14px;height:14px;border-radius:50%}
+  td.w{font-weight:700;color:var(--ink)}
+  td.b{font-size:11.5px;color:var(--faint);text-align:start}
+
+  .rec{border-radius:20px;padding:20px;box-shadow:var(--raise-lg)}
+  .rec h2{font-size:12px;letter-spacing:.1em;font-weight:800;color:var(--faint);margin:0 0 10px}
+  .rec p{font-size:14px;line-height:1.8;color:var(--muted);margin:0 0 10px}
+  .rec p:last-child{margin:0}
+  .rec b{color:var(--ink);font-weight:700}
+  @media (max-width:420px){ .wrap{padding:22px 14px 70px} h1{font-size:23px} }
+</style>
+
+<div class="wrap">
+  <h1>ב׳ — צבע, מילים, ועומק</h1>
+  <p class="lede">
+    שלושת הדברים שביקשת, וכל אחד מהם נלקח ממשהו <b>שכבר קיים באפליקציה</b>
+    ולא הומצא: הצבעים הם בדיוק אלה שסיכום האימון כבר צובע בהם סטים, והדהייה
+    וההקטנה הן אותם שני מספרים של הקרוסלה בארון. <b>גלול באצבע.</b>
+  </p>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="boxes">
+        <div><div class="fl">משקל (ק״ג)</div><div class="box">82.5</div></div>
+        <div><div class="fl">חזרות</div><div class="box">8</div></div>
+        <button class="plus">+</button>
+      </div>
+      <div class="fl">רמת קושי</div>
+      <div class="wheel">
+        <div class="slot" id="slot"></div>
+        <div class="scroller" id="w"></div>
+      </div>
+      <div class="out" id="out"></div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h2>1 · הצבעים כבר שלך</h2>
+        <p>
+          ב-<b>סיכום האימון</b> כבר יש פונקציה שצובעת כל סט לפי הקושי שלו —
+          ירוק מתחת ל-6, ענבר, כתום, ואדום מ-9. אלה הצבעים שאתה כבר מסתכל
+          עליהם.
+        </p>
+        <p>
+          אז הגלגלת לא מקבלת פלטה חדשה — היא מקבלת <b>את אותה אחת</b>. פלטה
+          שנייה לאותה שאלה היא איך גלגלת וסיכום מתחילים לא להסכים מה זה 8.
+        </p>
+        <p>
+          <b>נמדד:</b> שלושה מארבעת הצבעים בהירים מדי בשביל להיות טקסט על
+          הקרם — ענבר 1.84:1, כתום 2.74, אדום 3.85. לכן הצבע הוא <b>האור
+          בתעלה</b> והמספר נשאר דיו. הגרוע ביותר שיוצא מזה:
+          <b id="worst">—</b>.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>2 · המילים</h2>
+        <p>
+          ״נשארו ארבע״ בחוץ. עשר מילים פשוטות, <b>כל אחת שונה מהשנייה</b> —
+          האפליקציה מריצה בדיקה שאוסרת שתי אפשרויות עם אותה תווית, כי זה
+          אומר לבקש ממישהו לבחור בין שני דברים זהים.
+        </p>
+        <table id="legend"></table>
+        <p style="margin-top:10px">
+          אם מילה אחת לא יושבת לך — תגיד איזו ומה במקומה. זו רשימה, לא
+          החלטה.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>3 · העומק</h2>
+        <p>
+          כל שורה מסתובבת על ציר אופקי לפי כמה רחוק היא מהמרכז, מתכווצת
+          ודוהה איתו — <b>גליל, לא רשימה</b>. בקצה היא מגיעה בדיוק ל-0.22
+          שקיפות ול-0.78 גודל, שני המספרים של הקרוסלה בארון, כדי שהתחושה
+          תהיה אותה תחושה ולא עוד אחת.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rec">
+    <h2>מה עוד פתוח, ואני לא אחליט לבד</h2>
+    <p>
+      <b>איבדנו משהו בדרך.</b> ״נשארו שתיים״ היה קשה לקריאה אבל הוא גם לימד —
+      הוא אמר לך בדיוק מה המספר מודד. ״קשה מאוד״ מובן מיד אבל לא מלמד כלום,
+      ושני אנשים יכולים להתכוון בו לשני דברים.
+    </p>
+    <p>
+      אפשר להחזיר אותו <b>כשורה שנייה קטנה, רק על הנבחר</b> — המילה גדולה
+      למעלה והספירה קטנה מתחתיה, ורק במקום אחד במסך. ככה המילה מובילה כמו
+      שביקשת והמדידה עדיין שם למי שרוצה אותה. תגיד אם לבנות את זה.
+    </p>
+  </div>
+</div>
+
+<script>
+/* ── THE COLOURS ──
+   Lifted from rpeColor() in dev/index.html, which has been colouring logged
+   sets in the workout summary all along. Same bands, same hexes. If these
+   ever change there, they change here - one question, one answer. */
+function rpeColor(v){
+  if (v < 6) return '#397339';        // --green-700
+  if (v < 7.5) return '#E0A020';
+  if (v < 9) return '#E0691E';
+  return '#D33A2C';
+}
+/* The band gives the hue; how far up the scale you are gives the strength, so
+   every one of the ten still feels different without a fifth colour. */
+function alphaFor(v){ return 0.09 + (v - 1) / 9 * 0.19; }
+
+/* ── THE WORDS ──
+   Plain, and all ten distinct - find-duplicate-options would refuse two
+   choices wearing the same label, and it would be right: asking somebody to
+   pick between two identical words is not a choice. */
+var WORD = {
+  1:'ממש קל', 2:'קל מאוד', 3:'קל', 4:'נוח', 5:'בינוני',
+  6:'מאתגר', 7:'קשה', 8:'קשה מאוד', 9:'על הגבול', 10:'כשל'
+};
+
+/* ── the legend, drawn from the same two functions the wheel uses ── */
+(function(){
+  var t = document.getElementById('legend'), h = '';
+  for (var i = 1; i <= 10; i++)
+    h += '<tr><td class="v">' + i + '</td>' +
+         '<td class="c"><i style="background:' + rpeColor(i) + ';opacity:' +
+             (0.35 + alphaFor(i)).toFixed(2) + '"></i></td>' +
+         '<td class="w">' + WORD[i] + '</td></tr>';
+  t.innerHTML = h;
+})();
+
+var ROW = 36;
+function wheel(){
+  var sc = document.getElementById('w'), out = document.getElementById('out'),
+      slot = document.getElementById('slot');
+  var pad = (184 - ROW) / 2;
+  var h = '<div style="height:' + pad + 'px"></div>';
+  for (var i = 1; i <= 10; i++)
+    h += '<div class="n" data-v="' + i + '">' +
+         '<span class="num">' + i + '</span>' +
+         '<span class="mean">' + WORD[i] + '</span></div>';
+  h += '<div style="height:' + pad + 'px"></div>';
+  sc.innerHTML = h;
+  var rows = [].slice.call(sc.querySelectorAll('.n'));
+
+  function paint(){
+    var mid = sc.scrollTop + sc.clientHeight / 2, best = null, bestD = 1e9;
+    rows.forEach(function(el){
+      /* distance from the centre, IN ROWS - so the falloff is the same
+         whatever the wheel's height is set to */
+      var d = (el.offsetTop + ROW / 2 - mid) / ROW;
+      var a = Math.abs(d);
+      if (a < bestD) { bestD = a; best = el; }
+      /* THE CYLINDER: tilt away, shrink, and fade together. At three rows out
+         this reaches .22 and .78, which is exactly where the closet's
+         carousel puts what you have not chosen. */
+      var rot = Math.max(-62, Math.min(62, d * 21));
+      var sx = Math.max(0.78, 1 - a * 0.073);
+      var op = Math.max(0.22, 1 - a * 0.26);
+      el.style.transform = 'perspective(540px) rotateX(' + (-rot).toFixed(2) + 'deg) scale(' + sx.toFixed(3) + ')';
+      el.style.opacity = op.toFixed(3);
+      el.classList.toggle('mid', a < 0.5);
+    });
+    if (!best) return;
+    var v = +best.dataset.v, c = rpeColor(v), a = alphaFor(v);
+    slot.style.background = 'linear-gradient(90deg,' + hexa(c, a) + ',' + hexa(c, a * 0.34) + ')';
+    out.innerHTML = '<span class="dot" style="background:' + c + '"></span>' +
+                    'נבחר <b>' + v + '</b> &middot; ' + WORD[v];
+  }
+  function hexa(hex, a){
+    return 'rgba(' + parseInt(hex.slice(1, 3), 16) + ',' + parseInt(hex.slice(3, 5), 16) +
+           ',' + parseInt(hex.slice(5, 7), 16) + ',' + a.toFixed(3) + ')';
+  }
+
+  /* a tap is a legitimate way to choose too - a wheel that only scrolls
+     refuses the first gesture everybody tries */
+  sc.addEventListener('click', function(e){
+    var el = e.target.closest ? e.target.closest('.n') : null;
+    if (!el) return;
+    sc.scrollTo({ top: el.offsetTop - (sc.clientHeight - ROW) / 2, behavior: 'smooth' });
+  });
+  sc.addEventListener('scroll', paint, { passive: true });
+  var start = rows[7];                       // opens on 8, where a working set lands
+  sc.scrollTop = start.offsetTop - (sc.clientHeight - ROW) / 2;
+  paint();
+}
+wheel();
+
+/* ── and the measurement, printed rather than claimed ──
+   The strongest tint is the worst case for the ink sitting on it. Composited
+   against the ground the way the browser will, then measured. */
+(function(){
+  function lin(c){ c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function lum(r, g, b){ return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b); }
+  var G = [233, 231, 227], INK = [74, 69, 63], worst = 99, at = 0;
+  for (var v = 1; v <= 10; v++) {
+    var c = rpeColor(v), a = alphaFor(v);
+    var rgb = [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+    var over = rgb.map(function(x, i){ return Math.round(x * a + G[i] * (1 - a)); });
+    var r = (Math.max(lum.apply(null, INK), lum.apply(null, over)) + 0.05) /
+            (Math.min(lum.apply(null, INK), lum.apply(null, over)) + 0.05);
+    if (r < worst) { worst = r; at = v; }
+  }
+  document.getElementById('worst').textContent =
+    worst.toFixed(2) + ':1 (ב-' + at + ')' + (worst >= 4.5 ? ' — עובר' : ' — נכשל');
+})();
+</script>
+</html>
