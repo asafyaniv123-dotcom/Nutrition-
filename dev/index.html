@@ -1102,6 +1102,13 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .ew-w{font-size:13px;font-weight:600;color:var(--muted);transition:font-size .18s ease}
 .ew-n.on .ew-num{font-size:23px}
 .ew-n.on .ew-w{font-size:14px}
+/* the count, on the chosen row and nowhere else. The dot is a ::before and
+   not markup: it is punctuation between two things that are each translated
+   on their own, so there is nothing here for a dictionary to get hold of and
+   nothing to glue a sentence out of. */
+.ew-sub{display:none;font-size:11.5px;font-weight:600;color:var(--muted-soft)}
+.ew-n.on .ew-sub{display:inline}
+.ew-n.on .ew-sub:not(:empty)::before{content:"\00b7";margin-inline-end:6px;opacity:.45}
 @media (prefers-reduced-motion:reduce){.ew-n{transition:none}.ew-sc{scroll-behavior:auto}}
 .addbtn{width:100%;background:var(--cta-fill);border:none;border-radius:11px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)}
 .lib-save-btn{width:100%;background:linear-gradient(135deg,var(--violet-100),var(--green-50));border:none;border-radius:11px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-700);margin-bottom:8px}
@@ -1747,7 +1754,11 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 /* TODAY, now in the same rectangle. Flat like the line above it - a card
    inside a card reads as a second thing, and both of these are captions on
    the lift they sit with. */
-.fx-nm .fw-prev{background:none;padding:0;margin:0 0 9px}
+/* box-shadow:none MATTERS. .fw-prev is a sunken trough - a ground fill AND
+   an inset shadow. Taking the fill and leaving the shadow left an inset
+   outline with nothing inside it, floating in the middle of the card, which
+   is exactly "it is not really inside its rectangle". */
+.fx-nm .fw-prev{background:none;box-shadow:none;padding:0;margin:0 0 9px}
 .fx-nm .fw-prev-t{margin-bottom:5px}
 .fw-prev-top .fw-prev-t{margin:0;flex-shrink:0}
 .fw-prev-top .fw-prev-s{display:inline-flex;flex-wrap:wrap;gap:5px}
@@ -8991,6 +9002,11 @@ var HE={
   '{n} שניות':{one:'שנייה',two:'שתי שניות',other:'{n} שניות'},
   '{n} דקות':{one:'דקה',two:'שתי דקות',other:'{n} דקות'},
   '{n} סטים':{one:'סט אחד',two:'שני סטים',other:'{n} סטים'},
+  /* How far from failure a set was, said beside the word on the effort wheel.
+     Hebrew has a dual and Arabic six categories, so this is a plural key and
+     not three strings with the digit written into them - a baked-in 2 shows
+     as 2 on a screen that writes ٢. */
+  '{n} חזרות מכשל':{one:'חזרה אחת מכשל',two:'שתי חזרות מכשל',other:'{n} חזרות מכשל'},
   /* The advice lines. Neither 'one' nor 'two' can fire - both sentences only
      appear once a ceiling of six or more has been passed - but a plural key
      with a wrong branch in it is a trap waiting for the day the ceiling
@@ -18160,6 +18176,15 @@ var EFFORT_WORD;langOn(function(){EFFORT_WORD={
   9:''+_t('על הגבול')+'',10:''+_t('כשל')+''
 };});
 var EW_ROW=36,EW_H=184;
+/* HOW FAR FROM FAILURE, for the rows where it is worth saying. No table:
+   RIR is exactly 10 - RPE, the same arithmetic effortToRPE does at the
+   store's edge, so this cannot drift from it. Seven to nine only - at ten
+   the count is zero and the word is already "כשל", and below seven the
+   number is large enough that nobody is counting. */
+function effortSub(rpe){
+  if(rpe==null||rpe<7||rpe>9)return '';
+  return _t('{n} חזרות מכשל',{n:10-rpe});
+}
 
 /* ── ONE WHEEL, TWO PLACES ──
    The add form and the correction sheet ask the same question, so they get
@@ -18179,7 +18204,11 @@ function effortWheelHTML(which){
     '<span class="ew-w">'+_t('לא דורג')+'</span></div>';
   for(v=lo;v<=hi;v++)
     h+='<div class="ew-n" data-v="'+v+'"><span class="ew-num">'+nfmt(v)+'</span>'+
-       '<span class="ew-w">'+esc((EFFORT_WORD&&EFFORT_WORD[effortToRPE(v)])||'')+'</span></div>';
+       '<span class="ew-w">'+esc((EFFORT_WORD&&EFFORT_WORD[effortToRPE(v)])||'')+'</span>'+
+       /* ON THE CHOSEN ROW ONLY - .ew-sub is hidden until .on. Printed on all
+          ten it would make every row long and the wheel stop scanning, which
+          is the thing a wheel is for. */
+       '<span class="ew-sub">'+esc(effortSub(effortToRPE(v)))+'</span></div>';
   h+='<div class="ew-pad"></div></div></div>';
   return h;
 }
@@ -23259,7 +23288,17 @@ function exPrevHTML(ex,curPR){
     h+='<div class="fw-prev-t fw-mine-t">'+_t('היום')+'</div><div class="fw-prev-s">';
     for(i=0;i<mySets.length;i++){
       s=mySets[i];
-      h+='<button class="fw-ps fw-mine'+(_setSel===i?' sel':'')+'" onclick="setSelOpen('+i+')">'+
+      /* THE WHOLE CHIP CARRIES THE EFFORT, in the four colours the workout
+         summary has coloured logged sets with all along - the same
+         effortColor the wheel reads, so a chip, a wheel and a summary cannot
+         disagree about what 8 looks like. A WASH and not a fill: those
+         colours measure 1.84 to 3.85 against the cream, so a solid chip
+         would need dark text anyway, and a wash keeps a row of them reading
+         as one row rather than as four unrelated buttons. A set with no
+         effort keeps the plain chip - nothing to say, nothing said. */
+      var _tint=(s.rpe==null||!isFinite(s.rpe))?''
+        :' style="background:'+effortTint(s.rpe,1)+';color:var(--ink)"';
+      h+='<button class="fw-ps fw-mine'+(_setSel===i?' sel':'')+'"'+_tint+' onclick="setSelOpen('+i+')">'+
          (isCardioEx(ex.name)?cardioRowHTML(s):num(s))+
          /* WITHOUT THIS THE TAP HAS NO ANSWER. Nothing on the screen said what
             a logged set's effort was, so there was no way to tell whether it
