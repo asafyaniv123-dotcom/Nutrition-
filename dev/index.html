@@ -726,6 +726,11 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   box-shadow:0 4px 16px rgba(200,180,160,.1)}
 .gn-h{font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700;margin-bottom:6px}
 .gn-s{font-size:11px;color:var(--muted-soft);line-height:1.6;margin-bottom:11px}
+/* an advice line, and the one that names a ceiling already passed. --terra-700
+   is the measured-readable warning colour the rest of the file uses. */
+.gn-a{font-size:11.5px;color:var(--ink-soft);line-height:1.6;margin-bottom:7px}
+.gn-a:last-child{margin-bottom:0}
+.gn-a.gn-warn{color:var(--terra-700);font-weight:700}
 .gn-w{display:flex;flex-wrap:wrap;gap:7px}
 .gn-m,.gn-e{border:1.5px solid var(--line-strong);background:var(--card);border-radius:13px;
   padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);
@@ -8926,6 +8931,18 @@ var HE={
   '{n} שניות':{one:'שנייה',two:'שתי שניות',other:'{n} שניות'},
   '{n} דקות':{one:'דקה',two:'שתי דקות',other:'{n} דקות'},
   '{n} סטים':{one:'סט אחד',two:'שני סטים',other:'{n} סטים'},
+  /* The advice lines. Neither 'one' nor 'two' can fire - both sentences only
+     appear once a ceiling of six or more has been passed - but a plural key
+     with a wrong branch in it is a trap waiting for the day the ceiling
+     changes, and Arabic has six categories to fill either way. */
+  '{n} סטים באימון אחד. ההמלצה היא עד {cap}.':{
+    one:'סט אחד באימון. ההמלצה היא עד {cap}.',
+    two:'שני סטים באימון אחד. ההמלצה היא עד {cap}.',
+    other:'{n} סטים באימון אחד. ההמלצה היא עד {cap}.'},
+  '{g}: {n} סטים באימון אחד. ההמלצה היא {lo} עד {hi}.':{
+    one:'{g}: סט אחד באימון. ההמלצה היא {lo} עד {hi}.',
+    two:'{g}: שני סטים באימון אחד. ההמלצה היא {lo} עד {hi}.',
+    other:'{g}: {n} סטים באימון אחד. ההמלצה היא {lo} עד {hi}.'},
   '{n} חזרות':{one:'חזרה אחת',two:'שתי חזרות',other:'{n} חזרות'},
   '{n} תרגילים':{one:'תרגיל אחד',two:'שני תרגילים',other:'{n} תרגילים'},
   /* The count on the button that ends the filter step. It is its own key
@@ -18469,6 +18486,90 @@ var PROG_SPLITS={
    name. Listed here so build-lang-template can see keys that only ever reach
    _t through a variable; it is named in that tool's VIA_VARIABLE. */
 var PROG_DAY_OPTS=['כל הגוף','פלג גוף עליון','פלג גוף תחתון','דחיפה','משיכה','רגליים'];
+
+/* ── THE NOTEBOOK, READ BACK WHILE YOU BUILD ──
+   Sets per muscle group IN ONE SESSION, from the Full Body / AB / ABC table
+   on p.140. The weekly band is SETS_BAND and is a different question; this
+   one is about the session in front of you. */
+var PROG_PER_SESSION={full:[2,6],ab:[5,10],abc:[5,20]};
+/* A GENERATED PROGRAMME NEEDS A NAME, and it was being saved without one -
+   an empty title on its own screen and a blank in "{name} נשמרה!". These are
+   WIZ_NAME_OPTS, the words the hand-built wizard already offers and progLabel
+   already translates, so this adds no key to any language file. */
+var GEN_PROG_NAME={strength:'תוכנית כוח',size:'תוכנית מסה',   // i18n-exempt: WIZ_NAME_OPTS entries, drawn through progLabel
+                   endure:'תוכנית כללית',general:'תוכנית כללית'};   // i18n-exempt: same
+/* Large groups before small, in every session - p.140, and the one ordering
+   rule the notebook states for every split. These are the rolled-up group
+   names muscleGroupOf answers with, not the library's own eighteen. */
+var PROG_BIG=['ארבע ראשי','ירך אחורית','ישבן','גב','חזה'];   // i18n-exempt: rolled-up group keys, compared against muscleGroupOf and drawn through _t
+
+/* WHAT THE NOTEBOOK WOULD SAY ABOUT THIS LIST. Takes [{name,sets}] and
+   answers [{t,s}] - t is 'warn' when a stated ceiling is passed and 'note'
+   when it is advice, and the caller decides how loudly to draw either.
+   Nothing here blocks anything: the notebook gives recommendations, and a
+   screen that refuses to save is a screen people learn to route around.
+
+   Reads the person's own answers for which ceiling applies, because 26 sets
+   is the cap for somebody training three days a week and 30 for somebody
+   training six - quoting one number at everybody is how a limit stops being
+   believed. */
+function progAdvice(rows){
+  var me=(typeof fitMe==='function')?fitMe():{};
+  var sp=progSplitFor(+me.days||3,me.exp||'new');
+  var I=PROG_SPLITS[sp]||PROG_SPLITS.full;
+  var band=PROG_PER_SESSION[sp]||PROG_PER_SESSION.full;
+  var out=[],total=0,byG={},order=[],i,g,n;
+  for(i=0;i<rows.length;i++){
+    if(!rows[i]||!rows[i].name)continue;
+    n=Math.max(0,parseInt(rows[i].sets,10)||0);
+    total+=n;
+    g=muscleGroupOf(rows[i].name);
+    if(!byG.hasOwnProperty(g)){byG[g]=0;order.push(g);}
+    byG[g]+=n;
+  }
+  if(!total)return out;
+
+  /* the ceiling for the whole session */
+  if(total>I.cap)
+    out.push({t:'warn',s:_t('{n} סטים באימון אחד. ההמלצה היא עד {cap}.',{n:total,cap:I.cap})});
+
+  /* and for each group inside it */
+  for(i=0;i<order.length;i++){
+    g=order[i];
+    if(byG[g]>band[1])
+      out.push({t:'warn',s:_t('{g}: {n} סטים באימון אחד. ההמלצה היא {lo} עד {hi}.',
+                              {g:_t(g),n:byG[g],lo:band[0],hi:band[1]})});
+    else if(byG[g]===1)
+      out.push({t:'note',s:_t('{g}: סט אחד בלבד. פחות משניים כמעט לא נספר.',{g:_t(g)})});
+  }
+
+  /* LARGE BEFORE SMALL. Reported on the first small group that something
+     large follows, not on every pair - one sentence a person can act on
+     beats four that say the same thing. */
+  var sawSmall='';
+  for(i=0;i<order.length;i++){
+    if(PROG_BIG.indexOf(order[i])<0){if(!sawSmall)sawSmall=order[i];}
+    else if(sawSmall){
+      out.push({t:'note',s:_t('{big} לפני {small} — קבוצות גדולות קודם, כשיש עוד כוח.',
+                              {big:_t(order[i]),small:_t(sawSmall)})});
+      break;
+    }
+  }
+  return out;
+}
+/* Drawn the same way wherever it appears, so the advice reads as one voice
+   rather than as a different feature on each screen. Returns '' when there is
+   nothing to say, which is what lets a caller append it unconditionally. */
+function progAdviceHTML(rows,title){
+  var a=progAdvice(rows),i,h;
+  if(!a.length)return '';
+  h='<div class="gn-c">';
+  h+='<div class="gn-h">'+esc(title||_t('מה שכדאי לדעת'))+'</div>';
+  for(i=0;i<a.length;i++)
+    h+='<div class="gn-a'+(a[i].t==='warn'?' gn-warn':'')+'">'+esc(a[i].s)+'</div>';
+  h+='</div>';
+  return h;
+}
 function progDayLabel(nm){
   return (PROG_DAY_OPTS.indexOf(nm)>=0)?_t(nm):String(nm||'');
 }
@@ -18544,7 +18645,7 @@ function genProgram(opt){
       while(day[j].sets>2&&tot>budget){day[j].sets--;tot--;}
     for(j=0;j<day.length;j++)out.push(day[j]);
   }
-  return {id:Date.now(),name:opt.name||'',splitType:key,daysPerWeek:days,
+  return {id:Date.now(),name:opt.name||GEN_PROG_NAME[goalV]||'התוכנית שלי',splitType:key,daysPerWeek:days,   // i18n-exempt: a WIZ_NAME_OPTS entry, drawn through progLabel
           goal:goalV,builtAt:todayStr(),exercises:out};
 }
 
@@ -22436,6 +22537,21 @@ function renderViewProgram(){
   h+='<button onclick="_fitView=\'home\';renderFitness()" style="background:var(--surface);border:none;border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('חזרה')+'</button>';
   h+='</div>';
 
+  /* "בדוק את האימון שלי" - the same notebook reading, asked of a plan that
+     already exists rather than of one being typed. PER DAY, because a
+     programme is a week and summing the week into one session would quote a
+     ceiling against a number that was never a session's. */
+  var advDays={},advOrder=[],aek,aex;
+  for(aek=0;aek<prog.exercises.length;aek++){
+    aex=prog.exercises[aek];
+    var ad=aex.day||'';
+    if(!advDays.hasOwnProperty(ad)){advDays[ad]=[];advOrder.push(ad);}
+    advDays[ad].push({name:aex.name,sets:aex.sets});
+  }
+  for(aek=0;aek<advOrder.length;aek++)
+    h+=progAdviceHTML(advDays[advOrder[aek]],
+                      advOrder[aek]?progDayLabel(advOrder[aek]):'');
+
   for(var ei=0;ei<prog.exercises.length;ei++){
     var ex=prog.exercises[ei];
     var exLog=loadProgLog(prog.id,ex.name);
@@ -22650,6 +22766,12 @@ function renderFitEditTemplate(){
   for(var ei=0;ei<_tpl.exercises.length;ei++)h+=tplBlockHTML(_tpl.exercises[ei],ei);
   if(!_tpl.exercises.length)h+='<div class="tpl-empty">'+_t('עוד אין תרגילים. הוסף את הראשון.')+'</div>';
   h+='<button class="tpl-addex" onclick="tplAddExercise()">'+_t('+ הוסף תרגיל')+'</button>';
+  /* AS IT IS BUILT, not after it is saved. The numbers come out of the same
+     notebook the generator builds from, and reading them back while there is
+     still a decision to make is the whole point - afterwards it is a report. */
+  h+=progAdviceHTML(_tpl.exercises.map(function(ex){
+       return {name:ex.name,sets:tplRows(ex).length};
+     }));
   h+='<div class="tpl-btns">';
   h+='<button class="tpl-save" onclick="tplSave()">'+_t('שמור')+'</button>';
   h+='<button class="tpl-cancel" onclick="tplCancel()">'+_t('ביטול')+'</button>';
@@ -24331,6 +24453,15 @@ function renderFitWorkout(){
   h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
   h+='</div>';
   h+=addExHTML();
+  /* A workout grows mid-session more often than it survives the plan, so the
+     same notebook reading belongs here too - counted off what each exercise
+     is SET to do, which is the decision still open, rather than off what has
+     been logged, which is already behind you.
+     ABOVE the nav buttons, not below: drawn under "finish workout" it is
+     advice arriving after the decision it was meant to inform. */
+  h+=progAdviceHTML(w.exercises.map(function(ex){
+       return {name:ex.name,sets:(+ex.targetSets||(ex.sets&&ex.sets.length)||0)};
+     }));
   // Nav buttons
   h+='<div style="display:flex;gap:8px">';
   if(w.currentEx>0)h+='<button onclick="_fitWorkout.currentEx--;renderFitness()" style="flex:1;background:var(--surface);border:none;border-radius:14px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">&#8249; '+_t('אחור')+'</button>';
