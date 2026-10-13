@@ -24202,17 +24202,42 @@ function wtSound(kind){
    that sounds wrong is worse than no coach. The same four words go on the
    screen at 30px, which is what covers a silenced phone. */
 var WT_SAY={go:"Let's go",half:'Half way there',ten:'10 seconds',rest:'Rest'};   // i18n-exempt: the coach's four words are English in every build, by decision - see the note above
+/* WHICH VOICE, and it is not the first English one in the list.
+   The first version preferred localService, on the reasoning that a local
+   voice is the safe one. That is backwards on half the platforms: on Chrome
+   and Android "local" means the old on-device engine, and the good voices -
+   Google's, and Microsoft's "Natural" - all report localService:false. On a
+   Mac and an iPhone every voice is local and the spread is enormous, because
+   the OS ships Samantha and Zarvox in the same array.
+   So it scores by NAME, which is the only thing every platform tells you
+   about quality, and it throws out the novelty voices by name for the same
+   reason. The last line is the floor, not the aim: better a wrong-sounding
+   English voice than Hebrew reading "Let's go". */
+var WT_VOICE_GOOD=/natural|online|google|samantha|ava|allison|susan|zoe|evan|nathan|serena|karen|moira|daniel|alex|aria|jenny|guy|libby|ryan/i;
+var WT_VOICE_BAD=/compact|espeak|pico|albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|hysterical|jester|junior|kathy|organ|princess|ralph|trinoids|whisper|wobble|zarvox|fred|grandma|grandpa|rocko|shelley|sandy|eddy|flo|reed|rishi/i;
 var _wtVoice=null,_wtVoiceSet=false;
 function wtVoice(){
   if(_wtVoiceSet)return _wtVoice;
   try{
-    var v=window.speechSynthesis.getVoices()||[],i;
+    var v=window.speechSynthesis.getVoices()||[],i,s,best=-1,n;
     /* getVoices() is empty until the list has loaded, so this is NOT cached
        on a first call that found nothing - caching it there is how an app
        ends up permanently on the fallback voice. */
     if(!v.length)return null;
     _wtVoiceSet=true;
-    for(i=0;i<v.length;i++)if(/^en[-_]/i.test(v[i].lang)&&v[i].localService){_wtVoice=v[i];break;}
+    for(i=0;i<v.length;i++){
+      if(!/^en[-_]/i.test(v[i].lang))continue;
+      n=v[i].name||'';
+      if(WT_VOICE_BAD.test(n))continue;
+      s=0;
+      if(/natural/i.test(n))s+=40;
+      if(/online/i.test(n))s+=20;
+      if(WT_VOICE_GOOD.test(n))s+=30;
+      if(!v[i].localService)s+=10;          /* network = the newer engine */
+      if(/^en[-_]US/i.test(v[i].lang))s+=5;
+      if(v[i]['default'])s+=3;
+      if(s>best){best=s;_wtVoice=v[i];}
+    }
     if(!_wtVoice)for(i=0;i<v.length;i++)if(/^en[-_]/i.test(v[i].lang)){_wtVoice=v[i];break;}
   }catch(e){}
   return _wtVoice;
@@ -24229,7 +24254,9 @@ function wtSay(line){
        utterance in Chrome, and that is the common case here. */
     if(S.speaking||S.pending)S.cancel();
     var u=new SpeechSynthesisUtterance(line),v=wtVoice();
-    u.lang='en-US';u.rate=1.05;
+    /* rate 1 and pitch 1: every step away from them is a step towards the
+       robot. 1.05 was there to feel urgent and bought nothing. */
+    u.lang='en-US';u.rate=1;u.pitch=1;
     if(v)u.voice=v;
     S.speak(u);
   }catch(e){}
