@@ -1064,6 +1064,39 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .rpe-row{display:flex;gap:3px;overflow-x:auto;padding-bottom:2px}
 .rpe-b{flex:1 0 auto;min-width:26px;min-height:32px;border:1.5px solid var(--line);background:var(--card);border-radius:8px;font:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;padding:0}
 .rpe-b.on{background:var(--terra-500);border-color:var(--terra-700);color:var(--white)}
+/* ── THE EFFORT WHEEL ──
+   What replaced the ten buttons above. 184px against their 32 is the price,
+   and it buys one target a thumb can hit instead of ten it cannot, plus the
+   word beside each number.
+   The channel is the only lit thing, which is the whole of this app's colour
+   language, and what lights it is effortTint - the same four colours the
+   workout summary has coloured logged sets with all along. */
+/* its own --nu-* like every other block in this file declares its own, rather
+   than leaning on an ancestor: the add form sits inside .fw-now and the
+   correction sheet does not, so an inherited value would paint one of them
+   and leave the other with nothing. */
+.ew{--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+  position:relative;height:184px;border-radius:16px;overflow:hidden;
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+.ew-slot{position:absolute;left:8px;right:8px;top:74px;height:36px;border-radius:11px;
+  pointer-events:none;transition:background .25s ease;
+  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+.ew-sc{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;position:relative;z-index:1;
+  scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
+.ew-sc::-webkit-scrollbar{display:none}
+.ew-pad{height:74px}
+/* perspective is written into each row's own transform rather than onto the
+   scroller: a perspective origin on a scrolling box travels with the scroll
+   and the cylinder shears. */
+.ew-n{height:36px;scroll-snap-align:center;display:flex;align-items:center;
+  justify-content:center;gap:11px;cursor:pointer;color:var(--ink);
+  transform-origin:50% 50%;backface-visibility:hidden;
+  transition:opacity .18s ease,transform .18s ease}
+.ew-num{font-size:16px;font-weight:800;min-width:22px;text-align:center;transition:font-size .18s ease}
+.ew-w{font-size:13px;font-weight:600;color:var(--muted);transition:font-size .18s ease}
+.ew-n.on .ew-num{font-size:23px}
+.ew-n.on .ew-w{font-size:14px}
+@media (prefers-reduced-motion:reduce){.ew-n{transition:none}.ew-sc{scroll-behavior:auto}}
 .addbtn{width:100%;background:var(--cta-fill);border:none;border-radius:11px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;color:var(--white)}
 .lib-save-btn{width:100%;background:linear-gradient(135deg,var(--violet-100),var(--green-50));border:none;border-radius:11px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--violet-700);margin-bottom:8px}
 .lib-save-btn.saved{background:var(--cta-fill);color:var(--white)}
@@ -17396,6 +17429,16 @@ function effortScale(){
   return 'rpe';
 }
 function toggleEffort(){
+  /* THE HELD VALUES MEAN SOMETHING ELSE AFTER THIS LINE. _fitRpe and _edRpe
+     are kept in the READER's scale and converted only at the store's edge, so
+     flipping the scale without converting them turns a pending 2 from
+     "קל מאוד" into "קשה מאוד" - silently, on a set about to be logged or a
+     correction about to be saved. Found by switching the scale with an answer
+     already on the wheel; it was doing this to the ten buttons too, where the
+     lit one simply stayed lit and nothing said its meaning had moved.
+     RIR is exactly 10 - RPE, and the same subtraction converts either way. */
+  if(_fitRpe!==null&&_fitRpe!==undefined)_fitRpe=10-_fitRpe;
+  if(_edRpe!==null&&_edRpe!==undefined)_edRpe=10-_edRpe;
   try{localStorage.setItem(EFFORT_KEY,effortScale()==='rpe'?'rir':'rpe');}catch(e){}
   renderFitness();
 }
@@ -18053,6 +18096,117 @@ function fitTyped(){
   _fitTyped={w:w?w.value:'',r:r?r.value:''};
 }
 function fitTypedClear(){_fitTyped=null;}
+/* ── THE COLOUR OF AN EFFORT ──
+   These four have coloured logged sets in the workout summary since it was
+   written; this is that same function, lifted to the top level so the wheel
+   and the summary read ONE of it. A second palette for the same question is
+   how two screens come to disagree about what 8 is. */
+function effortColor(rpe){
+  if(rpe===null||rpe===undefined||!isFinite(rpe))return '#ADA79A';
+  if(rpe<6)return PAL.green700;
+  if(rpe<7.5)return '#E0A020';
+  if(rpe<9)return '#E0691E';
+  return '#D33A2C';
+}
+/* The band gives the hue and where you are on the scale gives the strength,
+   so all ten feel different without inventing a fifth colour. Measured: the
+   strongest tint leaves the ink on top at 5.27:1. */
+function effortTint(rpe,k){
+  var c=effortColor(rpe),a=(0.09+(rpe-1)/9*0.19)*k;
+  return 'rgba('+parseInt(c.slice(1,3),16)+','+parseInt(c.slice(3,5),16)+','+
+         parseInt(c.slice(5,7),16)+','+a.toFixed(3)+')';
+}
+/* THE WORDS. Plain, and all ten distinct - find-duplicate-options would
+   refuse two choices wearing the same label, and it would be right: asking
+   somebody to pick between two identical words is not a choice.
+   Inside langOn because a collection built at the top level calls _t() before
+   any dictionary has arrived and stays Hebrew for the life of the tab. */
+var EFFORT_WORD;langOn(function(){EFFORT_WORD={
+  1:''+_t('ממש קל')+'',2:''+_t('קל מאוד')+'',3:''+_t('קל')+'',4:''+_t('נוח')+'',
+  /* TWO OF THESE ALREADY MEAN SOMETHING ELSE. 'בינוני' is the EXPERIENCE
+     level and English answers it "Intermediate"; 'קשה' is the lowest mood on
+     the daily reflection, a rough day. One key cannot say both, so these two
+     carry a context after the bar - nothing shows it, and the Hebrew is
+     unchanged. 'קל' needs none: the summary's own RPE legend already uses it
+     for exactly this, so sharing the key is right rather than accidental. */
+  5:''+_t('בינוני|מאמץ')+'',6:''+_t('מאתגר')+'',7:''+_t('קשה|מאמץ')+'',8:''+_t('קשה מאוד')+'',
+  9:''+_t('על הגבול')+'',10:''+_t('כשל')+''
+};});
+var EW_ROW=36,EW_H=184;
+
+/* ── ONE WHEEL, TWO PLACES ──
+   The add form and the correction sheet ask the same question, so they get
+   the same control. `which` says where the answer goes - 'fit' for the set
+   being added, 'ed' for one being corrected - and the two must stay separate
+   because the add form's row is still on screen underneath.
+
+   IT OPENS ON "לא דורג". A wheel always has something in the middle, so
+   opening it on a number would file an effort nobody chose on every set
+   logged without touching it. The blank is a real position. */
+function effortWheelHTML(which){
+  var sc=effortScale(),lo=(sc==='rir')?0:1,hi=(sc==='rir')?9:10,v,h;   // i18n-exempt: a stored key
+  h='<div class="ew" data-for="'+which+'"><div class="ew-slot"></div>'+
+    '<div class="ew-sc" onscroll="effortWheelPaint(this)">'+
+    '<div class="ew-pad"></div>'+
+    '<div class="ew-n" data-v=""><span class="ew-num">&ndash;</span>'+
+    '<span class="ew-w">'+_t('לא דורג')+'</span></div>';
+  for(v=lo;v<=hi;v++)
+    h+='<div class="ew-n" data-v="'+v+'"><span class="ew-num">'+nfmt(v)+'</span>'+
+       '<span class="ew-w">'+esc((EFFORT_WORD&&EFFORT_WORD[effortToRPE(v)])||'')+'</span></div>';
+  h+='<div class="ew-pad"></div></div></div>';
+  return h;
+}
+/* Reads which row ended up in the middle and says so. scroll-snap does the
+   physics - the platform's inertia is better than anything written here and
+   is what every other wheel on the phone feels like, which is the point of
+   choosing this control. NO RE-RENDER: the value goes straight into its
+   variable, so choosing an effort cannot erase the numbers beside it. That
+   bug is structurally impossible here rather than fixed. */
+function effortWheelPaint(sc){
+  var box=sc.parentNode,rows=sc.getElementsByClassName('ew-n');
+  var mid=sc.scrollTop+sc.clientHeight/2,best=null,bestD=1e9,i,el,d,a;
+  for(i=0;i<rows.length;i++){
+    el=rows[i];
+    /* distance from the centre IN ROWS, so the falloff does not change if
+       the wheel's height ever does */
+    d=(el.offsetTop+EW_ROW/2-mid)/EW_ROW;a=Math.abs(d);
+    if(a<bestD){bestD=a;best=el;}
+    el.style.transform='perspective(540px) rotateX('+(-Math.max(-62,Math.min(62,d*21))).toFixed(2)+
+      'deg) scale('+Math.max(0.78,1-a*0.073).toFixed(3)+')';
+    el.style.opacity=Math.max(0.22,1-a*0.26).toFixed(3);
+    if(a<0.5)el.className='ew-n on';else el.className='ew-n';
+  }
+  if(!best)return;
+  var raw=best.getAttribute('data-v'),v=(raw==='')?null:+raw;
+  var rpe=(v===null)?null:effortToRPE(v);
+  var slot=box.getElementsByClassName('ew-slot')[0];
+  slot.style.background=(rpe===null)?''
+    :'linear-gradient(90deg,'+effortTint(rpe,1)+','+effortTint(rpe,0.34)+')';
+  if(box.getAttribute('data-for')==='ed')_edRpe=v;else _fitRpe=v;   // i18n-exempt: a stored key
+}
+/* Every wheel on the screen opened on the value its variable already holds.
+   Called after the render writes innerHTML, because offsetTop is nothing
+   until the node is in the document. */
+function effortWheelSync(){
+  var all=document.getElementsByClassName('ew'),i,box,sc,want,rows,j,hit;
+  for(i=0;i<all.length;i++){
+    box=all[i];sc=box.getElementsByClassName('ew-sc')[0];
+    want=(box.getAttribute('data-for')==='ed')?_edRpe:_fitRpe;   // i18n-exempt: a stored key
+    rows=sc.getElementsByClassName('ew-n');hit=rows[0];
+    for(j=0;j<rows.length;j++)
+      if(rows[j].getAttribute('data-v')===(want===null||want===undefined?'':String(want)))hit=rows[j];
+    sc.scrollTop=hit.offsetTop-(sc.clientHeight-EW_ROW)/2;
+    effortWheelPaint(sc);
+  }
+}
+/* A TAP IS A CHOICE TOO. A wheel that only scrolls refuses the first gesture
+   everybody tries, and the row under a thumb is already the answer. */
+document.addEventListener('click',function(e){
+  var el=e.target&&e.target.closest?e.target.closest('.ew-n'):null;
+  if(!el)return;
+  var sc=el.parentNode;
+  sc.scrollTo({top:el.offsetTop-(sc.clientHeight-EW_ROW)/2,behavior:'smooth'});
+});
 function rpePick(v){_fitRpe=(_fitRpe===v)?null:v;renderFitness();}
 /* THE SAME THING FOR A SET ALREADY LOGGED. Its own variable, because the add
    form's row is still on screen underneath and the two must not answer for
@@ -23074,12 +23228,11 @@ function exPrevHTML(ex,curPR){
              '<span class="fw-sel-x">&times;</span>'+
              '<input id="ed-r" class="mtnm" type="number" value="'+mySets[_setSel].reps+'">'+
            '</div>';
-        /* the same ten taps the add form offers, and the same switch beside
-           them - a set is corrected in the scale it was logged in */
-        h+='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc2==='rir'?'RIR':'RPE')+'</button><div class="rpe-row">';
-        for(_v2=_lo2;_v2<=_hi2;_v2++)
-          h+='<button class="rpe-b'+(_edRpe===_v2?' on':'')+'" onclick="edRpePick('+_v2+')">'+nfmt(_v2)+'</button>';
-        h+='</div></div>';
+        /* the same wheel the add form offers, and the same switch beside it -
+           a set is corrected in the scale it was logged in */
+        h+='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc2==='rir'?'RIR':'RPE')+'</button>';
+        h+=effortWheelHTML('ed');   // i18n-exempt: a stored key
+        h+='</div>';
         h+='<div class="fw-sel">'+
              '<button class="fw-sel-b go" onclick="saveEditSet()">'+_t('שמור')+'</button>'+
              '<button class="fw-sel-b" onclick="cancelEditSet()">'+_t('ביטול')+'</button>'+
@@ -24536,20 +24689,14 @@ function renderFitWorkout(){
      straight at the word that is wrong. */
   h+='</div>';
   var _sc=effortScale();
+  /* A WHEEL, NOT TEN BUTTONS. Measured at 390px the ten came out about 33px
+     across and a thumb pad is 34-42, so the row sat at or below the floor and
+     the tap that missed landed on 7 or 9 and looked deliberate. One big
+     target instead, and the word beside each number, because this field was
+     never skipped for being small - it was skipped for being unclear. */
   h+='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc==='rir'?'RIR':'RPE')+'</button>';
-  /* Ten taps rather than a number field. This value is one of ten and it
-     is optional, and a keyboard sliding up over the set you have just
-     finished is the wrong price for it. Tapping the one that is already
-     lit clears it, because "I did not mean to answer" has to be reachable
-     without a keyboard either. */
-  h+='<div class="rpe-row">';
-  var _lo=(_sc==='rir')?0:1,_hi=(_sc==='rir')?9:10,_v;
-  for(_v=_lo;_v<=_hi;_v++)
-    h+='<button class="rpe-b'+(_fitRpe===_v?' on':'')+'" onclick="rpePick('+_v+')">'+nfmt(_v)+'</button>';
-  /* closes .rpe-row and .fw-effort. The third close that used to follow
-     belonged to the three-column grid, and the pair now closes itself the
-     moment reps are done. */
-  h+='</div></div>';
+  h+=effortWheelHTML('fit');   // i18n-exempt: a stored key
+  h+='</div>';
   /* The toggle used to sit ON the button it changes, "because the decision
      is made at the moment of pressing, not before". The button moved up into
      the row with the numbers and there is no room for a word beside it, so
@@ -24606,6 +24753,7 @@ function renderFitWorkout(){
   h+='</div>';
   document.getElementById('content').innerHTML=h;
   hydratePhotos();
+  effortWheelSync();   // offsetTop is nothing until the node is in the document
   plateHint();   // the boxes open prefilled, so the line has something to say already
 }
 
@@ -24914,13 +25062,9 @@ function renderFitSummary(){
   var prs=loadPRs();
 
   // RPE color by spec: <6 green, 6-7.4 amber, 7.5-8.9 orange, ≥9 coral, null gray
-  function rpeColor(rpe){
-    if(rpe===null||rpe===undefined)return '#ADA79A';
-    if(rpe<6)return PAL.green700;
-    if(rpe<7.5)return '#E0A020';
-    if(rpe<9)return '#E0691E';
-    return '#D33A2C';
-  }
+  /* lifted to the top level as effortColor, so the wheel and this screen
+     cannot drift apart about what 8 looks like */
+  var rpeColor=effortColor;
 
   // Totals — volume only on weighted exercises (spec 4.1)
   var totalSets=0,rpeSum=0,rpeCount=0,totalVol=0;
