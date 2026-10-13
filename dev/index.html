@@ -1720,10 +1720,20 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .fit-last{font-size:10.5px;color:var(--muted);margin-bottom:7px;line-height:1.5}
 /* Two controls that must be reachable and must not compete with the lift's
    own name: full-size tap targets, drawn as quietly as a label. */
-.wx-b{background:none;border:none;font-family:inherit;cursor:pointer;
-  color:var(--muted);font-size:16px;line-height:1;padding:6px;border-radius:9px;
-  min-width:30px;min-height:30px}
-.wx-b:active{background:rgba(140,133,125,.14)}
+/* RAISED, LIKE EVERYTHING ELSE THAT CAN BE PRESSED. These were two bare
+   glyphs on the ground with no shell at all, and neither read as a button. */
+.wx-b{--nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28);
+  display:inline-flex;align-items:center;gap:4px;flex-shrink:0;
+  background:none;border:none;font-family:inherit;cursor:pointer;
+  color:var(--ink-soft);font-size:11px;font-weight:800;line-height:1;
+  padding:7px 10px;border-radius:11px;min-height:32px;
+  box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+.wx-b .wx-i{font-style:normal;font-size:14px;line-height:1;opacity:.75}
+.wx-b:active{box-shadow:inset 1px 2px 4px rgba(176,168,156,.44),inset -1px -1px 3px var(--nu-lit)}
+.wx-b.wx-del{color:var(--terra-700)}
+/* last time, in the header: the same chips the record card draws, with room
+   above them to sit apart from the target line */
+.fw-prev-top{margin:9px 0 2px}
 .fit-last b{font-weight:800;color:var(--ink)}
 .fit-last i{font-style:normal;opacity:.75}
 /* ── THE RACK YOU LOAD BY HAND ──
@@ -23184,25 +23194,40 @@ function exNoteHTML(ex,i){
    Two rows of the same chips in one card. They exist to be compared, and a
    chip row against a stack of tall rows does not compare at a glance.
    A tap selects one of today's and opens full-size buttons under it. */
-function exPrevHTML(ex,curPR){
+/* WHAT YOU LIFTED LAST TIME, lifted out of the record card so it can be
+   drawn in the exercise's own header instead. It is the one number you want
+   BEFORE you type - it is the question the two boxes are answering - and it
+   was sitting under the note, the warm-ups and every set logged so far, in a
+   card that grows all session. Its own function now, because the header and
+   the record both had a claim on it and copying it would have been two of
+   them. */
+function exLastHTML(ex){
   var prev=exLastTime(ex.name),mySets=(ex.sets||[]),h,i,s;
-  if(!prev&&!mySets.length)
-    return '<div class="fw-prev none">'+_t('הפעם הראשונה שאתה עושה את זה')+' &mdash; '+_t('מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.')+'</div>';
+  if(!prev)
+    return mySets.length?'':'<div class="fw-prev none">'+_t('הפעם הראשונה שאתה עושה את זה')+' &mdash; '+_t('מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.')+'</div>';
   /* the numbers go through the reader's own unit and digits, which the raw
      s.weight here never did - an imperial reader was shown kilograms */
   var num=function(st){return (st.weight?nfmt(edWeightVal(st.weight))+'&times;':'')+nfmt(st.reps);};
-  h='<div class="fw-prev">';
-  if(prev){
-    h+='<div class="fw-prev-t">'+_t('בפעם הקודמת')+' &middot; '+agoText(prev.date)+'</div><div class="fw-prev-s">';
-    for(i=0;i<prev.sets.length;i++){
-      s=prev.sets[i];
-      var mine=mySets[i];
-      var better=mine&&((mine.weight>s.weight)||(mine.weight===s.weight&&mine.reps>s.reps));
-      var same=mine&&mine.weight===s.weight&&mine.reps===s.reps;
-      h+='<span class="fw-ps'+(better?' beat':(same?' same':''))+'">'+num(s)+'</span>';
-    }
-    h+='</div>';
+  h='<div class="fw-prev fw-prev-top">';
+  h+='<div class="fw-prev-t">'+_t('בפעם הקודמת')+' &middot; '+agoText(prev.date)+'</div><div class="fw-prev-s">';
+  for(i=0;i<prev.sets.length;i++){
+    s=prev.sets[i];
+    var mine=mySets[i];
+    /* still compared against TODAY, so a set you have already beaten is
+       marked even though the row has moved up the screen */
+    var better=mine&&((mine.weight>s.weight)||(mine.weight===s.weight&&mine.reps>s.reps));
+    var same=mine&&mine.weight===s.weight&&mine.reps===s.reps;
+    h+='<span class="fw-ps'+(better?' beat':(same?' same':''))+'">'+num(s)+'</span>';
   }
+  return h+'</div></div>';
+}
+function exPrevHTML(ex,curPR){
+  var mySets=(ex.sets||[]),h,i,s;
+  /* last time is drawn in the header now; what is left here is TODAY, which
+     is the part that grows */
+  if(!mySets.length)return '';
+  var num=function(st){return (st.weight?nfmt(edWeightVal(st.weight))+'&times;':'')+nfmt(st.reps);};
+  h='<div class="fw-prev">';
   if(mySets.length){
     h+='<div class="fw-prev-t fw-mine-t">'+_t('היום')+'</div><div class="fw-prev-s">';
     for(i=0;i<mySets.length;i++){
@@ -24578,10 +24603,22 @@ function renderFitWorkout(){
   if(curPR>0)h+='<div style="font-size:10px;color:var(--amber-700);font-weight:700">PR: '+fmtWeight(curPR)+'</div>';
   /* On the exercise, not in a settings screen: the moment you want to change
      it is the moment you are looking at it. */
-  h+='<button class="wx-b" onclick="wxSwap('+w.currentEx+')" title="'+_t('החלף תרגיל')+'" aria-label="'+_t('החלף תרגיל')+'">&#8646;</button>';
-  h+='<button class="wx-b" onclick="wxRemove('+w.currentEx+')" title="'+_t('הסר תרגיל')+'" aria-label="'+_t('הסר תרגיל')+'">&#215;</button>';
+  /* A WORD, NOT A GLYPH. ⇆ is not read as "swap" by anybody who has not been
+     told, and a × at 16px with no background reads as decoration. Both carry
+     their word now and both sit in the raised shell this app gives anything
+     that can be pressed - the icon stays beside the word because it is what
+     the eye finds second time round. */
+  h+='<button class="wx-b" onclick="wxSwap('+w.currentEx+')" aria-label="'+_t('החלף תרגיל')+'">'+
+     '<i class="wx-i">&#8646;</i>'+_t('החלף')+'</button>';
+  h+='<button class="wx-b wx-del" onclick="wxRemove('+w.currentEx+')" aria-label="'+_t('הסר תרגיל')+'">'+
+     '<i class="wx-i">&#215;</i>'+_t('הסר')+'</button>';
   h+='</div></div>';
   h+=fitTgtHTML(ex);
+  /* BEFORE THE BOXES, NOT AFTER THEM. What you lifted last time is what the
+     two boxes are being asked about, so it belongs where you are looking
+     when you decide - and taking it out of the record card below shortens
+     the half of the screen that grows all session. */
+  h+=exLastHTML(ex);
   /* A group is still contiguous; what changed is that any exercise can be
      made the next one. */
   (function(){
