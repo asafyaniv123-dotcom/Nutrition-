@@ -3058,6 +3058,23 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .vl-ring-bg{fill:rgba(0,0,0,.45);stroke:rgba(255,255,255,.25);stroke-width:5}
 .vl-ring-fg{fill:none;stroke:#e06a6a;stroke-width:5;stroke-linecap:round;stroke-dasharray:201.06;stroke-dashoffset:0;transition:stroke-dashoffset .1s linear}
 .vl-ring span{position:relative;font-size:13px;font-weight:800;color:var(--white)}
+/* ── CHOOSING THE COVER ──
+   On the sheet's own dark surface, not the app's light material: this sits
+   over a video, and a pale panel here would be a second world. */
+.vl-strip{display:flex;gap:3px;width:100%;margin-top:11px;border-radius:9px;overflow:hidden;
+  background:#0c0b10}
+.vl-strip canvas{flex:1;min-width:0;height:52px;display:block;background:#0c0b10;
+  cursor:pointer;opacity:.5;transition:opacity .2s ease}
+.vl-strip canvas.on{opacity:1}
+.vl-scrub{-webkit-appearance:none;appearance:none;width:100%;height:26px;margin:2px 0 0;
+  background:none;cursor:pointer}
+.vl-scrub::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:#3a3545}
+.vl-scrub::-moz-range-track{height:4px;border-radius:2px;background:#3a3545}
+.vl-scrub::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;
+  border-radius:50%;background:#f0a92e;border:none;margin-top:-8px;
+  box-shadow:0 0 0 3px rgba(240,169,46,.28)}
+.vl-scrub::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#f0a92e;
+  border:none;box-shadow:0 0 0 3px rgba(240,169,46,.28)}
 .vl-msg{font-size:11.5px;color:#a9a2b3;line-height:1.6;text-align:center;margin:11px 4px 0;min-height:19px}
 .vl-actions{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px}
 /* the shutter: a ring with a dot, the dot turning into a square while running */
@@ -9833,6 +9850,18 @@ function photoPutKeyed(key,dataURI){
 }
 // A legacy value is the picture itself; a new one is a key into the store.
 function isPhotoKey(v){return !!v&&typeof v==='string'&&v.indexOf('data:')!==0;}
+/* ── THE DAY'S PICTURE ──
+   The summary's photo first, and the vlog's cover frame second.
+   NOT the other way round, and the cover is NOT written into the summary:
+   a summary record means the day has been REFLECTED on - it is what silences
+   the evening reminder - and a clip filmed at noon must not close an evening
+   that has not happened. The vlog has had its own record since the day it
+   was built, for exactly this reason. */
+function dayPic(ds,sum){
+  if(sum&&sum.photo)return sum.photo;
+  var v=loadVlog(ds);
+  return (v&&v.cover)?v.cover:'';
+}
 function photoImg(ref,attrs){
   if(!ref)return '';
   if(isPhotoKey(ref))return '<img data-photo="'+esc(ref)+'" '+(attrs||'')+'>';
@@ -10146,7 +10175,9 @@ function vlogStartCam(){
     vlogLive();
     vlogCountCams();
     vlogMsg(_t('עד {n} שניות. ההקלטה נעצרת לבד.',{n:VLOG_MAX}));
-    vlogActions('<button class="vl-shot" onclick="vlogRecord()" aria-label="'+_t("התחל הקלטה")+'"><span></span></button>');
+    vlogActions('<button class="vl-shot" onclick="vlogRecord()" aria-label="'+_t("התחל הקלטה")+'"><span></span></button>'+
+      '<label class="vl-flat">'+_t('תמונה מסרטון בגלריה')+
+      '<input type="file" accept="video/*" style="display:none" onchange="vlogFromGallery(this)"></label>');
   },function(err){
     var n=err&&err.name;
     vlogFallback(n==='NotAllowedError'?''+_t('אין הרשאה למצלמה. אפשר לאשר אותה בהגדרות האתר.')+'':
@@ -10278,6 +10309,8 @@ function vlogFallback(why){
   vlogMsg((why?why+'<br>':'')+''+_t('אפשר להקליט במצלמה של הטלפון, עד {n} שניות.',{n:VLOG_MAX}));
   vlogActions('<label class="vl-btn">'+_t('הקלט במצלמת הטלפון')+''+
     '<input type="file" accept="video/*" capture="user" style="display:none" onchange="vlogPicked(this)"></label>'+
+    '<label class="vl-flat">'+_t('תמונה מסרטון בגלריה')+
+    '<input type="file" accept="video/*" style="display:none" onchange="vlogFromGallery(this)"></label>'+
     '<button class="vl-flat" onclick="vlogClose()">'+_t('בטל')+'</button>');
 }
 function vlogPicked(inp){
@@ -10395,6 +10428,7 @@ function vlogPreview(){
   vlogSetSrc(_vlURL);
   vlogMsg(_t('{n} שניות',{n:Math.round(_vlSec)})+' &middot; '+vlogSize(_vlBlob.size));
   vlogActions('<button class="vl-btn" onclick="vlogSave()">'+_t('שמור ליום הזה')+'</button>'+
+              '<button class="vl-flat" onclick="vlogCoverOpen()">'+_t('בחר תמונה לכיסוי')+'</button>'+
               '<button class="vl-flat" onclick="vlogRetake()">'+_t('הקלט שוב')+'</button>');
 }
 function vlogRetake(){
@@ -10439,9 +10473,207 @@ function vlogShowSaved(v){
     _vlURL=URL.createObjectURL(b);
     vlogSetSrc(_vlURL);
     vlogMsg(_t('{n} שניות',{n:vlogSecs(v)})+' &middot; '+fmtDate(_vlDate));
-    vlogActions('<button class="vl-btn" onclick="vlogRetake()">'+_t('הקלט במקומו')+'</button>'+
+    vlogActions('<button class="vl-btn" onclick="vlogCoverOpen()">'+_t('בחר תמונה לכיסוי')+'</button>'+
+                '<button class="vl-flat" onclick="vlogRetake()">'+_t('הקלט במקומו')+'</button>'+
                 '<button class="vl-flat vl-del" onclick="vlogDelete()">'+_t('מחק')+'</button>');
   });
+}
+/* ── THE COVER FRAME ──
+   "כמו שבאינסטגרם כשמעלים סרטון אפשר לבחור מתוך הסרטון איזה תמונה תראה בפיד"
+
+   A strip of eight stills to see by, a scrubber to land on, and the <video>
+   itself as the big preview - it is already on the sheet and a paused video
+   IS the frame, so nothing has to be drawn twice.
+
+   The frame is saved through the SAME pipeline as every other photo in the
+   app: 900px long edge, JPEG at 0.72, photoPut. Which is why the calendar
+   needs no idea that a video was ever involved. */
+var _vlCovDur=0,_vlCovT=0,_vlCovBusy=false;
+var VL_STRIP=8;
+/* ── HOW LONG IS THIS CLIP ──
+   A clip from MediaRecorder has NO DURATION IN ITS HEADER: the container is
+   written as it streams, so there is nowhere to put a length, and the
+   browser answers Infinity. Seeking past the end makes it work the real
+   length out, which is the standard way to ask - and without it the picker
+   drew eight black squares for every clip the app itself had recorded.
+   The seconds the app counted while recording are the floor under that. */
+function vlogDuration(v,cb){
+  if(isFinite(v.duration)&&v.duration>0)return cb(v.duration);
+  var known=_vlSec||((loadVlog(_vlDate)||{}).sec||0),done=false;
+  function fin(d){
+    if(done)return;
+    done=true;
+    v.removeEventListener('timeupdate',look);
+    try{v.currentTime=0;}catch(e){}
+    cb(d>0?d:0);
+  }
+  function look(){ if(isFinite(v.duration)&&v.duration>0)fin(v.duration); }
+  v.addEventListener('timeupdate',look);
+  try{v.currentTime=1e7;}catch(e){}
+  setTimeout(function(){fin(isFinite(v.duration)&&v.duration>0?v.duration:known);},1500);
+}
+/* HAVE_CURRENT_DATA or better, which is the first state in which drawImage
+   has anything to copy. Everything downstream assumed it rather than waiting
+   for it, and an element with readyState 0 draws a black rectangle in
+   perfect silence - no error, no exception, eight black squares. */
+function vlogReady(v,cb){
+  if(v.readyState>=2&&v.videoWidth>0)return cb(true);
+  var done=false,t0=Date.now();
+  function tick(){
+    if(done)return;
+    if(v.readyState>=2&&v.videoWidth>0){done=true;cb(true);return;}
+    if(Date.now()-t0>6000){done=true;cb(false);return;}
+    setTimeout(tick,120);
+  }
+  tick();
+}
+function vlogCoverOpen(){
+  var v=document.getElementById('vl-video');
+  if(!v||!v.getAttribute('src'))return;
+  v.pause();
+  vlogMsg(''+_t('טוען')+'&hellip;');
+  vlogActions('');
+  vlogReady(v,function(ok){
+  if(!ok){
+    vlogMsg(''+_t('לא הצלחתי לקרוא את התמונה מהסרטון.')+'');
+    vlogActions('<button class="vl-flat" onclick="vlogCoverCancel()">'+_t('בטל')+'</button>');
+    return;
+  }
+  vlogDuration(v,function(dur){
+    if(!dur){
+      vlogMsg(''+_t('לא הצלחתי לקרוא את התמונה מהסרטון.')+'');
+      vlogActions('<button class="vl-flat" onclick="vlogCoverCancel()">'+_t('בטל')+'</button>');
+      return;
+    }
+    _vlCovDur=dur;
+    vlogCoverUI(v);
+  });
+  });
+}
+function vlogCoverUI(v){
+  _vlCovT=_vlCovDur/2;
+  vlogMsg(''+_t('בחר את התמונה שתופיע בלוח השנה')+'');
+  vlogActions('<div class="vl-strip" id="vl-strip"></div>'+
+    '<input class="vl-scrub" id="vl-scrub" type="range" min="0" max="1000" value="500" '+
+    'oninput="vlogCoverSeek(this.value)" aria-label="'+esc(_t('בחר את התמונה שתופיע בלוח השנה'))+'">'+
+    '<button class="vl-btn" onclick="vlogCoverSave()">'+_t('שמור כתמונת היום')+'</button>'+
+    '<button class="vl-flat" onclick="vlogCoverCancel()">'+_t('בטל')+'</button>');
+  vlogFilmstrip(v);
+}
+/* eight stills, taken one at a time: a video element seeks to one place at a
+   time, so this is a chain and not a loop. The timeout is the guard for a
+   seek that lands where it already was and fires nothing. */
+function vlogFilmstrip(v){
+  var strip=document.getElementById('vl-strip');
+  if(!strip)return;
+  var i,html='';
+  for(i=0;i<VL_STRIP;i++)html+='<canvas width="60" height="80"></canvas>';
+  strip.innerHTML=html;
+  var cans=strip.querySelectorAll('canvas'),k=0;
+  for(i=0;i<cans.length;i++)(function(j){
+    cans[j].onclick=function(){
+      var el=document.getElementById('vl-scrub');
+      var val=Math.round(1000*(j+0.5)/VL_STRIP);
+      if(el)el.value=val;
+      vlogCoverSeek(val);
+    };
+  })(i);
+  _vlCovBusy=true;
+  function shot(){
+    if(k>=VL_STRIP){
+      _vlCovBusy=false;
+      vlogCoverSeek(document.getElementById('vl-scrub')?document.getElementById('vl-scrub').value:500);
+      return;
+    }
+    var done=false;
+    var take=function(){
+      if(done)return;
+      done=true;
+      v.removeEventListener('seeked',take);
+      try{
+        var c=cans[k],cx=c.getContext('2d'),vw=v.videoWidth,vh=v.videoHeight;
+        /* readyState as well as a size: a seek can report itself finished
+           before the frame it landed on has been decoded, and drawing then
+           copies the black that was there */
+        if(vw&&vh&&v.readyState>=2){
+          /* cover-fit, so a portrait clip does not come back letterboxed in
+             a thumbnail that is already tiny */
+          var s=Math.max(c.width/vw,c.height/vh);
+          cx.drawImage(v,(c.width-vw*s)/2,(c.height-vh*s)/2,vw*s,vh*s);
+        }
+      }catch(e){}
+      k++;shot();
+    };
+    v.addEventListener('seeked',take);
+    /* the guard, not the plan: a seek that lands where it already was fires
+       nothing at all, and without this the chain would stop on still three */
+    setTimeout(take,1400);
+    try{v.currentTime=_vlCovDur*(k+0.5)/VL_STRIP;}catch(e){take();}
+  }
+  shot();
+}
+function vlogCoverSeek(val){
+  var v=document.getElementById('vl-video');
+  if(!v||_vlCovBusy)return;
+  _vlCovT=_vlCovDur*(parseInt(val,10)||0)/1000;
+  try{v.currentTime=Math.min(_vlCovDur-0.02,Math.max(0,_vlCovT));}catch(e){}
+  var cans=document.querySelectorAll('#vl-strip canvas'),i,
+      on=Math.min(VL_STRIP-1,Math.floor((parseInt(val,10)||0)/1000*VL_STRIP));
+  for(i=0;i<cans.length;i++)cans[i].className=(i===on)?'on':'';
+}
+/* THE SAME PIPELINE AS EVERY OTHER PHOTO: 900 long edge, JPEG 0.72. A frame
+   that went in by another road would be the one picture in the app that
+   behaves differently. */
+function vlogFrameData(v){
+  var mx=900,w=v.videoWidth,h=v.videoHeight;
+  if(!w||!h||v.readyState<2)return null;
+  if(w>mx){h=Math.round(h*mx/w);w=mx;}
+  if(h>mx){w=Math.round(w*mx/h);h=mx;}
+  var c=document.createElement('canvas');
+  c.width=w;c.height=h;
+  try{c.getContext('2d').drawImage(v,0,0,w,h);return c.toDataURL('image/jpeg',0.72);}
+  catch(e){return null;}
+}
+function vlogCoverSave(){
+  var v=document.getElementById('vl-video'),d=_vlDate;
+  if(!v)return;
+  var data=vlogFrameData(v);
+  if(!data){vlogMsg(''+_t('לא הצלחתי לקרוא את התמונה מהסרטון.')+'');return;}
+  vlogMsg(''+_t('שומר')+'&hellip;');
+  vlogActions('');
+  photoPut(data).then(function(key){
+    var rec=loadVlog(d)||{at:new Date().toISOString()};
+    var old=rec.cover;
+    rec.cover=key||data;
+    saveVlog(d,rec);
+    if(old&&old!==rec.cover&&isPhotoKey(old))photoDel(old);
+    showToast(''+_t('✓ נשמר בסיכום היום')+'');
+    vlogClose();
+    renderHomeGrid();
+  });
+}
+function vlogCoverCancel(){
+  var have=loadVlog(_vlDate);
+  if(_vlBlob)vlogPreview();
+  else if(have&&have.k)vlogShowSaved(have);
+  else vlogClose();
+}
+/* ── A VIDEO FROM THE GALLERY ──
+   Only the frame is kept. A two-minute clip off the camera roll is forty
+   megabytes and the day wants one picture out of it, so the clip is read,
+   scrubbed and thrown away - 200KB instead of 40MB, and no permission to
+   record needed at all. */
+function vlogFromGallery(input){
+  var file=input.files&&input.files[0];
+  input.value='';
+  if(!file)return;
+  if(_vlURL)URL.revokeObjectURL(_vlURL);
+  _vlBlob=null;
+  _vlURL=URL.createObjectURL(file);
+  vlogCamOff();
+  vlogSetSrc(_vlURL);
+  vlogMsg(''+_t('הסרטון עצמו לא נשמר — רק התמונה שתבחר.')+'');
+  vlogCoverOpen();
 }
 function vlogDelete(){
   var a=document.getElementById('vl-actions');
@@ -16488,10 +16720,14 @@ function buildHomeCalHTML(){
     var dotRow=dots?'<div style="display:flex;justify-content:center;margin-top:1px">'+dots+'</div>':'';
     var label=isT?'<strong>'+nfmt(day)+'</strong>':nfmt(day);
 
-    if(sum&&sum.photo){
+    var pic=dayPic(ds,sum);
+    if(pic){
       /* a photographed day opens as the CARD; the card carries the way
-         through to the full page */
-      h+='<button class="cal-d has-photo" onclick="openDayCard(\''+ds+'\')">'+photoImg(sum.photo,'alt=""')+
+         through to the full page. A day whose picture came from a CLIP has
+         no summary to card up, so it opens the summary page, which already
+         knows how to show a vlog. */
+      h+='<button class="cal-d has-photo" onclick="'+
+         ((sum&&sum.photo)?'openDayCard':'openSummary')+'(\''+ds+'\')">'+photoImg(pic,'alt=""')+
          '<span class="cal-d-num"><span>'+label+'</span></span></button>';
     } else if(canOpen){
       h+='<button class="cal-d'+(sum?' has':'')+(isT?' today':'')+'" onclick="openSummary(\''+ds+'\')">'+label+dotRow+'</button>';
@@ -16699,7 +16935,8 @@ function renderDay(){
   for(var day=1;day<=last.getDate();day++){
     var ds=y+'-'+(mo<9?'0':'')+(mo+1)+'-'+(day<10?'0':'')+day;
     var sum=loadSummary(ds);var isT=ds===todayStr();
-    if(sum&&sum.photo)html+='<button class="cal-d has-photo" onclick="openSummary(\''+ds+'\')">'+photoImg(sum.photo,'alt=""')+'</button>';
+    var pic=dayPic(ds,sum);
+    if(pic)html+='<button class="cal-d has-photo" onclick="openSummary(\''+ds+'\')">'+photoImg(pic,'alt=""')+'</button>';
     else if(sum)html+='<button class="cal-d has'+(isT?' today':'')+'" onclick="openSummary(\''+ds+'\')"><span>'+nfmt(day)+'</span><div class="cal-d-dot"></div></button>';
     else html+='<button class="cal-d'+(isT?' today':'')+'" onclick="switchTab(\'today\')">'+(isT?'<strong>'+nfmt(day)+'</strong>':nfmt(day))+'</button>';
   }
