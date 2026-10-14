@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>השמש — גיליון דמות</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  THE CHARACTER SHEET: every direction, the turn between them, and the faces.
+
+  THE WHOLE THING RESTS ON ONE FACT ABOUT THE DESIGN, and it is the reason this
+  is cheap rather than impossible: HIS BODY IS A SPHERE, SO TURNING DOES NOT
+  CHANGE HIS SILHOUETTE AT ALL. Only the features move across the surface, and
+  the light does not move with him, because the light is in the room.
+
+  So the turn is not faked with a sprite sheet. Each eye sits on the sphere at a
+  fixed azimuth - 22 degrees either side of the nose - and for a yaw of theta:
+
+      u = sin(a + theta)      x = 80 + u * 24      where it lands on screen
+      d = cos(a + theta)      visible when d > 0   whether it faces us at all
+                              rx = base * d        foreshortening at the limb
+
+  That is a real orthographic projection of a point on a sphere, which is why
+  it reads correctly without anyone tuning it by eye. An eye does not slide off
+  the edge and vanish: it narrows to nothing as it reaches the limb, exactly as
+  a painted dot on a ball does.
+
+  FACING AWAY IS THEREFORE FREE. At 180 degrees both eyes are behind the sphere
+  and there is nothing to draw, so the back of his head is the body with no
+  features - which is correct, and is also the only "view" that needed no work.
+
+  THE EXPRESSIONS ARE ALL THE SAME TWO SHAPES. A squashed oval is a squint, an
+  arc opening upward is a smile, a flat bar is a closed lid, a circle is
+  surprise. Nothing new is drawn for any of them, which is what keeps a
+  character consistent - the moment an expression needs its own artwork, the
+  character has two authors.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:26px 26px 4px;max-width:1340px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:92ch;line-height:1.82}
+  .sub b{color:var(--ink)}
+  h2{max-width:1340px;margin:42px auto 0;padding:0 26px;font-size:16px;font-weight:800}
+  h2 i{font-style:normal;font-weight:600;font-size:12.5px;line-height:1.72;color:var(--muted);
+    display:block;margin-top:5px;max-width:88ch}
+  .grid{display:flex;flex-wrap:wrap;gap:14px;max-width:1340px;margin:16px auto 0;padding:0 26px}
+  .cell{display:flex;flex-direction:column;gap:6px;align-items:center}
+  .pad{border-radius:20px;background:var(--ground);display:flex;align-items:center;
+    justify-content:center;box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 18px var(--nu-shade-soft)}
+  .lbl{font-size:12px;font-weight:800;color:var(--ink)}
+  .cap{font-size:11px;line-height:1.65;color:var(--muted);text-align:center;max-width:170px;min-height:34px}
+  .cap b{color:var(--ink)}
+  .sm{display:block;width:100%;height:100%;overflow:visible}
+  .sm-body{transform-origin:80px 80px;transform-box:view-box;
+    animation:br 5.6s ease-in-out infinite}
+  @keyframes br{0%,100%{transform:scale(1)}50%{transform:scale(1.022)}}
+  .sm-r{transform-origin:80px 80px;transform-box:view-box}
+  .sm-r1{animation:spA 26s linear infinite}
+  .sm-r2{animation:spB 34s linear infinite}
+  .sm-r3{animation:spA 30s linear infinite}
+  @keyframes spA{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes spB{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+  .sm-eye{transform-box:fill-box;transform-origin:50% 50%;animation:bl 8s infinite}
+  .sm-eye.r{animation-delay:.04s}
+  @keyframes bl{
+    0%,18.09%{transform:scaleY(1)}19.40%{transform:scaleY(.06)}
+    19.53%{transform:scaleY(.06)}21.40%{transform:scaleY(1)}
+    55.59%{transform:scaleY(1)}56.90%{transform:scaleY(.06)}
+    57.03%{transform:scaleY(.06)}58.90%{transform:scaleY(1)}
+    100%{transform:scaleY(1)}}
+  @media (prefers-reduced-motion:reduce){.sm-body,.sm-r,.sm-eye{animation:none}}
+  .note{max-width:1340px;margin:16px auto 0;padding:0 26px;font-size:12.5px;
+    line-height:1.8;color:var(--muted)}
+  .note b{color:var(--ink)}
+  .ctl{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+  .ctl button{border:none;border-radius:11px;padding:7px 13px;font:800 11.5px Assistant,sans-serif;
+    cursor:pointer;background:var(--ground);color:var(--ink);
+    box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+  .ctl button:active{box-shadow:inset 1px 2px 4px var(--nu-shade-soft),inset -1px -1px 3px var(--nu-lit)}
+</style>
+
+<header>
+  <h1>השמש — גיליון דמות</h1>
+  <div class="sub">
+    <b>כל הגיליון עומד על עובדה אחת בעיצוב, וזאת הסיבה שזה זול ולא בלתי אפשרי:</b>
+    הגוף שלו <b>כדור</b>, אז סיבוב <b>לא משנה את הצללית בכלל</b>. רק התווים נעים על
+    פני הספירה — והאור לא מסתובב איתו, כי האור נמצא בחדר.<br>
+    אז הסיבוב לא מזויף: כל עין יושבת על הספירה בזווית קבועה — 22° מכל צד של האף —
+    ולזווית פנייה θ היא נוחתת ב‑<code>x = 80 + sin(a+θ)·24</code>, נראית רק כש‑
+    <code>cos(a+θ) &gt; 0</code>, ורוחבה <code>rx·cos(a+θ)</code>. זאת הטלה
+    אורתוגרפית אמיתית של נקודה על כדור — ולכן <b>העין לא מחליקה מהקצה ונעלמת, היא
+    מצטמצמת לאפס בדיוק כמו נקודה מצוירת על כדור</b>.<br>
+    <b>וגב הראש יצא בחינם:</b> ב‑180° שתי העיניים מאחורי הספירה ואין מה לצייר.
+  </div>
+</header>
+
+<h2>1 · כל הכיוונים
+  <i>אותו גוף בדיוק בכולם — אפילו לא פיקסל אחד השתנה בצללית, בהצללה או בטבעות.</i></h2>
+<div class="grid" id="dirs"></div>
+
+<h2>2 · המעבר מכיוון לכיוון
+  <i>לחץ על כיוון והוא יסתובב אליו. התנועה היא <b>אותה פונקציה</b> שמציירת את
+  התמונות למעלה, רק שהזווית זזה — ולכן אין כאן ולו פריים אחד שצויר בנפרד.</i></h2>
+<div class="grid" id="turn"></div>
+<div class="ctl" id="ctl"></div>
+
+<h2>3 · ההבעות
+  <i>כולן משתי צורות: אובל מעוך הוא מצמוץ, קשת כלפי מעלה היא חיוך, מוט שטוח הוא
+  עפעף סגור, ועיגול הוא הפתעה. <b>שום הבעה לא דורשת ציור משלה</b> — וברגע שאחת
+  תדרוש, לדמות יהיו שני מחברים.</i></h2>
+<div class="grid" id="expr"></div>
+
+<div class="note">
+  <b>ומה שהגיליון הזה מכריע לקראת ההכנסה לאפליקציה:</b> אם הוא יכול להסתובב, אז
+  יש לו <b>כיוון מבט</b> — והוא יכול להסתכל על מה שהמשתמש נוגע בו. זה הרבה יותר
+  חזק מהבעה, וזה חינם: זווית אחת.
+</div>
+
+<script>
+var N = 0, R = 34.2, EYE = '#32200f';
+var COL = ['#f04a2e','#f9913c','#fcd238'], RR = [41,47.5,54];
+var A = 22, FR = 24;           /* eye azimuth, and the radius features sit at */
+var D2R = Math.PI/180;
+
+function dots(r,n,duty){var c=2*Math.PI*r,on=c/n*duty;
+  return on.toFixed(2)+' '+(c/n-on).toFixed(2);}
+
+/* ── ONE EYE, PROJECTED ──
+   a is its azimuth on the sphere, yaw is where he is looking. Returns null
+   when the eye has gone round the back. */
+function eyeAt(a, yaw){
+  var t = (a + yaw) * D2R, d = Math.cos(t);
+  if (d <= 0.04) return null;                 /* behind the limb */
+  return { x: 80 + Math.sin(t) * FR, k: d };  /* k is the foreshortening */
+}
+
+/* ── THE FACES ──
+   Every one is the same two shapes at different proportions. e.x is where the
+   eye landed, e.k how much of its width survives the turn. */
+function drawEye(e, expr, side, yaw){
+  if (!e) return '';
+  var x = e.x.toFixed(2), rx = (5.4 * e.k).toFixed(2), y = 82;
+  var hl = '<circle cx="'+(e.x - 1.9*e.k).toFixed(2)+'" cy="'+(y-6.6)+'" r="'+
+           (1.75*Math.max(.45,e.k)).toFixed(2)+'" fill="#fff"/>';
+  if (expr === 'happy')
+    /* an arc opening upward - the eye a face makes when it is pleased */
+    return '<path d="M'+(e.x-5.6*e.k)+' '+(y+3.2)+'q'+(5.6*e.k)+' -9 '+(11.2*e.k)+' 0"'+
+           ' fill="none" stroke="'+EYE+'" stroke-width="3.4" stroke-linecap="round"/>';
+  if (expr === 'sleep')
+    return '<rect x="'+(e.x-5.4*e.k)+'" y="'+(y-1.3)+'" width="'+(10.8*e.k)+'" height="2.6"'+
+           ' rx="1.3" fill="'+EYE+'"/>';
+  if (expr === 'wide')
+    return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+(6.6*e.k).toFixed(2)+'" ry="13.4" fill="'+EYE+'"/>'+
+           '<circle cx="'+(e.x-2.2*e.k).toFixed(2)+'" cy="'+(y-7.4)+'" r="'+
+           (2.3*Math.max(.45,e.k)).toFixed(2)+'" fill="#fff"/>';
+  if (expr === 'focus')
+    return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+rx+'" ry="6.6" fill="'+EYE+'"/>' + hl;
+  if (expr === 'sad'){
+    /* the outer end of each eye drops - the only asymmetric face here */
+    var dy = (side === 'l') ? -2.2 : 2.2;
+    return '<g transform="rotate('+dy*2.6+' '+e.x+' '+y+')">'+
+           '<ellipse cx="'+x+'" cy="'+y+'" rx="'+rx+'" ry="9.8" fill="'+EYE+'"/>'+hl+'</g>';
+  }
+  if (expr === 'wink' && side === 'r')
+    return '<path d="M'+(e.x-5.6*e.k)+' '+(y+2)+'q'+(5.6*e.k)+' -8 '+(11.2*e.k)+' 0"'+
+           ' fill="none" stroke="'+EYE+'" stroke-width="3.4" stroke-linecap="round"/>';
+  if (expr === 'sparkle')
+    return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+(6.2*e.k).toFixed(2)+'" ry="12.6" fill="'+EYE+'"/>'+
+           '<path d="M'+e.x+' '+(y-7)+'l1.5 3.9 3.9 1.5-3.9 1.5-1.5 3.9-1.5-3.9-3.9-1.5 3.9-1.5z"'+
+           ' fill="#fff" transform="scale('+Math.max(.4,e.k).toFixed(2)+' 1)'+
+           ' translate('+(e.x*(1/Math.max(.4,e.k)-1)).toFixed(2)+' 0)"/>';
+  return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+rx+'" ry="11.4" fill="'+EYE+'"/>' + hl;
+}
+
+function sunSVG(o){
+  o = o || {};
+  var yaw = o.yaw || 0, expr = o.expr || 'calm', px = o.px || 200;
+  var k = 'c'+(++N), big = px >= 48;
+  var n = big ? 26 : 14, w = big ? 2.6 : 3.8, duty = big ? .06 : .07;
+  var h = '<svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs>'+
+    '<linearGradient id="'+k+'b" gradientUnits="userSpaceOnUse" x1="80" y1="46" x2="80" y2="114">'+
+    '<stop offset="0" stop-color="#fcd956"/><stop offset=".22" stop-color="#fbc744"/>'+
+    '<stop offset=".42" stop-color="#f8ae34"/><stop offset=".62" stop-color="#f59d2c"/>'+
+    '<stop offset=".82" stop-color="#ed8527"/><stop offset="1" stop-color="#e5530e"/></linearGradient>'+
+    '<radialGradient id="'+k+'lim" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="'+R+'">'+
+    '<stop offset=".58" stop-color="#8a3000" stop-opacity="0"/>'+
+    '<stop offset="1" stop-color="#8a3000" stop-opacity=".32"/></radialGradient>'+
+    '<radialGradient id="'+k+'bo" gradientUnits="userSpaceOnUse" cx="90" cy="104" r="22">'+
+    '<stop offset="0" stop-color="#ffd089" stop-opacity=".5"/>'+
+    '<stop offset="1" stop-color="#ffd089" stop-opacity="0"/></radialGradient>'+
+    '<radialGradient id="'+k+'l" gradientUnits="userSpaceOnUse" cx="69" cy="66" r="26">'+
+    '<stop offset="0" stop-color="#fff6d8" stop-opacity=".88"/>'+
+    '<stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>'+
+    '<radialGradient id="'+k+'g" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="76">'+
+    '<stop offset=".42" stop-color="#ffb347" stop-opacity=".4"/>'+
+    '<stop offset=".72" stop-color="#ffc766" stop-opacity=".15"/>'+
+    '<stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>'+
+    '<circle cx="80" cy="80" r="76" fill="url(#'+k+'g)"/>'+
+    '<ellipse cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>'+
+    '<g fill="none" stroke-linecap="round">';
+  for (var i=2;i>=0;i--)
+    h += '<circle class="sm-r sm-r'+(i+1)+'" cx="80" cy="80" r="'+RR[i]+'" stroke="'+COL[i]+'"'+
+         ' stroke-width="'+w+'" stroke-dasharray="'+dots(RR[i],n,duty)+'"/>';
+  h += '</g><g class="sm-body">'+
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'b)"/>'+
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'lim)"/>'+
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'bo)"/>'+
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'l)"/>';
+  /* THE LIGHT DOES NOT TURN WITH HIM - it is in the room, not on his face */
+  var L = eyeAt(-A, yaw), Rt = eyeAt(A, yaw);
+  var blink = (expr === 'calm' || expr === 'focus');
+  h += (blink?'<g class="sm-eye">':'<g>') + drawEye(L, expr, 'l', yaw) + '</g>';
+  h += (blink?'<g class="sm-eye r">':'<g>') + drawEye(Rt, expr, 'r', yaw) + '</g>';
+  return h + '</g></svg>';
+}
+
+function cell(into, lbl, cap, o, px){
+  px = px || 168;
+  var d = document.createElement('div'); d.className='cell';
+  d.innerHTML = '<div class="lbl">'+lbl+'</div>'+
+    '<div class="pad" style="width:'+(px+28)+'px;height:'+(px+28)+'px">'+
+    '<div style="width:'+px+'px;height:'+px+'px">'+sunSVG(o)+'</div></div>'+
+    (cap?'<div class="cap">'+cap+'</div>':'');
+  document.getElementById(into).appendChild(d);
+  return d;
+}
+
+/* 1 · directions */
+[[-180,'גב','שתי העיניים מאחורי הכדור. <b>לא צויר שום דבר</b> — זה מה שיוצא.'],
+ [-130,'אחורה‑שמאלה','עין אחת עוד נראית, צרה מאוד.'],
+ [-70,'שמאלה',' '],
+ [-35,'שלושה‑רבעי שמאל',' '],
+ [0,'חזית','הפנים המלאות.'],
+ [35,'שלושה‑רבעי ימין',' '],
+ [70,'ימינה',' '],
+ [130,'אחורה‑ימינה','העין הפנימית כבר נעלמה.']
+].forEach(function(d){ cell('dirs', d[1], d[2], {yaw:d[0]}, 150); });
+
+/* 2 · the turn, driven by one angle */
+(function(){
+  var holder = cell('turn', 'מסתובב', 'אותה פונקציה, זווית שזזה.', {yaw:0}, 230);
+  var box = holder.querySelector('.pad > div');
+  var cur = 0, want = 0, raf = 0;
+  var set = function(y){
+    box.innerHTML = sunSVG({yaw:y, expr: window._sheetExpr || 'calm'});
+  };
+  var tick = function(){
+    var d = want - cur;
+    if (Math.abs(d) < 0.4){ cur = want; set(cur); raf = 0; return; }
+    cur += d * 0.12;                 /* ease toward the target, no library */
+    set(cur);
+    raf = requestAnimationFrame(tick);
+  };
+  window._turnTo = function(y){ want = y; if (!raf) raf = requestAnimationFrame(tick); };
+  var c = document.getElementById('ctl');
+  [['גב',180],['שמאלה',-70],['שלושה‑רבעי',-35],['חזית',0],['שלושה‑רבעי',35],['ימינה',70]]
+    .forEach(function(b){
+      var el = document.createElement('button');
+      el.textContent = b[0];
+      el.onclick = function(){ window._turnTo(b[1]); };
+      c.appendChild(el);
+    });
+  var el = document.createElement('button');
+  el.textContent = 'סיבוב מלא';
+  el.onclick = function(){
+    var y = 0, step = function(){
+      y += 4; set(y);
+      if (y < 360) requestAnimationFrame(step); else set(0);
+    }; step();
+  };
+  c.appendChild(el);
+})();
+
+/* 3 · expressions */
+[['calm','רגוע','ברירת המחדל. ממצמץ.'],
+ ['happy','שמח','קשת כלפי מעלה — <b>אותה עין, מעוקלת</b>.'],
+ ['wide','נרגש','גדולה יותר, ונצנוץ גדול יותר.'],
+ ['sparkle','מתלהב','כוכב בתוך העין — מרפרנס Sora.'],
+ ['focus','מרוכז','נמוכה ומצומצמת. <b>זאת ההבעה כשהוא חושב.</b>'],
+ ['sleep','ישן','מוט שטוח. אותו דבר שהמצמוץ עובר דרכו.'],
+ ['wink','קורץ','אחת רגועה ואחת מעוקלת — <b>היחידה שאינה סימטרית</b>.'],
+ ['sad','מצטער','הקצה החיצוני יורד. לשימוש נדיר מאוד.']
+].forEach(function(e){ cell('expr', e[1], e[2], {expr:e[0]}, 150); });
+</script>
+</html>
