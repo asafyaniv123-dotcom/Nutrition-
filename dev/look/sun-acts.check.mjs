@@ -244,6 +244,40 @@ try {
     : bad('the blink is not the approved loop');
 } catch(e){ bad('could not read sun-final.html: ' + e.message); }
 
+// ── 8. every scene actually RUNS to its end ──────────────────────────────
+// Everything above reads the scenes; this one drives them. The page's frame
+// loop is replaced with a fabricated clock, so the whole sequence plays here
+// in milliseconds and without a visible tab - which is the only way to find a
+// scene that starts and never arrives.
+console.log('\n8. every scene runs to its end');
+{
+  let now = 0; const q = [];
+  global.requestAnimationFrame = cb => { q.push(cb); return q.length; };
+  P.SCENES.forEach((S, i) => {
+    const probe = new P.Actor(makeActorEl());
+    q.length = 0; now = 0;
+    S.play(probe, makeStage());
+    let frames = 0;
+    while (q.length && frames < 4000){
+      const batch = q.splice(0, q.length);
+      now += 16; frames++;
+      batch.forEach(cb => { try { cb(now); } catch(e){ bad(`scene ${i+1} frame threw: ${e.message}`); } });
+    }
+    // the last step that names each prop is where the scene must come to rest
+    const body = S.play.toString();
+    const last = {};
+    [...body.matchAll(/\bto:\s*\{([^}]*)\}/g)].forEach(m =>
+      [...m[1].matchAll(/([a-z]+)\s*:\s*([^,}]+)/g)].forEach(x => { last[x[1]] = x[2].trim(); }));
+    const numeric = Object.entries(last).filter(([,v]) => /^-?[\d.]+$/.test(v));
+    const off = numeric.filter(([k,v]) => Math.abs(probe.s[k] - parseFloat(v)) > 0.01);
+    (q.length === 0 && frames > 0 && off.length === 0)
+      ? ok(`scene ${i+1} completes in ${frames} frames (${(frames*16/1000).toFixed(1)}s) ` +
+           `and lands on its last target`)
+      : bad(`scene ${i+1}: ${q.length ? 'never finished' : 'finished'} after ${frames} frames` +
+            (off.length ? `, resting at ${off.map(([k])=>k+'='+probe.s[k].toFixed(2)).join(' ')}` : ''));
+  });
+}
+
 console.log('\n' + PATH);
 console.log(fail.length ? fail.length + ' FAILURE(S)' : 'all checks pass');
 process.exit(fail.length ? 1 : 0);
