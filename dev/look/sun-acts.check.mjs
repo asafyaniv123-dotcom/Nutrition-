@@ -177,9 +177,26 @@ console.log('\n5. he comes out of the socket going forward');
 /right:70px/.test(P.SCENES[4].build.toString())
   ? ok('the socket sits near the start, not at the far end')
   : bad('the socket is at the far end, so he would walk backwards out of it');
-/inside \+ 130/.test(P.SCENES[4].play.toString())
+/inside \+ \d+/.test(P.SCENES[4].play.toString())
   ? ok('he leaves it forward, x increasing')
   : bad('he does not leave the socket forward');
+{
+  // a hole needs a front rim ABOVE him, or he is a sticker on a circle
+  const n = P.SCENES[4].build.toString();
+  /class="prop niche lip"/.test(n) && /z-index:2/.test(n) && /clip-path:inset\(50%/.test(n)
+    ? ok('the socket has a front rim, clipped to its lower half and above him')
+    : bad('nothing occludes him, so he sits in front of the socket rather than in it');
+  // and he must actually rise CLEAR of that rim before travelling
+  const play = P.SCENES[4].play.toString();
+  const peak = Math.max(...[...play.matchAll(/y:\s*(-?\d+)/g)].map(m => +m[1]));
+  const rim  = 0;            // the rim's top edge is the socket's centre, i.e. his resting y
+  const bodyR = P.R * 84/160;
+  (peak - bodyR > rim)
+    ? ok(`he rises to y=${peak}, and his underside then clears the rim by ` +
+         `${(peak - bodyR).toFixed(1)}px`)
+    : bad(`he only rises to y=${peak}: his underside stays ${(bodyR - peak).toFixed(1)}px ` +
+          `behind the rim, so he never visibly comes out`);
+}
 
 // ── 6. reduced motion still finishes the story ───────────────────────────
 console.log('\n6. reduced motion');
