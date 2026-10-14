@@ -711,29 +711,32 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .rw-wrap{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:92px;flex:0 0 auto}
 .rw-lab{font-size:10px;font-weight:800;color:var(--muted);text-align:center}
 .rw-go{width:100%}
-/* NO FRAME. The pressed box drew a container, and a drum is not in one. The
-   mask fades the top and bottom to nothing instead, which is what makes a
-   row read as going BEHIND rather than as hitting an edge. */
-.rw{position:relative;width:92px;height:104px;overflow:hidden;flex:0 0 auto;
-  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 30%,#000 70%,transparent 100%);
-  mask-image:linear-gradient(to bottom,transparent 0,#000 30%,#000 70%,transparent 100%)}
-/* the chosen band, stated with two hairlines instead of a pressed well */
-.rw-slot{position:absolute;left:2px;right:2px;top:37px;height:30px;pointer-events:none;z-index:2;
-  box-shadow:0 -1px 0 rgba(176,168,156,.34),0 1px 0 rgba(176,168,156,.34)}
-.rw-sc{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;position:relative;z-index:1;
+/* ONE perspective for the whole drum, on the box that does NOT scroll. Per
+   row it gave every row its own vanishing point, which is nine flat cards
+   tilting separately rather than one wheel. */
+.rw{position:relative;width:92px;height:122px;overflow:hidden;flex:0 0 auto;
+  perspective:340px;perspective-origin:50% 50%;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 26%,#000 74%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0,#000 26%,#000 74%,transparent 100%)}
+/* the stage never scrolls: the rows are placed on the cylinder by transform */
+.rw-stage{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
+.rw-n{position:absolute;left:0;right:0;top:50%;height:34px;margin-top:-17px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:800;color:var(--ink);
+  backface-visibility:hidden;will-change:transform,opacity}
+/* NO TRANSITION on transform: the scroll handler rewrites it every frame and
+   an eased property chasing a moved target is what felt stuck. */
+.rw-n.on{font-size:16px}
+.rw-slot{position:absolute;left:4px;right:4px;top:50%;height:34px;margin-top:-17px;
+  pointer-events:none;z-index:2;
+  box-shadow:0 -1px 0 rgba(176,168,156,.3),0 1px 0 rgba(176,168,156,.3)}
+/* the scroller is invisible and holds nothing but snap targets - it is there
+   for the platform's inertia, which is better than anything written here */
+.rw-sc{position:absolute;inset:0;z-index:3;overflow-y:auto;scroll-snap-type:y mandatory;
   scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
 .rw-sc::-webkit-scrollbar{display:none}
-.rw-pad{height:37px}
-/* EACH ROW IS A PLATE. A number with no body cannot read as a rectangle
-   turning away, so it gets a surface and a shadow of its own. */
-.rw-n{height:30px;scroll-snap-align:center;display:flex;align-items:center;
-  justify-content:center;cursor:pointer;color:var(--ink);
-  font-size:12.5px;font-weight:800;border-radius:8px;margin:0 3px;
-  background:var(--nu-ground);box-shadow:0 1px 2px rgba(150,140,126,.18);
-  transform-origin:50% 50%;backface-visibility:hidden;
-  transition:opacity .18s ease,transform .18s ease,font-size .18s ease}
-.rw-n.on{font-size:15px;box-shadow:0 2px 5px rgba(150,140,126,.24)}
-.fw-restset>span{font-size:10px;font-weight:800;color:var(--muted)}
+.rw-pad{height:44px}
+.rw-hit{height:34px;scroll-snap-align:center}
 .fw-rb{border:none;border-radius:9px;padding:5px 10px;font-size:10.5px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--muted)}
 .fw-rb.on{background:linear-gradient(135deg,var(--terra-200),var(--terra-500));color:var(--white)}
 /* the countdown, over everything, skippable */
@@ -24733,68 +24736,77 @@ function wtWrite(sec,run,at){
   }
 }
 var REST_KEY='fit_rest',_restEnd=0,_restIv=null;
-/* ── THE REST, AS A NARROW WHEEL ──
-   The same control as the effort wheel - scroll-snap, the platform's inertia,
-   a lit slot in the middle - at 92px wide instead of full width, and short
-   enough to sit in a row beside two buttons.
-   NINE STOPS IN LESS ROOM THAN FIVE CHIPS TOOK, which is the whole reason to
-   make it a wheel: 45 and 75 and 150 were simply not offered before. */
-var REST_STOPS=[0,30,45,60,75,90,120,150,180],RW_ROW=30;
+/* ── THE REST, AS A WHEEL THAT ACTUALLY TURNS ──
+   The scroller is invisible and exists only for the platform's inertia and
+   snapping. The rows live on a stage that never scrolls, under ONE
+   perspective, each placed where it would be on a drum:
+
+       theta = d * STEP          d = distance from the centre, in rows
+       y     = R*sin(theta)      it rises as it turns
+       z     = R*cos(theta)-R    and recedes
+       R     = (ROW/2)/tan(STEP/2)
+
+   Rows past 90 degrees are behind the drum and are hidden.
+
+   NO TRANSITIONS ON transform. The scroll handler rewrites it every frame,
+   and an eased property chasing a target that has already moved is exactly
+   what "תקועה" felt like. */
+var REST_STOPS=[0,30,45,60,75,90,120,150,180];
+var RW_ROW=34,RW_STEP=18,RW_R=(RW_ROW/2)/Math.tan(RW_STEP*Math.PI/360);
 function restRowHTML(){
   var cur=restLen(),h,i,n;
-  /* A COLUMN, NOT A ROW: the word above, the drum, the button below. It is
-     92px wide and costs the card one narrow block instead of a full line. */
   h='<div class="fw-restset"><div class="rw-wrap">';
   h+='<div class="rw-lab">'+_t('מנוחה|טיימר')+'</div>';
-  h+='<div class="rw"><div class="rw-slot"></div>'+
-     '<div class="rw-sc" onscroll="restWheelPaint(this)"><div class="rw-pad"></div>';
+  h+='<div class="rw"><div class="rw-stage">';
   for(i=0;i<REST_STOPS.length;i++){
     n=REST_STOPS[i];
-    h+='<div class="rw-n'+(n===cur?' on':'')+'" data-v="'+n+'">'+
+    h+='<div class="rw-n'+(n===cur?' on':'')+'">'+
        (n?_t('{n}ש',{n:n}):''+_t('כבוי')+'')+'</div>';
   }
+  h+='</div><div class="rw-slot"></div>'+
+     '<div class="rw-sc" onscroll="restWheelScroll(this)"><div class="rw-pad"></div>';
+  /* the scroller holds nothing but snap targets: one empty box per stop */
+  for(i=0;i<REST_STOPS.length;i++)h+='<div class="rw-hit" data-v="'+REST_STOPS[i]+'"></div>';
   h+='<div class="rw-pad"></div></div></div>';
-  /* "התחל", not "התחל מנוחה": the word is the label directly above it, and
-     saying it twice in a 92px column is noise. */
   h+='<button class="fw-rb go rw-go" onclick="restGo()">'+_t('התחל')+'</button>';
   h+='</div>';
   h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
   return h+'</div>';
 }
-/* NO RE-RENDER. restSet() redraws the workout screen, which would tear the
-   scroller out from under the finger mid-scroll - the same reason the effort
-   wheel keeps its value out of the render path. This writes the value where
-   restLen() reads it and repaints nothing but its own rows. */
-function restWheelPaint(sc){
-  var rows=sc.getElementsByClassName('rw-n'),mid=sc.scrollTop+sc.clientHeight/2,
-      best=null,bestD=1e9,i,el,d,a;
-  for(i=0;i<rows.length;i++){
-    el=rows[i];
-    d=(el.offsetTop+RW_ROW/2-mid)/RW_ROW;a=Math.abs(d);
-    if(a<bestD){bestD=a;best=el;}
-    /* A DRUM, not a fan. The row turns AND recedes - translateZ is the half
-       that was missing, and it is what makes a plate look like it is going
-       behind the one in front of it rather than just lying flatter. Scale is
-       gone because perspective now does it. */
-    el.style.transform='perspective(300px) rotateX('+
-      (-Math.max(-78,Math.min(78,d*27))).toFixed(2)+'deg) translateZ('+
-      (-Math.min(30,a*11)).toFixed(1)+'px)';
-    el.style.opacity=Math.max(0.1,1-a*0.36).toFixed(3);
-    el.className='rw-n';
-  }
-  if(!best)return;
-  best.className='rw-n on';
-  try{localStorage.setItem(REST_KEY,String(+best.getAttribute('data-v')));}catch(e){}
+/* One paint per FRAME, not one per scroll event - scroll fires more often
+   than the screen draws and the extra calls were pure work. */
+function restWheelScroll(sc){
+  if(sc._rwQ)return; sc._rwQ=1;
+  requestAnimationFrame(function(){sc._rwQ=0;restWheelPaint(sc);});
 }
-/* Opens on the value already stored, and only once the node is in the
-   document - offsetTop is nothing before that. */
+/* NO RE-RENDER: restSet() redraws the workout screen, which would tear the
+   scroller out from under the finger. This writes where restLen() reads. */
+function restWheelPaint(sc){
+  var box=sc.parentNode,rows=box.getElementsByClassName('rw-n');
+  var at=sc.scrollTop/RW_ROW,i,el,d,th,c,hidden;
+  for(i=0;i<rows.length;i++){
+    el=rows[i];d=i-at;th=d*RW_STEP;
+    hidden=(th<=-90||th>=90);
+    el.style.visibility=hidden?'hidden':'visible';
+    if(hidden)continue;
+    c=th*Math.PI/180;
+    el.style.transform='translateY('+(RW_R*Math.sin(c)).toFixed(2)+'px) translateZ('+
+      (RW_R*Math.cos(c)-RW_R).toFixed(2)+'px) rotateX('+(-th).toFixed(2)+'deg)';
+    el.style.opacity=Math.max(0,Math.cos(c)*Math.cos(c)).toFixed(3);
+    el.className=(Math.abs(d)<0.5)?'rw-n on':'rw-n';
+  }
+  var k=Math.round(at);
+  if(k>=0&&k<REST_STOPS.length){
+    try{localStorage.setItem(REST_KEY,String(REST_STOPS[k]));}catch(e){}
+  }
+}
+/* Opens on the stored value, and only once the node is in the document. */
 function restWheelSync(){
-  var all=document.getElementsByClassName('rw'),i,box,sc,rows,j,want=restLen(),hit;
+  var all=document.getElementsByClassName('rw'),i,box,sc,want=restLen(),k;
   for(i=0;i<all.length;i++){
     box=all[i];sc=box.getElementsByClassName('rw-sc')[0];if(!sc)continue;
-    rows=box.getElementsByClassName('rw-n');hit=null;
-    for(j=0;j<rows.length;j++)if(+rows[j].getAttribute('data-v')===want)hit=rows[j];
-    if(hit)sc.scrollTop=hit.offsetTop+RW_ROW/2-sc.clientHeight/2;
+    k=REST_STOPS.indexOf(want);if(k<0)k=REST_STOPS.indexOf(90);if(k<0)k=0;
+    sc.scrollTop=k*RW_ROW;
     restWheelPaint(sc);
   }
 }
