@@ -183,9 +183,16 @@ console.log('\n5. he comes out of the socket going forward');
 {
   // a hole needs a front rim ABOVE him, or he is a sticker on a circle
   const n = P.SCENES[4].build.toString();
-  /class="prop niche lip"/.test(n) && /z-index:2/.test(n) && /clip-path:inset\(50%/.test(n)
-    ? ok('the socket has a front rim, clipped to its lower half and above him')
+  const lipCss = (src.match(/\.lip\{([^}]*)\}/)||[])[1] || '';
+  const half = /height:48px/.test(lipCss) && /border-radius:0 0 48px 48px/.test(lipCss);
+  /class="prop lip"/.test(n) && /z-index:2/.test(lipCss) && half
+    ? ok('the socket has a front rim: the lower half of the same disc, above him')
     : bad('nothing occludes him, so he sits in front of the socket rather than in it');
+  // and the rim must not repeat the socket's inset shadow, which turns the
+  // pressed hole into a bump - it carries a lit top edge instead
+  !/inset 5px 6px 12px/.test(lipCss) && /inset 0 2px 0/.test(lipCss)
+    ? ok("and it carries a lit top edge, not the socket's own inset shadow")
+    : bad('the rim repeats the pressed shadow, so the hole reads as a bump');
   // and he must actually rise CLEAR of that rim before travelling
   const play = P.SCENES[4].play.toString();
   const peak = Math.max(...[...play.matchAll(/y:\s*(-?\d+)/g)].map(m => +m[1]));
