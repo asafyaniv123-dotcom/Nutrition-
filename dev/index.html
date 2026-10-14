@@ -230,6 +230,13 @@ body{font-family:'Assistant',-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragi
    macro went missing from the one card that answers "how much is left". */
 .pills{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px}
 .pill{background:var(--card);border-radius:16px;padding:11px 5px;text-align:center;box-shadow:0 2px 10px rgba(200,180,160,.1)}
+/* the session, on the nutrition screen. A row rather than a card, because it
+   is a fact about the day and not a target she is working against. */
+.fbrn{background:var(--card);border-radius:16px;padding:11px 13px;margin-bottom:12px;box-shadow:0 2px 10px rgba(200,180,160,.1)}
+.fbrn-x{display:flex;align-items:baseline;gap:10px}
+.fbrn-n{font-size:12.5px;font-weight:800;color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fbrn-k{font-size:13px;font-weight:800;color:var(--ink-strong);flex-shrink:0}
+.fbrn-s{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.5}
 .pill-val{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
 /* Two lines is fine and clipping is not: "פחמימה נותרת" does not fit a
    quarter of a phone on one line, and the label is what says which number
@@ -2895,6 +2902,10 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .sm2-pz-b{font-size:13.5px;line-height:1.75;color:var(--ink)}
 .sm2-blk{margin-bottom:15px}
 .sm2-nut{background:var(--card);border-radius:14px;padding:12px 13px;margin-bottom:15px}
+.sm2-wo{display:grid;gap:6px}
+.sm2-wo-r{display:flex;gap:10px;align-items:baseline;font-size:12.5px;flex-wrap:wrap}
+.sm2-wo-r>b{font-weight:800;color:var(--ink)}
+.sm2-wo-r>span{color:var(--muted);font-size:11.5px}
 .sm2-tl{display:grid;gap:6px}
 .sm2-tl-r{display:flex;gap:10px;align-items:baseline;font-size:12.5px}
 .sm2-tl-r>span{color:var(--muted);min-width:38px;flex-shrink:0}
@@ -16406,7 +16417,7 @@ function renderToday(){
      app afterwards. */
   /* the bars first, because they are what the chat changes, then the chat,
      then what the day already holds */
-  _c.innerHTML=fqCardHTML()+macroHTML+pillsHTML+waterHTML+coachHTML()+logHTML;
+  _c.innerHTML=fqCardHTML()+macroHTML+pillsHTML+fitBurnRowHTML(curDate)+waterHTML+coachHTML()+logHTML;
   /* the chat's pictures live in IndexedDB; innerHTML alone leaves empty imgs */
   (function(){var _co=document.getElementById('co-wrap');
     if(_co){hydratePhotos(_co);var _l=document.getElementById('co-list');
@@ -17207,7 +17218,8 @@ function sumProseHTML(sum,skip){
    is the same as no page. */
 function dayHasSomething(dateStr){
   var day=loadDay(dateStr);
-  return !!((day.meals&&day.meals.length)||day.water||stepsOf(dateStr)>0);
+  return !!((day.meals&&day.meals.length)||day.water||stepsOf(dateStr)>0||
+             workoutsOn(dateStr).length);
 }
 /* The food numbers on a summary are a snapshot saveSummaryTotals writes when a
    reflection is FINISHED. A day nobody reflected on has no snapshot, so they
@@ -17319,6 +17331,25 @@ function summaryBodyHTML(dateStr){
      so a 58kg woman whose target is 2000 drank all of it and was shown 67%. */
   if(sum.water){var wp2=Math.min(100,Math.round(sum.water/(TARGETS.water||3000)*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; '+_t('מים')+'</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+fmtVolume(sum.water)+'</span></div>';}
   h+='</div></div>';
+  }
+
+  /* A SESSION IS PART OF THE DAY, and until now it was not on this page at
+     all: the workout question drops out of the evening the moment a session
+     is logged - correctly, the app already knows - and sum.workoutDone is
+     what this sheet read. So the day she actually trained was the day that
+     said nothing about training. This reads the log instead of the answer. */
+  var _wos=workoutsOn(dateStr);
+  if(_wos.length&&sumSecOn('fit')){
+    h+='<div class="sm2-blk"><div class="sm2-pz-l">'+_t('אימון')+'</div><div class="sm2-wo">';
+    for(i=0;i<_wos.length;i++){
+      var _wo=_wos[i],_wb=fitBurn(_wo),_bits=[];
+      _bits.push(_t('{n} תרגילים',{n:(_wo.exercises||[]).length}));
+      if(_wo.duration>0)_bits.push(_t('{n} דקות',{n:_wo.duration}));
+      if(_wb)_bits.push(_t('בערך {n} קק"ל',{n:_wb.kcal}));
+      h+='<div class="sm2-wo-r"><b>'+esc(_wo.name||_t('אימון'))+'</b>'+
+         '<span>'+_bits.join(' · ')+'</span></div>';
+    }
+    h+='</div></div>';
   }
 
   // the clock stays a drawing - a picture does not become a line
@@ -23202,6 +23233,101 @@ function workoutLoggedOn(dateStr){
   return null;
 }
 
+/* EVERY session filed under that app day, oldest first. workoutLoggedOn
+   answers "was there one" and stops at the first; this is for the places that
+   have to show them, and a day with two sessions in it is a real day. */
+function workoutsOn(dateStr){
+  var log=[];try{log=loadWorkoutLog()||[];}catch(e){}
+  var out=[],i;
+  for(i=0;i<log.length;i++)if(appDayOf(log[i].date)===dateStr)out.push(log[i]);
+  return out;
+}
+
+/* ── WHAT A SESSION COST, APPROXIMATELY ──
+   MET x 3.5 x kg / 200 is kcal a minute: one MET is 3.5 ml of oxygen per kilo
+   per minute, and a litre of oxygen is about 5 kcal.
+
+   The MET is read off the EFFORT, because "resistance training" is not one
+   activity. The compendium separates light, moderate and vigorous, and the
+   gap between them is nearly double. Rest is INSIDE those figures - they are
+   session values - which is why the minutes are the clock's and not the
+   sets'.
+
+   The body weight is hers and is not guessed. Without it there is no
+   estimate; a number built on an invented weight is worse than no number. */
+function fitBodyKg(){
+  var p={};try{p=loadProfile()||{};}catch(e){}
+  var w=parseFloat(p.weight);
+  return (isFinite(w)&&w>25&&w<400)?w:0;
+}
+function fitMET(rpe){
+  if(rpe==null)return 5;      /* nothing rated: the middle of the three */
+  if(rpe<6)return 3.5;        /* light */
+  if(rpe<7.5)return 5;        /* moderate */
+  return 6;                   /* vigorous, and the compendium stops there */
+}
+function fitBurn(entry){
+  var kg=fitBodyKg();
+  if(!kg||!entry)return null;
+  var sets=0,rs=0,rn=0,i,j,ex,st,exs=entry.exercises||[];
+  for(i=0;i<exs.length;i++){
+    ex=exs[i];
+    for(j=0;j<(ex.sets||[]).length;j++){
+      st=ex.sets[j];sets++;
+      if(st.rpe!=null){rs+=st.rpe;rn++;}
+    }
+  }
+  if(!sets)return null;
+  var min=entry.duration||0;
+  /* A session entered after the fact carries no clock at all, and one left
+     open overnight carries nine hours of it - either answered alone would
+     print a number nobody did. Three minutes a set is a working set and its
+     rest, and it is only reached for when the clock cannot answer. */
+  if(min<1)min=sets*3;
+  if(min>180)min=180;
+  var met=fitMET(rn?rs/rn:null);
+  /* to the nearest five, because the third digit of an estimate is a claim */
+  return {kcal:Math.round(met*3.5*kg/200*min/5)*5,min:min,met:met,sets:sets};
+}
+/* The band on the workout summary. A fourth hero card was the obvious place
+   and it is the wrong one: the number needs two sentences beside it and a
+   70px column cannot carry them. */
+function fitBurnBandHTML(entry){
+  var box='background:var(--card);border-radius:20px;padding:14px 16px;margin-bottom:16px;'+
+          'box-shadow:0 2px 10px rgba(58,53,48,.06)';
+  if(!fitBodyKg())
+    return '<div style="'+box+';font-size:11.5px;color:var(--muted);line-height:1.6">'+
+           _t('צריך משקל גוף בפרופיל כדי להעריך שריפה.')+'</div>';
+  var b=fitBurn(entry);
+  if(!b)return '';
+  return '<div style="'+box+'">'+
+    '<div style="font-size:10px;font-weight:800;color:#9A9184;letter-spacing:.06em">'+
+      _t('שריפה משוערת')+'</div>'+
+    '<div style="font-size:22px;font-weight:800;color:var(--ink-strong);margin:4px 0 6px">'+
+      _t('בערך {n} קק"ל',{n:b.kcal})+'</div>'+
+    '<div style="font-size:11px;color:#9A9184;line-height:1.6">'+
+      _t('הערכה לפי משך האימון, המאמץ ומשקל הגוף שלך.')+'<br>'+
+      _t('כבר בתוך היעד הקלורי היומי שלך, ולכן לא מתווסף אליו.')+'</div>'+
+    '</div>';
+}
+/* And on תזונה, which is where he asked for it to arrive. It is INFORMATION:
+   the row says the figure and says in the same breath that the day's target
+   already contains it. Nothing on this screen adds it to anything. */
+function fitBurnRowHTML(dateStr){
+  var w=workoutsOn(dateStr),i,b,kcal=0,names=[],any=false;
+  if(!w.length||!fitBodyKg())return '';
+  for(i=0;i<w.length;i++){
+    b=fitBurn(w[i]);
+    if(b){kcal+=b.kcal;any=true;}
+    names.push(w[i].name||''+_t('אימון')+'');
+  }
+  if(!any)return '';
+  return '<div class="fbrn"><div class="fbrn-x">'+
+    '<div class="fbrn-n">'+esc(names.join(' · '))+'</div>'+
+    '<div class="fbrn-k">'+_t('בערך {n} קק"ל',{n:kcal})+'</div></div>'+
+    '<div class="fbrn-s">'+_t('כבר בתוך היעד הקלורי היומי שלך, ולכן לא מתווסף אליו.')+'</div></div>';
+}
+
 function renderWeeklyPlan(){
   document.getElementById('hdr-title').textContent=''+_t('לוז האימונים')+'';
   var weekPlan=loadWeekPlan();
@@ -26494,6 +26620,9 @@ function renderFitSummary(){
     h+='<div style="font-size:10px;color:#9A9184;margin-top:3px">'+s.lbl+'</div></div>';
   });
   h+='</div>';
+
+  // 4.1b What it cost, approximately. It is an estimate and it says so.
+  h+=fitBurnBandHTML(entry);
 
   // 4.2 vs previous (only from 2nd session onward)
   if(prev){
