@@ -5070,10 +5070,11 @@ html body.mod-home .cray-core{opacity:.34;animation:crayTravel 3.4s linear infin
 html body.mod-home .cray-wedge{opacity:.8}
 /* a ray that leads nowhere still carries light, but it must not compete with
    one that leads somewhere - so it is softer, not absent */
-html body.mod-home .cray-wedge.cray-off{opacity:.38}
-html body.mod-home .cray-core.cray-off{opacity:.12}
-html body.mod-home .cfan-done .cray-wedge.cray-off{opacity:.46}
-html body.mod-home .cfan-done .cray-core.cray-off{opacity:.18}
+/* the empty ray is handled by WHERE IT ENDS, not by how faint it is -
+   dimming alone still left a beam pointing at a hole */
+html body.mod-home .cray-wedge.cray-off{opacity:.55}
+html body.mod-home .cray-core.cray-off{opacity:0}
+html body.mod-home .cfan-done .cray-wedge.cray-off{opacity:.62}
 html body.mod-home .cfan-done .cray-wedge{opacity:1}
 html body.mod-home .cfan-done .cray-core{opacity:.55}
 @keyframes crayTravel{0%{stroke-dashoffset:var(--len)}100%{stroke-dashoffset:0}}
@@ -36567,6 +36568,36 @@ function arcPlan(n,W,H){
    The markup from the approved comp, filled from HOME_AREAS. The only thing
    added to it is data-area, which is the single hook the app binds to. */
 var FAN_ARC=168,FAN_RAD=150;
+/* ── HOW BIG A BUTTON IS ──
+   40px is right beside six others. Alone it is 40 against a 114 hub inside a
+   374 fan, and it reads as a leftover - which is what he actually meant by
+   the screen feeling empty. So the disc is a function of the count, and 7
+   and 6 are exactly what shipped before, so nobody tracking everything sees
+   a change.
+
+   Two things the geometry forces, both found by measuring rather than by
+   arithmetic:
+
+   THE CAP IS THE ANGULAR STEP, NOT THE COUNT. On its own slot each area is
+   28 from its neighbour, which is 2*R*sin(14) = 64px - so a 76px disc
+   overlaps the one beside it. The shown areas are therefore SPREAD across
+   the seven slots: two of them take slots 0 and 6, not 0 and 1. That
+   spreading is what buys the size.
+
+   THE RADIUS GROWS WITH THE DISC. A disc near the top of the arc sits at
+   R-D/2 from the hub, so enlarging it walks it INTO the hub. R >= 57+D+8. */
+/* a petal is disc + 5 + label, so a slot at the top of the arc needs
+   R >= D + 83 - the disc alone cleared and the NAME did not */
+function fanDisc(n){return n>=6?40:n===5?46:n===4?54:n===3?60:n===2?72:76;}
+function fanRad(n){ return n>=5?FAN_RAD:n===4?146:n===3?146:n===2?138:162;}
+function fanName(n){return n>=6?9:n===5?10:n===4?10.5:n===3?11.5:n===2?12.5:13;}
+function fanSlots(n,total){
+  var out=[],i;
+  if(n<=0)return out;
+  if(n===1)return [Math.floor((total-1)/2)];
+  for(i=0;i<n;i++)out[out.length]=Math.round(i*(total-1)/(n-1));
+  return out;
+}
 /* ── THE MARK ──
    The logo, drawn in dev/look/sun2.html as family א and copied here without
    a single coordinate changed. Its own space is 160x160: disc r=40 at
@@ -36618,29 +36649,40 @@ function sunMarkHTML(face){
    centre - .cpetal is placed by its top edge and the disc is 40 tall - which
    is why the arc of buttons is flatter than a circle, and why the shaft has
    to aim at that point rather than at the rotation radius. */
-function homeRaysHTML(rest,shown){
+function homeRaysHTML(rest,shown,DD,RR){
+  DD=DD||40; RR=RR||FAN_RAD;
   var n=rest.length,i,h='<svg class="cray" viewBox="0 0 400 400" aria-hidden="true"><defs>',body='';
   for(i=0;i<n;i++){
     var ang=((-FAN_ARC/2)+(FAN_ARC*i)/(n-1||1))*Math.PI/180,
-        dx=Math.sin(ang)*FAN_RAD, dy=-Math.cos(ang)*FAN_RAD+20,
+        dx=Math.sin(ang)*RR, dy=-Math.cos(ang)*RR+DD/2,
         L=Math.sqrt(dx*dx+dy*dy), ux=dx/L, uy=dy/L, px=-uy, py=ux,
-        r0=59, r1=L-19, w0=4.5, w1=23,
+        /* A ray that reaches a button stops at the disc's EDGE. A ray with
+           no button NEVER ARRIVES: it runs out at 58% of the way, far short
+           of where a disc would sit, and it is narrower there. That is what
+           stops it reading as a beam aimed at a missing object. */
+        r0=59, off=(shown&&!shown[rest[i].id]),
+        r1=off?(r0+(L-r0)*0.58):(L-(DD/2-1)), w0=4.5, w1=off?15:23,
         ax=200+ux*r0, ay=200+uy*r0, bx=200+ux*r1, by=200+uy*r1,
         c=rest[i].color||'#a49a8e';
-        off=(shown&&!shown[rest[i].id])?' cray-off':'';
+        offc=off?' cray-off':'';
     h+='<linearGradient id="cray'+i+'" gradientUnits="userSpaceOnUse" x1="'+ax.toFixed(1)+
        '" y1="'+ay.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+by.toFixed(1)+'">'+
-       '<stop offset="0" stop-color="'+c+'" stop-opacity=".34"/>'+
-       '<stop offset=".45" stop-color="'+c+'" stop-opacity=".19"/>'+
-       '<stop offset=".88" stop-color="'+c+'" stop-opacity=".22"/>'+
-       '<stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient>';
-    body+='<path class="cray-wedge'+off+'" d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
+       (off
+         ? '<stop offset="0" stop-color="'+c+'" stop-opacity=".30"/>'+
+           '<stop offset=".5" stop-color="'+c+'" stop-opacity=".13"/>'+
+           '<stop offset="1" stop-color="'+c+'" stop-opacity="0"/>'
+         : '<stop offset="0" stop-color="'+c+'" stop-opacity=".34"/>'+
+           '<stop offset=".45" stop-color="'+c+'" stop-opacity=".19"/>'+
+           '<stop offset=".88" stop-color="'+c+'" stop-opacity=".22"/>'+
+           '<stop offset="1" stop-color="'+c+'" stop-opacity="0"/>')+
+       '</linearGradient>';
+    body+='<path class="cray-wedge'+offc+'" d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
           'L'+(bx+px*w1).toFixed(1)+' '+(by+py*w1).toFixed(1)+
           'L'+(bx-px*w1).toFixed(1)+' '+(by-py*w1).toFixed(1)+
           'L'+(ax-px*w0).toFixed(1)+' '+(ay-py*w0).toFixed(1)+
           'Z" fill="url(#cray'+i+')"/>';
     var seg=Math.sqrt((bx-ax)*(bx-ax)+(by-ay)*(by-ay));
-    body+='<path class="cray-core'+off+'" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+
+    body+='<path class="cray-core'+offc+'" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+
           (i*0.2).toFixed(2)+'s" d="M'+ax.toFixed(1)+' '+ay.toFixed(1)+'L'+bx.toFixed(1)+' '+
           by.toFixed(1)+'" stroke="'+c+'" stroke-width="3.4" stroke-linecap="round" fill="none" '+
           'stroke-dasharray="'+(seg*0.3).toFixed(1)+' '+seg.toFixed(1)+'"/>';
@@ -36659,14 +36701,18 @@ function homeFanHTML(hub,rest,all){
   if(!all)all=rest;
   var shown={},i;
   for(i=0;i<rest.length;i++)shown[rest[i].id]=1;
-  var h='<div class="cfan'+(done?' cfan-done':'')+'">'+homeRaysHTML(all,shown),a,ang;
-  for(i=0;i<all.length;i++){
-    a=all[i];
-    ang=(-FAN_ARC/2)+(FAN_ARC*i)/(all.length-1||1);
-    if(!shown[a.id])continue;
-    h+='<button class="cpetal" data-area="'+a.id+'" style="--a:'+ang.toFixed(2)+'deg;--r:'+FAN_RAD+'px;--area:'+a.color+'">'+
-       '<span class="cdisc" style="color:'+a.color+'">'+a.svg+'</span>'+
-       '<span class="cname">'+a.title+'</span></button>';
+  var D=fanDisc(rest.length), R=fanRad(rest.length),
+      NF=fanName(rest.length), slots=fanSlots(rest.length,all.length),
+      PW=Math.max(74,D+20);
+  var h='<div class="cfan'+(done?' cfan-done':'')+'">'+homeRaysHTML(all,shown,D,R),a,ang;
+  for(i=0;i<slots.length;i++){
+    a=rest[i];
+    ang=(-FAN_ARC/2)+(FAN_ARC*slots[i])/(all.length-1||1);
+    h+='<button class="cpetal" data-area="'+a.id+'" style="--a:'+ang.toFixed(2)+'deg;--r:'+R+'px;--area:'+a.color+';width:'+PW+'px;margin-left:'+(-PW/2)+'px">'+
+       '<span class="cdisc" style="color:'+a.color+';width:'+D+'px;height:'+D+'px">'+
+       a.svg.replace('<svg ','<svg style="width:'+Math.round(D*0.475)+'px;height:'+Math.round(D*0.475)+'px" ')+
+       '</span>'+
+       '<span class="cname" style="font-size:'+NF+'px">'+a.title+'</span></button>';
   }
   if(hub){
     /* the video button is NOT on the hub: the comp's hub carries its glyph
