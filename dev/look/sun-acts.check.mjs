@@ -160,6 +160,39 @@ console.log('\n6. reduced motion');
   ? ok('the reduced path fires each step, so the plant still grows')
   : bad('the reduced path skips fire(): the plant never grows and no light reaches the door');
 
+// ── 7. he is the SAME character as the approved mark ─────────────────────
+// A page that redraws him slightly is how a character ends up with two
+// authors. These are read out of sun-final.html rather than written here.
+console.log('\n7. the same character as the approved mark');
+try {
+  const fin = fs.readFileSync('C:/Projects/Nutrition-/dev/look/sun-final.html','utf8');
+  const num = (txt, re) => (txt.match(re)||[])[1];
+  const pairs = [
+    // declared on one line here and on three there, so anchor on the NAME
+    ['body radius',  /\bR\s*=\s*([\d.]+)/],
+    ['ring radii',   /\bRR\s*=\s*\[([^\]]+)\]/],
+    ['ring colours', /\bCOL\s*=\s*\[([^\]]+)\]/],
+  ];
+  pairs.forEach(([name, re]) => {
+    const a = (num(src, re)||'').replace(/\s/g,''), b = (num(fin, re)||'').replace(/\s/g,'');
+    a && a === b ? ok(`${name} identical to the approved mark: ${a}`)
+                 : bad(`${name} differs: acts "${a}" vs final "${b}"`);
+  });
+  // the four fills that make the body's material
+  const grads = t => [...t.matchAll(/id="'\+k\+'(\w+)"/g)].map(m=>m[1]).sort().join(',');
+  grads(src) === grads(fin)
+    ? ok(`the same gradients build the body: ${grads(src)}`)
+    : bad(`gradients differ: acts ${grads(src)} vs final ${grads(fin)}`);
+  // the dot rhythm at this size: 26 dots, 2.6 wide, 6% duty
+  (/dots\(r,\s*26,\s*\.06\)/.test(src) && /stroke-width="2\.6"/.test(src))
+    ? ok('26 dots at 2.6 wide, 6% duty - variant \u05d0, the one chosen for \u226548px')
+    : bad('the dot rhythm is not the chosen variant \u05d0');
+  // the blink the page agreed on: 3s then 5s
+  /0%,18\.09%/.test(src) && /55\.59%/.test(src)
+    ? ok('the 8s blink loop is the approved one (gaps of 3s and 5s)')
+    : bad('the blink is not the approved loop');
+} catch(e){ bad('could not read sun-final.html: ' + e.message); }
+
 console.log('\n' + PATH);
 console.log(fail.length ? fail.length + ' FAILURE(S)' : 'all checks pass');
 process.exit(fail.length ? 1 : 0);
