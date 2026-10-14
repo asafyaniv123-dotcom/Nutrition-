@@ -5068,10 +5068,14 @@ html body.mod-home .cray{position:absolute;left:50%;top:60%;width:400px;height:4
   margin:-200px 0 0 -200px;pointer-events:none}
 html body.mod-home .cray-core{opacity:.34;animation:crayTravel 3.4s linear infinite}
 html body.mod-home .cray-wedge{opacity:.8}
-/* a ray whose area is switched off: same length, same shape, softer light */
-html body.mod-home .cray-wedge.cray-off{opacity:.42}
-html body.mod-home .cray-core.cray-off{opacity:.14}
-html body.mod-home .cfan-done .cray-wedge.cray-off{opacity:.5}
+/* a ray whose area is switched off: same length, soft orange, a rounded
+   end, and a slow breath on its own delay so they never pulse together */
+html body.mod-home .cray-wedge.cray-off{opacity:.52;animation:crayBreathe 7s ease-in-out infinite}
+html body.mod-home .cray-core.cray-off{display:none}
+html body.mod-home .cfan-done .cray-wedge.cray-off{opacity:.6}
+@keyframes crayBreathe{0%,100%{opacity:.4}50%{opacity:.66}}
+@media (prefers-reduced-motion:reduce){
+  html body.mod-home .cray-wedge.cray-off{animation:none}}
 /* a ray that leads nowhere still carries light, but it must not compete with
    one that leads somewhere - so it is softer, not absent */
 
@@ -25825,14 +25829,9 @@ function renderFitWorkout(){
   h+='<button class="wx-b wx-del" onclick="wxRemove('+w.currentEx+')" aria-label="'+_t('הסר תרגיל')+'">'+
      '<i class="wx-i">&#215;</i>'+_t('הסר')+'</button>';
   h+='</div></div>';
-  h+=fitTgtHTML(ex);
-  /* EVERYTHING ABOUT THIS LIFT, IN ONE RECTANGLE - what you did last time
-     and what you have done so far today. Both are what the two boxes are
-     being asked about, so both belong where you are looking when you decide.
-     Measured before this moved: today's sets were sitting 1145px down the
-     page, past the boxes, the wheel, the plate picture and the rest timer. */
-  h+=exLastHTML(ex);
-  h+=exPrevHTML(ex,curPR);
+  /* DIRECTLY UNDER החלף AND הסר. It is the third small action on this
+     lift and it used to sit at the bottom of the card, under the target,
+     last time and the set chips. */
   /* A group is still contiguous; what changed is that any exercise can be
      made the next one. */
   (function(){
@@ -25868,6 +25867,14 @@ function renderFitWorkout(){
            '<i class="wx-i">&#8644;</i>'+_t('סופרסט עם')+'&hellip;</button></div>';
     }
   })();
+  h+=fitTgtHTML(ex);
+  /* EVERYTHING ABOUT THIS LIFT, IN ONE RECTANGLE - what you did last time
+     and what you have done so far today. Both are what the two boxes are
+     being asked about, so both belong where you are looking when you decide.
+     Measured before this moved: today's sets were sitting 1145px down the
+     page, past the boxes, the wheel, the plate picture and the rest timer. */
+  h+=exLastHTML(ex);
+  h+=exPrevHTML(ex,curPR);
   h+='</div>';
   /* how it is done, on the far side of the name it belongs to */
   h+=exHowBoxHTML();
@@ -25892,8 +25899,10 @@ function renderFitWorkout(){
      and it grows all session. Held aside and drawn in its own card below the
      form, so the form keeps a fixed place on the screen no matter how long
      the record gets. It used to sit under all of it. */
-  var _hd=h;h='';
+  /* THE NOTE IS SETUP, so it is drawn BEFORE the form rather than in the
+     record below it. It was arriving after the thing it sets up. */
   h+=exNoteHTML(ex,w.currentEx);
+  var _hd=h;h='';
 
   // Warm-up rows come first, because that is the order they happen in, and
   // they are drawn quieter so the working sets still read as the real list.
@@ -25971,13 +25980,9 @@ function renderFitWorkout(){
   h+='</div></div>';
   }
 
-  /* and now the record, in its own card. Empty on the first set of a new
-     exercise, and then there is nothing to draw and no card to draw it in. */
-  if(_log.replace(/<[^>]*>/g,'').trim()||/<(input|button|img)/.test(_log))
-    h+='<div class="fw-log">'+_log+'</div>';
-
-  // the one button for when the plan meets the gym
-  h+='<button class="fw-case" onclick="fitCaseOpen()">'+_t('משהו קרה?')+' &#8250;</button>';
+  /* THE REST, DIRECTLY UNDER THE FORM. It used to sit below the whole
+     record and below "משהו קרה?" - the furthest thing on the card from
+     the set that was just logged, which is when you reach for it. */
   // how long the rest is, set where you are already standing
   h+='<div class="fw-restset"><span>'+_t('מנוחה|טיימר')+'</span>';
   [0,60,90,120,180].forEach(function(n){
@@ -25989,7 +25994,14 @@ function renderFitWorkout(){
   h+='<button class="fw-rb go" onclick="restGo()">'+_t('התחל מנוחה')+'</button>';
   h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
   h+='</div>';
-  h+=addExHTML();
+    /* and now the record, in its own card. Empty on the first set of a new
+     exercise, and then there is nothing to draw and no card to draw it in. */
+  if(_log.replace(/<[^>]*>/g,'').trim()||/<(input|button|img)/.test(_log))
+    h+='<div class="fw-log">'+_log+'</div>';
+
+  // the one button for when the plan meets the gym
+  h+='<button class="fw-case" onclick="fitCaseOpen()">'+_t('משהו קרה?')+' &#8250;</button>';
+h+=addExHTML();
   /* A workout grows mid-session more often than it survives the plan, so the
      same notebook reading belongs here too - counted off what each exercise
      is SET to do, which is the decision still open, rather than off what has
@@ -36669,18 +36681,38 @@ function homeRaysHTML(beams,total,DD,RR){
            Shortening an empty one was my invention and it made stubs. */
         r0=59, r1=L-(DD/2-1), w0=4.5, w1=23,
         ax=200+ux*r0, ay=200+uy*r0, bx=200+ux*r1, by=200+uy*r1,
-        off=beams[i].off, c=beams[i].a.color||'#a49a8e';
+        off=beams[i].off,
+        /* ONE SOFT ORANGE for every ray with no button. A hue belongs to a
+           button; with nothing at the end it was a claim about nothing, and
+           seven of them made the unlit half as loud as the lit half. */
+        c=off?'#f0a92e':(beams[i].a.color||'#a49a8e');
     h+='<linearGradient id="cray'+i+'" gradientUnits="userSpaceOnUse" x1="'+ax.toFixed(1)+
        '" y1="'+ay.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+by.toFixed(1)+'">'+
        /* NOT fading to 0 at the far end: a beam that reaches something is
           brightest where it lands, and fading out there is what made each
           one die in the air just short of its disc */
-       '<stop offset="0" stop-color="'+c+'" stop-opacity=".30"/>'+
-       '<stop offset=".45" stop-color="'+c+'" stop-opacity=".22"/>'+
-       '<stop offset="1" stop-color="'+c+'" stop-opacity=".34"/></linearGradient>';
-    body+='<path class="cray-wedge'+(off?' cray-off':'')+'" d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
+       (off
+         ? '<stop offset="0" stop-color="'+c+'" stop-opacity=".26"/>'+
+           '<stop offset=".55" stop-color="'+c+'" stop-opacity=".17"/>'+
+           '<stop offset="1" stop-color="'+c+'" stop-opacity=".27"/>'
+         : '<stop offset="0" stop-color="'+c+'" stop-opacity=".30"/>'+
+           '<stop offset=".45" stop-color="'+c+'" stop-opacity=".22"/>'+
+           '<stop offset="1" stop-color="'+c+'" stop-opacity=".34"/>')+
+       '</linearGradient>';
+    /* A ROUNDED END for a ray with no button: the far edge used to be a
+       straight cut, which is what an interrupted beam looks like. The arc is
+       a half circle of the wedge's own half width, centred on the tip, so
+       the ray finishes on a curve rather than on a cut. Sweep 0 is the half
+       that bulges AWAY from the hub - the across vector leads the along one
+       by 90 degrees, so the outward half runs in decreasing angle. */
+    var _far=off
+      ? 'A'+w1+' '+w1+' 0 0 0 '+(bx-px*w1).toFixed(1)+' '+(by-py*w1).toFixed(1)
+      : 'L'+(bx-px*w1).toFixed(1)+' '+(by-py*w1).toFixed(1);
+    body+='<path class="cray-wedge'+(off?' cray-off':'')+'"'+
+          (off?' style="animation-delay:'+(i*0.7).toFixed(2)+'s"':'')+
+          ' d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
           'L'+(bx+px*w1).toFixed(1)+' '+(by+py*w1).toFixed(1)+
-          'L'+(bx-px*w1).toFixed(1)+' '+(by-py*w1).toFixed(1)+
+          _far+
           'L'+(ax-px*w0).toFixed(1)+' '+(ay-py*w0).toFixed(1)+
           'Z" fill="url(#cray'+i+')"/>';
     var seg=Math.sqrt((bx-ax)*(bx-ax)+(by-ay)*(by-ay));
