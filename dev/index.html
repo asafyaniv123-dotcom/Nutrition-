@@ -36645,12 +36645,15 @@ function sunMarkHTML(face){
    centre - .cpetal is placed by its top edge and the disc is 40 tall - which
    is why the arc of buttons is flatter than a circle, and why the shaft has
    to aim at that point rather than at the rotation radius. */
-function homeRaysHTML(rest,shown,DD,RR){
+/* on = the areas that have a button, slots = the slot each one stands on,
+   total = how many slots the arc is divided into. The rays MUST be told the
+   slots: when the buttons began to spread and the rays kept each area's own
+   index, every beam pointed at a place with nothing in it. */
+function homeRaysHTML(on,slots,total,DD,RR){
   DD=DD||40; RR=RR||FAN_RAD;
-  var n=rest.length,i,h='<svg class="cray" viewBox="0 0 400 400" aria-hidden="true"><defs>',body='';
+  var n=on.length,i,h='<svg class="cray" viewBox="0 0 400 400" aria-hidden="true"><defs>',body='';
   for(i=0;i<n;i++){
-    if(shown&&!shown[rest[i].id])continue;
-    var ang=((-FAN_ARC/2)+(FAN_ARC*i)/(n-1||1))*Math.PI/180,
+    var ang=((-FAN_ARC/2)+(FAN_ARC*slots[i])/((total-1)||1))*Math.PI/180,
         dx=Math.sin(ang)*RR, dy=-Math.cos(ang)*RR+DD/2,
         L=Math.sqrt(dx*dx+dy*dy), ux=dx/L, uy=dy/L, px=-uy, py=ux,
         /* AN EMPTY SLOT DRAWS NOTHING. Three shapes were tried for it and
@@ -36660,13 +36663,15 @@ function homeRaysHTML(rest,shown,DD,RR){
            bigger now, not by filling the gaps. */
         r0=59, r1=L-(DD/2-1), w0=4.5, w1=23,
         ax=200+ux*r0, ay=200+uy*r0, bx=200+ux*r1, by=200+uy*r1,
-        c=rest[i].color||'#a49a8e';
+        c=on[i].color||'#a49a8e';
     h+='<linearGradient id="cray'+i+'" gradientUnits="userSpaceOnUse" x1="'+ax.toFixed(1)+
        '" y1="'+ay.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+by.toFixed(1)+'">'+
-       '<stop offset="0" stop-color="'+c+'" stop-opacity=".34"/>'+
-       '<stop offset=".45" stop-color="'+c+'" stop-opacity=".19"/>'+
-       '<stop offset=".88" stop-color="'+c+'" stop-opacity=".22"/>'+
-       '<stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient>';
+       /* NOT fading to 0 at the far end: a beam that reaches something is
+          brightest where it lands, and fading out there is what made each
+          one die in the air just short of its disc */
+       '<stop offset="0" stop-color="'+c+'" stop-opacity=".30"/>'+
+       '<stop offset=".45" stop-color="'+c+'" stop-opacity=".22"/>'+
+       '<stop offset="1" stop-color="'+c+'" stop-opacity=".34"/></linearGradient>';
     body+='<path class="cray-wedge" d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
           'L'+(bx+px*w1).toFixed(1)+' '+(by+py*w1).toFixed(1)+
           'L'+(bx-px*w1).toFixed(1)+' '+(by-py*w1).toFixed(1)+
@@ -36695,7 +36700,8 @@ function homeFanHTML(hub,rest,all){
   var D=fanDisc(rest.length), R=fanRad(rest.length),
       NF=fanName(rest.length), slots=fanSlots(rest.length,all.length),
       PW=Math.max(74,D+20);
-  var h='<div class="cfan'+(done?' cfan-done':'')+'">'+homeRaysHTML(all,shown,D,R),a,ang;
+  var h='<div class="cfan'+(done?' cfan-done':'')+'">'+
+      homeRaysHTML(rest,slots,all.length,D,R),a,ang;
   for(i=0;i<slots.length;i++){
     a=rest[i];
     ang=(-FAN_ARC/2)+(FAN_ARC*slots[i])/(all.length-1||1);
