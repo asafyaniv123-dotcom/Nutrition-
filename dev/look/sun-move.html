@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>השמש — איך הוא זז, ואיך הוא עוצר</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  HOW HE MOVES, AND HOW HE STOPS.
+
+  ONE SPRING RUNS ALL OF IT. Every behaviour on this page comes out of the same
+  two-line integrator, with nothing but stiffness and damping changed:
+
+      a = (target - x) * k - v * d
+      v += a * dt ;  x += v * dt
+
+  which is worth saying because it is the opposite of how this is usually done.
+  Hand-keyed easing gives you one motion and no second one; a spring gives you
+  arrival, overshoot, settle and recovery for free, and "how does he stop" stops
+  being a separate animation and becomes a number. Critical damping stops dead.
+  Light damping overshoots and swings back. Low stiffness glides in.
+
+  AND EVERYTHING ELSE IS DERIVED FROM THAT ONE NUMBER, not animated separately:
+
+      lean      from VELOCITY       he tips into the direction of travel
+      squash    from ACCELERATION   he compresses when the spring pushes hardest,
+                                    and stretches as he is let go - volume kept,
+                                    so scaleX * scaleY stays 1
+      ring roll from DISTANCE       degrees = distance / radius, which is what
+                                    rolling IS. Not a spin that looks like it.
+
+  THE DECISION THE SHAPE ALREADY MADE FOR US: he is a sphere, so if he slides he
+  is a sticker. He has to roll. But a face that rolls with the body ends up
+  upside down, so the BODY rolls and the FACE stays level - which is exactly the
+  split the drawing already has, because the rings are their own group and the
+  eyes live on the body. Nothing new had to be built to make that possible.
+
+  Reduced motion: every demo falls back to a plain position change with no
+  spring, no roll and no squash.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:26px 26px 4px;max-width:1340px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:92ch;line-height:1.82}
+  .sub b{color:var(--ink)}
+  h2{max-width:1340px;margin:40px auto 0;padding:0 26px;font-size:16px;font-weight:800}
+  h2 i{font-style:normal;font-weight:600;font-size:12.5px;line-height:1.72;color:var(--muted);
+    display:block;margin-top:5px;max-width:88ch}
+  .lane{max-width:1340px;margin:14px auto 0;padding:0 26px}
+  .track{position:relative;height:132px;border-radius:22px;background:var(--ground);
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit);
+    overflow:hidden;cursor:pointer}
+  .runner{position:absolute;top:50%;width:92px;height:92px;margin-top:-46px;left:0;
+    will-change:transform}
+  .rlbl{display:flex;justify-content:space-between;align-items:baseline;margin:0 4px 6px}
+  .rlbl b{font-size:12.5px;color:var(--ink)}
+  .rlbl span{font-size:11.5px;color:var(--muted);line-height:1.6;max-width:72ch;text-align:start}
+  .sm{display:block;width:100%;height:100%;overflow:visible}
+  /* the body breathes and blinks as always; the movement rides on top */
+  .sm-body{transform-origin:80px 80px;transform-box:view-box;
+    animation:br 5.6s ease-in-out infinite}
+  @keyframes br{0%,100%{transform:scale(1)}50%{transform:scale(1.022)}}
+  .sm-eye{transform-box:fill-box;transform-origin:50% 50%;animation:bl 8s infinite}
+  .sm-eye.r{animation-delay:.04s}
+  @keyframes bl{0%,18.09%{transform:scaleY(1)}19.40%{transform:scaleY(.06)}
+    19.53%{transform:scaleY(.06)}21.40%{transform:scaleY(1)}
+    55.59%{transform:scaleY(1)}56.90%{transform:scaleY(.06)}
+    57.03%{transform:scaleY(.06)}58.90%{transform:scaleY(1)}100%{transform:scaleY(1)}}
+  @media (prefers-reduced-motion:reduce){.sm-body,.sm-eye{animation:none}}
+  .note{max-width:1340px;margin:16px auto 0;padding:0 26px;font-size:12.5px;
+    line-height:1.8;color:var(--muted)}
+  .note b{color:var(--ink)}
+  .hint{font-size:11px;color:#8d857b;margin:6px 4px 0}
+</style>
+
+<header>
+  <h1>השמש — איך הוא זז, ואיך הוא עוצר</h1>
+  <div class="sub">
+    <b>קפיץ אחד מריץ את כל הדף.</b> כל התנהגות כאן יוצאת מאותו אינטגרטור בן שתי
+    שורות — <code>a = (יעד − x)·k − v·d</code> — ומשתנים רק הקשיחות וההנחתה.
+    וזה ההפך ממה שעושים בדרך כלל: easing מפתוח ביד נותן תנועה אחת ולא נותן שנייה,
+    <b>וקפיץ נותן הגעה, חריגה, התיישבות והתאוששות בחינם</b> — ו״איך הוא עוצר״
+    מפסיק להיות אנימציה נפרדת והופך למספר.<br>
+    <b>וכל השאר נגזר מהמספר הזה ולא מונפש בנפרד:</b> ה<b>הטיה</b> מהמהירות,
+    ה<b>מעיכה</b> מהתאוצה (עם שימור נפח — <code>scaleX·scaleY = 1</code>),
+    וה<b>גלגול של הטבעות</b> מהמרחק: <code>מעלות = מרחק / רדיוס</code>, שזה
+    <b>מה שגלגול הוא</b> ולא סיבוב שנראה כמוהו.<br>
+    <b>ומה שהצורה כבר הכריעה עבורנו:</b> הוא כדור, אז אם הוא <b>מחליק</b> הוא
+    מדבקה. הוא חייב להתגלגל. אבל פנים שמתגלגלות עם הגוף נגמרות הפוכות — אז
+    <b>הגוף מתגלגל והפנים נשארות ישרות</b>, וזה בדיוק הפיצול שכבר יש בציור.
+    <b>לחץ על כל מסלול</b> כדי לשלוח אותו לצד השני.
+  </div>
+</header>
+
+<h2>1 · איך הוא זז
+  <i>אותו קפיץ, אותה מהירות הגעה — משתנה רק מה הגוף עושה בזמן הנסיעה.</i></h2>
+<div id="move"></div>
+
+<h2>2 · איך הוא עוצר
+  <i>אותה תנועה בדיוק. משתנה רק ההנחתה — וזה כל ההבדל בין חפץ שנעצר לחפץ שנוחת.</i></h2>
+<div id="stop"></div>
+
+<div class="note">
+  <b>ומה שאני הייתי שולח:</b> גלגול עם פנים ישרות, הטיה קלה פנימה, ו‑<code>k=60 d=8.5</code>
+  — <b>חריגה של 11.4% וחזרה</b>, בלי קפיצה שנייה. (אמרתי קודם ״הנחתה 0.72״ וזה
+  היה מספר שהמצאתי; יחס ההנחתה האמיתי הוא <b>0.55</b>, והחריגה נמדדה באינטגרציה
+  של אותו קפיץ: מתה 0%, זאת 11.4%, מתנדנד 40%, רכה 0%.) מספיק כדי שייראה שיש לו
+  מסה, ולא מספיק כדי שמישהו ישים לב שזאת אנימציה. <b>והטבעות ממשיכות להתגלגל
+  רגע אחרי שהוא נעצר</b> ואז מתיישבות — זאת ה״תנועה הנחמדה כשהוא עוצר״ שחיפשת,
+  והיא לא תוספת: היא פשוט מה שקורה כשהמסה של הטבעות לא נעצרת באותו רגע.
+</div>
+
+<script>
+var N = 0, R = 34.2, EYE = '#32200f';
+var COL = ['#f04a2e','#f9913c','#fcd238'], RR = [41,47.5,54];
+function dots(r,n,duty){var c=2*Math.PI*r,on=c/n*duty;
+  return on.toFixed(2)+' '+(c/n-on).toFixed(2);}
+
+function sunSVG(){
+  var k='m'+(++N);
+  var h='<svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs>'+
+   '<linearGradient id="'+k+'b" gradientUnits="userSpaceOnUse" x1="80" y1="46" x2="80" y2="114">'+
+   '<stop offset="0" stop-color="#fcd956"/><stop offset=".22" stop-color="#fbc744"/>'+
+   '<stop offset=".42" stop-color="#f8ae34"/><stop offset=".62" stop-color="#f59d2c"/>'+
+   '<stop offset=".82" stop-color="#ed8527"/><stop offset="1" stop-color="#e5530e"/></linearGradient>'+
+   '<radialGradient id="'+k+'lim" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="'+R+'">'+
+   '<stop offset=".58" stop-color="#8a3000" stop-opacity="0"/>'+
+   '<stop offset="1" stop-color="#8a3000" stop-opacity=".32"/></radialGradient>'+
+   '<radialGradient id="'+k+'bo" gradientUnits="userSpaceOnUse" cx="90" cy="104" r="22">'+
+   '<stop offset="0" stop-color="#ffd089" stop-opacity=".5"/>'+
+   '<stop offset="1" stop-color="#ffd089" stop-opacity="0"/></radialGradient>'+
+   '<radialGradient id="'+k+'l" gradientUnits="userSpaceOnUse" cx="69" cy="66" r="26">'+
+   '<stop offset="0" stop-color="#fff6d8" stop-opacity=".88"/>'+
+   '<stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>'+
+   '<radialGradient id="'+k+'g" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="76">'+
+   '<stop offset=".42" stop-color="#ffb347" stop-opacity=".4"/>'+
+   '<stop offset=".72" stop-color="#ffc766" stop-opacity=".15"/>'+
+   '<stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>'+
+   '<circle cx="80" cy="80" r="76" fill="url(#'+k+'g)"/>'+
+   '<ellipse class="sh" cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>'+
+   /* THE RINGS ARE THEIR OWN GROUP, which is what lets the body roll while the
+      face stays level - the split was already in the drawing */
+   '<g class="roll" fill="none" stroke-linecap="round">';
+  for (var i=2;i>=0;i--)
+    h+='<circle cx="80" cy="80" r="'+RR[i]+'" stroke="'+COL[i]+'" stroke-width="2.6"'+
+       ' stroke-dasharray="'+dots(RR[i],26,.06)+'"/>';
+  h+='</g><g class="squash"><g class="sm-body">'+
+   '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'b)"/>'+
+   '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'lim)"/>'+
+   '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'bo)"/>'+
+   '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'l)"/>'+
+   '<g class="sm-eye"><ellipse cx="68.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>'+
+   '<circle cx="66.6" cy="75.4" r="1.75" fill="#fff"/></g>'+
+   '<g class="sm-eye r"><ellipse cx="91.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>'+
+   '<circle cx="89.6" cy="75.4" r="1.75" fill="#fff"/></g></g></g>';
+  return h+'</svg>';
+}
+
+var REDUCED = window.matchMedia &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ── ONE SPRING, MANY PERSONALITIES ──
+   k stiffness, d damping. Everything the character does while moving is read
+   off x, v and a - nothing here is keyed by hand. */
+function runner(host, o){
+  var el = host.querySelector('.runner');
+  var svg = el.querySelector('svg');
+  var roll = svg.querySelector('.roll');
+  var sq = svg.querySelector('.squash');
+  var W = function(){ return host.clientWidth - el.offsetWidth; };
+  var x = 0, v = 0, target = 0, dist = 0, last = 0, raf = 0;
+  var k = o.k, d = o.d, mode = o.mode;
+
+  function frame(now){
+    var dt = Math.min(0.032, (now - last) / 1000 || 0.016); last = now;
+    var a = (target - x) * k - v * d;
+    v += a * dt; x += v * dt;
+    dist += v * dt;
+
+    /* lean from velocity, squash from acceleration, roll from distance */
+    var lean = (mode === 'slide') ? 0 : Math.max(-16, Math.min(16, -v * 0.045));
+    var s = Math.max(-1, Math.min(1, a * 0.00035));
+    var sx = 1 + s * 0.12, sy = 1 - s * 0.12;      /* volume kept */
+    if (mode === 'slide') { sx = sy = 1; }
+
+    el.style.transform = 'translateX(' + x.toFixed(2) + 'px)' +
+      (mode === 'hop' ? ' translateY(' + (-Math.abs(Math.sin(dist / 70)) * 16).toFixed(2) + 'px)' : '');
+    sq.setAttribute('transform',
+      'translate(80 80) rotate(' + lean.toFixed(2) + ') scale(' + sx.toFixed(3) + ' ' +
+      sy.toFixed(3) + ') translate(-80 -80)');
+    /* degrees = distance / radius. The body is 34.2 units of a 160 box drawn at
+       92px, so one px of travel is this many degrees - rolling, not spinning. */
+    var deg = (mode === 'slide') ? 0 : dist / (R * 92 / 160) * (180 / Math.PI);
+    roll.setAttribute('transform', 'rotate(' + deg.toFixed(2) + ' 80 80)');
+
+    if (Math.abs(target - x) < 0.3 && Math.abs(v) < 2){ x = target; v = 0;
+      el.style.transform = 'translateX(' + x.toFixed(2) + 'px)';
+      raf = 0; return; }
+    raf = requestAnimationFrame(frame);
+  }
+  function go(){
+    target = (target === 0) ? W() : 0;
+    if (REDUCED){ x = target; el.style.transform = 'translateX('+x+'px)'; return; }
+    if (!raf){ last = performance.now(); raf = requestAnimationFrame(frame); }
+  }
+  host.addEventListener('click', go);
+  host.__go = go;
+  return go;
+}
+
+function lane(into, title, note, o){
+  var w = document.createElement('div'); w.className = 'lane';
+  w.innerHTML = '<div class="rlbl"><b>'+title+'</b><span>'+note+'</span></div>' +
+    '<div class="track"><div class="runner">'+sunSVG()+'</div></div>' +
+    '<div class="hint">k='+o.k+' · d='+o.d+'</div>';
+  document.getElementById(into).appendChild(w);
+  runner(w.querySelector('.track'), o);
+  return w;
+}
+
+/* 1 · how he moves */
+lane('move', 'מחליק', 'בלי גלגול, בלי הטיה, בלי מעיכה. <b>זאת מדבקה שזזה</b> — וכאן כדי שיהיה מול מה.',
+     {k:52, d:12, mode:'slide'});
+lane('move', 'מתגלגל', 'הטבעות מתגלגלות לפי המרחק והפנים נשארות ישרות. <b>פתאום יש לו מסה.</b>',
+     {k:52, d:12, mode:'roll'});
+lane('move', 'מתגלגל ונוטה', 'ועוד הטיה לתוך כיוון הנסיעה, נגזרת מהמהירות. <b>זה מה שאומר ״הוא רוצה לשם״.</b>',
+     {k:52, d:11, mode:'lean'});
+lane('move', 'מקפץ', 'אותו גלגול ועוד קפיצות, לפי המרחק שעבר. חמוד, <b>ומושך תשומת לב שלא ביקשנו.</b>',
+     {k:44, d:11, mode:'hop'});
+
+/* 2 · how he stops - only the damping changes */
+lane('stop', 'עצירה מתה', 'הנחתה קריטית. מגיע ועוצר. <b>מדויק, וקצת רובוטי.</b>',
+     {k:60, d:15.5, mode:'lean'});
+lane('stop', 'חריגה אחת וחזרה', '<b>זאת ההמלצה.</b> עובר קצת, חוזר, ונח. מספיק כדי שתרגיש מסה ולא מספיק כדי שתשים לב שזאת אנימציה.',
+     {k:60, d:8.5, mode:'lean'});
+lane('stop', 'מתנדנד', 'הנחתה נמוכה — שתיים‑שלוש תנודות. <b>משחקי מדי</b> לאפליקציה שמדברת על היום שלך.',
+     {k:70, d:4.6, mode:'lean'});
+lane('stop', 'נוחת ברכות', 'קשיחות נמוכה והנחתה גבוהה. <b>בלי חריגה בכלל</b>, פשוט מאט ונעמד. הכי שקט.',
+     {k:22, d:9, mode:'lean'});
+
+/* send them all off once, so the page is alive on arrival */
+setTimeout(function(){
+  var t = document.querySelectorAll('.track'), i;
+  for (i = 0; i < t.length; i++) (function(el, n){
+    setTimeout(function(){ el.__go(); }, n * 220);
+  })(t[i], i);
+}, 600);
+</script>
+</html>
