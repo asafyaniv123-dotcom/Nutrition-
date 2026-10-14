@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>שלושת הבתים של השמש</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  "אני לא רוצה שהיא זאת שתדבר, אלא שהיא פשוט תופיע... אולי עדיף לעשות פעם
+   אחת ביום בכל אזור... אבל גם כשמציגים למשתמש לגמרי מההתחלה את האזור...
+   ולטעינה, אולי שהקרניים של השמש יסתובבו סביב השמש"
+
+  FOUR FACTS READ OUT OF THE FILE, because three of them decide the drawings.
+
+  1. THE SUN IS ALREADY IN THE APP AND IS CALLED NOWHERE. sunMarkHTML() is in
+     the shipped file - disc, eight rays, face, drop shadow, glow - with one
+     definition and zero call sites. It does not need drawing. It needs a
+     home. Everything on this page is that function, run.
+
+  2. THE ENTRY SCREEN ALREADY EXISTS TOO. areaSplash() fires on every
+     enterModule: full screen, 1.9s, ten areas each with its own two-colour
+     ramp, the area's icon, and a sentence landing word by word. It is already
+     the least formal surface in the app.
+
+  3. AND IT ALREADY HAS A SUN WITHOUT A DISC. .ps-glow is a 420px radial of
+     rgba(255,232,196,.5) breathing on a 3.4s loop behind the words. Putting
+     the mark there is giving a shape to light that is already on the screen.
+
+  4. THERE IS NO LOADER ANYWHERE IN THE APP. Three different waits, three
+     different markers: .co-wait is an ellipsis with letter-spacing, the
+     nutrition answer prints "חושב…" as text, the planner prints the same
+     words again. Nothing spins. So the third home is not a replacement - it
+     is the app's first one.
+
+  AND ONE THING THAT HAS TO BE FIXED IF THE SUN HOSTS THAT SCREEN: the ten
+  splash sentences are raw English constants in AREA_SPLASH and never pass
+  through _t(). find-hardcoded-english says in its own header that English
+  inside a JS constant is exactly what it cannot see. So the one screen that
+  greets a reader greets a German, Japanese and Arabic one in English.
+
+  A BUILD NOTE, measured: the two animations are scoped to
+  "html body.mod-home .sun-breathe" and ".sun-rays". Anywhere but the home
+  screen they do nothing. Unscoping them is part of whichever of these wins.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--shade:rgba(176,168,156,.44)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:26px 26px 4px;max-width:1380px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:92ch;line-height:1.82}
+  .sub b{color:var(--ink)}
+  h2{max-width:1380px;margin:44px auto 0;padding:0 26px;font-size:16px;font-weight:800}
+  h2 i{font-style:normal;font-weight:600;font-size:12.5px;line-height:1.72;color:var(--muted);
+    display:block;margin-top:5px;max-width:86ch}
+  .row{display:flex;flex-wrap:wrap;gap:20px;max-width:1380px;margin:16px auto 0;padding:0 26px;
+    align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:9px;width:330px}
+  .cap{font-size:12px;line-height:1.68;color:var(--muted);text-align:center;min-height:62px;padding:0 6px}
+  .cap b{color:var(--ink)}
+  .tag{font-size:11.5px;font-weight:800;color:var(--muted)}
+  .tag b{color:var(--ink);font-size:13px}
+  .note{max-width:1380px;margin:14px auto 0;padding:0 26px;font-size:12.5px;line-height:1.8;color:var(--muted)}
+  .note b{color:var(--ink)}
+
+  .phone{width:330px;height:560px;border-radius:28px;overflow:hidden;position:relative;
+    background:var(--ground);box-shadow:-6px -6px 14px rgba(255,255,255,.9),8px 10px 22px var(--shade);
+    --nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+    --nu-shade-soft:rgba(176,168,156,.28);--nu-ink:#4a453f}
+
+  /* ── the splash, copied from the app's own rules ── */
+  .ps{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:24px;overflow:hidden}
+  .ps-fit{background:radial-gradient(120% 62% at 50% 4%,rgba(255,255,255,.30),transparent 60%),
+    linear-gradient(160deg,#ec9b81 0%,#c2593b 100%)}
+  .ps-nut{background:radial-gradient(120% 62% at 50% 4%,rgba(255,255,255,.30),transparent 60%),
+    linear-gradient(160deg,#a88fd4 0%,#6f56a8 100%)}
+  .ps-glow{position:absolute;width:300px;height:300px;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,232,196,.5),transparent 66%);
+    animation:ps-breathe 3.4s ease-in-out infinite}
+  @keyframes ps-breathe{0%,100%{transform:scale(.92);opacity:.75}50%{transform:scale(1.08);opacity:1}}
+  .ps-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:20px}
+  .ps-line{font-size:34px;font-weight:800;color:#fff9f2;letter-spacing:-.012em;text-align:center;
+    line-height:1.18;direction:ltr;text-shadow:0 2px 18px rgba(120,52,14,.34);max-width:9ch}
+  .ps-ic{width:54px;height:54px;fill:none;stroke:rgba(255,244,230,.95);stroke-width:1.3;stroke-linecap:round}
+
+  /* the mark, at whatever size its holder gives it */
+  .sm{display:block;width:100%;height:100%}
+  .sm-wrap{position:relative;flex:0 0 auto}
+
+  /* THE TWO ANIMATIONS THE APP ALREADY HAS, unscoped so they run here */
+  .turn .sun-rays{animation:sunTurn 9s ease-in-out infinite;transform-origin:80px 80px}
+  .breathe .sun-breathe{animation:sunBreathe 5.5s ease-in-out infinite;transform-origin:80px 80px}
+  @keyframes sunBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+  @keyframes sunTurn{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+
+  /* and the one it does NOT have: a full turn, for waiting */
+  .spin-a .sun-rays{animation:sunSpin 2.8s linear infinite;transform-origin:80px 80px}
+  .spin-b .sun-rays{animation:sunPush 1.6s cubic-bezier(.45,0,.2,1) infinite;transform-origin:80px 80px}
+  .spin-c .sun-rays{animation:sunSpin 2.2s linear infinite;transform-origin:80px 80px}
+  .spin-c .sun-breathe{animation:sunBreathe 1.5s ease-in-out infinite;transform-origin:80px 80px}
+  @keyframes sunSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes sunPush{from{transform:rotate(0)}to{transform:rotate(90deg)}}
+
+  /* the splash sun rising, option ג */
+  .rise{animation:sunRise 1.05s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes sunRise{from{opacity:0;transform:translateY(54px) scale(.86)}to{opacity:1;transform:none}}
+
+  /* ── the welcome card, on the app's own material ── */
+  .gn-c{position:absolute;inset-inline:18px;top:92px;background:var(--nu-ground);
+    border-radius:22px;padding:20px 18px;text-align:center;
+    box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 18px var(--nu-shade-soft)}
+  .gn-h{font-size:10.5px;font-weight:800;color:#8d857b;letter-spacing:.09em}
+  .gn-t{font-size:19px;font-weight:800;color:var(--ink);margin-top:6px}
+  .gn-s{font-size:12.5px;line-height:1.75;color:var(--muted);margin-top:8px}
+  .gn-go{margin-top:16px;width:100%;border:none;border-radius:14px;padding:13px;
+    background:linear-gradient(135deg,#8ec49b,#3d8a5c);color:#fff;
+    font:800 13.5px Assistant,sans-serif;cursor:pointer}
+  .gn-later{margin-top:9px;background:none;border:none;font:700 12px Assistant,sans-serif;
+    color:#8d857b;cursor:pointer}
+  .hdr{position:absolute;top:26px;inset-inline-end:22px;font-size:26px;font-weight:800;color:var(--ink)}
+
+  /* ── the waiting contexts, as they actually are in the app ── */
+  .pane{position:absolute;inset:0;padding:22px 18px;display:flex;flex-direction:column;gap:12px}
+  .bub{align-self:flex-start;max-width:78%;background:#fff;border-radius:15px;padding:11px 13px;
+    font-size:13px;line-height:1.7;color:var(--ink);box-shadow:0 2px 10px rgba(200,180,160,.16)}
+  .bub.me{align-self:flex-end;background:#efe9e1}
+  .bub.wait{display:flex;align-items:center;gap:8px;color:var(--muted)}
+  .card{background:var(--nu-ground);border-radius:18px;padding:18px;text-align:center;
+    box-shadow:-4px -4px 10px var(--nu-lit),5px 6px 14px var(--nu-shade-soft)}
+  .card .lbl{font-size:12px;color:var(--muted);margin-top:10px}
+  .full{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:18px}
+  .full .lbl{font-size:13px;color:var(--muted)}
+  .sz{font-size:10.5px;font-weight:800;color:#8d857b;margin-bottom:-4px}
+</style>
+
+<header>
+  <h1>שלושת הבתים של השמש</h1>
+  <div class="sub">
+    השמש <b>כבר קיימת בקוד המשוחרר</b> — <code>sunMarkHTML()</code>, עם דיסק, שמונה
+    קרניים, פנים, צל ו‑glow — ו<b>אף אחד לא קורא לה</b>. הגדרה אחת, אפס קריאות.
+    כל מה שמצויר כאן הוא הפונקציה הזאת, רצה. היא לא צריכה להיות מצוירת; היא
+    צריכה בית.<br>
+    שלושת הבתים שבחרת: <b>הספלאש</b> (פעם ביום לאזור), <b>מסך הקבלה</b> של אזור
+    חדש, ו<b>ההמתנה</b>. בכל השלושה היא <b>מופיעה ולא מדברת</b>.
+  </div>
+</header>
+
+<h2>1 · הספלאש — פעם ביום לאזור
+  <i>המסך הזה כבר קיים (<code>areaSplash</code>, 1.9 שניות, עשרה אזורים) וכבר יש בו
+  שמש בלי דיסק: <code>.ps-glow</code> הוא עיגול אור של 420px שנושם ב‑3.4 שניות מאחורי
+  המילים. שלוש הדרכים נבדלות במה הופך לאור הזה.</i></h2>
+<div class="row">
+  <div class="col">
+    <div class="tag"><b>א</b> · השמש היא האור</div>
+    <div class="phone"><div class="ps ps-fit">
+      <div class="ps-glow"></div>
+      <div class="ps-in">
+        <div class="sm-wrap turn breathe" style="width:150px;height:150px"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-a" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-a" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-a" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-a)"><g fill="url(#sun-ray-a)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-a)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-a)" filter="url(#sun-drop-a)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/><ellipse cx="69" cy="74" rx="4.1" ry="5" fill="#4a453f"/><ellipse cx="91" cy="74" rx="4.1" ry="5" fill="#4a453f"/><circle cx="70.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><circle cx="92.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><path d="M71 89c3.2 4.6 14.8 4.6 18 0" fill="none" stroke="#4a453f" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="58" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/><ellipse cx="102" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/></g></svg></div>
+        <div class="ps-line">let&rsquo;s build something stronger</div>
+      </div>
+    </div></div>
+    <div class="cap">הסמל מחליף את אייקון האזור. <b>הכי ברור</b> — זה הרגע שבו
+      המשתמש פוגש את הדמות — ו<b>מאבד</b> את הסימן שאומר לאיזה אזור נכנסת.</div>
+  </div>
+
+  <div class="col">
+    <div class="tag"><b>ב</b> · השמש מאחורי האייקון</div>
+    <div class="phone"><div class="ps ps-fit">
+      <div class="sm-wrap breathe" style="width:290px;height:290px;position:absolute;
+        top:86px;opacity:.34;filter:blur(.4px)"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-b" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-b" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-b" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-b)"><g fill="url(#sun-ray-b)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-b)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-b)" filter="url(#sun-drop-b)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/></g></svg></div>
+      <div class="ps-in">
+        <svg class="ps-ic" viewBox="0 0 24 24"><path d="M6.5 8v8M17.5 8v8M4 10v4M20 10v4M8 12h8"/></svg>
+        <div class="ps-line">let&rsquo;s build something stronger</div>
+      </div>
+    </div></div>
+    <div class="cap">השמש <b>היא</b> ה‑glow — באותו מקום, רק עם צורה — והאייקון של
+      האזור נשאר מלפנים. בלי פנים, כי היא רקע. <b>שומר על שני הדברים</b>.</div>
+  </div>
+
+  <div class="col">
+    <div class="tag"><b>ג</b> · זריחה</div>
+    <div class="phone"><div class="ps ps-fit">
+      <div class="ps-glow"></div>
+      <div class="ps-in">
+        <div class="sm-wrap rise turn breathe" style="width:132px;height:132px"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-c" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-c" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-c" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-c)"><g fill="url(#sun-ray-c)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-c)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-c)" filter="url(#sun-drop-c)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/><ellipse cx="69" cy="74" rx="4.1" ry="5" fill="#4a453f"/><ellipse cx="91" cy="74" rx="4.1" ry="5" fill="#4a453f"/><circle cx="70.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><circle cx="92.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><path d="M71 89c3.2 4.6 14.8 4.6 18 0" fill="none" stroke="#4a453f" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="58" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/><ellipse cx="102" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/></g></svg></div>
+        <div class="ps-line">let&rsquo;s build something stronger</div>
+      </div>
+    </div></div>
+    <div class="cap">אותה א׳, רק שהיא <b>עולה מלמטה</b> ומתיישבת. ברכה שזזה אליך.
+      1.05 שניות מתוך ה‑1.9, כלומר היא עדיין מספיקה לנחות לפני שהמסך נסגר.</div>
+  </div>
+</div>
+<div class="note">
+  <b>ומה שחייב להיתקן אם היא המארחת:</b> עשרת המשפטים הם מחרוזות אנגלית גולמיות
+  ב‑<code>AREA_SPLASH</code> ולא עוברות <code>_t()</code> אף פעם —
+  <code>find-hardcoded-english</code> כותב בכותרת שלו שאנגלית בתוך קבוע JS היא
+  בדיוק מה שהוא לא רואה. המסך היחיד שמקבל את פני המשתמש מקבל קורא גרמני, יפני
+  וערבי באנגלית.
+</div>
+
+<h2>2 · מסך הקבלה של אזור חדש
+  <i>קיים היום ב<b>אזור אחד בלבד</b> — ״ברוך הבא לאזור הכושר״ ב‑<code>renderFitWelcome</code>,
+  ואחריו השאלות אחת‑אחת. כאן השמש על החומר של האפליקציה ולא על צבע מלא, אז היא
+  חייבת להיות שקטה יותר מהספלאש.</i></h2>
+<div class="row">
+  <div class="col">
+    <div class="tag"><b>א</b> · מעל הכרטיס</div>
+    <div class="phone">
+      <div class="hdr">כושר</div>
+      <div class="sm-wrap turn breathe" style="width:86px;height:86px;position:absolute;
+        inset-inline:0;margin:auto;top:24px;z-index:2"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-w1" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-w1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-w1" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-w1" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-w1)"><g fill="url(#sun-ray-w1)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-w1)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-w1)" filter="url(#sun-drop-w1)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/><ellipse cx="69" cy="74" rx="4.1" ry="5" fill="#4a453f"/><ellipse cx="91" cy="74" rx="4.1" ry="5" fill="#4a453f"/><circle cx="70.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><circle cx="92.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><path d="M71 89c3.2 4.6 14.8 4.6 18 0" fill="none" stroke="#4a453f" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="58" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/><ellipse cx="102" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/></g></svg></div>
+      <div class="gn-c" style="top:104px;padding-top:34px">
+        <div class="gn-h">כושר</div>
+        <div class="gn-t">ברוך הבא לאזור הכושר</div>
+        <div class="gn-s">כאן אתה בונה אימון, עוקב אחרי המשקלים ורואה את ההתקדמות
+          לאורך זמן. כמה שאלות קצרות, ואכוון את זה אליך.</div>
+        <button class="gn-go">בוא נתחיל</button>
+        <button class="gn-later">אחר כך</button>
+      </div>
+    </div>
+    <div class="cap">יושבת מעל הכרטיס ו<b>מציגה אותו</b>. הכי קרוב למה שתיארת, והיא
+      גדולה מספיק שהפנים נקראות.</div>
+  </div>
+
+  <div class="col">
+    <div class="tag"><b>ב</b> · חותם על הפינה</div>
+    <div class="phone">
+      <div class="hdr">כושר</div>
+      <div class="gn-c">
+        <div class="sm-wrap turn breathe" style="width:62px;height:62px;position:absolute;
+          top:-26px;inset-inline-start:-10px"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-w2" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-w2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-w2" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-w2" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-w2)"><g fill="url(#sun-ray-w2)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-w2)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-w2)" filter="url(#sun-drop-w2)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/><ellipse cx="69" cy="74" rx="4.1" ry="5" fill="#4a453f"/><ellipse cx="91" cy="74" rx="4.1" ry="5" fill="#4a453f"/><circle cx="70.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><circle cx="92.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><path d="M71 89c3.2 4.6 14.8 4.6 18 0" fill="none" stroke="#4a453f" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="58" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/><ellipse cx="102" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/></g></svg></div>
+        <div class="gn-h">כושר</div>
+        <div class="gn-t">ברוך הבא לאזור הכושר</div>
+        <div class="gn-s">כאן אתה בונה אימון, עוקב אחרי המשקלים ורואה את ההתקדמות
+          לאורך זמן. כמה שאלות קצרות, ואכוון את זה אליך.</div>
+        <button class="gn-go">בוא נתחיל</button>
+        <button class="gn-later">אחר כך</button>
+      </div>
+    </div>
+    <div class="cap">קטנה, על שפת הכרטיס, כמו חותם. <b>פחות מכריזה</b> ו<b>נשארת</b>
+      גם כשהשאלות מתחלפות — אותה שמש על כל קלף ברצף.</div>
+  </div>
+
+  <div class="col">
+    <div class="tag"><b>ג</b> · רק בברכה, לא בשאלות</div>
+    <div class="phone">
+      <div class="hdr">כושר</div>
+      <div class="gn-c" style="top:150px">
+        <div class="gn-h">לפני שנתחיל</div>
+        <div class="gn-t">כמה פעמים בשבוע אתה יכול להתאמן?</div>
+        <div class="gn-s">כדי לדעת איך לפרוס את האימונים.</div>
+        <button class="gn-go">המשך</button>
+        <button class="gn-later">אחר כך</button>
+      </div>
+    </div>
+    <div class="cap">זה מה ש‑<b>ב</b> נראה כמו בשאלה השלישית אם השמש <b>לא</b> נשארת.
+      להשוואה: ברכה בלי המשך היא אירוע; חותם שנשאר הוא נוכחות.</div>
+  </div>
+</div>
+
+<h2>3 · ההמתנה — הקרניים מסתובבות
+  <i>לאפליקציה <b>אין היום שום מחוון טעינה</b>. נמדד: שלוש המתנות שונות, שלושה
+  סימנים — <code>.co-wait</code> הוא שלוש נקודות עם ריווח אותיות, התשובה בתזונה
+  מדפיסה ״חושב…״ כטקסט, והמתכנן מדפיס את אותן מילים שוב. שום דבר לא מסתובב.
+  אז זה לא מחליף — זה הראשון.</i></h2>
+<div class="row">
+  <div class="col">
+    <div class="tag"><b>א</b> · סיבוב קבוע · 2.8ש</div>
+    <div class="phone"><div class="pane">
+      <div class="bub me">כמה חלבון יש ב‑200 גרם חזה עוף?</div>
+      <div class="bub wait">
+        <span class="sm-wrap spin-a" style="width:22px;height:22px"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-l1" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-l1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-l1" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-l1" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-l1)"><g fill="url(#sun-ray-l1)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-l1)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-l1)" filter="url(#sun-drop-l1)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/></g></svg></span>
+        חושב…
+      </div>
+      <div style="margin-top:14px" class="sz">בכרטיס · 46px</div>
+      <div class="card">
+        <span class="sm-wrap spin-a" style="width:46px;height:46px;display:inline-block"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-l2" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-l2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-l2" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-l2" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-l2)"><g fill="url(#sun-ray-l2)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-l2)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-l2)" filter="url(#sun-drop-l2)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/></g></svg></span>
+        <div class="lbl">מפרק את מה שכתבת</div>
+      </div>
+    </div></div>
+    <div class="cap">הקרניים פשוט מסתובבות. <b>בדוק את ה‑22px</b> — שמונה קרניים
+      בגודל הזה עלולות להימרח לעיגול, וזאת השאלה האמיתית כאן.</div>
+  </div>
+
+  <div class="col">
+    <div class="tag"><b>ב</b> · דחיפה · רבע סיבוב, 1.6ש</div>
+    <div class="phone"><div class="pane">
+      <div class="bub me">כמה חלבון יש ב‑200 גרם חזה עוף?</div>
+      <div class="bub wait">
+        <span class="sm-wrap spin-b" style="width:22px;height:22px"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-l3" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-l3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-l3" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-l3" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-l3)"><g fill="url(#sun-ray-l3)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-l3)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-l3)" filter="url(#sun-drop-l3)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/></g></svg></span>
+        חושב…
+      </div>
+      <div style="margin-top:14px" class="sz">בכרטיס · 46px</div>
+      <div class="card">
+        <span class="sm-wrap spin-b" style="width:46px;height:46px;display:inline-block"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-l4" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-l4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-l4" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-l4" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-l4)"><g fill="url(#sun-ray-l4)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-l4)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-l4)" filter="url(#sun-drop-l4)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/></g></svg></span>
+        <div class="lbl">מפרק את מה שכתבת</div>
+      </div>
+    </div></div>
+    <div class="cap">רבע סיבוב בכל פעם, עם האטה — <b>קרן נוחתת במקום של קרן</b>,
+      כי שמונה קרניים הן סימטריה של 45°. נראה כמו גלגל שדוחפים ולא כמו מנוע.</div>
+  </div>
+
+  <div class="col">
+    <div class="tag"><b>ג</b> · מסתובבת ונושמת מהר</div>
+    <div class="phone"><div class="full">
+      <span class="sm-wrap spin-c" style="width:104px;height:104px"><svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs><radialGradient id="sun-core-l5" cx="36%" cy="32%" r="76%"><stop offset="0" stop-color="#ffe6ae"/><stop offset="38%" stop-color="#fbc55f"/><stop offset="78%" stop-color="#f0a92e"/><stop offset="100%" stop-color="#e2901c"/></radialGradient><linearGradient id="sun-ray-l5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbc55f"/><stop offset="1" stop-color="#eb9c22"/></linearGradient><filter id="sun-drop-l5" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="2.5" dy="4" stdDeviation="4.5" flood-color="#b08a4a" flood-opacity=".34"/></filter><filter id="sun-glow-l5" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#f0a92e" flood-opacity=".65"/></filter></defs><g class="sun-rays" filter="url(#sun-glow-l5)"><g fill="url(#sun-ray-l5)"><path d="M77.4 12h5.2a2.6 2.6 0 0 1 2.6 2.9l-2.2 16a2.9 2.9 0 0 1-5.8 0l-2.2-16A2.6 2.6 0 0 1 77.4 12z"/><path d="M77.4 148h5.2a2.6 2.6 0 0 0 2.6-2.9l-2.2-16a2.9 2.9 0 0 0-5.8 0l-2.2 16a2.6 2.6 0 0 0 2.4 2.9z" opacity=".9"/><path d="M12 77.4v5.2a2.6 2.6 0 0 0 2.9 2.6l16-2.2a2.9 2.9 0 0 0 0-5.8l-16-2.2a2.6 2.6 0 0 0-2.9 2.4z"/><path d="M148 77.4v5.2a2.6 2.6 0 0 1-2.9 2.6l-16-2.2a2.9 2.9 0 0 1 0-5.8l16-2.2a2.6 2.6 0 0 1 2.9 2.4z"/></g><g fill="url(#sun-ray-l5)" opacity=".82"><path d="M34.2 30.5l3.7-3.7a2.2 2.2 0 0 1 3.3.2l8.2 10.8a2.4 2.4 0 0 1-3.4 3.4L35.2 33.8a2.2 2.2 0 0 1-1-3.3z"/><path d="M125.8 30.5l-3.7-3.7a2.2 2.2 0 0 0-3.3.2l-8.2 10.8a2.4 2.4 0 0 0 3.4 3.4l10.8-8.2a2.2 2.2 0 0 0 1-3.3z"/><path d="M34.2 129.5l3.7 3.7a2.2 2.2 0 0 0 3.3-.2l8.2-10.8a2.4 2.4 0 0 0-3.4-3.4l-10.8 8.2a2.2 2.2 0 0 0-1 3.3z"/><path d="M125.8 129.5l-3.7 3.7a2.2 2.2 0 0 1-3.3-.2l-8.2-10.8a2.4 2.4 0 0 1 3.4-3.4l10.8 8.2a2.2 2.2 0 0 1 1 3.3z"/></g></g><g class="sun-breathe"><circle cx="80" cy="80" r="40" fill="url(#sun-core-l5)" filter="url(#sun-drop-l5)"/><ellipse cx="66" cy="63" rx="17" ry="12" fill="#fff" opacity=".30" transform="rotate(-28 66 63)"/><ellipse cx="69" cy="74" rx="4.1" ry="5" fill="#4a453f"/><ellipse cx="91" cy="74" rx="4.1" ry="5" fill="#4a453f"/><circle cx="70.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><circle cx="92.6" cy="72" r="1.5" fill="#fff" opacity=".9"/><path d="M71 89c3.2 4.6 14.8 4.6 18 0" fill="none" stroke="#4a453f" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="58" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/><ellipse cx="102" cy="86" rx="5.5" ry="3.4" fill="#e8743c" opacity=".2"/></g></svg></span>
+      <div class="lbl">רגע, מרכיב לך תוכנית…</div>
+    </div></div>
+    <div class="cap">למסך מלא — ההמתנות הארוכות (תוכנית אימון, סיכום שבועי).
+      הדיסק נושם ב‑1.5ש במקום 5.5, כלומר <b>היא עובדת</b>. עם פנים, כי בגודל
+      הזה הן נקראות.</div>
+  </div>
+</div>
+<div class="note">
+  <b>שלוש הערות בנייה:</b> שתי האנימציות הקיימות מוגדרות
+  <code>html body.mod-home .sun-rays</code> — מחוץ למסך הבית הן לא עושות כלום,
+  אז לשחרר את ההיקשרות הזאת הוא חלק מכל אחת מהאפשרויות.
+  <code>prefers-reduced-motion</code> מכובד בכל האפליקציה, אז מחוון שמסתובב
+  חייב ליפול חזרה ל״חושב…״ לבד.
+  ובגודל קטן — אם 22px נמרח, התשובה היא <b>פחות קרניים ועבות יותר</b> לגודל
+  הזה, לא להקטין את אותה צורה.
+</div>
+</html>
