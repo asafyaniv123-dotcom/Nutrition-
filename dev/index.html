@@ -5068,6 +5068,10 @@ html body.mod-home .cray{position:absolute;left:50%;top:60%;width:400px;height:4
   margin:-200px 0 0 -200px;pointer-events:none}
 html body.mod-home .cray-core{opacity:.34;animation:crayTravel 3.4s linear infinite}
 html body.mod-home .cray-wedge{opacity:.8}
+/* a ray whose area is switched off: same length, same shape, softer light */
+html body.mod-home .cray-wedge.cray-off{opacity:.42}
+html body.mod-home .cray-core.cray-off{opacity:.14}
+html body.mod-home .cfan-done .cray-wedge.cray-off{opacity:.5}
 /* a ray that leads nowhere still carries light, but it must not compete with
    one that leads somewhere - so it is softer, not absent */
 
@@ -36649,21 +36653,23 @@ function sunMarkHTML(face){
    total = how many slots the arc is divided into. The rays MUST be told the
    slots: when the buttons began to spread and the rays kept each area's own
    index, every beam pointed at a place with nothing in it. */
-function homeRaysHTML(on,slots,total,DD,RR){
+/* beams = every slot in the arc, as {a:area, slot:index, off:true when the
+   area is switched off}. A switched-off area KEEPS ITS RAY and loses only
+   the button - his rule, and the reason it never looked right before is that
+   the rays were aimed at each area's own index while the buttons had been
+   spread across the slots. */
+function homeRaysHTML(beams,total,DD,RR){
   DD=DD||40; RR=RR||FAN_RAD;
-  var n=on.length,i,h='<svg class="cray" viewBox="0 0 400 400" aria-hidden="true"><defs>',body='';
+  var n=beams.length,i,h='<svg class="cray" viewBox="0 0 400 400" aria-hidden="true"><defs>',body='';
   for(i=0;i<n;i++){
-    var ang=((-FAN_ARC/2)+(FAN_ARC*slots[i])/((total-1)||1))*Math.PI/180,
+    var ang=((-FAN_ARC/2)+(FAN_ARC*beams[i].slot)/((total-1)||1))*Math.PI/180,
         dx=Math.sin(ang)*RR, dy=-Math.cos(ang)*RR+DD/2,
         L=Math.sqrt(dx*dx+dy*dy), ux=dx/L, uy=dy/L, px=-uy, py=ux,
-        /* AN EMPTY SLOT DRAWS NOTHING. Three shapes were tried for it and
-           all three failed the same way: a ray that stops short is a stub,
-           and seven stubs behind the hub are a smear rather than light. The
-           emptiness they were covering is answered by the buttons being
-           bigger now, not by filling the gaps. */
+        /* SAME length and SAME shape whether or not a button stands there.
+           Shortening an empty one was my invention and it made stubs. */
         r0=59, r1=L-(DD/2-1), w0=4.5, w1=23,
         ax=200+ux*r0, ay=200+uy*r0, bx=200+ux*r1, by=200+uy*r1,
-        c=on[i].color||'#a49a8e';
+        off=beams[i].off, c=beams[i].a.color||'#a49a8e';
     h+='<linearGradient id="cray'+i+'" gradientUnits="userSpaceOnUse" x1="'+ax.toFixed(1)+
        '" y1="'+ay.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+by.toFixed(1)+'">'+
        /* NOT fading to 0 at the far end: a beam that reaches something is
@@ -36672,13 +36678,13 @@ function homeRaysHTML(on,slots,total,DD,RR){
        '<stop offset="0" stop-color="'+c+'" stop-opacity=".30"/>'+
        '<stop offset=".45" stop-color="'+c+'" stop-opacity=".22"/>'+
        '<stop offset="1" stop-color="'+c+'" stop-opacity=".34"/></linearGradient>';
-    body+='<path class="cray-wedge" d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
+    body+='<path class="cray-wedge'+(off?' cray-off':'')+'" d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
           'L'+(bx+px*w1).toFixed(1)+' '+(by+py*w1).toFixed(1)+
           'L'+(bx-px*w1).toFixed(1)+' '+(by-py*w1).toFixed(1)+
           'L'+(ax-px*w0).toFixed(1)+' '+(ay-py*w0).toFixed(1)+
           'Z" fill="url(#cray'+i+')"/>';
     var seg=Math.sqrt((bx-ax)*(bx-ax)+(by-ay)*(by-ay));
-    body+='<path class="cray-core" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+
+    body+='<path class="cray-core'+(off?' cray-off':'')+'" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+
           (i*0.2).toFixed(2)+'s" d="M'+ax.toFixed(1)+' '+ay.toFixed(1)+'L'+bx.toFixed(1)+' '+
           by.toFixed(1)+'" stroke="'+c+'" stroke-width="3.4" stroke-linecap="round" fill="none" '+
           'stroke-dasharray="'+(seg*0.3).toFixed(1)+' '+seg.toFixed(1)+'"/>';
@@ -36700,8 +36706,16 @@ function homeFanHTML(hub,rest,all){
   var D=fanDisc(rest.length), R=fanRad(rest.length),
       NF=fanName(rest.length), slots=fanSlots(rest.length,all.length),
       PW=Math.max(74,D+20);
+  /* every slot gets a beam: the ones the buttons stand on, and the ones
+     belonging to areas that are switched off. Written long rather than with
+     push, like the loops above it, because these carry translated titles. */
+  var beams=[],taken={},hidden=[],q;
+  for(q=0;q<slots.length;q++){beams[beams.length]={a:rest[q],slot:slots[q],off:false};taken[slots[q]]=1;}
+  for(q=0;q<all.length;q++)if(!shown[all[q].id])hidden[hidden.length]=all[q];
+  for(q=0;q<all.length;q++)if(!taken[q]&&hidden.length)
+    beams[beams.length]={a:hidden.shift(),slot:q,off:true};
   var h='<div class="cfan'+(done?' cfan-done':'')+'">'+
-      homeRaysHTML(rest,slots,all.length,D,R),a,ang;
+      homeRaysHTML(beams,all.length,D,R),a,ang;
   for(i=0;i<slots.length;i++){
     a=rest[i];
     ang=(-FAN_ARC/2)+(FAN_ARC*slots[i])/(all.length-1||1);
