@@ -3737,6 +3737,7 @@ body.mod-hobbies .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
 /* the palette: ten discs raised out of the page, the current one pressed in */
 /* the three kinds, beside the colour swatches and in the same shell */
 .hb-kinds{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 2px;align-items:center}
+.hb-kq{font-size:11px;font-weight:800;color:var(--nu-muted);margin-inline-end:2px}
 .hb-kb{border:none;border-radius:11px;padding:7px 12px;font-family:inherit;font-size:11.5px;
   font-weight:800;cursor:pointer;color:var(--nu-muted);background:var(--nu-ground);
   box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
@@ -27157,6 +27158,10 @@ function deleteHabit(idx){
 }
 
 var _habitEdit=false;
+/* what the add box is holding while it is open. The name is kept here and
+   not only in the input, because picking a kind re-renders and would
+   otherwise throw away what was typed. */
+var _hbNewName='',_hbNewKind='time',_hbNewGoal='';   // i18n-exempt: a stored key
 function toggleHabitEdit(){_habitEdit=!_habitEdit;renderHabits();}
 function focusNewHabit(){
   var el=document.getElementById('new-habit-inp');
@@ -27307,17 +27312,38 @@ function hbPick(i){_hbSel=i;_hbAdding=false;_hbPal=-1;renderHabits();}
    regret opening. */
 function hbAddOpen(){
   _hbAdding=!_hbAdding;
+  if(_hbAdding){_hbNewName='';_hbNewKind='time';_hbNewGoal='';}   // i18n-exempt: a stored key
   renderHabits();
   if(!_hbAdding)return;
   setTimeout(function(){var el=document.getElementById('new-habit-inp');if(el)try{el.focus();}catch(e){}},30);
 }
+/* READ WHAT IS TYPED BEFORE RE-RENDERING. The name lives in the input, and
+   choosing a chip redraws the box - without this, picking "כמות" after
+   typing would quietly empty it. */
+function hbNewRead(){
+  var inp=document.getElementById('new-habit-inp');
+  if(inp)_hbNewName=inp.value;
+  var g=document.getElementById('new-habit-goal');
+  if(g)_hbNewGoal=g.value;
+}
+function hbNewKind(k){
+  hbNewRead();_hbNewKind=k;renderHabits();
+  setTimeout(function(){
+    var el=document.getElementById(k==='count'?'new-habit-goal':'new-habit-inp');
+    if(el)try{el.focus();}catch(e){}
+  },30);
+}
 function hbAdd(){
-  var inp=document.getElementById('new-habit-inp');if(!inp)return;
-  var name=inp.value.trim();if(!name)return;
+  hbNewRead();
+  var name=String(_hbNewName||'').trim();if(!name)return;
   var list=loadHabits();
   if(list.indexOf(name)!==-1){showToast(''+_t('כבר קיים')+'');return;}
   list.push(name);saveHabits(list);
+  /* the kind is written with the hobby, not after it: a hobby that exists
+     for even one render with the wrong kind shows the wrong card */
+  hbKindSet(name,_hbNewKind,parseInt(_hbNewGoal,10)||1);
   _hbAdding=false;_hbSel=list.length-1;
+  _hbNewName='';_hbNewKind='time';_hbNewGoal='';   // i18n-exempt: a stored key
   renderHabits();
 }
 function hbDel(i){
@@ -27472,10 +27498,24 @@ function renderHabits(){
     h+='</div>';
   }
   /* with nothing in the list the box is the only thing to do, so it is open */
-  if(_hbAdding||!list.length)
+  if(_hbAdding||!list.length){
     h+='<div class="hb-new"><input id="new-habit-inp" enterkeyhint="done" placeholder="'+
-       _t('הוסף תחביב')+'" onkeydown="if(event.key===&quot;Enter&quot;)hbAdd()">'+
+       _t('הוסף תחביב')+'" value="'+esc(_hbNewName)+'" '+
+       'onkeydown="if(event.key===&quot;Enter&quot;)hbAdd()">'+
        '<button onclick="hbAdd()" aria-label="'+_t('הוסף תחביב')+'">&#10003;</button></div>';
+    /* THE QUESTION AT THE MOMENT THE ANSWER IS OBVIOUS. Behind עריכה nobody
+       found it, and a hobby that counts glasses spent its first week
+       pretending to be a stopwatch. */
+    h+='<div class="hb-kinds"><span class="hb-kq">'+_t('איך לעקוב?')+'</span>';
+    h+='<button class="hb-kb'+(_hbNewKind==='time'?' on':'')+'" onclick="hbNewKind(&quot;time&quot;)">'+_t('זמן')+'</button>';
+    h+='<button class="hb-kb'+(_hbNewKind==='count'?' on':'')+'" onclick="hbNewKind(&quot;count&quot;)">'+_t('כמות')+'</button>';
+    h+='<button class="hb-kb'+(_hbNewKind==='done'?' on':'')+'" onclick="hbNewKind(&quot;done&quot;)">'+_t('בוצע')+'</button>';
+    if(_hbNewKind==='count')
+      h+='<input id="new-habit-goal" class="hb-goal" type="number" inputmode="numeric" min="1" '+
+         'placeholder="'+_t('יעד')+'" value="'+esc(_hbNewGoal)+'" '+
+         'onkeydown="if(event.key===&quot;Enter&quot;)hbAdd()">';
+    h+='</div>';
+  }
   /* the two things you do TO the list live here, out of the scrolling strip,
      so they are on screen whether there are two hobbies or ten */
   /* the + sits at the far end, alone in its own button - a lone neutral
