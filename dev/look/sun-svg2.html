@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>השמש — וריאציות</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  VARIATIONS ALONG THE THREE AXES HE NAMED: ring spacing, the face, and depth.
+
+  Not one drawing copied twelve times - ONE FUNCTION WITH PARAMETERS, which is
+  also how it will live in the app. A variant here is a line of data, so a note
+  like "that one, with those eyes" is two numbers rather than a redraw.
+
+      sunSVG({rings, ringW, eyes, depth, glow, think})
+
+  THE NUMBERS IT STARTS FROM were read off sun-21 in a canvas, not guessed:
+  body r 34.2, rings 36.7 / 39.5 / 42.5, stroke 1.33, the body gradient eight
+  samples from #fcd956 down to #e5530e, the eye #32200f.
+
+  WHAT SVG CAN AND CANNOT DO ABOUT DEPTH, since that is one of the three axes.
+  It cannot ray-trace. What actually sells a sphere in two dimensions is three
+  things, and all three are drawable: a light that is OFF CENTRE, a limb that
+  darkens at the edge, and - the one everybody forgets - a REFLECTED light on
+  the shadow side, where the ground bounces back up into it. The 'sphere'
+  setting below has all three plus a contact shadow; 'matte' has none of them
+  and is the flattest. That is the real range, and it is on the page rather
+  than described.
+
+  A FULL CIRCLE STILL CANNOT SHOW THAT IT IS TURNING, so the rings are arcs
+  everywhere here, nearly closed at rest and open while thinking.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--shade:rgba(176,168,156,.44);
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:26px 26px 4px;max-width:1340px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:92ch;line-height:1.82}
+  .sub b{color:var(--ink)}
+  h2{max-width:1340px;margin:42px auto 0;padding:0 26px;font-size:16px;font-weight:800}
+  h2 i{font-style:normal;font-weight:600;font-size:12.5px;line-height:1.72;color:var(--muted);
+    display:block;margin-top:5px;max-width:88ch}
+  .grid{display:flex;flex-wrap:wrap;gap:18px;max-width:1340px;margin:16px auto 0;padding:0 26px}
+  .cell{width:244px;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .pad{width:244px;height:244px;border-radius:22px;background:var(--ground);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:-6px -6px 14px var(--nu-lit),8px 10px 20px var(--nu-shade-soft)}
+  .pad.dark{background:#2b2520;box-shadow:none}
+  .mk{width:190px;height:190px}
+  .lbl{font-size:12px;font-weight:800;color:var(--ink)}
+  .cap{font-size:11.5px;line-height:1.7;color:var(--muted);text-align:center;min-height:50px}
+  .cap b{color:var(--ink)}
+
+  /* ── the mark's own motion ── */
+  .sm{display:block;width:100%;height:100%;overflow:visible}
+  .sm-body{transform-origin:80px 80px;transform-box:view-box;
+    animation:smBreathe 5.6s ease-in-out infinite}
+  @keyframes smBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.022)}}
+  .sm-r{transform-origin:80px 80px;transform-box:view-box}
+  .sm-r1{animation:smSpinA 26s linear infinite}
+  .sm-r2{animation:smSpinB 34s linear infinite}
+  .sm-r3{animation:smSpinA 30s linear infinite}
+  .think .sm-r1{animation-duration:2.6s}
+  .think .sm-r2{animation-duration:3.4s}
+  .think .sm-r3{animation-duration:3s}
+  .think .sm-r{stroke-dasharray:var(--open)}
+  @keyframes smSpinA{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes smSpinB{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+  @media (prefers-reduced-motion:reduce){.sm-body,.sm-r{animation:none}}
+  .sizes{background:var(--ground);border-radius:20px;padding:15px 18px;display:flex;
+    align-items:flex-end;gap:22px;box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 18px var(--nu-shade-soft)}
+  .sz{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .sz span{font-size:10px;font-weight:800;color:#8d857b}
+</style>
+
+<header>
+  <h1>השמש — וריאציות</h1>
+  <div class="sub">
+    שלושת הצירים שביקשת: <b>מרחק הטבעות</b>, <b>אסתטיקה אחרת לפנים</b>, ו<b>יותר
+    תלת‑ממד</b>. אפס קרדיטים — הכול SVG, וכל וריאציה היא <b>פרמטרים</b> ולא ציור
+    חדש, כך ש״זאת, עם העיניים של ההיא״ זה שני מספרים.<br>
+    כולן נושמות. <b>תעבור עם העכבר</b> על כל אחת כדי לראות אותה חושבת.
+  </div>
+</header>
+
+<h2>1 · מרחק הטבעות
+  <i>אותה דמות בדיוק, ארבעה מרווחים. 21 (הרפרנס) היא הצמודה — הטבעת הפנימית
+  יושבת 2.5 יחידות מהגוף. ככל שהן מתרחקות הן נקראות יותר כאור נפרד וקצת פחות
+  כמסגרת של הדמות.</i></h2>
+<div class="grid" id="g-rings"></div>
+
+<h2>2 · אסתטיקה אחרת לפנים
+  <i>כל אחת מהן באה מרפרנס שאתה שלחת, לא מהראש שלי: הקפסולה החרוטה היא הענן
+  הראשון, הנצנוץ הוא אייקון Sora, הנקודות הן פיית הכוכב, והאובל הכהה הוא טואד.</i></h2>
+<div class="grid" id="g-eyes"></div>
+
+<h2>3 · יותר תלת‑ממד
+  <i>מה שבאמת מוכר כדור בדו‑ממד הם שלושה דברים, וכולם ניתנים לציור: <b>אור לא
+  במרכז</b>, <b>שוליים שמחשיכים</b>, ו<b>אור מוחזר</b> בצד הצל — זה האחרון הוא
+  מה שכולם שוכחים וזה מה שעושה את ההבדל. ועוד צל מגע מתחת.</i></h2>
+<div class="grid" id="g-depth"></div>
+
+<h2>4 · המועמדות המשולבות, ובגדלים
+  <i>שילובים שנראים לי החזקים — ומתחת, כל אחת בארבעת הגדלים שבאמת מכריעים.</i></h2>
+<div class="grid" id="g-mix"></div>
+
+<script>
+var SM_N = 0;
+/* ── ONE MARK, MANY SETTINGS ──
+   rings  three radii, inner to outer      eyes   oval|capsule|dot|sparkle|wide
+   ringW  stroke width                     depth  flat|matte|round|sphere
+   glow   0..1 strength                    think  open the arcs and spin */
+function sunSVG(o){
+  o = o || {};
+  var k = 'v' + (++SM_N);
+  var R = 34.2;
+  var rings = o.rings || [36.7, 39.5, 42.5];
+  var W = o.ringW || 1.33;
+  var eyes = o.eyes || 'oval';
+  var depth = o.depth || 'matte';
+  var glow = (o.glow == null) ? 1 : o.glow;
+  var EYE = '#32200f';
+
+  var arc = function(r, deg){
+    var c = 2 * Math.PI * r, g = c * deg / 360;
+    return (c - g).toFixed(2) + ' ' + g.toFixed(2);
+  };
+
+  var h = '<svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs>';
+  /* the body, flat to begin with - every depth setting adds to this */
+  h += '<linearGradient id="' + k + 'b" gradientUnits="userSpaceOnUse" x1="80" y1="46" x2="80" y2="114">' +
+       '<stop offset="0" stop-color="#fcd956"/><stop offset=".22" stop-color="#fbc744"/>' +
+       '<stop offset=".42" stop-color="#f8ae34"/><stop offset=".62" stop-color="#f59d2c"/>' +
+       '<stop offset=".82" stop-color="#ed8527"/><stop offset="1" stop-color="#e5530e"/>' +
+       '</linearGradient>';
+  /* AN OFF-CENTRE LIGHT. Dead centre reads as a disc with a stain on it. */
+  h += '<radialGradient id="' + k + 'l" gradientUnits="userSpaceOnUse" cx="69" cy="66" r="' +
+       (depth === 'sphere' ? 26 : 30) + '">' +
+       '<stop offset="0" stop-color="#fff6d8" stop-opacity="' +
+         (depth === 'flat' ? 0 : depth === 'matte' ? .55 : depth === 'round' ? .72 : .88) + '"/>' +
+       '<stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>';
+  /* THE LIMB. A sphere is darker where it turns away from you. */
+  h += '<radialGradient id="' + k + 'd" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="' + R + '">' +
+       '<stop offset=".58" stop-color="#8a3000" stop-opacity="0"/>' +
+       '<stop offset="1" stop-color="#8a3000" stop-opacity="' +
+         (depth === 'flat' ? 0 : depth === 'matte' ? .07 : depth === 'round' ? .2 : .32) + '"/>' +
+       '</radialGradient>';
+  /* THE ONE EVERYBODY FORGETS: light bouncing back up off the ground into the
+     shadow side. Without it a shaded ball reads as a flat disc with a dark
+     edge; with it, it reads as an object sitting in a room. */
+  h += '<radialGradient id="' + k + 'f" gradientUnits="userSpaceOnUse" cx="90" cy="104" r="22">' +
+       '<stop offset="0" stop-color="#ffd089" stop-opacity="' + (depth === 'sphere' ? .5 : 0) + '"/>' +
+       '<stop offset="1" stop-color="#ffd089" stop-opacity="0"/></radialGradient>';
+  h += '<radialGradient id="' + k + 'g" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="74">' +
+       '<stop offset=".44" stop-color="#ffb347" stop-opacity="' + (.42 * glow).toFixed(3) + '"/>' +
+       '<stop offset=".72" stop-color="#ffc766" stop-opacity="' + (.16 * glow).toFixed(3) + '"/>' +
+       '<stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>';
+  h += '</defs>';
+
+  h += '<circle cx="80" cy="80" r="74" fill="url(#' + k + 'g)"/>';
+  /* the contact shadow, only where there is a body solid enough to cast one */
+  if (depth === 'sphere')
+    h += '<ellipse cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>';
+
+  var cols = ['#f04a2e', '#f9913c', '#fcd238'];
+  h += '<g fill="none" stroke-linecap="round">';
+  for (var i = 2; i >= 0; i--)
+    h += '<circle class="sm-r sm-r' + (i + 1) + '" cx="80" cy="80" r="' + rings[i] + '"' +
+         ' stroke="' + cols[i] + '" stroke-width="' + W + '"' +
+         ' stroke-dasharray="' + arc(rings[i], 14) + '"' +
+         ' style="--open:' + arc(rings[i], 96) + '"/>';
+  h += '</g>';
+
+  h += '<g class="sm-body">';
+  h += '<circle cx="80" cy="80" r="' + R + '" fill="url(#' + k + 'b)"/>';
+  h += '<circle cx="80" cy="80" r="' + R + '" fill="url(#' + k + 'd)"/>';
+  h += '<circle cx="80" cy="80" r="' + R + '" fill="url(#' + k + 'f)"/>';
+  h += '<circle cx="80" cy="80" r="' + R + '" fill="url(#' + k + 'l)"/>';
+  h += eyeHTML(eyes, k, EYE);
+  h += '</g></svg>';
+  return h;
+}
+
+/* ── THE FACES ──
+   Each one is a reference he actually sent, not an invention. */
+function eyeHTML(kind, k, EYE){
+  var L = 68.5, Rr = 91.5, Y = 82;
+  if (kind === 'dot')
+    return '<circle cx="' + L + '" cy="' + Y + '" r="3.1" fill="' + EYE + '"/>' +
+           '<circle cx="' + Rr + '" cy="' + Y + '" r="3.1" fill="' + EYE + '"/>';
+  if (kind === 'wide')
+    return '<ellipse cx="64.5" cy="' + Y + '" rx="6.2" ry="12.4" fill="' + EYE + '"/>' +
+           '<ellipse cx="95.5" cy="' + Y + '" rx="6.2" ry="12.4" fill="' + EYE + '"/>';
+  if (kind === 'capsule'){
+    /* the first cloud: a stadium CARVED into the body - a dark well with a lit
+       rim along its upper edge, which is depth rather than ink */
+    var cap = function(cx){
+      return '<rect x="' + (cx - 5.3) + '" y="' + (Y - 11.6) + '" width="10.6" height="23.2" rx="5.3"' +
+             ' fill="#6d3a10" opacity=".92"/>' +
+             '<rect x="' + (cx - 5.3) + '" y="' + (Y - 11.6) + '" width="10.6" height="23.2" rx="5.3"' +
+             ' fill="none" stroke="#ffe7ad" stroke-width="1.5" stroke-dasharray="17 50"' +
+             ' stroke-dashoffset="-4" stroke-linecap="round"/>';
+    };
+    return cap(L) + cap(Rr);
+  }
+  if (kind === 'sparkle'){
+    /* the Sora cloud: the same oval with a four-point star inside it */
+    var st = function(cx){
+      return '<ellipse cx="' + cx + '" cy="' + Y + '" rx="6.4" ry="12.6" fill="' + EYE + '"/>' +
+             '<path d="M' + cx + ' ' + (Y - 7) + 'l1.5 3.9 3.9 1.5-3.9 1.5-1.5 3.9-1.5-3.9-3.9-1.5 3.9-1.5z"' +
+             ' fill="#fff"/>' +
+             '<circle cx="' + (cx + 2.6) + '" cy="' + (Y + 5.4) + '" r="1.3" fill="#fff" opacity=".9"/>';
+    };
+    return st(L) + st(Rr);
+  }
+  /* oval: Toad - one dark oval, one catchlight, no sclera and no lid */
+  return '<ellipse cx="' + L + '" cy="' + Y + '" rx="5.4" ry="11.4" fill="' + EYE + '"/>' +
+         '<ellipse cx="' + Rr + '" cy="' + Y + '" rx="5.4" ry="11.4" fill="' + EYE + '"/>' +
+         '<circle cx="' + (L - 1.9) + '" cy="' + (Y - 6.6) + '" r="1.75" fill="#fff"/>' +
+         '<circle cx="' + (Rr - 1.9) + '" cy="' + (Y - 6.6) + '" r="1.75" fill="#fff"/>';
+}
+
+function cell(into, label, cap, opts, dark){
+  var d = document.createElement('div'); d.className = 'cell';
+  d.innerHTML = '<div class="lbl">' + label + '</div>' +
+    '<div class="pad' + (dark ? ' dark' : '') + '"><div class="mk">' + sunSVG(opts) + '</div></div>' +
+    '<div class="cap">' + cap + '</div>';
+  /* hover to see it think - cheaper than a second copy of every variant */
+  var mk = d.querySelector('.mk');
+  d.querySelector('.pad').addEventListener('mouseenter', function(){ mk.classList.add('think'); });
+  d.querySelector('.pad').addEventListener('mouseleave', function(){ mk.classList.remove('think'); });
+  document.getElementById(into).appendChild(d);
+}
+
+/* 1 · ring spacing */
+cell('g-rings', 'צמוד · כמו 21', 'הפנימית 2.5 יחידות מהגוף. <b>הרפרנס.</b> נקראות כמסגרת דקה סביב הדמות.',
+     {rings:[36.7,39.5,42.5]});
+cell('g-rings', 'בינוני', 'רווח כפול. הטבעות מתחילות להיקרא כדבר בפני עצמו.',
+     {rings:[38.5,43,47.5]});
+cell('g-rings', 'רחב', 'אוויר אמיתי בין הגוף לטבעות — <b>והגוף נשאר הגיבור</b>.',
+     {rings:[41,47.5,54]});
+cell('g-rings', 'רחב מאוד', 'הן כבר מסלול ולא מסגרת. בקטן הן ייעלמו ראשונות.',
+     {rings:[44,53,62]});
+
+/* 2 · faces */
+cell('g-eyes', 'אובל כהה · טואד', 'מה שיש עכשיו. אובל מלא, נצנוץ אחד, בלי לובן ובלי עפעף.',
+     {eyes:'oval'});
+cell('g-eyes', 'קפסולה חרוטה · הענן', 'הרפרנס <b>הראשון</b> ששלחת: לא דיו אלא <b>באר</b> בחומר, עם שפה מוארת למעלה.',
+     {eyes:'capsule'});
+cell('g-eyes', 'נצנוץ · Sora', 'אותו אובל עם כוכב בן ארבע בפנים — זאת ההבעה ה<b>ערה</b>.',
+     {eyes:'sparkle'});
+cell('g-eyes', 'נקודות · פיית הכוכב', 'מינימום מוחלט. <b>שורד הכי טוב בקטן</b> ואומר הכי פחות בגדול.',
+     {eyes:'dot'});
+cell('g-eyes', 'רחבות וגדולות', 'אותו רעיון, רחוקות יותר וגדולות יותר, בלי נצנוץ. יותר רגוע.',
+     {eyes:'wide'});
+
+/* 3 · depth */
+cell('g-depth', 'שטוח', 'בלי אור ובלי שוליים — דיסק. כאן בשביל להראות את הקצה השני.',
+     {depth:'flat'});
+cell('g-depth', 'מט · מה שיש עכשיו', 'אור רך מחוץ למרכז, שוליים כמעט בלי החשכה. נפח, לא כדור.',
+     {depth:'matte'});
+cell('g-depth', 'מעוגל', 'השוליים מחשיכים והאור מתחזק. כאן זה מתחיל להיות גוף.',
+     {depth:'round'});
+cell('g-depth', 'כדור מלא', '<b>אור מוחזר מלמטה‑ימין</b> וצל מגע. זה מה שהופך דיסק מוצלל לאובייקט בחדר.',
+     {depth:'sphere'});
+cell('g-depth', 'כדור מלא · על כהה', 'אותו דבר על רקע כהה, כי שם נראים גם האור המוחזר וגם ההילה.',
+     {depth:'sphere'}, true);
+
+/* 4 · combinations */
+cell('g-mix', 'א · כדור + רחב + טואד', 'התלת‑ממד המלא עם טבעות מרווחות. <b>המועמדת שלי.</b>',
+     {depth:'sphere', rings:[41,47.5,54], eyes:'oval'});
+cell('g-mix', 'ב · כדור + רחב + קפסולה', 'אותו גוף עם העיניים החרוטות מהרפרנס הראשון.',
+     {depth:'sphere', rings:[41,47.5,54], eyes:'capsule'});
+cell('g-mix', 'ג · מעוגל + בינוני + נצנוץ', 'קצת פחות דרמטי, והבעה ערה.',
+     {depth:'round', rings:[38.5,43,47.5], eyes:'sparkle'});
+cell('g-mix', 'ד · כדור + צמוד + רחבות', 'הכי קומפקטי — הטוב ביותר לאייקון קטן.',
+     {depth:'sphere', rings:[36.7,39.5,42.5], eyes:'wide'});
+
+/* the four real sizes, for the two I would put forward */
+(function(){
+  var wrap = document.createElement('div'); wrap.className = 'cell'; wrap.style.width = '100%';
+  var mk = function(px, o, think){
+    return '<div class="sz"><div style="width:' + px + 'px;height:' + px + 'px" class="' +
+      (think ? 'think' : '') + '">' + sunSVG(o) + '</div><span>' + px + 'px</span></div>';
+  };
+  var A = {depth:'sphere', rings:[41,47.5,54], eyes:'oval'};
+  var B = {depth:'sphere', rings:[36.7,39.5,42.5], eyes:'wide'};
+  wrap.innerHTML = '<div class="lbl">א בגדלים · ואז ד בגדלים</div>' +
+    '<div class="sizes">' + mk(84,A) + mk(58,A) + mk(40,A) + mk(22,A,1) + '</div>' +
+    '<div class="sizes" style="margin-top:12px">' + mk(84,B) + mk(58,B) + mk(40,B) + mk(22,B,1) + '</div>' +
+    '<div class="cap" style="margin-top:10px">הימני בכל שורה מסתובב. <b>זה המבחן</b> — מה שלא נקרא ב‑22px לא יכול להיות הטוען.</div>';
+  document.getElementById('g-mix').appendChild(wrap);
+})();
+</script>
+</html>
