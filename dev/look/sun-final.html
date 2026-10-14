@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>השמש — הגרסה הנבחרת</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  THE SPEC, AS HE SETTLED IT: dots א when large, dots ג when small, and one
+  blink about every 3 seconds and then 5.
+
+  THE SIZE SWITCH IS NOT A STYLE CHOICE, IT IS AN ARITHMETIC ONE, and this is
+  the part worth keeping. א puts 26 dots on the outer ring. At 22px that ring
+  is 2*pi*54/160*22 = 46 CSS pixels around, so 26 dots sit 1.8px apart and a
+  2.6-unit dot is 0.36px wide - thinner than one pixel, so the browser renders
+  a grey smear and the rotation stops being visible. ג puts 14 bigger dots on
+  the same ring: 3.3px apart, each 0.52px. Still small, and it survives, which
+  is why he is right that they swap.
+
+  So sunSVG(px) picks the dot set from the size it is given. One function, one
+  threshold at 48px, and no second drawing.
+
+  THE BLINK RHYTHM IS 3s THEN 5s, which means the loop is not 3s or 5s but
+  8 - the two gaps plus the two blinks. A blink stays an absolute 105ms to
+  close and 150 to open, so the keyframes are computed from the loop rather
+  than scaled:
+
+      blink A  close 1447  shut 1552..1562  open by 1712   (18.09 .. 21.40%)
+      blink B  close 4447  shut 4552..4562  open by 4712   (55.59 .. 58.90%)
+
+      centre to centre, A->B  3.000s
+      centre to centre, B->A  5.000s   (8000 - 4557 + 1557)
+
+  AND THAT IRREGULARITY IS THE WHOLE POINT. An even rhythm, however slow, is
+  read as a machine; two unequal gaps are read as a creature. It is the same
+  reason the right eye lags the left by 40ms.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:26px 26px 4px;max-width:1340px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:92ch;line-height:1.82}
+  .sub b{color:var(--ink)}
+  h2{max-width:1340px;margin:42px auto 0;padding:0 26px;font-size:16px;font-weight:800}
+  h2 i{font-style:normal;font-weight:600;font-size:12.5px;line-height:1.72;color:var(--muted);
+    display:block;margin-top:5px;max-width:88ch}
+  .row{display:flex;flex-wrap:wrap;gap:20px;max-width:1340px;margin:16px auto 0;padding:0 26px;
+    align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:9px;align-items:center}
+  .lbl{font-size:12.5px;font-weight:800;color:var(--ink)}
+  .cap{font-size:12px;line-height:1.72;color:var(--muted);text-align:center;max-width:300px}
+  .cap b{color:var(--ink)}
+  .pad{width:320px;height:320px;border-radius:24px;background:var(--ground);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:-6px -6px 14px var(--nu-lit),8px 10px 20px var(--nu-shade-soft)}
+  .pad.dark{background:#2b2520;box-shadow:none}
+  .sizes{background:var(--ground);border-radius:20px;padding:16px 20px;display:flex;
+    align-items:flex-end;gap:24px;box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 18px var(--nu-shade-soft)}
+  .sz{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .sz span{font-size:10px;font-weight:800;color:#8d857b}
+  .sm{display:block;width:100%;height:100%;overflow:visible}
+  .sm-body{transform-origin:80px 80px;transform-box:view-box;
+    animation:smBreathe 5.6s ease-in-out infinite}
+  @keyframes smBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.022)}}
+
+  /* ── THE BLINK: 3s, then 5s. Loop 8s; the two blink CENTRES sit at 1.557s
+     and 4.557s, so centre-to-centre is 3.000s one way and 5.000s the other. ── */
+  .sm-eye{transform-box:fill-box;transform-origin:50% 50%;
+    animation:blink35 8s infinite}
+  .sm-eye.r{animation-delay:.04s}
+  @keyframes blink35{
+    0%,18.09%{transform:scaleY(1)}
+    19.40%{transform:scaleY(.06)}
+    19.53%{transform:scaleY(.06)}
+    21.40%{transform:scaleY(1)}
+    55.59%{transform:scaleY(1)}
+    56.90%{transform:scaleY(.06)}
+    57.03%{transform:scaleY(.06)}
+    58.90%{transform:scaleY(1)}
+    100%{transform:scaleY(1)}}
+
+  .sm-r{transform-origin:80px 80px;transform-box:view-box}
+  .sm-r1{animation:spinA 26s linear infinite}
+  .sm-r2{animation:spinB 34s linear infinite}
+  .sm-r3{animation:spinA 30s linear infinite}
+  .think .sm-r1{animation-duration:2.6s}
+  .think .sm-r2{animation-duration:3.4s}
+  .think .sm-r3{animation-duration:3s}
+  @keyframes spinA{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes spinB{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+  @media (prefers-reduced-motion:reduce){.sm-body,.sm-r,.sm-eye{animation:none}}
+
+  /* the rhythm, drawn - two gaps that are not equal */
+  .tl{max-width:1340px;margin:18px auto 0;padding:0 26px}
+  .tl-bar{position:relative;height:46px;background:var(--ground);border-radius:14px;
+    box-shadow:inset 2px 3px 6px var(--nu-shade-soft),inset -2px -2px 5px var(--nu-lit)}
+  .tl-b{position:absolute;top:8px;width:4px;height:30px;border-radius:2px;background:#f04a2e}
+  .tl-g{position:absolute;top:19px;height:8px;border-top:1.5px dashed #b3a99b}
+  .tl-t{position:absolute;top:-19px;font-size:10.5px;font-weight:800;color:var(--muted);
+    transform:translateX(50%)}
+</style>
+
+<header>
+  <h1>השמש — הגרסה הנבחרת</h1>
+  <div class="sub">
+    <b>א בגדול, ג בקטן, ומצמוץ אחד כל 3 שניות ואז 5.</b><br>
+    <b>והחלפת הנקודות היא חשבון ולא טעם</b> — זה החלק ששווה לזכור. א שמה 26
+    נקודות על הטבעת החיצונית. ב‑22px ההיקף שלה הוא 46 פיקסלים, אז הנקודות יושבות
+    1.8px זו מזו וכל נקודה היא <b>0.36px</b> — דקה מפיקסל, והדפדפן מריח אותן
+    לאפור אחד; הסיבוב מפסיק להיראות. ג שמה 14 נקודות גדולות על אותה טבעת: 3.3px
+    זו מזו, כל אחת 0.52px. עדיין קטן, <b>ושורד</b>. לכן אתה צודק שהן מתחלפות —
+    ו‑<code>sunSVG(px)</code> בוחר לבד לפי הגודל שניתן לו. פונקציה אחת, סף אחד
+    ב‑48px, בלי ציור שני.<br>
+    <b>מעבר עם העכבר</b> מראה אותו חושב.
+  </div>
+</header>
+
+<h2>1 · גדול — א
+  <i>26 נקודות לטבעת, שלושה מסלולים.</i></h2>
+<div class="row" id="big"></div>
+
+<h2>2 · קטן — ג
+  <i>14 נקודות גדולות. אותה דמות בדיוק, רק שהנקודות ספורות כדי ששורדות.</i></h2>
+<div class="row" id="small"></div>
+
+<h2>3 · הקצב — 3 ואז 5
+  <i>הלולאה היא לא 3 ולא 5 אלא <b>8 שניות</b>: שני המרווחים ועוד שני המצמוצים.
+  <b>וחוסר הסימטריה הוא כל העניין</b> — קצב אחיד, איטי ככל שיהיה, נקרא כמכונה;
+  שני מרווחים לא שווים נקראים כיצור. מאותה סיבה העין הימנית מאחרת ב‑40ms.</i></h2>
+<div class="tl">
+  <div class="tl-bar" id="tl"></div>
+</div>
+<div class="row" id="blink"></div>
+
+<script>
+var N = 0, R = 34.2, EYE = '#32200f';
+var COL = ['#f04a2e', '#f9913c', '#fcd238'];
+var RR = [41, 47.5, 54];
+function dots(r, n, duty){
+  var c = 2*Math.PI*r, on = c/n*duty;
+  return on.toFixed(2) + ' ' + (c/n - on).toFixed(2);
+}
+
+/* ── THE MARK. One function; the dot set follows the SIZE it is drawn at. ──
+   Above the threshold it is א - 26 dots, 2.6 wide. Below it, ג - 14 dots,
+   3.8 wide - because at 22px א's dots are thinner than a pixel and smear. */
+function sunSVG(px){
+  var k = 's' + (++N), big = (px == null) || px >= 48;
+  var n = big ? 26 : 14, w = big ? 2.6 : 3.8, duty = big ? .06 : .07;
+  var h = '<svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs>' +
+    '<linearGradient id="'+k+'b" gradientUnits="userSpaceOnUse" x1="80" y1="46" x2="80" y2="114">' +
+    '<stop offset="0" stop-color="#fcd956"/><stop offset=".22" stop-color="#fbc744"/>' +
+    '<stop offset=".42" stop-color="#f8ae34"/><stop offset=".62" stop-color="#f59d2c"/>' +
+    '<stop offset=".82" stop-color="#ed8527"/><stop offset="1" stop-color="#e5530e"/></linearGradient>' +
+    '<radialGradient id="'+k+'lim" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="'+R+'">' +
+    '<stop offset=".58" stop-color="#8a3000" stop-opacity="0"/>' +
+    '<stop offset="1" stop-color="#8a3000" stop-opacity=".32"/></radialGradient>' +
+    '<radialGradient id="'+k+'bo" gradientUnits="userSpaceOnUse" cx="90" cy="104" r="22">' +
+    '<stop offset="0" stop-color="#ffd089" stop-opacity=".5"/>' +
+    '<stop offset="1" stop-color="#ffd089" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="'+k+'l" gradientUnits="userSpaceOnUse" cx="69" cy="66" r="26">' +
+    '<stop offset="0" stop-color="#fff6d8" stop-opacity=".88"/>' +
+    '<stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="'+k+'g" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="76">' +
+    '<stop offset=".42" stop-color="#ffb347" stop-opacity=".4"/>' +
+    '<stop offset=".72" stop-color="#ffc766" stop-opacity=".15"/>' +
+    '<stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>';
+  h += '<circle cx="80" cy="80" r="76" fill="url(#'+k+'g)"/>';
+  h += '<ellipse cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>';
+  h += '<g fill="none" stroke-linecap="round">';
+  for (var i = 2; i >= 0; i--)
+    h += '<circle class="sm-r sm-r'+(i+1)+'" cx="80" cy="80" r="'+RR[i]+'" stroke="'+COL[i]+'"' +
+         ' stroke-width="'+w+'" stroke-dasharray="'+dots(RR[i], n, duty)+'"/>';
+  h += '</g><g class="sm-body">' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'b)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'lim)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'bo)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'l)"/>' +
+    '<g class="sm-eye"><ellipse cx="68.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>' +
+    '<circle cx="66.6" cy="75.4" r="1.75" fill="#fff"/></g>' +
+    '<g class="sm-eye r"><ellipse cx="91.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>' +
+    '<circle cx="89.6" cy="75.4" r="1.75" fill="#fff"/></g></g>';
+  return h + '</svg>';
+}
+
+function stage(into, lbl, cap, px, dark){
+  var d = document.createElement('div'); d.className = 'col';
+  d.innerHTML = '<div class="lbl">'+lbl+'</div>' +
+    '<div class="pad'+(dark?' dark':'')+'"><div style="width:'+px+'px;height:'+px+'px">' +
+    sunSVG(px) + '</div></div>' + (cap?'<div class="cap">'+cap+'</div>':'');
+  var inner = d.querySelector('.pad > div'), pad = d.querySelector('.pad');
+  pad.addEventListener('mouseenter', function(){ inner.classList.add('think'); });
+  pad.addEventListener('mouseleave', function(){ inner.classList.remove('think'); });
+  document.getElementById(into).appendChild(d);
+}
+
+stage('big', 'ספלאש · 260px', 'הגודל שבו הוא מקבל את הפנים באזור חדש.', 260);
+stage('big', 'על כהה', '', 260, true);
+(function(){
+  var d = document.createElement('div'); d.className='col';
+  d.innerHTML = '<div class="lbl">אייקון · 84 · ובמעבר</div><div class="sizes">' +
+    [120, 84, 58].map(function(px){
+      return '<div class="sz"><div style="width:'+px+'px;height:'+px+'px">'+sunSVG(px)+
+        '</div><span>'+px+'</span></div>';
+    }).join('') + '</div>' +
+    '<div class="cap">58 הוא עדיין מעל הסף, אז הוא עדיין א.</div>';
+  document.getElementById('big').appendChild(d);
+})();
+
+(function(){
+  var d = document.createElement('div'); d.className='col';
+  d.innerHTML = '<div class="lbl">מתחת לסף — ג</div><div class="sizes">' +
+    [44, 32, 22].map(function(px, i){
+      return '<div class="sz"><div style="width:'+px+'px;height:'+px+'px" class="'+(i===2?'think':'')+'">' +
+        sunSVG(px) + '</div><span>'+px+'</span></div>';
+    }).join('') + '</div>' +
+    '<div class="cap">הימני מסתובב — זה הטוען ליד ״חושב…״.</div>';
+  document.getElementById('small').appendChild(d);
+  var e = document.createElement('div'); e.className='col';
+  e.innerHTML = '<div class="lbl">אותם גדלים עם א, להשוואה</div><div class="sizes">' +
+    [44, 32, 22].map(function(px, i){
+      return '<div class="sz"><div style="width:'+px+'px;height:'+px+'px" class="'+(i===2?'think':'')+'">' +
+        sunSVG(999) + '</div><span>'+px+'</span></div>';
+    }).join('') + '</div>' +
+    '<div class="cap"><b>זה מה שקורה בלי ההחלפה</b> — הנקודות נמרחות לטבעת אפורה אחת.</div>';
+  document.getElementById('small').appendChild(e);
+})();
+
+stage('blink', 'הקצב, בגודל מלא', 'תסתכל עליו דקה. <b>מצמוץ, שלוש שניות, מצמוץ, חמש.</b>', 260);
+
+/* draw the rhythm: two blinks, two unequal gaps, over one 8s loop */
+(function(){
+  var bar = document.getElementById('tl'), L = 8000;
+  var mark = function(ms, label){
+    var b = document.createElement('div'); b.className = 'tl-b';
+    b.style.insetInlineStart = (ms/L*100) + '%';
+    bar.appendChild(b);
+    var t = document.createElement('div'); t.className = 'tl-t';
+    t.style.insetInlineStart = (ms/L*100) + '%'; t.textContent = label;
+    bar.appendChild(t);
+  };
+  var gap = function(a, b, label){
+    var g = document.createElement('div'); g.className = 'tl-g';
+    g.style.insetInlineStart = (a/L*100) + '%';
+    g.style.width = ((b-a)/L*100) + '%';
+    bar.appendChild(g);
+    var t = document.createElement('div'); t.className = 'tl-t';
+    t.style.insetInlineStart = ((a+b)/2/L*100) + '%'; t.style.top = '48px';
+    t.textContent = label; bar.appendChild(t);
+  };
+  /* the two blinks sit at 1552 and 4552; the 5s gap WRAPS the loop, which is
+     why the bar ends without a third mark - the next blink is the first one. */
+  mark(1552, 'מצמוץ'); mark(4552, 'מצמוץ');
+  gap(1552, 4552, '3 שניות'); gap(4552, 8000, '5 שניות — ממשיך ללולאה הבאה');
+})();
+</script>
+</html>
