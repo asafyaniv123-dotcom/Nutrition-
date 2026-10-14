@@ -3717,6 +3717,9 @@ body.mod-hobbies .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
    THE DOT CARRIES BOTH ANSWERS. Its hue is which hobby this is; its light is
    whether the hobby happened today. One mark, two questions, and no filled
    disc pretending to be an icon. */
+/* the plot: one block, as wide as the card and no taller than it needs */
+.hbp-w{margin:2px 0 2px;display:block}
+.hbp{width:100%;height:auto;display:block;overflow:visible}
 /* THE FARM. It wraps instead of scrolling sideways, because a farm is
    something you look at whole and a scroller hides half of it. */
 .hbk{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end;padding:6px 0 2px}
@@ -27243,10 +27246,14 @@ function hbLampIdx(name){
 }
 /* lv is 0..3 from hbLevel, so an amount lights part of the way and a done is
    either out or full - the three kinds reach the same lamp. */
-function hbLampHTML(name,lv){
+function hbLampHTML(name,lv,cls){
   var L=HB_LAMPS[hbLampIdx(name)],hue=hbHue(name),
       on=lv>0,op=lv>=3?0.95:lv===2?0.68:lv===1?0.4:0,
-      h='<svg class="hbl" viewBox="0 0 48 56" aria-hidden="true">';
+      /* THE SIZE IS SAID, NOT INHERITED. A nested svg with no width takes
+         the CSS, and .hbl is width:100% - on the plot that resolved against
+         the whole plot and every lamp was drawn the size of the field. The
+         farm still gets 100% because a stylesheet beats an attribute. */
+      h='<svg class="'+(cls||'hbl')+'" width="48" height="56" viewBox="0 0 48 56" aria-hidden="true">';
   /* the pool of light first, under everything, so the lamp sits in its own glow */
   if(on)h+='<ellipse cx="'+L.c[0]+'" cy="'+L.c[1]+'" rx="'+(10+lv*4)+'" ry="'+(9+lv*3)+
            '" fill="'+hue+'" opacity="'+(op*0.3).toFixed(2)+'" style="filter:blur(5px)"/>';
@@ -27517,6 +27524,66 @@ function hbHeatHTML(name,log){
 
    The dot carries both answers: its hue is which hobby this is, its light is
    whether the hobby happened today. */
+/* ── THE PLOT ──
+   A place that fills up, rather than a list that reports. One lamp per
+   SESSION - per hobby per day it was practised - oldest at the back, so a
+   month of doing things is a field of light and an empty month is an empty
+   field with the lamps still waiting at the edges.
+
+   The projection is 2:1 isometric: x=(c-r)*S/2, y=(c+r)*S/4. The lamps are
+   emitted in (r+c) order so a near lamp covers a far one; drawn in any other
+   order they slice through each other and the ground stops being ground.
+   The soil edge below the plane is not decoration - a plane with no
+   thickness reads as a diamond, not as a place. */
+var HB_PLOT_N=6,HB_PLOT_S=56;
+/* every (hobby, day) with something on it inside the window, oldest first */
+function hbPlantings(days){
+  var list=loadHabits(),log=loadHabitLog(),out=[],i,d,nm,v;
+  for(d=days-1;d>=0;d--){
+    var day=dayShift(-d);
+    for(i=0;i<list.length;i++){
+      nm=list[i];v=log[habitDayKey(nm,day)];
+      if(hbMin(v))out.push({n:nm,d:day,lv:hbLevel(hbKind(nm),hbGoal(nm),v)});
+    }
+  }
+  /* the plot holds N*N; when there are more, the most recent are the ones
+     standing - a field that silently dropped this week would be a lie */
+  var cap=HB_PLOT_N*HB_PLOT_N;
+  return out.length>cap?out.slice(out.length-cap):out;
+}
+function hbPlotHTML(days){
+  var N=HB_PLOT_N,S=HB_PLOT_S,p=hbPlantings(days),
+      W=N*S,H=N*S/2,PAD=30,DEPTH=16,
+      cx=W/2+PAD,h,r,c,i,x,y;
+  function px(r,c){return [cx+(c-r)*S/2,PAD+(c+r)*S/4];}
+  h='<svg class="hbp" viewBox="0 0 '+(W+PAD*2)+' '+(H+PAD*2+DEPTH)+'" role="img">';
+  /* the ground, and the soil under it */
+  var A=px(0,0),B=px(0,N),C=px(N,N),D=px(N,0);
+  h+='<path d="M'+A[0]+' '+A[1]+'L'+B[0]+' '+B[1]+'L'+C[0]+' '+C[1]+'L'+D[0]+' '+D[1]+
+     'Z" fill="#efeae3"/>';
+  h+='<path d="M'+D[0]+' '+D[1]+'L'+C[0]+' '+C[1]+'L'+C[0]+' '+(C[1]+DEPTH)+'L'+D[0]+' '+
+     (D[1]+DEPTH)+'Z" fill="#ddd6cc"/>';
+  h+='<path d="M'+C[0]+' '+C[1]+'L'+B[0]+' '+B[1]+'L'+B[0]+' '+(B[1]+DEPTH)+'L'+C[0]+' '+
+     (C[1]+DEPTH)+'Z" fill="#e6e0d7"/>';
+  /* the furrows, faint, so the plane has a surface rather than being a hole */
+  for(i=1;i<N;i++){
+    var p1=px(i,0),p2=px(i,N),p3=px(0,i),p4=px(N,i);
+    h+='<path d="M'+p1[0]+' '+p1[1]+'L'+p2[0]+' '+p2[1]+'M'+p3[0]+' '+p3[1]+'L'+p4[0]+' '+
+       p4[1]+'" stroke="#e3dcd2" stroke-width="1" fill="none"/>';
+  }
+  /* and what is standing on it, far rows first */
+  for(i=0;i<p.length;i++){
+    r=Math.floor(i/N);c=i%N;
+    var q=px(r+0.5,c+0.5);
+    x=q[0];y=q[1];
+    /* scaled to the cell, and shifted so the lamp STANDS on the cell's
+       centre rather than floating with its box's corner there */
+    h+='<g transform="translate('+(x-48*0.52/2).toFixed(1)+','+(y-56*0.52+4).toFixed(1)+
+       ') scale(0.52)">'+hbLampHTML(p[i].n,p[i].lv,'hbl-p')+'</g>';
+  }
+  h+='</svg>';
+  return h;
+}
 function hbStripHTML(list,log,today,r0){
   var h='', i, nm, onToday;
   /* the dot is lit for a hobby that happened today, and for one that is
@@ -27555,6 +27622,14 @@ function renderHabits(){
      setting. The dot underneath answers a different question from the
      selection: it is amber when the hobby was practised today. */
   if(_hbSel>=list.length)_hbSel=0;
+  /* THE PLOT FIRST: it is the scene, and the row under it is the legend -
+     the same pairing his own reference has, a picture and then the numbers. */
+  if(list.length){
+    var _pn=hbPlantings(30).length;
+    h+='<div class="hbp-w">'+hbPlotHTML(30)+'</div>';
+    h+='<div class="hb-lab"><span>'+_t('החודש')+'</span><span class="hb-acts">'+
+       (_pn?esc(_t('{n} פעמים',{n:_pn})):'')+'</span></div>';
+  }
   if(list.length)h+=hbStripHTML(list,log,today,r0);
   if(_habitEdit&&_hbPal>=0&&_hbPal<list.length){
     h+='<div class="hb-pal">';
