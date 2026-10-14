@@ -707,23 +707,32 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   border-radius:7px;padding:3px 8px;background:var(--nu-ground);
   box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
 .fw-restset{display:flex;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap}
-/* the rest wheel: the effort wheel's control, narrow enough to stand in a
-   row beside two buttons - 92 wide against full width, 96 tall against 184 */
-.rw{--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
-  position:relative;width:92px;height:96px;border-radius:13px;overflow:hidden;flex:0 0 auto;
-  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
-.rw-slot{position:absolute;left:6px;right:6px;top:33px;height:30px;border-radius:9px;
-  pointer-events:none;
-  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+/* THE REST, AS A COLUMN: the word, the drum, the button. */
+.rw-wrap{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:92px;flex:0 0 auto}
+.rw-lab{font-size:10px;font-weight:800;color:var(--muted);text-align:center}
+.rw-go{width:100%}
+/* NO FRAME. The pressed box drew a container, and a drum is not in one. The
+   mask fades the top and bottom to nothing instead, which is what makes a
+   row read as going BEHIND rather than as hitting an edge. */
+.rw{position:relative;width:92px;height:104px;overflow:hidden;flex:0 0 auto;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 30%,#000 70%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0,#000 30%,#000 70%,transparent 100%)}
+/* the chosen band, stated with two hairlines instead of a pressed well */
+.rw-slot{position:absolute;left:2px;right:2px;top:37px;height:30px;pointer-events:none;z-index:2;
+  box-shadow:0 -1px 0 rgba(176,168,156,.34),0 1px 0 rgba(176,168,156,.34)}
 .rw-sc{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;position:relative;z-index:1;
   scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
 .rw-sc::-webkit-scrollbar{display:none}
-.rw-pad{height:33px}
+.rw-pad{height:37px}
+/* EACH ROW IS A PLATE. A number with no body cannot read as a rectangle
+   turning away, so it gets a surface and a shadow of its own. */
 .rw-n{height:30px;scroll-snap-align:center;display:flex;align-items:center;
   justify-content:center;cursor:pointer;color:var(--ink);
-  font-size:12px;font-weight:800;transform-origin:50% 50%;backface-visibility:hidden;
+  font-size:12.5px;font-weight:800;border-radius:8px;margin:0 3px;
+  background:var(--nu-ground);box-shadow:0 1px 2px rgba(150,140,126,.18);
+  transform-origin:50% 50%;backface-visibility:hidden;
   transition:opacity .18s ease,transform .18s ease,font-size .18s ease}
-.rw-n.on{font-size:15px}
+.rw-n.on{font-size:15px;box-shadow:0 2px 5px rgba(150,140,126,.24)}
 .fw-restset>span{font-size:10px;font-weight:800;color:var(--muted)}
 .fw-rb{border:none;border-radius:9px;padding:5px 10px;font-size:10.5px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--muted)}
 .fw-rb.on{background:linear-gradient(135deg,var(--terra-200),var(--terra-500));color:var(--white)}
@@ -24733,7 +24742,10 @@ var REST_KEY='fit_rest',_restEnd=0,_restIv=null;
 var REST_STOPS=[0,30,45,60,75,90,120,150,180],RW_ROW=30;
 function restRowHTML(){
   var cur=restLen(),h,i,n;
-  h='<div class="fw-restset"><span>'+_t('מנוחה|טיימר')+'</span>';
+  /* A COLUMN, NOT A ROW: the word above, the drum, the button below. It is
+     92px wide and costs the card one narrow block instead of a full line. */
+  h='<div class="fw-restset"><div class="rw-wrap">';
+  h+='<div class="rw-lab">'+_t('מנוחה|טיימר')+'</div>';
   h+='<div class="rw"><div class="rw-slot"></div>'+
      '<div class="rw-sc" onscroll="restWheelPaint(this)"><div class="rw-pad"></div>';
   for(i=0;i<REST_STOPS.length;i++){
@@ -24742,7 +24754,10 @@ function restRowHTML(){
        (n?_t('{n}ש',{n:n}):''+_t('כבוי')+'')+'</div>';
   }
   h+='<div class="rw-pad"></div></div></div>';
-  h+='<button class="fw-rb go" onclick="restGo()">'+_t('התחל מנוחה')+'</button>';
+  /* "התחל", not "התחל מנוחה": the word is the label directly above it, and
+     saying it twice in a 92px column is noise. */
+  h+='<button class="fw-rb go rw-go" onclick="restGo()">'+_t('התחל')+'</button>';
+  h+='</div>';
   h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
   return h+'</div>';
 }
@@ -24757,10 +24772,14 @@ function restWheelPaint(sc){
     el=rows[i];
     d=(el.offsetTop+RW_ROW/2-mid)/RW_ROW;a=Math.abs(d);
     if(a<bestD){bestD=a;best=el;}
-    el.style.transform='perspective(420px) rotateX('+
-      (-Math.max(-62,Math.min(62,d*22))).toFixed(2)+'deg) scale('+
-      Math.max(0.78,1-a*0.08).toFixed(3)+')';
-    el.style.opacity=Math.max(0.22,1-a*0.3).toFixed(3);
+    /* A DRUM, not a fan. The row turns AND recedes - translateZ is the half
+       that was missing, and it is what makes a plate look like it is going
+       behind the one in front of it rather than just lying flatter. Scale is
+       gone because perspective now does it. */
+    el.style.transform='perspective(300px) rotateX('+
+      (-Math.max(-78,Math.min(78,d*27))).toFixed(2)+'deg) translateZ('+
+      (-Math.min(30,a*11)).toFixed(1)+'px)';
+    el.style.opacity=Math.max(0.1,1-a*0.36).toFixed(3);
     el.className='rw-n';
   }
   if(!best)return;
