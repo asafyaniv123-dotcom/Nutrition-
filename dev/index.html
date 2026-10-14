@@ -713,37 +713,47 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .fw-pr{font-size:11px;font-weight:800;color:var(--amber-700);flex:0 0 auto;
   border-radius:7px;padding:3px 8px;background:var(--nu-ground);
   box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
-.fw-restset{display:flex;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap}
-/* THE REST, AS A COLUMN: the word, the drum, the button. */
-.rw-wrap{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:92px;flex:0 0 auto}
-.rw-lab{font-size:10px;font-weight:800;color:var(--muted);text-align:center}
-.rw-go{width:100%}
+/* THE REST, ACROSS: the word, the drum on its side, the button - one line.
+   Measured at every width a phone has, which is the whole reason the drum
+   below flexes: a fixed one needs 300px and the card has 216 at 360. */
+.fw-restset{display:flex;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:nowrap}
+.rw-wrap{display:flex;flex-direction:row;align-items:center;gap:8px;flex:1 1 auto;min-width:0}
+.rw-lab{font-size:10px;font-weight:800;color:var(--muted);flex:0 0 auto}
+.rw-go{flex:0 0 auto}
 /* ONE perspective for the whole drum, on the box that does NOT scroll. Per
    row it gave every row its own vanishing point, which is nine flat cards
-   tilting separately rather than one wheel. */
-.rw{position:relative;width:92px;height:122px;overflow:hidden;flex:0 0 auto;
-  perspective:340px;perspective-origin:50% 50%;
-  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 26%,#000 74%,transparent 100%);
-  mask-image:linear-gradient(to bottom,transparent 0,#000 26%,#000 74%,transparent 100%)}
-/* the stage never scrolls: the rows are placed on the cylinder by transform */
+   tilting separately rather than one wheel.
+   IT IS THE ONE THING ON THIS LINE THAT CAN GIVE - a word and two buttons
+   cannot - so it takes whatever is left, up to three columns. */
+.rw{position:relative;flex:1 1 126px;min-width:0;max-width:138px;height:36px;
+  overflow:hidden;perspective:300px;perspective-origin:50% 50%;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 24%,#000 76%,transparent 100%);
+  mask-image:linear-gradient(to right,transparent 0,#000 24%,#000 76%,transparent 100%)}
+/* the stage never scrolls: the columns are placed on the cylinder by transform */
 .rw-stage{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
-.rw-n{position:absolute;left:0;right:0;top:50%;height:34px;margin-top:-17px;
+.rw-n{position:absolute;top:0;bottom:0;left:50%;width:42px;margin-left:-21px;
   display:flex;align-items:center;justify-content:center;
-  font-size:13px;font-weight:800;color:var(--ink);
+  font-size:12.5px;font-weight:800;color:var(--ink);
   backface-visibility:hidden;will-change:transform,opacity}
 /* NO TRANSITION on transform: the scroll handler rewrites it every frame and
    an eased property chasing a moved target is what felt stuck. */
-.rw-n.on{font-size:16px}
-.rw-slot{position:absolute;left:4px;right:4px;top:50%;height:34px;margin-top:-17px;
+.rw-n.on{font-size:15px}
+.rw-slot{position:absolute;top:3px;bottom:3px;left:50%;width:42px;margin-left:-21px;
   pointer-events:none;z-index:2;
-  box-shadow:0 -1px 0 rgba(176,168,156,.3),0 1px 0 rgba(176,168,156,.3)}
+  box-shadow:-1px 0 0 rgba(176,168,156,.3),1px 0 0 rgba(176,168,156,.3)}
 /* the scroller is invisible and holds nothing but snap targets - it is there
-   for the platform's inertia, which is better than anything written here */
-.rw-sc{position:absolute;inset:0;z-index:3;overflow-y:auto;scroll-snap-type:y mandatory;
+   for the platform's inertia, which is better than anything written here.
+   direction:ltr is NOT cosmetic: scrollLeft in an RTL box starts at 0 on the
+   RIGHT and counts negative, and the arithmetic reads it as an index. */
+.rw-sc{position:absolute;inset:0;z-index:3;direction:ltr;white-space:nowrap;
+  overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
   scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
 .rw-sc::-webkit-scrollbar{display:none}
-.rw-pad{height:44px}
-.rw-hit{height:34px;scroll-snap-align:center}
+/* A PERCENTAGE, NOT A NUMBER. scrollLeft = k*COL selects stop k only while the
+   leading pad is half the viewport less half a column; written as a fixed
+   width that is true at one screen size and wrong on every other one. */
+.rw-pad{display:inline-block;width:calc(50% - 21px);height:100%}
+.rw-hit{display:inline-block;width:42px;height:100%;scroll-snap-align:center}
 .fw-rb{border:none;border-radius:9px;padding:5px 10px;font-size:10.5px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--muted)}
 .fw-rb.on{background:linear-gradient(135deg,var(--terra-200),var(--terra-500));color:var(--white)}
 /* the countdown, over everything, skippable */
@@ -24877,23 +24887,34 @@ function wtWrite(sec,run,at){
   }
 }
 var REST_KEY='fit_rest',_restEnd=0,_restIv=null;
-/* ── THE REST, AS A WHEEL THAT ACTUALLY TURNS ──
+/* ── THE REST, AS A WHEEL ON ITS SIDE ──
    The scroller is invisible and exists only for the platform's inertia and
-   snapping. The rows live on a stage that never scrolls, under ONE
-   perspective, each placed where it would be on a drum:
+   snapping. The columns live on a stage that never scrolls, under ONE
+   perspective, each placed where it would be on a drum lying across:
 
-       theta = d * STEP          d = distance from the centre, in rows
-       y     = R*sin(theta)      it rises as it turns
+       theta = d * STEP          d = distance from the centre, in columns
+       x     = R*sin(theta)      it travels sideways as it turns
        z     = R*cos(theta)-R    and recedes
-       R     = (ROW/2)/tan(STEP/2)
+       R     = (COL/2)/tan(STEP/2)
 
-   Rows past 90 degrees are behind the drum and are hidden.
+   rotateY(90deg) maps the element's +x to -z, so a column to the RIGHT of
+   centre turns its far edge into the screen - which is what makes it read as
+   one cylinder rather than a row of cards. Past 90 degrees a column is behind
+   the drum and is hidden.
+
+   IT WAS UPRIGHT: a label, a 122px drum and a button stacked. Measured on
+   the screen, the whole block is 36px tall now.
+
+   scrollLeft IS READ AS AN INDEX, which is why .rw-sc is forced to ltr. Asked
+   of this very wheel with direction:rtl put back on it, Chrome answers 0 at the
+   far RIGHT and -368 at the far left, so every index would come out negative and
+   REST_STOPS[k] undefined for all of them but one.
 
    NO TRANSITIONS ON transform. The scroll handler rewrites it every frame,
    and an eased property chasing a target that has already moved is exactly
    what "תקועה" felt like. */
 var REST_STOPS=[0,30,45,60,75,90,120,150,180];
-var RW_ROW=34,RW_STEP=18,RW_R=(RW_ROW/2)/Math.tan(RW_STEP*Math.PI/360);
+var RW_COL=42,RW_STEP=18,RW_R=(RW_COL/2)/Math.tan(RW_STEP*Math.PI/360);
 function restRowHTML(){
   var cur=restLen(),h,i,n;
   h='<div class="fw-restset"><div class="rw-wrap">';
@@ -24922,21 +24943,37 @@ function restWheelScroll(sc){
 }
 /* NO RE-RENDER: restSet() redraws the workout screen, which would tear the
    scroller out from under the finger. This writes where restLen() reads. */
+/* WHICH SLOT A STOP SITS IN, and which stop a slot selects. They are the
+   same mirror, so they are the same function: in Hebrew and Arabic the series
+   has to ascend to the LEFT, because that is the direction those languages
+   count in. Left to right is right in English and backwards in Hebrew, and
+   the upright wheel could not show it - downwards is downwards everywhere. */
+function rwSlot(i){
+  return (document.documentElement.dir==='rtl')?(REST_STOPS.length-1-i):i;
+}
+/* NO RE-RENDER: restSet() redraws the workout screen, which would tear the
+   scroller out from under the finger. This writes where restLen() reads. */
 function restWheelPaint(sc){
   var box=sc.parentNode,rows=box.getElementsByClassName('rw-n');
-  var at=sc.scrollTop/RW_ROW,i,el,d,th,c,hidden;
+  var at=sc.scrollLeft/RW_COL,i,el,d,th,c,hidden;
   for(i=0;i<rows.length;i++){
-    el=rows[i];d=i-at;th=d*RW_STEP;
+    el=rows[i];d=rwSlot(i)-at;th=d*RW_STEP;
+    /* BEFORE the early return, not after it. A column that turns behind the
+       drum used to keep whatever class it was wearing, so two rows could
+       claim to be the chosen one at once - invisible, because the stale one
+       is hidden, and still a lie to anything that reads the class. */
+    el.className=(Math.abs(d)<0.5)?'rw-n on':'rw-n';
     hidden=(th<=-90||th>=90);
     el.style.visibility=hidden?'hidden':'visible';
     if(hidden)continue;
     c=th*Math.PI/180;
-    el.style.transform='translateY('+(RW_R*Math.sin(c)).toFixed(2)+'px) translateZ('+
-      (RW_R*Math.cos(c)-RW_R).toFixed(2)+'px) rotateX('+(-th).toFixed(2)+'deg)';
+    el.style.transform='translateX('+(RW_R*Math.sin(c)).toFixed(2)+'px) translateZ('+
+      (RW_R*Math.cos(c)-RW_R).toFixed(2)+'px) rotateY('+th.toFixed(2)+'deg)';
     el.style.opacity=Math.max(0,Math.cos(c)*Math.cos(c)).toFixed(3);
-    el.className=(Math.abs(d)<0.5)?'rw-n on':'rw-n';
   }
-  var k=Math.round(at);
+  /* rwSlot is its own inverse - a reversal always is - so the same call reads
+     the stop back out of the slot the scroller stopped on. */
+  var k=rwSlot(Math.round(at));
   if(k>=0&&k<REST_STOPS.length){
     try{localStorage.setItem(REST_KEY,String(REST_STOPS[k]));}catch(e){}
   }
@@ -24947,7 +24984,7 @@ function restWheelSync(){
   for(i=0;i<all.length;i++){
     box=all[i];sc=box.getElementsByClassName('rw-sc')[0];if(!sc)continue;
     k=REST_STOPS.indexOf(want);if(k<0)k=REST_STOPS.indexOf(90);if(k<0)k=0;
-    sc.scrollTop=k*RW_ROW;
+    sc.scrollLeft=rwSlot(k)*RW_COL;
     restWheelPaint(sc);
   }
 }
