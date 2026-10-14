@@ -158,6 +158,18 @@ const door = P.SCENES[2].build.toString();
   (castAt > closes && closes > clipped)
     ? ok('and it sits outside the clipped opening, not inside it')
     : bad('the floor glow is nested inside the clipped opening');
+  // being a SIBLING of the door means its left is measured from the STAGE.
+  // Read the three numbers and check the glow actually lands on the doorway.
+  const doorL = +(door.match(/class="prop" style="left:(\d+)px;width:(\d+)px/)||[])[1];
+  const doorW = +(door.match(/class="prop" style="left:\d+px;width:(\d+)px/)||[])[1];
+  const cL    = +(door.match(/class="cast" style="position:absolute;left:(-?\d+)px/)||[])[1];
+  const cW    = +(door.match(/class="cast"[^"]*"[^"]*width:(\d+)px/)||[])[1];
+  const cAt   = +(door.match(/at (\d+)% [\d.]+%,rgba\(255,196,90/)||[])[1];
+  const doorC = doorL + doorW/2, glowC = cL + cW*(cAt/100);
+  (!isNaN(doorC) && !isNaN(glowC) && Math.abs(doorC - glowC) <= 10)
+    ? ok(`the glow's centre is ${glowC} and the doorway's is ${doorC} - it lands on the door`)
+    : bad(`the glow's centre is ${glowC} but the doorway's is ${doorC} ` +
+          `- the light pools beside the door, not in front of it`);
 }
 
 // ── 5. the socket is behind him, so he leaves it going forward ───────────
