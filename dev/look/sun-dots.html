@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>השמש — נקודות, ומצמוץ כל 3 שניות</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  DOTS, AND A BLINK EVERY THREE SECONDS. Eight versions of the dots and three
+  of the blink, everything else held still.
+
+  THE BLINK AT 3s, RECOMPUTED RATHER THAN RESCALED. A blink is an absolute
+  duration - about 105ms to close and 150ms to open - so shortening the loop
+  from 5.2s to 3s does NOT mean keeping the same percentages. It means working
+  them out again:
+
+      105 / 3000 = 3.5%     so 88.5% -> 92%   is the close
+      150 / 3000 = 5.0%     so 92.6% -> 97.6% is the open
+
+  Keeping the old percentages would have made the blink itself 40% faster and
+  it would have read as a twitch. The closing is still faster than the opening,
+  and the right eye still lags by 40ms, because that is what an eyelid does.
+
+  THE ONE THING WORTH KNOWING ABOUT DOTS, and it is the difference between two
+  of the versions below: a dasharray puts a FIXED NUMBER of dots on a circle,
+  so three rings with the same count have three different spacings - the outer
+  one looks sparse. Making the count proportional to the radius gives constant
+  SPACING instead, and the three rings read as one field of particles rather
+  than as three separate orbits. Both are here; they are genuinely different
+  objects.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:26px 26px 4px;max-width:1340px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:92ch;line-height:1.82}
+  .sub b{color:var(--ink)}
+  h2{max-width:1340px;margin:42px auto 0;padding:0 26px;font-size:16px;font-weight:800}
+  h2 i{font-style:normal;font-weight:600;font-size:12.5px;line-height:1.72;color:var(--muted);
+    display:block;margin-top:5px;max-width:88ch}
+  .grid{display:flex;flex-wrap:wrap;gap:16px;max-width:1340px;margin:16px auto 0;padding:0 26px}
+  .cell{width:252px;display:flex;flex-direction:column;gap:7px;align-items:center}
+  .pad{width:252px;height:236px;border-radius:22px;background:var(--ground);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:-6px -6px 14px var(--nu-lit),8px 10px 20px var(--nu-shade-soft)}
+  .pad.dark{background:#2b2520;box-shadow:none}
+  .mk{width:196px;height:196px}
+  .lbl{font-size:12.5px;font-weight:800;color:var(--ink)}
+  .cap{font-size:11.5px;line-height:1.7;color:var(--muted);text-align:center;min-height:52px}
+  .cap b{color:var(--ink)}
+  .sm{display:block;width:100%;height:100%;overflow:visible}
+  .sm-body{transform-origin:80px 80px;transform-box:view-box;
+    animation:smBreathe 5.6s ease-in-out infinite}
+  @keyframes smBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.022)}}
+
+  /* ── THE BLINK, ON A 3s LOOP ──
+     105ms to close and 150ms to open, worked out again for this duration
+     rather than carried over as percentages from the 5.2s one. */
+  .sm-eye{transform-box:fill-box;transform-origin:50% 50%;
+    animation:blink3 3s infinite}
+  .sm-eye.r{animation-delay:.04s}
+  @keyframes blink3{
+    0%,88.5%{transform:scaleY(1)}
+    92%{transform:scaleY(.06)}
+    92.6%{transform:scaleY(.06)}
+    97.6%{transform:scaleY(1)}
+    100%{transform:scaleY(1)}}
+  .twin .sm-eye{animation-name:blink3d}
+  @keyframes blink3d{
+    0%,58%{transform:scaleY(1)}
+    61.5%{transform:scaleY(.06)}
+    66.5%{transform:scaleY(1)}
+    72%{transform:scaleY(1)}
+    75.5%{transform:scaleY(.06)}
+    80.5%{transform:scaleY(1)}
+    100%{transform:scaleY(1)}}
+  /* a blink the whole body feels - the sun gives a little as the eyes shut */
+  .squash .sm-body{animation:smBreathe 5.6s ease-in-out infinite, bodyDip 3s infinite}
+  @keyframes bodyDip{
+    0%,88.5%{transform:scale(1)}
+    92%{transform:scale(.985)}
+    97.6%{transform:scale(1)}
+    100%{transform:scale(1)}}
+
+  .sm-r{transform-origin:80px 80px;transform-box:view-box}
+  .sm-r1{animation:spinA 26s linear infinite}
+  .sm-r2{animation:spinB 34s linear infinite}
+  .sm-r3{animation:spinA 30s linear infinite}
+  .sm-r4{animation:spinB 40s linear infinite}
+  .sm-r5{animation:spinA 46s linear infinite}
+  .think .sm-r1{animation-duration:2.6s}
+  .think .sm-r2{animation-duration:3.4s}
+  .think .sm-r3{animation-duration:3s}
+  .think .sm-r4{animation-duration:4.2s}
+  .think .sm-r5{animation-duration:5s}
+  @keyframes spinA{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes spinB{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+  /* the twinkle: two dot rings at one radius, out of phase */
+  .tw-a{animation:twA 2.4s ease-in-out infinite}
+  .tw-b{animation:twB 2.4s ease-in-out infinite}
+  @keyframes twA{0%,100%{opacity:1}50%{opacity:.25}}
+  @keyframes twB{0%,100%{opacity:.25}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){
+    .sm-body,.sm-r,.sm-eye,.tw-a,.tw-b{animation:none}}
+  .sizes{background:var(--ground);border-radius:20px;padding:15px 18px;display:flex;
+    align-items:flex-end;gap:22px;box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 18px var(--nu-shade-soft)}
+  .sz{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .sz span{font-size:10px;font-weight:800;color:#8d857b}
+</style>
+
+<header>
+  <h1>השמש — נקודות, ומצמוץ כל 3 שניות</h1>
+  <div class="sub">
+    <b>המצמוץ חושב מחדש ל‑3 שניות ולא נמתח.</b> מצמוץ הוא משך מוחלט — כ‑105ms
+    להיסגר וכ‑150 להיפתח — אז קיצור הלולאה מ‑5.2 ל‑3 שניות לא אומר לשמור את אותם
+    אחוזים אלא <b>לחשב אותם שוב</b>: ‎105/3000 = 3.5%‎ ו‑‎150/3000 = 5%‎. אילו
+    השארתי את הישנים, המצמוץ עצמו היה מהיר ב‑40% ונקרא כעווית.<br>
+    <b>ודבר אחד ששווה לדעת על נקודות:</b> <code>dasharray</code> שם <b>מספר קבוע</b>
+    של נקודות על מעגל — ולכן שלוש טבעות באותו מספר הן שלושה מרווחים שונים,
+    והחיצונית נראית דלילה. מספר <b>פרופורציוני לרדיוס</b> נותן מרווח קבוע,
+    ושלוש הטבעות נקראות כ<b>שדה חלקיקים אחד</b>. שתיהן כאן, והן אובייקטים שונים.<br>
+    <b>מעבר עם העכבר</b> מראה אותו חושב.
+  </div>
+</header>
+
+<h2>1 · שמונה גרסאות של הנקודות
+  <i>כולן עם מצמוץ של 3 שניות. משתנה רק מה הנקודות עושות.</i></h2>
+<div class="grid" id="g"></div>
+
+<h2>2 · שלושה מצמוצים, כולם על 3 שניות
+  <i>אותן נקודות בדיוק. משתנה רק המצמוץ.</i></h2>
+<div class="grid" id="gb"></div>
+
+<h2>3 · ובגדלים
+  <i>נקודות שורדות בקטן טוב מקווים דקים — עד שהן קטנות מפיקסל.</i></h2>
+<div class="grid" id="gs"></div>
+
+<script>
+var N = 0, R = 34.2, EYE = '#32200f';
+var COL = ['#f04a2e', '#f9913c', '#fcd238', '#ffd98a', '#f7b23c'];
+
+/* n dots of width w on radius r: the dash is the dot, the gap is the space */
+function dots(r, n, duty){
+  var c = 2*Math.PI*r, on = c/n*duty;
+  return on.toFixed(2) + ' ' + (c/n - on).toFixed(2);
+}
+
+/* ── EIGHT WAYS TO MAKE A RING OUT OF DOTS ── */
+function ringSet(style){
+  var RR = [41, 47.5, 54], g = '', i;
+  var ring = function(i, r, n, w, duty, extra, col){
+    return '<circle class="sm-r sm-r'+(i+1)+(extra||'')+'" cx="80" cy="80" r="'+r+'"' +
+      ' stroke="'+(col||COL[i])+'" stroke-width="'+w+'" stroke-dasharray="'+dots(r,n,duty)+'"/>';
+  };
+  if (style === 'base')
+    for (i=2;i>=0;i--) g += ring(i, RR[i], 26, 2.6, .06);
+  else if (style === 'even')
+    /* count proportional to radius: constant spacing, one field */
+    for (i=2;i>=0;i--) g += ring(i, RR[i], Math.round(RR[i]*0.63), 2.6, .06);
+  else if (style === 'sparse')
+    for (i=2;i>=0;i--) g += ring(i, RR[i], 14, 3.8, .07);
+  else if (style === 'dense')
+    for (i=2;i>=0;i--) g += ring(i, RR[i], 42, 1.7, .055);
+  else if (style === 'graded')
+    for (i=2;i>=0;i--) g += ring(i, RR[i], [20,26,32][i], [3.6,2.6,1.8][i], .06);
+  else if (style === 'twinkle'){
+    /* two dot rings per radius, out of phase, so single dots come and go */
+    for (i=2;i>=0;i--){
+      g += ring(i, RR[i], 22, 2.7, .06, ' tw-a');
+      g += '<circle class="sm-r sm-r'+(i+1)+' tw-b" cx="80" cy="80" r="'+RR[i]+'"' +
+           ' stroke="'+COL[i]+'" stroke-width="2.7" stroke-dasharray="'+dots(RR[i],22,.06)+'"' +
+           ' stroke-dashoffset="'+(2*Math.PI*RR[i]/44).toFixed(2)+'"/>';
+    }
+  }
+  else if (style === 'mixed'){
+    /* the inner one stays a line, so the dots read as something it threw off */
+    g += ring(2, RR[2], 30, 2.4, .06);
+    g += ring(1, RR[1], 24, 2.6, .06);
+    g += '<circle class="sm-r sm-r1" cx="80" cy="80" r="'+RR[0]+'" stroke="'+COL[0]+'"' +
+         ' stroke-width="1.5" stroke-dasharray="'+(2*Math.PI*RR[0]*0.96).toFixed(2)+' '+
+         (2*Math.PI*RR[0]*0.04).toFixed(2)+'"/>';
+  }
+  else if (style === 'corona'){
+    var FIVE = [39.5, 44.5, 49.5, 55, 61];
+    for (i=4;i>=0;i--)
+      g += ring(i, FIVE[i], Math.round(FIVE[i]*0.6), [3.2,2.8,2.4,2,1.6][i], .06, '', COL[i]);
+  }
+  return '<g fill="none" stroke-linecap="round">' + g + '</g>';
+}
+
+function sunSVG(style){
+  var k = 'd' + (++N);
+  var h = '<svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs>' +
+    '<linearGradient id="'+k+'b" gradientUnits="userSpaceOnUse" x1="80" y1="46" x2="80" y2="114">' +
+    '<stop offset="0" stop-color="#fcd956"/><stop offset=".22" stop-color="#fbc744"/>' +
+    '<stop offset=".42" stop-color="#f8ae34"/><stop offset=".62" stop-color="#f59d2c"/>' +
+    '<stop offset=".82" stop-color="#ed8527"/><stop offset="1" stop-color="#e5530e"/></linearGradient>' +
+    '<radialGradient id="'+k+'lim" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="'+R+'">' +
+    '<stop offset=".58" stop-color="#8a3000" stop-opacity="0"/>' +
+    '<stop offset="1" stop-color="#8a3000" stop-opacity=".32"/></radialGradient>' +
+    '<radialGradient id="'+k+'bo" gradientUnits="userSpaceOnUse" cx="90" cy="104" r="22">' +
+    '<stop offset="0" stop-color="#ffd089" stop-opacity=".5"/>' +
+    '<stop offset="1" stop-color="#ffd089" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="'+k+'l" gradientUnits="userSpaceOnUse" cx="69" cy="66" r="26">' +
+    '<stop offset="0" stop-color="#fff6d8" stop-opacity=".88"/>' +
+    '<stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="'+k+'g" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="76">' +
+    '<stop offset=".42" stop-color="#ffb347" stop-opacity=".4"/>' +
+    '<stop offset=".72" stop-color="#ffc766" stop-opacity=".15"/>' +
+    '<stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>';
+  h += '<circle cx="80" cy="80" r="76" fill="url(#'+k+'g)"/>';
+  h += '<ellipse cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>';
+  h += ringSet(style);
+  h += '<g class="sm-body">' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'b)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'lim)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'bo)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'l)"/>' +
+    '<g class="sm-eye"><ellipse cx="68.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>' +
+    '<circle cx="66.6" cy="75.4" r="1.75" fill="#fff"/></g>' +
+    '<g class="sm-eye r"><ellipse cx="91.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>' +
+    '<circle cx="89.6" cy="75.4" r="1.75" fill="#fff"/></g></g>';
+  return h + '</svg>';
+}
+
+var V = [
+  ['base',    'א · בסיס · 26 לכל טבעת', 'מספר שווה בכל מסלול, ולכן <b>החיצונית דלילה יותר</b>. זה מה שראית.'],
+  ['even',    'ב · מרווח קבוע', 'המספר פרופורציוני לרדיוס. שלוש הטבעות נקראות כ<b>שדה אחד</b> ולא כשלושה מסלולים.'],
+  ['sparse',  'ג · דליל וגדול', 'ארבע‑עשרה נקודות גדולות. <b>שורד הכי טוב בקטן</b>, והכי פחות עדין.'],
+  ['dense',   'ד · צפוף וקטן', 'ארבעים ושתיים נקודות זעירות. קרוב לאבק, ו<b>הסיבוב כמעט לא נקרא</b>.'],
+  ['graded',  'ה · מדורג', 'פנימית גדולה, חיצונית קטנה — <b>עומק בלי להוסיף דבר</b>.'],
+  ['twinkle', 'ו · מנצנץ', 'שתי שכבות בכל רדיוס, בפאזה הפוכה, כך ש<b>נקודות בודדות נדלקות וכבות</b>.'],
+  ['mixed',   'ז · מעורב', 'הפנימית נשארת קו. הנקודות נקראות כמשהו ש<b>הוא השיל</b>.'],
+  ['corona',  'ח · חמישה מסלולים', 'במקום שלוש — הילה שלמה של חלקיקים. הכי ״שמש״, והכי רועש.']
+];
+
+function cell(into, style, lbl, cap, dark, cls){
+  var d = document.createElement('div'); d.className = 'cell';
+  d.innerHTML = '<div class="lbl">' + lbl + '</div>' +
+    '<div class="pad' + (dark?' dark':'') + '"><div class="mk ' + (cls||'') + '">' +
+    sunSVG(style) + '</div></div>' + (cap ? '<div class="cap">' + cap + '</div>' : '');
+  var mk = d.querySelector('.mk'), pad = d.querySelector('.pad');
+  pad.addEventListener('mouseenter', function(){ mk.classList.add('think'); });
+  pad.addEventListener('mouseleave', function(){ mk.classList.remove('think'); });
+  document.getElementById(into).appendChild(d);
+}
+
+V.forEach(function(v){ cell('g', v[0], v[1], v[2]); });
+
+cell('gb', 'even', 'יחיד · כל 3 שניות',
+  '105ms להיסגר, 150 להיפתח, והימנית מאחרת ב‑40. <b>הקצב הרגיל.</b>');
+cell('gb', 'even', 'כפול · שניים ב‑3 שניות',
+  'שני מצמוצים צמודים בכל מחזור. <b>חי יותר</b>, ואולי עסוק מדי לשלוש שניות.', false, 'twin');
+cell('gb', 'even', 'עם נפילה של הגוף',
+  'הגוף <b>נותן קצת</b> ברגע שהעיניים נסגרות — 1.5% בלבד, וזה מה שהופך מצמוץ לנשימה.', false, 'squash');
+
+(function(){
+  var wrap = document.createElement('div'); wrap.className='cell'; wrap.style.width='100%';
+  var html = '';
+  ['even','sparse','graded','corona'].forEach(function(s){
+    var r = V.filter(function(x){return x[0]===s;})[0];
+    html += '<div style="display:flex;flex-direction:column;gap:7px;align-items:center">' +
+      '<div class="sizes">' +
+      [84,58,40,22].map(function(px,i){
+        return '<div class="sz"><div style="width:'+px+'px;height:'+px+'px" class="'+(i===3?'think':'')+'">' +
+          sunSVG(s) + '</div><span>'+px+'</span></div>';
+      }).join('') + '</div><div class="lbl">' + r[1] + '</div></div>';
+  });
+  wrap.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center">' + html + '</div>';
+  document.getElementById('gs').appendChild(wrap);
+})();
+</script>
+</html>
