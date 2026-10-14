@@ -23,8 +23,8 @@ function makeSvg(){
 }
 function makeStage(){
   const st = el('div'); st.clientWidth = 1200;
-  st._q = {'.spill': el('div'), '.plant': el('div'), '.drops': el('div'),
-           '.floor': el('div')};
+  st._q = {'.spill': el('div'), '.cast': el('div'), '.plant': el('div'),
+           '.drops': el('div'), '.floor': el('div')};
   return st;
 }
 function makeActorEl(){
@@ -144,6 +144,21 @@ const leading = stopC !== null ? stopC - P.R*84/160 : null;   // his forward edg
         `${leading === null ? '?' : leading.toFixed(0)} - it appears out of nothing`);
 /tl:\s*-18/.test(water) ? ok('he tips -18\u00b0: toward the plant, which is ahead of him')
                         : bad('he tips away from the plant');
+
+// ── 4b. the door's light actually leaves the doorway ─────────────────────
+// A glow inside the opening cannot spill out of it: the opening is clipped.
+const door = P.SCENES[2].build.toString();
+/overflow:hidden/.test(door) && /class="cast"/.test(door)
+  ? ok('the door has a second, UNCLIPPED glow on the floor in front of it')
+  : bad('the only glow is inside an overflow:hidden opening, so no light can reach the floor');
+{
+  const clipped = door.indexOf('overflow:hidden');
+  const castAt  = door.indexOf('class="cast"');
+  const closes  = door.indexOf('</div></div></div>');
+  (castAt > closes && closes > clipped)
+    ? ok('and it sits outside the clipped opening, not inside it')
+    : bad('the floor glow is nested inside the clipped opening');
+}
 
 // ── 5. the socket is behind him, so he leaves it going forward ───────────
 console.log('\n5. he comes out of the socket going forward');

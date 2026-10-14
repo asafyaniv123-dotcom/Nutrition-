@@ -282,6 +282,10 @@ var SCENES = [
   { t:'נכנס בדלת',
     n:'מתקרב, מציץ פנימה, ונעלם — <b>והאור שלו יוצא מהפתח רגע אחריו</b>, כי הוא עדיין שם.',
     build:function(){
+      /* the light has to be in TWO places: inside the opening, which is clipped,
+         and on the floor in front of it, which is not. One element could only
+         ever be one of them - a glow inside an overflow:hidden box cannot spill
+         out of the door, which is the whole thing the scene is about. */
       return '<div class="prop" style="left:60px;width:96px;height:132px">' +
         '<div style="position:absolute;inset:0;border-radius:48px 48px 6px 6px;' +
         'background:var(--ground);box-shadow:-4px -4px 10px var(--nu-lit),' +
@@ -289,22 +293,29 @@ var SCENES = [
         '<div style="position:absolute;left:14px;right:14px;top:16px;bottom:0;' +
         'border-radius:34px 34px 4px 4px;background:#2b2520;overflow:hidden">' +
         '<div class="spill" style="position:absolute;inset:0;opacity:0;' +
-        'background:radial-gradient(circle at 50% 72%,rgba(255,196,90,.9),transparent 72%)">' +
-        '</div></div></div>';
+        'background:radial-gradient(circle at 50% 70%,rgba(255,214,130,1),' +
+        'rgba(255,176,60,.55) 55%,transparent 78%)"></div></div></div>' +
+        '<div class="cast" style="position:absolute;left:-26px;bottom:14px;width:180px;' +
+        'height:124px;opacity:0;pointer-events:none;background:radial-gradient(' +
+        'ellipse 70% 58% at 54% 72%,rgba(255,196,90,.5),rgba(255,196,90,.16) 48%,' +
+        'transparent 76%)"></div>';
     },
     play:function(a, st){
-      var doorX = toX(st, 108), spill = st.querySelector('.spill');
-      spill.style.transition = 'none'; spill.style.opacity = 0;
+      var doorX = toX(st, 108);
+      var spill = st.querySelector('.spill'), cast = st.querySelector('.cast');
+      [spill, cast].forEach(function(e){ e.style.transition = 'none'; e.style.opacity = 0; });
       seq(a, [{d:1500, to:{x:doorX - 74, tl:-5}},
               {d:400, to:{tl:0}},
               {d:500, to:{yaw:34}},              /* a look inside before going in */
               {d:600, to:{yaw:0}},
               {d:900, to:{x:doorX, sc:.82, op:.08}, fire:function(){
-                 spill.style.transition = 'opacity .9s ease'; spill.style.opacity = 1; }},
-              {d:1100, fire:function(){
+                 spill.style.transition = 'opacity .9s ease'; spill.style.opacity = 1;
+                 cast.style.transition  = 'opacity 1.1s ease'; cast.style.opacity = 1; }},
+              {d:1200, fire:function(){
                  setTimeout(function(){
-                   spill.style.transition = 'opacity 1.3s ease';
-                   spill.style.opacity = .4; }, 400); }}]);
+                   spill.style.transition = 'opacity 1.4s ease'; spill.style.opacity = .72;
+                   cast.style.transition  = 'opacity 1.4s ease'; cast.style.opacity = .62;
+                 }, 450); }}]);
     }},
 
   { t:'משקה צמח',
