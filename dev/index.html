@@ -706,7 +706,24 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .fw-pr{font-size:11px;font-weight:800;color:var(--amber-700);flex:0 0 auto;
   border-radius:7px;padding:3px 8px;background:var(--nu-ground);
   box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
-.fw-restset{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.fw-restset{display:flex;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap}
+/* the rest wheel: the effort wheel's control, narrow enough to stand in a
+   row beside two buttons - 92 wide against full width, 96 tall against 184 */
+.rw{--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+  position:relative;width:92px;height:96px;border-radius:13px;overflow:hidden;flex:0 0 auto;
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+.rw-slot{position:absolute;left:6px;right:6px;top:33px;height:30px;border-radius:9px;
+  pointer-events:none;
+  box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+.rw-sc{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;position:relative;z-index:1;
+  scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
+.rw-sc::-webkit-scrollbar{display:none}
+.rw-pad{height:33px}
+.rw-n{height:30px;scroll-snap-align:center;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;color:var(--ink);
+  font-size:12px;font-weight:800;transform-origin:50% 50%;backface-visibility:hidden;
+  transition:opacity .18s ease,transform .18s ease,font-size .18s ease}
+.rw-n.on{font-size:15px}
 .fw-restset>span{font-size:10px;font-weight:800;color:var(--muted)}
 .fw-rb{border:none;border-radius:9px;padding:5px 10px;font-size:10.5px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--muted)}
 .fw-rb.on{background:linear-gradient(135deg,var(--terra-200),var(--terra-500));color:var(--white)}
@@ -24707,6 +24724,61 @@ function wtWrite(sec,run,at){
   }
 }
 var REST_KEY='fit_rest',_restEnd=0,_restIv=null;
+/* ── THE REST, AS A NARROW WHEEL ──
+   The same control as the effort wheel - scroll-snap, the platform's inertia,
+   a lit slot in the middle - at 92px wide instead of full width, and short
+   enough to sit in a row beside two buttons.
+   NINE STOPS IN LESS ROOM THAN FIVE CHIPS TOOK, which is the whole reason to
+   make it a wheel: 45 and 75 and 150 were simply not offered before. */
+var REST_STOPS=[0,30,45,60,75,90,120,150,180],RW_ROW=30;
+function restRowHTML(){
+  var cur=restLen(),h,i,n;
+  h='<div class="fw-restset"><span>'+_t('מנוחה|טיימר')+'</span>';
+  h+='<div class="rw"><div class="rw-slot"></div>'+
+     '<div class="rw-sc" onscroll="restWheelPaint(this)"><div class="rw-pad"></div>';
+  for(i=0;i<REST_STOPS.length;i++){
+    n=REST_STOPS[i];
+    h+='<div class="rw-n'+(n===cur?' on':'')+'" data-v="'+n+'">'+
+       (n?_t('{n}ש',{n:n}):''+_t('כבוי')+'')+'</div>';
+  }
+  h+='<div class="rw-pad"></div></div></div>';
+  h+='<button class="fw-rb go" onclick="restGo()">'+_t('התחל מנוחה')+'</button>';
+  h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
+  return h+'</div>';
+}
+/* NO RE-RENDER. restSet() redraws the workout screen, which would tear the
+   scroller out from under the finger mid-scroll - the same reason the effort
+   wheel keeps its value out of the render path. This writes the value where
+   restLen() reads it and repaints nothing but its own rows. */
+function restWheelPaint(sc){
+  var rows=sc.getElementsByClassName('rw-n'),mid=sc.scrollTop+sc.clientHeight/2,
+      best=null,bestD=1e9,i,el,d,a;
+  for(i=0;i<rows.length;i++){
+    el=rows[i];
+    d=(el.offsetTop+RW_ROW/2-mid)/RW_ROW;a=Math.abs(d);
+    if(a<bestD){bestD=a;best=el;}
+    el.style.transform='perspective(420px) rotateX('+
+      (-Math.max(-62,Math.min(62,d*22))).toFixed(2)+'deg) scale('+
+      Math.max(0.78,1-a*0.08).toFixed(3)+')';
+    el.style.opacity=Math.max(0.22,1-a*0.3).toFixed(3);
+    el.className='rw-n';
+  }
+  if(!best)return;
+  best.className='rw-n on';
+  try{localStorage.setItem(REST_KEY,String(+best.getAttribute('data-v')));}catch(e){}
+}
+/* Opens on the value already stored, and only once the node is in the
+   document - offsetTop is nothing before that. */
+function restWheelSync(){
+  var all=document.getElementsByClassName('rw'),i,box,sc,rows,j,want=restLen(),hit;
+  for(i=0;i<all.length;i++){
+    box=all[i];sc=box.getElementsByClassName('rw-sc')[0];if(!sc)continue;
+    rows=box.getElementsByClassName('rw-n');hit=null;
+    for(j=0;j<rows.length;j++)if(+rows[j].getAttribute('data-v')===want)hit=rows[j];
+    if(hit)sc.scrollTop=hit.offsetTop+RW_ROW/2-sc.clientHeight/2;
+    restWheelPaint(sc);
+  }
+}
 function restLen(){
   try{var v=parseInt(localStorage.getItem(REST_KEY),10);if(v>=0&&v<=600)return v;}catch(e){}
   return 90;
@@ -25882,6 +25954,11 @@ function renderFitWorkout(){
     }
   })();
   h+='</div>';
+  /* THE REST, WITH THE BUTTONS. It is a decision about this exercise like
+     the three above it, and it used to live below the form, below the whole
+     record and below "משהו קרה?" - the furthest point on the card from the
+     set that was just logged. */
+  h+=restRowHTML();
   h+=fitTgtHTML(ex);
   /* EVERYTHING ABOUT THIS LIFT, IN ONE RECTANGLE - what you did last time
      and what you have done so far today. Both are what the two boxes are
@@ -25995,21 +26072,7 @@ function renderFitWorkout(){
   h+='</div></div>';
   }
 
-  /* THE REST, DIRECTLY UNDER THE FORM. It used to sit below the whole
-     record and below "משהו קרה?" - the furthest thing on the card from
-     the set that was just logged, which is when you reach for it. */
-  // how long the rest is, set where you are already standing
-  h+='<div class="fw-restset"><span>'+_t('מנוחה|טיימר')+'</span>';
-  [0,60,90,120,180].forEach(function(n){
-    h+='<button class="fw-rb'+(restLen()===n?' on':'')+'" onclick="restSet('+n+')">'+(n?_t('{n}ש',{n:n}):''+_t('כבוי')+'')+'</button>';
-  });
-  /* START IT BY HAND. The automatic start is right most of the time and wrong
-     exactly when a set was not detected - and then there was no way in at
-     all. */
-  h+='<button class="fw-rb go" onclick="restGo()">'+_t('התחל מנוחה')+'</button>';
-  h+='<button class="fw-rb go" onclick="wtToggle()">'+_t('סטופר')+'</button>';
-  h+='</div>';
-    /* and now the record, in its own card. Empty on the first set of a new
+  /* and now the record, in its own card. Empty on the first set of a new
      exercise, and then there is nothing to draw and no card to draw it in. */
   if(_log.replace(/<[^>]*>/g,'').trim()||/<(input|button|img)/.test(_log))
     h+='<div class="fw-log">'+_log+'</div>';
@@ -26040,7 +26103,7 @@ h+=addExHTML();
   h+='</div>';
   document.getElementById('content').innerHTML=h;
   hydratePhotos();
-  effortWheelSync();   // offsetTop is nothing until the node is in the document
+  effortWheelSync();restWheelSync();   // offsetTop is nothing until the node is in the document
   plateHint();   // the boxes open prefilled, so the line has something to say already
 }
 
