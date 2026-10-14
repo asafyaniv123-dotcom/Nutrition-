@@ -5070,11 +5070,7 @@ html body.mod-home .cray-core{opacity:.34;animation:crayTravel 3.4s linear infin
 html body.mod-home .cray-wedge{opacity:.8}
 /* a ray that leads nowhere still carries light, but it must not compete with
    one that leads somewhere - so it is softer, not absent */
-/* the empty ray is handled by WHERE IT ENDS, not by how faint it is -
-   dimming alone still left a beam pointing at a hole */
-html body.mod-home .cray-wedge.cray-off{opacity:.55}
-html body.mod-home .cray-core.cray-off{opacity:0}
-html body.mod-home .cfan-done .cray-wedge.cray-off{opacity:.62}
+
 html body.mod-home .cfan-done .cray-wedge{opacity:1}
 html body.mod-home .cfan-done .cray-core{opacity:.55}
 @keyframes crayTravel{0%{stroke-dashoffset:var(--len)}100%{stroke-dashoffset:0}}
@@ -36653,36 +36649,31 @@ function homeRaysHTML(rest,shown,DD,RR){
   DD=DD||40; RR=RR||FAN_RAD;
   var n=rest.length,i,h='<svg class="cray" viewBox="0 0 400 400" aria-hidden="true"><defs>',body='';
   for(i=0;i<n;i++){
+    if(shown&&!shown[rest[i].id])continue;
     var ang=((-FAN_ARC/2)+(FAN_ARC*i)/(n-1||1))*Math.PI/180,
         dx=Math.sin(ang)*RR, dy=-Math.cos(ang)*RR+DD/2,
         L=Math.sqrt(dx*dx+dy*dy), ux=dx/L, uy=dy/L, px=-uy, py=ux,
-        /* A ray that reaches a button stops at the disc's EDGE. A ray with
-           no button NEVER ARRIVES: it runs out at 58% of the way, far short
-           of where a disc would sit, and it is narrower there. That is what
-           stops it reading as a beam aimed at a missing object. */
-        r0=59, off=(shown&&!shown[rest[i].id]),
-        r1=off?(r0+(L-r0)*0.58):(L-(DD/2-1)), w0=4.5, w1=off?15:23,
+        /* AN EMPTY SLOT DRAWS NOTHING. Three shapes were tried for it and
+           all three failed the same way: a ray that stops short is a stub,
+           and seven stubs behind the hub are a smear rather than light. The
+           emptiness they were covering is answered by the buttons being
+           bigger now, not by filling the gaps. */
+        r0=59, r1=L-(DD/2-1), w0=4.5, w1=23,
         ax=200+ux*r0, ay=200+uy*r0, bx=200+ux*r1, by=200+uy*r1,
         c=rest[i].color||'#a49a8e';
-        offc=off?' cray-off':'';
     h+='<linearGradient id="cray'+i+'" gradientUnits="userSpaceOnUse" x1="'+ax.toFixed(1)+
        '" y1="'+ay.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+by.toFixed(1)+'">'+
-       (off
-         ? '<stop offset="0" stop-color="'+c+'" stop-opacity=".30"/>'+
-           '<stop offset=".5" stop-color="'+c+'" stop-opacity=".13"/>'+
-           '<stop offset="1" stop-color="'+c+'" stop-opacity="0"/>'
-         : '<stop offset="0" stop-color="'+c+'" stop-opacity=".34"/>'+
-           '<stop offset=".45" stop-color="'+c+'" stop-opacity=".19"/>'+
-           '<stop offset=".88" stop-color="'+c+'" stop-opacity=".22"/>'+
-           '<stop offset="1" stop-color="'+c+'" stop-opacity="0"/>')+
-       '</linearGradient>';
-    body+='<path class="cray-wedge'+offc+'" d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
+       '<stop offset="0" stop-color="'+c+'" stop-opacity=".34"/>'+
+       '<stop offset=".45" stop-color="'+c+'" stop-opacity=".19"/>'+
+       '<stop offset=".88" stop-color="'+c+'" stop-opacity=".22"/>'+
+       '<stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient>';
+    body+='<path class="cray-wedge" d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
           'L'+(bx+px*w1).toFixed(1)+' '+(by+py*w1).toFixed(1)+
           'L'+(bx-px*w1).toFixed(1)+' '+(by-py*w1).toFixed(1)+
           'L'+(ax-px*w0).toFixed(1)+' '+(ay-py*w0).toFixed(1)+
           'Z" fill="url(#cray'+i+')"/>';
     var seg=Math.sqrt((bx-ax)*(bx-ax)+(by-ay)*(by-ay));
-    body+='<path class="cray-core'+offc+'" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+
+    body+='<path class="cray-core" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+
           (i*0.2).toFixed(2)+'s" d="M'+ax.toFixed(1)+' '+ay.toFixed(1)+'L'+bx.toFixed(1)+' '+
           by.toFixed(1)+'" stroke="'+c+'" stroke-width="3.4" stroke-linecap="round" fill="none" '+
           'stroke-dasharray="'+(seg*0.3).toFixed(1)+' '+seg.toFixed(1)+'"/>';
