@@ -3717,23 +3717,24 @@ body.mod-hobbies .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
    THE DOT CARRIES BOTH ANSWERS. Its hue is which hobby this is; its light is
    whether the hobby happened today. One mark, two questions, and no filled
    disc pretending to be an icon. */
-.hbk{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;
-  -webkit-overflow-scrolling:touch;padding:6px 2px}
-.hbk::-webkit-scrollbar{display:none}
-.hbk-r{flex:0 0 auto;position:relative;display:flex;align-items:center;gap:8px;
-  border:none;cursor:pointer;font-family:inherit;background:none;border-radius:16px;
-  padding:10px 12px;white-space:nowrap}
-.hbk-n{font-size:12.5px;font-weight:700;color:var(--nu-muted)}
-.hbk-o{display:block;width:9px;height:9px;flex:0 0 9px;border-radius:50%;
-  background:var(--hue,#ded9d2);opacity:.42;
-  box-shadow:inset 1px 1px 2px rgba(120,110,98,.35)}
+/* THE FARM. It wraps instead of scrolling sideways, because a farm is
+   something you look at whole and a scroller hides half of it. */
+.hbk{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end;padding:6px 0 2px}
+.hbk-r{flex:0 0 auto;position:relative;display:flex;flex-direction:column;align-items:center;
+  gap:2px;border:none;cursor:pointer;font-family:inherit;background:none;border-radius:16px;
+  padding:7px 6px 8px;white-space:nowrap;width:76px}
+.hbk-n{font-size:11px;font-weight:700;color:var(--nu-muted);max-width:68px;overflow:hidden;
+  text-overflow:ellipsis}
+.hbk-o{display:block;width:54px;height:62px;line-height:0;border-radius:12px}
+.hbl{width:100%;height:100%;overflow:visible}
 /* the one you are looking at is the only tile in the row */
-.hbk-r.on{background:var(--nu-ground);padding:12px 16px;
+/* the one you are looking at is the only tile standing out of the surface */
+.hbk-r.on{background:var(--nu-ground);
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 .hbk-r.on .hbk-n{color:var(--nu-ink);font-weight:800}
-.hbk-r.on .hbk-o{opacity:.72}
-.hbk-r.today .hbk-o{opacity:1;box-shadow:0 0 9px 2px var(--hue),0 0 18px 5px var(--hue)}
-.hbk-o.pick{opacity:1;box-shadow:0 0 0 2px var(--nu-ground),0 0 0 3.5px rgba(176,168,156,.6)}
+/* the glow belongs to the LAMP now and is drawn inside its own svg, so the
+   row no longer fakes it with a box-shadow on a dot */
+.hbk-o.pick{box-shadow:0 0 0 2px var(--nu-ground),0 0 0 3.5px rgba(176,168,156,.6)}
 /* the palette: ten discs raised out of the page, the current one pressed in */
 /* the three kinds, beside the colour swatches and in the same shell */
 .hb-kinds{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 2px;align-items:center}
@@ -27194,6 +27195,78 @@ function hbFace(name){
 /* An older record carries an icon index beside the colour. It is ignored
    rather than migrated: nothing reads it, and a migration that rewrites
    every stored face to drop one field would be a write with no reader. */
+/* ── EIGHT LAMPS, DIFFERENT IN SILHOUETTE FIRST ──
+   Each is drawn in a 48x56 box as two layers: BODY, which is the one
+   material and never changes, and LIGHT, which is the hobby's hue and is the
+   only thing the day's level touches. A lamp with its light at zero is still
+   a whole lamp - that is the point of choosing lamps.
+   The shapes are deliberately unlike each other in OUTLINE, because at 54px
+   a glow tells you nothing and an elbow, a cord or a handle tells you which
+   hobby you are looking at. */
+var HB_LAMPS=[
+  /* 0 desk lamp - the elbow is the tell */
+  {b:'M9 50h14M16 50V33M16 33 23 22',s:'M19.5 26.5 31 19l7 11-13 6.5z',
+   g:'M25.5 36.5 31 19l7 11z',c:[29,31]},
+  /* 1 pendant - a cord from the ceiling */
+  {b:'M24 4v12',s:'M12 32 24 16l12 16z',c:[24,38],
+   /* the mouth, and the beam falling out of it */
+   mouth:'M13 31.4h22v2.2H13z',beam:'M14 33 34 33 41 54 7 54z'},
+  /* 2 candle - a flame, and nothing else is a flame */
+  {b:'M17 52h14M19 52V30h10v22',s:'',g:'M24 14c4 4 5 7 5 9a5 5 0 0 1-10 0c0-2 1-5 5-9z',c:[24,23]},
+  /* 3 floor lamp - tall stem, trapezoid shade */
+  {b:'M15 52h18M24 52V30',s:'M14 14h20l4 16H10z',c:[24,36],
+   mouth:'M10.5 29.2h27v2.2h-27z',beam:'M11 31 37 31 43 54 5 54z'},
+  /* 4 lantern - a handle over a box */
+  {b:'M17 10a7 7 0 0 1 14 0M13 18h22v26H13zM15 48h18',s:'',
+   g:'M17 22h14v18H17z',c:[24,31]},
+  /* 5 bulb - the screw base */
+  {b:'M19 44h10M19 48h10M20 52h8',s:'',
+   g:'M24 8a13 13 0 0 1 7 24v8H17v-8a13 13 0 0 1 7-24z',c:[24,24]},
+  /* 6 sconce - a half shell on a plate, throwing light up */
+  {b:'M10 12v32',s:'M13 38h22a11 11 0 0 0-22 0z',g:'M13 38h22a11 11 0 0 0-22 0z',c:[24,34]},
+  /* 7 globe on a stem */
+  {b:'M16 52h16M24 52V40',s:'',g:'M24 10a15 15 0 1 1-.01 0z',c:[24,25]}
+];
+/* WHICH LAMP A HOBBY GETS, and it must never change under them. The face
+   record already carries the colour index; the lamp gets its own field in
+   the same record, assigned once from how many hobbies came before it, and
+   the palette does not touch it - recolouring a hobby that also swapped its
+   lamp would read as a different hobby. */
+function hbLampIdx(name){
+  var all=loadHbFaces(),rec=all[name],n,k;
+  if(rec&&typeof rec.l==='number')return rec.l%HB_LAMPS.length;
+  if(!rec){hbFace(name);all=loadHbFaces();rec=all[name];}
+  n=0;for(k in all)if(Object.prototype.hasOwnProperty.call(all,k)&&typeof all[k].l==='number')n++;
+  rec.l=n%HB_LAMPS.length;
+  saveHbFaces(all);
+  return rec.l;
+}
+/* lv is 0..3 from hbLevel, so an amount lights part of the way and a done is
+   either out or full - the three kinds reach the same lamp. */
+function hbLampHTML(name,lv){
+  var L=HB_LAMPS[hbLampIdx(name)],hue=hbHue(name),
+      on=lv>0,op=lv>=3?0.95:lv===2?0.68:lv===1?0.4:0,
+      h='<svg class="hbl" viewBox="0 0 48 56" aria-hidden="true">';
+  /* the pool of light first, under everything, so the lamp sits in its own glow */
+  if(on)h+='<ellipse cx="'+L.c[0]+'" cy="'+L.c[1]+'" rx="'+(10+lv*4)+'" ry="'+(9+lv*3)+
+           '" fill="'+hue+'" opacity="'+(op*0.3).toFixed(2)+'" style="filter:blur(5px)"/>';
+  /* the shade or housing, in the one material */
+  if(L.s)h+='<path d="'+L.s+'" fill="#efeae3" stroke="#cdc6bc" stroke-width="1.4" '+
+            'stroke-linejoin="round"/>';
+  /* the light itself */
+  if(L.g)h+='<path d="'+L.g+'" fill="'+hue+'" opacity="'+op.toFixed(2)+'"/>';
+  /* A SHADE THROWS LIGHT DOWN, it does not hold it. The beam widens as it
+     falls and is blurred; the mouth is the bright bar it falls out of, and
+     nothing else on a lamp is that shape. Drawn as a bowl inside the cone,
+     this read as a glass of wine. */
+  if(on&&L.beam)h+='<path d="'+L.beam+'" fill="'+hue+'" opacity="'+(op*0.26).toFixed(2)+
+    '" style="filter:blur(3px)"/>';
+  if(L.mouth)h+='<path d="'+L.mouth+'" fill="'+hue+'" opacity="'+Math.max(op,0.14).toFixed(2)+'"/>';
+  /* and the body, drawn last so a stem crosses in front of its own light */
+  h+='<path d="'+L.b+'" fill="none" stroke="#b8b0a5" stroke-width="2.2" '+
+     'stroke-linecap="round" stroke-linejoin="round" opacity="'+(on?0.95:0.6)+'"/>';
+  return h+'</svg>';
+}
 function hbHue(name){return HB_HUES[hbFace(name).c%HB_HUES.length];}
 /* Which hobby's palette is open, or -1. Only reachable in edit mode. */
 var _hbPal=-1;
@@ -27455,10 +27528,15 @@ function hbStripHTML(list,log,today,r0){
     nm=list[i];onToday=lit(nm);
     /* the hue rides on the row as a variable, so the dot, its glow and the
        edit ring all read the same value and none of them is written twice */
+    /* THE LAMP IS THE ROW. It was a 9px dot carrying both answers at once -
+       which hobby, and whether it happened today - and at 9px no shape can
+       say which hobby. The lamp says it in outline and keeps the light for
+       the day. */
     h+='<button class="hbk-r'+(i===_hbSel?' on':'')+(onToday?' today':'')+
        '" style="--hue:'+hbHue(nm)+'" onclick="hbPick('+i+')">'+
        '<span class="hbk-o'+(_habitEdit?' pick':'')+'"'+
-       (_habitEdit?' onclick="event.stopPropagation();hbPalOpen('+i+')"':'')+'></span>'+
+       (_habitEdit?' onclick="event.stopPropagation();hbPalOpen('+i+')"':'')+'>'+
+       hbLampHTML(nm,hbLevel(hbKind(nm),hbGoal(nm),log[habitDayKey(nm,today)]))+'</span>'+
        '<span class="hbk-n">'+esc(nm)+'</span>'+
        (_habitEdit?'<span class="hbk-x" onclick="event.stopPropagation();hbDel('+i+')">&#x2715;</span>':'')+
        '</button>';
