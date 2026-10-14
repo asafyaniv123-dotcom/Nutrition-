@@ -4,19 +4,24 @@
 <title>השמש — פעולות קטנות</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!--
-  LITTLE ACTIONS. Six vignettes: he rolls slowly, he turns on the spot, he goes
-  through a door, he waters a plant, he climbs out of a button, and he looks
-  around and falls asleep.
+  LITTLE ACTIONS. Six vignettes: he rolls slowly forward, he turns on the spot,
+  he goes through a door, he waters a plant, he climbs out of a button, and he
+  looks around and falls asleep.
 
   ONE SEQUENCER RUNS ALL SIX, and every step in every scene is a line of data:
 
-      seq(actor, [ {d:900, to:{x:260}}, {d:600, to:{yaw:360}}, ... ])
+      seq(actor, [ {d:900, to:{x:260}}, {d:1700, to:{yaw:360}}, ... ])
 
   Each step tweens the named numbers from wherever they are to wherever it says,
-  so a scene is a list and not an animation. That matters more than it sounds:
+  so a scene is a LIST and not an animation. That matters more than it sounds:
   the moment a vignette needs its own hand-made motion it stops being the same
   character, and three scenes later nobody can say what he is or is not able to
-  do. Here the answer is exactly: x, y, yaw, scale, tilt, and an expression.
+  do. Here the answer is exactly: x, y, yaw, scale, tilt, opacity, expression.
+
+  FORWARD IS LEFTWARDS, because this is an RTL app. x counts distance travelled
+  forward, the actor is anchored to the right edge and painted at translate(-x),
+  and the roll turns the matching way. Getting this wrong is not a detail - a
+  character who walks against the reading direction looks like he is leaving.
 
   THE SPIN IS THE ONE WORTH LOOKING AT CLOSELY. It is not a CSS rotation - that
   would turn the eyes upside down. yaw runs 0 to 360 through the same spherical
@@ -46,18 +51,20 @@
   h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
   .sub{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:92ch;line-height:1.82}
   .sub b{color:var(--ink)}
+  code{font-size:12.5px;background:rgba(176,168,156,.22);padding:1px 5px;border-radius:5px;
+    direction:ltr;display:inline-block}
   .wrap{max-width:1340px;margin:0 auto;padding:0 26px}
   .scene{margin-top:28px}
   .hd{display:flex;align-items:baseline;gap:12px;margin:0 4px 7px}
-  .hd b{font-size:13.5px;color:var(--ink)}
+  .hd b{font-size:13.5px;color:var(--ink);flex:0 0 auto}
   .hd span{font-size:11.5px;color:var(--muted);line-height:1.6;flex:1}
   .hd button{border:none;border-radius:11px;padding:6px 14px;font:800 11.5px Assistant,sans-serif;
     cursor:pointer;background:var(--ground);color:var(--ink);flex:0 0 auto;
     box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
   .hd button:active{box-shadow:inset 1px 2px 4px var(--nu-shade-soft),inset -1px -1px 3px var(--nu-lit)}
   .stage{position:relative;height:190px;border-radius:22px;background:var(--ground);overflow:hidden;
-    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
-  .actor{position:absolute;bottom:34px;left:0;width:84px;height:84px;will-change:transform}
+    cursor:pointer;box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  .actor{position:absolute;bottom:34px;right:0;width:84px;height:84px;will-change:transform}
   .prop{position:absolute;bottom:34px}
   .floor{position:absolute;left:0;right:0;bottom:33px;height:1.5px;
     background:linear-gradient(90deg,transparent,rgba(176,168,156,.5),transparent)}
@@ -72,8 +79,8 @@
   /* the button he climbs out of - the app's own disc, pressed into the material */
   .niche{width:96px;height:96px;border-radius:50%;background:var(--ground);
     box-shadow:inset 5px 6px 12px var(--nu-shade),inset -4px -4px 10px var(--nu-lit)}
-  .note{max-width:1340px;margin:22px auto 0;padding:0 26px;font-size:12.5px;
-    line-height:1.8;color:var(--muted)}
+  .note{max-width:1340px;margin:24px auto 40px;padding:0 26px;font-size:12.5px;
+    line-height:1.84;color:var(--muted)}
   .note b{color:var(--ink)}
 </style>
 
@@ -84,14 +91,16 @@
     נתונים — <code>{d:900, to:{x:260}}</code> — שמזיזה את המספרים מאיפה שהם לאן
     שכתוב. וזה חשוב יותר ממה שזה נשמע: <b>ברגע שסצנה אחת צריכה תנועה מצוירת
     משלה היא מפסיקה להיות אותה דמות</b>, ושלוש סצנות אחר כך אף אחד לא יודע מה
-    הוא יכול ומה לא. כאן התשובה מדויקת: <code>x, y, yaw, scale, tilt</code>
-    והבעה.<br>
+    הוא יכול ומה לא. כאן התשובה מדויקת: <code>x, y, yaw, scale, tilt</code>,
+    שקיפות, והבעה.<br>
+    <b>וקדימה זה שמאלה</b>, כי האפליקציה מימין לשמאל. <code>x</code> מודד מרחק
+    קדימה, הדמות עוגנת לקצה הימני ונצבעת ב‑<code>translate(-x)</code>, והגלגול
+    מסתובב לאותו כיוון. זה לא פרט — <b>דמות שהולכת נגד כיוון הקריאה נראית כמי
+    שעוזבת</b>.<br>
     <b>והסיבוב סביב עצמו הוא זה ששווה להסתכל עליו מקרוב:</b> זאת לא סיבוב CSS —
     זה היה הופך את העיניים. ה‑<code>yaw</code> רץ מ‑0 ל‑360 דרך <b>אותה הקרנה
     ספרית</b> של גיליון הדמות, אז הפנים שלו נוסעות סביב הגוף, נעלמות מאחור,
-    וחוזרות. <b>הוא באמת מסתובב — הוא לא תמונה שמסובבים.</b><br>
-    והגלגול עדיין מרחק חלקי רדיוס, אז בכל סצנה הטבעות מסתובבות בדיוק בכמות
-    שהרצפה מתחתיו הייתה דורשת. <b>שום סצנה לא קובעת את הגלגול ביד.</b>
+    וחוזרות. <b>הוא באמת מסתובב — הוא לא תמונה שמסובבים.</b>
   </div>
 </header>
 
@@ -101,37 +110,47 @@
   <b>הרקוויזיטים עניים בכוונה.</b> דלת היא שני מלבנים ואור, צמח הוא שלושה קווים,
   והכפתור הוא הדיסק הנוימורפי של האפליקציה עצמה. הם שם כדי לתת לפעולות סיבה
   ולא כדי להיות מצוירים — <b>ברגע שהתפאורה נעשית טובה, הדף מפסיק להיות עליו</b>.
-  והסצנה החמישית היא הרפרנס שלך על המקום שהוא ישן בו, בשפה שלנו: לא חדר שינה
-  בתוך מקלדת אלא <b>שקע בחומר של האפליקציה</b>, והוא עולה ממנו.
+  שתי החלטות בתוכם כן לא שרירותיות: <b>מה שהוא שופך על הצמח הוא אור ולא מים</b>,
+  כי זאת השפה של האפליקציה ולא בדיחה; וסצנה 5 היא <b>הרפרנס שלך על המקום שהוא
+  ישן בו</b>, בחומר שלנו — לא חדר שינה בתוך מקלדת אלא שקע שנלחץ בתוך המשטח של
+  האפליקציה, והוא עולה ממנו.<br>
+  וסצנה 3 שומרת פעימה אחת שכמעט חתכתי: <b>הוא מציץ לתוך הפתח לפני שהוא נכנס,
+  והאור שלו יוצא משם אחרי שהוא נעלם</b>. הוא עדיין שם.
 </div>
 
 <script>
 var N = 0, R = 34.2, EYE = '#32200f';
 var COL = ['#f04a2e','#f9913c','#fcd238'], RR = [41,47.5,54];
 var A = 22, FR = 24, D2R = Math.PI/180;
+var BALL_PX = R * 84 / 160;                 /* the body's radius on screen */
 var REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function dots(r,n,duty){var c=2*Math.PI*r,on=c/n*duty;
   return on.toFixed(2)+' '+(c/n-on).toFixed(2);}
+
+/* each eye sits at a fixed azimuth; a yaw moves it across the sphere and
+   narrows it by the same cosine, so it vanishes at the limb instead of sliding
+   off the edge. Identical to the character sheet - not a second copy of it. */
 function eyeAt(a,yaw){var t=(a+yaw)*D2R,d=Math.cos(t);
   if(d<=0.04)return null; return {x:80+Math.sin(t)*FR,k:d};}
 
-function eyeHTML(e,expr,side){
+function eyeHTML(e,expr){
   if(!e)return '';
-  var x=e.x.toFixed(2), rx=(5.4*e.k).toFixed(2), y=82;
-  var hl='<circle cx="'+(e.x-1.9*e.k).toFixed(2)+'" cy="'+(y-6.6)+'" r="'+
-    (1.75*Math.max(.45,e.k)).toFixed(2)+'" fill="#fff"/>';
+  var y=82, k=e.k;
   if(expr==='happy')
-    return '<path d="M'+(e.x-5.6*e.k)+' '+(y+3.2)+'q'+(5.6*e.k)+' -9 '+(11.2*e.k)+' 0"'+
-      ' fill="none" stroke="'+EYE+'" stroke-width="3.4" stroke-linecap="round"/>';
+    return '<path d="M'+(e.x-5.6*k).toFixed(2)+' '+(y+3.2)+'q'+(5.6*k).toFixed(2)+' -9 '+
+      (11.2*k).toFixed(2)+' 0" fill="none" stroke="'+EYE+
+      '" stroke-width="3.4" stroke-linecap="round"/>';
   if(expr==='sleep')
-    return '<rect x="'+(e.x-5.4*e.k)+'" y="'+(y-1.3)+'" width="'+(10.8*e.k)+'" height="2.6"'+
-      ' rx="1.3" fill="'+EYE+'"/>';
+    return '<rect x="'+(e.x-5.4*k).toFixed(2)+'" y="'+(y-1.3)+'" width="'+(10.8*k).toFixed(2)+
+      '" height="2.6" rx="1.3" fill="'+EYE+'"/>';
   if(expr==='wide')
-    return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+(6.6*e.k).toFixed(2)+'" ry="13.4" fill="'+EYE+'"/>'+
-      '<circle cx="'+(e.x-2.2*e.k).toFixed(2)+'" cy="'+(y-7.4)+'" r="'+
-      (2.3*Math.max(.45,e.k)).toFixed(2)+'" fill="#fff"/>';
-  return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+rx+'" ry="11.4" fill="'+EYE+'"/>'+hl;
+    return '<ellipse cx="'+e.x.toFixed(2)+'" cy="'+y+'" rx="'+(6.6*k).toFixed(2)+
+      '" ry="13.4" fill="'+EYE+'"/><circle cx="'+(e.x-2.2*k).toFixed(2)+'" cy="'+(y-7.4)+
+      '" r="'+(2.3*Math.max(.45,k)).toFixed(2)+'" fill="#fff"/>';
+  return '<ellipse cx="'+e.x.toFixed(2)+'" cy="'+y+'" rx="'+(5.4*k).toFixed(2)+
+    '" ry="11.4" fill="'+EYE+'"/><circle cx="'+(e.x-1.9*k).toFixed(2)+'" cy="'+(y-6.6)+
+    '" r="'+(1.75*Math.max(.45,k)).toFixed(2)+'" fill="#fff"/>';
 }
 
 function sunSVG(){
@@ -152,7 +171,7 @@ function sunSVG(){
    '<stop offset=".72" stop-color="#ffc766" stop-opacity=".15"/>'+
    '<stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>'+
    '<circle cx="80" cy="80" r="76" fill="url(#'+k+'g)"/>'+
-   '<ellipse class="sh" cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>'+
+   '<ellipse cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>'+
    '<g class="roll" fill="none" stroke-linecap="round">'+
    RR.map(function(r,i){return '<circle cx="80" cy="80" r="'+r+'" stroke="'+COL[i]+'"'+
      ' stroke-width="2.6" stroke-dasharray="'+dots(r,26,.06)+'"/>';}).reverse().join('')+
@@ -167,108 +186,127 @@ function sunSVG(){
    state is six numbers and a word; nothing in any scene reaches past them. */
 function Actor(el){
   this.el = el; this.svg = el.querySelector('svg');
-  this.roll = this.svg.querySelector('.roll');
-  this.tilt = this.svg.querySelector('.tilt');
-  this.face = this.svg.querySelector('.face');
-  this.s = {x:0, y:0, yaw:0, sc:1, tl:0, op:1};
-  this.expr = 'calm'; this.dist0 = 0;
-  this.paint();
+  this.rollG = this.svg.querySelector('.roll');
+  this.tiltG = this.svg.querySelector('.tilt');
+  this.faceG = this.svg.querySelector('.face');
+  this.reset();
 }
+Actor.prototype.reset = function(){
+  this.s = {x:0, y:0, yaw:0, sc:1, tl:0, op:1};
+  this.expr = 'calm'; this.paint();
+};
 Actor.prototype.paint = function(){
   var s = this.s;
-  this.el.style.transform = 'translate('+s.x.toFixed(2)+'px,'+(-s.y).toFixed(2)+'px) scale('+s.sc.toFixed(3)+')';
+  /* forward is leftwards: x counts distance travelled, the element is anchored
+     right, so a positive x paints as a negative translate. */
+  this.el.style.transform = 'translate('+(-s.x).toFixed(2)+'px,'+(-s.y).toFixed(2)+
+    'px) scale('+s.sc.toFixed(3)+')';
   this.el.style.opacity = s.op;
-  /* degrees = distance / radius: the rings never get told how far to turn */
-  var deg = s.x / (R * 84 / 160) * (180/Math.PI);
-  this.roll.setAttribute('transform','rotate('+deg.toFixed(2)+' 80 80)');
-  this.tilt.setAttribute('transform','rotate('+s.tl.toFixed(2)+' 80 80)');
+  /* degrees = distance / radius, negated because he is rolling left.
+     The rings are never told how far to turn. */
+  this.deg = -s.x / BALL_PX * (180/Math.PI);
+  this.rollG.setAttribute('transform','rotate('+this.deg.toFixed(2)+' 80 80)');
+  this.tiltG.setAttribute('transform','rotate('+s.tl.toFixed(2)+' 80 80)');
   var L = eyeAt(-A, s.yaw), Rt = eyeAt(A, s.yaw), blink = (this.expr === 'calm');
-  this.face.innerHTML =
-    (blink?'<g class="sm-eye">':'<g>') + eyeHTML(L,this.expr,'l') + '</g>' +
-    (blink?'<g class="sm-eye r">':'<g>') + eyeHTML(Rt,this.expr,'r') + '</g>';
+  this.faceG.innerHTML =
+    (blink?'<g class="sm-eye">':'<g>') + eyeHTML(L, this.expr) + '</g>' +
+    (blink?'<g class="sm-eye r">':'<g>') + eyeHTML(Rt, this.expr) + '</g>';
 };
 
 /* ── THE SEQUENCER ──
    Every step tweens the named numbers from where they are to where it says.
    A scene is therefore a LIST, and a list is something you can read. */
 function seq(actor, steps, done){
-  if (REDUCED){ steps.forEach(function(st){ if(st.to) Object.assign(actor.s, st.to);
-    if(st.expr) actor.expr = st.expr; }); actor.paint(); if(done)done(); return; }
+  if (REDUCED){
+    steps.forEach(function(st){
+      if (st.expr) actor.expr = st.expr;
+      if (st.fire) st.fire();
+      if (st.to) Object.assign(actor.s, st.to);
+    });
+    actor.paint(); if (done) done(); return;
+  }
   var i = 0;
   function run(){
-    if (i >= steps.length){ if(done) done(); return; }
+    if (i >= steps.length){ if (done) done(); return; }
     var st = steps[i++], from = {}, keys = st.to ? Object.keys(st.to) : [];
-    if (st.expr){ actor.expr = st.expr; }
-    if (st.fire){ st.fire(); }
+    if (st.expr) actor.expr = st.expr;
+    if (st.fire) st.fire();
     keys.forEach(function(k){ from[k] = actor.s[k]; });
-    var t0 = performance.now(), d = st.d || 400;
-    (function frame(now){
+    var t0 = null, d = st.d || 400;
+    requestAnimationFrame(function frame(now){
+      if (t0 === null) t0 = now;
       var p = Math.min(1, (now - t0) / d);
       /* ease in and out, which is what a body with mass does */
-      var e = p < .5 ? 4*p*p*p : 1 - Math.pow(-2*p+2, 3)/2;
-      if (st.ease === 'linear') e = p;
+      var e = st.ease === 'linear' ? p
+            : (p < .5 ? 4*p*p*p : 1 - Math.pow(-2*p + 2, 3) / 2);
       keys.forEach(function(k){ actor.s[k] = from[k] + (st.to[k] - from[k]) * e; });
       actor.paint();
       if (p < 1) requestAnimationFrame(frame); else run();
-    })(t0);
+    });
   }
   run();
 }
+
+/* x for a body whose CENTRE should land this many px from the stage's left edge */
+function toX(st, centreFromLeft){ return st.clientWidth - centreFromLeft - 42; }
 
 /* ── THE SCENES ── */
 var SCENES = [
   { t:'נוסע לאט קדימה',
     n:'אותו גלגול, רק איטי. <b>הקצב הוא כל ההבדל</b> בין ״הוא ממהר לשם״ ל״הוא מטייל״.',
-    build:function(st){ return ''; },
+    build:function(){ return ''; },
     play:function(a, st){
-      var W = st.clientWidth - 110;
-      seq(a, [{d:300, to:{tl:-5}}, {d:4200, to:{x:W, tl:-3}, ease:'linear'},
-              {d:500, to:{tl:0}}, {d:700, to:{x:W-14}}]);
+      var far = st.clientWidth - 110;
+      seq(a, [{d:300, to:{tl:-5}},
+              {d:4200, to:{x:far, tl:-3}, ease:'linear'},
+              {d:500, to:{tl:0}},
+              {d:700, to:{x:far-14}}]);
     }},
 
   { t:'סיבוב סביב עצמו',
     n:'ה‑<code>yaw</code> רץ 0→360 דרך ההקרנה הספרית. <b>הפנים נוסעות סביב הגוף ונעלמות מאחור</b> — לא סיבוב של תמונה.',
     build:function(){ return ''; },
     play:function(a, st){
-      var W = (st.clientWidth - 110) / 2;
-      a.s.yaw = 0;
-      seq(a, [{d:900, to:{x:W}}, {d:260, to:{sc:1.04}}, {d:200, to:{sc:1}},
+      seq(a, [{d:900, to:{x:(st.clientWidth - 84) / 2, tl:-4}},
+              {d:300, to:{tl:0}},
+              {d:260, to:{sc:1.04}}, {d:200, to:{sc:1}},
               {d:1700, to:{yaw:360}, ease:'linear'},
               {d:260, expr:'happy', to:{sc:1.06}}, {d:400, to:{sc:1}},
-              {d:900, expr:'calm', to:{}}]);
+              {d:900, expr:'calm'}]);
     }},
 
   { t:'נכנס בדלת',
     n:'מתקרב, מציץ פנימה, ונעלם — <b>והאור שלו יוצא מהפתח רגע אחריו</b>, כי הוא עדיין שם.',
     build:function(){
-      return '<div class="prop" style="right:60px;width:96px;height:132px">' +
+      return '<div class="prop" style="left:60px;width:96px;height:132px">' +
         '<div style="position:absolute;inset:0;border-radius:48px 48px 6px 6px;' +
-        'background:var(--ground);box-shadow:-4px -4px 10px var(--nu-lit),5px 6px 14px var(--nu-shade-soft)"></div>' +
-        '<div class="doorway" style="position:absolute;left:14px;right:14px;top:16px;bottom:0;' +
+        'background:var(--ground);box-shadow:-4px -4px 10px var(--nu-lit),' +
+        '5px 6px 14px var(--nu-shade-soft)"></div>' +
+        '<div style="position:absolute;left:14px;right:14px;top:16px;bottom:0;' +
         'border-radius:34px 34px 4px 4px;background:#2b2520;overflow:hidden">' +
         '<div class="spill" style="position:absolute;inset:0;opacity:0;' +
-        'background:radial-gradient(circle at 50% 70%,rgba(255,196,90,.85),transparent 70%)"></div>' +
-        '</div></div>';
+        'background:radial-gradient(circle at 50% 72%,rgba(255,196,90,.9),transparent 72%)">' +
+        '</div></div></div>';
     },
     play:function(a, st){
-      var door = st.clientWidth - 60 - 96 + 10;
-      var spill = st.querySelector('.spill');
-      spill.style.opacity = 0;
-      a.s.op = 1;
-      seq(a, [{d:1500, to:{x:door-70, tl:-4}},
+      var doorX = toX(st, 108), spill = st.querySelector('.spill');
+      spill.style.transition = 'none'; spill.style.opacity = 0;
+      seq(a, [{d:1500, to:{x:doorX - 74, tl:-5}},
               {d:400, to:{tl:0}},
-              {d:500, to:{yaw:-30}},            /* a look inside before going in */
+              {d:500, to:{yaw:34}},              /* a look inside before going in */
               {d:600, to:{yaw:0}},
-              {d:900, to:{x:door, sc:.82, op:.1}, fire:function(){
-                 spill.style.transition='opacity .9s ease'; spill.style.opacity=1; }},
-              {d:900, to:{}, fire:function(){
-                 spill.style.transition='opacity 1.4s ease'; spill.style.opacity=.35; }}]);
+              {d:900, to:{x:doorX, sc:.82, op:.08}, fire:function(){
+                 spill.style.transition = 'opacity .9s ease'; spill.style.opacity = 1; }},
+              {d:1100, fire:function(){
+                 setTimeout(function(){
+                   spill.style.transition = 'opacity 1.3s ease';
+                   spill.style.opacity = .4; }, 400); }}]);
     }},
 
   { t:'משקה צמח',
     n:'נוטה, ו<b>מה שנושר ממנו הוא אור ולא מים</b> — זאת השפה של האפליקציה, לא בדיחה.',
     build:function(){
-      return '<div class="prop" style="right:110px;width:70px;height:92px">' +
+      return '<div class="prop" style="left:110px;width:70px;height:92px">' +
         '<svg viewBox="0 0 70 92" style="width:100%;height:100%;overflow:visible">' +
         '<path d="M22 92V72h26v20z" fill="#cdbfae"/>' +
         '<g class="plant" style="transform-origin:35px 72px">' +
@@ -279,29 +317,30 @@ var SCENES = [
     },
     play:function(a, st){
       var plant = st.querySelector('.plant');
-      var px = st.clientWidth - 110 - 70;
-      var drops = document.createElement('div');
-      drops.style.cssText = 'position:absolute;inset:0;pointer-events:none';
-      st.appendChild(drops);
-      plant.style.transition = 'transform .9s cubic-bezier(.2,.9,.3,1)';
-      plant.style.transform = 'scale(1)';
-      seq(a, [{d:1300, to:{x:px-78, tl:-4}},
+      var drops = st.querySelector('.drops');
+      if (!drops){ drops = document.createElement('div'); drops.className = 'drops';
+        drops.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+        st.appendChild(drops); }
+      drops.innerHTML = '';
+      plant.style.transition = 'none'; plant.style.transform = 'scale(1)';
+      seq(a, [{d:1300, to:{x:toX(st, 207), tl:-5}},
               {d:400, to:{tl:0}},
-              {d:600, expr:'happy', to:{tl:18}},        /* tips toward the plant */
-              {d:900, to:{}, fire:function(){
-                 for (var i=0;i<6;i++) (function(n){ setTimeout(function(){
+              {d:600, expr:'happy', to:{tl:-18}},       /* tips toward the plant */
+              {d:1000, fire:function(){
+                 for (var i = 0; i < 6; i++) (function(n){ setTimeout(function(){
                    var d = document.createElement('div');
-                   d.style.cssText='position:absolute;width:7px;height:7px;border-radius:50%;'+
-                     'background:radial-gradient(circle,#ffe6a8,#f9b23c);left:'+(px-10+n*3)+
-                     'px;bottom:120px;opacity:.95;transition:all .62s cubic-bezier(.4,0,1,1)';
+                   d.style.cssText = 'position:absolute;width:7px;height:7px;border-radius:50%;'+
+                     'background:radial-gradient(circle,#ffe6a8,#f9b23c);left:'+(138 + n*3)+
+                     'px;bottom:74px;opacity:.95;transition:all .6s cubic-bezier(.4,0,1,1)';
                    drops.appendChild(d);
-                   requestAnimationFrame(function(){
-                     d.style.bottom='64px'; d.style.opacity='0'; });
+                   requestAnimationFrame(function(){ d.style.bottom = '54px'; d.style.opacity = '0'; });
                    setTimeout(function(){ d.remove(); }, 700);
-                 }, n*110); })(i);
-                 setTimeout(function(){ plant.style.transform='scale(1.14)'; }, 620); }},
+                 }, n*120); })(i);
+                 setTimeout(function(){
+                   plant.style.transition = 'transform .9s cubic-bezier(.2,.9,.3,1)';
+                   plant.style.transform = 'scale(1.14)'; }, 640); }},
               {d:600, to:{tl:0}},
-              {d:700, expr:'calm', to:{}}]);
+              {d:700, expr:'calm'}]);
     }},
 
   { t:'יוצא מהכפתור',
@@ -310,24 +349,23 @@ var SCENES = [
       return '<div class="prop niche" style="right:70px;bottom:28px"></div>';
     },
     play:function(a, st){
-      var nx = st.clientWidth - 70 - 96 + 6;
-      a.s.x = nx; a.s.y = -26; a.s.sc = .72; a.expr = 'sleep'; a.paint();
-      seq(a, [{d:700, to:{}},
+      var inside = 70 + 48 - 42;                /* the socket's centre, from the right */
+      a.s.x = inside; a.s.y = -26; a.s.sc = .72; a.expr = 'sleep'; a.paint();
+      seq(a, [{d:800},
               {d:500, expr:'calm', to:{y:-14}},
-              {d:600, to:{y:16, sc:.9}},
+              {d:600, to:{y:16, sc:.92}},
               {d:300, to:{y:0, sc:1}},
               {d:260, to:{sc:1.05}}, {d:240, to:{sc:1}},
-              {d:900, expr:'happy', to:{x:nx-120}},
-              {d:600, expr:'calm', to:{}}]);
+              {d:1100, expr:'happy', to:{x:inside + 130, tl:-5}},
+              {d:400, to:{tl:0}},
+              {d:700, expr:'calm'}]);
     }},
 
   { t:'מסתכל סביב, ונרדם',
     n:'שמאלה, ימינה, חזרה אליך — ואז העיניים נסגרות והנשימה מאטה. <b>זה הביקור הכי שקט שיש לו.</b>',
     build:function(){ return ''; },
     play:function(a, st){
-      var W = (st.clientWidth - 110) / 2;
-      a.expr = 'calm'; a.s.yaw = 0;
-      seq(a, [{d:700, to:{x:W}},
+      seq(a, [{d:700, to:{x:(st.clientWidth - 84) / 2}},
               {d:600, to:{yaw:-52}}, {d:900, to:{yaw:52}}, {d:600, to:{yaw:0}},
               {d:500, expr:'wide', to:{sc:1.03}},
               {d:700, expr:'calm', to:{sc:1}},
@@ -337,21 +375,23 @@ var SCENES = [
 ];
 
 var host = document.getElementById('scenes');
+window.__acts = [];
 SCENES.forEach(function(S, i){
   var d = document.createElement('div'); d.className = 'scene';
   d.innerHTML = '<div class="hd"><b>'+(i+1)+' · '+S.t+'</b><span>'+S.n+'</span>'+
-    '<button>שוב</button></div>'+
+    '<button type="button">שוב</button></div>'+
     '<div class="stage"><div class="floor"></div>'+S.build()+
     '<div class="actor">'+sunSVG()+'</div></div>';
   host.appendChild(d);
   var st = d.querySelector('.stage'), a = new Actor(d.querySelector('.actor'));
   var go = function(){
-    a.s = {x:0,y:0,yaw:0,sc:1,tl:0,op:1}; a.expr='calm'; a.paint();
+    a.reset();
     /* let the stage settle its width before a scene reads it */
     requestAnimationFrame(function(){ S.play(a, st); });
   };
   d.querySelector('button').addEventListener('click', go);
   st.addEventListener('click', go);
+  window.__acts.push({actor:a, stage:st, play:S.play, go:go});
   setTimeout(go, 500 + i * 450);
 });
 </script>
