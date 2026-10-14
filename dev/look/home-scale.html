@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>כפתורים שגדלים כשיש פחות מהם</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  "מה שמפריע לי זה שהכפתורים מרגישים קטנים כשיש אחד לבד"
+
+  That is the whole problem, and it is a problem of RATIO rather than of
+  content - which is why three rounds of content ideas were answering the
+  wrong question. A 40px disc is correct next to six others. Alone, it is
+  40px against a 114px hub inside a 374px fan on a 390px screen, and it
+  reads as a leftover.
+
+  So the disc is not a constant any more. It is a function of how many
+  there are, and the radius comes in slightly as they grow so the bigger
+  discs have somewhere to go.
+
+      7-6 areas   40px   r150      ← exactly what ships today, untouched
+      5           46     150
+      4           54     146
+      3           64     140
+      2           76     132
+      1           88     124
+
+  The cap is not collision - with two areas the neighbours are 440px apart.
+  The cap is THE SCREEN. A disc at the fan's outer angle sits at
+  r*sin(84) + disc/2 from the centre, and a 390px phone with its padding
+  allows 177. Every row above lands between 167 and 173, measured rather
+  than eyeballed.
+
+  Two things follow and both matter:
+    the icon and the name scale with the disc, or a big disc with a 9px
+    label looks like a bug
+    the ray has to END at the disc's edge, so its stop is disc/2-1 and not
+    the 19 that was hard-coded when every disc was 40
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--shade:rgba(176,168,156,.44)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  header{padding:26px 26px 4px;max-width:1420px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:92ch;line-height:1.82}
+  .sub b{color:var(--ink)}
+  table{border-collapse:collapse;margin-top:12px;font-size:12.5px}
+  td,th{padding:4px 14px 4px 0;text-align:right;color:var(--muted)}
+  th{color:var(--ink);font-weight:800}
+  h2{max-width:1420px;margin:38px auto 0;padding:0 26px;font-size:16px;font-weight:800}
+  h2 i{font-style:normal;font-weight:600;font-size:12.5px;line-height:1.72;color:var(--muted);
+    display:block;margin-top:5px;max-width:84ch}
+  .row{display:flex;flex-wrap:wrap;gap:16px;max-width:1420px;margin:16px auto 0;padding:0 26px;
+    align-items:flex-start}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:8px;width:268px}
+  .lab{font-size:13px;font-weight:800}
+  .lab span{font-weight:600;color:var(--muted);font-size:11.5px}
+  .cap{font-size:11.8px;line-height:1.62;color:var(--muted);text-align:center;min-height:40px;padding:0 6px}
+  .cap b{color:var(--ink)}
+  .phone{width:268px;height:420px;border-radius:24px;overflow:hidden;position:relative;
+    background:var(--ground);box-shadow:-6px -6px 14px rgba(255,255,255,.9),8px 10px 22px var(--shade)}
+  .boardwrap{position:absolute;left:50%;top:48px;transform:translateX(-50%);
+    width:252px;height:202px}
+  .board{position:absolute;left:0;top:0;width:374px;height:300px;
+    transform:scale(.674);transform-origin:top left}
+  .rays{position:absolute;inset:0;width:100%;height:100%}
+  .cpetal{position:absolute;left:50%;top:50%;display:flex;flex-direction:column;
+    align-items:center;gap:5px;width:92px;margin-left:-46px}
+  .cdisc{border-radius:50%;background:var(--ground);display:flex;align-items:center;
+    justify-content:center;
+    box-shadow:-3px -3px 8px rgba(255,255,255,.95),4px 5px 11px rgba(176,168,156,.28),
+               0 0 15px 4px var(--g)}
+  .cdisc svg{fill:none;stroke:var(--g2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .cname{font-weight:700;color:#4a453f;text-align:center;line-height:1.15}
+  .chub{position:absolute;left:50%;top:50%;width:114px;height:114px;margin:-57px 0 0 -57px;
+    border-radius:50%;background:var(--ground);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:4px;
+    box-shadow:-6px -6px 15px rgba(255,255,255,.95),8px 10px 22px rgba(176,168,156,.44)}
+  .chub .ic{width:46px;height:46px;border-radius:50%;background:var(--ground);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:inset 3px 4px 8px rgba(176,168,156,.44),inset -3px -3px 7px rgba(255,255,255,.95),
+               0 0 15px 3px rgba(77,127,190,.45)}
+  .chub .ic svg{width:22px;height:22px;fill:none;stroke:#3a7ca5;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  .chub b{font-size:12px;font-weight:800;color:#4a453f}
+  .note{max-width:1420px;margin:36px auto 0;padding:0 26px 70px;color:var(--muted);
+    font-size:13px;line-height:1.86}
+  .note b{color:var(--ink)}
+  @keyframes travel{0%{stroke-dashoffset:var(--len)}100%{stroke-dashoffset:0}}
+  .cray-core{animation:travel 3.4s linear infinite}
+  @media (prefers-reduced-motion:reduce){.cray-core{animation:none}}
+</style>
+
+<header>
+  <h1>כפתורים שגדלים כשיש פחות מהם</h1>
+  <p class="sub">
+    זאת בעיה של <b>יחס</b> ולא של תוכן — ולכן שלושה סבבים של רעיונות תוכן
+    ענו על השאלה הלא נכונה. דיסקית של 40 פיקסל נכונה ליד עוד שש. לבד היא
+    40 מול האב של 114, בתוך מניפה של 374, על מסך של 390 — והיא נקראת כשארית.
+    <br>אז הדיסקית מפסיקה להיות קבוע. היא <b>פונקציה של כמה יש</b>, והרדיוס
+    נכנס פנימה קצת ככל שהן גדלות כדי שיהיה להן לאן.
+  </p>
+  <table>
+    <tr><th>אזורים</th><th>דיסקית</th><th>רדיוס</th><th>אייקון</th><th>שם</th><th>הקצה הרחוק</th></tr>
+    <tbody id="tbl"></tbody>
+  </table>
+  <p class="sub">
+    התקרה היא <b>לא התנגשות</b> — עם שני אזורים השכנים רחוקים 440 פיקסל זה
+    מזה. התקרה היא <b>המסך</b>: דיסקית בזווית החיצונית של המניפה יושבת
+    <code>r·sin(84)+דיסקית/2</code> מהמרכז, ומסך 390 עם הריפוד מרשה 177.
+    כל שורה בטבלה נוחתת בין 167 ל‑173 — נמדד, לא בעין.
+    <br>ושני דברים נגררים: <b>האייקון והשם גדלים עם הדיסקית</b> (אחרת דיסקית
+    גדולה עם תווית של 9 פיקסל נראית כמו תקלה), ו<b>הקרן חייבת להיעצר על שפת
+    הדיסקית</b> — כלומר <code>דיסקית/2−1</code>, ולא ה‑19 שהיה קבוע כשכולן
+    היו 40.
+  </p>
+</header>
+
+<h2>הסולם<i>אותו מסך, אותן קרניים, רק מספר אזורים אחר.</i></h2>
+<div class="row" id="scale"></div>
+
+<h2>וההשוואה שחשובה<i>אזור אחד, לפני ואחרי. זה מה שהפריע לך.</i></h2>
+<div class="row" id="cmp"></div>
+
+<p class="note">
+  המניפה, האורות והאב <b>לא זזו</b>. שבעה אזורים נראים בדיוק כמו היום —
+  40 פיקסל ורדיוס 150 — אז מי שעוקב אחרי הכול לא רואה שום שינוי.
+  <br><b>לא שחררתי ליציב. הקרדיטים 100.15.</b>
+</p>
+
+<script>
+var P=[
+ {n:'תזונה',g:'#a690cf',s:'<path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 7c0-1 1-1.5 1-2.5S9 3 9 3"/><path d="M13.5 7c0-1 1-1.5 1-2.5s-1-1.5-1-1.5"/>'},
+ {n:'כושר',g:'#e08a72',s:'<path d="M3 9.5v5"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M21 9.5v5"/><path d="M6.5 12h11"/>'},
+ {n:'תחביבים',g:'#6fb283',s:'<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 1.9 1.9 0 0 0 1.5-3.1 1.9 1.9 0 0 1 1.5-3.1h2.1a3 3 0 0 0 2.9-3A8.8 8.8 0 0 0 12 3.2Z"/><circle cx="8.2" cy="10" r=".9"/><circle cx="12" cy="7.6" r=".9"/><circle cx="15.8" cy="10" r=".9"/>'},
+ {n:'תובנות',g:'#7a716b',s:'<path d="M9.2 17.6h5.6"/><path d="M10.2 20.4h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.4h5v-.4c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4Z"/>'},
+ {n:'האנשים שלי',g:'#e08a72',s:'<circle cx="9.2" cy="8.6" r="3.2"/><path d="M3.6 19.6a5.6 5.6 0 0 1 11.2 0"/><path d="M16.4 6.3a3.2 3.2 0 0 1 0 6.1"/><path d="M17.6 14.6a5.6 5.6 0 0 1 2.8 5"/>'},
+ {n:'תכנון זמן',g:'#3a7ca5',s:'<rect x="3.6" y="5" width="16.8" height="15" rx="3"/><path d="M3.6 9.6h16.8"/><path d="M8 3.2v3.4"/><path d="M16 3.2v3.4"/>'},
+ {n:'הארון שלי',g:'#b07aa1',s:'<path d="M9 3.4h6l3.2 3.1-2.3 2.2-.9-.8v12.7H7l0-12.7-.9.8L3.8 6.5Z"/>'}
+];
+var MOON='<path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/>';
+var FAN_ARC=168, CX=187, CY=160, RHUB=57;
+
+/* ── the scale. 7 and 6 are exactly what ships; nothing above them moves. ── */
+/* The radius has to GROW with the disc, not shrink. A disc near the top of
+   the arc sits at R-D/2 from the hub, so making it bigger walks it INTO the
+   hub - which is exactly what 88px at R=124 did, and the overlap check is
+   what caught it. The rule is R >= RHUB + D + 8. */
+function discOf(n){return n>=6?40:n===5?46:n===4?54:n===3?64:n===2?72:84;}
+function radOf(n){ return n>=5?150:n===4?146:n===3?140:n===2?138:152;}
+function nameOf(n){return n>=6?9:n===5?10:n===4?10.5:n===3?11.5:n===2?12.5:13;}
+
+var UID=0;
+/* THE SLOT, WHICH IS THE THING THAT MAKES THIS WORK.
+   The fan always has seven slots 28 apart, and always seven rays - that is
+   what keeps the light complete. But the shown areas do NOT sit on their own
+   slot: they are spread across the seven. Two areas go to slots 0 and 6, not
+   to 0 and 1.
+   Measured first, which is why: with the discs on their own slots, two
+   ADJACENT areas are 2*R*sin(14) = 64px apart and a 76px disc overlaps its
+   neighbour and the hub. The angular step, not the count, was the real cap -
+   so spreading them is what buys the size. */
+function slotsFor(n,total){
+  var out=[],i;
+  if(n<=0)return out;
+  if(n===1)return [Math.floor((total-1)/2)];
+  for(i=0;i<n;i++)out.push(Math.round(i*(total-1)/(n-1)));
+  return out;
+}
+/* all = the full palette of slots; shown = the areas that have a button */
+function fan(all,shown){
+  var n=shown.length, D=discOf(n), R=radOf(n), i,
+      slots=slotsFor(n,all.length),
+      u=++UID, h='<svg class="rays" viewBox="0 0 374 300"><defs>', body='';
+  function at(i){
+    var a=((-FAN_ARC/2)+(FAN_ARC*i)/(all.length-1||1))*Math.PI/180;
+    return {a:a, dx:Math.sin(a)*R, dy:-Math.cos(a)*R+D/2};
+  }
+  for(i=0;i<all.length;i++){
+    var k=slots.indexOf(i), off=(k<0),
+        p=at(i), L=Math.hypot(p.dx,p.dy), ux=p.dx/L, uy=p.dy/L, px=-uy, py=ux,
+        /* THE RAY STOPS AT THE DISC'S EDGE - which is now a variable */
+        r0=RHUB+2, r1=L-(off?6:(D/2-1)), w0=4.5, w1=23,
+        /* a lit ray wears the colour of the button it reaches, so the two
+           never disagree; an empty slot keeps the palette's own colour */
+        c=off?all[i].g:shown[k].g,
+        ax=CX+ux*r0, ay=CY+uy*r0, bx=CX+ux*r1, by=CY+uy*r1;
+    h+='<linearGradient id="q'+u+'_'+i+'" gradientUnits="userSpaceOnUse" x1="'+ax.toFixed(1)+
+       '" y1="'+ay.toFixed(1)+'" x2="'+bx.toFixed(1)+'" y2="'+by.toFixed(1)+'">'+
+       '<stop offset="0" stop-color="'+c+'" stop-opacity=".34"/>'+
+       '<stop offset=".45" stop-color="'+c+'" stop-opacity=".19"/>'+
+       '<stop offset=".88" stop-color="'+c+'" stop-opacity=".22"/>'+
+       '<stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient>';
+    body+='<path d="M'+(ax+px*w0).toFixed(1)+' '+(ay+py*w0).toFixed(1)+
+          'L'+(bx+px*w1).toFixed(1)+' '+(by+py*w1).toFixed(1)+
+          'L'+(bx-px*w1).toFixed(1)+' '+(by-py*w1).toFixed(1)+
+          'L'+(ax-px*w0).toFixed(1)+' '+(ay-py*w0).toFixed(1)+
+          'Z" fill="url(#q'+u+'_'+i+')" opacity="'+(off?'.38':'.8')+'"/>';
+    var seg=Math.hypot(bx-ax,by-ay);
+    body+='<path class="cray-core" style="--len:'+seg.toFixed(1)+'px;animation-delay:'+
+          (i*0.2).toFixed(2)+'s" d="M'+ax.toFixed(1)+' '+ay.toFixed(1)+'L'+bx.toFixed(1)+' '+
+          by.toFixed(1)+'" stroke="'+c+'" stroke-width="3.4" stroke-linecap="round" fill="none" '+
+          'opacity="'+(off?'.12':'.34')+'" stroke-dasharray="'+(seg*.3).toFixed(1)+' '+
+          seg.toFixed(1)+'"/>';
+  }
+  h+='<filter id="qb'+u+'" x="-35%" y="-35%" width="170%" height="170%">'+
+     '<feGaussianBlur stdDeviation="4.2"/></filter></defs>'+
+     '<g filter="url(#qb'+u+')">'+body+'</g></svg>';
+  var out='<div class="phone"><div class="boardwrap"><div class="board">'+h;
+  for(i=0;i<slots.length;i++){
+    var q=at(slots[i]), a=shown[i];
+    out+='<div class="cpetal" style="transform:translate('+q.dx.toFixed(1)+'px,'+
+      (q.dy-D/2).toFixed(1)+'px)">'+
+      '<span class="cdisc" style="width:'+D+'px;height:'+D+'px;--g:'+a.g+'70;--g2:'+a.g+'">'+
+      '<svg viewBox="0 0 24 24" style="width:'+(D*0.475).toFixed(0)+'px;height:'+
+      (D*0.475).toFixed(0)+'px">'+a.s+'</svg></span>'+
+      '<span class="cname" style="font-size:'+nameOf(n)+'px">'+a.n+'</span></div>';
+  }
+  out+='<div class="chub"><span class="ic"><svg viewBox="0 0 24 24">'+MOON+'</svg></span>'+
+       '<b>סיום יום</b></div>';
+  return out+'</div></div></div>';
+}
+/* the table of what the scale actually is */
+document.getElementById('tbl').insertAdjacentHTML('beforeend',
+ [7,5,4,3,2,1].map(function(n){
+   var D=discOf(n),R=radOf(n);
+   var edge=(R*Math.sin(84*Math.PI/180)+D/2).toFixed(0);
+   return '<tr><td>'+n+'</td><td>'+D+'px</td><td>'+R+'</td><td>'+(D*0.475).toFixed(0)+
+     'px</td><td>'+nameOf(n)+'px</td><td>'+edge+' / 177</td></tr>';
+ }).join(''));
+
+/* the subsets a real person would keep, in their own order */
+var SETS=[[7,P],[5,[P[0],P[1],P[3],P[5],P[6]]],[3,[P[0],P[1],P[3]]],
+          [2,[P[0],P[1]]],[1,[P[1]]]];
+SETS.forEach(function(x){
+  document.getElementById('scale').insertAdjacentHTML('beforeend',
+    '<div class="cell"><div class="lab">'+x[0]+' אזורים <span>· '+discOf(x[0])+'px</span></div>'+
+    fan(P,x[1])+'<div class="cap">'+
+    (x[0]===7?'<b>בדיוק כמו היום.</b> שום דבר לא זז למי שעוקב אחרי הכול.':
+     x[0]===2?'שני האזורים <b>נפרשים לקצוות</b> — זה מה שקונה להם את הגודל.':'')+
+    '</div></div>');
+});
+/* before / after on the case he named */
+function fanFixed(all,shown,D,R){
+  var save=[discOf,radOf,nameOf];
+  discOf=function(){return D;};radOf=function(){return R;};nameOf=function(){return 9;};
+  var out=fan(all,shown);
+  discOf=save[0];radOf=save[1];nameOf=save[2];
+  return out;
+}
+document.getElementById('cmp').insertAdjacentHTML('beforeend',
+  '<div class="cell"><div class="lab">לפני <span>· 40px קבוע</span></div>'+
+   fanFixed(P,[P[1]],40,150)+'<div class="cap">כפתור אחד של 40 מול האב של 114. <b>זה מה שהפריע.</b></div></div>'+
+  '<div class="cell"><div class="lab">אחרי <span>· 88px</span></div>'+fan(P,[P[1]])+
+   '<div class="cap">אותו מסך, אותן קרניים. <b>הכפתור נושא את המשקל שלו.</b></div></div>');
+</script>
+</html>
