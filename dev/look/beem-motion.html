@@ -101,7 +101,7 @@ function layers(){
   return '<img class="r1" src="../assets/sun-r1.png" alt="">' +
          '<img class="r2" src="../assets/sun-r2.png" alt="">' +
          '<img class="r3" src="../assets/sun-r3.png" alt="">' +
-         '<img class="body" src="../assets/sun-body.png" alt="">';
+         '<img class="body" src="../assets/beem-f-calm.png" alt="">';
 }
 
 /* ── ONE INTEGRATOR ──
@@ -143,8 +143,17 @@ function Beem(stage, mode){
      negative velocity then drove him down INTO it - he fell in instead of
      climbing out, which is why it read as broken rather than as wrong.
      He starts below the rim, hidden by the lip, and is thrown upward. */
-  function wake(){ S.y = -52; S.vy = 300; S.sq = 0; S.sqv = 0;
-    S.ry = [-52,-52,-52]; S.rvy = [250,250,250]; }
+  /* ANTICIPATION: 'an action that takes place in the OPPOSITE direction of the
+     main action'. He used to leave the socket with no wind-up at all, which is
+     why the jump read as a teleport with a trajectory. Now he peeks out, dips
+     back down, and only then launches - three beats instead of one. */
+  function wake(){
+    S.y = -56; S.vy = 0; S.sq = 0; S.sqv = 0;
+    S.ry = [-56,-56,-56]; S.rvy = [0,0,0];
+    S.ty = -22;                                   // 1. peek over the rim
+    setTimeout(function(){ S.ty = -46; }, 420);   // 2. dip back - the anticipation
+    setTimeout(function(){ S.ty = 0; S.vy = 330; }, 620);  // 3. launch
+  }
   if (mode === 'wake') wake();
 
   var last = null, self = this;
@@ -153,7 +162,7 @@ function Beem(stage, mode){
     var dt = Math.min(0.045, (t - last)/1000); last = t; S.t += dt;
 
     if (mode === 'float') { S.tx = 0; S.ty = Math.sin(S.t * 1.5) * 7; }
-    if (mode === 'wake')  { S.tx = 0; S.ty = 0; }
+    if (mode === 'wake')  { S.tx = 0; }   /* ty is driven by the wake sequence */
 
     var px = S.x, py = S.y;
     var nax = (S.tx - S.x)*K - S.vx*D, nay = (S.ty - S.y)*K - S.vy*D;
@@ -168,7 +177,21 @@ function Beem(stage, mode){
        the overshoot, which is the stretch after the squash and the part that
        makes it feel alive. Integrated: the old one sits at 0.190 at every
        sample; this one goes 0.182, 0.006, -0.017, 0.002 and settles. */
-    var target = mode === 'tap' ? 0 : Math.min(0.14, Math.abs(nay)/5200);
+    /* SQUASH AND STRETCH ARE TWO DIFFERENT STATEMENTS, which the research made
+       explicit: squash is force of impact, stretch is velocity. Before this,
+       only squash existed, so he hit the ground convincingly and rose like a
+       sticker. Stretch now comes from SPEED and squash from ACCELERATION, and
+       they are subtracted - so he is longest at the top of his rise, where he
+       is fastest, and flattest at the moment he is stopped hardest. */
+    var stretch = Math.min(0.13, Math.abs(S.vy) / 1800);
+    /* Squash only from the acceleration that the SPEED DOES NOT EXPLAIN. A
+       spring decelerates all the way up, so taking squash from raw |a| made it
+       beat the stretch for the whole flight - measured, he went 1.029, 0.970,
+       0.963, ... 0.905 while rising, which is a ball deflating. Subtracting the
+       speed term leaves squash as an IMPACT: 1.130 all the way up, then 0.936
+       as he arrives. */
+    var squash = Math.max(0, Math.min(0.14, (Math.abs(nay) - Math.abs(S.vy)*6) / 5200));
+    var target = mode === 'tap' ? 0 : (squash - stretch);
     S.sqv += ((target - S.sq)*150 - S.sqv*13) * dt; S.sq += S.sqv*dt;
     var sy = 1 - S.sq, sx = 1 / sy;
     body.style.transform = 'translate(' + (-S.x).toFixed(2) + 'px,' + (-S.y).toFixed(2) +
