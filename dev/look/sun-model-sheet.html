@@ -219,7 +219,16 @@
     </figcaption>
   </figure>
 
-  <h2>תנועה</h2>
+  <h2>תנועה — חי בתוך הגיליון</h2>
+  <div class="note">
+    חמש התנועות הבסיסיות ושמונת הרגעים המורכבים רצים בעמודים שלהם, והם חלק
+    מהגיליון ולא נספח לו:
+    <b><a href="beem-motion.html" style="color:#6b4a2f">חמש התנועות</a></b> ·
+    <b><a href="beem-moments.html" style="color:#6b4a2f">הרגעים</a></b>
+  </div>
+  <div class="row" id="live"></div>
+
+  <h2>איך זה עובד</h2>
   <div class="note">
     הדמות בנויה <b>מארבע שכבות נפרדות</b>, וזאת לא החלטה גרפית אלא מה שמאפשר לה
     לזוז: הגוף לא מסתובב לעולם, כי סיבוב שלו היה הופך את העיניים. הטבעות
@@ -335,6 +344,54 @@ FACES.forEach(function(f){
     '<img src="../assets/beem-f-' + f[0] + '.png" alt=""></div>' +
     '<b style="text-align:center;margin-top:7px">' + f[1] + '</b>';
   fr.appendChild(d);
+});
+
+/* three of the moments, running inside the sheet itself */
+var LIVE = [
+  {k:'shine',  t:'זורח',  seq:[[0,'face:happy'],[60,'burst:2.6'],[1800,'face:calm']]},
+  {k:'think',  t:'חושב',  seq:[[0,'face:thinking'],[0,'spin:150'],[2600,'face:calm']]},
+  {k:'sleep',  t:'נרדם',  seq:[[0,'face:content'],[800,'face:closed'],[2400,'face:calm']]}
+];
+var lv = document.getElementById('live');
+LIVE.forEach(function(M){
+  var d = document.createElement('div'); d.className = 'det';
+  d.innerHTML = '<div class="sun lv" style="overflow:hidden">' +
+    '<img class="r1" src="../assets/sun-r1.png" alt="">' +
+    '<img class="r2" src="../assets/sun-r2.png" alt="">' +
+    '<img class="r3" src="../assets/sun-r3.png" alt="">' +
+    ['calm','closed','thinking','happy','content'].map(function(f,i){
+      return '<img class="lf lf-'+f+'" src="../assets/beem-f-'+f+'.png" alt="" style="opacity:'+
+        (i?0:1)+';transition:opacity .13s linear">';
+    }).join('') + '</div>' +
+    '<b style="text-align:center;margin-top:7px">' + M.t + '</b>';
+  lv.appendChild(d);
+  var box = d.querySelector('.lv');
+  var rings = [box.querySelector('.r1'), box.querySelector('.r2'), box.querySelector('.r3')];
+  var RRL = [139,167.5,198], burst=[0,0,0], bv=[0,0,0], spin=[0,0,0], sv=[0,0,0];
+  function face(n){ ['calm','closed','thinking','happy','content'].forEach(function(f){
+    box.querySelector('.lf-'+f).style.opacity = f===n ? 1 : 0; }); }
+  function play(){
+    var at = 0;
+    M.seq.forEach(function(st){ at += st[0]; setTimeout(function(){
+      var q = st[1].split(':'), v = parseFloat(q[1]);
+      if (q[0]==='face') face(q[1]);
+      if (q[0]==='burst') rings.forEach(function(_,i){
+        setTimeout(function(){ bv[i] = v*(1-i*0.08); }, Math.round(RRL[i]/RRL[0]*52)-52); });
+      if (q[0]==='spin') sv = [v, -v*0.76, v*0.55];
+    }, at); });
+  }
+  var last=null;
+  requestAnimationFrame(function step(t){
+    if(last===null) last=t; var dt=Math.min(0.045,(t-last)/1000); last=t;
+    rings.forEach(function(img,i){
+      bv[i] += ((0-burst[i])*120 - bv[i]*9)*dt; burst[i] += bv[i]*dt;
+      spin[i] += sv[i]*dt; sv[i] -= sv[i]*0.9*dt;
+      img.style.transform = 'rotate('+spin[i].toFixed(2)+'deg) scale('+
+        (1+burst[i]*0.16).toFixed(4)+')';
+    });
+    requestAnimationFrame(step);
+  });
+  play(); setInterval(play, 5200);
 });
 
 var det = document.getElementById('det');
