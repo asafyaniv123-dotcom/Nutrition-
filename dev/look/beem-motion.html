@@ -207,8 +207,16 @@ var read = document.getElementById('read');
 setInterval(function(){
   var tap = all.filter(function(a){ return a.m.k === 'tap'; })[0].b;
   var tr  = all.filter(function(a){ return a.m.k === 'travel'; })[0].b;
-  var vol = (tap.sx * tap.sy);
   var rows = [];
+  /* Before the first animation frame there is no transform to read, and a
+     backgrounded tab freezes requestAnimationFrame while leaving setInterval
+     running - so this said 'NaN DRIFTED' on a page that was perfectly fine. A
+     guard that cries wolf gets ignored, so it says what is actually true. */
+  if (tap.sx === undefined){
+    read.innerHTML = 'waiting for the first frame - this tab is not drawing';
+    return;
+  }
+  var vol = tap.sx * tap.sy;
   rows.push('squash volume  scaleX x scaleY = <b>' + vol.toFixed(4) +
             '</b>  ' + (Math.abs(vol - 1) < 0.0005 ? 'exactly 1' : 'DRIFTED'));
   rows.push('ring lag       body x <b>' + (-tr.S.x).toFixed(1) +
