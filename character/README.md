@@ -1,4 +1,8 @@
-# The character
+# Beem
+
+The character is called **Beem**. Named 15 October 2026, after everything
+else about him was already decided - which is the right order and not an
+accident: a name chosen before the thing exists tends to describe a hope.
 
 **This folder is the one place the sun is defined.** Nothing here is generated
 and nothing here should be edited. If the working files break, this is where

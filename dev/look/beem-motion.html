@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>Beem — תנועה</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  BEEM'S MOTION, REBUILT. The first pass looked right and was wrong in three
+  ways, all of them physics rather than taste:
+
+  1. THE SQUASH DID NOT KEEP ITS VOLUME. scale(1 + s) shrinks both axes, so he
+     got smaller instead of flatter. A ball that squashes WIDENS. scaleY = 1-s
+     and scaleX = 1/(1-s) keeps the product at exactly 1, and the page measures
+     it rather than claiming it.
+
+  2. THE RINGS DID NOT ROLL. They slid. In the SVG character the roll was
+     degrees = distance / radius, which is what rolling IS; here each ring turns
+     by its own travelled distance over its own radius, so the outer one turns
+     slowest - as it must, being bigger.
+
+  3. A TAP PUSHED ALL THREE RINGS AT ONCE. A shock reaches the far ring LATER.
+     The delay here is proportional to radius, which is the one line that turns
+     three rings pushing into a wave travelling outward.
+
+  Everything is driven by one integrator over the four layers. Nothing is a
+  keyframe, so every movement can be interrupted by the next thing the person
+  does - which was the whole argument for code over rendered animation.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;
+    --nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);
+    --nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1240px;margin:0 auto;padding:30px 24px 70px}
+  h1{font-size:25px;font-weight:800;letter-spacing:-.015em}
+  h1 i{font-style:normal;color:var(--muted);font-size:17px;font-weight:700}
+  .sub{font-size:13.5px;line-height:1.84;color:var(--muted);margin-top:10px;max-width:90ch}
+  .sub b{color:var(--ink)}
+  code{font-size:12.5px;background:rgba(176,168,156,.22);padding:1px 5px;border-radius:5px;
+    direction:ltr;display:inline-block}
+  .cols{display:grid;gap:14px;margin-top:22px;
+    grid-template-columns:repeat(auto-fit,minmax(238px,1fr))}
+  .col{border-radius:20px;background:var(--ground);padding:14px;
+    box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade-soft)}
+  .col h2{font-size:14px;font-weight:800}
+  .col .what{font-size:11.5px;line-height:1.6;color:var(--muted);margin:3px 0 10px;min-height:4.2em}
+  .stage{position:relative;height:218px;border-radius:15px;background:var(--ground);
+    overflow:hidden;cursor:pointer;display:grid;place-items:center;
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  .beem{position:relative;width:138px;height:138px}
+  .beem img{position:absolute;inset:0;width:100%;height:100%;display:block;will-change:transform}
+  .hint{font-size:10.5px;font-weight:800;color:var(--muted);text-align:center;margin-top:8px}
+  .niche{position:absolute;width:108px;height:108px;border-radius:50%;background:var(--ground);
+    box-shadow:inset 5px 6px 12px var(--nu-shade),inset -4px -4px 10px var(--nu-lit)}
+  .lip{position:absolute;width:108px;height:54px;border-radius:0 0 54px 54px;
+    background:var(--ground);z-index:3;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.92),0 4px 9px -3px var(--nu-shade-soft)}
+  .readout{margin-top:26px;border-radius:18px;background:var(--ground);padding:15px 17px;
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  .readout h3{font-size:13px;font-weight:800;margin-bottom:7px}
+  .readout div{font-size:12px;line-height:1.85;color:var(--muted);direction:ltr;text-align:left;
+    font-family:ui-monospace,Menlo,Consolas,monospace}
+  .readout b{color:var(--ink)}
+  @media (prefers-reduced-motion:reduce){.beem img{transform:none!important}}
+</style>
+
+<div class="wrap">
+  <h1>Beem <i>— תנועה</i></h1>
+  <div class="sub">
+    הסבב הראשון נראה בסדר והיה שגוי בשלושה דברים, וכולם פיזיקה ולא טעם.<br>
+    <b>1 · המעיכה לא שמרה על נפח.</b> <code>scale(1 + s)</code> מכווץ את שני
+    הצירים, אז הוא נעשה <b>קטן</b> במקום שטוח. כדור שנמעך <b>מתרחב</b>. כאן
+    <code>scaleY = 1-s</code> ו‑<code>scaleX = 1/(1-s)</code>, והמכפלה נמדדת
+    למטה ולא נטענת.<br>
+    <b>2 · הטבעות לא התגלגלו, הן החליקו.</b> בדמות ה‑SVG הגלגול היה <b>מרחק
+    חלקי רדיוס</b> — וזה מה שגלגול הוא. כאן כל טבעת מסתובבת לפי המרחק שהיא
+    עברה חלקי <b>הרדיוס שלה</b>, אז החיצונית מסתובבת הכי לאט. כך זה חייב להיות,
+    היא הגדולה.<br>
+    <b>3 · לחיצה דחפה את שלוש הטבעות יחד.</b> גל מגיע לטבעת הרחוקה <b>מאוחר
+    יותר</b>. העיכוב כאן פרופורציוני לרדיוס, וזאת השורה שהופכת שלוש טבעות
+    שנדחפות <b>לגל שנוסע החוצה</b>.
+  </div>
+
+  <div class="cols" id="cols"></div>
+
+  <div class="readout">
+    <h3>נמדד מהתנועה החיה, לא מהקוד</h3>
+    <div id="read">—</div>
+  </div>
+</div>
+
+<script>
+/* the three rings' radii in the 512px asset, from character/README.md */
+var RR = [278, 335, 396].map(function(r){ return r / 2; });   // 139, 167.5, 198
+
+function layers(){
+  return '<img class="r1" src="../assets/sun-r1.png" alt="">' +
+         '<img class="r2" src="../assets/sun-r2.png" alt="">' +
+         '<img class="r3" src="../assets/sun-r3.png" alt="">' +
+         '<img class="body" src="../assets/sun-body.png" alt="">';
+}
+
+/* ── ONE INTEGRATOR ──
+   a = (target - x)*k - v*d;  v += a*dt;  x += v*dt
+   The body chases its target. Each RING chases the body with its own softness,
+   so it trails - nothing is told to wait. The squash comes from the body's
+   ACCELERATION and keeps its volume. The roll comes from distance travelled. */
+function Beem(stage, mode){
+  var el = stage.querySelector('.beem');
+  var body = el.querySelector('.body');
+  var rings = [el.querySelector('.r1'), el.querySelector('.r2'), el.querySelector('.r3')];
+  var S = { tx:0, ty:0, x:0, y:0, vx:0, vy:0, ax:0, ay:0,
+            rx:[0,0,0], ry:[0,0,0], rvx:[0,0,0], rvy:[0,0,0], rot:[0,0,0],
+            push:[0,0,0], pv:[0,0,0], sq:0, sqv:0, spin:[0,0,0], t:0 };
+  var K = 96, D = 13;                       // the body
+  var RK = [46, 36, 29], RD = [9.4, 8.6, 7.9];   // each ring, softer outward
+  this.S = S; this.mode = mode;
+
+  stage.addEventListener('pointermove', function(e){
+    if (mode !== 'travel') return;
+    var r = stage.getBoundingClientRect();
+    S.tx = (e.clientX - r.left - r.width/2) * 0.42;
+    S.ty = (e.clientY - r.top - r.height/2) * 0.30;
+  });
+  stage.addEventListener('pointerleave', function(){ if (mode === 'travel'){ S.tx = 0; S.ty = 0; } });
+  stage.addEventListener('pointerdown', function(){
+    if (mode === 'tap'){
+      S.sq = 0.19;
+      /* THE WAVE: the far ring is pushed LATER, by a delay proportional to its
+         radius. Three rings pushed together is a pulse; staggered, it travels. */
+      rings.forEach(function(_, i){
+        setTimeout(function(){ S.pv[i] = 1.9 - i*0.18; }, Math.round(RR[i] / RR[0] * 46) - 46);
+      });
+    }
+    if (mode === 'wake'){ S.y = 54; S.vy = -210; S.sq = 0; }
+  });
+  if (mode === 'wake') { S.y = 54; S.vy = -210; }
+
+  var last = null, self = this;
+  requestAnimationFrame(function step(t){
+    if (last === null) last = t;
+    var dt = Math.min(0.045, (t - last)/1000); last = t; S.t += dt;
+
+    if (mode === 'float') { S.tx = 0; S.ty = Math.sin(S.t * 1.5) * 7; }
+    if (mode === 'wake')  { S.tx = 0; S.ty = 0; }
+
+    var px = S.x, py = S.y;
+    var nax = (S.tx - S.x)*K - S.vx*D, nay = (S.ty - S.y)*K - S.vy*D;
+    S.ax = nax; S.ay = nay;
+    S.vx += nax*dt; S.vy += nay*dt;
+    S.x += S.vx*dt; S.y += S.vy*dt;
+
+    /* squash from acceleration, volume kept exactly */
+    var target = mode === 'tap' ? S.sq : Math.min(0.14, Math.abs(nay)/5200);
+    S.sqv += ((target - S.sq)*150 - S.sqv*13) * dt; S.sq += S.sqv*dt;
+    if (mode === 'tap') S.sq = Math.max(0, S.sq);
+    var sy = 1 - S.sq, sx = 1 / sy;
+    body.style.transform = 'translate(' + (-S.x).toFixed(2) + 'px,' + (-S.y).toFixed(2) +
+      'px) scale(' + sx.toFixed(4) + ',' + sy.toFixed(4) + ')';
+    self.sx = sx; self.sy = sy;
+
+    rings.forEach(function(img, i){
+      var prx = S.rx[i];
+      S.rvx[i] += ((S.x - S.rx[i])*RK[i] - S.rvx[i]*RD[i]) * dt;
+      S.rvy[i] += ((S.y - S.ry[i])*RK[i] - S.rvy[i]*RD[i]) * dt;
+      S.rx[i] += S.rvx[i]*dt; S.ry[i] += S.rvy[i]*dt;
+      /* ROLL: degrees = distance / radius. The outer ring turns least. */
+      S.rot[i] += (S.rx[i] - prx) / RR[i] * (180/Math.PI) * 2.6;
+      if (mode === 'think') S.spin[i] += (i % 2 ? -1 : 1) * (26 - i*5) * dt;
+      S.pv[i] += ((0 - S.push[i])*150 - S.pv[i]*11) * dt;
+      S.push[i] += S.pv[i]*dt;
+      var scale = 1 + S.push[i]*0.075;
+      img.style.transform = 'translate(' + (-S.rx[i]).toFixed(2) + 'px,' +
+        (-S.ry[i]).toFixed(2) + 'px) rotate(' + (S.rot[i] + S.spin[i]).toFixed(2) +
+        'deg) scale(' + scale.toFixed(4) + ')';
+    });
+    requestAnimationFrame(step);
+  });
+}
+
+var M = [
+  {k:'float', t:'מרחף', w:'מצב המנוחה. הגוף עולה ויורד, והטבעות <b>נגררות אחריו ומתגלגלות</b> — לא מונפשות בנפרד.', h:'רץ מעצמו'},
+  {k:'travel',t:'נוסע', w:'<b>הזז את העכבר.</b> הגוף רודף אחריך, כל טבעת רודפת אחרי הגוף ברכות משלה, וכולן <b>מתגלגלות לפי המרחק שעברו</b>.', h:'הזז את העכבר'},
+  {k:'think', t:'חושב', w:'כל מעגל לכיוון אחר ובקצב אחר. הגוף דומם לגמרי — <b>המחשבה היא בטבעות</b>.', h:'רץ מעצמו'},
+  {k:'tap',   t:'נגיעה', w:'<b>לחץ.</b> הוא נמעך <b>ומתרחב</b>, וגל נוסע החוצה — הטבעת הרחוקה מקבלת אותו אחרונה.', h:'לחץ עליו'},
+  {k:'wake',  t:'מתעורר', w:'<b>לחץ.</b> קופץ מהשקע. הנחיתה היא אותה מעיכה, רק שהיא באה מהתאוצה ולא מאצבע.', h:'לחץ שוב'}
+];
+
+var host = document.getElementById('cols'), all = [];
+M.forEach(function(m){
+  var d = document.createElement('div'); d.className = 'col';
+  d.innerHTML = '<h2>' + m.t + '</h2><div class="what">' + m.w + '</div>' +
+    '<div class="stage">' + (m.k === 'wake' ? '<div class="niche"></div>' : '') +
+    '<div class="beem">' + layers() + '</div>' +
+    (m.k === 'wake' ? '<div class="lip"></div>' : '') +
+    '</div><div class="hint">' + m.h + '</div>';
+  host.appendChild(d);
+  all.push({m: m, b: new Beem(d.querySelector('.stage'), m.k)});
+});
+
+/* ── the readout: assert the physics from the LIVE transforms ── */
+var read = document.getElementById('read');
+setInterval(function(){
+  var tap = all.filter(function(a){ return a.m.k === 'tap'; })[0].b;
+  var tr  = all.filter(function(a){ return a.m.k === 'travel'; })[0].b;
+  var vol = (tap.sx * tap.sy);
+  var rows = [];
+  rows.push('squash volume  scaleX x scaleY = <b>' + vol.toFixed(4) +
+            '</b>  ' + (Math.abs(vol - 1) < 0.0005 ? 'exactly 1' : 'DRIFTED'));
+  rows.push('ring lag       body x <b>' + (-tr.S.x).toFixed(1) +
+            '</b>   r1 <b>' + (-tr.S.rx[0]).toFixed(1) +
+            '</b>   r2 <b>' + (-tr.S.rx[1]).toFixed(1) +
+            '</b>   r3 <b>' + (-tr.S.rx[2]).toFixed(1) + '</b>');
+  rows.push('roll per px    r1 <b>' + (180/Math.PI/RR[0]*2.6).toFixed(3) +
+            '</b>deg   r2 <b>' + (180/Math.PI/RR[1]*2.6).toFixed(3) +
+            '</b>deg   r3 <b>' + (180/Math.PI/RR[2]*2.6).toFixed(3) +
+            '</b>deg   (bigger ring, slower turn)');
+  rows.push('wave delay     r1 <b>0</b>ms   r2 <b>' +
+            Math.round(RR[1]/RR[0]*46 - 46) + '</b>ms   r3 <b>' +
+            Math.round(RR[2]/RR[0]*46 - 46) + '</b>ms   (proportional to radius)');
+  read.innerHTML = rows.join('<br>');
+}, 120);
+</script>
+</html>
