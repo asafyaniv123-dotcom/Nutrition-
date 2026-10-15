@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>השמש — אור שפה ב‑SVG</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  'המאוזן הכי יפה בעיניי. כי ה SVG לא יודע לעשות ככה בכלל'
+
+  He is right that my four doses did not look like the render. He is not right
+  about the reason, and the reason is my fault: I WROTE DOWN that the rim light
+  was the one thing our sun has never had, and then built four levels out of a
+  lightening and a darkening WITH NO RIM IN ANY OF THEM. The comparison he was
+  shown was not a fair one.
+
+  A rim light in SVG is a radial gradient and a mask:
+
+    the RING   a radial gradient on the body circle whose stops are transparent
+               until 0.88 of the radius, bright at 0.96, and falling again at
+               the edge - that alone is a full bright ring, which is wrong
+    the MASK   a linear gradient running from the light's side to the far side,
+               used as a mask, so only the far part of that ring survives
+
+  A ring minus the lit half is a crescent, and a crescent on the far edge is the
+  single strongest cue that a thing is round. Three strengths here, with the
+  render he chose sitting beside them AT THE SAME SIZE, because that comparison
+  is the only one that answers the question.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1340px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;line-height:1.82;max-width:92ch}
+  .sub b{color:var(--ink)}
+  code{font-size:12.5px;background:rgba(176,168,156,.22);padding:1px 5px;border-radius:5px;
+    direction:ltr;display:inline-block}
+  .cols{display:grid;gap:14px;margin-top:20px;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .col{border-radius:20px;background:var(--ground);padding:15px;text-align:center;
+    box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade-soft)}
+  .col.target{outline:2px solid rgba(240,120,40,.5);outline-offset:-2px}
+  .col h2{font-size:14.5px;font-weight:800}
+  .col .what{font-size:11.5px;line-height:1.6;color:var(--muted);margin:4px 0 10px;min-height:3.2em}
+  .pair{display:flex;gap:9px}
+  .half{flex:1 1 0;min-width:0;border-radius:14px;padding:10px}
+  .half.lit{background:var(--ground);
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  .half.dark{background:#211d1a}
+  .half > *{width:100%;display:block}
+  .half > div{aspect-ratio:1}
+  .sizes{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin-top:11px}
+  .sz b{display:block;font-size:9.5px;font-weight:800;color:var(--muted);margin-top:4px}
+  .sm{display:block;width:100%;height:100%;overflow:visible}
+  .note{font-size:12.5px;line-height:1.84;color:var(--muted);margin-top:26px;max-width:92ch}
+  .note b{color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <h1>השמש — אור שפה ב‑SVG</h1>
+  <div class="sub">
+    <b>צדקת שארבע המנות לא נראו כמו הרנדר, אבל לא בגלל ש‑SVG לא יכול.</b>
+    כתבתי בעצמי שאור השפה הוא הדבר היחיד שמעולם לא היה לנו — ואז בניתי ארבע
+    רמות מהארה וחשכה, <b>בלי אור שפה באף אחת מהן</b>. ההשוואה שהראיתי לך לא
+    הייתה הוגנת.<br>
+    <b>אור שפה ב‑SVG הוא גרדיאנט רדיאלי ומסכה:</b> הגרדיאנט שקוף עד 0.88 מהרדיוס,
+    בוהק ב‑0.96, ודועך בקצה — וזה לבדו <b>טבעת שלמה, וזה שגוי</b>. המסכה היא
+    גרדיאנט ליניארי מצד האור לצד הרחוק, וטבעת פחות החצי המואר היא <b>סהרון</b>.
+    סהרון על הקצה הרחוק הוא הרמז החזק ביותר לכך שמשהו עגול.<br>
+    שלוש עוצמות, <b>ו״המאוזן״ שבחרת יושב לידן באותו גודל בדיוק</b> — זאת
+    ההשוואה היחידה שעונה על השאלה.
+  </div>
+
+  <div class="cols" id="cols"></div>
+
+  <div class="note">
+    <b>תסתכל על 44 ועל 22 גם כאן.</b> אור שפה שנראה נהדר בגדול יכול להיעלם
+    לגמרי באייקון — ואם הוא נעלם, הוא עולה כלום שם ממילא.
+  </div>
+</div>
+
+<script>
+var N = 0, R = 34.2, EYE = '#32200f';
+var COL = ['#f04a2e','#f9913c','#fcd238'];
+var RR = [41, 47.5, 54];
+
+var LEVELS = [
+  {k:'none', t:'בלי אור שפה', rim:0,   term:.40, form:.22,
+   what:'הגרסה שהראיתי לך קודם. <b>זה מה שחסר לה.</b>'},
+  {k:'soft', t:'1 — סהרון רך', rim:.55, term:.46, form:.26,
+   what:'נוכח אבל שקט, כמו אור שחוזר ממשטח סמוך.'},
+  {k:'mid',  t:'2 — סהרון ברור', rim:.80, term:.52, form:.28,
+   what:'העוצמה שמתאימה ל״מאוזן״. <b>הקצה נפרד מהרקע.</b>'},
+  {k:'hard', t:'3 — סהרון חזק', rim:1,   term:.58, form:.30,
+   what:'אור שפה מלא. <b>בדוק אותו על רקע בהיר</b> לפני שאתה אוהב אותו על כהה.'}
+];
+
+function sunSVG(L, px){
+  var k = 'm' + (++N), big = (px == null) || px >= 48;
+  var n = big ? 26 : 14, w = big ? 2.6 : 3.8, rad = w/2;
+
+  var h = '<svg class="sm" viewBox="0 0 160 160" aria-hidden="true"><defs>' +
+    '<linearGradient id="'+k+'b" gradientUnits="userSpaceOnUse" x1="80" y1="46" x2="80" y2="114">' +
+    '<stop offset="0" stop-color="#fcd956"/><stop offset=".22" stop-color="#fbc744"/>' +
+    '<stop offset=".42" stop-color="#f8ae34"/><stop offset=".62" stop-color="#f59d2c"/>' +
+    '<stop offset=".82" stop-color="#ed8527"/><stop offset="1" stop-color="#e5530e"/></linearGradient>' +
+    /* the terminator, pushed away from the light so the far edge turns under.
+       Its colour is a WARM dark, not grey - that is what keeps the shadow
+       saturated instead of muddy, which is the Nintendo trick. */
+    '<radialGradient id="'+k+'lim" gradientUnits="userSpaceOnUse" cx="88" cy="92" r="'+(R*1.14).toFixed(1)+'">' +
+    '<stop offset=".48" stop-color="#a33c00" stop-opacity="0"/>' +
+    '<stop offset="1" stop-color="#a33c00" stop-opacity="'+L.term+'"/></radialGradient>' +
+    '<radialGradient id="'+k+'form" gradientUnits="userSpaceOnUse" cx="67" cy="63" r="46">' +
+    '<stop offset="0" stop-color="#fff3cf" stop-opacity="'+L.form+'"/>' +
+    '<stop offset=".62" stop-color="#fff3cf" stop-opacity="'+(L.form*0.22).toFixed(3)+'"/>' +
+    '<stop offset="1" stop-color="#fff3cf" stop-opacity="0"/></radialGradient>' +
+    /* THE RIM: a full bright ring hugging the edge... */
+    '<radialGradient id="'+k+'rim" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="'+R+'">' +
+    '<stop offset=".84" stop-color="#ffe6a6" stop-opacity="0"/>' +
+    '<stop offset=".95" stop-color="#fff3cd" stop-opacity="'+L.rim+'"/>' +
+    '<stop offset="1" stop-color="#ffd98a" stop-opacity="'+(L.rim*0.55).toFixed(3)+'"/></radialGradient>' +
+    /* ...and the mask that leaves only its far half, which is what makes it a
+       crescent rather than an outline */
+    '<linearGradient id="'+k+'mg" gradientUnits="userSpaceOnUse" x1="58" y1="58" x2="105" y2="105">' +
+    '<stop offset="0" stop-color="#000"/><stop offset=".5" stop-color="#000"/>' +
+    '<stop offset="1" stop-color="#fff"/></linearGradient>' +
+    '<mask id="'+k+'mk"><circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'mg)"/></mask>' +
+    '<radialGradient id="'+k+'bo" gradientUnits="userSpaceOnUse" cx="90" cy="104" r="22">' +
+    '<stop offset="0" stop-color="#ffd089" stop-opacity=".5"/>' +
+    '<stop offset="1" stop-color="#ffd089" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="'+k+'l" gradientUnits="userSpaceOnUse" cx="69" cy="66" r="26">' +
+    '<stop offset="0" stop-color="#fff6d8" stop-opacity=".88"/>' +
+    '<stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="'+k+'g" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="79">' +
+    '<stop offset=".40" stop-color="#ffb347" stop-opacity=".46"/>' +
+    '<stop offset=".68" stop-color="#ffc766" stop-opacity=".20"/>' +
+    '<stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="'+k+'bead" cx="34%" cy="30%" r="68%">' +
+    '<stop offset="0" stop-color="#fff" stop-opacity=".85"/>' +
+    '<stop offset=".45" stop-color="#fff" stop-opacity=".12"/>' +
+    '<stop offset="1" stop-color="#000" stop-opacity=".16"/></radialGradient>' +
+    '</defs>';
+
+  h += '<circle cx="80" cy="80" r="79" fill="url(#'+k+'g)"/>';
+  h += '<ellipse cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>';
+
+  h += '<g>';
+  for (var i = 2; i >= 0; i--)
+    for (var j = 0; j < n; j++){
+      var a = j * 2*Math.PI/n;
+      var x = (80 + Math.cos(a)*RR[i]).toFixed(2), y = (80 + Math.sin(a)*RR[i]).toFixed(2);
+      h += '<circle cx="'+x+'" cy="'+y+'" r="'+rad+'" fill="'+COL[i]+'"/>' +
+           '<circle cx="'+x+'" cy="'+y+'" r="'+rad+'" fill="url(#'+k+'bead)"/>';
+    }
+  h += '</g>';
+
+  h += '<g><circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'b)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'form)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'lim)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'bo)"/>' +
+    (L.rim ? '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'rim)" mask="url(#'+k+'mk)"/>' : '') +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'l)"/>' +
+    '<g><ellipse cx="68.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>' +
+    '<circle cx="66.6" cy="75.4" r="1.75" fill="#fff"/>' +
+    '<circle cx="70.4" cy="87.4" r=".78" fill="#fff" opacity=".72"/></g>' +
+    '<g><ellipse cx="91.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>' +
+    '<circle cx="89.6" cy="75.4" r="1.75" fill="#fff"/>' +
+    '<circle cx="93.4" cy="87.4" r=".78" fill="#fff" opacity=".72"/></g></g>';
+
+  return h + '</svg>';
+}
+
+var host = document.getElementById('cols');
+
+/* the render he chose, first, so everything else is read against it */
+(function(){
+  var d = document.createElement('div'); d.className = 'col target';
+  var img = function(){ return '<img src="sun-gen/sun-30-vol-balanced.png" alt="">'; };
+  d.innerHTML = '<h2>★ המאוזן — מה שבחרת</h2>' +
+    '<div class="what">הרנדר מ‑Higgsfield. <b>זה היעד</b>, לא אופציה.</div>' +
+    '<div class="pair"><div class="half lit">' + img() + '</div>' +
+    '<div class="half dark">' + img() + '</div></div>' +
+    '<div class="sizes">' + [84,44,22].map(function(px){
+      return '<div class="sz"><img src="sun-gen/sun-30-vol-balanced.png" alt="" ' +
+        'style="width:'+px+'px;height:'+px+'px;display:block"><b>'+px+'</b></div>';
+    }).join('') + '</div>';
+  host.appendChild(d);
+})();
+
+LEVELS.forEach(function(L){
+  var d = document.createElement('div'); d.className = 'col';
+  d.innerHTML = '<h2>' + L.t + '</h2><div class="what">' + L.what + '</div>' +
+    '<div class="pair">' +
+      '<div class="half lit"><div>' + sunSVG(L, 132) + '</div></div>' +
+      '<div class="half dark"><div>' + sunSVG(L, 132) + '</div></div>' +
+    '</div>' +
+    '<div class="sizes">' + [84,44,22].map(function(px){
+      return '<div class="sz"><div style="width:'+px+'px;height:'+px+'px">' +
+        sunSVG(L, px) + '</div><b>' + px + '</b></div>';
+    }).join('') + '</div>';
+  host.appendChild(d);
+});
+</script>
+</html>
