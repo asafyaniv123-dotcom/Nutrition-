@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>השמש — האם SVG נושא את החומר</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  ROUTE A, MEASURED. The question is narrow: can the SVG character carry the
+  material of the render, so that everything which ALREADY MOVES becomes
+  beautiful without being re-animated?
+
+  Three ways to turn a flat dot into a bead, because I did not know which would
+  look right or which would be too heavy:
+
+    A  TWO STROKES    the ring again at a smaller radius in a lighter colour,
+                      same dash pattern - each dot gets a crescent. 6 elements.
+    B  REAL BEADS     78 individual circles, all sharing ONE radialGradient in
+                      objectBoundingBox units so each gets a true highlight in
+                      the same relative place. 78 elements.
+    C  SPECULAR       one feSpecularLighting filter over the three dashed
+                      rings. 3 elements plus a filter.
+
+  WEIGHT IS NOT A FOOTNOTE HERE. The app is a single HTML file and the acts page
+  alone draws six instances at once, so B costs 468 circles on that page. The
+  element count and the markup size are printed under every variant, measured
+  from the live DOM rather than estimated.
+
+  The glow and the second catchlight are in ALL FOUR, including the current one,
+  so the only thing changing between columns is the bead treatment.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1340px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:9px;line-height:1.82;max-width:92ch}
+  .sub b{color:var(--ink)}
+  code{font-size:12.5px;background:rgba(176,168,156,.22);padding:1px 5px;border-radius:5px;
+    direction:ltr;display:inline-block}
+  .cols{display:grid;gap:14px;margin-top:22px;
+    grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+  .col{border-radius:20px;background:var(--ground);padding:15px;
+    box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade-soft)}
+  .col h2{font-size:14.5px;font-weight:800}
+  .col .what{font-size:12px;line-height:1.66;color:var(--muted);margin:5px 0 11px;min-height:3.4em}
+  .pair{display:flex;gap:10px}
+  .pad{flex:1;border-radius:14px;display:grid;place-items:center;padding:12px;aspect-ratio:1}
+  .pad.lit{background:var(--ground);
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  .pad.dark{background:#211d1a}
+  .pad > div{width:100%;aspect-ratio:1}
+  .pad img{width:100%;display:block}
+  .sizes{display:flex;align-items:flex-end;gap:13px;margin-top:11px;padding:10px 12px;
+    background:var(--ground);border-radius:12px;
+    box-shadow:inset 1px 2px 5px var(--nu-shade-soft)}
+  .sz{text-align:center}
+  .sz b{display:block;font-size:9.5px;font-weight:800;color:var(--muted);margin-top:4px}
+  .cost{margin-top:10px;font-size:11.5px;line-height:1.7;color:var(--muted);
+    border-top:1px solid rgba(176,168,156,.35);padding-top:8px}
+  .cost b{color:var(--ink)}
+  .sm{display:block;width:100%;height:100%;overflow:visible}
+  .note{font-size:12.5px;line-height:1.84;color:var(--muted);margin-top:26px;max-width:92ch}
+  .note b{color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <h1>השמש — האם SVG נושא את החומר</h1>
+  <div class="sub">
+    השאלה צרה: <b>האם אפשר להביא את ה‑SVG לחומר של הרנדר</b>, כך שכל מה שכבר זז
+    — הסיבוב, הגלגול, המצמוץ, שש הפעולות — נעשה יפה <b>בלי להנפיש מחדש כלום</b>.<br>
+    שלוש דרכים להפוך נקודה שטוחה לכדור, כי לא ידעתי מראש איזו נראית נכון ואיזו
+    כבדה מדי. <b>המשקל כאן הוא לא הערת שוליים</b>: האפליקציה היא קובץ HTML אחד,
+    ודף הפעולות לבדו מצייר שישה עותקים בו־זמנית. מספר האלמנטים וגודל הסימון
+    מתחת לכל עמודה <b>נמדדים מה‑DOM החי</b>, לא מוערכים.<br>
+    הזוהר והנצנוץ השני נמצאים <b>בכל הארבע, כולל הנוכחית</b>, כדי שהדבר היחיד
+    שמשתנה בין העמודות הוא הטיפול בנקודות.
+  </div>
+
+  <div class="cols" id="cols"></div>
+
+  <div class="note" id="verdict"></div>
+</div>
+
+<script>
+var N = 0, R = 34.2, EYE = '#32200f';
+var COL  = ['#f04a2e','#f9913c','#fcd238'];          /* base */
+var LITE = ['#ff9a7a','#ffc48a','#fff0a8'];          /* the highlight on each */
+var RR = [41, 47.5, 54];
+
+function dots(r, n, duty){ var c = 2*Math.PI*r, on = c/n*duty;
+  return on.toFixed(2) + ' ' + (c/n - on).toFixed(2); }
+
+/* the parts every variant shares, so only the rings differ between columns */
+function defsFor(k){
+  return '<defs>' +
+   '<linearGradient id="'+k+'b" gradientUnits="userSpaceOnUse" x1="80" y1="46" x2="80" y2="114">' +
+   '<stop offset="0" stop-color="#fcd956"/><stop offset=".22" stop-color="#fbc744"/>' +
+   '<stop offset=".42" stop-color="#f8ae34"/><stop offset=".62" stop-color="#f59d2c"/>' +
+   '<stop offset=".82" stop-color="#ed8527"/><stop offset="1" stop-color="#e5530e"/></linearGradient>' +
+   '<radialGradient id="'+k+'lim" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="'+R+'">' +
+   '<stop offset=".58" stop-color="#8a3000" stop-opacity="0"/>' +
+   '<stop offset="1" stop-color="#8a3000" stop-opacity=".32"/></radialGradient>' +
+   '<radialGradient id="'+k+'bo" gradientUnits="userSpaceOnUse" cx="90" cy="104" r="22">' +
+   '<stop offset="0" stop-color="#ffd089" stop-opacity=".5"/>' +
+   '<stop offset="1" stop-color="#ffd089" stop-opacity="0"/></radialGradient>' +
+   '<radialGradient id="'+k+'l" gradientUnits="userSpaceOnUse" cx="69" cy="66" r="26">' +
+   '<stop offset="0" stop-color="#fff6d8" stop-opacity=".88"/>' +
+   '<stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>' +
+   /* the glow: wider and warmer than the current one, which is the 'זוהר' half */
+   '<radialGradient id="'+k+'g" gradientUnits="userSpaceOnUse" cx="80" cy="80" r="79">' +
+   '<stop offset=".40" stop-color="#ffb347" stop-opacity=".46"/>' +
+   '<stop offset=".68" stop-color="#ffc766" stop-opacity=".20"/>' +
+   '<stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>' +
+   /* ONE gradient reused by all 78 beads: objectBoundingBox means each circle
+      scales it to itself, so every bead is lit in the same relative place */
+   '<radialGradient id="'+k+'bead" cx="34%" cy="30%" r="68%">' +
+   '<stop offset="0" stop-color="#fff" stop-opacity=".85"/>' +
+   '<stop offset=".45" stop-color="#fff" stop-opacity=".12"/>' +
+   '<stop offset="1" stop-color="#000" stop-opacity=".16"/></radialGradient>' +
+   '<filter id="'+k+'spec" x="-30%" y="-30%" width="160%" height="160%">' +
+   '<feSpecularLighting result="s" specularExponent="22" surfaceScale="2.4"' +
+   ' lighting-color="#fff6e0" in="SourceAlpha">' +
+   '<fePointLight x="46" y="38" z="46"/></feSpecularLighting>' +
+   '<feComposite in="s" in2="SourceAlpha" operator="in" result="s2"/>' +
+   '<feComposite in="SourceGraphic" in2="s2" operator="arithmetic"' +
+   ' k1="0" k2="1" k3="0.85" k4="0"/></filter>' +
+   '</defs>';
+}
+
+function bodyFor(k){
+  return '<g class="sm-body">' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'b)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'lim)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'bo)"/>' +
+    '<circle cx="80" cy="80" r="'+R+'" fill="url(#'+k+'l)"/>' +
+    /* both eyes now carry a SECOND, smaller catchlight lower down - the one
+       thing from sheet ג that he picked out by name */
+    '<g><ellipse cx="68.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>' +
+    '<circle cx="66.6" cy="75.4" r="1.75" fill="#fff"/>' +
+    '<circle cx="70.4" cy="87.4" r=".78" fill="#fff" opacity=".72"/></g>' +
+    '<g><ellipse cx="91.5" cy="82" rx="5.4" ry="11.4" fill="'+EYE+'"/>' +
+    '<circle cx="89.6" cy="75.4" r="1.75" fill="#fff"/>' +
+    '<circle cx="93.4" cy="87.4" r=".78" fill="#fff" opacity=".72"/></g></g>';
+}
+
+/* ── the four ring treatments ───────────────────────────────────────────── */
+var RINGS = {
+  flat: function(k, n, w, duty){
+    var h = '<g fill="none" stroke-linecap="round">';
+    for (var i = 2; i >= 0; i--)
+      h += '<circle cx="80" cy="80" r="'+RR[i]+'" stroke="'+COL[i]+'"' +
+           ' stroke-width="'+w+'" stroke-dasharray="'+dots(RR[i],n,duty)+'"/>';
+    return h + '</g>';
+  },
+  two: function(k, n, w, duty){
+    var h = '<g fill="none" stroke-linecap="round">';
+    for (var i = 2; i >= 0; i--){
+      h += '<circle cx="80" cy="80" r="'+RR[i]+'" stroke="'+COL[i]+'"' +
+           ' stroke-width="'+w+'" stroke-dasharray="'+dots(RR[i],n,duty)+'"/>';
+      /* the same ring again, a hair smaller and lighter: a crescent per dot */
+      h += '<circle cx="80" cy="80" r="'+(RR[i]-w*0.26).toFixed(2)+'" stroke="'+LITE[i]+'"' +
+           ' stroke-width="'+(w*0.42).toFixed(2)+'" stroke-dasharray="' +
+           dots(RR[i]-w*0.26, n, duty*0.62)+'" opacity=".9"/>';
+    }
+    return h + '</g>';
+  },
+  beads: function(k, n, w, duty){
+    var h = '<g>', rad = w/2;
+    for (var i = 2; i >= 0; i--)
+      for (var j = 0; j < n; j++){
+        var a = j * 2*Math.PI/n;
+        var x = (80 + Math.cos(a)*RR[i]).toFixed(2), y = (80 + Math.sin(a)*RR[i]).toFixed(2);
+        h += '<circle cx="'+x+'" cy="'+y+'" r="'+rad+'" fill="'+COL[i]+'"/>' +
+             '<circle cx="'+x+'" cy="'+y+'" r="'+rad+'" fill="url(#'+k+'bead)"/>';
+      }
+    return h + '</g>';
+  },
+  spec: function(k, n, w, duty){
+    var h = '<g fill="none" stroke-linecap="round" filter="url(#'+k+'spec)">';
+    for (var i = 2; i >= 0; i--)
+      h += '<circle cx="80" cy="80" r="'+RR[i]+'" stroke="'+COL[i]+'"' +
+           ' stroke-width="'+w+'" stroke-dasharray="'+dots(RR[i],n,duty)+'"/>';
+    return h + '</g>';
+  }
+};
+
+function sunSVG(kind, px){
+  var k = 'r' + (++N), big = (px == null) || px >= 48;
+  var n = big ? 26 : 14, w = big ? 2.6 : 3.8, duty = big ? .06 : .07;
+  return '<svg class="sm" viewBox="0 0 160 160" aria-hidden="true">' +
+    defsFor(k) +
+    '<circle cx="80" cy="80" r="79" fill="url(#'+k+'g)"/>' +
+    '<ellipse cx="80" cy="117" rx="25" ry="4.2" fill="#b0683a" opacity=".2"/>' +
+    RINGS[kind](k, n, w, duty) +
+    bodyFor(k) +
+    '</svg>';
+}
+
+var VARIANTS = [
+  {kind:'flat',  t:'הנוכחית — נקודות שטוחות',
+   what:'מה שיש היום, רק עם הזוהר הרחב והנצנוץ השני. <b>זה קו הבסיס</b>, לא אופציה.'},
+  {kind:'two',   t:'א — שני קווים',
+   what:'הטבעת מצוירת פעמיים: שוב ברדיוס קטן במעט ובצבע בהיר, עם אותה תבנית מקווקוות. כל נקודה מקבלת סהרון אור.'},
+  {kind:'beads', t:'ב — כדורים אמיתיים',
+   what:'78 עיגולים נפרדים, כולם חולקים <b>גרדיאנט אחד</b> ביחידות תיבה, כך שכל כדור מואר באותו מקום יחסי.'},
+  {kind:'spec',  t:'ג — תאורה ספקולרית',
+   what:'מסנן <code>feSpecularLighting</code> אחד מעל שלוש הטבעות המקווקוות. נקודת אור אחת בחלל.'}
+];
+
+var host = document.getElementById('cols');
+VARIANTS.forEach(function(v){
+  var d = document.createElement('div'); d.className = 'col';
+  d.innerHTML = '<h2>' + v.t + '</h2><div class="what">' + v.what + '</div>' +
+    '<div class="pair">' +
+      '<div class="pad lit"><div>' + sunSVG(v.kind, 260) + '</div></div>' +
+      '<div class="pad dark"><div>' + sunSVG(v.kind, 260) + '</div></div>' +
+    '</div>' +
+    '<div class="sizes">' +
+      [84, 44, 22].map(function(px){
+        return '<div class="sz"><div style="width:'+px+'px;height:'+px+'px">' +
+          sunSVG(v.kind, px) + '</div><b>' + px + '</b></div>';
+      }).join('') +
+    '</div>' +
+    '<div class="cost" data-kind="' + v.kind + '">—</div>';
+  host.appendChild(d);
+});
+
+/* ── measure the real cost from the live DOM ────────────────────────────── */
+var rows = [];
+document.querySelectorAll('.cost').forEach(function(el){
+  var svg = el.closest('.col').querySelector('.pad.lit svg');
+  var els = svg.querySelectorAll('*').length;
+  var bytes = new Blob([svg.outerHTML]).size;
+  var six = els * 6;
+  el.innerHTML = '<b>' + els + '</b> אלמנטים · <b>' + (bytes/1024).toFixed(1) +
+    'KB</b> סימון<br>בדף הפעולות (6 עותקים): <b>' + six + '</b> אלמנטים, ' +
+    (bytes*6/1024).toFixed(0) + 'KB';
+  rows.push({kind: el.dataset.kind, els: els, kb: bytes/1024});
+});
+
+var base = rows[0], out = [];
+rows.slice(1).forEach(function(r){
+  out.push('<b>' + r.kind + '</b> — ' + r.els + ' אלמנטים (' +
+    (r.els/base.els).toFixed(1) + '× הבסיס), ' + r.kb.toFixed(1) + 'KB (' +
+    (r.kb/base.kb).toFixed(1) + '×)');
+});
+document.getElementById('verdict').innerHTML =
+  '<b>העלות האמיתית, נמדדה מה‑DOM:</b> הבסיס הוא ' + base.els + ' אלמנטים ו‑' +
+  base.kb.toFixed(1) + 'KB.<br>' + out.join('<br>') +
+  '<br><br><b>ומה שהמספרים לא אומרים:</b> תסתכל על 22 ו‑44 פיקסל, לא על 260. ' +
+  'בגודל אייקון ההבדל בין השלוש עשוי להיעלם לגמרי — ואם הוא נעלם, ' +
+  '<b>הזולה ביותר מנצחת</b>, כי שם הדמות באמת חיה.';
+</script>
+</html>
