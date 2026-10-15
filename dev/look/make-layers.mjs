@@ -1,38 +1,57 @@
-// Split the chosen render into TWO layers by radius, so the rings can turn
-// while the face stays level.
+// Split the chosen render into FOUR layers by radius: the body, and each of
+// the three rings on its own.
 //
-// WHY: a single flat PNG rotated is a picture rotated - the eyes go round with
-// it and he looks like he is falling over. The rings are the only part that
-// should turn, and in this image they are separated from the body by a clean
-// gap. Measured along a ray from the centre of sun-30:
+// WHY FOUR AND NOT TWO. Two layers let the rings lag behind the body. Three
+// rings turning at three different speeds - or in three different directions
+// while he is thinking - needs each ring to be its own layer, and that is a
+// thing the render can be cut into rather than a thing that has to be drawn.
 //
-//     0-216px   the body, alpha 252, orange deepening outward
-//   228-360px   the gap: alpha falls to 89 then 21 - this is the glow
-//   372-408px   the first bead, alpha back to 252
+// THE BOUNDARIES ARE MEASURED, NOT CHOSEN. Sampling a whole circle at each
+// radius of sun-30 and recording what fraction of it is opaque:
 //
-// So 290 cuts through the middle of the gap and touches neither.
+//     230-248   72% -> 31%   the body's rim and its glow
+//     254-302   peak 62% at 278     RING 1
+//     308-362   peak 54% at 335     RING 2
+//     368-425   peak 50% at 396     RING 3
+//     430+      nothing
 //
-// The glow belongs with the BODY, not the rings: it is light coming off him,
-// and a halo that counter-rotates while its source stands still looks wrong.
+// So the cuts fall in the troughs between those peaks: 245, 311, 365, 430.
+// Each gets a feather so no layer carries a hard edge, and the feathers are
+// complementary - what one layer loses the next one gains, so recombining all
+// four is the original image.
 import { decode } from './png-pixel.mjs';
 import { writeRGBA } from './png-write.mjs';
 
 const SRC  = 'C:/Projects/Nutrition-/dev/look/sun-gen/sun-30-vol-balanced.png';
 const OUT  = 'C:/Projects/Nutrition-/dev/assets/';
-const CUT  = 290;          // px from centre, in the source's own 1024 frame
-const FEATHER = 14;        // soften the seam so neither layer has a hard edge
+const OUTSIZE = 512;
+const FEATHER = 9;
+/* name, outer edge of this band (in the SOURCE's 1024 frame) */
+const BANDS = [
+  ['sun-body',  245],   // the sphere, its rim and its glow
+  ['sun-r1',    311],   // red
+  ['sun-r2',    365],   // orange
+  ['sun-r3',    430],   // yellow
+];
 
-const OUTSIZE = 512;        // the splash shows him at ~260 CSS px; 512 covers 2x
 const im = decode(SRC);
-const SC = im.w / OUTSIZE;  // source pixels per output pixel
+const SC = im.w / OUTSIZE;
 const cx = im.w/2, cy = im.h/2;
-const body  = Buffer.alloc(OUTSIZE*OUTSIZE*4);
-const rings = Buffer.alloc(OUTSIZE*OUTSIZE*4);
+const bufs = BANDS.map(() => Buffer.alloc(OUTSIZE*OUTSIZE*4));
+
+/* how much of a pixel at distance d belongs to band i: 1 inside, falling to 0
+   across the feather at that band's outer edge, and 0 before the previous one */
+function share(d, i){
+  const lo = i === 0 ? -Infinity : BANDS[i-1][1];
+  const hi = BANDS[i][1];
+  const up = i === 0 ? 1 : Math.min(1, Math.max(0, (d - (lo - FEATHER)) / (FEATHER*2)));
+  const dn = i === BANDS.length-1 ? 1
+           : 1 - Math.min(1, Math.max(0, (d - (hi - FEATHER)) / (FEATHER*2)));
+  return up * dn;
+}
 
 for (let oy = 0; oy < OUTSIZE; oy++)
   for (let ox = 0; ox < OUTSIZE; ox++){
-    /* box-average the source square this output pixel covers, weighting colour
-       by alpha so the transparent surround cannot grey the edges */
     let r=0,g=0,b=0,a=0,n=0;
     const X0 = Math.floor(ox*SC), X1 = Math.max(X0+1, Math.floor((ox+1)*SC));
     const Y0 = Math.floor(oy*SC), Y1 = Math.max(Y0+1, Math.floor((oy+1)*SC));
@@ -41,29 +60,36 @@ for (let oy = 0; oy < OUTSIZE; oy++)
         const q = im.at(sx, sy);
         r += q[0]*q[3]; g += q[1]*q[3]; b += q[2]*q[3]; a += q[3]; n++;
       }
-    const p = [a ? Math.round(r/a) : 0, a ? Math.round(g/a) : 0,
-               a ? Math.round(b/a) : 0, Math.round(a/n)];
-    const i = (oy*OUTSIZE + ox)*4;
-    const x = (ox + 0.5)*SC, y = (oy + 0.5)*SC;
-    const d = Math.hypot(x - cx, y - cy);
-    // a smooth 0..1 across the feather band rather than a hard cut
-    let t = (d - (CUT - FEATHER)) / (FEATHER*2);
-    t = t < 0 ? 0 : t > 1 ? 1 : t;
-    body[i]=p[0];  body[i+1]=p[1];  body[i+2]=p[2];  body[i+3]  = Math.round(p[3]*(1-t));
-    rings[i]=p[0]; rings[i+1]=p[1]; rings[i+2]=p[2]; rings[i+3] = Math.round(p[3]*t);
+    const R = a ? Math.round(r/a) : 0, G = a ? Math.round(g/a) : 0,
+          B = a ? Math.round(b/a) : 0, A = a/n;
+    const d = Math.hypot((ox+0.5)*SC - cx, (oy+0.5)*SC - cy);
+    const i4 = (oy*OUTSIZE + ox)*4;
+    for (let i = 0; i < BANDS.length; i++){
+      const s = share(d, i);
+      bufs[i][i4]=R; bufs[i][i4+1]=G; bufs[i][i4+2]=B;
+      bufs[i][i4+3] = Math.round(A * s);
+    }
   }
 
-const b = writeRGBA(OUT + 'sun-body.png',  OUTSIZE, OUTSIZE, body);
-const r = writeRGBA(OUT + 'sun-rings.png', OUTSIZE, OUTSIZE, rings);
-console.log('wrote dev/assets/sun-body.png   ' + (b/1024).toFixed(0) + 'KB');
-console.log('wrote dev/assets/sun-rings.png  ' + (r/1024).toFixed(0) + 'KB');
+BANDS.forEach(function(band, i){
+  const bytes = writeRGBA(OUT + band[0] + '.png', OUTSIZE, OUTSIZE, bufs[i]);
+  console.log('wrote dev/assets/' + (band[0]+'.png').padEnd(14) +
+    (bytes/1024).toFixed(0).padStart(4) + 'KB');
+});
 
-// prove the split put each thing in the right file
-const B = decode(OUT + 'sun-body.png'), R = decode(OUT + 'sun-rings.png');
-const probe = (im2, d, label) => {
-  const p = im2.at(OUTSIZE>>1, Math.round(OUTSIZE/2 + d/SC));
-  console.log('  ' + label.padEnd(14) + ' at ' + String(d).padStart(3) + 'px  alpha ' +
-    String(p[3]).padStart(3));
-};
-console.log('body layer:');   probe(B, 100, 'on the body'); probe(B, 390, 'on a bead');
-console.log('rings layer:');  probe(R, 100, 'on the body'); probe(R, 390, 'on a bead');
+/* prove each band kept its own thing and nothing else, and that the four
+   together still add up to the original alpha */
+console.log('\nalpha at each radius, per layer (source px from centre):');
+const back = BANDS.map(b => decode(OUT + b[0] + '.png'));
+[100, 278, 335, 396].forEach(function(d){
+  const row = back.map(function(L){
+    const p = L.at(OUTSIZE>>1, Math.round(OUTSIZE/2 + d/SC));
+    return String(p[3]).padStart(4);
+  });
+  const sum = back.reduce(function(t, L){
+    return t + L.at(OUTSIZE>>1, Math.round(OUTSIZE/2 + d/SC))[3]; }, 0);
+  const orig = im.at(Math.round(cx), Math.round(cy + d))[3];
+  console.log('  ' + String(d).padStart(4) + 'px  ' + row.join(' ') +
+    '   sum ' + String(sum).padStart(4) + '  original ' + String(orig).padStart(4) +
+    (Math.abs(sum - orig) <= 3 ? '  ok' : '  MISMATCH'));
+});
