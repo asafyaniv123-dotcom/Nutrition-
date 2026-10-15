@@ -52,6 +52,33 @@ export function writeRGB(path, w, h, rgb){
   return fs.statSync(path).size;
 }
 
+/** rgba: Buffer of w*h*4. Writes an 8-bit truecolour PNG WITH alpha. */
+export function writeRGBA(path, w, h, rgba){
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; ihdr[9] = 6;           // colour type 6 = truecolour + alpha
+  /* Filter 1 (Sub: each byte minus the one a pixel to its left) rather than 0.
+     On smooth gradients neighbouring pixels differ by one or two, so the
+     filtered bytes are nearly all tiny and deflate collapses them. Writing the
+     sun's layers unfiltered came to 2MB each; this is the single change that
+     makes that reasonable, and it costs four lines. */
+  const stride = w*4;
+  const raw = Buffer.alloc(h * (stride + 1));
+  for (let y = 0; y < h; y++){
+    const o = y*(stride+1);
+    raw[o] = 1;
+    for (let i = 0; i < stride; i++)
+      raw[o + 1 + i] = (rgba[y*stride + i] - (i >= 4 ? rgba[y*stride + i - 4] : 0)) & 255;
+  }
+  fs.writeFileSync(path, Buffer.concat([
+    Buffer.from([0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', zlib.deflateSync(raw, {level: 9})),
+    chunk('IEND', Buffer.alloc(0)),
+  ]));
+  return fs.statSync(path).size;
+}
+
 /** Composite an RGBA image over a solid colour, box-downscale, return RGB. */
 export function flattenAndScale(im, out, bg, padFrac){
   const [br, bg_, bb] = bg;
