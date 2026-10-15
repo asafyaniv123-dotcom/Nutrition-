@@ -181,3 +181,41 @@ Object.keys(FACES).forEach(function(name){
     '   dark ' + String(dark).padStart(5) + '   pale ' + String(pale).padStart(5));
 });
 console.log('  the render itself is 130x85 at this scale');
+
+/* ── 4. the body with NO eyes ──
+   The research conclusion that forced this: a cross-fade between two drawings
+   shows BOTH at 50% in the middle, which is a ghost, not a transition. Real
+   animation moves the SHAPE. Six PNGs cannot morph into each other - but a
+   body with no eyes, plus eyes drawn as vectors on top, can morph continuously
+   and for nothing. This file is that body. */
+{
+  const SC = W / OUTSIZE, out = Buffer.alloc(OUTSIZE*OUTSIZE*4);
+  for (let oy = 0; oy < OUTSIZE; oy++)
+    for (let ox = 0; ox < OUTSIZE; ox++){
+      let r=0,g=0,b=0,a=0,n=0;
+      for (let sy = oy*SC|0; sy < (oy+1)*SC; sy++)
+        for (let sx = ox*SC|0; sx < (ox+1)*SC; sx++){
+          const i = (sy*W + sx)*4, A = base[i+3];
+          r += base[i]*A; g += base[i+1]*A; b += base[i+2]*A; a += A; n++;
+        }
+      const d = Math.hypot((ox+0.5)*SC - CXI, (oy+0.5)*SC - CYI);
+      const t = Math.min(1, Math.max(0, (d - (CUT - FEATHER)) / (FEATHER*2)));
+      const o = (oy*OUTSIZE + ox)*4;
+      out[o]   = a ? Math.round(r/a) : 0;
+      out[o+1] = a ? Math.round(g/a) : 0;
+      out[o+2] = a ? Math.round(b/a) : 0;
+      out[o+3] = Math.round((a/n) * (1-t));
+    }
+  const bytes = writeRGBA(OUT + 'beem-body.png', OUTSIZE, OUTSIZE, out);
+  console.log('\nwrote beem-body.png   ' + (bytes/1024).toFixed(0) + 'KB   (no eyes)');
+  /* it must have NO dark pixels where the eyes were */
+  const f = decode(OUT + 'beem-body.png');
+  let dark = 0;
+  for (let y = OUTSIZE*0.33|0; y < OUTSIZE*0.66; y++)
+    for (let x = OUTSIZE*0.33|0; x < OUTSIZE*0.66; x++){
+      const p = f.at(x,y);
+      if (p[3] > 200 && (0.2126*p[0]+0.7152*p[1]+0.0722*p[2]) < 70) dark++;
+    }
+  console.log('  dark pixels where the eyes were: ' + dark +
+    (dark < 40 ? '   clean' : '   SOMETHING IS LEFT'));
+}

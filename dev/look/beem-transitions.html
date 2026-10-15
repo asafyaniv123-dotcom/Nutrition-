@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<title>Beem — מעברים בין הבעות</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  THE DIAGNOSIS, AND IT IS NOT SUBTLE. My transitions were a 130ms opacity
+  cross-fade between two PNGs. A cross-fade shows BOTH drawings at 50% in the
+  middle - which is a ghost, not a transition. Animation moves the SHAPE.
+
+  WHY IT COULD NOT BE FIXED BY TUNING: six flat images cannot morph into each
+  other at any duration or easing. The architecture had to change. The body is
+  now a PNG with NO EYES, and the eyes are drawn as one vector path whose three
+  numbers are interpolated - so every in-between exists, for nothing.
+
+  ONE PATH COVERS ALL SIX EXPRESSIONS. Half-width w, and how far the upper and
+  lower edges bulge, T and B:
+
+      calm       w 41.5   T  84.5   B  84.5     a tall oval
+      closed     w 41.5   T   7     B   7       a thin lens
+      surprised  w 49     T  88     B  88       a larger oval
+      happy      w 41.5   T  34     B  -8       both edges bulge UP: a crescent
+      content    w 41.5   T  -8     B  34       both bulge DOWN
+
+  Happy is not a different drawing from calm - it is the same path with the
+  lower edge pushed through the centre line. That is what makes the morph
+  between them mean something.
+
+  THREE THINGS THE RESEARCH ADDED ON TOP, all of them named principles:
+  OVERSHOOT - an exaggerated version of the final pose placed just before it.
+  OVERLAPPED TIMING - the two eyes do not arrive together; one leads by 45ms.
+  ASYMMETRY - a blink closes fast and opens slow, because that is what a real
+  one does.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--line:rgba(176,168,156,.42);
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);
+    font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:30px 24px 70px}
+  h1{font-size:25px;font-weight:800;letter-spacing:-.015em}
+  h1 i{font-style:normal;color:var(--muted);font-size:17px;font-weight:700}
+  h2{font-size:17px;font-weight:800;margin:38px 0 6px}
+  .sub,p{font-size:13.5px;line-height:1.86;color:var(--muted);max-width:90ch}
+  .sub{margin-top:11px}
+  b{color:var(--ink)}
+  code{font-size:12.5px;background:rgba(176,168,156,.22);padding:1px 5px;border-radius:5px;
+    direction:ltr;display:inline-block}
+  .pair{display:grid;gap:14px;margin-top:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .card{border-radius:20px;background:var(--ground);padding:15px;
+    box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade-soft)}
+  .card h3{font-size:14px;font-weight:800}
+  .card .w{font-size:11.5px;line-height:1.62;color:var(--muted);margin:3px 0 10px;min-height:3.4em}
+  .stage{position:relative;border-radius:15px;background:var(--ground);aspect-ratio:1.25;
+    overflow:hidden;cursor:pointer;display:grid;place-items:center;
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  .beem{position:relative;width:150px;height:150px}
+  .beem img,.beem svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .beem img.ghostA,.beem img.ghostB{transition:opacity .13s linear}
+  .hint{font-size:10.5px;font-weight:800;color:var(--muted);text-align:center;margin-top:8px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:12px}
+  th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);line-height:1.62}
+  th{font-weight:800;font-size:11.5px;color:var(--muted)}
+  td.num{direction:ltr;text-align:left;font-weight:800}
+  .src{font-size:11.5px;line-height:1.9;color:var(--muted);margin-top:30px;
+    border-top:1px solid var(--line);padding-top:12px}
+  .src a{color:#6b4a2f}
+  .row{display:grid;gap:12px;margin-top:14px;
+    grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}
+  .mini{border-radius:15px;background:var(--ground);padding:10px;text-align:center;
+    box-shadow:-2px -2px 6px var(--nu-lit),3px 4px 10px var(--nu-shade-soft)}
+  .mini .stage{aspect-ratio:1}
+  .mini b{display:block;font-size:11.5px;margin-top:7px}
+</style>
+
+<div class="wrap">
+  <h1>Beem <i>— מעברים בין הבעות</i></h1>
+  <div class="sub">
+    <b>האבחנה לא עדינה.</b> המעברים שלי היו <b>הצלבת שקיפות</b> של 130 אלפיות
+    בין שתי תמונות. הצלבה מראה <b>את שתי התמונות ב‑50% באמצע</b> — וזאת רוח
+    רפאים, לא מעבר. <b>אנימציה מזיזה את הצורה.</b><br>
+    ולא היה אפשר לתקן את זה בכוונון: <b>שש תמונות שטוחות לא יכולות להפוך זו
+    לזו</b> בשום משך ובשום האטה. הארכיטקטורה הייתה חייבת להשתנות.
+  </div>
+
+  <h2>לראות את ההבדל</h2>
+  <p>
+    אותו מעבר בדיוק — רגוע לשמח — פעמיים. <b>תעצור על האמצע של השמאלי.</b>
+  </p>
+  <div class="pair" id="compare"></div>
+
+  <h2>מה שאפשר את זה</h2>
+  <p>
+    הגוף הוא עכשיו PNG <b>בלי עיניים</b>, והעיניים הן <b>נתיב וקטורי אחד</b>
+    ששלושת המספרים שלו עוברים אינטרפולציה. אז כל שלב ביניים קיים, בחינם.
+    <b>נתיב אחד מכסה את כל שש ההבעות</b> — חצי־רוחב, וכמה הקצה העליון והתחתון
+    מתנפחים:
+  </p>
+  <table>
+    <tr><th>הבעה</th><th>w</th><th>T · הקצה העליון</th><th>B · הקצה התחתון</th><th>מה יוצא</th></tr>
+    <tr><td>רגוע</td><td class="num">41.5</td><td class="num">84.5</td><td class="num">84.5</td><td>אליפסה גבוהה</td></tr>
+    <tr><td>עצומות</td><td class="num">41.5</td><td class="num">7</td><td class="num">7</td><td>עדשה דקה</td></tr>
+    <tr><td>קשוב</td><td class="num">49</td><td class="num">88</td><td class="num">88</td><td>אליפסה גדולה יותר</td></tr>
+    <tr><td>שמח</td><td class="num">41.5</td><td class="num">34</td><td class="num">−8</td><td><b>שני הקצוות מתנפחים למעלה</b> — סהרון</td></tr>
+    <tr><td>מרוצה</td><td class="num">41.5</td><td class="num">−8</td><td class="num">34</td><td>שניהם למטה</td></tr>
+  </table>
+  <p>
+    <b>״שמח״ הוא לא ציור אחר מ״רגוע״</b> — זה אותו נתיב כשהקצה התחתון נדחף
+    מעבר לקו האמצע. <b>וזה מה שנותן למעבר ביניהם משמעות.</b>
+  </p>
+
+  <h2>שלושה דברים שהמחקר הוסיף מעל זה</h2>
+  <table>
+    <tr><th>העיקרון</th><th>מה הוא אומר</th><th>מה עשינו</th></tr>
+    <tr><td><b>Overshoot</b></td>
+      <td>פריים מוגזם של התנוחה הסופית, <b>רגע לפניה</b>. בלעדיו המעבר נוקשה.</td>
+      <td>כל מעבר עובר <b>112%</b> מהדרך ואז מתיישב</td></tr>
+    <tr><td><b>Overlapped timing</b></td>
+      <td>החלקים לא זזים יחד; החלק העליון מוביל.</td>
+      <td>העין השנייה מתחילה <b>45 אלפיות</b> אחרי הראשונה</td></tr>
+    <tr><td><b>אסימטריה במצמוץ</b></td>
+      <td>״עין נסגרת מהר ונפתחת לאט״ — זה מה שעין אמיתית עושה.</td>
+      <td>סגירה <b>70</b> אלפיות, פתיחה <b>190</b></td></tr>
+  </table>
+
+  <h2>וכך זה נראה על כל ההבעות</h2>
+  <div class="row" id="all"></div>
+
+  <h2>והמצמוץ של קירבי הוא לא טיימר</h2>
+  <p>
+    מצאתי את זה ולא ציפיתי: ב‑<i>Kirby's Adventure</i> המצמוץ רץ ב<b>תבנית
+    קבועה בלי אקראיות</b> — שלושה מצמוצים ברצף. ב‑<i>Kirby Super Star</i> זה
+    מורכב יותר: שלושה מצמוצים מהירים כשהשלישי מעט מאוחר, התבנית חוזרת שוב, ואז
+    <b>עצימה ארוכה</b>, ואז מצמוץ אחד מודגש — ומתחיל מחדש.<br>
+    <b>אצלנו המצמוץ הוא שלוש שניות ואז חמש.</b> זה כבר לא אחיד, וזה טוב — אבל
+    זאת עדיין לולאה בת שתי פעימות מול לולאה בת שמונה. <b>זה הדבר הבא
+    בתור</b>, והוא קוד.
+  </p>
+
+  <div class="src">
+    מקורות:
+    <a href="https://tips.clip-studio.com/en-us/articles/10736">Clip Studio — Basics of animating different facial expressions</a> ·
+    <a href="https://www.linkedin.com/learning/2d-animation-tips-and-tricks/anticipate-and-overshoot-the-head">LinkedIn Learning — Anticipate and overshoot</a> ·
+    <a href="https://en.wikipedia.org/wiki/Morph_target_animation">Wikipedia — Morph target animation</a> ·
+    <a href="https://wikirby.com/wiki/Idle_animation">WiKirby — Idle animation</a> ·
+    <a href="https://mocaponline.com/blogs/mocap-news/blend-shapes-morph-targets-guide">Blend Shapes &amp; Morph Targets</a>
+  </div>
+</div>
+
+<script>
+/* the eye, in the render's own coordinates (1024 frame, shown at 150px) */
+var VB = 1024, EXC = -10.5, EX = 87.5, EY = -13, EYE = '#2f180a';
+var E = {
+  calm:      {w:41.5, T: 84.5, B: 84.5, hi:1},
+  closed:    {w:41.5, T:  7,   B:  7,   hi:0},
+  surprised: {w:49,   T: 88,   B: 88,   hi:1.3},
+  thinking:  {w:41.5, T: 84.5, B: 84.5, hi:1, dx:15, dy:-26},
+  happy:     {w:41.5, T: 34,   B: -8,   hi:0},
+  content:   {w:41.5, T: -8,   B: 34,   hi:0}
+};
+var KEYS = ['calm','closed','thinking','happy','surprised','content'];
+var HE = {calm:'רגוע',closed:'עצומות',thinking:'חושב',happy:'שמח',
+          surprised:'קשוב',content:'מרוצה'};
+
+/* ONE PATH for every expression: an upper edge bulging T and a lower edge
+   bulging B, both from the eye's centre line. T and B of the same sign make an
+   oval; pushing B through zero makes a crescent. */
+function eyePath(w, T, B){
+  var k = 1.33;
+  return 'M' + (-w) + ' 0' +
+    'C' + (-w*0.45) + ' ' + (-T*k) + ' ' + (w*0.45) + ' ' + (-T*k) + ' ' + w + ' 0' +
+    'C' + (w*0.45) + ' ' + (B*k) + ' ' + (-w*0.45) + ' ' + (B*k) + ' ' + (-w) + ' 0Z';
+}
+function svgFor(id){
+  return '<svg viewBox="0 0 ' + VB + ' ' + VB + '" id="' + id + '">' +
+    [0,1].map(function(s){
+      var sx = VB/2 + EXC + (s ? EX : -EX);
+      return '<g class="eg" data-side="' + s + '" transform="translate(' + sx + ',' +
+        (VB/2 + EY) + ')">' +
+        '<path class="ep" fill="' + EYE + '"/>' +
+        '<circle class="h1" fill="#fff" r="13.5"/>' +
+        '<circle class="h2" fill="#fff" r="6" opacity=".72"/></g>';
+    }).join('') + '</svg>';
+}
+
+function Eyes(svg){
+  var gs = [].slice.call(svg.querySelectorAll('.eg'));
+  var cur = [{}, {}], from = [{}, {}], to = [{}, {}], t0 = [0, 0], dur = [1, 1];
+  KEYS.length;                                     // (keeps linters quiet)
+  function set(i, p){
+    var g = gs[i];
+    g.querySelector('.ep').setAttribute('d', eyePath(p.w, p.T, p.B));
+    g.setAttribute('transform', 'translate(' +
+      (VB/2 + EXC + (i ? EX : -EX) + (p.dx||0)*(i?-1:1)) + ',' + (VB/2 + EY + (p.dy||0)) + ')');
+    /* the catchlights fade out as the eye closes - they are reflections, and a
+       closed eye has nothing to reflect in */
+    var open = Math.max(0, Math.min(1, (p.T + p.B) / 120));
+    g.querySelector('.h1').setAttribute('r', (13.5 * p.hi * open).toFixed(2));
+    g.querySelector('.h1').setAttribute('cx', -14.6 * (i ? -1 : 1));
+    g.querySelector('.h1').setAttribute('cy', -50.8 * open);
+    g.querySelector('.h2').setAttribute('r', (6 * p.hi * open).toFixed(2));
+    g.querySelector('.h2').setAttribute('cx', 14.6 * (i ? -1 : 1));
+    g.querySelector('.h2').setAttribute('cy', 41.6 * open);
+  }
+  this.jump = function(name){
+    [0,1].forEach(function(i){ cur[i] = Object.assign({}, E[name]); set(i, cur[i]); });
+  };
+  /* OVERLAPPED TIMING: the second eye starts 45ms after the first. They are not
+     one object and they should not arrive together. */
+  this.to = function(name, ms, lead){
+    var now = performance.now();
+    [0,1].forEach(function(i){
+      from[i] = Object.assign({}, cur[i]);
+      to[i] = Object.assign({}, E[name]);
+      t0[i] = now + (i === 1 ? (lead === undefined ? 45 : lead) : 0);
+      dur[i] = ms || 220;
+    });
+  };
+  var self = this;
+  requestAnimationFrame(function step(now){
+    [0,1].forEach(function(i){
+      if (!to[i].w) return;
+      var p = Math.max(0, Math.min(1, (now - t0[i]) / dur[i]));
+      /* OVERSHOOT: travel 112% of the way, then settle back */
+      var e = p < 1 ? (1 - Math.pow(1 - p, 3)) * 1.12 - (p > 0.72 ? (p - 0.72)/0.28 * 0.12 : 0) : 1;
+      var o = {};
+      ['w','T','B','hi','dx','dy'].forEach(function(k){
+        var a = from[i][k] || 0, b = to[i][k] || 0;
+        o[k] = a + (b - a) * e;
+      });
+      cur[i] = o; set(i, o);
+    });
+    requestAnimationFrame(step);
+  });
+}
+
+/* ── the comparison ── */
+var cmp = document.getElementById('compare');
+[['ghost','ההצלבה — מה שהיה',
+  'שתי תמונות, אחת נעלמת והשנייה מופיעה. <b>באמצע שתיהן שם.</b>'],
+ ['morph','המורף — מה שיש עכשיו',
+  'נתיב אחד ששלושת המספרים שלו זזים. <b>באמצע יש עין אחת, בצורת ביניים אמיתית.</b>']
+].forEach(function(c){
+  var d = document.createElement('div'); d.className = 'card';
+  d.innerHTML = '<h3>' + c[1] + '</h3><div class="w">' + c[2] + '</div>' +
+    '<div class="stage"><div class="beem">' +
+      (c[0] === 'ghost'
+        ? '<img src="../assets/beem-f-calm.png" class="ghostA" alt="">' +
+          '<img src="../assets/beem-f-happy.png" class="ghostB" style="opacity:0" alt="">'
+        : '<img src="../assets/beem-body.png" alt="">' + svgFor('m-' + c[0])) +
+    '</div></div><div class="hint">לחץ</div>';
+  cmp.appendChild(d);
+  var st = d.querySelector('.stage');
+  if (c[0] === 'ghost'){
+    var A = d.querySelector('.ghostA'), B = d.querySelector('.ghostB'), on = false;
+    var go = function(){ on = !on; A.style.opacity = on ? 0 : 1; B.style.opacity = on ? 1 : 0; };
+    st.addEventListener('pointerdown', go); setInterval(go, 1700);
+  } else {
+    var ey = new Eyes(d.querySelector('svg')), on2 = false;
+    ey.jump('calm');
+    var go2 = function(){ on2 = !on2; ey.to(on2 ? 'happy' : 'calm', 240); };
+    st.addEventListener('pointerdown', go2); setInterval(go2, 1700);
+  }
+});
+
+/* ── every expression, morphing ── */
+var all = document.getElementById('all');
+KEYS.forEach(function(k, i){
+  var d = document.createElement('div'); d.className = 'mini';
+  d.innerHTML = '<div class="stage"><div class="beem">' +
+    '<img src="../assets/beem-body.png" alt="">' + svgFor('a-' + k) +
+    '</div></div><b>' + HE[k] + '</b>';
+  all.appendChild(d);
+  var ey = new Eyes(d.querySelector('svg')); ey.jump('calm');
+  var toggle = false;
+  var run = function(){
+    toggle = !toggle;
+    if (k === 'closed'){
+      /* ASYMMETRY: closes fast, opens slow - what a real blink does */
+      ey.to('closed', 70, 20);
+      setTimeout(function(){ ey.to('calm', 190, 20); }, 190);
+    } else ey.to(toggle ? k : 'calm', 240);
+  };
+  d.querySelector('.stage').addEventListener('pointerdown', run);
+  setTimeout(function(){ setInterval(run, k === 'closed' ? 2600 : 2000); }, i * 260);
+});
+</script>
+</html>
