@@ -31,7 +31,14 @@ import { writeRGBA } from './png-write.mjs';
 
 const SRC = 'C:/Projects/Nutrition-/character/sun-source.png';
 const OUT = 'C:/Projects/Nutrition-/dev/assets/';
-const OUTSIZE = 512;
+/* Two sizes, chosen by where each file is actually shown rather than by
+   habit. The six face PNGs appear at 150px or less on the sheet, so 512 is
+   already more than a 3x phone needs. beem-body.png is the one shown large -
+   up to ~700 CSS px, which is 2100 device px - so it goes out at the source's
+   own 1024 and upscales nothing. At 512 it was being blown up fourfold, which
+   is what 'the quality is very low' was. */
+const FACE_SIZE = 512, BODY_SIZE = 1024;
+const OUTSIZE = FACE_SIZE;
 const CUT = 245, FEATHER = 9;
 
 const EYE   = [47, 24, 10];        // measured
@@ -189,6 +196,7 @@ console.log('  the render itself is 130x85 at this scale');
    body with no eyes, plus eyes drawn as vectors on top, can morph continuously
    and for nothing. This file is that body. */
 {
+  const OUTSIZE = BODY_SIZE;                      // the one file shown large
   const SC = W / OUTSIZE, out = Buffer.alloc(OUTSIZE*OUTSIZE*4);
   for (let oy = 0; oy < OUTSIZE; oy++)
     for (let ox = 0; ox < OUTSIZE; ox++){

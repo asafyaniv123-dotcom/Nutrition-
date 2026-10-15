@@ -24,7 +24,10 @@ import { writeRGBA } from './png-write.mjs';
 
 const SRC = 'C:/Projects/Nutrition-/dev/look/sun-gen/sun-30-vol-balanced.png';
 const OUT = 'C:/Projects/Nutrition-/dev/assets/';
-const OUTSIZE = 512;
+const OUTSIZE = 1024;   /* the source IS 1024, so this upscales nothing. At 512 the
+                           model sheet showed him at ~700 CSS px, which is 2100
+                           device px on a phone - a four-fold upscale of an asset
+                           we already had at full size. */
 const BEAD_A  = 180;     // alpha above which a pixel in a band is bead, not haze
 const DILATE  = 2;
 /* name, inner and outer edge, in the source's 1024 frame. The inner edge of
