@@ -65,7 +65,12 @@
   .readout div{font-size:12px;line-height:1.85;color:var(--muted);direction:ltr;text-align:left;
     font-family:ui-monospace,Menlo,Consolas,monospace}
   .readout b{color:var(--ink)}
-  @media (prefers-reduced-motion:reduce){.beem img{transform:none!important}}
+  /* NO blanket reduce-motion freeze here. That rule was transform:none
+     !important on every layer, so with 'Reduce Motion' on - which is common on
+     a phone - this page showed four still images and nothing else. On a page
+     whose entire subject IS motion that is not politeness, it is a blank
+     page. The app itself still honours the setting; a spec for motion has to
+     be able to show it. */
 </style>
 
 <div class="wrap">
@@ -120,13 +125,20 @@ function Beem(stage, mode){
   var RK = [46, 36, 29], RD = [9.4, 8.6, 7.9];   // each ring, softer outward
   this.S = S; this.mode = mode;
 
+  /* A PHONE HAS NO POINTER UNTIL YOU TOUCH IT. 'Move the mouse' is an
+     instruction a phone cannot follow, so this demo was a still picture on
+     exactly the device he was reading it on. It drives itself on a slow path
+     until a pointer arrives, and hands control over the moment one does. */
+  var lastTouch = -1e9;
   stage.addEventListener('pointermove', function(e){
     if (mode !== 'travel') return;
+    lastTouch = S.t;
     var r = stage.getBoundingClientRect();
     S.tx = (e.clientX - r.left - r.width/2) * 0.42;
     S.ty = (e.clientY - r.top - r.height/2) * 0.30;
   });
-  stage.addEventListener('pointerleave', function(){ if (mode === 'travel'){ S.tx = 0; S.ty = 0; } });
+  stage.addEventListener('pointerleave', function(){ if (mode === 'travel') lastTouch = -1e9; });
+  this.selfDrive = function(){ return mode === 'travel' && S.t - lastTouch > 1.6; };
   stage.addEventListener('pointerdown', function(){
     if (mode === 'tap'){
       S.sq = 0.19;
@@ -162,6 +174,10 @@ function Beem(stage, mode){
     var dt = Math.min(0.045, (t - last)/1000); last = t; S.t += dt;
 
     if (mode === 'float') { S.tx = 0; S.ty = Math.sin(S.t * 1.5) * 7; }
+    if (self.selfDrive()) {           // a figure-of-eight, until a finger arrives
+      S.tx = Math.sin(S.t * 0.9) * 46;
+      S.ty = Math.sin(S.t * 1.8) * 16;
+    }
     if (mode === 'wake')  { S.tx = 0; }   /* ty is driven by the wake sequence */
 
     var px = S.x, py = S.y;
@@ -219,7 +235,7 @@ function Beem(stage, mode){
 
 var M = [
   {k:'float', t:'מרחף', w:'מצב המנוחה. הגוף עולה ויורד, והטבעות <b>נגררות אחריו ומתגלגלות</b> — לא מונפשות בנפרד.', h:'רץ מעצמו'},
-  {k:'travel',t:'נוסע', w:'<b>הזז את העכבר.</b> הגוף רודף אחריך, כל טבעת רודפת אחרי הגוף ברכות משלה, וכולן <b>מתגלגלות לפי המרחק שעברו</b>.', h:'הזז את העכבר'},
+  {k:'travel',t:'נוסע', w:'רץ מעצמו, <b>ועובר לשליטתך ברגע שאתה נוגע</b>. כל טבעת רודפת אחרי הגוף ברכות משלה, וכולן <b>מתגלגלות לפי המרחק שעברו</b>.', h:'גע וגרור'},
   {k:'think', t:'חושב', w:'כל מעגל לכיוון אחר ובקצב אחר. הגוף דומם לגמרי — <b>המחשבה היא בטבעות</b>.', h:'רץ מעצמו'},
   {k:'tap',   t:'נגיעה', w:'<b>לחץ.</b> הוא נמעך <b>ומתרחב</b>, וגל נוסע החוצה — הטבעת הרחוקה מקבלת אותו אחרונה.', h:'לחץ עליו'},
   {k:'wake',  t:'מתעורר', w:'<b>לחץ.</b> קופץ מהשקע. הנחיתה היא אותה מעיכה, רק שהיא באה מהתאוצה ולא מאצבע.', h:'לחץ שוב'}

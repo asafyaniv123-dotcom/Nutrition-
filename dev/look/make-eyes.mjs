@@ -14,10 +14,13 @@
 //   finding is kept here because 'we tried it and it does not work for a warm
 //   character' is worth more than the idea it replaced.
 //
-//   SURPRISE IS AN INVERSION, NOT A RESIZE. Kirby's eyes 'shift to white
-//   circles with small black pupils'. Ours used to scale the same oval by 18%,
-//   which is exactly why 'attentive' barely read as different from 'calm'. The
-//   eye now changes TYPE: a pale field, a thin dark rim, a small pupil.
+//   SURPRISE: THE INVERSION WAS BUILT AND THEN REJECTED. Kirby's eyes 'shift
+//   to white circles with small black pupils', and it worked as an inversion -
+//   1030 dark pixels against 5408 pale, where calm is 5053 against 2872. Asaf
+//   did not like it and preferred the bigger oval. He decides. The idea is
+//   recorded here because 'the research said X and the eye still said no' is
+//   worth keeping, and because the measurement stands even though the choice
+//   went the other way.
 //
 // Everything else is the measured geometry of the render: each eye 83 x 169,
 // centres at x 414 and 589 and y 499, colour rgb(47,24,10). The eye pair's
@@ -96,10 +99,7 @@ const FACES = {
   happy:     {hi:0, L:[{s:arc(RX, 34, 26), c:EYE}]},
   /* THE INVERSION: a pale field, a thin dark rim, a small pupil. Not a bigger
      version of the calm eye - a different KIND of eye. */
-  surprised: {hi:0, L:[{s:oval(RX*0.96, RY*0.80), c:PALE},
-                       {s:ring(RX*0.96, RY*0.80, 5.5), c:EYE},
-                       {s:oval(RX*0.40, RX*0.40), c:EYE},
-                       {s:ovalAt(RX*0.15, RX*0.15, -RX*0.22), c:[255,255,255]}]},
+  surprised: {hi:1.32, L:[{s:oval(RX*1.18, RY*1.04), c:EYE}]},
   content:   {hi:0, L:[{s:arc(RX, -34, 26), c:EYE}]},
 };
 
