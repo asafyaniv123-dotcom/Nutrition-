@@ -85,6 +85,25 @@ for (const g of GROUPS) {
 }
 
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* Every colour this page uses as TEXT, asserted against the ground before the
+   file is written. The first version shipped #a9a097 for the filenames, which
+   measures 2.08:1 - worse than any of the three tokens that find-unreadable-
+   tokens.mjs was written for. Quiet is a size and a weight; it is not an
+   unreadable colour. */
+const GROUND = '#e9e7e3';
+const TEXT = { '--ink': '#433c38', '--muted': '#675f57' };
+function lum(hex){
+  const v = [1,3,5].map(i => parseInt(hex.substr(i,2),16)/255)
+    .map(c => c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4));
+  return 0.2126*v[0] + 0.7152*v[1] + 0.0722*v[2];
+}
+function ratio(a,b){ const [x,y] = [lum(a),lum(b)].sort((p,q)=>q-p); return (x+0.05)/(y+0.05); }
+for (const [name, hex] of Object.entries(TEXT)) {
+  const r = ratio(hex, GROUND);
+  if (r < 4.5) throw new Error(`${name} ${hex} is ${r.toFixed(2)}:1 on ${GROUND} - under 4.5`);
+  console.log('  contrast ' + name.padEnd(9) + hex + '  ' + r.toFixed(2) + ':1');
+}
 const total = files.length;
 const noted = files.filter(f => NOTES[f.replace(/\.html$/,'')]).length;
 
@@ -137,7 +156,7 @@ fs.writeFileSync(DIR + 'index.html', `<!doctype html>
   .sub b{color:var(--ink)}
   section{margin-top:34px}
   h2{font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:9px}
-  h2 span{font-size:11px;font-weight:800;color:#8d857b;background:var(--ground);
+  h2 span{font-size:11px;font-weight:800;color:var(--muted);background:var(--ground);
     border-radius:20px;padding:2px 9px;
     box-shadow:inset 1px 2px 4px var(--nu-shade-soft),inset -1px -1px 3px var(--nu-lit)}
   .blurb{font-size:12.5px;color:var(--muted);margin:5px 0 12px}
@@ -153,9 +172,9 @@ fs.writeFileSync(DIR + 'index.html', `<!doctype html>
   .card b{display:block;font-size:14px;font-weight:800;line-height:1.35}
   .card i{display:block;font-style:normal;font-size:12px;line-height:1.6;
     color:var(--muted);margin-top:5px}
-  .card i.none{color:#a9a097}
-  .card code{display:block;font-size:10.5px;color:#a9a097;margin-top:7px;
-    direction:ltr;text-align:left}
+  .card i.none{color:var(--muted)}
+  .card code{display:block;font-size:10.5px;color:var(--muted);margin-top:7px;
+    letter-spacing:.02em;direction:ltr;text-align:left}
   .card.bare b{color:var(--muted)}
 </style>
 <div class="wrap">
