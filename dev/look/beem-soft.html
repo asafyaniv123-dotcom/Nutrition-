@@ -28,6 +28,15 @@
     box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
   .beem{position:relative;width:170px;height:170px}
   .beem .lay{position:absolute;inset:0}
+  /* the contact shadow is the only thing that says there IS a floor. It widens
+     and darkens as he meets it, which is what makes a squash read as an impact
+     rather than as the character deflating. */
+  .beem .shadow{position:absolute;left:50%;width:104px;height:17px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(120,92,60,.40),rgba(120,92,60,0));
+    transform:translateX(-50%);pointer-events:none}
+  /* a squash presses onto the CONTACT POINT, not the middle. The body's sphere
+     ends at 74% of the frame, so that is where the floor is. */
+  .beem.moment .lay{transform-origin:50% 74%}
   .beem img,.beem svg{position:absolute;inset:0;width:100%;height:100%;display:block}
   .hint{font-size:10.5px;font-weight:800;color:var(--muted);text-align:center;margin-top:8px}
   .read{font-size:10.5px;font-weight:800;color:var(--muted);text-align:center;margin-top:3px;
@@ -76,6 +85,23 @@
   פיקסלים לפי הסדר, כלומר החיצונית נגררת 5.6% מרוחב הגוף; וההבעה עוברת חמש צורות
   עין ושש פתיחות פה במחזור של 3.6 שניות. הכרטיסים שלא אמורים לעשות את זה מדדו
   <code>1.00</code> קבוע ו־<code>0px</code> פיגור — כל עיקרון באמת לבד.
+</p>
+
+<h2>ושני הרגעים — כניסה, ונחיתה</h2>
+<p class="sub">
+  העיקרון החמישי בקליפ הוא שהכוכב <b>אף פעם לא עוצר באוויר</b>. היום Beem נכנס
+  לספלאש בהגדלה ואז מרחף — שתי תנועות שלא פוגשות כלום. כאן הוא נכנס עם
+  <b>הכנה</b> (לפני שהוא בא קדימה הוא הולך אחורה), עובר את המרכז ונעצר דרך קפיץ;
+  ובכרטיס השני הוא <b>נופל על משטח</b>: הכיווץ נזרק רק ברגע המגע ולפי המהירות בו,
+  והצל מתרחב איתו. זה מה שהופך מעיכה לפגיעה במקום לדמות שמתרוקנת.
+</p>
+<div class="pair" id="mom" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"></div>
+<p class="sub">
+  <b>ומה שנמדד עליהם:</b> ההכנה נמשכת <code>234ms</code> ב־<code>0.56</code> גודל,
+  ואז הגודל עולה לשיא של <code>1.03</code> — העבר־ועצור הזה הוא של הקפיץ. הצללית
+  בנחיתה מגיעה ל־<code>0.70</code> ברגע המגע וחוזרת. השינוי הגדול ביותר בין שני
+  פריימים עוקבים הוא <code>0.14</code>: בגרסה הראשונה הגודל <i>קפץ</i>
+  מ־0.58 ל־1 בפריים אחד, והעין קוראת קפיצה כציור אחר, לא כאותה דמות שזזה.
 </p>
 
 <h2>מה לא לקחתי, ולמה</h2>
@@ -137,8 +163,8 @@ function ringsHTML(){
       '<img src="../assets/sun-' + n + '.png" alt=""></div>';
   }).join('');
 }
-function beemHTML(id, withMouth){
-  return ringsHTML() +
+function beemHTML(id, withMouth, withShadow){
+  return (withShadow ? '<div class="shadow"></div>' : '') + ringsHTML() +
     '<div class="lay" data-body><img src="../assets/beem-body.png" alt="">' +
     '<svg viewBox="0 0 ' + VB + ' ' + VB + '" id="' + id + '">' +
       [0,1].map(function(s){
@@ -159,20 +185,37 @@ function beemHTML(id, withMouth){
    opts.face  : the face changes on the reference's cadence
    opts.mouth : and a filled mouth is part of it */
 function Beem(host, opts){
-  host.innerHTML = beemHTML(opts.id, !!opts.mouth);
+  host.innerHTML = beemHTML(opts.id, !!opts.mouth, !!opts.moment);
+  if (opts.moment) host.classList.add('moment');
   var ringEls = [].slice.call(host.querySelectorAll('[data-ring]'));
   var bodyEl  = host.querySelector('[data-body]');
   var gs      = [].slice.call(host.querySelectorAll('.eg'));
   var mp      = host.querySelector('.mp');
+  var shEl    = host.querySelector('.shadow');
 
   /* the body's position, and where it is being pulled to */
   var x = 0, y = 0, vx = 0, vy = 0;
   /* each ring trails the body by its own amount: the outer one is slowest, so
      the three never arrive together and never read as one printed disc */
   var LAG = [0.115, 0.072, 0.046];
-  var rx = [0,0,0], ry = [0,0,0], spin = [0,0,0];
+  /* and a ceiling on how far behind they may fall. A fraction-per-frame lag
+     produces an offset proportional to SPEED, which is exactly the trailing we
+     want at idle - but in a 180px fall it left the rings hanging above an empty
+     body. A trail that detaches is not a trail. */
+  var LAGCAP = 15;
+  var rx = [0,0,0], ry = [0,0,0], spin = [0,0,0], rsq = [0,0,0];
   var SPIN = [360/22, 360/30, 360/40];          // deg per second, as in the app
   var kick = 0;
+
+  /* ── the moments ──
+     The clip never stops in the air: it ENDS by meeting something. These two
+     run their own physics rather than the idle's figure of eight.
+     SQUASH IS IMPACT, STRETCH IS VELOCITY. They are two different springs on
+     purpose - take squash from raw acceleration and the character stays
+     deflated for the whole flight, which is the version that was built first
+     and thrown away. Squash is injected only by a collision, and decays. */
+  var FLOOR = 34;                   // px below centre where the body comes to rest
+  var sq = 0, sqv = 0, mt = 0, gate = 1, gTarget = 1, gv = 0;
 
   function setEye(i, p){
     var g = gs[i];
@@ -223,17 +266,57 @@ function Beem(host, opts){
     var dt = Math.min(0.05, raw);
     this.last = now;
 
-    /* a figure of eight, driven by hand rather than by pointermove - a phone
-       has no hover, and a demo that waits for one shows nothing */
-    var A = opts.travel ? 26 : 0;
-    var tx = A * Math.sin(t * 1.15) + kick * 9 * Math.sin(t * 13);
-    var ty = A * 0.62 * Math.sin(t * 2.30 + 0.6) - kick * 14;
-    if (kick) { kick = Math.max(0, kick - dt * 1.6); }
+    if (opts.moment === 'land'){
+      /* a real fall, a real floor. Restitution 0.44, and the squash impulse is
+         taken from the speed AT THE MOMENT OF CONTACT - nowhere else. */
+      mt += dt;
+      if (mt > 2.6){ mt = 0; y = -132; vy = 0; sq = 0; sqv = 0; }
+      vy += 1450 * dt;
+      y  += vy * dt;
+      if (y > FLOOR){
+        y = FLOOR;
+        if (vy > 55){ sqv += Math.min(10, vy * 0.0098); vy = -vy * 0.44; }
+        else { vy = 0; }
+      }
+      x = 0; vx = 0;
 
-    /* the body springs toward the path, so the lag and the overshoot are real
-       physics rather than an eased keyframe */
-    var ax = (tx - x) * 90 - vx * 10.5, ay = (ty - y) * 90 - vy * 10.5;
-    vx += ax * dt; vy += ay * dt; x += vx * dt; y += vy * dt;
+    } else if (opts.moment === 'arrive'){
+      /* ANTICIPATION: before he comes in, he goes the other way. 240ms of
+         pulling back and down at 58% size, then the release. The overshoot
+         past centre is the spring's, not a keyframe's. */
+      mt += dt;
+      if (mt > 2.9) mt = 0;
+      var inAnt = mt < 0.24, out = mt > 2.38;
+      var gx = inAnt ? -24 : (out ?  12 : 0);
+      var gy = inAnt ?  20 : (out ? -44 : 0);
+      /* the SIZE springs too. Stepping it from 0.58 straight to 1 was a cut -
+         one frame at 110px, the next at 201 - and the eye reads a cut as a
+         different drawing, not as the same character moving. Springing it
+         gives the snap its overshoot for free. */
+      gTarget = inAnt ? 0.58 : (out ? 0.10 : 1);
+      var aax = (gx - x) * 165 - vx * 13, aay = (gy - y) * 165 - vy * 13;
+      vx += aax * dt; vy += aay * dt; x += vx * dt; y += vy * dt;
+
+    } else {
+      /* a figure of eight, driven by hand rather than by pointermove - a phone
+         has no hover, and a demo that waits for one shows nothing */
+      var A = opts.travel ? 26 : 0;
+      var tx = A * Math.sin(t * 1.15) + kick * 9 * Math.sin(t * 13);
+      var ty = A * 0.62 * Math.sin(t * 2.30 + 0.6) - kick * 14;
+      if (kick) { kick = Math.max(0, kick - dt * 1.6); }
+
+      /* the body springs toward the path, so the lag and the overshoot are
+         real physics rather than an eased keyframe */
+      var ax = (tx - x) * 90 - vx * 10.5, ay = (ty - y) * 90 - vy * 10.5;
+      vx += ax * dt; vy += ay * dt; x += vx * dt; y += vy * dt;
+    }
+
+    /* the squash's own spring, always running, driven only by impacts */
+    sqv += (-sq * 260 - sqv * 17) * dt;
+    sq   = Math.max(-0.06, Math.min(0.40, sq + sqv * dt));
+    /* and the size's, so an entrance never steps */
+    gv  += ((gTarget - gate) * 310 - gv * 21) * dt;
+    gate = Math.max(0, gate + gv * dt);
 
     /* STRETCH IS VELOCITY: the body elongates along the way it is going, and
        the volume is preserved, so it never looks inflated or starved. */
@@ -245,16 +328,39 @@ function Beem(host, opts){
 
     bodyEl.style.transform =
       'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px) ' +
+      'scale(' + gate.toFixed(3) + ') ' +
       'rotate(' + ang.toFixed(2) + 'deg) ' +
       'scale(' + (br * (1 + e)).toFixed(4) + ',' + (br / (1 + e)).toFixed(4) + ') ' +
-      'rotate(' + (-ang).toFixed(2) + 'deg)';
+      'rotate(' + (-ang).toFixed(2) + 'deg) ' +
+      /* the impact, flattening onto the contact point rather than the middle */
+      'scale(' + (1 / (1 - sq)).toFixed(4) + ',' + (1 - sq).toFixed(4) + ')';
 
+    if (shEl){
+      /* the shadow is the floor. It widens with the squash and fades with the
+         height, so a bounce reads as a bounce and not as a scaling sprite. */
+      var hgt = Math.max(0, FLOOR - y);
+      shEl.style.top     = (85 + FLOOR + 30) + 'px';
+      shEl.style.opacity = (Math.max(0.05, 0.52 - hgt / 290) * gate).toFixed(3);
+      shEl.style.transform =
+        'translateX(-50%) scale(' + (1 + sq * 1.5 - hgt / 620).toFixed(3) + ',1)';
+    }
+
+    var cap = function(v){ return v < -LAGCAP ? -LAGCAP : (v > LAGCAP ? LAGCAP : v); };
     for (var i = 0; i < 3; i++){
       var k = opts.lag ? LAG[i] : 1;
       rx[i] += (x - rx[i]) * k; ry[i] += (y - ry[i]) * k;
+      rx[i] = x - cap(x - rx[i]); ry[i] = y - cap(y - ry[i]);
+      /* the rings are part of the same creature, so an impact flattens them
+         too - each one a beat after the body, which is the same lag again */
+      rsq[i] += (sq - rsq[i]) * (opts.lag ? LAG[i] * 2.6 : 1);
       spin[i] = (spin[i] + SPIN[i] * dt) % 360;
       ringEls[i].style.transform =
         'translate(' + rx[i].toFixed(2) + 'px,' + ry[i].toFixed(2) + 'px) ' +
+        'scale(' + gate.toFixed(3) + ') ' +
+        /* the squash sits OUTSIDE the spin. Written the other way round it is
+           applied in the ring's own turning frame, so the flattening rotates
+           with it and the ring wobbles instead of being pressed down. */
+        'scale(' + (1 / (1 - rsq[i])).toFixed(4) + ',' + (1 - rsq[i]).toFixed(4) + ') ' +
         'rotate(' + spin[i].toFixed(2) + 'deg)';
     }
 
@@ -299,6 +405,12 @@ build([['all', 'הכול יחד', 'גוף רך, טבעות נגררות ופני
        ['allm','הכול יחד, עם פה', 'אותו דבר, והפה בפנים.',
         {travel:1, soft:1, lag:1, face:1, mouth:1}]],
       document.getElementById('all'));
+
+build([['arr', 'כניסה לספלאש', 'הכנה של 240 מילישניות ב־58% גודל — אחורה ולמטה — ואז שחרור. המעבר מעבר למרכז והעצירה הם של הקפיץ, לא של keyframe.',
+        {soft:1, lag:1, face:1, moment:'arrive'}],
+       ['lnd', 'נחיתה על משטח', 'נפילה אמיתית, רצפה אמיתית, והקפצה של 0.44. הכיווץ נזרק רק במגע ולפי המהירות בו — ולכן הוא לא מרוקן אותו באמצע התעופה.',
+        {soft:1, lag:1, face:1, moment:'land'}]],
+      document.getElementById('mom'));
 
 function loop(now){ live.forEach(function(b){ b.step(now); }); requestAnimationFrame(loop); }
 requestAnimationFrame(loop);
