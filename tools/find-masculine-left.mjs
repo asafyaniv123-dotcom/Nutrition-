@@ -136,6 +136,7 @@ const ALLOW = new Set([
   /* ספר the NOUN. The fifth key holding that word - ספר לי מה יש לך בשבוע -
      is the verb, and is not here. */
   '+ הוסף ספר','ספר המתכונים','ספר המתכונים ריק','✓ סיימת לקרוא ספר זה',
+  'אין כרגע ספר פתוח.',                                         /* the home bar: no book open */
   /* המשך the NOUN - a continuation, not an instruction. */
   'המשך יום טוב','שיהיה המשך יום מצוין',
   'כאב בגב תחתון בדדליפט או סקוואט: עצור לגמרי. אלה התרגילים שבהם המשך פוגע.',

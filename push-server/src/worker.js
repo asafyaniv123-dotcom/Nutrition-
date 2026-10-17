@@ -2041,6 +2041,133 @@ export default {
       });
     }
 
+    /* ── /route ──────────────────────────────────────────────────────────
+       The bar on the home screen. One sentence, in any of the app's
+       languages, and back comes WHICH area it belongs to and the parts that
+       area needs - never a write. The app shows what it understood and the
+       person confirms; nothing is stored on a model's say-so.
+
+       Food is only recognised here, not parsed: the app hands the sentence
+       to its own /parse flow, which already has the food tables and its own
+       confirmation step. A second, cruder food parser would disagree with it.
+
+       What is sent: the sentence, today's date and time, the title of the
+       book being read and the names of the person's people - the last two so
+       "add this to my book" and "Dana said..." can be resolved, and nothing
+       else. Nothing is kept.
+
+       Secrets: AI_KEY. Optional: ROUTE_DAILY_CAP (default 150/IP/day). */
+    if (url.pathname === '/route' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'routing is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const q = String((b && b.q) || '').replace(/\s+/g, ' ').trim().slice(0, 1000);
+      if (q.length < 2) return json({ error: 'nothing to route' }, 400);
+      const lang = String((b && b.lang) || 'he').slice(0, 8);
+      const today = /^\d{4}-\d{2}-\d{2}$/.test(b && b.today) ? b.today : new Date().toISOString().slice(0, 10);
+      const now = /^\d{2}:\d{2}$/.test(b && b.now) ? b.now : '';
+      const book = String((b && b.book) || '').slice(0, 120);
+      const people = Array.isArray(b && b.people)
+        ? b.people.map((p) => String(p).slice(0, 40)).filter(Boolean).slice(0, 80) : [];
+
+      const cap = Number(env.ROUTE_DAILY_CAP || 150);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'rt:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const wd = new Date(today + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+      const SYSTEM =
+        'You sort one sentence a person typed into a personal life app into the\n' +
+        'place it belongs. You never answer the person; you only classify.\n' +
+        '\n' +
+        'Intents:\n' +
+        '- food: they ate or drank something other than plain water (tea, coffee,\n' +
+        '  a meal, a snack). text = what they ate, in their words, without "I ate".\n' +
+        '- water: plain water. amount = millilitres (a glass is 250, a bottle 500).\n' +
+        '- quote: a sentence from the book they are reading, to keep. text = the\n' +
+        '  quoted sentence alone, without the request around it. page if said.\n' +
+        '- moment: a small thing that happened today that they want to remember.\n' +
+        '- journal: they want to write in their journal, or a longer reflection.\n' +
+        '- task: something to do. text = the task, short. date = YYYY-MM-DD when a\n' +
+        '  day is said or implied ("tomorrow", "on Sunday"), else today. time =\n' +
+        '  HH:MM 24-hour when a time is said, else empty. "Call Dana tomorrow" is a\n' +
+        '  task.\n' +
+        '- person_note: something to remember ABOUT one of their people (what they\n' +
+        '  said, like, are going through). person = the name exactly as in the\n' +
+        '  list below. Only names from that list.\n' +
+        '- steps: they walked N steps today. amount = N.\n' +
+        '- goal: a goal they are setting for themselves.\n' +
+        '- open: they only want to go to an area. area = one of nutrition, fitness,\n' +
+        '  hobbies, endofday, insights, people, planning, closet, journal.\n' +
+        '- unknown: none of these fits, or you are not sure.\n' +
+        '\n' +
+        'Keep text in the language and words the person wrote. Leave a field\n' +
+        'empty (or 0) when it does not apply. Choose unknown over a guess.\n' +
+        '\n' +
+        'Today is ' + wd + ' ' + today + (now ? ', the time is ' + now : '') + '.\n' +
+        'The app is in language: ' + lang + '.\n' +
+        'Book being read: ' + (book || '(none)') + '.\n' +
+        'Their people: ' + (people.length ? people.join(', ') : '(none)') + '.';
+
+      const SCHEMA = {
+        type: 'object',
+        properties: {
+          intent: { type: 'string', enum: ROUTE_INTENTS },
+          text: { type: 'string' },
+          person: { type: 'string' },
+          date: { type: 'string' },
+          time: { type: 'string' },
+          amount: { type: 'integer' },
+          page: { type: 'integer' },
+          area: { type: 'string' },
+        },
+        required: ['intent', 'text', 'person', 'date', 'time', 'amount', 'page', 'area'],
+        additionalProperties: false,
+      };
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+            'anthropic-beta': 'server-side-fallback-2026-07-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-opus-5-5',
+            max_tokens: 2000,
+            fallbacks: 'default',
+            /* low: this is sorting one sentence, and the person is waiting on
+               the home screen for it */
+            output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
+            system: SYSTEM,
+            messages: [{ role: 'user', content: q }],
+          }),
+        });
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) {
+        let why = '';
+        try { why = (await r.text()).slice(0, 300); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
+      let d;
+      try { d = await r.json(); } catch { return json({ error: 'unreadable answer' }, 502); }
+      // a declined request is not an error the person can act on: it is "not sure"
+      if (d.stop_reason === 'refusal') return json({ ok: true, route: routeClean({ intent: 'unknown' }, people) });
+      const text = ((d && d.content) || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
+      let o;
+      try { o = JSON.parse(text); } catch { return json({ error: 'unreadable answer', why: text.slice(0, 200) }, 502); }
+      return json({ ok: true, route: routeClean(o, people) });
+    }
+
     /* ── /ask ────────────────────────────────────────────────────────────
        A question about your own eating, answered from your own records.
 
@@ -3774,7 +3901,46 @@ If they logged two or three days, say so without reproach and write about what t
   },
 };
 
+/* ── /route, THE PURE HALF ──
+   The model's answer is a suggestion, not an instruction. Everything it can
+   name is checked against what the app actually has: a person it names must
+   be one the app sent, a date must be a date, a number must be a sane number.
+   Anything that fails comes back empty rather than guessed at, because the
+   app shows this to the person before writing it - and a wrong field on that
+   card is worse than an empty one. */
+const ROUTE_INTENTS = ['food', 'water', 'quote', 'moment', 'journal', 'task',
+  'person_note', 'steps', 'goal', 'open', 'unknown'];
+const ROUTE_AREAS = ['nutrition', 'fitness', 'hobbies', 'endofday', 'insights',
+  'people', 'planning', 'closet', 'journal', ''];
+function routeClean(o, people) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const int = (v, lo, hi) => { const x = Math.round(Number(v)); return isFinite(x) && x >= lo && x <= hi ? x : 0; };
+  const out = {
+    intent: ROUTE_INTENTS.includes(o && o.intent) ? o.intent : 'unknown',
+    text: str(o && o.text, 1000),
+    person: '',
+    date: /^\d{4}-\d{2}-\d{2}$/.test(o && o.date) ? o.date : '',
+    time: '',
+    amount: 0,
+    page: int(o && o.page, 0, 100000),
+    area: ROUTE_AREAS.includes(o && o.area) ? o.area : '',
+  };
+  const tm = /^(\d{1,2}):(\d{2})$/.exec(String((o && o.time) || ''));
+  if (tm && +tm[1] < 24 && +tm[2] < 60) out.time = tm[1].padStart(2, '0') + ':' + tm[2];
+  // a person is only ever one the app already knows, matched without case
+  const want = str(o && o.person, 60).toLowerCase();
+  if (want) for (const p of people || []) if (String(p).toLowerCase() === want) { out.person = p; break; }
+  if (out.intent === 'water') out.amount = int(o && o.amount, 1, 5000);
+  if (out.intent === 'steps') out.amount = int(o && o.amount, 1, 200000);
+  if (out.intent === 'person_note' && !out.person) out.intent = 'unknown';
+  if (out.intent === 'open' && !out.area) out.intent = 'unknown';
+  if (['quote', 'moment', 'journal', 'task', 'person_note', 'goal', 'food'].includes(out.intent) && !out.text)
+    out.intent = 'unknown';
+  if ((out.intent === 'water' || out.intent === 'steps') && !out.amount) out.intent = 'unknown';
+  return out;
+}
+
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst };
+         stripGemSig, cleanEst, routeClean };
