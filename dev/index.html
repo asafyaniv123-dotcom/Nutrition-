@@ -2314,6 +2314,22 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .rf-hero{background:linear-gradient(150deg,var(--violet-50),#eaf1f8);border-radius:26px;padding:24px 20px;margin-bottom:16px}
 .rf-hero-t{font-size:19px;font-weight:800;color:var(--ink);line-height:1.35}
 .rf-hero-s{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:7px}
+/* ── THINGS I WANT TO REMEMBER ── a moment is caught when it happens and
+   waits for the evening; see rfmCardHTML */
+.rfm{background:var(--card);border-radius:22px;padding:18px;margin-bottom:16px}
+.rfm-t{font-size:15px;font-weight:800;color:var(--ink);line-height:1.35}
+.rfm-s{font-size:12px;color:var(--muted);line-height:1.55;margin-top:4px}
+.rfm-add{display:flex;gap:8px;margin-top:14px}
+.rfm-in{flex:1;min-width:0;border:none;border-radius:14px;padding:12px 14px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--page);unicode-bidi:plaintext;outline:none}
+.rfm-b{flex:0 0 auto;border:none;border-radius:14px;padding:0 16px;font-family:inherit;font-size:13px;font-weight:800;color:var(--ink);background:var(--card);cursor:pointer}
+.rfm-list{margin-top:10px}
+.rfm-row{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.rfm-row:first-child{border-top:none}
+.rfm-at{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.rfm-w{flex:1;min-width:0;font-size:14px;line-height:1.5;color:var(--ink);unicode-bidi:plaintext;overflow-wrap:anywhere}
+.rfm-x{flex:0 0 auto;background:none;border:none;color:var(--muted);font-size:18px;line-height:1;padding:2px 6px;cursor:pointer;font-family:inherit}
+.rfm-recall{text-align:start;margin-top:30px}
+.rfm-recall .rfm-t{font-size:13px;color:var(--muted)}
 .rf-day{width:100%;display:flex;align-items:center;gap:12px;background:var(--card);border:none;border-radius:18px;padding:12px 14px;margin-bottom:9px;box-shadow:0 4px 14px rgba(200,180,160,.1);cursor:pointer;text-align:start;font-family:inherit}
 .rf-day-th{width:46px;height:46px;border-radius:14px;object-fit:cover;flex-shrink:0;background:var(--line)}
 /* the deep pass, laid out like the areas on the home screen */
@@ -4030,6 +4046,18 @@ html body.mod-endofday .rf-hero{background:var(--nu-ground);border:none;border-r
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 html body.mod-endofday .rf-hero-t{color:var(--nu-ink);font-size:17px;font-weight:800}
 html body.mod-endofday .rf-hero-s{color:var(--nu-muted);font-size:12px;font-weight:600}
+html body.mod-endofday .rfm{background:var(--nu-ground);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+html body.mod-endofday .rfm-recall{background:none;box-shadow:none;padding:0}
+html body.mod-endofday .rfm-t,html body.mod-endofday .rfm-w{color:var(--nu-ink)}
+html body.mod-endofday .rfm-s,html body.mod-endofday .rfm-at,
+html body.mod-endofday .rfm-x,html body.mod-endofday .rfm-recall .rfm-t{color:var(--nu-muted)}
+html body.mod-endofday .rfm-in{background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+html body.mod-endofday .rfm-in::placeholder{color:var(--nu-muted)}
+html body.mod-endofday .rfm-b{background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+html body.mod-endofday .rfm-b:active{box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
 
 /* ── THE QUESTION ── it lies on the plaster; nothing frames it ── */
 html body.mod-endofday .rf-q{color:var(--nu-ink);font-size:19px;font-weight:800;line-height:1.42}
@@ -17238,7 +17266,7 @@ function summaryBodyHTML(dateStr){
   /* A day somebody only ATE on is a day worth opening. Before this, a person
      who logs every meal and never writes a reflection had nowhere their
      nutrition appeared at all. */
-  if(!sum&&!vlg&&!jrnl&&!dayHasSomething(dateStr))return '';
+  if(!sum&&!vlg&&!jrnl&&!rfmLoad(dateStr).length&&!dayHasSomething(dateStr))return '';
   if(!sum)sum={date:dateStr};
   sum=sumDayTotals(dateStr,sum);
   var flowStops=parseFlow(sum.flow);
@@ -17359,6 +17387,12 @@ function summaryBodyHTML(dateStr){
     var lines=jrnl.split('\n'),jh='';
     for(i=0;i<lines.length;i++)if(lines[i].trim())jh+='<p>'+esc(lines[i])+'</p>';
     if(jh)h+='<section class="sm2-jr"><h4>'+_t('יומן')+'</h4>'+jh+'</section>';
+  }
+  var _rfm=rfmLoad(dateStr);
+  if(_rfm.length){
+    var mh='';
+    for(i=0;i<_rfm.length;i++)mh+='<p>'+esc(_rfm[i].w)+'</p>';
+    h+='<section class="sm2-jr"><h4>'+_t('דברים שרציתי לזכור')+'</h4>'+mh+'</section>';
   }
 
   /* The clip is offered at the END now. It led the sheet before, which put a
@@ -17547,6 +17581,7 @@ addEventListener('visibilitychange',function(){if(!document.hidden)verWatch();})
 setTimeout(verWatch,4000);
 function goHome(){
   jrnlFlush();
+  rfmKeep();
   document.body.classList.remove('mod-nutrition');
   document.body.classList.remove('mod-fitness');
   document.body.classList.remove('mod-closet');
@@ -34670,6 +34705,83 @@ function monthCardHTML(){
   return h+'</div>';
 }
 
+/* ── THINGS I WANT TO REMEMBER ──
+   The moment something happens and the moment you sit down to close the day
+   are not the same moment, and the small thing is the first to go. So it can
+   be caught when it happens, here under the button that starts the summary,
+   and the summary hands it back before asking anything.
+
+   Its own key and not the journal's: a journal is a page, this is a list of
+   separate moments, each with the time it was caught, so one of them can be
+   shown on its own. The DAY is todayStr() - a moment caught at two in the
+   morning belongs to the day still being lived - and the time beside it is
+   the wall clock, because that is when it happened.
+   What a person wrote is theirs: it is esc()'d and never goes through _t. */
+var RFM_PRE='moments_';
+function rfmLoad(d){
+  try{var a=JSON.parse(localStorage.getItem(RFM_PRE+d)||'[]');return Array.isArray(a)?a:[];}
+  catch(e){return [];}
+}
+function rfmSave(d,a){
+  try{
+    if(a.length)localStorage.setItem(RFM_PRE+d,JSON.stringify(a));
+    else localStorage.removeItem(RFM_PRE+d);
+  }catch(e){}
+}
+function rfmAt(ts){var x=new Date(ts);return isFinite(x)?dpClock(x.getHours(),x.getMinutes()):'';}
+function rfmRowsHTML(a,canDelete){
+  var h='<div class="rfm-list">',i;
+  for(i=0;i<a.length;i++){
+    h+='<div class="rfm-row"><span class="rfm-at">'+rfmAt(a[i].ts)+'</span>'+
+       '<span class="rfm-w">'+esc(a[i].w)+'</span>'+
+       (canDelete?'<button class="rfm-x" onclick="rfmDel('+i+')" aria-label="'+_t('מחק')+'">&times;</button>':'')+
+       '</div>';
+  }
+  return h+'</div>';
+}
+function rfmCardHTML(){
+  var a=rfmLoad(todayStr());
+  return '<div class="rfm" id="rfm">'+
+    '<div class="rfm-t">'+_t('דברים שאני רוצה לזכור')+'</div>'+
+    '<div class="rfm-s">'+_t('רגעים קטנים מהיום. הם יחכו כאן כשמסכמים את היום.')+'</div>'+
+    '<div class="rfm-add">'+
+      '<input id="rfm-in" class="rfm-in" type="text" maxlength="280" enterkeyhint="done" autocomplete="off"'+
+      ' placeholder="'+_t('משהו קטן שקרה…')+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();rfmAdd();}">'+
+      '<button class="rfm-b" onclick="rfmAdd()">'+_t('הוסף')+'</button>'+
+    '</div>'+
+    (a.length?rfmRowsHTML(a,true):'')+
+    '</div>';
+}
+// redraw the card alone, so the box keeps its focus for the next one
+function rfmRepaint(focus){
+  var el=document.getElementById('rfm');
+  if(!el)return;
+  el.outerHTML=rfmCardHTML();
+  if(focus){var i=document.getElementById('rfm-in');if(i)i.focus();}
+}
+function rfmAdd(){
+  var i=document.getElementById('rfm-in');
+  var w=i?String(i.value).trim():'';
+  if(!w)return;
+  var d=todayStr(),a=rfmLoad(d);
+  a.push({ts:Date.now(),w:w});
+  rfmSave(d,a);
+  rfmRepaint(true);
+}
+/* Leaving the card with words still in the box - starting the summary, going
+   home - keeps them as a moment rather than dropping them. Only on leaving:
+   a phone put down mid-sentence comes back to the sentence, still editable. */
+function rfmKeep(){
+  var i=document.getElementById('rfm-in');
+  if(i&&String(i.value).trim())rfmAdd();
+}
+function rfmDel(n){
+  var d=todayStr(),a=rfmLoad(d);
+  if(n<0||n>=a.length)return;
+  a.splice(n,1);
+  rfmSave(d,a);
+  rfmRepaint(false);
+}
 function renderReflectHome(){
   var today=todayStr(),r=rfRec(today);
   var h='<div style="padding-bottom:24px">';
@@ -34690,6 +34802,8 @@ function renderReflectHome(){
     h+='<button onclick="rfResume()" class="rf-ghost" style="margin-top:12px">'+_t('פתח שוב')+'</button>';
   }
   h+='</div>';
+
+  h+=rfmCardHTML();
 
   /* The one sentence carried out of the last weekly summary. It lives HERE
      and not on the home screen, which is not ours to change. */
@@ -34813,8 +34927,9 @@ function rfNightlyClose(){
    of what was nailed down. The default stays today, so every existing caller
    means what it meant. */
 function rfIsToday(){return (_rfDate||todayStr())===todayStr();}
-function rfStart(d){_rfDate=d||todayStr();_rfStage=1;_rfStep=0;_rfView='intro';renderReflect();}
+function rfStart(d){rfmKeep();_rfDate=d||todayStr();_rfStage=1;_rfStep=0;_rfView='intro';renderReflect();}
 function rfResume(d){
+  rfmKeep();
   _rfDate=d||todayStr();
   var r=rfRec(_rfDate);
   _rfStage=(r&&r.lastStage)||1;
@@ -34859,6 +34974,9 @@ function renderReflectIntro(){
   var h='<div class="rf"><div class="rf-body" style="text-align:center">';
   h+='<div class="rf-q" style="font-size:27px">'+_t('בוא ניקח רגע להסתכל על היום שלך.')+'</div>';
   h+='<div class="rf-sub" style="font-size:14px">'+_t('כמה דקות, וזה שלך.')+'</div>';
+  var _rfm=rfmLoad(_rfDate);
+  if(_rfm.length)
+    h+='<div class="rfm rfm-recall"><div class="rfm-t">'+_t('מה שרשמת היום')+'</div>'+rfmRowsHTML(_rfm,false)+'</div>';
   h+='<button onclick="_rfView=\'step\';_rfStage=1;_rfStep=0;renderReflect()" class="rf-next" style="margin-top:36px">'+_t('נתחיל')+'</button>';
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-ghost">'+_t('לא עכשיו')+'</button>';
   h+='</div></div>';
@@ -37913,6 +38031,7 @@ function dayHadActivity(d){
     if(day&&((day.meals&&day.meals.length)||day.water>0))return true;
     if(localStorage.getItem('sum_'+d))return true;
     if(localStorage.getItem('vlog_'+d))return true;
+    if(localStorage.getItem(RFM_PRE+d))return true;
     var j=localStorage.getItem(JRNL_PRE+d);
     if(j&&j.replace(/\s|["{}\[\]:,]|text|body/g,'').length>2)return true;
     var st=JSON.parse(localStorage.getItem('steps_'+d)||'null');
