@@ -4616,24 +4616,19 @@ html body.mod-planning .wk-chip.fromday{border:none;opacity:1}
 html body.mod-planning .dp-chip,html body.mod-planning .dp-rail-libchip{border-radius:10px;
   box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 6px var(--nu-shade-soft)}
 html body.mod-planning .dp-rail-chip{box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 6px var(--nu-shade-soft)}
-/* a task that runs on is ONE block down the hours: the continuation takes
-   the head's colour at full strength and only the outward shadow, so no
-   seam of light is drawn where two hours meet */
-html body.mod-planning .dp-cont{opacity:1;margin-top:-6px}   /* one more than the hour's 1px rule, which showed through the block */
-html body.mod-planning .dp-cont.tail{border-bottom-right-radius:10px;border-bottom-left-radius:10px}
-/* The run's light is the ONE block's light, split along it: the head takes
-   the top, every piece takes the two sides, and only the tail casts the
-   shadow underneath. A whole chip's shadow on the head drew a ledge where it
-   met the run - a pill sitting on a slab, which is what Asaf saw. */
-/* The negative spreads keep each piece's shadow from reaching above or below
-   it: a blur that spills over a join draws a seam there, in light or shade. */
-html body.mod-planning .dp-chip.head{border-bottom-left-radius:0;border-bottom-right-radius:0;
-  box-shadow:-1px -1px 3px var(--nu-lit),2px 0 4px -2px var(--nu-shade-soft)}
-html body.mod-planning .dp-cont{box-shadow:-1px 0 2px -1px var(--nu-lit),2px 0 4px -2px var(--nu-shade-soft)}
-html body.mod-planning .dp-cont.tail{box-shadow:-1px 0 2px -1px var(--nu-lit),2px 0 4px -2px var(--nu-shade-soft),
-  0 4px 5px -3px var(--nu-shade-soft)}
-/* the minutes inside a block are the block's own ink, quieter - grey on a
-   colour read as dirt */
+/* ── THE LAYER ── one block per task, placed by dpLayout ── */
+html body.mod-planning .dp-grid{position:relative}
+html body.mod-planning .dp-layer{position:absolute;top:0;bottom:0;z-index:1;pointer-events:none}
+html body.mod-planning .dp-layer .dp-chip{position:absolute;pointer-events:auto;box-sizing:border-box;
+  margin:0;overflow:hidden;display:flex;flex-wrap:wrap;align-items:baseline;align-content:flex-start;gap:0 6px}
+html body.mod-planning .dp-layer .dp-chip.ranged{padding:6px 9px}
+/* a block says what it is first and when second, and the range never breaks
+   in the middle - "07:00–" over "10:25" in a narrow lane read as two times */
+html body.mod-planning .dp-chip.ranged .dp-w{order:1;flex:1 0 100%}
+html body.mod-planning .dp-chip.ranged .dp-min{order:2;white-space:nowrap}
+html body.mod-planning .dp-w{min-width:0;overflow-wrap:anywhere}
+html body.mod-planning .dp-min{margin:0}
+/* the hour's own rows no longer hold blocks, so nothing grows them but notes */
 html body.mod-planning .dp-chip .dp-min{color:inherit;opacity:.62}
 html body.mod-planning .wk-task{background:var(--nu-ground);border-radius:15px;
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
@@ -29679,6 +29674,7 @@ function dpOpenFine(slotEl){
   h+='</div>';
   slotEl.insertAdjacentHTML('beforeend',h);
   slotEl.classList.add('fine');
+  dpLayout();      // the row just grew; the blocks below it follow
 }
 function dpCloseFine(){
   trashDuck(false);
@@ -29687,6 +29683,7 @@ function dpCloseFine(){
     if(f[i].parentElement)f[i].parentElement.classList.remove('fine');
     f[i].remove();
   }
+  if(f.length)dpLayout();
 }
 // End times are minutes from midnight, so a task can run past its own hour.
 function dpSetEnd(id,mins){
@@ -29877,6 +29874,108 @@ function dpNowStart(){
     dpNowLine();
   },60000);
 }
+/* ── THE LAYER ──
+   Every task with an hour is ONE block, over the hours rather than inside
+   them. It used to be built from pieces - a head in the hour it starts and a
+   continuation in every hour it reaches - so two tasks that shared an hour
+   were two piles of pieces in the same rows, drawn over each other. Asaf:
+   "the app should know by itself that when two tasks collide, one moves a
+   little to the side and sits well beside it. That is why the time screen
+   is wide."
+
+   So: tasks that overlap form a group, each takes the first lane free at its
+   start, and the group shares the width in that many lanes. A task that
+   overlaps nothing has the whole width. A task with no end counts as
+   DP_PILL_MIN long - about the height its pill takes on the screen - so a
+   pill beside a block also moves aside rather than under it.
+
+   The blocks are placed by MEASURING the rows (dpLayout), not by DP_ROW_H:
+   a row grows when the five-minute steps open during a drag, or when its
+   notes run long, and a block placed by arithmetic would drift off its hour.
+   The rows stay where they were and stay the drop targets, so every drag
+   path is unchanged. */
+var DP_PILL_MIN=40,DP_LANE_GAP=4;
+function dpLanes(all){
+  var timed=[],i,x,L,grp=[],lanes=[],grpEnd=-1;
+  for(i=0;i<all.length;i++){
+    if(all[i].hour===null)continue;
+    var st=all[i].hour*60+(all[i].min||0);
+    var en=(all[i].end&&all[i].end>st)?all[i].end:0;
+    timed.push({t:all[i],s:st,e:en,ve:en||st+DP_PILL_MIN});
+  }
+  timed.sort(function(a,b){return (a.s-b.s)||(b.ve-a.ve);});
+  var close=function(){for(var k=0;k<grp.length;k++)grp[k].n=lanes.length;grp=[];lanes=[];grpEnd=-1;};
+  for(i=0;i<timed.length;i++){
+    x=timed[i];
+    if(grp.length&&x.s>=grpEnd)close();
+    for(L=0;L<lanes.length&&lanes[L]>x.s;L++);
+    lanes[L]=x.ve;x.ln=L;grp.push(x);
+    if(x.ve>grpEnd)grpEnd=x.ve;
+  }
+  if(grp.length)close();
+  return timed;
+}
+function dpLayerHTML(all){
+  var timed=dpLanes(all),out='<div class="dp-layer" id="dp-layer">',i,x,c,nt;
+  for(i=0;i<timed.length;i++){
+    x=timed[i];c=wkColor(x.t.c);nt=dpNoteOf(x.t.id);
+    out+='<div class="dp-chip'+(x.e?' ranged':'')+'" data-task="'+x.t.id+'" data-s="'+x.s+'" data-e="'+x.e+'"'+
+         ' data-ln="'+x.ln+'" data-n="'+x.n+'" style="background:'+c.soft+';color:'+c.ink+'">';
+    if(x.e)out+='<span class="dp-min">'+dpFmt(x.s)+'&ndash;'+dpFmt(x.e)+'</span>';
+    else if(x.t.min)out+='<span class="dp-min">'+dpHM(x.t.hour,x.t.min)+'</span>';
+    out+='<span class="dp-w">'+esc(x.t.w)+'</span>'+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
+  }
+  return out+'</div>';
+}
+function dpLayout(){
+  var L=document.getElementById('dp-layer');
+  if(!L)return;
+  var g=L.parentElement,m=g.querySelector('.dp-main');
+  if(!m)return;
+  var gr=g.getBoundingClientRect(),mr=m.getBoundingClientRect();
+  var rtl=getComputedStyle(g).direction==='rtl';
+  /* The layer lies over the rows' main column - or, on a day with no hour
+     notes, over the whole slot: the notes lane is empty then, and the width
+     is what the lanes are for. */
+  if(!g.querySelector('.dp-nline')){
+    var sl=g.querySelector('.dp-slot').getBoundingClientRect();
+    mr={left:sl.left+5,width:sl.width-10};
+  }
+  /* and out from under the rail's +, which floats over the far edge: the
+     last lane of a busy hour sat beneath it */
+  var rl=document.getElementById('dp-rail');
+  if(rl){
+    var rb=rl.getBoundingClientRect();
+    if(rtl&&rb.right>mr.left)mr={left:rb.right+4,width:mr.width-(rb.right+4-mr.left)};
+    else if(!rtl&&rb.left<mr.left+mr.width)mr={left:mr.left,width:rb.left-4-mr.left};
+  }
+  L.style.left=(mr.left-gr.left)+'px';L.style.width=mr.width+'px';
+  var rows={},rs=g.querySelectorAll('.dp-row'),i,r,last=null;
+  for(i=0;i<rs.length;i++){
+    r=rs[i].getBoundingClientRect();
+    last=rows[+rs[i].getAttribute('data-hrow')]={y:r.top-gr.top,h:r.height};
+  }
+  var yAt=function(mins){
+    var R=rows[Math.floor(mins/60)];
+    if(R)return R.y+(mins%60)/60*R.h;
+    return mins<DP_FROM*60?0:(last?last.y+last.h:0);
+  };
+  var cs=L.querySelectorAll('.dp-chip'),W=mr.width;
+  for(i=0;i<cs.length;i++){
+    var c=cs[i],st=+c.getAttribute('data-s'),en=+c.getAttribute('data-e');
+    var n=+c.getAttribute('data-n')||1,lw=W/n,off=(+c.getAttribute('data-ln')||0)*lw;
+    var y=yAt(st);
+    c.style.top=(y+2)+'px';
+    c.style.height=en?Math.max(24,yAt(en)-y-4)+'px':'';
+    // a block fills its lane; a pill alone keeps its own size, as before
+    c.style.width=(en||n>1)?(lw-DP_LANE_GAP)+'px':'';
+    c.style.maxWidth=(lw-DP_LANE_GAP)+'px';
+    if(rtl){c.style.right=off+'px';c.style.left='';}
+    else{c.style.left=off+'px';c.style.right='';}
+  }
+}
+window.addEventListener('resize',function(){dpLayout();});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){dpLayout();});
 function planDayHTML(){
   if(!_dpDate)_dpDate=wkStamp(appNow());
   var d=new Date(_dpDate+'T12:00:00'),all=dpAll(_dpDate),i,h,t;
@@ -29898,37 +29997,9 @@ function planDayHTML(){
     out+='<div class="dp-row" data-hrow="'+h+'"><div class="dp-h" data-hour="'+h+'">'+dpHH(h)+'</div>';
     out+='<div class="dp-slot" data-hour="'+h+'"><div class="dp-main">';
 
-    /* Something running past its hour keeps going down the grid: a full-width
-       band in the hour it starts, and another in each hour it reaches, joined
-       by squared-off edges so it reads as one block crossing the lines. */
-    for(i=0;i<all.length;i++){
-      var ct=all[i];
-      if(ct.hour===null||!ct.end)continue;
-      var lastH=Math.floor((ct.end-1)/60);
-      if(lastH<=ct.hour||h<=ct.hour||h>lastH)continue;
-      var cc=wkColor(ct.c);
-      // no text here: it is the same task, already named in the hour it starts
-      var tailH=(h===lastH)?Math.max(10,Math.round((ct.end-lastH*60)/60*DP_ROW_H)):0;
-      out+='<div class="dp-cont'+(h===lastH?' tail':'')+'" style="background:'+cc.soft+(tailH?';min-height:'+tailH+'px':'')+'"></div>';
-    }
-
-    // within an hour, earlier minutes first
-    var inHour=[];
-    for(i=0;i<all.length;i++)if(all[i].hour===h)inHour.push(all[i]);
-    inHour.sort(function(a,b){return (a.min||0)-(b.min||0);});
-    for(i=0;i<inHour.length;i++){
-      var c=wkColor(inHour[i].c);
-      var nt=dpNoteOf(inHour[i].id);
-      var runsOn=inHour[i].end&&Math.floor((inHour[i].end-1)/60)>h;
-      /* An hour is 44px of screen, so a task at :30 sits half way down it
-         and one at :45 three quarters. Without this everything inside an
-         hour stacked at the top and 09:05 looked the same as 09:55. */
-      var offTop=Math.round((inHour[i].min||0)/60*DP_ROW_H);
-      out+='<div class="dp-chip'+(runsOn?' head':'')+'" data-task="'+inHour[i].id+'" style="background:'+c.soft+';color:'+c.ink+(offTop?';margin-top:'+offTop+'px':'')+'">';
-      if(inHour[i].end)out+='<span class="dp-min">'+dpFmt(dpMins(inHour[i]))+'&ndash;'+dpFmt(inHour[i].end)+'</span>';
-      else if(inHour[i].min)out+='<span class="dp-min">'+dpHM(h,inHour[i].min)+'</span>';
-      out+=esc(inHour[i].w)+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
-    }
+    /* the tasks are not drawn in the rows any more - see THE LAYER below.
+       The row keeps its main column empty: it is the drop target, and what
+       the layer measures its edges from. */
     out+='</div>';
     var nl=dpNotesFor(_dpDate,h),ni;
     out+='<div class="dp-nlane">';
@@ -29940,6 +30011,7 @@ function planDayHTML(){
     out+='</div>';
     out+='</div></div>';   // the slot, and the row
   }
+  out+=dpLayerHTML(all);
   out+='</div>';
 
   // what the week put here, still without an hour
@@ -30198,6 +30270,7 @@ function dpDown(e){
   var r=el.getBoundingClientRect();
   var g=el.cloneNode(true);
   g.className=el.className+' wk-ghost';
+  g.style.right='';g.style.maxWidth='';g.style.height=r.height+'px';
   g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';
   document.body.appendChild(g);
   el.style.opacity='.3';
@@ -31868,7 +31941,7 @@ function renderPlanning(){
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moPlaceSpans);
   }
   if(o.week)wkPlacePoint();
-  if(o.day){dpRail();dpNowLine();dpNowStart();}
+  if(o.day){dpRail();dpNowLine();dpNowStart();dpLayout();}
 
   /* all three attached at once now, each fenced to its own panel */
   var box=document.getElementById('content');
