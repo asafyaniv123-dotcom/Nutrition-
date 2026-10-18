@@ -88,9 +88,9 @@
   .beem .lay{position:absolute;inset:0;will-change:transform}
   .beem img,.beem canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   /* the body squashes onto its CONTACT POINT: the sphere's lowest pixel is
-     512+238 = 750 of 1024, which is 73.2% of the frame */
-  .beem .body{transform-origin:50% 73.24%}
-  .beem .shadow{position:absolute;left:50%;top:76.5%;width:36%;height:5.5%;border-radius:50%;
+     499.2+237.6 = 737 of 1024 (its centre is not the frame's), 71.97% */
+  .beem .body{transform-origin:49.64% 71.97%}
+  .beem .shadow{position:absolute;left:49.64%;top:75%;width:36%;height:5.5%;border-radius:50%;
     background:radial-gradient(closest-side,rgba(120,92,60,.40),rgba(120,92,60,0));
     transform:translateX(-50%);opacity:0;will-change:transform,opacity}
 
@@ -255,7 +255,12 @@
 <script>
 /* ═══════════════════════ the canon, and its own eyes ═══════════════════════ */
 var ASSET = '../assets/';
-var VB = 1024, SPH = {x:512, y:512, r:238};
+/* the sphere's centre is NOT the frame's centre. Fitted to its opacity edge
+   over 360 rays: (508.3, 499.2), radius 237.6 - the README's 238. Assuming
+   (512,512) put the halo's seam 20px off the rim at the bottom and showed as a
+   thin bright arc detached from the body. Note the eyes, at y 499, sit exactly
+   on the equator, and the pair is turned a few degrees to the left. */
+var VB = 1024, SPH = {x:508.3, y:499.2, r:237.6};
 /* README: eye centres x 414 and 589, y 499. Everything below is measured from
    these, so a look of (0,0) puts each eye exactly where the render put it. */
 var EYES = [{cx:414, cy:499}, {cx:589, cy:499}];
@@ -340,6 +345,7 @@ function extract(sImg, bImg){
     dx.drawImage(spr, 0, axis, W, H - axis, 0, axis, W, H - axis); dx.restore();
     out.push({spr:spr, dark:dk, x0:x0, y0:y0, cx:E.cx - x0, cy:E.cy - y0});
   });
+  healHalo(ex);
   EB = eb; SPR = out;
 
   /* the proof: rebuild the calm face from the parts and compare with the canon */
@@ -361,7 +367,60 @@ function extract(sImg, bImg){
     'מורכבים מחדש בפנים <b>רגוע</b>, מול <code>sun-body.png</code> על כל פיקסל של הכדור. ' +
     'הפרש ממוצע <span class="n">' + (sum/n).toFixed(2) + ' / 255</span>, ' +
     'ובתוך חלונות העיניים <span class="n">' + (esum/en).toFixed(2) + ' / 255</span>. ' +
-    'אלה <b>העיניים של המקור</b>, ולא ציור שלהן.';
+    'אלה <b>העיניים של המקור</b>, ולא ציור שלהן.<br>' +
+    '<b>ותוקן כאן, רק בעמוד הזה:</b> בזוהר שבשכבת הגוף נשארו חורים בצורת החרוזים מהפירוק לשכבות, ' +
+    'ובכל סיבוב של הטבעות הם הופיעו כעיגולים בהירים. מחוץ לכדור הזוהר נבנה מחדש מהזוהר עצמו, רציף. ' +
+    'הכדור, השפה והפנים לא נגעו.';
+}
+
+/* THE GHOSTS IN THE HALO. When the beads were cut out of the render into the
+   three ring layers, the glow they sat in stayed in the body layer - with a
+   bead-shaped HOLE where every bead had been. While the rings stand still each
+   bead covers its own hole, so the sheet looked whole. The moment a ring turns,
+   the holes show as pale discs on the glow and the colour seems to leak: that
+   is what he saw on the phone. Measured on the layer: at the inner ring's
+   radius the MEDIAN coverage around the circle is 0 - more hole than glow.
+
+   The heal works outside the sphere only (from r 246; the face, rim and body
+   are never touched). For every radius it takes the glow as it is where no
+   bead ever was - the upper end of the coverage around that circle - and lays
+   that down as one continuous halo. Bead fragments left at the sphere's edge
+   (pure red, not glow) are excluded from it. */
+function healHalo(ctx){
+  var img = ctx.getImageData(0, 0, VB, VB), d = img.data, RMAX = 730, A = 2048;
+  var prof = [];
+  for (var r = 234; r <= RMAX; r++){
+    var cov = [], col = [];
+    for (var k = 0; k < A; k++){
+      var t = k / A * Math.PI * 2, px = Math.round(SPH.x + r*Math.cos(t)), py = Math.round(SPH.y + r*Math.sin(t));
+      if (px < 0 || py < 0 || px >= VB || py >= VB) continue;
+      var i = (py*VB + px)*4;
+      var bead = d[i] > 190 && d[i+1] < 120 && d[i+2] < 110 && d[i+3] > 150;   // a red fragment
+      if (!bead){ cov.push(d[i+3]); col.push(i); }
+    }
+    if (!cov.length){ prof[r] = [0,0,0,0]; continue; }
+    var sorted = cov.slice().sort(function(a, b){ return a - b; });
+    var top = sorted[Math.floor(sorted.length*0.9)], sr = 0, sg = 0, sb = 0, n = 0;
+    for (k = 0; k < cov.length; k++) if (cov[k] >= top*0.85 && cov[k] > 0){
+      var j = col[k]; sr += d[j]; sg += d[j+1]; sb += d[j+2]; n++; }
+    prof[r] = n ? [sr/n, sg/n, sb/n, top] : [0,0,0,0];
+  }
+  for (var y = 0; y < VB; y++) for (var x = 0; x < VB; x++){
+    var rr = Math.hypot(x - SPH.x, y - SPH.y);
+    if (rr < 240) continue;
+    var w = Math.min(1, (rr - 240) / 6);                // a 6px seam, so the rim stays the render's
+    var r0 = Math.min(RMAX - 1, Math.floor(rr)), f = Math.min(1, rr - r0);
+    var p0 = prof[r0], p1 = prof[r0 + 1] || p0, q = (y*VB + x)*4;
+    var a = (p0[3]*(1-f) + p1[3]*f) * w + d[q+3]*(1 - w);
+    for (var c = 0; c < 3; c++){
+      var hv = p0[c]*(1-f) + p1[c]*f, ov = d[q+c];
+      /* blend in premultiplied terms, then back */
+      var pm = hv*(p0[3]*(1-f) + p1[3]*f)*w + ov*d[q+3]*(1 - w);
+      d[q+c] = a > 0 ? Math.min(255, pm / a) : 0;
+    }
+    d[q+3] = a;
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 /* ═══════════════════════ the ten faces ═══════════════════════
@@ -375,7 +434,7 @@ var FACES = {
   calm:       {},
   happy:      {bot:.74, dy:-6},
   content:    {bot:.55, sy:.92, dy:-3},
-  wink:       [{s:1.03}, {bot:.74, dy:-6}],
+  wink:       [{bot:.24, dy:-3}, {sy:.11, dark:1, dy:4, rot:-7}],
   surprised:  {s:1.22, dy:-12, ly:3},
   curious:    [{lx:16, top:.14, ang:-6, rot:-5}, {lx:16, s:1.06, rot:-5}],
   thinking:   {lx:-13, ly:15, bot:.20},
@@ -395,7 +454,7 @@ var SPIN = [360/22, 360/30, 360/40];
 var LAG = [0.115, 0.072, 0.046];            // per 60fps frame, from beem-soft
 var LAGCAP = 90;                             // in 1024 units: 15px at 170px
 var G = 8700;                                // gravity, 1024 units / s²
-var CONTACT = 238;                           // centre to lowest point
+var CONTACT = 225;                           // ring centre (512) to the sphere's lowest point (737)
 
 function Beem(host){
   host.innerHTML = '<div class="beem"><div class="shadow"></div>' +
@@ -645,7 +704,7 @@ var FACE_LIST = [
   ['calm','רגוע','המקור עצמו, בלי שום שינוי. כל השאר יוצא ממנו.', {dur:5200, ev:[[0,'mode',{breathe:[.012,3.6]}]]}],
   ['happy','שמח','קשת מלמטה דוחפת את העין לצורת ∩. נשאר החלק העליון שלה, עם הברק.'],
   ['content','מרוצה','אותה קשת של שמח, רק רכה: העין נשארת עבה, כמו חיוך שקט בלי פה.'],
-  ['wink','קורץ','עין אחת כמו במקור, גדולה ב־3%. השנייה בצורת ∩ של שמח.'],
+  ['wink','קורץ','עין אחת עצומה לגמרי, פס מוטה קלות. השנייה פתוחה ומחייכת, עם קשת עדינה מלמטה.'],
   ['surprised','מופתע','אותה עין, גדולה ב־22% ומורמת, מבט קל למעלה. הברק גדל איתה.'],
   ['curious','סקרן','מבט הצידה על הכדור, ראש מוטה ב־5°. העין הקרובה גדולה מעט והרחוקה מכווצת מלמעלה.'],
   ['thinking','חושב','מבט למעלה ולצד, 15° ו־13° על הכדור. כיווץ קל מלמטה, של ריכוז.'],
