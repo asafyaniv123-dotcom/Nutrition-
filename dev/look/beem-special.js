@@ -7,8 +7,8 @@
                       blur, come to the front of the body, or be revealed
                       around its circle (a conic mask) like a closing ring
      body light       hue, saturation, brightness, a white-out (the
-                      evolution flash) and gold, with a sheen sweeping the
-                      sphere - all CSS filters over the canon pixels
+                      evolution flash) as CSS filters; gold as a gradient
+                      map painted into the body, with a glint crossing it
      afterimages      rainbow copies of the body trailing behind it
      tweens           an 'fx' verb that eases any of the above over time
 
@@ -183,12 +183,6 @@ var EASE = {
     }
   };
 
-  var SHEEN = 'position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;' +
-    'background:linear-gradient(115deg,rgba(255,255,255,0) 40%,rgba(255,246,206,.95) 50%,rgba(255,255,255,0) 60%);' +
-    'background-size:300% 100%;' +
-    /* the sphere only: centre (508.3, 499.2), radius 237.6 of 1024 */
-    '-webkit-mask-image:radial-gradient(circle at 49.64% 48.75%,#000 22.9%,transparent 23.2%);' +
-    'mask-image:radial-gradient(circle at 49.64% 48.75%,#000 22.9%,transparent 23.2%)';
 
   Beem.prototype.paint = function(){
     _paint.call(this);
@@ -212,10 +206,6 @@ var EASE = {
     this.bodyEl.style.filter = plain ? '' : 'sepia(' + sep.toFixed(3) + ') saturate(' + sat.toFixed(3) +
       ') hue-rotate(' + hue.toFixed(1) + 'deg) brightness(' + bri.toFixed(3) + ')';
     this.bodyEl.style.zIndex = 2;
-    if (g > .01 && !this.sheen){
-      this.sheen = document.createElement('div'); this.sheen.style.cssText = SHEEN;
-      this.bodyEl.appendChild(this.sheen);
-    }
     /* gold is painted INTO the body canvas, between the body and the eyes:
        the gradient-mapped body at the gold's strength, then the eyes again */
     if (g > .01 && GOLD_EB){
@@ -223,11 +213,24 @@ var EASE = {
       cx2.save(); cx2.setTransform(1,0,0,1,0,0); cx2.globalAlpha = Math.min(1, g);
       cx2.drawImage(GOLD_EB, 0, 0, W, W); cx2.restore();
       cx2.save(); cx2.beginPath(); cx2.arc(SPH.x*kk, SPH.y*kk, (SPH.r - 1)*kk, 0, Math.PI*2); cx2.clip();
+      /* THE SHINE. It used to be a CSS layer masked to a circle, and on the
+         phone that read as a pale disc pasted on the gold. Now it is painted
+         into the body itself: a narrow diagonal glint that crosses the sphere
+         once every 2.4s and is gone in between, clipped to the sphere's own
+         edge and laid UNDER the eyes, so they stay crisp. */
+      var ph = (t % 2.4)/2.4;
+      if (ph < .38){
+        var u = ph/.38, Rr2 = SPH.r*kk, nx = .91, ny = .42,
+            off = (-1.25 + 2.5*u)*Rr2, mx = SPH.x*kk + nx*off, my = SPH.y*kk + ny*off, bw = .2*Rr2,
+            gr = cx2.createLinearGradient(mx - nx*bw, my - ny*bw, mx + nx*bw, my + ny*bw);
+        gr.addColorStop(0, 'rgba(255,248,220,0)');
+        gr.addColorStop(.5, 'rgba(255,248,220,' + (.8*Math.min(1, g)*Math.sin(Math.PI*u)).toFixed(3) + ')');
+        gr.addColorStop(1, 'rgba(255,248,220,0)');
+        cx2.globalCompositeOperation = 'screen'; cx2.fillStyle = gr;
+        cx2.fillRect((SPH.x - SPH.r)*kk, (SPH.y - SPH.r)*kk, 2*Rr2, 2*Rr2);
+        cx2.globalCompositeOperation = 'source-over';
+      }
       this.eye(cx2, 0, kk); this.eye(cx2, 1, kk); cx2.restore();
-    }
-    if (this.sheen){
-      this.sheen.style.opacity = (g*.45).toFixed(3);   // at .62 the passing shine washed the eyes out
-      this.sheen.style.backgroundPosition = (100 - ((t*.55) % 1)*100).toFixed(1) + '% 0';
     }
 
     for (i = 0; i < 3; i++){
