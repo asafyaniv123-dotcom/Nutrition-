@@ -4599,9 +4599,37 @@ html body.mod-planning .wk-col.today::before{content:"";position:absolute;top:0;
 html body.mod-planning .wk-col{position:relative}
 html body.mod-planning .wk-cell.hot{background:rgba(240,169,46,.14)}
 
-/* a planned thing, as chosen: a solid block of its own muted colour */
+/* ── A TASK, ON EVERY HORIZON ──
+   The month's block, one for one: its soft colour, the word in its ink, and
+   lifted off the board by the same two shadows. The week and the day used to
+   paint the saturated colour with white words and no lift - Asaf saw the day
+   as "still behind, not a finished version" beside the month, and asked for
+   the month's shape on all three. Sizes stay each horizon's own; the
+   material is one. */
 html body.mod-planning .wk-chip{border-radius:7px;padding:3px 5px;font-size:8.5px;
-  font-weight:800;color:#4a453f;box-shadow:0 1px 3px rgba(120,110,98,.22)}
+  font-weight:800;box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 5px var(--nu-shade-soft)}
+html body.mod-planning .wk-blk{border:none;opacity:1;border-radius:7px;padding:2px 4px;
+  box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 5px var(--nu-shade-soft)}
+html body.mod-planning .wk-blk.ct{border-top-left-radius:0;border-top-right-radius:0}
+html body.mod-planning .wk-blk.cb{border-bottom-left-radius:0;border-bottom-right-radius:0}
+html body.mod-planning .wk-chip.fromday{border:none;opacity:1}
+html body.mod-planning .dp-chip,html body.mod-planning .dp-rail-libchip{border-radius:10px;
+  box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 6px var(--nu-shade-soft)}
+html body.mod-planning .dp-rail-chip{box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 6px var(--nu-shade-soft)}
+/* ── THE LAYER ── one block per task, placed by dpLayout ── */
+html body.mod-planning .dp-grid{position:relative}
+html body.mod-planning .dp-layer{position:absolute;top:0;bottom:0;z-index:1;pointer-events:none}
+html body.mod-planning .dp-layer .dp-chip{position:absolute;pointer-events:auto;box-sizing:border-box;
+  margin:0;overflow:hidden;display:flex;flex-wrap:wrap;align-items:baseline;align-content:flex-start;gap:0 6px}
+html body.mod-planning .dp-layer .dp-chip.ranged{padding:6px 9px}
+/* a block says what it is first and when second, and the range never breaks
+   in the middle - "07:00–" over "10:25" in a narrow lane read as two times */
+html body.mod-planning .dp-chip.ranged .dp-w{order:1;flex:1 0 100%}
+html body.mod-planning .dp-chip.ranged .dp-min{order:2;white-space:nowrap}
+html body.mod-planning .dp-w{min-width:0;overflow-wrap:anywhere}
+html body.mod-planning .dp-min{margin:0}
+/* the hour's own rows no longer hold blocks, so nothing grows them but notes */
+html body.mod-planning .dp-chip .dp-min{color:inherit;opacity:.62}
 html body.mod-planning .wk-task{background:var(--nu-ground);border-radius:15px;
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 html body.mod-planning .wk-grip{color:var(--nu-muted)}
@@ -4612,6 +4640,8 @@ html body.mod-planning .mtin{border:none;background:var(--nu-ground);border-radi
   padding:13px 15px;font-size:13.5px;font-weight:600;color:var(--nu-ink);
   box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
 html body.mod-planning .mtin::placeholder{color:var(--nu-muted);font-weight:600}
+html body.mod-planning .dp-rail-sw{margin-top:11px}
+html body.mod-planning .dp-rail-sw .wk-sw{max-width:none;gap:8px}
 html body.mod-planning .wk-swatch{box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 6px var(--nu-shade-soft)}
 html body.mod-planning .wk-swatch.on{transform:scale(1.14);
   box-shadow:0 0 0 2px var(--nu-ground),0 0 0 3.5px rgba(176,168,156,.75)}
@@ -29045,14 +29075,14 @@ function planWeekHTML(){
         h+='<div class="wk-free"'+(_pad?' style="padding-top:'+_pad+'px"':'')+'>';
         for(t=0;t<list.length;t++){
           var cc=wkColor(list[t].c),ech=wkIsEcho(list[t],st);
-          h+='<div class="wk-chip" style="position:relative;background:'+cc.bg+';color:'+cc.tx+(ech?';opacity:.55':'')+'">'+
+          h+='<div class="wk-chip" style="position:relative;background:'+cc.soft+';color:'+cc.ink+(ech?';opacity:.55':'')+'">'+
              (ech?'<span style="opacity:.7">&#8635; </span>':'')+esc(list[t].w)+
              /* the same grab point a bar has, so a one-day task can become a
                 longer one without first being something else */
              (ech?'':'<div data-stretch="'+list[t].id+'" style="position:absolute;inset-inline-end:-6px;top:50%;margin-top:-11px;'+
                    'width:22px;height:22px;pointer-events:auto;cursor:ew-resize;touch-action:none;'+
                    'display:flex;align-items:center;justify-content:center">'+
-                   '<div style="width:7px;height:7px;border-radius:50%;background:var(--card);border:2px solid '+cc.dot+'"></div></div>')+
+                   '<div class="mo-grip"></div></div>')+
              '</div>';
         }
         h+='</div>';
@@ -29067,7 +29097,7 @@ function planWeekHTML(){
           h+='<div class="wk-blk'+(p.ct?' ct':'')+(p.cb?' cb':'')+'" style="'+
              'top:calc('+p.top.toFixed(2)+'% - '+up+'px);'+
              'height:calc('+p.hgt.toFixed(2)+'% + '+(up+dn)+'px);'+
-             'background:'+dc.bg+';color:'+dc.tx+'">';
+             'background:'+dc.soft+';color:'+dc.ink+'">';
           /* Only the piece that starts the task says what it is - and a short
              one says only its name. Half an hour is a few pixels tall here, so
              printing the times as well left the name cut off, which is the one
@@ -29222,6 +29252,10 @@ function wkFromLib(libId,date,slot){
 function wkDel(id){
   var wk=loadWeek(_wkSun),out=[],i;
   for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id!==id)out.push(wk.tasks[i]);
+  /* The strip above the week is the ONE pool, not this week's record - a
+     task dragged from it to the trash was looked for here, not found, and
+     left where it was. The month already deletes from the pool. */
+  if(out.length===wk.tasks.length){poolDel(id);return;}
   wk.tasks=out;saveWeek(_wkSun,wk);renderPlanWeek();
 }
 
@@ -29325,7 +29359,7 @@ function wkMove(e){
   _wkDrag.g.style.top=(e.clientY-_wkDrag.dy)+'px';
   dragEdgeScroll(e.clientX,e.clientY,wkMove);
   if(!_wkDrag.lib)swipeMark(_wkDrag,swipeArmed(_wkDrag,e),''+_t('מחק')+'');
-  var hit=wkHitCell(e.clientX,e.clientY),cells=document.querySelectorAll('.wk-cell'),i;
+  var hit=_wkDrag.overT?null:wkHitCell(e.clientX,e.clientY),cells=document.querySelectorAll('.wk-cell'),i;
   for(i=0;i<cells.length;i++)cells[i].classList.toggle('hot',cells[i]===hit);
   var p=document.getElementById('wk-pool');
   if(p)p.classList.toggle('hot',!hit&&wkOverPool(e.clientX,e.clientY));
@@ -29347,9 +29381,9 @@ function wkUp(e){
   window.removeEventListener('pointermove',wkMove);
   window.removeEventListener('pointerup',wkUp);
   window.removeEventListener('pointercancel',wkUp);
-  var id=_wkDrag.id,moved=_wkDrag.moved,lib=_wkDrag.lib,swiped=_wkDrag.swiping;
+  var id=_wkDrag.id,moved=_wkDrag.moved,lib=_wkDrag.lib,swiped=_wkDrag.swiping,overT=_wkDrag.overT;
   _wkDrag=null;
-  if(swiped&&!hit&&!lib){wkDel(id);return;}
+  if(!lib&&(overT||(swiped&&!hit))){wkDel(id);return;}   // over the trash wins; see dpUp
   if(!moved)return;                          // a tap, not a drop
   if(lib){if(hit)wkFromLib(lib,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));else renderPlanWeek();return;}
   if(hit)wkAssign(id,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));
@@ -29640,6 +29674,7 @@ function dpOpenFine(slotEl){
   h+='</div>';
   slotEl.insertAdjacentHTML('beforeend',h);
   slotEl.classList.add('fine');
+  dpLayout();      // the row just grew; the blocks below it follow
 }
 function dpCloseFine(){
   trashDuck(false);
@@ -29648,6 +29683,7 @@ function dpCloseFine(){
     if(f[i].parentElement)f[i].parentElement.classList.remove('fine');
     f[i].remove();
   }
+  if(f.length)dpLayout();
 }
 // End times are minutes from midnight, so a task can run past its own hour.
 function dpSetEnd(id,mins){
@@ -29838,6 +29874,108 @@ function dpNowStart(){
     dpNowLine();
   },60000);
 }
+/* ── THE LAYER ──
+   Every task with an hour is ONE block, over the hours rather than inside
+   them. It used to be built from pieces - a head in the hour it starts and a
+   continuation in every hour it reaches - so two tasks that shared an hour
+   were two piles of pieces in the same rows, drawn over each other. Asaf:
+   "the app should know by itself that when two tasks collide, one moves a
+   little to the side and sits well beside it. That is why the time screen
+   is wide."
+
+   So: tasks that overlap form a group, each takes the first lane free at its
+   start, and the group shares the width in that many lanes. A task that
+   overlaps nothing has the whole width. A task with no end counts as
+   DP_PILL_MIN long - about the height its pill takes on the screen - so a
+   pill beside a block also moves aside rather than under it.
+
+   The blocks are placed by MEASURING the rows (dpLayout), not by DP_ROW_H:
+   a row grows when the five-minute steps open during a drag, or when its
+   notes run long, and a block placed by arithmetic would drift off its hour.
+   The rows stay where they were and stay the drop targets, so every drag
+   path is unchanged. */
+var DP_PILL_MIN=40,DP_LANE_GAP=4;
+function dpLanes(all){
+  var timed=[],i,x,L,grp=[],lanes=[],grpEnd=-1;
+  for(i=0;i<all.length;i++){
+    if(all[i].hour===null)continue;
+    var st=all[i].hour*60+(all[i].min||0);
+    var en=(all[i].end&&all[i].end>st)?all[i].end:0;
+    timed.push({t:all[i],s:st,e:en,ve:en||st+DP_PILL_MIN});
+  }
+  timed.sort(function(a,b){return (a.s-b.s)||(b.ve-a.ve);});
+  var close=function(){for(var k=0;k<grp.length;k++)grp[k].n=lanes.length;grp=[];lanes=[];grpEnd=-1;};
+  for(i=0;i<timed.length;i++){
+    x=timed[i];
+    if(grp.length&&x.s>=grpEnd)close();
+    for(L=0;L<lanes.length&&lanes[L]>x.s;L++);
+    lanes[L]=x.ve;x.ln=L;grp.push(x);
+    if(x.ve>grpEnd)grpEnd=x.ve;
+  }
+  if(grp.length)close();
+  return timed;
+}
+function dpLayerHTML(all){
+  var timed=dpLanes(all),out='<div class="dp-layer" id="dp-layer">',i,x,c,nt;
+  for(i=0;i<timed.length;i++){
+    x=timed[i];c=wkColor(x.t.c);nt=dpNoteOf(x.t.id);
+    out+='<div class="dp-chip'+(x.e?' ranged':'')+'" data-task="'+x.t.id+'" data-s="'+x.s+'" data-e="'+x.e+'"'+
+         ' data-ln="'+x.ln+'" data-n="'+x.n+'" style="background:'+c.soft+';color:'+c.ink+'">';
+    if(x.e)out+='<span class="dp-min">'+dpFmt(x.s)+'&ndash;'+dpFmt(x.e)+'</span>';
+    else if(x.t.min)out+='<span class="dp-min">'+dpHM(x.t.hour,x.t.min)+'</span>';
+    out+='<span class="dp-w">'+esc(x.t.w)+'</span>'+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
+  }
+  return out+'</div>';
+}
+function dpLayout(){
+  var L=document.getElementById('dp-layer');
+  if(!L)return;
+  var g=L.parentElement,m=g.querySelector('.dp-main');
+  if(!m)return;
+  var gr=g.getBoundingClientRect(),mr=m.getBoundingClientRect();
+  var rtl=getComputedStyle(g).direction==='rtl';
+  /* The layer lies over the rows' main column - or, on a day with no hour
+     notes, over the whole slot: the notes lane is empty then, and the width
+     is what the lanes are for. */
+  if(!g.querySelector('.dp-nline')){
+    var sl=g.querySelector('.dp-slot').getBoundingClientRect();
+    mr={left:sl.left+5,width:sl.width-10};
+  }
+  /* and out from under the rail's +, which floats over the far edge: the
+     last lane of a busy hour sat beneath it */
+  var rl=document.getElementById('dp-rail');
+  if(rl){
+    var rb=rl.getBoundingClientRect();
+    if(rtl&&rb.right>mr.left)mr={left:rb.right+4,width:mr.width-(rb.right+4-mr.left)};
+    else if(!rtl&&rb.left<mr.left+mr.width)mr={left:mr.left,width:rb.left-4-mr.left};
+  }
+  L.style.left=(mr.left-gr.left)+'px';L.style.width=mr.width+'px';
+  var rows={},rs=g.querySelectorAll('.dp-row'),i,r,last=null;
+  for(i=0;i<rs.length;i++){
+    r=rs[i].getBoundingClientRect();
+    last=rows[+rs[i].getAttribute('data-hrow')]={y:r.top-gr.top,h:r.height};
+  }
+  var yAt=function(mins){
+    var R=rows[Math.floor(mins/60)];
+    if(R)return R.y+(mins%60)/60*R.h;
+    return mins<DP_FROM*60?0:(last?last.y+last.h:0);
+  };
+  var cs=L.querySelectorAll('.dp-chip'),W=mr.width;
+  for(i=0;i<cs.length;i++){
+    var c=cs[i],st=+c.getAttribute('data-s'),en=+c.getAttribute('data-e');
+    var n=+c.getAttribute('data-n')||1,lw=W/n,off=(+c.getAttribute('data-ln')||0)*lw;
+    var y=yAt(st);
+    c.style.top=(y+2)+'px';
+    c.style.height=en?Math.max(24,yAt(en)-y-4)+'px':'';
+    // a block fills its lane; a pill alone keeps its own size, as before
+    c.style.width=(en||n>1)?(lw-DP_LANE_GAP)+'px':'';
+    c.style.maxWidth=(lw-DP_LANE_GAP)+'px';
+    if(rtl){c.style.right=off+'px';c.style.left='';}
+    else{c.style.left=off+'px';c.style.right='';}
+  }
+}
+window.addEventListener('resize',function(){dpLayout();});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){dpLayout();});
 function planDayHTML(){
   if(!_dpDate)_dpDate=wkStamp(appNow());
   var d=new Date(_dpDate+'T12:00:00'),all=dpAll(_dpDate),i,h,t;
@@ -29859,37 +29997,9 @@ function planDayHTML(){
     out+='<div class="dp-row" data-hrow="'+h+'"><div class="dp-h" data-hour="'+h+'">'+dpHH(h)+'</div>';
     out+='<div class="dp-slot" data-hour="'+h+'"><div class="dp-main">';
 
-    /* Something running past its hour keeps going down the grid: a full-width
-       band in the hour it starts, and another in each hour it reaches, joined
-       by squared-off edges so it reads as one block crossing the lines. */
-    for(i=0;i<all.length;i++){
-      var ct=all[i];
-      if(ct.hour===null||!ct.end)continue;
-      var lastH=Math.floor((ct.end-1)/60);
-      if(lastH<=ct.hour||h<=ct.hour||h>lastH)continue;
-      var cc=wkColor(ct.c);
-      // no text here: it is the same task, already named in the hour it starts
-      var tailH=(h===lastH)?Math.max(10,Math.round((ct.end-lastH*60)/60*DP_ROW_H)):0;
-      out+='<div class="dp-cont'+(h===lastH?' tail':'')+'" style="background:'+cc.bg+(tailH?';min-height:'+tailH+'px':'')+'"></div>';
-    }
-
-    // within an hour, earlier minutes first
-    var inHour=[];
-    for(i=0;i<all.length;i++)if(all[i].hour===h)inHour.push(all[i]);
-    inHour.sort(function(a,b){return (a.min||0)-(b.min||0);});
-    for(i=0;i<inHour.length;i++){
-      var c=wkColor(inHour[i].c);
-      var nt=dpNoteOf(inHour[i].id);
-      var runsOn=inHour[i].end&&Math.floor((inHour[i].end-1)/60)>h;
-      /* An hour is 44px of screen, so a task at :30 sits half way down it
-         and one at :45 three quarters. Without this everything inside an
-         hour stacked at the top and 09:05 looked the same as 09:55. */
-      var offTop=Math.round((inHour[i].min||0)/60*DP_ROW_H);
-      out+='<div class="dp-chip'+(runsOn?' head':'')+'" data-task="'+inHour[i].id+'" style="background:'+c.bg+';color:'+c.tx+(offTop?';margin-top:'+offTop+'px':'')+'">';
-      if(inHour[i].end)out+='<span class="dp-min">'+dpFmt(dpMins(inHour[i]))+'&ndash;'+dpFmt(inHour[i].end)+'</span>';
-      else if(inHour[i].min)out+='<span class="dp-min">'+dpHM(h,inHour[i].min)+'</span>';
-      out+=esc(inHour[i].w)+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
-    }
+    /* the tasks are not drawn in the rows any more - see THE LAYER below.
+       The row keeps its main column empty: it is the drop target, and what
+       the layer measures its edges from. */
     out+='</div>';
     var nl=dpNotesFor(_dpDate,h),ni;
     out+='<div class="dp-nlane">';
@@ -29901,6 +30011,7 @@ function planDayHTML(){
     out+='</div>';
     out+='</div></div>';   // the slot, and the row
   }
+  out+=dpLayerHTML(all);
   out+='</div>';
 
   // what the week put here, still without an hour
@@ -29993,7 +30104,7 @@ function dpRail(){
   h+='<button class="dp-rail-add" onclick="dpRailToggle()">'+(_dpRailOpen?'&times;':'+')+'</button>';
   for(i=0;i<loose.length&&i<5;i++){
     var c=wkColor(loose[i].c);
-    h+='<div class="dp-rail-chip" data-task="'+loose[i].id+'" style="background:'+c.bg+';color:'+c.tx+'" title="'+esc(loose[i].w)+'">'+esc(loose[i].w)+'</div>';
+    h+='<div class="dp-rail-chip" data-task="'+loose[i].id+'" style="background:'+c.soft+';color:'+c.ink+'" title="'+esc(loose[i].w)+'">'+esc(loose[i].w)+'</div>';
   }
   h+='</div>';
   if(_dpRailOpen){
@@ -30006,12 +30117,17 @@ function dpRail(){
     h+='<input id="dp-rail-in" class="mtin" style="flex:1;margin-bottom:0;font-size:13px" placeholder="'+_t("משימה חדשה")+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">';
     h+='<button onclick="dpRailAdd()" style="background:var(--cta-fill);border:none;border-radius:11px;padding:0 14px;font-size:18px;font-weight:700;cursor:pointer;color:var(--white);flex-shrink:0;font-family:inherit">+</button>';
     h+='</div>';
+    /* the colour, where the task is written. Without it a task from the rail
+       took whatever was last chosen at the foot of the screen - the one place
+       the rail exists so you never have to go. Same variable, so the two
+       stay in step. */
+    h+='<div class="dp-rail-sw">'+wkSwatches("dpRailColor('%K%')",_dpNewColor)+'</div>';
     if(lib.length){
       h+='<div style="font-size:9.5px;letter-spacing:.08em;font-weight:700;color:var(--muted);margin:11px 0 7px">'+_t('משימות חוזרות')+'</div>';
       h+='<div class="dp-rail-lib">';
       for(i=0;i<lib.length;i++){
         var lc=wkColor(lib[i].c);
-        h+='<div class="dp-rail-libchip" data-lib="'+lib[i].id+'" style="background:'+lc.bg+';color:'+lc.tx+'">'+esc(lib[i].w)+'</div>';
+        h+='<div class="dp-rail-libchip" data-lib="'+lib[i].id+'" style="background:'+lc.soft+';color:'+lc.ink+'">'+esc(lib[i].w)+'</div>';
       }
       h+='</div>';
       h+='<div style="font-size:9px;color:var(--muted-soft);line-height:1.5;margin-top:8px">'+_t('גרור אחת מהן ישר לשעה')+'</div>';
@@ -30039,6 +30155,11 @@ function dpRailOutside(e){
   var t=e.target;
   if(t.closest&&(t.closest('#dp-rail-bar')||t.closest('#dp-rail')))return;
   _dpRailOpen=false;_dpRailText='';dpRail();
+}
+function dpRailColor(k){
+  _dpNewColor=k;
+  dpRail();
+  var e=document.getElementById('dp-rail-in');if(e)e.focus();
 }
 function dpRailToggle(){
   _dpRailOpen=!_dpRailOpen;
@@ -30138,13 +30259,18 @@ function deepDelRemember(i){
 
 /* ── the drag ── */
 function dpDown(e){
-  if(e.target.closest&&!e.target.closest('#plan-sec-day'))return;   // not this panel's drag
+  /* not this panel's drag - but the rail and its open bar ARE this panel's,
+     even though they live on body so a re-render cannot pull them from under
+     a finger. Fencing on #plan-sec-day alone made every drag that starts on
+     the rail return here, which is the rail's whole purpose. */
+  if(e.target.closest&&!e.target.closest('#plan-sec-day,#dp-rail,#dp-rail-bar'))return;
   var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;
   var r=el.getBoundingClientRect();
   var g=el.cloneNode(true);
   g.className=el.className+' wk-ghost';
+  g.style.right='';g.style.maxWidth='';g.style.height=r.height+'px';
   g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';
   document.body.appendChild(g);
   el.style.opacity='.3';
@@ -30197,7 +30323,8 @@ function dpMove(e){
     swipeMark(_dpDrag,swipeArmed(_dpDrag,e),(f&&f.src!=='day')?''+_t('הסר מהיום')+'':''+_t('מחק')+'');
   }
 
-  var hit=dpHitSlot(e.clientX,e.clientY),s=document.querySelectorAll('.dp-slot'),i;
+  /* over the trash nothing under it is a target, so nothing lights up */
+  var hit=_dpDrag.overT?null:dpHitSlot(e.clientX,e.clientY),s=document.querySelectorAll('.dp-slot'),i;
   for(i=0;i<s.length;i++)s[i].classList.toggle('hot',s[i]===hit);
 
   // Leaving an hour cancels the wait and folds it back up; staying opens it.
@@ -30291,9 +30418,14 @@ function dpUp(e){
   window.removeEventListener('pointermove',dpMove);
   window.removeEventListener('pointerup',dpUp);
   window.removeEventListener('pointercancel',dpUp);
-  var id=_dpDrag.id,moved=_dpDrag.moved,lib=_dpDrag.lib,swiped=_dpDrag.swiping;
+  var id=_dpDrag.id,moved=_dpDrag.moved,lib=_dpDrag.lib,swiped=_dpDrag.swiping,overT=_dpDrag.overT;
   _dpDrag=null;
-  if(swiped&&!hit&&!fine&&!lib){
+  /* The trash sits over the board - the hours run to the edge of the screen
+     - so a drop on it also finds an hour, and asking for the hour first
+     turned every delete into a move to that hour. Over the trash wins. A
+     flick without it still needs open ground, so choosing minutes inside an
+     hour can never delete. */
+  if(!lib&&(overT||(swiped&&!hit&&!fine))){
     var ft=dpFind(id);
     if(ft&&ft.src==='day')dpDel(id);else dpAssign(id,null,0);
     return;
@@ -30355,10 +30487,15 @@ function overTrash(e){
   var dx=e.clientX-cx, dy=e.clientY-cy;
   return Math.sqrt(dx*dx+dy*dy)<=(r.width/2+26);
 }
+/* Whether the finger is over the trash is recorded HERE, on the move, and
+   read on release from the drag - never asked at release. trashHide runs on
+   pointerup in the capture phase, before any planner's own handler, so by
+   then the strip has lost its "on" and overTrash answers no. */
 function swipeArmed(d,e){
-  if(d.mode==='end')return false;
+  if(d.mode==='end'){d.overT=false;return false;}
   // over the strip is a delete no matter how the finger travelled there
-  if(overTrash(e))return true;
+  d.overT=overTrash(e);
+  if(d.overT)return true;
   // and a flat flick leftwards still is, without having to reach the edge
   return (d.sx-e.clientX)>SWIPE_X&&Math.abs(e.clientY-d.sy)<SWIPE_Y;
 }
@@ -31290,7 +31427,7 @@ function moMove(e){
   _moDrag.g.style.top=(e.clientY-_moDrag.dy)+'px';
   dragEdgeScroll(e.clientX,e.clientY,moMove);
   if(!_moDrag.lib)swipeMark(_moDrag,swipeArmed(_moDrag,e),''+_t('מחק')+'');
-  var hit=moHitCell(e.clientX,e.clientY),c=document.querySelectorAll('.mo-cell'),i;
+  var hit=_moDrag.overT?null:moHitCell(e.clientX,e.clientY),c=document.querySelectorAll('.mo-cell'),i;
   for(i=0;i<c.length;i++)c[i].classList.toggle('hot',c[i]===hit);
 }
 function moUp(e){
@@ -31310,11 +31447,12 @@ function moUp(e){
   window.removeEventListener('pointermove',moMove);
   window.removeEventListener('pointerup',moUp);
   window.removeEventListener('pointercancel',moUp);
-  var id=_moDrag.id,moved=_moDrag.moved,lib=_moDrag.lib,swiped=_moDrag.swiping;
+  var id=_moDrag.id,moved=_moDrag.moved,lib=_moDrag.lib,swiped=_moDrag.swiping,overT=_moDrag.overT;
   _moDrag=null;
-  /* the trash overlaps no day cell, so a drop that found one is a
-     placement whatever the finger did on the way - measured, not assumed */
-  if(swiped&&!hit&&!lib){moDel(id);return;}
+  /* This said the trash overlaps no day cell. It did when it was written;
+     the board now runs to the edge and the trash sits over Saturday. So over
+     the trash wins, as in dpUp. */
+  if(!lib&&(overT||(swiped&&!hit))){moDel(id);return;}
   if(!moved)return;
   if(lib){if(hit)moFromLib(lib,hit.getAttribute('data-date'));else renderPlanMonth();return;}
   if(hit)moAssign(id,hit.getAttribute('data-date'));
@@ -31803,7 +31941,7 @@ function renderPlanning(){
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moPlaceSpans);
   }
   if(o.week)wkPlacePoint();
-  if(o.day){dpRail();dpNowLine();dpNowStart();}
+  if(o.day){dpRail();dpNowLine();dpNowStart();dpLayout();}
 
   /* all three attached at once now, each fenced to its own panel */
   var box=document.getElementById('content');
