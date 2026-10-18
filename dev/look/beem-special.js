@@ -100,7 +100,8 @@ var EASE = {
       body: {hue:0, sat:1, bri:1, white:0, gold:0},
       rings: [0,1,2].map(function(){ return {tilt:0, tiltY:0, prec:0, precV:0, dx:0, dy:0,
         sc:1, op:1, blur:0, reveal:1, front:0}; }),
-      ghosts: 0, cycle: 0, track: -1, tramp: 0, depth: 0, beads: 0, wave: 0
+      ghosts: 0, cycle: 0, track: -1, tramp: 0, depth: 0, beads: 0, wave: 0,
+      turnOn: 0, turn: 0, turnV: 0, ringSpin: 0
     };
     this.tw = [];
   };
@@ -131,6 +132,18 @@ var EASE = {
     if (v === 'fx') return this.fxTween(a);
     /* set: any of Beem's own numbers at once - a position, a velocity, a spin */
     if (v === 'set'){ for (var k in a) this[k] = Array.isArray(a[k]) ? a[k].slice() : a[k]; return; }
+    /* turnstop: slow the turn to a stop with the face FRONT. The landing is
+       picked so the ease-out starts at the speed he is already turning at -
+       no jolt - and ends on a whole turn */
+    if (v === 'turnstop'){
+      var f = this.fx, V = Math.max(60, f.turnV), target = Math.ceil((f.turn + V*0.45)/360)*360,
+          d = Math.min(2600, Math.max(500, 3*(target - f.turn)/V*1000));
+      f.turnV = 0;
+      this.fxTween({t:'fx', v:{turn:target}, d:d, e:'out'});
+      this.pend.push([this.sT + d/1000, 'fx', {t:'fx', v:{turnOn:0}, d:0}],
+                     [this.sT + d/1000, 'set', {lookX:0, lkX:0, lvx:0, tx:0}]);
+      return;
+    }
     if (v === 'moves'){                     // a run of targets: [[ms, x, y], ...]
       var o = this.sT, self = this;
       a.forEach(function(m){ self.pend.push([o + m[0]/1000, 'to', m[1], m[2]]); });
@@ -150,6 +163,19 @@ var EASE = {
       if (p >= 1) this.tw.splice(i, 1);
     }
     f.rings.forEach(function(R){ R.prec += R.precV*sp; });
+    /* TURNING ON HIS OWN AXIS. The body is a render with fixed light, so it is
+       never rotated - a globe is turned instead: the eyes travel across the
+       sphere, foreshorten at the rim, vanish behind and come round the other
+       side, which is what a turning ball looks like while its lighting, set by
+       the sun and not by the ball, stays put. */
+    if (f.turnOn){
+      f.turn += f.turnV*sp;
+      var lx = ((f.turn + 180) % 360 + 360) % 360 - 180;
+      this.lookX = lx; this.lkX = lx; this.lvx = 0;
+      this.tx = -lx*0.9;        // the engine leans the body after the look; a spin must not swing him
+    }
+    if (f.ringSpin) for (var ri = 0; ri < 3; ri++)
+      this.spin[ri] = (this.spin[ri] + f.ringSpin*[1, 1.18, 1.36][ri]*sp) % 360;
     /* the eyes follow the edge of a ring as it is drawn around the circle */
     if (f.track >= 0){
       var ang = f.rings[f.track].reveal*Math.PI*2;
@@ -200,7 +226,7 @@ var EASE = {
       this.eye(cx2, 0, kk); this.eye(cx2, 1, kk); cx2.restore();
     }
     if (this.sheen){
-      this.sheen.style.opacity = (g*.62).toFixed(3);
+      this.sheen.style.opacity = (g*.45).toFixed(3);   // at .62 the passing shine washed the eyes out
       this.sheen.style.backgroundPosition = (100 - ((t*.55) % 1)*100).toFixed(1) + '% 0';
     }
 
@@ -337,20 +363,17 @@ var EASE = {
 /* ═══════════════════════ the ten special moments ═══════════════════════ */
 var SPECIAL_LIST = [
   ['golden', 'Beem זהב',
-   'אבן דרך גדולה ברצף. הטבעות מסתחררות ונסגרות עליו כגולם. מבפנים הוא מאדים, מהבהב בלבן מהר ומהר יותר, והטבעות נפתחות: Beem מזהב, עם ברק שעובר על הכדור.',
-   {dur:7000, ev:[[0,'face','calm'],[250,'face','determined'],
-     [350,'set',{sv:[280,280,280]}],[350,'fx',{t:'rings',v:{front:1},d:0}],
-     [400,'fx',{t:'rings',v:{sc:[.74,.46,.24]},d:850,e:'io',s:90}],[500,'gate',.92],
-     [900,'fx',{t:'body',v:{hue:-24,sat:1.45,bri:.95},d:600}],[1500,'face','closed'],
-     [1700,'fx',{t:'body',v:{white:1},d:160}],[1880,'fx',{t:'body',v:{white:.15},d:160}],
-     [2060,'fx',{t:'body',v:{white:1},d:120}],[2200,'fx',{t:'body',v:{white:.25},d:100}],
-     [2320,'fx',{t:'body',v:{white:1},d:80}],[2420,'fx',{t:'body',v:{white:.3},d:60}],
-     [2500,'fx',{t:'body',v:{white:1},d:60}],
-     [2600,'fx',{t:'fx',v:{beads:1},d:0}],
-     [2600,'fx',{t:'body',v:{white:0,hue:0,sat:1,bri:1,gold:1},d:500,e:'out'}],
-     [2600,'fx',{t:'rings',v:{sc:1},d:650,e:'back',s:60}],[2600,'burst',2.6],[2600,'gate',1],
-     [2650,'face','happy'],[2700,'hop',110],[3300,'fx',{t:'rings',v:{front:0},d:0}],
-     [4400,'face','content'],[5700,'fx',{t:'body',v:{gold:0},d:800}],[6100,'face','calm']]}],
+   'אבן דרך גדולה ברצף. הוא מתחיל להסתובב סביב עצמו כמו גלובוס, והטבעות מסתובבות סביבו. הכול מאיץ, ובשיא הסיבוב הוא נצבע בזהב, גם הגוף וגם כל חרוז. כשהוא מאט, הפנים חוזרות קדימה: Beem מזהב, עם ברק שעובר על הכדור.',
+   {dur:7800, ev:[[0,'face','calm'],[200,'face','happy'],
+     [300,'fx',{t:'fx',v:{turnOn:1, beads:1},d:0}],
+     [300,'fx',{t:'fx',v:{turnV:1260, ringSpin:560},d:1500,e:'in'}],
+     [1300,'stretch',-.05],
+     [1600,'fx',{t:'body',v:{gold:1},d:900}],
+     [1950,'fx',{t:'body',v:{white:.32},d:250}],[2200,'fx',{t:'body',v:{white:0},d:500,e:'out'}],
+     [2600,'turnstop'],[2600,'fx',{t:'fx',v:{ringSpin:0},d:1900,e:'out'}],[2600,'stretch',0],
+     [4150,'face','happy'],[4150,'burst',2.4],[4200,'hop',110],
+     [5200,'face','content'],[6400,'fx',{t:'body',v:{gold:0},d:800}],[7000,'face','calm'],
+     [7300,'fx',{t:'fx',v:{beads:0},d:0}]]}],
   ['tramp', 'טרמפולינה',
    'הטבעות נשכבות מתחתיו ונהיות טרמפולינה. הוא קופץ עליה שלוש פעמים, כל פעם גבוה יותר, והיא שוקעת תחתיו בכל נחיתה. בסוף הן עולות חזרה למקום.',
    {dur:5600, ev:[[0,'face','happy'],
