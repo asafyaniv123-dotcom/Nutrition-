@@ -4599,9 +4599,32 @@ html body.mod-planning .wk-col.today::before{content:"";position:absolute;top:0;
 html body.mod-planning .wk-col{position:relative}
 html body.mod-planning .wk-cell.hot{background:rgba(240,169,46,.14)}
 
-/* a planned thing, as chosen: a solid block of its own muted colour */
+/* ── A TASK, ON EVERY HORIZON ──
+   The month's block, one for one: its soft colour, the word in its ink, and
+   lifted off the board by the same two shadows. The week and the day used to
+   paint the saturated colour with white words and no lift - Asaf saw the day
+   as "still behind, not a finished version" beside the month, and asked for
+   the month's shape on all three. Sizes stay each horizon's own; the
+   material is one. */
 html body.mod-planning .wk-chip{border-radius:7px;padding:3px 5px;font-size:8.5px;
-  font-weight:800;color:#4a453f;box-shadow:0 1px 3px rgba(120,110,98,.22)}
+  font-weight:800;box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 5px var(--nu-shade-soft)}
+html body.mod-planning .wk-blk{border:none;opacity:1;border-radius:7px;padding:2px 4px;
+  box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 5px var(--nu-shade-soft)}
+html body.mod-planning .wk-blk.ct{border-top-left-radius:0;border-top-right-radius:0}
+html body.mod-planning .wk-blk.cb{border-bottom-left-radius:0;border-bottom-right-radius:0}
+html body.mod-planning .wk-chip.fromday{border:none;opacity:1}
+html body.mod-planning .dp-chip,html body.mod-planning .dp-rail-libchip{border-radius:10px;
+  box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 6px var(--nu-shade-soft)}
+html body.mod-planning .dp-rail-chip{box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 6px var(--nu-shade-soft)}
+/* a task that runs on is ONE block down the hours: the continuation takes
+   the head's colour at full strength and only the outward shadow, so no
+   seam of light is drawn where two hours meet */
+html body.mod-planning .dp-cont{opacity:1;box-shadow:1.5px 3px 6px var(--nu-shade-soft);
+  margin-top:-6px}   /* one more than the hour's 1px rule, which showed through the block */
+html body.mod-planning .dp-cont.tail{border-bottom-right-radius:10px;border-bottom-left-radius:10px}
+/* the minutes inside a block are the block's own ink, quieter - grey on a
+   colour read as dirt */
+html body.mod-planning .dp-chip .dp-min{color:inherit;opacity:.62}
 html body.mod-planning .wk-task{background:var(--nu-ground);border-radius:15px;
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 html body.mod-planning .wk-grip{color:var(--nu-muted)}
@@ -29045,14 +29068,14 @@ function planWeekHTML(){
         h+='<div class="wk-free"'+(_pad?' style="padding-top:'+_pad+'px"':'')+'>';
         for(t=0;t<list.length;t++){
           var cc=wkColor(list[t].c),ech=wkIsEcho(list[t],st);
-          h+='<div class="wk-chip" style="position:relative;background:'+cc.bg+';color:'+cc.tx+(ech?';opacity:.55':'')+'">'+
+          h+='<div class="wk-chip" style="position:relative;background:'+cc.soft+';color:'+cc.ink+(ech?';opacity:.55':'')+'">'+
              (ech?'<span style="opacity:.7">&#8635; </span>':'')+esc(list[t].w)+
              /* the same grab point a bar has, so a one-day task can become a
                 longer one without first being something else */
              (ech?'':'<div data-stretch="'+list[t].id+'" style="position:absolute;inset-inline-end:-6px;top:50%;margin-top:-11px;'+
                    'width:22px;height:22px;pointer-events:auto;cursor:ew-resize;touch-action:none;'+
                    'display:flex;align-items:center;justify-content:center">'+
-                   '<div style="width:7px;height:7px;border-radius:50%;background:var(--card);border:2px solid '+cc.dot+'"></div></div>')+
+                   '<div class="mo-grip"></div></div>')+
              '</div>';
         }
         h+='</div>';
@@ -29067,7 +29090,7 @@ function planWeekHTML(){
           h+='<div class="wk-blk'+(p.ct?' ct':'')+(p.cb?' cb':'')+'" style="'+
              'top:calc('+p.top.toFixed(2)+'% - '+up+'px);'+
              'height:calc('+p.hgt.toFixed(2)+'% + '+(up+dn)+'px);'+
-             'background:'+dc.bg+';color:'+dc.tx+'">';
+             'background:'+dc.soft+';color:'+dc.ink+'">';
           /* Only the piece that starts the task says what it is - and a short
              one says only its name. Half an hour is a few pixels tall here, so
              printing the times as well left the name cut off, which is the one
@@ -29870,7 +29893,7 @@ function planDayHTML(){
       var cc=wkColor(ct.c);
       // no text here: it is the same task, already named in the hour it starts
       var tailH=(h===lastH)?Math.max(10,Math.round((ct.end-lastH*60)/60*DP_ROW_H)):0;
-      out+='<div class="dp-cont'+(h===lastH?' tail':'')+'" style="background:'+cc.bg+(tailH?';min-height:'+tailH+'px':'')+'"></div>';
+      out+='<div class="dp-cont'+(h===lastH?' tail':'')+'" style="background:'+cc.soft+(tailH?';min-height:'+tailH+'px':'')+'"></div>';
     }
 
     // within an hour, earlier minutes first
@@ -29885,7 +29908,7 @@ function planDayHTML(){
          and one at :45 three quarters. Without this everything inside an
          hour stacked at the top and 09:05 looked the same as 09:55. */
       var offTop=Math.round((inHour[i].min||0)/60*DP_ROW_H);
-      out+='<div class="dp-chip'+(runsOn?' head':'')+'" data-task="'+inHour[i].id+'" style="background:'+c.bg+';color:'+c.tx+(offTop?';margin-top:'+offTop+'px':'')+'">';
+      out+='<div class="dp-chip'+(runsOn?' head':'')+'" data-task="'+inHour[i].id+'" style="background:'+c.soft+';color:'+c.ink+(offTop?';margin-top:'+offTop+'px':'')+'">';
       if(inHour[i].end)out+='<span class="dp-min">'+dpFmt(dpMins(inHour[i]))+'&ndash;'+dpFmt(inHour[i].end)+'</span>';
       else if(inHour[i].min)out+='<span class="dp-min">'+dpHM(h,inHour[i].min)+'</span>';
       out+=esc(inHour[i].w)+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
@@ -29993,7 +30016,7 @@ function dpRail(){
   h+='<button class="dp-rail-add" onclick="dpRailToggle()">'+(_dpRailOpen?'&times;':'+')+'</button>';
   for(i=0;i<loose.length&&i<5;i++){
     var c=wkColor(loose[i].c);
-    h+='<div class="dp-rail-chip" data-task="'+loose[i].id+'" style="background:'+c.bg+';color:'+c.tx+'" title="'+esc(loose[i].w)+'">'+esc(loose[i].w)+'</div>';
+    h+='<div class="dp-rail-chip" data-task="'+loose[i].id+'" style="background:'+c.soft+';color:'+c.ink+'" title="'+esc(loose[i].w)+'">'+esc(loose[i].w)+'</div>';
   }
   h+='</div>';
   if(_dpRailOpen){
@@ -30011,7 +30034,7 @@ function dpRail(){
       h+='<div class="dp-rail-lib">';
       for(i=0;i<lib.length;i++){
         var lc=wkColor(lib[i].c);
-        h+='<div class="dp-rail-libchip" data-lib="'+lib[i].id+'" style="background:'+lc.bg+';color:'+lc.tx+'">'+esc(lib[i].w)+'</div>';
+        h+='<div class="dp-rail-libchip" data-lib="'+lib[i].id+'" style="background:'+lc.soft+';color:'+lc.ink+'">'+esc(lib[i].w)+'</div>';
       }
       h+='</div>';
       h+='<div style="font-size:9px;color:var(--muted-soft);line-height:1.5;margin-top:8px">'+_t('גרור אחת מהן ישר לשעה')+'</div>';
