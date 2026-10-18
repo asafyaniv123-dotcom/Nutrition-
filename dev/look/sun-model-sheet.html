@@ -384,8 +384,12 @@
     כאן הוא לא מנגן רגע, אלא <b>מגיב</b>. <b>מגע:</b> הוא מסתכל על האצבע. נגיעה מצחיקה
     אותו, לחיצה ארוכה היא ליטוף, משיכה לוקחת אותו איתך, וזריקה שולחת אותו לעוף ולקפוץ מהקירות.
     חמש נגיעות מהר מדי והוא נעלב, ואז סולח. <b>שעה:</b> בבוקר הוא זורח, ביום הוא חי רגיל,
-    בערב הוא מאט ובלילה הוא ישן. בין חצות לארבע זה עדיין הלילה של אתמול, כי היום באפליקציה
-    מסתיים בארבע. הקוד יושב ב־<code>beem-alive.js</code>.
+    בערב הוא מאט, <b>ובלילה הוא הופך לירח והחרוזים שלו לכוכבים</b> (הרעיון של אסף): הגוף
+    מתקרר לכסוף, החרוזים מתלבנים ומנצנצים אחד אחרי השני, והבמה סביבו מחשיכה לשמיים. בבוקר
+    הירח שוקע כירח, והזריחה מעלה אותו. בין חצות לארבע זה עדיין הלילה של אתמול, כי היום
+    באפליקציה מסתיים בארבע. <b>רצף:</b> כל יום ברצף מוסיף לו זוהר, ובאבני הדרך (7, 30, 100
+    ו־365) הוא הופך ל־Beem זהב. <b>הרצף הוא טיוטה:</b> איך בדיוק הוא יעבוד עוד פתוח.
+    הקוד יושב ב־<code>beem-alive.js</code> וב־<code>beem-moon.js</code>.
   </div>
   <div class="alive">
     <div class="bc">
@@ -399,6 +403,13 @@
       <div class="row"><input type="range" id="i-time" min="0" max="1435" step="5" value="720"></div>
       <div class="row"><button id="b-now" type="button">עכשיו</button><button id="b-m" type="button">07:00</button>
         <button id="b-e" type="button">20:00</button><button id="b-n" type="button">02:00</button></div>
+    </div>
+    <div class="bc">
+      <div class="stage" id="s-streak"></div>
+      <h3>רצף <span class="t" id="v-days">0</span> <i id="v-next"></i></h3>
+      <div class="row"><button id="b-day" type="button">+1 יום</button><button id="b-week" type="button">+7 ימים</button>
+        <button id="b-reset" type="button">הרצף נשבר</button></div>
+      <div class="cap" id="c-streak">טיוטה. איך הרצף יעבוד עוד פתוח.</div>
     </div>
   </div>
 
@@ -446,6 +457,7 @@
 <script src="beem-engine.js"></script>
 <script src="beem-special.js"></script>
 <script src="beem-alive.js"></script>
+<script src="beem-moon.js"></script>
 <script>
 var PAL = [
   ['#fed662','גוף · קודקוד','rgb(254,214,98)'],
@@ -521,7 +533,11 @@ BEEM_READY.then(function(){
     document.getElementById('v-time').textContent = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
     var p = phaseOf(min);
     document.getElementById('v-phase').textContent = PH[p] + (min < 240 ? ' · עדיין הלילה של אתמול' : '');
-    if (p !== phase){ phase = p; var s = CLOCK[p]; bk.play(typeof s === 'function' ? s() : s); }
+    if (p !== phase){
+      /* the morning after a night is a handover: the moon sets into the sunrise */
+      var s = p === 'morning' && phase === 'night' ? MOON_MORNING : CLOCK[p];
+      phase = p; bk.play(typeof s === 'function' ? s() : s);
+    }
   }
   function nowMin(){ var d = new Date(); return Math.floor((d.getHours()*60 + d.getMinutes())/5)*5; }
   document.getElementById('i-time').oninput = function(){ setTime(+this.value); };
@@ -530,6 +546,33 @@ BEEM_READY.then(function(){
   document.getElementById('b-e').onclick = function(){ setTime(1200); };
   document.getElementById('b-n').onclick = function(){ setTime(120); };
   setTime(nowMin());
+
+  /* the streak (approved 18.10 as a draft): a glow that grows, gold at milestones */
+  var bs = new Beem(document.getElementById('s-streak')); ALL.push(bs); bs.play(IDLE);
+  var days = 0, $s = function(id){ return document.getElementById(id); };
+  function glow(){
+    var L = streakGlow(days), css = $s('s-streak').clientWidth/400;
+    bs.host.querySelector('.beem').style.filter = days ? 'drop-shadow(0 0 ' + (6 + 22*L)*css +
+      'px rgba(255,186,60,' + (.18 + .5*L).toFixed(2) + '))' : '';
+    var next = MILESTONES.filter(function(m){ return m > days; })[0];
+    $s('v-days').textContent = days;
+    $s('v-next').textContent = next ? 'עוד ' + (next - days) + ' ל־Beem זהב' : '';
+  }
+  function addDays(n){
+    var before = days; days += n; glow();
+    var hit = MILESTONES.filter(function(m){ return m > before && m <= days; }).pop();
+    if (hit){ bs.play(once(byId(SPECIAL_LIST, 'golden'))); $s('c-streak').textContent = 'יום ' + hit + '! אבן דרך: Beem זהב.'; }
+    else { bs.play(once({dur: 2600, ev: [[0, 'face', 'happy'], [100, 'nod', 1, 8], [100, 'burst', .7], [1600, 'face', 'calm']]}));
+      $s('c-streak').textContent = 'יום ' + days + '. הזוהר שלו קצת חזק יותר.'; }
+  }
+  $s('b-day').onclick = function(){ addDays(1); };
+  $s('b-week').onclick = function(){ addDays(7); };
+  $s('b-reset').onclick = function(){
+    days = 0; glow();
+    bs.play(once({dur: 3200, ev: [[0, 'face', 'sad'], [0, 'look', 0, -8], [1700, 'look', 0, 0], [1800, 'face', 'calm'], [2000, 'nod', 1, 6]]}));
+    $s('c-streak').textContent = 'הרצף נשבר. הוא עצוב רגע, ומתחילים מחדש.';
+  };
+  glow();
 
   beemRun(ALL);
 }).catch(function(e){
