@@ -4640,6 +4640,26 @@ html body.mod-planning .mtin{border:none;background:var(--nu-ground);border-radi
   padding:13px 15px;font-size:13.5px;font-weight:600;color:var(--nu-ink);
   box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
 html body.mod-planning .mtin::placeholder{color:var(--nu-muted);font-weight:600}
+html body.mod-planning .psay{max-width:none;margin:0 0 16px}
+html body.mod-planning .hcmd-in{background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+html body.mod-planning .hcmd-in::placeholder{color:var(--nu-muted)}
+html body.mod-planning .hcmd-go,html body.mod-planning .hcmd-b{background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+html body.mod-planning .hcmd-b.ghost{background:none;box-shadow:none;color:var(--nu-muted)}
+html body.mod-planning .hcmd-card{background:var(--nu-ground);
+  box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 18px var(--nu-shade-soft)}
+html body.mod-planning .hcmd-q{color:var(--nu-ink)}
+html body.mod-planning .hcmd-busy i{background:var(--nu-muted)}
+html body.mod-planning .psay-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+/* each entry is the block it will become on the board */
+html body.mod-planning .psay-it{border-radius:10px;padding:8px 11px;
+  box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 6px var(--nu-shade-soft)}
+html body.mod-planning .psay-w{font-size:13.5px;font-weight:800;unicode-bidi:plaintext}
+html body.mod-planning .psay-when{font-size:11px;font-weight:700;opacity:.72;margin-top:2px}
+html body.mod-planning .psay-sw{margin-top:12px}
+html body.mod-planning .psay-sw .wk-sw{max-width:182px;gap:8px}   /* two rows of six, not eleven and a stray */
+.psay-t{display:inline-block;direction:ltr;unicode-bidi:isolate}
 html body.mod-planning .dp-rail-sw{margin-top:11px}
 html body.mod-planning .dp-rail-sw .wk-sw{max-width:none;gap:8px}
 html body.mod-planning .wk-swatch{box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 6px var(--nu-shade-soft)}
@@ -29586,6 +29606,10 @@ function renderDpSheet(){
   h+='<button onclick="taskLibSave(\''+esc(t.w).replace(/'/g,"\\'")+'\',\''+(t.c||'lav')+'\')" style="width:100%;background:var(--surface);border:none;border-radius:14px;padding:12px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;margin-top:16px">&#9734; '+_t('שמור כמשימה חוזרת')+'</button>';
   h+='<button onclick="dpCloseDetail(true)" style="width:100%;background:var(--cta-fill);border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;color:var(--white);font-family:inherit;margin-top:8px">'+_t('שמור')+'</button>';
   if(t.src==='day')h+='<button onclick="dpCloseDetail(false);dpDel(\''+t.id+'\')" style="width:100%;background:none;border:none;padding:12px;font-size:12px;font-weight:700;color:var(--terra-700);cursor:pointer;font-family:inherit">'+_t('מחק')+'</button>';
+  /* one of a repeat: this day alone is the button above; this one ends the
+     repeat here, keeping every day already behind it */
+  var _rid=psRidOf(_dpDate,t.id);
+  if(_rid)h+='<button onclick="dpCloseDetail(false);psSeriesEndFrom(\''+_rid+'\',_dpDate)" style="width:100%;background:none;border:none;padding:4px 12px 12px;font-size:12px;font-weight:700;color:var(--terra-700);cursor:pointer;font-family:inherit">'+_t('מחיקת כל החזרות מכאן והלאה')+'</button>';
   h+='</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
   document.body.classList.add('sheet-open');
@@ -31893,7 +31917,177 @@ var PLAN_EMOJI={work:'\uD83D\uDD34',meeting:'\uD83D\uDD35',travel:'\uD83D\uDE97'
   project:'\uD83D\uDCBB',workout:'\uD83D\uDCAA',meal:'\uD83C\uDF7D\uFE0F',reading:'\uD83D\uDCD6',
   social:'\uD83D\uDFE2',rest:'\uD83D\uDE34'};
 function planBotEmoji(c){return PLAN_EMOJI[c]||'\u2022';}
+/* ── THE WRITING LINE ──
+   "Every Wednesday from 9 to 10, meditation time" - written in words, and
+   placed in the calendar. The worker's /schedule turns the sentence into
+   entries (what, which date or weekdays, from when to when, whether it
+   repeats); a card says what it understood, and only its button writes.
+
+   The planning screen is redrawn whole on almost every action, so what is in
+   the box lives in _psay.q and goes back in on every draw - a half-written
+   sentence must survive a colour being picked somewhere below it. */
+var _psay={q:'',busy:false,items:null,msg:'',done:false,c:''};
+function psayHTML(){
+  var h='<div class="hcmd psay" id="psay"><div class="hcmd-row">'+
+    '<textarea id="psay-in" class="hcmd-in" rows="1" maxlength="1000" enterkeyhint="send" autocomplete="off"'+
+    ' placeholder="'+_t('מה להכניס ללוח? למשל: כל רביעי 9–10 מדיטציה')+'"'+
+    ' oninput="_psay.q=this.value;rfmGrow(this)"'+
+    ' onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();psayGo();}">'+esc(_psay.q)+'</textarea>'+
+    '<button class="hcmd-go" onclick="psayGo()" aria-label="'+_t('שלח')+'">'+
+    '<svg viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg></button>'+
+    '</div><div id="psay-out">'+psayCardHTML()+'</div></div>';
+  setTimeout(function(){var e=document.getElementById('psay-in');if(e&&e.value)rfmGrow(e);},0);
+  return h;
+}
+function psayPaint(){var o=document.getElementById('psay-out');if(o)o.innerHTML=psayCardHTML();}
+function psayWhen(it){
+  var w;
+  if(it.repeat==='daily')w=_t('כל יום');
+  else if(it.repeat==='weekly'){
+    var names=[],i;
+    for(i=0;i<it.days.length;i++)names.push(RF_DAYNAMES[it.days[i]]);
+    var list=names.join(', ');
+    try{list=new Intl.ListFormat(APP_LOCALE,{style:'long',type:'conjunction'}).format(names);}catch(e){}
+    w=_t('כל {days}',{days:list});
+  }
+  else w=fmtDate(it.date);
+  if(it.start){
+    var a=it.start.split(':'),t=dpClock(+a[0],+a[1]);
+    if(it.end){var b=it.end.split(':');t+='&ndash;'+dpClock(+b[0],+b[1]);}
+    /* isolated left-to-right, as on the board: in a right-to-left line the
+       two times of a range swapped places and read 10:00-09:00 */
+    w+=' &middot; <span class="psay-t">'+t+'</span>';
+  }
+  return w;
+}
+function psayCardHTML(){
+  if(_psay.busy)return '<div class="hcmd-card hcmd-busy" role="status"><i></i><i></i><i></i></div>';
+  if(_psay.done)return '<div class="hcmd-card"><div class="hcmd-q">'+_t('נשמר')+' &#10003;</div>'+
+    '<div class="hcmd-btns"><button class="hcmd-b ghost" onclick="psayReset()">'+_t('סגור')+'</button></div></div>';
+  if(_psay.msg)return '<div class="hcmd-card"><div class="hcmd-q">'+_psay.msg+'</div>'+
+    '<div class="hcmd-btns"><button class="hcmd-b ghost" onclick="psayReset()">'+_t('סגור')+'</button></div></div>';
+  if(!_psay.items)return '';
+  var c=_psay.c||_dpNewColor,col=wkColor(c),h='<div class="hcmd-card">',i;
+  h+='<div class="hcmd-q">'+_t('להוסיף ללוח?')+'</div><div class="psay-list">';
+  for(i=0;i<_psay.items.length;i++){
+    var it=_psay.items[i];
+    h+='<div class="psay-it" style="background:'+col.soft+';color:'+col.ink+'">'+
+       '<div class="psay-w">'+esc(it.text)+'</div><div class="psay-when">'+psayWhen(it)+'</div></div>';
+  }
+  h+='</div><div class="psay-sw">'+wkSwatches("psayColor('%K%')",c)+'</div>';
+  h+='<div class="hcmd-btns"><button class="hcmd-b" onclick="psayApply()">'+_t('הוסף')+'</button>'+
+     '<button class="hcmd-b ghost" onclick="psayReset()">'+_t('ביטול')+'</button></div></div>';
+  return h;
+}
+function psayColor(k){_psay.c=k;psayPaint();}
+function psayReset(){_psay.busy=false;_psay.items=null;_psay.msg='';_psay.done=false;psayPaint();}
+function psayGo(){
+  var el=document.getElementById('psay-in'),q=el?String(el.value).trim():'';
+  if(q.length<2||_psay.busy)return;
+  _psay.q=q;_psay.busy=true;_psay.items=null;_psay.msg='';_psay.done=false;
+  if(!SYNC_SERVER){_psay.busy=false;_psay.msg=_t('אין חיבור כרגע.');psayPaint();return;}
+  psayPaint();
+  var n=new Date();
+  fetch(SYNC_SERVER+'/schedule',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    /* the day is the app's day (04:00), the time is the wall clock's */
+    body:JSON.stringify({q:q,lang:appLang(),today:todayStr(),now:hcmdTwo(n.getHours())+':'+hcmdTwo(n.getMinutes())})
+  }).then(function(r){
+    return r.json().then(function(j){return {s:r.status,j:j};},function(){return {s:r.status,j:null};});
+  }).then(function(x){
+    _psay.busy=false;
+    if(x.s===429)_psay.msg=_t('הגעת למגבלה של היום.');
+    else if(!x.j||!x.j.ok)_psay.msg=_t('משהו השתבש. אפשר לנסות שוב.');
+    else if(!x.j.items||!x.j.items.length)_psay.msg=_t('לא מצאתי כאן משהו להכניס ללוח.');
+    else _psay.items=x.j.items;
+    psayPaint();
+  },function(){_psay.busy=false;_psay.msg=_t('אין חיבור כרגע.');psayPaint();});
+}
+function psayApply(){
+  var its=_psay.items;if(!its)return;
+  var c=_psay.c||_dpNewColor,i;
+  for(i=0;i<its.length;i++){
+    if(its[i].repeat==='none')psPlace(its[i].date,its[i],c,'');
+    else psSeriesAdd(its[i],c);
+  }
+  _psay.q='';_psay.items=null;_psay.done=true;
+  renderPlanning();
+}
+
+/* ── A REPEAT ──
+   Stored as what every other task already is: an item on each of its dates,
+   in dplan_<date>, carrying the repeat's id (rid). So the day, the week, the
+   month and the home card all show it without being told, and a drag, the
+   trash, an end time and a note work on one day of it exactly as on any task.
+
+   The repeat itself (plan_series) remembers what to put down and how far it
+   has gone. It is written PS_AHEAD days ahead and topped up whenever planning
+   is drawn, so it never runs out - and since it only ever writes days after
+   the last one it wrote, a day removed from the middle stays removed. */
+var PS_SERIES_KEY='plan_series',PS_AHEAD=182;
+function psSeriesLoad(){
+  try{var a=JSON.parse(localStorage.getItem(PS_SERIES_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}
+}
+function psSeriesSave(a){try{localStorage.setItem(PS_SERIES_KEY,JSON.stringify(a));}catch(e){}}
+function psDayAdd(iso,n){var d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return dayStr(d);}
+function psPlace(date,it,c,rid){
+  var dp=loadDPlan(date);
+  var o={id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:it.text,c:c};
+  if(it.start){
+    var a=it.start.split(':');o.h=+a[0];if(+a[1])o.mn=+a[1];
+    if(it.end){var b=it.end.split(':');o.e=(+b[0])*60+(+b[1]);}
+  }
+  if(rid)o.rid=rid;
+  dp.items.push(o);
+  saveDPlan(date,dp);
+}
+function psSeriesFill(rec,upto){
+  var d=rec.upto?psDayAdd(rec.upto,1):rec.from;
+  while(d<=upto&&(!rec.until||d<=rec.until)){
+    if(rec.days.indexOf(new Date(d+'T12:00:00').getDay())>=0)psPlace(d,rec,rec.c,rec.rid);
+    d=psDayAdd(d,1);
+  }
+  if(upto>(rec.upto||''))rec.upto=upto;
+}
+function psSeriesAdd(it,c){
+  var today=todayStr();
+  var rec={rid:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),text:it.text,c:c,
+           days:it.days.slice(),start:it.start||'',end:it.end||'',
+           from:(it.date&&it.date>today)?it.date:today,upto:'',until:''};
+  psSeriesFill(rec,psDayAdd(today,PS_AHEAD));
+  var a=psSeriesLoad();a.push(rec);psSeriesSave(a);
+}
+function psSeriesTopUp(){
+  var a=psSeriesLoad(),i,ch=false,to=psDayAdd(todayStr(),PS_AHEAD);
+  for(i=0;i<a.length;i++){
+    if(a[i].until&&a[i].upto>=a[i].until)continue;
+    if((a[i].upto||'')<to){psSeriesFill(a[i],to);ch=true;}
+  }
+  if(ch)psSeriesSave(a);
+}
+function psRidOf(date,id){
+  var dp=loadDPlan(date),i;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id===id)return dp.items[i].rid||'';
+  return '';
+}
+/* End the repeat from this day: its days from here on are removed, the ones
+   behind stay - they happened. */
+function psSeriesEndFrom(rid,date){
+  var a=psSeriesLoad(),i,rec=null;
+  for(i=0;i<a.length;i++)if(a[i].rid===rid)rec=a[i];
+  var last=rec?(rec.upto||date):psDayAdd(date,PS_AHEAD),d=date;
+  while(d<=last){
+    var dp=loadDPlan(d),out=[],k;
+    for(k=0;k<dp.items.length;k++)if(dp.items[k].rid!==rid)out.push(dp.items[k]);
+    if(out.length!==dp.items.length){dp.items=out;saveDPlan(d,dp);}
+    d=psDayAdd(d,1);
+  }
+  if(rec){rec.until=psDayAdd(date,-1);rec.upto=rec.until;psSeriesSave(a);}
+  renderPlanDay();
+}
 function renderPlanning(){
+  psSeriesTopUp();
   document.getElementById('hdr-title').textContent=''+_t('תכנון זמן')+'';
   dpRailClear();
   planMigrate();                 // no-op after the first time
@@ -31902,6 +32096,7 @@ function renderPlanning(){
   if(!_dpDate)_dpDate=todayStr();
   var h='<div style="padding-bottom:30px">';
   h+='<div class="pl-intro">'+_t('תכנון הוא לא רשימה. זו החלטה מה חשוב, לפני שהזמן מחליט במקומך.')+'</div>';
+  h+=psayHTML();
 
   /* not a fourth board: a small lit control, with its explanation beside it
      rather than inside it */
