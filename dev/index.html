@@ -29257,6 +29257,10 @@ function wkFromLib(libId,date,slot){
 function wkDel(id){
   var wk=loadWeek(_wkSun),out=[],i;
   for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id!==id)out.push(wk.tasks[i]);
+  /* The strip above the week is the ONE pool, not this week's record - a
+     task dragged from it to the trash was looked for here, not found, and
+     left where it was. The month already deletes from the pool. */
+  if(out.length===wk.tasks.length){poolDel(id);return;}
   wk.tasks=out;saveWeek(_wkSun,wk);renderPlanWeek();
 }
 
@@ -29360,7 +29364,7 @@ function wkMove(e){
   _wkDrag.g.style.top=(e.clientY-_wkDrag.dy)+'px';
   dragEdgeScroll(e.clientX,e.clientY,wkMove);
   if(!_wkDrag.lib)swipeMark(_wkDrag,swipeArmed(_wkDrag,e),''+_t('מחק')+'');
-  var hit=wkHitCell(e.clientX,e.clientY),cells=document.querySelectorAll('.wk-cell'),i;
+  var hit=_wkDrag.overT?null:wkHitCell(e.clientX,e.clientY),cells=document.querySelectorAll('.wk-cell'),i;
   for(i=0;i<cells.length;i++)cells[i].classList.toggle('hot',cells[i]===hit);
   var p=document.getElementById('wk-pool');
   if(p)p.classList.toggle('hot',!hit&&wkOverPool(e.clientX,e.clientY));
@@ -29382,9 +29386,9 @@ function wkUp(e){
   window.removeEventListener('pointermove',wkMove);
   window.removeEventListener('pointerup',wkUp);
   window.removeEventListener('pointercancel',wkUp);
-  var id=_wkDrag.id,moved=_wkDrag.moved,lib=_wkDrag.lib,swiped=_wkDrag.swiping;
+  var id=_wkDrag.id,moved=_wkDrag.moved,lib=_wkDrag.lib,swiped=_wkDrag.swiping,overT=_wkDrag.overT;
   _wkDrag=null;
-  if(swiped&&!hit&&!lib){wkDel(id);return;}
+  if(!lib&&(overT||(swiped&&!hit))){wkDel(id);return;}   // over the trash wins; see dpUp
   if(!moved)return;                          // a tap, not a drop
   if(lib){if(hit)wkFromLib(lib,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));else renderPlanWeek();return;}
   if(hit)wkAssign(id,hit.getAttribute('data-date'),hit.getAttribute('data-slot'));
@@ -30246,7 +30250,8 @@ function dpMove(e){
     swipeMark(_dpDrag,swipeArmed(_dpDrag,e),(f&&f.src!=='day')?''+_t('הסר מהיום')+'':''+_t('מחק')+'');
   }
 
-  var hit=dpHitSlot(e.clientX,e.clientY),s=document.querySelectorAll('.dp-slot'),i;
+  /* over the trash nothing under it is a target, so nothing lights up */
+  var hit=_dpDrag.overT?null:dpHitSlot(e.clientX,e.clientY),s=document.querySelectorAll('.dp-slot'),i;
   for(i=0;i<s.length;i++)s[i].classList.toggle('hot',s[i]===hit);
 
   // Leaving an hour cancels the wait and folds it back up; staying opens it.
@@ -30340,9 +30345,14 @@ function dpUp(e){
   window.removeEventListener('pointermove',dpMove);
   window.removeEventListener('pointerup',dpUp);
   window.removeEventListener('pointercancel',dpUp);
-  var id=_dpDrag.id,moved=_dpDrag.moved,lib=_dpDrag.lib,swiped=_dpDrag.swiping;
+  var id=_dpDrag.id,moved=_dpDrag.moved,lib=_dpDrag.lib,swiped=_dpDrag.swiping,overT=_dpDrag.overT;
   _dpDrag=null;
-  if(swiped&&!hit&&!fine&&!lib){
+  /* The trash sits over the board - the hours run to the edge of the screen
+     - so a drop on it also finds an hour, and asking for the hour first
+     turned every delete into a move to that hour. Over the trash wins. A
+     flick without it still needs open ground, so choosing minutes inside an
+     hour can never delete. */
+  if(!lib&&(overT||(swiped&&!hit&&!fine))){
     var ft=dpFind(id);
     if(ft&&ft.src==='day')dpDel(id);else dpAssign(id,null,0);
     return;
@@ -30404,10 +30414,15 @@ function overTrash(e){
   var dx=e.clientX-cx, dy=e.clientY-cy;
   return Math.sqrt(dx*dx+dy*dy)<=(r.width/2+26);
 }
+/* Whether the finger is over the trash is recorded HERE, on the move, and
+   read on release from the drag - never asked at release. trashHide runs on
+   pointerup in the capture phase, before any planner's own handler, so by
+   then the strip has lost its "on" and overTrash answers no. */
 function swipeArmed(d,e){
-  if(d.mode==='end')return false;
+  if(d.mode==='end'){d.overT=false;return false;}
   // over the strip is a delete no matter how the finger travelled there
-  if(overTrash(e))return true;
+  d.overT=overTrash(e);
+  if(d.overT)return true;
   // and a flat flick leftwards still is, without having to reach the edge
   return (d.sx-e.clientX)>SWIPE_X&&Math.abs(e.clientY-d.sy)<SWIPE_Y;
 }
@@ -31339,7 +31354,7 @@ function moMove(e){
   _moDrag.g.style.top=(e.clientY-_moDrag.dy)+'px';
   dragEdgeScroll(e.clientX,e.clientY,moMove);
   if(!_moDrag.lib)swipeMark(_moDrag,swipeArmed(_moDrag,e),''+_t('מחק')+'');
-  var hit=moHitCell(e.clientX,e.clientY),c=document.querySelectorAll('.mo-cell'),i;
+  var hit=_moDrag.overT?null:moHitCell(e.clientX,e.clientY),c=document.querySelectorAll('.mo-cell'),i;
   for(i=0;i<c.length;i++)c[i].classList.toggle('hot',c[i]===hit);
 }
 function moUp(e){
@@ -31359,11 +31374,12 @@ function moUp(e){
   window.removeEventListener('pointermove',moMove);
   window.removeEventListener('pointerup',moUp);
   window.removeEventListener('pointercancel',moUp);
-  var id=_moDrag.id,moved=_moDrag.moved,lib=_moDrag.lib,swiped=_moDrag.swiping;
+  var id=_moDrag.id,moved=_moDrag.moved,lib=_moDrag.lib,swiped=_moDrag.swiping,overT=_moDrag.overT;
   _moDrag=null;
-  /* the trash overlaps no day cell, so a drop that found one is a
-     placement whatever the finger did on the way - measured, not assumed */
-  if(swiped&&!hit&&!lib){moDel(id);return;}
+  /* This said the trash overlaps no day cell. It did when it was written;
+     the board now runs to the edge and the trash sits over Saturday. So over
+     the trash wins, as in dpUp. */
+  if(!lib&&(overT||(swiped&&!hit))){moDel(id);return;}
   if(!moved)return;
   if(lib){if(hit)moFromLib(lib,hit.getAttribute('data-date'));else renderPlanMonth();return;}
   if(hit)moAssign(id,hit.getAttribute('data-date'));
