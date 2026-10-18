@@ -4619,9 +4619,19 @@ html body.mod-planning .dp-rail-chip{box-shadow:-1px -1px 3px var(--nu-lit),1.5p
 /* a task that runs on is ONE block down the hours: the continuation takes
    the head's colour at full strength and only the outward shadow, so no
    seam of light is drawn where two hours meet */
-html body.mod-planning .dp-cont{opacity:1;box-shadow:1.5px 3px 6px var(--nu-shade-soft);
-  margin-top:-6px}   /* one more than the hour's 1px rule, which showed through the block */
+html body.mod-planning .dp-cont{opacity:1;margin-top:-6px}   /* one more than the hour's 1px rule, which showed through the block */
 html body.mod-planning .dp-cont.tail{border-bottom-right-radius:10px;border-bottom-left-radius:10px}
+/* The run's light is the ONE block's light, split along it: the head takes
+   the top, every piece takes the two sides, and only the tail casts the
+   shadow underneath. A whole chip's shadow on the head drew a ledge where it
+   met the run - a pill sitting on a slab, which is what Asaf saw. */
+/* The negative spreads keep each piece's shadow from reaching above or below
+   it: a blur that spills over a join draws a seam there, in light or shade. */
+html body.mod-planning .dp-chip.head{border-bottom-left-radius:0;border-bottom-right-radius:0;
+  box-shadow:-1px -1px 3px var(--nu-lit),2px 0 4px -2px var(--nu-shade-soft)}
+html body.mod-planning .dp-cont{box-shadow:-1px 0 2px -1px var(--nu-lit),2px 0 4px -2px var(--nu-shade-soft)}
+html body.mod-planning .dp-cont.tail{box-shadow:-1px 0 2px -1px var(--nu-lit),2px 0 4px -2px var(--nu-shade-soft),
+  0 4px 5px -3px var(--nu-shade-soft)}
 /* the minutes inside a block are the block's own ink, quieter - grey on a
    colour read as dirt */
 html body.mod-planning .dp-chip .dp-min{color:inherit;opacity:.62}
@@ -30161,7 +30171,11 @@ function deepDelRemember(i){
 
 /* ── the drag ── */
 function dpDown(e){
-  if(e.target.closest&&!e.target.closest('#plan-sec-day'))return;   // not this panel's drag
+  /* not this panel's drag - but the rail and its open bar ARE this panel's,
+     even though they live on body so a re-render cannot pull them from under
+     a finger. Fencing on #plan-sec-day alone made every drag that starts on
+     the rail return here, which is the rail's whole purpose. */
+  if(e.target.closest&&!e.target.closest('#plan-sec-day,#dp-rail,#dp-rail-bar'))return;
   var el=e.target.closest?e.target.closest('[data-task],[data-lib]'):null;
   if(!el)return;
   if(e.target.closest('button'))return;
