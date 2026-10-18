@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beem · איפה הוא גר</title>
+<!--
+  WHERE BEEM LIVES - three directions for the home screen and three for the
+  end of the day summary, ON THE SHIPPED SCREENS. Each phone is a capture of
+  dev as it is (18.10, 23:00), with only Beem and his streak line laid over
+  it, so the composition is the app's and not a redrawing of it. Beem is the
+  live engine, not a picture. Nothing here touches dev/index.html.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--line:rgba(176,168,156,.42);
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1320px;margin:0 auto;padding:30px 24px 80px}
+  h1{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .tag{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-top:8px;
+    border-top:2px solid var(--ink);padding-top:8px;display:inline-block}
+  .lede{font-size:13.5px;line-height:1.85;color:var(--muted);margin-top:14px;max-width:92ch}
+  b{color:var(--ink)}
+  h2{font-size:12.5px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin:38px 0 4px;
+    border-bottom:1px solid var(--line);padding-bottom:7px}
+  .row{display:grid;gap:22px;margin-top:16px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+  .opt h3{font-size:16px;font-weight:800;margin-top:12px;display:flex;gap:8px;align-items:baseline}
+  .opt h3 i{font-style:normal;font-size:11px;font-weight:800;color:var(--muted)}
+  .opt p{font-size:12.5px;line-height:1.7;color:var(--muted);margin-top:4px}
+  .opt .risk{font-size:12px;margin-top:6px;color:#8a4a2a}
+  .opt.ref h3{color:var(--muted)}
+  /* a phone: the capture, and an overlay layer in the capture's own 390x844 px */
+  .phone{position:relative;width:100%;aspect-ratio:390/844;border-radius:26px;overflow:hidden;background:#f3efea;
+    box-shadow:-3px -3px 9px var(--nu-lit),6px 8px 18px rgba(120,100,80,.22)}
+  .phone > img{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .ov{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0}
+  .ov > *{position:absolute}
+  .patch{border-radius:50%}
+  .bm{width:100px;height:100px}
+  .txt{font-family:Assistant,system-ui,sans-serif;color:#5d554f;font-weight:800;white-space:nowrap}
+  /* NOT position:relative - written after '.ov > *', it won the cascade, put
+     every Beem back into the right-to-left flow and slid him off his spot */
+  .ov > .stage{overflow:visible}
+  @media (max-width:520px){.wrap{padding:22px 16px 60px}h1{font-size:36px}.row{grid-template-columns:1fr 1fr;gap:14px}
+    .opt p{font-size:11.5px}}
+</style>
+
+<div class="wrap">
+  <h1 dir="ltr" style="text-align:right">Beem</h1>
+  <div class="tag">איפה הוא גר · כיוונים על המסכים האמיתיים</div>
+  <div class="lede">
+    כל טלפון כאן הוא <b>צילום של ה־dev כמו שהוא</b>, ומעליו רק Beem ושורת הרצף. ככה כל
+    כיוון נבחן על המסך שהיא באמת פותחת, ולא על ציור שלו. Beem הוא המנוע החי ולא תמונה.
+    הרצף כאן הוא 12 ימים, לדוגמה. <b>שום דבר לא נכנס לאפליקציה</b> עד שתבחר.<br>
+    וגם: עמוד ההחלטות של Impeccable רץ רק על המחשב, אז את הכיוונים האלה אני מציג כאן, כדי שתוכל
+    לפתוח אותם מהטלפון.
+  </div>
+
+  <h2>מסך הבית</h2>
+  <div class="row" id="home"></div>
+
+  <h2>סוף סיכום היום</h2>
+  <div class="row" id="end"></div>
+</div>
+
+<script src="beem-engine.js"></script>
+<script src="beem-special.js"></script>
+<script src="beem-alive.js"></script>
+<script>
+/* Each option: the capture it sits on, the patches that hide what Beem
+   replaces (their colour is sampled from the capture itself, never guessed),
+   the Beems (centre and size in the capture's px, and what they do), and any
+   text. Coordinates were measured on the live dev page at 390x844. */
+var COUNT = 12;
+var LOOP_GOAL = {dur: 5600, ev: byId(COMBO_LIST, 'goal').ev};
+var HAPPY_BOB = {dur: 4200, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.016, 3.4], idle: 1}],
+  [900, 'face', 'happy'], [1000, 'hop', 34], [2600, 'face', 'content']]};
+var RISE = {dur: 4800, ev: [[0, 'set', {y: 120, ty: 120}], [0, 'fx', {t: 'rings', v: {sc: .2, op: 0}, d: 0}],
+  [0, 'face', 'closed'], [200, 'to', 0, 0], [350, 'fx', {t: 'rings', v: {sc: 1, op: 1}, d: 700, e: 'back', s: 90}],
+  [900, 'face', 'happy'], [950, 'burst', 1.4], [2600, 'face', 'content']]};
+var WAIT = {dur: 1e9, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.016, 4], idle: 1}]]};
+
+var HOME = [
+  {ref: 1, img: 'home', t: 'היום', p: 'מסך הבית כמו שהוא ב־dev עכשיו.'},
+  {img: 'home', t: 'בלב המניפה', k: 'א',
+   p: 'Beem נכנס במקום הירח שעל כפתור "סיום יום". הכפתור כבר מצויר כירח, ו־Beem הוא ירח בלילה, אז הוא פשוט תופס את המקום שלו. מתחת לכפתור, במקום הנקודה, מספר הימים ברצף. כל פתיחה של האפליקציה פוגשת אותו במרכז.',
+   risk: 'הכפתור המרכזי הופך מסמל לדמות. ייתכן שהוא יפסיק להיקרא ככפתור.',
+   patch: [{c: [195, 342], d: 50, s: [195, 318]}, {c: [195, 399], d: 12, s: [205, 402]}],
+   /* 86, not 118: at 118 his rings hid the "סיום יום" label under him */
+   beem: [{c: [195, 335], d: 86, glow: 1}],
+   text: [{c: [195, 399], s: 10.5, v: COUNT + ' ימים'}]},
+  {img: 'home', t: 'בברכה', k: 'ב',
+   p: 'Beem במקום האימוג׳י 🌙 שליד "זמן לנוח", כמו חבר שאומר שלום. מתחת לברכה, שורה שקטה עם הרצף ומצב יום החסד. המניפה לא משתנה בכלל.',
+   risk: 'הוא קטן מאוד שם, וכמעט כל מה שבנינו בו לא נראה בגודל הזה.',
+   patch: [{r: [283, 62, 26, 24], s: [279, 52]}],
+   /* left of the words, where the emoji sat - at 296 his rings covered "זמן לנוח" */
+   beem: [{c: [288, 74], d: 48, glow: 1}],
+   text: [{c: [338, 99], s: 10, v: COUNT + ' ימים ברצף', muted: 1}]},
+  {img: 'home', t: 'השמש של היום', k: 'ג',
+   p: 'בכרטיס "היום" יש קו של היום עם נקודה כתומה שמסמנת את השעה. Beem הופך לנקודה הזאת: שמש קטנה שחוצה את היום, ובלילה הוא הירח. בכותרת הכרטיס, ליד "היום", מספר הימים ברצף.',
+   risk: 'הכי עדין מהשלושה. צריך לבדוק שהוא נקרא כסימון של השעה ולא כקישוט.',
+   patch: [{c: [53, 601], d: 16, s: [53, 612]}],
+   beem: [{c: [53, 600], d: 56, glow: 0}],
+   text: [{c: [282, 577], s: 11, v: '· ' + COUNT + ' ימים ברצף', muted: 1}]}
+];
+var END = [
+  {ref: 1, img: 'summary-done', t: 'היום', p: '"זהו להיום" כמו שהוא ב־dev עכשיו. כשיש נתונים, מתחת לו מופיע גם כרטיס היום עם החותם.'},
+  {img: 'summary-done', t: 'הוא חוגג', k: 'א',
+   p: 'Beem גדול מעל "זהו להיום.", ומתחתיו מספר הימים ברצף. כשהסיכום נגמר הוא חוגג, ובאבני הדרך זה Beem זהב. זה הרגע הכי גדול ביום, אז הוא מקבל את כל הבמה.',
+   risk: 'הכי רועש מהשלושה, ודווקא ברגע ש"עכשיו אפשר לשחרר" את היום.',
+   beem: [{c: [195, 210], d: 210, run: LOOP_GOAL, glow: 1}],
+   text: [{c: [195, 318], s: 15, v: COUNT + ' ימים ברצף'}]},
+  {img: 'summary-done', t: 'הוא איתה, בשקט', k: 'ב',
+   p: 'Beem בגודל בינוני מעל הכותרת, מרוצה ומקפץ קלות. הרצף הוא שורה שקטה מתחת לכפתור. זה מתאים לטון של "עצרת לרגע ועכשיו אפשר לשחרר".',
+   risk: 'אולי שקט מדי לרגע שהרצף היה אמור לחגוג.',
+   beem: [{c: [195, 268], d: 120, run: HAPPY_BOB, glow: 1}],
+   text: [{c: [195, 520], s: 11.5, v: 'יום ' + COUNT + ' ברצף · יום חסד זמין', muted: 1}]},
+  {img: 'summary-done', t: 'הוא האור שמתחת לכפתור', k: 'ג',
+   p: 'מתחת לכפתור "סיימתי להיום" יש פס אור כתום. כאן Beem הוא האור הזה: כשהיום נסגר, הוא עולה מתוך הפס, נדלק ושמח. מתחתיו מספר הימים ברצף.',
+   risk: 'האור הכתום שמור אצלנו למשמעויות מיוחדות. השאלה אם Beem הוא אחת מהן.',
+   /* the seam's glow reaches past the line itself, so the patch is wider and
+      feathered - a hard rectangle showed as a pale box */
+   patch: [{r: [96, 474, 198, 36], s: [60, 520], sq: 1, soft: 1}],
+   beem: [{c: [195, 498], d: 96, run: RISE, glow: 1}],
+   text: [{c: [195, 556], s: 12, v: COUNT + ' ימים ברצף'}]}
+];
+
+var ALL = [], IMGS = {};
+function sample(img, x, y){
+  var c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  var g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  var k = img.naturalWidth/390, d = g.getImageData(Math.round(x*k), Math.round(y*k), 1, 1).data;
+  return 'rgb(' + d[0] + ',' + d[1] + ',' + d[2] + ')';
+}
+function build(host, list){
+  list.forEach(function(o){
+    var card = document.createElement('div'); card.className = 'opt' + (o.ref ? ' ref' : '');
+    card.innerHTML = '<div class="phone"><img src="beem-home/' + o.img + '.png" alt=""><div class="ov"></div></div>' +
+      '<h3>' + o.t + (o.k ? ' <i>כיוון ' + o.k + '</i>' : '') + '</h3><p>' + o.p + '</p>' +
+      (o.risk ? '<div class="risk">הסיכון: ' + o.risk + '</div>' : '');
+    host.appendChild(card);
+    var phone = card.querySelector('.phone'), ov = card.querySelector('.ov'), img = card.querySelector('img');
+    function fit(){ ov.style.transform = 'scale(' + (phone.clientWidth/390) + ')'; }
+    fit(); window.addEventListener('resize', fit);
+    (o.patch || []).forEach(function(p){
+      var d = document.createElement('div'); d.className = 'patch';
+      d.style.background = sample(IMGS[o.img], p.s[0], p.s[1]);
+      if (p.r){ d.style.left = p.r[0] + 'px'; d.style.top = p.r[1] + 'px'; d.style.width = p.r[2] + 'px';
+        d.style.height = p.r[3] + 'px'; d.style.borderRadius = p.sq ? '18px' : '50%';
+        if (p.soft) d.style.filter = 'blur(5px)'; }
+      else { d.style.left = (p.c[0] - p.d/2) + 'px'; d.style.top = (p.c[1] - p.d/2) + 'px';
+        d.style.width = d.style.height = p.d + 'px'; }
+      ov.appendChild(d);
+    });
+    (o.beem || []).forEach(function(b){
+      var s = document.createElement('div'); s.className = 'stage';
+      s.style.left = (b.c[0] - b.d/2) + 'px'; s.style.top = (b.c[1] - b.d/2) + 'px';
+      s.style.width = s.style.height = b.d + 'px';
+      ov.appendChild(s);
+      var be = new Beem(s); ALL.push(be); be.play(b.run || WAIT);
+      /* the streak as light, at 12 days */
+      if (b.glow){ var L = streakGlow(COUNT); s.querySelector('.beem').style.filter =
+        'drop-shadow(0 0 ' + (b.d*.06 + b.d*.1*L).toFixed(1) + 'px rgba(255,186,60,' + (.18 + .45*L).toFixed(2) + '))'; }
+    });
+    (o.text || []).forEach(function(t){
+      var d = document.createElement('div'); d.className = 'txt'; d.textContent = t.v;
+      d.style.fontSize = t.s + 'px'; d.style.left = t.c[0] + 'px'; d.style.top = t.c[1] + 'px';
+      d.style.transform = 'translate(-50%,-50%)'; if (t.muted){ d.style.color = '#7a7068'; d.style.fontWeight = 700; }
+      ov.appendChild(d);
+    });
+  });
+}
+function loadImg(n){ return new Promise(function(res){ var i = new Image(); i.onload = function(){ IMGS[n] = i; res(); }; i.src = 'beem-home/' + n + '.png'; }); }
+Promise.all([BEEM_READY, loadImg('home'), loadImg('summary-done')]).then(function(){
+  build(document.getElementById('home'), HOME);
+  build(document.getElementById('end'), END);
+  beemRun(ALL);
+});
+</script>
+</html>
