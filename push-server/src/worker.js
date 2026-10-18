@@ -2168,6 +2168,119 @@ export default {
       return json({ ok: true, route: routeClean(o, people) });
     }
 
+    /* ── /schedule ───────────────────────────────────────────────────────
+       The writing line in time planning. "Every Wednesday from 9 to 10,
+       meditation" - one sentence, possibly several things, and back come
+       calendar entries: what, which date or which weekdays, from when to
+       when, and whether it repeats. Never a write: the app shows them on a
+       card and only its button stores anything.
+
+       What is sent: the sentence, today's date and time. Nothing is kept.
+       Secrets: AI_KEY. Optional: SCHEDULE_DAILY_CAP (default 150/IP/day). */
+    if (url.pathname === '/schedule' && req.method === 'POST') {
+      if (!env.AI_KEY) return json({ error: 'scheduling is not configured' }, 503);
+
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const q = String((b && b.q) || '').replace(/\s+/g, ' ').trim().slice(0, 1000);
+      if (q.length < 2) return json({ error: 'nothing to schedule' }, 400);
+      const lang = String((b && b.lang) || 'he').slice(0, 8);
+      const today = /^\d{4}-\d{2}-\d{2}$/.test(b && b.today) ? b.today : new Date().toISOString().slice(0, 10);
+      const now = /^\d{2}:\d{2}$/.test(b && b.now) ? b.now : '';
+
+      const cap = Number(env.SCHEDULE_DAILY_CAP || 150);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'sc:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const wd = new Date(today + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+      const SYSTEM =
+        'You turn what a person wrote into entries for their personal calendar.\n' +
+        'You never answer them; you only extract.\n' +
+        '\n' +
+        'For each thing to put in the calendar, one item:\n' +
+        '- text: what it is, short, in their own language and words, without\n' +
+        '  the day or the time ("meditation", not "meditation every Wednesday").\n' +
+        '- repeat: "weekly" for every given weekday ("every Wednesday", "on\n' +
+        '  Sundays and Tuesdays"), "daily" for every day, "none" for one time.\n' +
+        '- days: for weekly, the weekdays as numbers, 0 = Sunday ... 6 = Saturday.\n' +
+        '  Empty otherwise.\n' +
+        '- date: for a one-time entry, YYYY-MM-DD, worked out from today\n' +
+        '  ("tomorrow", "next Monday", "on the 25th"). For a repeat, the first\n' +
+        '  date it should start if they said one, else empty.\n' +
+        '- start / end: 24-hour HH:MM. "from 9 to 10" is 09:00 and 10:00; "at\n' +
+        '  five in the afternoon" is 17:00 with no end. Empty when no time.\n' +
+        '\n' +
+        'Several things in one sentence are several items. If there is nothing\n' +
+        'to put in a calendar, return no items.\n' +
+        '\n' +
+        'Today is ' + wd + ' ' + today + (now ? ', the time is ' + now : '') + '.\n' +
+        'The app is in language: ' + lang + '.';
+
+      const SCHEMA = {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' },
+                repeat: { type: 'string', enum: SCHED_REPEATS },
+                days: { type: 'array', items: { type: 'integer' } },
+                date: { type: 'string' },
+                start: { type: 'string' },
+                end: { type: 'string' },
+              },
+              required: ['text', 'repeat', 'days', 'date', 'start', 'end'],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ['items'],
+        additionalProperties: false,
+      };
+
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.AI_KEY,
+            'anthropic-version': '2023-06-01',
+            'anthropic-beta': 'server-side-fallback-2026-07-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-opus-5-5',
+            max_tokens: 3000,
+            fallbacks: 'default',
+            // low: extraction from one sentence, with the person waiting on it
+            output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
+            system: SYSTEM,
+            messages: [{ role: 'user', content: q }],
+          }),
+        });
+      } catch {
+        return json({ error: 'could not reach the model' }, 502);
+      }
+      if (!r.ok) {
+        let why = '';
+        try { why = (await r.text()).slice(0, 300); } catch {}
+        return json({ error: 'the model refused', status: r.status, why }, 502);
+      }
+      let d;
+      try { d = await r.json(); } catch { return json({ error: 'unreadable answer' }, 502); }
+      if (d.stop_reason === 'refusal') return json({ ok: true, items: [] });
+      const text = ((d && d.content) || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
+      let o;
+      try { o = JSON.parse(text); } catch { return json({ error: 'unreadable answer', why: text.slice(0, 200) }, 502); }
+      return json({ ok: true, items: scheduleClean(o, today) });
+    }
+
     /* ── /ask ────────────────────────────────────────────────────────────
        A question about your own eating, answered from your own records.
 
@@ -3919,7 +4032,9 @@ function routeClean(o, people) {
     intent: ROUTE_INTENTS.includes(o && o.intent) ? o.intent : 'unknown',
     text: str(o && o.text, 1000),
     person: '',
-    date: /^\d{4}-\d{2}-\d{2}$/.test(o && o.date) ? o.date : '',
+    // round-tripped: Date rolls 2026-02-30 over into March without a word
+    date: (/^\d{4}-\d{2}-\d{2}$/.test(o && o.date) &&
+           new Date(o.date + 'T12:00:00Z').toISOString().slice(0, 10) === o.date) ? o.date : '',
     time: '',
     amount: 0,
     page: int(o && o.page, 0, 100000),
@@ -3940,7 +4055,45 @@ function routeClean(o, people) {
   return out;
 }
 
+/* ── /schedule, THE PURE HALF ──
+   Same rule as routeClean: the model suggests, this decides what reaches the
+   card. Weekdays are 0 (Sunday) to 6, times are HH:MM, an end before its start
+   is no end, a weekly entry with no day takes its date's day or is dropped,
+   and a one-off with no date is today's. */
+const SCHED_REPEATS = ['none', 'weekly', 'daily'];
+function scheduleClean(o, today) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const hm = (v) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || ''));
+    return m && +m[1] < 24 && +m[2] < 60 ? m[1].padStart(2, '0') + ':' + m[2] : '';
+  };
+  // round-tripped, because Date rolls 2026-02-30 over into March without a word
+  const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '') &&
+    new Date(v + 'T12:00:00Z').toISOString().slice(0, 10) === v;
+  const day0 = isDate(today) ? today : '';
+  const out = [];
+  for (const it of ((o && Array.isArray(o.items)) ? o.items : []).slice(0, 10)) {
+    const text = str(it && it.text, 200);
+    if (!text) continue;
+    let repeat = SCHED_REPEATS.includes(it && it.repeat) ? it.repeat : 'none';
+    let date = isDate(it && it.date) ? it.date : '';
+    let days = [...new Set((Array.isArray(it && it.days) ? it.days : [])
+      .map((d) => Math.round(Number(d))).filter((d) => d >= 0 && d <= 6))].sort();
+    const start = hm(it && it.start);
+    let end = start ? hm(it && it.end) : '';
+    if (end && end <= start) end = '';
+    if (repeat === 'daily') days = [0, 1, 2, 3, 4, 5, 6];
+    if (repeat === 'weekly' && !days.length) {
+      if (!date) continue;
+      days = [new Date(date + 'T12:00:00Z').getUTCDay()];
+    }
+    if (repeat === 'none') { days = []; if (!date) date = day0; if (!date) continue; }
+    out.push({ text, repeat, date, days, start, end });
+  }
+  return out;
+}
+
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, routeClean };
+         stripGemSig, cleanEst, routeClean, scheduleClean };

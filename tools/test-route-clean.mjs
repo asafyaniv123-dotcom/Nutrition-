@@ -20,6 +20,7 @@ ok(R({ intent: 'person_note', text: 'אוהבת שוקולד', person: 'דנה' 
 ok(R({ intent: 'person_note', text: 'x', person: 'yossi' }).person === 'Yossi', 'matched without case, returned as the app spells it');
 ok(R({ intent: 'person_note', text: 'x', person: 'רונית' }).intent === 'unknown', 'a person the app does not know is never invented');
 ok(R({ intent: 'task', text: 'להתקשר', date: 'tomorrow' }).date === '', 'a date that is not a date is dropped, not guessed');
+ok(R({ intent: 'task', text: 'x', date: '2026-02-30' }).date === '', 'a date that does not exist is dropped, not rolled into March');
 ok(R({ intent: 'task', text: 'x', date: '2026-10-18', time: '9:05' }).time === '09:05', 'a time is normalised to HH:MM');
 ok(R({ intent: 'task', text: 'x', time: '25:00' }).time === '', 'an impossible time is dropped');
 ok(R({ intent: 'water', amount: 250 }).amount === 250, 'water keeps its millilitres');
