@@ -3636,38 +3636,76 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       content.push({ type: 'text', text: STATE + '\n\n' + (message || '(no words, only the picture)') });
       msgs.push({ role: 'user', content });
 
-      let r;
-      try {
-        r = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': env.AI_KEY,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            /* Sonnet: it is looking at plates and reading labels, not
-               matching a word against a table. */
-            model: 'claude-sonnet-5',
-            max_tokens: 1600,
-            system: SYSTEM,
-            tools: [TOOL],
-            tool_choice: { type: 'tool', name: 'reply' },
-            messages: msgs,
-          }),
-        });
-      } catch {
-        return json({ error: 'the coach could not be reached' }, 502);
+      /* One request, as a function, so a reply can be sent back once. */
+      const ask = async (messages) => {
+        let r;
+        try {
+          r = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': env.AI_KEY,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              /* Sonnet: it is looking at plates and reading labels, not
+                 matching a word against a table. */
+              model: 'claude-sonnet-5',
+              max_tokens: 1600,
+              system: SYSTEM,
+              tools: [TOOL],
+              tool_choice: { type: 'tool', name: 'reply' },
+              messages,
+            }),
+          });
+        } catch {
+          return { err: json({ error: 'the coach could not be reached' }, 502) };
+        }
+        if (!r.ok) {
+          let why = '';
+          try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+          return { err: json({ error: 'the coach refused', why }, 502) };
+        }
+        let dd;
+        try { dd = await r.json(); } catch { return { err: json({ error: 'unreadable answer' }, 502) }; }
+        const u0 = ((dd && dd.content) || []).find((c) => c && c.type === 'tool_use' && c.name === 'reply');
+        if (!u0 || !u0.input) return { err: json({ error: 'no answer' }, 502) };
+        return { d: dd, use: u0 };
+      };
+
+      let got = await ask(msgs), retried = false;
+      if (got.err) return got.err;
+      /* THE CALORIES MUST BE THE MACROS. Asked to add half a tub of cottage
+         5%, it once answered with the calories and no protein; her bars took
+         the calories and not the protein, and only her own suspicion - "you
+         did not add the cottage, did you" - corrected it. Nothing here could
+         have caught it: the shape was perfect, only the numbers were not.
+         So before anything reaches her day, every item's protein, carbs and
+         fat must account for most of its calories, and a reply that fails is
+         sent back ONCE, saying which item and why. A false alarm - wine,
+         whose calories are alcohol - costs one more call and then stands as
+         it was; it can never put a wrong number in her log. */
+      const act0 = got.use.input.action;
+      if (act0 === 'add' || act0 === 'update') {
+        const short = coachMacrosShort(got.use.input.items);
+        /* probeRetry walks the send-back with a reply that was fine, so the
+           path can be seen working against the live API - the only place it
+           can run. It changes no figure; it costs one more call. */
+        if (b && b.probeRetry === 1 && !short.length && got.use.input.items && got.use.input.items[0])
+          short.push(String(got.use.input.items[0].name || 'an item'));
+        if (short.length) {
+          const again = await ask(msgs.concat([
+            { role: 'assistant', content: got.d.content },
+            { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id, is_error: true,
+              content: 'Not logged yet. For ' + short.join(', ') + ' the calories are not explained by the ' +
+                'protein, carbs and fat you gave (4 kcal per gram of protein and of carbs, 9 per gram of ' +
+                'fat). Send the whole reply again with all four figures for every item. Leave a ' +
+                'macronutrient at 0 only if the food truly has none of it.' }] },
+          ]));
+          if (!again.err) { got = again; retried = true; }
+        }
       }
-      if (!r.ok) {
-        let why = '';
-        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
-        return json({ error: 'the coach refused', why }, 502);
-      }
-      let d;
-      try { d = await r.json(); } catch { return json({ error: 'unreadable answer' }, 502); }
-      const use = ((d && d.content) || []).find((c) => c && c.type === 'tool_use' && c.name === 'reply');
-      if (!use || !use.input) return json({ error: 'no answer' }, 502);
+      const d = got.d, use = got.use;
 
       const out = use.input;
       /* The tool fixes the SHAPE, not the values: a date is still a string it
@@ -3694,6 +3732,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       return json({
         ok: true,
         usage: { in: u.input_tokens || 0, out: u.output_tokens || 0 },
+        retried,   // sent back once because its numbers did not add up
         action: ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none',
         date: at,
         items,
@@ -4093,7 +4132,23 @@ function scheduleClean(o, today) {
   return out;
 }
 
+/* An item whose protein, carbs and fat account for less than 60% of its
+   calories is one whose macros were left out - the cottage that came back as
+   119 kcal and 6.3 g of fat is 48%. Below 60 kcal it is not worth asking:
+   a black coffee is honestly almost nothing. Returns the names, for the
+   message that sends the reply back. */
+function coachMacrosShort(items) {
+  const out = [];
+  for (const it of Array.isArray(items) ? items : []) {
+    const k = Number(it && it.calories) || 0;
+    if (k < 60) continue;
+    const m = 4 * (Number(it.protein) || 0) + 4 * (Number(it.carbs) || 0) + 9 * (Number(it.fat) || 0);
+    if (m < 0.6 * k) out.push(String(it.name || '').slice(0, 60) || 'an item');
+  }
+  return out;
+}
+
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, routeClean, scheduleClean };
+         stripGemSig, cleanEst, routeClean, scheduleClean, coachMacrosShort };
