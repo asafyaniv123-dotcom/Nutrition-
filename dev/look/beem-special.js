@@ -17,6 +17,71 @@
    Duolingo dropped props from Duo's milestone animation for the same reason:
    they "didn't scale and weren't universal". */
 
+/* ── the beads as BEADS, and gold as GOLD ──
+   BEADS: a ring tilted as a flat picture flattens every bead into a disc,
+   and the beads are spheres - he saw it at once on the gyroscope. So each
+   bead is lifted out of its ring layer as its own sprite (connected pixels,
+   alpha-weighted centre) and, in bead mode, placed in 3D one by one: it moves
+   on the tilted circle but stays ROUND, grows as it comes near and shrinks as
+   it goes far, and passes in front of the body or behind it by its own depth.
+   Flat, bead mode draws exactly what the ring layer draws.
+   GOLD: a hue filter only made the orange redder. Gold is a gradient map -
+   every pixel of the body gets the gold of its own brightness, dark ochre in
+   the shade to pale gold in the light - laid over the body under the eyes. */
+var BEADS = null, GOLD_EB = null;
+function extractBeads(img){
+  var d = pixels(img), N = VB*VB, lab = new Int32Array(N), out = [], id = 0;
+  for (var p0 = 0; p0 < N; p0++){
+    if (lab[p0] || d[p0*4+3] < 90) continue;
+    id++; var st = [p0], sx = 0, sy = 0, sw = 0, x0 = VB, y0 = VB, x1 = 0, y1 = 0, n = 0;
+    lab[p0] = id;
+    while (st.length){
+      var p = st.pop(), x = p % VB, y = (p / VB) | 0, a = d[p*4+3];
+      sx += x*a; sy += y*a; sw += a; n++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      var nb = [p-1, p+1, p-VB, p+VB];
+      for (var k = 0; k < 4; k++){ var q = nb[k];
+        if (q >= 0 && q < N && !lab[q] && d[q*4+3] >= 90){ lab[q] = id; st.push(q); } }
+    }
+    if (n < 40) continue;
+    var pad = 6; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
+    x1 = Math.min(VB - 1, x1 + pad); y1 = Math.min(VB - 1, y1 + pad);
+    var w = x1 - x0 + 1, h = y1 - y0 + 1, c = document.createElement('canvas');
+    c.width = w; c.height = h; c.getContext('2d').drawImage(img, x0, y0, w, h, 0, 0, w, h);
+    var cx = sx/sw, cy = sy/sw;
+    out.push({bx: cx - 512, by: cy - 512, spr: c, ox: cx - x0, oy: cy - y0});
+  }
+  return out;
+}
+/* lo/span: which brightness is the darkest shade and how wide the range is.
+   The first ramp started at 95 and took the body's lower half to dark brown -
+   antique bronze, not gold. The red beads are darker still, so they get a
+   lower start of their own. */
+function goldOf(src, lo, span){
+  lo = lo == null ? 60 : lo; span = span || 170;
+  var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  var x = c.getContext('2d'); x.drawImage(src, 0, 0);
+  var im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+  /* gold by brightness: warm ochre shadow, gold body, pale highlight */
+  var RAMP = [[0, 122,80,16], [.3, 186,130,30], [.55, 230,180,54], [.78, 250,219,112], [1, 255,249,224]];
+  for (var i = 0; i < d.length; i += 4){
+    if (!d[i+3]) continue;
+    var L = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2] - lo) / span;
+    L = L < 0 ? 0 : L > 1 ? 1 : L;
+    for (var j = 1; j < RAMP.length && RAMP[j][0] < L; j++);
+    var A = RAMP[j-1], B = RAMP[Math.min(j, RAMP.length-1)], t = B[0] > A[0] ? (L - A[0])/(B[0] - A[0]) : 0;
+    d[i] = A[1] + (B[1]-A[1])*t; d[i+1] = A[2] + (B[2]-A[2])*t; d[i+2] = A[3] + (B[3]-A[3])*t;
+  }
+  x.putImageData(im, 0, 0); return c;
+}
+BEEM_READY.then(function(){
+  GOLD_EB = goldOf(EB);
+  return Promise.all(['sun-r1.png','sun-r2.png','sun-r3.png'].map(load)).then(function(imgs){
+    BEADS = imgs.map(extractBeads);
+    BEADS.forEach(function(ring){ ring.forEach(function(b){ b.gold = goldOf(b.spr, 0, 175); }); });
+  });
+});
+
 var EASE = {
   lin:  function(p){ return p; },
   io:   function(p){ return p < .5 ? 4*p*p*p : 1 - Math.pow(-2*p + 2, 3)/2; },
@@ -35,7 +100,7 @@ var EASE = {
       body: {hue:0, sat:1, bri:1, white:0, gold:0},
       rings: [0,1,2].map(function(){ return {tilt:0, tiltY:0, prec:0, precV:0, dx:0, dy:0,
         sc:1, op:1, blur:0, reveal:1, front:0}; }),
-      ghosts: 0, cycle: 0, track: -1, tramp: 0, depth: 0
+      ghosts: 0, cycle: 0, track: -1, tramp: 0, depth: 0, beads: 0, wave: 0
     };
     this.tw = [];
   };
@@ -109,8 +174,8 @@ var EASE = {
        the evolution silhouette */
     /* the white-out stops at 2.4x: at 5x the body vanished into the page's
        own light ground instead of glowing on it */
-    var g = B.gold, w = B.white, hue = B.hue + 6*g, bri = B.bri*(1 + .1*g)*(1 + 1.4*w),
-        sat = B.sat*(1 + .6*g)*(1 - .9*w), sep = .25*g;
+    var g = B.gold, w = B.white, hue = B.hue, bri = B.bri*(1 + 1.4*w),
+        sat = B.sat*(1 - .9*w), sep = 0;
     if (f.cycle > .001){
       /* the star's palette flicker, 12 a second - WARM steps only. The first
          palette reached +50deg and turned him lime green, which is not Beem */
@@ -124,6 +189,15 @@ var EASE = {
     if (g > .01 && !this.sheen){
       this.sheen = document.createElement('div'); this.sheen.style.cssText = SHEEN;
       this.bodyEl.appendChild(this.sheen);
+    }
+    /* gold is painted INTO the body canvas, between the body and the eyes:
+       the gradient-mapped body at the gold's strength, then the eyes again */
+    if (g > .01 && GOLD_EB){
+      var cx2 = this.cx, W = this.cv.width, kk = W/VB;
+      cx2.save(); cx2.setTransform(1,0,0,1,0,0); cx2.globalAlpha = Math.min(1, g);
+      cx2.drawImage(GOLD_EB, 0, 0, W, W); cx2.restore();
+      cx2.save(); cx2.beginPath(); cx2.arc(SPH.x*kk, SPH.y*kk, (SPH.r - 1)*kk, 0, Math.PI*2); cx2.clip();
+      this.eye(cx2, 0, kk); this.eye(cx2, 1, kk); cx2.restore();
     }
     if (this.sheen){
       this.sheen.style.opacity = (g*.62).toFixed(3);
@@ -141,7 +215,10 @@ var EASE = {
           R.tilt.toFixed(2) + 'deg) rotateY(' + R.tiltY.toFixed(2) + 'deg) scale(' + R.sc.toFixed(4) + ') ' +
           el.style.transform;
       el.style.opacity = R.op < .999 ? Math.max(0, R.op).toFixed(3) : '';
-      el.style.filter = R.blur > .05 ? 'blur(' + (R.blur*kc).toFixed(2) + 'px)' : '';
+      /* gold beads: their own brightness kept, the colour taken to gold */
+      el.style.filter = (R.blur > .05 ? 'blur(' + (R.blur*kc).toFixed(2) + 'px) ' : '') +
+        (g > .01 ? 'sepia(' + g.toFixed(3) + ') saturate(' + (1 + 1.6*g).toFixed(3) + ') hue-rotate(' +
+          (-6*g).toFixed(1) + 'deg) brightness(' + (1 + .14*g).toFixed(3) + ')' : '');
       el.style.zIndex = R.front > .5 ? 3 : 1;
       var m = R.reveal < .999 ? 'conic-gradient(#000 ' + (R.reveal*360).toFixed(1) + 'deg,transparent ' +
         (R.reveal*360 + .6).toFixed(1) + 'deg)' : '';
@@ -174,6 +251,61 @@ var EASE = {
           wr2.style.webkitMaskImage = half; wr2.style.maskImage = half;
         } else wr2.style.opacity = 0;
       }
+    }
+
+    /* BEAD MODE: the three rings drawn bead by bead in 3D - the same chain
+       of transforms the ring layer gets from CSS, worked out per bead, so
+       nothing moves differently; only each bead keeps its round shape */
+    if (f.beads > .5 && BEADS){
+      if (!this.bk){
+        var hb = this.host.querySelector('.beem'), mk = function(z){
+          var c = document.createElement('canvas'); c.className = 'lay';
+          c.style.cssText = 'z-index:' + z + ';pointer-events:none'; hb.appendChild(c); return c; };
+        this.bk = mk(1); this.fw = mk(4);
+      }
+      var Wc = this.cv.width, kp = Wc/VB;
+      [this.bk, this.fw].forEach(function(c){ if (c.width !== Wc){ c.width = c.height = Wc; }
+        c.getContext('2d').clearRect(0, 0, Wc, Wc); c.style.opacity = 1; });
+      var br = 1 + this.breathe[0]*Math.sin(this.t*2*Math.PI/this.breathe[1]), list = [], D = 3*VB;
+      for (i = 0; i < 3; i++){
+        var Rr = f.rings[i];
+        this.rings[i].style.opacity = 0;
+        if (this.fr) this.fr[i].style.opacity = 0;
+        var gR = this.rg[i]*(1 + this.burst[i]*.16)*br, rs = this.rsq[i],
+            drop = CONTACT*(1 - this.rg[i]) + CONTACT*rs*this.rg[i],
+            sa = Math.sin(this.spin[i]*RAD), ca = Math.cos(this.spin[i]*RAD),
+            cY = Math.cos(Rr.tiltY*RAD), sY = Math.sin(Rr.tiltY*RAD),
+            cX = Math.cos(Rr.tilt*RAD), sX = Math.sin(Rr.tilt*RAD),
+            cZ = Math.cos(Rr.prec*RAD), sZ = Math.sin(Rr.prec*RAD);
+        BEADS[i].forEach(function(b){
+          var bx = b.bx, by = b.by;
+          if (f.wave > .001){                   // the stadium wave: each bead out and back in turn
+            var th = Math.atan2(by, bx) + this.spin[i]*RAD, rr = Math.hypot(bx, by);
+            var dsp = f.wave*42*Math.sin(th*4 - this.t*7 - i*.8), q = (rr + dsp)/rr;
+            bx *= q; by *= q;
+          }
+          var x = bx*ca - by*sa, y = bx*sa + by*ca;
+          x = x*gR/(1 - rs) + this.rx[i]; y = y*gR*(1 - rs) + this.ry[i] + drop;
+          x *= Rr.sc; y *= Rr.sc;
+          var x1 = x*cY, z1 = -x*sY;                          // rotateY
+          var y2 = y*cX - z1*sX, z2 = y*sX + z1*cX;            // rotateX
+          var x3 = x1*cZ - y2*sZ, y3 = x1*sZ + y2*cZ;          // rotateZ (precession)
+          var s = D/(D - z2);
+          list.push({z: z2, X: 512 + (x3 + Rr.dx)*s, Y: 512 + (y3 + Rr.dy)*s, k: gR*Rr.sc*s, b: b, op: Rr.op,
+                     front: Rr.front > .5});
+        }, this);
+      }
+      list.sort(function(a, b){ return a.z - b.z; });
+      var cb = this.bk.getContext('2d'), cf = this.fw.getContext('2d');
+      list.forEach(function(o){
+        var c = (o.z > 0 || o.front) ? cf : cb, sp2 = o.b.spr, a = Math.max(0, Math.min(1, o.op)),
+            X0 = (o.X - o.b.ox*o.k)*kp, Y0 = (o.Y - o.b.oy*o.k)*kp, w2 = sp2.width*o.k*kp, h2 = sp2.height*o.k*kp;
+        c.globalAlpha = a; c.drawImage(sp2, X0, Y0, w2, h2);
+        /* gold beads: the bead's own gradient map, over it at the gold's strength */
+        if (g > .01 && o.b.gold){ c.globalAlpha = a*Math.min(1, g); c.drawImage(o.b.gold, X0, Y0, w2, h2); }
+      });
+    } else if (this.bk){
+      this.bk.style.opacity = 0; this.fw.style.opacity = 0;
     }
 
     /* afterimages: copies of the body, each a few frames behind, each a
@@ -214,6 +346,7 @@ var SPECIAL_LIST = [
      [2060,'fx',{t:'body',v:{white:1},d:120}],[2200,'fx',{t:'body',v:{white:.25},d:100}],
      [2320,'fx',{t:'body',v:{white:1},d:80}],[2420,'fx',{t:'body',v:{white:.3},d:60}],
      [2500,'fx',{t:'body',v:{white:1},d:60}],
+     [2600,'fx',{t:'fx',v:{beads:1},d:0}],
      [2600,'fx',{t:'body',v:{white:0,hue:0,sat:1,bri:1,gold:1},d:500,e:'out'}],
      [2600,'fx',{t:'rings',v:{sc:1},d:650,e:'back',s:60}],[2600,'burst',2.6],[2600,'gate',1],
      [2650,'face','happy'],[2700,'hop',110],[3300,'fx',{t:'rings',v:{front:0},d:0}],
@@ -227,9 +360,9 @@ var SPECIAL_LIST = [
      [3600,'fx',{t:'fx',v:{tramp:0},d:300}],[3600,'fx',{t:'rings',v:{tilt:0,dy:0,sc:1},d:700,e:'back',s:60}],
      [3700,'face','content'],[5000,'face','calm']]}],
   ['gyro', 'ג׳ירוסקופ',
-   'בזמן שהמתכנן חושב. כל טבעת נוטה על ציר אחר ומסתובבת סביבו בתלת־ממד, כמו ג׳ירוסקופ, והעיניים עוקבות אחריהן. בסוף הן נוחתות חזרה, ובא רגע של "הבנתי".',
+   'בזמן שהמתכנן חושב. כל טבעת נוטה על ציר אחר ומסתובבת סביבו בתלת־ממד, כמו ג׳ירוסקופ, והעיניים עוקבות אחריהן. כל חרוז נשאר כדור עגול: גדל כשהוא מתקרב, קטן כשהוא מתרחק, ועובר לפניו או מאחוריו. בסוף הטבעות נוחתות חזרה, ובא רגע של "הבנתי".',
    {dur:6400, ev:[[0,'face','thinking'],[0,'mode',{float:20}],
-     [0,'fx',{t:'fx',v:{depth:1},d:0}],
+     [0,'fx',{t:'fx',v:{beads:1},d:0}],
      [200,'fx',{t:'rings',v:{tilt:[62,58,66],tiltY:[0,24,-18],sc:[1.08,1.04,1]},d:900,e:'io',s:120}],
      [200,'fx',{t:'rings',v:{precV:[70,-55,40]},d:0}],
      [1400,'look',-14,10],[2600,'look',12,14],[3600,'look',0,15],
@@ -279,15 +412,11 @@ var SPECIAL_LIST = [
      [300,'fx',{t:'rings',v:{tilt:66,dy:[-300,-322,-344],sc:[.56,.63,.7]},d:1000,e:'back',s:110}],
      [350,'hop',40],[1100,'face','happy'],[1100,'mode',{float:14}],[2600,'face','content'],
      [3900,'fx',{t:'rings',v:{tilt:0,dy:0,sc:1},d:800,s:80}],[3900,'mode',{float:0}],[4800,'face','calm']]}],
-  ['shell', 'קונכייה',
-   'כשאין עדיין כלום במסך. הוא נבהל, והטבעות נסגרות עליו מקדימה כמו קונכייה. מבין החרוזים הוא מציץ ימינה ושמאלה, ואז נפתח בבת אחת וקופץ.',
-   {dur:5000, ev:[[0,'face','surprised'],[150,'squash',-1.5],[250,'fx',{t:'rings',v:{front:1},d:0}],
-     [250,'fx',{t:'rings',v:{sc:[.8,.55,.36]},d:500,s:60}],[300,'gate',.9],
-     [800,'face','closed'],[800,'set',{sv:[60,-50,40]}],
-     [1600,'face','calm'],[1700,'look',-20,-4],[2300,'look',18,-4],[2900,'look',0,0],
-     [3100,'face','surprised'],[3250,'fx',{t:'rings',v:{sc:1},d:500,e:'back',s:40}],[3250,'gate',1],
-     [3250,'burst',1.8],[3300,'face','happy'],[3350,'hop',90],[3800,'fx',{t:'rings',v:{front:0},d:0}],
-     [4600,'face','calm']]}],
+  ['wave', 'גל חרוזים',
+   'חדש, במקום הקונכייה. כל הכבוד קטן: החרוזים יוצאים החוצה וחוזרים אחד אחרי השני, כמו גל באצטדיון, והגל עובר מטבעת לטבעת. הוא מקפץ בקצב, וחוזר למקום.',
+   {dur:5200, ev:[[0,'fx',{t:'fx',v:{beads:1},d:0}],[250,'face','happy'],
+     [300,'fx',{t:'fx',v:{wave:1},d:600}],[700,'hop',40],[1500,'hop',40],[2300,'hop',60],
+     [3300,'fx',{t:'fx',v:{wave:0},d:700}],[3400,'face','content'],[4600,'face','calm']]}],
   ['sunrise', 'זריחה',
    'פתיחת הבוקר. הוא עולה מתחתית הבמה עמום, והאור שלו מתחזק. הטבעות נפרשות סביבו אחת אחרי השנייה, העיניים נפתחות, והוא זורח.',
    {dur:5600, ev:[[0,'set',{y:640, ty:640}],[0,'fx',{t:'rings',v:{sc:0,op:0},d:0}],
