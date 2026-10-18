@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beem · רצף</title>
+<!--
+  THE STREAK, SECOND DRAFT - built to Asaf's three answers of 18.10 (a day is
+  a finished summary; a miss gets a grace day; it shows on home AND at the end
+  of the summary). On the side, not in the character sheet. The rules live in
+  beem-streak.js and are tested by tools/test-beem-streak.mjs.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--line:rgba(176,168,156,.42);
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28);--accent:#9b4324;--sun:#ed861f}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1120px;margin:0 auto;padding:30px 24px 80px}
+  h1{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .tag{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-top:8px;
+    border-top:2px solid var(--ink);padding-top:8px;display:inline-block}
+  .lede{font-size:13.5px;line-height:1.85;color:var(--muted);margin-top:14px;max-width:92ch}
+  b{color:var(--ink)}
+  .card{border-radius:22px;background:var(--ground);padding:16px;
+    box-shadow:-3px -3px 9px var(--nu-lit),5px 6px 14px var(--nu-shade-soft)}
+  .rules{margin-top:18px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .rules .card{padding:13px 15px}
+  .rules .k{font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted)}
+  .rules .v{font-size:15px;font-weight:800;margin-top:3px}
+  .rules .p{font-size:12px;line-height:1.65;color:var(--muted);margin-top:4px}
+  .rules .prop{color:var(--accent)}
+  .sim{margin-top:22px}
+  .strip{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;min-height:22px}
+  .d{width:18px;height:18px;border-radius:50%;background:rgba(176,168,156,.35)}
+  .d.done{background:var(--sun);box-shadow:inset -2px -2px 4px rgba(150,60,10,.35)}
+  .d.grace{background:transparent;border:2.5px solid #d9a52b}
+  .d.miss{background:rgba(120,110,100,.35)}
+  .d.today{background:transparent;border:2.5px dashed var(--muted)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  button{font:800 13px Assistant,system-ui,sans-serif;color:var(--ink);border:0;border-radius:12px;padding:10px 15px;
+    background:var(--ground);cursor:pointer;box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+  button:active{box-shadow:inset 2px 2px 5px var(--nu-shade-soft)}
+  button:disabled{opacity:.45;cursor:default}
+  /* white on the sun orange measured ~2.5:1; this deeper orange carries white text at AA */
+  button.primary{background:#ad5210;color:#fff;box-shadow:2px 3px 8px rgba(176,100,40,.35)}
+  .two{display:grid;gap:16px;margin-top:18px;grid-template-columns:1fr 1fr}
+  .two h2{font-size:12.5px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+  .stage{position:relative;aspect-ratio:1;border-radius:16px;overflow:hidden;background:var(--ground);margin-top:10px;
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  /* the home card is a mock of a real tile: Beem small beside the number */
+  .home{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center;margin-top:10px;border-radius:18px;
+    padding:12px;background:var(--ground);box-shadow:-2px -2px 6px var(--nu-lit),3px 4px 10px var(--nu-shade-soft)}
+  .home .stage{margin-top:0}
+  .num{font-size:44px;font-weight:800;line-height:1}
+  .unit{font-size:14px;font-weight:800;color:var(--muted)}
+  .pill{display:inline-block;margin-top:8px;font-size:11.5px;font-weight:800;border-radius:20px;padding:3px 10px}
+  .pill.ok{background:rgba(217,165,43,.22);color:#7a5a12}
+  .pill.used{background:rgba(176,168,156,.3);color:var(--muted)}
+  .msg{margin-top:10px;font-size:13px;line-height:1.7;font-weight:700;min-height:3.4em}
+  .best{font-size:12px;color:var(--muted);margin-top:4px}
+  .end .num{font-size:56px;text-align:center;margin-top:10px}
+  .end .unit{text-align:center;display:block}
+  @media (max-width:760px){.two{grid-template-columns:1fr}}
+  @media (max-width:520px){.wrap{padding:22px 16px 60px}h1{font-size:36px}.home{grid-template-columns:120px 1fr}}
+</style>
+
+<div class="wrap">
+  <h1 dir="ltr" style="text-align:right">Beem</h1>
+  <div class="tag">רצף · טיוטה שנייה · מהצד</div>
+  <div class="lede">
+    הרצף לפי שלוש התשובות שלך. אפשר לשחק בימים: לסיים סיכום יום, לדלג על יום, ולראות מה
+    Beem עושה <b>במסך הבית בבוקר שאחרי</b> ו<b>בסוף סיכום היום</b>. הזוהר מחושב ממספר הימים,
+    ולכן הוא נשמר בין פתיחות בלי לשמור שום דבר נוסף.
+  </div>
+
+  <div class="rules">
+    <div class="card"><div class="k">מה נחשב יום</div><div class="v">סיכום יום שהסתיים</div>
+      <div class="p">לא פתיחה של האפליקציה ולא רישום ארוחה. יום שעוד פתוח לא שובר כלום. יום נגמר בארבע לפנות בוקר, כמו בכל האפליקציה.</div></div>
+    <div class="card"><div class="k">כשמפספסים</div><div class="v">יום חסד</div>
+      <div class="p"><span class="prop">ההצעה שלי למספרים, עד שתאשר:</span> יום חסד אחד ביד. החמצה שנייה ברצף מאפסת. יום החסד חוזר אחרי 7 סיכומים ברצף.</div></div>
+    <div class="card"><div class="k">איפה רואים</div><div class="v">בשניהם</div>
+      <div class="p">במסך הבית: Beem עם הזוהר, המספר, ומצב יום החסד. בסוף סיכום היום: הספירה עולה, ו־Beem חוגג. באבני הדרך זה Beem זהב.</div></div>
+  </div>
+
+  <div class="card sim">
+    <div style="font-size:12.5px;font-weight:800;letter-spacing:.08em;color:var(--muted)">הימים</div>
+    <div class="strip" id="strip"></div>
+    <div class="controls">
+      <button class="primary" id="b-done">סיימתי סיכום יום</button>
+      <button id="b-skip">היום עבר בלי סיכום</button>
+      <button id="b-6">+6 ימים עם סיכום</button>
+      <button id="b-reset">מההתחלה</button>
+    </div>
+    <div class="two">
+      <div>
+        <h2>מסך הבית · הבוקר שאחרי</h2>
+        <div class="home">
+          <div class="stage" id="s-home"></div>
+          <div>
+            <div><span class="num" id="h-num">0</span> <span class="unit" id="h-unit">ימים</span></div>
+            <div class="pill ok" id="h-pill">יום חסד: זמין</div>
+            <div class="best" id="h-best"></div>
+          </div>
+        </div>
+        <div class="msg" id="h-msg">בוקר טוב. עוד לא התחיל רצף.</div>
+      </div>
+      <div class="end">
+        <h2>סוף סיכום היום</h2>
+        <div class="stage" id="s-end"></div>
+        <div class="num" id="e-num">0</div><span class="unit" id="e-unit">ימים ברצף</span>
+        <div class="msg" id="e-msg" style="text-align:center">כאן Beem חוגג כשהסיכום נגמר.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="beem-engine.js"></script>
+<script src="beem-special.js"></script>
+<script src="beem-alive.js"></script>
+<script src="beem-streak.js"></script>
+<script>
+var $ = function(id){ return document.getElementById(id); };
+var ALL = [], days = [];
+function daysWord(n){ return n === 1 ? 'יום' : n === 2 ? 'ימים' : 'ימים'; }
+function countText(n){ return n === 1 ? 'יום אחד' : n === 2 ? 'יומיים' : n + ' ימים'; }
+
+BEEM_READY.then(function(){
+  var bh = new Beem($('s-home')), be = new Beem($('s-end')); ALL.push(bh, be);
+  bh.play(IDLE); be.play(IDLE);
+
+  function glowOn(b, count, dim){
+    var L = streakGlow(count)*(dim ? .5 : 1), css = b.host.clientWidth/400;
+    b.host.querySelector('.beem').style.filter = count ? 'drop-shadow(0 0 ' + (6 + 22*L)*css +
+      'px rgba(255,186,60,' + (.18 + .5*L).toFixed(2) + '))' : '';
+  }
+  function strip(){
+    var st = streakState([]), html = '', run = [];
+    for (var i = 0; i < days.length; i++){
+      run.push(days[i]); var s = streakState(run);
+      var cls = days[i] === 'done' ? 'done' : (s.graceYesterday ? 'grace' : 'miss');
+      html += '<i class="d ' + cls + '" title="יום ' + (i + 1) + '"></i>';
+    }
+    $('strip').innerHTML = html + '<i class="d today" title="היום"></i>';
+  }
+  /* the home tile the morning after: number, grace, and Beem's state */
+  function home(){
+    var s = streakState(days);
+    $('h-num').textContent = s.count; $('h-unit').textContent = daysWord(s.count);
+    $('h-pill').className = 'pill ' + (s.grace ? 'ok' : 'used');
+    $('h-pill').textContent = s.grace ? 'יום חסד: זמין' : 'יום חסד נוצל · חוזר בעוד ' + s.refillIn + ' סיכומים';
+    $('h-best').textContent = s.best > s.count ? 'השיא שלך: ' + countText(s.best) : '';
+    glowOn(bh, s.count, s.graceYesterday);
+    if (s.graceYesterday){
+      /* graced: he waits for her - half his glow, looking up, hopeful */
+      bh.play(once({dur: 3000, ev: [[0, 'face', 'content'], [0, 'look', 0, 10], [1600, 'look', 0, 0], [2000, 'face', 'calm']]}));
+      $('h-msg').textContent = 'אתמול לא היה סיכום. יום החסד שמר על הרצף, ו־Beem מחכה לסיכום של היום.';
+    } else if (s.brokeYesterday){
+      bh.play(once({dur: 3600, ev: [[0, 'face', 'sad'], [0, 'look', 0, -8], [1800, 'look', 0, 0], [2000, 'face', 'calm'], [2300, 'nod', 1, 6]]}));
+      /* say WHY: two misses in a row, or one miss with the grace already spent */
+      $('h-msg').textContent = (days[days.length - 2] === 'miss' ? 'יומיים בלי סיכום' :
+        'יום בלי סיכום, ויום החסד כבר נוצל') + ', אז הרצף מתחיל מחדש. Beem עצוב רגע, ואז מוכן להתחיל.';
+    } else if (s.count){
+      bh.play(once({dur: 2400, ev: [[0, 'face', 'happy'], [200, 'hop', 50], [1500, 'face', 'calm']]}));
+      $('h-msg').textContent = 'בוקר טוב. ' + countText(s.count) + ' ברצף.';
+    } else {
+      bh.play(IDLE); $('h-msg').textContent = 'בוקר טוב. עוד לא התחיל רצף.';
+    }
+  }
+  function render(){ strip(); home(); }
+
+  $('b-done').onclick = function(){
+    var before = streakState(days); days.push('done'); var s = streakState(days);
+    $('e-num').textContent = s.count; $('e-unit').textContent = s.count === 1 ? 'יום ברצף' : 'ימים ברצף';
+    glowOn(be, s.count, false);
+    var hit = [7, 30, 100, 365].indexOf(s.count) >= 0;
+    if (hit){
+      be.play(once(byId(SPECIAL_LIST, 'golden')));
+      $('e-msg').textContent = countText(s.count) + '! אבן דרך: Beem זהב.';
+    } else if (before.graceYesterday){
+      /* the summary after a graced day: relief - the streak was kept */
+      be.play(once({dur: 3000, ev: [[0, 'face', 'surprised'], [350, 'face', 'happy'], [400, 'hop', 90], [400, 'burst', 1.2], [2400, 'face', 'calm']]}));
+      $('e-msg').textContent = 'הרצף נשמר. יום החסד עשה את שלו.';
+    } else {
+      be.play(once({dur: 2600, ev: [[0, 'face', 'happy'], [100, 'nod', 1, 8], [100, 'burst', .8], [1700, 'face', 'calm']]}));
+      $('e-msg').textContent = s.count === 1 ? 'היום הראשון ברצף.' : 'עוד יום. ' + countText(s.count) + ' ברצף.';
+    }
+    render();
+  };
+  $('b-skip').onclick = function(){
+    days.push('miss');
+    be.play(IDLE); glowOn(be, 0, false);
+    $('e-msg').textContent = 'היום עבר בלי סיכום. ראו מה קורה במסך הבית בבוקר.';
+    render();
+  };
+  $('b-6').onclick = function(){ for (var i = 0; i < 6; i++) days.push('done'); render();
+    var s = streakState(days); $('e-num').textContent = s.count; glowOn(be, s.count, false);
+    $('e-msg').textContent = 'שישה ימים עברו, עם סיכום בכל אחד.'; };
+  $('b-reset').onclick = function(){ days = []; render(); $('e-num').textContent = 0; glowOn(be, 0, false);
+    be.play(IDLE); $('e-msg').textContent = 'כאן Beem חוגג כשהסיכום נגמר.'; };
+
+  render();
+  beemRun(ALL);
+});
+</script>
+</html>
