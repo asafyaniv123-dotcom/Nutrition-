@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beem · אינטראקציות</title>
+<!--
+  FIVE INTERACTIONS WITH PROPS - all in code, no credits (19.10). Beem is the
+  live engine; each prop is one sprite cut from the sheets, given the same
+  kind of physics he has (gravity, floor, bounce, squash) and placed in front
+  of or behind him. He has no hands: the RINGS hold, the BODY pushes and
+  carries, the EYES follow. The glass's water level is lowered by repainting
+  the sprite's own pixels, so no empty-glass render was needed.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--line:rgba(176,168,156,.42);
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:30px 24px 80px}
+  h1{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .tag{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-top:8px;
+    border-top:2px solid var(--ink);padding-top:8px;display:inline-block}
+  .lede{font-size:13.5px;line-height:1.85;color:var(--muted);margin-top:14px;max-width:92ch}
+  b{color:var(--ink)}
+  .grid{display:grid;gap:16px;margin-top:22px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+  .card{border-radius:20px;background:var(--ground);padding:10px 10px 14px;
+    box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade-soft)}
+  .scene{position:relative;aspect-ratio:1.35;border-radius:14px;overflow:hidden;cursor:pointer;
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  .scene .stage{position:absolute;z-index:2}
+  .scene .prop{position:absolute;left:0;top:0;transform-origin:50% 100%;will-change:transform;pointer-events:none}
+  .scene .prop.front{z-index:3}
+  .scene .prop.back{z-index:1}
+  .scene .floor{position:absolute;left:6%;right:6%;height:1px;background:rgba(176,168,156,.35)}
+  .card h3{font-size:16px;font-weight:800;margin-top:10px}
+  .card p{font-size:12.5px;line-height:1.7;color:var(--muted);margin-top:3px}
+  .ctl{display:flex;gap:10px;margin-top:16px}
+  button{font:800 13px Assistant,system-ui,sans-serif;color:var(--ink);border:0;border-radius:12px;padding:9px 15px;
+    background:var(--ground);cursor:pointer;box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+  @media (max-width:520px){.wrap{padding:22px 16px 60px}h1{font-size:36px}.grid{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <h1 dir="ltr" style="text-align:right">Beem</h1>
+  <div class="tag">חמש אינטראקציות · בקוד, בלי קרדיטים</div>
+  <div class="lede">
+    Beem החי והחפצים מהגיליונות. <b>לחפצים יש אותה פיזיקה שיש לו</b>: כבידה, רצפה, קפיצה ומעיכה.
+    לBeem אין ידיים, אז <b>הטבעות מחזיקות, הגוף דוחף ונושא, והעיניים עוקבות</b>. כל סצנה רצה
+    בלולאה, ולחיצה עליה מתחילה אותה מחדש.
+  </div>
+  <div class="ctl"><button id="slow">הילוך איטי ×3</button></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script src="beem-engine.js"></script>
+<script src="beem-special.js"></script>
+<script src="beem-alive.js"></script>
+<script>
+var ALL = [], SCENES = [], SPEED = 1;
+function load(src){ return new Promise(function(r){ var i = new Image(); i.onload = function(){ r(i); }; i.src = src; }); }
+
+/* ── a scene: a stage for Beem, a floor, and props in px ── */
+function Scene(card, cfg){
+  var sc = card.querySelector('.scene'), self = this;
+  this.el = sc; this.cfg = cfg; this.props = {};
+  var st = document.createElement('div'); st.className = 'stage'; sc.appendChild(st);
+  var fl = document.createElement('div'); fl.className = 'floor'; sc.appendChild(fl);
+  this.b = new Beem(st); ALL.push(this.b);
+  this.layout = function(){
+    var W = sc.clientWidth, H = sc.clientHeight, S = H*.78;
+    self.W = W; self.H = H; self.S = S; self.k = S/VB;
+    self.sx = W*cfg.at - S/2; self.sy = H*.06;
+    st.style.left = self.sx + 'px'; st.style.top = self.sy + 'px'; st.style.width = st.style.height = S + 'px';
+    self.floor = self.sy + 737*self.k; fl.style.top = self.floor + 'px';
+  };
+  this.layout(); window.addEventListener('resize', this.layout);
+  /* where Beem is, in px */
+  this.beem = function(){ var b = self.b, k = self.k;
+    return {x: self.sx + (SPH.x + b.x)*k, y: self.sy + (SPH.y + b.y)*k, r: SPH.r*k*b.gate}; };
+  this.prop = function(name, img, h, layer){
+    var e = document.createElement('img'); e.src = img.src; e.className = 'prop ' + (layer || 'front');
+    sc.appendChild(e);
+    var p = {el: e, img: img, h: h, x: 0, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, sq: 0, sqv: 0, s: 1, op: 1, free: false};
+    self.props[name] = p; return p;
+  };
+  this.draw = function(p){
+    var hpx = p.h*self.H, w = hpx*p.img.width/p.img.height;
+    p.el.style.width = w + 'px'; p.el.style.height = hpx + 'px';
+    p.el.style.opacity = p.op;
+    p.el.style.transform = 'translate(' + (p.x - w/2).toFixed(1) + 'px,' + (p.y - hpx).toFixed(1) + 'px) rotate(' +
+      p.rot.toFixed(2) + 'deg) scale(' + (p.s/(1 - p.sq)).toFixed(3) + ',' + (p.s*(1 - p.sq)).toFixed(3) + ')';
+  };
+  /* a free prop: gravity, the floor, a little bounce, and its own squash */
+  this.physics = function(p, dt){
+    p.sqv += (-p.sq*300 - p.sqv*16)*dt; p.sq = Math.max(-.1, Math.min(.35, p.sq + p.sqv*dt));
+    if (!p.free) return;
+    p.vy += 2600*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.rot += p.vr*dt;
+    if (p.y > self.floor){ p.y = self.floor;
+      if (p.vy > 160){ p.sqv += Math.min(5, p.vy*.004); p.vy = -p.vy*(p.bounce || .35); p.vr *= .5; }
+      else { p.vy = 0; p.vr = 0; }
+      p.vx *= .82; p.rot *= .7;
+    }
+  };
+  this.restart = function(){ self.t = 0; self.b.play(IDLE); cfg.reset(self); };
+  this.tick = function(dt){
+    self.t += dt; cfg.update(self, self.t, dt);
+    for (var n in self.props){ self.physics(self.props[n], dt); self.draw(self.props[n]); }
+    if (self.t > cfg.loop) self.restart();
+  };
+  sc.addEventListener('click', function(){ self.restart(); });
+}
+function once(sc, key){ if (sc.f[key]) return false; sc.f[key] = 1; return true; }
+
+/* ══ the glass: its water lowered by repainting its own pixels ══ */
+function glassAt(img, level){
+  /* level 1 = as rendered (half full); 0 = empty. Water pixels are the
+     saturated blue ones; above the new surface they take the colour the
+     empty part of the glass has in the same column, sampled from the top. */
+  var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+  var im = x.getImageData(0, 0, c.width, c.height), d = im.data, W = c.width, H = c.height;
+  if (!glassAt.top){
+    /* measure once: the water's top and bottom rows, and an empty-glass colour per column */
+    var wTop = H, wBot = 0, empty = [];
+    for (var X = 0; X < W; X++){ empty[X] = null;
+      for (var Y = 0; Y < H; Y++){ var i = (Y*W + X)*4; if (d[i+3] < 200) continue;
+        var sat = d[i+2] - (d[i] + d[i+1])/2, water = sat > 60 && d[i+2] > 150;
+        if (water){ if (Y < wTop) wTop = Y; if (Y > wBot) wBot = Y; }
+        else if (!empty[X] && Y > H*.15 && Y < H*.45) empty[X] = [d[i], d[i+1], d[i+2]]; } }
+    glassAt.top = wTop; glassAt.bot = wBot; glassAt.empty = empty;
+  }
+  var cut = glassAt.top + (1 - level)*(glassAt.bot - glassAt.top - 18);
+  for (var Y2 = glassAt.top; Y2 < cut; Y2++) for (var X2 = 0; X2 < W; X2++){
+    var j = (Y2*W + X2)*4; if (d[j+3] < 200) continue;
+    var s2 = d[j+2] - (d[j] + d[j+1])/2;
+    if (s2 > 60 && d[j+2] > 150 && glassAt.empty[X2]){ var e = glassAt.empty[X2]; d[j] = e[0]; d[j+1] = e[1]; d[j+2] = e[2]; }
+  }
+  x.putImageData(im, 0, 0); return c.toDataURL();
+}
+
+var IDLE = {dur: 1e9, ev: [[0, 'mode', {breathe: [.014, 3.6], idle: 0}]]};
+var DEFS = [
+  {img: 'dumbbell', at: .5, loop: 8.4, t: 'משקולת',
+   p: 'הטבעות מתהדקות סביב המשקולת ומרימות אותה מעל הראש. שלוש חזרות: הוא נמעך תחת המשקל בירידה ונמתח בעלייה. בחזרה האחרונה הוא זורח, ומניח אותה.',
+   reset: function(s){ s.f = {}; var p = s.props.p; p.free = true; p.x = s.W*.8; p.y = s.floor; p.vx = p.vy = 0; p.rot = 0;
+     s.b.verb('look', 26, -10); s.b.verb('face', 'curious'); },
+   update: function(s, t){
+     var b = s.b, p = s.props.p, B = s.beem();
+     if (t > 1 && once(s, 'go')){ b.verb('face', 'determined'); b.verb('look', 0, 0); b.verb('to', 260, 0); }
+     if (t > 1.9 && once(s, 'grab')){ p.free = false; b.fxTween({t: 'rings', v: {sc: .82}, d: 220}); b.verb('to', 0, 0); }
+     if (!p.free && t > 1.9){
+       /* held: it rides on his head, lagging a touch, and tilts with his motion */
+       var tx = B.x, ty = B.y - B.r*1.02; p.x += (tx - p.x)*.35; p.y += (ty - p.y)*.35; p.rot = -b.vx*.004;
+     }
+     [3.0, 4.2, 5.4].forEach(function(at, i){
+       if (t > at && once(s, 'rep' + i)){ b.verb('squash', 5.5); b.verb('face', i === 2 ? 'happy' : 'determined');
+         s.b.pend.push([b.sT + .35, 'stretch', .08], [b.sT + .75, 'stretch', 0]); if (i === 2) b.verb('burst', 1.8); }
+     });
+     if (t > 6.6 && once(s, 'drop')){ p.free = true; p.vx = 260; p.vy = -380; p.vr = 160;
+       b.fxTween({t: 'rings', v: {sc: 1}, d: 400, e: 'back'}); b.verb('face', 'content'); b.verb('hop', 40); }
+   }},
+  {img: 'glass', at: .4, loop: 9, t: 'כוס מים',
+   p: 'הוא נשען אל הכוס והיא נוטה אליו. בכל לגימה המפלס יורד, ובצבע של הכוס עצמה, בלי רנדר של כוס ריקה. אחרי הלגימה האחרונה הוא מרוצה ונושם.',
+   reset: function(s){ s.f = {}; s.lv = 1; var p = s.props.p; p.free = true; p.x = s.W*.74; p.y = s.floor; p.rot = 0;
+     p.el.src = s.full; s.b.verb('look', 24, -6); s.b.verb('face', 'curious'); },
+   update: function(s, t){
+     var b = s.b, p = s.props.p;
+     [1.2, 3.2, 5.2].forEach(function(at, i){
+       if (t > at && once(s, 'sip' + i)){ b.verb('to', 90, 0); b.verb('face', 'content'); b.verb('look', 30, -4); s.sipAt = t; }
+       if (t > at + .5 && once(s, 'gulp' + i)){ b.verb('face', 'happy'); b.verb('squash', 1.6);
+         s.lv = Math.max(0, 1 - (i + 1)*.33); p.el.src = glassAt(s.glassImg, s.lv); }
+       if (t > at + 1.2 && once(s, 'back' + i)){ b.verb('to', 0, 0); b.verb('face', 'calm'); }
+     });
+     var tilt = s.sipAt && t - s.sipAt < 1.2 ? Math.sin(Math.min(1, (t - s.sipAt)/.5)*Math.PI/2)*-22 : 0;
+     p.rot += (tilt - p.rot)*.15;
+     if (t > 6.8 && once(s, 'done')){ b.verb('face', 'content'); b.verb('burst', 1); b.verb('nod', 1, 8); }
+   }},
+  {img: 'ball', at: .45, loop: 3.6, t: 'כדור',
+   p: 'הכדור נזרק אליו מהצד ומקפץ על הרצפה. Beem עוקב אחריו בעיניים, מקבל אותו בגוף ומחזיר אותו בנגיחה. ההתנגשות היא פיזיקה: הכדור נהדף מהכדור שלו.',
+   reset: function(s){ s.f = {}; var p = s.props.p; p.free = true; p.bounce = .62; p.x = s.W*1.05; p.y = s.floor - s.H*.55;
+     p.vx = -s.W*.55; p.vy = -200; p.vr = -300; s.b.verb('face', 'calm'); },
+   update: function(s, t, dt){
+     var b = s.b, p = s.props.p, B = s.beem(), r = p.h*s.H/2, cx = p.x, cy = p.y - r;
+     /* his eyes follow the ball */
+     b.lkX = Math.max(-36, Math.min(36, (cx - B.x)/s.S*90)); b.lkY = Math.max(-22, Math.min(22, -(cy - B.y)/s.S*70)); b.idle = false;
+     var dx = cx - B.x, dy = cy - B.y, dist = Math.hypot(dx, dy);
+     if (dist < B.r + r && !s.hit){
+       s.hit = 1; var nx = dx/dist, ny = dy/dist, vn = p.vx*nx + p.vy*ny;
+       if (vn < 0){ p.vx -= 2*vn*nx; p.vy -= 2*vn*ny; }
+       p.vy -= 900; p.vx += 120; p.vr = 400;                      // the header
+       b.verb('face', 'surprised'); b.verb('squash', 3); b.verb('hop', 60);
+       b.pend.push([b.sT + .4, 'face', 'happy'], [b.sT + 1.4, 'face', 'calm']);
+     }
+     if (dist > B.r + r + 20) s.hit = 0;
+   }},
+  {img: 'gift', at: .42, loop: 8, t: 'מתנה',
+   p: 'קופסה מופיעה לידו ורועדת פעמיים. הוא סקרן, מתקרב, ואז היא נפתחת בהבזק אור. האור עובר אליו, והוא הופך ל־Beem זהב. לאבני דרך.',
+   reset: function(s){ s.f = {}; var p = s.props.p; p.free = false; p.x = s.W*.76; p.y = s.floor; p.rot = 0; p.s = 0; p.op = 1;
+     s.b.fxTween({t: 'body', v: {gold: 0}, d: 0}); s.b.verb('face', 'calm'); },
+   update: function(s, t){
+     var b = s.b, p = s.props.p;
+     if (t < .6) p.s = Math.min(1, t/.35*1.08 - Math.max(0, t - .35)*.3);
+     else if (p.s !== 1 && t < 1) p.s = 1;
+     if (t > .7 && once(s, 'see')){ b.verb('look', 30, -6); b.verb('face', 'curious'); }
+     [[1.4, 'w1'], [2.3, 'w2']].forEach(function(w){ if (t > w[0] && t < w[0] + .45) p.rot = Math.sin((t - w[0])*44)*9; });
+     if (t > 2.8 && once(s, 'near')){ b.verb('to', 160, 0); b.verb('face', 'surprised'); }
+     if (t > 3.4 && t < 3.75){ p.s = 1 + (t - 3.4)*1.2; p.op = 1 - (t - 3.4)/.35; p.sq = -.1; }
+     if (t > 3.4 && once(s, 'open')){ p.rot = 0;
+       b.fxTween({t: 'body', v: {white: .8}, d: 120}); b.pend.push([b.sT + .14, 'fx', {t: 'body', v: {white: 0, gold: 1}, d: 500, e: 'out'}]);
+       b.verb('fx', {t: 'fx', v: {beads: 1}, d: 0}); b.verb('burst', 2.4); b.verb('spin', 220); b.verb('face', 'happy'); b.verb('hop', 120); }
+     if (t > 3.8){ p.op = 0; }
+     if (t > 4.3 && once(s, 'back')) b.verb('to', 0, 0);
+     if (t > 6.6 && once(s, 'fade')) b.fxTween({t: 'body', v: {gold: 0}, d: 900});
+   }},
+  {img: 'clock', at: .44, loop: 8, t: 'שעון מעורר',
+   p: 'הוא ישן. השעון מצלצל ורועד ומקפץ על הרצפה, והוא קופץ בבהלה. הוא מסתכל עליו, מתקרב בנחישות ונוחת עליו, והשעון נמעך ומשתתק. ואז פיהוק מרוצה.',
+   reset: function(s){ s.f = {}; var p = s.props.p; p.free = true; p.x = s.W*.8; p.y = s.floor; p.rot = 0; p.vx = 0;
+     s.b.play({dur: 1e9, ev: [[0, 'face', 'closed'], [0, 'mode', {breathe: [.022, 4.6], idle: 0}]]}); },
+   update: function(s, t){
+     var b = s.b, p = s.props.p, B = s.beem();
+     var ringing = t > 1.2 && !s.f.stop;
+     if (ringing){ p.rot = Math.sin(t*70)*7; if (p.y >= s.floor - .5 && Math.random() < .08) p.vy = -260; }
+     /* a startle that stays in frame - 520 took him out of the top of it */
+     if (t > 1.35 && once(s, 'jump')){ b.verb('face', 'surprised'); b.verb('launch', 230); }
+     if (t > 2.6 && once(s, 'look')){ b.verb('look', 30, -10); b.verb('face', 'determined'); }
+     /* he hops to the clock's SIDE and pokes it - landing on top of it hid it */
+     if (t > 3.3 && once(s, 'go')){ var hw = p.h*s.H*.5*p.img.width/p.img.height;
+       b.verb('to', (p.x - hw*.55 - s.sx)/s.k - SPH.x - SPH.r*.95, 0); b.verb('launch', 180); }
+     if (t > 4.0 && once(s, 'stop')){ p.sq = .28; p.sqv = 0; p.rot = 0; p.vx = 30;
+       b.verb('squash', 2.5); b.verb('face', 'content'); b.verb('burst', .8); }
+     if (s.f.stop && t > 5 && once(s, 'yawn')){ b.verb('face', 'sleepy'); b.verb('stretch', .06); b.pend.push([b.sT + .6, 'stretch', 0]);
+       b.verb('to', 0, 0); }
+     if (s.f.stop && t > 6.2 && once(s, 'sleep')) b.verb('face', 'closed');
+   }}
+];
+
+Promise.all([BEEM_READY].concat(DEFS.map(function(d){ return load('beem-props/' + d.img + '.png'); }))).then(function(imgs){
+  var g = document.getElementById('grid');
+  DEFS.forEach(function(d, i){
+    var c = document.createElement('div'); c.className = 'card';
+    c.innerHTML = '<div class="scene"></div><h3>' + d.t + '</h3><p>' + d.p + '</p>';
+    g.appendChild(c);
+    var s = new Scene(c, d), img = imgs[i + 1];
+    var h = {dumbbell: .2, glass: .3, ball: .17, gift: .3, clock: .27}[d.img];
+    s.prop('p', img, h, d.img === 'gift' ? 'back' : 'front');
+    if (d.img === 'glass'){ s.glassImg = img; s.full = img.src; }
+    SCENES.push(s); s.restart();
+  });
+  document.getElementById('slow').onclick = function(){ SPEED = SPEED === 1 ? 1/3 : 1;
+    ALL.forEach(function(b){ b.speed = SPEED; }); this.textContent = SPEED === 1 ? 'הילוך איטי ×3' : 'מהירות רגילה'; };
+  var last = null;
+  requestAnimationFrame(function tick(now){
+    var dt = last === null ? .016 : Math.min(.05, (now - last)/1000); last = now;
+    SCENES.forEach(function(s){ s.tick(dt*SPEED); });
+    requestAnimationFrame(tick);
+  });
+  beemRun(ALL);
+});
+</script>
+</html>
