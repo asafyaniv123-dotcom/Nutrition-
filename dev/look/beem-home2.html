@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beem · איפה הוא גר, סבב 2</title>
+<!--
+  WHERE BEEM LIVES, ROUND 2. Round 1 was rejected as "unrelated to the places
+  I put him" - and it was: he was laid on top of existing UI with no reason
+  to be there. This round starts from the opposite end: only places where
+  the app ALREADY talks about what Beem is - the summary's invitation, the
+  count of summarised days, the sky and its sun-or-moon greeting. Same method:
+  captures of dev as it is, with only Beem laid over them.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--line:rgba(176,168,156,.42);
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:30px 24px 80px}
+  h1{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .tag{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-top:8px;
+    border-top:2px solid var(--ink);padding-top:8px;display:inline-block}
+  .lede{font-size:13.5px;line-height:1.85;color:var(--muted);margin-top:14px;max-width:92ch}
+  b{color:var(--ink)}
+  .dir{margin-top:34px;display:grid;gap:26px;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:start}
+  .dir .n{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+  .dir h2{font-size:24px;font-weight:800;margin-top:2px}
+  .dir .why{margin-top:10px;border-radius:14px;padding:10px 13px;font-size:13px;line-height:1.75;
+    background:rgba(255,255,255,.45)}
+  .dir p{font-size:13px;line-height:1.8;color:var(--muted);margin-top:10px}
+  .dir .risk{font-size:12.5px;margin-top:8px;color:#8a4a2a}
+  .phones{display:grid;gap:16px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cap{font-size:11.5px;font-weight:800;color:var(--muted);text-align:center;margin-top:7px}
+  .phone{position:relative;width:100%;aspect-ratio:390/844;border-radius:26px;overflow:hidden;background:#f3efea;
+    box-shadow:-3px -3px 9px var(--nu-lit),6px 8px 18px rgba(120,100,80,.22)}
+  .phone > img{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .ov{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0}
+  .ov > *{position:absolute}
+  .ov > .stage{overflow:visible}
+  .txt{font-family:Assistant,system-ui,sans-serif;color:#433c38;font-weight:800;white-space:nowrap}
+  @media (max-width:860px){.dir{grid-template-columns:1fr}}
+  @media (max-width:520px){.wrap{padding:22px 16px 60px}h1{font-size:36px}.phones{gap:10px}}
+</style>
+
+<div class="wrap">
+  <h1 dir="ltr" style="text-align:right">Beem</h1>
+  <div class="tag">איפה הוא גר · סבב 2</div>
+  <div class="lede">
+    בסבב הקודם הוא באמת לא היה קשור: הדבקתי אותו על דברים שכבר היו במסך, בלי סיבה שיהיה
+    דווקא שם. <b>הפעם התחלתי מהצד השני.</b> חיפשתי מקומות שבהם האפליקציה <b>כבר מדברת על מה
+    ש־Beem הוא</b>, וכל כיוון מתחיל בסיבה. כמו קודם, כל טלפון הוא צילום של ה־dev כמו שהוא,
+    ומעליו רק Beem החי.
+  </div>
+  <div id="dirs"></div>
+</div>
+
+<script src="beem-engine.js"></script>
+<script src="beem-special.js"></script>
+<script src="beem-alive.js"></script>
+<script src="beem-moon.js"></script>
+<script>
+var COUNT = 12;
+/* the invitation: he looks at "נתחיל", nods toward it, and when it is
+   pressed (here: on a loop) he breathes the first breath of the summary */
+var INVITE = {dur: 13600, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.016, 4], idle: 0}],
+  [600, 'look', 0, -16], [1300, 'nod', 1, 9], [2400, 'look', 0, 0], [3400, 'face', 'calm'],
+  [4200, 'fx', {t: 'rings', v: {sc: [1.1, 1.13, 1.16]}, d: 4000, s: 120}], [4200, 'fx', {t: 'me', v: {gT: 1.06}, d: 4000}],
+  [8800, 'fx', {t: 'rings', v: {sc: 1}, d: 4200, s: 120}], [8800, 'fx', {t: 'me', v: {gT: 1}, d: 4200}],
+  [8900, 'face', 'content'], [9800, 'face', 'closed'], [13100, 'face', 'calm']]};
+var COUNTED = {dur: 6000, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.014, 3.6], idle: 1}],
+  [2400, 'face', 'happy'], [2450, 'hop', 30], [2450, 'burst', .7], [3600, 'face', 'calm']]};
+var DAYSKY = {dur: 1e9, ev: [[0, 'face', 'calm'], [0, 'mode', {breathe: [.014, 3.6], idle: 1, float: 10}]]};
+var NIGHTSKY = {dur: 1e9, ev: [[0, 'face', 'sleepy'], [0, 'mode', {idle: 0, breathe: [.02, 5.4], spinMul: .18}],
+  [0, 'fx', {t: 'fx', v: {beads: 1}, d: 0}], [200, 'fx', {t: 'body', v: {moon: 1}, d: 2400}], [1400, 'face', 'closed']]};
+
+var DIRS = [
+  {n: 'כיוון 1', t: 'הוא זה שמזמין לסיום היום',
+   why: 'כשנכנסים ל"סיום יום", המסך אומר "בוא ניקח רגע להסתכל על היום שלך", ומעל המשפט יש שטח ריק גדול. Beem לא מדבר, אבל זה בדיוק התפקיד שלו: הוא המזמין.',
+   p: 'הוא מסתכל על הכפתור "נתחיל" ומהנהן אליו. כשנכנסים לסיכום, הוא נושם איתה את הנשימה הראשונה. בסוף הסיכום הוא שם שוב, מרוצה. Beem מלווה את הטקס היומי ולא יושב בפינה של מסך.',
+   risk: 'הוא מופיע רק בערב, ומי שלא מגיעה לסיכום לא פוגשת אותו בכלל.',
+   phones: [{img: 'summary-intro', cap: 'הפתיחה: מזמין ונושם',
+             /* 180 at 188: at 200 his rings touched the first line of the invitation */
+             beem: [{c: [195, 188], d: 180, run: INVITE, glow: 1}]}]},
+  {n: 'כיוון 2', t: 'הוא הימים שסיכמת',
+   why: 'בראש מסך "Me" כבר יש כרטיס שסופר "ימים שסיכמת". זה בעצם הרצף, והוא כבר שם. Beem לא צריך מקום חדש, כי זה המקום שלו.',
+   p: 'Beem יושב בכרטיס ליד המספר. הזוהר שלו הוא המספר הזה, כלומר כמה ימים סוכמו, ובאבני הדרך הוא זהב. נגיעה בו מעוררת את התגובות של המגע. זה הבית הקבוע שלו: מקום שחוזרים אליו, לא פינה שעוברים לידה.',
+   risk: 'מסך "Me" הוא לא המסך הראשון שנפתח, אז רואים אותו פחות.',
+   phones: [{img: 'me', cap: 'הכרטיס העליון של Me',
+             patch: [{r: [172, 124, 46, 46], s: [240, 150]}],
+             beem: [{c: [72, 157], d: 104, run: COUNTED, glow: 1}],
+             text: [{c: [195, 149], s: 36, v: String(COUNT)}]}]},
+  {n: 'כיוון 3', t: 'הוא השמש של השמיים, והירח',
+   why: 'למסך הבית יש שמיים שמשתנים לפי השעה, והברכה כבר מחליפה אייקון לפי השעה: "יום חדש מתחיל" עם שמש בבוקר, וירח בלילה. Beem הוא בדיוק השמש הזאת והירח הזה.',
+   p: 'הוא תלוי בשמיים בפינה העליונה ומרחף לאט, במקום האייקון של הברכה. בבוקר הוא שמש ער ושמח, ובלילה הוא ירח עם עיניים עצומות והחרוזים שלו כוכבים, כמו שכבר אישרת. כל פתיחה של האפליקציה אומרת "מה השעה" דרכו.',
+   risk: 'כמעט ואין לו מה לעשות שם חוץ מלהיות. התגובות שלו לא מגיעות למסך הזה.',
+   phones: [{img: 'home-morning', cap: 'בוקר: השמש',
+             patch: [{r: [236, 61, 28, 26], s: [228, 50]}],
+             /* small and high in the corner: at 104 he sat on the subtitle */
+             beem: [{c: [58, 100], d: 76, run: DAYSKY, glow: 0}]},
+            {img: 'home-morning', cap: 'לילה: הירח והכוכבים',
+             patch: [{r: [236, 61, 28, 26], s: [228, 50]}],
+             beem: [{c: [58, 100], d: 76, run: NIGHTSKY, glow: 0}]}]}
+];
+
+var ALL = [], IMGS = {};
+function sample(img, x, y){
+  var c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  var g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  var k = img.naturalWidth/390, d = g.getImageData(Math.round(x*k), Math.round(y*k), 1, 1).data;
+  return 'rgb(' + d[0] + ',' + d[1] + ',' + d[2] + ')';
+}
+function phone(host, o){
+  var w = document.createElement('div');
+  w.innerHTML = '<div class="phone"><img src="beem-home/' + o.img + '.png" alt=""><div class="ov"></div></div>' +
+    '<div class="cap">' + o.cap + '</div>';
+  host.appendChild(w);
+  var ph = w.querySelector('.phone'), ov = w.querySelector('.ov');
+  function fit(){ ov.style.transform = 'scale(' + (ph.clientWidth/390) + ')'; }
+  fit(); window.addEventListener('resize', fit);
+  (o.patch || []).forEach(function(p){
+    var d = document.createElement('div'); d.style.background = sample(IMGS[o.img], p.s[0], p.s[1]);
+    d.style.left = p.r[0] + 'px'; d.style.top = p.r[1] + 'px'; d.style.width = p.r[2] + 'px'; d.style.height = p.r[3] + 'px';
+    d.style.borderRadius = '10px'; d.style.filter = 'blur(2px)'; ov.appendChild(d);
+  });
+  (o.beem || []).forEach(function(b){
+    var s = document.createElement('div'); s.className = 'stage';
+    s.style.left = (b.c[0] - b.d/2) + 'px'; s.style.top = (b.c[1] - b.d/2) + 'px'; s.style.width = s.style.height = b.d + 'px';
+    ov.appendChild(s);
+    var be = new Beem(s); ALL.push(be); be.play(b.run);
+    if (b.glow){ var L = streakGlow(COUNT); s.querySelector('.beem').style.filter =
+      'drop-shadow(0 0 ' + (b.d*.06 + b.d*.1*L).toFixed(1) + 'px rgba(255,186,60,' + (.18 + .45*L).toFixed(2) + '))'; }
+  });
+  (o.text || []).forEach(function(t){
+    var d = document.createElement('div'); d.className = 'txt'; d.textContent = t.v; d.style.fontSize = t.s + 'px';
+    d.style.left = t.c[0] + 'px'; d.style.top = t.c[1] + 'px'; d.style.transform = 'translate(-50%,-50%)'; ov.appendChild(d);
+  });
+}
+function loadImg(n){ return new Promise(function(res){ var i = new Image(); i.onload = function(){ IMGS[n] = i; res(); }; i.src = 'beem-home/' + n + '.png'; }); }
+Promise.all([BEEM_READY, loadImg('summary-intro'), loadImg('me'), loadImg('home-morning')]).then(function(){
+  var host = document.getElementById('dirs');
+  DIRS.forEach(function(d){
+    var el = document.createElement('div'); el.className = 'dir';
+    el.innerHTML = '<div><div class="n">' + d.n + '</div><h2>' + d.t + '</h2><div class="why"><b>למה דווקא שם:</b> ' + d.why +
+      '</div><p>' + d.p + '</p><div class="risk">הסיכון: ' + d.risk + '</div></div><div class="phones"></div>';
+    host.appendChild(el);
+    d.phones.forEach(function(o){ phone(el.querySelector('.phones'), o); });
+  });
+  beemRun(ALL);
+});
+</script>
+</html>
