@@ -14,7 +14,9 @@ const BOARD = [
 ];
 const CTX = { today: '2026-10-19', now: '13:30', board: BOARD, last: ['מילואים'] };
 const CASES = [
-  ['he', 'מילואים עד ה24 לחודש', [{ action: 'add', repeat: 'daily', until: '2026-10-24' }]],
+  // on an empty board it is an add that ends; on hers - every day to April - it is the correction
+  ['he', 'מילואים עד ה24 לחודש', [{ action: 'add', repeat: 'daily', until: '2026-10-24' }], { board: [], last: [] }],
+  ['he', 'מילואים עד ה24 לחודש', [{ action: 'remove', text: 'מילואים', date: '2026-10-25', until: '' }]],
   ['he', 'חופשה מה3 עד ה8 בנובמבר', [{ action: 'add', repeat: 'daily', date: '2026-11-03', until: '2026-11-08' }]],
   ['he', 'הוספת לי עד ה31 לחודש. תוריד את זה מה25 עד ה31. לא צריך את זה',
     [{ action: 'remove', text: 'מילואים', date: '2026-10-25', until: ['2026-10-31', ''] }]],
@@ -24,9 +26,9 @@ const CASES = [
   ['he', 'כל רביעי 9-10 מדיטציה', [{ action: 'add', repeat: 'weekly', until: '' }]],
 ];
 let bad = 0;
-for (const [lang, q, want] of CASES) {
+for (const [lang, q, want, over] of CASES) {
   const t0 = Date.now();
-  const r = await fetch(HOST + '/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ q, lang }, CTX)) });
+  const r = await fetch(HOST + '/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ q, lang }, CTX, over || {})) });
   const j = await r.json(), got = j.items || [];
   const miss = got.length !== want.length ? ['count ' + got.length + '/' + want.length] : [];
   want.forEach((w, i) => {
