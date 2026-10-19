@@ -223,6 +223,17 @@ try {
   await sleep(800);
   await shoot('lived-' + LANG);
   if (!args.includes('--plain')) for (const k of Object.keys(VARIANTS)) await variant(k);
+  /* --ideas: the second round, drawn over what dev ships now */
+  if (args.includes('--ideas')) {
+    const { IDEAS } = await import('./home-ideas.mjs');
+    for (const [k, v] of Object.entries(IDEAS)) {
+      await load();
+      await evalJS('(function(){var s=document.createElement("style");s.textContent=' + JSON.stringify(v.css) +
+        ';document.head.appendChild(s);' + v.js + '})()');
+      await sleep(1500);
+      await shoot('idea-' + k + '-' + LANG);
+    }
+  }
   /* --taps: press the streak and the hub where they now sit, with a real
      touch at their centre - what is under the finger is what gets pressed */
   if (args.includes('--taps')) {
