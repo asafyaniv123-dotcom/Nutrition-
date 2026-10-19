@@ -73,6 +73,8 @@ const evalJS = async (expr) => {
 
 await send('Page.enable');
 await send('Runtime.enable');
+ws.addEventListener('message', (ev) => { const m = JSON.parse(ev.data);
+  if (m.method === 'Runtime.exceptionThrown') console.log('PAGE THREW: ' + (m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text).split('\n')[0]); });
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
 await send('Emulation.setTouchEmulationEnabled', { enabled: true });
 /* The fan, the greeting and the sky all read the hour. Pin it, so the picture
@@ -220,7 +222,26 @@ try {
   })()`);
   await sleep(800);
   await shoot('lived-' + LANG);
-  for (const k of Object.keys(VARIANTS)) await variant(k);
+  if (!args.includes('--plain')) for (const k of Object.keys(VARIANTS)) await variant(k);
+  /* --taps: press the streak and the hub where they now sit, with a real
+     touch at their centre - what is under the finger is what gets pressed */
+  if (args.includes('--taps')) {
+    const tap = async (sel) => {
+      const r = await evalJS(`(function(){var e=document.querySelector(${JSON.stringify(sel)});if(!e)return null;
+        var b=e.getBoundingClientRect();var x=b.left+b.width/2,y=b.top+b.height/2,top=document.elementFromPoint(x,y);
+        return {x:x,y:y,hit:!!top&&(top===e||e.contains(top))};})()`);
+      if (!r) return console.log('  FAIL ' + sel + ' not on the page');
+      await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: r.x, y: r.y }] });
+      await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await sleep(900);
+      return r.hit;
+    };
+    let hit = await tap('#home-stk .stk');
+    console.log((hit && await evalJS(`!!document.getElementById('stk-ov')`) ? '  ok   ' : '  FAIL ') + 'the streak under the hub opens its sheet');
+    await evalJS('streakClose()'); await sleep(300);
+    hit = await tap('.chub');
+    console.log((hit && await evalJS(`currentModule!==null&&currentModule!==undefined`) ? '  ok   ' : '  FAIL ') + 'the hub opens ' + await evalJS('String(currentModule)'));
+  }
 } catch (e) {
   console.log('FAIL: ' + e.message);
 } finally {
