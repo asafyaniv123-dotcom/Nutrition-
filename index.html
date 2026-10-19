@@ -2608,6 +2608,7 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .pl-sel{display:flex;gap:7px;align-items:center;min-height:46px;margin-bottom:4px}
 .pl-sel-b{flex:1;background:var(--card);border:1px solid var(--line-strong);border-radius:12px;padding:10px 6px;font:700 12.5px/1 inherit;color:var(--ink);cursor:pointer}
 .pl-sel-d{color:var(--terra-700)}
+.pl-sel-on{background:var(--violet-700);border-color:var(--violet-700);color:#fff}
 .pl-sel-s{font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:11px;padding:0 2px}
 /* ── A RUN ACROSS DAYS ──
    The per-day chip stays in the flow so the cell reserves the right height in
@@ -4734,6 +4735,11 @@ html body.mod-planning .psay-it{border-radius:10px;padding:8px 11px;
   box-shadow:-1px -1px 3px var(--nu-lit),1.5px 3px 6px var(--nu-shade-soft)}
 html body.mod-planning .psay-w{font-size:13.5px;font-weight:800;unicode-bidi:plaintext}
 html body.mod-planning .psay-when{font-size:11px;font-weight:700;opacity:.72;margin-top:2px}
+/* an entry about to come off: pressed into the card rather than raised on it */
+html body.mod-planning .psay-it.psay-out{color:var(--nu-ink);
+  box-shadow:inset 1.5px 2px 5px var(--nu-shade-soft),inset -1px -1px 3px var(--nu-lit)}
+html body.mod-planning .psay-out .psay-w{text-decoration:line-through;text-decoration-thickness:1.5px}
+html body.mod-planning .psay-list+.hcmd-q,html body.mod-planning .psay-sw+.hcmd-q{margin-top:16px}
 html body.mod-planning .psay-sw{margin-top:12px}
 html body.mod-planning .psay-sw .wk-sw{max-width:182px;gap:8px}   /* two rows of six, not eleven and a stray */
 .psay-t{display:inline-block;direction:ltr;unicode-bidi:isolate}
@@ -31742,12 +31748,18 @@ function planMigrate(){
    strip into a row of full-size buttons and turns the next day tapped into
    the end of its run - which is the stretch that a 16px handle on a 46px cell
    was never going to give anyone. */
-var _moSel='';
-function moSelOpen(id){_moSel=(_moSel===id?'':id);renderPlanMonth();}
-function moSelClose(){_moSel='';renderPlanMonth();}
+/* The stretch used to be armed by the selection itself, so the first person
+   to tap a birthday and then tap the next day to open it got a birthday two
+   days long - the line saying what the next tap would do sat at the top of
+   the board, off the screen she was looking at. Now the stretch is a button
+   of its own (_moSelRun), and with only a selection a day tap is a day tap. */
+var _moSel='',_moSelRun=false;
+function moSelOpen(id){_moSel=(_moSel===id?'':id);_moSelRun=false;renderPlanMonth();}
+function moSelClose(){_moSel='';_moSelRun=false;renderPlanMonth();}
+function moSelLonger(){_moSelRun=!_moSelRun;renderPlanMonth();}
 function moSelAct(what){
   var id=_moSel;if(!id)return;
-  _moSel='';
+  _moSel='';_moSelRun=false;
   if(what==='del'){
     /* it may sit in any of the weeks this month touches */
     var sun2=weekSunday(moFirst(_moMonth||appNow())),n,i;
@@ -31821,7 +31833,8 @@ function moCellTap(date){
   /* THE SECOND HALF OF THE GESTURE. With a task selected a day is not a day
      to open, it is where that task should end - counted in days from where it
      starts, and capped by the same WK_MAX_LEN the week board uses. */
-  if(_moSel){
+  if(_moSel&&!_moSelRun){_moSel='';}       // a selection alone: the tap opens the day, as always
+  else if(_moSel){
     var t=null,sun=weekSunday(moFirst(_moMonth||appNow())),n,i,sd,w2,holder=null;
     for(n=-1;n<6&&!t;n++){
       sd=wkDateOf(sun,n*7);w2=loadWeek(sd);
@@ -31835,7 +31848,7 @@ function moCellTap(date){
       if(days>1)t.len=days;else delete t.len;
       saveWeek(holder,w2);
     }
-    _moSel='';renderPlanMonth();return;
+    _moSel='';_moSelRun=false;renderPlanMonth();return;
   }
   var now=Date.now();
   if(_moTapDate===date&&(now-_moTapAt)<MO_DBL_MS){
@@ -32030,11 +32043,12 @@ function planMonthHTML(){
      board below never moves under the finger that is using it. */
   if(_moSel){
     h+='<div class="pl-sel">'+
+       '<button class="pl-sel-b'+(_moSelRun?' pl-sel-on':'')+'" onclick="moSelLonger()" aria-pressed="'+_moSelRun+'">'+_t('להאריך')+'</button>'+
        '<button class="pl-sel-b" onclick="moSelAct(\'ret\')">'+_t('החזר')+'</button>'+
        '<button class="pl-sel-b pl-sel-d" onclick="moSelAct(\'del\')">'+_t('מחק')+'</button>'+
        '<button class="pl-sel-b" onclick="moSelClose()">'+_t('ביטול')+'</button>'+
        '</div>'+
-       '<div class="pl-sel-s">'+_t('הקש על יום מאוחר יותר כדי למתוח עד אליו')+'</div>';
+       (_moSelRun?'<div class="pl-sel-s">'+_t('הקש על יום מאוחר יותר כדי למתוח עד אליו')+'</div>':'');
   } else {
     var pool=loadPool().tasks;
     h+=planAddBarHTML({k:'pl',pool:pool,pick:'moPick',
@@ -32719,13 +32733,13 @@ function psayHTML(){
 function psayPaint(){var o=document.getElementById('psay-out');if(o)o.innerHTML=psayCardHTML();}
 function psayWhen(it){
   var w;
-  if(it.repeat==='daily')w=_t('כל יום');
+  if(it.repeat==='daily')w=it.until?_t('כל יום עד {date}',{date:fmtDate(it.until)}):_t('כל יום');
   else if(it.repeat==='weekly'){
     var names=[],i;
     for(i=0;i<it.days.length;i++)names.push(RF_DAYNAMES[it.days[i]]);
     var list=names.join(', ');
     try{list=new Intl.ListFormat(APP_LOCALE,{style:'long',type:'conjunction'}).format(names);}catch(e){}
-    w=_t('כל {days}',{days:list});
+    w=it.until?_t('כל {days} עד {date}',{days:list,date:fmtDate(it.until)}):_t('כל {days}',{days:list});
   }
   else w=fmtDate(it.date);
   if(it.start){
@@ -32744,15 +32758,32 @@ function psayCardHTML(){
   if(_psay.msg)return '<div class="hcmd-card"><div class="hcmd-q">'+_psay.msg+'</div>'+
     '<div class="hcmd-btns"><button class="hcmd-b ghost" onclick="psayReset()">'+_t('סגור')+'</button></div></div>';
   if(!_psay.items)return '';
-  var c=_psay.c||_dpNewColor,col=wkColor(c),h='<div class="hcmd-card">',i;
-  h+='<div class="hcmd-q">'+_t('להוסיף ללוח?')+'</div><div class="psay-list">';
-  for(i=0;i<_psay.items.length;i++){
-    var it=_psay.items[i];
-    h+='<div class="psay-it" style="background:'+col.soft+';color:'+col.ink+'">'+
-       '<div class="psay-w">'+esc(it.text)+'</div><div class="psay-when">'+psayWhen(it)+'</div></div>';
+  var c=_psay.c||_dpNewColor,col=wkColor(c),h='<div class="hcmd-card">',i,adds=0,outs=0;
+  for(i=0;i<_psay.items.length;i++){if(_psay.items[i].action==='remove')outs++;else adds++;}
+  if(adds){
+    h+='<div class="hcmd-q">'+_t('להוסיף ללוח?')+'</div><div class="psay-list">';
+    for(i=0;i<_psay.items.length;i++){
+      var it=_psay.items[i];if(it.action==='remove')continue;
+      h+='<div class="psay-it" style="background:'+col.soft+';color:'+col.ink+'">'+
+         '<div class="psay-w">'+esc(it.text)+'</div><div class="psay-when">'+psayWhen(it)+'</div></div>';
+    }
+    h+='</div><div class="psay-sw">'+wkSwatches("psayColor('%K%')",c)+'</div>';
   }
-  h+='</div><div class="psay-sw">'+wkSwatches("psayColor('%K%')",c)+'</div>';
-  h+='<div class="hcmd-btns"><button class="hcmd-b" onclick="psayApply()">'+_t('הוסף')+'</button>'+
+  if(outs){
+    h+='<div class="hcmd-q">'+_t('להוריד מהלוח?')+'</div><div class="psay-list">';
+    for(i=0;i<_psay.items.length;i++){
+      var ro=_psay.items[i];if(ro.action!=='remove')continue;
+      var f=ro.found,span;
+      if(f[0].date===f[f.length-1].date)span=fmtDate(f[0].date);
+      else span=_t('{from} עד {to}',{from:fmtDate(f[0].date),to:fmtDate(f[f.length-1].date)});
+      h+='<div class="psay-it psay-out">'+
+         '<div class="psay-w">'+esc(ro.text)+'</div><div class="psay-when">'+span+' &middot; '+
+         esc(_t('{n} פעמים',{n:f.length}))+'</div></div>';
+    }
+    h+='</div>';
+  }
+  h+='<div class="hcmd-btns"><button class="hcmd-b" onclick="psayApply()">'+
+     (adds&&outs?_t('אישור'):outs?_t('הסר'):_t('הוסף'))+'</button>'+
      '<button class="hcmd-b ghost" onclick="psayReset()">'+_t('ביטול')+'</button></div></div>';
   return h;
 }
@@ -32769,7 +32800,8 @@ function psayGo(){
     method:'POST',
     headers:{'Content-Type':'application/json'},
     /* the day is the app's day (04:00), the time is the wall clock's */
-    body:JSON.stringify({q:q,lang:appLang(),today:todayStr(),now:hcmdTwo(n.getHours())+':'+hcmdTwo(n.getMinutes())})
+    body:JSON.stringify({q:q,lang:appLang(),today:todayStr(),now:hcmdTwo(n.getHours())+':'+hcmdTwo(n.getMinutes()),
+      board:psayBoard(),last:psayLast()})
   }).then(function(r){
     return r.json().then(function(j){return {s:r.status,j:j};},function(){return {s:r.status,j:null};});
   }).then(function(x){
@@ -32777,19 +32809,118 @@ function psayGo(){
     if(x.s===429)_psay.msg=_t('הגעת למגבלה של היום.');
     else if(!x.j||!x.j.ok)_psay.msg=_t('משהו השתבש. אפשר לנסות שוב.');
     else if(!x.j.items||!x.j.items.length)_psay.msg=_t('לא מצאתי כאן משהו להכניס ללוח.');
-    else _psay.items=x.j.items;
+    else{
+      /* a removal is shown with what it would actually take off - and one
+         that matches nothing on the board is not offered at all */
+      var keep=[],k,gone=0;
+      for(k=0;k<x.j.items.length;k++){
+        var it=x.j.items[k];
+        if(it.action==='remove'){it.found=psayFind(it);if(!it.found.length){gone++;continue;}}
+        keep.push(it);
+      }
+      if(keep.length)_psay.items=keep;
+      else _psay.msg=gone?_t('לא מצאתי את זה בלוח.'):_t('לא מצאתי כאן משהו להכניס ללוח.');
+    }
     psayPaint();
   },function(){_psay.busy=false;_psay.msg=_t('אין חיבור כרגע.');psayPaint();});
 }
 function psayApply(){
   var its=_psay.items;if(!its)return;
   var c=_psay.c||_dpNewColor,i;
+  var added=[];
   for(i=0;i<its.length;i++){
-    if(its[i].repeat==='none')psPlace(its[i].date,its[i],c,'');
-    else psSeriesAdd(its[i],c);
+    if(its[i].action==='remove')psayRemove(its[i]);
+    else{
+      added.push(its[i].text);
+      if(its[i].repeat==='none')psPlace(its[i].date,its[i],c,'');
+      else psSeriesAdd(its[i],c);
+    }
   }
+  if(added.length)try{localStorage.setItem(PSAY_LAST_KEY,JSON.stringify(added.slice(0,5)));}catch(e){}
   _psay.q='';_psay.items=null;_psay.done=true;
   renderPlanning();
+}
+/* What the line is told besides the sentence, so that "remove it from the
+   25th" can mean something: what the line itself added last, and what is on
+   the board from a week back to as far as anything is written - each thing
+   once, with its first and last day. Only the words of the entries; nothing
+   is kept by the server. */
+var PSAY_LAST_KEY='plan_said_last';
+function psayLast(){
+  try{var a=JSON.parse(localStorage.getItem(PSAY_LAST_KEY)||'[]');return Array.isArray(a)?a.slice(0,5):[];}catch(e){return [];}
+}
+function psayBoard(){
+  var today=todayStr(),d=psDayAdd(today,-7),to=psDayAdd(today,PS_AHEAD),by={},i,out=[];
+  while(d<=to){
+    var dp=loadDPlan(d);
+    for(i=0;i<dp.items.length;i++){
+      var w=String(dp.items[i].w||'').trim().slice(0,80);if(!w)continue;
+      var o=by[w]||(by[w]={text:w,from:d,to:d,n:0});o.to=d;o.n++;
+    }
+    d=psDayAdd(d,1);
+  }
+  for(var k in by)out.push(by[k]);
+  out.sort(function(a,b){return b.n-a.n;});
+  return out.slice(0,40);
+}
+
+/* ── TAKING THINGS OFF ──
+   "You added it until the 31st, take it off from the 25th" - the first
+   person to use the writing line needed it within a day, and had been
+   removing a daily entry one chip at a time. A removal names a thing and
+   which days; what it matches is any task on those days whose words contain
+   the thing's, or are contained in them ("מילואים" finds "מילואים בצפון").
+   A removal with no last day runs to the end of everything written ahead.
+
+   Days that a repeat has not written yet are dealt with in the repeat
+   itself: an open removal ends it (or drops just those weekdays from it),
+   and a closed one moves its high-water mark past the span, so a top-up
+   never puts back what was just taken off. */
+function psayNorm(t){return String(t||'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');}
+function psayFind(it){
+  var want=psayNorm(it.text),today=todayStr(),from=it.date||today,to,i;
+  if(!want)return [];
+  if(it.repeat==='none')to=from;
+  else if(it.until)to=it.until;
+  else{
+    var a=psSeriesLoad();to=psDayAdd(today,PS_AHEAD);
+    for(i=0;i<a.length;i++)if((a[i].upto||'')>to)to=a[i].upto;
+  }
+  var out=[],d=from,n=0;
+  while(d<=to&&n<800){
+    if(it.repeat!=='weekly'||it.days.indexOf(new Date(d+'T12:00:00').getDay())>=0){
+      var dp=loadDPlan(d);
+      for(i=0;i<dp.items.length;i++){
+        var w=psayNorm(dp.items[i].w);
+        if(w&&(w.indexOf(want)>=0||want.indexOf(w)>=0))out.push({date:d,id:dp.items[i].id,rid:dp.items[i].rid||''});
+      }
+    }
+    d=psDayAdd(d,1);n++;
+  }
+  return out;
+}
+function psayRemove(it){
+  var f=it.found||[],byDay={},rids={},i;
+  for(i=0;i<f.length;i++){(byDay[f[i].date]=byDay[f[i].date]||{})[f[i].id]=1;if(f[i].rid)rids[f[i].rid]=1;}
+  for(var d in byDay){
+    var dp=loadDPlan(d),out=[],k;
+    for(k=0;k<dp.items.length;k++)if(!byDay[d][dp.items[k].id])out.push(dp.items[k]);
+    dp.items=out;saveDPlan(d,dp);
+  }
+  var a=psSeriesLoad(),from=it.date||todayStr(),ch=false;
+  var all=it.repeat!=='weekly'?[0,1,2,3,4,5,6]:it.days;
+  for(i=0;i<a.length;i++){
+    var rec=a[i];if(!rids[rec.rid])continue;
+    var left=[],j;
+    for(j=0;j<rec.days.length;j++)if(all.indexOf(rec.days[j])<0)left.push(rec.days[j]);
+    // write what comes before the removal first, so moving the mark skips nothing else
+    psSeriesFill(rec,psDayAdd(from,-1));
+    if(it.repeat==='none'){}
+    else if(!it.until){if(left.length)rec.days=left;else{rec.until=psDayAdd(from,-1);rec.upto=rec.until<(rec.upto||'')?rec.upto:rec.until;}}
+    else if(!left.length&&(rec.upto||'')<it.until)rec.upto=it.until;
+    ch=true;
+  }
+  if(ch)psSeriesSave(a);
 }
 
 /* ── A REPEAT ──
@@ -32821,6 +32952,7 @@ function psPlace(date,it,c,rid){
 }
 function psSeriesFill(rec,upto){
   var d=rec.upto?psDayAdd(rec.upto,1):rec.from;
+  if(d<rec.from)d=rec.from;      // a mark set behind the first day never writes before it
   while(d<=upto&&(!rec.until||d<=rec.until)){
     if(rec.days.indexOf(new Date(d+'T12:00:00').getDay())>=0)psPlace(d,rec,rec.c,rec.rid);
     d=psDayAdd(d,1);
@@ -32831,7 +32963,7 @@ function psSeriesAdd(it,c){
   var today=todayStr();
   var rec={rid:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),text:it.text,c:c,
            days:it.days.slice(),start:it.start||'',end:it.end||'',
-           from:(it.date&&it.date>today)?it.date:today,upto:'',until:''};
+           from:(it.date&&it.date>today)?it.date:today,upto:'',until:it.until||''};
   psSeriesFill(rec,psDayAdd(today,PS_AHEAD));
   var a=psSeriesLoad();a.push(rec);psSeriesSave(a);
 }
