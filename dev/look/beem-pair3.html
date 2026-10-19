@@ -68,9 +68,9 @@
 <script src="beem-moon.js"></script>
 <script src="beem-pair.js"></script>
 <script src="beem-colors.js"></script>
+<script src="beem-pairing.js"></script>
 <script>
-var ALL = [], SPEED = 1, PAIRS = [];
-var IDLE_IN = {dur: 1e9, ev: [[0, 'mode', {breathe: [.014, 3.6], idle: 1}]]};
+var ALL = [], PAIRS = [];
 var OPTS = [
   {k: 'A', t: 'קפיצה גבוהה',
    p: 'אותה קפיצה למעלה, אבל <b>הגובה מחושב מהמסך</b>: מהמיקום של Beem ועד ראש הטלפון, כולל הטבעות שלו והפיגור שלהן. ההחלפה קורית רק כש־Beem באמת מחוץ למסך, ונבדקת בכל פריים. השני נופל מלמעלה ונמעך בנחיתה.'},
@@ -79,112 +79,20 @@ var OPTS = [
   {k: 'C', t: 'פורטל',
    p: 'הוא מסתחרר ו<b>מתכווץ לנקודה</b>, והטבעות נאספות אחריו פנימה. ההחלפה קורית כשאין כבר מה לראות, והשני פורץ החוצה מאותה נקודה וחוזר לגודלו דרך הקפיץ. אין תנועה למעלה ואין תנועה הצידה בכלל.'}
 ];
-function qr(c){
-  var g = c.getContext('2d'); g.fillStyle = '#433c38';
-  for (var y = 0; y < 21; y++) for (var x = 0; x < 21; x++){
-    var eye = function(ox, oy){ var u = x - ox, v = y - oy; return u >= 0 && u < 7 && v >= 0 && v < 7 &&
-      (u === 0 || u === 6 || v === 0 || v === 6 || (u > 1 && u < 5 && v > 1 && v < 5)); };
-    var inEye = (x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12);
-    if (inEye ? (eye(0,0) || eye(14,0) || eye(0,14)) : ((x*7 + y*13 + x*y) % 5 < 2)) g.fillRect(x, y, 1, 1);
-  }
-}
-function Pair(host, O){
-  host.innerHTML = '<div><div class="k">אפשרות ' + O.k + '</div><h2>' + O.t + '</h2><p>' + O.p + '</p>' +
-    '<button>שוב מההתחלה</button></div><div class="pair">' +
-    '<div class="phone"><div class="who">הטלפון של אסף</div><div class="st"></div><div class="box"><div class="qr"><canvas width="21" height="21"></canvas></div><div class="stage"></div></div></div>' +
-    '<div class="phone"><div class="who">הטלפון של דנה</div><div class="st"></div><div class="box"><div class="view"></div><div class="stage"></div></div></div></div>';
-  qr(host.querySelector('canvas'));
-  var phones = host.querySelectorAll('.phone'), st = host.querySelectorAll('.st'), boxes = host.querySelectorAll('.box');
-  var stages = host.querySelectorAll('.stage'), cover = [host.querySelector('.qr'), host.querySelector('.view')];
-  var A = new Beem(stages[0]), B = new Beem(stages[1]); ALL.push(A, B);
-  var me = this, T0 = 0, phase = '', T1 = 0, swapped = false, flags = {};
-  function both(f){ [A, B].forEach(f); }
-  function once1(k){ if (flags[k]) return false; flags[k] = 1; return true; }
-  function swap(){ swapped = true; tintBeem(A, 'teal'); tintBeem(B, null); }
-  this.start = function(){
-    T0 = performance.now(); phase = 'wait'; swapped = false; flags = {};
-    tintBeem(A, null); tintBeem(B, 'teal'); A.play(IDLE_IN); B.play(IDLE_IN);
-    cover.forEach(function(c){ c.classList.remove('gone'); });
-    st[0].textContent = 'מציג קוד לסריקה'; st[1].textContent = 'סורקת את הקוד…'; st[0].className = st[1].className = 'st';
-    stages[0].style.transition = stages[1].style.transition = 'none';
-    stages[0].style.transform = stages[1].style.transform = 'scale(.42) translateY(95%)';
-  };
-  /* A: how high he must go to leave the phone completely, in his own units -
-     from the box's centre to the phone's top edge, plus the outer ring's
-     radius, plus the most the rings can lag behind him, plus a margin */
-  function exitHeight(){
-    var b = boxes[0].getBoundingClientRect(), p = phones[0].getBoundingClientRect(), k = b.width/VB;
-    var centre = (b.top + b.height/2 - p.top)/k;
-    return centre + 430 + 90 + 80;
-  }
-  function offscreen(bm, i){
-    var b = boxes[i].getBoundingClientRect(), p = phones[i].getBoundingClientRect(), k = b.width/VB;
-    var lowest = Math.max(bm.y, bm.ry[0], bm.ry[1], bm.ry[2]);    // the lowest of body and rings
-    return b.top - p.top + (b.height/2 + (lowest + 430)*k*bm.gate) < -4;
-  }
-  this.tick = function(now){
-    var t = (now - T0)/1000*SPEED;
-    if (phase === 'wait' && t > 1.6){ phase = 'found';
-      st[0].textContent = st[1].textContent = 'מתחברים…';
-      cover.forEach(function(c){ c.classList.add('gone'); });
-      stages[0].style.transition = stages[1].style.transition = 'transform .45s cubic-bezier(.34,1.56,.64,1)';
-      stages[0].style.transform = stages[1].style.transform = 'none';
-      both(function(b){ b.verb('face', 'surprised'); b.verb('burst', .7); });
-    }
-    if (phase === 'found' && t > 2.4){ phase = 'crouch';
-      both(function(b){ b.verb('squash', 4); b.verb('face', 'determined'); });
-    }
-    if (phase === 'crouch' && t > 2.62){ phase = 'go'; T1 = t;
-      if (O.k === 'A'){ var H = exitHeight(); both(function(b){ b.verb('face', 'happy'); b.verb('launch', H); b.verb('stretch', .06); }); }
-      if (O.k === 'B'){ both(function(b){ b.verb('face', 'happy'); b.verb('launch', 260); }); }
-      if (O.k === 'C'){ both(function(b){ b.verb('face', 'happy'); b.verb('spin', 520); b.verb('gate', 0); }); }
-    }
-    if (phase === 'go'){
-      var u = t - T1;
-      if (O.k === 'A'){
-        if (!swapped && offscreen(A, 0) && offscreen(B, 1)){ swap(); both(function(b){ b.verb('stretch', 0); b.verb('face', 'surprised'); }); }
-        if (swapped && !A.air && u > .4) land();
-        if (!swapped && u > 3){ swap(); land(); console.warn('A: never left the screen'); }   // must never happen
-      }
-      if (O.k === 'B'){
-        if (u > .12 && once1('close')) both(function(b){ b.fxTween({t: 'rings', v: {sc: .25, op: 0}, d: 180, e: 'in'});
-          b.fxTween({t: 'body', v: {white: 1}, d: 160}); b.verb('spin', 400); });
-        if (u > .32 && once1('swap')) swap();
-        if (u > .38 && once1('open')) both(function(b){ b.fxTween({t: 'rings', v: {sc: 1, op: 1}, d: 420, e: 'back'});
-          b.fxTween({t: 'body', v: {white: 0}, d: 380, e: 'out'}); b.verb('face', 'surprised'); });
-        if (swapped && !A.air && u > .6) land();
-      }
-      if (O.k === 'C'){
-        if (u > .5 && A.gate < .03 && once1('swap')){ swap(); both(function(b){ b.verb('gate', 1); b.verb('face', 'surprised'); b.verb('spin', -300); }); }
-        if (swapped && u > 1.0) land();
-      }
-    }
-    if (phase === 'landed'){
-      var w = t - T1;
-      if (w > .7 && once1('l1')) both(function(b){ b.verb('look', 0, 20); b.verb('face', 'curious'); });
-      if (w > 1.6 && once1('l2')) both(function(b){ b.verb('look', 0, 0); b.verb('face', 'calm'); });
-      if (w > 2.1 && once1('l3')) both(function(b){ b.verb('face', 'happy'); b.verb('nod', 1, 9); });
-      if (w > 3.1 && once1('l4')) both(function(b){ b.verb('face', 'content'); });
-      if (w > 5) me.start();
-    }
-  };
-  function land(){
-    phase = 'landed'; T1 = (performance.now() - T0)/1000*SPEED;
-    both(function(b){ b.verb('face', 'happy'); b.verb('burst', 1.6); b.verb('spin', 180); });
-    st[0].textContent = 'מחוברים! ה־Beem של דנה אצלך'; st[1].textContent = 'מחוברים! ה־Beem של אסף אצלך';
-    st[0].className = st[1].className = 'st ok';
-  }
-  host.querySelector('button').onclick = function(){ me.start(); };
-  this.retime = function(old){ var t = (performance.now() - T0)/1000*old; T0 = performance.now() - t*1000/SPEED; };
-  this.start();
-}
 Promise.all([BEEM_READY, COLORS_READY]).then(function(){
   var host = document.getElementById('opts');
-  OPTS.forEach(function(O){ var d = document.createElement('div'); d.className = 'opt'; host.appendChild(d); PAIRS.push(new Pair(d, O)); });
+  OPTS.forEach(function(O){
+    var d = document.createElement('div'); d.className = 'opt';
+    d.innerHTML = '<div><div class="k">אפשרות ' + O.k + '</div><h2>' + O.t + '</h2><p>' + O.p + '</p>' +
+      '<button>שוב מההתחלה</button></div><div class="ph"></div>';
+    host.appendChild(d);
+    var p = new BeemPair(d.querySelector('.ph'), O.k, ALL); PAIRS.push(p);
+    d.querySelector('button').onclick = function(){ p.start(); };
+  });
   document.getElementById('slow').onclick = function(){
-    var old = SPEED; SPEED = SPEED === 1 ? 1/3 : 1;
-    PAIRS.forEach(function(p){ p.retime(old); }); ALL.forEach(function(b){ b.speed = SPEED; });
-    this.textContent = SPEED === 1 ? 'הילוך איטי ×3 לכולם' : 'מהירות רגילה';
+    var old = BEEM_PAIR_SPEED; BEEM_PAIR_SPEED = BEEM_PAIR_SPEED === 1 ? 1/3 : 1;
+    PAIRS.forEach(function(p){ p.retime(old); }); ALL.forEach(function(b){ b.speed = BEEM_PAIR_SPEED; });
+    this.textContent = BEEM_PAIR_SPEED === 1 ? 'הילוך איטי ×3 לכולם' : 'מהירות רגילה';
   };
   requestAnimationFrame(function tick(now){ PAIRS.forEach(function(p){ p.tick(now); }); requestAnimationFrame(tick); });
   beemRun(ALL);
