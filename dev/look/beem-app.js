@@ -1440,6 +1440,11 @@ var APP_SCRIPTS = {
     [4200, 'fx', {t: 'rings', v: {sc: [1.1, 1.13, 1.16]}, d: 4000, s: 120}], [4200, 'fx', {t: 'me', v: {gT: 1.06}, d: 4000}],
     [8800, 'fx', {t: 'rings', v: {sc: 1}, d: 4200, s: 120}], [8800, 'fx', {t: 'me', v: {gT: 1}, d: 4200}],
     [8900, 'face', 'content'], [9800, 'face', 'closed'], [13100, 'face', 'calm']]},
+  /* the end of the summary: the streak's celebration (Golden Beem goes by 'golden') */
+  celebrate: {dur: 1e9, ev: byId(COMBO_LIST, 'goal').ev},
+  golden: {dur: 1e9, ev: byId(SPECIAL_LIST, 'golden').ev},
+  /* the reaction card: a hop, a little light, content */
+  react: {dur: 1e9, ev: [[0, 'face', 'happy'], [0, 'mode', {idle: 0}], [200, 'hop', 60], [200, 'burst', 1.2], [1600, 'face', 'content']]},
   /* the Me card: content, and now and then glad of the count */
   counted: {dur: 6000, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.014, 3.6], idle: 1}],
     [2400, 'face', 'happy'], [2450, 'hop', 30], [2450, 'burst', .7], [3600, 'face', 'calm']]},
