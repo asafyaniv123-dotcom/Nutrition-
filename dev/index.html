@@ -2941,6 +2941,14 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
   background:rgba(255,255,255,.14);color:#fff;font-size:22px;line-height:1;font-family:inherit}
 .sm2-box{border:1.5px solid var(--line-strong);border-radius:5px;padding:5px;background:var(--card);line-height:0}
 .sm2-box img{width:100%;display:block;border-radius:2px;aspect-ratio:3/4;object-fit:cover}
+/* a landscape picture leaves the narrow column: it goes above the facts, the
+   width of the page, and is shown whole */
+.sm2-hd.sm2-wide{flex-direction:column-reverse;align-items:stretch}
+.sm2-wide .sm2-phc{width:100%}
+.sm2-wide .sm2-box img{aspect-ratio:auto}
+/* the week's cards keep their shape - the turntable is built on it - and a
+   landscape picture sits in one whole, on the card's own dark */
+.wkr-card img.ph-land,.wkd-fr img.ph-land,.wkd-fan img.ph-land,.wkd-ri img.ph-land{object-fit:contain;background:#1d1915}
 .sm2-fx{flex:1;min-width:0}
 .sm2-date{font-size:17px;font-weight:800;color:var(--ink);margin-bottom:10px;line-height:1.25}
 .sm2-r{display:flex;gap:8px;align-items:baseline;font-size:11px;color:var(--muted);margin-bottom:6px}
@@ -10175,6 +10183,21 @@ function photoImg(ref,attrs){
   if(isPhotoKey(ref))return '<img data-photo="'+esc(ref)+'" '+(attrs||'')+'>';
   return '<img src="'+ref+'" '+(attrs||'')+'>';
 }
+/* A LANDSCAPE PHOTOGRAPH IN A PORTRAIT FRAME. Every frame a day's picture is
+   shown in - the summary's head, the week's cards - is portrait and filled by
+   cropping, so a picture taken sideways lost both its ends: the first user's
+   wide shot of two people kept one of them. One listener for every <img>
+   rather than a hook at each call site, since the picture arrives late
+   (hydratePhotos) and the frames are drawn in a dozen places. A landscape
+   picture is marked ph-land, and the frames that care say what that means. */
+document.addEventListener('load',function(e){
+  var im=e.target;
+  if(!im||im.tagName!=='IMG'||!im.naturalWidth)return;
+  var land=im.naturalWidth>im.naturalHeight*1.05;
+  im.classList.toggle('ph-land',land);
+  var hd=im.closest&&im.closest('.sm2-hd');
+  if(hd&&im.closest('.sm2-box'))hd.classList.toggle('sm2-wide',land);
+},true);
 function hydratePhotos(root){
   var els=(root||document).querySelectorAll('img[data-photo]'),i;
   for(i=0;i<els.length;i++)(function(el){
