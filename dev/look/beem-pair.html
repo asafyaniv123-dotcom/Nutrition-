@@ -60,8 +60,7 @@
     הרעיון שלך: שני אנשים מתחברים לאימון משותף דרך קוד QR, ו<b>ברגע שהחיבור מצליח, ה־Beem של
     כל אחד עובר לטלפון של השני</b>. לכל אחד יש צבע משלו, המקורי וטורקיז, כך שכל אחד רואה את ה־Beem
     של השני נוחת אצלו. <b>אחד הוא Beem עצמו, עם כל הצבעים שלו.</b> הטורקיז הוא אותה תמונה
-    בנויה לפי הפלטה של המקור: אותו סולם צבע, מים עמוקים, טורקיז ותכלת־ים, במקום אדום, כתום וצהוב. אחרי ההחלפה הם מסתכלים אחד על השני, דרך המרווח בין הטלפונים.
-  </div>
+    בנויה לפי הפלטה של המקור: אותו סולם צבע, מים עמוקים, טורקיז ותכלת־ים, במקום אדום, כתום וצהוב.  </div>
 
   <div class="pair" id="pair">
     <div class="phone" id="pA">
@@ -82,9 +81,11 @@
   <div class="ctl"><button id="again">שוב מההתחלה</button><button id="slow">הילוך איטי ×3</button></div>
   <div class="note">
     <b>הרצף:</b> כל אחד רואה את ה־Beem שלו בטלפון שלו. ברגע שהסריקה מצליחה, שניהם מופתעים
-    ומתכווצים לקפיצה. הם קופצים החוצה מהטלפונים בקשת, ובאמצע הדרך נפגשים בכיף: הטבעות נפתחות
-    ומסתחררות. כל אחד נוחת בטלפון של השני ונמעך בנחיתה. ואז כתוב <b>"מחוברים"</b>, וה־Beem
-    בטלפון שלך הוא בצבע של החבר/ה. <b>ושאלה לסשן של הכושר:</b> שתי המילים "המקורי" ו"טורקיז"
+    ומתכווצים לקפיצה. <b>כל אחד קופץ ישר למעלה, אל מחוץ לטלפון שלו</b>, ולמעלה, כשהם לא נראים,
+    הם מתחלפים. ה־Beem של השני נופל מלמעלה ונמעך בנחיתה, והטבעות נפתחות ומסתחררות. אחר כך הוא
+    מסתכל למעלה, מאיפה שהגיע, ואז מסתכל עליך ומהנהן. ככה <b>לא משנה באיזה צד כל אחד עומד</b>:
+    אין קפיצה הצידה שיכולה לצאת לכיוון הלא נכון. ואז כתוב <b>"מחוברים"</b>, וה־Beem בטלפון שלך
+    הוא בצבע של החבר/ה. <b>ושאלה לסשן של הכושר:</b> שתי המילים "המקורי" ו"טורקיז"
     הן הצעה. אם באפליקציה כבר יש צבעים לשני המשתתפים, ה־Beems יכולים לקבל אותם.
   </div>
 </div>
@@ -115,7 +116,7 @@ Promise.all([BEEM_READY, COLORS_READY]).then(function(){
   var inA = new Beem($('bA')), inB = new Beem($('bB')), flA = new Beem($('fA')), flB = new Beem($('fB'));
   ALL.push(inA, inB, flA, flB);
   [inA, flA].forEach(function(b){ b.speed = 1; });
-  var T0 = 0, phase = '';
+  var T0 = 0, T1 = 0, phase = '';
   function rel(el){ var p = $('pair').getBoundingClientRect(), r = el.getBoundingClientRect();
     return {x: r.left - p.left, y: r.top - p.top, w: r.width, h: r.height}; }
 
@@ -152,36 +153,39 @@ Promise.all([BEEM_READY, COLORS_READY]).then(function(){
     if (phase === 'found' && t > 2.4){ phase = 'crouch';
       [inA, inB].forEach(function(b){ b.verb('squash', 4); b.verb('face', 'determined'); });
     }
-    if (phase === 'crouch' && t > 2.62){ phase = 'fly';
+    /* UP AND OUT, DOWN AND IN - Asaf's fix (19.10). A sideways leap only
+       looks right if the phones stand the way the animation assumes, and two
+       people can hold them any way round. Straight up works from every side:
+       each Beem jumps up out of the top of its OWN phone, and while both are
+       off-screen they swap; gravity brings the other one down from above. It
+       is the engine's own jump, so the arc, the stretch on the way up and the
+       squash on landing are physics, not keyframes. */
+    var UP = 1500, APEX = Math.sqrt(2*UP/8700);      // the height in his units, and the time to its top
+    if (phase === 'crouch' && t > 2.62){ phase = 'up';
       $('bA').style.transition = $('bB').style.transition = 'none';
-      $('bA').style.opacity = 0; $('bB').style.opacity = 0;
-      $('fA').style.opacity = 1; $('fB').style.opacity = 1;
-      [flA, flB].forEach(function(b){ b.play(IDLE_IN); b.verb('face', 'happy'); });
+      [inA, inB].forEach(function(b){ b.verb('face', 'happy'); b.verb('launch', UP); b.verb('stretch', .06); });
     }
-    if (phase === 'fly'){
-      var p = Math.min(1, (t - 2.62)/1.0), q = p < .5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2)/2;
-      setFly($('fA'), A, B, q); setFly($('fB'), B, A, q);
-      if (p > .5 && !flA.met){ flA.met = flB.met = true;          // the high five, in mid-air
-        [flA, flB].forEach(function(b){ b.verb('burst', 2.4); b.verb('spin', 260); }); }
-      if (p >= 1){ phase = 'landed'; flA.met = flB.met = false;
-        $('fA').style.opacity = 0; $('fB').style.opacity = 0;
-        /* each phone now holds the OTHER one's Beem, dropping in from above */
-        tintBeem(inA, 'teal'); tintBeem(inB, null);
-        /* then they LOOK AT EACH OTHER: each turns its eyes toward the other
-           phone, holds it, blinks, and nods - across the gap */
-        [[inA, A, B], [inB, B, A]].forEach(function(o){
-          var toward = o[2].x > o[1].x ? 1 : -1;
-          o[0].play({dur: 1e9, ev: [[0, 'snap', {y: -300, air: 1}], [0, 'face', 'happy'], [700, 'burst', 1.2],
-            [1000, 'face', 'calm'], [1100, 'look', 34*toward, 4], [1900, 'blink'], [2300, 'face', 'happy'],
-            [2400, 'nod', 1, 9], [3300, 'face', 'content'], [5600, 'blink']]});
-        });
-        $('bA').style.opacity = 1; $('bB').style.opacity = 1;
-        $('sA').textContent = 'מחוברים! ה־Beem של דנה אצלך'; $('sB').textContent = 'מחוברים! ה־Beem של אסף אצלך';
-        $('sA').className = $('sB').className = 'st ok';
-        $('cA').textContent = 'אימון עם דנה · טורקיז'; $('cB').textContent = 'אימון עם אסף · המקורי';
-      }
+    if (phase === 'up' && t > 2.62 + APEX){ phase = 'down';
+      /* at the top, out of sight: the swap */
+      tintBeem(inA, 'teal'); tintBeem(inB, null);
+      [inA, inB].forEach(function(b){ b.verb('stretch', 0); b.verb('face', 'surprised'); b.verb('look', 0, -14); });
     }
-    if (phase === 'landed' && t > 9.5) start();
+    if (phase === 'down' && !inA.air && t > 2.62 + APEX + .2){ phase = 'landed'; T1 = t;
+      [inA, inB].forEach(function(b){ b.verb('face', 'happy'); b.verb('burst', 1.6); b.verb('spin', 180); });
+      $('sA').textContent = 'מחוברים! ה־Beem של דנה אצלך'; $('sB').textContent = 'מחוברים! ה־Beem של אסף אצלך';
+      $('sA').className = $('sB').className = 'st ok';
+      $('cA').textContent = 'אימון עם דנה · טורקיז'; $('cB').textContent = 'אימון עם אסף · המקורי';
+    }
+    /* then each looks UP, where it came from, and back down at its new
+       person - true whichever side the other phone is on */
+    if (phase === 'landed'){
+      var u = t - T1;
+      if (u > .7 && !inA.l1){ inA.l1 = 1; [inA, inB].forEach(function(b){ b.verb('look', 0, 20); b.verb('face', 'curious'); }); }
+      if (u > 1.6 && !inA.l2){ inA.l2 = 1; [inA, inB].forEach(function(b){ b.verb('look', 0, 0); b.verb('face', 'calm'); }); }
+      if (u > 2.1 && !inA.l3){ inA.l3 = 1; [inA, inB].forEach(function(b){ b.verb('face', 'happy'); b.verb('nod', 1, 9); }); }
+      if (u > 3.1 && !inA.l4){ inA.l4 = 1; [inA, inB].forEach(function(b){ b.verb('face', 'content'); }); }
+    }
+    if (phase === 'landed' && t > T1 + 5.5){ inA.l1 = inA.l2 = inA.l3 = inA.l4 = 0; start(); }
     requestAnimationFrame(tick);
   }
   $('again').onclick = start;
