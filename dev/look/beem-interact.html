@@ -83,8 +83,8 @@ function Scene(card, cfg){
   /* where Beem is, in px */
   this.beem = function(){ var b = self.b, k = self.k;
     return {x: self.sx + (SPH.x + b.x)*k, y: self.sy + (SPH.y + b.y)*k, r: SPH.r*k*b.gate}; };
-  this.prop = function(name, img, h, layer){
-    var e = document.createElement('img'); e.src = img.src; e.className = 'prop ' + (layer || 'front');
+  this.prop = function(name, img, h, layer, el){
+    var e = el || document.createElement('img'); if (!el) e.src = img.src; e.className = 'prop ' + (layer || 'front');
     sc.appendChild(e);
     var p = {el: e, img: img, h: h, x: 0, y: 0, vx: 0, vy: 0, rot: 0, vr: 0, sq: 0, sqv: 0, s: 1, op: 1, free: false};
     self.props[name] = p; return p;
@@ -151,32 +151,80 @@ function Scene(card, cfg){
 }
 function once(sc, key){ if (sc.f[key]) return false; sc.f[key] = 1; return true; }
 
-/* ══ the glass: its water lowered by repainting its own pixels ══ */
-function glassAt(img, level){
-  /* level 1 = as rendered (half full); 0 = empty. Water pixels are the
-     saturated blue ones; above the new surface they take the colour the
-     empty part of the glass has in the same column, sampled from the top. */
-  var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
-  var x = c.getContext('2d'); x.drawImage(img, 0, 0);
-  var im = x.getImageData(0, 0, c.width, c.height), d = im.data, W = c.width, H = c.height;
-  if (!glassAt.top){
-    /* measure once: the water's top and bottom rows, and an empty-glass colour per column */
-    var wTop = H, wBot = 0, empty = [];
-    for (var X = 0; X < W; X++){ empty[X] = null;
-      for (var Y = 0; Y < H; Y++){ var i = (Y*W + X)*4; if (d[i+3] < 200) continue;
-        var sat = d[i+2] - (d[i] + d[i+1])/2, water = sat > 60 && d[i+2] > 150;
-        if (water){ if (Y < wTop) wTop = Y; if (Y > wBot) wBot = Y; }
-        else if (!empty[X] && Y > H*.15 && Y < H*.45) empty[X] = [d[i], d[i+1], d[i+2]]; } }
-    glassAt.top = wTop; glassAt.bot = wBot; glassAt.empty = empty;
-  }
-  var cut = glassAt.top + (1 - level)*(glassAt.bot - glassAt.top - 18);
-  for (var Y2 = glassAt.top; Y2 < cut; Y2++) for (var X2 = 0; X2 < W; X2++){
-    var j = (Y2*W + X2)*4; if (d[j+3] < 200) continue;
-    var s2 = d[j+2] - (d[j] + d[j+1])/2;
-    if (s2 > 60 && d[j+2] > 150 && glassAt.empty[X2]){ var e = glassAt.empty[X2]; d[j] = e[0]; d[j+1] = e[1]; d[j+2] = e[2]; }
-  }
-  x.putImageData(im, 0, 0); return c.toDataURL();
+/* ══ THE GLASS, SECOND WAY (Asaf: "it looks broken"). Repainting water pixels
+   in steps left half-painted edges and read as a bug. Now the glass is three
+   layers made once from its own render:
+     an EMPTY glass - the clear band just above the water, stretched down the
+       walls row by row at the glass's own width there, so it is the same
+       glass with nothing in it;
+     the WATER - the original render, shown only below the current level;
+     the SURFACE - the original surface band (its pale ellipse), moved down
+       with the level and narrowed to the glass's width at that height.
+   The level then moves smoothly, so the water is seen going down. ══ */
+function GlassFX(img){
+  var W = img.width, H = img.height, c = document.createElement('canvas'); c.width = W; c.height = H;
+  var g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  var src = g.getImageData(0, 0, W, H), d = src.data, wTop = H, wBot = 0, L = [], R = [];
+  /* a row is WATER when most of its middle is saturated blue - a single
+     blue pixel is not enough: the glass's own rim is blue too, and counting
+     it took the whole glass for water */
+  var isW = [];
+  for (var y = 0; y < H; y++){ L[y] = -1; R[y] = -1; var wn = 0, cn = 0;
+    for (var x = 0; x < W; x++){ var i = (y*W + x)*4;
+      if (d[i+3] > 200){ if (L[y] < 0) L[y] = x; R[y] = x; }
+      if (x > W*.3 && x < W*.7 && d[i+3] > 200){ cn++;
+        var sat = d[i+2] - (d[i] + d[i+1])/2; if (sat > 50 && d[i+2] > 140) wn++; } }
+    isW[y] = cn > 8 ? wn/cn : 0; }
+  /* MEASURED on this glass, by row: empty glass is saturation ~37, the
+     water's SURFACE (its ellipse, seen from above) ~80, the deep water ~90 -
+     and between them one pale line, the surface's far edge. So: the water
+     starts where blue starts; the surface runs from there to the first
+     deep row; and the two move as separate pieces. */
+  /* by each row's AVERAGE saturation across the middle (measured: rim 68 for
+     one row, empty glass ~37, surface ~80, deep water ~88, then the water's
+     bottom edge and the glass base) */
+  var sat = [];
+  for (y = 0; y < H; y++){ var sn = 0, ss = 0;
+    for (var xx = Math.floor(W*.3); xx < W*.7; xx++){ var ii = (y*W + xx)*4; if (d[ii+3] < 200) continue;
+      sn++; ss += d[ii+2] - (d[ii] + d[ii+1])/2; }
+    sat[y] = sn ? ss/sn : 0; }
+  function runFrom(y0, lo, n){ for (var y = y0; y < H - n; y++){ var ok = true;
+    for (var q = 0; q < n; q++) if (sat[y + q] <= lo){ ok = false; break; } if (ok) return y; } return -1; }
+  wTop = runFrom(Math.floor(H*.1), 60, 8);                  // eight blue rows in a row: the rim is one
+  var deep = runFrom(wTop + 10, 84, 8);
+  wBot = deep; while (wBot < H - 1 && sat[wBot + 1] > 75) wBot++;
+  this.deep = deep;
+  if (wTop < 0 || deep < 0) console.warn('GlassFX: no water found');
+  this.top = wTop; this.bot = wBot;
+  /* the empty glass */
+  var emp = document.createElement('canvas'); emp.width = W; emp.height = H;
+  var eg = emp.getContext('2d'), ed = g.getImageData(0, 0, W, H), e = ed.data, srcRow = wTop - 12;
+  for (y = wTop - 4; y <= wBot; y++){ if (L[y] < 0) continue;
+    for (x = L[y]; x <= R[y]; x++){
+      var u = (x - L[y])/Math.max(1, R[y] - L[y]), sx = Math.round(L[srcRow] + u*(R[srcRow] - L[srcRow]));
+      var o = (y*W + x)*4, s = (srcRow*W + sx)*4;
+      e[o] = d[s]; e[o+1] = d[s+1]; e[o+2] = d[s+2]; } }
+  eg.putImageData(ed, 0, 0);
+  this.empty = emp; this.img = img; this.L = L; this.R = R; this.W = W; this.H = H;
+  this.out = document.createElement('canvas'); this.out.width = W; this.out.height = H;
+  this.band = this.deep - wTop;                             // the surface, top edge to first deep row
+  this.draw(1);
 }
+GlassFX.prototype.draw = function(level){
+  var o = this.out.getContext('2d'), W = this.W, H = this.H, band = this.band;
+  var travel = this.bot - this.deep - 16, y = Math.round(this.top + (1 - level)*travel);
+  o.clearRect(0, 0, W, H); o.drawImage(this.empty, 0, 0);
+  /* the deep water, from just under the surface's new place down */
+  o.drawImage(this.img, 0, y + band, W, H - y - band, 0, y + band, W, H - y - band);
+  /* the surface, whole - its ellipse and its far edge - moved down and
+     narrowed to the glass's width at its new height */
+  var t = this.top, mid0 = t + (band >> 1), mid1 = y + (band >> 1);
+  var w0 = this.R[mid0] - this.L[mid0], w1 = this.R[mid1] - this.L[mid1];
+  if (w0 > 0 && w1 > 0){
+    var k = w1/w0, cx1 = (this.L[mid1] + this.R[mid1])/2;
+    o.drawImage(this.img, this.L[mid0], t, w0, band, cx1 - w0*k/2, y, w0*k, band);
+  }
+};
 
 var IDLE = {dur: 1e9, ev: [[0, 'mode', {breathe: [.014, 3.6], idle: 0}]]};
 var DEFS = [
@@ -202,16 +250,18 @@ var DEFS = [
    }},
   {img: 'glass', at: .4, loop: 9, t: 'כוס מים',
    p: 'הוא נשען אל הכוס והיא נוטה אליו. בכל לגימה המפלס יורד, ובצבע של הכוס עצמה, בלי רנדר של כוס ריקה. אחרי הלגימה האחרונה הוא מרוצה ונושם.',
-   reset: function(s){ s.f = {}; s.lv = 1; var p = s.props.p; p.free = true; p.x = s.W*.74; p.y = s.floor; p.rot = 0;
-     p.el.src = s.full; s.b.verb('look', 24, -6); s.b.verb('face', 'curious'); },
+   reset: function(s){ s.f = {}; s.lv = 1; s.lvShown = 1; var p = s.props.p; p.free = true; p.x = s.W*.74; p.y = s.floor; p.rot = 0;
+     s.gfx.draw(1); s.b.verb('look', 24, -6); s.b.verb('face', 'curious'); },
    update: function(s, t){
      var b = s.b, p = s.props.p;
      [1.2, 3.2, 5.2].forEach(function(at, i){
        if (t > at && once(s, 'sip' + i)){ b.verb('to', 90, 0); b.verb('face', 'content'); b.verb('look', 30, -4); s.sipAt = t; }
        if (t > at + .5 && once(s, 'gulp' + i)){ b.verb('face', 'happy'); b.verb('squash', 1.6);
-         s.lv = Math.max(0, 1 - (i + 1)*.33); p.el.src = glassAt(s.glassImg, s.lv); }
+         s.lv = Math.max(.04, 1 - (i + 1)*.32); }
        if (t > at + 1.2 && once(s, 'back' + i)){ b.verb('to', 0, 0); b.verb('face', 'calm'); }
      });
+     /* the level follows smoothly - the water is SEEN going down */
+     if (Math.abs(s.lvShown - s.lv) > .002){ s.lvShown += (s.lv - s.lvShown)*.07; s.gfx.draw(s.lvShown); }
      var tilt = s.sipAt && t - s.sipAt < 1.2 ? Math.sin(Math.min(1, (t - s.sipAt)/.5)*Math.PI/2)*-22 : 0;
      p.rot += (tilt - p.rot)*.15;
      if (t > 6.8 && once(s, 'done')){ b.verb('face', 'content'); b.verb('burst', 1); b.verb('nod', 1, 8); }
@@ -285,8 +335,8 @@ Promise.all([BEEM_READY].concat(DEFS.map(function(d){ return load('beem-props/' 
     g.appendChild(c);
     var s = new Scene(c, d), img = imgs[i + 1];
     var h = {dumbbell: .2, glass: .3, ball: .17, gift: .3, clock: .27}[d.img];
-    s.prop('p', img, h, 'front');
-    if (d.img === 'glass'){ s.glassImg = img; s.full = img.src; }
+    if (d.img === 'glass'){ s.gfx = new GlassFX(img); s.prop('p', img, h, 'front', s.gfx.out); }
+    else s.prop('p', img, h, 'front');
     SCENES.push(s); s.restart();
   });
   document.getElementById('slow').onclick = function(){ SPEED = SPEED === 1 ? 1/3 : 1;
