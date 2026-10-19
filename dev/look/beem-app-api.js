@@ -1,0 +1,76 @@
+/* The app's door into Beem - the only thing that leaves the closure.
+   Part of beem-app.js (built by beem-build.mjs); not loaded on its own.
+
+     BeemKit.ready                      Promise: the canon is loaded and cut
+     BeemKit.mount(el, {play, glow})    a live Beem filling `el` (a square box)
+         play: 'invite' | 'counted' | 'sun' | 'moon' | a script
+         glow: the streak count, worn as light (0 = none)
+     BeemKit.streak(days)               the rules of 18.10: days = ['done'|'miss', ...]
+                                        for every ENDED app day, oldest first
+     BeemKit.glow(beem, count)          change a mounted Beem's light
+
+   A mounted Beem whose element leaves the page is dropped by the loop on its
+   own, so re-rendering a screen with innerHTML needs no cleanup. */
+
+/* the three approved places (round 2, 19.10) */
+var APP_SCRIPTS = {
+  /* the summary's invitation: he looks at "נתחיל", nods to it, and breathes */
+  invite: {dur: 13600, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.016, 4], idle: 0}],
+    [600, 'look', 0, -16], [1300, 'nod', 1, 9], [2400, 'look', 0, 0], [3400, 'face', 'calm'],
+    [4200, 'fx', {t: 'rings', v: {sc: [1.1, 1.13, 1.16]}, d: 4000, s: 120}], [4200, 'fx', {t: 'me', v: {gT: 1.06}, d: 4000}],
+    [8800, 'fx', {t: 'rings', v: {sc: 1}, d: 4200, s: 120}], [8800, 'fx', {t: 'me', v: {gT: 1}, d: 4200}],
+    [8900, 'face', 'content'], [9800, 'face', 'closed'], [13100, 'face', 'calm']]},
+  /* the Me card: content, and now and then glad of the count */
+  counted: {dur: 6000, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.014, 3.6], idle: 1}],
+    [2400, 'face', 'happy'], [2450, 'hop', 30], [2450, 'burst', .7], [3600, 'face', 'calm']]},
+  /* the sky: the sun by day, the moon (beads as stars) by night */
+  sun: {dur: 1e9, ev: [[0, 'face', 'calm'], [0, 'mode', {breathe: [.014, 3.6], idle: 1, float: 10}]]},
+  moon: {dur: 1e9, ev: [[0, 'face', 'sleepy'], [0, 'mode', {idle: 0, breathe: [.02, 5.4], spinMul: .18}],
+    [0, 'fx', {t: 'fx', v: {beads: 1}, d: 0}], [200, 'fx', {t: 'body', v: {moon: 1}, d: 2400}], [1400, 'face', 'closed']]}
+};
+
+var LIVE = [], running = false, io = null;
+function loop(){
+  var last = null;
+  requestAnimationFrame(function tick(now){
+    var raw = last === null ? .016 : (now - last)/1000; last = now;
+    if (!(raw > 0) || raw > .25) raw = .016;
+    var dt = Math.min(.1, raw), n = Math.ceil(dt/.0167), h = dt/n;
+    for (var i = LIVE.length - 1; i >= 0; i--){
+      var b = LIVE[i];
+      if (!b.host.isConnected){ if (io) io.unobserve(b.host); LIVE.splice(i, 1); continue; }
+      if (!b.visible) continue;
+      for (var s = 0; s < n; s++) b.step(h);
+      b.paint();
+    }
+    requestAnimationFrame(tick);
+  });
+}
+function glowOn(b, count){
+  var el = b.host.querySelector('.beem'), d = b.host.clientWidth;
+  if (!count){ el.style.filter = ''; return; }
+  var L = streakGlow(count);
+  el.style.filter = 'drop-shadow(0 0 ' + (d*.06 + d*.1*L).toFixed(1) + 'px rgba(255,186,60,' + (.18 + .45*L).toFixed(2) + '))';
+}
+
+window.BeemKit = {
+  ready: BEEM_READY,
+  mount: function(el, opts){
+    opts = opts || {};
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    var b = new Beem(el);
+    var s = typeof opts.play === 'string' ? APP_SCRIPTS[opts.play] : opts.play;
+    b.play(s || APP_SCRIPTS.sun);
+    if (opts.glow) glowOn(b, opts.glow);
+    if (!io && 'IntersectionObserver' in window)
+      io = new IntersectionObserver(function(es){ es.forEach(function(e){
+        LIVE.forEach(function(x){ if (x.host === e.target) x.visible = e.isIntersecting; }); }); });
+    if (io) io.observe(el);
+    LIVE.push(b);
+    if (!running){ running = true; loop(); }
+    return b;
+  },
+  glow: glowOn,
+  streak: streakState,
+  scripts: APP_SCRIPTS
+};
