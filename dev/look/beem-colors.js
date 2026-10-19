@@ -188,6 +188,42 @@ function okPixel(O){
     return [lin2srgb(rgb[0]), lin2srgb(rgb[1]), lin2srgb(rgb[2])];
   };
 }
+/* ═══ ROUND 4: his palette is ONE RAMP, and that is what moves ═══
+   Measured on the canon (OKLab, by lightness):
+     inner ring  L .61  hue 29  (red)        HSL ~ 4°,  95%, 49%
+     middle ring L .69  hue 44  (orange)     HSL ~25°, 100%, 49%
+     outer ring  L .79  hue 80  (yellow)     HSL ~44°,  98%, 47%
+     body        hue 40 at its darkest  ->  96 at its lightest, L .57 -> .94
+   So the palette is not "orange": it is a single analogous ramp of ~70° of
+   hue at FULL colour, where hue and light rise together - the darker a pixel,
+   the nearer the red end; the lighter, the nearer the yellow end - and the
+   three rings are three stations on that ramp. Every earlier round kept the
+   colours and lost this relation; that is why they never read as his palette.
+   Now: each colour is the same ramp, laid on a new stretch of the wheel,
+   running the same 70° from a DEEP hue to a naturally LIGHTER neighbour (as
+   red runs to yellow). Each pixel keeps its lightness and its fullness; only
+   its station on the ramp is re-read in the new hues. */
+var RAMP0 = 29, RAMP_SPAN = 70;
+function rampPixel(O){
+  return function(R, G, B){
+    var ok = toOK(R, G, B), L = ok[0], C = Math.hypot(ok[1], ok[2]);
+    var h = (Math.atan2(ok[2], ok[1])*180/Math.PI + 360) % 360; if (h > 250) h -= 360;
+    var rel = C/Math.max(1e-4, maxC(L, (h + 360) % 360));
+    var h2 = ((O.deep + (h - RAMP0)*(O.span/RAMP_SPAN)) % 360 + 360) % 360;
+    var C2 = Math.min(1, rel)*maxC(L, h2)*(O.full || 1), hr = h2*Math.PI/180, rgb;
+    for (var k = 0; k < 8; k++){ rgb = fromOK(L, C2*Math.cos(hr), C2*Math.sin(hr)); if (inGamut(rgb)) break; C2 *= .9; }
+    return [lin2srgb(rgb[0]), lin2srgb(rgb[1]), lin2srgb(rgb[2])];
+  };
+}
+/* deep end -> light end, 70° like his red -> yellow (negative = the other way round the wheel) */
+var RAMP_SET = {
+  red:    {deep: 12,  span: 40},             // crimson -> coral: red's own neighbour toward the light
+  blue:   {deep: 275, span: -60},            // indigo -> blue -> sky
+  green:  {deep: 165, span: -55, full: .92}, // emerald -> green -> yellow-green
+  purple: {deep: 290, span: 50},             // violet -> purple -> orchid
+  pink:   {deep: 345, span: 35},             // magenta-rose -> pink -> peach-pink
+  teal:   {deep: 235, span: -45, full: .95}  // deep sea -> teal -> aqua
+};
 var REL_SET = {
   red:    {hue: 24,  full: .97, spread: .62},
   blue:   {hue: 258, full: .9,  spread: .62},
@@ -212,9 +248,9 @@ var COLORS_READY = new Promise(function(res){
     (function wait(){
       if (!BEADS) return setTimeout(wait, 60);
       PALETTES.forEach(function(P){
-        var R = REL_SET[P.id], O = OK_SET[P.id];
-        if (!R && !O){ TINTS[P.id] = buildPalette(P); return; }   // gold stays as approved
-        var t = lutOf(R ? relPixel(R) : okPixel(O));
+        var RM = RAMP_SET[P.id], O = OK_SET[P.id];
+        if (!RM && !O){ TINTS[P.id] = buildPalette(P); return; }   // gold stays as approved
+        var t = lutOf(RM ? rampPixel(RM) : okPixel(O));
         TINTS[P.id] = {body: applyLut(EB, t), beads: BEADS.map(function(ring){ return ring.map(function(b){ return applyLut(b.spr, t); }); })};
       });
       res();
