@@ -59,7 +59,9 @@
   <div class="lede">
     הרעיון שלך: שני אנשים מתחברים לאימון משותף דרך קוד QR, ו<b>ברגע שהחיבור מצליח, ה־Beem של
     כל אחד עובר לטלפון של השני</b>. לכל אחד יש צבע משלו, אדום וירוק, כך שכל אחד רואה את ה־Beem
-    של השני נוחת אצלו. הצבעים עשויים כמו הזהב והירח, מהאור של Beem עצמו: הגוף וכל חרוז.
+    של השני נוחת אצלו. <b>האדום הוא Beem עצמו, עם כל הצבעים שלו.</b> הירוק הוא אותה תמונה
+    שסובבה בגלגל הצבעים: כל פיקסל שומר על הבהירות והעוצמה שלו, ולכן שלוש הטבעות נשארות שלושה
+    צבעים שונים, רק בגוונים של ירוק. אחרי ההחלפה הם מסתכלים אחד על השני, דרך המרווח בין הטלפונים.
   </div>
 
   <div class="pair" id="pair">
@@ -119,7 +121,8 @@ BEEM_READY.then(function(){
 
   function start(){
     T0 = performance.now(); phase = 'wait';
-    tintBeem(inA, 'red'); tintBeem(inB, 'green'); tintBeem(flA, 'red'); tintBeem(flB, 'green');
+    /* the red player is Beem himself - no tint at all */
+    tintBeem(inA, null); tintBeem(inB, 'green'); tintBeem(flA, null); tintBeem(flB, 'green');
     inA.play(IDLE_IN); inB.play(IDLE_IN); flA.play(IDLE_IN); flB.play(IDLE_IN);
     $('bA').style.opacity = 1; $('bB').style.opacity = 1; $('fA').style.opacity = 0; $('fB').style.opacity = 0;
     $('qr').classList.remove('gone'); $('view').classList.remove('gone');
@@ -163,10 +166,14 @@ BEEM_READY.then(function(){
       if (p >= 1){ phase = 'landed'; flA.met = flB.met = false;
         $('fA').style.opacity = 0; $('fB').style.opacity = 0;
         /* each phone now holds the OTHER one's Beem, dropping in from above */
-        tintBeem(inA, 'green'); tintBeem(inB, 'red');
-        [inA, inB].forEach(function(b){
-          b.play(once({dur: 3200, ev: [[0, 'snap', {y: -300, air: 1}], [0, 'face', 'happy'], [700, 'burst', 1.2],
-            [1600, 'nod', 1, 9], [2600, 'face', 'content']]}));
+        tintBeem(inA, 'green'); tintBeem(inB, null);
+        /* then they LOOK AT EACH OTHER: each turns its eyes toward the other
+           phone, holds it, blinks, and nods - across the gap */
+        [[inA, A, B], [inB, B, A]].forEach(function(o){
+          var toward = o[2].x > o[1].x ? 1 : -1;
+          o[0].play({dur: 1e9, ev: [[0, 'snap', {y: -300, air: 1}], [0, 'face', 'happy'], [700, 'burst', 1.2],
+            [1000, 'face', 'calm'], [1100, 'look', 34*toward, 4], [1900, 'blink'], [2300, 'face', 'happy'],
+            [2400, 'nod', 1, 9], [3300, 'face', 'content'], [5600, 'blink']]});
         });
         $('bA').style.opacity = 1; $('bB').style.opacity = 1;
         $('sA').textContent = 'מחוברים! ה־Beem של דנה אצלך'; $('sB').textContent = 'מחוברים! ה־Beem של אסף אצלך';

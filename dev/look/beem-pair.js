@@ -7,18 +7,39 @@
    were - a gradient map of his own brightness, body and every bead - so a red
    or green Beem is still the canon render, not a repaint. */
 
-var TINT_RAMPS = {
-  red:   [[0, 92,12,22], [.35, 168,26,40], [.6, 222,60,64], [.85, 246,136,124], [1, 255,218,206]],
-  green: [[0, 12,70,42], [.35, 28,136,78], [.6, 64,190,112], [.85, 156,228,172], [1, 226,255,236]]
-};
+/* HIS COLOURS ARE KEPT. The first version gradient-mapped each Beem to one
+   hue, and Asaf saw what that cost: the red, orange and yellow rings became
+   one flat green - his variety was gone. Now the red player IS Beem, as he
+   is, and the green one is the same picture turned round the colour wheel:
+   every pixel keeps its own saturation and lightness and moves by the same
+   angle, so the three rings stay three different colours - three greens
+   instead of red, orange and yellow. */
+var TINT_HUE = {green: 112};
 var TINTS = {};
+function hueOf(src, deg){
+  var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  var x = c.getContext('2d'); x.drawImage(src, 0, 0);
+  var im = x.getImageData(0, 0, c.width, c.height), d = im.data, sh = deg/360;
+  for (var i = 0; i < d.length; i += 4){
+    if (!d[i+3]) continue;
+    var r = d[i]/255, g = d[i+1]/255, b = d[i+2]/255, mx = Math.max(r, g, b), mn = Math.min(r, g, b),
+        l = (mx + mn)/2, s = 0, h = 0, dd = mx - mn;
+    if (dd){ s = l > .5 ? dd/(2 - mx - mn) : dd/(mx + mn);
+      h = mx === r ? (g - b)/dd + (g < b ? 6 : 0) : mx === g ? (b - r)/dd + 2 : (r - g)/dd + 4; h /= 6; }
+    h = (h + sh) % 1;
+    var q = l < .5 ? l*(1 + s) : l + s - l*s, p = 2*l - q;
+    var f = function(t){ t = (t + 1) % 1; return t < 1/6 ? p + (q - p)*6*t : t < .5 ? q : t < 2/3 ? p + (q - p)*(2/3 - t)*6 : p; };
+    d[i] = f(h + 1/3)*255; d[i+1] = f(h)*255; d[i+2] = f(h - 1/3)*255;
+  }
+  x.putImageData(im, 0, 0); return c;
+}
 BEEM_READY.then(function(){
   (function wait(){
     if (!BEADS) return setTimeout(wait, 60);
-    Object.keys(TINT_RAMPS).forEach(function(k){
-      var R = TINT_RAMPS[k];
-      TINTS[k] = {body: rampOf(EB, 60, 170, R),
-                  beads: BEADS.map(function(ring){ return ring.map(function(b){ return rampOf(b.spr, 0, 190, R); }); })};
+    Object.keys(TINT_HUE).forEach(function(k){
+      var deg = TINT_HUE[k];
+      TINTS[k] = {body: hueOf(EB, deg),
+                  beads: BEADS.map(function(ring){ return ring.map(function(b){ return hueOf(b.spr, deg); }); })};
     });
   })();
 });
