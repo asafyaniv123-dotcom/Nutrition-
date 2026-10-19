@@ -306,7 +306,7 @@ var EASE = {
             cY = Math.cos(Rr.tiltY*RAD), sY = Math.sin(Rr.tiltY*RAD),
             cX = Math.cos(Rr.tilt*RAD), sX = Math.sin(Rr.tilt*RAD),
             cZ = Math.cos(Rr.prec*RAD), sZ = Math.sin(Rr.prec*RAD);
-        BEADS[i].forEach(function(b){
+        BEADS[i].forEach(function(b, j){
           var bx = b.bx, by = b.by;
           if (f.wave > .001){                   // the stadium wave: each bead out and back in turn
             var th = Math.atan2(by, bx) + this.spin[i]*RAD, rr = Math.hypot(bx, by);

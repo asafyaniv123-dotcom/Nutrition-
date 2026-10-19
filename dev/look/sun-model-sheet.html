@@ -127,6 +127,12 @@
   .proof .n{direction:ltr;display:inline-block;font-weight:800;color:#2f6b45}
   td a{color:#6b4a2f}
   @media (max-width:520px){.bgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+  /* props: one scene per card - NOT .bc, whose .stage rules would reshape the scene's stage */
+  .pgrid{display:grid;gap:14px;margin-top:14px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+  .pcard{border-radius:16px;background:var(--ground);padding:9px 9px 12px;
+    box-shadow:-2px -2px 6px var(--nu-lit),3px 4px 10px var(--nu-shade-soft)}
+  .pcard h3{font-size:13.5px;font-weight:800;margin-top:8px}
+  .pcard p{font-size:11.5px;line-height:1.62;color:var(--muted);margin-top:2px}
   /* Beem alive: the finger and the clock, each on its own live stage */
   .alive{display:grid;gap:14px;margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
   .alive .bc{cursor:default}
@@ -401,6 +407,17 @@
   </div>
   <div id="pairing" style="margin-top:16px"></div>
 
+  <h2>חפצים — Beem עם דברים</h2>
+  <div class="note">
+    החפצים הם רנדרים מגיליונות של Higgsfield, עם Beem המקורי כרפרנס לסגנון (כ־0.2 קרדיטים לחפץ),
+    וכל התנועה היא קוד. <b>לחפצים יש אותה פיזיקה שיש לו:</b> כבידה, רצפה, קפיצה ומעיכה. ל־Beem
+    אין ידיים, אז הטבעות מחזיקות, הגוף דוחף ונושא, והעיניים עוקבות. <b>והטבעות הן חלק מהגוף:</b>
+    כל חרוז הוא מסה קטנה על קפיץ. כשחפץ נכנס לטבעות, החרוזים שבדרכו נדחקים הצידה, מתנדנדים
+    וחוזרים למקומם, ומכה חזקה מרעידה את כל הטבעת. לחיצה על סצנה מתחילה אותה מחדש. 79 החפצים
+    כולם ב־<code>beem-props.html</code>, והקוד ב־<code>beem-scenes.js</code>.
+  </div>
+  <div class="pgrid" id="propscenes"></div>
+
   <h2>חי — מגע ושעה</h2>
   <div class="note">
     כאן הוא לא מנגן רגע, אלא <b>מגיב</b>. <b>מגע:</b> הוא מסתכל על האצבע. נגיעה מצחיקה
@@ -483,6 +500,7 @@
 <script src="beem-pair.js"></script>
 <script src="beem-colors.js"></script>
 <script src="beem-pairing.js"></script>
+<script src="beem-scenes.js"></script>
 <script>
 var PAL = [
   ['#fed662','גוף · קודקוד','rgb(254,214,98)'],
@@ -598,6 +616,26 @@ BEEM_READY.then(function(){
     $s('c-streak').textContent = 'הרצף נשבר. הוא עצוב רגע, ומתחילים מחדש.';
   };
   glow();
+
+  /* props (approved 19.10): the four Asaf liked - the glass is still open */
+  var SHEET_PROPS = ['dumbbell', 'ball', 'gift', 'clock'], PSC = [];
+  var pdefs = PROP_SCENES.filter(function(d){ return SHEET_PROPS.indexOf(d.img) >= 0; });
+  Promise.all(pdefs.map(function(d){ return propImage(d.img); })).then(function(imgs){
+    var host = document.getElementById('propscenes');
+    pdefs.forEach(function(d, i){
+      var c = document.createElement('div'); c.className = 'pcard';
+      c.innerHTML = '<div class="ps-scene"></div><h3>' + d.t + '</h3><p>' + d.p + '</p>';
+      host.appendChild(c);
+      var s = new PropScene(c, d, ALL); s.prop('p', imgs[i], PROP_H[d.img], 'front');
+      PSC.push(s); s.restart();
+    });
+    var plast = null;
+    requestAnimationFrame(function ptick(now){
+      var dt = plast === null ? .016 : Math.min(.05, (now - plast)/1000); plast = now;
+      PSC.forEach(function(s){ s.tick(dt); });
+      requestAnimationFrame(ptick);
+    });
+  });
 
   /* colours (approved 19.10 as options): the original, then the ten */
   COLORS_READY.then(function(){

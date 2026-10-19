@@ -886,7 +886,7 @@ var EASE = {
             cY = Math.cos(Rr.tiltY*RAD), sY = Math.sin(Rr.tiltY*RAD),
             cX = Math.cos(Rr.tilt*RAD), sX = Math.sin(Rr.tilt*RAD),
             cZ = Math.cos(Rr.prec*RAD), sZ = Math.sin(Rr.prec*RAD);
-        BEADS[i].forEach(function(b){
+        BEADS[i].forEach(function(b, j){
           var bx = b.bx, by = b.by;
           if (f.wave > .001){                   // the stadium wave: each bead out and back in turn
             var th = Math.atan2(by, bx) + this.spin[i]*RAD, rr = Math.hypot(bx, by);
@@ -895,6 +895,9 @@ var EASE = {
           }
           var x = bx*ca - by*sa, y = bx*sa + by*ca;
           x = x*gR/(1 - rs) + this.rx[i]; y = y*gR*(1 - rs) + this.ry[i] + drop;
+          /* a page may move each bead on its own - props pushing through the
+             rings (beem-interact). Absent everywhere else, so nothing changes. */
+          if (this.beadHook){ var hk = this.beadHook(i, j, x, y); x = hk[0]; y = hk[1]; }
           x *= Rr.sc; y *= Rr.sc;
           var x1 = x*cY, z1 = -x*sY;                          // rotateY
           var y2 = y*cX - z1*sX, z2 = y*sX + z1*cX;            // rotateX
