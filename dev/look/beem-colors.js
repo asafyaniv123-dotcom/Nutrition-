@@ -243,17 +243,37 @@ var OK_SET = {
   black:  {hue: 58,  chroma: .05, spread: 0, Lf: function(L){ return .14 + L*.42; }},
   white:  {hue: 58,  chroma: .05, spread: 0, Lf: function(L){ return .78 + L*.22; }}
 };
+/* each ring LAYER recoloured whole, at full resolution, so a tinted Beem's
+   rings are images exactly like the original's (see tintBeem) */
+function ringURL(canvas){
+  return new Promise(function(r){ canvas.toBlob(function(b){ r(URL.createObjectURL(b)); }, 'image/png'); });
+}
 var COLORS_READY = new Promise(function(res){
   BEEM_READY.then(function(){
+    return Promise.all(['sun-r1.png', 'sun-r2.png', 'sun-r3.png'].map(load));
+  }).then(function(ringImgs){
     (function wait(){
       if (!BEADS) return setTimeout(wait, 60);
+      var jobs = [];
       PALETTES.forEach(function(P){
-        var RM = RAMP_SET[P.id], O = OK_SET[P.id];
-        if (!RM && !O){ TINTS[P.id] = buildPalette(P); return; }   // gold stays as approved
-        var t = lutOf(RM ? rampPixel(RM) : okPixel(O));
-        TINTS[P.id] = {body: applyLut(EB, t), beads: BEADS.map(function(ring){ return ring.map(function(b){ return applyLut(b.spr, t); }); })};
+        var RM = RAMP_SET[P.id], O = OK_SET[P.id], rings;
+        if (!RM && !O){                                        // gold stays as approved
+          TINTS[P.id] = buildPalette(P);
+          rings = ringImgs.map(function(img, i){                // the same per-ring ramp, on the whole layer
+            var base = lumOf(BEADS[i][0].spr), c = hex(P.rings[i]), span = Math.min(255, base*1.9), u = base/span;
+            return rampOf(img, 0, span, [[0].concat(mixK(c, .7)), [u*.6].concat(mixK(c, .3)), [u].concat(c),
+              [u + (1 - u)*.45].concat(mixW(c, .45)), [1, 255, 255, 255]]);
+          });
+        } else {
+          var t = lutOf(RM ? rampPixel(RM) : okPixel(O));
+          TINTS[P.id] = {body: applyLut(EB, t), beads: BEADS.map(function(ring){ return ring.map(function(b){ return applyLut(b.spr, t); }); })};
+          rings = ringImgs.map(function(img){ return applyLut(img, t); });
+        }
+        var T = TINTS[P.id];
+        jobs.push(Promise.all(rings.map(ringURL)).then(function(u){ T.ringURL = u;
+          u.forEach(function(s){ var pre = new Image(); pre.src = s; }); }));   // decoded before any swap
       });
-      res();
+      Promise.all(jobs).then(res);
     })();
   });
 });

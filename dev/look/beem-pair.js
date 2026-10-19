@@ -69,13 +69,8 @@ function hueOf(src, deg){
   }
   x.putImageData(im, 0, 0); return c;
 }
-BEEM_READY.then(function(){
-  (function wait(){
-    if (!BEADS) return setTimeout(wait, 60);
-    TINTS.green = {body: greenOf(EB),
-                   beads: BEADS.map(function(ring){ return ring.map(function(b){ return greenOf(b.spr); }); })};
-  })();
-});
+/* (the green built here was superseded by beem-colors.js's palette; building
+   it here as well raced that one and overwrote it - removed) */
 
 (function(){
   var _paint = Beem.prototype.paint;
@@ -122,7 +117,20 @@ BEEM_READY.then(function(){
 /* the colour lives on the Beem; bead mode must be on for the beads to take
    it, and must survive every play() - which resets all effects */
 (function(){
-  var _reset = Beem.prototype.reset;
-  Beem.prototype.reset = function(){ _reset.call(this); if (this.tint) this.fx.beads = 1; };
 })();
-function tintBeem(b, name){ b.tint = name; b.fx.beads = 1; }
+/* THE TINT KEEPS HIS QUALITY (Asaf, 19.10: the coloured Beems looked soft and
+   their beads pixelated beside the original). The first way forced bead mode,
+   which draws every bead into a canvas capped at 2x the screen - the original
+   draws its rings as full-resolution images the browser re-rasterises at any
+   zoom. Now a tinted Beem is built exactly like the original: each ring layer
+   is recoloured ONCE at full resolution (beem-colors.js, TINTS[id].ringURL)
+   and simply replaces the ring image. Bead mode is no longer forced; when
+   some other moment turns it on, the bead pass above still tints the beads. */
+function tintBeem(b, name){
+  b.tint = name;
+  var T = name && TINTS[name];
+  b.rings.forEach(function(r, i){
+    var img = r.querySelector('img'), src = T && T.ringURL ? T.ringURL[i] : ASSET + 'sun-r' + (i + 1) + '.png';
+    if (img.getAttribute('src') !== src) img.src = src;
+  });
+}
