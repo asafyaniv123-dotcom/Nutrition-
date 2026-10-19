@@ -2167,9 +2167,14 @@ export default {
         'You sort one sentence a person typed into a personal life app into the\n' +
         'place it belongs. You never answer the person; you only classify.\n' +
         '\n' +
+        'ONE SENTENCE MAY HOLD SEVERAL THINGS - "add a treatment on Monday at four,\n' +
+        'and I just ate a banana" is a task AND food. Return one item for each\n' +
+        'separate thing, in the order they were said. Most sentences hold one.\n' +
+        '\n' +
         'Intents:\n' +
         '- food: they ate or drank something other than plain water (tea, coffee,\n' +
-        '  a meal, a snack). text = what they ate, in their words, without "I ate".\n' +
+        '  a meal, a snack). text = that part of the sentence in their own words,\n' +
+        '  "I ate" included - it is handed on to a food logger that reads it.\n' +
         '- water: plain water. amount = millilitres (a glass is 250, a bottle 500).\n' +
         '- quote: a sentence from the book they are reading, to keep. text = the\n' +
         '  quoted sentence alone, without the request around it. page if said.\n' +
@@ -2196,7 +2201,7 @@ export default {
         'Book being read: ' + (book || '(none)') + '.\n' +
         'Their people: ' + (people.length ? people.join(', ') : '(none)') + '.';
 
-      const SCHEMA = {
+      const ITEM = {
         type: 'object',
         properties: {
           intent: { type: 'string', enum: ROUTE_INTENTS },
@@ -2211,6 +2216,8 @@ export default {
         required: ['intent', 'text', 'person', 'date', 'time', 'amount', 'page', 'area'],
         additionalProperties: false,
       };
+      const SCHEMA = { type: 'object', properties: { items: { type: 'array', items: ITEM } },
+                       required: ['items'], additionalProperties: false };
 
       let r;
       try {
@@ -2244,11 +2251,17 @@ export default {
       let d;
       try { d = await r.json(); } catch { return json({ error: 'unreadable answer' }, 502); }
       // a declined request is not an error the person can act on: it is "not sure"
-      if (d.stop_reason === 'refusal') return json({ ok: true, route: routeClean({ intent: 'unknown' }, people) });
+      const unknown = routeClean({ intent: 'unknown', text: q }, people);
+      if (d.stop_reason === 'refusal') return json({ ok: true, route: unknown, routes: [unknown] });
       const text = ((d && d.content) || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
       let o;
       try { o = JSON.parse(text); } catch { return json({ error: 'unreadable answer', why: text.slice(0, 200) }, 502); }
-      return json({ ok: true, route: routeClean(o, people) });
+      /* every item checked on its own; at most six. route stays the first, for
+         an app that knows only one */
+      let routes = ((o && Array.isArray(o.items)) ? o.items : []).slice(0, 6).map((it) => routeClean(it, people));
+      if (routes.length > 1) routes = routes.filter((r) => r.intent !== 'unknown');
+      if (!routes.length) routes = [unknown];
+      return json({ ok: true, route: routes[0], routes });
     }
 
     /* ── /schedule ───────────────────────────────────────────────────────

@@ -3116,6 +3116,13 @@ body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .hcmd-b{flex:1;border:none;border-radius:14px;padding:11px;font-family:inherit;font-size:13px;font-weight:800;color:var(--ink);background:var(--card);cursor:pointer}
 .hcmd-b.ghost{background:none;color:var(--muted)}
 .hcmd-busy{display:flex;gap:6px;justify-content:center;padding:18px}
+.hcmd-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.hcmd-it{display:flex;align-items:flex-start;gap:8px;background:var(--page);border-radius:14px;padding:9px 11px}
+.hcmd-it-x{flex:1;min-width:0}
+.hcmd-it-w{font-size:11px;font-weight:800;color:var(--muted)}
+.hcmd-it-t{font-size:13.5px;color:var(--ink);line-height:1.45;margin-top:2px;unicode-bidi:plaintext}
+.hcmd-it-del{flex:0 0 auto;background:none;border:none;color:var(--muted);font-size:18px;line-height:1;padding:0 4px;cursor:pointer;font-family:inherit}
+.hcmd-mic.listening{color:var(--terra-700)}
 .hcmd-busy i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:hcmd-dot 1s ease-in-out infinite}
 .hcmd-busy i:nth-child(2){animation-delay:.15s}
 .hcmd-busy i:nth-child(3){animation-delay:.3s}
@@ -5334,6 +5341,10 @@ html body.mod-home .hcmd-b.ghost{background:none;box-shadow:none;color:var(--nu-
 html body.mod-home .hcmd-card{background:var(--nu-ground);
   box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 18px var(--nu-shade-soft)}
 html body.mod-home .hcmd-q{color:var(--nu-ink)}
+html body.mod-home .hcmd-it{background:var(--nu-ground);
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-home .hcmd-it-w,html body.mod-home .hcmd-it-del{color:var(--nu-muted)}
+html body.mod-home .hcmd-it-t{color:var(--nu-ink)}
 html body.mod-home .hcmd-meta,html body.mod-home .hcmd-busy i{color:var(--nu-muted)}
 html body.mod-home .hcmd-busy i{background:var(--nu-muted)}
 html body.mod-home .greet-wrap{max-width:none;margin-bottom:4px}
@@ -13361,12 +13372,16 @@ var _oneAsked=false;
    Three states, because a recording that looks the same as a silent button is
    the way people lose a sentence: idle, listening (it breathes), sending. */
 var _micState='idle',_micRec=null,_micChunks=null,_micStream=null;
+/* Where the words go and what happens next. Nutrition's box is the default,
+   exactly as it always was; the home bar names its own box, its own button,
+   and asks for the sentence to be sent as soon as it is written down. */
+var _micBox='fdb-q',_micBtn='mic-btn',_micAfter=null;
 function micCan(){
   return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder);
 }
 function micPaint(){
-  var b=document.getElementById('mic-btn');
-  if(b)b.className='one-ic mic-btn'+(_micState==='idle'?'':' '+_micState);
+  var b=document.getElementById(_micBtn);
+  if(b)b.className=(b.getAttribute('data-base')||'one-ic mic-btn')+(_micState==='idle'?'':' '+_micState);
   var e=document.getElementById('mic-err');
   if(e)e.textContent=_micErr||'';
 }
@@ -13405,14 +13420,17 @@ function micSend(blob){
     }).then(function(r){return r.json();}).then(function(j){
       var said=(j&&j.text||'').trim();
       if(!said){micFail();return;}
-      var box=document.getElementById('fdb-q');
+      var box=document.getElementById(_micBox);
       if(box){
         box.value=(box.value?box.value.replace(/\s+$/,'')+' ':'')+said;
         /* the same two calls typing makes, so the parse button and the box's
            own height do not care where the words came from */
-        fdbType(box.value);oneGrow(box);
+        if(_micBox==='fdb-q'){fdbType(box.value);oneGrow(box);}
+        else rfmGrow(box);
       }
+      var after=_micAfter;
       _micErr='';micReset();
+      if(after)after();
     },micFail);
   };
   fr.readAsDataURL(blob);
@@ -13421,10 +13439,11 @@ function micStop(){
   if(_micRec&&_micState==='listening'){try{_micRec.stop();}catch(e){micFail();}}
   else micReset();
 }
-function micToggle(){
+function micToggle(box,btn,after){
   if(_micState==='listening'){micStop();return;}
   if(_micState==='sending')return;
   if(!micCan())return;
+  _micBox=box||'fdb-q';_micBtn=btn||'mic-btn';_micAfter=after||null;
   _micErr='';
   navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
     _micStream=stream;_micChunks=[];
@@ -39428,6 +39447,11 @@ function hcmdMount(){
     '<textarea id="hcmd-in" class="hcmd-in" rows="1" maxlength="1000" enterkeyhint="send" autocomplete="off"'+
     ' placeholder="'+_t('מה אכלת, מה לזכור, מה לעשות…')+'" oninput="rfmGrow(this)"'+
     ' onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();hcmdGo();}"></textarea>'+
+    /* Say it instead: press, speak, press again. The words are written into
+       the box - so what was heard can be seen - and sent on their own. */
+    (micCan()?'<button class="hcmd-go hcmd-mic mic-btn" id="hcmd-mic" data-base="hcmd-go hcmd-mic mic-btn"'+
+      ' onclick="micToggle(\'hcmd-in\',\'hcmd-mic\',hcmdGo)" aria-label="'+_t('דיבור')+'">'+
+      '<svg viewBox="0 0 24 24"><path d="M12 3.5a2.8 2.8 0 0 1 2.8 2.8v5a2.8 2.8 0 0 1-5.6 0v-5A2.8 2.8 0 0 1 12 3.5z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3.5"/></svg></button>':'')+
     '<button class="hcmd-go" onclick="hcmdGo()" aria-label="'+_t('שלח')+'">'+
     '<svg viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg></button>'+
     '</div><div id="hcmd-out"></div>';
@@ -39459,6 +39483,12 @@ function hcmdGo(){
     _hcmd.busy=false;
     if(x.s===429){_hcmd.msg=_t('הגעת למגבלה של היום.');hcmdPaint();return;}
     if(!x.j||!x.j.ok||!x.j.route){_hcmd.msg=_t('משהו השתבש. אפשר לנסות שוב.');hcmdPaint();return;}
+    /* several things in one sentence: one card that lists them all. Going
+       somewhere is not something to do alongside other things, so "open"
+       only ever stands alone. */
+    var rs=[],k;
+    for(k=0;k<(x.j.routes||[]).length;k++)if(x.j.routes[k].intent!=='open')rs.push(x.j.routes[k]);
+    if(rs.length>1){_hcmd.multi=rs;hcmdPaint();return;}
     hcmdLand(x.j.route);
   },function(){
     _hcmd.busy=false;_hcmd.msg=_t('אין חיבור כרגע.');hcmdPaint();
@@ -39489,7 +39519,7 @@ function hcmdLand(r){
   _hcmd.route=r;
   hcmdPaint();
 }
-function hcmdReset(){_hcmd={busy:false,q:'',route:null,msg:'',done:null};hcmdPaint();}
+function hcmdReset(){_hcmd={busy:false,q:'',route:null,msg:'',done:null,multi:null};hcmdPaint();}
 function hcmdOpen(area){
   if(area==='me'){showMain('me');return;}
   if(area==='people'&&_hcmd.done&&typeof _hcmd.done.person==='number'){
@@ -39521,6 +39551,7 @@ function hcmdPaint(){
       '<div class="hcmd-btns"><button class="hcmd-b ghost" onclick="hcmdReset()">'+_t('סגור')+'</button></div></div>';
     return;
   }
+  if(_hcmd.multi){out.innerHTML=hcmdMultiHTML();return;}
   if(!r){out.innerHTML='';return;}
   var text=r.text||_hcmd.q;
   if(r.intent==='quote'){
@@ -39556,8 +39587,17 @@ function hcmdApply(as){
   var r=_hcmd.route;if(!r)return;
   var intent=as||r.intent,e=document.getElementById('hcmd-edit');
   var text=e?String(e.value).trim():String(r.text||_hcmd.q).trim();
+  var w=hcmdWrite(intent,r,text);
+  if(!w)return;
+  _hcmd={busy:false,q:'',route:null,msg:'',done:w};
+  hcmdClear();hcmdPaint();
+  try{renderHomeToday();}catch(err){}
+}
+/* Writes one item where it belongs, through that area's own load and save.
+   Returns where it went, or null when it could not be written. */
+function hcmdWrite(intent,r,text){
   var today=todayStr(),area='',person=null,i;
-  if(!text&&intent!=='water'&&intent!=='steps')return;
+  if(!text&&intent!=='water'&&intent!=='steps')return null;
   if(intent==='quote'){
     var bk=loadBook(),qs=loadBookQuotes();
     qs.unshift({text:text,page:r.page||(bk&&bk.page)||0});
@@ -39579,7 +39619,7 @@ function hcmdApply(as){
   else if(intent==='person_note'){
     var pl=loadPeople();
     for(i=0;i<pl.length;i++)if(pl[i]&&pl[i].name===r.person){person=i;break;}
-    if(person===null)return;
+    if(person===null)return null;
     if(!pl[person].memories)pl[person].memories=[];
     pl[person].memories.push({id:Date.now()+'',content:text,type:'note',date:Date.now(),pinned:false});
     savePeople(pl);area='people';
@@ -39591,10 +39631,72 @@ function hcmdApply(as){
     var dy=loadDay(today);dy.water=(dy.water||0)+r.amount;saveDay(today,dy);area='nutrition';
   }
   else if(intent==='steps'){saveSteps(today,r.amount,'manual');area='fitness';}
-  else return;
-  _hcmd={busy:false,q:'',route:null,msg:'',done:{area:area,person:person}};
-  hcmdClear();hcmdPaint();
+  else return null;
+  return {area:area,person:person};
+}
+/* where an item will go, in a word or two - the area's own name, and the
+   one detail that tells two items apart */
+function hcmdWhere(r){
+  var t=function(id){var d=areaDef(id);return d?d.title:'';};
+  if(r.intent==='task'){
+    var w=t('planning')+' &middot; '+((!r.date||r.date===todayStr())?_t('היום'):fmtDate(r.date));
+    if(r.time){var tt=r.time.split(':');w+=' &middot; <span class="psay-t">'+dpClock(+tt[0],+tt[1])+'</span>';}
+    return w;
+  }
+  if(r.intent==='food')return t('nutrition');
+  if(r.intent==='water')return t('nutrition')+' &middot; '+fmtVolume(r.amount);
+  if(r.intent==='steps')return _t('צעדים')+' &middot; '+nfmt(r.amount);
+  if(r.intent==='quote')return _t('הספר שלי');
+  if(r.intent==='moment')return t('endofday');
+  if(r.intent==='journal')return _t('יומן');
+  if(r.intent==='person_note')return t('people')+' &middot; '+esc(r.person);
+  if(r.intent==='goal')return t('hobbies');
+  return '';
+}
+function hcmdMultiHTML(){
+  var rs=_hcmd.multi,h='<div class="hcmd-card"><div class="hcmd-q">'+_t('להוסיף את כל אלה?')+'</div><div class="hcmd-list">',i;
+  for(i=0;i<rs.length;i++){
+    h+='<div class="hcmd-it"><div class="hcmd-it-x">'+
+       '<div class="hcmd-it-w">'+hcmdWhere(rs[i])+'</div>'+
+       (rs[i].intent==='water'||rs[i].intent==='steps'?'':'<div class="hcmd-it-t">'+esc(rs[i].text)+'</div>')+
+       '</div><button class="hcmd-it-del" onclick="hcmdMultiDrop('+i+')" aria-label="'+_t('הסר')+'">&times;</button></div>';
+  }
+  h+='</div><div class="hcmd-btns"><button class="hcmd-b" onclick="hcmdMultiApply()">'+_t('הוסף')+'</button>'+
+     '<button class="hcmd-b ghost" onclick="hcmdReset()">'+_t('ביטול')+'</button></div></div>';
+  return h;
+}
+function hcmdMultiDrop(i){
+  var rs=_hcmd.multi;if(!rs)return;
+  rs.splice(i,1);
+  if(rs.length===1){var only=rs[0];_hcmd.multi=null;hcmdLand(only);return;}
+  if(!rs.length){hcmdReset();return;}
+  hcmdPaint();
+}
+/* Everything but food is written here and now. Food goes last, to
+   nutrition's own coach in the person's own words, which asks before it
+   logs - the same road a single "I ate" takes. A quote with no book open
+   is kept as a moment, as the single card offers. */
+function hcmdMultiApply(){
+  var rs=_hcmd.multi;if(!rs)return;
+  var food=[],first=null,n=0,i,w,bk=loadBook();
+  for(i=0;i<rs.length;i++){
+    if(rs[i].intent==='food'){food.push(rs[i].text);continue;}
+    var intent=(rs[i].intent==='quote'&&!(bk&&bk.title))?'moment':rs[i].intent;
+    w=hcmdWrite(intent,rs[i],String(rs[i].text||'').trim());
+    if(w){n++;if(!first)first=w;}
+  }
   try{renderHomeToday();}catch(err){}
+  hcmdClear();
+  if(food.length){
+    hcmdReset();
+    if(n)showToast(_t('נשמר')+' \u2713');
+    enterModule('nutrition');
+    var s=document.getElementById('co-in');
+    if(s){s.value=food.join('. ');coachSend();}
+    return;
+  }
+  _hcmd={busy:false,q:'',route:null,msg:'',done:first||{area:'planning',person:null}};
+  hcmdPaint();
 }
 // Build home screen DOM
 (function(){
