@@ -204,12 +204,30 @@ function okPixel(O){
    red runs to yellow). Each pixel keeps its lightness and its fullness; only
    its station on the ramp is re-read in the new hues. */
 var RAMP0 = 29, RAMP_SPAN = 70;
+/* ROUND 5 (Asaf: still not the original's quality). Keeping his LIGHTNESS was
+   the last mistake: orange is a naturally light colour, so at orange's
+   lightness a red can only be pink and a blue only pale - the candy-like
+   depth is gone. Every hue has a CUSP, the lightness at which it is most
+   colourful (orange ~.75, red ~.63, blue ~.45). So each pixel's lightness is
+   now carried from his hue's cusp to the new hue's cusp - shadows still go
+   to black and highlights still to white, so the sparkle stays - and the new
+   colour is as deep at its middle as his orange is at his. */
+var CUSP = {};
+function cuspL(h){
+  var k = Math.round(((h % 360) + 360) % 360/2); if (k in CUSP) return CUSP[k];
+  var best = 0, bl = .7;
+  for (var L = .2; L <= .98; L += .01){ var c = maxC(L, k*2); if (c > best){ best = c; bl = L; } }
+  return (CUSP[k] = bl);
+}
+function carryL(L, from, to){ return L < from ? L*to/from : to + (L - from)*(1 - to)/(1 - from); }
 function rampPixel(O){
   return function(R, G, B){
     var ok = toOK(R, G, B), L = ok[0], C = Math.hypot(ok[1], ok[2]);
     var h = (Math.atan2(ok[2], ok[1])*180/Math.PI + 360) % 360; if (h > 250) h -= 360;
     var rel = C/Math.max(1e-4, maxC(L, (h + 360) % 360));
     var h2 = ((O.deep + (h - RAMP0)*(O.span/RAMP_SPAN)) % 360 + 360) % 360;
+    var depth = O.depth == null ? .8 : O.depth;
+    L = L + (carryL(L, cuspL((h + 360) % 360), cuspL(h2)) - L)*depth;
     var C2 = Math.min(1, rel)*maxC(L, h2)*(O.full || 1), hr = h2*Math.PI/180, rgb;
     for (var k = 0; k < 8; k++){ rgb = fromOK(L, C2*Math.cos(hr), C2*Math.sin(hr)); if (inGamut(rgb)) break; C2 *= .9; }
     return [lin2srgb(rgb[0]), lin2srgb(rgb[1]), lin2srgb(rgb[2])];
