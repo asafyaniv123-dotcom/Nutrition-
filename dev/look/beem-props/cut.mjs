@@ -7,12 +7,19 @@ import fs from 'node:fs';
 import zlib from 'node:zlib';
 import { decode } from '../png-pixel.mjs';
 const D = new URL('.', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
-const P = decode(D + 'sheet.png'), W = P.w, H = P.h, d = P.data;
+/* two sheets: the first 3x3 (19.10, 2.75 credits), the second 4x5 (4.25) */
+const SHEETS = {
+  sheet:  {cols: 3, rows: 3, names: ['glass', 'dumbbell', 'plate', 'notebook', 'pillow', 'clock', 'gift', 'ball', 'plant']},
+  sheet2: {cols: 4, rows: 5, names: ['apple', 'salad', 'coffee', 'bottle', 'shoe', 'kettlebell', 'rope', 'yogamat',
+    'candle', 'hourglass', 'checklist', 'envelope', 'phone', 'heart', 'palette', 'headphones', 'tshirt', 'bulb', 'camera', 'trophy']}
+};
+const which = process.argv[2] || 'sheet', S = SHEETS[which];
+const P = decode(D + which + '.png'), W = P.w, H = P.h, d = P.data;
 let a0 = 0, a255 = 0, white = 0;
 for (let i = 3; i < d.length; i += 4){ if (d[i] < 10) a0++; if (d[i] > 245) a255++; }
 console.log('sheet', W + 'x' + H, 'alpha<10:', (a0/(W*H)*100).toFixed(1) + '%', 'alpha>245:', (a255/(W*H)*100).toFixed(1) + '%');
 
-const NAMES = ['glass', 'dumbbell', 'plate', 'notebook', 'pillow', 'clock', 'gift', 'ball', 'plant'];
+const NAMES = S.names;
 function solid(i){ const a = d[i+3], m = Math.min(d[i], d[i+1], d[i+2]); return a > 200 && m < 236; }
 function png(w, h, rgba){
   const raw = Buffer.alloc((w*4 + 1)*h);
@@ -24,25 +31,33 @@ function png(w, h, rgba){
   const ih = Buffer.alloc(13); ih.writeUInt32BE(w, 0); ih.writeUInt32BE(h, 4); ih[8] = 8; ih[9] = 6;
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR', ih), chunk('IDAT', zlib.deflateSync(raw, {level: 9})), chunk('IEND', Buffer.alloc(0))]);
 }
-const cw = W/3, ch = H/3, out = [];
-for (let n = 0; n < 9; n++){
-  const cx0 = Math.round((n % 3)*cw), cy0 = Math.round(Math.floor(n/3)*ch), w = Math.round(cw), h = Math.round(ch);
-  // largest connected solid piece in the cell
-  const lab = new Int32Array(w*h); let best = 0, bestN = 0, id = 0;
+const cw = W/S.cols, ch = H/S.rows, out = [];
+for (let n = 0; n < S.cols*S.rows; n++){
+  const cx0 = Math.round((n % S.cols)*cw), cy0 = Math.round(Math.floor(n/S.cols)*ch), w = Math.round(cw), h = Math.round(ch);
+  /* the solid pieces in the cell: the largest is the object, and any piece
+     at least 1.5% of its size is kept too - the coffee's steam, the candle's
+     flame - while specks of the halo are dropped */
+  const lab = new Int32Array(w*h), sizes = [0], edges = [false]; let best = 0, bestN = 0, id = 0;
   for (let p = 0; p < w*h; p++){
     if (lab[p]) continue; const x = p % w, y = (p/w) | 0, i = ((cy0 + y)*W + cx0 + x)*4;
     if (!solid(i)) continue;
-    id++; let cnt = 0; const st = [p]; lab[p] = id;
+    id++; let cnt = 0, edge = false; const st = [p]; lab[p] = id;
     while (st.length){ const q = st.pop(); cnt++; const qx = q % w, qy = (q/w) | 0;
+      if (qx === 0 || qy === 0 || qx === w - 1 || qy === h - 1) edge = true;
       for (const [nx, ny] of [[qx-1,qy],[qx+1,qy],[qx,qy-1],[qx,qy+1]]){
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue; const r = ny*w + nx; if (lab[r]) continue;
         if (solid(((cy0 + ny)*W + cx0 + nx)*4)){ lab[r] = id; st.push(r); } } }
-    if (cnt > bestN){ bestN = cnt; best = id; }
+    sizes[id] = cnt; edges[id] = edge; if (cnt > bestN){ bestN = cnt; best = id; }
   }
+  /* a piece that touches the cell's edge is a NEIGHBOUR reaching over the
+     line, not part of this object - the first version kept such slivers
+     above the shoe, the rope, the mat and the kettlebell */
+  const keep = new Uint8Array(id + 1);
+  for (let k = 1; k <= id; k++) keep[k] = k === best || (sizes[k] >= bestN*.015 && !edges[k]) ? 1 : 0;
   // fill holes (the glass's water, highlights) - everything enclosed by the piece belongs to it
   const out_ = new Uint8Array(w*h), st = [];
   for (let x = 0; x < w; x++) st.push(x, (h-1)*w + x); for (let y = 0; y < h; y++) st.push(y*w, y*w + w - 1);
-  while (st.length){ const q = st.pop(); if (out_[q] || lab[q] === best) continue; out_[q] = 1; const qx = q % w, qy = (q/w) | 0;
+  while (st.length){ const q = st.pop(); if (out_[q] || keep[lab[q]]) continue; out_[q] = 1; const qx = q % w, qy = (q/w) | 0;
     if (qx > 0) st.push(q-1); if (qx < w-1) st.push(q+1); if (qy > 0) st.push(q-w); if (qy < h-1) st.push(q+w); }
   let x0 = w, y0 = h, x1 = 0, y1 = 0;
   for (let p = 0; p < w*h; p++) if (!out_[p]){ const x = p % w, y = (p/w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
