@@ -458,6 +458,89 @@ export default {
       return geminiAsk(system, [{ text: user }], maxTokens, false, schema);
     }
 
+    /* ── /together ────────────────────────────────────────────────────────
+       Two people training side by side, each on their own phone. One opens a
+       ROOM from the workout they are in and shows its code as a QR; the other
+       scans it in the app and gets the same exercises. Each logs their own
+       sets, sends them when they change, and reads the other's every few
+       seconds; at the end both see the session together.
+
+       No accounts and nothing permanent: a room is a code, a member is a
+       random token only its own phone knows, and everything expires after a
+       day. A member may write only its own record. At most six in a room.
+
+       KV, keyed tg:<CODE> for the room and tg:<CODE>:<token> per member -
+       one key per writer, so two phones never write the same key. The room
+       holds its members' tokens itself: listing the prefix on every read
+       would spend a list operation per poll, and the free plan allows a
+       thousand a day - two people polling would use it up in an hour. KV is
+       eventually consistent, so a partner's set can arrive up to a minute
+       late; for "where is she up to" that is enough.
+
+       Optional: TOGETHER_DAILY_CAP (default 600 requests/IP/day). */
+    if (url.pathname.startsWith('/together/') && req.method === 'POST') {
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const capKey = 'tgc:' + new Date().toISOString().slice(0, 10) + ':' + ip;
+      const used = Number((await env.SUBS.get(capKey)) || 0);
+      if (used >= Number(env.TOGETHER_DAILY_CAP || 600)) return json({ error: 'too many for today' }, 429);
+      /* the cap is counted on writes only: reading the room every few
+         seconds would spend a day's writes in an hour */
+      const TTL = { expirationTtl: 86400 };
+      const code = String((b && b.code) || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      const token = String((b && b.token) || '').replace(/[^a-z0-9]/g, '').slice(0, 24);
+      const rnd = () => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
+      const newToken = () => { let t = ''; while (t.length < 20) t += Math.floor(rnd() * 36).toString(36); return t; };
+      const members = async (c, room, me) => {
+        const out = [];
+        for (const t of (room && Array.isArray(room.ms) ? room.ms : []).slice(0, 6)) {
+          const v = await env.SUBS.get('tg:' + c + ':' + t);
+          if (!v) continue;
+          let m; try { m = JSON.parse(v); } catch { continue; }
+          // tokens stay in the room; a phone is told only which record is its own
+          out.push(Object.assign(tgMember(m), { me: !!me && t === me }));
+        }
+        return out;
+      };
+
+      if (url.pathname === '/together/open') {
+        await env.SUBS.put(capKey, String(used + 1), { expirationTtl: 172800 });
+        const plan = tgPlan(b && b.plan);
+        if (!plan.exercises.length) return json({ error: 'no exercises' }, 400);
+        let c = '';
+        for (let i = 0; i < 5 && !c; i++) { const t = tgCode(rnd); if (!(await env.SUBS.get('tg:' + t))) c = t; }
+        if (!c) return json({ error: 'try again' }, 503);
+        const t = newToken();
+        await env.SUBS.put('tg:' + c, JSON.stringify({ plan, at: Date.now(), ms: [t] }), TTL);
+        await env.SUBS.put('tg:' + c + ':' + t, JSON.stringify(tgMember({ name: b && b.name })), TTL);
+        return json({ ok: true, code: c, token: t, plan });
+      }
+      const roomRaw = code.length === 6 ? await env.SUBS.get('tg:' + code) : null;
+      if (!roomRaw) return json({ error: 'no such room' }, 404);
+      let room; try { room = JSON.parse(roomRaw); } catch { return json({ error: 'no such room' }, 404); }
+
+      if (url.pathname === '/together/join') {
+        await env.SUBS.put(capKey, String(used + 1), { expirationTtl: 172800 });
+        const ms = Array.isArray(room.ms) ? room.ms : [];
+        if (ms.length >= 6) return json({ error: 'room is full' }, 409);
+        const t = newToken();
+        await env.SUBS.put('tg:' + code + ':' + t, JSON.stringify(tgMember({ name: b && b.name })), TTL);
+        room.ms = ms.concat([t]);
+        await env.SUBS.put('tg:' + code, JSON.stringify(room), TTL);
+        return json({ ok: true, code, token: t, plan: tgPlan(room.plan), members: await members(code, room, t) });
+      }
+      if (url.pathname === '/together/sync') {
+        if (!token || !(Array.isArray(room.ms) && room.ms.includes(token))) return json({ error: 'not in this room' }, 403);
+        if (b && b.me) {
+          await env.SUBS.put(capKey, String(used + 1), { expirationTtl: 172800 });
+          await env.SUBS.put('tg:' + code + ':' + token, JSON.stringify(tgMember(b.me)), TTL);
+        }
+        return json({ ok: true, code, plan: tgPlan(room.plan), members: await members(code, room, token) });
+      }
+      return json({ error: 'not found' }, 404);
+    }
+
     if (url.pathname === '/health') {
       // booleans only, never the values themselves.
       //
@@ -4148,7 +4231,37 @@ function coachMacrosShort(items) {
   return out;
 }
 
+/* ── /together, THE PURE HALF ──
+   What one phone may tell the room about itself, and what the room holds.
+   Everything here came from another person's phone, so every field is cut
+   to a size and a type before it is stored or handed on. */
+const TG_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O, 1/I/L: it is read aloud and typed
+function tgCode(rand) {
+  let c = '';
+  for (let i = 0; i < 6; i++) c += TG_ABC[Math.floor(rand() * TG_ABC.length) % TG_ABC.length];
+  return c;
+}
+function tgPlan(p) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const ex = (p && Array.isArray(p.exercises) ? p.exercises : []).slice(0, 30).map((e) => ({
+    name: str(e && e.name, 60),
+    sets: Math.max(1, Math.min(20, Math.round(Number(e && e.sets)) || 3)),
+    reps: str(e && e.reps, 12),
+  })).filter((e) => e.name);
+  return { name: str(p && p.name, 80), exercises: ex };
+}
+function tgMember(m) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const num = (v, hi) => { const x = Number(v); return isFinite(x) && x >= 0 && x <= hi ? Math.round(x * 10) / 10 : 0; };
+  const ex = (m && Array.isArray(m.ex) ? m.ex : []).slice(0, 30).map((e) => ({
+    n: str(e && e.n, 60),
+    s: (Array.isArray(e && e.s) ? e.s : []).slice(0, 30).map((x) => [num(x && x[0], 1000), num(x && x[1], 1000)]),
+  }));
+  return { name: str(m && m.name, 24), ex, cur: Math.max(0, Math.min(29, Math.round(Number(m && m.cur)) || 0)),
+           done: !!(m && m.done), mins: num(m && m.mins, 600) };
+}
+
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, routeClean, scheduleClean, coachMacrosShort };
+         stripGemSig, cleanEst, routeClean, scheduleClean, coachMacrosShort, tgCode, tgPlan, tgMember };
