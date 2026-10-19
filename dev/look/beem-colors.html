@@ -60,13 +60,22 @@
 var ALL = [];
 var LIFE = {dur: 7000, ev: [[0, 'mode', {breathe: [.014, 3.6], idle: 1}], [2600, 'face', 'happy'], [2700, 'hop', 40],
   [2700, 'burst', .8], [4200, 'face', 'calm']]};
+function swatches(T){
+  function px(cv, x, y){ var d = cv.getContext('2d').getImageData(Math.round(x), Math.round(y), 1, 1).data;
+    return 'rgb(' + d[0] + ',' + d[1] + ',' + d[2] + ')'; }
+  var out = T.beads.map(function(ring){ var b = ring[0]; return px(b, b.width/2, b.height*.62); });
+  return out.concat([px(T.body, 508, 560)]);
+}
 Promise.all([BEEM_READY, COLORS_READY]).then(function(){
   var g = document.getElementById('grid');
   [{id: null, he: 'המקור', body: ['#d55617', '#ed861f', '#f5a42f', '#fac047', '#fed662'], rings: ['#fc0b02', '#fe7100', '#fdb200']}]
     .concat(PALETTES).forEach(function(P, n){
       var c = document.createElement('div'); c.className = 'card' + (P.id ? '' : ' ref');
+      /* the swatches are MEASURED off the Beem as drawn - his three rings and
+         his body - so they can never disagree with him */
+      var sw = P.id ? swatches(TINTS[P.id]) : P.rings.concat([P.body[2]]);
       c.innerHTML = '<div class="stage"></div><h3>' + P.he + '<span class="sw">' +
-        P.rings.concat([P.body[2]]).map(function(x){ return '<i style="background:' + x + '"></i>'; }).join('') + '</span></h3>';
+        sw.map(function(x){ return '<i style="background:' + x + '"></i>'; }).join('') + '</span></h3>';
       g.appendChild(c);
       var b = new Beem(c.querySelector('.stage')); ALL.push(b);
       if (P.id) tintBeem(b, P.id);
