@@ -16,6 +16,42 @@
    instead of red, orange and yellow. */
 var TINT_HUE = {green: 112};
 var TINTS = {};
+/* THE GREEN, SECOND TRY. One fixed turn of the wheel sent orange to spring
+   green and yellow to mint - at full saturation that read as neon, "too
+   fluorescent". So the green is built on Beem's own TEMPLATE instead: the
+   same ladder his warm colours climb - deep red ring, orange ring, yellow
+   ring, an orange body that lightens to gold at the top - mirrored onto a
+   ladder of natural greens: deep emerald, green, leaf, and a body that
+   lightens toward a soft yellow-green. Each warm hue maps to its rung (see
+   below), saturation is taken down and the brightest greens a touch darker,
+   because green at the same lightness reads brighter to the eye than orange
+   does. */
+function greenOf(src){
+  var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  var x = c.getContext('2d'); x.drawImage(src, 0, 0);
+  var im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+  for (var i = 0; i < d.length; i += 4){
+    if (!d[i+3]) continue;
+    var r = d[i]/255, g = d[i+1]/255, b = d[i+2]/255, mx = Math.max(r, g, b), mn = Math.min(r, g, b),
+        l = (mx + mn)/2, s = 0, h = 0, dd = mx - mn;
+    if (dd){ s = l > .5 ? dd/(2 - mx - mn) : dd/(mx + mn);
+      h = mx === r ? (g - b)/dd + (g < b ? 6 : 0) : mx === g ? (b - r)/dd + 2 : (r - g)/dd + 4; h *= 60; }
+    if (h > 300) h -= 360;                                   // reds just below 0
+    var hw = Math.max(-20, Math.min(70, h));                 // the warm ladder
+    /* rungs: red 0 -> 160 (deep emerald), orange 30 -> 110 (leaf), yellow 50 -> 77 (yellow-green);
+       the deep rung keeps more of its saturation, as the red ring does */
+    h = (148 - 1.3*hw)/360;
+    s *= hw < 15 ? .85 : .58;
+    /* the body's shade goes DEEP, as his orange goes to red-brown at the
+       bottom: a bright mid-green there is what made the whole ball neon */
+    if (l < .62) l *= .86;
+    else l = .62*.86 + (l - .62)*1.05;
+    var q = l < .5 ? l*(1 + s) : l + s - l*s, p = 2*l - q;
+    var f = function(t){ t = (t + 1) % 1; return t < 1/6 ? p + (q - p)*6*t : t < .5 ? q : t < 2/3 ? p + (q - p)*(2/3 - t)*6 : p; };
+    d[i] = f(h + 1/3)*255; d[i+1] = f(h)*255; d[i+2] = f(h - 1/3)*255;
+  }
+  x.putImageData(im, 0, 0); return c;
+}
 function hueOf(src, deg){
   var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
   var x = c.getContext('2d'); x.drawImage(src, 0, 0);
@@ -36,11 +72,8 @@ function hueOf(src, deg){
 BEEM_READY.then(function(){
   (function wait(){
     if (!BEADS) return setTimeout(wait, 60);
-    Object.keys(TINT_HUE).forEach(function(k){
-      var deg = TINT_HUE[k];
-      TINTS[k] = {body: hueOf(EB, deg),
-                  beads: BEADS.map(function(ring){ return ring.map(function(b){ return hueOf(b.spr, deg); }); })};
-    });
+    TINTS.green = {body: greenOf(EB),
+                   beads: BEADS.map(function(ring){ return ring.map(function(b){ return greenOf(b.spr); }); })};
   })();
 });
 
