@@ -2271,6 +2271,13 @@ export default {
        when, and whether it repeats. Never a write: the app shows them on a
        card and only its button stores anything.
 
+       A repeat may END ("reserve duty until the 24th"). There was no field
+       for that, so the first person to say it got a daily entry half a year
+       long, and then wrote "remove it from the 25th to the 31st" into the
+       same line and was told there was nothing to put in the calendar - so
+       an item may also be a REMOVAL, with the same date, days and until
+       saying which days it covers.
+
        What is sent: the sentence, today's date and time. Nothing is kept.
        Secrets: AI_KEY. Optional: SCHEDULE_DAILY_CAP (default 150/IP/day). */
     if (url.pathname === '/schedule' && req.method === 'POST') {
@@ -2283,6 +2290,7 @@ export default {
       const lang = String((b && b.lang) || 'he').slice(0, 8);
       const today = /^\d{4}-\d{2}-\d{2}$/.test(b && b.today) ? b.today : new Date().toISOString().slice(0, 10);
       const now = /^\d{2}:\d{2}$/.test(b && b.now) ? b.now : '';
+      const board = scheduleBoard(b);
 
       const cap = Number(env.SCHEDULE_DAILY_CAP || 150);
       const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
@@ -2309,12 +2317,32 @@ export default {
         '  date it should start if they said one, else empty.\n' +
         '- start / end: 24-hour HH:MM. "from 9 to 10" is 09:00 and 10:00; "at\n' +
         '  five in the afternoon" is 17:00 with no end. Empty when no time.\n' +
+        '- until: for a repeat that ends, its LAST date, YYYY-MM-DD, inclusive\n' +
+        '  ("until the 24th", "for the next two weeks"). Empty when it does not end.\n' +
+        '  A span of days is a daily repeat: "reserve duty until the 24th" is\n' +
+        '  daily from today until the 24th; "vacation from the 3rd to the 8th" is\n' +
+        '  daily, date the 3rd, until the 8th.\n' +
+        '- action: "add" to put it in the calendar, "remove" when they ask to\n' +
+        '  take something OFF it ("remove X from the 25th to the 31st", "cancel X\n' +
+        '  on Thursday", "I no longer need X", "you added too many days, I only\n' +
+        '  need it until the 24th"). For a removal, text is the thing to remove,\n' +
+        '  and repeat, days, date and until say WHICH days: one day is "none"\n' +
+        '  with its date; a span is "daily" from date to until; "from now on" or\n' +
+        '  "no longer" is daily from the first day to remove with until empty.\n' +
+        '  "only until the 24th" removes from the 25th on.\n' +
+        '  The text of a removal must be the EXACT text of an entry from their\n' +
+        '  calendar below. When they do not name it ("remove it", "you added\n' +
+        '  too many days"), it is the entry the days they mention point to -\n' +
+        '  usually the one they added last.\n' +
         '\n' +
         'Several things in one sentence are several items. If there is nothing\n' +
-        'to put in a calendar, return no items.\n' +
+        'to put in or take out of a calendar, return no items.\n' +
         '\n' +
         'Today is ' + wd + ' ' + today + (now ? ', the time is ' + now : '') + '.\n' +
-        'The app is in language: ' + lang + '.';
+        'The app is in language: ' + lang + '.' +
+        (board.last.length ? '\n\nWhat they added last through this line: ' + JSON.stringify(board.last) : '') +
+        (board.entries.length ? '\n\nTheir calendar (each entry once, first and last day, how many days):\n' +
+          board.entries.map((e) => '- ' + JSON.stringify(e.text) + ' ' + e.from + ' to ' + e.to + ' (' + e.n + ')').join('\n') : '');
 
       const SCHEMA = {
         type: 'object',
@@ -2330,8 +2358,10 @@ export default {
                 date: { type: 'string' },
                 start: { type: 'string' },
                 end: { type: 'string' },
+                until: { type: 'string' },
+                action: { type: 'string', enum: ['add', 'remove'] },
               },
-              required: ['text', 'repeat', 'days', 'date', 'start', 'end'],
+              required: ['text', 'repeat', 'days', 'date', 'start', 'end', 'until', 'action'],
               additionalProperties: false,
             },
           },
@@ -4194,7 +4224,9 @@ function routeClean(o, people) {
    Same rule as routeClean: the model suggests, this decides what reaches the
    card. Weekdays are 0 (Sunday) to 6, times are HH:MM, an end before its start
    is no end, a weekly entry with no day takes its date's day or is dropped,
-   and a one-off with no date is today's. */
+   and a one-off with no date is today's. A last day (until) belongs only to
+   a repeat and never comes before its first; a removal whose span is empty
+   is dropped rather than widened. */
 const SCHED_REPEATS = ['none', 'weekly', 'daily'];
 function scheduleClean(o, today) {
   const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
@@ -4223,9 +4255,29 @@ function scheduleClean(o, today) {
       days = [new Date(date + 'T12:00:00Z').getUTCDay()];
     }
     if (repeat === 'none') { days = []; if (!date) date = day0; if (!date) continue; }
-    out.push({ text, repeat, date, days, start, end });
+    const action = it && it.action === 'remove' ? 'remove' : 'add';
+    let until = repeat !== 'none' && isDate(it && it.until) ? it.until : '';
+    if (until && until < (date || day0)) {
+      if (action === 'remove') continue;
+      until = '';
+    }
+    out.push({ text, repeat, date, days, start, end, until, action });
   }
   return out;
+}
+
+/* What the app tells /schedule about the board, so "remove it" has something
+   to point at. It came from a phone and goes into a prompt: every field is
+   cut to a type and a size, and there are at most forty entries. */
+function scheduleBoard(b) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+  const entries = ((b && Array.isArray(b.board)) ? b.board : []).slice(0, 40).map((e) => ({
+    text: str(e && e.text, 80), from: isDate(e && e.from) ? e.from : '', to: isDate(e && e.to) ? e.to : '',
+    n: Math.max(0, Math.min(999, Math.round(Number(e && e.n)) || 0)),
+  })).filter((e) => e.text && e.from && e.to);
+  const last = ((b && Array.isArray(b.last)) ? b.last : []).slice(0, 5).map((t) => str(t, 80)).filter(Boolean);
+  return { entries, last };
 }
 
 /* An item whose protein, carbs and fat account for less than 60% of its
@@ -4277,4 +4329,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, routeClean, scheduleClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, routeClean, scheduleClean, scheduleBoard, coachMacrosShort, tgCode, tgPlan, tgMember };
