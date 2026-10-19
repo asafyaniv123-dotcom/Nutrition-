@@ -5270,6 +5270,18 @@ html body.mod-home .cdisc{display:inline-flex;align-items:center;justify-content
 html body.mod-home .cdisc svg{width:19px;height:19px;fill:none;stroke:currentColor;
   stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 html body.mod-home .cname{font-size:9px;font-weight:700;color:var(--nu-ink);line-height:1.15;text-align:center}
+/* an area the bar is hearing: its own colour, brighter and closer - never
+   amber, which this board keeps for something else */
+html body.mod-home .cdisc{transition:transform .25s cubic-bezier(.2,.9,.3,1),box-shadow .25s}
+html body.mod-home .cpetal.heard .cdisc{transform:scale(1.14);
+  box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 11px var(--nu-shade-soft),
+    0 0 0 2.5px color-mix(in srgb,var(--area,#a49a8e) 75%,transparent),
+    0 0 26px 10px color-mix(in srgb,var(--area,#a49a8e) 62%,transparent)}
+html body.mod-home .cpetal.heard .cname{color:var(--area,var(--nu-ink))}
+html body.mod-home .chub.heard{box-shadow:-6px -6px 15px var(--nu-lit),8px 10px 22px var(--nu-shade),
+    0 0 0 3px color-mix(in srgb,var(--area,#a49a8e) 70%,transparent),
+    0 0 30px 12px color-mix(in srgb,var(--area,#a49a8e) 50%,transparent)}
+@media (prefers-reduced-motion:reduce){html body.mod-home .cdisc{transition:none}}
 html body.mod-home .chub{position:absolute;left:50%;top:60%;width:114px;height:114px;margin:-57px 0 0 -57px;
   border-radius:50%;background:var(--nu-ground);border:none;cursor:pointer;font-family:inherit;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
@@ -39449,8 +39461,8 @@ function hcmdMount(){
     ' onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();hcmdGo();}"></textarea>'+
     /* Say it instead: press, speak, press again. The words are written into
        the box - so what was heard can be seen - and sent on their own. */
-    (micCan()?'<button class="hcmd-go hcmd-mic mic-btn" id="hcmd-mic" data-base="hcmd-go hcmd-mic mic-btn"'+
-      ' onclick="micToggle(\'hcmd-in\',\'hcmd-mic\',hcmdGo)" aria-label="'+_t('דיבור')+'">'+
+    ((HV_SR||micCan())?'<button class="hcmd-go hcmd-mic mic-btn" id="hcmd-mic" data-base="hcmd-go hcmd-mic mic-btn"'+
+      ' onclick="hcmdVoice()" aria-label="'+_t('דיבור')+'">'+
       '<svg viewBox="0 0 24 24"><path d="M12 3.5a2.8 2.8 0 0 1 2.8 2.8v5a2.8 2.8 0 0 1-5.6 0v-5A2.8 2.8 0 0 1 12 3.5z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3.5"/></svg></button>':'')+
     '<button class="hcmd-go" onclick="hcmdGo()" aria-label="'+_t('שלח')+'">'+
     '<svg viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg></button>'+
@@ -39461,6 +39473,106 @@ function hcmdMount(){
 }
 langOn(hcmdMount);
 function hcmdTwo(n){return (n<10?'0':'')+n;}
+function hcmdBody(q){
+  var book=loadBook(),people=[],pl=loadPeople(),i,n=new Date();
+  for(i=0;i<pl.length;i++)if(pl[i]&&pl[i].name)people.push(String(pl[i].name));
+  /* the day is the app's day (04:00), the time is the wall clock's */
+  return JSON.stringify({q:q,lang:appLang(),today:todayStr(),
+    now:hcmdTwo(n.getHours())+':'+hcmdTwo(n.getMinutes()),
+    book:(book&&book.title)||'',people:people});
+}
+/* ── WORDS AS THEY ARE SAID, AND WHERE THEY ARE GOING ──
+   Asaf: while speaking, see the words being written - and while still
+   speaking, the areas the app hears should be marked, so you can see where
+   things are headed.
+
+   The words: the browser's own speech recognition, which hands over words
+   before the sentence ends (Chrome; Safari as webkitSpeechRecognition). Where
+   there is none - or it refuses, which an iPhone home-screen app may do - the
+   microphone records and transcribes at the end, as it did before.
+
+   The areas: what has been said so far is sent to /route now and then -
+   once at least two seconds have passed and two words have been added, at
+   most six times a sentence - and the fan's buttons for the areas it hears
+   light in their own colour (not amber, which is kept for something else).
+   They stay lit on the card, and go out when it is added or cancelled. */
+var HV_SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+var _hv=null,_hcmdHeard={},_hvNoWords=false;
+function hvLang(){
+  var c=appLang(),i;
+  for(i=0;i<LANGS.length;i++)if(LANGS[i].code===c)return LANGS[i].locale;
+  return 'he-IL';
+}
+function hvPaint(state){
+  var b=document.getElementById('hcmd-mic');
+  if(b)b.className='hcmd-go hcmd-mic mic-btn'+(state?' '+state:'');
+}
+function hcmdVoice(){
+  if(_hv&&_hv.on){try{_hv.rec.stop();}catch(e){}return;}
+  if(_micState!=='idle'){micToggle('hcmd-in','hcmd-mic',hcmdGo);return;}   // the recorder's own second press
+  if(!HV_SR||_hvNoWords){micToggle('hcmd-in','hcmd-mic',hcmdGo);return;}
+  var box=document.getElementById('hcmd-in');if(!box)return;
+  var rec;
+  try{rec=new HV_SR();}catch(e){micToggle('hcmd-in','hcmd-mic',hcmdGo);return;}
+  var base=box.value?box.value.replace(/\s+$/,'')+' ':'';
+  _hv={on:true,rec:rec,base:base,text:'',heard:false,fail:false,hintAt:Date.now(),hintWords:0,hintN:0,at:Date.now()};
+  hcmdHeardSet({});
+  rec.lang=hvLang();rec.interimResults=true;rec.continuous=true;
+  rec.onresult=function(ev){
+    var fin='',mid='',i;
+    for(i=0;i<ev.results.length;i++){
+      if(ev.results[i].isFinal)fin+=ev.results[i][0].transcript;
+      else mid+=ev.results[i][0].transcript;
+    }
+    _hv.heard=true;
+    _hv.text=(fin+mid).replace(/\s+/g,' ').trim();
+    var b2=document.getElementById('hcmd-in');
+    if(b2){b2.value=_hv.base+_hv.text;rfmGrow(b2);}
+    hcmdHint(_hv.base+_hv.text);
+  };
+  rec.onerror=function(ev){
+    // refused or unavailable before a word was heard: record instead
+    if(!_hv.heard&&/not-allowed|service-not-allowed|audio-capture|network|language-not-supported/.test(ev.error||''))_hv.fail=true;
+  };
+  rec.onend=function(){
+    var v=_hv;_hv=null;hvPaint('');
+    if(v&&v.fail){micToggle('hcmd-in','hcmd-mic',hcmdGo);return;}
+    if(v&&v.text){hcmdGo();return;}
+    /* Listened, and no word came back - a recogniser that starts and then
+       hears nothing, which is how it can fail on a phone without saying so.
+       Say so, and let the next press record and transcribe instead. */
+    if(v&&Date.now()-v.at>1500){_hvNoWords=true;showToast(_t('לא נקלטו מילים. בלחיצה הבאה המיקרופון יקליט ויתמלל בסוף.'));}
+  };
+  try{rec.start();hvPaint('listening');}
+  catch(e){_hv=null;micToggle('hcmd-in','hcmd-mic',hcmdGo);}
+}
+function hcmdHint(q){
+  var v=_hv;if(!v||!SYNC_SERVER)return;
+  var words=q.split(/\s+/).filter(Boolean).length;
+  if(v.busy||v.hintN>=6||words-v.hintWords<2||Date.now()-v.hintAt<2000)return;
+  v.busy=true;v.hintAt=Date.now();v.hintWords=words;v.hintN++;
+  fetch(SYNC_SERVER+'/route',{method:'POST',headers:{'Content-Type':'application/json'},body:hcmdBody(q)})
+    .then(function(r){return r.json();}).then(function(j){
+      v.busy=false;
+      if(_hv===v&&j&&j.ok)hcmdHeardFrom(j.routes||[j.route]);
+    },function(){v.busy=false;});
+}
+// which of the fan's areas an answer is headed for
+function hcmdHeardFrom(rs){
+  var M={food:'nutrition',water:'nutrition',task:'planning',person_note:'people',steps:'fitness',
+         moment:'endofday',journal:'endofday',goal:'hobbies'},on={},i;
+  for(i=0;i<rs.length;i++){
+    if(!rs[i])continue;
+    var a=rs[i].intent==='open'?rs[i].area:M[rs[i].intent];
+    if(a)on[a]=1;
+  }
+  hcmdHeardSet(on);
+}
+function hcmdHeardSet(on){
+  _hcmdHeard=on;
+  var els=document.querySelectorAll('#home-grid [data-area]'),i;
+  for(i=0;i<els.length;i++)els[i].classList.toggle('heard',!!on[els[i].getAttribute('data-area')]);
+}
 function hcmdGo(){
   var el=document.getElementById('hcmd-in');
   var q=el?String(el.value).trim():'';
@@ -39468,15 +39580,10 @@ function hcmdGo(){
   _hcmd={busy:true,q:q,route:null,msg:'',done:null};
   if(!SYNC_SERVER){_hcmd.busy=false;_hcmd.msg=_t('אין חיבור כרגע.');hcmdPaint();return;}
   hcmdPaint();
-  var book=loadBook(),people=[],pl=loadPeople(),i,n=new Date();
-  for(i=0;i<pl.length;i++)if(pl[i]&&pl[i].name)people.push(String(pl[i].name));
   fetch(SYNC_SERVER+'/route',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    /* the day is the app's day (04:00), the time is the wall clock's */
-    body:JSON.stringify({q:q,lang:appLang(),today:todayStr(),
-      now:hcmdTwo(n.getHours())+':'+hcmdTwo(n.getMinutes()),
-      book:(book&&book.title)||'',people:people})
+    body:hcmdBody(q)
   }).then(function(r){
     return r.json().then(function(j){return {s:r.status,j:j};},function(){return {s:r.status,j:null};});
   }).then(function(x){
@@ -39487,6 +39594,7 @@ function hcmdGo(){
        somewhere is not something to do alongside other things, so "open"
        only ever stands alone. */
     var rs=[],k;
+    hcmdHeardFrom(x.j.routes||[x.j.route]);
     for(k=0;k<(x.j.routes||[]).length;k++)if(x.j.routes[k].intent!=='open')rs.push(x.j.routes[k]);
     if(rs.length>1){_hcmd.multi=rs;hcmdPaint();return;}
     hcmdLand(x.j.route);
@@ -39519,7 +39627,7 @@ function hcmdLand(r){
   _hcmd.route=r;
   hcmdPaint();
 }
-function hcmdReset(){_hcmd={busy:false,q:'',route:null,msg:'',done:null,multi:null};hcmdPaint();}
+function hcmdReset(){_hcmd={busy:false,q:'',route:null,msg:'',done:null,multi:null};hcmdHeardSet({});hcmdPaint();}
 function hcmdOpen(area){
   if(area==='me'){showMain('me');return;}
   if(area==='people'&&_hcmd.done&&typeof _hcmd.done.person==='number'){
@@ -39590,7 +39698,7 @@ function hcmdApply(as){
   var w=hcmdWrite(intent,r,text);
   if(!w)return;
   _hcmd={busy:false,q:'',route:null,msg:'',done:w};
-  hcmdClear();hcmdPaint();
+  hcmdHeardSet({});hcmdClear();hcmdPaint();
   try{renderHomeToday();}catch(err){}
 }
 /* Writes one item where it belongs, through that area's own load and save.
@@ -39696,7 +39804,7 @@ function hcmdMultiApply(){
     return;
   }
   _hcmd={busy:false,q:'',route:null,msg:'',done:first||{area:'planning',person:null}};
-  hcmdPaint();
+  hcmdHeardSet({});hcmdPaint();
 }
 // Build home screen DOM
 (function(){
