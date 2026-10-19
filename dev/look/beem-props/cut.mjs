@@ -1,0 +1,62 @@
+// Cuts sheet.png (3x3 prop sheet from Higgsfield) into nine trimmed sprites.
+//     node dev/look/beem-props/cut.mjs
+// The "transparent" background came with a pale halo around every object, so
+// alpha alone does not cut: each cell keeps only its largest solid piece
+// (alpha high and not near-white), feathered by a couple of pixels.
+import fs from 'node:fs';
+import zlib from 'node:zlib';
+import { decode } from '../png-pixel.mjs';
+const D = new URL('.', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
+const P = decode(D + 'sheet.png'), W = P.w, H = P.h, d = P.data;
+let a0 = 0, a255 = 0, white = 0;
+for (let i = 3; i < d.length; i += 4){ if (d[i] < 10) a0++; if (d[i] > 245) a255++; }
+console.log('sheet', W + 'x' + H, 'alpha<10:', (a0/(W*H)*100).toFixed(1) + '%', 'alpha>245:', (a255/(W*H)*100).toFixed(1) + '%');
+
+const NAMES = ['glass', 'dumbbell', 'plate', 'notebook', 'pillow', 'clock', 'gift', 'ball', 'plant'];
+function solid(i){ const a = d[i+3], m = Math.min(d[i], d[i+1], d[i+2]); return a > 200 && m < 236; }
+function png(w, h, rgba){
+  const raw = Buffer.alloc((w*4 + 1)*h);
+  for (let y = 0; y < h; y++){ raw[y*(w*4 + 1)] = 0; rgba.copy(raw, y*(w*4 + 1) + 1, y*w*4, (y + 1)*w*4); }
+  const crc = (buf) => { let c, t = []; for (let n = 0; n < 256; n++){ c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+    let x = 0xffffffff; for (const b of buf) x = t[(x ^ b) & 255] ^ (x >>> 8); return (x ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+  const ih = Buffer.alloc(13); ih.writeUInt32BE(w, 0); ih.writeUInt32BE(h, 4); ih[8] = 8; ih[9] = 6;
+  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR', ih), chunk('IDAT', zlib.deflateSync(raw, {level: 9})), chunk('IEND', Buffer.alloc(0))]);
+}
+const cw = W/3, ch = H/3, out = [];
+for (let n = 0; n < 9; n++){
+  const cx0 = Math.round((n % 3)*cw), cy0 = Math.round(Math.floor(n/3)*ch), w = Math.round(cw), h = Math.round(ch);
+  // largest connected solid piece in the cell
+  const lab = new Int32Array(w*h); let best = 0, bestN = 0, id = 0;
+  for (let p = 0; p < w*h; p++){
+    if (lab[p]) continue; const x = p % w, y = (p/w) | 0, i = ((cy0 + y)*W + cx0 + x)*4;
+    if (!solid(i)) continue;
+    id++; let cnt = 0; const st = [p]; lab[p] = id;
+    while (st.length){ const q = st.pop(); cnt++; const qx = q % w, qy = (q/w) | 0;
+      for (const [nx, ny] of [[qx-1,qy],[qx+1,qy],[qx,qy-1],[qx,qy+1]]){
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue; const r = ny*w + nx; if (lab[r]) continue;
+        if (solid(((cy0 + ny)*W + cx0 + nx)*4)){ lab[r] = id; st.push(r); } } }
+    if (cnt > bestN){ bestN = cnt; best = id; }
+  }
+  // fill holes (the glass's water, highlights) - everything enclosed by the piece belongs to it
+  const out_ = new Uint8Array(w*h), st = [];
+  for (let x = 0; x < w; x++) st.push(x, (h-1)*w + x); for (let y = 0; y < h; y++) st.push(y*w, y*w + w - 1);
+  while (st.length){ const q = st.pop(); if (out_[q] || lab[q] === best) continue; out_[q] = 1; const qx = q % w, qy = (q/w) | 0;
+    if (qx > 0) st.push(q-1); if (qx < w-1) st.push(q+1); if (qy > 0) st.push(q-w); if (qy < h-1) st.push(q+w); }
+  let x0 = w, y0 = h, x1 = 0, y1 = 0;
+  for (let p = 0; p < w*h; p++) if (!out_[p]){ const x = p % w, y = (p/w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const pad = 6; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+  const ow = x1 - x0 + 1, oh = y1 - y0 + 1, buf = Buffer.alloc(ow*oh*4);
+  // distance to the outside, for a 2px feather
+  for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++){
+    const p = (y0 + y)*w + x0 + x, i = ((cy0 + y0 + y)*W + cx0 + x0 + x)*4, o = (y*ow + x)*4;
+    if (out_[p]) continue;
+    let near = 0; for (let k = 1; k <= 2 && !near; k++) for (const [dx, dy] of [[k,0],[-k,0],[0,k],[0,-k]]){
+      const xx = x0 + x + dx, yy = y0 + y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h || out_[yy*w + xx]){ near = k; break; } }
+    buf[o] = d[i]; buf[o+1] = d[i+1]; buf[o+2] = d[i+2]; buf[o+3] = Math.round(d[i+3]*(near ? near/3 : 1));
+  }
+  fs.writeFileSync(D + NAMES[n] + '.png', png(ow, oh, buf));
+  out.push(NAMES[n] + ' ' + ow + 'x' + oh);
+}
+console.log(out.join(', '));
