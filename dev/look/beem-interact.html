@@ -48,8 +48,11 @@
   <div class="tag">חמש אינטראקציות · בקוד, בלי קרדיטים</div>
   <div class="lede">
     Beem החי והחפצים מהגיליונות. <b>לחפצים יש אותה פיזיקה שיש לו</b>: כבידה, רצפה, קפיצה ומעיכה.
-    לBeem אין ידיים, אז <b>הטבעות מחזיקות, הגוף דוחף ונושא, והעיניים עוקבות</b>. כל סצנה רצה
-    בלולאה, ולחיצה עליה מתחילה אותה מחדש.
+    לBeem אין ידיים, אז <b>הטבעות מחזיקות, הגוף דוחף ונושא, והעיניים עוקבות</b>.<br>
+    <b>והטבעות הן חלק מהגוף:</b> כל חרוז הוא מסה קטנה על קפיץ. כשחפץ נכנס לטבעות, החרוזים
+    שבדרכו נדחפים הצידה, מתנדנדים וחוזרים למקומם, ומכה חזקה מרעידה את כל הטבעת. החפצים פוגשים
+    קודם את הטבעות ולא את הגוף: הכדור נהדף מהחרוזים החיצוניים, והמשקולת נחה על הטבעות ולוחצת
+    אותן. כל סצנה רצה בלולאה, ולחיצה עליה מתחילה אותה מחדש.
   </div>
   <div class="ctl"><button id="slow">הילוך איטי ×3</button></div>
   <div class="grid" id="grid"></div>
@@ -104,9 +107,43 @@ function Scene(card, cfg){
       p.vx *= .82; p.rot *= .7;
     }
   };
-  this.restart = function(){ self.t = 0; self.b.play(IDLE); cfg.reset(self); };
+  /* ── THE RINGS ARE BODY TOO (Asaf, 19.10): every bead is a little mass on
+     a spring, pushed out of the way when a prop enters its space, wobbling
+     and settling back. A push big enough also shakes its whole ring. ── */
+  var off = {}, BR = 26;                                   // a bead's own radius, in his units
+  this.obstacles = function(){
+    var out = [];
+    for (var n in self.props){ var p = self.props[n]; if (p.op < .2 || p.s < .2 || p.ghost) continue;
+      var hpx = p.h*self.H*p.s, w = hpx*p.img.width/p.img.height;
+      /* the prop's own box, inset a little - a circle left the gift's corners
+         sitting under the beads */
+      var k = self.k, ins = .1;
+      out.push({x0: (p.x - w*(.5 - ins) - self.sx)/k - 512, x1: (p.x + w*(.5 - ins) - self.sx)/k - 512,
+                y0: (p.y - hpx*(1 - ins) - self.sy)/k - 512, y1: (p.y - hpx*ins - self.sy)/k - 512}); }
+    return out;
+  };
+  this.b.beadHook = function(i, j, x, y){
+    var dt = self.bdt || 0, key = i*100 + j, o = off[key] || (off[key] = {x: 0, y: 0, vx: 0, vy: 0});
+    o.vx += (-o.x*150 - o.vx*11)*dt; o.vy += (-o.y*150 - o.vy*11)*dt; o.x += o.vx*dt; o.y += o.vy*dt;
+    var obs = self.obs || [];
+    for (var q = 0; q < obs.length; q++){
+      /* inside the box grown by a bead's radius: leave by the nearest side */
+      var c = obs[q], bx = x + o.x, by = y + o.y;
+      if (bx > c.x0 - BR && bx < c.x1 + BR && by > c.y0 - BR && by < c.y1 + BR){
+        var pl = bx - (c.x0 - BR), pr = (c.x1 + BR) - bx, pt = by - (c.y0 - BR), pb = (c.y1 + BR) - by;
+        var pen = Math.min(pl, pr, pt, pb), nx = 0, ny = 0;
+        if (pen === pl) nx = -1; else if (pen === pr) nx = 1; else if (pen === pt) ny = -1; else ny = 1;
+        o.x += nx*pen; o.y += ny*pen; o.vx += nx*pen*6; o.vy += ny*pen*6;
+        if (pen > 18) self.b.bv[i] = Math.min(self.b.bv[i] + pen*.004, 1.2);   // the whole ring feels it
+      }
+    }
+    return [x + o.x, y + o.y];
+  };
+  /* the outer ring's reach in px - a prop meets THIS, not just the body */
+  this.reach = function(){ return 400*self.k*self.b.gate; };
+  this.restart = function(){ self.t = 0; off = {}; self.b.play(IDLE); self.b.fx.beads = 1; cfg.reset(self); };
   this.tick = function(dt){
-    self.t += dt; cfg.update(self, self.t, dt);
+    self.t += dt; self.bdt = dt; self.obs = self.obstacles(); cfg.update(self, self.t, dt);
     for (var n in self.props){ self.physics(self.props[n], dt); self.draw(self.props[n]); }
     if (self.t > cfg.loop) self.restart();
   };
@@ -153,7 +190,8 @@ var DEFS = [
      if (t > 1.9 && once(s, 'grab')){ p.free = false; b.fxTween({t: 'rings', v: {sc: .82}, d: 220}); b.verb('to', 0, 0); }
      if (!p.free && t > 1.9){
        /* held: it rides on his head, lagging a touch, and tilts with his motion */
-       var tx = B.x, ty = B.y - B.r*1.02; p.x += (tx - p.x)*.35; p.y += (ty - p.y)*.35; p.rot = -b.vx*.004;
+       /* it rests ON THE RINGS, pressing the top beads down, not on the bare body */
+       var tx = B.x, ty = B.y - s.reach()*.62; p.x += (tx - p.x)*.35; p.y += (ty - p.y)*.35; p.rot = -b.vx*.004;
      }
      [3.0, 4.2, 5.4].forEach(function(at, i){
        if (t > at && once(s, 'rep' + i)){ b.verb('squash', 5.5); b.verb('face', i === 2 ? 'happy' : 'determined');
@@ -186,15 +224,17 @@ var DEFS = [
      var b = s.b, p = s.props.p, B = s.beem(), r = p.h*s.H/2, cx = p.x, cy = p.y - r;
      /* his eyes follow the ball */
      b.lkX = Math.max(-36, Math.min(36, (cx - B.x)/s.S*90)); b.lkY = Math.max(-22, Math.min(22, -(cy - B.y)/s.S*70)); b.idle = false;
-     var dx = cx - B.x, dy = cy - B.y, dist = Math.hypot(dx, dy);
-     if (dist < B.r + r && !s.hit){
+     /* it meets the outer beads first - they scatter (beadHook) - and the
+        rebound comes from the whole of him, rings included */
+     var dx = cx - B.x, dy = cy - B.y, dist = Math.hypot(dx, dy), R = s.reach()*.82;
+     if (dist < R + r && !s.hit){
        s.hit = 1; var nx = dx/dist, ny = dy/dist, vn = p.vx*nx + p.vy*ny;
        if (vn < 0){ p.vx -= 2*vn*nx; p.vy -= 2*vn*ny; }
        p.vy -= 900; p.vx += 120; p.vr = 400;                      // the header
        b.verb('face', 'surprised'); b.verb('squash', 3); b.verb('hop', 60);
        b.pend.push([b.sT + .4, 'face', 'happy'], [b.sT + 1.4, 'face', 'calm']);
      }
-     if (dist > B.r + r + 20) s.hit = 0;
+     if (dist > R + r + 20) s.hit = 0;
    }},
   {img: 'gift', at: .42, loop: 8, t: 'מתנה',
    p: 'קופסה מופיעה לידו ורועדת פעמיים. הוא סקרן, מתקרב, ואז היא נפתחת בהבזק אור. האור עובר אליו, והוא הופך ל־Beem זהב. לאבני דרך.',
@@ -218,7 +258,7 @@ var DEFS = [
   {img: 'clock', at: .44, loop: 8, t: 'שעון מעורר',
    p: 'הוא ישן. השעון מצלצל ורועד ומקפץ על הרצפה, והוא קופץ בבהלה. הוא מסתכל עליו, מתקרב בנחישות ונוחת עליו, והשעון נמעך ומשתתק. ואז פיהוק מרוצה.',
    reset: function(s){ s.f = {}; var p = s.props.p; p.free = true; p.x = s.W*.8; p.y = s.floor; p.rot = 0; p.vx = 0;
-     s.b.play({dur: 1e9, ev: [[0, 'face', 'closed'], [0, 'mode', {breathe: [.022, 4.6], idle: 0}]]}); },
+     s.b.play({dur: 1e9, ev: [[0, 'face', 'closed'], [0, 'mode', {breathe: [.022, 4.6], idle: 0}]]}); s.b.fx.beads = 1; },
    update: function(s, t){
      var b = s.b, p = s.props.p, B = s.beem();
      var ringing = t > 1.2 && !s.f.stop;
@@ -245,7 +285,7 @@ Promise.all([BEEM_READY].concat(DEFS.map(function(d){ return load('beem-props/' 
     g.appendChild(c);
     var s = new Scene(c, d), img = imgs[i + 1];
     var h = {dumbbell: .2, glass: .3, ball: .17, gift: .3, clock: .27}[d.img];
-    s.prop('p', img, h, d.img === 'gift' ? 'back' : 'front');
+    s.prop('p', img, h, 'front');
     if (d.img === 'glass'){ s.glassImg = img; s.full = img.src; }
     SCENES.push(s); s.restart();
   });
