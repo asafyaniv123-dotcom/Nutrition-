@@ -11,7 +11,14 @@ const D = new URL('.', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
 const SHEETS = {
   sheet:  {cols: 3, rows: 3, names: ['glass', 'dumbbell', 'plate', 'notebook', 'pillow', 'clock', 'gift', 'ball', 'plant']},
   sheet2: {cols: 4, rows: 5, names: ['apple', 'salad', 'coffee', 'bottle', 'shoe', 'kettlebell', 'rope', 'yogamat',
-    'candle', 'hourglass', 'checklist', 'envelope', 'phone', 'heart', 'palette', 'headphones', 'tshirt', 'bulb', 'camera', 'trophy']}
+    'candle', 'hourglass', 'checklist', 'envelope', 'phone', 'heart', 'palette', 'headphones', 'tshirt', 'bulb', 'camera', 'trophy']},
+  /* 19.10: two 5x5 sheets at 4K, 4.25 credits each */
+  sheet3: {cols: 5, rows: 5, names: ['banana', 'carrot', 'avocado', 'juice', 'oatmeal', 'sandwich', 'egg', 'strawberry', 'cookie', 'teapot',
+    'sleepmask', 'toothbrush', 'towel', 'sunhat', 'umbrella', 'backpack', 'bicycle', 'skateboard', 'basketball', 'tennis',
+    'stopwatch', 'drop', 'flame', 'bolt', 'scale']},
+  sheet4: {cols: 5, rows: 5, names: ['book', 'pen', 'stickynote', 'calendar', 'magnifier', 'guitar', 'keyboard', 'microphone', 'gamepad', 'dice',
+    'flower', 'sunflower', 'gem', 'star', 'rainbow', 'balloon', 'popper', 'cupcake', 'medal', 'crown',
+    'speech', 'puzzle', 'rocket', 'plane', 'house']}
 };
 const which = process.argv[2] || 'sheet', S = SHEETS[which];
 const P = decode(D + which + '.png'), W = P.w, H = P.h, d = P.data;
@@ -53,7 +60,8 @@ for (let n = 0; n < S.cols*S.rows; n++){
      line, not part of this object - the first version kept such slivers
      above the shoe, the rope, the mat and the kettlebell */
   const keep = new Uint8Array(id + 1);
-  for (let k = 1; k <= id; k++) keep[k] = k === best || (sizes[k] >= bestN*.015 && !edges[k]) ? 1 : 0;
+  /* .004, not .015: the party popper's confetti are tiny separate pieces */
+  for (let k = 1; k <= id; k++) keep[k] = k === best || (sizes[k] >= bestN*.004 && !edges[k]) ? 1 : 0;
   // fill holes (the glass's water, highlights) - everything enclosed by the piece belongs to it
   const out_ = new Uint8Array(w*h), st = [];
   for (let x = 0; x < w; x++) st.push(x, (h-1)*w + x); for (let y = 0; y < h; y++) st.push(y*w, y*w + w - 1);
