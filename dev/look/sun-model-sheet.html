@@ -379,6 +379,17 @@
       <td><b>הוחל.</b> הכריעה של 110ms רק לפני קפיצות ופרצים</td></tr>
   </table>
 
+  <h2>צבעים — אפשרויות</h2>
+  <div class="note">
+    <b>הפלטה של Beem היא סולם אחד</b> של צבע מלא, מאדום לצהוב. הגוון והאור עולים יחד: מה שכהה
+    יותר קרוב לאדום, ומה שבהיר יותר קרוב לצהוב. שלוש הטבעות הן שלוש תחנות על הסולם: אדום, כתום
+    וצהוב. נמדד במקור: הטבעת הפנימית בגוון 29, האמצעית ב־44 והחיצונית ב־80, והגוף עובר מ־40 ל־96
+    ככל שהוא מתבהר. <b>כל צבע כאן הוא אותו סולם</b>, מונח על מקום אחר בגלגל הצבעים: מגוון עמוק
+    לשכן בהיר שלו. כל פיקסל שומר על האור ועל מלאות הצבע שלו. העיניים לא משתנות.
+    הקוד יושב ב־<code>beem-colors.js</code>.
+  </div>
+  <div class="bgrid" id="colors"><div class="note" id="colors-wait">בונה את הצבעים…</div></div>
+
   <h2>חי — מגע ושעה</h2>
   <div class="note">
     כאן הוא לא מנגן רגע, אלא <b>מגיב</b>. <b>מגע:</b> הוא מסתכל על האצבע. נגיעה מצחיקה
@@ -458,6 +469,8 @@
 <script src="beem-special.js"></script>
 <script src="beem-alive.js"></script>
 <script src="beem-moon.js"></script>
+<script src="beem-pair.js"></script>
+<script src="beem-colors.js"></script>
 <script>
 var PAL = [
   ['#fed662','גוף · קודקוד','rgb(254,214,98)'],
@@ -573,6 +586,23 @@ BEEM_READY.then(function(){
     $s('c-streak').textContent = 'הרצף נשבר. הוא עצוב רגע, ומתחילים מחדש.';
   };
   glow();
+
+  /* colours (approved 19.10 as options): the original, then the ten */
+  COLORS_READY.then(function(){
+    var host = document.getElementById('colors'); host.innerHTML = '';
+    [{id: null, he: 'המקור'}].concat(PALETTES).forEach(function(P, n){
+      var d = document.createElement('div'); d.className = 'bc';
+      d.innerHTML = '<div class="stage"></div><h3>' + P.he + '</h3>';
+      host.appendChild(d);
+      var b = new Beem(d.querySelector('.stage')); ALL.push(b);
+      if (P.id) tintBeem(b, P.id);
+      b.play({dur: 7000, ev: [[0, 'mode', {breathe: [.014, 3.6], idle: 1}], [2600, 'face', 'happy'],
+        [2700, 'hop', 40], [2700, 'burst', .8], [4200, 'face', 'calm']]});
+      b.sT = -n*.45;
+      if (window.IntersectionObserver) new IntersectionObserver(function(es){ es.forEach(function(e){
+        b.visible = e.isIntersecting; }); }).observe(b.host);
+    });
+  });
 
   beemRun(ALL);
 }).catch(function(e){
