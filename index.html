@@ -4245,6 +4245,16 @@ html body.mod-endofday .rf-secs-b{background:var(--nu-ground);color:var(--nu-ink
   border:none;border-radius:18px;
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 
+html body.mod-endofday .rf-vlog{display:flex;align-items:center;gap:13px;width:100%;margin:14px 0 16px;
+  padding:12px 14px;border:none;border-radius:18px;background:var(--nu-ground);font-family:inherit;
+  text-align:start;cursor:pointer;color:var(--nu-ink);
+  box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+html body.mod-endofday .rf-vlog .vlog-dot{position:static;flex-shrink:0;width:44px;height:44px;border:none;
+  background:var(--nu-ground);box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 11px var(--nu-shade-soft),0 0 14px 3px rgba(178,205,237,.9)}
+html body.mod-endofday .rf-vlog .vlog-dot svg{stroke:#4d7fbe}
+html body.mod-endofday .rf-vlog-t{display:flex;flex-direction:column;gap:3px;min-width:0}
+html body.mod-endofday .rf-vlog-t b{font-size:14px;font-weight:800}
+html body.mod-endofday .rf-vlog-t i{font-style:normal;font-size:11.5px;color:var(--nu-muted);line-height:1.4}
 /* ── THE FLOW ── the day as a line of stops ── */
 html body.mod-endofday .rf-flow-box,html body.mod-endofday .rf-flow-add{background:var(--nu-ground);
   border:none;border-radius:16px;
@@ -5336,10 +5346,6 @@ html body.mod-home .sun-rays{animation:sunTurn 9s ease-in-out infinite;
 @keyframes sunTurn{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
 @media (prefers-reduced-motion:reduce){
   html body.mod-home .sun-breathe,html body.mod-home .sun-rays{animation:none}}
-/* the video button, off the hub and in the corner */
-html body.mod-home .vlog-corner{position:absolute;top:-4px;inset-inline-start:14px;width:44px;height:44px}
-html body.mod-home .vlog-corner .vlog-dot{position:static;width:44px;height:44px;display:flex;
-  align-items:center;justify-content:center}
 /* the app's own two, kept where the app puts them */
 html body.mod-home .chub .vlog-dot{top:6px;inset-inline-end:6px;width:38px;height:38px}
 html body.mod-home .chub .vlog-dot svg{width:18px;height:18px}
@@ -10756,7 +10762,7 @@ function vlogSave(){
     _vlBlob=null;
     showToast(''+_t('✓ נשמר בסיכום היום')+'');
     vlogClose();
-    renderHomeGrid();
+    vlogAfter();
   });
 }
 // An already-saved clip: watch it, replace it, or take it out.
@@ -10951,7 +10957,7 @@ function vlogCoverSave(){
     if(old&&old!==rec.cover&&isPhotoKey(old))photoDel(old);
     showToast(''+_t('✓ נשמר בסיכום היום')+'');
     vlogClose();
-    renderHomeGrid();
+    vlogAfter();
   });
 }
 function vlogCoverCancel(){
@@ -10989,7 +10995,23 @@ function vlogDelete(){
   clearVlog(_vlDate);
   showToast(''+_t('נמחק')+'');
   vlogClose();
+  vlogAfter();
+}
+/* The clip used to be a lit button floating over the home screen. Asaf: it
+   belongs to the day's summary, not hanging over the main screen - so it is
+   a door in סיום יום now, and the home board no longer carries it. */
+function vlogAfter(){
   renderHomeGrid();
+  if(document.getElementById('rf-vlog'))renderReflectHome();
+}
+function rfVlogHTML(){
+  var has=!!loadVlog(todayStr());
+  // the dot's look without its own button - the whole row is the button
+  return '<button class="rf-vlog" id="rf-vlog" onclick="vlogOpen()"><span class="vlog-dot" aria-hidden="true">'+
+    '<svg viewBox="0 0 24 24"><path d="M15.2 9.6 20.4 6.6v10.8l-5.2-3"/>'+
+    '<rect x="3.6" y="6" width="11.6" height="12" rx="2.6"/></svg></span>'+
+    '<span class="rf-vlog-t"><b>'+_t('ולוג יומי')+'</b>'+
+    '<i>'+(has?_t('צילמת היום. אפשר לצפות או לצלם מחדש.'):_t('כמה שניות על היום, במצלמה.'))+'</i></span></button>';
 }
 function vlogClose(){
   vlogStop();
@@ -10998,15 +11020,6 @@ function vlogClose(){
   _vlBlob=null;_vlChunks=[];
   var o=document.getElementById('vl-ov');if(o)o.remove();
   document.body.style.overflow='';
-}
-// The button itself, sitting on the corner of the day's icon. A filled dot
-// says today already has one.
-function vlogDotHTML(){
-  var has=!!loadVlog(todayStr());
-  return '<span class="vlog-dot'+(has?' has':'')+'" role="button" tabindex="0" '+
-    'aria-label="'+_t("ולוג יומי")+'" onclick="event.stopPropagation();vlogOpen()">'+
-    '<svg viewBox="0 0 24 24"><path d="M15.2 9.6 20.4 6.6v10.8l-5.2-3"/>'+
-    '<rect x="3.6" y="6" width="11.6" height="12" rx="2.6"/></svg></span>';
 }
 // A clip is far too big to travel inside a pasteable backup, so it is left out
 // of the photo sweep rather than silently turning into "{}" in the file.
@@ -36080,6 +36093,7 @@ function renderReflectHome(){
   }
   h+='</div>';
 
+  h+=rfVlogHTML();
   h+=rfmCardHTML();
 
   /* The one sentence carried out of the last weekly summary. It lives HERE
@@ -38238,7 +38252,6 @@ function homeCardHTML(a,cls){
      the SAME value, rather than a second palette that drifts from this one. */
   return '<button class="'+cls+' '+a.id+'" data-area="'+a.id+'" style="--area:'+a.color+'">'+
     (cls==='hhero'?'<span class="hhero-skin"></span>':'')+
-    (a.id==='endofday'?vlogDotHTML():'')+
     /* Lit while today has no reflection in it, and gone once it does -
        loadSummary already answers that, so nothing new is stored. */
     (a.id==='endofday'&&!loadSummary(todayStr())?'<span class="hub-dot"></span>':'')+
@@ -38683,7 +38696,6 @@ function homeFanHTML(hub,rest,all){
        '<span class="chub-ic" style="color:'+hub.color+'">'+hub.svg+'</span>'+
        '<span class="chub-t">'+hub.title+'</span></button>';
   }
-  h+='<div class="vlog-corner">'+vlogDotHTML()+'</div>';
   return h+'</div>';
 }
 function renderHomeGrid(){
