@@ -224,8 +224,9 @@ try {
   await shoot('lived-' + LANG);
   if (!args.includes('--plain')) for (const k of Object.keys(VARIANTS)) await variant(k);
   /* --ideas: the second round, drawn over what dev ships now */
-  if (args.includes('--ideas')) {
-    const { IDEAS } = await import('./home-ideas.mjs');
+  if (args.includes('--ideas') || args.includes('--ideas2')) {
+    const IDEAS = args.includes('--ideas2')
+      ? (await import('./home-ideas-2.mjs')).IDEAS2 : (await import('./home-ideas.mjs')).IDEAS;
     for (const [k, v] of Object.entries(IDEAS)) {
       await load();
       await evalJS('(function(){var s=document.createElement("style");s.textContent=' + JSON.stringify(v.css) +
