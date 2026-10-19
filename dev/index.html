@@ -2608,6 +2608,7 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .pl-sel{display:flex;gap:7px;align-items:center;min-height:46px;margin-bottom:4px}
 .pl-sel-b{flex:1;background:var(--card);border:1px solid var(--line-strong);border-radius:12px;padding:10px 6px;font:700 12.5px/1 inherit;color:var(--ink);cursor:pointer}
 .pl-sel-d{color:var(--terra-700)}
+.pl-sel-on{background:var(--violet-700);border-color:var(--violet-700);color:#fff}
 .pl-sel-s{font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:11px;padding:0 2px}
 /* ── A RUN ACROSS DAYS ──
    The per-day chip stays in the flow so the cell reserves the right height in
@@ -31747,12 +31748,18 @@ function planMigrate(){
    strip into a row of full-size buttons and turns the next day tapped into
    the end of its run - which is the stretch that a 16px handle on a 46px cell
    was never going to give anyone. */
-var _moSel='';
-function moSelOpen(id){_moSel=(_moSel===id?'':id);renderPlanMonth();}
-function moSelClose(){_moSel='';renderPlanMonth();}
+/* The stretch used to be armed by the selection itself, so the first person
+   to tap a birthday and then tap the next day to open it got a birthday two
+   days long - the line saying what the next tap would do sat at the top of
+   the board, off the screen she was looking at. Now the stretch is a button
+   of its own (_moSelRun), and with only a selection a day tap is a day tap. */
+var _moSel='',_moSelRun=false;
+function moSelOpen(id){_moSel=(_moSel===id?'':id);_moSelRun=false;renderPlanMonth();}
+function moSelClose(){_moSel='';_moSelRun=false;renderPlanMonth();}
+function moSelLonger(){_moSelRun=!_moSelRun;renderPlanMonth();}
 function moSelAct(what){
   var id=_moSel;if(!id)return;
-  _moSel='';
+  _moSel='';_moSelRun=false;
   if(what==='del'){
     /* it may sit in any of the weeks this month touches */
     var sun2=weekSunday(moFirst(_moMonth||appNow())),n,i;
@@ -31826,7 +31833,8 @@ function moCellTap(date){
   /* THE SECOND HALF OF THE GESTURE. With a task selected a day is not a day
      to open, it is where that task should end - counted in days from where it
      starts, and capped by the same WK_MAX_LEN the week board uses. */
-  if(_moSel){
+  if(_moSel&&!_moSelRun){_moSel='';}       // a selection alone: the tap opens the day, as always
+  else if(_moSel){
     var t=null,sun=weekSunday(moFirst(_moMonth||appNow())),n,i,sd,w2,holder=null;
     for(n=-1;n<6&&!t;n++){
       sd=wkDateOf(sun,n*7);w2=loadWeek(sd);
@@ -31840,7 +31848,7 @@ function moCellTap(date){
       if(days>1)t.len=days;else delete t.len;
       saveWeek(holder,w2);
     }
-    _moSel='';renderPlanMonth();return;
+    _moSel='';_moSelRun=false;renderPlanMonth();return;
   }
   var now=Date.now();
   if(_moTapDate===date&&(now-_moTapAt)<MO_DBL_MS){
@@ -32035,11 +32043,12 @@ function planMonthHTML(){
      board below never moves under the finger that is using it. */
   if(_moSel){
     h+='<div class="pl-sel">'+
+       '<button class="pl-sel-b'+(_moSelRun?' pl-sel-on':'')+'" onclick="moSelLonger()" aria-pressed="'+_moSelRun+'">'+_t('להאריך')+'</button>'+
        '<button class="pl-sel-b" onclick="moSelAct(\'ret\')">'+_t('החזר')+'</button>'+
        '<button class="pl-sel-b pl-sel-d" onclick="moSelAct(\'del\')">'+_t('מחק')+'</button>'+
        '<button class="pl-sel-b" onclick="moSelClose()">'+_t('ביטול')+'</button>'+
        '</div>'+
-       '<div class="pl-sel-s">'+_t('הקש על יום מאוחר יותר כדי למתוח עד אליו')+'</div>';
+       (_moSelRun?'<div class="pl-sel-s">'+_t('הקש על יום מאוחר יותר כדי למתוח עד אליו')+'</div>':'');
   } else {
     var pool=loadPool().tasks;
     h+=planAddBarHTML({k:'pl',pool:pool,pick:'moPick',
