@@ -100,6 +100,102 @@ function okOf(src, O){
   }
   x.putImageData(im, 0, 0); return c;
 }
+/* ═══ ROUND 3: relative colourfulness ═══
+   Asaf: better, but "unfinished - the colour faded a little, not precise".
+   Round 2 scaled every pixel's colourfulness down by one factor, which greys
+   it: a muddy version of the colour rather than the colour. His orange is
+   not "some colour" - it sits near the MOST colour an orange can have at
+   each lightness, and drops to white only at the glints. So now each pixel
+   keeps its RELATIVE colourfulness: how far it is toward the most colourful
+   in-gamut colour at its lightness and hue. A pixel at 90% of the fullest
+   orange becomes 90% of the fullest blue at the same lightness - every
+   colour as full, clean and lit as he is. 'full' below trims that a touch
+   per colour (green and cyan reach further on screens and read louder). */
+var MAXC = {};
+function maxC(L, h){
+  var key = Math.round(L*100) + ':' + Math.round(h/2);
+  if (key in MAXC) return MAXC[key];
+  var lo = 0, hi = .4, hr = Math.round(h/2)*2*Math.PI/180, Lr = Math.round(L*100)/100;
+  for (var k = 0; k < 14; k++){ var m = (lo + hi)/2;
+    if (inGamut(fromOK(Lr, m*Math.cos(hr), m*Math.sin(hr)))) lo = m; else hi = m; }
+  return (MAXC[key] = lo);
+}
+function okRel(src, O){
+  var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  var x = c.getContext('2d'); x.drawImage(src, 0, 0);
+  var im = x.getImageData(0, 0, c.width, c.height), d = im.data, H0 = 58;
+  for (var i = 0; i < d.length; i += 4){
+    if (!d[i+3]) continue;
+    var ok = toOK(d[i], d[i+1], d[i+2]), L = ok[0], C = Math.hypot(ok[1], ok[2]);
+    var h = (Math.atan2(ok[2], ok[1])*180/Math.PI + 360) % 360;
+    var rel = C/Math.max(1e-4, maxC(L, h));                      // how full he is, here
+    var h2 = ((O.hue + ((h > 200 ? h - 360 : h) - H0)*O.spread) + 360) % 360;
+    var C2 = Math.min(1, rel)*maxC(L, h2)*O.full, hr = h2*Math.PI/180, rgb;
+    for (var k = 0; k < 8; k++){ rgb = fromOK(L, C2*Math.cos(hr), C2*Math.sin(hr)); if (inGamut(rgb)) break; C2 *= .9; }
+    d[i] = lin2srgb(rgb[0]); d[i+1] = lin2srgb(rgb[1]); d[i+2] = lin2srgb(rgb[2]);
+  }
+  x.putImageData(im, 0, 0); return c;
+}
+/* SPEED: done per pixel, the ten colours took 14.5s to build - a page that
+   looks broken on a phone. The mapping depends only on the pixel's colour,
+   so it is worked out ONCE per colour on a 33x33x33 grid of colours and each
+   pixel reads it back with trilinear interpolation: ~36k conversions per
+   colour instead of a million, and no visible difference. */
+var LUT_N = 33;
+function lutOf(fn){
+  var N = LUT_N, t = new Float32Array(N*N*N*3), s = 255/(N - 1), i = 0;
+  for (var b = 0; b < N; b++) for (var g = 0; g < N; g++) for (var r = 0; r < N; r++){
+    var o = fn(r*s, g*s, b*s); t[i++] = o[0]; t[i++] = o[1]; t[i++] = o[2]; }
+  return t;
+}
+function applyLut(src, t){
+  var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  var x = c.getContext('2d'); x.drawImage(src, 0, 0);
+  var im = x.getImageData(0, 0, c.width, c.height), d = im.data, N = LUT_N, k = (N - 1)/255;
+  for (var i = 0; i < d.length; i += 4){
+    if (!d[i+3]) continue;
+    var fr = d[i]*k, fg = d[i+1]*k, fb = d[i+2]*k, r0 = Math.min(N - 2, fr | 0), g0 = Math.min(N - 2, fg | 0),
+        b0 = Math.min(N - 2, fb | 0), ur = fr - r0, ug = fg - g0, ub = fb - b0;
+    for (var ch = 0; ch < 3; ch++){
+      var v = 0;
+      for (var dz = 0; dz < 2; dz++) for (var dy = 0; dy < 2; dy++) for (var dx = 0; dx < 2; dx++){
+        var w = (dx ? ur : 1 - ur)*(dy ? ug : 1 - ug)*(dz ? ub : 1 - ub);
+        v += w*t[(((b0 + dz)*N + g0 + dy)*N + r0 + dx)*3 + ch];
+      }
+      d[i + ch] = v;
+    }
+  }
+  x.putImageData(im, 0, 0); return c;
+}
+/* the two mappings as functions of ONE colour, for the grid */
+function relPixel(O){
+  return function(R, G, B){
+    var ok = toOK(R, G, B), L = ok[0], C = Math.hypot(ok[1], ok[2]), H0 = 58;
+    var h = (Math.atan2(ok[2], ok[1])*180/Math.PI + 360) % 360;
+    var rel = C/Math.max(1e-4, maxC(L, h));
+    var h2 = ((O.hue + ((h > 200 ? h - 360 : h) - H0)*O.spread) + 360) % 360;
+    var C2 = Math.min(1, rel)*maxC(L, h2)*O.full, hr = h2*Math.PI/180, rgb;
+    for (var k = 0; k < 8; k++){ rgb = fromOK(L, C2*Math.cos(hr), C2*Math.sin(hr)); if (inGamut(rgb)) break; C2 *= .9; }
+    return [lin2srgb(rgb[0]), lin2srgb(rgb[1]), lin2srgb(rgb[2])];
+  };
+}
+function okPixel(O){
+  return function(R, G, B){
+    var ok = toOK(R, G, B), L = ok[0], C = Math.hypot(ok[1], ok[2]), h = Math.atan2(ok[2], ok[1])*180/Math.PI;
+    if (O.Lf) L = O.Lf(L);
+    var C2 = C*O.chroma, h2 = (O.hue + (h - 58)*O.spread)*Math.PI/180, rgb;
+    for (var k = 0; k < 12; k++){ rgb = fromOK(L, C2*Math.cos(h2), C2*Math.sin(h2)); if (inGamut(rgb)) break; C2 *= .85; }
+    return [lin2srgb(rgb[0]), lin2srgb(rgb[1]), lin2srgb(rgb[2])];
+  };
+}
+var REL_SET = {
+  red:    {hue: 24,  full: .97, spread: .62},
+  blue:   {hue: 258, full: .9,  spread: .62},
+  green:  {hue: 148, full: .82, spread: .62},
+  purple: {hue: 305, full: .9,  spread: .62},
+  pink:   {hue: 350, full: .88, spread: .62},
+  teal:   {hue: 196, full: .82, spread: .62}
+};
 var OK_SET = {
   red:    {hue: 22,  chroma: .78, spread: .62},
   blue:   {hue: 252, chroma: .5,  spread: .62},
@@ -116,9 +212,10 @@ var COLORS_READY = new Promise(function(res){
     (function wait(){
       if (!BEADS) return setTimeout(wait, 60);
       PALETTES.forEach(function(P){
-        var O = OK_SET[P.id];
-        TINTS[P.id] = O ? {body: okOf(EB, O), beads: BEADS.map(function(ring){ return ring.map(function(b){ return okOf(b.spr, O); }); })}
-                        : buildPalette(P);                    // gold stays as approved
+        var R = REL_SET[P.id], O = OK_SET[P.id];
+        if (!R && !O){ TINTS[P.id] = buildPalette(P); return; }   // gold stays as approved
+        var t = lutOf(R ? relPixel(R) : okPixel(O));
+        TINTS[P.id] = {body: applyLut(EB, t), beads: BEADS.map(function(ring){ return ring.map(function(b){ return applyLut(b.spr, t); }); })};
       });
       res();
     })();
