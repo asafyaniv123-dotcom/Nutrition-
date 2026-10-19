@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beem · עשרה צבעים</title>
+<!-- Ten colours of Beem, each built on the original's template (beem-colors.js).
+     On the side - not in the character sheet until Asaf says so. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#675f57;--line:rgba(176,168,156,.42);
+    --nu-lit:rgba(255,255,255,.95);--nu-shade-soft:rgba(176,168,156,.28)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1240px;margin:0 auto;padding:30px 24px 80px}
+  h1{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .tag{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-top:8px;
+    border-top:2px solid var(--ink);padding-top:8px;display:inline-block}
+  .lede{font-size:13.5px;line-height:1.85;color:var(--muted);margin-top:14px;max-width:92ch}
+  b{color:var(--ink)}
+  .grid{display:grid;gap:14px;margin-top:22px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+  .card{border-radius:20px;background:var(--ground);padding:10px 10px 12px;
+    box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade-soft)}
+  .card.ref{outline:2px dashed rgba(103,95,87,.35);outline-offset:-6px}
+  .stage{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;
+    box-shadow:inset 2px 3px 7px var(--nu-shade-soft),inset -2px -2px 6px var(--nu-lit)}
+  .card h3{font-size:15px;font-weight:800;margin-top:9px;display:flex;gap:8px;align-items:center}
+  .sw{display:flex;gap:3px;margin-inline-start:auto}
+  .sw i{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+  .note{font-size:12.5px;line-height:1.8;color:var(--muted);margin-top:22px;max-width:92ch}
+  @media (max-width:520px){.wrap{padding:22px 16px 60px}h1{font-size:36px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+</style>
+
+<div class="wrap">
+  <h1 dir="ltr" style="text-align:right">Beem</h1>
+  <div class="tag">עשרה צבעים · מהצד, לא ב־sheet</div>
+  <div class="lede">
+    כל צבע בנוי <b>לפי התבנית של Beem המקורי</b>, ולא בסיבוב גוון, שזה מה שהפך את הירוק לזרחני.
+    לגוף יש חמש דרגות לפי האור, מהצל העמוק למטה ועד הברק למעלה, ואור השפה נשאר. לשלוש הטבעות יש
+    שלושה גוונים שונים, עמוק מבפנים ובהיר מבחוץ, כמו האדום, הכתום והצהוב במקור. כל חרוז נצבע לפי
+    הבהירות שלו ביחס לטבעת שלו, ולכן ההצללה והנצנוץ הלבן שלו נשמרים. העיניים לא משתנות.
+    הראשון הוא המקור, להשוואה.
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="note">
+    <b>שני דברים שכדאי לבדוק בעין:</b> ב<b>שחור</b> העיניים, שהן חום כהה, יושבות על גוף כהה,
+    ורק הנצנוצים שלהן בולטים. וה<b>לבן</b> יושב על רקע בהיר. אם אחד מהם לא עובד, אפשר להחליף אותו
+    בצבע אחר בלי לגעת בשאר.
+  </div>
+</div>
+
+<script src="beem-engine.js"></script>
+<script src="beem-special.js"></script>
+<script src="beem-alive.js"></script>
+<script src="beem-moon.js"></script>
+<script src="beem-pair.js"></script>
+<script src="beem-colors.js"></script>
+<script>
+var ALL = [];
+var LIFE = {dur: 7000, ev: [[0, 'mode', {breathe: [.014, 3.6], idle: 1}], [2600, 'face', 'happy'], [2700, 'hop', 40],
+  [2700, 'burst', .8], [4200, 'face', 'calm']]};
+Promise.all([BEEM_READY, COLORS_READY]).then(function(){
+  var g = document.getElementById('grid');
+  [{id: null, he: 'המקור', body: ['#d55617', '#ed861f', '#f5a42f', '#fac047', '#fed662'], rings: ['#fc0b02', '#fe7100', '#fdb200']}]
+    .concat(PALETTES).forEach(function(P, n){
+      var c = document.createElement('div'); c.className = 'card' + (P.id ? '' : ' ref');
+      c.innerHTML = '<div class="stage"></div><h3>' + P.he + '<span class="sw">' +
+        P.rings.concat([P.body[2]]).map(function(x){ return '<i style="background:' + x + '"></i>'; }).join('') + '</span></h3>';
+      g.appendChild(c);
+      var b = new Beem(c.querySelector('.stage')); ALL.push(b);
+      if (P.id) tintBeem(b, P.id);
+      b.play(LIFE); b.sT = -n*.45;
+    });
+  beemRun(ALL);
+});
+</script>
+</html>
