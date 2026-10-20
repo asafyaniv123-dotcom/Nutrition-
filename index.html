@@ -1997,6 +1997,15 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .scan-frozen.on{display:block}
 /* the band the crop is taken from, so you can see where to hold it */
 .scan-guide{position:absolute;left:6%;right:6%;top:32%;height:36%;border:2px dashed rgba(255,255,255,.75);border-radius:10px;pointer-events:none}
+/* A QR IS SQUARE (Asaf, 20.10, from her phone: "באופן ממש מוזר"). The QR
+   scanner was the barcode scanner's screen: a 4:3 box showing a portrait
+   camera as a narrow column between black bars, and a wide dashed strip
+   asking for something "full width". For a QR the box is square, the camera
+   fills it, and the frame is a square in the middle. The whole frame is still
+   what gets decoded, so cropping the preview loses nothing. */
+.scan-overlay.qr .scan-cam{aspect-ratio:1}
+.scan-overlay.qr .scan-cam video,.scan-overlay.qr .scan-frozen{object-fit:cover}
+.scan-overlay.qr .scan-guide{left:20%;right:20%;top:20%;bottom:20%;height:auto;border-radius:16px}
 .scan-shot{width:100%;margin-top:10px;border:none;border-radius:13px;padding:14px;background:var(--cta-fill);color:var(--white);font-size:14px;font-weight:800;font-family:inherit;cursor:pointer}
 .scan-shot:disabled{opacity:.5}
 .scan-msg{font-size:11.5px;color:var(--muted-soft);text-align:center;line-height:1.6;margin-top:10px;min-height:32px}
@@ -12196,7 +12205,7 @@ function scanOpen(opts){
   if(document.getElementById('scan-overlay'))return;
   _scanMode=(opts&&opts.onResult)?opts:null;
   var d=document.createElement('div');
-  d.id='scan-overlay';d.className='scan-overlay';
+  d.id='scan-overlay';d.className='scan-overlay'+(_scanMode?' qr':'');
   d.innerHTML='<div class="scan-sheet">'+
     '<div class="scan-hd"><span>'+(_scanMode?_scanMode.title:_t('סריקת ברקוד'))+'</span>'+
     '<button class="scan-x" onclick="scanClose()">&times;</button></div>'+
@@ -12256,7 +12265,8 @@ function scanCamStart(){
     .then(function(){
       var b=document.getElementById('scan-shot');
       if(b)b.disabled=false;
-      scanMsg(''+_t('החזק את הברקוד בתוך המסגרת, קרוב ומלא רוחב')+' &mdash; '+_t('ואז לחץ סרוק')+'');
+      scanHint();
+      if(_scanMode)scanQrLoop();
     })
     .catch(function(err){
       // getUserMedia can settle long after the shutter has been pressed, and
@@ -12279,13 +12289,45 @@ function scanCamStop(){
   var v=document.getElementById('scan-video');
   if(v){try{v.pause();v.srcObject=null;}catch(e){}}
 }
+/* What to do now. A QR reads by itself while the camera looks at it, so it
+   asks for nothing more than pointing; a barcode still wants the still. */
+function scanHint(){
+  scanMsg(_scanMode?_t('הקוד ייקרא לבד כשהוא בתוך הריבוע.')
+                   :''+_t('החזק את הברקוד בתוך המסגרת, קרוב ומלא רוחב')+' &mdash; '+_t('ואז לחץ סרוק')+'');
+}
 function scanUnfreeze(){
   _scanBusy=false;
   var c=document.getElementById('scan-frozen'),v=document.getElementById('scan-video'),b=document.getElementById('scan-shot');
   if(c)c.classList.remove('on');
   if(v)v.style.visibility='';
   if(b){b.disabled=false;b.textContent=''+_t('סרוק')+'';}
-  scanMsg(''+_t('החזק את הברקוד בתוך המסגרת, קרוב ומלא רוחב')+' &mdash; '+_t('ואז לחץ סרוק')+'');
+  scanHint();
+}
+/* READING A QR LIVE. The freeze-then-decode flow exists because a BARCODE
+   read from a live stream failed: thin bars, motion blur. A QR is the
+   opposite - big square modules, built to be read from a moving phone - so
+   it is read from the stream, a frame every 450ms, scaled to 900px on its
+   long side (decoding a full 1920 frame takes longer than the interval). The
+   button stays, for a phone that will not manage it live. Stops by itself
+   when the sheet closes or a read is under way. */
+var _scanQrT=null;
+function scanQrLoop(){
+  clearTimeout(_scanQrT);
+  var busy=false,cv=document.createElement('canvas');
+  (function tick(){
+    var v=document.getElementById('scan-video');
+    if(!_scanMode||!v||!_scanStream)return;
+    _scanQrT=setTimeout(tick,450);
+    if(busy||_scanBusy||!v.videoWidth||!window.Html5Qrcode)return;
+    var k=Math.min(1,900/Math.max(v.videoWidth,v.videoHeight));
+    cv.width=Math.round(v.videoWidth*k);cv.height=Math.round(v.videoHeight*k);
+    cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height);
+    busy=true;
+    scanDecodeCanvas(cv).then(function(txt){
+      busy=false;
+      if(txt&&_scanMode&&!_scanBusy){clearTimeout(_scanQrT);scanCamStop();scanResult(String(txt).trim());}
+    });
+  })();
 }
 function scanShoot(){
   var v=document.getElementById('scan-video'),c=document.getElementById('scan-frozen'),b=document.getElementById('scan-shot');
