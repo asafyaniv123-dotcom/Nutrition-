@@ -3585,8 +3585,11 @@ export default {
        the person is still living in. */
     /* ── /corrections ─────────────────────────────────────────────────────
        What the app reports each time someone takes a logged item back or
-       corrects it: kept ninety days under corr:<time>:<install>, read only by
-       /admin/corrections with the ADMIN_KEY secret. The install id is random
+       corrects it: kept ninety days, read only by /admin/corrections with the
+       ADMIN_KEY secret. ONE KEY PER DAY (corrd:<YYYY-MM-DD>, UTC), appended
+       to, so a read is seven gets and never a list(): KV allows a thousand
+       list() calls a day on this plan, the minute loop needs the list, and
+       the first version of this page spent the day's allowance on itself. The install id is random
        and is the only thing here about who it is.
        Optional: CORRECTIONS_DAILY_CAP (default 300/IP/day). */
     if (url.pathname === '/corrections' && req.method === 'POST') {
@@ -3602,10 +3605,14 @@ export default {
       if (used + list.length > cap) return json({ error: 'too many for today' }, 429);
       await env.SUBS.put(ipKey, String(used + list.length), { expirationTtl: 172800 });
       const dev = b.dev === true;
-      for (const c of list) {
-        const key = 'corr:' + String(c.ts).padStart(14, '0') + ':' + uid + ':' + Math.random().toString(36).slice(2, 6);
-        await env.SUBS.put(key, JSON.stringify(Object.assign({ uid, dev }, c)), { expirationTtl: 90 * 86400 });
-      }
+      if (!list.length) return json({ ok: true, kept: 0 });
+      const dkey = 'corrd:' + new Date().toISOString().slice(0, 10);
+      let day = [];
+      try { day = JSON.parse((await env.SUBS.get(dkey)) || '[]'); } catch {}
+      if (!Array.isArray(day)) day = [];
+      for (const c of list) day.push(Object.assign({ uid, dev }, c));
+      /* a day is capped, so one key never grows past what a read can carry */
+      await env.SUBS.put(dkey, JSON.stringify(day.slice(-800)), { expirationTtl: 90 * 86400 });
       return json({ ok: true, kept: list.length });
     }
     if (url.pathname === '/admin/corrections' && req.method === 'GET') {
@@ -3613,19 +3620,14 @@ export default {
       const got = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
       if (!want || got.length !== want.length || got !== want) return json({ error: 'not allowed' }, 401);
       const days = Math.max(1, Math.min(90, Number(url.searchParams.get('days')) || 7));
-      const from = 'corr:' + String(Date.now() - days * 86400000).padStart(14, '0');
       const out = [];
-      let cursor;
-      do {
-        const page = await env.SUBS.list({ prefix: 'corr:', cursor, limit: 1000 });
-        for (const k of page.keys) {
-          if (k.name < from || out.length >= 500) continue;
-          const v = await env.SUBS.get(k.name);
-          if (v) { try { out.push(JSON.parse(v)); } catch {} }
-        }
-        cursor = page.list_complete ? null : page.cursor;
-      } while (cursor && out.length < 500);
-      return json({ ok: true, days, items: out });
+      for (let i = 0; i <= days; i++) {
+        const v = await env.SUBS.get('corrd:' + new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
+        if (!v) continue;
+        try { const a = JSON.parse(v); if (Array.isArray(a)) out.push(...a); } catch {}
+      }
+      const since = Date.now() - days * 86400000;
+      return json({ ok: true, days, items: out.filter((c) => c.ts >= since) });
     }
 
     if (url.pathname === '/coach' && req.method === 'POST') {
