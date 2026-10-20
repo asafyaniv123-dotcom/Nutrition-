@@ -3683,6 +3683,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - Before logging, re-read the user's text for quantity words: "twice", "פעמיים", "2 מנות", "חצי", "עוד אחד", "כל הצלחת". These override what the photo shows.
 - Multiple photos of the same plate = ONE plate, unless the user says otherwise. The number of photos is never the number of portions.
 - The photo shows ONE portion. If the user says they ate it X times, portions = X.
+- Count the pieces in the single clearest photo. Never add counts from two photos of the same plate together, and never split a plate between them - each photo shows the whole plate.
+- portions = X goes on EVERY item that came from that plate, not only on some of them.
 - Always state your count in the reply: "~7 pieces × 2 = 14 pieces".
 - Sauce in a dish/ramekin ≈ 3-4 tbsp, not 1-2. Teriyaki ≈ 40-45 kcal/tbsp, mostly sugar.
 - Restaurant food: when unsure between two estimates, take the higher one. Restaurants use more oil, sugar and sauce than home cooking.
@@ -4325,7 +4327,10 @@ function coachTotals(it) {
     c = num(it && it.carbs, 4000); f = num(it && it.fat, 2000);
   }
   const r1 = (x) => Math.round(x * portions * 10) / 10;
-  return { calories: Math.round(k * portions), protein: r1(p), carbs: r1(c), fat: r1(f) };
+  /* portions and units go back too: the app reads only the fields it knows,
+     and a test can then see what the model counted, not just the product */
+  return { calories: Math.round(k * portions), protein: r1(p), carbs: r1(c), fat: r1(f),
+           portions, units: units && ku ? units : 0 };
 }
 
 /* An item whose protein, carbs and fat account for less than 60% of its

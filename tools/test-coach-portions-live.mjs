@@ -13,8 +13,10 @@ if (!p1 || !p2) { console.log('usage: node tools/test-coach-portions-live.mjs <p
 const images = [p1, p2].map((f) => ({ mime: 'image/jpeg', data: fs.readFileSync(f).toString('base64') }));
 const BASE = { day: '2026-10-20', lang: 'he', units: 'metric', gender: 'f', logged: [], history: [], weights: [],
   targets: { kcal: 1800, protein: 120, carbs: 180, fat: 60 }, left: { kcal: 1800, protein: 120, carbs: 180, fat: 60 } };
-const isSauce = (n) => /טריאקי|teriyaki|רוטב|sauce/i.test(n);
-const isSushi = (n) => !isSauce(n) && /סושי|רול|ניגירי|מאקי|אורמאקי|sushi|roll|nigiri|maki|sashimi|סשימי/i.test(n);
+/* everything that is not the teriyaki is the plate - the model spells nigiri
+   four ways, and a name pattern for sushi missed half of them */
+const isSauce = (n) => /טריאקי|teriyaki/i.test(n);
+const isSushi = (n) => !isSauce(n);
 async function ask(message) {
   const r = await fetch(HOST + '/coach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign({}, BASE, { message, images })) });
@@ -33,7 +35,7 @@ for (let k = 0; k < 3; k++) {
     if (x.err) { console.log(lbl, 'ERROR', x.err); continue; }
     arr.push(x);
     console.log(lbl + ' | ' + x.j.action + ' | sushi ' + x.sushi + ' | teriyaki ' + x.sauce + ' | total ' + x.total + (x.j.retried ? ' | retried' : ''));
-    for (const i of x.j.items) console.log('        ' + i.name + ' | ' + i.quantity + ' | ' + i.calories);
+    for (const i of x.j.items) console.log('        ' + i.name + ' | ' + i.quantity + ' | ' + i.calories + ' | portions ' + i.portions + (i.units ? ' x ' + i.units + ' pcs' : ''));
     if (lbl === 'twice') console.log('        says: ' + x.j.message.replace(/\s+/g, ' ').slice(0, 220));
   }
 }
