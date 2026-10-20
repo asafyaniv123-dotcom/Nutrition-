@@ -595,12 +595,7 @@ export default {
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
       const sub = b && b.subscription;
       if (!sub || !sub.endpoint) return json({ error: 'missing subscription' }, 400);
-      const hm = (v) => /^\d{2}:\d{2}$/.test(v || '') && +v.slice(0, 2) < 24 && +v.slice(3, 5) < 60;
-      const wt = hm(b.wt) ? b.wt : '';
-      const wd = wt ? [...new Set((Array.isArray(b.wd) ? b.wd : []).map(Number)
-        .filter((d) => d >= 0 && d <= 6 && d === Math.round(d)))].sort() : [];
-      /* the evening reminder's time, or nothing when only the weigh-in is on */
-      if (!(hm(b.time) || (b.time === '' && wt))) return json({ error: 'bad time' }, 400);
+      if (!/^\d{2}:\d{2}$/.test(b.time || '')) return json({ error: 'bad time' }, 400);
 
       const tz = b.tz || 'UTC';
       let now;
@@ -613,13 +608,9 @@ export default {
         time: b.time,
         tz,
         // Subscribing after today's time has passed starts tomorrow, matching the client.
-        last: b.time && toMin(now.hhmm) >= toMin(b.time) ? now.date : (prev && prev.time === b.time ? prev.last : ''),
+        last: toMin(now.hhmm) >= toMin(b.time) ? now.date : (prev && prev.time === b.time ? prev.last : ''),
         updated: new Date().toISOString(),
       };
-      if (wt) {
-        rec.wt = wt; rec.wd = wd;
-        rec.wlast = toMin(now.hhmm) >= toMin(wt) ? now.date : (prev && prev.wt === wt ? prev.wlast || '' : '');
-      }
       await env.SUBS.put(key, JSON.stringify(rec));
       return json({ ok: true, time: rec.time, tz: rec.tz });
     }
@@ -3667,6 +3658,9 @@ export default {
       /* an edit names ONE logged item; the reply may touch nothing else */
       const editId = String((b && b.edit_id) || '').slice(0, 40);
       const weigh = weighClean(b && b.weigh);
+      /* not a weigh-in: whether one is due today and still missing */
+      const ws = (b && b.weigh_status && typeof b.weigh_status === 'object') ? b.weigh_status : null;
+      const weighDue = !!(ws && ws.due_today === true && ws.weighed_today !== true);
       const strs = (a, n, len) => (Array.isArray(a) ? a : []).slice(-n)
         .map((x) => String(x == null ? '' : x).replace(/\s+/g, ' ').trim().slice(0, len)).filter(Boolean);
       const habits = strs(b && b.habits, 30, 120);
@@ -3793,6 +3787,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - If the user shows distress about their weight or wants to cut drastically, follow the safety rules.
 - A weigh-in turn logs no food: action none, no items.
 - With weekly weigh-ins the trend is this week against last week; say so rather than comparing days.
+- When today is one of their weigh-in days and they have not weighed in yet, you may add ONE short line at the end of a reply suggesting it ("אם עוד לא נשקלת היום, זה הזמן") - at most once a day: if today's history already has such a line, never repeat it. Not after they have eaten a meal today, since the morning weight is what counts; not in a reply about distress or safety.
 
 ## Edits and habits
 - A message with an item_id and edited text is a correction to that item. Return action=update for that id only. Reply in one short line stating what changed and the kcal difference. No "remaining today" block.
@@ -3874,6 +3869,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         'Their habits: ' + (habits.length ? JSON.stringify(habits) : 'none saved') + '\n' +
         'Habits already offered (never offer again): ' + (offered.length ? JSON.stringify(offered) : 'none') + '\n' +
         'Their recent corrections, oldest first: ' + (recentFix.length ? JSON.stringify(recentFix) : 'none') +
+        (weighDue ? '\nToday is one of their weigh-in days and they have not weighed in yet.' : '') +
         (weigh ? '\nWEIGH-IN NOW (all figures computed by the app' +
           (weigh.hidden ? '; THE USER HIDES THE NUMBER - you are not given it and must not state or guess any weight' : '') +
           '): ' + JSON.stringify(weigh) : '');
@@ -4289,49 +4285,30 @@ If they logged two or three days, say so without reproach and write about what t
 
         let now;
         try { now = localNow(rec.tz); } catch { continue; }
-        const due = remindersDue(rec, now);
-        if (!due.mark) continue;                           // nothing due, nothing to record
+        if (rec.last === now.date) continue;               // already sent today
 
-        if (due.send) {
-          const res = await sendPush(rec.endpoint, env);
-          if (res.status === 404 || res.status === 410) {
-            await env.SUBS.delete(k.name);                 // subscription is gone for good
-            continue;
-          }
-          rec.lastStatus = res.status;
+        const late = toMin(now.hhmm) - toMin(rec.time);
+        if (late < 0) continue;                            // not yet
+        if (late > LATE_WINDOW_MIN) {                      // too late to be useful
+          rec.last = now.date;
+          await env.SUBS.put(k.name, JSON.stringify(rec));
+          continue;
+        }
+
+        const res = await sendPush(rec.endpoint, env);
+        if (res.status === 404 || res.status === 410) {
+          await env.SUBS.delete(k.name);                   // subscription is gone for good
+          continue;
         }
         // Mark sent even on a transient failure - better a missed day than a retry storm.
-        Object.assign(rec, due.mark);
+        rec.last = now.date;
+        rec.lastStatus = res.status;
         await env.SUBS.put(k.name, JSON.stringify(rec));
       }
       cursor = page.list_complete ? null : page.cursor;
     } while (cursor);
   },
 };
-
-/* ── WHICH REMINDER IS DUE ──
-   One subscription, two reminders: the evening summary at rec.time, every
-   day, and the morning weigh-in at rec.wt on the weekdays in rec.wd. For a
-   record with no weigh-in this is exactly what the loop always did: nothing
-   before the time, a push within LATE_WINDOW_MIN of it, a silent mark after
-   that, once a day. Both falling due in the same minute is ONE push - the
-   phone picks the words by the clock. Returns { mark, send }: the fields to
-   write back (or null), and whether to push. */
-function remindersDue(rec, now) {
-  const mark = {};
-  let send = false;
-  const dow = new Date(now.date + 'T12:00:00Z').getUTCDay();
-  const step = (t, lastField, dayOk) => {
-    if (!/^\d{2}:\d{2}$/.test(t || '') || !dayOk || rec[lastField] === now.date) return;
-    const late = toMin(now.hhmm) - toMin(t);
-    if (late < 0) return;                                  // not yet
-    mark[lastField] = now.date;
-    if (late <= LATE_WINDOW_MIN) send = true;              // else too late to be useful
-  };
-  step(rec.time, 'last', true);
-  step(rec.wt, 'wlast', Array.isArray(rec.wd) && rec.wd.indexOf(dow) >= 0);
-  return { mark: Object.keys(mark).length ? mark : null, send };
-}
 
 /* ── /route, THE PURE HALF ──
    The model's answer is a suggestion, not an instruction. Everything it can
@@ -4575,4 +4552,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, remindersDue, weighClean, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, weighClean, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };

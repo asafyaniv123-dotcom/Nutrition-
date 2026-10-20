@@ -50,5 +50,14 @@ j = await post({ logged: [], message: 'שקילת בוקר: 71.8 ק"ג',
   weigh: Object.assign({}, W, { mode: 'weekly', hidden: false, change_vs_trend_kg: -0.4, today_kg: 71.8, trend_kg: 71.8, recent: [{ d: '2026-10-14', kg: 72.2 }, { d: DAY, kg: 71.8 }], flags: [] }) });
 ok(/שבוע/.test(flat(j.message)), 'weekly: it compares week to week', flat(j.message));
 
+// 4. no reminder push: the coach mentions a missing weigh-in, once a day
+j = await post({ logged: [], message: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?', weigh_status: { due_today: true, weighed_today: false } });
+ok(/נשקל|שקיל/.test(flat(j.message)), 'weigh day, not yet weighed: it mentions it', flat(j.message));
+j = await post({ logged: [], message: 'ומה לגבי קפה?', weigh_status: { due_today: true, weighed_today: false },
+  history: [{ role: 'user', text: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?' }, { role: 'assistant', text: 'יוגורט עם פירות. אם עוד לא נשקלת היום, זה הזמן.' }] });
+ok(!/נשקל|שקיל/.test(flat(j.message)), 'already said today: not again', flat(j.message));
+j = await post({ logged: [], message: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?', weigh_status: { due_today: false, weighed_today: false } });
+ok(!/נשקל|שקיל/.test(flat(j.message)), 'not a weigh day: nothing about it', flat(j.message));
+
 console.log('\n' + (fails.length ? fails.length + ' FAILED' : 'all right'));
 process.exit(fails.length ? 1 : 0);

@@ -1432,7 +1432,6 @@ body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
 .wg-chip.on{background:var(--violet-100);color:var(--violet-700)}
 .wg-line{display:flex;align-items:center;gap:10px;margin-top:6px}
 .wg-tog{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer}
-.wg-time{max-width:120px}
 /* the habits on the profile */
 .fh-row{display:flex;gap:8px;align-items:center;margin-top:8px}
 .fh-in{flex:1;min-width:0}
@@ -13211,6 +13210,7 @@ function coachPost(d,text,pics,rec,ed,wg){
       message:text,
       edit_id:ed?String(ed.id):'',
       weigh:wg,
+      weigh_status:{due_today:weighIsDay(d),weighed_today:typeof loadWeights()[d]==='number'},
       habits:fhGet(),habits_offered:fhOffered(),
       corrections_recent:corrRecent(),
       images:pics.map(function(p){return{mime:'image/jpeg',data:p.split(',')[1]||''};})
@@ -13497,8 +13497,9 @@ function fhCardHTML(){
 }
 
 /* ── MORNING WEIGH-INS ──
-   How often she weighs, on which days, whether she is reminded, and whether
-   she sees the number at all. Everything the coach is told about a weigh-in -
+   How often she weighs, on which days, and whether she sees the number at
+   all. There is no reminder, on purpose (Asaf): the coach is told on every
+   turn whether today's weigh-in is due and missing, and may say so once. Everything the coach is told about a weigh-in -
    the trend, the rate, what the logged food says the rate should be, and what
    the day or two before it held - is worked out here, in code, and never by
    the model: a model asked for a moving average gives a different one every
@@ -13514,8 +13515,7 @@ function weighCfg(){
   if(f==='daily'||!days||(!days.length&&f!=='off'))days=WEIGH_FREQ_DAYS[f].slice();
   if(f==='off')days=[];
   var g=parseFloat(o.goal);
-  return {freq:f,days:days,remind:!!o.remind&&f!=='off',time:/^\d{2}:\d{2}$/.test(o.time||'')?o.time:'07:30',
-          hide:!!o.hide,goal:g>20&&g<400?g:0,intro:!!o.intro};
+  return {freq:f,days:days,hide:!!o.hide,goal:g>20&&g<400?g:0,intro:!!o.intro};
 }
 function weighSave(c){try{localStorage.setItem(WEIGH_KEY,JSON.stringify(c));}catch(e){}}
 function weighHidden(){return weighCfg().hide;}
@@ -13730,18 +13730,13 @@ function weighChartHTML(){
 /* ── THE SETTINGS, on the personal tab ── */
 function weighSet(k,v){
   var c=weighCfg();
-  if(k==='freq'){c.freq=v;c.days=WEIGH_FREQ_DAYS[v].slice();if(v==='off')c.remind=false;}
+  if(k==='freq'){c.freq=v;c.days=WEIGH_FREQ_DAYS[v].slice();}
   else if(k==='day'){
     var i=c.days.indexOf(v);if(i>=0)c.days.splice(i,1);else c.days.push(v);
     c.days.sort();if(!c.days.length)c.days=WEIGH_FREQ_DAYS[c.freq].slice();
   }
   else c[k]=v;
   weighSave(c);
-  if(k==='remind'||k==='time'||k==='freq'||k==='day'){
-    sumRemPushSync();
-    if(k==='remind'&&v&&('Notification' in window)&&Notification.permission==='default')sumRemAsk();
-    if(k==='remind')showToast(v?_t('התזכורת לשקילה הופעלה'):_t('התזכורת לשקילה בוטלה'));
-  }
   renderProfile();
 }
 function weighSetGoal(el){
@@ -13760,11 +13755,6 @@ function weighSettingsHTML(){
     for(i=0;i<7;i++)
       h+='<button class="wg-chip wg-day'+(c.days.indexOf(i)>=0?' on':'')+'" onclick="weighSet(\'day\','+i+')">'+RF_DAYNAMES[i]+'</button>';
     h+='</div>';
-  }
-  if(c.freq!=='off'){
-    h+='<div class="wg-line"><label class="wg-tog"><input type="checkbox"'+(c.remind?' checked':'')+
-       ' onchange="weighSet(\'remind\',this.checked)"> '+_t('תזכורת')+'</label>'+
-       (c.remind?'<input class="pf-in wg-time" type="time" value="'+c.time+'" onchange="if(this.value)weighSet(\'time\',this.value)">':'')+'</div>';
   }
   h+='<div class="wg-line"><label class="wg-tog"><input type="checkbox"'+(c.hide?' checked':'')+
      ' onchange="weighSet(\'hide\',this.checked)"> '+_t('להסתיר את המספר')+'</label></div>'+
@@ -30133,13 +30123,8 @@ function pushStashConfig(o){
          to be inside the service worker when it wakes - and the worker has no
          dictionary and no idea who it is speaking to. This is the only place
          that knows both, so it says the sentence here. */
-      var wc=weighCfg();
-      c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.on?o.time:'',tz:localTZ(),
-        title:sumRemTitle(),body:sumRemMsg(),
-        /* the weigh-in reminder rides the same subscription; the worker
-           decides which one a push is by the time and the weekday */
-        wt:wc.remind?wc.time:'',wd:wc.remind?wc.days:[],
-        wtitle:_t('שקילת בוקר'),wbody:_t('זמן לשקילה: אחרי השירותים ועל בטן ריקה.')}),
+      c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ(),
+        title:sumRemTitle(),body:sumRemMsg()}),
         {headers:{'Content-Type':'application/json'}}));
     });
   }catch(e){}
@@ -30150,14 +30135,13 @@ function pushStashConfig(o){
    speaking the language she left, and keeps addressing her the way she used to
    be addressed. langApply runs these on both, which is why one hook covers it. */
 langOn(function(){
-  try{var o=loadSumRem();if(o&&(o.on||weighCfg().remind))pushStashConfig(o);}catch(e){}
+  try{var o=loadSumRem();if(o&&o.on)pushStashConfig(o);}catch(e){}
 });
 
 function sumRemPushSync(){
   var o=loadSumRem();
   if(!pushSupported())return;
-  var wc=weighCfg();
-  if(!o.on&&!wc.remind){sumRemPushDrop();return;}
+  if(!o.on){sumRemPushDrop();return;}
   if(!('Notification' in window)||Notification.permission!=='granted')return;
   pushStashConfig(o);
   _swReg.pushManager.getSubscription().then(function(sub){
@@ -30167,8 +30151,7 @@ function sumRemPushSync(){
     return fetch(PUSH_SERVER+'/subscribe',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({subscription:sub.toJSON(),time:o.on?o.time:'',tz:localTZ(),
-        wt:wc.remind?wc.time:'',wd:wc.remind?wc.days:[]})
+      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ()})
     });
   }).then(function(r){
     _pushState=r&&r.ok?'ok':'error';renderSumRem();

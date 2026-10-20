@@ -57,26 +57,19 @@ self.addEventListener('push', function (e) {
   // one where the cache cannot be read at all.
   e.waitUntil(
     (async function () {
-      var title = MSG_TITLE, body = pushed || MSG_BODY, tag = 'sumrem';
+      var title = MSG_TITLE, body = pushed || MSG_BODY;
       try {
         // the page left the sentence here when it subscribed: already in the
         // reader's language, and already in the voice she chose
         var cfg = await readConfig();
         if (cfg && cfg.title) title = cfg.title;
         if (!pushed && cfg && cfg.body) body = cfg.body;
-        // the weigh-in reminder rides the same subscription: a push that
-        // lands on a weigh-in day within two hours after its time is that one
-        if (cfg && isWeighPush(cfg, new Date())) {
-          title = cfg.wtitle || title;
-          if (!pushed) body = cfg.wbody || body;
-          tag = 'weigh';
-        }
       } catch (err) {}
       return self.registration.showNotification(title, {
         body: body,
         icon: ICON,
         badge: ICON,
-        tag: tag,
+        tag: 'sumrem',
         renotify: true,
       });
     })()
@@ -114,24 +107,12 @@ self.addEventListener('pushsubscriptionchange', function (e) {
         await fetch(cfg.server + '/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subscription: fresh.toJSON(), time: cfg.time, tz: cfg.tz, wt: cfg.wt || '', wd: cfg.wd || [] }),
+          body: JSON.stringify({ subscription: fresh.toJSON(), time: cfg.time, tz: cfg.tz }),
         });
       } catch (err) {}
     })()
   );
 });
-
-// Two hours, the worker's LATE_WINDOW_MIN: it never sends a reminder later
-// than that. With no evening reminder at all, every push is the weigh-in.
-function isWeighPush(cfg, now) {
-  if (!cfg.wt || !/^\d{2}:\d{2}$/.test(cfg.wt)) return false;
-  if (!cfg.time) return true;
-  var wd = Array.isArray(cfg.wd) ? cfg.wd : [];
-  if (wd.indexOf(now.getDay()) < 0) return false;
-  var mins = now.getHours() * 60 + now.getMinutes();
-  var at = +cfg.wt.slice(0, 2) * 60 + +cfg.wt.slice(3, 5);
-  return mins >= at && mins - at <= 120;
-}
 
 // The page stashes what the resubscribe needs, since the SW cannot read localStorage.
 async function readConfig() {
