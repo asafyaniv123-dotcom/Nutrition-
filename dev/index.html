@@ -19628,6 +19628,27 @@ function fitwClear(){ _fitWorkout=null; _fitTgtOpen=-1; try{localStorage.removeI
 function fitBack(){ _fitView='home'; renderFitness(); }
 /* How much there is to lose, which is the only thing that decides whether
    replacing this workout needs to ask. */
+/* ── CANCELLING A WORKOUT ──
+   A workout started by mistake had no way out but to finish it - which saves
+   an empty workout into the history - or to leave it running (Asaf, 20.10).
+   Cancelling saves nothing. It asks only when sets were already logged, the
+   only case with something to lose. In a shared workout the room is told this
+   person is done, so the others are not left waiting on someone who left. */
+function fitCancelAsk(){
+  if(!_fitWorkout)return;
+  if(!fitwSetsLogged()){fitCancel();return;}
+  askConfirm(_t('לבטל את האימון? הסטים שנרשמו בו לא יישמרו.'),_t('למחוק את האימון'),fitCancel);
+}
+function fitCancel(){
+  var w=_fitWorkout;if(!w)return;
+  if(w.tg)tgSync(tgMe(w,true),w.tg);
+  restStop();
+  fitwClear();
+  _fitSummaryEntry=null;
+  _fitView='home';
+  renderFitness();
+  showToast(_t('האימון בוטל'));
+}
 function fitwSetsLogged(){
   if(!_fitWorkout||!_fitWorkout.exercises)return 0;
   var n=0,i;
@@ -27313,6 +27334,8 @@ h+=addExHTML();
   }
   h+='</div>';
   h+=fitPhotoBlockHTML(w.photo,'fitLivePhoto','fitLiveClearPhoto');
+  /* last on the page and quiet: a way out, not a choice offered beside "finish" */
+  h+='<button onclick="fitCancelAsk()" style="display:block;width:100%;margin-top:14px;background:none;border:none;padding:12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)">'+_t('ביטול האימון')+'</button>';
   h+='</div>';
   document.getElementById('content').innerHTML=h;
   hydratePhotos();
