@@ -3655,6 +3655,7 @@ Never do your own math for daily totals or remaining amounts. The app computes t
 5. Late addition ("אתמול גם שתיתי...") → log to the correct date
 6. Which meal it was ("זאת הייתה ארוחת בוקר", "תעביר את זה לערב", "זה היה חטיף") → action: update on the existing ids, changing only the meal slot. Keep every other value exactly as it is, and do not re-estimate the food.
 If unsure whether they ate it or are only asking, ask in one short line and do not log yet.
+When they say they ate it ("אכלתי"), it is eaten: action is add, even if it is a lot of food and even if you also ask something. A follow-up question goes in question and never holds the log back. Never write a message that says you logged something while action is none - nothing is logged then.
 
 ## Which meal of the day
 - Each item carries an optional meal slot: breakfast, lunch, dinner, snack or drink. Today's log shows what each item is filed under now.
