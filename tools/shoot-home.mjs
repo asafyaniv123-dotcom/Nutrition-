@@ -230,8 +230,11 @@ try {
   if (args.includes('--eval')) console.log('EVAL', JSON.stringify(await evalJS(args[args.indexOf('--eval') + 1])));
   if (!args.includes('--plain')) for (const k of Object.keys(VARIANTS)) await variant(k);
   /* --ideas: the second round, drawn over what dev ships now */
-  if (args.includes('--ideas') || args.includes('--ideas2')) {
-    const IDEAS = args.includes('--ideas2')
+  /* --ideas-file <module>: any module exporting IDEAS, for a one-off round */
+  if (args.includes('--ideas') || args.includes('--ideas2') || args.includes('--ideas-file')) {
+    const IDEAS = args.includes('--ideas-file')
+      ? (await import('file:///' + path.resolve(args[args.indexOf('--ideas-file') + 1]).replace(/\\/g, '/'))).IDEAS
+      : args.includes('--ideas2')
       ? (await import('./home-ideas-2.mjs')).IDEAS2 : (await import('./home-ideas.mjs')).IDEAS;
     for (const [k, v] of Object.entries(IDEAS)) {
       await load();
