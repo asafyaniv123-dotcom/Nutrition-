@@ -264,6 +264,29 @@ try {
       for (let i = 0; i < 30 && /splash/.test(await evalJS(under)); i++) await sleep(300);
       hit = await tap('.hnext');
       console.log((hit && await evalJS(`currentModule==='planning'`) ? '  ok   ' : '  FAIL ') + 'the next line opens ' + await evalJS('String(currentModule)'));
+      /* the dial: a drag turns it onto another area; a press on a side area
+         turns it to the notch and opens it */
+      if (await evalJS(`!!document.querySelector('.hdial')`)) {
+        await load();
+        for (let i = 0; i < 30 && /splash/.test(await evalJS(under)); i++) await sleep(300);
+        const was = await evalJS(`document.querySelector('.hdisc.on').getAttribute('data-area')`);
+        const c = await evalJS(`(function(){var b=document.querySelector('.hdial').getBoundingClientRect();return [b.left+b.width/2,b.top+b.height/2];})()`);
+        const R = 125, pts = [];
+        for (let k = 0; k <= 12; k++) { const a = (-90 + k * 6) * Math.PI / 180; pts.push([c[0] + R * Math.cos(a), c[1] + R * Math.sin(a)]); }
+        await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: pts[0][0], y: pts[0][1] }] });
+        for (const p of pts.slice(1)) { await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p[0], y: p[1] }] }); await sleep(30); }
+        await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await sleep(700);
+        const now = await evalJS(`document.querySelector('.hdisc.on').getAttribute('data-area')`);
+        const stored = await evalJS(`localStorage.getItem('home_dial_at')`);
+        console.log((now !== was && stored === now && !(await evalJS('currentModule')) ? '  ok   ' : '  FAIL ') +
+          'a drag turns the dial from ' + was + ' to ' + now + ' and opens nothing');
+        const side = await evalJS(`document.querySelector('.hdisc:not(.on)').getAttribute('data-area')`);
+        hit = await tap(`.hdisc[data-area="${side}"] .hdisc-ic`);
+        await sleep(500);
+        console.log((hit && await evalJS('currentModule') === side ? '  ok   ' : '  FAIL ') +
+          'a press on ' + side + ' turns it to the notch and opens ' + await evalJS('String(currentModule)'));
+      }
     }
   }
 } catch (e) {
