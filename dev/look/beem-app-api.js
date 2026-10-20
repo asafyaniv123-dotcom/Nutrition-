@@ -64,7 +64,13 @@ window.BeemKit = {
     opts = opts || {};
     if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
     var b = new Beem(el);
-    var s = typeof opts.play === 'string' ? APP_SCRIPTS[opts.play] : opts.play;
+    /* A canvas is born 300x150, and the engine resizes it only when its WIDTH
+       is wrong - so a box that needs exactly 300 (150px at 2x, as on the door
+       of סיום יום) kept the height of 150 and drew Beem stretched and cut in
+       half. Zeroing the width makes the first paint size both. Done here, not
+       in beem-engine.js, because the engine is the character sheet's. */
+    b.cv.width = 0;
+    var s =typeof opts.play === 'string' ? APP_SCRIPTS[opts.play] : opts.play;
     b.play(s || APP_SCRIPTS.sun);
     if (opts.glow) glowOn(b, opts.glow);
     if (!io && 'IntersectionObserver' in window)
