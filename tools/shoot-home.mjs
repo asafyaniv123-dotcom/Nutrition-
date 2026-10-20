@@ -225,6 +225,9 @@ try {
   })()`);
   await sleep(800);
   await shoot('lived-' + LANG);
+  /* --eval "<expr>": print what the page answers, for asking the browser
+     rather than reading the source */
+  if (args.includes('--eval')) console.log('EVAL', JSON.stringify(await evalJS(args[args.indexOf('--eval') + 1])));
   if (!args.includes('--plain')) for (const k of Object.keys(VARIANTS)) await variant(k);
   /* --ideas: the second round, drawn over what dev ships now */
   if (args.includes('--ideas') || args.includes('--ideas2')) {
