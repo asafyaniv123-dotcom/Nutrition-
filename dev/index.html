@@ -9815,6 +9815,8 @@ var HE={
   '{n} רשומות':{one:'רשומה אחת',two:'שתי רשומות',other:'{n} רשומות'},
   '{n} משפטים':{one:'משפט אחד',two:'שני משפטים',other:'{n} משפטים'},
   '{n} פריטים':{one:'פריט אחד',two:'שני פריטים',other:'{n} פריטים'},
+  '{n} סיכומי יום':{one:'סיכום יום אחד',two:'שני סיכומי יום',other:'{n} סיכומי יום'},
+  'סיכומי יום':{one:'סיכום יום',two:'סיכומי יום',other:'סיכומי יום'},
   'פריטים':{one:'פריט',two:'פריטים',other:'פריטים'},
   '{n} חזר':{one:'חזר',two:'2 חזר',other:'{n} חזר'},
   'סטים':{one:'סט',two:'סטים',other:'סטים'},
@@ -10282,22 +10284,6 @@ function beemMount(el,opts){
   beemKit().then(function(K){
     if(el&&el.isConnected&&!el.firstChild)K.mount(el,typeof opts==='function'?opts(K):opts);
   }).catch(function(){});
-}
-/* THE STREAK, by Asaf's rules of 18.10: a day counts when its summary was
-   finished, and one missed day is a grace day, not a reset (BeemKit.streak,
-   tested in tools/test-beem-streak.mjs). It is handed the days that have
-   ENDED, oldest first; walking back stops at two misses in a row, because
-   that is a reset and nothing before it can change the answer. Today counts
-   once its summary is finished - an open today never breaks anything. */
-function beemStreakDays(){
-  var days=[],miss=0,i,d;
-  for(i=1;i<=400;i++){
-    d=dayShift(-i);
-    if(rfDone(rfRec(d))){days.unshift('done');miss=0;}
-    else{days.unshift('miss');if(++miss===2)break;}
-  }
-  if(rfDone(rfRec(todayStr())))days.push('done');
-  return days;
 }
 var BEEM_MILESTONES=[7,30,100,365];
 /* The card. Once per area per day - a card on every meal would nag - and the
@@ -36584,7 +36570,7 @@ function renderReflectIntro(){
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-ghost">'+_t('לא עכשיו')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
-  beemMount(document.getElementById('rf-beem'),function(K){return {play:'invite',glow:K.streak(beemStreakDays()).count};});
+  beemMount(document.getElementById('rf-beem'),{play:'invite',glow:streakNow().n});
 }
 
 /* ── one question ── */
@@ -37158,7 +37144,7 @@ function renderReflectDone(){
   document.getElementById('content').innerHTML=h;
   var _rfToday=_rfDate===todayStr();
   beemMount(document.getElementById('rf-beem'),function(K){
-    var n=K.streak(beemStreakDays()).count,st=document.getElementById('rf-streak');
+    var n=streakNow().n,st=document.getElementById('rf-streak');
     if(st&&n)st.textContent=_t('יום {n} ברצף',{n:n});
     return {play:_rfToday&&BEEM_MILESTONES.indexOf(n)>=0?'golden':'celebrate',glow:n};
   });
@@ -39822,33 +39808,68 @@ function workoutDays(){
 function dtStamp(d){return dayStr(d);}
 function didSomething(d){return dayHadActivity(d)||workoutDays()[d]===1;}
 
-/* Today not being done yet must not read as a broken streak - at nine in the
-   morning you have not missed anything. So the count starts at yesterday
-   unless today already has something, and today only ever adds. */
-function streakNow(){
-  _stkWorkoutDays=null;                       // recount, a workout may have just landed
-  var today=todayStr(),n=0,d=appNow(),i;
-  var todayDone=didSomething(today);
-  if(!todayDone)d.setDate(d.getDate()-1);     // yesterday is the last day that could have been missed
-  for(i=0;i<400;i++){
-    if(!didSomething(dtStamp(d)))break;
-    n++;
-    d.setDate(d.getDate()-1);
+/* ── THE STREAK: ONE, AND IT IS THE DAY SUMMARY ──
+   Asaf, 18.10, and again on 20.10 when the app turned out to have two:
+   "אחרי סיכומי יום". A day counts when its summary was FINISHED - a meal or
+   a glass of water is not the day looked at. The streak used to count any
+   day with something logged, which made the home screen and Beem's line at
+   the end of the summary answer two different numbers.
+
+   A missed day is a grace day, not a reset: one grace in hand, a second miss
+   in a row resets, and the grace comes back after seven summaries in a row
+   (the numbers are the Beem session's proposal, not yet his word). The rule
+   is the same function as dev/look/beem-streak.js, and
+   tools/test-beem-streak.mjs runs its cases against BOTH copies, so the two
+   cannot drift apart unseen.
+
+   Today not being done yet must not read as a broken streak - at nine in the
+   morning you have not missed anything. Only days that have ENDED (at 04:00)
+   are judged; today only ever adds. */
+var STREAK_GRACE_REFILL=7;
+function streakOf(days){
+  var count=0,grace=1,since=0,misses=0,graceDay=-1,lastReset=-1,best=0;
+  for(var i=0;i<days.length;i++){
+    if(days[i]==='done'){
+      count++;misses=0;since++;
+      if(grace<1&&since>=STREAK_GRACE_REFILL){grace=1;since=0;}
+    }else{
+      misses++;
+      if(count>0&&misses===1&&grace>=1){grace=0;since=0;graceDay=i;}
+      else if(count>0){count=0;grace=1;since=0;lastReset=i;}
+    }
+    if(count>best)best=count;
   }
-  return {n:n,today:todayDone};
+  var last=days.length-1;
+  return {count:count,best:best,grace:grace,
+          refillIn:grace?0:STREAK_GRACE_REFILL-since,
+          graceYesterday:graceDay===last&&last>=0,
+          brokeYesterday:lastReset===last&&last>=0};
+}
+/* Finished: the reflection marks it done, and a summary from the interview
+   that came before it was only ever written on its last step - which is also
+   the only moment either of them writes the day's kcal. */
+function sumDone(d){var r=loadSummary(d);return !!(r&&(r.done||typeof r.kcal==='number'));}
+/* Every ended day of the last 400, oldest first. Read once per moment: the
+   home screen asks for the streak and its record in the same breath. */
+var _stkScan=null;
+function streakScan(){
+  if(_stkScan)return _stkScan;
+  var days=[],i;
+  for(i=400;i>=1;i--)days.push(sumDone(dayShift(-i))?'done':'miss');
+  _stkScan=days;setTimeout(function(){_stkScan=null;},0);
+  return days;
+}
+function streakNow(){
+  var days=streakScan(),ended=streakOf(days),today=sumDone(todayStr());
+  var st=today?streakOf(days.concat('done')):ended;
+  return {n:st.count,today:today,graceYesterday:ended.graceYesterday,grace:st.grace};
 }
 /* The longest one ever, which is the number worth keeping when the current
    run breaks - it says the thing you are capable of, not the thing you are
    in the middle of. */
-var STREAK_WINDOW=400;
 function streakStats(){
-  var d=appNow(),cur=0,best=0,total=0,i;
-  for(i=0;i<STREAK_WINDOW;i++){
-    if(didSomething(dtStamp(d))){cur++;total++;if(cur>best)best=cur;}
-    else cur=0;
-    d.setDate(d.getDate()-1);
-  }
-  return{best:best,total:total};
+  var days=streakScan().concat(sumDone(todayStr())?'done':'miss');
+  return {best:streakOf(days).best,total:days.filter(function(x){return x==='done';}).length};
 }
 function streakBest(){return streakStats().best;}
 function streakHTML(){
@@ -39860,7 +39881,7 @@ function streakHTML(){
     return '<button class="stk" onclick="streakOpen()">'+
       '<span class="stk-f">&#9898;</span>'+
       '<span class="stk-n">'+st.total+'</span>'+
-      '<span class="stk-w">'+_t('ימים שרשמת בהם',{n:st.total})+'</span>'+
+      '<span class="stk-w">'+_t('סיכומי יום',{n:st.total})+'</span>'+
       (st.best>1?'<span class="stk-b">'+_t('שיא')+' '+st.best+'</span>':'')+
       '</button>';
   }
@@ -39883,7 +39904,7 @@ function streakOpen(){
   var days='',d=appNow(),i,names=[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''];
   var cells=[];
   for(i=0;i<14;i++){
-    var st=dtStamp(d),on=didSomething(st);
+    var st=dtStamp(d),on=sumDone(st);
     cells.unshift('<span class="stk-d'+(on?' on':'')+(i===0?' now':'')+'">'+
       '<b>'+names[d.getDay()]+'</b><i>'+d.getDate()+'</i></span>');
     d.setDate(d.getDate()-1);
@@ -39892,14 +39913,15 @@ function streakOpen(){
   var h='<div class="stk-ov" id="stk-ov" onclick="if(event.target===this)streakClose()">'+
     '<div class="stk-sheet">'+
     '<div class="stk-hd"><span>'+(s.n?_t('{n} ימים ברצף',{n:s.n})
-                                     :_t('{n} ימים שרשמת בהם',{n:stats.total}))+'</span>'+
+                                     :_t('{n} סיכומי יום',{n:stats.total}))+'</span>'+
     '<button class="stk-x" onclick="streakClose()">&times;</button></div>'+
     '<div class="stk-row">'+days+'</div>'+
-    '<div class="stk-note">'+_t('יום נספר כשרשמת בו משהו — ארוחה, אימון, שורה ביומן, מים, צעדים, ולוג או סיכום יום.')+' '+
-    ''+_t('לא מספיק לפתוח את האפליקציה.')+'</div>'+
+    '<div class="stk-note">'+_t('יום נספר כשסיכום היום שלו הושלם.')+' '+
+    _t('יום אחד שפוספס לא שובר את הרצף: יום חסד שומר עליו, והוא חוזר אחרי שבעה סיכומים ברצף.')+'</div>'+
+    (s.graceYesterday&&s.n?'<div class="stk-today">'+_t('אתמול פוספס, ויום החסד שמר על הרצף.')+'</div>':'')+
     (best>s.n?'<div class="stk-best">'+_t('הרצף הארוך ביותר שלך: {n} ימים.',{n:best})+'</div>':'')+
-    (!s.today?'<div class="stk-today">'+(s.n?''+_t('היום עוד לא נספר. כל דבר שתרשום היום ימשיך את הרצף.')+''
-                                            :''+_t('כל דבר שתרשום היום מתחיל רצף חדש. מה שכבר רשמת נשאר.')+'')+'</div>':'')+
+    (!s.today?'<div class="stk-today">'+(s.n?_t('היום עוד לא נספר. סיכום היום הערב ימשיך את הרצף.')
+                                            :_t('סיכום היום הערב יתחיל רצף חדש.'))+'</div>':'')+
     '</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
