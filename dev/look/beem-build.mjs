@@ -34,4 +34,6 @@ ${app}
 })();
 `;
 fs.writeFileSync(L + 'beem-app.js', out);
+// the app fetches it from vendor/ (liveBase), so the stable app gets it only through a release
+fs.writeFileSync(L + '../../vendor/beem-app.js', out);
 console.log('beem-app.js', (out.length/1024).toFixed(1) + ' KB');

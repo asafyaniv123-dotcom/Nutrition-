@@ -3030,6 +3030,24 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
    and which starts on the very same tap that raises a PR toast. At z-index
    100 the best message this app has was drawn underneath it every time. */
 body:has(.fw-rest) .toast{bottom:calc(152px + env(safe-area-inset-bottom))}
+/* BEEM'S REACTION CARD (19.10, "1 + 3"). Beem answers an action from below:
+   the card rises, stays a moment and goes. Appended to body, never inside
+   .app or #me-screen, whose stacking contexts flatten any z-index to 1. While
+   it is up it stands in for the plain toast the same tap raises. */
+.beem-card{position:fixed;inset-inline:16px;bottom:calc(84px + env(safe-area-inset-bottom));height:84px;border-radius:22px;
+  background:#ecebe7;display:flex;align-items:center;gap:10px;padding-inline:8px 14px;z-index:300;pointer-events:none;
+  box-shadow:-3px -3px 8px rgba(255,255,255,.95),5px 6px 14px rgba(150,130,110,.3);
+  transform:translateY(calc(140px + env(safe-area-inset-bottom)));transition:transform .45s cubic-bezier(.2,.9,.25,1.15)}
+.beem-card.up{transform:none}
+.beem-card .beem-box{position:relative;width:76px;height:76px;flex:none}
+.beem-card > img{height:46px;width:auto;flex:none}
+.beem-card b{font-size:15px;font-weight:800;color:var(--ink);flex:1;min-width:0}
+body:has(.fw-rest) .beem-card{bottom:calc(146px + env(safe-area-inset-bottom))}
+body.beem-up .toast{display:none}
+.rf-beem{width:180px;height:180px;margin:0 auto 6px}
+.rf-beem.big{width:200px;height:200px}
+.rf-streak{min-height:21px;text-align:center;font-size:15px;font-weight:800;color:var(--ink);margin-top:2px}
+@media (prefers-reduced-motion: reduce){.beem-card{transition:none}}
 .toast{position:fixed;bottom:90px;inset-inline-end:50%;transform:translateX(-50%);background:rgba(74,67,64,.9);color:var(--white);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:300;pointer-events:none}
 
 /* HOME SCREEN */
@@ -10231,6 +10249,92 @@ function showToast(msg){
   clearTimeout(toastTimer);toastTimer=setTimeout(function(){if(t.parentNode)t.remove();},2000);
 }
 
+/* ── BEEM ──
+   The approved character, decided 19.10 ("1 + 3"): his home is סיום יום - he
+   invites before it and celebrates the streak at its end - and everywhere else
+   he only ANSWERS an action, from a card that rises and goes. The home screen
+   stays clean.
+
+   He comes as ONE file, vendor/beem-app.js, built by dev/look/beem-build.mjs
+   from the files of the character sheet. It wraps them in a closure and lets
+   out a single name, BeemKit, because those files declare G and once, which
+   this file declares too. It is fetched the first time he is needed, never at
+   start-up: getting ready costs about a second (five images, the eyes cut out,
+   the beads sliced). The images are the approved ones - character/verify.mjs
+   checks them byte for byte - so nothing here may recolour or resize them. */
+var _beemP=null,_beemCardT=0,_beemCardT2=0;
+function beemKit(){
+  if(_beemP)return _beemP;
+  _beemP=new Promise(function(ok,no){
+    window.BEEM_ASSET_BASE=liveBase()+'assets/';
+    var sc=document.createElement('script');
+    sc.src=liveBase()+'vendor/beem-app.js';
+    sc.onload=function(){window.BeemKit.ready.then(function(){ok(window.BeemKit);},no);};
+    sc.onerror=function(){_beemP=null;no(new Error('beem'));};
+    document.head.appendChild(sc);
+  });
+  return _beemP;
+}
+/* Fills the box with a live Beem, if the box is still on the screen when he
+   is ready. opts may be a function of BeemKit, for what only he can count -
+   the streak - so the screen draws at once and the number arrives with him. */
+function beemMount(el,opts){
+  beemKit().then(function(K){
+    if(el&&el.isConnected&&!el.firstChild)K.mount(el,typeof opts==='function'?opts(K):opts);
+  }).catch(function(){});
+}
+/* THE STREAK, by Asaf's rules of 18.10: a day counts when its summary was
+   finished, and one missed day is a grace day, not a reset (BeemKit.streak,
+   tested in tools/test-beem-streak.mjs). It is handed the days that have
+   ENDED, oldest first; walking back stops at two misses in a row, because
+   that is a reset and nothing before it can change the answer. Today counts
+   once its summary is finished - an open today never breaks anything. */
+function beemStreakDays(){
+  var days=[],miss=0,i,d;
+  for(i=1;i<=400;i++){
+    d=dayShift(-i);
+    if(rfDone(rfRec(d))){days.unshift('done');miss=0;}
+    else{days.unshift('miss');if(++miss===2)break;}
+  }
+  if(rfDone(rfRec(todayStr())))days.push('done');
+  return days;
+}
+var BEEM_MILESTONES=[7,30,100,365];
+/* The card. Once per area per day - a card on every meal would nag - and the
+   record of which areas have had theirs is the mechanism, as with the
+   moments that close. */
+function beemReact(area,meal){
+  var k='beem_cards',seen={};
+  try{seen=JSON.parse(localStorage.getItem(k)||'{}')||{};}catch(e){}
+  if(seen.d!==todayStr())seen={d:todayStr()};
+  if(seen[area])return;
+  seen[area]=1;
+  try{localStorage.setItem(k,JSON.stringify(seen));}catch(e){}
+  var txt,prop;
+  if(area==='workout'){txt=_t('האימון הושלם');prop='dumbbell';}
+  else{
+    var mk=mealKind(meal);prop='plate';
+    txt=mk==='breakfast'?_t('ארוחת בוקר נרשמה'):
+        mk==='lunch'    ?_t('ארוחת צהריים נרשמה'):
+        mk==='dinner'   ?_t('ארוחת ערב נרשמה'):
+        mk==='snack'    ?_t('חטיף נרשם'):
+                         _t('משקה נרשם');
+  }
+  beemKit().then(function(K){
+    var old=document.querySelector('.beem-card');if(old)old.remove();
+    clearTimeout(_beemCardT);clearTimeout(_beemCardT2);
+    var c=document.createElement('div');c.className='beem-card';
+    c.innerHTML='<div class="beem-box"></div><b></b><img alt="" src="'+liveBase()+'assets/beem-props/'+prop+'.png">';
+    c.querySelector('b').textContent=txt;
+    document.body.appendChild(c);document.body.classList.add('beem-up');
+    var t0=document.querySelector('.toast');if(t0)t0.remove();
+    K.mount(c.querySelector('.beem-box'),{play:'react'});
+    requestAnimationFrame(function(){requestAnimationFrame(function(){c.classList.add('up');});});
+    _beemCardT=setTimeout(function(){c.classList.remove('up');
+      _beemCardT2=setTimeout(function(){c.remove();document.body.classList.remove('beem-up');},500);},3800);
+  }).catch(function(){});
+}
+
 /* ── RESCUING WHAT THE NaN BUG SWALLOWED ──
    curDate initialised before DAY_ENDS_AT was assigned, so every date came out
    NaN-NaN-NaN and food was written to day_NaN-NaN-NaN. It was read back from
@@ -10265,7 +10369,11 @@ function rescueNaNDay(){
   return added;
 }
 function loadDay(d){try{var x=localStorage.getItem('day_'+d);return x?JSON.parse(x):{meals:[],water:0};}catch(e){return{meals:[],water:0};}}
-function saveDay(d,data){try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}}
+function saveDay(d,data){
+  var grew=d===todayStr()&&data&&data.meals&&data.meals.length>(loadDay(d).meals||[]).length;
+  try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}
+  if(grew)beemReact('meal',data.meals[data.meals.length-1]);
+}
 /* ── PHOTO STORE ──
    Photos used to sit as data URIs inside the day's record. localStorage has
    about 5MB for the whole app, a day photo is ~580KB and a flow anchor ~270KB,
@@ -27331,6 +27439,7 @@ function finishWorkout(){
   _fitView='summary';
   _fitSummaryEntry=entry;
   renderFitness();
+  beemReact('workout');
 }
 
 var _fitSummaryEntry=null;
@@ -36465,6 +36574,7 @@ function rfOpenCard(i){_rfStage=2;_rfStep=i;_rfView='step';rfSave({lastStage:2,l
 /* ── intro ── */
 function renderReflectIntro(){
   var h='<div class="rf"><div class="rf-body" style="text-align:center">';
+  h+='<div class="rf-beem" id="rf-beem"></div>';
   h+='<div class="rf-q" style="font-size:27px">'+_t('בוא ניקח רגע להסתכל על היום שלך.')+'</div>';
   h+='<div class="rf-sub" style="font-size:14px">'+_t('כמה דקות, וזה שלך.')+'</div>';
   var _rfm=rfmLoad(_rfDate);
@@ -36474,6 +36584,7 @@ function renderReflectIntro(){
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-ghost">'+_t('לא עכשיו')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
+  beemMount(document.getElementById('rf-beem'),function(K){return {play:'invite',glow:K.streak(beemStreakDays()).count};});
 }
 
 /* ── one question ── */
@@ -37036,6 +37147,7 @@ function saveSummaryTotals(r){
 function renderReflectDone(){
   var r=rfRec(_rfDate)||{};
   var h='<div class="rf"><div class="rf-body">';
+  h+='<div class="rf-beem big" id="rf-beem"></div><div class="rf-streak" id="rf-streak"></div>';
   h+='<div class="rf-q" style="text-align:center">'+_t('זהו להיום.')+'</div>';
   h+='<div class="rf-sub" style="text-align:center;font-size:14px">'+_t('עצרת לרגע, הסתכלת על היום שלך — ועכשיו אפשר לשחרר אותו.')+'</div>';
 
@@ -37044,6 +37156,12 @@ function renderReflectDone(){
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-next" style="margin-top:30px">'+_t('סיימתי להיום')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
+  var _rfToday=_rfDate===todayStr();
+  beemMount(document.getElementById('rf-beem'),function(K){
+    var n=K.streak(beemStreakDays()).count,st=document.getElementById('rf-streak');
+    if(st&&n)st.textContent=_t('יום {n} ברצף',{n:n});
+    return {play:_rfToday&&BEEM_MILESTONES.indexOf(n)>=0?'golden':'celebrate',glow:n};
+  });
 }
 /* The SAME page the sheet shows, on glass instead of in a drawer. The seal is
    the only thing the card adds - it is the graphic that says the day is
