@@ -3030,6 +3030,25 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
    and which starts on the very same tap that raises a PR toast. At z-index
    100 the best message this app has was drawn underneath it every time. */
 body:has(.fw-rest) .toast{bottom:calc(152px + env(safe-area-inset-bottom))}
+/* BEEM'S REACTION CARD (19.10, "1 + 3"). Beem answers an action from below:
+   the card rises, stays a moment and goes. Appended to body, never inside
+   .app or #me-screen, whose stacking contexts flatten any z-index to 1. While
+   it is up it stands in for the plain toast the same tap raises. */
+.beem-card{position:fixed;inset-inline:16px;bottom:calc(84px + env(safe-area-inset-bottom));height:84px;border-radius:22px;
+  background:#ecebe7;display:flex;align-items:center;gap:10px;padding-inline:8px 14px;z-index:300;pointer-events:none;
+  box-shadow:-3px -3px 8px rgba(255,255,255,.95),5px 6px 14px rgba(150,130,110,.3);
+  transform:translateY(calc(140px + env(safe-area-inset-bottom)));transition:transform .45s cubic-bezier(.2,.9,.25,1.15)}
+.beem-card.up{transform:none}
+.beem-card .beem-box{position:relative;width:76px;height:76px;flex:none}
+.beem-card > img{height:46px;width:auto;flex:none}
+.beem-card b{font-size:15px;font-weight:800;color:var(--ink);flex:1;min-width:0}
+body:has(.fw-rest) .beem-card{bottom:calc(146px + env(safe-area-inset-bottom))}
+body.beem-up .toast{display:none}
+.rf-beem{width:180px;height:180px;margin:0 auto 6px}
+.rf-beem.big{width:200px;height:200px}
+.rf-beem.sm{width:150px;height:150px}
+.rf-streak{min-height:21px;text-align:center;font-size:15px;font-weight:800;color:var(--ink);margin-top:2px}
+@media (prefers-reduced-motion: reduce){.beem-card{transition:none}}
 .toast{position:fixed;bottom:90px;inset-inline-end:50%;transform:translateX(-50%);background:rgba(74,67,64,.9);color:var(--white);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:300;pointer-events:none}
 
 /* HOME SCREEN */
@@ -9797,6 +9816,8 @@ var HE={
   '{n} רשומות':{one:'רשומה אחת',two:'שתי רשומות',other:'{n} רשומות'},
   '{n} משפטים':{one:'משפט אחד',two:'שני משפטים',other:'{n} משפטים'},
   '{n} פריטים':{one:'פריט אחד',two:'שני פריטים',other:'{n} פריטים'},
+  '{n} סיכומי יום':{one:'סיכום יום אחד',two:'שני סיכומי יום',other:'{n} סיכומי יום'},
+  'סיכומי יום':{one:'סיכום יום',two:'סיכומי יום',other:'סיכומי יום'},
   'פריטים':{one:'פריט',two:'פריטים',other:'פריטים'},
   '{n} חזר':{one:'חזר',two:'2 חזר',other:'{n} חזר'},
   'סטים':{one:'סט',two:'סטים',other:'סטים'},
@@ -10231,6 +10252,99 @@ function showToast(msg){
   clearTimeout(toastTimer);toastTimer=setTimeout(function(){if(t.parentNode)t.remove();},2000);
 }
 
+/* ── BEEM ──
+   The approved character, decided 19.10 ("1 + 3"): his home is סיום יום - he
+   invites before it and celebrates the streak at its end - and everywhere else
+   he only ANSWERS an action, from a card that rises and goes. The home screen
+   stays clean.
+
+   He comes as ONE file, vendor/beem-app.js, built by dev/look/beem-build.mjs
+   from the files of the character sheet. It wraps them in a closure and lets
+   out a single name, BeemKit, because those files declare G and once, which
+   this file declares too. It is fetched the first time he is needed, never at
+   start-up: getting ready costs about a second (five images, the eyes cut out,
+   the beads sliced). The images are the approved ones - character/verify.mjs
+   checks them byte for byte - so nothing here may recolour or resize them. */
+var _beemP=null,_beemCardT=0,_beemCardT2=0;
+function beemKit(){
+  if(_beemP)return _beemP;
+  _beemP=new Promise(function(ok,no){
+    window.BEEM_ASSET_BASE=liveBase()+'assets/';
+    var sc=document.createElement('script');
+    sc.src=liveBase()+'vendor/beem-app.js';
+    sc.onload=function(){window.BeemKit.ready.then(function(){ok(window.BeemKit);},no);};
+    sc.onerror=function(){_beemP=null;no(new Error('beem'));};
+    document.head.appendChild(sc);
+  });
+  return _beemP;
+}
+/* Fills the box with a live Beem, if the box is still on the screen when he
+   is ready. opts may be a function of BeemKit, for what only he can count -
+   the streak - so the screen draws at once and the number arrives with him. */
+function beemMount(el,opts){
+  beemKit().then(function(K){
+    if(el&&el.isConnected&&!el.firstChild)K.mount(el,typeof opts==='function'?opts(K):opts);
+  }).catch(function(){});
+}
+var BEEM_MILESTONES=[7,30,100,365];
+/* The card. Once per area per day - a card on every meal would nag - and the
+   record of which areas have had theirs is the mechanism, as with the
+   moments that close. */
+function beemReact(area,meal){
+  var k='beem_cards',seen={};
+  try{seen=JSON.parse(localStorage.getItem(k)||'{}')||{};}catch(e){}
+  if(seen.d!==todayStr())seen={d:todayStr()};
+  if(seen[area])return;
+  seen[area]=1;
+  try{localStorage.setItem(k,JSON.stringify(seen));}catch(e){}
+  var txt,prop;
+  if(area==='workout'){txt=_t('האימון הושלם');prop='dumbbell';}
+  else{
+    var mk=mealKind(meal);prop='plate';
+    txt=mk==='breakfast'?_t('ארוחת בוקר נרשמה'):
+        mk==='lunch'    ?_t('ארוחת צהריים נרשמה'):
+        mk==='dinner'   ?_t('ארוחת ערב נרשמה'):
+        mk==='snack'    ?_t('חטיף נרשם'):
+                         _t('משקה נרשם');
+  }
+  beemCard(txt,prop,'react',3800);
+}
+/* THE CARD every moment of Beem's uses. The plain toast the same tap raised
+   stays until he is ready - the first time that is about a second - and the
+   card then stands in for it. "after" runs on the mounted Beem, for the one
+   moment that does more than play a script. */
+function beemCard(txt,prop,play,stay,after){
+  beemKit().then(function(K){
+    var old=document.querySelector('.beem-card');if(old)old.remove();
+    clearTimeout(_beemCardT);clearTimeout(_beemCardT2);
+    var c=document.createElement('div');c.className='beem-card';
+    c.innerHTML='<div class="beem-box"></div><b></b><img alt="" src="'+liveBase()+'assets/beem-props/'+prop+'.png">';
+    c.querySelector('b').textContent=txt;
+    document.body.appendChild(c);document.body.classList.add('beem-up');
+    var t0=document.querySelector('.toast');if(t0)t0.remove();
+    var b=K.mount(c.querySelector('.beem-box'),{play:play});
+    if(after)after(K,b);
+    requestAnimationFrame(function(){requestAnimationFrame(function(){c.classList.add('up');});});
+    _beemCardT=setTimeout(function(){c.classList.remove('up');
+      _beemCardT2=setTimeout(function(){c.remove();document.body.classList.remove('beem-up');},500);},stay);
+  }).catch(function(){});
+}
+/* A TARGET THAT CLOSED (protein, water) - the moment closeAnnounce already
+   marks once a day. An achievement, not an action, so he jumps higher. */
+function beemGoal(slot,msg){beemCard(msg,slot==='water'?'drop':'egg','goal',3800);}
+/* A PERSONAL RECORD - golden, the special moment of the character sheet. */
+function beemPR(msg){beemCard(msg,'trophy','golden',5200);}
+/* TRAINING TOGETHER - the flash chosen on 19.10: your Beem jumps into a white
+   light and the one that comes out is the other person's. Theirs is teal,
+   as on the sheet; a person cannot choose a colour yet. */
+var BEEM_PARTNER='teal';
+function beemPair(name){
+  beemCard(_t('מחוברים! ה־Beem של {name} אצלך',{name:name||'?'}),'heart','pairIdle',5600,
+    function(K,b){K.pair(b,BEEM_PARTNER);});
+}
+// the partner's colour takes a moment to build, so it starts when a room opens
+function beemPairWarm(){beemKit().then(function(K){K.tint(BEEM_PARTNER);}).catch(function(){});}
+
 /* ── RESCUING WHAT THE NaN BUG SWALLOWED ──
    curDate initialised before DAY_ENDS_AT was assigned, so every date came out
    NaN-NaN-NaN and food was written to day_NaN-NaN-NaN. It was read back from
@@ -10265,7 +10379,11 @@ function rescueNaNDay(){
   return added;
 }
 function loadDay(d){try{var x=localStorage.getItem('day_'+d);return x?JSON.parse(x):{meals:[],water:0};}catch(e){return{meals:[],water:0};}}
-function saveDay(d,data){try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}}
+function saveDay(d,data){
+  var grew=d===todayStr()&&data&&data.meals&&data.meals.length>(loadDay(d).meals||[]).length;
+  try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}
+  if(grew)beemReact('meal',data.meals[data.meals.length-1]);
+}
 /* ── PHOTO STORE ──
    Photos used to sit as data URIs inside the day's record. localStorage has
    about 5MB for the whole app, a day photo is ~580KB and a flow anchor ~270KB,
@@ -16631,7 +16749,7 @@ function closeMoment(slot,pct){
 function closeAnnounce(list){
   var i;
   for(i=0;i<list.length;i++)
-    if(closeMoment(list[i].k,list[i].pct)){showToast('\u2713 '+list[i].msg);return true;}
+    if(closeMoment(list[i].k,list[i].pct)){showToast('\u2713 '+list[i].msg);beemGoal(list[i].k,list[i].msg);return true;}
   return false;
 }
 function renderToday(){
@@ -24662,7 +24780,8 @@ function logProgEntry(progIdx,exIdx){
   saveProgLog(prog.id,ex.name,log);
   // Check PR
   var prevPR=log.slice(0,-1).reduce(function(m,e){return Math.max(m,e.weight);},0);
-  if(weight>prevPR&&prevPR>0)showToast('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:ex.name}));
+  if(weight>prevPR&&prevPR>0){showToast('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:ex.name}));
+    beemPR('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:ex.name}));}
   else showToast(''+_t('✓ נרשם!')+'');
   renderViewProgram();
 }
@@ -27293,7 +27412,8 @@ function logSet(){
   // Update PR
   if(weight>0){
     var prs=loadPRs();var key=ex.name;
-    if(weight>(prs[key]||0)){prs[key]=weight;savePRs(prs);showToast('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:key}));}
+    if(weight>(prs[key]||0)){var _beat=(prs[key]||0)>0;prs[key]=weight;savePRs(prs);showToast('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:key}));
+      if(_beat)beemPR('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:key}));}
   }
   renderFitness();
 }
@@ -27331,6 +27451,7 @@ function finishWorkout(){
   _fitView='summary';
   _fitSummaryEntry=entry;
   renderFitness();
+  beemReact('workout');
 }
 
 var _fitSummaryEntry=null;
@@ -27383,8 +27504,13 @@ function tgSync(me,tg){
     _tgBusy=false;
     if(!j||!j.ok)return;
     if(body.me)_tgLastSent=mj;
+    var _was=(_tgRoom&&_tgRoom.members&&_tgRoom.members.length)||0;
     _tgRoom={members:j.members||[],at:Date.now()};
     tgPaint();
+    if(tg.host&&_fitWorkout&&_fitWorkout.tg&&_was>=1&&_tgRoom.members.length>_was){
+      var _in=_tgRoom.members.filter(function(m){return !m.me;});
+      if(_in.length)beemPair(_in[_in.length-1].name);
+    }
   },function(){_tgBusy=false;});
 }
 function tgChanged(){
@@ -27478,6 +27604,7 @@ function tgTap(){
     if(!j||!j.ok){showToast(j&&j._s===429?_t('הגעת למגבלה של היום.'):_t('משהו השתבש. אפשר לנסות שוב.'));return;}
     if(!_fitWorkout)return;
     _fitWorkout.tg={code:j.code,token:j.token,host:true};
+    beemPairWarm();
     _tgLastSent='';_tgRoom={members:[{name:tgName(),me:true,ex:[],cur:0,done:false}],at:Date.now()};
     renderFitness();tgSheet();
   },function(){showToast(_t('אין חיבור כרגע.'));});
@@ -27522,7 +27649,7 @@ function tgJoinAsk(){
 }
 function tgJoin(code){
   fitwReplaceAsk(function(){
-    showToast(_t('מצטרף לאימון…'));
+    showToast(_t('מצטרף לאימון…'));beemPairWarm();
     tgPost('join',{code:code,name:tgName()}).then(function(j){
       if(!j||!j.ok){
         showToast(j&&j._s===404?_t('לא מצאתי אימון עם הקוד הזה. אולי הוא כבר נגמר?')
@@ -27540,6 +27667,8 @@ function tgJoin(code){
         currentEx:0,tg:{code:j.code,token:j.token,host:false}};
       _tgLastSent='';_tgRoom={members:j.members||[],at:Date.now()};
       _fitSummaryEntry=null;
+      var _host=_tgRoom.members.filter(function(m){return !m.me;})[0];
+      if(_host)beemPair(_host.name);
       if(currentModule!=='fitness')enterModule('fitness');
       _fitView='workout';renderFitness();
       tgSync(tgMe());
@@ -36278,6 +36407,14 @@ function renderReflectHome(){
   var today=todayStr(),r=rfRec(today);
   var h='<div style="padding-bottom:24px">';
   h+='<div class="rf-hero">';
+  /* BEEM LIVES HERE. Entering סיום יום lands on this screen, not on the
+     intro behind "התחל סיכום" - so the first build, which put him only on
+     the intro, was invisible to anyone who walked in through the door
+     (Asaf, 20.10: "לא רואה את בים"). Before the summary he invites; once it
+     is done he is content, wearing the streak as light, with its count. */
+  var _bDone=rfDone(r),_bN=streakNow().n;
+  h+='<div class="rf-beem sm" id="rf-beem"></div>';
+  if(_bDone&&_bN)h+='<div class="rf-streak">'+esc(_t('יום {n} ברצף',{n:_bN}))+'</div>';
   if(!r){
     h+='<div class="rf-hero-t">'+_t('עוד לא עצרת לסכם את היום.')+'</div>';
     h+='<div class="rf-hero-s">'+_t('כמה דקות, וזה שלך.')+'</div>';
@@ -36335,6 +36472,7 @@ function renderReflectHome(){
   }
   h+='</div>';
   document.getElementById('content').innerHTML=h;
+  beemMount(document.getElementById('rf-beem'),{play:_bDone?'counted':'invite',glow:_bN});
   /* Facing TODAY. weekCardHTML walks the week oldest-first, so the newest
      picture is the last card - and opening on a photograph from six days ago,
      with today's behind your shoulder, is the wrong way round. */
@@ -36465,6 +36603,7 @@ function rfOpenCard(i){_rfStage=2;_rfStep=i;_rfView='step';rfSave({lastStage:2,l
 /* ── intro ── */
 function renderReflectIntro(){
   var h='<div class="rf"><div class="rf-body" style="text-align:center">';
+  h+='<div class="rf-beem" id="rf-beem"></div>';
   h+='<div class="rf-q" style="font-size:27px">'+_t('בוא ניקח רגע להסתכל על היום שלך.')+'</div>';
   h+='<div class="rf-sub" style="font-size:14px">'+_t('כמה דקות, וזה שלך.')+'</div>';
   var _rfm=rfmLoad(_rfDate);
@@ -36474,6 +36613,7 @@ function renderReflectIntro(){
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-ghost">'+_t('לא עכשיו')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
+  beemMount(document.getElementById('rf-beem'),{play:'invite',glow:streakNow().n});
 }
 
 /* ── one question ── */
@@ -37036,6 +37176,7 @@ function saveSummaryTotals(r){
 function renderReflectDone(){
   var r=rfRec(_rfDate)||{};
   var h='<div class="rf"><div class="rf-body">';
+  h+='<div class="rf-beem big" id="rf-beem"></div><div class="rf-streak" id="rf-streak"></div>';
   h+='<div class="rf-q" style="text-align:center">'+_t('זהו להיום.')+'</div>';
   h+='<div class="rf-sub" style="text-align:center;font-size:14px">'+_t('עצרת לרגע, הסתכלת על היום שלך — ועכשיו אפשר לשחרר אותו.')+'</div>';
 
@@ -37044,6 +37185,12 @@ function renderReflectDone(){
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-next" style="margin-top:30px">'+_t('סיימתי להיום')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
+  var _rfToday=_rfDate===todayStr();
+  beemMount(document.getElementById('rf-beem'),function(K){
+    var n=streakNow().n,st=document.getElementById('rf-streak');
+    if(st&&n)st.textContent=_t('יום {n} ברצף',{n:n});
+    return {play:_rfToday&&BEEM_MILESTONES.indexOf(n)>=0?'golden':'celebrate',glow:n};
+  });
 }
 /* The SAME page the sheet shows, on glass instead of in a drawer. The seal is
    the only thing the card adds - it is the graphic that says the day is
@@ -39704,33 +39851,68 @@ function workoutDays(){
 function dtStamp(d){return dayStr(d);}
 function didSomething(d){return dayHadActivity(d)||workoutDays()[d]===1;}
 
-/* Today not being done yet must not read as a broken streak - at nine in the
-   morning you have not missed anything. So the count starts at yesterday
-   unless today already has something, and today only ever adds. */
-function streakNow(){
-  _stkWorkoutDays=null;                       // recount, a workout may have just landed
-  var today=todayStr(),n=0,d=appNow(),i;
-  var todayDone=didSomething(today);
-  if(!todayDone)d.setDate(d.getDate()-1);     // yesterday is the last day that could have been missed
-  for(i=0;i<400;i++){
-    if(!didSomething(dtStamp(d)))break;
-    n++;
-    d.setDate(d.getDate()-1);
+/* ── THE STREAK: ONE, AND IT IS THE DAY SUMMARY ──
+   Asaf, 18.10, and again on 20.10 when the app turned out to have two:
+   "אחרי סיכומי יום". A day counts when its summary was FINISHED - a meal or
+   a glass of water is not the day looked at. The streak used to count any
+   day with something logged, which made the home screen and Beem's line at
+   the end of the summary answer two different numbers.
+
+   A missed day is a grace day, not a reset: one grace in hand, a second miss
+   in a row resets, and the grace comes back after seven summaries in a row
+   (the numbers are the Beem session's proposal, not yet his word). The rule
+   is the same function as dev/look/beem-streak.js, and
+   tools/test-beem-streak.mjs runs its cases against BOTH copies, so the two
+   cannot drift apart unseen.
+
+   Today not being done yet must not read as a broken streak - at nine in the
+   morning you have not missed anything. Only days that have ENDED (at 04:00)
+   are judged; today only ever adds. */
+var STREAK_GRACE_REFILL=7;
+function streakOf(days){
+  var count=0,grace=1,since=0,misses=0,graceDay=-1,lastReset=-1,best=0;
+  for(var i=0;i<days.length;i++){
+    if(days[i]==='done'){
+      count++;misses=0;since++;
+      if(grace<1&&since>=STREAK_GRACE_REFILL){grace=1;since=0;}
+    }else{
+      misses++;
+      if(count>0&&misses===1&&grace>=1){grace=0;since=0;graceDay=i;}
+      else if(count>0){count=0;grace=1;since=0;lastReset=i;}
+    }
+    if(count>best)best=count;
   }
-  return {n:n,today:todayDone};
+  var last=days.length-1;
+  return {count:count,best:best,grace:grace,
+          refillIn:grace?0:STREAK_GRACE_REFILL-since,
+          graceYesterday:graceDay===last&&last>=0,
+          brokeYesterday:lastReset===last&&last>=0};
+}
+/* Finished: the reflection marks it done, and a summary from the interview
+   that came before it was only ever written on its last step - which is also
+   the only moment either of them writes the day's kcal. */
+function sumDone(d){var r=loadSummary(d);return !!(r&&(r.done||typeof r.kcal==='number'));}
+/* Every ended day of the last 400, oldest first. Read once per moment: the
+   home screen asks for the streak and its record in the same breath. */
+var _stkScan=null;
+function streakScan(){
+  if(_stkScan)return _stkScan;
+  var days=[],i;
+  for(i=400;i>=1;i--)days.push(sumDone(dayShift(-i))?'done':'miss');
+  _stkScan=days;setTimeout(function(){_stkScan=null;},0);
+  return days;
+}
+function streakNow(){
+  var days=streakScan(),ended=streakOf(days),today=sumDone(todayStr());
+  var st=today?streakOf(days.concat('done')):ended;
+  return {n:st.count,today:today,graceYesterday:ended.graceYesterday,grace:st.grace};
 }
 /* The longest one ever, which is the number worth keeping when the current
    run breaks - it says the thing you are capable of, not the thing you are
    in the middle of. */
-var STREAK_WINDOW=400;
 function streakStats(){
-  var d=appNow(),cur=0,best=0,total=0,i;
-  for(i=0;i<STREAK_WINDOW;i++){
-    if(didSomething(dtStamp(d))){cur++;total++;if(cur>best)best=cur;}
-    else cur=0;
-    d.setDate(d.getDate()-1);
-  }
-  return{best:best,total:total};
+  var days=streakScan().concat(sumDone(todayStr())?'done':'miss');
+  return {best:streakOf(days).best,total:days.filter(function(x){return x==='done';}).length};
 }
 function streakBest(){return streakStats().best;}
 function streakHTML(){
@@ -39742,7 +39924,7 @@ function streakHTML(){
     return '<button class="stk" onclick="streakOpen()">'+
       '<span class="stk-f">&#9898;</span>'+
       '<span class="stk-n">'+st.total+'</span>'+
-      '<span class="stk-w">'+_t('ימים שרשמת בהם',{n:st.total})+'</span>'+
+      '<span class="stk-w">'+_t('סיכומי יום',{n:st.total})+'</span>'+
       (st.best>1?'<span class="stk-b">'+_t('שיא')+' '+st.best+'</span>':'')+
       '</button>';
   }
@@ -39765,7 +39947,7 @@ function streakOpen(){
   var days='',d=appNow(),i,names=[''+_t('א')+'',''+_t('ב')+'',''+_t('ג')+'',''+_t('ד')+'',''+_t('ה')+'',''+_t('ו')+'',''+_t('ש')+''];
   var cells=[];
   for(i=0;i<14;i++){
-    var st=dtStamp(d),on=didSomething(st);
+    var st=dtStamp(d),on=sumDone(st);
     cells.unshift('<span class="stk-d'+(on?' on':'')+(i===0?' now':'')+'">'+
       '<b>'+names[d.getDay()]+'</b><i>'+d.getDate()+'</i></span>');
     d.setDate(d.getDate()-1);
@@ -39774,14 +39956,15 @@ function streakOpen(){
   var h='<div class="stk-ov" id="stk-ov" onclick="if(event.target===this)streakClose()">'+
     '<div class="stk-sheet">'+
     '<div class="stk-hd"><span>'+(s.n?_t('{n} ימים ברצף',{n:s.n})
-                                     :_t('{n} ימים שרשמת בהם',{n:stats.total}))+'</span>'+
+                                     :_t('{n} סיכומי יום',{n:stats.total}))+'</span>'+
     '<button class="stk-x" onclick="streakClose()">&times;</button></div>'+
     '<div class="stk-row">'+days+'</div>'+
-    '<div class="stk-note">'+_t('יום נספר כשרשמת בו משהו — ארוחה, אימון, שורה ביומן, מים, צעדים, ולוג או סיכום יום.')+' '+
-    ''+_t('לא מספיק לפתוח את האפליקציה.')+'</div>'+
+    '<div class="stk-note">'+_t('יום נספר כשסיכום היום שלו הושלם.')+' '+
+    _t('יום אחד שפוספס לא שובר את הרצף: יום חסד שומר עליו, והוא חוזר אחרי שבעה סיכומים ברצף.')+'</div>'+
+    (s.graceYesterday&&s.n?'<div class="stk-today">'+_t('אתמול פוספס, ויום החסד שמר על הרצף.')+'</div>':'')+
     (best>s.n?'<div class="stk-best">'+_t('הרצף הארוך ביותר שלך: {n} ימים.',{n:best})+'</div>':'')+
-    (!s.today?'<div class="stk-today">'+(s.n?''+_t('היום עוד לא נספר. כל דבר שתרשום היום ימשיך את הרצף.')+''
-                                            :''+_t('כל דבר שתרשום היום מתחיל רצף חדש. מה שכבר רשמת נשאר.')+'')+'</div>':'')+
+    (!s.today?'<div class="stk-today">'+(s.n?_t('היום עוד לא נספר. סיכום היום הערב ימשיך את הרצף.')
+                                            :_t('סיכום היום הערב יתחיל רצף חדש.'))+'</div>':'')+
     '</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
