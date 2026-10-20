@@ -1367,6 +1367,50 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .log-time{font-size:9.5px;color:var(--muted);margin-top:1px}
 .log-kcal{font-size:13px;font-weight:700;color:var(--violet-700)}
 .log-del{background:none;border:none;cursor:pointer;color:var(--terra-700);font-size:16px;padding:2px 6px}
+/* a row that can be swiped: it slides, and what it would do shows behind it */
+.log-sw{position:relative}
+.log-sw>.log-item{position:relative;z-index:1;touch-action:pan-y}
+.log-act{position:absolute;inset:0;display:flex;align-items:center;padding:0 20px;border-radius:22px;
+  opacity:0;transition:opacity .15s}
+.log-act svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.log-act-del{justify-content:flex-start;color:var(--terra-700)}
+.log-act-edit{justify-content:flex-end;color:var(--violet-700)}
+.log-sw.lsw-on[data-dir="del"] .log-act-del,.log-sw.lsw-on[data-dir="edit"] .log-act-edit{opacity:.55}
+.log-sw.lsw-go[data-dir="del"] .log-act-del,.log-sw.lsw-go[data-dir="edit"] .log-act-edit{opacity:1}
+body.mod-nutrition .log-sw{margin-bottom:12px}
+body.mod-nutrition .log-sw:last-child{margin-bottom:0}
+body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
+.log-act{background:var(--nu-ground,var(--surface));box-shadow:inset 2px 3px 7px var(--nu-shade,rgba(0,0,0,.08)),inset -2px -2px 6px var(--nu-lit,#fff)}
+/* the undo bar: above the tab bar, with the five seconds running out under it */
+.undo-bar{position:fixed;inset-inline:16px;bottom:calc(104px + env(safe-area-inset-bottom));z-index:900;
+  display:flex;align-items:center;gap:12px;padding:12px 14px 14px 18px;border-radius:16px;overflow:hidden;
+  background:var(--nu-ink,#3f3a35);color:#fff;font-size:13px;font-weight:700;box-shadow:0 10px 26px rgba(0,0,0,.28)}
+.undo-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.undo-b{background:none;border:none;color:#fff;font:800 13.5px/1 inherit;padding:8px 6px;cursor:pointer;text-decoration:underline}
+.undo-run{position:absolute;inset-inline:0;bottom:0;height:3px;background:rgba(255,255,255,.55);
+  transform-origin:left;animation:undoRun 5s linear forwards}
+[dir="rtl"] .undo-run{transform-origin:right}
+@keyframes undoRun{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){.undo-run{animation:none}}
+/* the edit sheet, on body so no stacking context can trap it */
+.medit-ov{position:fixed;inset:0;z-index:950;background:rgba(30,26,22,.36);display:flex;align-items:flex-end}
+.medit{width:100%;background:var(--nu-ground,var(--card));border-radius:24px 24px 0 0;
+  padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.16)}
+.medit-t{font-size:16px;font-weight:800;color:var(--nu-ink,var(--ink))}
+.medit-s{font-size:12px;color:var(--nu-muted,var(--muted));margin:4px 0 12px;line-height:1.5}
+.medit-in{width:100%;box-sizing:border-box;border:none;border-radius:14px;padding:12px 14px;resize:none;
+  font:600 15px/1.5 inherit;color:var(--nu-ink,var(--ink));background:var(--nu-ground,var(--surface));
+  box-shadow:inset 3px 4px 8px var(--nu-shade,rgba(0,0,0,.08)),inset -3px -3px 7px var(--nu-lit,#fff)}
+.medit-btns{display:flex;gap:10px;margin-top:14px}
+.medit-go,.medit-no{flex:1;border:none;border-radius:14px;padding:13px;font:800 14px/1 inherit;cursor:pointer}
+.medit-go{background:var(--nu-ink,var(--ink));color:#fff}
+.medit-no{background:none;color:var(--nu-muted,var(--muted))}
+/* the habits on the profile */
+.fh-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.fh-in{flex:1;min-width:0}
+.fh-x{background:none;border:none;color:var(--terra-700);font-size:18px;cursor:pointer;padding:4px 8px}
+.fh-add{background:var(--violet-100);color:var(--violet-700);border:none;border-radius:12px;padding:10px 14px;
+  font:700 12.5px/1 inherit;cursor:pointer}
 /* ── פרטים אישיים, IN THE SOFT WHITE ──
    The tokens sit on the WRAPPER, the way .srb and .cf-card do. --nu-ground
    is declared in twelve body.mod-* blocks and not at :root, so a bare rule
@@ -9616,6 +9660,7 @@ function renderProfile(){
        '<div class="pf-need">'+_t('מלא את כל הפרטים למעלה ואחשב לך יעד קלוריות ומאקרו.')+'</div></div>';
   }
 
+  h+=fhCardHTML();
   document.getElementById('content').innerHTML=h+'</div>';
 }
 
@@ -12991,9 +13036,9 @@ function coachMealOk(k){
 /* Returns the ids it ADDED, so the reply can offer to re-file them. An
    empty array means nothing was added - which is not the same as nothing
    happening, since update and delete also change the day. */
-function coachApply(j){
+function coachApply(j,onDate){
   if(!j||j.action==='none'||!j.items||!j.items.length)return [];
-  var d=j.date||todayStr(),day=loadDay(d),i,q,added=[],moved=[];
+  var d=onDate||j.date||todayStr(),day=loadDay(d),i,q,added=[],moved=[];
   if(j.action==='add'){
     for(i=0;i<j.items.length;i++){q=j.items[i];
       /* THE CLOCK TIME, which was missing. kind is left empty on purpose -
@@ -13002,11 +13047,14 @@ function coachApply(j){
          12, and filed EVERY meal the coach ever logged as lunch. */
       day.meals.push({id:q.id,src:'coach',name:q.name,amount:q.quantity,
         kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',
+        na:q.sodium_level||'',rest:q.restaurant?1:0,
         kind:coachMealOk(q.meal),time:fmtTime(),at:Date.now()});
       added.push(q.id);}
   } else if(j.action==='update'){
     for(i=0;i<day.meals.length;i++){
-      for(q=0;q<j.items.length;q++) if(day.meals[i].id===j.items[q].id){
+      /* as strings: a meal added by hand has a numeric id and the coach
+         always answers with text, so its corrections never landed */
+      for(q=0;q<j.items.length;q++) if(String(day.meals[i].id)===String(j.items[q].id)){
         var u=j.items[q],mk=coachMealOk(u.meal);
         if(mk){day.meals[i].kind=mk;moved.push(u.id);}
         /* MOVING IS NOT RE-ESTIMATING. "זאת הייתה ארוחת בוקר" changes the
@@ -13019,13 +13067,15 @@ function coachApply(j){
         if(typeof u.carbs==='number')day.meals[i].c=u.carbs;
         if(typeof u.fat==='number')day.meals[i].f=u.fat;
         if(u.assumption!==undefined)day.meals[i].note=u.assumption||'';
+        if(u.sodium_level)day.meals[i].na=u.sodium_level;
+        if(u.restaurant!==undefined)day.meals[i].rest=u.restaurant?1:0;
       }
     }
   } else if(j.action==='delete'){
     var keep=[];
     for(i=0;i<day.meals.length;i++){
       var gone=false;
-      for(q=0;q<j.items.length;q++) if(day.meals[i].id===j.items[q].id)gone=true;
+      for(q=0;q<j.items.length;q++) if(String(day.meals[i].id)===String(j.items[q].id))gone=true;
       if(!gone)keep.push(day.meals[i]);
     }
     day.meals=keep;
@@ -13106,7 +13156,8 @@ function coachSend(){
   });
 }
 /* the turn is on the record and the pictures are stored; now ask */
-function coachPost(d,text,pics,rec){
+function coachPost(d,text,pics,rec,ed){
+  ed=ed||null;
 
   var day=loadDay(d),logged=[],i;
   for(i=0;i<day.meals.length;i++){var m=day.meals[i];
@@ -13128,6 +13179,9 @@ function coachPost(d,text,pics,rec){
       logged:logged,left:coachLeft(d),weights:coachWeights(),
       history:hist.slice(-20),
       message:text,
+      edit_id:ed?String(ed.id):'',
+      habits:fhGet(),habits_offered:fhOffered(),
+      corrections_recent:corrRecent(),
       images:pics.map(function(p){return{mime:'image/jpeg',data:p.split(',')[1]||''};})
     })
   }).then(function(r){return r.json();}).then(function(j){
@@ -13138,20 +13192,278 @@ function coachPost(d,text,pics,rec){
         :''+_t('לא הצלחתי לענות כרגע.')+'';
       coachPaint();return;
     }
-    var added=coachApply(j);
+    /* what the day held before, so a correction can be logged with both */
+    var snapD=j.date||d,snap={},k0,day0=loadDay(ed?ed.date:snapD);
+    for(k0=0;k0<day0.meals.length;k0++)snap[String(day0.meals[k0].id)]=JSON.parse(JSON.stringify(day0.meals[k0]));
+    var added=coachApply(j,ed?ed.date:'');
     var changed=!!(added&&added.length)||
                 (j.action==='update'||j.action==='delete')&&j.items&&j.items.length;
+    corrFromReply(j,snap,ed,text,pics.length>0);
+    if(j.habit_offer)fhOfferedAdd(j.habit_offer);
+    if(j.habit_save&&fhAdd(j.habit_save))showToast(_t('נשמר בהרגלים שלי'));
     var rec2=loadCoach(d);
     rec2.turns.push({role:'assistant',text:j.message||'',
-      q:j.question||'',changed:changed?1:0,
+      q:j.question||'',changed:changed?1:0,edit:ed?1:0,
       ids:(added||[]).slice(0,12),at:Date.now()});
     saveCoach(d,rec2);
+    if(ed&&j.message)showToast(String(j.message).replace(/[*_]/g,'').slice(0,140));
     /* the whole screen, because the bars above it have just moved */
     render();
   },function(){
     _coachBusy=false;_coachErr=''+_t('לא הצלחתי לענות כרגע.')+'';coachPaint();
   });
 }
+/* ── SWIPE A MEAL ──
+   Toward the inline END deletes - left in Hebrew and Arabic, right in English
+   - which is the side the planning boards keep their trash on, so the same
+   flick means the same thing everywhere. Toward the inline START edits.
+   Only the row moves; a mostly vertical drag is a scroll and is let go. */
+var LSW_MIN=12,LSW_GO=84,_lsw=null;
+function lswEndSign(){return document.documentElement.dir==='rtl'?-1:1;}
+document.addEventListener('pointerdown',function(e){
+  var row=e.target.closest&&e.target.closest('.log-sw > .log-item');
+  if(!row||(e.button&&e.button>0)||e.target.closest('button'))return;
+  _lsw={row:row,wrap:row.parentNode,sx:e.clientX,sy:e.clientY,dx:0,on:false,pid:e.pointerId};
+},true);
+document.addEventListener('pointermove',function(e){
+  var w=_lsw;if(!w||e.pointerId!==w.pid)return;
+  var dx=e.clientX-w.sx,dy=e.clientY-w.sy;
+  if(!w.on){
+    if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)){_lsw=null;return;}
+    if(Math.abs(dx)<LSW_MIN)return;
+    w.on=true;w.wrap.classList.add('lsw-on');
+    try{w.row.setPointerCapture(w.pid);}catch(err){}
+  }
+  w.dx=dx;
+  w.row.style.transform='translateX('+dx+'px)';
+  w.wrap.setAttribute('data-dir',dx*lswEndSign()>0?'del':'edit');
+  w.wrap.classList.toggle('lsw-go',Math.abs(dx)>LSW_GO);
+  e.preventDefault();
+},{passive:false});
+function lswEnd(e){
+  var w=_lsw;if(!w||(e&&e.pointerId!==w.pid))return;
+  _lsw=null;
+  if(!w.on)return;
+  var id=w.wrap.getAttribute('data-mid'),go=Math.abs(w.dx)>LSW_GO,del=w.dx*lswEndSign()>0;
+  w.row.style.transition='transform .2s ease';
+  if(go&&del){
+    w.row.style.transform='translateX('+(lswEndSign()*window.innerWidth)+'px)';
+    setTimeout(function(){mealSoftDel(id);},170);
+  } else {
+    w.row.style.transform='';
+    setTimeout(function(){w.wrap.classList.remove('lsw-on','lsw-go');w.row.style.transition='';},210);
+    if(go)mealEditOpen(id);
+  }
+  /* the click that follows a drag is not a tap */
+  var stop=function(ev){ev.stopPropagation();ev.preventDefault();};
+  window.addEventListener('click',stop,true);
+  setTimeout(function(){window.removeEventListener('click',stop,true);},60);
+}
+document.addEventListener('pointerup',lswEnd,true);
+document.addEventListener('pointercancel',lswEnd,true);
+
+function mealById(day,id){
+  for(var i=0;i<day.meals.length;i++)if(String(day.meals[i].id)===String(id))return i;
+  return -1;
+}
+/* ── DELETE, AND FIVE SECONDS TO TAKE IT BACK ──
+   Off the day at once, so every total is right while the bar is up; it is
+   only logged as a correction once the five seconds are over. Written
+   straight to storage on the way back, because saveDay treats a day that
+   grew as a meal just eaten and would have Beem celebrate an undo. */
+var MUNDO_MS=5000,_mUndo=null;
+function mealSoftDel(id){
+  mealUndoCommit();
+  var d=curDate,day=loadDay(d),i=mealById(day,id);
+  if(i<0)return;
+  var m=day.meals.splice(i,1)[0];
+  saveDay(d,day);
+  _mUndo={d:d,m:m,i:i,t:setTimeout(mealUndoCommit,MUNDO_MS)};
+  render();
+  undoBarShow(_t('נמחק: {name}',{name:m.name||''}));
+}
+function mealUndo(){
+  var u=_mUndo;if(!u)return;
+  clearTimeout(u.t);_mUndo=null;
+  var day=loadDay(u.d);
+  day.meals.splice(Math.min(u.i,day.meals.length),0,u.m);
+  try{localStorage.setItem('day_'+u.d,JSON.stringify(day));}catch(e){}
+  undoBarHide();render();
+}
+function mealUndoCommit(){
+  var u=_mUndo;if(!u)return;
+  clearTimeout(u.t);_mUndo=null;
+  corrLog('delete',u.m,null,'',!!u.m.photo);
+  undoBarHide();
+}
+function undoBarShow(msg){
+  undoBarHide();
+  var b=document.createElement('div');
+  b.id='undo-bar';b.className='undo-bar';b.setAttribute('role','status');
+  b.innerHTML='<span class="undo-t">'+esc(msg)+'</span>'+
+    '<button class="undo-b" onclick="mealUndo()">'+_t('בטל')+'</button><i class="undo-run"></i>';
+  document.body.appendChild(b);
+}
+function undoBarHide(){var b=document.getElementById('undo-bar');if(b)b.remove();}
+
+/* ── EDIT IN WORDS ──
+   The item's own description in a box; whatever is written there goes to
+   the coach with the item's id, and only that item is updated. */
+function mealEditText(m){
+  var a=String(m.amount||'').trim(),n=String(m.name||'').trim();
+  return a&&n.indexOf(a)<0?n+' \u2014 '+a:n;
+}
+function mealEditOpen(id){
+  var day=loadDay(curDate),i=mealById(day,id);if(i<0)return;
+  mealEditClose();
+  var m=day.meals[i];
+  var o=document.createElement('div');
+  o.id='medit';o.className='medit-ov';
+  o.onclick=function(ev){if(ev.target===o)mealEditClose();};
+  o.innerHTML='<div class="medit">'+
+    '<div class="medit-t">'+_t('עריכת פריט')+'</div>'+
+    '<div class="medit-s">'+_t('מה היה בפועל? למשל: עם כף שמן, רק חצי, בלי רוטב.')+'</div>'+
+    '<textarea id="medit-in" class="medit-in" rows="2" maxlength="300"></textarea>'+
+    '<div class="medit-btns"><button class="medit-go" onclick="mealEditSend()">'+_t('עדכון')+'</button>'+
+    '<button class="medit-no" onclick="mealEditClose()">'+_t('ביטול')+'</button></div></div>';
+  document.body.appendChild(o);
+  var t=document.getElementById('medit-in');
+  t.value=mealEditText(m);t.setAttribute('data-mid',String(m.id));t.setAttribute('data-was',t.value);
+  rfmGrow(t);t.oninput=function(){rfmGrow(t);};
+  setTimeout(function(){t.focus();t.setSelectionRange(t.value.length,t.value.length);},60);
+}
+function mealEditClose(){var o=document.getElementById('medit');if(o)o.remove();}
+function mealEditSend(){
+  var t=document.getElementById('medit-in');if(!t)return;
+  var text=t.value.trim(),id=t.getAttribute('data-mid');
+  if(!text||text===t.getAttribute('data-was')){mealEditClose();return;}
+  if(_coachBusy)return;
+  var d=curDate,day=loadDay(d),i=mealById(day,id);
+  if(i<0){mealEditClose();return;}
+  mealEditClose();
+  var rec=loadCoach(d);
+  rec.turns.push({role:'user',text:text,pics:[],edit:String(id),at:Date.now()});
+  saveCoach(d,rec);
+  _coachBusy=true;_coachErr='';coachPaint();
+  coachPost(d,text,[],rec,{id:String(id),date:d});
+}
+
+/* ── THE CORRECTIONS LOG ──
+   Every delete, every edit in words and every correction in the chat, kept
+   here (the last sixty, so the coach can see a habit forming) and sent to
+   the server for Asaf's review page. Sent with a random id for this install
+   and nothing else about who it is. A send that fails waits in a queue. */
+var CORR_KEY='corrections_local',CORR_Q='corrections_queue',INSTALL_KEY='install_id';
+function installId(){
+  var t='';try{t=localStorage.getItem(INSTALL_KEY)||'';}catch(e){}
+  if(!/^[0-9a-f]{24}$/.test(t)){
+    var a=new Uint8Array(12),i;crypto.getRandomValues(a);t='';
+    for(i=0;i<a.length;i++)t+=('0'+a[i].toString(16)).slice(-2);
+    try{localStorage.setItem(INSTALL_KEY,t);}catch(e){}
+  }
+  return t;
+}
+function corrItem(m){
+  if(!m)return null;
+  return {id:String(m.id),name:m.name||'',amount:m.amount||'',kcal:m.kcal||0,p:m.p||0,c:m.c||0,f:m.f||0,
+          note:m.note||'',kind:m.kind||''};
+}
+function corrLoad(k){try{var a=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function corrLog(type,before,after,msg,photo){
+  var rec={type:type,ts:Date.now(),before:corrItem(before),after:corrItem(after),
+    kcal_diff:Math.round(((after&&after.kcal)||0)-((before&&before.kcal)||0)),
+    message:String(msg||'').slice(0,600),photo:!!photo};
+  var a=corrLoad(CORR_KEY);a.push(rec);
+  try{localStorage.setItem(CORR_KEY,JSON.stringify(a.slice(-60)));}catch(e){}
+  var q=corrLoad(CORR_Q);q.push(rec);
+  try{localStorage.setItem(CORR_Q,JSON.stringify(q.slice(-100)));}catch(e){}
+  corrFlush();
+}
+var _corrBusy=false;
+function corrFlush(){
+  if(!SYNC_SERVER||_corrBusy)return;
+  var q=corrLoad(CORR_Q);if(!q.length)return;
+  _corrBusy=true;
+  fetch(SYNC_SERVER+'/corrections',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({uid:installId(),dev:!!window.__DEV__,items:q.slice(0,20)})})
+    .then(function(r){return r.json();}).then(function(j){
+      _corrBusy=false;
+      if(j&&j.ok){
+        var left=corrLoad(CORR_Q).slice(Math.min(20,q.length));
+        try{localStorage.setItem(CORR_Q,JSON.stringify(left));}catch(e){}
+        if(left.length)corrFlush();
+      }
+    },function(){_corrBusy=false;});
+}
+/* which items a coach reply changed, logged with what they were before */
+function corrFromReply(j,snap,ed,text,photo){
+  if(!j||!j.items||!j.items.length)return;
+  if(j.action!=='update'&&j.action!=='delete')return;
+  var d=ed?ed.date:(j.date||todayStr()),day=loadDay(d),i,k;
+  for(i=0;i<j.items.length;i++){
+    var id=String(j.items[i].id),was=snap[id];
+    if(!was)continue;
+    if(j.action==='delete'){corrLog('delete',was,null,text,photo);continue;}
+    k=mealById(day,id);
+    var now=k>=0?day.meals[k]:null;
+    /* a move between meals is not a correction of the food */
+    if(now&&now.kcal===was.kcal&&now.name===was.name&&String(now.amount||'')===String(was.amount||''))continue;
+    corrLog(ed?'swipe_edit':'chat_edit',was,now,text,photo);
+  }
+}
+/* the last ten, short, for the coach to notice a pattern in */
+function corrRecent(){
+  var a=corrLoad(CORR_KEY).slice(-10),out=[],i;
+  for(i=0;i<a.length;i++){
+    var r=a[i],b=r.before||{},f=r.after||{};
+    out.push({type:r.type,before:(b.name||'')+(b.amount?' ('+b.amount+')':''),
+      after:r.after?(f.name||'')+(f.amount?' ('+f.amount+')':''):'',said:r.message||''});
+  }
+  return out;
+}
+
+/* ── FOOD HABITS ──
+   What this person always does ("cooks without oil", "coffee with 1% milk"),
+   kept in the profile and sent to the coach every turn, which applies them
+   when a message does not say otherwise. One is only ever added because the
+   person said yes to the coach's question, or wrote it on the profile. */
+var FH_OFFERED_KEY='habits_offered';
+function fhGet(){var p=loadProfile(),a=p&&p.habits;return Array.isArray(a)?a.filter(function(x){return typeof x==='string'&&x.trim();}).slice(0,30):[];}
+function fhSave(a){var p=loadProfile();p.habits=a.slice(0,30);saveProfile(p);}
+function fhAdd(t){
+  t=String(t||'').replace(/\s+/g,' ').trim().slice(0,120);if(!t)return false;
+  var a=fhGet(),i;
+  for(i=0;i<a.length;i++)if(a[i].toLowerCase()===t.toLowerCase())return false;
+  a.push(t);fhSave(a);return true;
+}
+function fhDel(i){var a=fhGet();a.splice(i,1);fhSave(a);renderProfile();}
+function fhSet(i,el){
+  var a=fhGet(),t=String(el.value||'').replace(/\s+/g,' ').trim().slice(0,120);
+  if(!t){a.splice(i,1);}else a[i]=t;
+  fhSave(a);renderProfile();
+}
+function fhAddFromBox(){
+  var el=document.getElementById('fh-new');if(!el)return;
+  if(fhAdd(el.value))renderProfile();else if(el.value.trim())showToast(_t('כבר קיים'));
+}
+function fhOffered(){try{var a=JSON.parse(localStorage.getItem(FH_OFFERED_KEY)||'[]');return Array.isArray(a)?a.slice(-20):[];}catch(e){return [];}}
+function fhOfferedAdd(t){
+  var a=fhOffered();a.push(String(t).slice(0,120));
+  try{localStorage.setItem(FH_OFFERED_KEY,JSON.stringify(a.slice(-20)));}catch(e){}
+}
+function fhCardHTML(){
+  var a=fhGet(),i,h='<div class="card"><div class="cttl">'+_t('ההרגלים שלי')+'</div>'+
+    '<div class="pf-note" style="margin-bottom:10px">'+_t('המאמן מחשב לפיהם, אלא אם נאמר אחרת. למשל: בישול בלי שמן, קפה עם חלב 1%.')+'</div>';
+  for(i=0;i<a.length;i++)
+    h+='<div class="fh-row"><input class="pf-in fh-in" value="'+esc(a[i])+'" maxlength="120" '+
+       'onchange="fhSet('+i+',this)" aria-label="'+esc(_t('הרגל'))+'">'+
+       '<button class="fh-x" onclick="fhDel('+i+')" aria-label="'+esc(_t('מחק'))+'">&times;</button></div>';
+  h+='<div class="fh-row"><input id="fh-new" class="pf-in fh-in" maxlength="120" placeholder="'+esc(_t('הרגל חדש'))+'" '+
+     'onkeydown="if(event.key===\'Enter\'){event.preventDefault();fhAddFromBox();}">'+
+     '<button class="fh-add" onclick="fhAddFromBox()">'+_t('הוסף')+'</button></div>';
+  return h+'</div>';
+}
+
 /* the last fortnight of mornings, which the prompt says it receives */
 function coachWeights(){
   var out=[],i;
@@ -13205,7 +13517,7 @@ function coachInnerHTML(){
       h+='<div class="co-a">'+mdLite(t.text||'')+
          (t.q?'<div class="co-q">'+esc(t.q)+'</div>':'')+'</div>';
       /* only when something moved - see the data model */
-      if(t.changed&&i===rec.turns.length-1){
+      if(t.changed&&!t.edit&&i===rec.turns.length-1){
         h+=coachLeftHTML(d);
         if(Array.isArray(t.ids)&&t.ids.length)h+=coachKindsHTML(t.ids);
       }
@@ -16652,7 +16964,14 @@ function kindOpen(k){
 }
 /* One meal, drawn the same way wherever it is asked for. */
 function logItemHTML(m){
-  return '<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+mealIcon(m)+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+(m.est?'<span class="log-est">'+_t('הערכה')+'</span>':'')+'</div><div class="log-time">'+fmtClock(m.time)+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:var(--muted)">'+_t('{p}ח {c}פ {f}ש',{p:m.p,c:m.c,f:m.f})+'</div><div class="log-kcal">'+nfmt(m.kcal)+'</div><button class="log-del" onclick="deleteMeal('+m.id+')">&times;</button></div></div>';
+  /* The id travels as a string in an attribute, never as a bare token in an
+     onclick: a coach row's id is text ("c1x9"), and deleteMeal(c1x9) was a
+     ReferenceError - the × did nothing on every meal the coach logged. */
+  var mid=esc(String(m.id));
+  return '<div class="log-sw" data-mid="'+mid+'">'+
+    '<div class="log-act log-act-del" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 13h9l1-13"/></svg></div>'+
+    '<div class="log-act log-act-edit" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></div>'+
+    '<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+mealIcon(m)+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+(m.est?'<span class="log-est">'+_t('הערכה')+'</span>':'')+'</div><div class="log-time">'+fmtClock(m.time)+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:var(--muted)">'+_t('{p}ח {c}פ {f}ש',{p:m.p,c:m.c,f:m.f})+'</div><div class="log-kcal">'+nfmt(m.kcal)+'</div><button class="log-del" aria-label="'+esc(_t('מחק'))+'" onclick="mealSoftDel(this.closest(&quot;.log-sw&quot;).getAttribute(&quot;data-mid&quot;))">&times;</button></div></div></div>';
 }
 
 function waterToggle(){_waterOpen=!_waterOpen;renderToday();}
@@ -31720,8 +32039,11 @@ function swipeArmed(d,e){
   // over the strip is a delete no matter how the finger travelled there
   d.overT=overTrash(e);
   if(d.overT)return true;
-  // and a flat flick leftwards still is, without having to reach the edge
-  return (d.sx-e.clientX)>SWIPE_X&&Math.abs(e.clientY-d.sy)<SWIPE_Y;
+  /* and a flat flick toward the trash still is, without having to reach the
+     edge. Toward the inline END, where the trash sits: the leftward flick it
+     was is only right in a right-to-left language, and a meal row uses the
+     same rule (lswEndSign) */
+  return (e.clientX-d.sx)*lswEndSign()>SWIPE_X&&Math.abs(e.clientY-d.sy)<SWIPE_Y;
 }
 function swipeMark(d,on,label){
   if(d.swiping===on)return;

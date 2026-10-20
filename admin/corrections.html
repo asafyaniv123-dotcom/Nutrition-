@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>תיקונים — ניהול</title>
+<!-- Asaf's page, not the app's: what people took back or corrected in the
+     food log, read from the worker with the ADMIN_KEY secret. The key is kept
+     in this browser only. Not part of a release and not linked from the app. -->
+<style>
+  body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:#efebe6;color:#3f3a35}
+  main{max-width:860px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:#5f564e;font-size:13px;margin-bottom:18px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  input,select,button{font:inherit;border-radius:10px;border:1px solid #d8d0c6;padding:8px 10px;background:#fff;color:inherit}
+  button{cursor:pointer;font-weight:700}
+  .sum{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .chip{background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .chip b{font-variant-numeric:tabular-nums}
+  .row{background:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  .hd{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+  .diff{font-weight:800;font-variant-numeric:tabular-nums;min-width:64px}
+  .up{color:#a2412a}.down{color:#2f6b45}
+  .meta{color:#5f564e;font-size:12px}
+  .tag{font-size:11px;background:#efe9fb;color:#5b4b85;border-radius:6px;padding:1px 7px}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;font-size:13px}
+  .ba div{background:#f6f3ef;border-radius:10px;padding:8px}
+  .said{margin-top:8px;font-size:13px}
+  .err{color:#a2412a;font-weight:700}
+  .exp{font-size:12px;padding:5px 9px}
+</style>
+</head>
+<body>
+<main>
+  <h1>תיקונים ברישום האוכל</h1>
+  <div class="sub">מחיקות, עריכות בהחלקה ותיקונים בצ'אט. ממוין לפי הפרש הקלוריות הגדול ביותר.</div>
+  <div class="bar">
+    <input id="key" type="password" placeholder="ADMIN_KEY" size="22">
+    <select id="days"><option value="7">שבוע אחרון</option><option value="30">30 יום</option><option value="90">90 יום</option></select>
+    <label><input id="nodev" type="checkbox" checked> בלי dev</label>
+    <button onclick="load()">טען</button>
+    <span id="st" class="meta"></span>
+  </div>
+  <div id="sum" class="sum"></div>
+  <div id="list"></div>
+</main>
+<script>
+var HOST = 'https://nutrition-push.nutrition-push.workers.dev';
+var keyEl = document.getElementById('key');
+keyEl.value = localStorage.getItem('admin_key') || '';
+var DATA = [];
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+/* What kind of correction it was, read from the words. A guess for sorting a
+   week of corrections into piles, not a measurement. */
+var KINDS = [
+  ['שמן', /שמן|חמאה|oil|butter|ghee|מטוגן|טיגון|fried/i],
+  ['רטבים', /רוטב|סויה|טריאקי|מיונז|טחינה|קטשופ|ויניגרט|sauce|dressing|mayo|ketchup|teriyaki|soy/i],
+  ['כמויות', /חצי|רבע|שליש|פעמיים|כפול|גרם|יחידות|כוס|כף|מנות|\d|half|twice|double|gram|cup|tbsp|piece|portion/i],
+  ['חלב ומשקאות', /חלב|קפה|שתיתי|milk|coffee|latte|juice|מיץ|בירה|יין|wine|beer/i]
+];
+function kindOf(c){
+  if(c.type==='delete')return 'מחיקה';
+  var t=[c.message,c.before&&c.before.name,c.before&&c.before.amount,c.after&&c.after.name,c.after&&c.after.amount].join(' ');
+  for(var i=0;i<KINDS.length;i++)if(KINDS[i][1].test(t))return KINDS[i][0];
+  if(c.before&&c.after&&c.before.name!==c.after.name)return 'סוג המאכל';
+  return 'אחר';
+}
+var TYPE={delete:'מחיקה',swipe_edit:'עריכה בהחלקה',chat_edit:'תיקון בצ\'אט'};
+function itemTxt(m){if(!m)return '—';return esc(m.name)+(m.amount?' · '+esc(m.amount):'')+'<br><b>'+m.kcal+'</b> קל׳ · ח '+m.p+' · פ '+m.c+' · ש '+m.f;}
+function load(){
+  var k=keyEl.value.trim();localStorage.setItem('admin_key',k);
+  var st=document.getElementById('st');st.textContent='טוען…';
+  fetch(HOST+'/admin/corrections?days='+document.getElementById('days').value,{headers:{Authorization:'Bearer '+k}})
+    .then(function(r){return r.json().then(function(j){return {s:r.status,j:j};});})
+    .then(function(x){
+      if(x.s!==200||!x.j.ok){st.innerHTML='<span class="err">'+(x.s===401?'המפתח לא נכון':'שגיאה '+x.s)+'</span>';return;}
+      DATA=x.j.items.filter(function(c){return !(document.getElementById('nodev').checked&&c.dev);});
+      st.textContent=DATA.length+' תיקונים';
+      draw();
+    },function(){st.innerHTML='<span class="err">אין חיבור</span>';});
+}
+function draw(){
+  var by={},i;
+  DATA.sort(function(a,b){return Math.abs(b.kcal_diff)-Math.abs(a.kcal_diff);});
+  for(i=0;i<DATA.length;i++){var k=kindOf(DATA[i]);by[k]=by[k]||{n:0,kcal:0};by[k].n++;by[k].kcal+=DATA[i].kcal_diff;}
+  var s='';
+  Object.keys(by).sort(function(a,b){return by[b].n-by[a].n;}).forEach(function(k){
+    s+='<span class="chip">'+esc(k)+' · <b>'+by[k].n+'</b> · '+(by[k].kcal>0?'+':'')+Math.round(by[k].kcal)+' קל׳</span>';
+  });
+  document.getElementById('sum').innerHTML=s;
+  var h='';
+  for(i=0;i<DATA.length;i++){
+    var c=DATA[i],d=c.kcal_diff;
+    h+='<div class="row"><div class="hd"><span class="diff '+(d>0?'up':d<0?'down':'')+'">'+(d>0?'+':'')+d+' קל׳</span>'+
+      '<span class="tag">'+esc(kindOf(c))+'</span><span class="meta">'+esc(TYPE[c.type]||c.type)+' · '+
+      new Date(c.ts).toLocaleString('he-IL')+' · '+esc(c.uid.slice(0,6))+(c.photo?' · 📷':'')+'</span>'+
+      '<button class="exp" style="margin-inline-start:auto" onclick="exportCase('+i+')">ייצוא כמקרה בדיקה</button></div>'+
+      '<div class="ba"><div><span class="meta">לפני</span><br>'+itemTxt(c.before)+'</div><div><span class="meta">אחרי</span><br>'+itemTxt(c.after)+'</div></div>'+
+      (c.message?'<div class="said">״'+esc(c.message)+'״</div>':'')+'</div>';
+  }
+  document.getElementById('list').innerHTML=h||'<div class="meta">אין תיקונים בתקופה הזו.</div>';
+}
+/* One correction as a case for the coach's tests: the item as it was logged,
+   what the person said, and what it should have come to. */
+function exportCase(i){
+  var c=DATA[i];
+  var cse={name:(c.before&&c.before.name||'')+' — '+(c.message||TYPE[c.type]),type:c.type,
+    logged:c.before?[{id:c.before.id,name:c.before.name,quantity:c.before.amount,calories:c.before.kcal,protein:c.before.p,carbs:c.before.c,fat:c.before.f}]:[],
+    edit_id:c.type==='swipe_edit'&&c.before?c.before.id:'',message:c.message,
+    expect:c.after?{action:'update',id:c.after.id,calories:c.after.kcal,protein:c.after.p,carbs:c.after.c,fat:c.after.f,tolerance:0.15}:{action:'delete',id:c.before&&c.before.id},
+    from:{ts:c.ts,kcal_diff:c.kcal_diff,photo:c.photo}};
+  var txt=JSON.stringify(cse,null,2);
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt+'\n'],{type:'application/json'}));
+  a.download='coach-case-'+c.ts+'.json';a.click();
+  if(navigator.clipboard)navigator.clipboard.writeText(txt).catch(function(){});
+}
+if(keyEl.value)load();
+</script>
+</body>
+</html>

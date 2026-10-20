@@ -23,7 +23,7 @@ const STEPS_TTL = 60 * 60 * 24 * 120;   // and how long an idle token survives
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',   // Authorization: the admin read
 };
 
 /* The FIRST BALANCED object, not everything between the outermost braces.
@@ -3583,6 +3583,51 @@ export default {
        AND IT IS NOT GIVEN A CLOCK. This app's day ends at 04:00, so the day
        is sent, never derived - something eaten at 01:30 belongs to the day
        the person is still living in. */
+    /* ── /corrections ─────────────────────────────────────────────────────
+       What the app reports each time someone takes a logged item back or
+       corrects it: kept ninety days under corr:<time>:<install>, read only by
+       /admin/corrections with the ADMIN_KEY secret. The install id is random
+       and is the only thing here about who it is.
+       Optional: CORRECTIONS_DAILY_CAP (default 300/IP/day). */
+    if (url.pathname === '/corrections' && req.method === 'POST') {
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const uid = String((b && b.uid) || '');
+      if (!/^[0-9a-f]{24}$/.test(uid)) return json({ error: 'bad uid' }, 400);
+      const list = (Array.isArray(b && b.items) ? b.items : []).slice(0, 20).map(corrClean).filter(Boolean);
+      const cap = Number(env.CORRECTIONS_DAILY_CAP || 300);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const ipKey = 'cr:' + new Date().toISOString().slice(0, 10) + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used + list.length > cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + list.length), { expirationTtl: 172800 });
+      const dev = b.dev === true;
+      for (const c of list) {
+        const key = 'corr:' + String(c.ts).padStart(14, '0') + ':' + uid + ':' + Math.random().toString(36).slice(2, 6);
+        await env.SUBS.put(key, JSON.stringify(Object.assign({ uid, dev }, c)), { expirationTtl: 90 * 86400 });
+      }
+      return json({ ok: true, kept: list.length });
+    }
+    if (url.pathname === '/admin/corrections' && req.method === 'GET') {
+      const want = env.ADMIN_KEY || '';
+      const got = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+      if (!want || got.length !== want.length || got !== want) return json({ error: 'not allowed' }, 401);
+      const days = Math.max(1, Math.min(90, Number(url.searchParams.get('days')) || 7));
+      const from = 'corr:' + String(Date.now() - days * 86400000).padStart(14, '0');
+      const out = [];
+      let cursor;
+      do {
+        const page = await env.SUBS.list({ prefix: 'corr:', cursor, limit: 1000 });
+        for (const k of page.keys) {
+          if (k.name < from || out.length >= 500) continue;
+          const v = await env.SUBS.get(k.name);
+          if (v) { try { out.push(JSON.parse(v)); } catch {} }
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor && out.length < 500);
+      return json({ ok: true, days, items: out });
+    }
+
     if (url.pathname === '/coach' && req.method === 'POST') {
       if (!env.AI_KEY) return json({ error: 'the coach is not configured' }, 503);
 
@@ -3610,6 +3655,15 @@ export default {
          are correcting inside the window */
       const history = (Array.isArray(b && b.history) ? b.history : []).slice(-20);
       const message = String((b && b.message) || '').replace(/\s+/g, ' ').trim().slice(0, 1500);
+      /* an edit names ONE logged item; the reply may touch nothing else */
+      const editId = String((b && b.edit_id) || '').slice(0, 40);
+      const strs = (a, n, len) => (Array.isArray(a) ? a : []).slice(-n)
+        .map((x) => String(x == null ? '' : x).replace(/\s+/g, ' ').trim().slice(0, len)).filter(Boolean);
+      const habits = strs(b && b.habits, 30, 120);
+      const offered = strs(b && b.habits_offered, 20, 120);
+      const recentFix = (Array.isArray(b && b.corrections_recent) ? b.corrections_recent : []).slice(-10).map((c) => ({
+        type: String((c && c.type) || '').slice(0, 12), before: String((c && c.before) || '').slice(0, 120),
+        after: String((c && c.after) || '').slice(0, 120), said: String((c && c.said) || '').slice(0, 200) }));
       const images = Array.isArray(b && b.images) ? b.images.slice(0, 4) : [];
       if (!message && !images.length) return json({ error: 'nothing to read' }, 400);
 
@@ -3718,6 +3772,18 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - Honest, never guilt-tripping. Over target? Give perspective (weekly average, activity, maintenance) and move on. Never suggest compensating with extreme restriction the next day.
 - Light emoji use is fine. No long lectures.
 
+## Edits and habits
+- A message with an item_id and edited text is a correction to that item. Return action=update for that id only. Reply in one short line stating what changed and the kcal difference. No "remaining today" block.
+- The user profile includes "habits". Apply them by default when the user doesn't specify (e.g. assume no oil if the habit says so), and mention it briefly: "חישבתי בלי שמן כמו תמיד".
+- If the user explicitly says otherwise in a message, the message wins over the habit.
+- If you notice the same type of correction 3 times in recent history, ask once whether to save it as a habit. Never save a habit without the user's confirmation.
+- Recent history includes the recent corrections list. When you ask, put the habit, worded as it should be saved, in habit_offer. Never offer one that is already in the habits or in habits already offered.
+- Only when the user has just said yes to saving it, put the habit text in habit_save. Nothing else ever saves one.
+
+## Every logged item
+- sodium_level: "high" for soy sauce, teriyaki, sushi, pickles, salty cheese, cured meat, snacks, instant noodles and most restaurant or takeaway food; "low" for plain fruit, vegetables, plain grains, plain meat or fish cooked at home; "medium" otherwise.
+- restaurant: true when it came from a restaurant, takeaway or delivery.
+
 ## Safety
 - Don't recommend intakes below about 1,500 kcal for men or 1,200 for women, or rapid-loss plans.
 - If messages suggest disordered eating (fear around eating, purging, extreme restriction), step back from numbers, respond with care, and gently suggest professional support.`;
@@ -3749,6 +3815,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                   protein_per_unit: { type: 'number' },
                   carbs_per_unit: { type: 'number' },
                   fat_per_unit: { type: 'number' },
+                  sodium_level: { type: 'string', enum: ['low', 'medium', 'high'] },
+                  restaurant: { type: 'boolean' },
                   meal: {
                     type: 'string',
                     enum: ['breakfast', 'lunch', 'dinner', 'snack', 'drink'],
@@ -3762,6 +3830,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
               },
             },
             question: { type: 'string' },
+            habit_offer: { type: 'string', description: 'a habit you are asking whether to remember, worded as it would be saved' },
+            habit_save: { type: 'string', description: 'ONLY when the user just confirmed saving a habit: its text' },
             message: { type: 'string', description: 'what the person reads, in their language' },
           },
           required: ['action', 'date', 'items', 'message'],
@@ -3777,7 +3847,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         'Targets: ' + JSON.stringify(targets) + (phase ? '   phase: ' + phase : '') + '\n' +
         'Already logged today: ' + JSON.stringify(logged) + '\n' +
         'Left of each target: ' + JSON.stringify(left) + '\n' +
-        'Recent morning weigh-ins: ' + (weights.length ? JSON.stringify(weights) : 'none recorded');
+        'Recent morning weigh-ins: ' + (weights.length ? JSON.stringify(weights) : 'none recorded') + '\n' +
+        'Their habits: ' + (habits.length ? JSON.stringify(habits) : 'none saved') + '\n' +
+        'Habits already offered (never offer again): ' + (offered.length ? JSON.stringify(offered) : 'none') + '\n' +
+        'Their recent corrections, oldest first: ' + (recentFix.length ? JSON.stringify(recentFix) : 'none');
 
       const msgs = [];
       for (const t of history) {
@@ -3788,7 +3861,9 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       const content = [];
       for (const im of images)
         content.push({ type: 'image', source: { type: 'base64', media_type: String(im.mime || 'image/jpeg'), data: String(im.data) } });
-      content.push({ type: 'text', text: STATE + '\n\n' + (message || '(no words, only the picture)') });
+      content.push({ type: 'text', text: STATE + '\n\n' +
+        (editId ? 'EDIT of item_id=' + editId + '. What it really was: ' : '') +
+        (message || '(no words, only the picture)') });
       msgs.push({ role: 'user', content });
 
       /* One request, as a function, so a reply can be sent back once. */
@@ -3866,7 +3941,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       /* The tool fixes the SHAPE, not the values: a date is still a string it
          chose, and this one is written into a day of her food. */
       const at = /^\d{4}-\d{2}-\d{2}$/.test(String(out.date || '')) ? out.date : day;
-      const items = (Array.isArray(out.items) ? out.items : []).slice(0, 30).map((it) => ({
+      let items = (Array.isArray(out.items) ? out.items : []).slice(0, 30).map((it) => ({
         id: String(it.id || '').slice(0, 40) || ('c' + Math.random().toString(36).slice(2, 8)),
         name: String(it.name || '').slice(0, 120),
         quantity: String(it.quantity || '').slice(0, 80),
@@ -3876,7 +3951,12 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
            into her day and then shown as a meal that does not exist */
         meal: ['breakfast', 'lunch', 'dinner', 'snack', 'drink']
           .indexOf(String(it.meal || '')) >= 0 ? String(it.meal) : '',
+        sodium_level: ['low', 'medium', 'high'].indexOf(String(it.sodium_level || '')) >= 0 ? String(it.sodium_level) : '',
+        restaurant: it.restaurant === true,
       })).filter((it) => it.name);
+      let action = ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none';
+      if (editId) ({ action, items } = coachEditOnly(action, items, editId));
+      const hs = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 120);
 
       /* what the turn cost, as the API counted it - estimates of this were
          out by a factor of two in both directions */
@@ -3885,10 +3965,12 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         ok: true,
         usage: { in: u.input_tokens || 0, out: u.output_tokens || 0 },
         retried,   // sent back once because its numbers did not add up
-        action: ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none',
+        action,
         date: at,
         items,
         question: String(out.question || '').slice(0, 300),
+        habit_offer: hs(out.habit_offer),
+        habit_save: hs(out.habit_save),
         message: String(out.message || '').slice(0, 4000),
       });
     }
@@ -4334,6 +4416,37 @@ function coachTotals(it) {
            portions, units: units && ku ? units : 0 };
 }
 
+/* AN EDIT TOUCHES ONE ITEM. The app sent one id and will update one row, so
+   whatever the model answers, what leaves here is an update of that id or
+   nothing: an add would put a second copy of the food in her day. One item
+   under another id is taken to be the one meant; several are not guessed. */
+function coachEditOnly(action, items, editId) {
+  let mine = items.filter((it) => it.id === editId);
+  if (!mine.length && items.length === 1) mine = [Object.assign({}, items[0], { id: editId })];
+  mine = mine.slice(0, 1);
+  return mine.length && action !== 'delete' && action !== 'none'
+    ? { action: 'update', items: mine } : { action: 'none', items: [] };
+}
+
+/* ONE CORRECTION, as the app reports it. It came from a phone and is kept for
+   ninety days for Asaf to read, so every field has a type and a size. */
+const CORR_TYPES = ['delete', 'swipe_edit', 'chat_edit'];
+function corrClean(c) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const num = (v, lo, hi) => { const x = Number(v); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x * 10) / 10)) : 0; };
+  const item = (m) => (m && typeof m === 'object') ? {
+    id: str(m.id, 40), name: str(m.name, 120), amount: str(m.amount, 80), kcal: num(m.kcal, 0, 20000),
+    p: num(m.p, 0, 2000), c: num(m.c, 0, 4000), f: num(m.f, 0, 2000), note: str(m.note, 200), kind: str(m.kind, 12),
+  } : null;
+  if (!c || CORR_TYPES.indexOf(c.type) < 0) return null;
+  const ts = Number(c.ts);
+  return {
+    type: c.type, ts: isFinite(ts) && ts > 1.6e12 && ts < 4e12 ? Math.round(ts) : Date.now(),
+    before: item(c.before), after: item(c.after), kcal_diff: num(c.kcal_diff, -20000, 20000),
+    message: str(c.message, 600), photo: c.photo === true,
+  };
+}
+
 /* An item whose protein, carbs and fat account for less than 60% of its
    calories is one whose macros were left out - the cottage that came back as
    119 kcal and 6.3 g of fat is 48%. Below 60 kcal it is not worth asking:
@@ -4383,4 +4496,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, routeClean, scheduleClean, scheduleBoard, coachTotals, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
