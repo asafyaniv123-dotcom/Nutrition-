@@ -218,6 +218,9 @@ try {
     it('s3','קניות לשבוע','green',18,0,'חלב, ביצים, טחינה');
     it('s4','להתקשר לאמא','water',21,0);
     saveDPlan(date,o);
+    /* half of tonight's summary, through the reflection's own writer */
+    if(typeof rfSave==='function'){_rfDate=date;rfSave({moment:'ארוחת ערב עם נועה',song:'Here Comes the Sun'});}
+    if(typeof renderHomeGrid==='function')renderHomeGrid();
     renderHomeToday();
   })()`);
   await sleep(800);
@@ -253,6 +256,15 @@ try {
     await evalJS('streakClose()'); await sleep(300);
     hit = await tap('.chub');
     console.log((hit && await evalJS(`currentModule!==null&&currentModule!==undefined`) ? '  ok   ' : '  FAIL ') + 'the hub opens ' + await evalJS('String(currentModule)'));
+    if (await evalJS(`!!document.querySelector('.hnext')||true`)) {
+      await load();
+      const under = `(function(){var e=document.querySelector('.hnext');if(!e)return 'none';var b=e.getBoundingClientRect();
+        var t=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);return Math.round(b.top)+' '+(t&&(t.id||t.className))+' | '+document.body.className;})()`;
+      /* the opening splash can still be up: press only once it has gone */
+      for (let i = 0; i < 30 && /splash/.test(await evalJS(under)); i++) await sleep(300);
+      hit = await tap('.hnext');
+      console.log((hit && await evalJS(`currentModule==='planning'`) ? '  ok   ' : '  FAIL ') + 'the next line opens ' + await evalJS('String(currentModule)'));
+    }
   }
 } catch (e) {
   console.log('FAIL: ' + e.message);
