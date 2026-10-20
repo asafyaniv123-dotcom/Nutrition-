@@ -595,7 +595,12 @@ export default {
       try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
       const sub = b && b.subscription;
       if (!sub || !sub.endpoint) return json({ error: 'missing subscription' }, 400);
-      if (!/^\d{2}:\d{2}$/.test(b.time || '')) return json({ error: 'bad time' }, 400);
+      const hm = (v) => /^\d{2}:\d{2}$/.test(v || '') && +v.slice(0, 2) < 24 && +v.slice(3, 5) < 60;
+      const wt = hm(b.wt) ? b.wt : '';
+      const wd = wt ? [...new Set((Array.isArray(b.wd) ? b.wd : []).map(Number)
+        .filter((d) => d >= 0 && d <= 6 && d === Math.round(d)))].sort() : [];
+      /* the evening reminder's time, or nothing when only the weigh-in is on */
+      if (!(hm(b.time) || (b.time === '' && wt))) return json({ error: 'bad time' }, 400);
 
       const tz = b.tz || 'UTC';
       let now;
@@ -608,9 +613,13 @@ export default {
         time: b.time,
         tz,
         // Subscribing after today's time has passed starts tomorrow, matching the client.
-        last: toMin(now.hhmm) >= toMin(b.time) ? now.date : (prev && prev.time === b.time ? prev.last : ''),
+        last: b.time && toMin(now.hhmm) >= toMin(b.time) ? now.date : (prev && prev.time === b.time ? prev.last : ''),
         updated: new Date().toISOString(),
       };
+      if (wt) {
+        rec.wt = wt; rec.wd = wd;
+        rec.wlast = toMin(now.hhmm) >= toMin(wt) ? now.date : (prev && prev.wt === wt ? prev.wlast || '' : '');
+      }
       await env.SUBS.put(key, JSON.stringify(rec));
       return json({ ok: true, time: rec.time, tz: rec.tz });
     }
@@ -3657,6 +3666,7 @@ export default {
       const message = String((b && b.message) || '').replace(/\s+/g, ' ').trim().slice(0, 1500);
       /* an edit names ONE logged item; the reply may touch nothing else */
       const editId = String((b && b.edit_id) || '').slice(0, 40);
+      const weigh = weighClean(b && b.weigh);
       const strs = (a, n, len) => (Array.isArray(a) ? a : []).slice(-n)
         .map((x) => String(x == null ? '' : x).replace(/\s+/g, ' ').trim().slice(0, len)).filter(Boolean);
       const habits = strs(b && b.habits, 30, 120);
@@ -3772,6 +3782,18 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - Honest, never guilt-tripping. Over target? Give perspective (weekly average, activity, maintenance) and move on. Never suggest compensating with extreme restriction the next day.
 - Light emoji use is fine. No long lectures.
 
+## Weigh-ins
+- When the user logs a weight, you receive: today's weight, recent weigh-ins, the trend (computed in code), and flags from the previous 1-2 days (sodium, carbs, alcohol, restaurant, late meal, training).
+- Reply in 2-4 short lines: the number, how it compares to the trend (not to yesterday), the most likely reason for any change, and what it means.
+- Always separate water from fat. A jump after salt, carbs, alcohol or a restaurant meal is water and will pass in 1-3 days. Gaining 1 kg of fat requires ~7,700 kcal surplus; use the logged data to show whether that's even possible.
+- Never suggest eating less, skipping meals or "compensating" after a weight increase. The plan stays the same.
+- Celebrate new lows, weekly average drops and milestones, but keep the focus on the trend.
+- If the "expected vs actual" flag is on: explain gently that either some food isn't being logged or the maintenance estimate needs adjusting, and suggest reviewing the target. No blame.
+- If the user hides the number, never mention it. Talk only about the trend.
+- If the user shows distress about their weight or wants to cut drastically, follow the safety rules.
+- A weigh-in turn logs no food: action none, no items.
+- With weekly weigh-ins the trend is this week against last week; say so rather than comparing days.
+
 ## Edits and habits
 - A message with an item_id and edited text is a correction to that item. Return action=update for that id only. Reply in one short line stating what changed and the kcal difference. No "remaining today" block.
 - The user profile includes "habits". Apply them by default when the user doesn't specify (e.g. assume no oil if the habit says so), and mention it briefly: "חישבתי בלי שמן כמו תמיד".
@@ -3847,10 +3869,14 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         'Targets: ' + JSON.stringify(targets) + (phase ? '   phase: ' + phase : '') + '\n' +
         'Already logged today: ' + JSON.stringify(logged) + '\n' +
         'Left of each target: ' + JSON.stringify(left) + '\n' +
-        'Recent morning weigh-ins: ' + (weights.length ? JSON.stringify(weights) : 'none recorded') + '\n' +
+        'Recent morning weigh-ins: ' + (weigh && weigh.hidden ? 'hidden by the user - never mention a weight'
+          : weights.length ? JSON.stringify(weights) : 'none recorded') + '\n' +
         'Their habits: ' + (habits.length ? JSON.stringify(habits) : 'none saved') + '\n' +
         'Habits already offered (never offer again): ' + (offered.length ? JSON.stringify(offered) : 'none') + '\n' +
-        'Their recent corrections, oldest first: ' + (recentFix.length ? JSON.stringify(recentFix) : 'none');
+        'Their recent corrections, oldest first: ' + (recentFix.length ? JSON.stringify(recentFix) : 'none') +
+        (weigh ? '\nWEIGH-IN NOW (all figures computed by the app' +
+          (weigh.hidden ? '; THE USER HIDES THE NUMBER - you are not given it and must not state or guess any weight' : '') +
+          '): ' + JSON.stringify(weigh) : '');
 
       const msgs = [];
       for (const t of history) {
@@ -3956,6 +3982,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       })).filter((it) => it.name);
       let action = ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none';
       if (editId) ({ action, items } = coachEditOnly(action, items, editId));
+      if (weigh) { action = 'none'; items = []; }          // a weigh-in logs no food
       const hs = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 120);
 
       /* what the turn cost, as the API counted it - estimates of this were
@@ -4262,30 +4289,49 @@ If they logged two or three days, say so without reproach and write about what t
 
         let now;
         try { now = localNow(rec.tz); } catch { continue; }
-        if (rec.last === now.date) continue;               // already sent today
+        const due = remindersDue(rec, now);
+        if (!due.mark) continue;                           // nothing due, nothing to record
 
-        const late = toMin(now.hhmm) - toMin(rec.time);
-        if (late < 0) continue;                            // not yet
-        if (late > LATE_WINDOW_MIN) {                      // too late to be useful
-          rec.last = now.date;
-          await env.SUBS.put(k.name, JSON.stringify(rec));
-          continue;
-        }
-
-        const res = await sendPush(rec.endpoint, env);
-        if (res.status === 404 || res.status === 410) {
-          await env.SUBS.delete(k.name);                   // subscription is gone for good
-          continue;
+        if (due.send) {
+          const res = await sendPush(rec.endpoint, env);
+          if (res.status === 404 || res.status === 410) {
+            await env.SUBS.delete(k.name);                 // subscription is gone for good
+            continue;
+          }
+          rec.lastStatus = res.status;
         }
         // Mark sent even on a transient failure - better a missed day than a retry storm.
-        rec.last = now.date;
-        rec.lastStatus = res.status;
+        Object.assign(rec, due.mark);
         await env.SUBS.put(k.name, JSON.stringify(rec));
       }
       cursor = page.list_complete ? null : page.cursor;
     } while (cursor);
   },
 };
+
+/* ── WHICH REMINDER IS DUE ──
+   One subscription, two reminders: the evening summary at rec.time, every
+   day, and the morning weigh-in at rec.wt on the weekdays in rec.wd. For a
+   record with no weigh-in this is exactly what the loop always did: nothing
+   before the time, a push within LATE_WINDOW_MIN of it, a silent mark after
+   that, once a day. Both falling due in the same minute is ONE push - the
+   phone picks the words by the clock. Returns { mark, send }: the fields to
+   write back (or null), and whether to push. */
+function remindersDue(rec, now) {
+  const mark = {};
+  let send = false;
+  const dow = new Date(now.date + 'T12:00:00Z').getUTCDay();
+  const step = (t, lastField, dayOk) => {
+    if (!/^\d{2}:\d{2}$/.test(t || '') || !dayOk || rec[lastField] === now.date) return;
+    const late = toMin(now.hhmm) - toMin(t);
+    if (late < 0) return;                                  // not yet
+    mark[lastField] = now.date;
+    if (late <= LATE_WINDOW_MIN) send = true;              // else too late to be useful
+  };
+  step(rec.time, 'last', true);
+  step(rec.wt, 'wlast', Array.isArray(rec.wd) && rec.wd.indexOf(dow) >= 0);
+  return { mark: Object.keys(mark).length ? mark : null, send };
+}
 
 /* ── /route, THE PURE HALF ──
    The model's answer is a suggestion, not an instruction. Everything it can
@@ -4416,6 +4462,39 @@ function coachTotals(it) {
            portions, units: units && ku ? units : 0 };
 }
 
+/* A WEIGH-IN, as the app reports it. Hidden means no weight at all reaches
+   the prompt - not today's, not the trend's, not the goal - whatever the
+   phone sent: the only sure way the reply never says it. */
+const WEIGH_FLAGS = ['sodium', 'carbs', 'alcohol', 'restaurant', 'late_meal', 'training'];
+function weighClean(w) {
+  if (!w || typeof w !== 'object') return null;
+  const num = (v, lo, hi) => { const x = Number(v); return v !== null && v !== '' && isFinite(x) && x >= lo && x <= hi ? Math.round(x * 100) / 100 : null; };
+  const day = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '';
+  const o = {
+    mode: w.mode === 'weekly' ? 'weekly' : 'daily',
+    hidden: w.hidden === true,
+    trend_direction: ['down', 'flat', 'up'].indexOf(w.trend_direction) >= 0 ? w.trend_direction : '',
+    change_vs_trend_kg: num(w.change_vs_trend_kg, -30, 30),
+    rate_kg_per_week: num(w.rate_kg_per_week, -10, 10),
+    expected_kg_per_week: num(w.expected_kg_per_week, -10, 10),
+    expected_vs_actual: w.expected_vs_actual === true,
+    weeks_of_data: num(w.weeks_of_data, 0, 520),
+    flags: (Array.isArray(w.flags) ? w.flags : []).slice(0, 2).map((f) => ({
+      day: day(f && f.day),
+      flags: (Array.isArray(f && f.flags) ? f.flags : []).filter((x) => WEIGH_FLAGS.indexOf(x) >= 0),
+    })).filter((f) => f.day),
+  };
+  if (!o.hidden) {
+    o.today_kg = num(w.today_kg, 20, 400);
+    o.trend_kg = num(w.trend_kg, 20, 400);
+    o.goal_kg = num(w.goal_kg, 20, 400);
+    o.to_goal_kg = num(w.to_goal_kg, -380, 380);
+    o.recent = (Array.isArray(w.recent) ? w.recent : []).slice(-14)
+      .map((r) => ({ d: day(r && r.d), kg: num(r && r.kg, 20, 400) })).filter((r) => r.d && r.kg !== null);
+  }
+  return o;
+}
+
 /* AN EDIT TOUCHES ONE ITEM. The app sent one id and will update one row, so
    whatever the model answers, what leaves here is an update of that id or
    nothing: an add would put a second copy of the food in her day. One item
@@ -4496,4 +4575,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, remindersDue, weighClean, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };

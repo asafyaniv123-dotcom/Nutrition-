@@ -1405,6 +1405,34 @@ body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
 .medit-go,.medit-no{flex:1;border:none;border-radius:14px;padding:13px;font:800 14px/1 inherit;cursor:pointer}
 .medit-go{background:var(--nu-ink,var(--ink));color:#fff}
 .medit-no{background:none;color:var(--nu-muted,var(--muted))}
+/* the morning weigh-in */
+.wg-card{background:var(--nu-ground,var(--card));border-radius:22px;padding:16px 18px;margin-bottom:14px;
+  box-shadow:-4px -4px 9px var(--nu-lit,#fff),5px 6px 13px var(--nu-shade-soft,rgba(0,0,0,.08))}
+.wg-t{font-size:14px;font-weight:800;color:var(--nu-ink,var(--ink))}
+.wg-res{font-size:13px;color:var(--nu-ink,var(--ink));margin-top:6px}
+.wg-note{font-size:13px;line-height:1.6;color:var(--nu-ink,var(--ink));margin-top:8px}
+.wg-wait{color:var(--nu-muted,var(--muted))}
+.wg-intro{font-size:12px;line-height:1.6;color:var(--nu-muted,var(--muted));margin-top:6px}
+.wg-ok{background:none;border:none;color:var(--violet-700);font:800 12px/1 inherit;cursor:pointer;padding:4px}
+.wg-row{display:flex;gap:8px;margin-top:12px}
+.wg-in{flex:1;min-width:0;border:none;border-radius:14px;padding:11px 12px;text-align:center;font:700 15px/1.2 inherit;
+  color:var(--nu-ink,var(--ink));background:var(--nu-ground,var(--surface));
+  box-shadow:inset 3px 4px 8px var(--nu-shade,rgba(0,0,0,.08)),inset -3px -3px 7px var(--nu-lit,#fff)}
+.wg-go{border:none;border-radius:14px;padding:11px 18px;font:800 13.5px/1 inherit;cursor:pointer;
+  background:var(--nu-ink,var(--ink));color:#fff}
+.wg-add{display:block;margin:0 0 12px auto;background:none;border:none;color:var(--violet-700);
+  font:700 12.5px/1 inherit;cursor:pointer;padding:6px 4px}
+.wg-legend{display:flex;gap:14px;margin-top:6px;font-size:10.5px;color:var(--muted)}
+.wg-legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-inline-end:5px}
+.wg-legend i.dash{height:0;border-top:2px dashed;background:none}
+.wg-pick{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:12.5px}
+.wg-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.wg-chip{border:none;border-radius:999px;padding:8px 12px;font:700 12px/1 inherit;cursor:pointer;
+  background:var(--surface);color:var(--muted)}
+.wg-chip.on{background:var(--violet-100);color:var(--violet-700)}
+.wg-line{display:flex;align-items:center;gap:10px;margin-top:6px}
+.wg-tog{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer}
+.wg-time{max-width:120px}
 /* the habits on the profile */
 .fh-row{display:flex;gap:8px;align-items:center;margin-top:8px}
 .fh-in{flex:1;min-width:0}
@@ -9591,7 +9619,7 @@ function renderProfile(){
      '</div><span class="pf-note"></span></div>';
   h+=heightRowHTML(p);
   h+='<div class="pf-row"><label class="pf-lbl">'+_t('משקל')+'</label>'+
-     '<input class="pf-in" type="number" inputmode="decimal" step="0.1" placeholder="&ndash;" value="'+(p.weight!==undefined?edWeightVal(p.weight):'')+'" onchange="profNum(\u0027weight\u0027,this)">'+
+     '<input class="pf-in" type="number" inputmode="decimal" step="0.1" '+(weighHidden()?'placeholder="'+esc(_t('מוסתר'))+'" value=""':'placeholder="&ndash;" value="'+(p.weight!==undefined?edWeightVal(p.weight):'')+'"')+' onchange="profNum(\u0027weight\u0027,this)">'+
      '<span class="pf-note">'+weightUnit()+'</span></div>';
   if(bmi!==null)
     h+='<div class="pf-derived">BMI '+bmi+'</div>';
@@ -9660,7 +9688,7 @@ function renderProfile(){
        '<div class="pf-need">'+_t('מלא את כל הפרטים למעלה ואחשב לך יעד קלוריות ומאקרו.')+'</div></div>';
   }
 
-  h+=fhCardHTML();
+  h+=weighSettingsHTML()+fhCardHTML();
   document.getElementById('content').innerHTML=h+'</div>';
 }
 
@@ -13156,8 +13184,8 @@ function coachSend(){
   });
 }
 /* the turn is on the record and the pictures are stored; now ask */
-function coachPost(d,text,pics,rec,ed){
-  ed=ed||null;
+function coachPost(d,text,pics,rec,ed,wg){
+  ed=ed||null;wg=wg||null;
 
   var day=loadDay(d),logged=[],i;
   for(i=0;i<day.meals.length;i++){var m=day.meals[i];
@@ -13166,8 +13194,10 @@ function coachPost(d,text,pics,rec,ed){
       /* where it is filed NOW - it cannot move what it cannot see */
       meal:mealKind(m)});}
   var hist=[];
+  /* hidden: an earlier weigh-in's turn may hold the number, so it is not sent */
+  var _hideW=weighHidden();
   for(i=0;i<rec.turns.length-1;i++)
-    if(rec.turns[i].text)hist.push({role:rec.turns[i].role,text:rec.turns[i].text});
+    if(rec.turns[i].text&&!(_hideW&&rec.turns[i].weigh))hist.push({role:rec.turns[i].role,text:rec.turns[i].text});
 
   fetch(SYNC_SERVER+'/coach',{
     method:'POST',headers:{'Content-Type':'application/json'},
@@ -13180,6 +13210,7 @@ function coachPost(d,text,pics,rec,ed){
       history:hist.slice(-20),
       message:text,
       edit_id:ed?String(ed.id):'',
+      weigh:wg,
       habits:fhGet(),habits_offered:fhOffered(),
       corrections_recent:corrRecent(),
       images:pics.map(function(p){return{mime:'image/jpeg',data:p.split(',')[1]||''};})
@@ -13202,8 +13233,9 @@ function coachPost(d,text,pics,rec,ed){
     if(j.habit_offer)fhOfferedAdd(j.habit_offer);
     if(j.habit_save&&fhAdd(j.habit_save))showToast(_t('נשמר בהרגלים שלי'));
     var rec2=loadCoach(d);
+    if(wg&&j.message)weighNoteSet(d,j.message);
     rec2.turns.push({role:'assistant',text:j.message||'',
-      q:j.question||'',changed:changed?1:0,edit:ed?1:0,
+      q:j.question||'',changed:changed?1:0,edit:ed?1:0,weigh:wg?1:0,
       ids:(added||[]).slice(0,12),at:Date.now()});
     saveCoach(d,rec2);
     if(ed&&j.message)showToast(String(j.message).replace(/[*_]/g,'').slice(0,140));
@@ -13464,15 +13496,294 @@ function fhCardHTML(){
   return h+'</div>';
 }
 
-/* the last fortnight of mornings, which the prompt says it receives */
+/* ── MORNING WEIGH-INS ──
+   How often she weighs, on which days, whether she is reminded, and whether
+   she sees the number at all. Everything the coach is told about a weigh-in -
+   the trend, the rate, what the logged food says the rate should be, and what
+   the day or two before it held - is worked out here, in code, and never by
+   the model: a model asked for a moving average gives a different one every
+   time. With the number hidden the coach is never SENT the number, which is
+   the only way to be sure it never says it. */
+var WEIGH_KEY='weigh_cfg',WEIGH_NOTES_KEY='weigh_notes';
+var WEIGH_FREQ_DAYS={daily:[0,1,2,3,4,5,6],'3w':[0,2,4],weekly:[0],off:[]};
+var _weighManual=false,_weighPick='';
+function weighCfg(){
+  var o={};try{o=JSON.parse(localStorage.getItem(WEIGH_KEY)||'{}')||{};}catch(e){}
+  var f=WEIGH_FREQ_DAYS[o.freq]?o.freq:'daily';
+  var days=Array.isArray(o.days)?o.days.filter(function(d){return d>=0&&d<=6&&d===Math.round(d);}):null;
+  if(f==='daily'||!days||(!days.length&&f!=='off'))days=WEIGH_FREQ_DAYS[f].slice();
+  if(f==='off')days=[];
+  var g=parseFloat(o.goal);
+  return {freq:f,days:days,remind:!!o.remind&&f!=='off',time:/^\d{2}:\d{2}$/.test(o.time||'')?o.time:'07:30',
+          hide:!!o.hide,goal:g>20&&g<400?g:0,intro:!!o.intro};
+}
+function weighSave(c){try{localStorage.setItem(WEIGH_KEY,JSON.stringify(c));}catch(e){}}
+function weighHidden(){return weighCfg().hide;}
+function weighIsDay(d){var c=weighCfg();return c.days.indexOf(new Date(d+'T12:00:00').getDay())>=0;}
+function weighNotes(){try{var o=JSON.parse(localStorage.getItem(WEIGH_NOTES_KEY)||'{}');return o&&typeof o==='object'?o:{};}catch(e){return {};}}
+function weighNoteSet(d,t){var o=weighNotes();o[d]=String(t||'').slice(0,1500);try{localStorage.setItem(WEIGH_NOTES_KEY,JSON.stringify(o));}catch(e){}}
+
+/* ── THE ARITHMETIC ── */
+function weighPoints(){
+  var o=loadWeights(),a=[],k;
+  for(k in o)if(o.hasOwnProperty(k)&&typeof o[k]==='number'&&/^\d{4}-\d{2}-\d{2}$/.test(k))a.push({d:k,v:o[k]});
+  a.sort(function(x,y){return x.d<y.d?-1:x.d>y.d?1:0;});
+  return a;
+}
+function weighBetween(a,from,to){return a.filter(function(p){return p.d>=from&&p.d<=to;});}
+function weighMean(a){if(!a.length)return null;var s=0,i;for(i=0;i<a.length;i++)s+=a[i].v;return s/a.length;}
+function weighDays(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);}
+/* kg per week, by least squares over whatever readings there are */
+function weighSlope(a){
+  if(a.length<3)return null;
+  var x0=a[0].d,n=a.length,sx=0,sy=0,sxx=0,sxy=0,i,x;
+  for(i=0;i<n;i++){x=weighDays(x0,a[i].d);sx+=x;sy+=a[i].v;sxx+=x*x;sxy+=x*a[i].v;}
+  var den=n*sxx-sx*sx;
+  return den?((n*sxy-sx*sy)/den)*7:null;
+}
+function weighDayKcal(d){var m=loadDay(d).meals||[],s=0,i;for(i=0;i<m.length;i++)s+=+m[i].kcal||0;return s;}
+function weighDayCarbs(d){var m=loadDay(d).meals||[],s=0,i;for(i=0;i<m.length;i++)s+=+m[i].c||0;return s;}
+var WEIGH_ALCOHOL=/יין|בירה|וודקה|ערק|ויסקי|קוקטייל|שמפניה|ליקר|wine|beer|vodka|whisk|cocktail|champagne|sake|alcohol|cerveza|vino|bière|vin |ビール|酒|啤酒|葡萄酒|نبيذ|بيرة/i;
+/* what the day or two before a weigh-in held, from the log alone */
+function weighFlags(today){
+  var out=[],n,i,d,meals,f,avg=0,cnt=0,k;
+  for(k=3;k<=16;k++){var cd=weighDayCarbs(dayShift(-k,new Date(today+'T12:00:00')));if(cd>0){avg+=cd;cnt++;}}
+  avg=cnt?avg/cnt:0;
+  var log=[];try{log=loadWorkoutLog();}catch(e){}
+  for(n=1;n<=2;n++){
+    d=dayShift(-n,new Date(today+'T12:00:00'));meals=loadDay(d).meals||[];f=[];
+    var trained=false;
+    for(i=0;i<log.length;i++)if(log[i]&&appDayOf(log[i].date)===d){trained=true;break;}
+    if(!meals.length&&!trained)continue;
+    var high=0,alc=false,rest=false,late=false,carbs=0;
+    for(i=0;i<meals.length;i++){
+      var m=meals[i];
+      if(m.na==='high')high++;
+      if(WEIGH_ALCOHOL.test(String(m.name||'')))alc=true;
+      if(m.rest)rest=true;
+      if(m.time&&(m.time>='21:00'||m.time<'04:00'))late=true;
+      carbs+=+m.c||0;
+    }
+    if(high)f.push('sodium');
+    if(avg&&carbs>avg*1.25)f.push('carbs');
+    if(alc)f.push('alcohol');
+    if(rest)f.push('restaurant');
+    if(late)f.push('late_meal');
+    if(trained)f.push('training');
+    out.push({day:d,flags:f});
+  }
+  return out;
+}
+/* The trend: a seven-day mean for someone who weighs often, this week's mean
+   against last week's for someone who weighs once a week. "change" is today
+   against the trend BEFORE today, never against yesterday. */
+function weighStats(today){
+  today=today||todayStr();
+  var c=weighCfg(),a=weighPoints();
+  if(!a.length)return null;
+  var mode=c.freq==='weekly'?'weekly':'daily',now,prev,change=null;
+  var last=a[a.length-1],todayV=last.d===today?last.v:null;
+  if(mode==='daily'){
+    now=weighMean(weighBetween(a,dayShift(-6,new Date(today+'T12:00:00')),today));
+    prev=weighMean(weighBetween(a,dayShift(-7,new Date(today+'T12:00:00')),dayShift(-1,new Date(today+'T12:00:00'))));
+    if(todayV!==null&&prev!==null)change=todayV-prev;
+  } else {
+    var sun=dayStr(weekSunday(new Date(today+'T12:00:00')));
+    now=weighMean(weighBetween(a,sun,today));
+    prev=weighMean(weighBetween(a,dayShift(-7,new Date(sun+'T12:00:00')),dayShift(-1,new Date(sun+'T12:00:00'))));
+    if(now!==null&&prev!==null)change=now-prev;
+  }
+  var win=weighBetween(a,dayShift(-27,new Date(today+'T12:00:00')),today);
+  var span=win.length?weighDays(win[0].d,win[win.length-1].d):0;
+  var rate=span>=7?weighSlope(win):null;
+  /* what the logged food says the rate should have been: the mean daily gap
+     between maintenance and what was eaten, on days that were really logged */
+  var pt=profileTargets(loadProfile()),tdee=pt&&pt.tdee,logged=0,def=0,d;
+  if(tdee&&win.length)for(d=win[0].d;d<today;d=dayShift(1,new Date(d+'T12:00:00'))){
+    var kc=weighDayKcal(d);if(kc>=800){logged++;def+=tdee-kc;}
+  }
+  var expected=tdee&&logged?-(def/logged)*7/7700:null;
+  var gap=(rate!==null&&expected!==null&&span>=21&&logged>=14&&Math.abs(rate-expected)>=0.3)
+    ?{expected:expected,actual:rate,logged_days:logged}:null;
+  var dir=rate!==null?(rate<-0.1?'down':rate>0.1?'up':'flat')
+         :change!==null?(change<-0.2?'down':change>0.2?'up':'flat'):'';
+  return {mode:mode,today:todayV,last:last,trend:now,prevTrend:prev,change:change,dir:dir,
+          rate:rate,expected:expected,gap:gap,span:span,goal:c.goal||0,
+          toGoal:c.goal&&now!==null?now-c.goal:null,flags:weighFlags(today)};
+}
+function weighDirLabel(dir){
+  return dir==='down'?_t('מגמה יורדת'):dir==='up'?_t('מגמה עולה'):dir==='flat'?_t('מגמה יציבה'):_t('עוד אין מגמה');
+}
+/* what /coach is told. Hidden: directions and differences only - no weight. */
+function weighPayload(st,c){
+  var r2=function(x){return x===null||x===undefined?null:Math.round(x*100)/100;};
+  var o={mode:st.mode,hidden:!!c.hide,trend_direction:st.dir,change_vs_trend_kg:r2(st.change),
+    rate_kg_per_week:r2(st.rate),expected_kg_per_week:r2(st.expected),expected_vs_actual:!!st.gap,
+    weeks_of_data:Math.floor(st.span/7),flags:st.flags};
+  if(!c.hide){
+    o.today_kg=r2(st.today);o.trend_kg=r2(st.trend);o.goal_kg=st.goal||null;o.to_goal_kg=r2(st.toGoal);
+    o.recent=weighPoints().slice(-14).map(function(p){return {d:p.d,kg:p.v};});
+  }
+  return o;
+}
+
+/* ── THE MORNING CARD, on the day's screen ── */
+function weighTodayHTML(){
+  if(curDate!==todayStr())return '';
+  var c=weighCfg(),d=todayStr(),w=loadWeights(),h;
+  if(typeof w[d]==='number'&&!_weighManual){
+    var st=weighStats(d)||{dir:''},note=weighNotes()[d]||'';
+    h='<div class="wg-card"><div class="wg-t">'+_t('שקילת בוקר')+'</div>'+
+      '<div class="wg-res">'+(c.hide?'':'<b>'+fmtWeight(w[d])+'</b> &middot; ')+weighDirLabel(st.dir)+'</div>';
+    if(note)h+='<div class="wg-note">'+mdLite(note)+'</div>';
+    else if(_coachBusy)h+='<div class="wg-note wg-wait">&hellip;</div>';
+    return h+'</div>';
+  }
+  if(!weighIsDay(d)&&!_weighManual)
+    return c.freq==='off'?'':'<button class="wg-add" onclick="weighOpenManual()">+ '+_t('הוספת שקילה')+'</button>';
+  h='<div class="wg-card"><div class="wg-t">'+_t('שקילת בוקר')+'</div>';
+  if(!c.intro)
+    h+='<div class="wg-intro">'+_t('לשקול בבוקר, אחרי השירותים ועל בטן ריקה. כך המספרים בין הימים באמת דומים.')+
+       ' <button class="wg-ok" onclick="weighIntroDone()">'+_t('הבנתי')+'</button></div>';
+  h+='<div class="wg-row"><input id="wg-in" class="wg-in" type="number" inputmode="decimal" step="0.1" '+
+     'placeholder="'+esc(_t('משקל ({u})',{u:weightUnit()}))+'" '+
+     'onkeydown="if(event.key===\'Enter\'){event.preventDefault();weighSubmit();}">'+
+     '<button class="wg-go" onclick="weighSubmit()">'+_t('רישום')+'</button></div>';
+  return h+'</div>';
+}
+function weighOpenManual(){_weighManual=true;renderToday();setTimeout(function(){var e=document.getElementById('wg-in');if(e)e.focus();},60);}
+function weighIntroDone(){var c=weighCfg();c.intro=true;weighSave(c);renderToday();}
+function weighSubmit(){
+  var el=document.getElementById('wg-in');if(!el)return;
+  var kg=fromDisplayWeight(parseFloat(el.value));
+  if(!logWeight(kg)){showToast(_t('משקל לא תקין'));return;}
+  _weighManual=false;
+  var c=weighCfg();if(!c.intro){c.intro=true;weighSave(c);}
+  var d=todayStr(),st=weighStats(d);
+  var text=c.hide?_t('שקילת בוקר'):_t('שקילת בוקר: {w}',{w:fmtWeight(kg)});
+  var rec=loadCoach(d);
+  rec.turns.push({role:'user',text:text,pics:[],weigh:1,at:Date.now()});
+  saveCoach(d,rec);
+  if(!SYNC_SERVER||!st){render();return;}
+  _coachBusy=true;_coachErr='';
+  render();
+  coachPost(d,text,[],rec,null,weighPayload(st,c));
+}
+
+/* ── THE CHART, on the history tab ── */
+function weighPick(d){_weighPick=(_weighPick===d?'':d);renderHistory();}
+var _weighXs=[];
+function weighChartTap(e,el){
+  var svg=el.ownerSVGElement,r=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal;
+  var x=(e.clientX-r.left)/r.width*vb.width,best=null,i;
+  for(i=0;i<_weighXs.length;i++)if(!best||Math.abs(_weighXs[i].x-x)<Math.abs(best.x-x))best=_weighXs[i];
+  if(best)weighPick(best.d);
+}
+function weighChartHTML(){
+  var c=weighCfg(),today=todayStr(),from=dayShift(-59),a=weighBetween(weighPoints(),from,today);
+  var h='<div class="card"><div class="cttl">'+_t('המשקל שלי')+'</div>';
+  if(!a.length)return h+'<div class="pf-note">'+_t('עוד אין שקילות.')+'</div></div>';
+  var W=320,H=150,PL=c.hide?8:34,PR=8,PT=12,PB=12,cW=W-PL-PR,cH=H-PT-PB;
+  /* the trend at each reading: the mean of the seven days ending there */
+  var tr=a.map(function(p){return {d:p.d,v:weighMean(weighBetween(a,dayShift(-6,new Date(p.d+'T12:00:00')),p.d))};});
+  var vals=a.map(function(p){return p.v;});if(c.goal)vals.push(c.goal);
+  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+  if(hi-lo<1){var mid=(hi+lo)/2;lo=mid-0.5;hi=mid+0.5;}
+  var pad=(hi-lo)*0.08;lo-=pad;hi+=pad;
+  /* the axis starts at the first reading in the window, not sixty days back:
+     two weeks of data drawn across two months is a smudge at one edge */
+  var x0=a[0].d,span=Math.max(6,weighDays(x0,today));
+  var xp=function(d){return PL+cW*(weighDays(x0,d)/span);},yp=function(v){return PT+cH*(1-(v-lo)/(hi-lo));};
+  var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block" xmlns="http://www.w3.org/2000/svg">';
+  if(!c.hide)
+    s+='<text x="'+(PL-4)+'" y="'+(yp(hi-pad)+3)+'" text-anchor="'+chartEndAnchor()+'" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(toDisplayWeight(hi-pad),{maximumFractionDigits:1})+'</text>'+
+       '<text x="'+(PL-4)+'" y="'+(yp(lo+pad)+3)+'" text-anchor="'+chartEndAnchor()+'" font-size="8" fill="'+PAL.mutedSoft+'">'+nfmt(toDisplayWeight(lo+pad),{maximumFractionDigits:1})+'</text>';
+  if(c.goal)s+='<line x1="'+PL+'" x2="'+(PL+cW)+'" y1="'+yp(c.goal).toFixed(1)+'" y2="'+yp(c.goal).toFixed(1)+'" stroke="'+PAL.green500+'" stroke-width="1.5" stroke-dasharray="5,4"/>';
+  if(tr.length>1){
+    var dpth='',i;
+    for(i=0;i<tr.length;i++)dpth+=(i?'L':'M')+xp(tr[i].d).toFixed(1)+' '+yp(tr[i].v).toFixed(1);
+    s+='<path d="'+dpth+'" fill="none" stroke="'+PAL.violet500+'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  var notes=weighNotes();
+  for(i=0;i<a.length;i++){
+    var on=_weighPick===a[i].d;
+    s+='<circle cx="'+xp(a[i].d).toFixed(1)+'" cy="'+yp(a[i].v).toFixed(1)+'" r="'+(on?5:2.6)+'" '+
+       'fill="'+(on?PAL.violet500:PAL.mutedSoft)+'" opacity="'+(on?1:.75)+'"'+(on?' stroke="#fff" stroke-width="1.5"':'')+' style="cursor:pointer" '+
+       'onclick="weighPick(&quot;'+a[i].d+'&quot;)"><title>'+esc(fmtDate(a[i].d))+'</title></circle>';
+  }
+  /* one target over the whole chart, answering with the NEAREST reading: a
+     3.6px dot is not something a finger can hit, and daily readings sit 5px
+     apart, so a wider target per dot only overlapped its neighbour */
+  _weighXs=a.map(function(p){return {d:p.d,x:xp(p.d)};});
+  s+='<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="transparent" style="cursor:pointer" '+
+     'onclick="weighChartTap(event,this)"/></svg>';
+  h+=s+'<div class="wg-legend"><span><i style="background:'+PAL.violet500+'"></i>'+_t('מגמה')+'</span>'+
+     (c.goal?'<span><i class="dash" style="border-color:'+PAL.green500+'"></i>'+_t('יעד')+'</span>':'')+'</div>';
+  if(_weighPick){
+    var nt=notes[_weighPick]||'';
+    h+='<div class="wg-pick"><b>'+fmtDate(_weighPick)+'</b>'+
+       (nt?'<div class="wg-note">'+mdLite(nt)+'</div>':'<div class="pf-note">'+_t('אין הסבר מהמאמן לשקילה הזו.')+'</div>')+'</div>';
+  } else h+='<div class="pf-note" style="margin-top:8px">'+_t('נגיעה בנקודה מראה מה המאמן אמר באותו יום.')+'</div>';
+  return h+'</div>';
+}
+
+/* ── THE SETTINGS, on the personal tab ── */
+function weighSet(k,v){
+  var c=weighCfg();
+  if(k==='freq'){c.freq=v;c.days=WEIGH_FREQ_DAYS[v].slice();if(v==='off')c.remind=false;}
+  else if(k==='day'){
+    var i=c.days.indexOf(v);if(i>=0)c.days.splice(i,1);else c.days.push(v);
+    c.days.sort();if(!c.days.length)c.days=WEIGH_FREQ_DAYS[c.freq].slice();
+  }
+  else c[k]=v;
+  weighSave(c);
+  if(k==='remind'||k==='time'||k==='freq'||k==='day'){
+    sumRemPushSync();
+    if(k==='remind'&&v&&('Notification' in window)&&Notification.permission==='default')sumRemAsk();
+    if(k==='remind')showToast(v?_t('התזכורת לשקילה הופעלה'):_t('התזכורת לשקילה בוטלה'));
+  }
+  renderProfile();
+}
+function weighSetGoal(el){
+  var v=parseFloat(el.value);
+  weighSet('goal',v>0?Math.round(fromDisplayWeight(v)*10)/10:0);
+}
+function weighSettingsHTML(){
+  var c=weighCfg(),i,h='<div class="card"><div class="cttl">'+_t('שקילות')+'</div>';
+  var F=[['daily',_t('כל יום')],['3w',_t('שלוש פעמים בשבוע')],['weekly',_t('פעם בשבוע')],['off',_t('בלי שקילות')]];
+  h+='<div class="pf-lbl">'+_t('כל כמה זמן?')+'</div><div class="wg-chips">';
+  for(i=0;i<F.length;i++)
+    h+='<button class="wg-chip'+(c.freq===F[i][0]?' on':'')+'" onclick="weighSet(\'freq\',\''+F[i][0]+'\')">'+F[i][1]+'</button>';
+  h+='</div>';
+  if(c.freq==='3w'||c.freq==='weekly'){
+    h+='<div class="pf-lbl">'+_t('באילו ימים?')+'</div><div class="wg-chips">';
+    for(i=0;i<7;i++)
+      h+='<button class="wg-chip wg-day'+(c.days.indexOf(i)>=0?' on':'')+'" onclick="weighSet(\'day\','+i+')">'+RF_DAYNAMES[i]+'</button>';
+    h+='</div>';
+  }
+  if(c.freq!=='off'){
+    h+='<div class="wg-line"><label class="wg-tog"><input type="checkbox"'+(c.remind?' checked':'')+
+       ' onchange="weighSet(\'remind\',this.checked)"> '+_t('תזכורת')+'</label>'+
+       (c.remind?'<input class="pf-in wg-time" type="time" value="'+c.time+'" onchange="if(this.value)weighSet(\'time\',this.value)">':'')+'</div>';
+  }
+  h+='<div class="wg-line"><label class="wg-tog"><input type="checkbox"'+(c.hide?' checked':'')+
+     ' onchange="weighSet(\'hide\',this.checked)"> '+_t('להסתיר את המספר')+'</label></div>'+
+     '<div class="pf-note">'+_t('רואים רק את המגמה: יורדת, יציבה או עולה.')+'</div>';
+  h+='<div class="pf-row" style="margin-top:12px"><div class="pf-lbl">'+_t('משקל יעד ({u})',{u:weightUnit()})+'</div>'+
+     '<input class="pf-in" type="number" inputmode="decimal" step="0.1" '+
+     (c.hide?'placeholder="'+esc(_t('מוסתר'))+'" value=""':'placeholder="&ndash;" value="'+(c.goal?edWeightVal(c.goal):'')+'"')+
+     ' onchange="weighSetGoal(this)"></div>';
+  return h+'</div>';
+}
+
+/* the last fortnight of mornings, which the prompt says it receives. It read
+   the store as a list, and the store is an object keyed by day - so the coach
+   and the weekly letter had been sent an empty list every time. Hidden, it is
+   empty on purpose. */
 function coachWeights(){
-  var out=[],i;
-  try{
-    var w=JSON.parse(localStorage.getItem(WEIGHTS_KEY)||'[]');
-    if(!Array.isArray(w))return[];
-    for(i=Math.max(0,w.length-14);i<w.length;i++)
-      if(w[i]&&w[i].kg)out.push({d:w[i].d||w[i].date||'',kg:w[i].kg});
-  }catch(e){}
+  if(weighHidden())return [];
+  var a=weighPoints().slice(-14),out=[],i;
+  for(i=0;i<a.length;i++)out.push({d:a[i].d,kg:a[i].v});
   return out;
 }
 /* ── THE BLOCK THE APP WRITES, NOT THE MODEL ──
@@ -13511,7 +13822,7 @@ function coachInnerHTML(){
          (typeof t.pics==='number'&&t.pics>0
             ?'<span class="co-pc">'+_t('תמונה')+
              (t.pics>1?' \u00d7'+nfmt(t.pics):'')+'</span>':'')+
-         (t.text?esc(t.text):'')+
+         (t.text?esc(t.weigh&&weighHidden()?_t('שקילת בוקר'):t.text):'')+
          '</div>';
     } else {
       h+='<div class="co-a">'+mdLite(t.text||'')+
@@ -17346,7 +17657,7 @@ function renderToday(){
      app afterwards. */
   /* the bars first, because they are what the chat changes, then the chat,
      then what the day already holds */
-  _c.innerHTML=fqCardHTML()+macroHTML+pillsHTML+fitBurnRowHTML(curDate)+waterHTML+coachHTML()+logHTML;
+  _c.innerHTML=weighTodayHTML()+fqCardHTML()+macroHTML+pillsHTML+fitBurnRowHTML(curDate)+waterHTML+coachHTML()+logHTML;
   /* the chat's pictures live in IndexedDB; innerHTML alone leaves empty imgs */
   (function(){var _co=document.getElementById('co-wrap');
     if(_co){hydratePhotos(_co);var _l=document.getElementById('co-list');
@@ -17644,12 +17955,13 @@ function makeSVG(series,refs,minV,maxV,h){
     for(var di=0;di<days.length;di++)s+='<text x="'+xp(di)+'" y="'+(H-5)+'" text-anchor="middle" font-size="9" fill="'+(days[di].isToday?PAL.violet500:PAL.muted)+'" font-weight="'+(days[di].isToday?'700':'400')+'">'+days[di].label+'</text>';
     s+='</svg>';return s;
   }
-  var tabs=[['intake',_t('צריכה יומית')],['deficit',_t('גרעון אמיתי')],['cumulative',_t('מצטבר')]];
+  var tabs=[['intake',_t('צריכה יומית')],['deficit',_t('גרעון אמיתי')],['cumulative',_t('מצטבר')],['weight',_t('משקל')]];
   var tabHTML='<div style="display:flex;gap:5px;background:rgba(255,255,255,.5);border-radius:12px;padding:4px;margin-bottom:12px">';
   for(var ti=0;ti<tabs.length;ti++){var on=histTab===tabs[ti][0];tabHTML+='<button onclick="window._histTab=\''+tabs[ti][0]+'\';renderHistory()" style="flex:1;padding:7px 4px;border:none;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;background:'+(on?'var(--cta-fill)':'transparent')+';color:'+(on?'var(--white)':'var(--muted)')+'">'+tabs[ti][1]+'</button>';}
   tabHTML+='</div>';
   var chartCard='';
-  if(histTab==='intake'){
+  if(histTab==='weight'){chartCard=weighChartHTML();}
+  else if(histTab==='intake'){
     var kp=[];for(var ix=0;ix<days.length;ix++)if(days[ix].kcal>0)kp.push({i:ix,v:days[ix].kcal});
     var ak=days.map(function(d){return d.kcal;}).filter(function(v){return v>0;}).concat([TARGETS.kcal]);
     var minK=ak.length>1?Math.max(0,Math.min.apply(null,ak)-200):0,maxK=Math.max.apply(null,ak)+200;
@@ -21952,7 +22264,7 @@ function weightCardHTML(){
   }else{
     var ser=ewma(pts,EWMA_ALPHA),r=trendRate(ser,30);
     var lastT=ser[ser.length-1].t;
-    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+nfmt(toDisplayWeight(lastT),{maximumFractionDigits:1})+' '+weightUnit()+'</div></div>';
+    h+='<div style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums">'+(weighHidden()?'':nfmt(toDisplayWeight(lastT),{maximumFractionDigits:1})+' '+weightUnit())+'</div></div>';
     h+=trendChartHTML(ser,{});
     if(r&&ser.length>=TREND_MIN_DAYS){
       var up=r.over>0,flat=Math.abs(r.over)<0.15;
@@ -21960,7 +22272,7 @@ function weightCardHTML(){
       /* One key per direction, each a whole sentence with its own plural forms.
          The weight goes through fmtWeight so it carries the unit the reader
          actually chose - the old line said ק״ג over a number in pounds. */
-      var says=flat?_t('יציב ב־{n} ימים',{n:r.days})
+      var says=weighHidden()?weighDirLabel(flat?'flat':up?'up':'down'):flat?_t('יציב ב־{n} ימים',{n:r.days})
                    :(up?_t('עלייה של {w} ב־{n} ימים',{w:fmtWeight(Math.abs(r.over)),n:r.days})
                        :_t('ירידה של {w} ב־{n} ימים',{w:fmtWeight(Math.abs(r.over)),n:r.days}));
       h+='<div style="font-size:11.5px;color:'+tone+';font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums">'+
@@ -29821,8 +30133,13 @@ function pushStashConfig(o){
          to be inside the service worker when it wakes - and the worker has no
          dictionary and no idea who it is speaking to. This is the only place
          that knows both, so it says the sentence here. */
-      c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ(),
-        title:sumRemTitle(),body:sumRemMsg()}),
+      var wc=weighCfg();
+      c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.on?o.time:'',tz:localTZ(),
+        title:sumRemTitle(),body:sumRemMsg(),
+        /* the weigh-in reminder rides the same subscription; the worker
+           decides which one a push is by the time and the weekday */
+        wt:wc.remind?wc.time:'',wd:wc.remind?wc.days:[],
+        wtitle:_t('שקילת בוקר'),wbody:_t('זמן לשקילה: אחרי השירותים ועל בטן ריקה.')}),
         {headers:{'Content-Type':'application/json'}}));
     });
   }catch(e){}
@@ -29833,13 +30150,14 @@ function pushStashConfig(o){
    speaking the language she left, and keeps addressing her the way she used to
    be addressed. langApply runs these on both, which is why one hook covers it. */
 langOn(function(){
-  try{var o=loadSumRem();if(o&&o.on)pushStashConfig(o);}catch(e){}
+  try{var o=loadSumRem();if(o&&(o.on||weighCfg().remind))pushStashConfig(o);}catch(e){}
 });
 
 function sumRemPushSync(){
   var o=loadSumRem();
   if(!pushSupported())return;
-  if(!o.on){sumRemPushDrop();return;}
+  var wc=weighCfg();
+  if(!o.on&&!wc.remind){sumRemPushDrop();return;}
   if(!('Notification' in window)||Notification.permission!=='granted')return;
   pushStashConfig(o);
   _swReg.pushManager.getSubscription().then(function(sub){
@@ -29849,7 +30167,8 @@ function sumRemPushSync(){
     return fetch(PUSH_SERVER+'/subscribe',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ()})
+      body:JSON.stringify({subscription:sub.toJSON(),time:o.on?o.time:'',tz:localTZ(),
+        wt:wc.remind?wc.time:'',wd:wc.remind?wc.days:[]})
     });
   }).then(function(r){
     _pushState=r&&r.ok?'ok':'error';renderSumRem();
@@ -38016,7 +38335,8 @@ function wkFigs(from){
     /* with no weigh-in last week there is no delta, and "מול שבוע שעבר"
        under a number that is compared to nothing is a label that lies */
     var dwTxt=(dw!==null&&Math.abs(dw)>=0.05)?sgn(Math.round(dw*10)/10,1):'';
-    row(fmtWeight(a.weight),dwTxt,dw!==null&&dw<=0,
+    if(weighHidden())row(dw===null?'&ndash;':weighDirLabel(dw<-0.2?'down':dw>0.2?'up':'flat'),'',false,_t('משקל'));
+    else row(fmtWeight(a.weight),dwTxt,dw!==null&&dw<=0,
         dwTxt?''+_t('מול שבוע שעבר')+'':''+_t('משקל')+'');
   }
   row(nfmt(a.closed),a.closed!==b.closed?sgn(a.closed-b.closed):'',
