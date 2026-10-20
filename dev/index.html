@@ -10307,6 +10307,13 @@ function beemReact(area,meal){
         mk==='snack'    ?_t('חטיף נרשם'):
                          _t('משקה נרשם');
   }
+  beemCard(txt,prop,'react',3800);
+}
+/* THE CARD every moment of Beem's uses. The plain toast the same tap raised
+   stays until he is ready - the first time that is about a second - and the
+   card then stands in for it. "after" runs on the mounted Beem, for the one
+   moment that does more than play a script. */
+function beemCard(txt,prop,play,stay,after){
   beemKit().then(function(K){
     var old=document.querySelector('.beem-card');if(old)old.remove();
     clearTimeout(_beemCardT);clearTimeout(_beemCardT2);
@@ -10315,12 +10322,28 @@ function beemReact(area,meal){
     c.querySelector('b').textContent=txt;
     document.body.appendChild(c);document.body.classList.add('beem-up');
     var t0=document.querySelector('.toast');if(t0)t0.remove();
-    K.mount(c.querySelector('.beem-box'),{play:'react'});
+    var b=K.mount(c.querySelector('.beem-box'),{play:play});
+    if(after)after(K,b);
     requestAnimationFrame(function(){requestAnimationFrame(function(){c.classList.add('up');});});
     _beemCardT=setTimeout(function(){c.classList.remove('up');
-      _beemCardT2=setTimeout(function(){c.remove();document.body.classList.remove('beem-up');},500);},3800);
+      _beemCardT2=setTimeout(function(){c.remove();document.body.classList.remove('beem-up');},500);},stay);
   }).catch(function(){});
 }
+/* A TARGET THAT CLOSED (protein, water) - the moment closeAnnounce already
+   marks once a day. An achievement, not an action, so he jumps higher. */
+function beemGoal(slot,msg){beemCard(msg,slot==='water'?'drop':'egg','goal',3800);}
+/* A PERSONAL RECORD - golden, the special moment of the character sheet. */
+function beemPR(msg){beemCard(msg,'trophy','golden',5200);}
+/* TRAINING TOGETHER - the flash chosen on 19.10: your Beem jumps into a white
+   light and the one that comes out is the other person's. Theirs is teal,
+   as on the sheet; a person cannot choose a colour yet. */
+var BEEM_PARTNER='teal';
+function beemPair(name){
+  beemCard(_t('מחוברים! ה־Beem של {name} אצלך',{name:name||'?'}),'heart','pairIdle',5600,
+    function(K,b){K.pair(b,BEEM_PARTNER);});
+}
+// the partner's colour takes a moment to build, so it starts when a room opens
+function beemPairWarm(){beemKit().then(function(K){K.tint(BEEM_PARTNER);}).catch(function(){});}
 
 /* ── RESCUING WHAT THE NaN BUG SWALLOWED ──
    curDate initialised before DAY_ENDS_AT was assigned, so every date came out
@@ -16726,7 +16749,7 @@ function closeMoment(slot,pct){
 function closeAnnounce(list){
   var i;
   for(i=0;i<list.length;i++)
-    if(closeMoment(list[i].k,list[i].pct)){showToast('\u2713 '+list[i].msg);return true;}
+    if(closeMoment(list[i].k,list[i].pct)){showToast('\u2713 '+list[i].msg);beemGoal(list[i].k,list[i].msg);return true;}
   return false;
 }
 function renderToday(){
@@ -24757,7 +24780,8 @@ function logProgEntry(progIdx,exIdx){
   saveProgLog(prog.id,ex.name,log);
   // Check PR
   var prevPR=log.slice(0,-1).reduce(function(m,e){return Math.max(m,e.weight);},0);
-  if(weight>prevPR&&prevPR>0)showToast('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:ex.name}));
+  if(weight>prevPR&&prevPR>0){showToast('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:ex.name}));
+    beemPR('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:ex.name}));}
   else showToast(''+_t('✓ נרשם!')+'');
   renderViewProgram();
 }
@@ -27388,7 +27412,8 @@ function logSet(){
   // Update PR
   if(weight>0){
     var prs=loadPRs();var key=ex.name;
-    if(weight>(prs[key]||0)){prs[key]=weight;savePRs(prs);showToast('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:key}));}
+    if(weight>(prs[key]||0)){var _beat=(prs[key]||0)>0;prs[key]=weight;savePRs(prs);showToast('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:key}));
+      if(_beat)beemPR('★ '+_t('PR חדש! {w} ב{name}',{w:fmtWeight(weight),name:key}));}
   }
   renderFitness();
 }
@@ -27479,8 +27504,13 @@ function tgSync(me,tg){
     _tgBusy=false;
     if(!j||!j.ok)return;
     if(body.me)_tgLastSent=mj;
+    var _was=(_tgRoom&&_tgRoom.members&&_tgRoom.members.length)||0;
     _tgRoom={members:j.members||[],at:Date.now()};
     tgPaint();
+    if(tg.host&&_fitWorkout&&_fitWorkout.tg&&_was>=1&&_tgRoom.members.length>_was){
+      var _in=_tgRoom.members.filter(function(m){return !m.me;});
+      if(_in.length)beemPair(_in[_in.length-1].name);
+    }
   },function(){_tgBusy=false;});
 }
 function tgChanged(){
@@ -27574,6 +27604,7 @@ function tgTap(){
     if(!j||!j.ok){showToast(j&&j._s===429?_t('הגעת למגבלה של היום.'):_t('משהו השתבש. אפשר לנסות שוב.'));return;}
     if(!_fitWorkout)return;
     _fitWorkout.tg={code:j.code,token:j.token,host:true};
+    beemPairWarm();
     _tgLastSent='';_tgRoom={members:[{name:tgName(),me:true,ex:[],cur:0,done:false}],at:Date.now()};
     renderFitness();tgSheet();
   },function(){showToast(_t('אין חיבור כרגע.'));});
@@ -27618,7 +27649,7 @@ function tgJoinAsk(){
 }
 function tgJoin(code){
   fitwReplaceAsk(function(){
-    showToast(_t('מצטרף לאימון…'));
+    showToast(_t('מצטרף לאימון…'));beemPairWarm();
     tgPost('join',{code:code,name:tgName()}).then(function(j){
       if(!j||!j.ok){
         showToast(j&&j._s===404?_t('לא מצאתי אימון עם הקוד הזה. אולי הוא כבר נגמר?')
@@ -27636,6 +27667,8 @@ function tgJoin(code){
         currentEx:0,tg:{code:j.code,token:j.token,host:false}};
       _tgLastSent='';_tgRoom={members:j.members||[],at:Date.now()};
       _fitSummaryEntry=null;
+      var _host=_tgRoom.members.filter(function(m){return !m.me;})[0];
+      if(_host)beemPair(_host.name);
       if(currentModule!=='fitness')enterModule('fitness');
       _fitView='workout';renderFitness();
       tgSync(tgMe());

@@ -25,6 +25,12 @@ var APP_SCRIPTS = {
   golden: {dur: 1e9, ev: byId(SPECIAL_LIST, 'golden').ev},
   /* the reaction card: a hop, a little light, content */
   react: {dur: 1e9, ev: [[0, 'face', 'happy'], [0, 'mode', {idle: 0}], [200, 'hop', 60], [200, 'burst', 1.2], [1600, 'face', 'content']]},
+  /* a target that closed (20.10): bigger than the meal card's hop - two hops
+     and a full burst, because it is an achievement and not an action */
+  goal: {dur: 1e9, ev: [[0, 'face', 'surprised'], [0, 'mode', {idle: 0}], [250, 'face', 'happy'], [250, 'hop', 75],
+    [250, 'burst', 1.7], [1050, 'hop', 45], [1050, 'burst', .9], [2300, 'face', 'content']]},
+  /* before the flash of training together: just him, waiting */
+  pairIdle: {dur: 1e9, ev: [[0, 'face', 'calm'], [0, 'mode', {breathe: [.014, 3.6], idle: 1}]]},
   /* the Me card: content, and now and then glad of the count */
   counted: {dur: 6000, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.014, 3.6], idle: 1}],
     [2400, 'face', 'happy'], [2450, 'hop', 30], [2450, 'burst', .7], [3600, 'face', 'calm']]},
@@ -58,6 +64,44 @@ function glowOn(b, count){
   el.style.filter = 'drop-shadow(0 0 ' + (d*.06 + d*.1*L).toFixed(1) + 'px rgba(255,186,60,' + (.18 + .45*L).toFixed(2) + '))';
 }
 
+/* ONE COLOUR, ON DEMAND. The sheet builds all ten colours at load
+   (beem-colors.js, COLORS_READY); the app needs one, and only when two
+   phones meet, so the build removes that block and this makes a single
+   colour the same way - the same LUT over the body, every bead and each
+   full-resolution ring layer. */
+var TINT_P = {};
+function tintReady(id){
+  if (TINT_P[id]) return TINT_P[id];
+  return (TINT_P[id] = BEEM_READY.then(function(){
+    return Promise.all(['sun-r1.png', 'sun-r2.png', 'sun-r3.png'].map(load));
+  }).then(function(ringImgs){
+    var RM = RAMP_SET[id], O = OK_SET[id], t = lutOf(RM ? rampPixel(RM) : okPixel(O));
+    var T = TINTS[id] = {body: applyLut(EB, t), beads: BEADS.map(function(ring){ return ring.map(function(b){ return applyLut(b.spr, t); }); })};
+    return Promise.all(ringImgs.map(function(img){ return ringURL(applyLut(img, t)); })).then(function(u){
+      T.ringURL = u;
+      return Promise.all(u.map(function(s){ return new Promise(function(r){ var i = new Image(); i.onload = i.onerror = r; i.src = s; }); }));
+    });
+  }));
+}
+/* THE FLASH (option B, approved 19.10), on one phone: he crouches, jumps, the
+   rings close into a white light, and the Beem that comes out of it is the
+   other person's. The timings are beem-pairing.js's kind B. */
+function pairFlash(b, id){
+  return tintReady(id).then(function(){
+    [[0, function(){ b.verb('face', 'surprised'); b.verb('burst', .7); }],
+     [800, function(){ b.verb('squash', 4); b.verb('face', 'determined'); }],
+     [1020, function(){ b.verb('face', 'happy'); b.verb('launch', 260); }],
+     [1140, function(){ b.fxTween({t: 'rings', v: {sc: .25, op: 0}, d: 180, e: 'in'});
+       b.fxTween({t: 'body', v: {white: 1}, d: 160}); b.verb('spin', 400); }],
+     [1340, function(){ tintBeem(b, id); }],
+     [1400, function(){ b.fxTween({t: 'rings', v: {sc: 1, op: 1}, d: 420, e: 'back'});
+       b.fxTween({t: 'body', v: {white: 0}, d: 380, e: 'out'}); b.verb('face', 'surprised'); }],
+     [1750, function(){ b.verb('face', 'happy'); b.verb('burst', 1.6); b.verb('spin', 180); }],
+     [3200, function(){ b.verb('face', 'content'); }]
+    ].forEach(function(e){ setTimeout(e[1], e[0]); });
+  });
+}
+
 window.BeemKit = {
   ready: BEEM_READY,
   mount: function(el, opts){
@@ -82,6 +126,8 @@ window.BeemKit = {
     return b;
   },
   glow: glowOn,
+  tint: tintReady,
+  pair: pairFlash,
   streak: streakState,
   scripts: APP_SCRIPTS
 };
