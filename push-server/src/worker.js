@@ -3679,6 +3679,26 @@ These are the ones that come up most, and a guess that drifts from them is a gue
 - Müller PROTEIN 25: 160 kcal (25 g protein per unit)
 Scale them by the amount actually eaten. If a label in a photo disagrees with this list, the label wins - it is the packet in front of them.
 
+## Quantity rules
+- Before logging, re-read the user's text for quantity words: "twice", "פעמיים", "2 מנות", "חצי", "עוד אחד", "כל הצלחת". These override what the photo shows.
+- Multiple photos of the same plate = ONE plate, unless the user says otherwise. The number of photos is never the number of portions.
+- The photo shows ONE portion. If the user says they ate it X times, portions = X.
+- Always state your count in the reply: "~7 pieces × 2 = 14 pieces".
+- Sauce in a dish/ramekin ≈ 3-4 tbsp, not 1-2. Teriyaki ≈ 40-45 kcal/tbsp, mostly sugar.
+- Restaurant food: when unsure between two estimates, take the higher one. Restaurants use more oil, sugar and sauce than home cooking.
+
+### How to fill the numbers
+- calories, protein, carbs and fat are for ONE portion. portions says how many times it was eaten (1 if not said; 0.5 for half). The app multiplies - never multiply yourself.
+- Food that comes in pieces (sushi, dumplings, cookies, eggs, slices): also give unit_count (pieces in one portion) and the per-piece figures (kcal_per_unit, protein_per_unit, carbs_per_unit, fat_per_unit). The app then computes the totals from them.
+- quantity describes everything that was eaten, for example "14 יחידות (7 × 2)".
+
+### Sushi reference (per piece)
+- Maki (thin roll): 25-35 kcal
+- Uramaki/inside-out with avocado, cream cheese or mayo: 45-60 kcal
+- Tempura/fried/crunchy roll: 60-80 kcal
+- Nigiri: 40-60 kcal
+- Sashimi: 25-40 kcal
+
 ## Consulting
 - Fit every suggestion to what remains today: give calories and protein for each option, and prefer lean protein when protein is behind.
 - Recipes: give totals and per-serving values. Log only when they say they ate it.
@@ -3720,6 +3740,12 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                   carbs: { type: 'number' },
                   fat: { type: 'number' },
                   assumption: { type: 'string' },
+                  portions: { type: 'number', description: 'how many times this portion was eaten; 1 if not said' },
+                  unit_count: { type: 'number', description: 'pieces in ONE portion, for food that comes in pieces' },
+                  kcal_per_unit: { type: 'number' },
+                  protein_per_unit: { type: 'number' },
+                  carbs_per_unit: { type: 'number' },
+                  fat_per_unit: { type: 'number' },
                   meal: {
                     type: 'string',
                     enum: ['breakfast', 'lunch', 'dinner', 'snack', 'drink'],
@@ -3813,7 +3839,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
          it was; it can never put a wrong number in her log. */
       const act0 = got.use.input.action;
       if (act0 === 'add' || act0 === 'update') {
-        const short = coachMacrosShort(got.use.input.items);
+        const short = coachMacrosShort((got.use.input.items || []).map(coachTotals));
         /* probeRetry walks the send-back with a reply that was fine, so the
            path can be seen working against the live API - the only place it
            can run. It changes no figure; it costs one more call. */
@@ -3841,10 +3867,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         id: String(it.id || '').slice(0, 40) || ('c' + Math.random().toString(36).slice(2, 8)),
         name: String(it.name || '').slice(0, 120),
         quantity: String(it.quantity || '').slice(0, 80),
-        calories: Math.max(0, Math.round(Number(it.calories) || 0)),
-        protein: Math.max(0, Math.round((Number(it.protein) || 0) * 10) / 10),
-        carbs: Math.max(0, Math.round((Number(it.carbs) || 0) * 10) / 10),
-        fat: Math.max(0, Math.round((Number(it.fat) || 0) * 10) / 10),
+        ...coachTotals(it),
         assumption: String(it.assumption || '').slice(0, 200),
         /* one of the five or nothing: an unknown slot would be written
            into her day and then shown as a meal that does not exist */
@@ -4280,6 +4303,31 @@ function scheduleBoard(b) {
   return { entries, last };
 }
 
+/* WHAT ONE ITEM COMES TO, worked out here and not by the model. Two photos of
+   one sushi plate and "I ate twice what's in the picture" came back as one
+   plate of 9 pieces and two spoons of sauce - 490 kcal for what was about
+   820. The model now says what ONE portion is and how many times it was
+   eaten, and for food in pieces how many pieces and what one piece is; the
+   multiplying happens here, where it cannot be skipped or done twice.
+   Every figure is bounded, since it is written into her day. */
+function coachTotals(it) {
+  const num = (v, hi) => { const x = Number(v); return isFinite(x) && x > 0 && x <= hi ? x : 0; };
+  const portions = num(it && it.portions, 20) || 1;
+  const units = num(it && it.unit_count, 200), ku = num(it && it.kcal_per_unit, 3000);
+  let k, p, c, f;
+  if (units && ku) {
+    k = ku * units;
+    p = num(it.protein_per_unit, 300) * units;
+    c = num(it.carbs_per_unit, 600) * units;
+    f = num(it.fat_per_unit, 300) * units;
+  } else {
+    k = num(it && it.calories, 20000); p = num(it && it.protein, 2000);
+    c = num(it && it.carbs, 4000); f = num(it && it.fat, 2000);
+  }
+  const r1 = (x) => Math.round(x * portions * 10) / 10;
+  return { calories: Math.round(k * portions), protein: r1(p), carbs: r1(c), fat: r1(f) };
+}
+
 /* An item whose protein, carbs and fat account for less than 60% of its
    calories is one whose macros were left out - the cottage that came back as
    119 kcal and 6.3 g of fat is 48%. Below 60 kcal it is not worth asking:
@@ -4329,4 +4377,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, routeClean, scheduleClean, scheduleBoard, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, routeClean, scheduleClean, scheduleBoard, coachTotals, coachMacrosShort, tgCode, tgPlan, tgMember };
