@@ -228,6 +228,9 @@ try {
   /* --eval "<expr>": print what the page answers, for asking the browser
      rather than reading the source */
   if (args.includes('--eval')) console.log('EVAL', JSON.stringify(await evalJS(args[args.indexOf('--eval') + 1])));
+  /* --eval-shot <file>: and photograph what the eval left on the screen */
+  if (args.includes('--eval-shot')) { await sleep(400); const a = await send('Page.captureScreenshot', { format: 'png' });
+    fs.writeFileSync(path.resolve(args[args.indexOf('--eval-shot') + 1]), Buffer.from(a.result.data, 'base64')); }
   if (!args.includes('--plain')) for (const k of Object.keys(VARIANTS)) await variant(k);
   /* --ideas: the second round, drawn over what dev ships now */
   /* --ideas-file <module>: any module exporting IDEAS, for a one-off round */
