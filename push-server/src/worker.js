@@ -4719,20 +4719,22 @@ function actCtxClean(a) {
   if (!a || typeof a !== 'object') return null;
   const num = (v, lo, hi, d) => { const x = Number(v); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x))) : d; };
   return {
-    steps: num(a.steps, 0, 200000, 0), base: num(a.base, 0, 50000, 8000),
+    steps: num(a.steps, 0, 200000, 0), base: num(a.base, 0, 50000, 8000), kg: num(a.kg, 20, 400, 70),
     strength: a.strength === true, cardio_min: num(a.cardio_min, 0, 600, 0),
     target: num(a.target, 0, 10000, 0), left: num(a.left, -20000, 20000, 0),
     ask: a.ask === true, asked: a.asked === true, has: a.has === true,
     now: /^\d{2}:\d{2}$/.test(String(a.now || '')) ? String(a.now) : '00:00',
   };
 }
-/* THE BONUS, in code: 0.04 kcal a step over her baseline, 200 for strength,
+/* THE BONUS, in code: body weight x 0.00045 kcal a step over her baseline
+   (about 0.031 at 69 kg - a heavier body spends more on the same step;
+   70 kg when no weight is known), 200 for strength,
    300 an hour of cardio, at most 800; seventy percent of it as carbs and the
    rest as fat - protein does not move. The app computes the same thing
    (actBonus) for its own screen. */
-const ACT = { perStep: 0.04, strength: 200, cardioHour: 300, cap: 800, carbShare: 0.7 };
+const ACT = { perStepPerKg: 0.00045, strength: 200, cardioHour: 300, cap: 800, carbShare: 0.7 };
 function activityBonus(a) {
-  const steps = Math.max(0, (a.steps || 0) - (a.base || 0)) * ACT.perStep;
+  const steps = Math.max(0, (a.steps || 0) - (a.base || 0)) * (a.kg || 70) * ACT.perStepPerKg;
   const raw = steps + (a.strength ? ACT.strength : 0) + (a.cardio_min || 0) / 60 * ACT.cardioHour;
   const kcal = Math.round(Math.min(ACT.cap, raw));
   return { kcal, carbs: Math.round(kcal * ACT.carbShare / 4), fat: Math.round(kcal * (1 - ACT.carbShare) / 9), capped: raw > ACT.cap };

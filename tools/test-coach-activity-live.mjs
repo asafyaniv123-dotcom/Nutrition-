@@ -9,7 +9,7 @@ const HOST = process.argv[2] || 'https://nutrition-push.nutrition-push.workers.d
 const DAY = '2026-10-21';
 const BASE = { day: DAY, lang: 'he', units: 'metric', gender: 'm', history: [], weights: [], logged: [],
   targets: { kcal: 2050, p: 140, c: 220, f: 65 }, left: { kcal: 900, p: 50, c: 90, f: 25 } };
-const ACT = { steps: 0, base: 8000, strength: false, cardio_min: 0, target: 2050, left: 900, ask: true, asked: false, has: false, now: '19:00' };
+const ACT = { steps: 0, base: 8000, kg: 69, strength: false, cardio_min: 0, target: 2050, left: 900, ask: true, asked: false, has: false, now: '19:00' };
 const post = async (o) => {
   const r = await fetch(HOST + '/coach', { method: 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' }, process.env.ADMIN_KEY ? { Authorization: 'Bearer ' + process.env.ADMIN_KEY } : {}),
@@ -31,10 +31,10 @@ j = await post({ message: 'אכלתי לארוחת צהריים סלט טונה'
 ok(!j.asked_steps && !j.steps_due && !asks(j.message), 'lunch at 13:00: nothing about steps', flat(j.message));
 
 j = await post({ message: '14,000', history: [{ role: 'assistant', text: 'רשמתי. כמה צעדים הלכת היום? אעדכן לך את היעד' }], activity: Object.assign({}, ACT, { asked: true }) });
-ok(j.activity && j.activity.steps === 14000 && j.activity.bonus === 240, 'answering 14,000: +240, worked out in code', JSON.stringify(j.activity));
-ok(/240/.test(j.message), 'the reply says +240', flat(j.message));
+ok(j.activity && j.activity.steps === 14000 && j.activity.bonus === 186, 'answering 14,000 at 69 kg: +186, worked out in code', JSON.stringify(j.activity));
+ok(/186/.test(j.message), 'the reply says +186', flat(j.message));
 j = await post({ message: 'רגע, בעצם 17,000 צעדים', activity: Object.assign({}, ACT, { steps: 14000, has: true, asked: true, left: 1140 }) });
-ok(j.activity && j.activity.steps === 17000 && j.activity.bonus === 360, 'updated to 17,000: +360, not added on top', JSON.stringify(j.activity));
+ok(j.activity && j.activity.steps === 17000 && j.activity.bonus === 279, 'updated to 17,000: +279, not added on top', JSON.stringify(j.activity));
 j = await post({ message: 'עשיתי היום אימון כוח', activity: Object.assign({}, ACT, { now: '12:00' }) });
 ok(j.activity && j.activity.strength === true && j.activity.bonus === 200, 'a strength workout: +200', JSON.stringify(j.activity));
 j = await post({ message: 'השעון אומר ששרפתי היום 900 קלוריות באימון', activity: Object.assign({}, ACT, { now: '12:00' }) });
