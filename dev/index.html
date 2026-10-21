@@ -13988,11 +13988,18 @@ function trackHTML(){
    the latest number she gave, never a sum. A workout logged in the fitness
    area counts as well, once. */
 var ACT_RATE={perStepPerKg:0.00045,strength:200,cardioHour:300,cap:800,carbShare:0.7};
-/* the weight a step is worked out with: the latest weigh-in, else the
-   profile's, else 70 kg. It goes to the worker for the arithmetic and is
-   never put in front of the model. */
-function actKg(){
-  var a=weighPoints(),w=a.length?a[a.length-1].v:parseFloat(loadProfile().weight);
+/* the weight a step on day d is worked out with: with weigh-ins on, the
+   latest one on or before d - so a new weigh-in counts from its own day on
+   and leaves the days before it as they were; with weigh-ins off, the
+   profile's weight; else 70 kg. It goes to the worker for the arithmetic
+   and is never put in front of the model. */
+function actKg(d){
+  var w=NaN;
+  if(weighCfg().on){
+    var a=weighPoints(),i;
+    for(i=a.length-1;i>=0;i--)if(a[i].d<=d){w=a[i].v;break;}
+  }
+  if(!(w>20&&w<400))w=parseFloat(loadProfile().weight);
   return w>20&&w<400?w:70;
 }
 function actLoad(d){try{var o=JSON.parse(localStorage.getItem('act_'+d)||'{}');return o&&typeof o==='object'?o:{};}catch(e){return {};}}
@@ -14010,7 +14017,7 @@ function actState(d){
     if(isCardioEx(ex.name)){var m=0;for(q=0;q<st.length;q++)m+=+st[q].mins||0;if(m>cardio)cardio=m;}
     else if(st.length)strength=true;
   }
-  return {steps:stepsOf(d),base:actCfg().base,kg:actKg(),strength:strength,cardio_min:Math.round(cardio)};
+  return {steps:stepsOf(d),base:actCfg().base,kg:actKg(d),strength:strength,cardio_min:Math.round(cardio)};
 }
 function actBonus(s){
   var raw=Math.max(0,(s.steps||0)-(s.base||0))*(s.kg||70)*ACT_RATE.perStepPerKg+(s.strength?ACT_RATE.strength:0)+(s.cardio_min||0)/60*ACT_RATE.cardioHour;
