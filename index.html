@@ -3952,6 +3952,13 @@ body.mod-hobbies .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
    disc pretending to be an icon. */
 /* the plot: one block, as wide as the card and no taller than it needs */
 .hbp-w{margin:2px 0 2px;display:block}
+/* THE ATOM (21.10): every hobby is a soft white tube on its own plane, and the
+   days it happened light up inside it. It turns by itself and under a finger. */
+.hba{position:relative;width:100%;aspect-ratio:1/0.92;max-width:420px;margin:0 auto;touch-action:none;cursor:grab}
+.hba canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* the hobby's mark in the row: its own small ring of tube, lit while it happened today */
+.hbk-o.tube{width:48px;height:48px;margin:7px 3px}
+.hbk-o.tube svg{width:100%;height:100%;overflow:visible}
 .hbp{width:100%;height:auto;display:block;overflow:visible}
 /* THE FARM. It wraps instead of scrolling sideways, because a farm is
    something you look at whole and a scroller hides half of it. */
@@ -30068,6 +30075,137 @@ function hbPlotHTML(days){
   h+='</svg>';
   return h;
 }
+/* ── THE ATOM OF HOBBIES (Asaf chose it on 21.10 from nine on the side page,
+   dev/look/hobby-directions.html: A4, in material 2) ──
+   The isometric plot was "exactly Forest" and the lamps were not in Beem's
+   style. Now each hobby is a ring of soft white tube, every ring on its own
+   plane like Beem's own, and the last thirty days run round it: a day it
+   happened is lit from inside the tube in the hobby's colour, an empty day is
+   plain tube - so the gaps are visible, which is what made the tube win.
+   The whole of it turns slowly, and a finger turns it further, with momentum.
+   Drawn in two halves on one canvas: what is behind the centre first, then
+   the raised disc with the selected hobby's count, then what is in front.
+   It runs only while it is on the page and the tab is visible. */
+var HB_ATOM_DAYS=30,_hba={yaw:0,pitch:-14,vyaw:9,drag:null,spin:[],lit:{},flash:{},run:false};
+/* a ring's plane, as two angles - spread so that no two lie on each other */
+/* the first four are the prototype's that he chose; more hobbies take further planes between them */
+var HB_ATOM_PLANES=[[70,0],[70,60],[70,120],[20,30],[45,90],[55,150],[35,-30],[80,30]];
+function hbAtomPlane(i,n){return HB_ATOM_PLANES[i%HB_ATOM_PLANES.length];}
+function hbAtomRot(p,ax,ay){
+  var a=ax*Math.PI/180,b=ay*Math.PI/180,y=p[1]*Math.cos(a)-p[2]*Math.sin(a),z=p[1]*Math.sin(a)+p[2]*Math.cos(a);
+  return [p[0]*Math.cos(b)+z*Math.sin(b),y,-p[0]*Math.sin(b)+z*Math.cos(b)];
+}
+function hbRGBA(hex,a){
+  var c=String(hex||'#999999').replace('#','');
+  return 'rgba('+parseInt(c.slice(0,2),16)+','+parseInt(c.slice(2,4),16)+','+parseInt(c.slice(4,6),16)+','+a+')';
+}
+/* the hobby's own mark in the row: a ring of tube with a lit stretch; all of
+   it lit when the hobby happened today */
+function hbTubeMark(hue,today){
+  var arc=today?'<circle cx="18" cy="18" r="11" fill="none" stroke="'+hue+'" stroke-width="3.4" filter="url(#hbtm-g)"/>'
+                :'<path d="M7.6 23.5A11 11 0 0 1 24 8.8" fill="none" stroke="'+hue+'" stroke-opacity=".7" stroke-width="3.2" stroke-linecap="round"/>';
+  return '<svg viewBox="0 0 36 36" aria-hidden="true"><defs><filter id="hbtm-g" x="-50%" y="-50%" width="200%" height="200%">'+
+    '<feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
+    '<circle cx="18" cy="18" r="11" fill="none" stroke="rgba(176,168,156,.42)" stroke-width="8"/>'+
+    '<circle cx="18" cy="18" r="11" fill="none" stroke="#eeece8" stroke-width="6"/>'+
+    '<path d="M9 13A11 11 0 0 1 18 7" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-opacity=".9"/>'+arc+'</svg>';
+}
+function hbAtomStart(){
+  var host=document.getElementById('hba');if(!host)return;
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var list=loadHabits(),log=loadHabitLog(),days=[],i,k;
+  for(k=HB_ATOM_DAYS-1;k>=0;k--)days.push(dayShift(-k));
+  /* which days are lit, per hobby; a day newly lit since the last drawing flashes */
+  var rings=list.map(function(nm,i){
+    var on=days.map(function(d){return !!hbMin(log[habitDayKey(nm,d)]);}),key=nm,prev=_hba.lit[key];
+    if(prev&&on[HB_ATOM_DAYS-1]&&!prev[HB_ATOM_DAYS-1])_hba.flash[key]=performance.now();
+    _hba.lit[key]=on;
+    if(_hba.spin[i]==null)_hba.spin[i]=i*1.1;
+    return {nm:nm,hue:hbHue(nm),on:on,n:on.filter(Boolean).length,plane:hbAtomPlane(i,list.length)};
+  });
+  host.onpointerdown=function(e){_hba.drag={x:e.clientX,y:e.clientY,t:performance.now(),moved:0};try{host.setPointerCapture(e.pointerId);}catch(x){}};
+  host.onpointermove=function(e){var d=_hba.drag;if(!d)return;
+    var dx=e.clientX-d.x,dy=e.clientY-d.y,dt=Math.max(1,performance.now()-d.t);
+    _hba.yaw+=dx*.5;_hba.pitch=Math.max(-60,Math.min(60,_hba.pitch+dy*.4));_hba.vyaw=dx*.5/dt*1000;
+    _hba.drag={x:e.clientX,y:e.clientY,t:performance.now()};};
+  host.onpointerup=host.onpointercancel=function(){_hba.drag=null;};
+  /* ONE LOOP, reading whatever atom is on the page now. renderHabits redraws
+     the screen on every tap, and a loop holding the old canvas would see it
+     gone and stop - after the new render had already found it running and
+     not started another. */
+  _hba.rings=rings;
+  var last=performance.now();
+  function frame(now){
+    var host=document.getElementById('hba');
+    if(!host||document.hidden){_hba.run=false;return;}
+    var cv=host.querySelector('canvas'),g=cv.getContext('2d'),rings=_hba.rings||[];
+    var dt=Math.min(.05,(now-last)/1000);last=now;
+    if(!_hba.drag&&!still){_hba.vyaw+=(9-_hba.vyaw)*(1-Math.pow(.25,dt));_hba.yaw+=_hba.vyaw*dt;_hba.pitch+=(-14-_hba.pitch)*(1-Math.pow(.5,dt));}
+    if(!still)for(i=0;i<rings.length;i++)_hba.spin[i]+=(.16+(i%3)*.04)*(i%2?-1:1)*dt;
+    var W=host.clientWidth,H=host.clientHeight;
+    if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+    g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+    hbAtomPaint(g,W,H,rings,now);
+    requestAnimationFrame(frame);
+  }
+  if(!_hba.run){_hba.run=true;requestAnimationFrame(frame);}
+  /* back from the background, it picks up again */
+  if(!_hba.vis){_hba.vis=1;document.addEventListener('visibilitychange',function(){
+    if(!document.hidden&&document.getElementById('hba')&&!_hba.run)hbAtomStart();});}
+}
+function hbAtomPaint(g,W,H,rings,now){
+  var C={x:W/2,y:H/2},F=520,base=Math.min(W,H),SEG=HB_ATOM_DAYS*4,N=rings.length,sel=Math.min(_hbSel,N-1);
+  function proj(q){var s=F/(F-q[2]);return {x:C.x+q[0]*s,y:C.y+q[1]*s,s:s,z:q[2]};}
+  var passes=[[],[]];   // behind, in front
+  rings.forEach(function(r,i){
+    var isSel=i===sel,R=base*(N>1?.27+.15*i/(N-1):.34),pl=r.plane,P=[],n;
+    for(n=0;n<=SEG;n++){var th=_hba.spin[i]-Math.PI/2+n/SEG*Math.PI*2;
+      P.push(proj(hbAtomRot(hbAtomRot([R*Math.cos(th),R*Math.sin(th),0],pl[0],pl[1]),_hba.pitch,_hba.yaw)));}
+    [0,1].forEach(function(front){passes[front].push({sel:isSel,f:function(){hbAtomTube(g,P,r,isSel,!!front,now);}});});
+  });
+  /* the selected ring is drawn last in each half, so it is never under a dim one */
+  [0,1].forEach(function(front){passes[front].sort(function(a,b){return a.sel-b.sel;});});
+  passes[0].forEach(function(o){o.f();});
+  /* the centre: a raised disc in the one material, with the selected hobby's count */
+  var rd=base*.13;
+  g.save();g.shadowColor='rgba(176,168,156,.5)';g.shadowBlur=16;g.shadowOffsetX=5;g.shadowOffsetY=6;
+  g.beginPath();g.arc(C.x,C.y,rd,0,7);g.fillStyle='#e9e7e3';g.fill();g.restore();
+  g.save();g.shadowColor='rgba(255,255,255,.95)';g.shadowBlur=12;g.shadowOffsetX=-4;g.shadowOffsetY=-4;
+  g.beginPath();g.arc(C.x,C.y,rd,0,7);g.fillStyle='#e9e7e3';g.fill();g.restore();
+  var r=rings[sel];
+  if(r){g.textAlign='center';g.fillStyle='#4a453f';g.font='800 '+Math.round(rd*.62)+'px Assistant, system-ui, sans-serif';
+    g.fillText(nfmt(r.n),C.x,C.y+rd*.18);
+    g.fillStyle='#6d675e';g.font='700 '+Math.max(10,Math.round(rd*.25))+'px Assistant, system-ui, sans-serif';
+    var nm=r.nm.length>12?r.nm.slice(0,11)+'…':r.nm;g.fillText(nm,C.x,C.y+rd*.55);}
+  passes[1].forEach(function(o){o.f();});
+}
+/* one ring of tube, one half of it: the runs of points on that side, the tube
+   as one continuous line, then the lit days inside it */
+function hbAtomTube(g,P,r,isSel,front,now){
+  var w=isSel?7.5:4.6,flashT=_hba.flash[r.nm],flash=flashT?Math.max(0,1-(now-flashT)/1000):0;
+  function runs(from,to){var out=[],cur=null,n,f;
+    for(n=from;n<=to;n++){f=P[n].z>=0;if(f===front){if(!cur){cur=[];out.push(cur);}cur.push(P[n]);}else cur=null;}
+    return out;}
+  function line(pts,width,style,dy){if(pts.length<2)return;g.beginPath();
+    for(var k=0;k<pts.length;k++){if(k)g.lineTo(pts[k].x,pts[k].y+(dy||0));else g.moveTo(pts[k].x,pts[k].y+(dy||0));}
+    g.lineWidth=width*pts[0].s;g.strokeStyle=style;g.stroke();}
+  g.lineCap='round';g.lineJoin='round';g.globalAlpha=isSel?1:.55;
+  var all=runs(0,P.length-1);
+  all.forEach(function(q){line(q,w+2,'rgba(176,168,156,.36)');});
+  all.forEach(function(q){line(q,w,'#eeece8');});
+  all.forEach(function(q){line(q,w*.26,'rgba(255,255,255,.95)',-w*.2);});
+  r.on.forEach(function(on,d){
+    if(!on)return;
+    var last=d===r.on.length-1,fl=last?flash:0;
+    runs(d*4,d*4+3).forEach(function(q){
+      g.save();g.shadowColor=r.hue;g.shadowBlur=(isSel?12:6)*(1+fl*2);
+      line(q,w*.56,hbRGBA(r.hue,isSel?.95:.75));g.restore();
+      line(q,w*.12,'rgba(255,255,255,.55)');
+    });
+  });
+  g.globalAlpha=1;
+}
 function hbStripHTML(list,log,today,r0){
   var h='', i, nm, onToday;
   /* the dot is lit for a hobby that happened today, and for one that is
@@ -30085,9 +30223,9 @@ function hbStripHTML(list,log,today,r0){
        the day. */
     h+='<button class="hbk-r'+(i===_hbSel?' on':'')+(onToday?' today':'')+
        '" style="--hue:'+hbHue(nm)+'" onclick="hbPick('+i+')">'+
-       '<span class="hbk-o'+(_habitEdit?' pick':'')+'"'+
+       '<span class="hbk-o tube'+(_habitEdit?' pick':'')+'"'+
        (_habitEdit?' onclick="event.stopPropagation();hbPalOpen('+i+')"':'')+'>'+
-       hbLampHTML(nm,hbLevel(hbKind(nm),hbGoal(nm),log[habitDayKey(nm,today)]))+'</span>'+
+       hbTubeMark(hbHue(nm),onToday)+'</span>'+
        '<span class="hbk-n">'+esc(nm)+'</span>'+
        (_habitEdit?'<span class="hbk-x" onclick="event.stopPropagation();hbDel('+i+')">&#x2715;</span>':'')+
        '</button>';
@@ -30110,7 +30248,7 @@ function renderHabits(){
      the same pairing his own reference has, a picture and then the numbers. */
   if(list.length){
     var _pn=hbPlantings(30).length;
-    h+='<div class="hbp-w">'+hbPlotHTML(30)+'</div>';
+    h+='<div class="hba" id="hba"><canvas></canvas></div>';
     h+='<div class="hb-lab"><span>'+_t('החודש')+'</span><span class="hb-acts">'+
        (_pn?esc(_t('{n} פעמים',{n:_pn})):'')+'</span></div>';
   }
@@ -30284,6 +30422,7 @@ function renderHabits(){
   var sel=el.querySelector('.hbk-r.on');
   if(sel&&sel.scrollIntoView)try{sel.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}
   if(running)hbTickStart();
+  hbAtomStart();
 }
 /* EMPTY, because the label above this list says "מה שאני רוצה מהחודש הזה"
    and the app does not know. It used to answer with two first-person
@@ -41678,15 +41817,14 @@ function hnextHTML(){
     if(e<=mins)continue;                     // already over
     if(!pick||m<pick.m)pick={m:m,t:t};
   }
+  /* nothing coming up: no card. Saying "nothing yet" or "that's all" under
+     the dial every day was a button for nothing. */
+  if(!pick)return '';
   var notes=todayNotes(date).length;
   var h='<button class="hnext" onclick="enterModule(&quot;planning&quot;)">';
-  if(pick){
-    h+='<span class="hnext-k">'+(pick.m<=mins?_t('עכשיו|בלו"ז'):_t('הבא|בלו"ז'))+'</span>'+
-       '<span class="hnext-t">'+dpHM(pick.t.hour,pick.t.min||0)+'</span>'+
-       '<span class="hnext-w">'+esc(pick.t.w)+'</span>';
-  } else {
-    h+='<span class="hnext-w quiet">'+(any?_t('זה הכול להיום בלו"ז'):_t('אין עדיין שעות ליום הזה'))+'</span>';
-  }
+  h+='<span class="hnext-k">'+(pick.m<=mins?_t('עכשיו|בלו"ז'):_t('הבא|בלו"ז'))+'</span>'+
+     '<span class="hnext-t">'+dpHM(pick.t.hour,pick.t.min||0)+'</span>'+
+     '<span class="hnext-w">'+esc(pick.t.w)+'</span>';
   h+='<span class="hnext-r">'+(notes?_t('לזכור: {n}',{n:notes})+' · ':'')+_t('כל הלו"ז')+'</span>';
   return h+'</button>';
 }
