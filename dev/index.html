@@ -4599,6 +4599,38 @@ html body.mod-endofday.rf-night .rfd-card{box-shadow:0 14px 34px rgba(0,0,0,.5),
 html body.mod-endofday.rf-night .rf-streak{color:var(--nu-ink)}
 @media (prefers-reduced-motion:reduce){.bhelp-b.go,.bhelp-b.come{transition:none}.bhelp-flash{display:none}}
 body.mod-door .bhelp,body.mod-endofday .bhelp,.bhelp.away{opacity:0;transform:scale(.6);pointer-events:none}
+/* THE HALO OF DAYS (21.10, option C2): on the home screen the last fourteen
+   evenings orbit the corner Beem as lights. Two canvases, so a light passing
+   behind him is hidden by his disc and one passing in front crosses it. */
+.bhalo{position:fixed;width:132px;height:132px;pointer-events:none;display:none}
+.bhalo.back{z-index:109}.bhalo.front{z-index:111}
+body.mod-home .bhalo.on{display:block}
+body.mod-home .bhelp.away~.bhalo{display:none}
+/* the window it opens: the night's material when home is dark, the day's otherwise */
+.bst{position:fixed;inset:0;z-index:8900;pointer-events:none}
+.bst-dim{position:absolute;inset:0;background:rgba(20,16,12,.5);opacity:0;transition:opacity .35s}
+.bst-c{position:absolute;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--nu-ground,#e9e7e3);color:var(--nu-ink,#4a453f);
+  border-radius:28px 28px 0 0;padding:18px 22px calc(20px + env(safe-area-inset-bottom));transform:translateY(102%);
+  transition:transform .5s cubic-bezier(.2,.9,.3,1);box-shadow:0 -14px 40px rgba(0,0,0,.35)}
+.bst.on{pointer-events:auto}.bst.on .bst-dim{opacity:1}.bst.on .bst-c{transform:none}
+.bst-x{position:absolute;inset-inline-end:18px;top:16px;width:36px;height:36px;border-radius:50%;border:none;font-size:20px;cursor:pointer;
+  background:var(--nu-ground,#e9e7e3);color:var(--nu-muted,#6d675e);box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),4px 5px 10px var(--nu-shade,rgba(176,168,156,.44))}
+.bst-stage{position:relative;width:300px;max-width:100%;height:200px;margin:6px auto 0}
+.bst-stage canvas{position:absolute;inset:0;width:100%;height:100%}
+.bst-stage .bst-back{z-index:0}.bst-stage .bst-front{z-index:2}
+.bst-b{position:absolute;left:50%;top:50%;width:132px;height:132px;margin:-66px 0 0 -66px;z-index:1}
+.bst-n{text-align:center;margin-top:4px;line-height:1}
+.bst-n b{font-size:54px;font-weight:800;letter-spacing:-.03em}
+.bst-n span{display:block;font-size:15px;font-weight:700;color:var(--nu-muted,#6d675e);margin-top:6px}
+.bst-l{text-align:center;font-size:13.5px;line-height:1.7;color:var(--nu-muted,#6d675e);margin-top:10px}
+.bst-today{text-align:center;font-size:13.5px;font-weight:700;line-height:1.6;margin-top:8px}
+.bst-rule{font-size:12.5px;line-height:1.75;color:var(--nu-muted,#6d675e);margin-top:14px;padding-top:12px;border-top:1px solid var(--nu-shade-soft,rgba(176,168,156,.28))}
+.bst-ask{display:flex;gap:10px;margin-top:14px}
+.bst-ask input{flex:1;min-width:0;height:46px;border:none;border-radius:23px;padding:0 16px;font:inherit;font-size:15px;color:inherit;background:var(--nu-ground,#e9e7e3);
+  box-shadow:inset 3px 3px 7px var(--nu-shade,rgba(176,168,156,.44)),inset -3px -3px 7px var(--nu-lit,rgba(255,255,255,.95))}
+.bst-ask button{width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;background:var(--nu-ground,#e9e7e3);color:inherit;
+  box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),4px 5px 10px var(--nu-shade,rgba(176,168,156,.44))}
+.bst-ask svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .bhs{position:fixed;inset:0;z-index:9000;pointer-events:none}
 .bhs-dim{position:absolute;inset:0;background:rgba(42,34,27,.38);opacity:0;transition:opacity .35s}
 .bhs-c{position:absolute;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;height:84%;background:#ece3d4;border-radius:28px 28px 0 0;color:#4a453f;
@@ -39769,8 +39801,9 @@ function beemHelpMount(){
   var b=document.createElement('button');b.className='bhelp';b.id='bhelp';
   b.setAttribute('aria-label',_t('לשאול את בים'));
   b.innerHTML='<div class="bhelp-b" id="bhelp-b"></div>';
-  b.onclick=beemHelpOpen;
+  b.onclick=function(){if(beemHelpScreen()==='home')beemStreakOpen();else beemHelpOpen();};   // i18n-exempt: a screen key
   document.body.appendChild(b);
+  beemHaloMount();
   var w=document.createElement('div');w.className='bhs';w.id='bhs';
   w.innerHTML='<div class="bhs-dim"></div><div class="bhs-c" role="dialog"><div class="bhs-grab"></div>'+
     '<div class="bhs-hd"><div class="bhs-bm" id="bhs-bm"></div><div><b id="bhs-name"></b><span id="bhs-sub"></span></div>'+
@@ -39835,6 +39868,117 @@ function beemHelpSky(){
       setTimeout(function(){f.remove();},3000);
     },3600);
   }).catch(function(){});
+}
+/* ── THE HALO OF DAYS (Asaf chose it on 21.10, option C2) ──
+   The streak used to be a line of text under the fan - "14 סיכומי יום · שיא 5"
+   - and he liked neither where it sat nor how it looked. Now the last
+   fourteen evenings orbit the corner Beem: a finished summary is a light,
+   a missed evening a faint point, tonight a ring that breathes. There is no
+   number on the home screen; a press on Beem opens it. It is the atom he
+   chose for the hobbies too, so the two screens speak one language. The
+   rules are the streak's own - streakNow / sumDone - not a second count. */
+var _bhalo={D:[],run:false};
+function beemHaloData(){
+  var D=[],i;
+  for(i=13;i>=1;i--)D.push({on:sumDone(dayShift(-i))});
+  D.push({on:sumDone(todayStr()),today:true});
+  _bhalo.D=D;
+}
+/* one light: a glow and a core when the evening was finished, a faint point when not */
+function beemHaloLight(g,x,y,r,d,night,now){
+  if(d.on){
+    var c=night?'255,214,160':'245,164,47',gl=g.createRadialGradient(x,y,0,x,y,r*3);
+    gl.addColorStop(0,'rgba('+c+','+(night?.5:.38)+')');gl.addColorStop(1,'rgba('+c+',0)');
+    g.fillStyle=gl;g.beginPath();g.arc(x,y,r*3,0,7);g.fill();
+    var co=g.createRadialGradient(x,y,0,x,y,r);
+    co.addColorStop(0,night?'rgba(255,246,230,1)':'rgba(255,240,214,1)');co.addColorStop(.6,night?'rgba(255,217,163,1)':'rgba(245,164,47,1)');co.addColorStop(1,'rgba('+c+',0)');
+    g.fillStyle=co;g.beginPath();g.arc(x,y,r,0,7);g.fill();
+  } else {
+    g.fillStyle=night?'rgba(150,138,124,.45)':'rgba(140,128,116,.4)';g.beginPath();g.arc(x,y,r*.5,0,7);g.fill();
+  }
+  if(d.today){g.strokeStyle=(night?'rgba(255,226,186,':'rgba(200,130,40,')+(.3+.3*Math.sin(now/420))+')';
+    g.lineWidth=1.2;g.beginPath();g.arc(x,y,r*1.6,0,7);g.stroke();}
+}
+/* the fourteen on a tilted circle, split into the half behind and the half in front */
+function beemHaloPaint(back,front,S,R,tilt,size,D,now,still){
+  var night=document.body.classList.contains('night'),gb=back.getContext('2d'),gf=front.getContext('2d'),k=back.width/S,i,th,x,y,z,r;
+  gb.setTransform(k,0,0,k,0,0);gf.setTransform(k,0,0,k,0,0);gb.clearRect(0,0,S,S);gf.clearRect(0,0,S,S);
+  for(i=0;i<D.length;i++){
+    th=(still?0:now/5200)-Math.PI/2+i/D.length*Math.PI*2;
+    x=S/2+Math.cos(th)*R;y=S/2+Math.sin(th)*R*tilt;z=Math.sin(th);r=size*(1+.25*z);
+    beemHaloLight(z<0?gb:gf,x,y,r,D[i],night,now);
+  }
+}
+function beemHaloMount(){
+  if(document.getElementById('bhalo-f'))return;
+  var bk=document.createElement('canvas'),fr=document.createElement('canvas'),dpr=Math.min(2,window.devicePixelRatio||1),S=132;
+  bk.className='bhalo back';fr.className='bhalo front';fr.id='bhalo-f';bk.width=fr.width=bk.height=fr.height=S*dpr;
+  document.body.appendChild(bk);document.body.appendChild(fr);
+  beemHaloData();
+  var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* it draws only while the home screen is in front; leaving home stops the
+     loop, and the check below starts it again on the way back */
+  function frame(now){
+    var b=document.getElementById('bhelp'),home=document.body.classList.contains('mod-home')&&!document.hidden;
+    if(!b||!home){_bhalo.run=false;bk.classList.remove('on');fr.classList.remove('on');return;}
+    var r=b.getBoundingClientRect(),L=(r.left+r.width/2-S/2)+'px',T=(r.top+r.height/2-S/2)+'px';
+    bk.style.left=fr.style.left=L;bk.style.top=fr.style.top=T;
+    bk.classList.add('on');fr.classList.add('on');
+    beemHaloPaint(bk,fr,S,46,.42,3,_bhalo.D,now,still);
+    requestAnimationFrame(frame);
+  }
+  function wake(){if(!_bhalo.run&&document.body.classList.contains('mod-home')&&!document.hidden){_bhalo.run=true;requestAnimationFrame(frame);}}
+  wake();setInterval(wake,700);
+  document.addEventListener('visibilitychange',wake);
+}
+function beemStreakOpen(){
+  beemStreakClose(true);
+  beemHaloData();
+  var st=streakNow(),stats=streakStats(),n=st.n,h='';
+  h+='<div class="bst-dim"></div><div class="bst-c" role="dialog"><button class="bst-x" aria-label="'+esc(_t('סגור'))+'">&times;</button>';
+  h+='<div class="bst-stage"><canvas class="bst-back"></canvas><div class="bst-b" id="bst-b"></div><canvas class="bst-front"></canvas></div>';
+  if(n)h+='<div class="bst-n"><b>'+nfmt(n)+'</b><span>'+esc(_t('ימים ברצף',{n:n}))+'</span></div>';
+  else if(stats.total)h+='<div class="bst-n"><span>'+esc(_t('{n} סיכומי יום',{n:stats.total}))+'</span></div>';
+  h+='<div class="bst-l">'+esc(_t('כל אור הוא ערב שבו סיימת את סיכום היום.'))+'</div>';
+  if(st.graceYesterday&&n)h+='<div class="bst-today">'+esc(_t('אתמול פוספס, ויום החסד שמר על הרצף.'))+'</div>';
+  else if(!st.today)h+='<div class="bst-today">'+esc(n?_t('היום עוד לא נספר. סיכום היום הערב ימשיך את הרצף.'):_t('סיכום היום הערב יתחיל רצף חדש.'))+'</div>';
+  if(stats.best>n)h+='<div class="bst-l">'+esc(_t('הרצף הארוך ביותר שלך: {n} ימים.',{n:stats.best}))+'</div>';
+  h+='<div class="bst-rule">'+esc(_t('יום נספר כשסיכום היום שלו הושלם.'))+' '+esc(_t('יום אחד שפוספס לא שובר את הרצף: יום חסד שומר עליו, והוא חוזר אחרי שבעה סיכומים ברצף.'))+'</div>';
+  /* the chat is still one press away: the same question box, here */
+  h+='<div class="bst-ask"><input id="bst-q" enterkeyhint="send" autocomplete="off" placeholder="'+esc(_t('מה תרצה לדעת?'))+'">'+
+     '<button id="bst-go" aria-label="'+esc(_t('לשאול את בים'))+'"><svg viewBox="0 0 24 24"><path d="M12 19V5"/><path d="m6 11 6-6 6 6"/></svg></button></div>';
+  h+='</div>';
+  var w=document.createElement('div');w.className='bst';w.id='bst';w.innerHTML=h;document.body.appendChild(w);
+  w.querySelector('.bst-dim').onclick=function(){beemStreakClose();};
+  w.querySelector('.bst-x').onclick=function(){beemStreakClose();};
+  document.getElementById('bst-go').onclick=function(){beemStreakAsk(document.getElementById('bst-q').value);};
+  document.getElementById('bst-q').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();beemStreakAsk(this.value);}};
+  var bp=document.getElementById('bhelp');if(bp)bp.classList.add('away');
+  requestAnimationFrame(function(){w.classList.add('on');});
+  beemMount(document.getElementById('bst-b'),{play:BEEM_COUNTED_ONCE,glow:n});
+  /* the halo, grown: the same fourteen evenings round the big Beem */
+  var bk=w.querySelector('.bst-back'),fr=w.querySelector('.bst-front'),stage=w.querySelector('.bst-stage'),dpr=Math.min(2,window.devicePixelRatio||1);
+  var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  (function frame(now){
+    if(!w.isConnected)return;
+    var S=stage.clientWidth;bk.width=fr.width=S*dpr;bk.height=fr.height=S*dpr;
+    bk.style.height=fr.style.height=S+'px';bk.style.top=fr.style.top=((stage.clientHeight-S)/2)+'px';
+    beemHaloPaint(bk,fr,S,S*.42,.36,5,_bhalo.D,now,still);
+    requestAnimationFrame(frame);
+  })(performance.now());
+}
+function beemStreakClose(now){
+  var w=document.getElementById('bst');if(!w)return;
+  var bp=document.getElementById('bhelp');if(bp)bp.classList.remove('away');
+  if(now){w.remove();return;}
+  w.classList.remove('on');setTimeout(function(){w.remove();},450);
+}
+/* a question typed in the streak window goes to the chat, as if asked there */
+function beemStreakAsk(q){
+  q=String(q||'').trim();
+  beemStreakClose(true);
+  beemHelpOpen();
+  if(q)beemHelpAsk(q);
 }
 /* where it was opened from: the module, or home, or the Me screen */
 function beemHelpScreen(){
@@ -41442,8 +41586,11 @@ function renderGreeting(){
     (g.named?'':'<span class="greet-add">'+_t('מי אתה?')+'</span>')+
     '</button>'+
     '<div class="greet-date">'+dfmt(appNow(),{weekday:'long',day:'numeric',month:'long'})+'</div>';
+  /* the streak is no longer a line under the fan (21.10): it is the halo
+     round the corner Beem. The holder stays, empty, and :empty hides it. */
   var sk=document.getElementById('home-stk');
-  if(sk)sk.innerHTML=streakHTML();
+  if(sk)sk.innerHTML='';
+  beemHaloData();
 }
 function greetEdit(){
   var el=document.getElementById('home-greet');
