@@ -5747,7 +5747,8 @@ html body.mod-home .hdial{position:relative;margin:22px auto 4px;border-radius:5
   box-shadow:-8px -8px 20px var(--nu-lit),10px 12px 26px var(--nu-shade);touch-action:none;
   -webkit-user-select:none;user-select:none}
 html body.mod-home .hdial-rim{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-html body.mod-home .hdial-n{font-size:10.5px;font-weight:800;fill:#9a928b;font-family:inherit}
+html body.mod-home .hdial-n{font-size:10.5px;font-weight:800;fill:#9a928b;font-family:inherit;transition:opacity .25s}
+html body.mod-home .hdial-n.under{opacity:0}
 /* the notch the focused area sits under */
 html body.mod-home .hdial-notch{position:absolute;left:50%;top:-15px;width:4px;height:11px;margin-left:-2px;border-radius:2px;
   background:#d6cfc7;box-shadow:inset 1px 1px 2px rgba(150,140,128,.6)}
@@ -39943,7 +39944,7 @@ function areaToggle(id){
   if(k>=0)on.splice(k,1);else on.push(id);
   try{localStorage.setItem(AREAS_KEY,JSON.stringify(on));}catch(e){}
   areasMarkSeen();
-  renderHomeGrid();renderAreasList();
+  renderHomeGrid();renderAreasList();try{renderHomeToday();}catch(e){}
 }
 
 /* ── THE BOARD ──
@@ -40466,7 +40467,21 @@ function dialLay(root){
     if(dist<bd){bd=dist;best=i;}
   }
   for(i=0;i<els.length;i++)els[i].classList.toggle('on',i===best);
+  dialNumFree(d);
   return best;
+}
+/* an hour numeral that a label is lying on steps aside, by measurement */
+function dialNumFree(d){
+  d=d||document.querySelector('.hdial');if(!d)return;
+  var ns=d.querySelectorAll('.hdial-n'),ls=d.querySelectorAll('.hdisc-t'),i,j,a,b,hit;
+  for(i=0;i<ns.length;i++){
+    a=ns[i].getBoundingClientRect();hit=false;
+    for(j=0;j<ls.length&&!hit;j++){
+      b=ls[j].getBoundingClientRect();
+      hit=b.width>0&&a.left<b.right+3&&a.right>b.left-3&&a.top<b.bottom+2&&a.bottom>b.top-2;
+    }
+    ns[i].classList.toggle('under',hit);
+  }
 }
 function dialSnap(d,i,then){
   /* the shortest way round to item i */
@@ -40474,7 +40489,7 @@ function dialSnap(d,i,then){
   _dialRot+=turn;
   d.classList.add('snap');dialLay(d);
   try{localStorage.setItem(DIAL_KEY,_dialIds[i]);}catch(e){}
-  setTimeout(function(){d.classList.remove('snap');if(then)then();},Math.abs(turn)<1?0:340);
+  setTimeout(function(){d.classList.remove('snap');dialNumFree(d);if(then)then();},Math.abs(turn)<1?0:340);
 }
 function dialMount(g){
   var d=g.querySelector('.hdial');if(!d)return;
@@ -40540,7 +40555,8 @@ function dialRimInner(){
     h+='<path d="'+lit+'" fill="none" stroke="rgba(249,206,147,.9)" stroke-width="'+(W-1)+'" stroke-linecap="round" filter="url(#hd-glow)"/>'+
        '<path d="'+lit+'" fill="none" stroke="rgba(240,169,46,.85)" stroke-width="'+(W-4)+'" stroke-linecap="round"/>';
   }
-  var all=dpAll(todayStr());
+  /* the schedule's dots, for someone who keeps a schedule */
+  var all=areaShown('planning')?dpAll(todayStr()):[];
   for(i=0;i<all.length;i++){
     t=all[i];if(t.hour===null)continue;
     m=hDayMin(t.hour,t.min);c=wkColor(t.c);p=pt(dialHourAng(m));
@@ -41409,7 +41425,7 @@ function hclockInner(){
 }
 function hclockPaint(){
   var s=document.getElementById('hclock');if(s)s.innerHTML=hclockInner();
-  var r=document.getElementById('hdial-rim');if(r)r.innerHTML=dialRimInner();
+  var r=document.getElementById('hdial-rim');if(r){r.innerHTML=dialRimInner();dialNumFree();}
 }
 /* What comes next, said once and large, in place of the day card - the
    day itself is the arc under the well now. A press opens the whole plan. */
@@ -41441,7 +41457,9 @@ function renderHomeToday(){
   if(!el)return;
   /* the fan carries the day under its well; the other layouts keep the card */
   hclockPaint();
-  if(HOME_LAYOUT==='fan'){el.innerHTML=hnextHTML();return;}
+  /* only for someone who keeps a schedule: the card is planning's, and an
+     area taken off the dial should not keep speaking from under it */
+  if(HOME_LAYOUT==='fan'){el.innerHTML=areaShown('planning')?hnextHTML():'';return;}
   /* d is the WALL clock and stays one - the progress bar below measures
      how far into the real hours the day has come. The date printed in
      the header asks a different question and asks appNow instead: this
