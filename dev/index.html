@@ -10674,6 +10674,7 @@ function saveDay(d,data){
   var grew=d===todayStr()&&data&&data.meals&&data.meals.length>(loadDay(d).meals||[]).length;
   try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}
   if(grew)beemReact('meal',data.meals[data.meals.length-1]);
+  if(grew)setTimeout(actRemindCheck,0);
 }
 /* ── PHOTO STORE ──
    Photos used to sit as data URIs inside the day's record. localStorage has
@@ -11725,6 +11726,7 @@ function saveSteps(d,v,src){
   try{localStorage.setItem('steps_'+d,JSON.stringify(rec));}catch(e){}
   var s=loadSummary(d);
   if(s){s.steps=rec.v;saveSummary(d,s);}
+  setTimeout(actRemindCheck,0);
   return rec;
 }
 function stepsOf(d){var r=loadSteps(d);return r?r.v:0;}
@@ -13257,11 +13259,11 @@ var _coachBusy=false,_coachErr='',_coachPics=[];
    this is the only place the four figures come from - which is why they
    cannot disagree with themselves. */
 function coachLeft(d){
-  var day=loadDay(d),i,m,k=0,p=0,c=0,f=0;
+  var day=loadDay(d),i,m,k=0,p=0,c=0,f=0,T=tgtOn(d);
   for(i=0;i<day.meals.length;i++){m=day.meals[i];
     k+=m.kcal||m.calories||0;p+=m.p||m.protein||0;c+=m.c||m.carbs||0;f+=m.f||m.fat||0;}
-  return{kcal:Math.round(TARGETS.kcal-k),p:Math.round(TARGETS.p-p),
-         c:Math.round(TARGETS.c-c),f:Math.round(TARGETS.f-f)};
+  return{kcal:Math.round(T.kcal-k),p:Math.round(T.p-p),
+         c:Math.round(T.c-c),f:Math.round(T.f-f)};
 }
 /* WRITES INTO THE DAY EVERY OTHER SCREEN ALREADY READS. No second store for
    a meal: the bars above, today's list below, the summary and the weekly
@@ -13426,6 +13428,7 @@ function coachPost(d,text,pics,rec,ed){
       /* its own daily budget: per device, not per home network */
       uid:installId(),
       weigh_ctx:_wc.on?weighCtx(d):null,
+      activity:actCtx(d),
       weigh_status:_wc.on?{due_today:weighIsDay(d),weighed_today:typeof loadWeights()[d]==='number',
         nudged:localStorage.getItem('weigh_nudged')===d}:null,
       habits:fhGet(),habits_offered:fhOffered(),
@@ -13454,6 +13457,9 @@ function coachPost(d,text,pics,rec,ed){
        arithmetic; here it is recorded, and her own message is marked so a
        hidden number is never shown back to her */
     if(j.weigh_nudged)try{localStorage.setItem('weigh_nudged',d);}catch(e){}
+    actFromReply(d,j.activity);
+    if(j.asked_steps)try{localStorage.setItem('steps_asked',d);}catch(e){}
+    actRemindCheck();
     var wkg=typeof j.weight_kg==='number'?j.weight_kg:null;
     if(wkg!==null&&logWeight(wkg,d)){
       for(var u0=rec2.turns.length-1;u0>=0;u0--)if(rec2.turns[u0].role==='user'){rec2.turns[u0].weigh=1;break;}
@@ -13963,7 +13969,89 @@ function trackHTML(){
        (c.hide?'placeholder="'+esc(_t('מוסתר'))+'" value=""':'placeholder="&ndash;" value="'+(c.goal?edWeightVal(c.goal):'')+'"')+
        ' onchange="weighSetGoal(this)"></div>';
   }
+  h+=actSettingsHTML();
   return h+'</div>';
+}
+
+/* ── STEPS AND ACTIVITY, THROUGH THE CHAT ──
+   No new button: she tells the coach ("הלכתי 14,000", "עשיתי אימון כוח"),
+   and after a dinner logged in the evening the coach asks, once a day, if
+   nothing was reported yet. The bonus is arithmetic, done here and in the
+   worker the same way (activityBonus there, actBonus here): 0.04 kcal a step
+   over HER baseline (a profile figure, since it is part of how her
+   maintenance was estimated), 200 for strength, 300 an hour of cardio, at
+   most 800 a day, seventy percent of it carbs and the rest fat. Steps are
+   the latest number she gave, never a sum. A workout logged in the fitness
+   area counts as well, once. */
+var ACT_RATE={perStep:0.04,strength:200,cardioHour:300,cap:800,carbShare:0.7};
+function actLoad(d){try{var o=JSON.parse(localStorage.getItem('act_'+d)||'{}');return o&&typeof o==='object'?o:{};}catch(e){return {};}}
+function actSave(d,o){try{localStorage.setItem('act_'+d,JSON.stringify(o));}catch(e){}}
+function actCfg(){
+  var p=loadProfile(),b=parseInt(p&&p.stepBase,10);
+  return {base:b>=0&&b<=50000?b:8000,ask:!(p&&p.actAsk===false)};
+}
+function actSetCfg(k,v){var p=loadProfile();p[k]=v;saveProfile(p);renderProfile();if(k==='actAsk')sumRemPushSync();}
+/* what today holds: steps, a strength workout, minutes of cardio */
+function actState(d){
+  var a=actLoad(d),strength=!!a.strength,cardio=+a.cardio_min||0,w=workoutsOn(d),i,j,q;
+  for(i=0;i<w.length;i++)for(j=0;j<(w[i].exercises||[]).length;j++){
+    var ex=w[i].exercises[j],st=ex.sets||[];
+    if(isCardioEx(ex.name)){var m=0;for(q=0;q<st.length;q++)m+=+st[q].mins||0;if(m>cardio)cardio=m;}
+    else if(st.length)strength=true;
+  }
+  return {steps:stepsOf(d),base:actCfg().base,strength:strength,cardio_min:Math.round(cardio)};
+}
+function actBonus(s){
+  var raw=Math.max(0,(s.steps||0)-(s.base||0))*ACT_RATE.perStep+(s.strength?ACT_RATE.strength:0)+(s.cardio_min||0)/60*ACT_RATE.cardioHour;
+  var k=Math.round(Math.min(ACT_RATE.cap,raw));
+  return {kcal:k,carbs:Math.round(k*ACT_RATE.carbShare/4),fat:Math.round(k*(1-ACT_RATE.carbShare)/9)};
+}
+/* the day's targets with its activity in them; protein never moves */
+function tgtOn(d){
+  var b=actBonus(actState(d));
+  return {kcal:TARGETS.kcal+b.kcal,p:TARGETS.p,c:TARGETS.c+b.carbs,f:TARGETS.f+b.fat,bonus:b.kcal};
+}
+function actCtx(d){
+  var s=actState(d),n=new Date();
+  return {steps:s.steps,base:s.base,strength:s.strength,cardio_min:s.cardio_min,target:TARGETS.kcal,left:coachLeft(d).kcal,
+    ask:actCfg().ask,asked:localStorage.getItem('steps_asked')===d,
+    has:s.steps>0||s.strength||s.cardio_min>0,now:hcmdTwo(n.getHours())+':'+hcmdTwo(n.getMinutes())};
+}
+/* what the coach's reply says she did */
+function actFromReply(d,a){
+  if(!a)return;
+  if(a.steps>0&&a.steps!==stepsOf(d))saveSteps(d,a.steps,'manual');
+  var o=actLoad(d);
+  if(a.strength)o.strength=true;
+  if(a.cardio_min>0)o.cardio_min=a.cardio_min;
+  actSave(d,o);
+}
+/* Tell the push server today needs no 20:00 "how many steps?": a dinner, a
+   step count or a workout is in, or the coach has already asked. Once a day,
+   and only where there is a subscription to tell it about. */
+function actRemindCheck(){
+  if(!PUSH_SERVER||!_swReg||!_swReg.pushManager)return;
+  var d=todayStr();
+  if(localStorage.getItem('act_rdone')===d||!actCfg().ask||!loadSumRem().on)return;
+  var s=actState(d),meals=loadDay(d).meals||[],dinner=false,i;
+  for(i=0;i<meals.length;i++)if(mealKind(meals[i])==='dinner'){dinner=true;break;}
+  if(!(dinner||s.steps>0||s.strength||s.cardio_min>0||localStorage.getItem('steps_asked')===d))return;
+  try{localStorage.setItem('act_rdone',d);}catch(e){}
+  _swReg.pushManager.getSubscription().then(function(sub){
+    if(!sub)return;
+    return fetch(PUSH_SERVER+'/remind-done',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({endpoint:sub.endpoint,date:d})});
+  }).catch(function(){try{localStorage.removeItem('act_rdone');}catch(e){}});
+}
+function actSettingsHTML(){
+  var c=actCfg();
+  return '<div class="pf-lbl" style="margin-top:14px">'+_t('פעילות')+'</div>'+
+    '<div class="wg-line"><label class="wg-tog"><input type="checkbox"'+(c.ask?' checked':'')+
+    ' onchange="actSetCfg(\'actAsk\',this.checked)"> '+_t('לשאול על צעדים בערב')+'</label></div>'+
+    '<div class="pf-row" style="margin-top:10px"><div class="pf-lbl">'+_t('צעדים ביום רגיל')+'</div>'+
+    '<input class="pf-in" type="number" inputmode="numeric" step="500" value="'+c.base+'" '+
+    'onchange="var v=parseInt(this.value,10);if(v>=0&&v<=50000)actSetCfg(\'stepBase\',v);"></div>'+
+    '<div class="pf-note">'+_t('מעל המספר הזה, כל צעד מוסיף ליעד היומי.')+'</div>';
 }
 
 /* the last fortnight of mornings, which the prompt says it receives. It read
@@ -17642,10 +17730,12 @@ function renderToday(){
   var c=Math.round(day.meals.reduce(function(a,m){return a+(m.c||0);},0)*100)/100;
   var f=Math.round(day.meals.reduce(function(a,m){return a+(m.f||0);},0)*100)/100;
   var water=day.water||0;
-  var kp=Math.min(100,Math.round(kcal/TARGETS.kcal*100));
-  var pp=Math.min(100,Math.round(p/TARGETS.p*100));
-  var cp=Math.min(100,Math.round(c/TARGETS.c*100));
-  var fp=Math.min(100,Math.round(f/TARGETS.f*100));
+  /* today's activity is in the target, and the target says so */
+  var TT=tgtOn(curDate);
+  var kp=Math.min(100,Math.round(kcal/TT.kcal*100));
+  var pp=Math.min(100,Math.round(p/TT.p*100));
+  var cp=Math.min(100,Math.round(c/TT.c*100));
+  var fp=Math.min(100,Math.round(f/TT.f*100));
   var wp=Math.min(100,Math.round(water/TARGETS.water*100));
 
   /* THE MOMENT SOMETHING CLOSED. curDate, because renderToday draws
@@ -17669,7 +17759,7 @@ function renderToday(){
       _t('יעד התחלתי. מלא פרטים בפרופיל ואחשב אותו לפיך')+'</button>';
   macroHTML+='<div class="macro-bars">';
   /* the value AND its target, so the tubes answer "how much is left" on their own */
-  var mb=[{v:nfmt(kcal)+' / '+nfmt(TARGETS.kcal),pct:kp,lbl:''+_t('קק"ל')+'',k:'kcal',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',dim:'var(--violet-300)',col:PAL.violet500},{v:fmtGrams(p)+' / '+fmtGrams(TARGETS.p),pct:pp,lbl:''+_t('חלבון')+'',k:'p',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',dim:'#f3b9a8',col:PAL.terra500},{v:fmtGrams(c)+' / '+fmtGrams(TARGETS.c),pct:cp,lbl:''+_t('פחמימה')+'',k:'c',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',dim:'#bfe0c7',col:PAL.green500},{v:fmtGrams(f)+' / '+fmtGrams(TARGETS.f),pct:fp,lbl:''+_t('שומן')+'',k:'f',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',dim:'#f6dfa0',col:PAL.amber500}];
+  var mb=[{v:nfmt(kcal)+' / '+(TT.bonus?_t('{base} + {n} פעילות',{base:TARGETS.kcal,n:TT.bonus}):nfmt(TARGETS.kcal)),pct:kp,lbl:''+_t('קק"ל')+'',k:'kcal',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))',dim:'var(--violet-300)',col:PAL.violet500},{v:fmtGrams(p)+' / '+fmtGrams(TARGETS.p),pct:pp,lbl:''+_t('חלבון')+'',k:'p',g:'linear-gradient(180deg,#f3b9a8,#e08a72)',dim:'#f3b9a8',col:PAL.terra500},{v:fmtGrams(c)+' / '+fmtGrams(TT.c),pct:cp,lbl:''+_t('פחמימה')+'',k:'c',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)',dim:'#bfe0c7',col:PAL.green500},{v:fmtGrams(f)+' / '+fmtGrams(TT.f),pct:fp,lbl:''+_t('שומן')+'',k:'f',g:'linear-gradient(180deg,#f6dfa0,#e8c162)',dim:'#f6dfa0',col:PAL.amber500}];
   for(var bi=0;bi<mb.length;bi++){var b=mb[bi];macroHTML+='<div class="macro-col"><div class="macro-pct">'+pfmt(b.pct)+'</div><div class="macro-track">'+macroBandsHTML(bi,b,day.meals)+'</div><div class="macro-val" style="color:'+b.col+'">'+b.v+'</div><div class="macro-lbl">'+b.lbl+'</div></div>';}
   macroHTML+='</div></div>';
 
@@ -17867,7 +17957,7 @@ function renderToday(){
      app afterwards. */
   /* the bars first, because they are what the chat changes, then the chat,
      then what the day already holds */
-  _c.innerHTML=fqCardHTML()+macroHTML+pillsHTML+fitBurnRowHTML(curDate)+(trackGet().water?waterHTML:'')+coachHTML()+logHTML;
+  _c.innerHTML=fqCardHTML()+macroHTML+pillsHTML+(trackGet().water?waterHTML:'')+coachHTML()+logHTML;
   /* the chat's pictures live in IndexedDB; innerHTML alone leaves empty imgs */
   (function(){var _co=document.getElementById('co-wrap');
     if(_co){hydratePhotos(_co);var _l=document.getElementById('co-list');
@@ -19339,7 +19429,7 @@ function renderComingSoon(mod){
 function loadTemplates(){try{var x=localStorage.getItem('fit_templates');return x?JSON.parse(x):[];}catch(e){return[];}}
 function saveTemplates(arr){try{localStorage.setItem('fit_templates',JSON.stringify(arr));}catch(e){}}
 function loadWorkoutLog(){try{var x=localStorage.getItem('fit_log');return x?JSON.parse(x):[];}catch(e){return[];}}
-function saveWorkoutLog(arr){try{localStorage.setItem('fit_log',JSON.stringify(arr));}catch(e){}}
+function saveWorkoutLog(arr){try{localStorage.setItem('fit_log',JSON.stringify(arr));}catch(e){}setTimeout(actRemindCheck,0);}
 function loadPRs(){try{var x=localStorage.getItem('fit_prs');return x?JSON.parse(x):{};}catch(e){return{};}}
 function savePRs(obj){try{localStorage.setItem('fit_prs',JSON.stringify(obj));}catch(e){}}
 
@@ -30365,7 +30455,10 @@ function pushStashConfig(o){
          dictionary and no idea who it is speaking to. This is the only place
          that knows both, so it says the sentence here. */
       c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ(),
-        title:sumRemTitle(),body:sumRemMsg()}),
+        title:sumRemTitle(),body:sumRemMsg(),
+        /* the 20:00 "how many steps?" rides the same subscription; the
+           phone picks these words when a push lands between 20:00 and 20:15 */
+        ar:actCfg().ask,atitle:_t('כמה צעדים הלכת היום?'),abody:_t('אעדכן לך את היעד.')}),
         {headers:{'Content-Type':'application/json'}}));
     });
   }catch(e){}
@@ -30392,7 +30485,7 @@ function sumRemPushSync(){
     return fetch(PUSH_SERVER+'/subscribe',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ()})
+      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ(),ar:actCfg().ask})
     });
   }).then(function(r){
     _pushState=r&&r.ok?'ok':'error';renderSumRem();

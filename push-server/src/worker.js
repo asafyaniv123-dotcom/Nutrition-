@@ -745,8 +745,23 @@ export default {
         last: toMin(now.hhmm) >= toMin(b.time) ? now.date : (prev && prev.time === b.time ? prev.last : ''),
         updated: new Date().toISOString(),
       };
+      /* the 20:00 "how many steps?" reminder, for whoever has it on */
+      if (b.ar === true) { rec.ar = true; rec.alast = (prev && prev.alast) || ''; }
       await env.SUBS.put(key, JSON.stringify(rec));
       return json({ ok: true, time: rec.time, tz: rec.tz });
+    }
+
+    /* the app says today needs no activity reminder - a dinner or steps or a
+       workout is already in, or the coach has asked - so 20:00 stays quiet */
+    if (url.pathname === '/remind-done' && req.method === 'POST') {
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      if (!b || !b.endpoint || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.date || ''))) return json({ error: 'bad request' }, 400);
+      const key = await subKey(b.endpoint);
+      const rec = await env.SUBS.get(key, 'json');
+      if (!rec) return json({ ok: true, known: false });
+      if (rec.alast !== b.date) { rec.alast = b.date; await env.SUBS.put(key, JSON.stringify(rec)); }
+      return json({ ok: true });
     }
 
     if (url.pathname === '/unsubscribe' && req.method === 'POST') {
@@ -3835,6 +3850,11 @@ export default {
       /* weigh-ins are part of her tracking: what the app knows about the
          trend, sent every turn, for the moment she says what she weighs */
       const wctx = weighCtxClean(b && b.weigh_ctx);
+      /* today's activity as the app has it, and whether the steps question
+         may be asked: on, not asked yet today, nothing reported yet, and the
+         evening - decided here, not by the model */
+      const actx = actCtxClean(b && b.activity);
+      const askSteps = !!(actx && actx.ask && !actx.asked && !actx.has && actx.now >= '18:00');
       /* not a weigh-in: whether one is due today and still missing */
       const ws = (b && b.weigh_status && typeof b.weigh_status === 'object') ? b.weigh_status : null;
       /* WHETHER TO MENTION TODAY'S WEIGH-IN is decided here, not left to the
@@ -3905,7 +3925,7 @@ Never do your own math for daily totals or remaining amounts. The app computes t
 1. Report of eating ("אכלתי", "שתיתי", a photo of a meal they ate) → log it (action: add)
 2. Correction ("רק חצי", "זה היה עוף", "לא היה צ'יפס", "היה חלב בקפה") → update the existing item by id (action: update), never add a duplicate
 3. Hypothetical or question ("יש לי מקום ל...?", "מה לאכול?", a menu photo, a recipe, "במה להחליף", "למה יצא יבש") → answer only (action: none)
-4. Activity screenshot, steps, workout, or weight → answer only, giving context
+4. Steps, a workout, or a weight → see Activity and Weigh-ins; an activity screenshot → answer only
 5. Late addition ("אתמול גם שתיתי...") → log to the correct date
 6. Which meal it was ("זאת הייתה ארוחת בוקר", "תעביר את זה לערב", "זה היה חטיף") → action: update on the existing ids, changing only the meal slot. Keep every other value exactly as it is, and do not re-estimate the food.
 If unsure whether they ate it or are only asking, ask in one short line and do not log yet.
@@ -3963,8 +3983,15 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - Cooking problems: explain the cause and the fix in a few practical steps.
 - Menus: rank the best 2–4 choices for their remaining targets, say what to skip and why, and give one ordering tip (for example, sauce on the side).
 
-## Activity and weight
-- Targets already include their normal training, so don't "eat back" workout calories. On unusually active days (for example 20,000+ steps), estimate the extra burn (roughly 0.04 kcal per step beyond about 8,000) and explain where they likely stand.
+## Activity
+- When the user reports steps for today ("הלכתי 14,000"), put the number in steps_reported. When they report a workout, set workout_reported: "strength" for weights or strength training, "cardio" for dance, running, aerobic classes or sport, with cardio_minutes when they say how long (60 if they don't). The app works out the bonus in code and sends it back; then reply in 2-3 lines: the bonus, the updated target, and what's left for today.
+- A later number replaces the earlier one ("actually 17,000"); it never adds to it.
+- Never use calorie numbers from watches or apps. Only steps and workout type. If the user quotes watch calories, explain briefly that watches tend to overestimate and that the app uses steps instead.
+- Don't encourage eating back the activity bonus just to "use it". It's room, not an obligation.
+- Only when the state says STEPS QUESTION, and only if this reply logs a dinner: end the reply with one short question asking how many steps they walked today, and that you'll update the target ("כמה צעדים הלכת היום? אעדכן לך את היעד"), and set asked_steps. Never ask it otherwise.
+
+## Weight
+- Weight: judge by the weekly average. Explain water swings (salt, carbs, alcohol, travel) and never react to a single day.
 - Weight: judge by the weekly average. Explain water swings (salt, carbs, alcohol, travel) and never react to a single day.
 
 ## Tone and format
@@ -4052,6 +4079,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
             habit_offer: { type: 'string', description: 'a habit you are asking whether to remember, worded as it would be saved' },
             habit_save: { type: 'string', description: 'ONLY when the user just confirmed saving a habit: its text' },
             weight_kg: { type: 'number', description: 'ONLY when the user reports their own body weight for today, in kg' },
+            steps_reported: { type: 'number', description: 'ONLY when the user reports how many steps they walked today' },
+            workout_reported: { type: 'string', enum: ['', 'strength', 'cardio'], description: 'ONLY when the user reports a workout today' },
+            cardio_minutes: { type: 'number' },
+            asked_steps: { type: 'boolean', description: 'true when this reply ends with the steps question' },
             message: { type: 'string', description: 'what the person reads, in their language' },
           },
           required: ['photo_count', 'action', 'date', 'items', 'message'],
@@ -4073,7 +4104,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         'Habits already offered (never offer again): ' + (offered.length ? JSON.stringify(offered) : 'none') + '\n' +
         'Their recent corrections, oldest first: ' + (recentFix.length ? JSON.stringify(recentFix) : 'none') +
         (wctx ? '\nWEIGH-INS ARE TRACKED (' + wctx.mode + (wctx.hidden ? ', THE USER HIDES THE NUMBER - never state or repeat any weight, even one they typed' : '') + ').' : '\nWeigh-ins are not part of their tracking.') +
-        (weighNudge ? '\nWEIGH-IN NUDGE: today is a weigh-in day and they have not weighed in yet.' : '');
+        (weighNudge ? '\nWEIGH-IN NUDGE: today is a weigh-in day and they have not weighed in yet.' : '') +
+        (actx ? '\nToday\'s activity so far (computed by the app): ' + JSON.stringify({ steps: actx.steps, strength: actx.strength,
+          cardio_minutes: actx.cardio_min, bonus_kcal: activityBonus(actx).kcal, time_now: actx.now }) : '') +
+        (askSteps ? '\nSTEPS QUESTION: if this reply logs a dinner, end with the steps question.' : '');
 
       const msgs = [];
       for (const t of history) {
@@ -4176,6 +4210,30 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         ]));
         if (!again.err) got = again;
       }
+      /* ACTIVITY. Same shape as a weigh-in: the model noticed the steps or
+         the workout, the bonus is worked out here, the reply is written from
+         it. The latest steps replace the earlier ones, never add to them. */
+      let actOut = null;
+      const rs = Number(got.use.input.steps_reported), rw = String(got.use.input.workout_reported || '');
+      if (actx && ((isFinite(rs) && rs > 0) || rw === 'strength' || rw === 'cardio')) {
+        const nx = Object.assign({}, actx);
+        if (isFinite(rs) && rs > 0) nx.steps = Math.min(200000, Math.round(rs));
+        if (rw === 'strength') nx.strength = true;
+        if (rw === 'cardio') nx.cardio_min = Math.max(0, Math.min(600, Math.round(Number(got.use.input.cardio_minutes) || 60)));
+        const was = activityBonus(actx), now = activityBonus(nx);
+        actOut = { steps: nx.steps, strength: nx.strength, cardio_min: nx.cardio_min, bonus: now.kcal };
+        const fig = { steps: nx.steps, baseline_steps: nx.base, strength: nx.strength, cardio_minutes: nx.cardio_min,
+          bonus_kcal: now.kcal, bonus_carbs_g: now.carbs, bonus_fat_g: now.fat, base_target_kcal: actx.target,
+          target_today_kcal: actx.target + now.kcal, left_today_kcal: Math.round(actx.left + now.kcal - was.kcal),
+          capped: now.capped };
+        const again = await ask(msgs.concat([
+          { role: 'assistant', content: got.d.content },
+          { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id,
+            content: 'The app recorded the activity and worked out (in code - use these, do not recompute): ' +
+              JSON.stringify(fig) + '. Send the reply again under the Activity rules, keeping any food from the same message.' }] },
+        ]));
+        if (!again.err) got = again;
+      }
       const d = got.d, use = got.use;
 
       const out = use.input;
@@ -4221,6 +4279,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         message: msgOut,
         weight_kg: weighedKg,
         weigh_nudged: weighNudge,   // the app remembers, so it is said once a day
+        activity: actOut,
+        asked_steps: askSteps && out.asked_steps === true,
       });
     }
 
@@ -4511,30 +4571,50 @@ If they logged two or three days, say so without reproach and write about what t
 
         let now;
         try { now = localNow(rec.tz); } catch { continue; }
-        if (rec.last === now.date) continue;               // already sent today
+        const due = remindersDue(rec, now);
+        if (!due.mark) continue;                           // nothing due, nothing to record
 
-        const late = toMin(now.hhmm) - toMin(rec.time);
-        if (late < 0) continue;                            // not yet
-        if (late > LATE_WINDOW_MIN) {                      // too late to be useful
-          rec.last = now.date;
-          await env.SUBS.put(k.name, JSON.stringify(rec));
-          continue;
-        }
-
-        const res = await sendPush(rec.endpoint, env);
-        if (res.status === 404 || res.status === 410) {
-          await env.SUBS.delete(k.name);                   // subscription is gone for good
-          continue;
+        if (due.send) {
+          const res = await sendPush(rec.endpoint, env);
+          if (res.status === 404 || res.status === 410) {
+            await env.SUBS.delete(k.name);                 // subscription is gone for good
+            continue;
+          }
+          rec.lastStatus = res.status;
         }
         // Mark sent even on a transient failure - better a missed day than a retry storm.
-        rec.last = now.date;
-        rec.lastStatus = res.status;
+        Object.assign(rec, due.mark);
         await env.SUBS.put(k.name, JSON.stringify(rec));
       }
       cursor = page.list_complete ? null : page.cursor;
     } while (cursor);
   },
 };
+
+/* ── WHICH REMINDER IS DUE ──
+   One subscription, two reminders: the evening summary at rec.time, and -
+   for whoever has it on (rec.ar) - "how many steps?" at 20:00, unless the
+   app has said today needs none (rec.alast). For a record without the
+   second this is exactly what the loop always did: nothing before the time,
+   a push within LATE_WINDOW_MIN of it, a silent mark after that, once a day.
+   The activity one keeps a short window - a step count asked for at
+   midnight is not a question. Both due in one minute is ONE push; the phone
+   picks the words by the clock. Returns { mark, send }. */
+const ACT_REMIND_AT = '20:00', ACT_REMIND_WINDOW = 15;
+function remindersDue(rec, now) {
+  const mark = {};
+  let send = false;
+  const step = (t, lastField, win) => {
+    if (!/^\d{2}:\d{2}$/.test(t || '') || rec[lastField] === now.date) return;
+    const late = toMin(now.hhmm) - toMin(t);
+    if (late < 0) return;                                  // not yet
+    mark[lastField] = now.date;
+    if (late <= win) send = true;                          // else too late to be useful
+  };
+  step(rec.time, 'last', LATE_WINDOW_MIN);
+  if (rec.ar === true) step(ACT_REMIND_AT, 'alast', ACT_REMIND_WINDOW);
+  return { mark: Object.keys(mark).length ? mark : null, send };
+}
 
 /* ── /route, THE PURE HALF ──
    The model's answer is a suggestion, not an instruction. Everything it can
@@ -4663,6 +4743,30 @@ function coachTotals(it) {
      and a test can then see what the model counted, not just the product */
   return { calories: Math.round(k * portions), protein: r1(p), carbs: r1(c), fat: r1(f),
            portions, units: units && ku ? units : 0 };
+}
+
+/* TODAY'S ACTIVITY, as the app sends it */
+function actCtxClean(a) {
+  if (!a || typeof a !== 'object') return null;
+  const num = (v, lo, hi, d) => { const x = Number(v); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x))) : d; };
+  return {
+    steps: num(a.steps, 0, 200000, 0), base: num(a.base, 0, 50000, 8000),
+    strength: a.strength === true, cardio_min: num(a.cardio_min, 0, 600, 0),
+    target: num(a.target, 0, 10000, 0), left: num(a.left, -20000, 20000, 0),
+    ask: a.ask === true, asked: a.asked === true, has: a.has === true,
+    now: /^\d{2}:\d{2}$/.test(String(a.now || '')) ? String(a.now) : '00:00',
+  };
+}
+/* THE BONUS, in code: 0.04 kcal a step over her baseline, 200 for strength,
+   300 an hour of cardio, at most 800; seventy percent of it as carbs and the
+   rest as fat - protein does not move. The app computes the same thing
+   (actBonus) for its own screen. */
+const ACT = { perStep: 0.04, strength: 200, cardioHour: 300, cap: 800, carbShare: 0.7 };
+function activityBonus(a) {
+  const steps = Math.max(0, (a.steps || 0) - (a.base || 0)) * ACT.perStep;
+  const raw = steps + (a.strength ? ACT.strength : 0) + (a.cardio_min || 0) / 60 * ACT.cardioHour;
+  const kcal = Math.round(Math.min(ACT.cap, raw));
+  return { kcal, carbs: Math.round(kcal * ACT.carbShare / 4), fat: Math.round(kcal * (1 - ACT.carbShare) / 9), capped: raw > ACT.cap };
 }
 
 /* the ADMIN_KEY secret, as a Bearer token */
@@ -4819,4 +4923,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, coachBuckets, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, remindersDue, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
