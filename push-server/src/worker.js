@@ -413,7 +413,7 @@ const ASK_TOOLS = [
    than "I don't know yet". */
 const BEEM_GUIDE = `GENERAL
 - When the day ends: the app's day ends at 04:00, not midnight. Anything logged at 1 a.m. counts toward the evening before. The date at the top follows the same rule.
-- Data: there is no account and no sign-in. Everything is saved on the phone. Some features send text or photos to the app's server to understand them: the home command line, the nutrition coach, the planning box, the planner, food photos and the weekly summary. Offline they show "אין חיבור כרגע". Some have a daily limit. Steps synced from a watch, shared workouts and reminder notifications also use the server.
+- Data: there is no account and no sign-in. Everything is saved on the phone; the backup in settings is how to keep a copy. There is no support team or help desk to refer anyone to - you are the help. Some features send text or photos to the app's server to understand them: the home command line, the nutrition coach, the planning box, the planner, food photos and the weekly summary. Offline they show "אין חיבור כרגע". Some have a daily limit. Steps synced from a watch, shared workouts and reminder notifications also use the server.
 
 HOME (Better)
 - Greeting line at the top shows the name. Tap it to set or change the name, then שמור. With no name it shows "מי אתה?".
@@ -430,9 +430,10 @@ HOME (Better)
 - The ☰ button (top) opens "מה במעקב": tick the areas that should show on the dial (hiding one deletes nothing; סיום יום is built in). The gear opens הגדרות (settings):
   - שפה: language, 11 languages
   - איך לפנות אליך: feminine or masculine form of address (Hebrew only)
-  - תזכורת לסיכום יום: the daily end-of-day reminder. Tap the "בלי תזכורת" chip to turn it on, then pick a time (default 21:00); tap the chip again to turn it off. It comes as a phone notification and a banner in the app, and is skipped if the day was already summarised.
+  - תזכורת לסיכום יום: the daily end-of-day reminder. While it is off, the "בלי תזכורת" chip is lit; tap it to turn the reminder on (default 21:00). While it is on, a time field appears under the title: change the hour right there. Tapping "בלי תזכורת" again turns it off. It comes as a phone notification and a banner in the app, and is skipped if the day was already summarised.
   - מדינה: which country's products food search uses
   - יחידות מידה: metric or imperial
+  - גיבוי (backup), at the bottom of settings: a line saying when the last export was (or that there has been none), and two chips. ייצוא (export) opens "הגיבוי מוכן" with everything that was logged: copy it all, share it as a file, and a full backup with the photos when there are any. Keep it somewhere that outlives the phone - a message to yourself, an email, a cloud note. ייבוא (import) picks a backup file and restores it.
   - סיימתי closes the menu.
 - Bottom bar: Better = home (tap again inside an area to go home); the middle book icon = Journal; Me = the stats screen.
 - Beem (you) sits in the top corner of every screen; tapping him opens this chat.
@@ -2603,9 +2604,10 @@ export default {
         '\n' +
         'HOW-TO QUESTIONS are answered ONLY from the guide below. Name the real\n' +
         'button and where it is. The labels in the guide are Hebrew; if you are not\n' +
-        'writing Hebrew, describe the button by what it does and where it sits rather\n' +
-        'than quoting Hebrew. If the guide does not cover it, say plainly that you do\n' +
-        'not know that one yet - never invent a button, a setting or a feature.\n' +
+        'writing Hebrew, describe the button by what it does and where it sits, and\n' +
+        'never put a Hebrew word in the answer - the app is showing their language,\n' +
+        'not Hebrew. If the guide does not cover it, say plainly that you do not know\n' +
+        'that one yet - never invent a button, a setting, a feature or a support team.\n' +
         '\n' +
         'QUESTIONS ABOUT THEIR OWN FOOD use the tools, and every number you state must\n' +
         'have come back from a tool in this conversation - never estimate one from\n' +
