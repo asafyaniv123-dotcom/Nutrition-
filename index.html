@@ -4576,7 +4576,28 @@ html body.mod-endofday .rfd-seal-t,html body.mod-endofday .rfd-mark{color:var(--
 .bhelp{position:fixed;top:calc(12px + env(safe-area-inset-top));inset-inline-end:14px;z-index:110;width:60px;height:60px;border-radius:50%;
   border:none;padding:0;background:var(--nu-ground,#efe9df);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;
   box-shadow:inset 3px 4px 8px var(--nu-shade,rgba(176,168,156,.44)),inset -3px -3px 7px var(--nu-lit,rgba(255,255,255,.95));transition:opacity .25s,transform .35s cubic-bezier(.2,.9,.3,1)}
-.bhelp-b{width:46px;height:46px;pointer-events:none}
+.bhelp-b{position:absolute;left:7px;top:7px;width:46px;height:46px;pointer-events:none}
+.bhelp{overflow:hidden;clip-path:circle(50%);-webkit-clip-path:circle(50%);isolation:isolate}
+.bhelp-b.go{transition:transform 1.5s cubic-bezier(.55,0,.75,.4)}
+.bhelp-b.come{transition:transform 1.7s cubic-bezier(.2,.8,.3,1)}
+/* the morning's light: a wide soft band, no edge, under a third of full
+   strength - light passing, not a colour arriving */
+.bhelp-flash{position:fixed;inset:0;z-index:112;pointer-events:none;opacity:0;
+  background:linear-gradient(118deg,transparent 22%,rgba(240,216,170,.08) 34%,rgba(242,222,182,.2) 44%,rgba(250,240,220,.28) 50%,rgba(242,222,182,.2) 56%,rgba(240,216,170,.08) 66%,transparent 78%);
+  background-size:260% 260%;background-position:100% 0;animation:bhSweep 2.8s cubic-bezier(.45,.05,.4,1) forwards}
+@keyframes bhSweep{0%{opacity:0;background-position:100% 0}35%{opacity:1}65%{opacity:1}100%{opacity:0;background-position:0 100%}}
+/* the summary once the day is closed: the home screen's own night tokens */
+html body.mod-endofday.rf-night{--nu-ground:#2a2623;--nu-lit:rgba(255,236,214,.07);
+  --nu-shade:rgba(0,0,0,.55);--nu-shade-soft:rgba(0,0,0,.4);--nu-ink:#efe6dc;--nu-muted:#b3a698}
+html body.mod-endofday .app{transition:background-color 2.6s ease}
+html body.mod-endofday.rf-night .rfd-stage{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);
+  --nu-shade:rgba(176,168,156,.44);--nu-shade-soft:rgba(176,168,156,.28);--nu-ink:#4a453f;--nu-muted:#6d675e;
+  /* --card and its kin were resolved on body, to the night's ground - set again here */
+  --card:#e9e7e3;--panel:#e9e7e3;--page:#e9e7e3}
+/* paper on a night table: a shadow under it, not a white halo around it */
+html body.mod-endofday.rf-night .rfd-card{box-shadow:0 14px 34px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.3)}
+html body.mod-endofday.rf-night .rf-streak{color:var(--nu-ink)}
+@media (prefers-reduced-motion:reduce){.bhelp-b.go,.bhelp-b.come{transition:none}.bhelp-flash{display:none}}
 body.mod-door .bhelp,body.mod-endofday .bhelp,.bhelp.away{opacity:0;transform:scale(.6);pointer-events:none}
 .bhs{position:fixed;inset:0;z-index:9000;pointer-events:none}
 .bhs-dim{position:absolute;inset:0;background:rgba(42,34,27,.38);opacity:0;transition:opacity .35s}
@@ -18987,6 +19008,7 @@ addEventListener('visibilitychange',function(){if(!document.hidden)verWatch();})
    competes with the boot */
 setTimeout(verWatch,4000);
 function goHome(){
+  document.body.classList.remove('rf-night');
   jrnlFlush();
   rfmKeep();
   document.body.classList.remove('mod-nutrition');
@@ -19166,6 +19188,7 @@ function goRoute(){
 }
 function enterModule(mod){
   setTimeout(function(){areaIntroMaybe(mod);},450);
+  if(mod!=='endofday')document.body.classList.remove('rf-night');
   jrnlFlush();
   dpRailClear();
   _mainTab='better';
@@ -37381,7 +37404,9 @@ function renderReflectHome(){
   }
   h+='</div>';
   document.getElementById('content').innerHTML=h;
-  beemMount(document.getElementById('rf-beem'),{play:_bDone?'counted':'invite',glow:_bN});
+  var _bNight=_bDone&&_rfDate===todayStr();
+  document.body.classList.toggle('rf-night',_bNight);
+  beemMount(document.getElementById('rf-beem'),_bNight?{play:'moon'}:{play:_bDone?'counted':'invite',glow:_bN});   // i18n-exempt: kit script names
   /* Facing TODAY. weekCardHTML walks the week oldest-first, so the newest
      picture is the last card - and opening on a photograph from six days ago,
      with today's behind your shoulder, is the wrong way round. */
@@ -38094,12 +38119,24 @@ function renderReflectDone(){
   h+='<button onclick="_rfView=\'home\';renderReflect()" class="rf-next" style="margin-top:30px">'+_t('סיימתי להיום')+'</button>';
   h+='</div></div>';
   document.getElementById('content').innerHTML=h;
-  var _rfToday=_rfDate===todayStr();
-  beemMount(document.getElementById('rf-beem'),function(K){
-    var n=streakNow().n,st=document.getElementById('rf-streak');
+  var _rfToday=_rfDate===todayStr(),_rfEl=document.getElementById('rf-beem');
+  beemKit().then(function(K){
+    if(!_rfEl||!_rfEl.isConnected||_rfEl.firstChild)return;
+    var n=streakNow().n,st=document.getElementById('rf-streak'),gold=_rfToday&&BEEM_MILESTONES.indexOf(n)>=0;
     if(st&&n)st.textContent=_t('יום {n} ברצף',{n:n});
-    return {play:_rfToday&&BEEM_MILESTONES.indexOf(n)>=0?'golden':'celebrate',glow:n};
-  });
+    var b=K.mount(_rfEl,{play:gold?'golden':'celebrate',glow:n});   // i18n-exempt: kit script names
+    if(!_rfToday)return;
+    /* glad of the day first - then he falls asleep into the moon, and the
+       page goes to night around him */
+    setTimeout(function(){
+      if(!_rfEl.isConnected)return;
+      try{K.glow(b,0);b.play(BEEM_NIGHT);}catch(e){}
+      document.body.classList.add('rf-night');
+      var sub=document.querySelector('.rf-body .rf-sub'),nm=greetName();
+      if(sub)sub.textContent=nm?_t('לילה טוב, {name}.',{name:nm}):_t('לילה טוב.');
+      beemHelpSky();
+    },gold?8600:4600);
+  }).catch(function(){});
 }
 /* The SAME page the sheet shows, on glass instead of in a drawer. The seal is
    the only thing the card adds - it is the graphic that says the day is
@@ -39647,8 +39684,55 @@ function beemHelpMount(){
   document.getElementById('bhs-x').onclick=beemHelpClose;
   document.getElementById('bhs-go').onclick=function(){beemHelpAsk(document.getElementById('bhs-q').value);};
   document.getElementById('bhs-q').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();beemHelpAsk(this.value);}};
+  beemHelpSky();
+  setInterval(beemHelpSky,60000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)beemHelpSky();});
+}
+/* ── THE MOON ── the day is closed when today's summary is finished, and the
+   app's day ends at 04:00, so the moon stays until then by itself */
+var BEEM_SUN_IDLE={dur:9000,ev:[[0,'face','happy'],[0,'mode',{breathe:[.016,4],idle:0}]]};
+var BEEM_MOON_STILL={dur:1e9,ev:[[0,'fx',{t:'fx',v:{beads:1},d:0}],[0,'fx',{t:'body',v:{moon:1},d:0}],[0,'face','closed'],
+  [0,'mode',{idle:0,breathe:[.02,5.4],spinMul:.18}]]};
+var BEEM_NIGHT={dur:1e9,ev:[[0,'face','sleepy'],[0,'mode',{idle:0,breathe:[.02,5.4],spinMul:.18}],[0,'fx',{t:'fx',v:{beads:1},d:0}],
+  [200,'fx',{t:'body',v:{moon:1},d:3200}],[1600,'face','closed']]};
+var BEEM_SUN_WAKE={dur:1e9,ev:[[0,'face','sleepy'],[0,'mode',{idle:0,breathe:[.016,4]}],[1500,'face','happy'],[1700,'nod',1,8],[2900,'face','calm']]};
+function beemDayClosed(){return rfDone(rfRec(todayStr()));}
+function beemHelpSky(){
+  var el=document.getElementById('bhelp-b');if(!el)return;
+  var want=beemDayClosed()?'moon':'sun',prev=_bhelp.sky||'';   // i18n-exempt: state keys
+  if(want===prev)return;
+  _bhelp.sky=want;
   beemKit().then(function(K){
-    _bhelp.B=K.mount(document.getElementById('bhelp-b'),{play:{dur:9000,ev:[[0,'face','happy'],[0,'mode',{breathe:[.016,4],idle:0}]]}});
+    if(!el.isConnected)return;
+    /* the morning: the first time today, after a night that was closed -
+       either the app opening, or the night ending with it open. Before two in
+       the afternoon; a sunrise at eight in the evening is not a morning. */
+    var key='beem_morning',seen='';try{seen=localStorage.getItem(key)||'';}catch(e){}
+    var morning=want==='sun'&&(prev==='moon'||(!prev&&rfDone(rfRec(dayShift(-1)))))&&seen!==todayStr()&&new Date().getHours()<14;
+    var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.className='bhelp-b';el.style.transform='';el.innerHTML='';
+    if(!morning||still){
+      _bhelp.B=K.mount(el,{play:want==='moon'?'moon':BEEM_SUN_IDLE});   // i18n-exempt: a kit script name
+      if(morning)try{localStorage.setItem(key,todayStr());}catch(e){}
+      return;
+    }
+    try{localStorage.setItem(key,todayStr());}catch(e){}
+    K.mount(el,{play:BEEM_MOON_STILL});
+    var sun=document.createElement('div');sun.className='bhelp-b';sun.style.transform='translate(64px,14px)';
+    el.parentNode.appendChild(sun);
+    _bhelp.B=K.mount(sun,{play:BEEM_SUN_IDLE});
+    /* out to the left and a little down, the way the moon sets... */
+    setTimeout(function(){el.className='bhelp-b go';el.style.transform='translate(-64px,14px)';},900);
+    /* ...and only once it is gone does the sun come in, from the right */
+    setTimeout(function(){
+      el.remove();sun.id='bhelp-b';
+      try{_bhelp.B.play(BEEM_SUN_WAKE);}catch(e){}
+      sun.className='bhelp-b come';sun.style.transform='translate(0,0)';
+    },2600);
+    setTimeout(function(){
+      var f=document.createElement('div');f.className='bhelp-flash';document.body.appendChild(f);
+      setTimeout(function(){f.remove();},3000);
+    },3600);
   }).catch(function(){});
 }
 /* where it was opened from: the module, or home, or the Me screen */
