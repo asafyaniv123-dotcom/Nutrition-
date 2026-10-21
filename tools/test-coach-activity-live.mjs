@@ -22,13 +22,13 @@ const flat = (s) => String(s || '').replace(/\s+/g, ' ');
 const asks = (m) => /כמה צעדים/.test(m);
 
 let j = await post({ message: 'אכלתי לארוחת ערב חזה עוף עם אורז וסלט', activity: ACT });
-ok(j.action === 'add' && j.asked_steps === true && asks(j.message), 'dinner at 19:00, nothing reported: it asks at the end', flat(j.message));
+ok(j.action === 'add' && (j.asked_steps === true && asks(j.message) || j.steps_due === true), 'dinner at 19:00, nothing reported: it asks at the end, or the app will', flat(j.message) + ' | steps_due ' + j.steps_due);
 j = await post({ message: 'אכלתי לארוחת ערב חזה עוף עם אורז וסלט', activity: Object.assign({}, ACT, { steps: 12000, has: true }) });
-ok(!j.asked_steps && !asks(j.message), 'steps already in today: it does not ask', flat(j.message));
+ok(!j.asked_steps && !j.steps_due && !asks(j.message), 'steps already in today: it does not ask', flat(j.message));
 j = await post({ message: 'אכלתי לארוחת ערב חזה עוף עם אורז וסלט', activity: Object.assign({}, ACT, { asked: true }) });
-ok(!j.asked_steps && !asks(j.message), 'already asked today: not again', flat(j.message));
+ok(!j.asked_steps && !j.steps_due && !asks(j.message), 'already asked today: not again', flat(j.message));
 j = await post({ message: 'אכלתי לארוחת צהריים סלט טונה', activity: Object.assign({}, ACT, { now: '13:00' }) });
-ok(!j.asked_steps && !asks(j.message), 'lunch at 13:00: nothing about steps', flat(j.message));
+ok(!j.asked_steps && !j.steps_due && !asks(j.message), 'lunch at 13:00: nothing about steps', flat(j.message));
 
 j = await post({ message: '14,000', history: [{ role: 'assistant', text: 'רשמתי. כמה צעדים הלכת היום? אעדכן לך את היעד' }], activity: Object.assign({}, ACT, { asked: true }) });
 ok(j.activity && j.activity.steps === 14000 && j.activity.bonus === 240, 'answering 14,000: +240, worked out in code', JSON.stringify(j.activity));

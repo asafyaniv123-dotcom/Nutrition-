@@ -4281,6 +4281,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         weigh_nudged: weighNudge,   // the app remembers, so it is said once a day
         activity: actOut,
         asked_steps: askSteps && out.asked_steps === true,
+        /* due, and this reply logged a dinner: when the model left the
+           question out anyway - it did, live - the app adds it itself */
+        steps_due: askSteps && action === 'add' &&
+          items.some((it) => it.meal === 'dinner' || (!it.meal && actx.now >= '18:00')),
       });
     }
 
