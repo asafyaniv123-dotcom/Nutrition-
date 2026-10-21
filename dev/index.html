@@ -1367,23 +1367,21 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .log-time{font-size:9.5px;color:var(--muted);margin-top:1px}
 .log-kcal{font-size:13px;font-weight:700;color:var(--violet-700)}
 .log-del{background:none;border:none;cursor:pointer;color:var(--terra-700);font-size:16px;padding:2px 6px}
-/* a row that can be swiped: it slides, and what it would do shows behind it */
-.log-sw{position:relative}
-.log-sw>.log-item{position:relative;z-index:1;touch-action:pan-y}
-.log-act{position:absolute;inset:0;display:flex;align-items:center;padding:0 20px;border-radius:22px;
-  opacity:0;transition:opacity .15s}
-.log-act svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.log-act-del{justify-content:flex-start;color:var(--terra-700)}
-.log-act-edit{justify-content:flex-end;color:var(--violet-700)}
-.log-sw.lsw-on[data-dir="del"] .log-act-del,.log-sw.lsw-on[data-dir="edit"] .log-act-edit{opacity:.55}
-.log-sw.lsw-go[data-dir="del"] .log-act-del,.log-sw.lsw-go[data-dir="edit"] .log-act-edit{opacity:1}
+/* a row or a message that can be held: no text selection, no callout */
+.log-sw>.log-item,.co-u[data-ti]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  transition:transform .15s,box-shadow .15s}
 body.mod-nutrition .log-sw{margin-bottom:12px}
 body.mod-nutrition .log-sw:last-child{margin-bottom:0}
 body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
-.log-act{background:var(--nu-ground,var(--surface));box-shadow:inset 2px 3px 7px var(--nu-shade,rgba(0,0,0,.08)),inset -2px -2px 6px var(--nu-lit,#fff)}
-.co-u[data-ti]{touch-action:pan-y;transition:box-shadow .15s}
-.co-u.lsw-on[data-dir="del"]{box-shadow:0 0 0 2px var(--terra-700)}
-.co-u.lsw-on[data-dir="edit"]{box-shadow:0 0 0 2px var(--violet-700)}
+.log-item.lp-on,.co-u.lp-on{transform:scale(.97);box-shadow:0 0 0 2px var(--violet-700)}
+.lp-back{position:fixed;inset:0;z-index:940;background:rgba(30,26,22,.18)}
+.lp-menu{position:fixed;z-index:945;min-width:168px;display:flex;flex-direction:column;padding:6px;border-radius:16px;
+  background:var(--nu-ground,var(--card));box-shadow:0 12px 30px rgba(0,0,0,.22)}
+.lp-menu button{display:flex;align-items:center;gap:12px;border:none;background:none;padding:12px 14px;border-radius:11px;
+  font:700 14.5px/1 inherit;color:var(--nu-ink,var(--ink));cursor:pointer;text-align:start}
+.lp-menu button:active{background:var(--surface)}
+.lp-menu svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.lp-menu .lp-del{color:var(--terra-700)}
 /* the undo bar: above the tab bar, with the five seconds running out under it */
 .undo-bar{position:fixed;inset-inline:16px;bottom:calc(104px + env(safe-area-inset-bottom));z-index:900;
   display:flex;align-items:center;gap:12px;padding:12px 14px 14px 18px;border-radius:16px;overflow:hidden;
@@ -13250,89 +13248,76 @@ function coachPost(d,text,pics,rec,ed){
     _coachBusy=false;_coachErr=''+_t('לא הצלחתי לענות כרגע.')+'';coachPaint();
   });
 }
-/* ── SWIPE A MEAL ──
-   Toward the inline END deletes - left in Hebrew and Arabic, right in English
-   - which is the side the planning boards keep their trash on, so the same
-   flick means the same thing everywhere. Toward the inline START edits.
-   Only the row moves; a mostly vertical drag is a scroll and is let go. */
-var LSW_MIN=12,LSW_GO=84,_lsw=null;
+/* ── HOLD FOR EDIT AND DELETE ──
+   Asaf: like WhatsApp - a long press on a meal row, or on her own message in
+   the coach chat, opens a small menu with edit and delete. It replaced a
+   swipe (left delete, right edit), which nobody can see is there.
+   Touch: half a second without moving more than a few pixels. A mouse: the
+   right button. The press must not also select text or open the phone's
+   own callout, so those are switched off on these elements in the CSS. */
+/* toward the inline end - the side the planning boards keep their trash on */
 function lswEndSign(){return document.documentElement.dir==='rtl'?-1:1;}
-/* TWO INPUTS, ONE GESTURE. It was pointer events only, and passed in Chrome;
-   on the iPhone it did nothing. Safari decides on the first move whether a
-   touch is a scroll, and a pointer listener cannot take that back - a finger
-   that drifts a pixel downward first is a scroll, and the row never moves.
-   A touchmove CAN: once the movement is clearly sideways it is cancelled, so
-   the page stays still and the row slides. A mouse keeps pointer events. */
-function lswStart(target,x,y){
-  /* a meal row, or her own message in the coach chat that logged something -
-     she reached for the second first, with the first nowhere on screen */
-  var row=target.closest&&target.closest('.log-sw > .log-item, .co-u[data-ti]');
-  if(!row||target.closest('button'))return false;
-  var bubble=row.classList.contains('co-u');
-  _lsw={row:row,wrap:bubble?row:row.parentNode,bubble:bubble,sx:x,sy:y,dx:0,on:false};
-  return true;
-}
-/* true while the row is sliding, so the caller cancels the scroll */
-function lswMove(x,y){
-  var w=_lsw;if(!w)return false;
-  var dx=x-w.sx,dy=y-w.sy;
-  if(!w.on){
-    if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)){_lsw=null;return false;}
-    if(Math.abs(dx)<LSW_MIN)return false;
-    if(Math.abs(dx)<Math.abs(dy)*1.2)return false;   // still deciding
-    w.on=true;w.wrap.classList.add('lsw-on');
-  }
-  w.dx=dx;
-  w.row.style.transform='translateX('+dx+'px)';
-  w.wrap.setAttribute('data-dir',dx*lswEndSign()>0?'del':'edit');
-  w.wrap.classList.toggle('lsw-go',Math.abs(dx)>LSW_GO);
-  return true;
-}
+var LP_MS=480,_lp=null;
+function lpTarget(t){return t&&t.closest?t.closest('.log-sw > .log-item, .co-u[data-ti]'):null;}
 document.addEventListener('touchstart',function(e){
-  if(e.touches.length!==1){_lsw=null;return;}
-  if(lswStart(e.target,e.touches[0].clientX,e.touches[0].clientY))_lsw.touch=true;
+  lpClose();
+  var el=e.touches.length===1?lpTarget(e.target):null;
+  if(!el||e.target.closest('button'))return;
+  _lp={el:el,x:e.touches[0].clientX,y:e.touches[0].clientY,fired:false};
+  _lp.t=setTimeout(function(){if(_lp&&_lp.el===el){_lp.fired=true;lpOpen(el);}},LP_MS);
 },{capture:true,passive:true});
 document.addEventListener('touchmove',function(e){
-  if(!_lsw||!_lsw.touch)return;
-  if(e.touches.length!==1){_lsw=null;return;}
-  if(lswMove(e.touches[0].clientX,e.touches[0].clientY)&&e.cancelable)e.preventDefault();
+  if(!_lp||_lp.fired)return;
+  var t=e.touches[0];
+  if(Math.abs(t.clientX-_lp.x)>10||Math.abs(t.clientY-_lp.y)>10){clearTimeout(_lp.t);_lp=null;}
+},{capture:true,passive:true});
+document.addEventListener('touchend',function(e){
+  if(!_lp)return;
+  clearTimeout(_lp.t);
+  /* the finger lifting off a press that opened the menu is not a tap */
+  if(_lp.fired&&e.cancelable)e.preventDefault();
+  _lp=null;
 },{capture:true,passive:false});
-document.addEventListener('touchend',function(){if(_lsw&&_lsw.touch)lswEnd();},true);
-document.addEventListener('touchcancel',function(){if(_lsw&&_lsw.touch)lswEnd();},true);
-document.addEventListener('pointerdown',function(e){
-  if(e.pointerType!=='mouse'||(e.button&&e.button>0))return;
-  if(lswStart(e.target,e.clientX,e.clientY))_lsw.pid=e.pointerId;
+document.addEventListener('touchcancel',function(){if(_lp){clearTimeout(_lp.t);_lp=null;}},true);
+document.addEventListener('contextmenu',function(e){
+  var el=lpTarget(e.target);if(!el)return;
+  e.preventDefault();lpOpen(el);
 },true);
-document.addEventListener('pointermove',function(e){
-  if(!_lsw||_lsw.touch||e.pointerId!==_lsw.pid)return;
-  if(lswMove(e.clientX,e.clientY))e.preventDefault();
-},{passive:false});
-function lswEnd(e){
-  var w=_lsw;if(!w||(e&&e.pointerId!==undefined&&w.touch))return;
-  if(e&&!w.touch&&e.pointerId!==w.pid)return;
-  _lsw=null;
-  if(!w.on)return;
-  var id=w.wrap.getAttribute('data-mid'),go=Math.abs(w.dx)>LSW_GO,del=w.dx*lswEndSign()>0;
-  w.row.style.transition='transform .2s ease';
-  if(w.bubble){
-    w.row.style.transform='';
-    setTimeout(function(){w.wrap.classList.remove('lsw-on','lsw-go');w.row.style.transition='';},210);
-    if(go)coachTurnSwipe(+w.row.getAttribute('data-ti'),del);
-  } else if(go&&del){
-    w.row.style.transform='translateX('+(lswEndSign()*window.innerWidth)+'px)';
-    setTimeout(function(){mealSoftDel(id);},170);
-  } else {
-    w.row.style.transform='';
-    setTimeout(function(){w.wrap.classList.remove('lsw-on','lsw-go');w.row.style.transition='';},210);
-    if(go)mealEditOpen(id);
-  }
-  /* the click that follows a drag is not a tap */
-  var stop=function(ev){ev.stopPropagation();ev.preventDefault();};
-  window.addEventListener('click',stop,true);
-  setTimeout(function(){window.removeEventListener('click',stop,true);},400);
+function lpOpen(el){
+  lpClose();
+  el.classList.add('lp-on');
+  var r=el.getBoundingClientRect(),m=document.createElement('div');
+  m.id='lp-menu';m.className='lp-menu';m.setAttribute('role','menu');
+  m.innerHTML='<button role="menuitem" onclick="lpAct(\'edit\')">'+
+      '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>'+_t('עריכה')+'</button>'+
+    '<button role="menuitem" class="lp-del" onclick="lpAct(\'del\')">'+
+      '<svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 13h9l1-13"/></svg>'+_t('מחיקה')+'</button>';
+  var back=document.createElement('div');
+  back.id='lp-back';back.className='lp-back';
+  back.addEventListener('click',lpClose);back.addEventListener('touchstart',function(ev){ev.preventDefault();lpClose();},{passive:false});
+  document.body.appendChild(back);document.body.appendChild(m);
+  /* under the pressed thing, or over it when there is no room below */
+  var h=m.offsetHeight,below=r.bottom+8+h<window.innerHeight-90;
+  m.style.top=(below?r.bottom+8:Math.max(8,r.top-8-h))+'px';
+  var w=m.offsetWidth,x=document.documentElement.dir==='rtl'?r.right-w:r.left;
+  m.style.left=Math.max(8,Math.min(window.innerWidth-w-8,x))+'px';
+  m._el=el;
 }
-document.addEventListener('pointerup',lswEnd,true);
-document.addEventListener('pointercancel',lswEnd,true);
+function lpClose(){
+  var m=document.getElementById('lp-menu'),b=document.getElementById('lp-back');
+  if(m){if(m._el)m._el.classList.remove('lp-on');m.remove();}
+  if(b)b.remove();
+}
+function lpAct(what){
+  var m=document.getElementById('lp-menu');if(!m)return;
+  var el=m._el;lpClose();
+  if(!el)return;
+  if(el.classList.contains('co-u'))coachTurnAct(+el.getAttribute('data-ti'),what==='del');
+  else{
+    var id=el.parentNode.getAttribute('data-mid');
+    if(what==='del')mealSoftDel(id);else mealEditOpen(id);
+  }
+}
 
 function mealById(day,id){
   for(var i=0;i<day.meals.length;i++)if(String(day.meals[i].id)===String(id))return i;
@@ -13750,7 +13735,7 @@ function coachTurnIds(ti){
   if(!rec.turns[ti]||rec.turns[ti].role!=='user'||!n||n.role!=='assistant'||!Array.isArray(n.ids))return [];
   return n.ids.filter(function(x){return mealById(day,x)>=0;});
 }
-function coachTurnSwipe(ti,del){
+function coachTurnAct(ti,del){
   var ids=coachTurnIds(ti),d=todayStr();
   if(!ids.length)return;
   if(del)mealSoftDel(ids,d);
@@ -13766,7 +13751,7 @@ function coachInnerHTML(){
     var t=rec.turns[i];
     if(t.role==='user'){
       var ks=Array.isArray(t.pics)?t.pics:[];
-      /* a message that logged something can be swiped, like the rows below */
+      /* a message that logged something can be held for edit and delete, like the rows below */
       h+='<div class="co-u"'+(coachTurnIds(i).length?' data-ti="'+i+'"':'')+'>'+
          (ks.length?'<span class="co-shots">'+ks.map(function(k){
             return photoImg(k,'class="co-img" alt=""');}).join('')+'</span>':'')+
@@ -17237,8 +17222,6 @@ function logItemHTML(m){
      ReferenceError - the × did nothing on every meal the coach logged. */
   var mid=esc(String(m.id));
   return '<div class="log-sw" data-mid="'+mid+'">'+
-    '<div class="log-act log-act-del" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 13h9l1-13"/></svg></div>'+
-    '<div class="log-act log-act-edit" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></div>'+
     '<div class="log-item"><div style="display:flex;align-items:center;gap:8px">'+mealIcon(m)+(m.photo?'<img src="'+m.photo+'" style="width:36px;height:36px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+'<div><div class="log-name">'+esc(m.name)+(m.est?'<span class="log-est">'+_t('הערכה')+'</span>':'')+'</div><div class="log-time">'+fmtClock(m.time)+'</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;color:var(--muted)">'+_t('{p}ח {c}פ {f}ש',{p:m.p,c:m.c,f:m.f})+'</div><div class="log-kcal">'+nfmt(m.kcal)+'</div><button class="log-del" aria-label="'+esc(_t('מחק'))+'" onclick="mealSoftDel(this.closest(&quot;.log-sw&quot;).getAttribute(&quot;data-mid&quot;))">&times;</button></div></div></div>';
 }
 
@@ -32309,8 +32292,7 @@ function swipeArmed(d,e){
   if(d.overT)return true;
   /* and a flat flick toward the trash still is, without having to reach the
      edge. Toward the inline END, where the trash sits: the leftward flick it
-     was is only right in a right-to-left language, and a meal row uses the
-     same rule (lswEndSign) */
+     was is only right in a right-to-left language (lswEndSign) */
   return (e.clientX-d.sx)*lswEndSign()>SWIPE_X&&Math.abs(e.clientY-d.sy)<SWIPE_Y;
 }
 function swipeMark(d,on,label){
