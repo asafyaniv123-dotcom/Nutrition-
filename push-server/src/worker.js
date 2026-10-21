@@ -3753,7 +3753,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - The photo shows ONE portion. If the user says they ate it X times, portions = X.
 - Count the pieces in the single clearest photo. Never add counts from two photos of the same plate together, and never split a plate between them - each photo shows the whole plate.
 - portions = X goes on EVERY item that came from that plate, not only on some of them.
-- unit_count is exactly what you would count in the photo if they had eaten it ONCE. Being told "twice" never changes what you count in the photo - it only sets portions. Pieces standing in pairs or stacks are still counted one by one.
+- unit_count is exactly what you wrote in photo_count - what you would count in the photo if they had eaten it ONCE. Being told "twice" never changes what you count in the photo - it only sets portions. Pieces standing in pairs or stacks are still counted one by one.
 - Always state your count in the reply: "~7 pieces × 2 = 14 pieces".
 - Sauce in a dish/ramekin ≈ 3-4 tbsp, not 1-2. Teriyaki ≈ 40-45 kcal/tbsp, mostly sugar.
 - Restaurant food: when unsure between two estimates, take the higher one. Restaurants use more oil, sugar and sauce than home cooking.
@@ -3822,6 +3822,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         input_schema: {
           type: 'object',
           properties: {
+            /* FIRST, so it is written before anything the words could bend:
+               told "twice", the model kept counting six rolls standing in
+               pairs as three per plate, while every "once" counted six */
+            photo_count: { type: 'string', description: 'When there is a photo of food: what you see in it, piece by piece, counted as if they had eaten it ONCE - before reading anything they wrote. Empty when there is no photo.' },
             action: { type: 'string', enum: ['add', 'update', 'delete', 'none'] },
             date: { type: 'string', description: 'YYYY-MM-DD, the day these rows belong to' },
             items: {
@@ -3863,7 +3867,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
             weight_kg: { type: 'number', description: 'ONLY when the user reports their own body weight for today, in kg' },
             message: { type: 'string', description: 'what the person reads, in their language' },
           },
-          required: ['action', 'date', 'items', 'message'],
+          required: ['photo_count', 'action', 'date', 'items', 'message'],
         },
       };
 
