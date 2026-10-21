@@ -4573,7 +4573,7 @@ html body.mod-endofday .rfd-seal-t,html body.mod-endofday .rfd-mark{color:var(--
    material's own "light inside a channel", so he sits IN the screen rather
    than on top of it like a sticker. Hidden where Beem already lives (the
    evening summary) and in the door, which is his. */
-.bhelp{position:fixed;top:calc(12px + env(safe-area-inset-top));inset-inline-end:14px;z-index:350;width:60px;height:60px;border-radius:50%;
+.bhelp{position:fixed;top:calc(12px + env(safe-area-inset-top));inset-inline-end:14px;z-index:110;width:60px;height:60px;border-radius:50%;
   border:none;padding:0;background:var(--nu-ground,#efe9df);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;
   box-shadow:inset 3px 4px 8px var(--nu-shade,rgba(176,168,156,.44)),inset -3px -3px 7px var(--nu-lit,rgba(255,255,255,.95));transition:opacity .25s,transform .35s cubic-bezier(.2,.9,.3,1)}
 .bhelp-b{width:46px;height:46px;pointer-events:none}
@@ -36496,26 +36496,21 @@ function backupAgeDays(iso){
 var BACKUP_STALE_DAYS=14;
 
 function renderBackup(){
-  var el=document.getElementById('home-backup');if(!el)return;
+  var el=document.getElementById('set-backup')||document.getElementById('home-backup');if(!el)return;
   var last='';try{last=localStorage.getItem('last_export')||'';}catch(e){}
-  var n=Object.keys(collectAppData()).length;
-  var h='<div style="background:var(--card);border-radius:20px;padding:15px 16px;box-shadow:0 4px 16px rgba(200,180,160,.1)">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">';
-  h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;font-weight:700">'+_t('גיבוי')+'</div>';
-  h+='<div style="font-size:10px;color:var(--muted-soft)">'+_t('{n} פריטים',{n:n})+'</div></div>';
+  /* IN SETTINGS' OWN WORDS: a section title, its line, and two chips - the
+     same three things every other setting above it is made of */
   var age=backupAgeDays(last), stale=(age<0||age>=BACKUP_STALE_DAYS);
   var line=last?(''+_t('ייצוא אחרון')+' '+stepsAgo(last)):''+_t('כל הנתונים קיימים רק במכשיר הזה — עוד לא יצא גיבוי.')+'';
-  h+='<div style="font-size:10.5px;color:'+(stale?'var(--terra-700)':'var(--muted)')+';line-height:1.6">'+line+'</div>';
+  var h='<div class="set-sec"><div class="set-t">'+_t('גיבוי')+'</div>'+
+    '<div class="set-s"'+(stale?' style="color:var(--terra-700)"':'')+'>'+line+'</div>';
   // Only worth saying when it is not true. Granted is the quiet case.
-  if(_persisted===false){
-    h+='<div style="font-size:10.5px;color:var(--terra-700);line-height:1.6;margin-top:4px">'+_t('המכשיר עלול למחוק את הנתונים כשנגמר לו המקום. גיבוי הוא הביטוח היחיד.')+'</div>';
-  }
-  h+='<div style="height:12px"></div>';
-  h+='<div style="display:flex;gap:8px">';
-  h+='<button onclick="exportData()" style="flex:1;background:var(--cta-fill);border:none;border-radius:12px;padding:11px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--white);font-family:inherit">'+_t('ייצוא')+'</button>';
-  h+='<button onclick="importPick()" style="flex:1;background:var(--surface);border:none;border-radius:12px;padding:11px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit">'+_t('ייבוא')+'</button></div>';
+  if(_persisted===false)
+    h+='<div class="set-s" style="color:var(--terra-700)">'+_t('המכשיר עלול למחוק את הנתונים כשנגמר לו המקום. גיבוי הוא הביטוח היחיד.')+'</div>';
+  h+='</div><div class="set-langs">'+
+    '<button class="set-lang" onclick="exportData()">'+_t('ייצוא')+'</button>'+
+    '<button class="set-lang" onclick="importPick()">'+_t('ייבוא')+'</button></div>';
   h+='<input type="file" id="backup-file" accept="application/json,.json" style="display:none" onchange="importChosen(this)">';
-  h+='</div>';
   el.innerHTML=h;
 }
 
@@ -40939,7 +40934,10 @@ function renderSettings(){
   h+='<button class="set-lang'+(APP_UNITS==='imperial'?' on':'')+'" onclick="unitsSet(\'imperial\')">'+
      _t('אימפריאלי')+'</button>';
   h+='</div>';
+  /* the backup, the one place a person can take everything with them */
+  h+='<div id="set-backup"></div>';
   v.innerHTML=h;
+  renderBackup();
 }
 /* Stored the same way the language and the country are, and repainted the same
    way a language change is: a weight is on half the screens in the app, and
