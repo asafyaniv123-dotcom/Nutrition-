@@ -353,6 +353,139 @@ function langName(code) {
   return LANG_NAMES[String(code || '').trim()] || 'English';
 }
 
+/* The tools /ask and /beem both offer. Defined here rather than accepted
+   from the client, so neither can be driven as a general purpose model. */
+const ASK_TOOLS = [
+  {
+    name: 'get_day',
+    description:
+      "One day of the user's own food log: what they ate, and the totals " +
+      'for energy, protein, carbohydrate, fat and water. Use this for any ' +
+      'question about a particular day, including today.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'YYYY-MM-DD, or "today" / "yesterday".' },
+      },
+      required: ['date'],
+    },
+  },
+  {
+    name: 'get_range',
+    description:
+      'Daily totals across a span of dates, for questions about a week, a ' +
+      'month, an average or a trend. Returns one row per day.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        from: { type: 'string', description: 'YYYY-MM-DD' },
+        to: { type: 'string', description: 'YYYY-MM-DD' },
+      },
+      required: ['from', 'to'],
+    },
+  },
+  {
+    name: 'get_targets',
+    description:
+      "The user's own daily goals for energy, protein, carbohydrate, fat " +
+      'and water. Needed for anything phrased as how much is left, whether ' +
+      'they are on track, or how much more they should eat.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'search_food',
+    description:
+      'Look a food up in the app tables. Returns rows with energy and ' +
+      'macros per 100g, and a serving weight where one is known. Use it ' +
+      'for anything about a food the user has not eaten yet.',
+    input_schema: {
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query'],
+    },
+  },
+];
+
+/* What Beem knows about the app. Written from the code on 21 Oct 2026, not
+   from memory - every button named here is one the app really draws. The
+   labels are the Hebrew ones; in any other language Beem names the thing by
+   what it does instead. Keep it true: a confident wrong instruction is worse
+   than "I don't know yet". */
+const BEEM_GUIDE = `GENERAL
+- When the day ends: the app's day ends at 04:00, not midnight. Anything logged at 1 a.m. counts toward the evening before. The date at the top follows the same rule.
+- Data: there is no account and no sign-in. Everything is saved on the phone. Some features send text or photos to the app's server to understand them: the home command line, the nutrition coach, the planning box, the planner, food photos and the weekly summary. Offline they show "אין חיבור כרגע". Some have a daily limit. Steps synced from a watch, shared workouts and reminder notifications also use the server.
+
+HOME (Better)
+- Greeting line at the top shows the name. Tap it to set or change the name, then שמור. With no name it shows "מי אתה?".
+- The dial: the areas sit on a ring. Drag the ring to rotate it. Tap an area to turn it to the notch and open it. The ring is also a 24-hour clock: it glows amber from 06:00 until now, and today's planned items appear as coloured dots (faded once their time has passed).
+- Centre button "סיום יום" (end of day): always on the dial; opens the end-of-day summary and fills with light as tonight's questions are answered. Every area being tracked feeds it.
+- Streak: shown under the dial; tap it for the last 14 days and the rules.
+- Command line ("מה אכלת, מה לזכור, מה לעשות…"): type, or tap the mic and speak (tap again to stop), then tap the arrow.
+  - Food opens Nutrition and sends the sentence to the coach.
+  - "Open X" goes straight to that area.
+  - Anything else shows an editable card; nothing is saved until הוסף (or ביטול to cancel).
+  - Where things land: a task goes to Planning (today or the date said, at the time said); something to remember from today goes to the end-of-day moments; a journal line to today's journal; a note about a person to that person's page (they must already be in People); a goal to Hobbies; water to Nutrition; steps to Fitness; a book quote to "הספר שלי" (needs a book open).
+  - Several things in one sentence give one list ("להוסיף את כל אלה?"); remove any with ×. If unsure it offers "לשמור כרגע מהיום".
+- Next-item card: what is on now or next today, plus a count of notes to remember. Tap it to open Planning.
+- The ☰ button (top) opens "מה במעקב": tick the areas that should show on the dial (hiding one deletes nothing; סיום יום is built in). The gear opens הגדרות (settings):
+  - שפה: language, 11 languages
+  - איך לפנות אליך: feminine or masculine form of address (Hebrew only)
+  - תזכורת לסיכום יום: the daily end-of-day reminder. Tap the "בלי תזכורת" chip to turn it on, then pick a time (default 21:00); tap the chip again to turn it off. It comes as a phone notification and a banner in the app, and is skipped if the day was already summarised.
+  - מדינה: which country's products food search uses
+  - יחידות מידה: metric or imperial
+  - סיימתי closes the menu.
+- Bottom bar: Better = home (tap again inside an area to go home); the middle book icon = Journal; Me = the stats screen.
+- Beem (you) sits in the top corner of every screen; tapping him opens this chat.
+
+NUTRITION (תזונה)
+- Tabs: יומי (today), היסטוריה (history), מתכונים (recipes), אישי (personal). Arrows at the top move the food log to another day.
+- יומי: bars against the targets and how much is left. Water card (if water tracking is on): tap the drop for the +amount buttons; ↺ resets. Coach chat ("מה אכלת? אפשר גם לשאול"): type what you ate or ask a question; the camera button attaches photos; the arrow sends. The coach logs the food and may ask a follow-up. Hold a message that logged food to edit or delete it. "ארוחות היום" groups meals by type; tap a type to see its items. There is no mic in the coach chat; for voice use the mic on the home command line.
+- Weigh-ins: in אישי, "מה המעקב שלי כולל", turn on שקילות, then choose how often, which days, whether to hide the number (only the trend shows) and a goal weight. Log a weigh-in by telling the coach, e.g. "שקלתי 72.4".
+- אישי also has the personal details, activity level and goal; "יעד מומלץ" with "עדכן את היעדים לפי זה" to apply it or "חזרה ליעדים המקוריים"; and "ההרגלים שלי" (e.g. cooking without oil), which the coach uses. Until the personal details are filled in, the daily target is a general starting one.
+- היסטוריה: the last 7 days, as צריכה יומית, גרעון אמיתי or מצטבר.
+- מתכונים: "+ מתכון" adds a recipe.
+
+FITNESS (כושר)
+- The first visit asks a few setup questions (goal, days a week, time, experience, where you train, limits, a note); "אחר כך" postpones them for today. From them it builds a plan.
+- The hub: a week strip, then אימון חדש (start a workout; join a shared workout by QR; steps; programs: "בנה לי תוכנית" generates one, "+ תוכנית" adds a gym program), אימון שנבנה לך (a workout built from what is missing this week), סטופר וטיימרים (stopwatch, EMOM, Tabata, intervals), אימונים שאהבתי (saved workout video links), מעקב משקלים (weights per exercise; personal records come from here), לוז האימונים (schedule), המספרים שלי (stats), צעדים (steps), היסטוריה. "המטרה שלי" (training goal) is at the bottom of the hub.
+
+HOBBIES (תחביבים)
+- + in the hobby row adds a hobby; choose how to track it: זמן (time), כמות (count with a target) or בוצע (done).
+- The big card does the main action: start/stop the timer, add one, or mark done. "הוסף זמן ליום" edits any day by hand. "הוסף תת-נושא" adds sub-topics (tapping one starts a timer on it). עריכה changes colour or tracking type, or deletes.
+
+PEOPLE (האנשים שלי)
+- "+ הוסף אדם": name, relationship, where you know them from, notes, "כל כמה זמן תזכורת?" (how often to be reminded) and "+ תאריך חשוב".
+- Reminders show inside the app: whoever is overdue appears at the top ("אולי הגיע הזמן לבדוק מה שלום..."), and dates within 14 days are listed.
+- On a person's page: tap הודעה, שיחה, פגישה… to log contact; "+ משהו שאני רוצה לזכור" adds a note.
+
+PLANNING (תכנון זמן)
+- The top box takes a sentence like "כל רביעי 9–10 מדיטציה" and adds it, repeats included.
+- "מתכנן" (planner): describe the week and get a schedule.
+- Sections: החודש, השבוע, היום. In the day view change day with the arrows or a swipe; write an item under "רק ליום הזה", then drag it to an hour.
+
+CLOSET (הארון שלי)
+- Each clothing type has its own row; roll the rows to build a look. + adds photos, then crop, with background removal.
+- Tap a garment: how many times it was worn in the last 30 days, and הסר רקע, ערוך, הסר.
+- Buttons: גלגל הכל (shuffle), שמור לוק (save look), לבשתי את זה היום (wore it today), הלוקים שלי (saved looks: share, ללבוש, delete).
+
+INSIGHTS (תובנות)
+- 7 topics: אני, רגשות ותודעה, אנשים, החיים, הצלחה ועשייה, העולם, בסוף המחברת. Pick a topic, a question, then write; entries are kept with their dates. Nothing is mandatory.
+
+END OF DAY (סיום יום)
+- Main button: התחל סיכום, המשך מאיפה שעצרת, or פתח שוב.
+- Default evening questions: the best moment, a photo of the day, the song of the day, a sentence you took with you. "שאלות הערב" chooses which questions are asked every night from the bank (mood, body, day score, flow, planned vs actual, workout, what you take to tomorrow, gratitude and more). "מה נכנס לסיכום" switches sections on or off.
+- Also: ולוג יומי (a short daily video), "דברים שאני רוצה לזכור" (today's moments), השבוע שלך / החודש שלך, ימים קודמים.
+- Streak: a day counts only when its summary is finished; today stays open until then. One missed day uses the grace day and the streak continues; a second missed day in a row resets it. The grace day comes back after 7 summaries in a row.
+
+JOURNAL (middle button)
+- Today's page saves automatically; arrows go to earlier days; the search box finds words across everything written.
+
+ME
+- "הסיכום השבועי שלך מוכן" appears once a finished week has at least 2 summarised days; it opens pages moved through with הקודם/הבא.
+- Also: the number of days summarised, צלילים (sounds on/off), calendar, vision board and book widgets, a range switch (שבוע / שבועיים / חודש), and charts: day score, steps, calories, "לאן הולך הזמן" and patterns.`;
+const BEEM_SCREENS = { home: 'the home screen', me: 'the Me screen', nutrition: 'Nutrition', fitness: 'Fitness',
+  hobbies: 'Hobbies', people: 'People', planning: 'Planning', closet: 'the Closet', insights: 'Insights', endofday: 'End of day' };
+
 export default {
   /* ctx is here for one reason: a streaming response returns while its writer
      is still running, and the runtime cancels pending work once the request is
@@ -2428,6 +2561,90 @@ export default {
        otherwise be very good at producing.
 
        Secrets: AI_KEY. Optional: ASK_DAILY_CAP (default 120/IP/day). */
+    /* ── /beem ───────────────────────────────────────────────────────────
+       Beem, the small sun who lives in the corner of every screen, answering
+       "how do I..." from the guide above and "how much did I..." from her own
+       log through the same tools as /ask. The app sends the screen she asked
+       from, her name and form of address, and today's date by the app's own
+       clock (the day ends at 04:00, so the server's date is not it).
+
+       Secrets: AI_KEY or GEMINI_KEY. Optional: BEEM_DAILY_CAP (80/IP/day). */
+    if (url.pathname === '/beem' && req.method === 'POST') {
+      if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'beem is not configured' }, 503);
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const messages = Array.isArray(b && b.messages) ? b.messages : [];
+      if (!messages.length) return json({ error: 'nothing to ask' }, 400);
+      if (messages.length > 40) return json({ error: 'too long' }, 400);
+      if (JSON.stringify(messages).length > 60000) return json({ error: 'too long' }, 400);
+
+      const cap = Number(env.BEEM_DAILY_CAP || 80);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'bq:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const lang = langName(b && b.lang);
+      const screen = BEEM_SCREENS[String((b && b.screen) || '')] || 'the home screen';
+      const name = String((b && b.name) || '').replace(/[^\p{L}\p{M} '\-]/gu, '').trim().slice(0, 24);
+      const form = (b && b.form) === 'f' ? 'f' : (b && b.form) === 'm' ? 'm' : '';
+      const today = /^\d{4}-\d{2}-\d{2}$/.test(String((b && b.today) || '')) ? b.today : day;
+
+      const SYSTEM =
+        'You are Beem, a small warm sun who lives in the corner of every screen of\n' +
+        'Better Me, a personal app for nutrition, fitness, people, planning, hobbies,\n' +
+        'clothes, reflection and an end-of-day summary. You are the app\'s helper.\n' +
+        'Write everything in ' + lang + '.' +
+        (lang === 'Hebrew' ? ' Address the user in the ' + (form === 'f' ? 'feminine' : 'masculine') + ' singular; you yourself are masculine.' : '') +
+        (name ? ' Their name is ' + name + '; use it rarely.' : '') + '\n' +
+        'They opened you from ' + screen + '. Today, by the app\'s clock, is ' + today + '.\n' +
+        '\n' +
+        'HOW-TO QUESTIONS are answered ONLY from the guide below. Name the real\n' +
+        'button and where it is. The labels in the guide are Hebrew; if you are not\n' +
+        'writing Hebrew, describe the button by what it does and where it sits rather\n' +
+        'than quoting Hebrew. If the guide does not cover it, say plainly that you do\n' +
+        'not know that one yet - never invent a button, a setting or a feature.\n' +
+        '\n' +
+        'QUESTIONS ABOUT THEIR OWN FOOD use the tools, and every number you state must\n' +
+        'have come back from a tool in this conversation - never estimate one from\n' +
+        'your own knowledge. You have no access to their workouts, people, plans or\n' +
+        'summaries; say so if asked, and tell them where in the app to look.\n' +
+        '\n' +
+        'Be brief and kind: one to four short sentences, no lists unless steps are\n' +
+        'really needed, no preamble. You are a helper for this app: for anything else\n' +
+        'answer in one friendly sentence that it is outside what you can help with.\n' +
+        'Never give medical advice; for anything clinical, a doctor or a dietitian.\n' +
+        '\n' +
+        '=== GUIDE ===\n' + BEEM_GUIDE;
+
+      let r, detail = '';
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': env.AI_KEY, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001', max_tokens: 700, temperature: 0.3,
+            system: SYSTEM, tools: ASK_TOOLS, messages: stripGemSig(messages),
+          }),
+        });
+      } catch { r = null; }
+      if (r && !r.ok) { try { detail = (await r.text()).slice(0, 200); } catch {} }
+      let out = null;
+      if (r && r.ok) { try { out = await r.json(); } catch { out = null; } }
+      if (!out || !Array.isArray(out.content) || !out.content.length) {
+        const g = await geminiTurn(SYSTEM, ASK_TOOLS, messages, 700);
+        if (g) out = g;
+      }
+      if (!out) {
+        return (r && !r.ok)
+          ? json({ error: 'the model refused', status: r.status, detail, gem_why: gemWhy }, 502)
+          : json({ error: 'could not reach the model', gem_why: gemWhy }, 502);
+      }
+      return json({ ok: true, stop_reason: out.stop_reason || '', content: Array.isArray(out.content) ? out.content : [] });
+    }
+
     if (url.pathname === '/ask' && req.method === 'POST') {
       /* EITHER provider, now that Gemini can use the tools too. */
       if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'asking is not configured' }, 503);
@@ -2450,56 +2667,7 @@ export default {
 
       /* The tools are defined here rather than accepted from the client, so
          this cannot be driven as a general purpose model endpoint. */
-      const TOOLS = [
-        {
-          name: 'get_day',
-          description:
-            "One day of the user's own food log: what they ate, and the totals " +
-            'for energy, protein, carbohydrate, fat and water. Use this for any ' +
-            'question about a particular day, including today.',
-          input_schema: {
-            type: 'object',
-            properties: {
-              date: { type: 'string', description: 'YYYY-MM-DD, or "today" / "yesterday".' },
-            },
-            required: ['date'],
-          },
-        },
-        {
-          name: 'get_range',
-          description:
-            'Daily totals across a span of dates, for questions about a week, a ' +
-            'month, an average or a trend. Returns one row per day.',
-          input_schema: {
-            type: 'object',
-            properties: {
-              from: { type: 'string', description: 'YYYY-MM-DD' },
-              to: { type: 'string', description: 'YYYY-MM-DD' },
-            },
-            required: ['from', 'to'],
-          },
-        },
-        {
-          name: 'get_targets',
-          description:
-            "The user's own daily goals for energy, protein, carbohydrate, fat " +
-            'and water. Needed for anything phrased as how much is left, whether ' +
-            'they are on track, or how much more they should eat.',
-          input_schema: { type: 'object', properties: {}, required: [] },
-        },
-        {
-          name: 'search_food',
-          description:
-            'Look a food up in the app tables. Returns rows with energy and ' +
-            'macros per 100g, and a serving weight where one is known. Use it ' +
-            'for anything about a food the user has not eaten yet.',
-          input_schema: {
-            type: 'object',
-            properties: { query: { type: 'string' } },
-            required: ['query'],
-          },
-        },
-      ];
+      const TOOLS = ASK_TOOLS;
 
       const SYSTEM =
         "You answer questions about the user's own nutrition. Write everything\n" +
