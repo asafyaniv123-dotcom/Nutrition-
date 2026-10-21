@@ -42,7 +42,7 @@ ws.addEventListener('message', (ev) => { const m = JSON.parse(ev.data);
   if (m.method === 'Runtime.exceptionThrown') console.log('PAGE THREW: ' + (m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text).split('\n')[0]); });
 const send = (method, params = {}) => new Promise((r) => { const id = ++seq; pending.set(id, r); ws.send(JSON.stringify({ id, method, params })); });
 await send('Page.enable'); await send('Runtime.enable');
-await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
+await send('Emulation.setDeviceMetricsOverride', { width: 390, height: +(process.env.H || 844), deviceScaleFactor: 3, mobile: true });
 await send('Page.navigate', { url: `http://localhost:${PORT}/${PAGE}` });
 await sleep(+WAIT);
 if (args.includes('--eval')) {
