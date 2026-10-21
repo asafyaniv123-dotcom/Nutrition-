@@ -18,6 +18,10 @@ r = coachEditOnly('update', [it('m2', 'לחם'), it('m3', 'גבינה')], 'm1');
 ok(r.action === 'none' && !r.items.length, 'several items, none of them the edited one: nothing, not a guess');
 ok(coachEditOnly('delete', [it('m1', 'x')], 'm1').action === 'none', 'an edit never deletes');
 ok(coachEditOnly('none', [], 'm1').action === 'none', 'no answer is no change');
+r = coachEditOnly('update', [it('m1', 'סושי'), it('m2', 'טריאקי'), it('m9', 'אחר')], ['m1', 'm2']);
+ok(r.items.length === 2 && r.items.map((x) => x.id).join() === 'm1,m2', 'a message that logged two items: both are the edit, nothing else');
+r = coachEditOnly('add', [it('c1', 'סושי')], ['m1', 'm2']);
+ok(r.action === 'none', 'with several ids, one item under a new id is not guessed at');
 
 const good = { type: 'swipe_edit', ts: Date.now(), before: { id: 1, name: 'ביצים', kcal: 140 }, after: { id: 1, name: 'ביצים', kcal: 260 }, kcal_diff: 120, message: '2 ביצים עם כף שמן', photo: false };
 let c = corrClean(good);

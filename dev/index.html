@@ -1381,6 +1381,9 @@ body.mod-nutrition .log-sw{margin-bottom:12px}
 body.mod-nutrition .log-sw:last-child{margin-bottom:0}
 body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
 .log-act{background:var(--nu-ground,var(--surface));box-shadow:inset 2px 3px 7px var(--nu-shade,rgba(0,0,0,.08)),inset -2px -2px 6px var(--nu-lit,#fff)}
+.co-u[data-ti]{touch-action:pan-y;transition:box-shadow .15s}
+.co-u.lsw-on[data-dir="del"]{box-shadow:0 0 0 2px var(--terra-700)}
+.co-u.lsw-on[data-dir="edit"]{box-shadow:0 0 0 2px var(--violet-700)}
 /* the undo bar: above the tab bar, with the five seconds running out under it */
 .undo-bar{position:fixed;inset-inline:16px;bottom:calc(104px + env(safe-area-inset-bottom));z-index:900;
   display:flex;align-items:center;gap:12px;padding:12px 14px 14px 18px;border-radius:16px;overflow:hidden;
@@ -13191,6 +13194,7 @@ function coachPost(d,text,pics,rec,ed){
       history:hist.slice(-20),
       message:text,
       edit_id:ed?String(ed.id):'',
+      edit_ids:ed&&ed.ids?ed.ids:[],edit_was:ed&&ed.was?String(ed.was).slice(0,600):'',
       /* its own daily budget: per device, not per home network */
       uid:installId(),
       weigh_ctx:_wc.on?weighCtx(d):null,
@@ -13251,9 +13255,12 @@ function lswEndSign(){return document.documentElement.dir==='rtl'?-1:1;}
    A touchmove CAN: once the movement is clearly sideways it is cancelled, so
    the page stays still and the row slides. A mouse keeps pointer events. */
 function lswStart(target,x,y){
-  var row=target.closest&&target.closest('.log-sw > .log-item');
+  /* a meal row, or her own message in the coach chat that logged something -
+     she reached for the second first, with the first nowhere on screen */
+  var row=target.closest&&target.closest('.log-sw > .log-item, .co-u[data-ti]');
   if(!row||target.closest('button'))return false;
-  _lsw={row:row,wrap:row.parentNode,sx:x,sy:y,dx:0,on:false};
+  var bubble=row.classList.contains('co-u');
+  _lsw={row:row,wrap:bubble?row:row.parentNode,bubble:bubble,sx:x,sy:y,dx:0,on:false};
   return true;
 }
 /* true while the row is sliding, so the caller cancels the scroll */
@@ -13298,7 +13305,11 @@ function lswEnd(e){
   if(!w.on)return;
   var id=w.wrap.getAttribute('data-mid'),go=Math.abs(w.dx)>LSW_GO,del=w.dx*lswEndSign()>0;
   w.row.style.transition='transform .2s ease';
-  if(go&&del){
+  if(w.bubble){
+    w.row.style.transform='';
+    setTimeout(function(){w.wrap.classList.remove('lsw-on','lsw-go');w.row.style.transition='';},210);
+    if(go)coachTurnSwipe(+w.row.getAttribute('data-ti'),del);
+  } else if(go&&del){
     w.row.style.transform='translateX('+(lswEndSign()*window.innerWidth)+'px)';
     setTimeout(function(){mealSoftDel(id);},170);
   } else {
@@ -13324,28 +13335,36 @@ function mealById(day,id){
    straight to storage on the way back, because saveDay treats a day that
    grew as a meal just eaten and would have Beem celebrate an undo. */
 var MUNDO_MS=5000,_mUndo=null;
-function mealSoftDel(id){
+function mealSoftDel(ids,onDate){
   mealUndoCommit();
-  var d=curDate,day=loadDay(d),i=mealById(day,id);
-  if(i<0)return;
-  var m=day.meals.splice(i,1)[0];
+  ids=Array.isArray(ids)?ids:[ids];
+  var d=onDate||curDate,day=loadDay(d),gone=[],i,k,names=[];
+  /* from the back, so each index is the one it had before anything moved */
+  for(i=day.meals.length-1;i>=0;i--)
+    for(k=0;k<ids.length;k++)if(String(day.meals[i].id)===String(ids[k])){
+      gone.unshift({m:day.meals[i],i:i});day.meals.splice(i,1);break;
+    }
+  if(!gone.length)return;
   saveDay(d,day);
-  _mUndo={d:d,m:m,i:i,t:setTimeout(mealUndoCommit,MUNDO_MS)};
+  _mUndo={d:d,gone:gone,t:setTimeout(mealUndoCommit,MUNDO_MS)};
   render();
-  undoBarShow(_t('נמחק: {name}',{name:m.name||''}));
+  for(i=0;i<gone.length;i++)names.push(gone[i].m.name||'');
+  var list=names.join(', ');
+  try{list=new Intl.ListFormat(APP_LOCALE,{style:'long',type:'conjunction'}).format(names);}catch(e){}
+  undoBarShow(_t('נמחק: {name}',{name:list}));
 }
 function mealUndo(){
   var u=_mUndo;if(!u)return;
   clearTimeout(u.t);_mUndo=null;
-  var day=loadDay(u.d);
-  day.meals.splice(Math.min(u.i,day.meals.length),0,u.m);
+  var day=loadDay(u.d),i;
+  for(i=0;i<u.gone.length;i++)day.meals.splice(Math.min(u.gone[i].i,day.meals.length),0,u.gone[i].m);
   try{localStorage.setItem('day_'+u.d,JSON.stringify(day));}catch(e){}
   undoBarHide();render();
 }
 function mealUndoCommit(){
   var u=_mUndo;if(!u)return;
   clearTimeout(u.t);_mUndo=null;
-  corrLog('delete',u.m,null,'',!!u.m.photo);
+  for(var i=0;i<u.gone.length;i++)corrLog('delete',u.gone[i].m,null,'',!!u.gone[i].m.photo);
   undoBarHide();
 }
 function undoBarShow(msg){
@@ -13365,8 +13384,10 @@ function mealEditText(m){
   var a=String(m.amount||'').trim(),n=String(m.name||'').trim();
   return a&&n.indexOf(a)<0?n+' \u2014 '+a:n;
 }
-function mealEditOpen(id){
-  var day=loadDay(curDate),i=mealById(day,id);if(i<0)return;
+/* ids: one item or the several a message logged; text: what goes in the box
+   (the item's own description, or her message as she wrote it) */
+function mealEditOpen(id,ids,text,onDate){
+  var d=onDate||curDate,day=loadDay(d),i=mealById(day,id);if(i<0)return;
   mealEditClose();
   var m=day.meals[i];
   var o=document.createElement('div');
@@ -13380,24 +13401,27 @@ function mealEditOpen(id){
     '<button class="medit-no" onclick="mealEditClose()">'+_t('ביטול')+'</button></div></div>';
   document.body.appendChild(o);
   var t=document.getElementById('medit-in');
-  t.value=mealEditText(m);t.setAttribute('data-mid',String(m.id));t.setAttribute('data-was',t.value);
+  t.value=text||mealEditText(m);t.setAttribute('data-was',t.value);t.setAttribute('data-day',d);
+  t.setAttribute('data-ids',JSON.stringify((ids&&ids.length?ids:[m.id]).map(String)));
   rfmGrow(t);t.oninput=function(){rfmGrow(t);};
   setTimeout(function(){t.focus();t.setSelectionRange(t.value.length,t.value.length);},60);
 }
 function mealEditClose(){var o=document.getElementById('medit');if(o)o.remove();}
 function mealEditSend(){
   var t=document.getElementById('medit-in');if(!t)return;
-  var text=t.value.trim(),id=t.getAttribute('data-mid');
-  if(!text||text===t.getAttribute('data-was')){mealEditClose();return;}
+  var text=t.value.trim(),was=t.getAttribute('data-was'),ids=[],d=t.getAttribute('data-day')||curDate;
+  try{ids=JSON.parse(t.getAttribute('data-ids')||'[]');}catch(e){}
+  if(!text||text===was){mealEditClose();return;}
   if(_coachBusy)return;
-  var d=curDate,day=loadDay(d),i=mealById(day,id);
-  if(i<0){mealEditClose();return;}
+  var day=loadDay(d);
+  ids=ids.filter(function(x){return mealById(day,x)>=0;});
+  if(!ids.length){mealEditClose();return;}
   mealEditClose();
   var rec=loadCoach(d);
-  rec.turns.push({role:'user',text:text,pics:[],edit:String(id),at:Date.now()});
+  rec.turns.push({role:'user',text:text,pics:[],edit:ids.join(','),at:Date.now()});
   saveCoach(d,rec);
   _coachBusy=true;_coachErr='';coachPaint();
-  coachPost(d,text,[],rec,{id:String(id),date:d});
+  coachPost(d,text,[],rec,{ids:ids,id:ids[0],was:was,date:d});
 }
 
 /* ── THE CORRECTIONS LOG ──
@@ -13710,6 +13734,19 @@ function coachLeftHTML(d){
     row(_t('קלוריות'),l.kcal)+row(_t('חלבון'),l.p,'g')+
     row(_t('פחמימות'),l.c,'g')+row(_t('שומן'),l.f,'g')+'</div>';
 }
+/* what a message of hers logged that is still on the day: the ids the reply
+   after it added */
+function coachTurnIds(ti){
+  var d=todayStr(),rec=loadCoach(d),day=loadDay(d),n=rec.turns[ti+1];
+  if(!rec.turns[ti]||rec.turns[ti].role!=='user'||!n||n.role!=='assistant'||!Array.isArray(n.ids))return [];
+  return n.ids.filter(function(x){return mealById(day,x)>=0;});
+}
+function coachTurnSwipe(ti,del){
+  var ids=coachTurnIds(ti),d=todayStr();
+  if(!ids.length)return;
+  if(del)mealSoftDel(ids,d);
+  else mealEditOpen(ids[0],ids,loadCoach(d).turns[ti].text||'',d);
+}
 function coachInnerHTML(){
   var d=todayStr(),rec=loadCoach(d),h='',i;
   h+='<div class="co-frame">';
@@ -13720,7 +13757,8 @@ function coachInnerHTML(){
     var t=rec.turns[i];
     if(t.role==='user'){
       var ks=Array.isArray(t.pics)?t.pics:[];
-      h+='<div class="co-u">'+
+      /* a message that logged something can be swiped, like the rows below */
+      h+='<div class="co-u"'+(coachTurnIds(i).length?' data-ti="'+i+'"':'')+'>'+
          (ks.length?'<span class="co-shots">'+ks.map(function(k){
             return photoImg(k,'class="co-img" alt=""');}).join('')+'</span>':'')+
          /* AN OLDER TURN KEPT A NUMBER HERE, before the pictures were

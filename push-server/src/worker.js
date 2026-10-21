@@ -3657,6 +3657,11 @@ export default {
       const message = String((b && b.message) || '').replace(/\s+/g, ' ').trim().slice(0, 1500);
       /* an edit names ONE logged item; the reply may touch nothing else */
       const editId = String((b && b.edit_id) || '').slice(0, 40);
+      /* a message she swiped may have logged several items: all of them are
+         the edit, and what she first wrote comes with it */
+      const editIds = [...new Set([editId].concat(Array.isArray(b && b.edit_ids) ? b.edit_ids : [])
+        .map((x) => String(x || '').slice(0, 40)).filter(Boolean))].slice(0, 12);
+      const editWas = String((b && b.edit_was) || '').replace(/\s+/g, ' ').trim().slice(0, 600);
       /* weigh-ins are part of her tracking: what the app knows about the
          trend, sent every turn, for the moment she says what she weighs */
       const wctx = weighCtxClean(b && b.weigh_ctx);
@@ -3910,7 +3915,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       for (const im of images)
         content.push({ type: 'image', source: { type: 'base64', media_type: String(im.mime || 'image/jpeg'), data: String(im.data) } });
       content.push({ type: 'text', text: STATE + '\n\n' +
-        (editId ? 'EDIT of item_id=' + editId + '. What it really was: ' : '') +
+        (editId ? 'EDIT of item_id' + (editIds.length > 1 ? 's=' + editIds.join(',') : '=' + editId) +
+          (editWas ? '. They had written: "' + editWas + '"' : '') + '. What it really was: ' : '') +
         (message || '(no words, only the picture)') });
       msgs.push({ role: 'user', content });
 
@@ -4020,10 +4026,12 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         restaurant: it.restaurant === true,
       })).filter((it) => it.name);
       let action = ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none';
-      if (editId) ({ action, items } = coachEditOnly(action, items, editId));
+      if (editId) ({ action, items } = coachEditOnly(action, items, editIds));
       /* hidden: the number she typed is not said back to her, whatever the
          model wrote - any figure within three kilos of it goes */
-      let msgOut = String(out.message || '').slice(0, 4000);
+      /* a line break the model wrote as the two characters \ and n reached
+         her screen as "n\" in the middle of a word, and broke the bold */
+      let msgOut = String(out.message || '').replace(/\\n/g, '\n').slice(0, 4000);
       if (weighedKg !== null && wctx.hidden) msgOut = weighScrub(msgOut, weighedKg);
       const hs = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 120);
 
@@ -4564,10 +4572,11 @@ const WEIGH_FLAGS = ['sodium', 'carbs', 'alcohol', 'restaurant', 'late_meal', 't
    whatever the model answers, what leaves here is an update of that id or
    nothing: an add would put a second copy of the food in her day. One item
    under another id is taken to be the one meant; several are not guessed. */
-function coachEditOnly(action, items, editId) {
-  let mine = items.filter((it) => it.id === editId);
-  if (!mine.length && items.length === 1) mine = [Object.assign({}, items[0], { id: editId })];
-  mine = mine.slice(0, 1);
+function coachEditOnly(action, items, ids) {
+  ids = (Array.isArray(ids) ? ids : [ids]).map(String).filter(Boolean);
+  let mine = items.filter((it) => ids.indexOf(it.id) >= 0);
+  if (!mine.length && items.length === 1 && ids.length === 1) mine = [Object.assign({}, items[0], { id: ids[0] })];
+  mine = mine.slice(0, ids.length);
   return mine.length && action !== 'delete' && action !== 'none'
     ? { action: 'update', items: mine } : { action: 'none', items: [] };
 }
