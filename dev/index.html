@@ -13244,28 +13244,56 @@ function coachPost(d,text,pics,rec,ed){
    Only the row moves; a mostly vertical drag is a scroll and is let go. */
 var LSW_MIN=12,LSW_GO=84,_lsw=null;
 function lswEndSign(){return document.documentElement.dir==='rtl'?-1:1;}
-document.addEventListener('pointerdown',function(e){
-  var row=e.target.closest&&e.target.closest('.log-sw > .log-item');
-  if(!row||(e.button&&e.button>0)||e.target.closest('button'))return;
-  _lsw={row:row,wrap:row.parentNode,sx:e.clientX,sy:e.clientY,dx:0,on:false,pid:e.pointerId};
-},true);
-document.addEventListener('pointermove',function(e){
-  var w=_lsw;if(!w||e.pointerId!==w.pid)return;
-  var dx=e.clientX-w.sx,dy=e.clientY-w.sy;
+/* TWO INPUTS, ONE GESTURE. It was pointer events only, and passed in Chrome;
+   on the iPhone it did nothing. Safari decides on the first move whether a
+   touch is a scroll, and a pointer listener cannot take that back - a finger
+   that drifts a pixel downward first is a scroll, and the row never moves.
+   A touchmove CAN: once the movement is clearly sideways it is cancelled, so
+   the page stays still and the row slides. A mouse keeps pointer events. */
+function lswStart(target,x,y){
+  var row=target.closest&&target.closest('.log-sw > .log-item');
+  if(!row||target.closest('button'))return false;
+  _lsw={row:row,wrap:row.parentNode,sx:x,sy:y,dx:0,on:false};
+  return true;
+}
+/* true while the row is sliding, so the caller cancels the scroll */
+function lswMove(x,y){
+  var w=_lsw;if(!w)return false;
+  var dx=x-w.sx,dy=y-w.sy;
   if(!w.on){
-    if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)){_lsw=null;return;}
-    if(Math.abs(dx)<LSW_MIN)return;
+    if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)){_lsw=null;return false;}
+    if(Math.abs(dx)<LSW_MIN)return false;
+    if(Math.abs(dx)<Math.abs(dy)*1.2)return false;   // still deciding
     w.on=true;w.wrap.classList.add('lsw-on');
-    try{w.row.setPointerCapture(w.pid);}catch(err){}
   }
   w.dx=dx;
   w.row.style.transform='translateX('+dx+'px)';
   w.wrap.setAttribute('data-dir',dx*lswEndSign()>0?'del':'edit');
   w.wrap.classList.toggle('lsw-go',Math.abs(dx)>LSW_GO);
-  e.preventDefault();
+  return true;
+}
+document.addEventListener('touchstart',function(e){
+  if(e.touches.length!==1){_lsw=null;return;}
+  if(lswStart(e.target,e.touches[0].clientX,e.touches[0].clientY))_lsw.touch=true;
+},{capture:true,passive:true});
+document.addEventListener('touchmove',function(e){
+  if(!_lsw||!_lsw.touch)return;
+  if(e.touches.length!==1){_lsw=null;return;}
+  if(lswMove(e.touches[0].clientX,e.touches[0].clientY)&&e.cancelable)e.preventDefault();
+},{capture:true,passive:false});
+document.addEventListener('touchend',function(){if(_lsw&&_lsw.touch)lswEnd();},true);
+document.addEventListener('touchcancel',function(){if(_lsw&&_lsw.touch)lswEnd();},true);
+document.addEventListener('pointerdown',function(e){
+  if(e.pointerType!=='mouse'||(e.button&&e.button>0))return;
+  if(lswStart(e.target,e.clientX,e.clientY))_lsw.pid=e.pointerId;
+},true);
+document.addEventListener('pointermove',function(e){
+  if(!_lsw||_lsw.touch||e.pointerId!==_lsw.pid)return;
+  if(lswMove(e.clientX,e.clientY))e.preventDefault();
 },{passive:false});
 function lswEnd(e){
-  var w=_lsw;if(!w||(e&&e.pointerId!==w.pid))return;
+  var w=_lsw;if(!w||(e&&e.pointerId!==undefined&&w.touch))return;
+  if(e&&!w.touch&&e.pointerId!==w.pid)return;
   _lsw=null;
   if(!w.on)return;
   var id=w.wrap.getAttribute('data-mid'),go=Math.abs(w.dx)>LSW_GO,del=w.dx*lswEndSign()>0;
@@ -13281,7 +13309,7 @@ function lswEnd(e){
   /* the click that follows a drag is not a tap */
   var stop=function(ev){ev.stopPropagation();ev.preventDefault();};
   window.addEventListener('click',stop,true);
-  setTimeout(function(){window.removeEventListener('click',stop,true);},60);
+  setTimeout(function(){window.removeEventListener('click',stop,true);},400);
 }
 document.addEventListener('pointerup',lswEnd,true);
 document.addEventListener('pointercancel',lswEnd,true);
