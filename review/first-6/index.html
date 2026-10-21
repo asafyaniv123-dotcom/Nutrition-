@@ -154,18 +154,33 @@ html,body{margin:0;height:100%;background:var(--g);color:var(--ink);font-family:
 .home{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top}
 #s12{padding:0}
 @media (prefers-reduced-motion:reduce){#beem,.scr,.well{transition:none}.chip{animation:none;opacity:1}}
+/* the language list: every language in its own name, the one in use pressed */
+.lsheet{position:absolute;inset:0;z-index:10;background:rgba(42,34,27,.35);opacity:0;pointer-events:none;transition:opacity .3s}
+.lsheet.on{opacity:1;pointer-events:auto}
+.lpanel{position:absolute;left:0;right:0;bottom:0;background:var(--g);border-radius:26px 26px 0 0;padding:10px 18px 26px;transform:translateY(100%);
+  transition:transform .4s cubic-bezier(.2,.9,.3,1);box-shadow:0 -10px 30px rgba(20,14,8,.18);max-height:78%;overflow-y:auto}
+.lsheet.on .lpanel{transform:none}
+.lgrab{width:40px;height:5px;border-radius:3px;background:#cdbfac;margin:0 auto 14px}
+.llist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lrow{border:none;border-radius:16px;padding:14px 16px;background:var(--g);font-family:inherit;font-weight:800;font-size:17px;color:var(--ink);
+  box-shadow:-3px -3px 8px var(--lit),4px 5px 11px var(--sh2);text-align:center}
+.lrow.on{box-shadow:inset 3px 4px 9px var(--sh),inset -3px -3px 8px var(--lit)}
+.lnote{font-size:12.5px;color:#7a4a14;margin-top:10px;min-height:1em}
+[dir=ltr] .lang{right:auto;left:24px}
 </style></head><body><div class="s at-1" id="s">
-<button class="lang">עברית ▾</button>
+<button class="lang" id="langb" onclick="langOpen()">עברית ▾</button>
+<div class="lsheet" id="lsheet" onclick="if(event.target===this)langClose()"><div class="lpanel"><div class="lgrab"></div><div class="llist" id="llist"></div></div></div>
 <div id="beem"></div>
 
 <section class="scr on" id="s1">
   <div class="mid">
-    <div class="wel">ברוכים הבאים ל־</div>
+    <div class="wel" id="w-wel">ברוכים הבאים ל־</div>
     <div class="name">Better Me</div>
-    <p>התכוננו להפוך לגרסה הטובה ביותר של עצמכם.</p>
-    <div class="local">בלי חשבון. הכול נשאר על הטלפון הזה.</div>
+    <p id="w-tag">התכוננו להפוך לגרסה הטובה ביותר של עצמכם.</p>
+    <div class="local" id="w-local">בלי חשבון. הכול נשאר על הטלפון הזה.</div>
+    <div class="lnote" id="w-note"></div>
   </div>
-  <button class="go" onclick="to(2)">נתחיל</button>
+  <button class="go" id="w-go" onclick="to(2)">נתחיל</button>
 </section>
 
 <section class="scr" id="s2">
@@ -293,6 +308,8 @@ sc.onload=function(){BeemKit.ready.then(function(){B=BeemKit.mount(document.getE
 document.head.appendChild(sc);
 
 function to(n){
+  /* prototype: the steps after the welcome exist only in Hebrew */
+  if(n===2&&document.documentElement.dir!=='rtl'){document.documentElement.dir='rtl';document.documentElement.lang='he';}
   var a=document.getElementById('s'+cur),b=document.getElementById('s'+n);
   a.classList.remove('on');a.classList.add('gone');
   b.classList.remove('gone');b.classList.add('on');
@@ -444,5 +461,38 @@ function allow(){
   play('glad');setTimeout(toHome,900);
 }
 function toHome(){to(12);}
+
+/* the welcome in all eleven - the rest of this prototype stays Hebrew */
+var LANGS=[['he','עברית','rtl'],['en','English','ltr'],['de','Deutsch','ltr'],['es','Español','ltr'],['fr','Français','ltr'],['it','Italiano','ltr'],
+  ['pt','Português','ltr'],['ja','日本語','ltr'],['zh-Hans','简体中文','ltr'],['zh-Hant','繁體中文','ltr'],['ar','العربية','rtl']];
+var WEL={
+  he:['ברוכים הבאים ל־','התכוננו להפוך לגרסה הטובה ביותר של עצמכם.','בלי חשבון. הכול נשאר על הטלפון הזה.','נתחיל'],
+  en:['Welcome to','Get ready to become the best version of yourself.','No account. Everything stays on this phone.',"Let's start"],
+  de:['Willkommen bei','Mach dich bereit, die beste Version deiner selbst zu werden.','Kein Konto. Alles bleibt auf diesem Telefon.',"Los geht's"],
+  es:['Te damos la bienvenida a','Prepárate para convertirte en la mejor versión de ti.','Sin cuenta. Todo se queda en este teléfono.','Empezar'],
+  fr:['Bienvenue dans','Prépare-toi à devenir la meilleure version de toi-même.','Sans compte. Tout reste sur ce téléphone.','Commencer'],
+  it:['Ti diamo il benvenuto in','Preparati a diventare la versione migliore di te.','Nessun account. Tutto resta su questo telefono.','Iniziamo'],
+  pt:['Boas-vindas ao','Prepare-se para se tornar a melhor versão de você.','Sem conta. Tudo fica neste telefone.','Começar'],
+  ja:['ようこそ','最高の自分になる準備を始めましょう。','アカウントは不要。すべてこの端末の中に残ります。','はじめる'],
+  'zh-Hans':['欢迎来到','准备好成为最好的自己。','无需账号，所有内容都只保存在这部手机上。','开始'],
+  'zh-Hant':['歡迎來到','準備好成為最好的自己。','無需帳號，所有內容都只保存在這支手機上。','開始'],
+  ar:['أهلًا وسهلًا في','استعدّوا لتصبحوا أفضل نسخة من أنفسكم.','بلا حساب. كل شيء يبقى على هذا الهاتف.','لنبدأ']};
+var LANG='he';
+function langOpen(){
+  document.getElementById('llist').innerHTML=LANGS.map(function(l){
+    return '<button class="lrow'+(l[0]===LANG?' on':'')+'" lang="'+l[0]+'" dir="'+l[2]+'" onclick="langSet(&quot;'+l[0]+'&quot;)">'+l[1]+'</button>';}).join('');
+  document.getElementById('lsheet').classList.add('on');
+}
+function langClose(){document.getElementById('lsheet').classList.remove('on');}
+function langSet(k){
+  var l=LANGS.filter(function(x){return x[0]===k;})[0],w=WEL[k];LANG=k;
+  document.documentElement.lang=k;document.documentElement.dir=l[2];
+  document.getElementById('langb').textContent=l[1]+' ▾';
+  document.getElementById('w-wel').textContent=w[0];document.getElementById('w-tag').textContent=w[1];
+  document.getElementById('w-local').textContent=w[2];document.getElementById('w-go').textContent=w[3];
+  document.getElementById('w-note').textContent=k==='he'?'':'(בהדמיה: מכאן והלאה הטקסט עדיין בעברית)';
+  if(B)B.play(S.glad);
+  setTimeout(langClose,250);
+}
 </script>
 </body></html>
