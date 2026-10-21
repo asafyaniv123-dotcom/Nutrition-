@@ -95,7 +95,7 @@ await send('Page.addScriptToEvaluateOnNewDocument', { source: `(function(){try{
   if(sessionStorage.getItem('__seeded'))return;sessionStorage.setItem('__seeded','1');
   localStorage.clear();
   localStorage.setItem('app_onboarded','1');
-  localStorage.setItem('greet_name','אסף');
+  localStorage.setItem('greet_name',${JSON.stringify(process.env.NAME || 'אסף')});
   localStorage.setItem('app_lang',${JSON.stringify(LANG)});
 }catch(e){}})();` });
 
