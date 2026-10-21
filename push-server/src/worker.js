@@ -3659,7 +3659,9 @@ export default {
       const message = String((b && b.message) || '').replace(/\s+/g, ' ').trim().slice(0, 1500);
       /* an edit names ONE logged item; the reply may touch nothing else */
       const editId = String((b && b.edit_id) || '').slice(0, 40);
-      const weigh = weighClean(b && b.weigh);
+      /* weigh-ins are part of her tracking: what the app knows about the
+         trend, sent every turn, for the moment she says what she weighs */
+      const wctx = weighCtxClean(b && b.weigh_ctx);
       /* not a weigh-in: whether one is due today and still missing */
       const ws = (b && b.weigh_status && typeof b.weigh_status === 'object') ? b.weigh_status : null;
       const weighDue = !!(ws && ws.due_today === true && ws.weighed_today !== true);
@@ -3779,7 +3781,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - Light emoji use is fine. No long lectures.
 
 ## Weigh-ins
-- When the user logs a weight, you receive: today's weight, recent weigh-ins, the trend (computed in code), and flags from the previous 1-2 days (sodium, carbs, alcohol, restaurant, late meal, training).
+- Weigh-ins happen in this chat. When the user reports their own body weight for today ("שקלתי 72.4", "72.4 הבוקר"), put it in weight_kg (in kilograms; convert pounds) and write nothing about it yet - the app then works out the trend in code and sends you the figures: today's weight, how it sits against the trend, the rate, and flags from the previous 1-2 days (sodium, carbs, alcohol, restaurant, late meal, training). Only then do you write the weigh-in reply.
+- weight_kg only when weigh-ins are part of their tracking (WEIGH-INS ARE TRACKED below) and the weight is theirs, today. A weight from another day, a goal, or someone else's is not a weigh-in.
 - Reply in 2-4 short lines: the number, how it compares to the trend (not to yesterday), the most likely reason for any change, and what it means.
 - Always separate water from fat. A jump after salt, carbs, alcohol or a restaurant meal is water and will pass in 1-3 days. Gaining 1 kg of fat requires ~7,700 kcal surplus; use the logged data to show whether that's even possible.
 - Never suggest eating less, skipping meals or "compensating" after a weight increase. The plan stays the same.
@@ -3787,7 +3790,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - If the "expected vs actual" flag is on: explain gently that either some food isn't being logged or the maintenance estimate needs adjusting, and suggest reviewing the target. No blame.
 - If the user hides the number, never mention it. Talk only about the trend.
 - If the user shows distress about their weight or wants to cut drastically, follow the safety rules.
-- A weigh-in turn logs no food: action none, no items.
+- A weigh-in turn logs no food: action none, no items, unless the same message also reports food.
 - With weekly weigh-ins the trend is this week against last week; say so rather than comparing days.
 - When today is one of their weigh-in days and they have not weighed in yet, you may add ONE short line at the end of a reply suggesting it ("אם עוד לא נשקלת היום, זה הזמן") - at most once a day: if today's history already has such a line, never repeat it. Not after they have eaten a meal today, since the morning weight is what counts; not in a reply about distress or safety.
 
@@ -3851,6 +3854,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
             question: { type: 'string' },
             habit_offer: { type: 'string', description: 'a habit you are asking whether to remember, worded as it would be saved' },
             habit_save: { type: 'string', description: 'ONLY when the user just confirmed saving a habit: its text' },
+            weight_kg: { type: 'number', description: 'ONLY when the user reports their own body weight for today, in kg' },
             message: { type: 'string', description: 'what the person reads, in their language' },
           },
           required: ['action', 'date', 'items', 'message'],
@@ -3866,15 +3870,13 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         'Targets: ' + JSON.stringify(targets) + (phase ? '   phase: ' + phase : '') + '\n' +
         'Already logged today: ' + JSON.stringify(logged) + '\n' +
         'Left of each target: ' + JSON.stringify(left) + '\n' +
-        'Recent morning weigh-ins: ' + (weigh && weigh.hidden ? 'hidden by the user - never mention a weight'
+        'Recent morning weigh-ins: ' + (wctx && wctx.hidden ? 'hidden by the user - never mention a weight'
           : weights.length ? JSON.stringify(weights) : 'none recorded') + '\n' +
         'Their habits: ' + (habits.length ? JSON.stringify(habits) : 'none saved') + '\n' +
         'Habits already offered (never offer again): ' + (offered.length ? JSON.stringify(offered) : 'none') + '\n' +
         'Their recent corrections, oldest first: ' + (recentFix.length ? JSON.stringify(recentFix) : 'none') +
-        (weighDue ? '\nToday is one of their weigh-in days and they have not weighed in yet.' : '') +
-        (weigh ? '\nWEIGH-IN NOW (all figures computed by the app' +
-          (weigh.hidden ? '; THE USER HIDES THE NUMBER - you are not given it and must not state or guess any weight' : '') +
-          '): ' + JSON.stringify(weigh) : '');
+        (wctx ? '\nWEIGH-INS ARE TRACKED (' + wctx.mode + (wctx.hidden ? ', THE USER HIDES THE NUMBER - never state or repeat any weight, even one they typed' : '') + ').' : '\nWeigh-ins are not part of their tracking.') +
+        (weighDue ? '\nToday is one of their weigh-in days and they have not weighed in yet.' : '');
 
       const msgs = [];
       for (const t of history) {
@@ -3959,6 +3961,23 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
           if (!again.err) { got = again; retried = true; }
         }
       }
+      /* A WEIGH-IN. The model only noticed the number; the arithmetic is
+         done here, from the trend the app sent, and the reply is written
+         from those figures in a second pass. */
+      let weighedKg = null;
+      const wk = Number(got.use.input.weight_kg);
+      if (wctx && isFinite(wk) && wk >= 20 && wk <= 400) {
+        weighedKg = Math.round(wk * 100) / 100;
+        const fig = weighResult(wctx, weighedKg);
+        const again = await ask(msgs.concat([
+          { role: 'assistant', content: got.d.content },
+          { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id,
+            content: 'The app recorded the weigh-in and worked out (in code - use these, do not recompute): ' +
+              JSON.stringify(fig) + '. Send the reply again: the weigh-in reply under the Weigh-ins rules, ' +
+              'keeping any food from the same message.' + (wctx.hidden ? ' The number is hidden: no weight anywhere in it.' : '') }] },
+        ]));
+        if (!again.err) got = again;
+      }
       const d = got.d, use = got.use;
 
       const out = use.input;
@@ -3980,7 +3999,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       })).filter((it) => it.name);
       let action = ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none';
       if (editId) ({ action, items } = coachEditOnly(action, items, editId));
-      if (weigh) { action = 'none'; items = []; }          // a weigh-in logs no food
+      /* hidden: the number she typed is not said back to her, whatever the
+         model wrote - any figure within three kilos of it goes */
+      let msgOut = String(out.message || '').slice(0, 4000);
+      if (weighedKg !== null && wctx.hidden) msgOut = weighScrub(msgOut, weighedKg);
       const hs = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 120);
 
       /* what the turn cost, as the API counted it - estimates of this were
@@ -3996,7 +4018,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         question: String(out.question || '').slice(0, 300),
         habit_offer: hs(out.habit_offer),
         habit_save: hs(out.habit_save),
-        message: String(out.message || '').slice(0, 4000),
+        message: msgOut,
+        weight_kg: weighedKg,
       });
     }
 
@@ -4441,38 +4464,64 @@ function coachTotals(it) {
            portions, units: units && ku ? units : 0 };
 }
 
-/* A WEIGH-IN, as the app reports it. Hidden means no weight at all reaches
-   the prompt - not today's, not the trend's, not the goal - whatever the
-   phone sent: the only sure way the reply never says it. */
-const WEIGH_FLAGS = ['sodium', 'carbs', 'alcohol', 'restaurant', 'late_meal', 'training'];
-function weighClean(w) {
-  if (!w || typeof w !== 'object') return null;
-  const num = (v, lo, hi) => { const x = Number(v); return v !== null && v !== '' && isFinite(x) && x >= lo && x <= hi ? Math.round(x * 100) / 100 : null; };
+/* WHAT THE APP KNOWS ABOUT THE TREND, sent every turn while weigh-ins are
+   tracked. trend_before_kg is the seven-day mean before today; for weekly
+   weighers this week's other readings (sum, count) and last week's mean. */
+function weighCtxClean(c) {
+  if (!c || typeof c !== 'object') return null;
+  const num = (v, lo, hi) => { const x = Number(v); return v !== null && v !== '' && v !== undefined && isFinite(x) && x >= lo && x <= hi ? Math.round(x * 100) / 100 : null; };
   const day = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '';
-  const o = {
-    mode: w.mode === 'weekly' ? 'weekly' : 'daily',
-    hidden: w.hidden === true,
-    trend_direction: ['down', 'flat', 'up'].indexOf(w.trend_direction) >= 0 ? w.trend_direction : '',
-    change_vs_trend_kg: num(w.change_vs_trend_kg, -30, 30),
-    rate_kg_per_week: num(w.rate_kg_per_week, -10, 10),
-    expected_kg_per_week: num(w.expected_kg_per_week, -10, 10),
-    expected_vs_actual: w.expected_vs_actual === true,
-    weeks_of_data: num(w.weeks_of_data, 0, 520),
-    flags: (Array.isArray(w.flags) ? w.flags : []).slice(0, 2).map((f) => ({
+  return {
+    mode: c.mode === 'weekly' ? 'weekly' : 'daily',
+    hidden: c.hidden === true,
+    trend_before_kg: num(c.trend_before_kg, 20, 400),
+    week_sum_kg: num(c.week_sum_kg, 0, 2800), week_n: num(c.week_n, 0, 7),
+    last_week_kg: num(c.last_week_kg, 20, 400),
+    rate_kg_per_week: num(c.rate_kg_per_week, -10, 10),
+    expected_kg_per_week: num(c.expected_kg_per_week, -10, 10),
+    expected_vs_actual: c.expected_vs_actual === true,
+    weeks_of_data: num(c.weeks_of_data, 0, 520),
+    goal_kg: num(c.goal_kg, 20, 400),
+    flags: (Array.isArray(c.flags) ? c.flags : []).slice(0, 2).map((f) => ({
       day: day(f && f.day),
       flags: (Array.isArray(f && f.flags) ? f.flags : []).filter((x) => WEIGH_FLAGS.indexOf(x) >= 0),
     })).filter((f) => f.day),
   };
-  if (!o.hidden) {
-    o.today_kg = num(w.today_kg, 20, 400);
-    o.trend_kg = num(w.trend_kg, 20, 400);
-    o.goal_kg = num(w.goal_kg, 20, 400);
-    o.to_goal_kg = num(w.to_goal_kg, -380, 380);
-    o.recent = (Array.isArray(w.recent) ? w.recent : []).slice(-14)
-      .map((r) => ({ d: day(r && r.d), kg: num(r && r.kg, 20, 400) })).filter((r) => r.d && r.kg !== null);
+}
+/* today's weight against the trend, in code. Hidden: directions and
+   differences only - no weight reaches the prompt. */
+function weighResult(ctx, kg) {
+  const r2 = (x) => (x === null || !isFinite(x) ? null : Math.round(x * 100) / 100);
+  let change = null;
+  if (ctx.mode === 'weekly') {
+    const n = (ctx.week_n || 0) + 1, mean = ((ctx.week_sum_kg || 0) + kg) / n;
+    if (ctx.last_week_kg !== null) change = mean - ctx.last_week_kg;
+  } else if (ctx.trend_before_kg !== null) change = kg - ctx.trend_before_kg;
+  const rate = ctx.rate_kg_per_week;
+  const dir = rate !== null ? (rate < -0.1 ? 'down' : rate > 0.1 ? 'up' : 'flat')
+    : change !== null ? (change < -0.2 ? 'down' : change > 0.2 ? 'up' : 'flat') : '';
+  const o = {
+    mode: ctx.mode, hidden: ctx.hidden,
+    compared_with: ctx.mode === 'weekly' ? 'this week\'s mean against last week\'s' : 'the seven days before today',
+    change_vs_trend_kg: r2(change), trend_direction: dir, rate_kg_per_week: rate,
+    expected_kg_per_week: ctx.expected_kg_per_week, expected_vs_actual: ctx.expected_vs_actual,
+    weeks_of_data: ctx.weeks_of_data, flags: ctx.flags,
+  };
+  if (!ctx.hidden) {
+    o.today_kg = kg; o.trend_kg = ctx.trend_before_kg; o.goal_kg = ctx.goal_kg;
+    o.to_goal_kg = ctx.goal_kg !== null ? r2(kg - ctx.goal_kg) : null;
   }
   return o;
 }
+/* any figure within three kilos of the weight, as she or the model wrote it */
+function weighScrub(text, kg) {
+  return String(text).replace(/(\d{2,3})(?:[.,](\d{1,2}))?\s*(?:ק"?ג|ק״ג|קילו(?:גרם)?|kg)?/g, (m, a, b) => {
+    const v = Number(a + (b ? '.' + b : ''));
+    return Math.abs(v - kg) <= 3 ? '' : m;
+  }).replace(/\s{2,}/g, ' ').replace(/\s+([.,:;!?])/g, '$1').trim();
+}
+
+const WEIGH_FLAGS = ['sodium', 'carbs', 'alcohol', 'restaurant', 'late_meal', 'training'];
 
 /* AN EDIT TOUCHES ONE ITEM. The app sent one id and will update one row, so
    whatever the model answers, what leaves here is an update of that id or
@@ -4554,4 +4603,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, weighClean, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };

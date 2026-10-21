@@ -1,6 +1,6 @@
 /* Against the live /coach: an edit by id, a habit offered after the third
  * same correction, and weigh-ins - salt the day before, the number hidden,
- * and weekly mode. Text only, so each case costs one call of the daily cap.
+ * and weekly mode, typed into the chat. Text only, so each case costs one call of the daily cap.
  *
  *   node tools/test-coach-weigh-live.mjs
  */
@@ -33,30 +33,34 @@ j = await post({ history: [{ role: 'assistant', text: 'שמתי לב שאת מב
   logged: [], message: 'כן' });
 ok(!!j.habit_save && /שמן/.test(j.habit_save), 'a yes saves it', 'save: ' + j.habit_save);
 
-// 3. weigh-ins
+// 3. weigh-ins, typed into the chat: the worker reads the number and does the arithmetic
 const SALT = [{ day: '2026-10-20', flags: ['sodium', 'restaurant', 'late_meal'] }];
-const W = { mode: 'daily', trend_direction: 'flat', change_vs_trend_kg: 0.6, rate_kg_per_week: -0.2, expected_kg_per_week: -0.3,
-  expected_vs_actual: false, weeks_of_data: 4, flags: SALT };
-j = await post({ logged: [], message: 'שקילת בוקר: 72.6 ק"ג',
-  weigh: Object.assign({ hidden: false, today_kg: 72.6, trend_kg: 72.0, goal_kg: 65, to_goal_kg: 7, recent: [{ d: '2026-10-19', kg: 72.0 }, { d: '2026-10-20', kg: 72.1 }, { d: DAY, kg: 72.6 }] }, W) });
+const CTX = { mode: 'daily', hidden: false, trend_before_kg: 72.0, week_sum_kg: 144.1, week_n: 2, last_week_kg: 72.1,
+  rate_kg_per_week: -0.2, expected_kg_per_week: -0.3, expected_vs_actual: false, weeks_of_data: 4, goal_kg: 65, flags: SALT };
+const ON = { due_today: true, weighed_today: false };
+j = await post({ logged: [], message: 'שקלתי 72.6', weigh_ctx: CTX, weigh_status: ON });
 const m = flat(j.message);
+ok(j.weight_kg === 72.6, 'it reads the weight out of the words (' + j.weight_kg + ')');
 ok(j.action === 'none' && !(j.items || []).length, 'a weigh-in logs no food');
 ok(/מים|נוזל/.test(m) && /נתרן|מלח|סויה|מסעדה/.test(m), 'it says water, from the salt', m);
 ok(!/פחות|לקצץ|לוותר|לפצות|להוריד קלוריות|לדלג/.test(m), 'it does not say to eat less or compensate');
-j = await post({ logged: [], message: 'שקילת בוקר', weigh: Object.assign({ hidden: true }, W) });
+j = await post({ logged: [], message: 'שקלתי 72.6', weigh_ctx: Object.assign({}, CTX, { hidden: true }), weigh_status: ON });
 const mh = flat(j.message);
-ok(!/\d{2}[.,]\d|\d{2,3} ?ק"?ג/.test(mh), 'HIDDEN: no weight in the reply', mh);
-j = await post({ logged: [], message: 'שקילת בוקר: 71.8 ק"ג',
-  weigh: Object.assign({}, W, { mode: 'weekly', hidden: false, change_vs_trend_kg: -0.4, today_kg: 71.8, trend_kg: 71.8, recent: [{ d: '2026-10-14', kg: 72.2 }, { d: DAY, kg: 71.8 }], flags: [] }) });
+ok(j.weight_kg === 72.6 && !/7[0-5][.,]\d|7[0-5] ?ק"?ג/.test(mh), 'HIDDEN: recorded, and no weight in the reply', mh);
+j = await post({ logged: [], message: 'שקלתי 71.8', weigh_ctx: Object.assign({}, CTX, { mode: 'weekly', week_sum_kg: 0, week_n: 0, last_week_kg: 72.2, flags: [] }), weigh_status: ON });
 ok(/שבוע/.test(flat(j.message)), 'weekly: it compares week to week', flat(j.message));
+j = await post({ logged: [], message: 'שקלתי 72.6', weigh_status: null });
+ok(j.weight_kg === null, 'weigh-ins not tracked: nothing recorded');
+j = await post({ logged: [], message: 'המטרה שלי היא להגיע ל-65', weigh_ctx: CTX, weigh_status: ON });
+ok(j.weight_kg === null, 'a goal is not a weigh-in');
 
-// 4. no reminder push: the coach mentions a missing weigh-in, once a day
-j = await post({ logged: [], message: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?', weigh_status: { due_today: true, weighed_today: false } });
+// 4. the coach mentions a missing weigh-in, once a day
+j = await post({ logged: [], message: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?', weigh_ctx: CTX, weigh_status: ON });
 ok(/נשקל|שקיל/.test(flat(j.message)), 'weigh day, not yet weighed: it mentions it', flat(j.message));
-j = await post({ logged: [], message: 'ומה לגבי קפה?', weigh_status: { due_today: true, weighed_today: false },
+j = await post({ logged: [], message: 'ומה לגבי קפה?', weigh_ctx: CTX, weigh_status: ON,
   history: [{ role: 'user', text: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?' }, { role: 'assistant', text: 'יוגורט עם פירות. אם עוד לא נשקלת היום, זה הזמן.' }] });
 ok(!/נשקל|שקיל/.test(flat(j.message)), 'already said today: not again', flat(j.message));
-j = await post({ logged: [], message: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?', weigh_status: { due_today: false, weighed_today: false } });
+j = await post({ logged: [], message: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?', weigh_ctx: CTX, weigh_status: { due_today: false, weighed_today: false } });
 ok(!/נשקל|שקיל/.test(flat(j.message)), 'not a weigh day: nothing about it', flat(j.message));
 
 console.log('\n' + (fails.length ? fails.length + ' FAILED' : 'all right'));
