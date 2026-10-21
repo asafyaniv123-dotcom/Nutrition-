@@ -52,4 +52,13 @@ if (args.includes('--eval')) {
 const a = await send('Page.captureScreenshot', { format: 'png' });
 fs.writeFileSync(OUT, Buffer.from(a.result.data, 'base64'));
 console.log('shot ' + OUT);
+/* --then "<js>" <out.png> <wait-ms>, repeatable: drive the page on and
+   photograph each state, for flows that live on one page */
+for (let i = 0; i < args.length; i++) if (args[i] === '--then') {
+  await send('Runtime.evaluate', { expression: args[i + 1], awaitPromise: true });
+  await sleep(+args[i + 3]);
+  const s = await send('Page.captureScreenshot', { format: 'png' });
+  fs.writeFileSync(args[i + 2], Buffer.from(s.result.data, 'base64'));
+  console.log('shot ' + args[i + 2]);
+}
 ws.close(); chrome.kill(); server.close();
