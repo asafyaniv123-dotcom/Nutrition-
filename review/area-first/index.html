@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>הפעם הראשונה בכל אזור</title>
+<style>
+/* THE FIRST TIME IN AN AREA. One pattern for all seven: the real area screen
+   behind, dimmed; a card rises with Beem and the area's own object, one line on
+   what the area is for, three things that happen here, and one first action.
+   A second, quieter option defers anything that can wait. */
+:root{--g:#f1ece4;--lit:rgba(255,255,255,.95);--sh:rgba(176,168,156,.44);--sh2:rgba(176,168,156,.28);--ink:#4a453f;--mu:#5f5850}
+html,body{margin:0;height:100%;background:#2b2724;font-family:Assistant,"Segoe UI",Arial,sans-serif;overflow:hidden}
+.ph{position:absolute;left:50%;top:0;width:390px;height:844px;transform-origin:50% 0;background:#e9e7e3 0 0/390px 844px no-repeat}
+.dim{position:absolute;inset:0;background:rgba(42,34,27,.42);opacity:0;transition:opacity .4s}
+.ph.on .dim{opacity:1}
+.card{position:absolute;left:0;right:0;bottom:0;background:var(--g);border-radius:28px 28px 0 0;padding:14px 22px 26px;color:var(--ink);
+  transform:translateY(105%);transition:transform .55s cubic-bezier(.2,.9,.3,1);box-shadow:0 -12px 34px rgba(20,14,8,.22)}
+.ph.on .card{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:#d4c9ba;margin:0 auto 12px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.prop{width:72px;height:72px;object-fit:contain;transform:rotate(-6deg);filter:drop-shadow(0 6px 8px rgba(120,90,50,.18))}
+.bm{width:58px;height:58px;margin-inline-start:auto}
+.t{font-size:27px;font-weight:800;letter-spacing:-.4px;line-height:1.15;margin:4px 0 6px}
+.l{font-size:16.5px;line-height:1.55;color:var(--mu);margin:0 0 14px}
+.pts{display:flex;flex-direction:column;gap:9px;margin:0 0 18px;padding:0;list-style:none}
+.pts li{display:flex;gap:10px;align-items:baseline;font-size:16px;font-weight:700;line-height:1.4}
+.pts li::before{content:"";flex:0 0 8px;height:8px;border-radius:50%;background:var(--a);transform:translateY(-1px)}
+.go{width:100%;border:none;border-radius:18px;padding:16px;background:var(--g);font-family:inherit;font-weight:800;font-size:17px;color:var(--ink);
+  box-shadow:-5px -5px 13px var(--lit),7px 9px 20px var(--sh),inset 0 -3px 0 color-mix(in srgb,var(--a) 55%,transparent)}
+.later{display:block;width:100%;border:none;background:none;font-family:inherit;font-weight:700;font-size:14.5px;color:var(--mu);margin-top:8px;padding:8px}
+/* review only: pick the area */
+.tabs{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9;display:flex;gap:4px;padding:5px;border-radius:999px;border:1.5px dashed #b8ab99;background:rgba(255,255,255,.75)}
+.tabs button{border:none;background:none;width:36px;height:36px;border-radius:50%;padding:4px}
+.tabs button img{width:100%;height:100%;object-fit:contain}
+.tabs button.on{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+</style></head><body>
+<div class="tabs" id="tabs"></div>
+<div class="ph" id="ph">
+  <div class="dim"></div>
+  <div class="card" id="card">
+    <div class="grab"></div>
+    <div class="top"><img class="prop" id="prop" src="props/plate.png" alt=""><div class="bm" id="b"></div></div>
+    <div class="t" id="t"></div>
+    <p class="l" id="l"></p>
+    <ul class="pts" id="pts"></ul>
+    <button class="go" id="go"></button>
+    <button class="later" id="later"></button>
+  </div>
+</div>
+<script src="beem.js"></script>
+<script>
+function fit(){var s=Math.min(innerWidth/390,innerHeight/844),p=document.getElementById('ph');p.style.transform='translateX(-50%) scale('+s+')';}
+addEventListener('resize',fit);fit();
+/* the seven, in her form (feminine here); what each one is for, as someone
+   who has never seen the app needs to hear it */
+var A={
+  nutrition:{p:'plate',a:'#8a6fc7',t:'תזונה',l:'כאן רושמים מה אכלת, בלי לספור קלוריות בראש.',
+    pts:['כותבים, מצלמים או מדברים, ואני מחשב','חלבון, פחמימות ושומן לאורך היום','מים בלחיצה אחת'],
+    go:'לרשום ארוחה ראשונה',later:'רוצה יעדים אישיים? 4 שאלות קצרות'},
+  fitness:{p:'dumbbell',a:'#d9775a',t:'כושר',l:'כאן האימונים שלך: מה עשית, איך התקדמת, ומה עושים היום.',
+    pts:['רושמים אימון, עם משקלים וחזרות','שיאים אישיים, ואני חוגג איתך','אימון מוכן כשאין כוח לחשוב'],
+    go:'להתחיל אימון ראשון',later:'לבנות לי תוכנית, 3 שאלות'},
+  hobbies:{p:'palette',a:'#5f9a6e',t:'תחביבים',l:'הדברים שעושים לך טוב, ולאן הזמן שלך באמת הולך.',
+    pts:['מוסיפים תחביב במילה אחת','מסמנים בכל פעם שעשית אותו','רואים לאורך שבועות מה מקבל מקום'],
+    go:'להוסיף תחביב ראשון',later:'אחר כך'},
+  insights:{p:'bulb',a:'#9a8f86',t:'תובנות',l:'שאלות עמוקות יותר על החיים, כשבא לך. אין פה חובה.',
+    pts:['נושאים: אני, אנשים, החיים, העולם','שאלה אחת בכל פעם, בקצב שלך','התשובות נשמרות ונהיות תמונה של מי שאת'],
+    go:'לבחור שאלה ראשונה',later:'אחר כך'},
+  people:{p:'heart',a:'#d9775a',t:'האנשים שלי',l:'מי שחשובים לך, כדי שאף אחד לא ייעלם בין הימים.',
+    pts:['מוסיפים אדם, עם תמונה אם בא לך','תזכורת עדינה כשמזמן לא דיברתם','מי היה איתך, בכל סיכום ערב'],
+    go:'להוסיף אדם ראשון',later:'אחר כך'},
+  planning:{p:'calendar',a:'#4d7fbe',t:'תכנון זמן',l:'מספרים לי מה צריך לקרות, ואני עוזר לסדר את היום והשבוע.',
+    pts:['כותבים או אומרים מה יש מחר','השבוע כולו במבט אחד','מה שתכננת מופיע על שעון החוגה'],
+    go:'לתכנן את מחר',later:'אחר כך'},
+  closet:{p:'shirt',a:'#b07aa1',t:'הארון שלי',l:'מצלמים בגדים פעם אחת, ואז מרכיבים לוקים ורואים מה לבשת.',
+    pts:['מצלמים, והרקע נעלם לבד','מרכיבים לוק מהבגדים שלך','רואים מה לובשים, ומה נשכח בארון'],
+    go:'לצלם בגד ראשון',later:'אחר כך'}
+};
+var ORDER=['nutrition','fitness','hobbies','insights','people','planning','closet'],cur='nutrition';
+document.getElementById('tabs').innerHTML=ORDER.map(function(k){return '<button data-k="'+k+'" onclick="show(\''+k+'\')"><img src="props/'+A[k].p+'.png" alt=""></button>';}).join('');
+function show(k){
+  cur=k;var a=A[k],ph=document.getElementById('ph');
+  ph.classList.remove('on');
+  setTimeout(function(){
+    ph.style.backgroundImage='url(bg/'+k+'.png)';
+    ph.style.setProperty('--a',a.a);
+    document.getElementById('prop').src='props/'+a.p+'.png';
+    document.getElementById('t').textContent=a.t;document.getElementById('l').textContent=a.l;
+    document.getElementById('pts').innerHTML=a.pts.map(function(x){return '<li>'+x+'</li>';}).join('');
+    document.getElementById('go').textContent=a.go;document.getElementById('later').textContent=a.later;
+    [].forEach.call(document.querySelectorAll('.tabs button'),function(b){b.classList.toggle('on',b.getAttribute('data-k')===k);});
+    ph.classList.add('on');
+    if(window.B)B.play({dur:3200,ev:[[0,'face','happy'],[0,'mode',{breathe:[.018,4],idle:0}],[200,'look',-8,-6],[700,'nod',1,7]]});
+  },ph.classList.contains('on')?380:60);
+}
+var sc=document.createElement('script');sc.src='../../vendor/beem-app.js';
+sc.onload=function(){BeemKit.ready.then(function(){window.B=BeemKit.mount(document.getElementById('b'),{play:SMILE});});};
+document.head.appendChild(sc);
+show('nutrition');
+</script>
+</body></html>
