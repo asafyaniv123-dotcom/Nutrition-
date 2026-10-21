@@ -3664,7 +3664,12 @@ export default {
       const wctx = weighCtxClean(b && b.weigh_ctx);
       /* not a weigh-in: whether one is due today and still missing */
       const ws = (b && b.weigh_status && typeof b.weigh_status === 'object') ? b.weigh_status : null;
-      const weighDue = !!(ws && ws.due_today === true && ws.weighed_today !== true);
+      /* WHETHER TO MENTION TODAY'S WEIGH-IN is decided here, not left to the
+         model: told it "may, once a day", it said it twice in a row and on a
+         day that was not a weigh-in day. Due, not yet weighed, not already
+         said today (the app remembers), nothing eaten yet, and not an edit. */
+      const weighNudge = !!(ws && ws.due_today === true && ws.weighed_today !== true && ws.nudged !== true &&
+        !(Array.isArray(b && b.logged) && b.logged.length) && !editId);
       const strs = (a, n, len) => (Array.isArray(a) ? a : []).slice(-n)
         .map((x) => String(x == null ? '' : x).replace(/\s+/g, ' ').trim().slice(0, len)).filter(Boolean);
       const habits = strs(b && b.habits, 30, 120);
@@ -3792,13 +3797,13 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - If the user shows distress about their weight or wants to cut drastically, follow the safety rules.
 - A weigh-in turn logs no food: action none, no items, unless the same message also reports food.
 - With weekly weigh-ins the trend is this week against last week; say so rather than comparing days.
-- When today is one of their weigh-in days and they have not weighed in yet, you may add ONE short line at the end of a reply suggesting it ("אם עוד לא נשקלת היום, זה הזמן") - at most once a day: if today's history already has such a line, never repeat it. Not after they have eaten a meal today, since the morning weight is what counts; not in a reply about distress or safety.
+- Never bring up weighing yourself. Only when the state says WEIGH-IN NUDGE, end the reply with ONE short line suggesting today's weigh-in ("אם עוד לא נשקלת היום, זה הזמן") - unless the reply is about distress or safety.
 
 ## Edits and habits
-- A message with an item_id and edited text is a correction to that item. Return action=update for that id only. Reply in one short line stating what changed and the kcal difference. No "remaining today" block.
+- A message with an item_id and edited text is a correction to that item. Return action=update for that id only. Reply in one short line stating what changed and the kcal difference (plus the habit question below, when it applies). No "remaining today" block.
 - The user profile includes "habits". Apply them by default when the user doesn't specify (e.g. assume no oil if the habit says so), and mention it briefly: "חישבתי בלי שמן כמו תמיד".
 - If the user explicitly says otherwise in a message, the message wins over the habit.
-- If you notice the same type of correction 3 times in recent history, ask once whether to save it as a habit. Never save a habit without the user's confirmation.
+- Count this message together with the recent corrections list: when the same kind of correction (for example "no oil", "milk 1%", "half a portion") appears 3 times or more, ask in THIS reply, in one short line, whether to remember it, and put it in habit_offer. Never save a habit without the user's confirmation.
 - Recent history includes the recent corrections list. When you ask, put the habit, worded as it should be saved, in habit_offer. Never offer one that is already in the habits or in habits already offered.
 - Only when the user has just said yes to saving it, put the habit text in habit_save. Nothing else ever saves one.
 
@@ -3876,7 +3881,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         'Habits already offered (never offer again): ' + (offered.length ? JSON.stringify(offered) : 'none') + '\n' +
         'Their recent corrections, oldest first: ' + (recentFix.length ? JSON.stringify(recentFix) : 'none') +
         (wctx ? '\nWEIGH-INS ARE TRACKED (' + wctx.mode + (wctx.hidden ? ', THE USER HIDES THE NUMBER - never state or repeat any weight, even one they typed' : '') + ').' : '\nWeigh-ins are not part of their tracking.') +
-        (weighDue ? '\nToday is one of their weigh-in days and they have not weighed in yet.' : '');
+        (weighNudge ? '\nWEIGH-IN NUDGE: today is a weigh-in day and they have not weighed in yet.' : '');
 
       const msgs = [];
       for (const t of history) {
@@ -4020,6 +4025,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         habit_save: hs(out.habit_save),
         message: msgOut,
         weight_kg: weighedKg,
+        weigh_nudged: weighNudge,   // the app remembers, so it is said once a day
       });
     }
 

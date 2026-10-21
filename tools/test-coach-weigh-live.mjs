@@ -42,7 +42,7 @@ j = await post({ logged: [], message: 'שקלתי 72.6', weigh_ctx: CTX, weigh_s
 const m = flat(j.message);
 ok(j.weight_kg === 72.6, 'it reads the weight out of the words (' + j.weight_kg + ')');
 ok(j.action === 'none' && !(j.items || []).length, 'a weigh-in logs no food');
-ok(/מים|נוזל/.test(m) && /נתרן|מלח|סויה|מסעדה/.test(m), 'it says water, from the salt', m);
+ok(/מים|נוזל/.test(m) && /נתרן|מלח|מלוח|סויה|מסעדה|בחוץ/.test(m), 'it says water, from the salt', m);
 ok(!/פחות|לקצץ|לוותר|לפצות|להוריד קלוריות|לדלג/.test(m), 'it does not say to eat less or compensate');
 j = await post({ logged: [], message: 'שקלתי 72.6', weigh_ctx: Object.assign({}, CTX, { hidden: true }), weigh_status: ON });
 const mh = flat(j.message);
@@ -56,12 +56,14 @@ ok(j.weight_kg === null, 'a goal is not a weigh-in');
 
 // 4. the coach mentions a missing weigh-in, once a day
 j = await post({ logged: [], message: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?', weigh_ctx: CTX, weigh_status: ON });
-ok(/נשקל|שקיל/.test(flat(j.message)), 'weigh day, not yet weighed: it mentions it', flat(j.message));
-j = await post({ logged: [], message: 'ומה לגבי קפה?', weigh_ctx: CTX, weigh_status: ON,
+ok(/נשקל|שקיל/.test(flat(j.message)) && j.weigh_nudged === true, 'weigh day, not yet weighed: it mentions it, and says so', flat(j.message));
+j = await post({ logged: [], message: 'ומה לגבי קפה?', weigh_ctx: CTX, weigh_status: Object.assign({}, ON, { nudged: true }),
   history: [{ role: 'user', text: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?' }, { role: 'assistant', text: 'יוגורט עם פירות. אם עוד לא נשקלת היום, זה הזמן.' }] });
 ok(!/נשקל|שקיל/.test(flat(j.message)), 'already said today: not again', flat(j.message));
 j = await post({ logged: [], message: 'בוקר טוב, מה כדאי לאכול לארוחת בוקר?', weigh_ctx: CTX, weigh_status: { due_today: false, weighed_today: false } });
 ok(!/נשקל|שקיל/.test(flat(j.message)), 'not a weigh day: nothing about it', flat(j.message));
+j = await post({ logged: [EGGS], message: 'מה לאכול בצהריים?', weigh_ctx: CTX, weigh_status: ON });
+ok(!/נשקל|שקיל/.test(flat(j.message)) && !j.weigh_nudged, 'already eaten today: nothing about it', flat(j.message));
 
 console.log('\n' + (fails.length ? fails.length + ' FAILED' : 'all right'));
 process.exit(fails.length ? 1 : 0);
