@@ -97,12 +97,33 @@ try {
   await tap('#door .dr-btn'); await sleep(1500); await shot('mood');
   await tap('.dr-face', 3); await sleep(1700); await shot('moment');
   await tap('#dr-mo'); await type(LANG === 'he' ? 'ארוחת ערב עם נועם' : 'Dinner with Noam'); await sleep(300);
-  await tap('#door .dr-btn'); await sleep(1700); await shot('day1');
-  await tap('#door .dr-btn'); await sleep(1500); await shot('remind');
+  await tap('#door .dr-btn'); await sleep(1200);
+  const f1 = await ev(`+getComputedStyle(document.querySelector('.dr-well')).getPropertyValue('--drf')`);
+  await shot('day1-rising'); await sleep(2000);
+  const f2 = await ev(`+getComputedStyle(document.querySelector('.dr-well')).getPropertyValue('--drf')`);
+  ok(f1 > 0.2 && f1 < 0.95 && f2 > f1 + 0.1, 'the light rises instead of jumping (' + f1.toFixed(2) + ' then ' + f2.toFixed(2) + ')');
+  ok(await waitFor(`document.querySelectorAll('.dr-bead').length>10`, 1500), "Beem's beads burst when day one is saved");
+  await shot('day1-beads'); await sleep(1800); await shot('day1');
+  await tap('#door .dr-btn');
+  ok(await ev(`!!document.querySelector('#door .dr-btn[disabled]')&&!!document.querySelector('.at-day1')`), 'day one stays a moment for Beem to smile');
+  await sleep(1900); await shot('remind');
   await tap('.dr-later'); await sleep(1500);
   ok(await ev(`!document.getElementById('door')`), 'the door closes');
   ok(await waitFor(`!!document.getElementById('tour')`, 4000), 'Beem\'s tour of home starts');
   await sleep(1200); await shot('tour-1');
+  /* a real thumb on the dial's ring, an arc across its top */
+  const g = await ev(`(function(){var b=document.querySelector('.hdial').getBoundingClientRect();return {cx:b.left+b.width/2,cy:b.top+b.height/2,r:b.width/2-30,rot:_dialRot,y:scrollY};})()`);
+  const pts = [-60, -40, -20, 0, 20].map((a) => ({ x: g.cx + g.r * Math.sin(a * Math.PI / 180), y: g.cy - g.r * Math.cos(a * Math.PI / 180) }));
+  /* the most the dial turned while the thumb was on it - with two areas an
+     80-degree turn rightly snaps back to the first, so the end state is not
+     the evidence */
+  await ev(`(window.__turn=0,document.addEventListener('pointermove',function(){__turn=Math.max(__turn,Math.abs(_dialRot));},true),1)`);
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pts[0]] });
+  for (const p of pts.slice(1)) { await sleep(40); await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [p] }); }
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(700);
+  const g2 = await ev(`({turn:__turn,y:scrollY,tour:!!document.getElementById('tour'),mod:document.body.className})`);
+  ok(g2.turn > 30 && g2.y === g.y && g2.tour && /mod-home/.test(g2.mod), 'during the tour a thumb turns the dial, the page stays put (turned ' + Math.round(g2.turn) + ' deg, scroll ' + g.y + ' -> ' + g2.y + ')');
+  await shot('tour-1-turned');
   for (let i = 2; i <= 4; i++) { await tap('#tour-n'); await sleep(900); await shot('tour-' + i); }
   await tap('#tour-n'); await sleep(600);
   ok(await ev(`!document.getElementById('tour')`), 'the tour ends');
