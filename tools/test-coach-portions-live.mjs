@@ -6,6 +6,9 @@
  * plates, then doubled again). Each case runs three times; the model varies.
  *
  *   node tools/test-coach-portions-live.mjs <photo1.jpg> <photo2.jpg> [host]
+ *
+ * With ADMIN_KEY in the environment the run spends its own daily budget,
+ * not the budget of whoever shares this network.
  */
 import fs from 'node:fs';
 const [p1, p2, HOST = 'https://nutrition-push.nutrition-push.workers.dev'] = process.argv.slice(2);
@@ -18,7 +21,7 @@ const BASE = { day: '2026-10-20', lang: 'he', units: 'metric', gender: 'f', logg
 const isSauce = (n) => /טריאקי|teriyaki/i.test(n);
 const isSushi = (n) => !isSauce(n);
 async function ask(message) {
-  const r = await fetch(HOST + '/coach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  const r = await fetch(HOST + '/coach', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, process.env.ADMIN_KEY ? { Authorization: 'Bearer ' + process.env.ADMIN_KEY } : {}),
     body: JSON.stringify(Object.assign({}, BASE, { message, images })) });
   const j = await r.json();
   if (!j.ok) return { err: r.status + ' ' + JSON.stringify(j).slice(0, 200) };

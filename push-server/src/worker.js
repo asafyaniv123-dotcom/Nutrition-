@@ -3616,9 +3616,7 @@ export default {
       return json({ ok: true, kept: list.length });
     }
     if (url.pathname === '/admin/corrections' && req.method === 'GET') {
-      const want = env.ADMIN_KEY || '';
-      const got = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-      if (!want || got.length !== want.length || got !== want) return json({ error: 'not allowed' }, 401);
+      if (!adminOk(req, env)) return json({ error: 'not allowed' }, 401);
       const days = Math.max(1, Math.min(90, Number(url.searchParams.get('days')) || 7));
       const out = [];
       for (let i = 0; i <= days; i++) {
@@ -3693,14 +3691,28 @@ export default {
 
       /* Its own budget, and an image costs several times a sentence - so the
          cap counts pictures, not turns. A text-only turn spends one. */
-      const cap = Number(env.COACH_DAILY_CAP || 120);
+      /* WHOSE budget. It was the network's alone, so one home shared one
+         budget - and a day of tests from Asaf's computer left his own phone,
+         on the same Wi-Fi, told it had asked too much until 03:00. Now a
+         device that sends its install id has its own, with a wider one per
+         network behind it so new ids cannot be minted to get round it; a
+         run that carries ADMIN_KEY spends a budget of its own and nobody
+         else's. An app without an id is counted by network, as before. */
       const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
       const today = new Date().toISOString().slice(0, 10);
-      const ipKey = 'co:' + today + ':' + ip;
-      const used = Number((await env.SUBS.get(ipKey)) || 0);
       const spend = Math.max(1, images.length * 3);
-      if (used >= cap) return json({ error: 'too many for today' }, 429);
-      await env.SUBS.put(ipKey, String(used + spend), { expirationTtl: 172800 });
+      const buckets = coachBuckets({
+        today, ip, uid: b && b.uid,
+        test: adminOk(req, env),
+        cap: Number(env.COACH_DAILY_CAP || 120),
+        ipCap: Number(env.COACH_IP_DAILY_CAP || 400),
+        testCap: Number(env.COACH_TEST_DAILY_CAP || 600),
+      });
+      const usedNow = await Promise.all(buckets.map((x) => env.SUBS.get(x.key)));
+      for (let i = 0; i < buckets.length; i++)
+        if (Number(usedNow[i] || 0) >= buckets[i].cap) return json({ error: 'too many for today' }, 429);
+      await Promise.all(buckets.map((x, i) =>
+        env.SUBS.put(x.key, String(Number(usedNow[i] || 0) + spend), { expirationTtl: 172800 })));
 
       /* His words, kept in coach/system-prompt.txt so the repo and the
          worker cannot drift apart. */
@@ -4475,6 +4487,20 @@ function coachTotals(it) {
            portions, units: units && ku ? units : 0 };
 }
 
+/* the ADMIN_KEY secret, as a Bearer token */
+function adminOk(req, env) {
+  const want = env.ADMIN_KEY || '';
+  const got = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  return !!want && got.length === want.length && got === want;
+}
+/* which daily counters one coach turn is charged to, each with its cap */
+function coachBuckets(o) {
+  if (o.test) return [{ key: 'co:test:' + o.today, cap: o.testCap }];
+  const uid = /^[0-9a-f]{24}$/.test(String(o.uid || '')) ? String(o.uid) : '';
+  if (!uid) return [{ key: 'co:' + o.today + ':' + o.ip, cap: o.cap }];
+  return [{ key: 'co:' + o.today + ':u:' + uid, cap: o.cap }, { key: 'co:' + o.today + ':n:' + o.ip, cap: o.ipCap }];
+}
+
 /* WHAT THE APP KNOWS ABOUT THE TREND, sent every turn while weigh-ins are
    tracked. trend_before_kg is the seven-day mean before today; for weekly
    weighers this week's other readings (sum, count) and last week's mean. */
@@ -4614,4 +4640,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, coachBuckets, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
