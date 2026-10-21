@@ -28,7 +28,8 @@ async function ask(message) {
   return { j, sushi, sauce, total };
 }
 const once = [], twice = [];
-for (let k = 0; k < 3; k++) {
+const RUNS = Number(process.env.RUNS || 3);
+for (let k = 0; k < RUNS; k++) {
   const a = await ask('אכלתי את מה שבתמונה');
   const b = await ask('אכלתי פעמיים כמו התמונה, ורק צלחת אחת של טריאקי');
   for (const [lbl, x, arr] of [['once ', a, once], ['twice', b, twice]]) {
@@ -42,7 +43,7 @@ for (let k = 0; k < 3; k++) {
 const avg = (a, k) => a.reduce((s, x) => s + x[k], 0) / (a.length || 1);
 const ratio = avg(twice, 'sushi') / (avg(once, 'sushi') || 1);
 const fails = [];
-if (twice.length < 3 || once.length < 3) fails.push('a call failed');
+if (twice.length < RUNS || once.length < RUNS) fails.push('a call failed');
 if (ratio < 1.6 || ratio > 2.4) fails.push('sushi twice / once = ' + ratio.toFixed(2) + ', want about 2');
 if (twice.some((x) => x.j.action !== 'add')) fails.push('"I ate" was not logged');
 if (twice.some((x) => x.sauce < 1)) fails.push('the teriyaki is missing from a reply');
