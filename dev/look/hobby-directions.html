@@ -53,11 +53,12 @@
 
 <div class="wrap">
   <h1>תחביבים</h1>
-  <div class="tag">שלושה כיוונים · מהצד</div>
+  <div class="tag">שישה כיוונים · מהצד</div>
   <div class="lede">
     במקום החלקה והמנורות: <b>כל פעם שעשית תחביב היא חרוז של Beem</b>. אלה החרוזים האמיתיים מהטבעות שלו, צבועים
     לכל תחביב באותה דרך שבה נצבעים הצבעים שלו. החומר הוא שלו, רק הסידור חדש. בכל כיוון אפשר ללחוץ על תחביב כדי
-    להאיר אותו, ועל <b>"עשיתי עכשיו"</b> כדי לראות איך נכנסת פעם חדשה. כל השלושה חיים כל הזמן.
+    להאיר אותו, ועל <b>"עשיתי עכשיו"</b> כדי לראות איך נכנסת פעם חדשה. כולם חיים כל הזמן.
+    <b>ד, ה ו־ו הם הסבב השני</b>, מתחת לשלושה הראשונים.
   </div>
 
   <div class="cols">
@@ -77,12 +78,30 @@
       <p>לכל תחביב מחרוזת שנמתחת לרוחב החודש, מהיום הראשון ועד האחרון. חרוז יושב על כל יום שבו עשית, וגדול יותר
         כשעשית יותר. המחרוזות מתנדנדות קצת, ונגיעה בהן מקפיצה אותן. רואים מיד איפה היו ימים ריקים.</p>
     </div>
+    <div class="col" data-k="sky">
+      <h2><i>ד</i>קבוצת כוכבים</h2>
+      <p>כמו Beem בלילה, כשהחרוזים שלו נהיים כוכבים. החודש הוא שמיים, מימין לשמאל לפי הימים, וכל פעם היא כוכב שמנצנץ.
+        לתחביב הנבחר נמתח קו מכוכב לכוכב לפי הסדר, ונוצרת קבוצת כוכבים שהיא רק שלך. פעם חדשה נופלת כמו כוכב
+        נופל, והקו נמשך אליה.</p>
+    </div>
+    <div class="col" data-k="float">
+      <h2><i>ה</i>עמודות צפות</h2>
+      <p>לכל תחביב עמודה של חרוזים שצפים אחד על השני, כמו בועות במים: כל אחד מתנדנד קצת בקצב שלו. ככל שעשית יותר
+        העמודה גבוהה יותר, ורואים במבט מי מוביל החודש. פעם חדשה עולה מלמטה ודוחפת את כל העמודה למעלה.</p>
+    </div>
+    <div class="col" data-k="dial">
+      <h2><i>ו</i>חוגת החודש</h2>
+      <p>באותה שפה כמו החוגה במסך הבית: החודש הוא עיגול של 31 ימים, וחרוזי היום נערמים החוצה מהמקום של כל יום.
+        אור עובר לאט סביב החוגה ומאיר את החרוזים שהוא פוגש. נקודה ענברית מסמנת את היום, ופעם חדשה עפה מהמרכז
+        אל המקום שלה.</p>
+    </div>
   </div>
 
   <div class="verdict">
     <b>מה לחפש:</b> האם זה מרגיש <b>שלנו</b>, כלומר שייך ל־Beem ולשאר האפליקציה, ולא לפורסט. האם החיים בזה נעימים,
     או שזה כבר מסיח. ואיזה מבנה עונה הכי טוב על השאלה "איך הלך לי החודש": מסלולים אומרים "כמה", צנצנת אומרת
-    "כמה, יחד", ומחרוזות אומרות "מתי".
+    "כמה, יחד", מחרוזות אומרות "מתי", כוכבים אומרים "הדרך שעשיתי", עמודות אומרות "מי מוביל", והחוגה אומרת
+    "מתי, ובאיזה קצב".
     <b>מה לא השתנה:</b> אחרי שתבחר, שאר המסך (התת־נושאים, המטרה של החודש, המחברת) נבנה בהתאם בסבב הבא.
   </div>
 </div>
@@ -317,9 +336,120 @@ function HdString(stage, dims){
   };
 }
 
+/* a stable "random" for a hobby and a day, so the sky is the same sky every time */
+function hdHash(a, b){ var x = Math.sin(a*127.1 + b*311.7)*43758.5453; return x - Math.floor(x); }
+
+/* ═══ D · A CONSTELLATION ═══ */
+function HdSky(stage, dims){
+  var drawn = 0, fall = [], selT = performance.now();
+  this.select = function(){ drawn = 0; selT = performance.now(); };
+  this.add = function(i, d){ fall.push({i: i, d: d, t: 0}); };
+  function at(D, i, d){ return {x: D.W - 26 - (D.W - 52)*(d - 1)/(HD_DAYS - 1), y: D.H*(.14 + .72*hdHash(i + 1, d))}; }
+  this.step = function(dt){ drawn = Math.min(1, drawn + dt/1.6); fall.forEach(function(f){ f.t += dt; }); };
+  this.draw = function(cx, now){
+    var D = dims();
+    HD_HOBBIES.forEach(function(h, i){
+      var sel = i === hdSel, pts = h.days.slice().sort(function(a, b){ return a.d - b.d; }).map(function(d){ return {d: d, p: at(D, i, d.d)}; });
+      if (sel && pts.length > 1){
+        /* the line is drawn from the first day on, so selecting a hobby traces its month */
+        var total = (pts.length - 1)*drawn, fl = fall.filter(function(f){ return f.i === i && f.t < .9; });
+        cx.beginPath(); cx.moveTo(pts[0].p.x, pts[0].p.y);
+        for (var n = 1; n < pts.length; n++){
+          if (fl.some(function(f){ return f.d === pts[n].d; })) break;
+          var u = Math.max(0, Math.min(1, total - (n - 1)));
+          if (u <= 0) break;
+          cx.lineTo(pts[n - 1].p.x + (pts[n].p.x - pts[n - 1].p.x)*u, pts[n - 1].p.y + (pts[n].p.y - pts[n - 1].p.y)*u);
+        }
+        cx.strokeStyle = hdHex(h) + '66'; cx.lineWidth = 1.4; cx.stroke();
+      }
+      pts.forEach(function(o, n){
+        var tw = .82 + .18*Math.sin(now/(380 + 90*((n*7 + i*3) % 5)) + n*1.9 + i), r = (sel ? 5.2 : 3.6)*tw*(1 + Math.min(o.d.v, 50)/220), p = o.p;
+        var f = fall.filter(function(q){ return q.d === o.d; })[0];
+        if (f && f.t < .9){ var u = f.t/.9, e = 1 - Math.pow(1 - u, 2), sx = p.x - 160, sy = p.y - 140;
+          var x = sx + (p.x - sx)*e, y = sy + (p.y - sy)*e;
+          var g = cx.createLinearGradient(x - 60*(1 - u), y - 52*(1 - u), x, y); g.addColorStop(0, hdHex(h) + '00'); g.addColorStop(1, hdHex(h) + 'aa');
+          cx.beginPath(); cx.moveTo(x - 60, y - 52); cx.lineTo(x, y); cx.strokeStyle = g; cx.lineWidth = 2.4; cx.stroke();
+          p = {x: x, y: y}; r *= 1.4;
+        }
+        hdBead(cx, hdSprite(h), p.x, p.y, r, sel ? 1 : .4);
+      });
+    });
+  };
+}
+
+/* ═══ E · FLOATING COLUMNS ═══ */
+function HdFloat(stage, dims){
+  var cols = HD_HOBBIES.map(function(h){ return h.days.map(function(d, n){ return {d: d, y: 0, vy: 0, ph: hdHash(n, 9)*6.28}; }); });
+  var init = false;
+  this.select = function(){};
+  this.add = function(i, d){ var D = dims(); cols[i].unshift({d: d, y: D.H + 20, vy: -40, ph: Math.random()*6.28}); };
+  this.step = function(dt, now){
+    var D = dims(), r = 8.2, base = D.H - 22;
+    cols.forEach(function(c){ c.forEach(function(b, n){
+      var ty = base - r - n*r*1.9;
+      if (!init){ b.y = D.H + 30 + n*14; }
+      /* a buoyant spring: it overshoots and settles, then keeps a small bob */
+      b.vy += ((ty - b.y)*26 - b.vy*5.5)*dt; b.y += b.vy*dt;
+    }); });
+    init = true;
+  };
+  this.draw = function(cx, now){
+    var D = dims(), r = 8.2, gap = D.W/(HD_HOBBIES.length + 1);
+    cols.forEach(function(c, i){
+      var h = HD_HOBBIES[i], sel = i === hdSel, x0 = D.W - gap*(i + 1);
+      /* the floor the column stands in: a short pressed groove */
+      cx.beginPath(); cx.moveTo(x0 - 16, D.H - 14); cx.lineTo(x0 + 16, D.H - 14); cx.lineCap = 'round';
+      cx.strokeStyle = 'rgba(176,168,156,.4)'; cx.lineWidth = 5; cx.stroke();
+      cx.strokeStyle = 'rgba(255,255,255,.9)'; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(x0 - 15, D.H - 12.5); cx.lineTo(x0 + 15, D.H - 12.5); cx.stroke();
+      c.forEach(function(b, n){
+        var bob = Math.sin(now/700 + b.ph)*2.2*(1 + n*.06), sway = Math.sin(now/1100 + b.ph*1.3)*(1.4 + n*.22);
+        hdBead(cx, hdSprite(h), x0 + sway, b.y + bob, r*(sel ? 1.08 : .92), sel ? 1 : .55);
+      });
+      var top = c.length ? Math.min.apply(null, c.map(function(b){ return b.y; })) : D.H - 30;
+      cx.fillStyle = sel ? '#433c38' : '#8a8279'; cx.textAlign = 'center'; cx.font = (sel ? '800 ' : '700 ') + '13px Assistant, system-ui';
+      cx.fillText(c.length, x0, top - 16);
+    });
+  };
+}
+
+/* ═══ F · THE MONTH'S DIAL ═══ */
+function HdDial(stage, dims){
+  var fly = [];
+  this.select = function(){};
+  this.add = function(i, d){ fly.push({i: i, d: d, t: 0}); };
+  this.step = function(dt){ fly.forEach(function(f){ f.t += dt; }); };
+  this.draw = function(cx, now){
+    var D = dims(), C = {x: D.W/2, y: D.H/2}, R = Math.min(D.W, D.H)*.24, sweep = (now/9000*Math.PI*2) % (Math.PI*2);
+    function ang(day){ return -Math.PI/2 + (day - .5)/HD_DAYS*Math.PI*2; }
+    /* the dial's track: a pressed ring in the one material */
+    cx.beginPath(); cx.arc(C.x, C.y, R - 10, 0, Math.PI*2); cx.lineWidth = 8; cx.strokeStyle = 'rgba(176,168,156,.3)'; cx.stroke();
+    cx.beginPath(); cx.arc(C.x - 1, C.y - 1, R - 10, 0, Math.PI*2); cx.lineWidth = 3; cx.strokeStyle = 'rgba(255,255,255,.85)'; cx.stroke();
+    /* the light that goes round */
+    var lg = cx.createConicGradient ? cx.createConicGradient(sweep - Math.PI/2 - .9, C.x, C.y) : null;
+    if (lg){ lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(.14, 'rgba(255,255,255,.55)'); lg.addColorStop(.15, 'rgba(255,255,255,0)'); lg.addColorStop(1, 'rgba(255,255,255,0)');
+      cx.beginPath(); cx.arc(C.x, C.y, R*1.9, 0, Math.PI*2); cx.arc(C.x, C.y, R - 4, 0, Math.PI*2, true); cx.fillStyle = lg; cx.fill(); }
+    /* today: an amber DOT, the only amber on the screen */
+    var ta = ang(HD_TODAY); cx.beginPath(); cx.arc(C.x + Math.cos(ta)*(R - 10), C.y + Math.sin(ta)*(R - 10), 3.4, 0, Math.PI*2); cx.fillStyle = '#f0a92e'; cx.fill();
+    var stack = {};
+    HD_HOBBIES.forEach(function(h, i){
+      h.days.forEach(function(d){
+        var k = stack[d.d] = (stack[d.d] || 0) + 1, a = ang(d.d), sel = i === hdSel, r = sel ? 5.4 : 4.4;
+        var near = Math.cos(a - (sweep - Math.PI/2)), lit = near > .97 ? (near - .97)/.03 : 0;
+        var rad = R + 2 + (k - .5)*11, p = {x: C.x + Math.cos(a)*rad, y: C.y + Math.sin(a)*rad};
+        var f = fly.filter(function(q){ return q.d === d; })[0];
+        if (f && f.t < .8){ var u = f.t/.8, e = 1 - Math.pow(1 - u, 3); p = {x: C.x + (p.x - C.x)*e, y: C.y + (p.y - C.y)*e}; r *= 1.5 - .5*e; }
+        hdBead(cx, hdSprite(h), p.x, p.y, r*(1 + .35*lit), sel ? 1 : .42 + .5*lit);
+      });
+    });
+    var h = HD_HOBBIES[hdSel];
+    cx.fillStyle = '#433c38'; cx.textAlign = 'center'; cx.font = '800 30px Assistant, system-ui'; cx.fillText(h.days.length, C.x, C.y + 6);
+    cx.fillStyle = '#675f57'; cx.font = '700 11px Assistant, system-ui'; cx.fillText(h.name, C.x, C.y + 22);
+  };
+}
+
 COLORS_READY.then(function(){
   HD_BEAD = hdPickBead();
-  var K = {orbit: HdOrbit, jar: HdJar, string: HdString};
+  var K = {orbit: HdOrbit, jar: HdJar, string: HdString, sky: HdSky, float: HdFloat, dial: HdDial};
   document.querySelectorAll('.col').forEach(function(col){ new HdPhone(col, K[col.getAttribute('data-k')]); });
 });
 </script>
