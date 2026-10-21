@@ -745,23 +745,8 @@ export default {
         last: toMin(now.hhmm) >= toMin(b.time) ? now.date : (prev && prev.time === b.time ? prev.last : ''),
         updated: new Date().toISOString(),
       };
-      /* the 20:00 "how many steps?" reminder, for whoever has it on */
-      if (b.ar === true) { rec.ar = true; rec.alast = (prev && prev.alast) || ''; }
       await env.SUBS.put(key, JSON.stringify(rec));
       return json({ ok: true, time: rec.time, tz: rec.tz });
-    }
-
-    /* the app says today needs no activity reminder - a dinner or steps or a
-       workout is already in, or the coach has asked - so 20:00 stays quiet */
-    if (url.pathname === '/remind-done' && req.method === 'POST') {
-      let b;
-      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
-      if (!b || !b.endpoint || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.date || ''))) return json({ error: 'bad request' }, 400);
-      const key = await subKey(b.endpoint);
-      const rec = await env.SUBS.get(key, 'json');
-      if (!rec) return json({ ok: true, known: false });
-      if (rec.alast !== b.date) { rec.alast = b.date; await env.SUBS.put(key, JSON.stringify(rec)); }
-      return json({ ok: true });
     }
 
     if (url.pathname === '/unsubscribe' && req.method === 'POST') {
@@ -4575,50 +4560,30 @@ If they logged two or three days, say so without reproach and write about what t
 
         let now;
         try { now = localNow(rec.tz); } catch { continue; }
-        const due = remindersDue(rec, now);
-        if (!due.mark) continue;                           // nothing due, nothing to record
+        if (rec.last === now.date) continue;               // already sent today
 
-        if (due.send) {
-          const res = await sendPush(rec.endpoint, env);
-          if (res.status === 404 || res.status === 410) {
-            await env.SUBS.delete(k.name);                 // subscription is gone for good
-            continue;
-          }
-          rec.lastStatus = res.status;
+        const late = toMin(now.hhmm) - toMin(rec.time);
+        if (late < 0) continue;                            // not yet
+        if (late > LATE_WINDOW_MIN) {                      // too late to be useful
+          rec.last = now.date;
+          await env.SUBS.put(k.name, JSON.stringify(rec));
+          continue;
+        }
+
+        const res = await sendPush(rec.endpoint, env);
+        if (res.status === 404 || res.status === 410) {
+          await env.SUBS.delete(k.name);                   // subscription is gone for good
+          continue;
         }
         // Mark sent even on a transient failure - better a missed day than a retry storm.
-        Object.assign(rec, due.mark);
+        rec.last = now.date;
+        rec.lastStatus = res.status;
         await env.SUBS.put(k.name, JSON.stringify(rec));
       }
       cursor = page.list_complete ? null : page.cursor;
     } while (cursor);
   },
 };
-
-/* ── WHICH REMINDER IS DUE ──
-   One subscription, two reminders: the evening summary at rec.time, and -
-   for whoever has it on (rec.ar) - "how many steps?" at 20:00, unless the
-   app has said today needs none (rec.alast). For a record without the
-   second this is exactly what the loop always did: nothing before the time,
-   a push within LATE_WINDOW_MIN of it, a silent mark after that, once a day.
-   The activity one keeps a short window - a step count asked for at
-   midnight is not a question. Both due in one minute is ONE push; the phone
-   picks the words by the clock. Returns { mark, send }. */
-const ACT_REMIND_AT = '20:00', ACT_REMIND_WINDOW = 15;
-function remindersDue(rec, now) {
-  const mark = {};
-  let send = false;
-  const step = (t, lastField, win) => {
-    if (!/^\d{2}:\d{2}$/.test(t || '') || rec[lastField] === now.date) return;
-    const late = toMin(now.hhmm) - toMin(t);
-    if (late < 0) return;                                  // not yet
-    mark[lastField] = now.date;
-    if (late <= win) send = true;                          // else too late to be useful
-  };
-  step(rec.time, 'last', LATE_WINDOW_MIN);
-  if (rec.ar === true) step(ACT_REMIND_AT, 'alast', ACT_REMIND_WINDOW);
-  return { mark: Object.keys(mark).length ? mark : null, send };
-}
 
 /* ── /route, THE PURE HALF ──
    The model's answer is a suggestion, not an instruction. Everything it can
@@ -4927,4 +4892,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, remindersDue, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };

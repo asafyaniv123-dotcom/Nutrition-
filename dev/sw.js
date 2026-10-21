@@ -57,26 +57,19 @@ self.addEventListener('push', function (e) {
   // one where the cache cannot be read at all.
   e.waitUntil(
     (async function () {
-      var title = MSG_TITLE, body = pushed || MSG_BODY, tag = 'sumrem';
+      var title = MSG_TITLE, body = pushed || MSG_BODY;
       try {
         // the page left the sentence here when it subscribed: already in the
         // reader's language, and already in the voice she chose
         var cfg = await readConfig();
         if (cfg && cfg.title) title = cfg.title;
         if (!pushed && cfg && cfg.body) body = cfg.body;
-        // the 20:00 "how many steps?" rides the same subscription, and the
-        // worker sends it only within a quarter of an hour of 20:00
-        if (cfg && cfg.ar && cfg.atitle && isActivityHour(new Date())) {
-          title = cfg.atitle;
-          if (!pushed) body = cfg.abody || '';
-          tag = 'activity';
-        }
       } catch (err) {}
       return self.registration.showNotification(title, {
         body: body,
         icon: ICON,
         badge: ICON,
-        tag: tag,
+        tag: 'sumrem',
         renotify: true,
       });
     })()
@@ -114,18 +107,12 @@ self.addEventListener('pushsubscriptionchange', function (e) {
         await fetch(cfg.server + '/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subscription: fresh.toJSON(), time: cfg.time, tz: cfg.tz, ar: cfg.ar === true }),
+          body: JSON.stringify({ subscription: fresh.toJSON(), time: cfg.time, tz: cfg.tz }),
         });
       } catch (err) {}
     })()
   );
 });
-
-// The worker's ACT_REMIND_AT and ACT_REMIND_WINDOW: 20:00, a quarter of an hour.
-function isActivityHour(now) {
-  var m = now.getHours() * 60 + now.getMinutes();
-  return m >= 20 * 60 && m <= 20 * 60 + 15;
-}
 
 // The page stashes what the resubscribe needs, since the SW cannot read localStorage.
 async function readConfig() {

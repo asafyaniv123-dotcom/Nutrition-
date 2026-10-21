@@ -10674,7 +10674,6 @@ function saveDay(d,data){
   var grew=d===todayStr()&&data&&data.meals&&data.meals.length>(loadDay(d).meals||[]).length;
   try{localStorage.setItem('day_'+d,JSON.stringify(data));}catch(e){}
   if(grew)beemReact('meal',data.meals[data.meals.length-1]);
-  if(grew)setTimeout(actRemindCheck,0);
 }
 /* ── PHOTO STORE ──
    Photos used to sit as data URIs inside the day's record. localStorage has
@@ -11726,7 +11725,6 @@ function saveSteps(d,v,src){
   try{localStorage.setItem('steps_'+d,JSON.stringify(rec));}catch(e){}
   var s=loadSummary(d);
   if(s){s.steps=rec.v;saveSummary(d,s);}
-  setTimeout(actRemindCheck,0);
   return rec;
 }
 function stepsOf(d){var r=loadSteps(d);return r?r.v:0;}
@@ -13465,7 +13463,6 @@ function coachPost(d,text,pics,rec,ed){
       j.asked_steps=true;
     }
     if(j.asked_steps)try{localStorage.setItem('steps_asked',d);}catch(e){}
-    actRemindCheck();
     var wkg=typeof j.weight_kg==='number'?j.weight_kg:null;
     if(wkg!==null&&logWeight(wkg,d)){
       for(var u0=rec2.turns.length-1;u0>=0;u0--)if(rec2.turns[u0].role==='user'){rec2.turns[u0].weigh=1;break;}
@@ -13996,7 +13993,7 @@ function actCfg(){
   var p=loadProfile(),b=parseInt(p&&p.stepBase,10);
   return {base:b>=0&&b<=50000?b:8000,ask:!(p&&p.actAsk===false)};
 }
-function actSetCfg(k,v){var p=loadProfile();p[k]=v;saveProfile(p);renderProfile();if(k==='actAsk')sumRemPushSync();}
+function actSetCfg(k,v){var p=loadProfile();p[k]=v;saveProfile(p);renderProfile();}
 /* what today holds: steps, a strength workout, minutes of cardio */
 function actState(d){
   var a=actLoad(d),strength=!!a.strength,cardio=+a.cardio_min||0,w=workoutsOn(d),i,j,q;
@@ -14031,23 +14028,6 @@ function actFromReply(d,a){
   if(a.strength)o.strength=true;
   if(a.cardio_min>0)o.cardio_min=a.cardio_min;
   actSave(d,o);
-}
-/* Tell the push server today needs no 20:00 "how many steps?": a dinner, a
-   step count or a workout is in, or the coach has already asked. Once a day,
-   and only where there is a subscription to tell it about. */
-function actRemindCheck(){
-  if(!PUSH_SERVER||!_swReg||!_swReg.pushManager)return;
-  var d=todayStr();
-  if(localStorage.getItem('act_rdone')===d||!actCfg().ask||!loadSumRem().on)return;
-  var s=actState(d),meals=loadDay(d).meals||[],dinner=false,i;
-  for(i=0;i<meals.length;i++)if(mealKind(meals[i])==='dinner'){dinner=true;break;}
-  if(!(dinner||s.steps>0||s.strength||s.cardio_min>0||localStorage.getItem('steps_asked')===d))return;
-  try{localStorage.setItem('act_rdone',d);}catch(e){}
-  _swReg.pushManager.getSubscription().then(function(sub){
-    if(!sub)return;
-    return fetch(PUSH_SERVER+'/remind-done',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({endpoint:sub.endpoint,date:d})});
-  }).catch(function(){try{localStorage.removeItem('act_rdone');}catch(e){}});
 }
 function actSettingsHTML(){
   var c=actCfg();
@@ -19435,7 +19415,7 @@ function renderComingSoon(mod){
 function loadTemplates(){try{var x=localStorage.getItem('fit_templates');return x?JSON.parse(x):[];}catch(e){return[];}}
 function saveTemplates(arr){try{localStorage.setItem('fit_templates',JSON.stringify(arr));}catch(e){}}
 function loadWorkoutLog(){try{var x=localStorage.getItem('fit_log');return x?JSON.parse(x):[];}catch(e){return[];}}
-function saveWorkoutLog(arr){try{localStorage.setItem('fit_log',JSON.stringify(arr));}catch(e){}setTimeout(actRemindCheck,0);}
+function saveWorkoutLog(arr){try{localStorage.setItem('fit_log',JSON.stringify(arr));}catch(e){}}
 function loadPRs(){try{var x=localStorage.getItem('fit_prs');return x?JSON.parse(x):{};}catch(e){return{};}}
 function savePRs(obj){try{localStorage.setItem('fit_prs',JSON.stringify(obj));}catch(e){}}
 
@@ -30461,10 +30441,7 @@ function pushStashConfig(o){
          dictionary and no idea who it is speaking to. This is the only place
          that knows both, so it says the sentence here. */
       c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ(),
-        title:sumRemTitle(),body:sumRemMsg(),
-        /* the 20:00 "how many steps?" rides the same subscription; the
-           phone picks these words when a push lands between 20:00 and 20:15 */
-        ar:actCfg().ask,atitle:_t('כמה צעדים הלכת היום?'),abody:_t('אעדכן לך את היעד.')}),
+        title:sumRemTitle(),body:sumRemMsg()}),
         {headers:{'Content-Type':'application/json'}}));
     });
   }catch(e){}
@@ -30491,7 +30468,7 @@ function sumRemPushSync(){
     return fetch(PUSH_SERVER+'/subscribe',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ(),ar:actCfg().ask})
+      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ()})
     });
   }).then(function(r){
     _pushState=r&&r.ok?'ok':'error';renderSumRem();
