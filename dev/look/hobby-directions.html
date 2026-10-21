@@ -46,6 +46,7 @@
   .cap2{font-size:12px;font-weight:700;color:var(--muted);margin-top:6px;padding:0 4px;text-align:right}
   .add{display:block;width:100%;margin-top:16px;border:0;border-radius:14px;padding:12px;background:#4a4340;color:#fff;
     font:800 14px Assistant,system-ui,sans-serif;cursor:pointer}
+  .sec{font-size:22px;font-weight:800;margin-top:34px}
   .verdict{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-size:13px;line-height:1.85;color:var(--muted);max-width:96ch}
   @media (max-width:980px){.cols{grid-template-columns:1fr;max-width:420px}.col p{min-height:0}}
   @media (max-width:520px){.wrap{padding:22px 16px 60px}h1{font-size:36px}}
@@ -61,6 +62,27 @@
     <b>ד, ה ו־ו הם הסבב השני</b>, מתחת לשלושה הראשונים.
   </div>
 
+  <h2 class="sec">שלוש וריאציות על א · מסלולים</h2>
+  <div class="cols">
+    <div class="col" data-k="orbitFocus">
+      <h2><i>א2 · וריאציה על המסלולים</i>הטבעת מתקרבת</h2>
+      <p>כמו א, אבל הבחירה זזה: הטבעת של התחביב הנבחר מסתובבת אלייך ונפתחת לעיגול גדול, והאחרות נסוגות ונהיות
+        קטנות ושקופות. במרכז החרוז של התחביב נושם, ומתחתיו המספר. המעבר בין תחביבים הוא תנועה, לא קפיצה.</p>
+    </div>
+    <div class="col" data-k="orbitTop">
+      <h2><i>א3 · וריאציה על המסלולים</i>מבט מלמעלה</h2>
+      <p>אותן טבעות, אבל ממבט מלמעלה, וכל אחת היא תעלה לחוצה בחומר של האפליקציה. היום הראשון למעלה, והחודש הולך
+        עם כיוון השעון. גל עובר לאורך החרוזים של התחביב הנבחר, וכאן קל לקרוא באיזה יום עשית. פעם חדשה מתגלגלת
+        בתעלה עד המקום שלה.</p>
+    </div>
+    <div class="col" data-k="orbitAtom">
+      <h2><i>א4 · וריאציה על המסלולים</i>אטום</h2>
+      <p>הטבעות בתלת־ממד, כל אחת במישור אחר, כמו אטום או ג'ירוסקופ, והכול מסתובב לאט. <b>אפשר לסובב באצבע</b>,
+        והוא ממשיך עם התנופה ונעצר לאט. הטבעת הנבחרת מוארת. זה הכי קרוב לתחושה של Beem עצמו.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">ששת הכיוונים</h2>
   <div class="cols">
     <div class="col" data-k="orbit">
       <h2><i>א</i>מסלולים</h2>
@@ -447,9 +469,139 @@ function HdDial(stage, dims){
   };
 }
 
+/* the centre both orbit variants share: a raised disc in the one material */
+function hdDisc(cx, x, y, R){
+  cx.save(); cx.shadowColor = 'rgba(176,168,156,.5)'; cx.shadowBlur = 16; cx.shadowOffsetX = 5; cx.shadowOffsetY = 6;
+  cx.beginPath(); cx.arc(x, y, R, 0, Math.PI*2); cx.fillStyle = '#e9e7e3'; cx.fill(); cx.restore();
+  cx.save(); cx.shadowColor = 'rgba(255,255,255,.95)'; cx.shadowBlur = 12; cx.shadowOffsetX = -4; cx.shadowOffsetY = -4;
+  cx.beginPath(); cx.arc(x, y, R, 0, Math.PI*2); cx.fillStyle = '#e9e7e3'; cx.fill(); cx.restore();
+}
+function hdEase(a, b, k){ return a + (b - a)*k; }
+
+/* ═══ A2 · THE RING COMES TO YOU ═══ */
+function HdOrbitFocus(stage, dims){
+  var st = HD_HOBBIES.map(function(h, i){ return {R: .2 + i*.06, yS: .34, rot: -16 + i*12, a: .4}; }), spin = [0, 1.6, 3.1, 4.4], drop = [];
+  this.select = function(){};
+  this.add = function(i, d){ drop.push({d: d, t: 0}); };
+  this.step = function(dt){
+    var k = 1 - Math.pow(.02, dt), back = 0;
+    st.forEach(function(s, i){
+      var sel = i === hdSel, tR = sel ? .42 : .14 + (back++)*.045;
+      s.R = hdEase(s.R, tR, k); s.yS = hdEase(s.yS, sel ? .9 : .3, k); s.rot = hdEase(s.rot, sel ? 0 : -24 + i*16, k); s.a = hdEase(s.a, sel ? 1 : .32, k);
+      spin[i] += (sel ? .1 : .22*(i % 2 ? -1 : 1))*dt;
+    });
+    drop.forEach(function(o){ o.t += dt; });
+  };
+  this.draw = function(cx, now){
+    var D = dims(), C = {x: D.W/2, y: D.H/2}, list = [];
+    HD_HOBBIES.forEach(function(h, i){
+      var s = st[i], R = D.W*s.R, a = s.rot*Math.PI/180;
+      if (i === hdSel){ cx.save(); cx.translate(C.x, C.y); cx.rotate(a); cx.beginPath(); cx.ellipse(0, 0, R, R*s.yS, 0, 0, Math.PI*2);
+        cx.strokeStyle = hdHex(h) + '38'; cx.lineWidth = 2; cx.stroke(); cx.restore(); }
+      h.days.forEach(function(d){
+        var th = spin[i] - Math.PI/2 + (d.d - .5)/HD_DAYS*Math.PI*2, x = R*Math.cos(th), y = R*s.yS*Math.sin(th), z = Math.sin(th)*(1 - s.yS + .1);
+        var p = {x: C.x + x*Math.cos(a) - y*Math.sin(a), y: C.y + x*Math.sin(a) + y*Math.cos(a)}, r = (4.2 + 2.6*s.a)*(1 + .2*z)*(1 + Math.min(d.v, 50)/220);
+        var o = drop.filter(function(q){ return q.d === d; })[0];
+        if (o && o.t < .8){ var u = o.t/.8, e = 1 - Math.pow(1 - u, 3); p = {x: C.x + (p.x - C.x)*e, y: C.y + (p.y - C.y)*e}; r *= 1.6 - .6*e; }
+        list.push({z: z, f: function(){ hdBead(cx, hdSprite(h), p.x, p.y, r, s.a); }});
+      });
+    });
+    list.sort(function(a, b){ return a.z - b.z; });
+    list.filter(function(o){ return o.z < 0; }).forEach(function(o){ o.f(); });
+    hdDisc(cx, C.x, C.y, 38);
+    var h = HD_HOBBIES[hdSel];
+    hdBead(cx, hdSprite(h), C.x, C.y - 7, 12 + 1.2*Math.sin(now/560), 1);
+    cx.fillStyle = '#433c38'; cx.textAlign = 'center'; cx.font = '800 15px Assistant, system-ui'; cx.fillText(h.days.length, C.x, C.y + 24);
+    list.filter(function(o){ return o.z >= 0; }).forEach(function(o){ o.f(); });
+  };
+}
+
+/* ═══ A3 · FROM ABOVE ═══ */
+function HdOrbitTop(stage, dims){
+  var roll = [];
+  this.select = function(){};
+  this.add = function(i, d){ roll.push({d: d, t: 0}); };
+  this.step = function(dt){ roll.forEach(function(o){ o.t += dt; }); };
+  this.draw = function(cx, now){
+    var D = dims(), C = {x: D.W/2, y: D.H/2};
+    function ang(day){ return -Math.PI/2 + (day - .5)/HD_DAYS*Math.PI*2; }
+    HD_HOBBIES.forEach(function(h, i){
+      var sel = i === hdSel, R = D.W*(.17 + i*.075) + Math.sin(now/1600 + i)*1.2;
+      /* the groove: a pressed channel, and the selected one carries a little of its colour */
+      cx.beginPath(); cx.arc(C.x, C.y, R, 0, Math.PI*2); cx.lineWidth = 11; cx.strokeStyle = sel ? hdHex(h) + '26' : 'rgba(176,168,156,.24)'; cx.stroke();
+      cx.beginPath(); cx.arc(C.x - .8, C.y - .8, R + 5, Math.PI*.95, Math.PI*1.55); cx.lineWidth = 1.6; cx.strokeStyle = 'rgba(176,168,156,.4)'; cx.stroke();
+      cx.beginPath(); cx.arc(C.x + .8, C.y + .8, R - 5, Math.PI*-.05, Math.PI*.55); cx.lineWidth = 1.6; cx.strokeStyle = 'rgba(255,255,255,.9)'; cx.stroke();
+      h.days.forEach(function(d, n){
+        var a = ang(d.d), r = (sel ? 5.4 : 4.2)*(1 + Math.min(d.v, 50)/200);
+        /* the wave: a swell that runs round the selected ring, day after day */
+        if (sel){ var w = Math.cos(now/420 - a*2.2); r *= 1 + .38*Math.max(0, w)*Math.max(0, w); }
+        var o = roll.filter(function(q){ return q.d === d; })[0];
+        if (o && o.t < 1.1){ var u = o.t/1.1, e = 1 - Math.pow(1 - u, 3); a = ang(1) + (a - ang(1))*e; }
+        hdBead(cx, hdSprite(h), C.x + Math.cos(a)*R, C.y + Math.sin(a)*R, r, sel ? 1 : .45);
+      });
+    });
+    /* today: one amber dot, outside the outer groove */
+    var ta = ang(HD_TODAY), Ro = D.W*(.17 + 3*.075) + 14;
+    cx.beginPath(); cx.arc(C.x + Math.cos(ta)*Ro, C.y + Math.sin(ta)*Ro, 3.2, 0, Math.PI*2); cx.fillStyle = '#f0a92e'; cx.fill();
+    var h = HD_HOBBIES[hdSel];
+    cx.fillStyle = '#433c38'; cx.textAlign = 'center'; cx.font = '800 26px Assistant, system-ui'; cx.fillText(h.days.length, C.x, C.y + 6);
+    cx.fillStyle = '#675f57'; cx.font = '700 10.5px Assistant, system-ui'; cx.fillText(h.name, C.x, C.y + 20);
+  };
+}
+
+/* ═══ A4 · THE ATOM ═══ */
+function HdOrbitAtom(stage, dims){
+  /* each ring's plane, as two angles - like Beem's own tilt and precession */
+  var planes = [[70, 0], [70, 60], [70, 120], [20, 30]], spin = [0, 1, 2, 3], yaw = 0, pitch = -14, vyaw = 9, drag = null, drop = [];
+  this.select = function(){};
+  this.add = function(i, d){ drop.push({d: d, t: 0}); };
+  stage.addEventListener('pointerdown', function(e){ drag = {x: e.clientX, y: e.clientY, t: performance.now()}; stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener('pointermove', function(e){ if (!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y, dtm = Math.max(1, performance.now() - drag.t);
+    yaw += dx*.5; pitch = Math.max(-60, Math.min(60, pitch + dy*.4)); vyaw = dx*.5/dtm*1000; drag = {x: e.clientX, y: e.clientY, t: performance.now()}; });
+  stage.addEventListener('pointerup', function(){ drag = null; });
+  this.step = function(dt){
+    if (!drag){ vyaw += (9 - vyaw)*(1 - Math.pow(.25, dt)); yaw += vyaw*dt; pitch += (-14 - pitch)*(1 - Math.pow(.5, dt)); }
+    for (var i = 0; i < 4; i++) spin[i] += (.18 + i*.05)*(i % 2 ? -1 : 1)*dt;
+    drop.forEach(function(o){ o.t += dt; });
+  };
+  function rot(p, ax, ay){   // ax around X, then ay around Y (degrees)
+    var a = ax*Math.PI/180, b = ay*Math.PI/180, y = p[1]*Math.cos(a) - p[2]*Math.sin(a), z = p[1]*Math.sin(a) + p[2]*Math.cos(a);
+    return [p[0]*Math.cos(b) + z*Math.sin(b), y, -p[0]*Math.sin(b) + z*Math.cos(b)];
+  }
+  this.draw = function(cx, now){
+    var D = dims(), C = {x: D.W/2, y: D.H/2}, list = [], F = 520;
+    function proj(q){ var s = F/(F - q[2]); return {x: C.x + q[0]*s, y: C.y + q[1]*s, s: s, z: q[2]}; }
+    HD_HOBBIES.forEach(function(h, i){
+      var sel = i === hdSel, R = D.W*(.24 + i*.045), pl = planes[i];
+      function world(th){ var q = rot([R*Math.cos(th), R*Math.sin(th), 0], pl[0], pl[1]); return rot(q, pitch, yaw); }
+      if (sel){
+        /* its track, in front and behind, as a thin line in its colour */
+        for (var n = 0; n < 72; n++){ var A = proj(world(n/72*Math.PI*2)), B = proj(world((n + 1)/72*Math.PI*2));
+          (function(A, B){ list.push({z: (A.z + B.z)/2 - .01, f: function(){ cx.beginPath(); cx.moveTo(A.x, A.y); cx.lineTo(B.x, B.y);
+            cx.strokeStyle = hdHex(h) + (A.z > 0 ? '55' : '22'); cx.lineWidth = 1.6; cx.stroke(); }}); })(A, B); }
+      }
+      h.days.forEach(function(d){
+        var p = proj(world(spin[i] + (d.d - .5)/HD_DAYS*Math.PI*2)), r = (sel ? 5.6 : 4.4)*p.s*(1 + Math.min(d.v, 50)/220);
+        var o = drop.filter(function(q){ return q.d === d; })[0];
+        if (o && o.t < .8){ var u = o.t/.8, e = 1 - Math.pow(1 - u, 3); p = {x: C.x + (p.x - C.x)*e, y: C.y + (p.y - C.y)*e, z: p.z}; r *= 1.6 - .6*e; }
+        list.push({z: p.z, f: function(){ hdBead(cx, hdSprite(h), p.x, p.y, r, sel ? 1 : .45); }});
+      });
+    });
+    list.sort(function(a, b){ return a.z - b.z; });
+    list.filter(function(o){ return o.z < 0; }).forEach(function(o){ o.f(); });
+    hdDisc(cx, C.x, C.y, 30);
+    var h = HD_HOBBIES[hdSel];
+    cx.fillStyle = '#433c38'; cx.textAlign = 'center'; cx.font = '800 24px Assistant, system-ui'; cx.fillText(h.days.length, C.x, C.y + 4);
+    cx.fillStyle = '#675f57'; cx.font = '700 10px Assistant, system-ui'; cx.fillText(h.name, C.x, C.y + 17);
+    list.filter(function(o){ return o.z >= 0; }).forEach(function(o){ o.f(); });
+  };
+}
+
 COLORS_READY.then(function(){
   HD_BEAD = hdPickBead();
-  var K = {orbit: HdOrbit, jar: HdJar, string: HdString, sky: HdSky, float: HdFloat, dial: HdDial};
+  var K = {orbit: HdOrbit, jar: HdJar, string: HdString, sky: HdSky, float: HdFloat, dial: HdDial,
+           orbitFocus: HdOrbitFocus, orbitTop: HdOrbitTop, orbitAtom: HdOrbitAtom};
   document.querySelectorAll('.col').forEach(function(col){ new HdPhone(col, K[col.getAttribute('data-k')]); });
 });
 </script>
