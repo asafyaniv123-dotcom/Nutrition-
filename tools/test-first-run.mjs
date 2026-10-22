@@ -102,7 +102,9 @@ try {
   await shot('day1-rising'); await sleep(2000);
   const f2 = await ev(`+getComputedStyle(document.querySelector('.dr-well')).getPropertyValue('--drf')`);
   ok(f1 > 0.2 && f1 < 0.95 && f2 > f1 + 0.1, 'the light rises instead of jumping (' + f1.toFixed(2) + ' then ' + f2.toFixed(2) + ')');
-  ok(await waitFor(`document.querySelectorAll('.dr-bead').length>10`, 1500), "Beem's beads burst when day one is saved");
+  ok(await waitFor(`document.querySelectorAll('.dr-bloom .dr-bloom-ring.go').length===2`, 1500), 'the light opens from the well when day one is saved');
+  ok(await waitFor(`/surprised|happy/.test(_dr.beem&&_dr.beem.faceName)`, 800), 'and Beem is glad of it');
+  await sleep(900); await shot('day1-bloom');
   await shot('day1-beads'); await sleep(1800); await shot('day1');
   await tap('#door .dr-btn');
   ok(await ev(`!!document.querySelector('#door .dr-btn[disabled]')&&!!document.querySelector('.at-day1')`), 'day one stays a moment for Beem to smile');

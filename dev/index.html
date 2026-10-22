@@ -4531,6 +4531,16 @@ html body.mod-endofday .rfd-seal-t,html body.mod-endofday .rfd-mark{color:var(--
   box-shadow:inset 4px 6px 10px var(--nu-shade),inset -4px -4px 9px var(--nu-lit),0 0 24px 6px rgba(140,184,232,.45)}
 /* a step: its words, arriving from the side */
 .dr-bead{position:fixed;z-index:10000;border-radius:50%;pointer-events:none;box-shadow:0 1px 2px rgba(120,50,20,.25)}
+/* the light opens: rings of warm light from the well, and a brief wash */
+.dr-bloom{position:fixed;inset:0;z-index:10000;pointer-events:none;overflow:hidden}
+.dr-bloom-ring{position:absolute;left:var(--x);top:var(--y);width:var(--d);height:var(--d);margin:calc(var(--d) / -2) 0 0 calc(var(--d) / -2);border-radius:50%;opacity:0;
+  box-shadow:0 0 34px 10px rgba(255,206,140,.55),inset 0 0 30px 8px rgba(255,226,180,.5)}
+.dr-bloom-ring.go{animation:drBloom 2.4s cubic-bezier(.2,.7,.3,1) forwards}
+.dr-bloom-ring.b.go{animation-delay:.35s;animation-duration:2.8s}
+@keyframes drBloom{0%{transform:scale(.9);opacity:0}12%{opacity:1}100%{transform:scale(5.2);opacity:0}}
+.dr-bloom-wash{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at var(--x) var(--y),rgba(255,236,200,.55),rgba(255,236,200,0) 60%)}
+.dr-bloom-wash.go{animation:drWash 2.6s ease forwards}
+@keyframes drWash{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
 .dr-step{position:absolute;inset:0;box-sizing:border-box;padding:calc(22px + env(safe-area-inset-top)) 24px calc(30px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;animation:drIn .55s cubic-bezier(.2,.9,.3,1) .2s both}
 @keyframes drIn{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
@@ -40073,26 +40083,43 @@ function doorTimed(){
 }
 /* the first reflection, written through the reflection's own writer */
 function doorFill(p){var f=document.getElementById('dr-fill');if(f)f.parentNode.style.setProperty('--drf',p);}
-/* DAY ONE, SAVED. Beem's own beads burst from the light - the same glossy
-   amber, orange and red he is made of, so it is his, not a party popper -
-   and the phone answers in the hand where it can. */
+/* DAY ONE, SAVED: THE LIGHT OPENS. A warm ring leaves the well and opens
+   across the screen, a softer one after it, over a moment of warm wash -
+   nothing flies (Asaf chose this over bead confetti, 22 Oct). Beem is
+   surprised, hops, smiles, and goes back to his ordinary eyes. */
+var BEEM_MOMENT={dur:1e9,ev:[[0,'face','surprised'],[0,'mode',{idle:0,breathe:[.016,4]}],[250,'face','happy'],[250,'hop',70],
+  [250,'burst',1.4],[1300,'nod',1,8],[2800,'face','calm']]};
 function doorCheer(){
   appHaptic();
+  try{if(_dr.beem)_dr.beem.play(BEEM_MOMENT);}catch(e){}
   var wl=document.querySelector('.dr-well');if(!wl)return;
   if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  var r=wl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,
-      C=['#f6b73c','#f08a3c','#e8553a','#f9cf5a'],i;
-  for(i=0;i<34;i++){
-    var b=document.createElement('i'),a=Math.random()*Math.PI*2,d=70+Math.random()*120,z=5+Math.random()*7,c=C[i%C.length];
+  var r=wl.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,d=Math.max(r.width,120),i,
+      w=document.createElement('div');
+  w.className='dr-bloom';
+  w.innerHTML='<i class="dr-bloom-wash"></i><i class="dr-bloom-ring"></i><i class="dr-bloom-ring b"></i>';
+  w.style.setProperty('--x',x+'px');w.style.setProperty('--y',y+'px');w.style.setProperty('--d',d+'px');
+  document.body.appendChild(w);
+  requestAnimationFrame(function(){for(i=0;i<w.children.length;i++)w.children[i].classList.add('go');});
+  setTimeout(function(){w.remove();},3600);
+}
+/* BEEM'S OWN RING, GOING OUT - option C of the same page, which Asaf liked
+   and asked to keep for another moment. His beads leave him once as a single
+   ring that opens wide and fades: his shape, made big. Not used yet. */
+function beemRingOut(x,y){
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var C=['#f6b73c','#f08a3c','#e8553a','#f9cf5a'],n=36,i,z=7,R=40;
+  for(i=0;i<n;i++){
+    var b=document.createElement('i'),a=i/n*Math.PI*2,c=C[i%4],R2=230+(i%2)*14;
     b.className='dr-bead';
-    b.style.cssText='left:'+(cx-z/2)+'px;top:'+(cy-z/2)+'px;width:'+z+'px;height:'+z+'px;'+
+    b.style.cssText='left:'+(x-z/2)+'px;top:'+(y-z/2)+'px;width:'+z+'px;height:'+z+'px;'+
       'background:radial-gradient(circle at 35% 30%,#fff8 0 18%,'+c+' 45%,color-mix(in srgb,'+c+' 70%,#7a2a10))';
     document.body.appendChild(b);
-    var dx=Math.cos(a)*d,dy=Math.sin(a)*d;
-    b.animate([{transform:'translate(0,0) scale(.3)',opacity:0},{transform:'translate('+dx*.7+'px,'+dy*.7+'px) scale(1)',opacity:1,offset:.35},
-      {transform:'translate('+dx+'px,'+(dy+140)+'px) scale(.8)',opacity:0}],
-      {duration:1500+Math.random()*700,easing:'cubic-bezier(.2,.7,.4,1)',delay:Math.random()*120,fill:'forwards'})
-      .onfinish=(function(x){return function(){x.remove();};})(b);
+    b.animate([{transform:'translate('+Math.cos(a)*R+'px,'+Math.sin(a)*R+'px)',opacity:0},
+      {transform:'translate('+Math.cos(a)*(R+20)+'px,'+Math.sin(a)*(R+20)+'px)',opacity:1,offset:.12},
+      {transform:'translate('+Math.cos(a)*R2+'px,'+Math.sin(a)*R2+'px) scale(.6)',opacity:0}],
+      {duration:2200,easing:'cubic-bezier(.15,.7,.3,1)',fill:'both'})
+      .onfinish=(function(e){return function(){e.remove();};})(b);
   }
 }
 /* A tap in the hand. Android has vibrate; iOS Safari has none, but since iOS
