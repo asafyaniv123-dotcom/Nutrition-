@@ -149,6 +149,39 @@
   .tb-row small{font-size:11.5px;color:var(--muted);font-weight:700}
   .tb-row i{width:10px;height:10px;border-radius:50%;background:var(--past);flex:none}
 
+  /* the new-hobby questions */
+  /* five or more hobbies: the columns narrow to share the card, and past seven it scrolls */
+  .tb-bars{flex-wrap:nowrap;overflow-x:auto}
+  .tb-col{flex:1 0 54px;width:auto;min-width:0}
+  .tb-lbl,.tb-val{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .wz{padding-top:24px}
+  .wz h3{font-size:24px;font-weight:800;margin-top:6px}
+  .wz-dots{display:flex;gap:6px;justify-content:center}
+  .wz-dots i{width:22px;height:5px;border-radius:3px;background:rgba(176,168,156,.35)}
+  .wz-dots i.on{background:#4a453f}
+  .wz-in{width:100%;height:50px;border:none;border-radius:16px;padding:0 16px;font:inherit;font-size:17px;margin-top:14px;color:var(--ink)}
+  .wz-next,.wz-back{border:none;border-radius:16px;height:50px;font-weight:800;font-size:15px;cursor:pointer}
+  .wz-next{flex:1;width:100%;background:#4a453f;color:#fff;margin-top:18px}
+  .wz-next:disabled{opacity:.35}
+  .wz-back{padding:0 20px;margin-top:18px;background:var(--ground);box-shadow:-3px -3px 7px var(--lit),4px 5px 10px var(--shade-soft)}
+  .wz-row{display:flex;gap:10px}
+  .wz-opts{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .wz-opt{border:none;border-radius:18px;padding:14px 16px;text-align:start;cursor:pointer;background:var(--ground);box-shadow:-4px -4px 9px var(--lit),5px 6px 13px var(--shade-soft)}
+  .wz-opt b{display:block;font-size:17px}
+  .wz-opt span{font-size:12.5px;color:var(--muted)}
+  .wz-opt.on{box-shadow:inset 3px 3px 7px var(--shade),inset -3px -3px 7px var(--lit),0 0 0 2px #4a453f}
+  .wz-goal{display:flex;gap:10px;align-items:center;margin-top:16px}
+  .wz-goal .wz-in{margin:0;text-align:center;font-size:28px;font-weight:800;height:62px}
+  .wz-goal button{width:56px;height:56px;border-radius:50%;border:none;font-size:24px;font-weight:800;cursor:pointer;flex:none;background:var(--ground);box-shadow:-3px -3px 7px var(--lit),4px 5px 10px var(--shade)}
+  .wz-unit{text-align:center;font-size:14px;font-weight:800;color:var(--muted);margin-top:6px}
+  .wz-per{display:flex;gap:8px;justify-content:center;margin-top:12px}
+  .wz-per button{border:none;border-radius:14px;padding:9px 18px;font-weight:800;cursor:pointer;background:var(--ground);box-shadow:-3px -3px 7px var(--lit),4px 5px 10px var(--shade-soft)}
+  .wz-per button.on{box-shadow:inset 3px 3px 7px var(--shade),inset -3px -3px 7px var(--lit)}
+  .wz-say{text-align:center;font-size:14px;margin-top:16px;color:var(--muted)}
+  .wz-say b{color:var(--ink)}
+  .wz-prev{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px}
+  .wz-add{border:none;background:none;font:inherit;font-weight:800;font-size:12px;color:var(--ink);cursor:pointer;padding:0}
+
   @media (max-width:1000px){.cols{grid-template-columns:1fr;max-width:420px}.col p.d{min-height:0}}
   @media (max-width:520px){.wrap{padding:22px 16px 60px}h1{font-size:36px}}
 </style>
@@ -166,7 +199,8 @@
       <h2><i>ד · כמו התזונה</i>עמודות של שבוע</h2>
       <p class="d">אותן עמודות שסוגרות את התזונה: תעלה לחוצה לכל תחביב, שמתמלאת מלמטה לקראת היעד של השבוע, ופס לכל פעם שעשית, כמו
         פס לכל ארוחה. מתחת לכל עמודה השם ו"כמה מתוך כמה". לחיצה על עמודה רושמת: בזמן בוחרים כמה דקות או מפעילים טיימר, בכמות מוסיפים,
-        וב"עשיתי" מסמנים. עמודה שמתמלאת נדלקת.</p>
+        וב"עשיתי" מסמנים. עמודה שמתמלאת נדלקת. <b>"+ תחביב חדש"</b> שואל שלוש שאלות: איך קוראים לו, איך מודדים אותו,
+        ומה המטרה, כי המטרה היא ה־100% של העמודה.</p>
       <div class="phone"><div class="scr"></div></div>
     </div>
     <div class="col" id="cA">
@@ -374,15 +408,75 @@ function BoardPhone(col){
    week's goal - and the name and "value / target" under it. */
 var HT_PASTEL = {'גיטרה': '#bfd7b4', 'ריצה': '#fdb7a7', 'קריאה': '#cdc6f0', 'ציור': '#b2cded'};
 var HT_DEEP = {'גיטרה': '#a3c597', 'ריצה': '#f89c87', 'קריאה': '#b5abea', 'ציור': '#94b9e6'};
+/* a new hobby takes the next pastel; the four first are the nutrition card's */
+var HT_MORE = [['#f9ce93', '#f4b465'], ['#f5b8d4', '#ec98be'], ['#a8dcd6', '#82c7bf'], ['#d9cfa6', '#c4b67c']];
+function htTime(m){ return m < 60 ? m + ' דק׳' : (m % 60 ? Math.floor(m/60) + ':' + String(m % 60).padStart(2, '0') : (m/60) + ' ש׳'); }
 function TubesPhone(col){
-  var scr = col.querySelector('.scr'), H = htData(), run = null, tick = null, pick = null;
+  var scr = col.querySelector('.scr'), H = htData(), run = null, tick = null, pick = null, wiz = null;
   /* each session of the week is a band; a "times" hobby's band is one time */
   function sessions(x){ var out = []; x.week.forEach(function(v){ if (v) out.push(x.kind === 'times' ? 1 : v); }); return out; }
   function valText(x){
-    var s = htSum(x);
-    if (x.kind === 'time') return s + ' / ' + x.goal + ' דק׳';
-    if (x.kind === 'count') return s + ' / ' + x.goal + ' ' + x.unit;
-    return s + ' / ' + x.goal + ' פעמים';
+    var s = htSum(x), per = x.per === 'month' ? ' בחודש' : '';
+    if (x.kind === 'time') return htTime(s) + ' / ' + htTime(x.goal) + per;
+    if (x.kind === 'count') return s + ' / ' + x.goal + ' ' + x.unit + per;
+    return s + ' / ' + x.goal + ' פעמים' + per;
+  }
+  /* ── A NEW HOBBY: three questions, one per screen ──
+     what is it called, how is it measured, and what is the goal - because
+     the goal is what 100% of its column MEANS. */
+  function wizHTML(){
+    var w = wiz, h = '<div class="sheet on"><div class="sc wz"><button class="x" data-wx="1">&times;</button>';
+    h += '<div class="wz-dots">' + [0, 1, 2].map(function(k){ return '<i class="' + (k <= w.step ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+    if (w.step === 0){
+      h += '<h3>איך קוראים לתחביב?</h3><input class="wz-in pressed" id="wz-nm" placeholder="למשל: גיטרה" value="' + (w.nm || '') + '">' +
+        '<div class="chips">' + ['פסנתר', 'יוגה', 'שחייה', 'בישול', 'כתיבה', 'שפה חדשה'].map(function(t){ return '<button data-sug="' + t + '">' + t + '</button>'; }).join('') + '</div>' +
+        '<button class="wz-next" data-next="1">המשך</button>';
+    }
+    if (w.step === 1){
+      h += '<h3>איך למדוד את ' + w.nm + '?</h3><div class="wz-opts">' +
+        [['time', 'בזמן', 'כמה זמן הקדשת. עם טיימר, או דקות שמוסיפים.'],
+         ['count', 'בכמות', 'עמודים, קילומטרים, שירים. כל דבר שסופרים.'],
+         ['times', 'בפעמים', 'עשיתי או לא. פעם אחת ביום.']].map(function(o){
+          return '<button class="wz-opt' + (w.kind === o[0] ? ' on' : '') + '" data-kind="' + o[0] + '"><b>' + o[1] + '</b><span>' + o[2] + '</span></button>'; }).join('') + '</div>';
+      if (w.kind === 'count') h += '<div class="lab"><span>של מה?</span></div><input class="wz-in pressed" id="wz-unit" placeholder="למשל: עמודים" value="' + (w.unit || '') + '">';
+      h += '<div class="wz-row"><button class="wz-back" data-back="1">חזרה</button><button class="wz-next" data-next="1"' + (w.kind ? '' : ' disabled') + '>המשך</button></div>';
+    }
+    if (w.step === 2){
+      var unitWord = w.kind === 'time' ? 'שעות' : w.kind === 'count' ? (w.unit || 'יחידות') : 'פעמים';
+      h += '<h3>מה המטרה?</h3><div class="ph-s">זה ה־100% של העמודה. אפשר לשנות אחר כך.</div>' +
+        '<div class="wz-goal"><button data-g="-1">−</button><input class="wz-in pressed" id="wz-g" inputmode="decimal" value="' + w.goal + '"><button data-g="1">+</button></div>' +
+        '<div class="wz-unit">' + unitWord + '</div>' +
+        '<div class="wz-per">' + [['week', 'בשבוע'], ['month', 'בחודש']].map(function(p){ return '<button class="' + (w.per === p[0] ? 'on' : '') + '" data-per="' + p[0] + '">' + p[1] + '</button>'; }).join('') + '</div>' +
+        '<div class="wz-say">המטרה: <b>' + w.goal + ' ' + unitWord + ' ' + w.nm + ' ' + (w.per === 'month' ? 'בחודש' : 'בשבוע') + '</b></div>' +
+        '<div class="wz-prev"><div class="tb-track" style="height:96px;width:26px"></div><div><div class="tb-lbl">' + w.nm + '</div><div class="tb-val" style="margin-top:2px">0 / ' + w.goal + ' ' + unitWord + '</div></div></div>' +
+        '<div class="wz-row"><button class="wz-back" data-back="1">חזרה</button><button class="wz-next" data-done="1">להוסיף</button></div>';
+    }
+    return h + '</div></div>';
+  }
+  function wizBind(){
+    var q = function(s){ return scr.querySelector(s); }, all = function(s){ return scr.querySelectorAll(s); };
+    function read(){ var a = q('#wz-nm'); if (a) wiz.nm = a.value.trim(); var u = q('#wz-unit'); if (u) wiz.unit = u.value.trim();
+      var g = q('#wz-g'); if (g) wiz.goal = Math.max(1, parseFloat(g.value) || 1); }
+    all('[data-wx]').forEach(function(b){ b.onclick = function(){ wiz = null; paint(); }; });
+    all('[data-sug]').forEach(function(b){ b.onclick = function(){ wiz.nm = b.getAttribute('data-sug'); paint(); }; });
+    all('[data-kind]').forEach(function(b){ b.onclick = function(){ read(); wiz.kind = b.getAttribute('data-kind');
+      wiz.goal = wiz.kind === 'time' ? 3 : wiz.kind === 'count' ? 50 : 3; paint(); }; });
+    all('[data-next]').forEach(function(b){ b.onclick = function(){ read();
+      if (wiz.step === 0 && !wiz.nm){ q('#wz-nm').focus(); return; }
+      if (wiz.step === 1 && !wiz.kind) return;
+      wiz.step++; paint(); }; });
+    all('[data-back]').forEach(function(b){ b.onclick = function(){ read(); wiz.step--; paint(); }; });
+    all('[data-g]').forEach(function(b){ b.onclick = function(){ read(); wiz.goal = Math.max(1, wiz.goal + +b.getAttribute('data-g')*(wiz.kind === 'count' ? 10 : 1)); paint(); }; });
+    all('[data-per]').forEach(function(b){ b.onclick = function(){ read(); wiz.per = b.getAttribute('data-per'); paint(); }; });
+    var g = q('#wz-g'); if (g) g.oninput = function(){ read(); var s = q('.wz-say b'), unitWord = scr.querySelector('.wz-unit').textContent;
+      s.textContent = wiz.goal + ' ' + unitWord + ' ' + wiz.nm + ' ' + (wiz.per === 'month' ? 'בחודש' : 'בשבוע'); };
+    all('[data-done]').forEach(function(b){ b.onclick = function(){ read();
+      var c = HT_MORE[(H.length - 4) % HT_MORE.length], nm = wiz.nm;
+      HT_PASTEL[nm] = c[0]; HT_DEEP[nm] = c[1];
+      H.push({nm: nm, kind: wiz.kind, unit: wiz.kind === 'count' ? (wiz.unit || 'יחידות') : 'דק׳', per: wiz.per,
+              goal: wiz.kind === 'time' ? Math.round(wiz.goal*60) : wiz.goal, week: [0, 0, 0, 0, 0, 0, 0], last: 0, streak: 0, isNew: true});
+      wiz = null; paint(); }; });
+    var f = q('#wz-nm'); if (f && !f.value) setTimeout(function(){ try{ f.focus(); }catch(e){} }, 50);
   }
   function paint(fresh){
     var h = '<div class="ph-t">תחביבים</div><div class="ph-s">השבוע · יום חמישי</div>';
@@ -410,10 +504,14 @@ function TubesPhone(col){
                            : [10, 20, 30, 50].map(function(m){ return '<button data-add="' + m + '">+' + m + '</button>'; }).join('')) + '</div></div>';
     }
     /* the rest of the screen, quiet: when each one was last done */
-    h += '<div class="lab" style="margin-top:22px"><span>התחביבים שלי</span><span>+ חדש</span></div><div class="tb-list">' +
+    h += '<div class="lab" style="margin-top:22px"><span>התחביבים שלי</span><button class="wz-add" data-new="1">+ תחביב חדש</button></div><div class="tb-list">' +
       H.map(function(x){ return '<div class="tb-row raised" style="--past:' + HT_DEEP[x.nm] + '"><i></i><b>' + x.nm + '</b><small>' +
-        (x.week[HT_TODAY] || !x.last ? 'היום' : x.last === 1 ? 'אתמול' : x.last === 2 ? 'שלשום' : 'לפני ' + x.last + ' ימים') + ' · ' + htGoalText(x) + '</small></div>'; }).join('') + '</div><div style="height:30px"></div>';
+        (x.isNew && !htSum(x) ? 'חדש' : x.week[HT_TODAY] || !x.last ? 'היום' : x.last === 1 ? 'אתמול' : x.last === 2 ? 'שלשום' : 'לפני ' + x.last + ' ימים') + ' · ' +
+        (x.per === 'month' ? htGoalText(x).replace('בשבוע', 'בחודש') : htGoalText(x)) + '</small></div>'; }).join('') + '</div><div style="height:30px"></div>';
+    if (wiz) h += wizHTML();
     scr.innerHTML = h;
+    var nb = scr.querySelector('[data-new]'); if (nb) nb.onclick = function(){ wiz = {step: 0, nm: '', kind: null, unit: '', goal: 3, per: 'week'}; scr.scrollTop = 0; paint(); };
+    if (wiz) wizBind();
     /* a new band grows in, as a meal's does */
     if (fresh) requestAnimationFrame(function(){ requestAnimationFrame(function(){
       scr.querySelectorAll('.tb-band').forEach(function(b){ b.style.height = b.getAttribute('data-h') + '%'; }); }); });
