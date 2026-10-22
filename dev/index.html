@@ -20782,7 +20782,7 @@ function renderFitness(){
      these questions is that the area knows who it is talking to before it
      shows her anything, and a card she can scroll past is not that. Put off
      for the day with "אחר כך", and gone for good once answered. */
-  if(_fitView==='home'&&fitMePending().length&&!fqOffToday('fitness'))_fitView='welcome';
+  if(_fitView==='home'&&fitMePending().length&&!fqOffToday('fitness')&&!fitCardMet())_fitView='welcome';
   if(_fitView==='home')renderFitHome();
   else if(_fitView==='editTemplate')renderFitEditTemplate();
   else if(_fitView==='workout')renderFitWorkout();
@@ -21606,6 +21606,14 @@ function fitWOpen(){
 }
 /* The greeting is not a question and is not stored - stepping past it is
    just the first paint of the first question. */
+/* met the area card and has not started the questions: the card already
+   asked about a plan, so the area opens as itself and the questions wait
+   for its button (or the hub's "build me a plan") */
+function fitCardMet(){
+  if(fitMe().started)return false;
+  try{return localStorage.getItem(FIRST_RUN_KEY)==='1'&&!!(JSON.parse(localStorage.getItem(AREA_INTRO_KEY)||'{}')||{}).fitness;}
+  catch(e){return false;}
+}
 function fitWNext(){
   var o=fitMe();o.started=1;
   try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
@@ -40534,24 +40542,28 @@ function areaIntroMaybe(id){
   function close(){w.classList.remove('on');setTimeout(function(){w.remove();},400);}
   /* a button that only closes the card is a promise not kept: each does
      what it says, where the area has that action ready */
-  w.querySelector('.aint-go').onclick=function(){close();if(I.go2)setTimeout(I.go2,250);};
-  w.querySelector('.aint-later').onclick=function(){close();if(I.later2)setTimeout(I.later2,250);};
-  w.addEventListener('click',function(e){if(e.target===w)close();});
+  w.querySelector('.aint-go').onclick=function(){close();if(I.go2)I.go2();};
+  w.querySelector('.aint-later').onclick=function(){close();if(I.later2)I.later2();};
+  w.addEventListener('click',function(e){if(e.target===w){close();if(I.dismiss)I.dismiss();}});
   beemKit().then(function(K){var el=document.getElementById('aint-b');if(el&&!el.firstChild)K.mount(el,{play:DOOR_BEEM.nod});}).catch(function(){});
   requestAnimationFrame(function(){requestAnimationFrame(function(){w.classList.add('on');});});
 }
 function areaIntroText(id){
   if(id==='nutrition')return {l:_t('כאן רושמים מה אכלת, בלי לספור קלוריות בראש.'),
     p:[_t('כותבים, מצלמים או מדברים, ואני מחשב'),_t('חלבון, פחמימות ושומן לאורך היום'),_t('מים בלחיצה אחת')],
-    go:_t('לרשום ארוחה ראשונה'),later:_t('רוצה יעדים אישיים? 4 שאלות קצרות')};
+    go:_t('לרשום ארוחה ראשונה'),later:_t('רוצה יעדים אישיים? 4 שאלות קצרות'),
+    go2:function(){var e=document.getElementById('co-in');if(e){e.scrollIntoView({block:'center'});e.focus();}},
+    later2:function(){var e=document.querySelector('#content .fq');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});}};
   if(id==='fitness')return {l:_t('כאן האימונים שלך: מה עשית, איך התקדמת, ומה עושים היום.'),
     p:[_t('רושמים אימון, עם משקלים וחזרות'),_t('שיאים אישיים, ואני חוגג איתך'),_t('אימון מוכן כשאין כוח לחשוב')],
     go:_t('להתחיל אימון ראשון'),later:_t('לבנות לי תוכנית אישית'),
     go2:function(){fqLater('fitness');_fitView='start';renderFitness();},
-    later2:function(){_fitView='welcome';fitWNext();}};
+    later2:function(){_fitView='welcome';fitWNext();},
+    dismiss:function(){if(_fitView==='welcome'&&fitCardMet()){_fitView='home';renderFitness();}}};
   if(id==='hobbies')return {l:_t('הדברים שעושים לך טוב, ולאן הזמן שלך באמת הולך.'),
     p:[_t('מוסיפים תחביב במילה אחת'),_t('מסמנים בכל פעם שעשית אותו'),_t('רואים לאורך שבועות מה מקבל מקום')],
-    go:_t('להוסיף תחביב ראשון'),later:_t('אחר כך')};
+    go:_t('להוסיף תחביב ראשון'),later:_t('אחר כך'),
+    go2:function(){if(!_hbAdding)hbAddOpen();}};
   if(id==='insights')return {l:_t('שאלות עמוקות יותר על החיים, כשבא לך. אין פה חובה.'),
     p:[_t('נושאים: אני, אנשים, החיים, העולם'),_t('שאלה אחת בכל פעם, בקצב שלך'),_t('התשובות נשמרות ונהיות תמונה של מי שאתה')],
     go:_t('לבחור שאלה ראשונה'),later:_t('אחר כך')};
@@ -40561,10 +40573,12 @@ function areaIntroText(id){
     go2:function(){_peopleView='edit-person';_personIdx=-1;renderPeople();}};
   if(id==='planning')return {l:_t('מספרים לי מה צריך לקרות, ואני עוזר לסדר את היום והשבוע.'),
     p:[_t('כותבים או אומרים מה יש מחר'),_t('השבוע כולו במבט אחד'),_t('מה שתכננת מופיע על שעון החוגה')],
-    go:_t('לתכנן את מחר'),later:_t('אחר כך')};
+    go:_t('לתכנן את מחר'),later:_t('אחר כך'),
+    go2:function(){var e=document.getElementById('psay-in');if(e){e.scrollIntoView({block:'center'});e.focus();}}};
   if(id==='closet')return {l:_t('מצלמים בגדים פעם אחת, ואז מרכיבים לוקים ורואים מה לבשת.'),
     p:[_t('מצלמים, והרקע נעלם לבד'),_t('מרכיבים לוק מהבגדים שלך'),_t('רואים מה לובשים, ומה נשכח בארון')],
-    go:_t('לצלם בגד ראשון'),later:_t('אחר כך')};
+    go:_t('לצלם בגד ראשון'),later:_t('אחר כך'),
+    go2:function(){var e=document.querySelector('#content input[type=file][onchange*="closetAdd"]');if(e)e.click();}};
   return null;
 }
 
