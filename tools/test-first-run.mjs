@@ -133,6 +133,9 @@ try {
   ok(g2.turn > 30 && g2.y === g.y && g2.tour && /mod-home/.test(g2.mod), 'during the tour a thumb turns the dial, the page stays put (turned ' + Math.round(g2.turn) + ' deg, scroll ' + g.y + ' -> ' + g2.y + ')');
   await shot('tour-1-turned');
   for (let i = 2; i <= 4; i++) { await tap('#tour-n'); await sleep(900); await shot('tour-' + i); }
+  await tap('#tour-n'); await sleep(1100); await shot('tour-5-beem');
+  ok(await ev(`(function(){var h=document.getElementById('tour-hole').getAttribute('d'),b=document.getElementById('bhelp').getBoundingClientRect(),cx=Math.round(b.left+b.width/2);return h.indexOf('M'+(cx-(b.width/2+10)).toFixed(0))>=0||h.indexOf('M'+(cx-b.width/2-10))>=0;})()`), 'the tour ends with a spotlight on Beem in his corner');
+  ok(/שאלה|question|سؤال/.test(await ev(`document.getElementById('tour-t').textContent`)) && await ev(`document.getElementById('tour-b').style.display==='none'`), "he says he is here for any question, and the card's Beem steps aside");
   await tap('#tour-n'); await sleep(600);
   ok(await ev(`!document.getElementById('tour')`), 'the tour ends');
   await sleep(4200); await shot('home');
