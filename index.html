@@ -39890,7 +39890,7 @@ var _doorStep=0,_doorPick=[],_doorSteps=[];
    No account and no sign-in, on purpose - nothing leaves the phone. */
 var _dr={beem:null,name:'',time:[21,30],picked:[]};
 function doorSteps(){
-  var a=['lang','hi','name'];
+  var a=['hi','lang','name'];
   if(appLang()==='he')a.push('gender');
   return a.concat(['areas','why','time','timeok','mood','moment','day1','remind']);
 }
@@ -39961,10 +39961,12 @@ function doorHTML(){
     return h+'</div></div><button class="dr-btn" onclick="doorNext()">'+_t('המשך')+'</button>';
   }
   if(step==='hi'){
-    return '<div class="dr-hi2"><div class="w">'+_t('ברוכים הבאים ל־')+'</div><div class="n">Better Me</div>'+
-      '<p>'+_t('התכוננו להפוך לגרסה הטובה ביותר של עצמכם.')+'</p>'+
-      '<div class="l">'+_t('בלי חשבון. הכול נשאר על הטלפון הזה.')+'</div></div>'+
-      '<button class="dr-btn" onclick="doorNext()">'+_t('נתחיל')+'</button>';
+    /* ENGLISH FOR EVERYONE, by Asaf's decision: the brand's first sentence,
+       before anyone has been asked which language is theirs. The next
+       screen asks, and from there every word is theirs. */
+    return '<div class="dr-hi2" dir="ltr" lang="en"><div class="w">Welcome to</div><div class="n">Better Me</div>'+   // i18n-exempt: the English welcome is a decision, see above
+      '<p>Get ready to become the best version of yourself.</p></div>'+   // i18n-exempt: same
+      '<button class="dr-btn" dir="ltr" onclick="doorNext()">Let’s begin</button>';   // i18n-exempt: same
   }
   if(step==='name'){
     return '<div class="dr-body"><div class="dr-q2">'+_t('היי, אני בים.')+'<br>'+_t('איך קוראים לך?')+'</div>'+
@@ -40231,9 +40233,11 @@ function homeTour(){
     if(i===0)return {el:'.hdial',ring:false,t:_t('זו החוגה שלך.'),d:_t('כל האזורים שבחרת יושבים עליה. סובב אותה באגודל, ולחיצה על אזור פותחת אותו.')};
     if(i===1)return {el:'.hdial .chub',t:_t('וזה סיום היום.'),d:_t('כל אזור שאתה עוקב אחריו מזין אותו. בערב לוחצים כאן, מסכמים את היום, והוא מתמלא באור.')};
     if(i===2)return {el:'.hdial',ring:true,t:_t('השפה של החוגה היא היום שלך.'),d:_t('השעות מסביב, הדברים שבלו״ז כנקודות צבעוניות, והאור הכתום מראה איפה אתה עכשיו.')};
-    return {el:'.hcmd-row',t:_t('ופה פשוט כותבים.'),d:_t('מה אכלת, מה לזכור, מה לעשות. אפשר גם לדבר. אני כבר אדע לאן זה שייך.')};
+    if(i===3)return {el:'.hcmd-row',t:_t('ופה פשוט כותבים.'),d:_t('מה אכלת, מה לזכור, מה לעשות. אפשר גם לדבר. אני כבר אדע לאן זה שייך.')};
+    /* the last word: where to find him afterwards */
+    return {el:'#bhelp',corner:true,t:_t('ואני כאן לכל שאלה.'),d:_t('יש לך שאלה על האפליקציה? לוחצים עליי כאן למעלה, ואני עונה.')};
   }
-  var N=4,k=0;
+  var N=document.getElementById('bhelp')?5:4,k=0;
   if(!document.querySelector('.hdial'))return;
   var w=document.createElement('div');w.className='tour';w.id='tour';
   w.innerHTML='<svg><path id="tour-hole" fill-rule="evenodd"/></svg><div class="tour-c" id="tour-c"><div class="tour-r"><div class="tour-b" id="tour-b"></div>'+
@@ -40249,6 +40253,7 @@ function homeTour(){
     var s=step(k),e=document.querySelector(s.el);if(!e)return end();
     var b=e.getBoundingClientRect(),W=innerWidth,H=innerHeight,cx=b.left+b.width/2,cy=b.top+b.height/2,hole,top;
     if(s.el==='.hcmd-row'){hole=rr(b.left-6,b.top-6,b.width+12,b.height+12,30);top=Math.max(12,b.top-210);}
+    else if(s.corner){hole=circ(cx,cy,b.width/2+10);top=b.bottom+22;}
     else if(s.ring){hole=circ(cx,cy,b.width/2+6)+circ(cx,cy,b.width/2-22);top=b.bottom+16;}
     else{var r=s.el==='.hdial'?b.width/2+6:b.width/2+8;hole=circ(cx,cy,r);top=cy+r+16;}
     document.getElementById('tour-hole').setAttribute('d','M0 0H'+W+'V'+H+'H0Z'+hole);
@@ -40256,7 +40261,9 @@ function homeTour(){
     document.getElementById('tour-t').textContent=s.t;document.getElementById('tour-d').textContent=s.d;
     var h='',i;for(i=0;i<N;i++)h+='<i'+(i===k?' class="on"':'')+'></i>';document.getElementById('tour-dots').innerHTML=h;
     document.getElementById('tour-n').textContent=k===N-1?_t('הבנתי'):_t('הבא');
-    if(B)try{B.play(k%2?DOOR_BEEM.nod:DOOR_BEEM.glad);}catch(er){}
+    var tb=document.getElementById('tour-b');if(tb)tb.style.display=s.corner?'none':'';document.getElementById('tour-x').style.visibility=k===N-1?'hidden':'';
+    if(s.corner){try{if(_bhelp.B)_bhelp.B.play(DOOR_BEEM.glad);}catch(er){}}
+    else if(B)try{B.play(k%2?DOOR_BEEM.nod:DOOR_BEEM.glad);}catch(er){}
   }
   function hold(e){var t=e.target.closest&&e.target.closest('.hdisc,.chub');if(t&&document.getElementById('tour')){e.stopPropagation();e.preventDefault();}}
   document.addEventListener('click',hold,true);
