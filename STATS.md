@@ -102,3 +102,5 @@ A tester counts only if they install the Play build; the PWA does not count.
 - `WA_LINK` in `testers/index.html`.
 - Deploy the worker fixes.
 - An Android build on Play's closed track does not exist yet.
+
+- **`BEFORE-TESTERS.md`** - what the iPhone/Android shells need before testers start (the evening reminder blocks; the platform field waits for Asaf). The shell copy was seen sending a correct ping.
