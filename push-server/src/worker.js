@@ -3809,8 +3809,10 @@ export default {
         o: Math.max(Number(was.o) || 0, Math.min(500, Number(b.o) || 0)),
         s: !!(was.s || b.s),
         a: Array.from(new Set([...(was.a || []), ...areas])),
-        l: String(b.lang || '').slice(0, 8),
-        f: first,
+        /* a ping without a language must not erase the one already kept,
+           and the first day only ever moves earlier */
+        l: String(b.lang || was.l || '').slice(0, 8),
+        f: was.f && was.f < first ? was.f : first,
         d: b.dev === true,
       };
       await env.SUBS.put(key, JSON.stringify(rec), { expirationTtl: 120 * 86400 });
@@ -3820,7 +3822,8 @@ export default {
       if (!adminOk(req, env)) return json({ error: 'not allowed' }, 401);
       const days = Math.max(1, Math.min(120, Number(url.searchParams.get('days')) || 14));
       const out = [];
-      for (let i = 0; i <= days; i++) {
+      /* i = -1: east of UTC the app's day is already tomorrow's date */
+      for (let i = -1; i <= days; i++) {
         const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
         const v = await env.SUBS.get('pd:' + d);
         if (v) { try { out.push({ day: d, ids: JSON.parse(v) }); } catch {} }

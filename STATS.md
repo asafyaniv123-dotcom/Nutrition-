@@ -52,3 +52,53 @@ spine of the product; everything else is supporting.
 - Answer Asaf in Hebrew.
 - Anything new that the app sends must stay anonymous and content-free.
   Ask him before widening what is collected.
+
+## What this session has built (23 Oct)
+
+**`admin/usage.html`** now leads with THE number: of the installs whose
+second week is over (today is their day 15 or later), how many closed the
+day on at least 4 of days 8–14. Below it: a retention chart by the install's
+own day 1..21 (opened / closed, week 2 bracketed), a calendar chart, a grid of
+every install by its own days with week 1 / week 2 counts and pass / fail /
+"day N", areas, languages. `?demo` draws it on invented data.
+
+- Days are compared as strings the app sent; `dnum()` / `dstr()` do arithmetic
+  at UTC noon with `Math.floor`. The first version used `Math.round` on an
+  exact .5 and shifted every lookup by a day — the demo looked fine, because
+  invented data was shifted the same way. A two-year round trip is the test.
+- A fixture with known answers (4 evenings → pass, 3 → fail, week-1 and
+  week-3 evenings never count, day 14 → still waiting) passed.
+- ✱ beside an id: seen on the first day of the data, so it may be older than
+  the data and its "week 2" computed too late. The first tester (since 26 Sep)
+  will carry it.
+
+**`push-server/src/worker.js`** — two fixes, NOT deployed yet (Asaf's step):
+`/ping` no longer erases a kept language when a ping comes without one, and
+keeps the earliest first day; `/admin/usage` also reads tomorrow's UTC key,
+because east of UTC the app's day is already tomorrow's date.
+
+**`testers/index.html`** — the agreement every tester signs, at
+https://asafyaniv123-dotcom.github.io/Nutrition-/testers/ (`?lang=he|en|de`).
+Commitment (`WEEKS` = 3, `EVENINGS` = 4, the day's close first),
+confidentiality, an honest account of what reaches us — including the food
+corrections, which DO carry food names, and AI requests — and the WhatsApp
+group (`WA_LINK`, empty until Asaf sends it). The finger signature is drawn
+into a PNG on the phone and shared by the tester; **nothing is uploaded**, so
+no name ever sits beside an install id. Change `TERMS_VERSION` with the text.
+
+## Google Play's closed test — what it does and does not check
+
+For a new personal developer account, production access needs a closed test
+with at least **12 testers opted in for 14 consecutive days**. Google counts
+that itself, from opt-ins to its own test track with Google accounts — our
+numbers are never sent to it and cannot help or hurt. It then asks a
+questionnaire about the test (how testers were found, what they reported,
+what changed). So our data is for US — to know whether the product works —
+and the WhatsApp reports are the material for that questionnaire.
+A tester counts only if they install the Play build; the PWA does not count.
+
+## Open
+
+- `WA_LINK` in `testers/index.html`.
+- Deploy the worker fixes.
+- An Android build on Play's closed track does not exist yet.
