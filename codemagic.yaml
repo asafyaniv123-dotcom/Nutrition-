@@ -5,6 +5,10 @@
 # One-time setup in Codemagic (with Asaf):
 #   Team settings > Integrations > Developer Portal: add the App Store Connect
 #   API key and name it exactly "BetterMe ASC".
+#   Application > Environment variables: CERTIFICATE_PRIVATE_KEY (secret) in
+#   the group "appstore_signing" - an RSA key that only lives there and on
+#   Asaf's machine. With it, the build creates the distribution certificate
+#   and the App Store profile itself the first time, and reuses them after.
 # Started by hand from the Codemagic dashboard; every build gets the next
 # TestFlight build number.
 workflows:
@@ -15,9 +19,8 @@ workflows:
     integrations:
       app_store_connect: BetterMe ASC
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.asafyaniv.betterme
+      groups:
+        - appstore_signing
       node: 22
       xcode: latest
       vars:
@@ -27,8 +30,12 @@ workflows:
         script: cd native && npm ci
       - name: Assemble the stable app into the shell
         script: node tools/native-www.mjs && node tools/native-plist.mjs && cd native && npx cap sync ios
-      - name: Signing profiles
-        script: xcode-project use-profiles
+      - name: Signing - create or fetch the certificate and profile
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "com.asafyaniv.betterme" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
       - name: Next build number
         script: |
           LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
