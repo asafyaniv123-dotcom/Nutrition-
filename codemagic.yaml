@@ -1,0 +1,43 @@
+# The iPhone build, in the cloud - there is no Mac here. Codemagic builds the
+# Capacitor shell in native/ around the STABLE app (index.html + stable/),
+# signs it with the App Store Connect API key, and sends it to TestFlight.
+#
+# One-time setup in Codemagic (with Asaf):
+#   Team settings > Integrations > Developer Portal: add the App Store Connect
+#   API key and name it exactly "BetterMe ASC".
+# Started by hand from the Codemagic dashboard; every build gets the next
+# TestFlight build number.
+workflows:
+  ios-testflight:
+    name: iOS to TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: BetterMe ASC
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.asafyaniv.betterme
+      node: 22
+      xcode: latest
+      vars:
+        APP_STORE_APPLE_ID: "0"   # filled in once the app record exists in App Store Connect
+    scripts:
+      - name: Install Capacitor
+        script: cd native && npm ci
+      - name: Assemble the stable app into the shell
+        script: node tools/native-www.mjs && node tools/native-plist.mjs && cd native && npx cap sync ios
+      - name: Signing profiles
+        script: xcode-project use-profiles
+      - name: Next build number
+        script: |
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          cd native/ios/App && agvtool new-version -all $((LATEST + 1))
+      - name: Build the IPA
+        script: xcode-project build-ipa --project native/ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
