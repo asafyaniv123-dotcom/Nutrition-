@@ -85,11 +85,13 @@ try {
   await sleep(2600); await shot('welcome');
   ok(await ev(`/WELCOME TO/.test(document.querySelector('.dr-arc').textContent)&&document.querySelector('.dr-hi2').getAttribute('dir')==='ltr'`), 'the welcome is in English, whatever the phone speaks');
   ok(await ev(`!!document.querySelector('#dr-beem canvas')`), 'Beem is there from the first frame');
+  ok(await ev(`getComputedStyle(document.getElementById('dr-beem')).marginTop.indexOf('px')>0`), 'Beem keeps clear of the camera (safe area)');
   await tap('#door .dr-btn'); await sleep(1500); await shot('language');
   ok(await ev(`document.querySelectorAll('.dr-langs .dr-lr').length===11&&document.querySelector('.dr-langs .dr-lr.on').getAttribute('lang')===appLang()`), 'then the language screen: eleven languages, this one chosen');
   await tap('#door .dr-btn'); await sleep(1500);
   await sleep(300); await shot('name');
   await tap('#dr-nm'); await type(LANG === 'he' || LANG === 'ar' ? 'נועה' : 'Noa'); await sleep(500); await shot('name-typed');
+  ok(await ev(`(function(){var b=document.getElementById('dr-beem').getBoundingClientRect(),f=document.getElementById('dr-nm').getBoundingClientRect();return b.top>=f.bottom;})()`), 'on the name screen Beem sits under the field, above the keyboard');
   await tap('#dr-g2'); await sleep(2000);
   if (LANG === 'he') { await shot('gender'); await tap('.dr-r2', FORM === 'x' ? 2 : FORM === 'm' ? 1 : 0); await waitFor(`/at-areas/.test(document.getElementById('dr2').className)`, 6000); }
   await sleep(1600); await shot('areas');
@@ -99,7 +101,10 @@ try {
   await tap('.dr-chip', 0); await sleep(300); await tap('.dr-chip', 4); await sleep(600); await shot('areas-picked');
   await tap('#dr-g4'); await sleep(1500); await shot('why');
   await tap('#door .dr-btn'); await sleep(1700); await shot('time');
-  await tap('.dr-qk', 0); await sleep(900); await tap('#door .dr-btn'); await sleep(1500); await shot('timeok');
+  await tap('.dr-qk', 0); await sleep(900); await tap('#door .dr-btn'); await sleep(1500); await shot('remind');
+  ok(await ev(`/at-remind/.test(document.getElementById('dr2').className)`), 'right after the hour, it asks whether to remind - where the promise is made');
+  await tap('.dr-later'); await sleep(1500); await shot('bridge');
+  ok(await ev(`/at-bridge/.test(document.getElementById('dr2').className)`), 'a bridge screen before the first summary');
   await tap('#door .dr-btn'); await sleep(1500); await shot('mood');
   await tap('.dr-face', 3); await sleep(1700); await shot('moment');
   await tap('#dr-mo'); await type(LANG === 'he' ? 'ארוחת ערב עם נועם' : 'Dinner with Noam'); await sleep(300);
@@ -114,8 +119,7 @@ try {
   await shot('day1-beads'); await sleep(1800); await shot('day1');
   await tap('#door .dr-btn');
   ok(await ev(`!!document.querySelector('#door .dr-btn[disabled]')&&!!document.querySelector('.at-day1')`), 'day one stays a moment for Beem to smile');
-  await sleep(1900); await shot('remind');
-  await tap('.dr-later'); await sleep(1500);
+  await sleep(2600);
   ok(await ev(`!document.getElementById('door')`), 'the door closes');
   ok(await waitFor(`!!document.getElementById('tour')`, 4000), 'Beem\'s tour of home starts');
   await sleep(1200); await shot('tour-1');
