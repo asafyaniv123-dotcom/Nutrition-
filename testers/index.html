@@ -62,7 +62,7 @@
   .padbar{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:13px;color:var(--muted)}
   .padbar button{border:none;background:none;font:inherit;color:var(--orange-ink);font-weight:700;cursor:pointer;padding:4px}
   .note{font-size:13px;color:var(--muted);margin-top:12px}
-  .done{text-align:center}
+  .done{text-align:center}.done .note{margin-top:20px}
   .done img{width:100%;border-radius:14px;box-shadow:0 2px 14px rgba(46,41,37,.1);margin:14px 0}
   .foot{position:sticky;bottom:0;background:linear-gradient(to bottom,rgba(251,246,238,0),var(--cream) 22%);
     padding:22px 0 calc(16px + env(safe-area-inset-bottom));display:flex;gap:10px}
@@ -82,10 +82,13 @@
 </div>
 <script>
 /* ── settings: the only things to edit ─────────────────────────────────── */
-var TERMS_VERSION = '3';
+var TERMS_VERSION = '4';
 var WEEKS = 3;                 /* how long a tester commits to */
 var EVENINGS = 4;              /* evenings a week the summary is asked for */
-var WA_LINK = 'https://chat.whatsapp.com/LOmyGdNEVSZJizV0Gat5Ct';   /* the Better Me group */
+/* the Better Me group. Shown only after signing; kept out of plain sight in the
+   source so a search of the page does not find it (not a lock - the group's
+   own "approve new members" setting is the lock) */
+var WA_LINK = atob('aHR0cHM6Ly9jaGF0LndoYXRzYXBwLmNvbS9MT215R2RORVZTWkppelYwR2F0NUN0');
 
 /* ── the text, in three languages ──────────────────────────────────────────
    {w} weeks, {e} evenings. English was written first; Hebrew and German
@@ -206,9 +209,9 @@ de: {
   sendAgain:'Erneut senden', copyTitle:'Better Me — Testervereinbarung', copyName:'Name', copyDate:'Datum', copyVer:'Textversion', copyLang:'Sprache'
 }};
 /* the words of the steps themselves */
-Object.assign(T.he, {start:'מתחילים', next:'המשך', back:'חזרה', joined:'הצטרפתי, המשך'});
-Object.assign(T.en, {start:'Let\'s begin', next:'Continue', back:'Back', joined:'I\'ve joined — continue'});
-Object.assign(T.de, {start:'Los geht\'s', next:'Weiter', back:'Zurück', joined:'Bin beigetreten — weiter'});
+Object.assign(T.he, {start:'מתחילים', next:'המשך', back:'חזרה'});
+Object.assign(T.en, {start:'Let\'s begin', next:'Continue', back:'Back'});
+Object.assign(T.de, {start:'Los geht\'s', next:'Weiter', back:'Zurück'});
 var LOCALE = {he:'he-IL', en:'en-GB', de:'de-DE'};
 
 var lang = (function(){
@@ -218,7 +221,7 @@ var lang = (function(){
   return T[n] ? n : 'he';
 })();
 var step = 0, agreed = {c1:false, c2:false, c3:false}, name = '', strokes = [], lastBlob = null;
-var STEPS = ['hello', 'commit', 'secret', 'see', 'group', 'sign', 'done'];
+var STEPS = ['hello', 'commit', 'secret', 'see', 'sign', 'done'];
 function fill(s){ return String(s).replace(/\{w\}/g, WEEKS).replace(/\{e\}/g, EVENINGS); }
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function dateText(){ return new Intl.DateTimeFormat(LOCALE[lang], {day:'numeric', month:'long', year:'numeric'}).format(new Date()); }
@@ -232,14 +235,14 @@ function body(){
   if (s === 'commit') return '<div class="num">1</div><h1>'+L.s1+'</h1><p>'+fill(L.s1p)+'</p><div class="key">'+fill(L.s1key)+'</div>'+li(L.s1l)+box('c1', L.agree1);
   if (s === 'secret') return '<div class="num">2</div><h1>'+L.s2+'</h1><p>'+L.s2p+'</p>'+li(L.s2l)+box('c2', L.agree2);
   if (s === 'see') return '<div class="num">3</div><h1>'+L.s3+'</h1><p>'+L.s3p+'</p>'+li(L.s3l)+'<p>'+L.s3end+'</p>'+box('c3', L.agree3);
-  if (s === 'group') return '<div class="num">4</div><h1>'+L.s4+'</h1><p>'+L.s4p+'</p>'+
-    (WA_LINK ? '<a class="wa" href="'+esc(WA_LINK)+'" target="_blank" rel="noopener">'+L.wa+'</a>' : '<p class="note">'+L.waOff+'</p>');
-  if (s === 'sign') return '<div class="num">5</div><h1>'+L.signTitle+'</h1>'+
+  if (s === 'sign') return '<div class="num">4</div><h1>'+L.signTitle+'</h1>'+
     '<label class="f" for="name">'+L.nameLabel+'</label><input type="text" id="name" autocomplete="name" value="'+esc(name)+'">'+
     '<label class="f">'+L.sigLabel+'</label><div class="pad" id="pad"><canvas id="sig"></canvas><span id="sighint">'+L.sigHint+'</span></div>'+
     '<div class="padbar"><span>'+L.today.replace('{d}', dateText())+'</span><button type="button" id="clear">'+L.clear+'</button></div>'+
     '<p class="note">'+L.sendNote+'</p>';
-  return '<div class="done"><h1>'+L.doneTitle+'</h1><p>'+L.doneText+'</p><div id="copy"></div></div>';
+  return '<div class="done"><h1>'+L.doneTitle+'</h1><p>'+L.s4p+'</p>'+
+    '<a class="wa" href="'+esc(WA_LINK)+'" target="_blank" rel="noopener">'+L.wa+'</a>'+
+    '<p class="note">'+L.doneText+'</p><div id="copy"></div></div>';
 }
 function ready(){
   var s = STEPS[step];
@@ -251,7 +254,7 @@ function ready(){
 }
 function foot(){
   var L = T[lang], s = STEPS[step];
-  var label = s === 'hello' ? L.start : s === 'sign' ? L.send : s === 'done' ? L.sendAgain : s === 'group' && WA_LINK ? L.joined : L.next;
+  var label = s === 'hello' ? L.start : s === 'sign' ? L.send : s === 'done' ? L.sendAgain : L.next;
   return (step > 0 && s !== 'done' ? '<button class="back" id="back">'+L.back+'</button>' : '') +
     '<button class="go" id="go"'+(ready()?'':' disabled')+'>'+label+'</button>';
 }
