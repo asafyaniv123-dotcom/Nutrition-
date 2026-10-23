@@ -13885,6 +13885,31 @@ function installId(){
   }
   return t;
 }
+/* ── USAGE, ANONYMOUS ── one small record per app day: opens, which areas
+   were entered, and whether the evening was summarised. */
+var USAGE_KEY='usage_day',USAGE_FIRST='usage_first';
+function usageNote(what,area){
+  if(!SYNC_SERVER)return;
+  var day=todayStr(),u=null;
+  try{u=JSON.parse(localStorage.getItem(USAGE_KEY)||'null');}catch(e){}
+  if(!u||u.day!==day)u={day:day,o:0,a:{},s:false,sent:0};
+  var urgent=false;
+  if(what==='open')u.o++;
+  if(what==='area'&&area&&!u.a[area]){u.a[area]=1;}
+  if(what==='sum'&&!u.s){u.s=true;urgent=true;}
+  var first='';try{first=localStorage.getItem(USAGE_FIRST)||'';if(!first){first=day;localStorage.setItem(USAGE_FIRST,day);}}catch(e){}
+  var now=Date.now(),due=urgent||!u.sent||now-u.sent>15*60000;
+  if(due)u.sent=now;
+  try{localStorage.setItem(USAGE_KEY,JSON.stringify(u));}catch(e){}
+  if(!due)return;
+  try{
+    fetch(SYNC_SERVER+'/ping',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
+      body:JSON.stringify({uid:installId(),dev:!!window.__DEV__,day:day,first:first,lang:appLang(),
+        o:u.o,s:u.s,a:Object.keys(u.a)})}).catch(function(){});
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)try{usageNote('open');}catch(e){}});
+window.addEventListener('load',function(){setTimeout(function(){try{usageNote('open');}catch(e){}},1500);});
 function corrItem(m){
   if(!m)return null;
   return {id:String(m.id),name:m.name||'',amount:m.amount||'',kcal:m.kcal||0,p:m.p||0,c:m.c||0,f:m.f||0,
@@ -19461,6 +19486,7 @@ function goRoute(){
 }
 function enterModule(mod){
   setTimeout(function(){areaIntroMaybe(mod);},450);
+  try{usageNote('area',mod);}catch(e){}
   if(mod!=='endofday')document.body.classList.remove('rf-night');
   jrnlFlush();
   dpRailClear();
@@ -38669,6 +38695,7 @@ function renderReflectBridge(){
 
 function rfFinish(){
   var r=rfSave({done:true});
+  try{if(_rfDate===todayStr())usageNote('sum');}catch(e){}
   saveSummaryTotals(r);
   _rfView='done';renderReflect();
 }

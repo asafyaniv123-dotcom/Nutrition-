@@ -3785,6 +3785,49 @@ export default {
       await env.SUBS.put(dkey, JSON.stringify(day.slice(-800)), { expirationTtl: 90 * 86400 });
       return json({ ok: true, kept: list.length });
     }
+    /* ── /ping and /admin/usage ──────────────────────────────────────────
+       Anonymous usage: per app day, which installs opened the app, how many
+       times, which areas, whether the evening was summarised, and the day
+       each install was first seen. ONE KEY PER DAY (pd:<day>), merged, never
+       a list() - the same reason as corrd above. Kept 120 days. */
+    if (url.pathname === '/ping' && req.method === 'POST') {
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const uid = String((b && b.uid) || '');
+      if (!/^[0-9a-f]{24}$/.test(uid)) return json({ error: 'bad uid' }, 400);
+      const day = String((b && b.day) || '');
+      const dms = Date.parse(day + 'T12:00:00Z');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !(Math.abs(dms - Date.now()) < 3 * 86400000)) return json({ error: 'bad day' }, 400);
+      const first = /^\d{4}-\d{2}-\d{2}$/.test(String(b.first || '')) ? b.first : day;
+      const areas = (Array.isArray(b.a) ? b.a : []).map((x) => String(x).replace(/[^a-z]/g, '').slice(0, 16)).filter(Boolean).slice(0, 12);
+      const key = 'pd:' + day;
+      let rec = {};
+      try { rec = JSON.parse((await env.SUBS.get(key)) || '{}') || {}; } catch { rec = {}; }
+      if (!rec[uid] && Object.keys(rec).length >= 2000) return json({ ok: true, kept: false });
+      const was = rec[uid] || {};
+      rec[uid] = {
+        o: Math.max(Number(was.o) || 0, Math.min(500, Number(b.o) || 0)),
+        s: !!(was.s || b.s),
+        a: Array.from(new Set([...(was.a || []), ...areas])),
+        l: String(b.lang || '').slice(0, 8),
+        f: first,
+        d: b.dev === true,
+      };
+      await env.SUBS.put(key, JSON.stringify(rec), { expirationTtl: 120 * 86400 });
+      return json({ ok: true });
+    }
+    if (url.pathname === '/admin/usage' && req.method === 'GET') {
+      if (!adminOk(req, env)) return json({ error: 'not allowed' }, 401);
+      const days = Math.max(1, Math.min(120, Number(url.searchParams.get('days')) || 14));
+      const out = [];
+      for (let i = 0; i <= days; i++) {
+        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+        const v = await env.SUBS.get('pd:' + d);
+        if (v) { try { out.push({ day: d, ids: JSON.parse(v) }); } catch {} }
+      }
+      return json({ ok: true, days: out });
+    }
+
     if (url.pathname === '/admin/corrections' && req.method === 'GET') {
       if (!adminOk(req, env)) return json({ error: 'not allowed' }, 401);
       const days = Math.max(1, Math.min(90, Number(url.searchParams.get('days')) || 7));

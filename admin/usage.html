@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>שימוש — ניהול</title>
+<!-- Asaf's page, not the app's: anonymous usage from /admin/usage, read with
+     the ADMIN_KEY secret (kept in this browser only, shared with the
+     corrections page). Not part of a release and not linked from the app.
+     A person here is a random install id; nothing they wrote is ever sent. -->
+<style>
+  body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:#efebe6;color:#3f3a35}
+  main{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:26px 0 8px}
+  .sub{color:#5f564e;font-size:13px;margin-bottom:18px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  input,select,button{font:inherit;border-radius:10px;border:1px solid #d8d0c6;padding:8px 10px;background:#fff;color:inherit}
+  button{cursor:pointer;font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .card{background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  .card b{display:block;font-size:26px;font-variant-numeric:tabular-nums}
+  .card span{color:#5f564e;font-size:12.5px}
+  table{border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);font-variant-numeric:tabular-nums}
+  th,td{padding:6px 8px;text-align:center;font-size:12.5px;border-bottom:1px solid #f0ebe5}
+  th{background:#f6f3ef;font-weight:700}
+  td.id{font-family:ui-monospace,monospace;text-align:start;color:#5f564e}
+  .dot{display:inline-block;width:14px;height:14px;border-radius:50%}
+  .on{background:#c9b49a}.sum{background:#b0782e}
+  .scroll{overflow-x:auto}
+  .meta{color:#5f564e;font-size:12px}.err{color:#a2412a;font-weight:700}
+  .bars div{display:flex;align-items:center;gap:8px;margin:4px 0}.bars i{display:block;height:12px;border-radius:6px;background:#b0782e}
+</style>
+</head>
+<body>
+<main>
+  <h1>מי משתמש, ומי חוזר</h1>
+  <div class="sub">אנונימי לגמרי: מזהה אקראי של כל התקנה, באיזה ימים פתחו, אם סיכמו את הערב, ואיזה אזורים פתחו. שום תוכן ממה שכתבו.</div>
+  <div class="bar">
+    <input id="key" type="password" placeholder="ADMIN_KEY" size="22">
+    <select id="days"><option value="14">שבועיים</option><option value="30">30 יום</option><option value="60">60 יום</option><option value="120">120 יום</option></select>
+    <label><input id="nodev" type="checkbox" checked> בלי dev</label>
+    <button onclick="load()">טען</button>
+    <span id="st" class="meta"></span>
+  </div>
+  <div id="out"></div>
+</main>
+<script>
+var HOST='https://nutrition-push.nutrition-push.workers.dev';
+var keyEl=document.getElementById('key');keyEl.value=localStorage.getItem('admin_key')||'';
+var AREA={nutrition:'תזונה',fitness:'כושר',hobbies:'תחביבים',people:'האנשים שלי',planning:'תכנון זמן',closet:'הארון שלי',insights:'תובנות',endofday:'סיום יום'};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function load(){
+  var k=keyEl.value.trim();localStorage.setItem('admin_key',k);
+  var st=document.getElementById('st');st.textContent='טוען…';
+  fetch(HOST+'/admin/usage?days='+document.getElementById('days').value,{headers:{Authorization:'Bearer '+k}})
+    .then(function(r){return r.json().then(function(j){return {s:r.status,j:j};});})
+    .then(function(x){
+      if(x.s!==200||!x.j.ok){st.innerHTML='<span class="err">'+(x.s===401?'המפתח לא נכון':'שגיאה '+x.s)+'</span>';return;}
+      st.textContent='';draw(x.j.days);
+    }).catch(function(){st.innerHTML='<span class="err">אין חיבור</span>';});
+}
+function draw(days){
+  var nodev=document.getElementById('nodev').checked;
+  days.sort(function(a,b){return a.day<b.day?-1:1;});
+  var people={},areas={},d,id,r,i;
+  days.forEach(function(D){for(id in D.ids){r=D.ids[id];if(nodev&&r.d)continue;
+    var p=people[id]||(people[id]={first:r.f,lang:r.l,days:{}});p.days[D.day]=r;if(r.f<p.first)p.first=r.f;
+    (r.a||[]).forEach(function(a){areas[a]=(areas[a]||0)+1;});}});
+  var ids=Object.keys(people).sort(function(a,b){return people[a].first<people[b].first?-1:1;});
+  var last7=days.slice(-7).map(function(D){return D.day;});
+  var active7=ids.filter(function(id){return last7.some(function(d){return people[id].days[d];});}).length;
+  var sums7=0;ids.forEach(function(id){last7.forEach(function(d){var x=people[id].days[d];if(x&&x.s)sums7++;});});
+  /* came back: active on some day at least 2 days after the first */
+  var back=ids.filter(function(id){var p=people[id],f=Date.parse(p.first);return Object.keys(p.days).some(function(d){return Date.parse(d)-f>=2*86400000;});}).length;
+  var h='<div class="cards">'+
+    '<div class="card"><b>'+ids.length+'</b><span>התקנות בתקופה</span></div>'+
+    '<div class="card"><b>'+active7+'</b><span>פעילות ב־7 הימים האחרונים</span></div>'+
+    '<div class="card"><b>'+back+'</b><span>חזרו יומיים או יותר אחרי הפעם הראשונה</span></div>'+
+    '<div class="card"><b>'+sums7+'</b><span>ערבים שסוכמו ב־7 הימים האחרונים</span></div></div>';
+  /* the grid: one row per install, one column per day */
+  h+='<h2>כל התקנה, יום אחרי יום</h2><div class="meta">עיגול בהיר: פתחו. עיגול ענבר: סיכמו את הערב.</div><div class="scroll"><table><tr><th>מזהה</th><th>שפה</th><th>התחיל</th>';
+  days.forEach(function(D){h+='<th>'+D.day.slice(8)+'/'+D.day.slice(5,7)+'</th>';});
+  h+='</tr>';
+  ids.forEach(function(id){var p=people[id];h+='<tr><td class="id">'+id.slice(0,6)+'</td><td>'+esc(p.lang)+'</td><td>'+p.first.slice(8)+'/'+p.first.slice(5,7)+'</td>';
+    days.forEach(function(D){var x=p.days[D.day];h+='<td>'+(x?'<span class="dot '+(x.s?'sum':'on')+'" title="'+x.o+' פתיחות"></span>':'')+'</td>';});h+='</tr>';});
+  h+='</table></div>';
+  var ak=Object.keys(areas).sort(function(a,b){return areas[b]-areas[a];}),mx=ak.length?areas[ak[0]]:1;
+  h+='<h2>איזה אזורים פותחים</h2><div class="meta">כמה ימי־משתמש נכנסו לכל אזור.</div><div class="bars">';
+  ak.forEach(function(a){h+='<div><span style="width:90px">'+esc(AREA[a]||a)+'</span><i style="width:'+Math.round(areas[a]/mx*300)+'px"></i><b>'+areas[a]+'</b></div>';});
+  h+='</div>';
+  if(!ids.length)h='<div class="meta">עוד אין נתונים בתקופה הזאת.</div>';
+  document.getElementById('out').innerHTML=h;
+}
+</script>
+</body>
+</html>
