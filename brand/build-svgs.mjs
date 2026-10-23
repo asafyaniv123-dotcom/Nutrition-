@@ -22,13 +22,14 @@ const tight = (fg) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="11 11 78
 fs.writeFileSync(OUT + 'sun.svg', tight(OR));
 fs.writeFileSync(OUT + 'sun-cream.svg', tight(CREAM));
 fs.writeFileSync(OUT + 'sun-ink.svg', tight(INK));
+// THE ICON IS THE ORANGE SUN ON CREAM (Asaf, 23.10: "אני אוהב את הכתום על השמנת"); the orange ground is the alternative.
 // the icons: the sun fills about 77% of the square, inside every platform's mask
 fs.writeFileSync(OUT + 'icon-orange.svg', svg(`<rect width="100" height="100" fill="${OR}"/>${sunShapes(CREAM)}`));
 fs.writeFileSync(OUT + 'icon-cream.svg', svg(`<rect width="100" height="100" fill="${CREAM}"/>${sunShapes(OR)}`));
 // Android's adaptive icon: 108 units, the inner 72 always visible, the inner 66 safe - so the sun is scaled into it
-fs.writeFileSync(OUT + 'android-foreground.svg', svg(sunShapes(CREAM, 0.82, 54, 54), 108, 108));
-fs.writeFileSync(OUT + 'android-background.svg', svg(`<rect width="108" height="108" fill="${OR}"/>`, 108, 108));
+fs.writeFileSync(OUT + 'android-foreground.svg', svg(sunShapes(OR, 0.82, 54, 54), 108, 108));
+fs.writeFileSync(OUT + 'android-background.svg', svg(`<rect width="108" height="108" fill="${CREAM}"/>`, 108, 108));
 // maskable PWA icon: the safe circle is 80% of the square
-fs.writeFileSync(OUT + 'icon-maskable.svg', svg(`<rect width="100" height="100" fill="${OR}"/>${sunShapes(CREAM, 0.86)}`));
-fs.writeFileSync(OUT + 'favicon.svg', svg(`<rect width="100" height="100" rx="22" fill="${OR}"/>${sunShapes(CREAM)}`));
+fs.writeFileSync(OUT + 'icon-maskable.svg', svg(`<rect width="100" height="100" fill="${CREAM}"/>${sunShapes(OR, 0.86)}`));
+fs.writeFileSync(OUT + 'favicon.svg', svg(`<rect width="100" height="100" rx="22" fill="${CREAM}"/>${sunShapes(OR)}`));
 console.log('svgs written');
