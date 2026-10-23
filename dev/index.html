@@ -4518,6 +4518,8 @@ html body.mod-endofday .rfd-seal-t,html body.mod-endofday .rfd-mark{color:var(--
 .dr2.at-areas .dr-beem{left:calc(100% - 129px);top:46px;transform:scale(.5)}
 .dr2.at-why .dr-beem{left:calc(50% - 69px);top:34px;transform:scale(.6)}
 .dr2.at-time .dr-beem{left:calc(50% - 58px);top:30px;transform:scale(.5)}
+.dr2.at-lang .dr-beem{left:calc(50% - 58px);top:12px;transform:scale(.45)}
+.dr-r2{text-align:center}
 .dr2.at-timeok .dr-beem{left:calc(50% - 115px);top:13%;transform:none}
 .dr2.at-mood .dr-beem,.dr2.at-moment .dr-beem{left:14px;top:46px;transform:scale(.42)}
 .dr2.at-day1 .dr-beem{left:calc(50% + 40px);top:40px;transform:scale(.48)}
@@ -4553,7 +4555,15 @@ html body.mod-endofday .rfd-seal-t,html body.mod-endofday .rfd-mark{color:var(--
 @keyframes drIn{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
 [dir=ltr] .dr-step{animation-name:drInL}
 @keyframes drInL{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
-.dr-body{flex:1;display:flex;flex-direction:column;padding-top:150px;min-height:0;overflow-y:auto}
+.dr-body{flex:1;display:flex;flex-direction:column;padding-top:150px;min-height:0;overflow-y:auto;text-align:center;align-items:stretch}
+/* CENTRED (Asaf, 23 Oct): the words sat at the right edge, the flow reads
+   better down the middle. The lists under them stay full width. */
+.dr-body .dr-w2{margin-inline:auto}
+.dr-body .dr-field{text-align:center}
+.dr-r2s{display:block;font-size:13.5px;font-weight:600;color:var(--nu-muted);margin-top:3px}
+.dr-lstep .dr-q2{margin-bottom:22px}
+.dr-langs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dr-langs .dr-lr{font-size:16px;padding:13px 10px}
 .dr-q2{font-size:30px;font-weight:800;letter-spacing:-.4px;line-height:1.2;margin:0 0 8px;color:var(--nu-ink)}
 .dr-w2{font-size:15px;line-height:1.55;color:var(--nu-muted);margin:0 0 24px;max-width:340px}
 .dr-btn{width:100%;border:none;border-radius:18px;padding:17px;background:var(--nu-ground);font-family:inherit;font-weight:800;font-size:17px;
@@ -10452,11 +10462,11 @@ function langSet(code){
    it always has, so nothing changes for anyone who never answers. */
 var GENDER_KEY='app_gender';
 function appGender(){
-  try{var v=localStorage.getItem(GENDER_KEY);if(v==='f'||v==='m')return v;}catch(e){}
+  try{var v=localStorage.getItem(GENDER_KEY);if(v==='f'||v==='m'||v==='x')return v;}catch(e){}
   return '';
 }
 function genderSet(g,cb){
-  try{localStorage.setItem(GENDER_KEY,g==='f'?'f':'m');}catch(e){}
+  try{localStorage.setItem(GENDER_KEY,g==='f'||g==='x'?g:'m');}catch(e){}
   /* the clock's voice follows this answer too, so what is decoded is now the
      wrong person */
   try{wtVoiceForget();}catch(e){}
@@ -10468,8 +10478,10 @@ function langLoad(code,cb){
     /* the feminine Hebrew is an OVERLAY on HE, not a language: it carries only
        the keys whose Hebrew changes, so anything it does not answer falls
        through to the masculine text and a plural key keeps its categories. */
-    if(appGender()!=='f'){_lang=HE;cb&&cb();return;}
-    fetch(liveBase()+'data/he-f.json')
+    /* 'x' is the plural (אתם), Asaf's answer for "other": a third overlay */
+    var _hg=appGender();
+    if(_hg!=='f'&&_hg!=='x'){_lang=HE;cb&&cb();return;}
+    fetch(liveBase()+'data/he-'+_hg+'.json')
       .then(function(r){return r.json();})
       .then(function(j){
         var o={},k;
@@ -39877,7 +39889,7 @@ var _doorStep=0,_doorPick=[],_doorSteps=[];
    No account and no sign-in, on purpose - nothing leaves the phone. */
 var _dr={beem:null,name:'',time:[21,30],picked:[]};
 function doorSteps(){
-  var a=['hi','name'];
+  var a=['lang','hi','name'];
   if(appLang()==='he')a.push('gender');
   return a.concat(['areas','why','time','timeok','mood','moment','day1','remind']);
 }
@@ -39939,11 +39951,16 @@ function doorPaint(){
 }
 function doorHTML(){
   var step=_doorSteps[_doorStep],h='',i,a;
+  if(step==='lang'){
+    /* every language in its own name, so whoever is holding the phone can
+       find theirs; the phone's own is already chosen */
+    var L=doorLangs(),cur=appLang();
+    h='<div class="dr-body dr-lstep"><div class="dr-q2">'+_t('באיזו שפה נדבר?')+'</div><div class="dr-langs">';
+    for(i=0;i<L.length;i++)h+='<button class="dr-lr'+(L[i][0]===cur?' on':'')+'" lang="'+L[i][0]+'" onclick="doorLangPick(&#39;'+L[i][0]+'&#39;)">'+L[i][1]+'</button>';
+    return h+'</div></div><button class="dr-btn" onclick="doorNext()">'+_t('המשך')+'</button>';
+  }
   if(step==='hi'){
-    var L=doorLangs(),cur=appLang(),nm='';
-    for(i=0;i<L.length;i++)if(L[i][0]===cur)nm=L[i][1];
-    return '<button class="dr-lang" onclick="doorLangOpen()">'+esc(nm||cur)+' &#9662;</button>'+
-      '<div class="dr-hi2"><div class="w">'+_t('ברוכים הבאים ל־')+'</div><div class="n">Better Me</div>'+
+    return '<div class="dr-hi2"><div class="w">'+_t('ברוכים הבאים ל־')+'</div><div class="n">Better Me</div>'+
       '<p>'+_t('התכוננו להפוך לגרסה הטובה ביותר של עצמכם.')+'</p>'+
       '<div class="l">'+_t('בלי חשבון. הכול נשאר על הטלפון הזה.')+'</div></div>'+
       '<button class="dr-btn" onclick="doorNext()">'+_t('נתחיל')+'</button>';
@@ -39961,7 +39978,8 @@ function doorHTML(){
     return '<div class="dr-body"><div class="dr-q2">'+_t('איך לפנות אלייך?')+'</div>'+
       '<div class="dr-w2">'+_t('בעברית כל משפט נושא מגדר, אז זה משנה איך כל מסך מדבר אלייך.')+'</div>'+
       '<div class="dr-rows"><button class="dr-r2" onclick="doorGender2(&#39;f&#39;,this)">'+_t('בלשון נקבה')+'</button>'+
-      '<button class="dr-r2" onclick="doorGender2(&#39;m&#39;,this)">'+_t('בלשון זכר')+'</button></div></div>';
+      '<button class="dr-r2" onclick="doorGender2(&#39;m&#39;,this)">'+_t('בלשון זכר')+'</button>'+
+      '<button class="dr-r2" onclick="doorGender2(&#39;x&#39;,this)">'+_t('אחר')+'<span class="dr-r2s">'+_t('אפנה אליכם בלשון רבים')+'</span></button></div></div>';
   }
   if(step==='areas'){
     h='<div class="dr-body"><div class="dr-q2">'+_t('מה חשוב לך?')+'</div>'+
@@ -40038,7 +40056,7 @@ function doorLangPick(code){
   langApply(code);
   langLoad(code,function(){
     try{langRepaint();}catch(e){}
-    _doorSteps=doorSteps();_doorStep=0;doorPaint();doorBeem('glad');
+    _doorSteps=doorSteps();_doorStep=_doorSteps.indexOf('lang');if(_doorStep<0)_doorStep=0;doorPaint();doorBeem('glad');
   });
   setTimeout(doorLangClose,200);
 }
@@ -41684,8 +41702,10 @@ function renderSettings(){
     h+='<div class="set-langs">'+
        '<button class="set-lang'+(_g==='f'?' on':'')+'" onclick="genderSet(\'f\',renderSettings)">'+
          _t('בלשון נקבה')+'</button>'+
-       '<button class="set-lang'+(_g!=='f'?' on':'')+'" onclick="genderSet(\'m\',renderSettings)">'+
+       '<button class="set-lang'+(_g!=='f'&&_g!=='x'?' on':'')+'" onclick="genderSet(\'m\',renderSettings)">'+
          _t('בלשון זכר')+'</button>'+
+       '<button class="set-lang'+(_g==='x'?' on':'')+'" onclick="genderSet(\'x\',renderSettings)">'+
+         _t('בלשון רבים')+'</button>'+
        '</div>';
   }
   /* ── THE HOUR THE DOOR ASKED FOR ──
@@ -42781,7 +42801,7 @@ function hcmdMultiApply(){
     /* Hebrew USED to be its own key and carry no dictionary. It still is for
        anyone the app speaks to in the masculine - but a woman who answered
        the door reads an overlay, and that is a fetch like any other. */
-    if(code!=='he'||appGender()==='f')langLoad(code,function(){langRepaint();});
+    if(code!=='he'||appGender()==='f'||appGender()==='x')langLoad(code,function(){langRepaint();});
   })();
   // Hide app initially
   document.querySelector('.app').style.display='none';

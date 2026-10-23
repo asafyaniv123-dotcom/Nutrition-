@@ -20,7 +20,7 @@ import { spawn } from 'child_process';
 const ROOT = process.cwd();
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const A = process.argv.slice(2), arg = (k, d) => (A.includes(k) ? A[A.indexOf(k) + 1] : d);
-const LANG = arg('--lang', 'he'), HOUR = +arg('--hour', 17), H = +arg('--h', 844);
+const LANG = arg('--lang', 'he'), HOUR = +arg('--hour', 17), H = +arg('--h', 844), FORM = arg('--form', 'f');
 const OUT = path.resolve(arg('--out', '.impeccable/mocks/first-run-' + LANG + '-' + H));
 const PORT = 8797, DBG = 9337;
 fs.mkdirSync(OUT, { recursive: true });
@@ -82,14 +82,19 @@ async function waitFor(x, ms = 6000) { for (let t = 0; t < ms; t += 150) { if (a
 try {
   await send('Page.navigate', { url: `http://localhost:${PORT}/dev/` });
   ok(await waitFor(`!!document.querySelector('#door .dr-btn')`, 12000), 'the door opens on a fresh device');
-  await sleep(2600); await shot('welcome');
+  await sleep(2600); await shot('language');
+  ok(await ev(`document.querySelectorAll('.dr-langs .dr-lr').length===11&&document.querySelector('.dr-langs .dr-lr.on').getAttribute('lang')===appLang()`), 'the language screen comes first: eleven languages, this one chosen');
   ok(await ev(`!!document.querySelector('#dr-beem canvas')`), 'Beem is there from the first frame');
+  await tap('#door .dr-btn'); await sleep(1500); await shot('welcome');
+  ok(await ev(`!document.querySelector('.dr-lang')`), 'the welcome no longer carries a language pill - it was just chosen');
   await tap('#door .dr-btn'); await sleep(1300); await shot('name');
   await tap('#dr-nm'); await type(LANG === 'he' || LANG === 'ar' ? 'נועה' : 'Noa'); await sleep(500); await shot('name-typed');
   await tap('#dr-g2'); await sleep(2000);
-  if (LANG === 'he') { await shot('gender'); await tap('.dr-r2', 0); await waitFor(`/at-areas/.test(document.getElementById('dr2').className)`, 6000); }
+  if (LANG === 'he') { await shot('gender'); await tap('.dr-r2', FORM === 'x' ? 2 : FORM === 'm' ? 1 : 0); await waitFor(`/at-areas/.test(document.getElementById('dr2').className)`, 6000); }
   await sleep(1600); await shot('areas');
-  ok(/בחרי|Pick|اختر/.test(await ev(`document.querySelector('.dr-w2').textContent`)), 'the areas line speaks in her form');
+  const _w2 = await ev(`document.querySelector('.dr-w2').textContent`);
+  ok(FORM === 'x' ? /בחרו/.test(_w2) : FORM === 'm' ? /בחר /.test(_w2) : /בחרי|Pick|اختر/.test(_w2), 'the areas line speaks in the form chosen (' + _w2.slice(0, 24) + ')');
+  ok(await ev(`['.dr-q2','.dr-w2'].every(function(q){var e=document.querySelector(q);return e&&getComputedStyle(e).textAlign==='center';})`), 'the question and its line are centred');
   await tap('.dr-chip', 0); await sleep(300); await tap('.dr-chip', 4); await sleep(600); await shot('areas-picked');
   await tap('#dr-g4'); await sleep(1500); await shot('why');
   await tap('#door .dr-btn'); await sleep(1700); await shot('time');
@@ -142,7 +147,7 @@ try {
     return {name:g('greet_name'),gender:g('app_gender'),areas:g('home_areas'),rem:g('sum_reminder'),door:g('app_onboarded'),
       v2:g('first_run_v2'),tour:g('home_tour_done'),intro:g('area_intro_seen'),mood:sum&&sum.mood,moment:sum&&sum.moment};})()`);
   ok(S.name === (LANG === 'he' || LANG === 'ar' ? 'נועה' : 'Noa'), 'her name is saved (' + S.name + ')');
-  if (LANG === 'he') ok(S.gender === 'f', 'she is addressed in the feminine');
+  if (LANG === 'he') ok(S.gender === FORM, 'the form of address is saved (' + S.gender + ')');
   ok(/nutrition/.test(S.areas || '') && /people/.test(S.areas || '') && /endofday/.test(S.areas || ''), 'her areas are saved, with סיום יום');
   const rem = JSON.parse(S.rem || '{}');
   ok(rem.time === '21:30' && rem.on === false, 'the hour is kept (21:30) and not switched on - she said not now');
