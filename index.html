@@ -3911,7 +3911,14 @@ html body.mod-fitness .fq-opts{display:flex;flex-direction:column;gap:9px}
 html body.mod-fitness .fq-opts .fg-b.fq-o{display:flex;flex-direction:column;align-items:flex-start;gap:3px;
   text-align:start;padding:13px 16px;font-size:15px;font-weight:800;color:var(--nu-ink)}
 html body.mod-fitness .fq-o .fq-os{font-size:12.5px;font-weight:600;color:var(--nu-muted);line-height:1.4}
+html body.mod-fitness .fq-opts .fg-b.fq-o{position:relative;padding-inline-end:48px}
+html body.mod-fitness .fq-opts .fg-b.fq-o.on{box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+html body.mod-fitness .fq-opts .fg-b.fq-o.on::after{content:"";position:absolute;inset-inline-end:16px;top:50%;width:22px;height:22px;margin-top:-11px;border-radius:50%;
+  background:var(--terra-500) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12.5 4 4 8-9'/%3E%3C/svg%3E") center/14px no-repeat}
 html body.mod-fitness .fq-wel{font-size:22px;font-weight:800;color:var(--nu-ink);line-height:1.25;margin:4px 0 8px}
+html body.mod-fitness .fq-wheel{margin-top:4px}
+html body.mod-fitness .fq-wheel .dr-col{width:180px}
+html body.mod-fitness .fq-wheel .dr-col div{font-size:26px}
 html body.mod-fitness .fq-welp{font-size:14.5px;color:var(--nu-muted);line-height:1.6;margin:0 0 16px}
 /* the workout you walked away from, in the same material */
 html body.mod-fitness .fw-res{background:var(--nu-ground);border:none;
@@ -4443,6 +4450,16 @@ html body.mod-endofday .rfd-seal-t,html body.mod-endofday .rfd-mark{color:var(--
   box-shadow:inset 4px 6px 10px var(--nu-shade),inset -4px -4px 9px var(--nu-lit),0 0 24px 6px rgba(140,184,232,.45)}
 /* a step: its words, arriving from the side */
 .dr-bead{position:fixed;z-index:10000;border-radius:50%;pointer-events:none;box-shadow:0 1px 2px rgba(120,50,20,.25)}
+/* the light opens: rings of warm light from the well, and a brief wash */
+.dr-bloom{position:fixed;inset:0;z-index:10000;pointer-events:none;overflow:hidden}
+.dr-bloom-ring{position:absolute;left:var(--x);top:var(--y);width:var(--d);height:var(--d);margin:calc(var(--d) / -2) 0 0 calc(var(--d) / -2);border-radius:50%;opacity:0;
+  box-shadow:0 0 34px 10px rgba(255,206,140,.55),inset 0 0 30px 8px rgba(255,226,180,.5)}
+.dr-bloom-ring.go{animation:drBloom 2.4s cubic-bezier(.2,.7,.3,1) forwards}
+.dr-bloom-ring.b.go{animation-delay:.35s;animation-duration:2.8s}
+@keyframes drBloom{0%{transform:scale(.9);opacity:0}12%{opacity:1}100%{transform:scale(5.2);opacity:0}}
+.dr-bloom-wash{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at var(--x) var(--y),rgba(255,236,200,.55),rgba(255,236,200,0) 60%)}
+.dr-bloom-wash.go{animation:drWash 2.6s ease forwards}
+@keyframes drWash{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
 .dr-step{position:absolute;inset:0;box-sizing:border-box;padding:calc(22px + env(safe-area-inset-top)) 24px calc(30px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;animation:drIn .55s cubic-bezier(.2,.9,.3,1) .2s both}
 @keyframes drIn{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
@@ -9626,6 +9643,19 @@ var FIT_ME_LIMITS=[['knee','ברך'],['low','גב תחתון'],['shldr','כתף'
                    ['heart','לב או לחץ דם'],['none','אין מגבלות']];
 
 /* ANSWERED MEANS USABLE, the same test fqHas makes of the profile. */
+/* the wheel's stops: every five minutes up to an hour, then by the quarter */
+var FIT_ME_MINS=[15,20,25,30,35,40,45,50,55,60,75,90,105,120];
+function fitMeMinsInit(){
+  var c=document.getElementById('fq-mins');if(!c)return;
+  var cur=+fitMe().minutes||45,k=FIT_ME_MINS.indexOf(cur);if(k<0)k=FIT_ME_MINS.indexOf(45);
+  c.addEventListener('scroll',function(){doorMark(c);});
+  c.scrollTop=k*60;doorMark(c);
+}
+function fitMeMinsDone(){
+  var c=document.getElementById('fq-mins');if(!c)return;
+  var k=Math.max(0,Math.min(FIT_ME_MINS.length-1,Math.round(c.scrollTop/60)));
+  fitMeSet('minutes',FIT_ME_MINS[k]);
+}
 function fitMeHas(k){
   var o=fitMe();
   /* more than one outcome is allowed, so picking one must not advance -
@@ -9669,11 +9699,13 @@ function fitMeBody(k){
        "לרדת באחוזי שומן" are the same thing to somebody who has never
        trained and different things to somebody who has. */
     var on=o.out||[];
-    h='<div class="fg-row">';
+    /* one per row, like where and how much: seven two-line choices in a
+       two-column grid read as a crowd */
+    h='<div class="fq-opts">';
     for(i=0;i<FIT_OUT.length;i++)
-      h+='<button class="fg-b'+((on.indexOf(FIT_OUT[i][0])>=0)?' on':'')+
+      h+='<button class="fg-b fq-o'+((on.indexOf(FIT_OUT[i][0])>=0)?' on':'')+
          '" onclick="fitMeOut(&quot;'+FIT_OUT[i][0]+'&quot;)">'+esc(_t(FIT_OUT[i][1]))+
-         '<span class="gn-n" style="display:block;margin-top:3px">'+esc(_t(FIT_OUT[i][2]))+'</span></button>';
+         '<span class="fq-os">'+esc(_t(FIT_OUT[i][2]))+'</span></button>';
     h+='</div>';
     if(on.indexOf('fat')>=0&&on.indexOf('mass')>=0)   // i18n-exempt: stored keys
       h+='<div class="gn-s" style="margin-top:9px">'+_t('שתיהן יחד — אפשרי. אגיד לך בהמלצה מה זה אומר.')+'</div>';
@@ -9687,10 +9719,14 @@ function fitMeBody(k){
     return h+'</div>';
   }
   if(k==='minutes'){
-    h='<div class="fg-row">';
-    for(i=0;i<GENPROG_MINS.length;i++)
-      h+='<button class="fg-b" onclick="fitMeSet(&quot;minutes&quot;,'+GENPROG_MINS[i]+')">'+_t('{n} דקות',{n:GENPROG_MINS[i]})+'</button>';
-    return h+'</div>';
+    /* a wheel, like the hour in the first run - four exact numbers to pick
+       from read as a strange question about an approximate thing */
+    h='<div class="dr-wheel fq-wheel"><div class="win"></div><div class="dr-col fq-mins" id="fq-mins">';
+    for(i=0;i<FIT_ME_MINS.length;i++)h+='<div>'+_t('{n} דקות',{n:FIT_ME_MINS[i]})+'</div>';
+    h+='</div></div>';
+    h+='<button class="gn-go" style="margin-top:16px" onclick="fitMeMinsDone()">'+_t('המשך')+'</button>';
+    setTimeout(fitMeMinsInit,30);
+    return h;
   }
   if(k==='exp'){
     h='<div class="fq-opts">';
@@ -20664,7 +20700,7 @@ function renderFitness(){
      these questions is that the area knows who it is talking to before it
      shows her anything, and a card she can scroll past is not that. Put off
      for the day with "אחר כך", and gone for good once answered. */
-  if(_fitView==='home'&&fitMePending().length&&!fqOffToday('fitness'))_fitView='welcome';
+  if(_fitView==='home'&&fitMePending().length&&!fqOffToday('fitness')&&!fitCardMet())_fitView='welcome';
   if(_fitView==='home')renderFitHome();
   else if(_fitView==='editTemplate')renderFitEditTemplate();
   else if(_fitView==='workout')renderFitWorkout();
@@ -21488,12 +21524,23 @@ function fitWOpen(){
 }
 /* The greeting is not a question and is not stored - stepping past it is
    just the first paint of the first question. */
+/* met the area card and has not started the questions: the card already
+   asked about a plan, so the area opens as itself and the questions wait
+   for its button (or the hub's "build me a plan") */
+function fitCardMet(){
+  if(fitMe().started)return false;
+  try{return localStorage.getItem(FIRST_RUN_KEY)==='1'&&!!(JSON.parse(localStorage.getItem(AREA_INTRO_KEY)||'{}')||{}).fitness;}
+  catch(e){return false;}
+}
 function fitWNext(){
   var o=fitMe();o.started=1;
   try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
   renderFitness();
 }
 function fitWBuild(){if(_fitW){_fitW.built=true;renderFitness();}}
+/* everything she answered is kept - it still sets the rep range and the
+   rest - and she goes straight to starting a workout */
+function fitWSkip(){_fitW=null;_fitView='start';renderFitness();}
 /* THE PLAN IS BUILT BEFORE ANYTHING IS SAID ABOUT IT. The recommendation
    card used to quote a budget and the week under it listed whatever came
    out, and the two did not always agree - a session of ten exercises has a
@@ -21622,6 +21669,8 @@ function renderFitWelcome(){
       h+='</div>';
     }
     h+='<button class="gn-go" onclick="fitWBuild()">'+_t('בנה לי תוכנית')+'</button>';
+    /* the line under it always said "or start without a plan" - now it can */
+    h+='<button class="fq-later" onclick="fitWSkip()">'+_t('בלי תוכנית בינתיים')+'</button>';
     h+='<div class="gn-g">'+_t('אפשר לשנות כל אחד מהם מתי שתרצה — או להתחיל אימון בלי תוכנית בכלל.')+'</div>';
     return void(document.getElementById('content').innerHTML=h+'</div>');
   }
@@ -39667,26 +39716,43 @@ function doorTimed(){
 }
 /* the first reflection, written through the reflection's own writer */
 function doorFill(p){var f=document.getElementById('dr-fill');if(f)f.parentNode.style.setProperty('--drf',p);}
-/* DAY ONE, SAVED. Beem's own beads burst from the light - the same glossy
-   amber, orange and red he is made of, so it is his, not a party popper -
-   and the phone answers in the hand where it can. */
+/* DAY ONE, SAVED: THE LIGHT OPENS. A warm ring leaves the well and opens
+   across the screen, a softer one after it, over a moment of warm wash -
+   nothing flies (Asaf chose this over bead confetti, 22 Oct). Beem is
+   surprised, hops, smiles, and goes back to his ordinary eyes. */
+var BEEM_MOMENT={dur:1e9,ev:[[0,'face','surprised'],[0,'mode',{idle:0,breathe:[.016,4]}],[250,'face','happy'],[250,'hop',70],
+  [250,'burst',1.4],[1300,'nod',1,8],[2800,'face','calm']]};
 function doorCheer(){
   appHaptic();
+  try{if(_dr.beem)_dr.beem.play(BEEM_MOMENT);}catch(e){}
   var wl=document.querySelector('.dr-well');if(!wl)return;
   if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  var r=wl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,
-      C=['#f6b73c','#f08a3c','#e8553a','#f9cf5a'],i;
-  for(i=0;i<34;i++){
-    var b=document.createElement('i'),a=Math.random()*Math.PI*2,d=70+Math.random()*120,z=5+Math.random()*7,c=C[i%C.length];
+  var r=wl.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,d=Math.max(r.width,120),i,
+      w=document.createElement('div');
+  w.className='dr-bloom';
+  w.innerHTML='<i class="dr-bloom-wash"></i><i class="dr-bloom-ring"></i><i class="dr-bloom-ring b"></i>';
+  w.style.setProperty('--x',x+'px');w.style.setProperty('--y',y+'px');w.style.setProperty('--d',d+'px');
+  document.body.appendChild(w);
+  requestAnimationFrame(function(){for(i=0;i<w.children.length;i++)w.children[i].classList.add('go');});
+  setTimeout(function(){w.remove();},3600);
+}
+/* BEEM'S OWN RING, GOING OUT - option C of the same page, which Asaf liked
+   and asked to keep for another moment. His beads leave him once as a single
+   ring that opens wide and fades: his shape, made big. Not used yet. */
+function beemRingOut(x,y){
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var C=['#f6b73c','#f08a3c','#e8553a','#f9cf5a'],n=36,i,z=7,R=40;
+  for(i=0;i<n;i++){
+    var b=document.createElement('i'),a=i/n*Math.PI*2,c=C[i%4],R2=230+(i%2)*14;
     b.className='dr-bead';
-    b.style.cssText='left:'+(cx-z/2)+'px;top:'+(cy-z/2)+'px;width:'+z+'px;height:'+z+'px;'+
+    b.style.cssText='left:'+(x-z/2)+'px;top:'+(y-z/2)+'px;width:'+z+'px;height:'+z+'px;'+
       'background:radial-gradient(circle at 35% 30%,#fff8 0 18%,'+c+' 45%,color-mix(in srgb,'+c+' 70%,#7a2a10))';
     document.body.appendChild(b);
-    var dx=Math.cos(a)*d,dy=Math.sin(a)*d;
-    b.animate([{transform:'translate(0,0) scale(.3)',opacity:0},{transform:'translate('+dx*.7+'px,'+dy*.7+'px) scale(1)',opacity:1,offset:.35},
-      {transform:'translate('+dx+'px,'+(dy+140)+'px) scale(.8)',opacity:0}],
-      {duration:1500+Math.random()*700,easing:'cubic-bezier(.2,.7,.4,1)',delay:Math.random()*120,fill:'forwards'})
-      .onfinish=(function(x){return function(){x.remove();};})(b);
+    b.animate([{transform:'translate('+Math.cos(a)*R+'px,'+Math.sin(a)*R+'px)',opacity:0},
+      {transform:'translate('+Math.cos(a)*(R+20)+'px,'+Math.sin(a)*(R+20)+'px)',opacity:1,offset:.12},
+      {transform:'translate('+Math.cos(a)*R2+'px,'+Math.sin(a)*R2+'px) scale(.6)',opacity:0}],
+      {duration:2200,easing:'cubic-bezier(.15,.7,.3,1)',fill:'both'})
+      .onfinish=(function(e){return function(){e.remove();};})(b);
   }
 }
 /* A tap in the hand. Android has vibrate; iOS Safari has none, but since iOS
@@ -39721,8 +39787,13 @@ function doorRemind2(yes){
   if(yes){
     /* her tap is the gesture the browser needs, straight after the reason */
     try{
-      if(('Notification' in window)&&Notification.permission==='default')sumRemAsk();
-      else if(typeof sumRemPushSync==='function')sumRemPushSync();
+      if(!('Notification' in window))showToast(_t('כדי לקבל תזכורת בטלפון, צריך להוסיף את האפליקציה למסך הבית.'));
+      else if(Notification.permission==='default')sumRemAsk();
+      else{
+        /* the phone already answered, so there is nothing to ask - say what it said */
+        showToast(Notification.permission==='granted'?_t('✓ התראות מאושרות'):_t('ההתראות חסומות בהגדרות הטלפון. אפשר לאפשר אותן שם.'));
+        if(typeof sumRemPushSync==='function')sumRemPushSync();
+      }
     }catch(e){}
   }else{try{if(typeof sumRemPushSync==='function')sumRemPushSync();}catch(e){}}
   doorBeem('glad');setTimeout(doorNext,600);
@@ -40094,33 +40165,45 @@ function areaIntroMaybe(id){
     '<button class="aint-go">'+I.go+'</button><button class="aint-later">'+I.later+'</button></div>';
   document.body.appendChild(w);
   function close(){w.classList.remove('on');setTimeout(function(){w.remove();},400);}
-  w.querySelector('.aint-go').onclick=close;w.querySelector('.aint-later').onclick=close;
-  w.addEventListener('click',function(e){if(e.target===w)close();});
+  /* a button that only closes the card is a promise not kept: each does
+     what it says, where the area has that action ready */
+  w.querySelector('.aint-go').onclick=function(){close();if(I.go2)I.go2();};
+  w.querySelector('.aint-later').onclick=function(){close();if(I.later2)I.later2();};
+  w.addEventListener('click',function(e){if(e.target===w){close();if(I.dismiss)I.dismiss();}});
   beemKit().then(function(K){var el=document.getElementById('aint-b');if(el&&!el.firstChild)K.mount(el,{play:DOOR_BEEM.nod});}).catch(function(){});
   requestAnimationFrame(function(){requestAnimationFrame(function(){w.classList.add('on');});});
 }
 function areaIntroText(id){
   if(id==='nutrition')return {l:_t('כאן רושמים מה אכלת, בלי לספור קלוריות בראש.'),
     p:[_t('כותבים, מצלמים או מדברים, ואני מחשב'),_t('חלבון, פחמימות ושומן לאורך היום'),_t('מים בלחיצה אחת')],
-    go:_t('לרשום ארוחה ראשונה'),later:_t('רוצה יעדים אישיים? 4 שאלות קצרות')};
+    go:_t('לרשום ארוחה ראשונה'),later:_t('רוצה יעדים אישיים? 4 שאלות קצרות'),
+    go2:function(){var e=document.getElementById('co-in');if(e){e.scrollIntoView({block:'center'});e.focus();}},
+    later2:function(){var e=document.querySelector('#content .fq');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});}};
   if(id==='fitness')return {l:_t('כאן האימונים שלך: מה עשית, איך התקדמת, ומה עושים היום.'),
     p:[_t('רושמים אימון, עם משקלים וחזרות'),_t('שיאים אישיים, ואני חוגג איתך'),_t('אימון מוכן כשאין כוח לחשוב')],
-    go:_t('להתחיל אימון ראשון'),later:_t('לבנות לי תוכנית אישית')};
+    go:_t('להתחיל אימון ראשון'),later:_t('לבנות לי תוכנית אישית'),
+    go2:function(){fqLater('fitness');_fitView='start';renderFitness();},
+    later2:function(){_fitView='welcome';fitWNext();},
+    dismiss:function(){if(_fitView==='welcome'&&fitCardMet()){_fitView='home';renderFitness();}}};
   if(id==='hobbies')return {l:_t('הדברים שעושים לך טוב, ולאן הזמן שלך באמת הולך.'),
     p:[_t('מוסיפים תחביב במילה אחת'),_t('מסמנים בכל פעם שעשית אותו'),_t('רואים לאורך שבועות מה מקבל מקום')],
-    go:_t('להוסיף תחביב ראשון'),later:_t('אחר כך')};
+    go:_t('להוסיף תחביב ראשון'),later:_t('אחר כך'),
+    go2:function(){if(!_hbAdding)hbAddOpen();}};
   if(id==='insights')return {l:_t('שאלות עמוקות יותר על החיים, כשבא לך. אין פה חובה.'),
     p:[_t('נושאים: אני, אנשים, החיים, העולם'),_t('שאלה אחת בכל פעם, בקצב שלך'),_t('התשובות נשמרות ונהיות תמונה של מי שאתה')],
     go:_t('לבחור שאלה ראשונה'),later:_t('אחר כך')};
   if(id==='people')return {l:_t('מי שחשובים לך, כדי שאף אחד לא ייעלם בין הימים.'),
     p:[_t('מוסיפים אדם, עם תמונה אם בא לך'),_t('תזכורת עדינה כשמזמן לא דיברתם'),_t('מי היה איתך, בכל סיכום ערב')],
-    go:_t('להוסיף אדם ראשון'),later:_t('אחר כך')};
+    go:_t('להוסיף אדם ראשון'),later:_t('אחר כך'),
+    go2:function(){_peopleView='edit-person';_personIdx=-1;renderPeople();}};
   if(id==='planning')return {l:_t('מספרים לי מה צריך לקרות, ואני עוזר לסדר את היום והשבוע.'),
     p:[_t('כותבים או אומרים מה יש מחר'),_t('השבוע כולו במבט אחד'),_t('מה שתכננת מופיע על שעון החוגה')],
-    go:_t('לתכנן את מחר'),later:_t('אחר כך')};
+    go:_t('לתכנן את מחר'),later:_t('אחר כך'),
+    go2:function(){var e=document.getElementById('psay-in');if(e){e.scrollIntoView({block:'center'});e.focus();}}};
   if(id==='closet')return {l:_t('מצלמים בגדים פעם אחת, ואז מרכיבים לוקים ורואים מה לבשת.'),
     p:[_t('מצלמים, והרקע נעלם לבד'),_t('מרכיבים לוק מהבגדים שלך'),_t('רואים מה לובשים, ומה נשכח בארון')],
-    go:_t('לצלם בגד ראשון'),later:_t('אחר כך')};
+    go:_t('לצלם בגד ראשון'),later:_t('אחר כך'),
+    go2:function(){var e=document.querySelector('#content input[type=file][onchange*="closetAdd"]');if(e)e.click();}};
   return null;
 }
 
