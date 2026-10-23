@@ -83,7 +83,7 @@ try {
   await send('Page.navigate', { url: `http://localhost:${PORT}/dev/` });
   ok(await waitFor(`!!document.querySelector('#door .dr-btn')`, 12000), 'the door opens on a fresh device');
   await sleep(2600); await shot('welcome');
-  ok(await ev(`/Welcome to/.test(document.querySelector('.dr-hi2').textContent)&&document.querySelector('.dr-hi2').getAttribute('dir')==='ltr'`), 'the welcome is in English, whatever the phone speaks');
+  ok(await ev(`/WELCOME TO/.test(document.querySelector('.dr-arc').textContent)&&document.querySelector('.dr-hi2').getAttribute('dir')==='ltr'`), 'the welcome is in English, whatever the phone speaks');
   ok(await ev(`!!document.querySelector('#dr-beem canvas')`), 'Beem is there from the first frame');
   await tap('#door .dr-btn'); await sleep(1500); await shot('language');
   ok(await ev(`document.querySelectorAll('.dr-langs .dr-lr').length===11&&document.querySelector('.dr-langs .dr-lr.on').getAttribute('lang')===appLang()`), 'then the language screen: eleven languages, this one chosen');
