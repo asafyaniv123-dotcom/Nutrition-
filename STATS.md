@@ -72,7 +72,7 @@ every install by its own days with week 1 / week 2 counts and pass / fail /
   the data and its "week 2" computed too late. The first tester (since 26 Sep)
   will carry it.
 
-**`push-server/src/worker.js`** — two fixes, NOT deployed yet (Asaf's step):
+**`push-server/src/worker.js`** — two fixes, deployed 23 Oct (version 863973f9):
 `/ping` no longer erases a kept language when a ping comes without one, and
 keeps the earliest first day; `/admin/usage` also reads tomorrow's UTC key,
 because east of UTC the app's day is already tomorrow's date.
@@ -100,7 +100,6 @@ A tester counts only if they install the Play build; the PWA does not count.
 ## Open
 
 - `WA_LINK` in `testers/index.html`.
-- Deploy the worker fixes.
 - An Android build on Play's closed track does not exist yet.
 
 - **`BEFORE-TESTERS.md`** - what the iPhone/Android shells need before testers start (the evening reminder blocks; the platform field waits for Asaf). The shell copy was seen sending a correct ping.
