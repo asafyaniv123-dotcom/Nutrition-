@@ -82,12 +82,13 @@ async function waitFor(x, ms = 6000) { for (let t = 0; t < ms; t += 150) { if (a
 try {
   await send('Page.navigate', { url: `http://localhost:${PORT}/dev/` });
   ok(await waitFor(`!!document.querySelector('#door .dr-btn')`, 12000), 'the door opens on a fresh device');
-  await sleep(2600); await shot('language');
-  ok(await ev(`document.querySelectorAll('.dr-langs .dr-lr').length===11&&document.querySelector('.dr-langs .dr-lr.on').getAttribute('lang')===appLang()`), 'the language screen comes first: eleven languages, this one chosen');
+  await sleep(2600); await shot('welcome');
+  ok(await ev(`/Welcome to/.test(document.querySelector('.dr-hi2').textContent)&&document.querySelector('.dr-hi2').getAttribute('dir')==='ltr'`), 'the welcome is in English, whatever the phone speaks');
   ok(await ev(`!!document.querySelector('#dr-beem canvas')`), 'Beem is there from the first frame');
-  await tap('#door .dr-btn'); await sleep(1500); await shot('welcome');
-  ok(await ev(`!document.querySelector('.dr-lang')`), 'the welcome no longer carries a language pill - it was just chosen');
-  await tap('#door .dr-btn'); await sleep(1300); await shot('name');
+  await tap('#door .dr-btn'); await sleep(1500); await shot('language');
+  ok(await ev(`document.querySelectorAll('.dr-langs .dr-lr').length===11&&document.querySelector('.dr-langs .dr-lr.on').getAttribute('lang')===appLang()`), 'then the language screen: eleven languages, this one chosen');
+  await tap('#door .dr-btn'); await sleep(1500);
+  await sleep(300); await shot('name');
   await tap('#dr-nm'); await type(LANG === 'he' || LANG === 'ar' ? 'נועה' : 'Noa'); await sleep(500); await shot('name-typed');
   await tap('#dr-g2'); await sleep(2000);
   if (LANG === 'he') { await shot('gender'); await tap('.dr-r2', FORM === 'x' ? 2 : FORM === 'm' ? 1 : 0); await waitFor(`/at-areas/.test(document.getElementById('dr2').className)`, 6000); }

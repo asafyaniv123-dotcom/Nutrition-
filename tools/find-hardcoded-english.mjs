@@ -75,11 +75,17 @@ const KEPT = [
 
 /* ── 1. text sitting between two tags ── */
 const BETWEEN = [];
+/* the same marker the glued scan below honours: a line that says why its
+   English is meant (the first-run welcome, English for everyone by Asaf's
+   decision of 23 Oct) */
+const markedLine = new Set();
+app.split('\n').forEach((l, i) => { if (/\/\/\s*i18n-exempt:/.test(l)) markedLine.add(i + 1); });
 for (const m of app.matchAll(/>([A-Za-z][A-Za-z0-9 ,.!?&:%()\/-]{2,60})</g)) {
   const txt = m[1].trim();
   /* three letters together, or it is a code, an id or a number with a suffix */
   if (!/[A-Za-z]{3,}/.test(txt)) continue;
   if (KEPT.indexOf(txt) >= 0) continue;
+  if (markedLine.has(lineOf(m.index))) continue;
   BETWEEN.push({ line: lineOf(m.index), txt });
 }
 
