@@ -3356,7 +3356,12 @@ body.night .greet-w{color:#e6e0f2}
 body.night .greet-add{color:#bfb6d2;border-bottom-color:rgba(255,255,255,.24)}
 .td-wrap{width:100%;max-width:380px;margin-bottom:20px}
 /* ── THE BAR ── one sentence for the whole app; see hcmdGo */
-.hcmd{width:100%;max-width:380px;margin:0 0 18px}
+.hcmd{width:100%;max-width:380px;margin:22px 0 18px}
+/* THE PULL. Height is written by pullGlowPaint; at rest it is zero and paints
+   nothing. The light comes down from the top edge, the colour of the dial's
+   arc, fading into the page. */
+#pull-glow{position:fixed;top:0;left:0;right:0;height:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(120% 100% at 50% 0%,rgba(240,169,46,.42),rgba(240,169,46,.16) 45%,rgba(245,240,235,0) 100%),#f5f0eb}
 .hcmd-row{display:flex;align-items:flex-end;gap:8px}
 .hcmd-in{flex:1;min-width:0;display:block;border:none;border-radius:18px;padding:13px 16px;font-family:inherit;font-size:14.5px;line-height:1.5;color:var(--ink);background:var(--page);unicode-bidi:plaintext;outline:none;resize:none;overflow:hidden}
 .hcmd-go{flex:0 0 auto;width:48px;height:48px;border:none;border-radius:50%;background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
@@ -42917,6 +42922,18 @@ function tbSync(){
    is built once at boot - a placeholder translated there would stay Hebrew.
    Remounting keeps what is in the box. */
 var _hcmd={busy:false,q:'',route:null,msg:'',done:null};
+/* one paint per frame, and only while the page is pulled past its top */
+function pullGlowPaint(){
+  var el=document.getElementById('pull-glow'),y=window.scrollY||0;
+  if(!el){el=document.createElement('div');el.id='pull-glow';document.body.insertBefore(el,document.body.firstChild);}
+  el.style.height=(y<0?Math.round(-y):0)+'px';
+}
+(function(){
+  var q=0;
+  window.addEventListener('scroll',function(){
+    if(q)return;q=1;requestAnimationFrame(function(){q=0;pullGlowPaint();});
+  },{passive:true});
+})();
 function hcmdMount(){
   var slot=document.getElementById('hcmd-slot');
   if(!slot)return;
