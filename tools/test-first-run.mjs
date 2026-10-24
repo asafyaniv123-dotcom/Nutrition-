@@ -91,7 +91,7 @@ try {
   await tap('#door .dr-btn'); await sleep(1500);
   await sleep(300); await shot('name');
   await tap('#dr-nm'); await type(LANG === 'he' || LANG === 'ar' ? 'נועה' : 'Noa'); await sleep(500); await shot('name-typed');
-  ok(await ev(`(function(){var b=document.getElementById('dr-beem').getBoundingClientRect(),f=document.getElementById('dr-nm').getBoundingClientRect();return b.top>=f.bottom;})()`), 'on the name screen Beem sits under the field, above the keyboard');
+  ok(await ev(`(function(){var b=document.getElementById('dr-beem').getBoundingClientRect(),f=document.getElementById('dr-said').getBoundingClientRect();return b.top>=f.bottom;})()`), 'on the name screen Beem sits under the field, above the keyboard');
   await tap('#dr-g2'); await sleep(2000);
   if (LANG === 'he') { await shot('gender'); await tap('.dr-r2', FORM === 'x' ? 2 : FORM === 'm' ? 1 : 0); await waitFor(`/at-areas/.test(document.getElementById('dr2').className)`, 6000); }
   await sleep(1600); await shot('areas');
