@@ -3973,6 +3973,11 @@ body.mod-fitness .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
 .fss-ov .cf-card{box-shadow:0 14px 34px rgba(74,67,64,.18)}
 .gn-st{font-size:12.5px;font-weight:800;color:var(--nu-muted)}
 .gn-q{font-size:20px;font-weight:800;color:var(--nu-ink,#4a453f);margin-bottom:14px;line-height:1.3}
+.tpl-days{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 14px}
+.tpl-day{display:inline-flex;align-items:center;gap:6px;border:none;border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;
+  color:var(--nu-muted);background:var(--nu-ground);box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+.tpl-day.on{color:var(--nu-ink);box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+.tpl-day i{font-style:normal;font-size:15px;color:var(--nu-muted)}
 .fss-g{font-size:12.5px;font-weight:800;color:var(--nu-muted);margin:14px 4px 8px;text-align:start}
 .fss-l{display:flex;flex-direction:column;border-radius:18px;padding:2px 12px;box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 .fss-l button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:none;background:none;padding:12px 2px;border-top:1px solid rgba(176,168,156,.3);
@@ -4078,7 +4083,7 @@ html body.mod-fitness .tm-k.on,html body.mod-fitness .gn-m.on,html body.mod-fitn
    takes the ink of the chip it sits in instead of a colour of its own. */
 html body.mod-fitness .gp-n{color:var(--nu-muted)}
 /* ── EVERY SCREEN IN THE MATERIAL (24 Oct, from fit-paint-audit) ── */
-html body.mod-fitness .tpl-addex,html body.mod-fitness .tpl-save,html body.mod-fitness .fm-b,
+html body.mod-fitness .tb-add,html body.mod-fitness .tpl-addex,html body.mod-fitness .tpl-save,html body.mod-fitness .fm-b,
 html body.mod-fitness #content button[style*="var(--violet-100)"],
 html body.mod-fitness #content button[style*="background:var(--surface)"]{
   background:var(--nu-ground)!important;color:var(--nu-ink)!important;border:none!important;
@@ -22510,11 +22515,10 @@ function fitStartSheet(){
      (tp?esc(_t('היום לפי הלוז: {name}',{name:fitPlanName(tp)})):(tpls.length?esc(tpls.slice(0,3).map(function(t){return t.name;}).join(' · ')):''))+'</span></button>';
   h+='<button onclick="fitSheetClose();startEmptyWorkout()"><b>'+esc(_t('אימון ריק'))+'</b><span>'+esc(_t('מוסיפים תרגילים תוך כדי'))+'</span></button>';
   h+='<button onclick="fitSheetClose();_gen=null;_fitView=\'build\';renderFitness()"><b>'+esc(_t('אימון בקליק'))+'</b><span>'+esc(_t('כמה זמן יש לך, במה להתרכז, ואיזה ציוד'))+'</span></button>';
-  /* and the ways to plan ahead, the same three as "+ new program" */
+  /* and the two ways to plan ahead, the same as "+ new program" */
   h+='</div><div class="fss-g">'+esc(_t('לתכנן מראש'))+'</div><div class="fss-l">';
-  h+='<button onclick="fitSheetClose();startFitEdit(-1)"><b>'+esc(_t('בנה אימון מראש'))+'</b></button>'+
-     '<button onclick="fitSheetClose();genProgOpen()"><b>'+esc(_t('בנה לי תוכנית'))+'</b></button>'+
-     '<button onclick="fitSheetClose();startProgramWizard()"><b>'+esc(_t('הוסף תוכנית מחדר כושר'))+'</b></button>';
+  h+='<button onclick="fitSheetClose();startFitEdit(-1)"><b>'+esc(_t('כתוב תוכנית בעצמי'))+'</b><span>'+esc(_t('אימון אחד, או כמה ימים'))+'</span></button>'+
+     '<button onclick="fitSheetClose();genProgOpen()"><b>'+esc(_t('בנה לי תוכנית'))+'</b><span>'+esc(_t('האפליקציה בונה אותה בשבילך'))+'</span></button>';
   h+='</div><button class="cf-no" style="width:100%;margin-top:12px" onclick="fitSheetClose()">'+esc(_t('ביטול'))+'</button></div>';
   ov.innerHTML=h;document.body.appendChild(ov);
   ov.onclick=function(ev){if(ev.target===ov)fitSheetClose();};
@@ -23015,7 +23019,7 @@ function fitRowMenu(kind,i){
   document.body.appendChild(ov);ov.onclick=function(e){if(e.target===ov)fitSheetClose();};
   document.getElementById('fr-ed').onclick=function(){
     fitSheetClose();
-    if(kind==='t')startFitEdit(i);else{_fitView='edit-program';_fitProgIdx=i;renderFitness();}
+    if(kind==='t')startFitEdit(i);else fitProgEdit(i);
   };
   document.getElementById('fr-del').onclick=function(){
     fitSheetClose();
@@ -23031,9 +23035,8 @@ function fitNewProgSheet(){
   fitSheetClose();
   var ov=document.createElement('div');ov.className='cf-ov fss-ov';ov.id='fss-ov';
   ov.innerHTML='<div class="cf-card fss"><div class="cf-q" style="margin-bottom:12px">'+esc(_t('תוכנית חדשה'))+'</div><div class="fss-l">'+
-    '<button onclick="fitSheetClose();startFitEdit(-1)"><b>'+esc(_t('בנה אימון מראש'))+'</b></button>'+
-    '<button onclick="fitSheetClose();genProgOpen()"><b>'+esc(_t('בנה לי תוכנית'))+'</b></button>'+
-    '<button onclick="fitSheetClose();startProgramWizard()"><b>'+esc(_t('הוסף תוכנית מחדר כושר'))+'</b></button>'+
+    '<button onclick="fitSheetClose();startFitEdit(-1)"><b>'+esc(_t('כתוב תוכנית בעצמי'))+'</b><span>'+esc(_t('אימון אחד, או כמה ימים'))+'</span></button>'+
+    '<button onclick="fitSheetClose();genProgOpen()"><b>'+esc(_t('בנה לי תוכנית'))+'</b><span>'+esc(_t('האפליקציה בונה אותה בשבילך'))+'</span></button>'+
     '</div><button class="cf-no" style="width:100%;margin-top:12px" onclick="fitSheetClose()">'+esc(_t('ביטול'))+'</button></div>';
   document.body.appendChild(ov);
   ov.onclick=function(ev){if(ev.target===ov)fitSheetClose();};
@@ -26140,7 +26143,10 @@ function renderCloset(){
   })();
 }
 
+var _fitEditProg=-1;
+function fitProgEdit(pi){_fitEditProg=pi;_fitEditIdx=-1;_tpl=null;_fitView='editTemplate';renderFitness();}
 function startFitEdit(idx){
+  _fitEditProg=-1;
   _fitEditIdx=idx;_fitView='editTemplate';renderFitness();
 }
 
@@ -26843,12 +26849,34 @@ function tplRows(ex){
   return out;
 }
 function tplLoad(){
+  var p=_fitEditProg>=0?loadPrograms()[_fitEditProg]:null;
+  if(p){
+    var order=[],by={};
+    (p.exercises||[]).forEach(function(ex){
+      var d=ex.day||'';if(!by[d]){by[d]=[];order.push(d);}
+      by[d].push({name:ex.name,plan:(ex.plan&&ex.plan.length)?ex.plan.map(function(s){return {w:s.w,r:s.r};})
+        :Array.apply(null,Array(Math.max(1,+ex.sets||3))).map(function(){return {w:'',r:+ex.targetReps||10};})});
+    });
+    var days=order.map(function(d){return by[d];});if(!days.length)days=[[]];
+    _tpl={name:progLabel(p.name)||'',days:days,dayNames:order,cur:0,exercises:days[0]};
+    return;
+  }
   var templates=loadTemplates();
   var t=(_fitEditIdx>=0&&templates[_fitEditIdx])?templates[_fitEditIdx]:{name:'',exercises:[]};
-  _tpl={name:t.name||'',exercises:(t.exercises||[]).map(function(ex){
+  var ex0=(t.exercises||[]).map(function(ex){
     return {name:ex.name,plan:tplRows(ex).map(function(s){return {w:s.w,r:s.r};})};
-  })};
+  });
+  _tpl={name:t.name||'',days:[ex0],dayNames:[''],cur:0,exercises:ex0};
 }
+/* the days: switch, add, drop */
+function tplDay(i){if(!_tpl||!_tpl.days[i])return;_tpl.cur=i;_tpl.exercises=_tpl.days[i];renderFitness();}
+function tplDayAdd(){if(!_tpl)return;var d=[];_tpl.days.push(d);_tpl.dayNames.push('');_tpl.cur=_tpl.days.length-1;_tpl.exercises=d;renderFitness();}
+function tplDayDrop(i){
+  if(!_tpl||_tpl.days.length<2)return;
+  _tpl.days.splice(i,1);_tpl.dayNames.splice(i,1);
+  _tpl.cur=Math.min(_tpl.cur,_tpl.days.length-1);_tpl.exercises=_tpl.days[_tpl.cur];renderFitness();
+}
+function tplDayLetter(i){return String.fromCharCode(65+i);}
 /* Typed values go straight into the object without redrawing - a redraw on
    every keystroke takes the keyboard down and puts the caret back at the
    start, which on a phone makes the thing unusable. Only adding or removing
@@ -26928,7 +26956,26 @@ function tplSave(){
   if(!_tpl)return;
   var name=(_tpl.name||'').trim();
   if(!name){showToast(''+_t('תן שם לתבנית')+'');return;}
-  if(!_tpl.exercises.length){showToast(''+_t('הוסף לפחות תרגיל אחד')+'');return;}
+  var days=_tpl.days.filter(function(d){return d.length;});
+  if(!days.length){showToast(''+_t('הוסף לפחות תרגיל אחד')+'');return;}
+  if(days.length>1||_fitEditProg>=0){
+    var progs=loadPrograms(),flat=[],di,ek;
+    for(di=0;di<days.length;di++)for(ek=0;ek<days[di].length;ek++){
+      var e2=days[di][ek],pl=e2.plan.map(function(s){return {w:(s.w===''?0:s.w),r:(s.r===''?0:s.r)};});
+      flat.push({name:e2.name,plan:pl,sets:pl.length,targetReps:pl.length?pl[pl.length-1].r:10,day:days.length>1?tplDayLetter(di):''});
+    }
+    var old=_fitEditProg>=0?progs[_fitEditProg]:null;
+    var p={id:old?old.id:Date.now(),name:name,daysPerWeek:days.length,exercises:flat};
+    if(old)progs[_fitEditProg]=p;else progs.push(p);
+    savePrograms(progs);
+    /* a workout that grew a second day is a program now, not both */
+    if(_fitEditIdx>=0){var tl=loadTemplates();tl.splice(_fitEditIdx,1);saveTemplates(tl);_fitEditIdx=-1;}
+    _tpl=null;_fitEditProg=-1;
+    showToast(''+_t('נשמר')+' ✓');
+    _fitView='start';renderFitness();
+    return;
+  }
+  _tpl.exercises=days[0];
   var templates=loadTemplates();
   /* Kept in both shapes on purpose: plan is what this screen reads, and sets
      and reps are what the older screens still expect. Dropping them would
@@ -26943,14 +26990,22 @@ function tplSave(){
   saveTemplates(templates);
   _tpl=null;
   showToast(''+_t('נשמר')+' ✓');
-  _fitView='home';renderFitness();
+  _fitView='start';renderFitness();
 }
-function tplCancel(){_tpl=null;_fitView='home';renderFitness();}
+function tplCancel(){_tpl=null;_fitEditProg=-1;_fitView='start';renderFitness();}
 function renderFitEditTemplate(){
   if(!_tpl)tplLoad();
   var h='<div style="padding-bottom:30px">';
-  h+='<div class="tpl-t">'+(_fitEditIdx>=0?''+_t('עריכת תבנית')+'':''+_t('תבנית חדשה')+'')+'</div>';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
+     '<div class="tpl-t" style="margin:0">'+((_fitEditIdx>=0||_fitEditProg>=0)?_t('עריכת תוכנית'):_t('תוכנית חדשה'))+'</div>'+
+     '<button class="fit-back" onclick="tplCancel()">&#8249; '+_t('חזרה')+'</button></div>';
   h+='<input class="tpl-name" value="'+esc(_tpl.name)+'" placeholder="'+_t("שם התבנית — למשל דחיפה")+'" oninput="tplName(this.value)">';
+  /* ONE DAY OR SEVERAL: the strip appears as days do; one day is a workout */
+  h+='<div class="tpl-days">';
+  for(var di=0;di<_tpl.days.length;di++)
+    h+='<button class="tpl-day'+(di===_tpl.cur?' on':'')+'" onclick="tplDay('+di+')">'+_t('יום {d}',{d:tplDayLetter(di)})+
+       (di===_tpl.cur&&_tpl.days.length>1?'<i onclick="event.stopPropagation();tplDayDrop('+di+')">&times;</i>':'')+'</button>';
+  h+='<button class="tpl-day add" onclick="tplDayAdd()">'+_t('+ יום')+'</button></div>';
   for(var ei=0;ei<_tpl.exercises.length;ei++)h+=tplBlockHTML(_tpl.exercises[ei],ei);
   if(!_tpl.exercises.length)h+='<div class="tpl-empty">'+_t('עוד אין תרגילים. הוסף את הראשון.')+'</div>';
   h+='<button class="tpl-addex" onclick="tplAddExercise()">'+_t('+ הוסף תרגיל')+'</button>';
