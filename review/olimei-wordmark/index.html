@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@24,700&family=Assistant:wght@600;700;800&display=block" rel="stylesheet">
+<title>Olimei: השמש במקום הנקודה של ה־i</title>
+<style>
+/* OLIMEI WITH THE SUN AS THE DOT OF THE FIRST i (Asaf, 24 Oct: none of the four
+   O variants; "the sun in place of the dot of the first i"). The word is set in
+   Fraunces 700 with a dotless ı, and the brand sun - the same geometry as the
+   icon, n=9 c=19.5 d=5.6 r=33 - is drawn where the dot sat, centred on it.
+   Three sizes, because a dot is small and a sun wants room; each shown on the
+   splash, on the icon's cream, at night and small. The same canvas renders the
+   PNG the app uses (tools/render-sun-i.mjs). */
+body{margin:0;background:#2b2724;color:#efe6d8;font-family:Assistant,sans-serif}
+.bar{max-width:760px;margin:0 auto;padding:16px}
+.bar h1{font-size:20px;margin:0 0 6px}.bar p{margin:0;color:#cfc4b4;font-size:14px;line-height:1.6}
+.grid{max-width:760px;margin:0 auto;padding:8px 16px 40px;display:grid;gap:18px}
+.opt{background:#3a342f;border-radius:18px;padding:14px}
+.opt h2{font-size:16px;margin:0 0 10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{border-radius:14px;display:flex;align-items:center;justify-content:center;min-height:150px;padding:16px}
+.cream{background:#fbf6ee}.night{background:#221f1c}.small{background:#fbf6ee;min-height:70px}
+canvas{max-width:100%;height:auto}
+</style></head><body>
+<div class="bar"><h1>Olimei: השמש במקום הנקודה של ה־i הראשונה</h1>
+<p>המילה בגופן של הלוגו, וה־i הראשונה בלי נקודה. במקום הנקודה עומדת השמש של האייקון, באותה צורה בדיוק. שלושה גדלים, כי נקודה קטנה ושמש צריכה מקום. כל אחד מוצג במסך הפתיחה, על רקע לילה, ובגודל קטן כמו בכותרת.</p></div>
+<div class="grid" id="g"></div>
+<script>
+var OR='#ff7a1a',P={n:9,c:19.5,d:5.6,r:33,rot:0.5};
+/* draw the word with the sun on the first i; s = sun radius in em */
+function wordmark(cv,px,ink,s){
+  var g=cv.getContext('2d'),f='700 '+px+'px Fraunces';g.font=f;g.direction='ltr';
+  var T='Olımei',w=Math.ceil(g.measureText(T).width),pad=Math.ceil(px*.5);
+  cv.width=w+pad*2;cv.height=Math.ceil(px*1.55);g=cv.getContext('2d');g.font=f;g.direction='ltr';g.textAlign='left';g.textBaseline='alphabetic';
+  var base=Math.round(px*1.22);g.fillStyle=ink;g.fillText(T,pad,base);
+  /* where the dot of an i sits: the centre of the ink an 'i' has and an 'ı' lacks */
+  var tc=document.createElement('canvas');tc.width=px*2;tc.height=px*2;var t=tc.getContext('2d');t.font=f;t.direction='ltr';t.textAlign='left';t.textBaseline='alphabetic';
+  t.fillText('i',px*.5,px*1.5);var a=t.getImageData(0,0,tc.width,tc.height).data;t.clearRect(0,0,tc.width,tc.height);
+  t.fillText('ı',px*.5,px*1.5);var b=t.getImageData(0,0,tc.width,tc.height).data,sx=0,sy=0,n=0,x,y,k;
+  for(y=0;y<tc.height;y++)for(x=0;x<tc.width;x++){k=(y*tc.width+x)*4+3;if(a[k]>128&&b[k]<40){sx+=x;sy+=y;n++;}}
+  var dx=sx/n-px*.5,dy=sy/n-px*1.5;
+  var cx=pad+g.measureText('Ol').width+dx,cy=base+dy,R=s*px,q=R/(P.r+P.d);
+  cy-=Math.max(0,R-px*.11)*.55;   /* a bigger sun rises a little, so its rays clear the stem */
+  g.fillStyle=OR;g.beginPath();g.arc(cx,cy,P.c*q,0,Math.PI*2);g.fill();
+  for(var i=0;i<P.n;i++){var an=(i+P.rot)/P.n*Math.PI*2-Math.PI/2;g.beginPath();g.arc(cx+Math.cos(an)*P.r*q,cy+Math.sin(an)*P.r*q,P.d*q,0,Math.PI*2);g.fill();}
+  return cv;
+}
+var SIZES=[['א׳ · שמש קטנה, בגודל נקודה גדולה',.13],['ב׳ · שמש בינונית',.18],['ג׳ · שמש גדולה',.24]];
+document.fonts.load('700 100px Fraunces').then(function(){
+  var h='';SIZES.forEach(function(s,i){h+='<div class="opt"><h2>'+s[0]+'</h2><div class="row"><div class="tile cream"><canvas id="a'+i+'"></canvas></div><div class="tile night"><canvas id="b'+i+'"></canvas></div></div>'+
+    '<div class="tile small" style="margin-top:10px"><canvas id="c'+i+'" style="height:30px;width:auto"></canvas></div></div>';});
+  document.getElementById('g').innerHTML=h;
+  SIZES.forEach(function(s,i){wordmark(document.getElementById('a'+i),110,'#2e2925',s[1]);wordmark(document.getElementById('b'+i),110,'#efe6dc',s[1]);wordmark(document.getElementById('c'+i),110,'#2e2925',s[1]);});
+  window.__ready=true;
+});
+</script>
+</body></html>
