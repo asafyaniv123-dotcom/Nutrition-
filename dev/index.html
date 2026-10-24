@@ -19757,7 +19757,7 @@ function saveEditSet(){
 
    The tokens are declared on the card itself, so it carries this material
    into whichever area asked the question. */
-function askConfirm(msg,yesLabel,onYes){
+function askConfirm(msg,yesLabel,onYes,noLabel){
   var old=document.getElementById('cf-ov');
   if(old&&old.parentNode)old.parentNode.removeChild(old);
   var ov=document.createElement('div');
@@ -19766,7 +19766,7 @@ function askConfirm(msg,yesLabel,onYes){
     '<div class="cf-q">'+esc(String(msg||''))+'</div>'+
     '<div class="cf-row">'+
       '<button class="cf-yes" id="cf-yes">'+esc(String(yesLabel||''))+'</button>'+
-      '<button class="cf-no" id="cf-no">'+esc(_t('ביטול'))+'</button>'+
+      '<button class="cf-no" id="cf-no">'+esc(noLabel||_t('ביטול'))+'</button>'+
     '</div></div>';
   document.body.appendChild(ov);
   var close=function(){
@@ -23248,12 +23248,49 @@ function wxSwap(i){
   }
   exPickInto(function(name){
     if(!_fitWorkout)return;
+    var was=ex.name;
     ex.name=name;
     /* the plan was written for the other lift */
     ex.plan=[];
     _fitPinned=true;
     renderFitness();
+    if(name!==was)wxIntoRoutine(ex,'swap',name);
   });
+}
+/* ── INTO THE ROUTINE, OR JUST TODAY ──
+   A swap or a removal used to change only the workout in hand, so next week
+   the routine brought the old exercise straight back - every week, for
+   anyone whose machine is always taken. Now it asks once, right after: in
+   the routine too, or only today. The line is found by where it stood in
+   the routine and checked by its name, so exercises added or moved during
+   the workout cannot redirect it. */
+function wxTplLine(ex){
+  if(!_fitWorkout||!(_fitWorkout.templateIdx>=0)||!ex||!ex.from)return null;
+  var ts=loadTemplates(),t=ts[_fitWorkout.templateIdx];
+  if(!t||!Array.isArray(t.exercises))return null;
+  var k=(t.exercises[ex.tpos]&&t.exercises[ex.tpos].name===ex.from)?ex.tpos:-1,i;
+  for(i=0;k<0&&i<t.exercises.length;i++)if(t.exercises[i].name===ex.from)k=i;
+  return k<0?null:{ts:ts,t:t,k:k};
+}
+function wxIntoRoutine(ex,what,newName){
+  var L=wxTplLine(ex);if(!L)return;
+  var q=what==='swap'
+    ?_t('להחליף את {a} ב{b} גם בתוכנית "{plan}"? כך זה יופיע גם באימונים הבאים.',{a:exLabel(ex.from),b:exLabel(newName),plan:L.t.name||''})
+    :_t('להסיר את {a} גם מהתוכנית "{plan}"? כך הוא לא יופיע באימונים הבאים.',{a:exLabel(ex.from),plan:L.t.name||''});
+  askConfirm(q,_t('כן, גם בתוכנית'),function(){
+    var M=wxTplLine(ex);if(!M)return;
+    if(what==='swap'){
+      var line=M.t.exercises[M.k];
+      /* the reps carry over; the weights were for the other lift */
+      line.plan=tplRows(line).map(function(r){return {w:'',r:r.r};});
+      line.name=newName;
+      ex.from=newName;
+    } else M.t.exercises.splice(M.k,1);
+    saveTemplates(M.ts);
+    /* the lines after a removed one moved up */
+    if(what!=='swap'&&_fitWorkout)_fitWorkout.exercises.forEach(function(e){if(e.from&&e.tpos>M.k)e.tpos--;});
+    showToast(_t('התוכנית עודכנה'));
+  },_t('רק היום'));
 }
 /* A group of one is not a superset. Leaving the badge on a lone exercise also
    leaves logSet walking back to a top of the pair that is no longer there. */
@@ -23282,7 +23319,9 @@ function wxRemoveGo(i){
   if(!_fitWorkout)return;
   var exs=_fitWorkout.exercises;
   if(!exs[i])return;
+  var gone=exs[i];
   exs.splice(i,1);
+  setTimeout(function(){wxIntoRoutine(gone,'remove');},0);
   wxLoneSuper();
   if(!exs.length){_fitWorkout.currentEx=0;renderFitness();return;}
   /* Stay where you were standing: the exercise that slid into this slot. Off
@@ -26221,13 +26260,16 @@ function startWorkout(tplIdx){
     var t2=loadTemplates()[tplIdx]||t;
     _fitWorkout={
       templateIdx:tplIdx,name:t2.name,startTime:Date.now(),
-      exercises:t2.exercises.map(function(ex){
+      exercises:t2.exercises.map(function(ex,tpos){
         // the planned rows come with it, so each set's boxes open on what you
         // meant to lift rather than on nothing
         var plan=tplRows(ex);
         return{name:ex.name,targetSets:plan.length,
                targetReps:(plan[0]&&plan[0].r)||ex.reps||10,
-               plan:plan,sets:[],warm:[],ss:null};
+               plan:plan,sets:[],warm:[],ss:null,
+               /* which line of the routine this is, so a swap or a removal
+                  can be carried back into it */
+               from:ex.name,tpos:tpos};
       }),
       currentEx:0
     };
