@@ -13831,7 +13831,7 @@ function coachApply(j,onDate){
          12, and filed EVERY meal the coach ever logged as lunch. */
       day.meals.push({id:q.id,src:'coach',name:q.name,amount:q.quantity,
         kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',
-        na:q.sodium_level||'',rest:q.restaurant?1:0,
+        na:q.sodium_level||'',rest:q.restaurant?1:0,label:q.label||undefined,
         kind:coachMealOk(q.meal),time:fmtTime(),at:Date.now()});
       added.push(q.id);}
   } else if(j.action==='update'){
@@ -13852,6 +13852,7 @@ function coachApply(j,onDate){
         if(typeof u.fat==='number')day.meals[i].f=u.fat;
         if(u.assumption!==undefined)day.meals[i].note=u.assumption||'';
         if(u.sodium_level)day.meals[i].na=u.sodium_level;
+        if(u.label)day.meals[i].label=u.label;
         if(u.restaurant!==undefined)day.meals[i].rest=u.restaurant?1:0;
       }
     }
@@ -13950,13 +13951,34 @@ function coachPost(d,text,pics,rec,ed){
     logged.push({id:m.id||('m'+i),name:m.name||'',quantity:m.amount||'',
       calories:m.kcal||0,protein:m.p||0,carbs:m.c||0,fat:m.f||0,
       /* where it is filed NOW - it cannot move what it cannot see */
-      meal:mealKind(m)});}
+      meal:mealKind(m),
+      /* what it was read from, so "that's wrong" can be worked out again */
+      label:m.label||undefined});}
   var hist=[];
   /* hidden: an earlier weigh-in's turn may hold the number, so it is not sent */
   var _hideW=weighHidden();
   var _histN=rec.turns.length-(rec.turns.length&&rec.turns[rec.turns.length-1].role==='user'?1:0);
-  for(i=0;i<_histN;i++)
-    if(rec.turns[i].text&&!(_hideW&&rec.turns[i].weigh))hist.push({role:rec.turns[i].role,text:rec.turns[i].text});
+  var picTurns=[];
+  for(i=0;i<_histN;i++){
+    var tt=rec.turns[i];
+    if(_hideW&&tt.weigh)continue;
+    var hasPic=tt.role==='user'&&Array.isArray(tt.pics)&&tt.pics.length;
+    if(!tt.text&&!hasPic)continue;
+    hist.push({role:tt.role,text:tt.text||''});
+    if(hasPic)picTurns.push({h:hist.length-1,key:tt.pics[0]});
+  }
+  /* the last twenty turns are sent; the pictures of the last three that had
+     one go with them, so a label photographed a message ago is still there */
+  var _hOff=Math.max(0,hist.length-20);
+  hist=hist.slice(-20);
+  picTurns=picTurns.filter(function(p){return p.h>=_hOff;}).slice(-3).map(function(p){return {h:p.h-_hOff,key:p.key};});
+  var disp=coachDisputeOf(d,text,ed);
+  var picKeys=picTurns.map(function(p){return p.key;}).concat(disp&&disp.key?[disp.key]:[]);
+  Promise.all(picKeys.map(function(k){return photoGet(k).catch(function(){return null;});})).then(function(urls){
+  var b64=function(u){return u&&/^data:image\/(jpeg|png|webp);base64,/.test(u)?{mime:u.slice(5,u.indexOf(';')),data:u.split(',')[1]}:null;};
+  var histImages=[];
+  for(var q=0;q<picTurns.length;q++){var im=b64(urls[q]);if(im)histImages.push({h:picTurns[q].h,mime:im.mime,data:im.data});}
+  var dispImg=disp&&disp.key?b64(urls[urls.length-1]):null;
 
   fetch(SYNC_SERVER+'/coach',{
     method:'POST',headers:{'Content-Type':'application/json'},
@@ -13966,7 +13988,9 @@ function coachPost(d,text,pics,rec,ed){
       phase:(goalDef(loadProfile().goal)||{}).v||'',
       targets:{kcal:TARGETS.kcal,p:TARGETS.p,c:TARGETS.c,f:TARGETS.f},
       logged:logged,left:coachLeft(d),weights:coachWeights(),
-      history:hist.slice(-20),
+      history:hist,
+      history_images:histImages,
+      dispute:disp?{id:disp.id,said:disp.said,label:disp.label,image:dispImg}:null,
       message:text,
       edit_id:ed?String(ed.id):'',
       edit_ids:ed&&ed.ids?ed.ids:[],edit_was:ed&&ed.was?String(ed.was).slice(0,600):'',
@@ -13981,6 +14005,7 @@ function coachPost(d,text,pics,rec,ed){
       images:pics.map(function(p){return{mime:'image/jpeg',data:p.split(',')[1]||''};})
     })
   }).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.ok&&j.dispute)coachDisputeLog(d,j.dispute,text,disp);
     _coachBusy=false;
     if(!j||!j.ok){
       _coachErr=(j&&j.error==='too many for today')
@@ -14024,6 +14049,40 @@ function coachPost(d,text,pics,rec,ed){
   },function(){
     _coachBusy=false;_coachErr=''+_t('לא הצלחתי לענות כרגע.')+'';coachPaint();
   });
+  });
+}
+/* ── "THAT'S WRONG" ──
+   Found here, by the words, so the source can travel with it: the item -
+   the one named, else the last one logged - the picture it was logged from
+   and the label data kept with it. The worker reads the label again in a
+   separate call, without the coach's earlier answer, and compares. */
+var COACH_DISPUTE=/טעית|טעות|לא נכון|לא יכול להיות|תבדוק שוב|תבדקי שוב|בדוק שוב|בדקי שוב|\bwrong\b|mistake|check again|incorrect|falsch|fehler|equivoc|error|erreur|faux|sbagli|errato|errad|engan|間違|错|錯|خطأ|غلط/i;
+function coachDisputeOf(d,text,ed){
+  if(ed||!text||!COACH_DISPUTE.test(text))return null;
+  var day=loadDay(d),ms=day.meals||[],i,hit=null,low=text.toLowerCase();
+  for(i=ms.length-1;i>=0&&!hit;i--){
+    var n=String(ms[i].name||'').toLowerCase().split(/[\s,()]+/).filter(function(w){return w.length>2;});
+    for(var k=0;k<n.length;k++)if(low.indexOf(n[k])>=0){hit=ms[i];break;}
+  }
+  if(!hit){for(i=ms.length-1;i>=0;i--)if(!hit||(+ms[i].at||0)>(+hit.at||0))hit=ms[i];}
+  if(!hit)return null;
+  /* the message it was logged from: the user turn before the reply that added it */
+  var rec=loadCoach(d),said='',key=null;
+  for(i=rec.turns.length-1;i>0;i--){
+    var t=rec.turns[i];
+    if(t.role==='assistant'&&Array.isArray(t.ids)&&t.ids.map(String).indexOf(String(hit.id))>=0){
+      var u=rec.turns[i-1];
+      if(u&&u.role==='user'){said=u.text||'';if(Array.isArray(u.pics)&&u.pics.length)key=u.pics[0];}
+      break;
+    }
+  }
+  return {id:String(hit.id),said:said,label:hit.label||null,key:key,before:JSON.parse(JSON.stringify(hit))};
+}
+/* every dispute in the corrections log, with who was right */
+function coachDisputeLog(d,res,text,disp){
+  var day=loadDay(d),k=mealById(day,res.id),now=k>=0?day.meals[k]:null;
+  corrLog('dispute',disp?disp.before:null,res.outcome==='fixed'?now:null,
+    '['+res.outcome+'] '+text,!!(disp&&disp.key));
 }
 /* ── HOLD FOR EDIT AND DELETE ──
    Asaf: like WhatsApp - a long press on a meal row, or on her own message in
