@@ -113,6 +113,23 @@ button{font-family:inherit}
 .sheet h3{margin:0 0 8px;font-size:19px}.sheet p{margin:0 0 12px;font-size:15px;line-height:1.55;color:var(--mu)}
 .sheet .li{display:flex;flex-direction:column;gap:8px}
 .sheet .li button{border-radius:14px;padding:12px;font-size:15px;font-weight:800;text-align:start}
+/* the exercise picker - the app's own, over the screen */
+.pk{position:absolute;inset:0;z-index:8;background:rgba(42,34,27,.38);display:none;align-items:flex-end}.pk.on{display:flex}
+.pk .in{width:100%;height:84%;background:var(--g);border-radius:28px 28px 0 0;padding:18px 16px 0;display:flex;flex-direction:column}
+.pk-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.pk-h b{font-size:21px}
+.pk-h button{border:none;background:none;font-size:26px;color:var(--mu);cursor:pointer}
+.pk-s{width:100%;border:none;border-radius:16px;padding:13px 14px;font:600 16px Assistant,sans-serif;color:var(--ink);background:var(--g);outline:none;box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.pk-t{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.pk-t button{border-radius:14px;padding:10px;font-size:15px;font-weight:800;color:var(--mu)}
+.pk-t button.raise.on{color:var(--ink);box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.pk-b{flex:1;overflow-y:auto;padding:2px 2px 12px;scrollbar-width:none}.pk-b::-webkit-scrollbar{display:none}
+.pk-g{font-size:13px;font-weight:800;color:var(--mu);margin:10px 4px 6px}
+.pk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pk-grid button{display:flex;justify-content:space-between;align-items:center;border-radius:14px;padding:13px 14px;font-size:15.5px;font-weight:800;text-align:start}
+.pk-grid button i{font-style:normal;font-size:12px;color:var(--mu)}
+.pk-l button{display:block;width:100%;text-align:start;border-radius:14px;padding:12px 14px;margin-bottom:8px;font-size:15.5px;font-weight:800}
+.pk-l button span{display:block;font-size:12.5px;color:var(--mu);font-weight:700;margin-top:2px}
+.pk-back{border:none;background:none;font:800 14px Assistant,sans-serif;color:var(--t7);cursor:pointer;padding:4px 0 8px}
 .toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:9;background:#f6f1e8;border-radius:14px;padding:9px 14px;font-weight:800;font-size:14px;box-shadow:0 8px 22px rgba(60,50,40,.2);opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.on{opacity:1}
 .notes{max-width:430px;margin:0 auto;padding:0 16px 40px;color:#d6ccbd;font-size:14.5px;line-height:1.6}
@@ -121,7 +138,7 @@ button{font-family:inherit}
 <div class="bar">
   <h1>מסך האימון: אב־טיפוס ט׳</h1>
   <p>הכול עובד, אפשר ללחוץ על כל דבר. רענון מתחיל את האימון מחדש, ושום דבר לא נשמר. לנסות: לרשום סט עם +, לראות את המנוחה מתחילה לבד, ללחוץ על סט כדי לערוך אותו, לעבור בין תרגילים, ולנסות סופרסט.</p>
-  <div class="sw" id="mk"><span>סימון תרגיל שהסתיים:</span><button data-m="A" class="on">א׳ · רק וי</button><button data-m="B">ב׳ · שקוע עם וי</button><button data-m="C">ג׳ · פס ירוק דק</button></div>
+
 </div>
 <div class="wrap"><div class="ph mA" id="ph">
   <div class="scr" id="scr">
@@ -148,20 +165,28 @@ button{font-family:inherit}
   <div class="dock">
     <div class="two">
       <div>
-        <div id="restSet"><div class="lab" style="margin-bottom:6px">מנוחה</div><div class="seg press" id="seg"><button>1:30</button><button class="on">2:00</button><button>2:30</button></div><button class="raise seam go" onclick="restGo()">התחל</button></div>
+        <div id="restSet"><div class="lab" style="margin-bottom:6px">מנוחה</div><div class="ew press" id="rw"></div><button class="raise seam go" onclick="restGo()">התחל</button></div>
         <div class="run raise" id="run"><i class="bar2" id="rbar"></i><b id="rt">2:00</b><span id="rnext"></span><button onclick="restStop()">דלג</button></div>
       </div>
       <div><div class="lab" style="margin-bottom:6px">איך הרגיש הסט</div><div class="ew press" id="ew"></div></div>
     </div>
   </div>
   <div class="sheet" id="sh" onclick="if(event.target===this)sheetClose()"><div class="in" id="shin"></div></div>
+  <div class="pk" id="pk" onclick="if(event.target===this)pkClose()"><div class="in">
+    <div class="pk-h"><b id="pkt">בחר תרגיל</b><button onclick="pkClose()">×</button></div>
+    <input class="pk-s" id="pks" placeholder="חפש בכל שפה" oninput="pkPaint()">
+    <div class="pk-t" id="pktabs"><button class="raise on" data-k="m">לפי שריר</button><button class="raise" data-k="q">לפי ציוד</button></div>
+    <div class="pk-b" id="pkb"></div>
+  </div></div>
   <div class="toast" id="toast"></div>
   <div class="tabs"><span>Me</span><span>▤</span><span>Better</span></div>
 </div></div>
 <div class="notes">
   <h2>מה אפשר לשנות כאן</h2>
   <ul>
-    <li>הסימון של תרגיל שהסתיים: שלוש אפשרויות בשורה למעלה. אין יותר מילוי ירוק בוהק.</li>
+    <li>תרגיל שהסתיים: וי ירוק קטן ליד השם (א׳, כמו שבחרת).</li>
+    <li>"החלף" פותח את כל ספריית התרגילים, כמו בבחירה בתחילת האימון: חיפוש בכל שפה, לפי שריר או לפי ציוד.</li>
+    <li>המנוחה: גלגלת עם כל האפשרויות, מכבוי ועד 3 דקות.</li>
     <li>כל דבר אחר במסך: תגיד מה לשנות ואני מעדכן את הקישור הזה, עד שזה מתאים. רק אז זה עובר לאפליקציה.</li>
   </ul>
 </div>
@@ -169,6 +194,7 @@ button{font-family:inherit}
 <script>
 function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
 addEventListener('resize',fit);fit();
+function mmss(s){return Math.floor(s/60)+':'+('0'+s%60).slice(-2);}
 var EW=['לא דורג','ממש קל','קל מאוד','קל','נוח','בינוני','מאתגר','קשה','קשה מאוד','על הגבול','כשל'];
 var EWC=['','#6fb283','#7fba76','#9bbf5a','#b9bf4a','#d6b63e','#e5a03a','#e8853a','#e2683d','#d84c40','#c33a3a'];
 var LIB=['לחיצת חזה בשיפוע','לחיצת כתפיים במשקולות','חתירה בכבל','מתח','פשיטת מרפק בכבל'];
@@ -221,15 +247,20 @@ function editClose(){sel=-1;paint();}
 function ssToggle(){var e=ex();if(e.ss){var o=W.ex.filter(function(x){return x.n===e.ss;})[0];if(o)o.ss=null;e.ss=null;paint();toast('הסופרסט פורק');return;}ssOpen=!ssOpen;paint();}
 function ssPair(i){var e=ex(),o=W.ex[i];e.ss=o.n;o.ss=e.n;ssOpen=false;paint();toast('סופרסט: '+e.n+' + '+o.n);}
 /* rest */
-function secs(){var t=document.querySelector('#seg .on').textContent.split(':');return +t[0]*60+ +t[1];}
-function mmss(s){return Math.floor(s/60)+':'+('0'+s%60).slice(-2);}
-function restGo(){clearInterval(T);var tot=secs(),left=tot,b=document.getElementById('rbar'),e=ex();
+var RS=[0,30,45,60,75,90,120,150,180],restLen=120;
+function secs(){return restLen;}
+(function(){var h='<div class="win"></div><div class="col" id="rwc">';for(var i=0;i<RS.length;i++)h+='<div><b>'+(RS[i]?mmss(RS[i]):'כבוי')+'</b></div>';
+  document.getElementById('rw').innerHTML=h+'</div>';var c=document.getElementById('rwc');
+  c.addEventListener('scroll',function(){var k=Math.max(0,Math.min(RS.length-1,Math.round(c.scrollTop/36)));restLen=RS[k];[].forEach.call(c.children,function(r,j){r.classList.toggle('on',j===k);});});
+  setTimeout(function(){c.scrollTop=RS.indexOf(120)*36;c.dispatchEvent(new Event('scroll'));},60);})();
+
+function restGo(){clearInterval(T);if(!secs())return;var tot=secs(),left=tot,b=document.getElementById('rbar'),e=ex();
   document.getElementById('restSet').style.display='none';document.getElementById('run').classList.add('on');
   var nx=e.sets.length<e.tg[0]?'הבא: סט '+(e.sets.length+1):'התרגיל הבא';document.getElementById('rnext').textContent=nx;
   b.style.transition='none';b.style.transform='scaleX(1)';b.getBoundingClientRect();b.style.transition='';document.getElementById('rt').textContent=mmss(left);
   T=setInterval(function(){left--;b.style.transform='scaleX('+(left/tot)+')';document.getElementById('rt').textContent=mmss(left);if(left<=0){restStop();toast('המנוחה נגמרה');}},1000);}
 function restStop(){clearInterval(T);document.getElementById('run').classList.remove('on');document.getElementById('restSet').style.display='block';}
-document.getElementById('seg').onclick=function(e){if(e.target.tagName!=='BUTTON')return;[].forEach.call(this.children,function(b){b.classList.remove('on');});e.target.classList.add('on');};
+
 /* the wheel */
 (function(){var h='<div class="win"></div><div class="col" id="ewc">';for(var i=0;i<EW.length;i++)h+='<div>'+(i?'<i style="--c:'+EWC[i]+'"></i>':'')+'<b>'+(i?i:'–')+'</b>'+EW[i]+'</div>';
   document.getElementById('ew').innerHTML=h+'</div>';var c=document.getElementById('ewc');
@@ -237,10 +268,30 @@ document.getElementById('seg').onclick=function(e){if(e.target.tagName!=='BUTTON
   setTimeout(function(){setEff(8);},60);})();
 function setEff(v){var c=document.getElementById('ewc');c.scrollTop=v*36;c.dispatchEvent(new Event('scroll'));}
 /* sheets */
+/* the library, read from the app's own data */
+var XL=[],pkMode='m',pkGroup='',pkThen=null;
+fetch('../../stable/data/exercises.json').then(function(r){return r.json();}).then(function(j){XL=Array.isArray(j)?j:(j.exercises||Object.values(j));});
+var MG=[['פלג גוף עליון',['חזה','גב','גב רחב','טרפז','כתפיים','יד קדמית','יד אחורית','אמה']],['פלג גוף תחתון',['ארבע ראשי','ירך אחורית','ישבן','מקרבים','מרחיקים','תאומים']],['מרכז הגוף ואחר',['בטן','אלכסונים','גב תחתון','אירובי']]];
+function pkOpen(title,then){pkThen=then;pkGroup='';document.getElementById('pkt').textContent=title;document.getElementById('pks').value='';document.getElementById('pk').classList.add('on');pkPaint();}
+function pkClose(){document.getElementById('pk').classList.remove('on');}
+document.getElementById('pktabs').onclick=function(e){var k=e.target.dataset.k;if(!k)return;pkMode=k;pkGroup='';[].forEach.call(this.children,function(b){b.classList.toggle('on',b.dataset.k===k);});pkPaint();};
+function pkList(arr){var h='<div class="pk-l">';arr.slice(0,120).forEach(function(x){h+='<button class="raise" onclick="pkPick(\''+x.n.replace(/'/g,"\\'")+'\')">'+x.n+'<span>'+(x.m||[]).join(' · ')+(x.q&&x.q.length?' · '+x.q.join(', '):'')+'</span></button>';});return h+'</div>';}
+function pkPaint(){var b=document.getElementById('pkb'),q=document.getElementById('pks').value.trim().toLowerCase(),h='';
+  if(!XL.length){b.innerHTML='<div class="pk-g">טוען…</div>';setTimeout(pkPaint,300);return;}
+  if(q){var r=XL.filter(function(x){return (x.n+' '+(x.en||'')+' '+(x.aka||[]).join(' ')+' '+JSON.stringify(x.t||{})).toLowerCase().indexOf(q)>=0;});b.innerHTML='<div class="pk-g">'+r.length+' תוצאות</div>'+pkList(r);return;}
+  if(pkGroup){var r2=XL.filter(function(x){return (x[pkMode]||[]).indexOf(pkGroup)>=0;});b.innerHTML='<button class="pk-back" onclick="pkGroup=\'\';pkPaint()">‹ חזרה</button><div class="pk-g">'+pkGroup+' · '+r2.length+'</div>'+pkList(r2);return;}
+  var cnt={};XL.forEach(function(x){(x[pkMode]||[]).forEach(function(v){cnt[v]=(cnt[v]||0)+1;});});
+  var cell=function(v){return '<button class="raise" onclick="pkGroup=\''+v+'\';pkPaint()">'+v+'<i>'+cnt[v]+'</i></button>';};
+  if(pkMode==='m'){var seen={};MG.forEach(function(g){var ks=g[1].filter(function(v){return cnt[v];});ks.forEach(function(v){seen[v]=1;});if(ks.length)h+='<div class="pk-g">'+g[0]+'</div><div class="pk-grid">'+ks.map(cell).join('')+'</div>';});
+    var rest=Object.keys(cnt).filter(function(v){return !seen[v];});if(rest.length)h+='<div class="pk-g">עוד</div><div class="pk-grid">'+rest.map(cell).join('')+'</div>';}
+  else h='<div class="pk-grid" style="margin-top:6px">'+Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];}).map(cell).join('')+'</div>';
+  b.innerHTML=h;}
+function pkPick(n){pkClose();if(pkThen)pkThen(n);}
 function sheet(k){var e=ex(),h='';
+  if(k==='swap'){if(e.sets.length){toast('כבר נרשמו סטים בתרגיל הזה');return;}pkOpen('להחליף את '+e.n,swapTo);return;}
+  if(k==='add'){pkOpen('להוסיף תרגיל',addEx);return;}
   if(k==='how')h='<h3>'+e.n+'</h3><p>'+e.how+'</p><button class="raise go" onclick="sheetClose()">הבנתי</button>';
-  if(k==='swap'){h='<h3>להחליף את '+e.n+' ב…</h3><div class="li">';LIB.forEach(function(n){h+='<button class="raise" onclick="swapTo(\''+n+'\')">'+n+'</button>';});h+='</div>';}
-  if(k==='add'){h='<h3>להוסיף תרגיל</h3><div class="li">';LIB.forEach(function(n){h+='<button class="raise" onclick="addEx(\''+n+'\')">'+n+'</button>';});h+='</div>';}
+
   if(k==='rm')h='<h3>להסיר את '+e.n+'?</h3><p>הסטים שרשמת בו היום יימחקו.</p><div class="li"><button class="raise" style="color:var(--t7)" onclick="rmEx()">כן, הסר</button><button class="raise" onclick="sheetClose()">ביטול</button></div>';
   if(k==='sw')h='<h3>סטופר</h3><p style="font-size:44px;font-weight:800;color:var(--ink);text-align:center;margin:8px 0" id="swt">0:00</p><button class="raise seam go" onclick="swGo(this)">התחל</button><button class="raise go" onclick="sheetClose()">סגור</button>';
   document.getElementById('shin').innerHTML=h;document.getElementById('sh').classList.add('on');}
@@ -251,8 +302,7 @@ function addEx(n){W.ex.push({n:n,tg:[3,10],pr:0,last:null,ago:'',sets:[],how:'ה
 function rmEx(){if(W.ex.length<2){sheetClose();return;}W.ex.splice(W.cur,1);W.cur=Math.min(W.cur,W.ex.length-1);sheetClose();sel=-1;paint();toast('התרגיל הוסר');}
 var TT;function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(TT);TT=setTimeout(function(){el.classList.remove('on');},1600);}
 setInterval(function(){document.getElementById('clock').textContent='⏱ '+Math.floor((Date.now()-W.start)/60000)+' דקות';},10000);
-document.getElementById('mk').onclick=function(e){var m=e.target.dataset.m;if(!m)return;[].forEach.call(this.querySelectorAll('button'),function(b){b.classList.toggle('on',b.dataset.m===m);});
-  var p=document.getElementById('ph');p.classList.remove('mA','mB','mC');p.classList.add('m'+m);};
+
 paint();
 var sc=document.createElement('script');sc.src='../../vendor/beem-app.js';
 sc.onload=function(){BeemKit.ready.then(function(){BeemKit.mount(document.getElementById('bm'),{play:{dur:1e9,ev:[[0,'face','calm'],[0,'mode',{idle:0,breathe:[.016,4]}]]}});});};
