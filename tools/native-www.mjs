@@ -12,7 +12,12 @@ fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(path.join(OUT, 'assets'), { recursive: true });
 fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(OUT, 'index.html'));
 fs.copyFileSync(path.join(ROOT, 'manifest.json'), path.join(OUT, 'manifest.json'));
-fs.copyFileSync(path.join(ROOT, 'assets', 'logo.png'), path.join(OUT, 'assets', 'logo.png'));
+/* every root asset the page names directly (the splash wordmark, the logo):
+   read from index.html, so a new one cannot be left behind */
+const named = new Set(['logo.png']);
+for (const m of fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').matchAll(/["'(]assets\/([\w.-]+\.(?:png|svg|jpg|webp))/g)) named.add(m[1]);
+for (const f of named) if (fs.existsSync(path.join(ROOT, 'assets', f))) fs.copyFileSync(path.join(ROOT, 'assets', f), path.join(OUT, 'assets', f));
+console.log('root assets:', [...named].join(', '));
 for (const d of ['data', 'assets', 'vendor'])
   fs.cpSync(path.join(ROOT, 'stable', d), path.join(OUT, 'stable', d), { recursive: true });
 /* the raw ministry tables the app never fetches */
