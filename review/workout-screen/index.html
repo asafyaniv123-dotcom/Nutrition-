@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>מסך האימון: שלושה כיוונים</title>
+<style>
+/* THE WORKOUT SCREEN, THREE WAYS (Asaf, 24 Oct: "the whole screen feels
+   messy"). Today it shows eleven things at once: tabs, name, PR, swap /
+   remove / superset, rest picker, start, stopwatch, target, last time, today's
+   sets, a note, weight and reps, add, RPE, and a timer floating over it all.
+   Each direction keeps everything reachable and decides what is on top.
+   The material is the app's own; class names are w-* (the kit owns .ring). */
+*{box-sizing:border-box}
+:root{--g:#e9e7e3;--lit:rgba(255,255,255,.95);--sh:rgba(176,168,156,.44);--sh2:rgba(176,168,156,.28);--ink:#4a453f;--mu:#6d675e;--t5:#e08a72;--t7:#98492c}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",Arial,sans-serif}
+.top{max-width:430px;margin:0 auto;padding:14px 16px 8px;color:#efe6d8}
+.top h1{font-size:21px;margin:0 0 4px}.top p{margin:0 0 10px;font-size:14.5px;line-height:1.55;color:#cfc4b4}
+.sw{display:flex;gap:6px;flex-wrap:wrap}
+.sw button{border:none;border-radius:999px;padding:8px 14px;font:700 14px Assistant,sans-serif;background:#3d3732;color:#e6dccd;cursor:pointer}
+.sw button.on{background:#efe6d8;color:#2b2724}
+.wrap{display:flex;justify-content:center;padding:12px 0 20px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:34px;background:var(--g);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.45);transform-origin:50% 0}
+.v{position:absolute;inset:0;display:none;overflow-y:auto;padding:0 18px 120px}.v.on{display:block}
+/* the app's header and tab bar, the same in all three */
+.hd{display:flex;align-items:center;justify-content:space-between;padding:18px 0 8px}
+.hd h2{font-size:30px;font-weight:800;margin:0}
+.nich{width:52px;height:52px;border-radius:50%;box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit);display:flex;align-items:center;justify-content:center}
+.nich div{width:40px;height:40px}
+.tabs{position:absolute;left:14px;right:14px;bottom:14px;height:62px;border-radius:24px;background:var(--g);display:flex;align-items:center;justify-content:space-around;font-weight:800;color:var(--mu);
+  box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2);z-index:3}
+/* shared bits */
+.raise{background:var(--g);border:none;font-family:inherit;color:var(--ink);cursor:pointer;box-shadow:-3px -3px 8px var(--lit),4px 5px 12px var(--sh2)}
+.press{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.seam{box-shadow:-4px -4px 10px var(--lit),6px 7px 16px var(--sh),inset 0 -3px 0 color-mix(in srgb,var(--t5) 60%,transparent)}
+.more{width:40px;height:40px;border-radius:50%;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
+.lab{font-size:12px;font-weight:800;color:var(--mu);letter-spacing:.04em}
+.ex-n{font-size:24px;font-weight:800;line-height:1.15}
+.ex-m{font-size:13px;color:var(--mu);font-weight:600;margin-top:4px}
+.ex-m b{color:var(--t7)}
+.menu{position:absolute;z-index:5;left:18px;top:150px;width:210px;border-radius:18px;background:#f2efea;padding:6px;box-shadow:0 14px 34px rgba(60,50,40,.25);display:none}
+.menu.on{display:block}
+.menu button{display:block;width:100%;text-align:start;border:none;background:none;font:700 15px Assistant,sans-serif;color:var(--ink);padding:11px 12px;border-radius:12px}
+.menu button.red{color:var(--t7)}
+
+/* ── A · one set at a time ── */
+#vA .prog{display:flex;align-items:center;justify-content:space-between;margin:6px 0 16px}
+#vA .dots{display:flex;gap:6px}#vA .dots i{width:26px;height:6px;border-radius:3px;box-shadow:inset 1px 2px 3px var(--sh),inset -1px -1px 2px var(--lit)}
+#vA .dots i.on{background:var(--t5);box-shadow:none}
+#vA .card{border-radius:26px;padding:20px 18px;margin-top:16px;box-shadow:-5px -5px 13px var(--lit),7px 9px 20px var(--sh2)}
+#vA .setn{text-align:center;font-size:15px;font-weight:800;color:var(--mu)}
+#vA .steps{display:flex;gap:12px;margin:14px 0 6px}
+#vA .st{flex:1;border-radius:20px;padding:12px 6px;text-align:center}
+#vA .st .k{font-size:12px;font-weight:800;color:var(--mu)}
+#vA .st .n{font-size:44px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+#vA .st .pm{display:flex;justify-content:center;gap:14px;margin-top:6px}
+#vA .st .pm button{width:40px;height:40px;border-radius:50%;font-size:22px;font-weight:700}
+#vA .prev{text-align:center;font-size:13.5px;color:var(--mu);font-weight:600;margin:8px 0 14px}
+#vA .log{width:100%;border-radius:20px;padding:17px;font-size:18px;font-weight:800;position:relative;overflow:hidden}
+#vA .log .fill{position:absolute;inset:0;background:color-mix(in srgb,var(--t5) 22%,transparent);transform-origin:right;transition:transform 1s linear}
+#vA .log span{position:relative}
+#vA .done{display:flex;gap:8px;justify-content:center;margin-top:16px}
+#vA .done span{border-radius:12px;padding:8px 12px;font-size:14px;font-weight:800}
+#vA .done .ok{color:var(--ink)}#vA .done .ok::before{content:"✓ ";color:var(--t7)}
+#vA .done .no{color:var(--mu)}
+#vA .small{display:flex;justify-content:center;gap:18px;margin-top:18px;font-size:13.5px;font-weight:700;color:var(--mu)}
+
+/* ── B · the set table ── */
+#vB .chips{display:flex;gap:8px;overflow-x:auto;margin:6px -18px 16px;padding:4px 18px 8px;scrollbar-width:none}
+#vB .chips button{flex:none;border-radius:999px;padding:10px 16px;font-size:14px;font-weight:800;color:var(--mu)}
+#vB .chips button.on{color:var(--ink)}
+#vB .tbl{border-radius:22px;padding:12px 12px 6px;margin-top:14px;box-shadow:-4px -4px 11px var(--lit),6px 7px 16px var(--sh2)}
+#vB .row{display:grid;grid-template-columns:32px 1fr 64px 56px 44px;gap:8px;align-items:center;padding:7px 2px}
+#vB .row.h{font-size:11.5px;font-weight:800;color:var(--mu);padding-bottom:2px}
+#vB .row .i{font-weight:800;text-align:center}
+#vB .row .p{font-size:14px;color:var(--mu);font-weight:600}
+#vB .row .f{border-radius:12px;padding:9px 4px;text-align:center;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+#vB .row .c{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;color:transparent}
+#vB .row.dn .c{color:#3a1d12;background:var(--t5);box-shadow:inset 1px 2px 4px rgba(120,50,20,.35)}
+#vB .row.dn .f{color:var(--mu)}
+#vB .addrow{width:100%;border-radius:14px;padding:11px;font-size:14px;font-weight:800;color:var(--mu);margin:6px 0 4px}
+#vB .rest{position:absolute;left:14px;right:14px;bottom:86px;border-radius:18px;height:52px;display:flex;align-items:center;gap:12px;padding:0 16px;z-index:3;overflow:hidden}
+#vB .rest .bar{position:absolute;inset:0;background:color-mix(in srgb,var(--t5) 22%,transparent);transform-origin:right;transition:transform 1s linear}
+#vB .rest b,#vB .rest span,#vB .rest button{position:relative}
+#vB .rest b{font-size:20px;font-variant-numeric:tabular-nums}
+#vB .rest span{flex:1;font-size:13.5px;font-weight:700;color:var(--mu)}
+#vB .rest button{border:none;background:none;font:800 14px Assistant,sans-serif;color:var(--t7)}
+#vB .links{display:flex;gap:16px;margin-top:16px;font-size:13.5px;font-weight:700;color:var(--mu)}
+
+/* ── C · Beem coaches ── */
+#vC .coach{display:flex;gap:12px;align-items:center;margin:8px 0 12px}
+#vC .coach .b{flex:0 0 70px;height:70px}
+#vC .bub{flex:1;border-radius:18px 18px 18px 6px;padding:12px 14px;font-size:15.5px;line-height:1.45;font-weight:600;background:#f2efea;box-shadow:-3px -3px 8px var(--lit),4px 5px 12px var(--sh2)}
+#vC .bub b{color:var(--t7)}
+#vC .big{text-align:center;margin:18px 0 6px}
+#vC .big .n{font-size:64px;font-weight:800;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums}
+#vC .big .n small{font-size:22px;color:var(--mu);font-weight:700}
+#vC .big .x{font-size:15px;color:var(--mu);font-weight:700;margin-top:6px}
+#vC .w-ring{position:relative;width:220px;height:220px;margin:6px auto 0}
+#vC .w-ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+#vC .w-ring .in{position:absolute;inset:18px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 4px 5px 12px var(--sh),inset -4px -4px 10px var(--lit)}
+#vC .yes{width:100%;border-radius:20px;padding:17px;font-size:18px;font-weight:800;margin-top:18px}
+#vC .other{display:block;margin:10px auto 0;border:none;background:none;font:700 14.5px Assistant,sans-serif;color:var(--mu)}
+#vC .sets{display:flex;justify-content:center;gap:10px;margin:18px 0 0}
+#vC .sets i{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;font-size:13px;color:var(--mu)}
+#vC .sets i.ok{background:var(--t5);color:#3a1d12}
+#vC .adj{display:none;gap:10px;margin-top:12px}#vC .adj.on{display:flex}
+#vC .adj div{flex:1;border-radius:16px;padding:10px;text-align:center}
+#vC .adj b{display:block;font-size:26px}#vC .adj span{font-size:12px;color:var(--mu);font-weight:800}
+.notes{max-width:430px;margin:0 auto;padding:0 16px 40px;color:#d6ccbd;font-size:14.5px;line-height:1.6}
+.notes h2{font-size:17px;color:#efe6d8;margin:18px 0 6px}.notes li{margin-bottom:6px}
+</style></head><body>
+<div class="top">
+  <h1>מסך האימון: שלושה כיוונים</h1>
+  <p>היום המסך מציג אחת־עשרה פעולות בבת אחת. בכל כיוון כולן עדיין זמינות, אבל רק אחת עומדת במרכז. אפשר ללחוץ: לרשום סט, לראות את המנוחה, ולפתוח את ⋯.</p>
+  <div class="sw" id="sw"><button data-v="A" class="on">א׳ · סט אחד בכל פעם</button><button data-v="B">ב׳ · טבלת סטים</button><button data-v="C">ג׳ · בים מאמן</button></div>
+</div>
+<div class="wrap"><div class="ph" id="ph">
+
+  <!-- A -->
+  <div class="v on" id="vA">
+    <div class="hd"><h2>כושר</h2><div class="nich"><div id="bA"></div></div></div>
+    <div class="prog"><div class="lab">תרגיל 1 מתוך 3</div><div class="dots"><i class="on"></i><i></i><i></i></div></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div><div class="ex-n">לחיצת חזה במוט</div><div class="ex-m">3 × 10 · מנוחה 2:00 · שיא <b>70 ק״ג</b></div></div>
+      <button class="raise more" onclick="menu('mA')">⋯</button>
+    </div>
+    <div class="menu" id="mA"><button>💡 איך מבצעים</button><button>⇄ החלף תרגיל</button><button>⇄ סופרסט עם…</button><button>⏱ סטופר</button><button>✎ הערה על התרגיל</button><button class="red">✕ הסר מהאימון</button></div>
+    <div class="card">
+      <div class="setn" id="aSet">סט 3 מתוך 3</div>
+      <div class="steps">
+        <div class="st press"><div class="k">ק״ג</div><div class="n" id="aW">65</div><div class="pm"><button class="raise" onclick="aAdj('w',-2.5)">−</button><button class="raise" onclick="aAdj('w',2.5)">+</button></div></div>
+        <div class="st press"><div class="k">חזרות</div><div class="n" id="aR">7</div><div class="pm"><button class="raise" onclick="aAdj('r',-1)">−</button><button class="raise" onclick="aAdj('r',1)">+</button></div></div>
+      </div>
+      <div class="prev">בפעם הקודמת, לפני שבועיים: 70 × 7</div>
+      <button class="raise seam log" id="aLog" onclick="aLog()"><i class="fill" id="aFill" style="transform:scaleX(0)"></i><span id="aLogT">רשום סט</span></button>
+      <div class="done" id="aDone"><span class="ok press">65 × 8</span><span class="ok press">65 × 7</span><span class="no press">סט 3</span></div>
+    </div>
+    <div class="small"><span>RPE ›</span><span>מנוחה: 2:00 ›</span></div>
+  </div>
+
+  <!-- B -->
+  <div class="v" id="vB">
+    <div class="hd"><h2>כושר</h2><div class="nich"><div id="bB"></div></div></div>
+    <div class="chips"><button class="raise press on">לחיצת חזה במוט</button><button class="raise">לחיצת חזה במכונה</button><button class="raise">מתח במכונת סיוע</button><button class="raise">+</button></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div><div class="ex-n">לחיצת חזה במוט</div><div class="ex-m">3 × 10 · שיא <b>70 ק״ג</b></div></div>
+      <button class="raise more" onclick="menu('mB')">⋯</button>
+    </div>
+    <div class="menu" id="mB"><button>💡 איך מבצעים</button><button>⇄ החלף תרגיל</button><button>⇄ סופרסט עם…</button><button>⏱ סטופר</button><button>⏲ זמן מנוחה: 2:00</button><button class="red">✕ הסר מהאימון</button></div>
+    <div class="tbl">
+      <div class="row h"><span class="i">סט</span><span>פעם קודמת</span><span style="text-align:center">ק״ג</span><span style="text-align:center">חזרות</span><span></span></div>
+      <div class="row dn"><span class="i">1</span><span class="p">70 × 7</span><span class="f press">65</span><span class="f press">8</span><button class="raise c" onclick="bTick(this)">✓</button></div>
+      <div class="row dn"><span class="i">2</span><span class="p">70 × 7</span><span class="f press">65</span><span class="f press">7</span><button class="raise c" onclick="bTick(this)">✓</button></div>
+      <div class="row"><span class="i">3</span><span class="p">70 × 7</span><span class="f press">65</span><span class="f press">7</span><button class="raise c" onclick="bTick(this)">✓</button></div>
+      <button class="raise addrow">+ סט</button>
+    </div>
+    <div class="links"><span>✎ הערה</span><span>RPE ›</span></div>
+    <div class="rest raise" id="bRest" style="display:none"><i class="bar" id="bBar"></i><b id="bT">2:00</b><span>מנוחה · הסט הבא: 65 × 7</span><button onclick="bStop()">דלג</button></div>
+  </div>
+
+  <!-- C -->
+  <div class="v" id="vC">
+    <div class="hd"><h2>כושר</h2><div class="nich"><div id="bCn"></div></div></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-top:4px">
+      <div><div class="lab">תרגיל 1 מתוך 3</div><div class="ex-n" style="margin-top:4px">לחיצת חזה במוט</div></div>
+      <button class="raise more" onclick="menu('mC')">⋯</button>
+    </div>
+    <div class="menu" id="mC"><button>💡 איך מבצעים</button><button>⇄ החלף תרגיל</button><button>⇄ סופרסט עם…</button><button>⏱ סטופר</button><button>✎ הערה</button><button class="red">✕ הסר מהאימון</button></div>
+    <div class="coach"><div class="b" id="bC"></div><div class="bub" id="cBub">בפעם הקודמת 70 × 7. היום כבר עשית 65 × 8 ו־65 × 7. <b>בסט האחרון: 65 × 8?</b></div></div>
+    <div id="cMain">
+      <div class="big"><div class="n">65<small> ק״ג</small> × 8</div><div class="x">סט 3 מתוך 3</div></div>
+    </div>
+    <div class="w-ring" id="cRing" style="display:none"><svg viewBox="0 0 220 220"><circle cx="110" cy="110" r="100" fill="none" stroke="rgba(176,168,156,.3)" stroke-width="10"/>
+      <circle id="cArc" cx="110" cy="110" r="100" fill="none" stroke="#e08a72" stroke-width="10" stroke-linecap="round" stroke-dasharray="628" stroke-dashoffset="0" style="transition:stroke-dashoffset 1s linear"/></svg>
+      <div class="in"><b id="cT" style="font-size:44px;font-variant-numeric:tabular-nums">2:00</b><span style="font-size:13px;color:var(--mu);font-weight:700">מנוחה</span></div></div>
+    <button class="raise seam yes" id="cYes" onclick="cLog()">כן, עשיתי</button>
+    <button class="other" onclick="document.getElementById('cAdj').classList.toggle('on')">עשיתי משהו אחר</button>
+    <div class="adj" id="cAdj"><div class="press"><span>ק״ג</span><b>65</b></div><div class="press"><span>חזרות</span><b>8</b></div></div>
+    <div class="sets" id="cSets"><i class="ok">65×8</i><i class="ok">65×7</i><i class="press">3</i></div>
+  </div>
+
+  <div class="tabs"><span>Me</span><span>▤</span><span>Better</span></div>
+</div></div>
+<div class="notes">
+  <h2>מה ההבדל</h2>
+  <ul>
+    <li><b>א׳ · סט אחד בכל פעם:</b> המסך עונה רק על השאלה "מה אני עושה עכשיו". משקל וחזרות גדולים עם − ו־+, מה עשית בפעם הקודמת, וכפתור אחד "רשום סט". אחרי הרישום הכפתור עצמו הופך לשעון המנוחה. כל השאר מאחורי ⋯.</li>
+    <li><b>ב׳ · טבלת סטים:</b> כמו באפליקציות האימון הגדולות. שורה לכל סט, עם הפעם הקודמת ליד, ווי כדי לרשום. רואים את כל התרגיל במבט אחד. המנוחה היא פס דק מעל הסרגל, שלא מסתיר כלום.</li>
+    <li><b>ג׳ · בים מאמן:</b> בים מציע את הסט הבא לפי מה שעשית ("65 × 8?"), ולוחצים "כן, עשיתי". המנוחה היא טבעת שמתרוקנת במרכז המסך. הכי מעט החלטות, הכי הרבה אופי.</li>
+    <li>בכל השלושה: הכפתורים הכהים יורדים, החלף/הסר/סופרסט/סטופר/איך מבצעים עוברים לתפריט ⋯, וה־RPE והערה הופכים לשורה קטנה.</li>
+  </ul>
+</div>
+<script src="beem.js"></script>
+<script>
+function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+var T=null;function stopT(){if(T){clearInterval(T);T=null;}}
+function mmss(s){return Math.floor(s/60)+':'+('0'+s%60).slice(-2);}
+function menu(id){var m=document.getElementById(id);m.classList.toggle('on');}
+document.addEventListener('click',function(e){if(!e.target.closest('.more')&&!e.target.closest('.menu'))[].forEach.call(document.querySelectorAll('.menu'),function(m){m.classList.remove('on');});});
+/* A */
+var aw=65,ar=7;function aAdj(k,d){if(k==='w'){aw=Math.max(0,aw+d);document.getElementById('aW').textContent=aw;}else{ar=Math.max(1,ar+d);document.getElementById('aR').textContent=ar;}}
+function aLog(){stopT();var left=120,f=document.getElementById('aFill'),t=document.getElementById('aLogT');
+  var d=document.getElementById('aDone').children[2];d.className='ok press';d.textContent=aw+' × '+ar;
+  document.getElementById('aSet').textContent='מנוחה, ואז התרגיל הבא';
+  f.style.transition='none';f.style.transform='scaleX(1)';f.getBoundingClientRect();f.style.transition='';
+  t.textContent='מנוחה '+mmss(left)+' · דלג';
+  T=setInterval(function(){left--;f.style.transform='scaleX('+(left/120)+')';t.textContent=left>0?'מנוחה '+mmss(left)+' · דלג':'רשום סט';if(left<=0)stopT();},1000);}
+/* B */
+function bTick(b){var r=b.closest('.row');r.classList.toggle('dn');if(r.classList.contains('dn'))bRest();}
+function bRest(){stopT();var left=120,el=document.getElementById('bRest'),bar=document.getElementById('bBar');el.style.display='flex';
+  bar.style.transition='none';bar.style.transform='scaleX(1)';bar.getBoundingClientRect();bar.style.transition='';
+  T=setInterval(function(){left--;bar.style.transform='scaleX('+(left/120)+')';document.getElementById('bT').textContent=mmss(left);if(left<=0)bStop();},1000);}
+function bStop(){stopT();document.getElementById('bRest').style.display='none';document.getElementById('bT').textContent='2:00';}
+/* C */
+function cLog(){stopT();var left=120,arc=document.getElementById('cArc');
+  document.getElementById('cMain').style.display='none';document.getElementById('cRing').style.display='block';
+  document.getElementById('cYes').textContent='דלג על המנוחה';document.getElementById('cYes').onclick=cEnd;
+  var s=document.getElementById('cSets').children[2];s.className='ok';s.textContent='65×8';
+  document.getElementById('cBub').innerHTML='יפה. <b>65 × 8, שווה לשיא החזרות שלך.</b> נח שתי דקות, ואז לחיצת חזה במכונה.';
+  if(window.BC)try{BC.play({dur:1e9,ev:[[0,'face','happy'],[0,'mode',{idle:0,breathe:[.016,4]}],[200,'hop',50],[1600,'face','calm']]});}catch(e){}
+  arc.style.transition='none';arc.style.strokeDashoffset=0;arc.getBoundingClientRect();arc.style.transition='';
+  T=setInterval(function(){left--;arc.style.strokeDashoffset=628*(1-left/120);document.getElementById('cT').textContent=mmss(left);if(left<=0)cEnd();},1000);}
+function cEnd(){stopT();document.getElementById('cRing').style.display='none';document.getElementById('cMain').style.display='block';
+  document.getElementById('cMain').innerHTML='<div class="big"><div class="n">55<small> ק״ג</small> × 10</div><div class="x">לחיצת חזה במכונה · סט 1 מתוך 3</div></div>';
+  document.getElementById('cYes').textContent='כן, עשיתי';document.getElementById('cYes').onclick=cLog;}
+document.getElementById('sw').onclick=function(e){var v=e.target.dataset.v;if(!v)return;stopT();
+  [].forEach.call(document.querySelectorAll('#sw button'),function(b){b.classList.toggle('on',b.dataset.v===v);});
+  [].forEach.call(document.querySelectorAll('.v'),function(x){x.classList.toggle('on',x.id==='v'+v);});};
+var CALM={dur:1e9,ev:[[0,'face','calm'],[0,'mode',{idle:0,breathe:[.016,4]}]]};
+var sc=document.createElement('script');sc.src='../../vendor/beem-app.js';
+sc.onload=function(){BeemKit.ready.then(function(){['bA','bB','bCn'].forEach(function(id){BeemKit.mount(document.getElementById(id),{play:CALM});});
+  window.BC=BeemKit.mount(document.getElementById('bC'),{play:CALM});});};
+document.head.appendChild(sc);
+</script>
+</body></html>
