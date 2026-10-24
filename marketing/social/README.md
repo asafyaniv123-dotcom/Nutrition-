@@ -13,7 +13,8 @@ Decided by Asaf on 24 Oct 2026:
 
 All three networks are registered on **hello.betterme.app@gmail.com**, a Google
 account of the app's own (two-step verification on, backup codes kept by Asaf
-offline). The same address is the contact on the privacy page. Passwords and
+offline). The public contact is **hello@olimei.app**, which Cloudflare Email
+Routing forwards to that inbox. Passwords and
 codes never enter this repository or this chat.
 
 The handle is **trybetterme** everywhere it is free. bettermeapp, bettermejournal
