@@ -21848,7 +21848,7 @@ function genStep(d){
 /* the emphasis is asked only when there is more than one muscle to lean on */
 function genSteps(){
   var n=0,k;for(k in _gen.on)if(_gen.on.hasOwnProperty(k))n++;
-  return n>1?4:3;
+  return 3;
 }
 function genEquipSet(v){
   if(_gen)_gen.equip=v;
@@ -21860,7 +21860,8 @@ function genOpen(){
   var d=fitDeficit(),on={},i,n=0;
   /* Chosen for you: the THREE furthest behind, not all of them. fitDeficit is
      already sorted that way, and the rest are one tap away. */
-  for(i=0;i<d.length&&n<GEN_MAX_MUSCLES;i++)if(d[i].short>0){on[d[i].m]=d[i].short;n++;}
+  /* NOTHING PRESELECTED (24 Oct): the question is what you want to focus on
+     now, not what a tally thinks is behind */
   var mn=30;try{mn=+localStorage.getItem('gen_min')||30;}catch(e){}
   _gen={def:d,on:on,equip:genEquip(),emphasis:'',min:mn,step:0};
   _fitView='build';renderFitness();
@@ -21877,6 +21878,23 @@ function genToggle(m){
        worth - you asked for it on purpose. */
     _gen.on[m]=sh>0?sh:GEN_SETS_PER_EX;
   }
+  renderFitness();
+}
+/* the three quick answers to "what to focus on" */
+var GEN_UP=['חזה','גב','כתפיים','יד קדמית','יד אחורית','אמה'],GEN_LOW=['ארבע ראשי','ירך אחורית','ישבן','תאומים'];   // i18n-exempt: muscle keys compared with fitDeficit's, shown through _t at the button
+function genGroupMs(k){
+  if(!_gen)return [];
+  return _gen.def.map(function(x){return x.m;}).filter(function(m){
+    return k==='all'||(k==='up'?GEN_UP:GEN_LOW).indexOf(m)>=0;});
+}
+function genGroupOn(k){
+  var ms=genGroupMs(k),on=Object.keys(_gen.on);
+  return ms.length>0&&ms.length===on.length&&ms.every(function(m){return _gen.on[m]!==undefined;});
+}
+function genGroup(k){
+  if(!_gen)return;
+  var was=genGroupOn(k);_gen.on={};_gen.emphasis='';
+  if(!was)genGroupMs(k).forEach(function(m){_gen.on[m]=GEN_SETS_PER_EX;});
   renderFitness();
 }
 function genEmph(m){
@@ -21904,7 +21922,7 @@ function genBuild(){
   fitwReplaceAsk(function(){
     /* An ordinary workout from here on. Nothing marks it as generated,
        because nothing about it is different once it exists. */
-    _fitWorkout={templateIdx:-1,name:''+_t('אימון שנבנה לך')+'',startTime:Date.now(),
+    _fitWorkout={templateIdx:-1,name:''+_t('אימון בקליק')+'',startTime:Date.now(),
                  exercises:exs,currentEx:0};
     _gen=null;_fitPinned=false;
     _fitView='workout';renderFitness();
@@ -21929,24 +21947,23 @@ function renderFitBuild(){
       h+='<button class="gn-e'+(g.min===m?' on':'')+'" onclick="genMinSet('+m+')">'+_t('{n} דקות',{n:m})+'</button>';});
     h+='</div></div>';
   }
-  if(g.step===1){
+  if(g.step===2){
     h+='<div class="gn-c"><div class="gn-q">'+_t('איפה אתה מתאמן')+'</div><div class="gn-w">';
     for(var e=0;e<GEN_EQUIP_ORDER.length;e++)
       h+='<button class="gn-e'+(g.equip===GEN_EQUIP_ORDER[e]?' on':'')+'" onclick="genEquipSet(\''+GEN_EQUIP_ORDER[e]+'\')">'+genEquipLabel(GEN_EQUIP_ORDER[e])+'</button>';
     h+='</div></div>';
   }
-  if(g.step===2){
-  /* ── what is short, already chosen ── */
-  h+='<div class="gn-c"><div class="gn-q">'+_t('מה חסר לך השבוע')+'</div>';
-  var short=g.def.filter(function(x){return x.short>0;});
-  h+='<div class="gn-s">'+(short.length
-      ? _t('בחרתי את אלה שהכי מאחור. אפשר להוריד ולהוסיף.')
-      : _t('הכול בתוך הטווח השבוע. בחר מה בא לך לעבוד.'))+'</div>';
+  if(g.step===1){
+  /* ── what to focus on: three quick answers, then the muscles ── */
+  h+='<div class="gn-c"><div class="gn-q">'+_t('במה תרצה להתרכז?')+'</div><div class="gn-w" style="margin-bottom:14px">';
+  ['all','up','low'].forEach(function(k){
+    h+='<button class="gn-e'+(genGroupOn(k)?' on':'')+'" onclick="genGroup(\''+k+'\')">'+
+       (k==='all'?_t('כל הגוף'):k==='up'?_t('פלג גוף עליון'):_t('פלג גוף תחתון'))+'</button>';});
+  h+='</div>';
   h+='<div class="gn-w">';
   for(var i=0;i<g.def.length;i++){
     var d=g.def[i],on=g.on[d.m]!==undefined;
-    h+='<button class="gn-m'+(on?' on':'')+'" onclick="genToggle(\''+d.m+'\')">'+
-       esc(_t(d.m))+'<span class="gn-n">'+(d.short>0?_t('{n} סטים',{n:d.short}):'&#10003;')+'</span></button>';
+    h+='<button class="gn-m'+(on?' on':'')+'" onclick="genToggle(\''+d.m+'\')">'+esc(_t(d.m))+'</button>';
   }
   h+='</div></div>';
   }
@@ -21954,7 +21971,7 @@ function renderFitBuild(){
   /* ── one muscle to lean on, optional ── */
   var chosen=[];
   for(var k in g.on)if(g.on.hasOwnProperty(k))chosen.push(k);
-  if(g.step===3&&chosen.length>1){
+  if(false){
     h+='<div class="gn-c"><div class="gn-q">'+_t('דגש')+'</div>';
     h+='<div class="gn-s">'+_t('שריר אחד שיקבל קצת יותר. לא חובה.')+'</div>';
     h+='<div class="gn-w">';
@@ -21968,7 +21985,7 @@ function renderFitBuild(){
   if(g.step===ns-1){
     h+='<div class="gn-g">'+_t('לפי המטרה שלך: {g}',{g:fitGoal().t})+'</div>';
     h+='<button class="gn-go" onclick="genBuild()">'+_t('בנה לי אימון')+'</button>';
-  } else h+='<button class="gn-go" onclick="genStep(1)">'+_t('המשך')+'</button>';
+  } else h+='<button class="gn-go" onclick="'+(g.step===1?'if(!Object.keys(_gen.on).length){showToast(_t(\'בחר שריר אחד לפחות\'));return;}':'')+'genStep(1)">'+_t('המשך')+'</button>';
   return void(document.getElementById('content').innerHTML=h+'</div>');
 }
 
@@ -22489,7 +22506,7 @@ function fitStartSheet(){
   h+='<button onclick="fitSheetClose();'+(ti>=0?'startWorkout('+ti+')':'_fitView=\'start\';renderFitness()')+'"><b>'+esc(_t('מהתוכניות שלי'))+'</b><span>'+
      (tp?esc(_t('היום לפי הלוז: {name}',{name:fitPlanName(tp)})):(tpls.length?esc(tpls.slice(0,3).map(function(t){return t.name;}).join(' · ')):''))+'</span></button>';
   h+='<button onclick="fitSheetClose();startEmptyWorkout()"><b>'+esc(_t('אימון ריק'))+'</b><span>'+esc(_t('מוסיפים תרגילים תוך כדי'))+'</span></button>';
-  h+='<button onclick="fitSheetClose();_fitView=\'build\';renderFitness()"><b>'+esc(_t('אימון שנבנה לך'))+'</b><span>'+esc(_t('לפי מה שחסר לך השבוע'))+'</span></button>';
+  h+='<button onclick="fitSheetClose();_gen=null;_fitView=\'build\';renderFitness()"><b>'+esc(_t('אימון בקליק'))+'</b><span>'+esc(_t('כמה זמן יש לך, במה להתרכז, ואיזה ציוד'))+'</span></button>';
   h+='</div><button class="cf-no" style="width:100%;margin-top:12px" onclick="fitSheetClose()">'+esc(_t('ביטול'))+'</button></div>';
   ov.innerHTML=h;document.body.appendChild(ov);
   ov.onclick=function(ev){if(ev.target===ov)fitSheetClose();};
@@ -22955,6 +22972,29 @@ function ingestStepsFromLink(){
    to begin is the whole complaint. A new workout, then the routines already
    built, each one tap from running. Everything that describes or measures
    training comes after the thing that starts it. */
+/* A PROGRAM STARTS LIKE A SAVED WORKOUT: one day, straight in; several, a
+   sheet of its days. The day's exercises become the workout. */
+function fitProgStart(pi,day){
+  var p=loadPrograms()[pi];if(!p)return;
+  var days=[],i,ex;
+  for(i=0;i<p.exercises.length;i++){ex=p.exercises[i];if(days.indexOf(ex.day||'')<0)days.push(ex.day||'');}
+  if(day===undefined&&days.length>1){
+    fitSheetClose();
+    var ov=document.createElement('div'),h='';ov.className='cf-ov fss-ov';ov.id='fss-ov';
+    for(i=0;i<days.length;i++)h+='<button onclick="fitSheetClose();fitProgStart('+pi+','+i+')"><b>'+esc(progDayLabel(days[i])||progLabel(p.name))+'</b></button>';
+    ov.innerHTML='<div class="cf-card fss"><div class="cf-q" style="margin-bottom:12px">'+esc(progLabel(p.name))+'</div><div class="fss-l">'+h+'</div>'+
+      '<button class="cf-no" style="width:100%;margin-top:12px" onclick="fitSheetClose()">'+esc(_t('ביטול'))+'</button></div>';
+    document.body.appendChild(ov);ov.onclick=function(e){if(e.target===ov)fitSheetClose();};
+    return;
+  }
+  var d=days[day||0],exs=p.exercises.filter(function(x){return (x.day||'')===d;});
+  fitwReplaceAsk(function(){
+    _fitWorkout={templateIdx:-1,name:progLabel(p.name)+(d?' · '+progDayLabel(d):''),startTime:Date.now(),
+      exercises:exs.map(function(x){return {name:x.name,targetSets:+x.sets||3,targetReps:+x.targetReps||10,plan:[],sets:[],warm:[],ss:null};}),
+      currentEx:0};
+    _fitView='workout';renderFitness();
+  });
+}
 /* the one "+": which kind of new */
 function fitNewProgSheet(){
   fitSheetClose();
@@ -22986,7 +23026,7 @@ function fitStartCardHTML(templates){
          '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5Z"/></svg></button></div>';
     }
     for(var pi=0;pi<progs.length;pi++)
-      h+='<div class="fs-row"><button class="fs-go" onclick="_fitView=\'view-program\';_fitProgIdx='+pi+';renderFitness()">'+
+      h+='<div class="fs-row"><button class="fs-go" onclick="fitProgStart('+pi+')">'+
          '<b>'+esc(progLabel(progs[pi].name))+'</b><span>'+_t('{n} תרגילים',{n:progs[pi].exercises.length})+'</span></button>'+
          '<button class="fs-ed" onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()">'+_t('ערוך')+'</button></div>';
   } else {
