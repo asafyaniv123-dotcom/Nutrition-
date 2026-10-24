@@ -406,9 +406,9 @@ const ASK_TOOLS = [
   },
 ];
 
-/* What Beem knows about the app. Written from the code on 21 Oct 2026, not
+/* What Mip knows about the app. Written from the code on 21 Oct 2026, not
    from memory - every button named here is one the app really draws. The
-   labels are the Hebrew ones; in any other language Beem names the thing by
+   labels are the Hebrew ones; in any other language Mip names the thing by
    what it does instead. Keep it true: a confident wrong instruction is worse
    than "I don't know yet". */
 const BEEM_GUIDE = `GENERAL
@@ -436,7 +436,7 @@ HOME (Better)
   - גיבוי (backup), at the bottom of settings: a line saying when the last export was (or that there has been none), and two chips. ייצוא (export) opens "הגיבוי מוכן" with everything that was logged: copy it all, share it as a file, and a full backup with the photos when there are any. Keep it somewhere that outlives the phone - a message to yourself, an email, a cloud note. ייבוא (import) picks a backup file and restores it.
   - סיימתי closes the menu.
 - Bottom bar: Better = home (tap again inside an area to go home); the middle book icon = Journal; Me = the stats screen.
-- Beem (you) sits in the top corner of every screen; tapping him opens this chat.
+- Mip (you) sits in the top corner of every screen; tapping him opens this chat.
 
 NUTRITION (תזונה)
 - Tabs: יומי (today), היסטוריה (history), מתכונים (recipes), אישי (personal). Arrows at the top move the food log to another day.
@@ -2563,7 +2563,7 @@ export default {
 
        Secrets: AI_KEY. Optional: ASK_DAILY_CAP (default 120/IP/day). */
     /* ── /beem ───────────────────────────────────────────────────────────
-       Beem, the small sun who lives in the corner of every screen, answering
+       Mip, the small sun who lives in the corner of every screen, answering
        "how do I..." from the guide above and "how much did I..." from her own
        log through the same tools as /ask. The app sends the screen she asked
        from, her name and form of address, and today's date by the app's own
@@ -2594,7 +2594,7 @@ export default {
       const today = /^\d{4}-\d{2}-\d{2}$/.test(String((b && b.today) || '')) ? b.today : day;
 
       const SYSTEM =
-        'You are Beem, a small warm sun who lives in the corner of every screen of\n' +
+        'You are Mip, a small warm sun who lives in the corner of every screen of\n' +
         'Olimei, a personal app for nutrition, fitness, people, planning, hobbies,\n' +
         'clothes, reflection and an end-of-day summary. You are the app\'s helper.\n' +
         'Write everything in ' + lang + '.' +

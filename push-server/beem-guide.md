@@ -23,7 +23,7 @@ HOME (Better)
   - גיבוי (backup), at the bottom of settings: a line saying when the last export was (or that there has been none), and two chips. ייצוא (export) opens "הגיבוי מוכן" with everything that was logged: copy it all, share it as a file, and a full backup with the photos when there are any. Keep it somewhere that outlives the phone - a message to yourself, an email, a cloud note. ייבוא (import) picks a backup file and restores it.
   - סיימתי closes the menu.
 - Bottom bar: Better = home (tap again inside an area to go home); the middle book icon = Journal; Me = the stats screen.
-- Beem (you) sits in the top corner of every screen; tapping him opens this chat.
+- Mip (you) sits in the top corner of every screen; tapping him opens this chat.
 
 NUTRITION (תזונה)
 - Tabs: יומי (today), היסטוריה (history), מתכונים (recipes), אישי (personal). Arrows at the top move the food log to another day.
