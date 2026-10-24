@@ -1851,7 +1851,7 @@ body.night .fab-t{color:#d8cbf0;background:rgba(42,36,56,.92)}
   font-family:inherit;text-align:start;cursor:pointer;box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 .fs-go b{font-size:15px;font-weight:800;color:var(--nu-ink)}
 .fs-go span{font-size:12px;font-weight:600;color:var(--nu-muted)}
-.fs-ed{border:none;background:none;font-family:inherit;font-size:13px;font-weight:700;color:var(--nu-muted);padding:10px 6px;cursor:pointer}
+.fs-ed{border:none;background:none;font-family:inherit;font-size:22px;font-weight:800;line-height:1;color:var(--nu-muted);padding:10px 6px;cursor:pointer}
 .fs-play{flex:0 0 46px;height:46px;border:none;border-radius:50%;background:var(--nu-ground);color:var(--terra-700);display:flex;align-items:center;justify-content:center;cursor:pointer;
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 .fs-play svg{width:18px;height:18px;fill:currentColor;margin-inline-start:2px}
@@ -22995,6 +22995,29 @@ function fitProgStart(pi,day){
     _fitView='workout';renderFitness();
   });
 }
+/* ⋯ on a row: edit, or delete after asking */
+function fitRowMenu(kind,i){
+  var nm=kind==='t'?(loadTemplates()[i]||{}).name:progLabel((loadPrograms()[i]||{}).name||'');
+  fitSheetClose();
+  var ov=document.createElement('div');ov.className='cf-ov fss-ov';ov.id='fss-ov';
+  ov.innerHTML='<div class="cf-card fss"><div class="cf-q" style="margin-bottom:12px">'+esc(nm||'')+'</div><div class="tm-sv-col">'+
+    '<button class="cf-yes" id="fr-ed">'+esc(_t('ערוך'))+'</button>'+
+    '<button class="cf-no tm-sv-del" id="fr-del">'+esc(_t('מחק'))+'</button>'+
+    '<button class="cf-no" onclick="fitSheetClose()">'+esc(_t('ביטול'))+'</button></div></div>';
+  document.body.appendChild(ov);ov.onclick=function(e){if(e.target===ov)fitSheetClose();};
+  document.getElementById('fr-ed').onclick=function(){
+    fitSheetClose();
+    if(kind==='t')startFitEdit(i);else{_fitView='edit-program';_fitProgIdx=i;renderFitness();}
+  };
+  document.getElementById('fr-del').onclick=function(){
+    fitSheetClose();
+    askConfirm(_t('למחוק את {name}? אי אפשר לבטל.',{name:nm||''}),_t('מחק'),function(){
+      if(kind==='t'){var a=loadTemplates();a.splice(i,1);saveTemplates(a);}
+      else{var b=loadPrograms();b.splice(i,1);savePrograms(b);}
+      renderFitness();
+    });
+  };
+}
 /* the one "+": which kind of new */
 function fitNewProgSheet(){
   fitSheetClose();
@@ -23021,14 +23044,16 @@ function fitStartCardHTML(templates){
       /* the row is the start; edit is the quiet word beside it */
       h+='<div class="fs-row"><button class="fs-go" onclick="startWorkout('+i+')">'+
          '<b>'+esc(t.name)+'</b><span>'+_t('{n} תרגילים',{n:t.exercises.length})+'</span></button>'+
-         '<button class="fs-ed" onclick="startFitEdit('+i+')">'+_t('ערוך')+'</button>'+
+         '<button class="fs-ed" onclick="fitRowMenu(\'t\','+i+')" aria-label="'+esc(_t('אפשרויות|שעון'))+'">&#8943;</button>'+
          '<button class="fs-play" onclick="startWorkout('+i+')" aria-label="'+esc(_t('התחל'))+'">'+
          '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5Z"/></svg></button></div>';
     }
     for(var pi=0;pi<progs.length;pi++)
       h+='<div class="fs-row"><button class="fs-go" onclick="fitProgStart('+pi+')">'+
          '<b>'+esc(progLabel(progs[pi].name))+'</b><span>'+_t('{n} תרגילים',{n:progs[pi].exercises.length})+'</span></button>'+
-         '<button class="fs-ed" onclick="_fitView=\'edit-program\';_fitProgIdx='+pi+';renderFitness()">'+_t('ערוך')+'</button></div>';
+         '<button class="fs-ed" onclick="fitRowMenu(\'p\','+pi+')" aria-label="'+esc(_t('אפשרויות|שעון'))+'">&#8943;</button>'+
+         '<button class="fs-play" onclick="fitProgStart('+pi+')" aria-label="'+esc(_t('התחל'))+'">'+
+         '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5Z"/></svg></button></div>';
   } else {
     h+='<div class="fs-empty">'+_t('אין עדיין אימונים שמורים.')+'<br>'+_t('סיים אימון חדש ושמור אותו, או בנה אחד מראש.')+'</div>';
   }
