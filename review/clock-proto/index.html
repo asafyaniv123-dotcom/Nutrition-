@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>שעון עצר וספירה לאחור: אב־טיפוס בהשראת השעון של האייפון</title>
+<style>
+/* STOPWATCH AND COUNTDOWN, AFTER THE PHONE'S OWN CLOCK (Asaf, 24 Oct: "there
+   is no such thing as count-up, it is a stopwatch... take inspiration from
+   the iPhone's built-in Clock, which already has everything").
+   What the Clock app gets right, in this app's material:
+   - Stopwatch: big digits with hundredths, two round buttons - Lap/Reset on
+     one side, Start/Stop on the other - and a list of laps under them, the
+     fastest and the slowest marked.
+   - Countdown: a wheel each for hours, minutes and seconds, the same two
+     round buttons, recent lengths underneath to start again in one tap, and
+     a ring that empties while it runs.
+   The countdown here runs at real speed; try 0:00:05. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--g:#e9e7e3;--lit:rgba(255,255,255,.95);--sh:rgba(176,168,156,.44);--sh2:rgba(176,168,156,.28);--ink:#4a453f;--mu:#6d675e;--t5:#e08a72;--t7:#98492c;--gr:#3f7a52}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",Arial,sans-serif}
+.bar{max-width:430px;margin:0 auto;padding:12px 14px 6px;color:#efe6d8}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.wrap{display:flex;justify-content:center;padding:10px 0 30px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:34px;background:var(--g);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.45);transform-origin:50% 0}
+.scr{position:absolute;inset:0;overflow-y:auto;padding:0 16px 100px;scrollbar-width:none}.scr::-webkit-scrollbar{display:none}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:16px 0 6px}.hd h2{font-size:28px;font-weight:800;margin:0}
+.tabs{position:absolute;left:14px;right:14px;bottom:14px;height:60px;border-radius:24px;background:var(--g);display:flex;align-items:center;justify-content:space-around;font-weight:800;color:var(--mu);box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2);z-index:6}
+button{font-family:inherit}
+.raise{background:var(--g);border:none;color:var(--ink);cursor:pointer;box-shadow:-3px -3px 7px var(--lit),3px 4px 10px var(--sh2)}
+.raise:active{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.press{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;border-radius:16px;padding:4px;margin-top:8px}
+.seg button{border:none;background:none;border-radius:12px;padding:11px 0;font-size:15px;font-weight:800;color:var(--mu);cursor:pointer}
+.seg button.on{background:var(--g);color:var(--ink);box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.pane{display:none}.pane.on{display:block}
+/* the face */
+.face{position:relative;margin:26px auto 0;width:280px;height:280px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:-6px -6px 14px var(--lit),7px 8px 18px var(--sh2)}
+.face .in{position:absolute;inset:16px;border-radius:50%;box-shadow:inset 3px 4px 9px var(--sh),inset -3px -3px 8px var(--lit)}
+.face svg{position:absolute;inset:16px;width:248px;height:248px;transform:rotate(-90deg)}
+.face circle{fill:none;stroke-width:7;stroke-linecap:round}
+.face .trk{stroke:transparent}.face .arc{stroke:var(--t5);transition:stroke-dashoffset .25s linear}
+.dig{position:relative;font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;direction:ltr;line-height:1}
+.dig small{font-size:30px;color:var(--mu)}
+.sub{position:relative;font-size:13.5px;font-weight:700;color:var(--mu);margin-top:8px;direction:ltr}
+.ctrl{display:flex;justify-content:space-between;align-items:center;margin:26px 18px 0}
+.rb{width:84px;height:84px;border-radius:50%;font-size:16px;font-weight:800}
+.rb.go{color:var(--gr)}.rb.st{color:var(--t7)}
+.rb[disabled]{color:#b4aca1;cursor:default}
+.dots{display:flex;gap:6px}.dots i{width:7px;height:7px;border-radius:50%;background:#c9c1b6}.dots i.on{background:var(--ink)}
+/* laps */
+.laps{margin-top:22px}
+.lap{display:flex;justify-content:space-between;padding:11px 6px;border-top:1px solid rgba(176,168,156,.35);font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.lap:first-child{border-top:none}
+.lap span:last-child{direction:ltr}
+.lap.best{color:var(--gr)}.lap.worst{color:var(--t7)}
+.lap.cur{color:var(--mu)}
+/* the countdown wheels */
+.wheels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:22px;direction:ltr}
+.wl{position:relative;height:180px;border-radius:18px;overflow:hidden}
+.wl .win{position:absolute;left:6px;right:6px;top:72px;height:36px;border-radius:11px;pointer-events:none;box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.wl .col{position:relative;height:180px;overflow-y:scroll;scroll-snap-type:y mandatory;padding:72px 0;scrollbar-width:none}
+.wl .col::-webkit-scrollbar{display:none}
+.wl .col div{height:36px;line-height:36px;scroll-snap-align:center;text-align:center;font-size:17px;font-weight:700;color:#8a8176;font-variant-numeric:tabular-nums}
+.wl .col div.on{color:var(--ink);font-weight:800;font-size:21px}
+.wl b{position:absolute;top:80px;right:10px;font-size:12px;color:var(--mu);pointer-events:none;z-index:2}
+.wlab{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:12.5px;font-weight:800;color:var(--mu);margin-top:6px;direction:ltr}
+.recent{margin-top:20px}
+.recent .h{font-size:13px;font-weight:800;color:var(--mu);margin-bottom:8px}
+.rc{display:flex;align-items:center;justify-content:space-between;border-radius:15px;padding:10px 12px;margin-bottom:8px}
+.rc b{font-size:22px;font-weight:800;direction:ltr;font-variant-numeric:tabular-nums}
+.rc button{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.rc svg{width:16px;height:16px;fill:var(--gr)}
+.notes{max-width:430px;margin:0 auto 40px;padding:0 18px;color:#e6dccd;font-size:14.5px;line-height:1.65}
+.notes h2{font-size:17px;margin:4px 0 6px}.notes li{margin-bottom:6px}
+</style></head><body>
+<div class="bar"><h1>שעון עצר וספירה לאחור</h1>
+<p>בהשראת השעון של האייפון, בחומר של האפליקציה. הכול עובד: אפשר להפעיל, לרשום הקפות, לגלגל זמן ולהתחיל.</p></div>
+<div class="wrap"><div class="ph" id="ph">
+  <div class="scr">
+    <div class="hd"><h2>כושר</h2></div>
+    <div class="seg press"><button class="on" data-p="sw">שעון עצר</button><button data-p="cd">ספירה לאחור</button></div>
+
+    <div class="pane on" id="p-sw">
+      <div class="face"><div class="in"></div><div class="dig" id="swd">00:00<small>,00</small></div><div class="sub" id="swl"></div></div>
+      <div class="ctrl">
+        <button class="raise rb" id="swL" onclick="swLap()" disabled>הקפה</button>
+        <button class="raise rb go" id="swS" onclick="swGo()">התחל</button>
+      </div>
+      <div class="laps" id="laps"></div>
+    </div>
+
+    <div class="pane" id="p-cd">
+      <div id="cdSet">
+        <div class="wheels">
+          <div class="wl press"><div class="win"></div><div class="col" id="wh"></div></div>
+          <div class="wl press"><div class="win"></div><div class="col" id="wm"></div></div>
+          <div class="wl press"><div class="win"></div><div class="col" id="ws"></div></div>
+        </div>
+        <div class="wlab"><span>שעות</span><span>דקות</span><span>שניות</span></div>
+      </div>
+      <div id="cdRun" style="display:none">
+        <div class="face"><svg viewBox="0 0 248 248"><circle class="arc" id="arc" cx="124" cy="124" r="112"/></svg><div class="in"></div><div class="dig" id="cdd">0:00</div><div class="sub" id="cde"></div></div>
+      </div>
+      <div class="ctrl">
+        <button class="raise rb" id="cdX" onclick="cdCancel()" disabled>ביטול</button>
+        <button class="raise rb go" id="cdS" onclick="cdGo()">התחל</button>
+      </div>
+      <div class="recent" id="recent"></div>
+    </div>
+  </div>
+  <div class="tabs"><span>Me</span><span>▤</span><span>Better</span></div>
+</div></div>
+<div class="notes">
+  <h2>מה לקחתי מהשעון של האייפון</h2>
+  <ul>
+    <li><b>שני מצבים בלשונית אחת למעלה:</b> שעון עצר וספירה לאחור, כמו שם.</li>
+    <li><b>שעון עצר:</b> ספרות גדולות עם מאיות שנייה, שני כפתורים עגולים: "הקפה" (שהופך ל"אפס" כשעוצרים) ו"התחל"/"עצור". מתחת רשימת ההקפות, המהירה בירוק והאיטית באדום.</li>
+    <li><b>ספירה לאחור:</b> שלוש גלגלות, שעות, דקות ושניות. בזמן הריצה טבעת שמתרוקנת, השעה שבה זה ייגמר, ו"השהה"/"המשך".</li>
+    <li><b>אחרונים:</b> כל אורך שהפעלת נשמר למטה, ו־▶ מפעיל אותו שוב בנגיעה.</li>
+    <li>ב־dev זה יחליף את שני הכפתורים "שעון עצר" ו"ספירה לאחור" שבכרטיס "בלי לוח זמנים", ויפתח את המסך הזה.</li>
+  </ul>
+</div>
+<script>
+function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+var $=function(i){return document.getElementById(i);};
+document.querySelector('.seg').onclick=function(e){var p=e.target.dataset.p;if(!p)return;[].forEach.call(this.children,function(b){b.classList.toggle('on',b.dataset.p===p);});
+  $('p-sw').classList.toggle('on',p==='sw');$('p-cd').classList.toggle('on',p==='cd');};
+var p2=function(n){return ('0'+n).slice(-2);};
+/* ── stopwatch ── */
+var sw={run:false,from:0,acc:0,laps:[],lapAcc:0,iv:null};
+function swNow(){return sw.acc+(sw.run?Date.now()-sw.from:0);}
+function swFmt(ms){var cs=Math.floor(ms/10)%100,s=Math.floor(ms/1000)%60,m=Math.floor(ms/60000),h=Math.floor(m/60);
+  return (h?h+':'+p2(m%60):p2(m))+':'+p2(s)+'<small>,'+p2(cs)+'</small>';}
+function swPaint(){var t=swNow();$('swd').innerHTML=swFmt(t);
+  var cur=t-sw.laps.reduce(function(a,b){return a+b;},0);
+  $('swl').innerHTML=sw.laps.length||sw.run?'הקפה '+(sw.laps.length+1)+' · '+swFmt(cur).replace(/<[^>]+>/g,''):'';
+  var h='',mn=Math.min.apply(null,sw.laps),mx=Math.max.apply(null,sw.laps),i;
+  if(sw.run||t)h+='<div class="lap cur"><span>הקפה '+(sw.laps.length+1)+'</span><span>'+swFmt(cur).replace(/<[^>]+>/g,'')+'</span></div>';
+  for(i=sw.laps.length-1;i>=0;i--){var c=sw.laps.length>2&&sw.laps[i]===mn?' best':sw.laps.length>2&&sw.laps[i]===mx?' worst':'';
+    h+='<div class="lap'+c+'"><span>הקפה '+(i+1)+'</span><span>'+swFmt(sw.laps[i]).replace(/<[^>]+>/g,'')+'</span></div>';}
+  $('laps').innerHTML=h;}
+function swGo(){if(sw.run){sw.acc=swNow();sw.run=false;clearInterval(sw.iv);}else{sw.from=Date.now();sw.run=true;sw.iv=setInterval(swPaint,40);}
+  $('swS').textContent=sw.run?'עצור':'התחל';$('swS').className='raise rb '+(sw.run?'st':'go');
+  $('swL').textContent=sw.run||!swNow()?'הקפה':'אפס';$('swL').disabled=!sw.run&&!swNow();swPaint();}
+function swLap(){if(sw.run){var t=swNow();sw.laps.push(t-sw.laps.reduce(function(a,b){return a+b;},0));swPaint();}
+  else{sw={run:false,from:0,acc:0,laps:[],iv:null};$('swL').textContent='הקפה';$('swL').disabled=true;swPaint();}}
+/* ── countdown ── */
+function wheel(id,n,start){var c=$(id),h='',i;for(i=0;i<n;i++)h+='<div>'+i+'</div>';c.innerHTML=h;
+  c.addEventListener('scroll',function(){var k=Math.round(c.scrollTop/36);[].forEach.call(c.children,function(r,j){r.classList.toggle('on',j===k);});});
+  c.addEventListener('click',function(e){var i=[].indexOf.call(c.children,e.target);if(i>=0)c.scrollTo({top:i*36,behavior:'smooth'});});
+  setTimeout(function(){c.scrollTop=start*36;c.dispatchEvent(new Event('scroll'));},50);}
+wheel('wh',24,0);wheel('wm',60,1);wheel('ws',60,30);
+/* the wheels open on the length that just ran - hidden, a scroller forgets */
+function wheelTo(t){if(!t)return;[['wh',Math.floor(t/3600)],['wm',Math.floor(t/60)%60],['ws',t%60]].forEach(function(x){var c=$(x[0]);c.scrollTop=x[1]*36;c.dispatchEvent(new Event('scroll'));});}
+function wv(id){return Math.round($(id).scrollTop/36);}
+var cd={tot:0,end:0,left:0,paused:false,iv:null};
+var REC=JSON.parse(localStorage.getItem('clock_recent_proto')||'[90,300,60]');
+function cdFmt(s){var h=Math.floor(s/3600),m=Math.floor(s/60)%60,ss=s%60;return (h?h+':'+p2(m):m)+':'+p2(ss);}
+function recPaint(){var h='<div class="h">אחרונים</div>';REC.forEach(function(s){h+='<div class="rc raise" style="cursor:default"><b>'+cdFmt(s)+'</b><button class="raise" onclick="cdStart('+s+')" aria-label="התחל"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5Z"/></svg></button></div>';});$('recent').innerHTML=h;}
+recPaint();
+function cdGo(){if(cd.iv||cd.paused){cdPause();return;}var s=wv('wh')*3600+wv('wm')*60+wv('ws');if(!s)return;cdStart(s);}
+function cdStart(s){cd={tot:s,end:Date.now()+s*1000,left:s,paused:false,iv:null};
+  REC=[s].concat(REC.filter(function(x){return x!==s;})).slice(0,4);localStorage.setItem('clock_recent_proto',JSON.stringify(REC));recPaint();
+  $('cdSet').style.display='none';$('cdRun').style.display='';$('cdX').disabled=false;
+  var d=new Date(cd.end);$('cde').textContent='🔔 '+p2(d.getHours())+':'+p2(d.getMinutes());
+  cd.iv=setInterval(cdTick,100);cdTick();cdBtn();}
+function cdTick(){var ms=cd.end-Date.now();if(ms<=0){cdDone();return;}cd.left=Math.ceil(ms/1000);$('cdd').textContent=cdFmt(cd.left);
+  var C=2*Math.PI*112;$('arc').style.strokeDasharray=C;$('arc').style.strokeDashoffset=C*(1-ms/(cd.tot*1000));}
+function cdPause(){if(cd.paused){cd.end=Date.now()+cd.rem;cd.paused=false;cd.iv=setInterval(cdTick,100);}else{cd.rem=cd.end-Date.now();cd.paused=true;clearInterval(cd.iv);cd.iv=null;}cdBtn();}
+function cdBtn(){var run=!!cd.iv;$('cdS').textContent=run?'השהה':(cd.paused?'המשך':'התחל');$('cdS').className='raise rb '+(run?'st':'go');}
+function cdCancel(){clearInterval(cd.iv);var t=cd.tot;cd={tot:0,end:0,left:0,paused:false,iv:null};$('cdSet').style.display='';wheelTo(t);$('cdRun').style.display='none';$('cdX').disabled=true;cdBtn();}
+function cdDone(){clearInterval(cd.iv);$('cdd').textContent='0:00';$('arc').style.strokeDashoffset=2*Math.PI*112;
+  try{var a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator();o.frequency.value=880;o.connect(a.destination);o.start();o.stop(a.currentTime+.4);}catch(e){}
+  setTimeout(cdCancel,1500);}
+</script>
+</body></html>
