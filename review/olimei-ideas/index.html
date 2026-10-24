@@ -40,16 +40,16 @@ function dot(px){var f='700 '+px+'px Fraunces',tc=document.createElement('canvas
   return {x:sx/n-px*.5,y:sy/n-px*1.5};}
 /* each idea: the text to set, and what to draw before / after it */
 var IDEAS=[
- ['א׳ · נקודת ה־i הראשונה','Olımei',function(m){m.dotSun(1,.30);},true],
+ ['א׳ · נקודת ה־i הראשונה','Olımei',function(m){m.dotSun(2,.30);},true],
  ['ב׳ · נקודת ה־i האחרונה','Olimeı',function(m){m.dotSun(5,.30);}],
- ['ג׳ · שתי שמשות, על שתי ה־i','Olımeı',function(m){m.dotSun(1,.22);m.dotSun(5,.22);},true],
+ ['ג׳ · שתי שמשות, על שתי ה־i','Olımeı',function(m){m.dotSun(2,.22);m.dotSun(5,.22);},true],
  ['ד׳ · שמש בתוך ה־O','Olimei',function(m){var w=m.w('O'),cx=m.x0+w*.5,cy=m.base-m.cap*.5;sun(m.g,cx,cy,m.px*.17);}],
  ['ה׳ · שמש כנקודה בסוף, כמו Better Me.','Olimei',function(m){var R=m.px*.13;sun(m.g,m.x0+m.w('Olimei')+R*1.25,m.base-R*1.0,R);}],
  ['ו׳ · שמש קטנה מעל הסוף, כמו כוכבית','Olimei',function(m){var R=m.px*.15;sun(m.g,m.x0+m.w('Olimei')+R*1.1,m.base-m.cap-R*.15,R);}],
- ['ז׳ · ה־i כולה בכתום, והשמש היא הנקודה','Olımei',function(m){m.g.save();m.g.fillStyle=OR;m.g.fillText('ı',m.x0+m.w('Ol'),m.base);m.g.restore();m.dotSun(1,.26);}],
+ ['ז׳ · ה־i כולה בכתום, והשמש היא הנקודה','Olımei',function(m){m.g.save();m.g.fillStyle=OR;m.g.fillText('ı',m.x0+m.w('Ol'),m.base);m.g.restore();m.dotSun(2,.26);}],
  ['ח׳ · שמש שוקעת בקו של המילה, בסוף','Olimei',function(m){var R=m.px*.28;sun(m.g,m.x0+m.w('Olimei')+R*1.15,m.base,R,{clipAbove:m.base});}],
  ['ט׳ · שמש מעל מרכז המילה','Olimei',function(m){var R=m.px*.2;sun(m.g,m.x0+m.w('Olimei')*.5,m.base-m.cap-R*1.25,R);}],
- ['י׳ · אותיות קטנות, שמש על ה־i','olımei',function(m){m.dotSun(1,.30);},true],
+ ['י׳ · אותיות קטנות, שמש על ה־i','olımei',function(m){m.dotSun(2,.30);},true],
  ['י״א · רק הקרניים סביב ה־O, השמש היא ה־O','Olimei',function(m){var w=m.w('O'),cx=m.x0+w*.5,cy=m.base-m.cap*.5;sun(m.g,cx,cy,m.cap*.86,{noDisc:true});}]
 ];
 function draw(cv,idea,px,ink){
@@ -59,7 +59,12 @@ function draw(cv,idea,px,ink){
   g=cv.getContext('2d');g.font=f;g.direction='ltr';g.textAlign='left';g.textBaseline='alphabetic';
   var base=padT+px*.78,m={g:g,px:px,x0:padX,base:base,cap:px*.70,
     w:function(s){return g.measureText(s).width;},
-    dotSun:function(i,s){var R=s*px,cx=padX+g.measureText(idea[1].slice(0,i)).width+DOT.x,cy=base+DOT.y,xh=px*.5,low=cy+R;
+    dotSun:function(i,s){var T=idea[1],Td=T.slice(0,i)+'i'+T.slice(i+1),W=Math.ceil(g.measureText(Td).width+padX*2),H=Math.ceil(base+px*.4),
+      c=document.createElement('canvas');c.width=W;c.height=H;var t=c.getContext('2d');t.font=g.font;t.direction='ltr';t.textAlign='left';t.textBaseline='alphabetic';
+      t.fillText(Td,padX,base);var A=t.getImageData(0,0,W,H).data;t.clearRect(0,0,W,H);t.fillText(T,padX,base);var B=t.getImageData(0,0,W,H).data,sx=0,sy=0,n=0,x,y,k;
+      var xa=padX+t.measureText(T.slice(0,i)).width-px*.05,xb=padX+t.measureText(T.slice(0,i)+'i').width+px*.05,yb=base-px*.56;
+      for(y=0;y<yb;y++)for(x=Math.floor(xa);x<xb;x++){k=(y*W+x)*4+3;if(A[k]>128&&B[k]<40){sx+=x;sy+=y;n++;}}
+      var R=s*px,cx=sx/n,cy=sy/n,xh=px*.5,low=cy+R;
       if(low>base-xh-px*.04)cy-=low-(base-xh-px*.04);sun(g,cx,cy,R);}};
   if(idea[3])idea[2](m);           /* drawn behind the word */
   g.fillStyle=ink;g.fillText(idea[1],padX,base);
