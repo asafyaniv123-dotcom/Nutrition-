@@ -19232,7 +19232,8 @@ function sndSet(on){try{localStorage.setItem(SND_KEY,on?'1':'0');}catch(e){}}
 function sndToggle(){
   sndSet(!sndOn());
   if(sndOn())sndPlay(SND_OPEN,0.5);
-  renderMe();
+  if(document.getElementById('set-backup'))renderSettings();
+  else renderMe();
 }
 var _sndEls={};
 function sndEl(name){
@@ -39689,51 +39690,17 @@ function wkDeckPaint(){
   }
 }
 function renderMe(){
-  var rows=meDayList(_meRange),i,r;
-  var done=rows.filter(function(x){return x.sum&&x.sum.done;}).length;
   var h='<div class="me-wrap">';
 
   h+=wkCardHTML();
   h+='<div class="me-top"><div class="me-logo">Me</div>';
   h+='<div class="me-sub">'+_t('מה שהימים מצטברים אליו')+'</div></div>';
 
-  // the one number worth leading with
-  h+='<div class="me-hero"><div class="me-hero-n">'+nfmt(done)+'</div>';
-  h+='<div class="me-hero-l">'+_t('ימים שסיכמת מתוך {n}',{n:_meRange})+'</div></div>';
-
-  h+=meCard('snd',''+_t('צלילים')+'',''+_t('צליל פתיחה והתראות בתוך האפליקציה')+'',
-    '<button class="snd-row" onclick="sndToggle()">'+
-    '<span class="snd-t">'+(sndOn()?''+_t('מופעל')+'':''+_t('מושתק')+'')+'</span>'+
-    '<span class="snd-sw'+(sndOn()?' on':'')+'"><i></i></span></button>');
-  /* Language used to be a card here. It moved behind the gear in the drawer:
-     it is chosen once, and this screen is for what you touch every day. */
+  /* Language and sounds live behind the gear in the drawer: they are chosen
+     once, and this screen is for what you come back to. The day count and
+     the small charts left on 24 Oct - Beem's halo already counts the days. */
   h+='<div id="home-cal" class="me-slot"></div>';
   h+='<div id="home-vision" class="me-slot"></div>';
-  h+='<div class="me-range">';
-  [[7,_t('שבוע')],[14,_t('שבועיים')],[30,_t('חודש')]].forEach(function(o){
-    h+='<button class="me-rb'+(_meRange===o[0]?' on':'')+'" onclick="_meRange='+o[0]+';renderMe()">'+o[1]+'</button>';
-  });
-  h+='</div>';
-
-  var ratings=[];
-  for(i=0;i<rows.length;i++)if(rows[i].sum&&rows[i].sum.dayRating)ratings.push(rows[i].sum.dayRating);
-  h+=meCard('rating',''+_t('ציון היום')+'',
-    /* The NUMBER, not toFixed's string of it - _t formats a hole holding a
-   real number and leaves a string alone, which is how one Latin 8.0 came
-   to sit beside the key's own ١٠. */
-    ratings.length?(''+_t('ממוצע {n} מתוך 10',{n:Math.round(meAvg(ratings)*10)/10})):'',
-    meLine('rating',rows,function(x){return x.sum&&x.sum.dayRating?x.sum.dayRating:null;},ME_C[0],function(v){return String(v);}));
-
-  h+=meCard('steps',''+_t('צעדים')+'','',
-    meBars('steps',rows,function(x){return x.steps||0;},ME_C[2],function(v){return nfmt(Math.round(v));}));
-
-  h+=meCard('kcal',''+_t('קלוריות')+'',''+_t('היעד')+' '+nfmt(TARGETS.kcal),
-    meLine('kcal',rows,function(x){
-      var k=Math.round(x.day.meals.reduce(function(a,m){return a+(m.kcal||0);},0));
-      return k>0?k:null;},ME_C[1],function(v){return nfmt(Math.round(v));}));
-
-  h+=meTimeSplit(rows);
-  h+=meInsights(rows);
   h+='<div id="home-book" class="me-slot"></div>';
 
   h+='</div>';
@@ -41889,6 +41856,11 @@ function renderSettings(){
      _t('אימפריאלי')+'</button>';
   h+='</div>';
   /* the backup, the one place a person can take everything with them */
+  /* sounds - moved here from the Me screen (24 Oct) */
+  h+='<div class="set-sec"><div class="set-t">'+_t('צלילים')+'</div>'+
+     '<div class="set-s">'+_t('צליל פתיחה והתראות בתוך האפליקציה')+'</div></div>';
+  h+='<div class="set-langs"><button class="set-lang'+(sndOn()?' on':'')+'" onclick="sndToggle()">'+_t('מופעל')+'</button>'+
+     '<button class="set-lang'+(sndOn()?'':' on')+'" onclick="sndToggle()">'+_t('מושתק')+'</button></div>';
   h+='<div id="set-backup"></div>';
   v.innerHTML=h;
   renderBackup();
