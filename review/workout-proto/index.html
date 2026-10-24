@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>מסך האימון: אב־טיפוס ט׳</title>
+<style>
+/* THE WORKOUT SCREEN, A WORKING PROTOTYPE of direction ט׳ (Asaf, 24 Oct:
+   "a link I can really try, and we fix it until it fits, then we ship it").
+   Everything works: switch exercises, type or step the numbers, turn the
+   effort wheel, log a set (the rest starts by itself), tap a set to edit or
+   delete it, swap / remove / superset, "how it is done". Nothing is saved:
+   reload starts the workout again. The marker of a finished exercise is a
+   choice on the bar above the phone - the bright sage wash is gone. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--g:#e9e7e3;--lit:rgba(255,255,255,.95);--sh:rgba(176,168,156,.44);--sh2:rgba(176,168,156,.28);--ink:#4a453f;--mu:#6d675e;--t5:#e08a72;--t7:#98492c;--gr:#4f8a62}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",Arial,sans-serif}
+.bar{max-width:430px;margin:0 auto;padding:12px 14px 6px;color:#efe6d8}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.sw{display:flex;gap:6px;flex-wrap:wrap}
+.sw span{font-size:12.5px;color:#cfc4b4;font-weight:700;align-self:center;margin-inline-end:2px}
+.sw button{border:none;border-radius:999px;padding:7px 12px;font:700 13px Assistant,sans-serif;background:#3d3732;color:#e6dccd;cursor:pointer}
+.sw button.on{background:#efe6d8;color:#2b2724}
+.wrap{display:flex;justify-content:center;padding:10px 0 30px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:34px;background:var(--g);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.45);transform-origin:50% 0}
+.scr{position:absolute;inset:0;overflow-y:auto;padding:0 16px 330px;scrollbar-width:none}.scr::-webkit-scrollbar{display:none}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:16px 0 6px}
+.hd h2{font-size:28px;font-weight:800;margin:0}
+.nich{width:50px;height:50px;border-radius:50%;box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit);display:flex;align-items:center;justify-content:center}
+.nich div{width:38px;height:38px}
+.tabs{position:absolute;left:14px;right:14px;bottom:14px;height:60px;border-radius:24px;background:var(--g);display:flex;align-items:center;justify-content:space-around;font-weight:800;color:var(--mu);
+  box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2);z-index:6}
+button{font-family:inherit}
+.raise{background:var(--g);border:none;color:var(--ink);cursor:pointer;box-shadow:-3px -3px 7px var(--lit),3px 4px 10px var(--sh2)}
+.raise:active{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.press{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.seam{box-shadow:-3px -3px 8px var(--lit),4px 5px 12px var(--sh2),inset 0 -3px 0 color-mix(in srgb,var(--t5) 60%,transparent)}
+.card{border-radius:22px;padding:14px;margin-top:12px;box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2)}
+.lab{font-size:12px;font-weight:800;color:var(--mu);letter-spacing:.03em}
+.wk{display:flex;align-items:center;gap:10px;margin:6px 0 8px}
+.wk b{font-size:15px}.wk span{font-size:12.5px;color:var(--mu);font-weight:700}
+.wk .cnt{margin-inline-start:auto;font-size:13px;font-weight:800;color:var(--t7)}
+.chips{display:flex;gap:7px;overflow-x:auto;margin:0 -16px;padding:4px 16px 8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border-radius:999px;padding:9px 14px;font-size:13.5px;font-weight:800;color:var(--mu);display:flex;align-items:center;gap:6px}
+.chip.on{color:var(--ink);box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+/* ── a finished exercise, three ways (the choice on the bar) ── */
+.ck{display:none;width:15px;height:15px;border-radius:50%;flex:none;
+  background:var(--gr) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12.5 4 4 8-9'/%3E%3C/svg%3E") center/10px no-repeat}
+.chip.dn .ck,.ssc.dn .ck{display:inline-block}
+/* A: only the check, the chip stays as it is */
+/* B: the chip pressed in, as a thing put away, with the check */
+.mB .chip.dn:not(.on),.mB .ssc.dn{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit);color:var(--mu)}
+/* C: a thin green seam under the chip - the app's seam, in green */
+.mC .chip.dn:not(.on),.mC .ssc.dn{box-shadow:-3px -3px 7px var(--lit),3px 4px 10px var(--sh2),inset 0 -3px 0 color-mix(in srgb,var(--gr) 55%,transparent)}
+.ex{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ex-n{font-size:22px;font-weight:800;line-height:1.15}
+.ex-m{font-size:13px;color:var(--mu);font-weight:700;margin-top:3px}.ex-m b{color:var(--t7)}
+.how{flex:none;border-radius:14px;padding:8px 10px;font-size:12.5px;font-weight:800}
+.acts{display:flex;gap:7px;margin-top:10px}
+.acts button{flex:1;border-radius:12px;padding:9px 4px;font-size:12.5px;font-weight:800;color:var(--mu)}
+.acts .rm{color:var(--t7)}
+.ssbox{margin-top:10px;display:none}.ssbox.on{display:block}
+.sslist{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+.ssc{border-radius:999px;padding:8px 12px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:6px}
+.sstag{display:inline-block;margin-top:8px;font-size:12px;font-weight:800;color:#5b4b85;background:#efe9fb;border-radius:8px;padding:3px 9px}
+/* sets */
+.rows .r{display:grid;grid-template-columns:28px 1fr 1fr;gap:8px;align-items:center;padding:4px 0}
+.rows .r.h{padding-top:0}.rows .r.h span{text-align:center}
+.rows .i{font-weight:800;text-align:center;color:var(--mu)}
+.rows .w{font-size:14.5px;color:var(--mu);font-weight:700;text-align:center}
+.rows .t{border-radius:12px;padding:9px 6px;text-align:center;font-size:15px;font-weight:800;border:none;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:6px}
+.rows .t.ok{cursor:pointer}
+.rows .t.ok .ck{display:inline-block}
+.rows .t.nx{color:var(--mu);font-weight:700;outline:2px solid color-mix(in srgb,var(--t5) 55%,transparent);outline-offset:-2px}
+.rows .t.sel{outline:2px solid var(--gr);outline-offset:-2px}
+.rows .e{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.edit{display:none;gap:8px;margin:6px 0 2px}.edit.on{display:flex}
+.edit button{flex:1;border-radius:12px;padding:9px;font-size:13.5px;font-weight:800}
+.edit .del{color:var(--t7)}
+.entry{display:grid;grid-template-columns:1fr 1fr 64px;gap:8px;margin-top:10px}
+.f{border-radius:14px;padding:6px 6px 8px;text-align:center}
+.f span{display:block;font-size:12px;font-weight:800;color:var(--mu)}
+.f input{width:100%;border:none;background:none;text-align:center;font:800 24px Assistant,sans-serif;color:var(--ink);outline:none;font-variant-numeric:tabular-nums}
+.f .pm{display:flex;justify-content:center;gap:10px;margin-top:2px}
+.f .pm button{width:30px;height:30px;border-radius:50%;font-size:17px;font-weight:700;line-height:1}
+.add{border-radius:14px;font-size:26px;font-weight:700}
+.note{border-radius:14px;padding:11px 12px;font-size:13.5px;color:var(--mu);font-weight:600;margin-top:12px;width:100%;border:none;font-family:inherit;text-align:start;background:var(--g);outline:none}
+/* the dock */
+.dock{position:absolute;left:12px;right:12px;bottom:84px;z-index:5;border-radius:22px;padding:12px;background:var(--g);
+  box-shadow:-4px -4px 10px var(--lit),0 -6px 18px rgba(120,100,80,.18)}
+.dock .two{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.seg{display:flex;border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;border:none;background:none;border-radius:9px;padding:8px 0;font:800 13.5px Assistant,sans-serif;color:var(--mu);cursor:pointer}
+.seg button.on{background:var(--g);color:var(--ink);box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.go{width:100%;border-radius:12px;padding:10px;font-size:14px;font-weight:800;margin-top:8px}
+.run{display:none;flex-direction:column;align-items:center;gap:2px;border-radius:14px;padding:10px;position:relative;overflow:hidden}
+.run.on{display:flex}
+.run .bar2{position:absolute;inset:0;background:color-mix(in srgb,var(--t5) 18%,transparent);transform-origin:right;transition:transform 1s linear}
+.run b{position:relative;font-size:30px;font-variant-numeric:tabular-nums;line-height:1.1}
+.run span{position:relative;font-size:12.5px;color:var(--mu);font-weight:700}
+.run button{position:relative;border:none;background:none;font:800 14px Assistant,sans-serif;color:var(--t7);cursor:pointer;margin-top:2px}
+.ew{position:relative;height:108px;border-radius:16px;overflow:hidden}
+.ew .win{position:absolute;left:8px;right:8px;top:36px;height:36px;border-radius:11px;pointer-events:none;box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.ew .col{position:relative;height:108px;overflow-y:scroll;scroll-snap-type:y mandatory;padding:36px 0;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
+.ew .col::-webkit-scrollbar{display:none}
+.ew .col div{height:36px;line-height:36px;scroll-snap-align:center;display:flex;justify-content:center;align-items:center;gap:8px;font-size:14.5px;font-weight:700;color:#a1978b}
+.ew .col div i{width:11px;height:11px;border-radius:50%;background:var(--c);opacity:.55}
+.ew .col div.on{color:var(--ink);font-weight:800}.ew .col div.on i{opacity:1;width:13px;height:13px}
+.sheet{position:absolute;inset:0;z-index:8;background:rgba(42,34,27,.38);display:none;align-items:flex-end}.sheet.on{display:flex}
+.sheet .in{width:100%;background:#ece3d4;border-radius:26px 26px 0 0;padding:18px 18px 28px}
+.sheet h3{margin:0 0 8px;font-size:19px}.sheet p{margin:0 0 12px;font-size:15px;line-height:1.55;color:var(--mu)}
+.sheet .li{display:flex;flex-direction:column;gap:8px}
+.sheet .li button{border-radius:14px;padding:12px;font-size:15px;font-weight:800;text-align:start}
+.toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:9;background:#f6f1e8;border-radius:14px;padding:9px 14px;font-weight:800;font-size:14px;box-shadow:0 8px 22px rgba(60,50,40,.2);opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1}
+.notes{max-width:430px;margin:0 auto;padding:0 16px 40px;color:#d6ccbd;font-size:14.5px;line-height:1.6}
+.notes h2{font-size:17px;color:#efe6d8;margin:14px 0 6px}.notes li{margin-bottom:5px}
+</style></head><body>
+<div class="bar">
+  <h1>מסך האימון: אב־טיפוס ט׳</h1>
+  <p>הכול עובד, אפשר ללחוץ על כל דבר. רענון מתחיל את האימון מחדש, ושום דבר לא נשמר. לנסות: לרשום סט עם +, לראות את המנוחה מתחילה לבד, ללחוץ על סט כדי לערוך אותו, לעבור בין תרגילים, ולנסות סופרסט.</p>
+  <div class="sw" id="mk"><span>סימון תרגיל שהסתיים:</span><button data-m="A" class="on">א׳ · רק וי</button><button data-m="B">ב׳ · שקוע עם וי</button><button data-m="C">ג׳ · פס ירוק דק</button></div>
+</div>
+<div class="wrap"><div class="ph mA" id="ph">
+  <div class="scr" id="scr">
+    <div class="hd"><h2>כושר</h2><div class="nich"><div id="bm"></div></div></div>
+    <div class="wk"><b>פלג גוף עליון</b><span id="clock">⏱ 0 דקות</span><span class="cnt" id="cnt"></span></div>
+    <div class="chips" id="chips"></div>
+    <div class="card">
+      <div class="ex"><div><div class="ex-n" id="exn"></div><div class="ex-m" id="exm"></div></div><button class="raise how" onclick="sheet('how')">💡 איך מבצעים</button></div>
+      <div class="acts"><button class="raise" onclick="sheet('swap')">⇄ החלף</button><button class="raise" id="ssb" onclick="ssToggle()">⇄ סופרסט</button><button class="raise" onclick="sheet('sw')">⏱ סטופר</button><button class="raise rm" onclick="sheet('rm')">✕ הסר</button></div>
+      <div class="ssbox" id="ss"><div class="lab">סופרסט עם…</div><div class="sslist" id="sslist"></div></div>
+      <div id="sstag"></div>
+    </div>
+    <div class="card">
+      <div class="rows" id="rows"></div>
+      <div class="edit" id="edit"><button class="raise" onclick="editLoad()">ערוך</button><button class="raise del" onclick="editDel()">מחק</button><button class="raise" onclick="editClose()">ביטול</button></div>
+      <div class="entry">
+        <div class="f press"><span>ק״ג</span><input id="kw" inputmode="decimal"><div class="pm"><button class="raise" onclick="step('kw',-2.5)">−</button><button class="raise" onclick="step('kw',2.5)">+</button></div></div>
+        <div class="f press"><span>חזרות</span><input id="kr" inputmode="numeric"><div class="pm"><button class="raise" onclick="step('kr',-1)">−</button><button class="raise" onclick="step('kr',1)">+</button></div></div>
+        <button class="raise seam add" id="addb" onclick="logSet()">+</button>
+      </div>
+      <input class="note press" id="note" placeholder="✎ הערה על התרגיל">
+    </div>
+  </div>
+  <div class="dock">
+    <div class="two">
+      <div>
+        <div id="restSet"><div class="lab" style="margin-bottom:6px">מנוחה</div><div class="seg press" id="seg"><button>1:30</button><button class="on">2:00</button><button>2:30</button></div><button class="raise seam go" onclick="restGo()">התחל</button></div>
+        <div class="run raise" id="run"><i class="bar2" id="rbar"></i><b id="rt">2:00</b><span id="rnext"></span><button onclick="restStop()">דלג</button></div>
+      </div>
+      <div><div class="lab" style="margin-bottom:6px">איך הרגיש הסט</div><div class="ew press" id="ew"></div></div>
+    </div>
+  </div>
+  <div class="sheet" id="sh" onclick="if(event.target===this)sheetClose()"><div class="in" id="shin"></div></div>
+  <div class="toast" id="toast"></div>
+  <div class="tabs"><span>Me</span><span>▤</span><span>Better</span></div>
+</div></div>
+<div class="notes">
+  <h2>מה אפשר לשנות כאן</h2>
+  <ul>
+    <li>הסימון של תרגיל שהסתיים: שלוש אפשרויות בשורה למעלה. אין יותר מילוי ירוק בוהק.</li>
+    <li>כל דבר אחר במסך: תגיד מה לשנות ואני מעדכן את הקישור הזה, עד שזה מתאים. רק אז זה עובר לאפליקציה.</li>
+  </ul>
+</div>
+<script src="beem.js"></script>
+<script>
+function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+var EW=['לא דורג','ממש קל','קל מאוד','קל','נוח','בינוני','מאתגר','קשה','קשה מאוד','על הגבול','כשל'];
+var EWC=['','#6fb283','#7fba76','#9bbf5a','#b9bf4a','#d6b63e','#e5a03a','#e8853a','#e2683d','#d84c40','#c33a3a'];
+var LIB=['לחיצת חזה בשיפוע','לחיצת כתפיים במשקולות','חתירה בכבל','מתח','פשיטת מרפק בכבל'];
+var W={start:Date.now(),cur:0,ex:[
+  {n:'לחיצת חזה במוט',tg:[3,10],pr:70,last:[[70,7],[70,7],[70,7]],ago:'לפני שבועיים',sets:[],how:'שכיבה על ספסל, כפות רגליים על הרצפה. אחיזה מעט רחבה מהכתפיים. מורידים את המוט לאמצע החזה בשליטה, ודוחפים למעלה בלי לנעול מרפקים.'},
+  {n:'פרפר במכונה',tg:[3,10],pr:35,last:[[30,10],[30,10],[30,9]],ago:'לפני שבועיים',sets:[[30,10,7],[30,10,8],[30,9,8]],how:'גב צמוד למשענת, מרפקים מעט כפופים. מקרבים את הידיים מול החזה, ופותחים לאט.'},
+  {n:'הרחקת כתף',tg:[3,12],pr:9,last:[[8,9],[8,9],[8,9]],ago:'לפני שבוע',sets:[],how:'עומדים זקוף, משקולות בצד הגוף. מרימים לצדדים עד גובה הכתפיים, מרפקים מעט כפופים, ומורידים לאט.'},
+  {n:'מתח במכונת סיוע',tg:[3,8],pr:0,last:null,ago:'',sets:[],how:'אחיזה רחבה, ברכיים על המשטח. מושכים עד שהסנטר מעל המוט, ויורדים עד יישור כמעט מלא.'}]};
+var sel=-1,T=null,ssOpen=false,eff=8;
+function ex(){return W.ex[W.cur];}
+function done(e){return e.sets.length>=e.tg[0];}
+function fmt(s){return s[0]+' × '+s[1];}
+function paint(){
+  var e=ex(),h='',i;
+  document.getElementById('cnt').textContent=(W.cur+1)+' / '+W.ex.length;
+  for(i=0;i<W.ex.length;i++)h+='<button class="raise chip'+(i===W.cur?' on':'')+(done(W.ex[i])?' dn':'')+'" onclick="go('+i+')"><i class="ck"></i>'+W.ex[i].n+'</button>';
+  h+='<button class="raise chip" onclick="sheet(\'add\')">+</button>';
+  document.getElementById('chips').innerHTML=h;
+  document.getElementById('exn').textContent=e.n;
+  document.getElementById('exm').innerHTML='יעד '+e.tg[0]+' × '+e.tg[1]+(e.pr?' · שיא <b>'+e.pr+' ק״ג</b>':'');
+  var n=Math.max(e.tg[0],e.sets.length+1);
+  h='<div class="r h"><span class="lab">סט</span><span class="lab">'+(e.last?e.ago:'')+'</span><span class="lab">היום</span></div>';
+  for(i=0;i<n;i++){var s=e.sets[i],l=e.last&&e.last[i];
+    h+='<div class="r"><span class="i">'+(i+1)+'</span><span class="w">'+(l?fmt(l):(e.last?'–':''))+'</span>'+
+      (s?'<button class="press t ok'+(sel===i?' sel':'')+'" onclick="pick('+i+')"><i class="ck"></i>'+fmt(s)+(s[2]?'<i class="e" style="--c:'+EWC[s[2]]+'"></i>':'')+'</button>'
+        :'<span class="press t'+(i===e.sets.length?' nx':'')+'">'+(i===e.sets.length?'הבא':'')+'</span>')+'</div>';}
+  if(!e.last&&!e.sets.length)h+='<div class="lab" style="margin-top:6px;font-weight:700">הפעם הראשונה שאתה עושה את זה. מה שתרשום היום הוא מה שתנסה לעבור בפעם הבאה.</div>';
+  document.getElementById('rows').innerHTML=h;
+  document.getElementById('edit').classList.toggle('on',sel>=0);
+  var nx=e.sets[e.sets.length-1]||(e.last&&e.last[e.sets.length])||[0,e.tg[1]];
+  if(sel<0){document.getElementById('kw').value=nx[0]||'';document.getElementById('kr').value=nx[1]||e.tg[1];}
+  document.getElementById('addb').textContent=sel>=0?'✓':'+';
+  var ssh='';for(i=0;i<W.ex.length;i++)if(i!==W.cur)ssh+='<button class="raise ssc'+(done(W.ex[i])?' dn':'')+'" onclick="ssPair('+i+')"><i class="ck"></i>'+W.ex[i].n+'</button>';
+  document.getElementById('sslist').innerHTML=ssh+'<button class="raise ssc" onclick="sheet(\'add\')">+ הוסף תרגיל</button>';
+  document.getElementById('ss').classList.toggle('on',ssOpen);
+  document.getElementById('sstag').innerHTML=e.ss?'<span class="sstag">סופרסט עם '+e.ss+'</span>':'';
+  document.getElementById('ssb').textContent=e.ss?'✕ פרק סופרסט':'⇄ סופרסט';
+}
+function go(i){W.cur=i;sel=-1;ssOpen=false;paint();document.getElementById('scr').scrollTo({top:0,behavior:'smooth'});}
+function step(id,d){var el=document.getElementById(id),v=parseFloat(el.value)||0;v=Math.max(0,Math.round((v+d)*10)/10);el.value=v;}
+function logSet(){var w=parseFloat(document.getElementById('kw').value)||0,r=parseInt(document.getElementById('kr').value,10)||0;if(!r){toast('כמה חזרות?');return;}
+  var e=ex();if(sel>=0){e.sets[sel]=[w,r,eff];sel=-1;toast('הסט עודכן');paint();return;}
+  e.sets.push([w,r,eff]);var wasDone=done(e);paint();
+  if(wasDone&&e.sets.length===e.tg[0]){toast('✓ '+e.n+' הסתיים');}
+  restGo();}
+function pick(i){sel=sel===i?-1:i;paint();}
+function editLoad(){var s=ex().sets[sel];document.getElementById('kw').value=s[0];document.getElementById('kr').value=s[1];setEff(s[2]||0);document.getElementById('addb').textContent='✓';toast('שנה ולחץ ✓');}
+function editDel(){ex().sets.splice(sel,1);sel=-1;paint();toast('הסט נמחק');}
+function editClose(){sel=-1;paint();}
+function ssToggle(){var e=ex();if(e.ss){var o=W.ex.filter(function(x){return x.n===e.ss;})[0];if(o)o.ss=null;e.ss=null;paint();toast('הסופרסט פורק');return;}ssOpen=!ssOpen;paint();}
+function ssPair(i){var e=ex(),o=W.ex[i];e.ss=o.n;o.ss=e.n;ssOpen=false;paint();toast('סופרסט: '+e.n+' + '+o.n);}
+/* rest */
+function secs(){var t=document.querySelector('#seg .on').textContent.split(':');return +t[0]*60+ +t[1];}
+function mmss(s){return Math.floor(s/60)+':'+('0'+s%60).slice(-2);}
+function restGo(){clearInterval(T);var tot=secs(),left=tot,b=document.getElementById('rbar'),e=ex();
+  document.getElementById('restSet').style.display='none';document.getElementById('run').classList.add('on');
+  var nx=e.sets.length<e.tg[0]?'הבא: סט '+(e.sets.length+1):'התרגיל הבא';document.getElementById('rnext').textContent=nx;
+  b.style.transition='none';b.style.transform='scaleX(1)';b.getBoundingClientRect();b.style.transition='';document.getElementById('rt').textContent=mmss(left);
+  T=setInterval(function(){left--;b.style.transform='scaleX('+(left/tot)+')';document.getElementById('rt').textContent=mmss(left);if(left<=0){restStop();toast('המנוחה נגמרה');}},1000);}
+function restStop(){clearInterval(T);document.getElementById('run').classList.remove('on');document.getElementById('restSet').style.display='block';}
+document.getElementById('seg').onclick=function(e){if(e.target.tagName!=='BUTTON')return;[].forEach.call(this.children,function(b){b.classList.remove('on');});e.target.classList.add('on');};
+/* the wheel */
+(function(){var h='<div class="win"></div><div class="col" id="ewc">';for(var i=0;i<EW.length;i++)h+='<div>'+(i?'<i style="--c:'+EWC[i]+'"></i>':'')+'<b>'+(i?i:'–')+'</b>'+EW[i]+'</div>';
+  document.getElementById('ew').innerHTML=h+'</div>';var c=document.getElementById('ewc');
+  c.addEventListener('scroll',function(){var k=Math.round(c.scrollTop/36);eff=k;[].forEach.call(c.children,function(r,j){r.classList.toggle('on',j===k);});});
+  setTimeout(function(){setEff(8);},60);})();
+function setEff(v){var c=document.getElementById('ewc');c.scrollTop=v*36;c.dispatchEvent(new Event('scroll'));}
+/* sheets */
+function sheet(k){var e=ex(),h='';
+  if(k==='how')h='<h3>'+e.n+'</h3><p>'+e.how+'</p><button class="raise go" onclick="sheetClose()">הבנתי</button>';
+  if(k==='swap'){h='<h3>להחליף את '+e.n+' ב…</h3><div class="li">';LIB.forEach(function(n){h+='<button class="raise" onclick="swapTo(\''+n+'\')">'+n+'</button>';});h+='</div>';}
+  if(k==='add'){h='<h3>להוסיף תרגיל</h3><div class="li">';LIB.forEach(function(n){h+='<button class="raise" onclick="addEx(\''+n+'\')">'+n+'</button>';});h+='</div>';}
+  if(k==='rm')h='<h3>להסיר את '+e.n+'?</h3><p>הסטים שרשמת בו היום יימחקו.</p><div class="li"><button class="raise" style="color:var(--t7)" onclick="rmEx()">כן, הסר</button><button class="raise" onclick="sheetClose()">ביטול</button></div>';
+  if(k==='sw')h='<h3>סטופר</h3><p style="font-size:44px;font-weight:800;color:var(--ink);text-align:center;margin:8px 0" id="swt">0:00</p><button class="raise seam go" onclick="swGo(this)">התחל</button><button class="raise go" onclick="sheetClose()">סגור</button>';
+  document.getElementById('shin').innerHTML=h;document.getElementById('sh').classList.add('on');}
+var SW=null;function swGo(b){if(SW){clearInterval(SW);SW=null;b.textContent='התחל';return;}var s=0;b.textContent='עצור';SW=setInterval(function(){s++;var el=document.getElementById('swt');if(el)el.textContent=mmss(s);},1000);}
+function sheetClose(){document.getElementById('sh').classList.remove('on');if(SW){clearInterval(SW);SW=null;}}
+function swapTo(n){var e=ex();e.n=n;e.last=null;e.pr=0;e.sets=[];sheetClose();paint();toast('הוחלף ל'+n);}
+function addEx(n){W.ex.push({n:n,tg:[3,10],pr:0,last:null,ago:'',sets:[],how:'הסבר קצר על הביצוע יופיע כאן.'});sheetClose();go(W.ex.length-1);}
+function rmEx(){if(W.ex.length<2){sheetClose();return;}W.ex.splice(W.cur,1);W.cur=Math.min(W.cur,W.ex.length-1);sheetClose();sel=-1;paint();toast('התרגיל הוסר');}
+var TT;function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(TT);TT=setTimeout(function(){el.classList.remove('on');},1600);}
+setInterval(function(){document.getElementById('clock').textContent='⏱ '+Math.floor((Date.now()-W.start)/60000)+' דקות';},10000);
+document.getElementById('mk').onclick=function(e){var m=e.target.dataset.m;if(!m)return;[].forEach.call(this.querySelectorAll('button'),function(b){b.classList.toggle('on',b.dataset.m===m);});
+  var p=document.getElementById('ph');p.classList.remove('mA','mB','mC');p.classList.add('m'+m);};
+paint();
+var sc=document.createElement('script');sc.src='../../vendor/beem-app.js';
+sc.onload=function(){BeemKit.ready.then(function(){BeemKit.mount(document.getElementById('bm'),{play:{dur:1e9,ev:[[0,'face','calm'],[0,'mode',{idle:0,breathe:[.016,4]}]]}});});};
+document.head.appendChild(sc);
+</script>
+</body></html>
