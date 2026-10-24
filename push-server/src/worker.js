@@ -3903,10 +3903,20 @@ export default {
         after: String((c && c.after) || '').slice(0, 120), said: String((c && c.said) || '').slice(0, 200) }));
       const images = Array.isArray(b && b.images) ? b.images.slice(0, 4) : [];
       if (!message && !images.length) return json({ error: 'nothing to read' }, 400);
+      /* the pictures of the last few turns, so "half of that" still has the
+         label in front of it - a coach that had only the words once said it
+         had checked a label it could no longer see */
+      const histImages = (Array.isArray(b && b.history_images) ? b.history_images : []).slice(0, 3);
+      /* a disputed item: the app found the word, the item, and the picture
+         and label data it was logged from */
+      const dispute = (b && b.dispute && typeof b.dispute === 'object' && b.dispute.id) ? {
+        id: String(b.dispute.id).slice(0, 40), said: String(b.dispute.said || '').slice(0, 600),
+        label: labelClean(b.dispute.label), image: b.dispute.image && b.dispute.image.data ? b.dispute.image : null,
+      } : null;
 
       /* the same gate /see uses, per image: base64 and nothing else, because
          this string is handed to the model API verbatim */
-      for (const im of images) {
+      for (const im of images.concat(histImages, dispute && dispute.image ? [dispute.image] : [])) {
         const data = String((im && im.data) || '');
         const mime = String((im && im.mime) || 'image/jpeg');
         if (!/^image\/(jpeg|png|webp)$/.test(mime)) return json({ error: 'bad image type' }, 400);
@@ -3926,7 +3936,7 @@ export default {
          else's. An app without an id is counted by network, as before. */
       const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
       const today = new Date().toISOString().slice(0, 10);
-      const spend = Math.max(1, images.length * 3);
+      const spend = Math.max(1, images.length * 3 + histImages.length + (dispute && dispute.image ? 1 : 0));
       const buckets = coachBuckets({
         today, ip, uid: b && b.uid,
         test: adminOk(req, env),
@@ -4045,6 +4055,18 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - With weekly weigh-ins the trend is this week against last week; say so rather than comparing days.
 - Never bring up weighing yourself. Only when the state says WEIGH-IN NUDGE, end the reply with ONE short line suggesting today's weigh-in ("אם עוד לא נשקלת היום, זה הזמן") - unless the reply is about distress or safety.
 
+## Nutrition labels
+- When an item comes from a nutrition label in a photo, fill its label fields: per_100g and per_package (kcal, protein, carbs, fat - each exactly as printed in THAT column), package_weight_g if printed, and what was eaten: portion_fraction of the package ("half" is 0.5, "the whole bag" is 1) or portion_g when they give grams. The app works out the item from these and tells you the figures; say in the reply which column was used.
+- Israeli labels often have two columns: per 100g and per package. Read each value from ONE column only.
+- Prefer the per-package column when the user ate a whole or a fraction of a package. Use per-100g only when the user gives grams.
+- Never mix values from different columns in the same item.
+- Logged items carry the label data they were logged from (label). Use it to recalculate when asked; it is the source.
+
+## Honesty when challenged
+- Never say "I checked again" unless you actually have the label data or image in front of you now.
+- If the user says a number is wrong and you don't have the source, say so plainly and ask for the label or the correct number. Don't defend the previous number.
+- When the user disputes a value, treat it as likely that you made a mistake. Recalculate from the stored label data first.
+
 ## Edits and habits
 - A message with an item_id and edited text is a correction to that item. Return action=update for that id only. Reply in one short line stating what changed and the kcal difference (plus the habit question below, when it applies). No "remaining today" block.
 - The user profile includes "habits". Apply them by default when the user doesn't specify (e.g. assume no oil if the habit says so), and mention it briefly: "חישבתי בלי שמן כמו תמיד".
@@ -4092,6 +4114,16 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                   protein_per_unit: { type: 'number' },
                   carbs_per_unit: { type: 'number' },
                   fat_per_unit: { type: 'number' },
+                  label: {
+                    type: 'object',
+                    description: 'ONLY for an item read from a nutrition label in a photo',
+                    properties: {
+                      per_100g: LABEL_COL, per_package: LABEL_COL,
+                      package_weight_g: { type: 'number' },
+                      portion_fraction: { type: 'number', description: 'part of the package eaten: 0.5 for half, 1 for all' },
+                      portion_g: { type: 'number', description: 'grams eaten, when they said grams' },
+                    },
+                  },
                   sodium_level: { type: 'string', enum: ['low', 'medium', 'high'] },
                   restaurant: { type: 'boolean' },
                   meal: {
@@ -4140,16 +4172,54 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
           cardio_minutes: actx.cardio_min, bonus_kcal: activityBonus(actx).kcal, time_now: actx.now }) : '') +
         (askSteps ? '\nSTEPS QUESTION: if this reply logs a dinner, end with the steps question.' : '');
 
+      /* A DISPUTE ("טעית", "זה לא נכון", "תבדוק שוב"), found by the app. A
+         separate call reads the label again from scratch - the original
+         picture and the stored label data, and NOT the coach's earlier reply,
+         which is the thing in question - and the code compares. The coach
+         then answers from that: corrected, explained, or "I don't have the
+         source". */
+      let disp = null;
+      if (dispute) {
+        const was = logged.find((x) => String(x && x.id) === dispute.id) || null;
+        if (!dispute.image && !dispute.label) disp = { id: dispute.id, outcome: 'no_source', was };
+        else {
+          const rc = await labelRecheck(env, dispute, was);
+          const now = rc && labelCompute(rc);
+          if (!now || now.kcal === null) disp = { id: dispute.id, outcome: dispute.image ? 'unreadable' : 'no_source', was };
+          else {
+            const k0 = Number(was && was.calories) || 0, p0 = Number(was && was.protein) || 0;
+            const changed = Math.abs(now.kcal - k0) > Math.max(5, k0 * 0.03) || Math.abs(now.p - p0) > 1.5;
+            disp = { id: dispute.id, outcome: changed ? 'fixed' : 'confirmed', was, now, label: rc };
+          }
+        }
+      }
+      const dispNote = !disp ? '' : disp.outcome === 'fixed'
+        ? '\nDISPUTE RECHECKED (by a separate reading of the label, compared in code): "' + ((disp.was && disp.was.name) || 'the item') +
+          '" was logged as ' + JSON.stringify(disp.was && { kcal: disp.was.calories, protein: disp.was.protein }) +
+          '; read again it is ' + JSON.stringify({ kcal: disp.now.kcal, protein: disp.now.p, carbs: disp.now.c, fat: disp.now.f }) +
+          ' from the ' + disp.now.column + ' column (' + disp.now.how + '). Say plainly that they were right and you made a mistake: the new figures instead of the old. The app updates the item.'
+        : disp.outcome === 'confirmed'
+        ? '\nDISPUTE RECHECKED (by a separate reading of the label, compared in code): the figures stand - ' +
+          JSON.stringify({ kcal: disp.now.kcal, protein: disp.now.p }) + ' from the ' + disp.now.column + ' column (' + disp.now.how +
+          '). Do not just insist: explain exactly where the number comes from - which column, what calculation - so they can check it themselves.'
+        : '\nDISPUTE WITHOUT SOURCE: you have neither the label image nor stored label data for "' + ((disp.was && disp.was.name) || 'that item') +
+          '". Say so plainly, do not defend the number, and ask for a photo of the label or the correct number.';
+
       const msgs = [];
-      for (const t of history) {
+      for (let hi = 0; hi < history.length; hi++) {
+        const t = history[hi];
         const role = (t && t.role) === 'assistant' ? 'assistant' : 'user';
         const text = String((t && t.text) || '').slice(0, 1200);
-        if (text) msgs.push({ role, content: text });
+        const pics = role === 'user' ? histImages.filter((x) => Number(x && x.h) === hi) : [];
+        if (pics.length) msgs.push({ role, content: pics.map((im) => ({ type: 'image',
+          source: { type: 'base64', media_type: String(im.mime || 'image/jpeg'), data: String(im.data) } }))
+          .concat([{ type: 'text', text: text || '(a photo)' }]) });
+        else if (text) msgs.push({ role, content: text });
       }
       const content = [];
       for (const im of images)
         content.push({ type: 'image', source: { type: 'base64', media_type: String(im.mime || 'image/jpeg'), data: String(im.data) } });
-      content.push({ type: 'text', text: STATE + '\n\n' +
+      content.push({ type: 'text', text: STATE + dispNote + '\n\n' +
         (editId ? 'EDIT of item_id' + (editIds.length > 1 ? 's=' + editIds.join(',') : '=' + editId) +
           (editWas ? '. They had written: "' + editWas + '"' : '') + '. What it really was: ' : '') +
         (message || '(no words, only the picture)') });
@@ -4194,6 +4264,31 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 
       let got = await ask(msgs), retried = false;
       if (got.err) return got.err;
+      /* THE LABEL, IN CODE. A bag of chips was logged at 225 kcal - the per
+         100 g column halved - with 10 g of protein - the per-bag column
+         halved: two columns in one item. The model now only copies the
+         columns; what was eaten is worked out here, the two columns are
+         checked against each other, and the reply is written again from the
+         figures - or, when the columns disagree, it asks instead of logging. */
+      const labelNotes = [];
+      for (const it of (got.use.input.items || [])) {
+        const L = labelClean(it && it.label);
+        if (!L) continue;
+        const r = labelCompute(L);
+        if (r.mismatch) labelNotes.push('"' + it.name + '": the columns disagree - per 100 g x ' + L.package_g + ' g = ' +
+          r.mismatch.expected + ' kcal, but the package column says ' + r.mismatch.printed + '. Do NOT log it: show both and ask them to confirm which is right.');
+        else if (r.kcal !== null) labelNotes.push('"' + it.name + '": ' + JSON.stringify({ kcal: r.kcal, protein: r.p, carbs: r.c, fat: r.f }) +
+          ' from the ' + r.column + ' column (' + r.how + ').');
+      }
+      if (labelNotes.length) {
+        const again = await ask(msgs.concat([
+          { role: 'assistant', content: got.d.content },
+          { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id,
+            content: 'The app worked out the label items (in code - use these figures, do not recompute): ' +
+              labelNotes.join(' ') + ' Send the whole reply again with these figures, saying which column was used.' }] },
+        ]));
+        if (!again.err) got = again;
+      }
       /* THE CALORIES MUST BE THE MACROS. Asked to add half a tub of cottage
          5%, it once answered with the calories and no protein; her bars took
          the calories and not the protein, and only her own suspicion - "you
@@ -4276,6 +4371,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         name: String(it.name || '').slice(0, 120),
         quantity: String(it.quantity || '').slice(0, 80),
         ...coachTotals(it),
+        ...labelItem(it),
         assumption: String(it.assumption || '').slice(0, 200),
         /* one of the five or nothing: an unknown slot would be written
            into her day and then shown as a meal that does not exist */
@@ -4286,6 +4382,19 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       })).filter((it) => it.name);
       let action = ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none';
       if (editId) ({ action, items } = coachEditOnly(action, items, editIds));
+      /* a label whose columns disagree is asked about, never logged */
+      items = items.filter((it) => !it.label_mismatch).map((it) => { const o = Object.assign({}, it); delete o.label_mismatch; return o; });
+      if (!items.length && (action === 'add' || action === 'update')) action = 'none';
+      /* a dispute decides its own outcome: corrected, or nothing changes */
+      if (disp) {
+        if (disp.outcome === 'fixed') {
+          const w = disp.was || {};
+          action = 'update';
+          items = [{ id: disp.id, name: String(w.name || '').slice(0, 120), quantity: String(w.quantity || '').slice(0, 80),
+            calories: disp.now.kcal, protein: disp.now.p, carbs: disp.now.c, fat: disp.now.f, portions: 1, units: 0,
+            assumption: '', meal: '', sodium_level: '', restaurant: false, label: disp.label }];
+        } else if (action === 'update' && items.some((it) => it.id === disp.id)) { action = 'none'; items = []; }
+      }
       /* hidden: the number she typed is not said back to her, whatever the
          model wrote - any figure within three kilos of it goes */
       /* a line break the model wrote as the two characters \ and n reached
@@ -4309,6 +4418,9 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         habit_save: hs(out.habit_save),
         message: msgOut,
         weight_kg: weighedKg,
+        dispute: disp ? { id: disp.id, outcome: disp.outcome,
+          before: disp.was ? { kcal: Number(disp.was.calories) || 0, protein: Number(disp.was.protein) || 0 } : null,
+          after: disp.now ? { kcal: disp.now.kcal, protein: disp.now.p } : null } : null,
         weigh_nudged: weighNudge,   // the app remembers, so it is said once a day
         activity: actOut,
         asked_steps: askSteps && out.asked_steps === true,
@@ -4760,6 +4872,87 @@ function coachTotals(it) {
            portions, units: units && ku ? units : 0 };
 }
 
+/* ── A NUTRITION LABEL ──
+   The columns as printed, the package weight, and what was eaten - as a
+   fraction of the package or in grams. labelCompute decides which column to
+   use (the package one for a fraction, per 100 g for grams), never mixes
+   them, and checks the two columns against each other when both are there:
+   per 100 g x weight / 100 must come within 5% of the package column. */
+const LABEL_COL = { type: 'object', properties: { kcal: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' } } };
+function labelClean(l) {
+  if (!l || typeof l !== 'object') return null;
+  const n = (v, hi) => { const x = Number(v); return isFinite(x) && x >= 0 && x <= hi ? x : null; };
+  const col = (c) => {
+    if (!c || typeof c !== 'object') return null;
+    const o = { kcal: n(c.kcal, 5000), p: n(c.protein, 1000), c: n(c.carbs, 1000), f: n(c.fat, 1000) };
+    return o.kcal === null ? null : { kcal: o.kcal, p: o.p || 0, c: o.c || 0, f: o.f || 0 };
+  };
+  const o = { per100: col(l.per_100g), perPkg: col(l.per_package), package_g: n(l.package_weight_g, 10000) || 0,
+    fraction: n(l.portion_fraction, 20) || 0, portion_g: n(l.portion_g, 10000) || 0 };
+  return o.per100 || o.perPkg ? o : null;
+}
+function labelCompute(L) {
+  const r1 = (x) => Math.round(x * 10) / 10;
+  const out = (col, k, column, how) => ({ kcal: Math.round(col.kcal * k), p: r1(col.p * k), c: r1(col.c * k), f: r1(col.f * k), column, how });
+  let mismatch = null;
+  if (L.per100 && L.perPkg && L.package_g) {
+    const expected = Math.round(L.per100.kcal * L.package_g / 100);
+    if (L.perPkg.kcal && Math.abs(expected - L.perPkg.kcal) / L.perPkg.kcal > 0.05) mismatch = { expected, printed: L.perPkg.kcal };
+  }
+  let r = null;
+  if (L.fraction > 0) {
+    if (L.perPkg) r = out(L.perPkg, L.fraction, 'per_package', 'package column x ' + L.fraction);
+    else if (L.per100 && L.package_g) r = out(L.per100, L.package_g / 100 * L.fraction, 'per_100g', 'per 100 g x ' + L.package_g + ' g / 100 x ' + L.fraction);
+  } else if (L.portion_g > 0) {
+    if (L.per100) r = out(L.per100, L.portion_g / 100, 'per_100g', 'per 100 g x ' + L.portion_g + ' g / 100');
+    else if (L.perPkg && L.package_g) r = out(L.perPkg, L.portion_g / L.package_g, 'per_package', 'package column x ' + L.portion_g + ' / ' + L.package_g + ' g');
+  }
+  return Object.assign(r || { kcal: null, p: null, c: null, f: null, column: '', how: '' }, { mismatch });
+}
+/* what a logged item becomes when it came from a label: the code's figures,
+   and the label data kept with it for the next question */
+function labelItem(it) {
+  const L = labelClean(it && it.label);
+  if (!L) return {};
+  const r = labelCompute(L);
+  const keep = { per_100g: L.per100 && { kcal: L.per100.kcal, protein: L.per100.p, carbs: L.per100.c, fat: L.per100.f },
+    per_package: L.perPkg && { kcal: L.perPkg.kcal, protein: L.perPkg.p, carbs: L.perPkg.c, fat: L.perPkg.f },
+    package_weight_g: L.package_g || 0, portion_fraction: L.fraction || 0, portion_g: L.portion_g || 0 };
+  if (r.mismatch) return { label: keep, label_mismatch: true };
+  if (r.kcal === null) return { label: keep };
+  return { calories: r.kcal, protein: r.p, carbs: r.c, fat: r.f, portions: 1, units: 0, label: keep };
+}
+/* the separate reading for a dispute: the label from scratch, from the
+   picture and the stored data, without the coach's earlier reply */
+async function labelRecheck(env, dsp, was) {
+  const content = [];
+  if (dsp.image) content.push({ type: 'image', source: { type: 'base64', media_type: String(dsp.image.mime || 'image/jpeg'), data: String(dsp.image.data) } });
+  content.push({ type: 'text', text:
+    'Read this nutrition label from scratch, column by column, and fill read_label. Copy each column exactly as printed; never mix columns.\n' +
+    'What they wrote when they logged it: "' + (dsp.said || '') + '"  - from that, the portion eaten: a fraction of the package, or grams.\n' +
+    'The item as it was logged (it is disputed - it may be wrong): ' + JSON.stringify(was ? { name: was.name, quantity: was.quantity } : {}) + '\n' +
+    (dsp.label ? 'Label data stored from the first reading (check it; it may hold the mistake): ' + JSON.stringify(dsp.label) + '\n' : '') +
+    (dsp.image ? '' : 'There is no picture: work from the stored label data, and correct it only where it contradicts itself.') });
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': env.AI_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 700,
+        system: 'You read nutrition labels for an app. You never answer the person; you only fill the tool.',
+        tools: [{ name: 'read_label', description: 'The label, as printed, and the portion eaten.', input_schema: { type: 'object',
+          properties: { per_100g: LABEL_COL, per_package: LABEL_COL, package_weight_g: { type: 'number' },
+            portion_fraction: { type: 'number' }, portion_g: { type: 'number' } } } }],
+        tool_choice: { type: 'tool', name: 'read_label' },
+        messages: [{ role: 'user', content }] }),
+    });
+  } catch { return null; }
+  if (!r.ok) return null;
+  let d; try { d = await r.json(); } catch { return null; }
+  const u = ((d && d.content) || []).find((c) => c && c.type === 'tool_use');
+  return u ? labelClean(u.input) : null;
+}
+
 /* TODAY'S ACTIVITY, as the app sends it */
 function actCtxClean(a) {
   if (!a || typeof a !== 'object') return null;
@@ -4879,7 +5072,7 @@ function coachEditOnly(action, items, ids) {
 
 /* ONE CORRECTION, as the app reports it. It came from a phone and is kept for
    ninety days for Asaf to read, so every field has a type and a size. */
-const CORR_TYPES = ['delete', 'swipe_edit', 'chat_edit'];
+const CORR_TYPES = ['delete', 'swipe_edit', 'chat_edit', 'dispute'];
 function corrClean(c) {
   const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
   const num = (v, lo, hi) => { const x = Number(v); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x * 10) / 10)) : 0; };
@@ -4945,4 +5138,4 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
