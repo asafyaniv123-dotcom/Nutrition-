@@ -8,6 +8,9 @@
      BeemKit.streak(days)               the rules of 18.10: days = ['done'|'miss', ...]
                                         for every ENDED app day, oldest first
      BeemKit.glow(beem, count)          change a mounted Beem's light
+     BeemKit.screen({bg, ink, accent, title, sub, button, play, glow, onClose})
+                                        a full-screen moment, the Duolingo kind
+                                        (beem-screen.js); wired to nothing yet
 
    A mounted Beem whose element leaves the page is dropped by the loop on its
    own, so re-rendering a screen with innerHTML needs no cleanup. */
@@ -129,5 +132,12 @@ window.BeemKit = {
   tint: tintReady,
   pair: pairFlash,
   streak: streakState,
-  scripts: APP_SCRIPTS
+  scripts: APP_SCRIPTS,
+  /* the app's own scripts by name too, so a moment can play 'invite' or 'sun' */
+  screen: function(o){
+    o = o || {};
+    if (typeof o.play === 'string' && APP_SCRIPTS[o.play]){
+      var c = {}, k; for (k in o) c[k] = o[k]; c.play = APP_SCRIPTS[o.play]; o = c; }
+    return beemScreenShow(o);
+  }
 };

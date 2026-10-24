@@ -13,7 +13,7 @@
 // Do not edit beem-app.js by hand; edit the sources and rebuild.
 import fs from 'node:fs';
 const L = new URL('.', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
-const SRC = ['beem-engine.js', 'beem-special.js', 'beem-alive.js', 'beem-moon.js', 'beem-streak.js', 'beem-pair.js', 'beem-colors.js'];
+const SRC = ['beem-engine.js', 'beem-special.js', 'beem-alive.js', 'beem-moon.js', 'beem-streak.js', 'beem-pair.js', 'beem-colors.js', 'beem-screen.js'];
 
 let body = SRC.map(f => '/* ═══ ' + f + ' ═══ */\n' + fs.readFileSync(L + f, 'utf8')).join('\n');
 
