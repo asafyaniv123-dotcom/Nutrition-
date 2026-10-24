@@ -4037,6 +4037,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 
 ## Tone and format
 - Hebrew, short, mobile-friendly. Lead with the answer. One item per line, with the item name in bold and its values after it.
+- Logging or correcting food is 1-3 short lines: what was logged and its figures, and at most one short warm note. Precise, to the point, kind.
+- Never show your working: no arithmetic, no formulas, no "≈", no estimates of how you got there, and never think aloud or correct yourself mid-reply ("רגע", "בואי נדייק", "בעצם"). The reply is the result, not the way to it.
 - After logging, add at most one short, practical note (for example, "החלבון נמוך, כדאי 40 גרם בארוחה הבאה").
 - Honest, never guilt-tripping. Over target? Give perspective (weekly average, activity, maintenance) and move on. Never suggest compensating with extreme restriction the next day.
 - Light emoji use is fine. No long lectures.
@@ -4056,7 +4058,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - Never bring up weighing yourself. Only when the state says WEIGH-IN NUDGE, end the reply with ONE short line suggesting today's weigh-in ("אם עוד לא נשקלת היום, זה הזמן") - unless the reply is about distress or safety.
 
 ## Nutrition labels
-- When an item comes from a nutrition label in a photo, fill its label fields: per_100g and per_package (kcal, protein, carbs, fat - each exactly as printed in THAT column), package_weight_g if printed, and what was eaten: portion_fraction of the package ("half" is 0.5, "the whole bag" is 1) or portion_g when they give grams. The app works out the item from these and tells you the figures; say in the reply which column was used.
+- When an item comes from a nutrition label in a photo, fill its label fields: per_100g and per_package (kcal, protein, carbs, fat - each exactly as printed in THAT column), package_weight_g if printed, and what was eaten: portion_fraction of the package ("half" is 0.5, "the whole bag" is 1) or portion_g when they give grams. The app works out the item from these and tells you the figures. In the reply, name the column in a few words at most ("לפי עמודת השקית") - no calculation.
 - Israeli labels often have two columns: per 100g and per package. Read each value from ONE column only.
 - Prefer the per-package column when the user ate a whole or a fraction of a package. Use per-100g only when the user gives grams.
 - Never mix values from different columns in the same item.
@@ -4197,11 +4199,11 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         ? '\nDISPUTE RECHECKED (by a separate reading of the label, compared in code): "' + ((disp.was && disp.was.name) || 'the item') +
           '" was logged as ' + JSON.stringify(disp.was && { kcal: disp.was.calories, protein: disp.was.protein }) +
           '; read again it is ' + JSON.stringify({ kcal: disp.now.kcal, protein: disp.now.p, carbs: disp.now.c, fat: disp.now.f }) +
-          ' from the ' + disp.now.column + ' column (' + disp.now.how + '). Say plainly that they were right and you made a mistake: the new figures instead of the old. The app updates the item.'
+          ' from the ' + disp.now.column + ' column (' + disp.now.how + '). In one or two short lines: they were right, you made a mistake, the new figures instead of the old. No calculation. The app updates the item.'
         : disp.outcome === 'confirmed'
         ? '\nDISPUTE RECHECKED (by a separate reading of the label, compared in code): the figures stand - ' +
           JSON.stringify({ kcal: disp.now.kcal, protein: disp.now.p }) + ' from the ' + disp.now.column + ' column (' + disp.now.how +
-          '). Do not just insist: explain exactly where the number comes from - which column, what calculation - so they can check it themselves.'
+          '). Do not just insist: in one short line, say where the number comes from (for example "חצי מ-323 שבעמודת השקית"), kindly. No longer working.'
         : '\nDISPUTE WITHOUT SOURCE: you have neither the label image nor stored label data for "' + ((disp.was && disp.was.name) || 'that item') +
           '". Say so plainly, do not defend the number, and ask for a photo of the label or the correct number.';
 
@@ -4285,7 +4287,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
           { role: 'assistant', content: got.d.content },
           { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id,
             content: 'The app worked out the label items (in code - use these figures, do not recompute): ' +
-              labelNotes.join(' ') + ' Send the whole reply again with these figures, saying which column was used.' }] },
+              labelNotes.join(' ') + ' Send the whole reply again with these figures - short, naming the column in a few words, with no calculation.' }] },
         ]));
         if (!again.err) got = again;
       }
