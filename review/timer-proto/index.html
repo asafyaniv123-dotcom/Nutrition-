@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>סטופר וטיימרים: אב־טיפוס עם שמירה</title>
+<style>
+/* STOPWATCH AND TIMERS, WITH SAVED ONES (Asaf, 24 Oct: "save the timers
+   and workouts I did - an ab Tabata I set up should be something I can come
+   back to"). A working prototype of the app's own timer screen: the same
+   four schedules and the same rows, plus
+   - "שמור" beside "התחל", which asks for a name (suggested from the moves);
+   - the saved ones on top: tap to load, ▶ to start straight away, ⋯ to
+     rename or delete;
+   - at the end of a run that was not saved, "לשמור את השעון הזה?".
+   Saved ones live in this browser only, so you can try it. The run here
+   is sped up ten times so a Tabata does not take four minutes to try. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--g:#e9e7e3;--lit:rgba(255,255,255,.95);--sh:rgba(176,168,156,.44);--sh2:rgba(176,168,156,.28);--ink:#4a453f;--mu:#6d675e;--t5:#e08a72;--t7:#98492c}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",Arial,sans-serif}
+.bar{max-width:430px;margin:0 auto;padding:12px 14px 6px;color:#efe6d8}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.wrap{display:flex;justify-content:center;padding:10px 0 30px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:34px;background:var(--g);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.45);transform-origin:50% 0}
+.scr{position:absolute;inset:0;overflow-y:auto;padding:0 16px 100px;scrollbar-width:none}.scr::-webkit-scrollbar{display:none}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:16px 0 6px}.hd h2{font-size:28px;font-weight:800;margin:0}
+.nich{width:50px;height:50px;border-radius:50%;box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit);display:flex;align-items:center;justify-content:center}.nich div{width:38px;height:38px}
+.tabs{position:absolute;left:14px;right:14px;bottom:14px;height:60px;border-radius:24px;background:var(--g);display:flex;align-items:center;justify-content:space-around;font-weight:800;color:var(--mu);box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2);z-index:6}
+button{font-family:inherit}
+.raise{background:var(--g);border:none;color:var(--ink);cursor:pointer;box-shadow:-3px -3px 7px var(--lit),3px 4px 10px var(--sh2)}
+.raise:active{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.press{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.seam{box-shadow:-3px -3px 8px var(--lit),4px 5px 12px var(--sh2),inset 0 -3px 0 color-mix(in srgb,var(--t5) 60%,transparent)}
+.card{border-radius:22px;padding:15px;margin-top:12px;box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2)}
+.h{font-size:13px;font-weight:800;color:var(--mu);margin-bottom:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.go{border-radius:16px;padding:16px 8px;font-size:15.5px;font-weight:800}
+.kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.kinds button{border-radius:13px;padding:11px 2px;font-size:14px;font-weight:800;color:var(--mu)}
+.kinds button.on{color:var(--ink);box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.what{font-size:13.5px;color:var(--mu);line-height:1.5;margin:10px 0 12px}
+.nums{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.nums label{text-align:center;font-size:12px;font-weight:800;color:var(--mu)}
+.nums input{display:block;width:100%;margin-top:4px;border:none;border-radius:14px;padding:12px 2px;text-align:center;font:800 22px Assistant,sans-serif;color:var(--ink);background:var(--g);outline:none;box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.mv{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.mv b{width:18px;text-align:center;color:var(--mu)}
+.mv input{flex:1;border:none;border-radius:14px;padding:12px;font:600 15px Assistant,sans-serif;color:var(--ink);background:var(--g);outline:none;box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.mv button{width:38px;height:38px;border-radius:50%;font-size:16px;color:var(--mu)}
+.addrow{width:100%;border-radius:14px;padding:11px;font-size:14px;font-weight:800;color:var(--mu)}
+.acts{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-top:14px}
+.acts .start{border-radius:16px;padding:15px;font-size:16.5px;font-weight:800}
+.acts .save{border-radius:16px;padding:15px;font-size:15px;font-weight:800;color:var(--mu)}
+/* saved */
+.sv{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.sv .load{flex:1;min-width:0;text-align:start;border-radius:16px;padding:11px 14px}
+.sv .load b{display:block;font-size:15.5px}.sv .load span{display:block;font-size:12.5px;color:var(--mu);font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sv .play{flex:none;width:46px;height:46px;border-radius:50%;color:var(--t7);display:flex;align-items:center;justify-content:center}
+.sv .play svg{width:17px;height:17px;fill:currentColor;margin-inline-start:2px}
+.sv .more{flex:none;width:36px;height:46px;border:none;background:none;font-size:20px;color:var(--mu);cursor:pointer}
+.sv.cur .load{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.empty{font-size:13.5px;color:var(--mu);line-height:1.5}
+/* sheets and the run */
+.sheet{position:absolute;inset:0;z-index:8;background:rgba(42,34,27,.38);display:none;align-items:flex-end}.sheet.on{display:flex}
+.sheet .in{width:100%;background:#ece3d4;border-radius:26px 26px 0 0;padding:18px 18px 28px}
+.sheet h3{margin:0 0 6px;font-size:19px}.sheet p{margin:0 0 12px;font-size:14.5px;line-height:1.5;color:var(--mu)}
+.sheet input{width:100%;border:none;border-radius:14px;padding:13px 14px;font:700 16px Assistant,sans-serif;color:var(--ink);background:#ece3d4;outline:none;box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit);margin-bottom:12px}
+.sheet .li{display:grid;gap:8px}
+.sheet .li button{border-radius:14px;padding:13px;font-size:15.5px;font-weight:800;background:#ece3d4}
+.run{position:absolute;inset:0;z-index:7;background:var(--g);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px}.run.on{display:flex}
+.run .ph2{font-size:16px;font-weight:800;color:var(--mu)}
+.run .t{font-size:84px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.run .mvn{font-size:24px;font-weight:800;min-height:32px}
+.run .rd{font-size:14px;font-weight:700;color:var(--mu)}
+.run .stop{margin-top:18px;border-radius:16px;padding:14px 40px;font-size:16px;font-weight:800}
+.run.work{background:color-mix(in srgb,var(--t5) 18%,var(--g))}
+.toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:9;background:#f6f1e8;border-radius:14px;padding:9px 14px;font-weight:800;font-size:14px;box-shadow:0 8px 22px rgba(60,50,40,.2);opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}.toast.on{opacity:1}
+.notes{max-width:430px;margin:0 auto;padding:0 16px 40px;color:#d6ccbd;font-size:14.5px;line-height:1.6}
+.notes h2{font-size:17px;color:#efe6d8;margin:14px 0 6px}.notes li{margin-bottom:5px}
+</style></head><body>
+<div class="bar">
+  <h1>סטופר וטיימרים: אב־טיפוס עם שמירה</h1>
+  <p>מסך הטיימרים של האפליקציה, ועליו אפשרות לשמור. לנסות: לבחור Tabata, לכתוב תרגילי בטן, ללחוץ "שמור" ולתת שם, ואז להפעיל אותו מהרשימה למעלה. השעון רץ כאן פי 10 מהר, כדי שלא תחכה ארבע דקות.</p>
+</div>
+<div class="wrap"><div class="ph" id="ph">
+  <div class="scr">
+    <div class="hd"><h2>סטופר וטיימרים</h2><div class="nich"><div id="bm"></div></div></div>
+    <div class="card"><div class="h">השמורים שלי</div><div id="saved"></div></div>
+    <div class="card"><div class="h">בלי לוח זמנים</div><div class="row2"><button class="raise go" onclick="toast('סופר למעלה: אותו דבר כמו היום')">סופר למעלה</button><button class="raise go" onclick="toast('סופר למטה: אותו דבר כמו היום')">סופר למטה</button></div></div>
+    <div class="card">
+      <div class="h">עם לוח זמנים</div>
+      <div class="kinds" id="kinds"><button class="raise" data-k="emom">EMOM</button><button class="raise" data-k="amrap">AMRAP</button><button class="raise" data-k="tabata">Tabata</button><button class="raise" data-k="interval">אינטרוולים</button></div>
+      <div class="what" id="what"></div>
+      <div class="nums" id="nums"></div>
+      <div class="h" style="margin-bottom:6px">מה עושים בכל סבב</div>
+      <div id="mvs"></div>
+      <button class="raise addrow" onclick="S.mv.push('');paintMv();">+ עוד שורה</button>
+      <div class="acts"><button class="raise seam start" onclick="runGo()">התחל</button><button class="raise save" onclick="saveAsk()">שמור</button></div>
+    </div>
+  </div>
+  <div class="run" id="run"><div class="ph2" id="rph"></div><div class="t" id="rt"></div><div class="mvn" id="rmv"></div><div class="rd" id="rrd"></div><button class="raise stop" onclick="runEnd(true)">עצור</button></div>
+  <div class="sheet" id="sh" onclick="if(event.target===this)shClose()"><div class="in" id="shin"></div></div>
+  <div class="toast" id="toast"></div>
+  <div class="tabs"><span>Me</span><span>▤</span><span>Better</span></div>
+</div></div>
+<div class="notes">
+  <h2>מה נוסף</h2>
+  <ul>
+    <li><b>"שמור"</b> ליד "התחל": שואל שם, ומציע אחד לפי מה שכתבת (למשל "Tabata · כפיפות בטן").</li>
+    <li><b>השמורים שלי</b> למעלה: לחיצה טוענת אותו לטופס כדי לשנות לפני שמתחילים, ▶ מתחיל מיד, ⋯ משנה שם או מוחק.</li>
+    <li><b>בסוף שעון שלא נשמר</b> עולה "לשמור את השעון הזה?", כדי שאימון טוב לא ילך לאיבוד.</li>
+    <li>שינוי בשעון שמור ואז "שמור" שואל אם לעדכן את הקיים או לשמור כחדש.</li>
+  </ul>
+</div>
+<script src="../workout-proto/beem.js"></script>
+<script>
+function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+var LBL={emom:'EMOM',amrap:'AMRAP',tabata:'Tabata',interval:'אינטרוולים'};
+var WHAT={emom:'כל דקה על הדקה: צפצוף בתחילת כל דקה, והמנוחה היא מה שנשאר ממנה.',amrap:'בלוק אחד ארוך: כמה סבבים שתספיק בתוכו.',tabata:'עבודה קצרה ומנוחה קצרה, שמונה פעמים. ברירת המחדל היא 20 ו-10.',interval:'עבודה, מנוחה, מספר סבבים — מה שתגדיר.'};
+var DEF={emom:{work:60,rest:0,rounds:10,prep:10},amrap:{work:600,rest:0,rounds:1,prep:10},tabata:{work:20,rest:10,rounds:8,prep:10},interval:{work:40,rest:20,rounds:6,prep:10}};
+var S={k:'tabata',n:Object.assign({},DEF.tabata),mv:['',''],from:null};
+function load(){try{return JSON.parse(localStorage.getItem('timer_saved_proto')||'[]');}catch(e){return [];}}
+function store(a){localStorage.setItem('timer_saved_proto',JSON.stringify(a));}
+if(!localStorage.getItem('timer_saved_proto'))store([{id:1,name:'Tabata בטן',k:'tabata',n:{work:20,rest:10,rounds:8,prep:10},mv:['כפיפות בטן','פלאנק','הרמות רגליים','טוויסט רוסי']}]);
+function mmss(s){return Math.floor(s/60)+':'+('0'+s%60).slice(-2);}
+function summary(p){var n=p.n,mv=p.mv.filter(Boolean);
+  var t=p.k==='amrap'?mmss(n.work):p.k==='emom'?n.rounds+' דקות':n.rounds+' × '+n.work+'/'+n.rest;
+  return LBL[p.k]+' · '+t+(mv.length?' · '+mv.join(', '):'');}
+function paintSaved(){var a=load(),h='';
+  if(!a.length)h='<div class="empty">עוד אין שעונים שמורים. בונים שעון למטה ולוחצים "שמור".</div>';
+  a.forEach(function(p){h+='<div class="sv'+(S.from===p.id?' cur':'')+'"><button class="raise load" onclick="useSaved('+p.id+')"><b>'+esc(p.name)+'</b><span>'+esc(summary(p))+'</span></button>'+
+    '<button class="raise play" onclick="useSaved('+p.id+');runGo()" aria-label="התחל"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5Z"/></svg></button>'+
+    '<button class="more" onclick="moreSaved('+p.id+')">⋯</button></div>';});
+  document.getElementById('saved').innerHTML=h;}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function paintForm(){[].forEach.call(document.querySelectorAll('#kinds button'),function(b){b.classList.toggle('on',b.dataset.k===S.k);});
+  document.getElementById('what').textContent=WHAT[S.k];
+  var f=[['work',S.k==='amrap'?'אורך הבלוק':'עבודה']];if(S.k!=='amrap'&&S.k!=='emom')f.push(['rest','מנוחה']);if(S.k!=='amrap')f.push(['rounds','סבבים']);f.push(['prep','היכון']);
+  document.getElementById('nums').innerHTML=f.map(function(x){return '<label>'+x[1]+'<input inputmode="numeric" value="'+S.n[x[0]]+'" oninput="S.n.'+x[0]+'=+this.value||0"></label>';}).join('');
+  paintMv();paintSaved();}
+function paintMv(){document.getElementById('mvs').innerHTML=S.mv.map(function(m,i){return '<div class="mv"><b>'+(i+1)+'</b><input value="'+esc(m)+'" placeholder="למשל: סקוואט" oninput="S.mv['+i+']=this.value"><button class="raise" onclick="S.mv.splice('+i+',1);paintMv()">×</button></div>';}).join('');}
+document.getElementById('kinds').onclick=function(e){var k=e.target.dataset.k;if(!k)return;S.k=k;S.n=Object.assign({},DEF[k]);paintForm();};
+function useSaved(id){var p=load().filter(function(x){return x.id===id;})[0];if(!p)return;S={k:p.k,n:Object.assign({},p.n),mv:p.mv.slice(),from:id};paintForm();toast('נטען: '+p.name);}
+function suggest(){var mv=S.mv.filter(Boolean);return LBL[S.k]+(mv.length?' · '+mv[0]:'');}
+function saveAsk(after){var cur=S.from&&load().filter(function(x){return x.id===S.from;})[0];
+  var h='<h3>'+(after?'לשמור את השעון הזה?':'לשמור את השעון')+'</h3><p>'+esc(summary(S))+'</p><input id="svn" value="'+esc(cur?cur.name:suggest())+'" onfocus="this.select()">';
+  h+='<div class="li">'+(cur?'<button class="raise" onclick="saveDo(true)">עדכן את "'+esc(cur.name)+'"</button><button class="raise" onclick="saveDo(false)">שמור כחדש</button>':'<button class="raise" onclick="saveDo(false)">שמור</button>')+
+    '<button class="raise" style="color:var(--mu)" onclick="shClose()">'+(after?'לא עכשיו':'ביטול')+'</button></div>';
+  sh(h);}
+function saveDo(update){var name=document.getElementById('svn').value.trim()||suggest(),a=load(),p={id:Date.now(),name:name,k:S.k,n:Object.assign({},S.n),mv:S.mv.filter(Boolean)};
+  if(update){a=a.map(function(x){if(x.id===S.from){p.id=x.id;return p;}return x;});}else a.unshift(p);
+  store(a);S.from=p.id;shClose();paintSaved();toast('✓ נשמר: '+name);}
+function moreSaved(id){var p=load().filter(function(x){return x.id===id;})[0];
+  sh('<h3>'+esc(p.name)+'</h3><input id="svn" value="'+esc(p.name)+'"><div class="li"><button class="raise" onclick="renameDo('+id+')">שנה שם</button><button class="raise" style="color:var(--t7)" onclick="delDo('+id+')">מחק</button><button class="raise" style="color:var(--mu)" onclick="shClose()">ביטול</button></div>');}
+function renameDo(id){var v=document.getElementById('svn').value.trim();store(load().map(function(x){if(x.id===id)x.name=v||x.name;return x;}));shClose();paintSaved();}
+function delDo(id){store(load().filter(function(x){return x.id!==id;}));if(S.from===id)S.from=null;shClose();paintSaved();toast('נמחק');}
+function sh(h){document.getElementById('shin').innerHTML=h;document.getElementById('sh').classList.add('on');}
+function shClose(){document.getElementById('sh').classList.remove('on');}
+/* the run, ten times faster */
+var R=null,FAST=10;
+function plan(){var n=S.n,mv=S.mv.filter(Boolean),out=[],i;out.push(['היכון',n.prep,'']);
+  if(S.k==='amrap'){out.push(['עבודה',n.work,mv.join(' · ')]);return out;}
+  var rounds=n.rounds;for(i=0;i<rounds;i++){out.push(['עבודה',S.k==='emom'?60:n.work,mv.length?mv[i%mv.length]:'']);if(S.k!=='emom'&&n.rest)out.push(['מנוחה',n.rest,'']);}
+  return out;}
+function runGo(){var p=plan(),i=0,left=p[0][1];document.getElementById('run').classList.add('on');
+  function show(){var s=p[i];document.getElementById('rph').textContent=s[0];document.getElementById('rt').textContent=mmss(left);document.getElementById('rmv').textContent=s[2];
+    var w=p.slice(0,i+1).filter(function(x){return x[0]==='עבודה';}).length,tw=p.filter(function(x){return x[0]==='עבודה';}).length;
+    document.getElementById('rrd').textContent=S.k==='amrap'?'':'סבב '+Math.max(1,w)+' מתוך '+tw;document.getElementById('run').classList.toggle('work',s[0]==='עבודה');}
+  show();clearInterval(R);R=setInterval(function(){left--;if(left<=0){i++;if(i>=p.length){runEnd(false);return;}left=p[i][1];}show();},1000/FAST);}
+function runEnd(stopped){clearInterval(R);document.getElementById('run').classList.remove('on');
+  if(stopped)return;toast('✓ סיימת');if(!S.from)setTimeout(function(){saveAsk(true);},700);}
+var TT;function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(TT);TT=setTimeout(function(){el.classList.remove('on');},1600);}
+paintForm();
+var sc=document.createElement('script');sc.src='../../vendor/beem-app.js';
+sc.onload=function(){BeemKit.ready.then(function(){BeemKit.mount(document.getElementById('bm'),{play:{dur:1e9,ev:[[0,'face','calm'],[0,'mode',{idle:0,breathe:[.016,4]}]]}});});};
+document.head.appendChild(sc);
+</script>
+</body></html>
