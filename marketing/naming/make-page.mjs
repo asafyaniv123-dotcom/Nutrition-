@@ -2,13 +2,15 @@
  * (the sun, then the name in Fraunces 700), in the places a name lives (under
  * the icon, the store title, a sentence), with what was checked beside it.
  *
- *   node marketing/naming/make-page.mjs   -> review/names/index.html
+ *   node marketing/naming/make-page.mjs [shortlist.json] [out-dir]
+ *     defaults: marketing/naming/shortlist.json -> review/names/
  *
  * Reads marketing/naming/shortlist.json (written by hand from round1.json,
  * trademarks.md and languages.md) - the page carries no judgement of its own.
  */
 import fs from 'fs';
-const S = JSON.parse(fs.readFileSync('marketing/naming/shortlist.json', 'utf8'));
+const [IN = 'marketing/naming/shortlist.json', OUT = 'review/names'] = process.argv.slice(2);
+const S = JSON.parse(fs.readFileSync(IN, 'utf8'));
 const OR = '#ff7a1a';
 const P = { n: 9, c: 19.5, d: 5.6, r: 33, rot: 0.5 };   // brand/build-svgs.mjs, the line chosen on 23 Oct
 function sun(size) {
@@ -46,7 +48,7 @@ const cards = S.names.map((n, i) => `
 const html = `<!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>שם חדש לאפליקציה</title>
+<title>${esc(S.title || 'שם חדש לאפליקציה')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -80,7 +82,7 @@ const html = `<!doctype html>
   footer{max-width:1180px;margin:0 auto;padding:0 24px 60px;font-size:14px;color:var(--muted)}
 </style></head><body>
 <header>
-  <h1>שם חדש לאפליקציה</h1>
+  <h1>${esc(S.title || 'שם חדש לאפליקציה')}</h1>
   <p class="lede">${esc(S.lede)}</p>
   <p class="how">${esc(S.how)}</p>
 </header>
@@ -88,6 +90,6 @@ const html = `<!doctype html>
 <footer>${esc(S.footer)}</footer>
 </body></html>
 `;
-fs.mkdirSync('review/names', { recursive: true });
-fs.writeFileSync('review/names/index.html', html);
-console.log('review/names/index.html:', S.names.length, 'names');
+fs.mkdirSync(OUT, { recursive: true });
+fs.writeFileSync(OUT + '/index.html', html);
+console.log(OUT + '/index.html:', S.names.length, 'names');
