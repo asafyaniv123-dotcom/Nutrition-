@@ -9,6 +9,19 @@ Decided by Asaf on 24 Oct 2026:
 - **Publishing starts after the design is finished.** The handles are claimed
   now, so the name is not taken in the meantime.
 
+## The accounts
+
+All three networks are registered on **hello.betterme.app@gmail.com**, a Google
+account of the app's own (two-step verification on, backup codes kept by Asaf
+offline). The same address is the contact on the privacy page. Passwords and
+codes never enter this repository or this chat.
+
+| Network | Handle | State |
+|---|---|---|
+| YouTube | | being created |
+| Instagram | | |
+| TikTok | | |
+
 ## How a post lives here
 
 Each post is one file in `posts/`, named `YYYY-MM-DD-<slug>.md`:
