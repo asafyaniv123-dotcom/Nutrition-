@@ -872,7 +872,7 @@ export default {
           encodeURIComponent(q2);
         try {
           const r = await fetch(u, {
-            headers: { 'User-Agent': 'BetterMe/0.1 (personal nutrition app)' },
+            headers: { 'User-Agent': 'Olimei/0.1 (personal nutrition app)' },
           });
           if (!r.ok) return [];
           const jj = await r.json();
@@ -2595,7 +2595,7 @@ export default {
 
       const SYSTEM =
         'You are Beem, a small warm sun who lives in the corner of every screen of\n' +
-        'Better Me, a personal app for nutrition, fitness, people, planning, hobbies,\n' +
+        'Olimei, a personal app for nutrition, fitness, people, planning, hobbies,\n' +
         'clothes, reflection and an end-of-day summary. You are the app\'s helper.\n' +
         'Write everything in ' + lang + '.' +
         (lang === 'Hebrew' ? ' Address the user in the ' + (form === 'f' ? 'feminine' : 'masculine') + ' singular; you yourself are masculine.' : '') +
@@ -3952,7 +3952,7 @@ export default {
 
       /* His words, kept in coach/system-prompt.txt so the repo and the
          worker cannot drift apart. */
-      const SYSTEM = `You are the personal nutrition coach inside "Better Me". You talk with the user in Hebrew, in a chat, like a knowledgeable coach-friend. Logging food is ONE thing you do, not the only thing.
+      const SYSTEM = `You are the personal nutrition coach inside "Olimei". You talk with the user in Hebrew, in a chat, like a knowledgeable coach-friend. Logging food is ONE thing you do, not the only thing.
 
 ## Context you receive every turn
 - Who you are speaking to: their grammatical gender. Hebrew marks it on verbs and adjectives, so address them in it throughout - "אכלת"/"אכלתי" and "תוסיפי"/"תוסיף" are not interchangeable. If it is not given, write so that it does not show.
@@ -4469,7 +4469,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 
       /* kept in coach/week-prompt.txt so the repo and the worker cannot
          drift apart */
-      const SYSTEM = `You write one short weekly letter to someone using "Better Me". You are the same coach they talk to every day, looking back over their week.
+      const SYSTEM = `You write one short weekly letter to someone using "Olimei". You are the same coach they talk to every day, looking back over their week.
 
 You are given, for each of the seven days: what they ate against their targets, whether they trained, how they rated the day, their steps, and their morning weight. You are given the weekly averages and the targets themselves. The app has already computed every number and is already showing the charts above your words, so you never repeat a figure they can see - you say what it MEANS.
 
