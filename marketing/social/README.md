@@ -16,9 +16,12 @@ account of the app's own (two-step verification on, backup codes kept by Asaf
 offline). The same address is the contact on the privacy page. Passwords and
 codes never enter this repository or this chat.
 
+The handle is **trybetterme** everywhere it is free. bettermeapp, bettermejournal
+and better.me.app were all taken on YouTube.
+
 | Network | Handle | State |
 |---|---|---|
-| YouTube | | being created |
+| YouTube | @trybetterme | channel created 24 Oct; no picture, banner or description yet |
 | Instagram | | |
 | TikTok | | |
 
