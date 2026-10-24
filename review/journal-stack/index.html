@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap" rel="stylesheet">
+<title>היומן: ערימת דפים, מחברות, ודף שזז עם האצבע</title>
+<style>
+/* THE JOURNAL, ROUND TWO (Asaf, 24 Oct): the stack of pages (C), plus
+   - notebooks: more than one, each its own pages - one only for gratitude,
+     another for something else; a row of them on top, "+ notebook";
+   - the page moves with the finger: drag it to the side and it lifts, tilts
+     and the page under it rises to meet you; let go past the middle and it
+     turns, short of it and it settles back. Right goes to the day before,
+     left comes back towards today.
+   Arrows still work for anyone who does not swipe. Kept in this browser. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--g:#e9e7e3;--lit:rgba(255,255,255,.95);--sh:rgba(176,168,156,.44);--sh2:rgba(176,168,156,.28);--ink:#4a453f;--mu:#6d675e;--am:#f0a92e;--paper:#f6f2ec}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",Arial,sans-serif}
+.bar{max-width:430px;margin:0 auto;padding:12px 14px 6px;color:#efe6d8}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.wrap{display:flex;justify-content:center;padding:10px 0 30px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:34px;background:var(--g);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.45);transform-origin:50% 0}
+.scr{position:absolute;inset:0;overflow:hidden;padding:0 16px 110px}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:16px 0 4px}.hd h2{font-size:30px;font-weight:800;margin:0}
+.ic{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic svg{width:19px;height:19px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round}
+.tabs{position:absolute;left:14px;right:14px;bottom:14px;height:60px;border-radius:24px;background:var(--g);display:flex;align-items:center;justify-content:space-around;font-weight:800;color:var(--mu);box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2);z-index:6}
+.tabs .mid{width:56px;height:56px;border-radius:50%;margin-top:-26px;display:flex;align-items:center;justify-content:center;background:var(--g);box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit),0 0 0 3px rgba(240,169,46,.25)}
+button{font-family:inherit}
+.raise{background:var(--g);border:none;color:var(--ink);cursor:pointer;box-shadow:-3px -3px 7px var(--lit),3px 4px 10px var(--sh2)}
+.raise:active{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.press{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+/* the notebooks */
+.nbs{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 6px;margin:0 -2px;scrollbar-width:none}.nbs::-webkit-scrollbar{display:none}
+.nb{flex:none;display:flex;align-items:center;gap:7px;border:none;border-radius:999px;padding:8px 13px;font-size:13.5px;font-weight:800;color:var(--mu);cursor:pointer;background:var(--g);
+  box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.nb i{width:10px;height:14px;border-radius:2px 3px 3px 2px;background:var(--c);box-shadow:inset -2px 0 0 rgba(0,0,0,.08)}
+.nb.on{color:var(--ink);box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.nb.add{color:var(--mu);font-weight:700}
+/* the week */
+.wk{display:flex;align-items:center;gap:10px;margin:8px 2px 0}
+.wk .d{display:flex;gap:7px}
+.wk .d i{width:9px;height:9px;border-radius:50%;background:#d8d2ca;box-shadow:inset 1px 1px 2px var(--sh)}
+.wk .d i.on{background:var(--am);box-shadow:0 0 7px rgba(240,169,46,.7)}
+.wk .d i.now{outline:2px solid rgba(74,69,63,.35);outline-offset:2px}
+.wk span{font-size:12.5px;font-weight:700;color:var(--mu)}
+.spark{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:13.5px;color:var(--mu);font-weight:600;min-height:28px}
+.spark b{color:var(--ink);font-weight:700}
+.spark button{border:none;background:none;color:var(--mu);font-size:16px;cursor:pointer;padding:2px 4px}
+.spark .use{font-size:12.5px;font-weight:800;border-radius:999px;padding:5px 10px}
+/* the stack */
+.stack{position:relative;margin-top:12px;height:500px;perspective:1600px;touch-action:pan-y}
+.card{position:absolute;inset-inline:0;top:0;height:450px;border-radius:20px;background:var(--paper);padding:18px;will-change:transform;
+  box-shadow:-4px -4px 10px var(--lit),6px 8px 18px rgba(120,100,80,.2);transform-origin:50% 100%}
+.card.anim{transition:transform .38s cubic-bezier(.2,.7,.2,1),opacity .38s ease,box-shadow .38s ease}
+.card .edge{position:absolute;top:14px;bottom:14px;inset-inline-start:0;width:4px;border-radius:0 3px 3px 0;background:var(--c)}
+.card .dt{font-family:"Frank Ruhl Libre",serif;font-size:19px;font-weight:700;display:flex;gap:12px;align-items:baseline;margin-bottom:8px}
+.card .dt small{font-family:Assistant;font-size:12.5px;color:var(--mu);font-weight:700}
+.card textarea{width:100%;height:370px;border:none;background:none;outline:none;resize:none;font-family:"Frank Ruhl Libre",serif;font-size:18px;line-height:1.6;color:var(--ink);padding:0}
+.card textarea::placeholder{color:#a59c90}
+.card .peek{font-family:"Frank Ruhl Libre",serif;font-size:16px;color:var(--ink);line-height:1.6;white-space:pre-wrap}
+.card .peek.empty{color:#a59c90}
+/* the light across a page being turned: it catches the lifted side */
+.card .gl{position:absolute;inset:0;border-radius:20px;pointer-events:none;opacity:0;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.55) 60%,rgba(255,255,255,0))}
+.row{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.row button{border-radius:999px;padding:9px 14px;font-size:13.5px;font-weight:800}
+.row button[disabled]{opacity:.4}
+.hint{font-size:12px;font-weight:700;color:var(--mu)}
+/* sheets */
+.sheet{position:absolute;inset:0;z-index:8;background:rgba(74,67,64,.22);display:none;align-items:flex-end}.sheet.on{display:flex}
+.sheet .in{width:100%;max-height:80%;overflow:auto;background:var(--g);border-radius:26px 26px 0 0;padding:18px 16px 28px;box-shadow:0 -10px 30px rgba(74,67,64,.18)}
+.sheet h3{margin:0 0 10px;font-size:19px;font-family:"Frank Ruhl Libre",serif}
+.sheet input{width:100%;border:none;border-radius:14px;padding:12px;font:600 15px Assistant;color:var(--ink);background:var(--g);outline:none;margin-bottom:12px}
+.sheet .li{display:flex;flex-direction:column;gap:8px}
+.sheet .li button{border-radius:14px;padding:12px;font-size:15px;font-weight:800;text-align:start}
+.tints{display:flex;gap:10px;margin-bottom:14px}
+.tints button{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--c);box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.tints button.on{box-shadow:inset 2px 3px 6px rgba(0,0,0,.18),0 0 0 3px rgba(74,69,63,.25)}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.chips button{border:none;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:800;color:var(--mu);cursor:pointer;background:var(--g);box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.hit{display:block;width:100%;text-align:start;border:none;border-radius:14px;padding:11px 12px;margin-top:8px;cursor:pointer;font-family:"Frank Ruhl Libre",serif;font-size:14.5px;color:var(--ink)}
+.hit b{display:block;font-family:Assistant;font-size:11.5px;font-weight:800;color:var(--mu)}
+mark{background:rgba(240,169,46,.35);color:inherit;border-radius:3px}
+.notes{max-width:430px;margin:0 auto 40px;padding:0 18px;color:#e6dccd;font-size:14.5px;line-height:1.65}
+.notes h2{font-size:17px;margin:4px 0 6px}.notes li{margin-bottom:6px}
+</style></head><body>
+<div class="bar"><h1>היומן: ערימת דפים, מחברות, ודף שזז עם האצבע</h1>
+<p>גרור את הדף העליון ימינה: הוא מתרומם והדף מתחתיו עולה. שחרר אחרי האמצע והדף מתהפך, לפני האמצע הוא חוזר. שמאלה חוזרים לכיוון היום. בטלפון זה עם האצבע, במחשב עם העכבר.</p></div>
+<div class="wrap"><div class="ph" id="ph">
+  <div class="scr">
+    <div class="hd"><h2>יומן</h2><button class="raise ic" onclick="srch()" aria-label="חיפוש"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg></button></div>
+    <div class="nbs" id="nbs"></div>
+    <div class="wk"><div class="d" id="wk"></div><span id="wkn"></span></div>
+    <div class="spark" id="spark"></div>
+    <div class="stack" id="stack"></div>
+    <div class="row"><button class="raise" onclick="turn(-1)">‹ <span id="prevl"></span></button><span class="hint">גרור את הדף לצד</span><button class="raise" id="nextb" onclick="turn(1)">הבא ›</button></div>
+  </div>
+  <div class="sheet" id="sh" onclick="if(event.target===this)shClose()"><div class="in" id="shin"></div></div>
+  <div class="tabs"><span>Better</span><span class="mid"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#4a453f;stroke-width:1.8"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><span>Me</span></div>
+</div></div>
+<div class="notes">
+  <h2>מה נוסף</h2>
+  <ul>
+    <li><b>מחברות:</b> בשורה למעלה. "יומן" היא המחברת הראשונה, ו"+ מחברת" מוסיפה עוד, עם שם וצבע. יש הצעות מוכנות: הכרת תודה, חלומות, רעיונות, מכתבים לעצמי. לכל מחברת יש דפים משלה, נקודות שבוע משלה ושאלה משלה (במחברת "הכרת תודה" השאלה היא על מה אתה מודה).</li>
+    <li><b>הדף זז עם האצבע:</b> הוא מתרומם, נוטה, ואור עובר עליו, והדף שמתחת עולה לקראתך. אחרי האמצע הוא מתהפך, ולפני האמצע חוזר למקום.</li>
+    <li>לחיצה ארוכה על מחברת: שינוי שם, צבע או מחיקה.</li>
+  </ul>
+</div>
+<script>
+function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+var $=function(i){return document.getElementById(i);};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+var DN=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],MN=['בינואר','בפברואר','במרץ','באפריל','במאי','ביוני','ביולי','באוגוסט','בספטמבר','באוקטובר','בנובמבר','בדצמבר'];
+var TINTS=['#c9b9a6','#a9bfa9','#c3b0c9','#b7c3d3','#d6b9a8','#c9c19d'];
+function ds(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+var TODAY=new Date();TODAY.setHours(12,0,0,0);
+function shift(n){var d=new Date(TODAY);d.setDate(d.getDate()+n);return d;}
+var NBK='jstack_nbs',NB=JSON.parse(localStorage.getItem(NBK)||'null');
+if(!NB){NB=[{id:'main',name:'יומן',c:TINTS[0]},{id:'grat',name:'הכרת תודה',c:TINTS[1]}];localStorage.setItem(NBK,JSON.stringify(NB));
+  localStorage.setItem('jstack_main_'+ds(shift(-1)),'יום ארוך במשרד. בערב יצאתי להליכה עם נועה, ודיברנו על מה שבאמת חשוב לנו השנה.');
+  localStorage.setItem('jstack_main_'+ds(shift(-3)),'ישנתי רע. ובכל זאת, האימון של הבוקר הציל את היום.');
+  localStorage.setItem('jstack_grat_'+ds(shift(-1)),'1. הקפה של הבוקר\n2. נועה\n3. שהגשם עצר בדיוק כשיצאתי');}
+var nb=NB[0].id,cur=0;
+function key(n){return 'jstack_'+nb+'_'+ds(shift(n));}
+function get(n){return localStorage.getItem(key(n))||'';}
+function put(n,v){if(v.trim())localStorage.setItem(key(n),v);else localStorage.removeItem(key(n));paintWeek();}
+function nbObj(){return NB.filter(function(x){return x.id===nb;})[0]||NB[0];}
+var SP={main:['מה הצחיק אותך היום?','מה היה הרגע הכי טוב בבוקר?','מה מעסיק אותך עכשיו?','מה היית רוצה לזכור מהיום הזה?'],
+  grat:['על מה אתה מודה היום?','מי עשה לך טוב השבוע?','איזה דבר קטן שימח אותך היום?'],
+  dream:['מה חלמת הלילה?'],idea:['איזה רעיון לא עוזב אותך?'],letter:['מה היית רוצה להגיד לעצמך בעוד שנה?']},si=0;
+function sparks(){var o=nbObj();return SP[o.kind||o.id]||SP.main;}
+function label(n){var d=shift(n);return n===0?'היום':n===-1?'אתמול':'יום '+DN[d.getDay()];}
+function longDate(n){var d=shift(n);return d.getDate()+' '+MN[d.getMonth()];}
+function paintNbs(){var h='';NB.forEach(function(x){h+='<button class="nb'+(x.id===nb?' on':'')+'" style="--c:'+x.c+'" data-id="'+x.id+'"><i></i>'+esc(x.name)+'</button>';});
+  $('nbs').innerHTML=h+'<button class="nb add" onclick="nbNew()">+ מחברת</button>';
+  [].forEach.call(document.querySelectorAll('.nb[data-id]'),function(b){var t=null;
+    b.addEventListener('pointerdown',function(){t=setTimeout(function(){t=null;nbMenu(b.dataset.id);},550);});
+    b.addEventListener('pointerup',function(){if(t){clearTimeout(t);nb=b.dataset.id;cur=0;si=0;paint();}});
+    b.addEventListener('pointerleave',function(){if(t)clearTimeout(t);});});}
+function paintWeek(){var h='',n=0,dow=TODAY.getDay(),i;for(i=0;i<7;i++){var w=!!get(i-dow);if(w&&i<=dow)n++;h+='<i class="'+(w?'on':'')+(i===dow?' now':'')+'"></i>';}
+  $('wk').innerHTML=h;$('wkn').textContent=n?'השבוע כתבת '+(n===1?'יום אחד':n+' ימים'):'השבוע עוד לא כתבת';}
+function paintSpark(){var s=sparks();$('spark').innerHTML=cur===0?'<span>אם צריך מאיפה להתחיל: <b>'+s[si%s.length]+'</b></span><button onclick="si++;paintSpark()" aria-label="אחר">↻</button><button class="raise use" onclick="useSpark()">לדף</button>':'';}
+function useSpark(){var t=document.querySelector('#c0 textarea');if(!t)return;var q=sparks()[si%sparks().length];t.value=t.value.trim()?t.value+'\n'+q+'\n':q+'\n';t.focus();put(cur,t.value);}
+function cardHTML(k,n){var t=get(n),o=nbObj();
+  return '<div class="card" id="c'+k+'" style="--c:'+o.c+'"><div class="edge"></div><div class="dt"><span>'+label(n)+'</span><small>'+longDate(n)+'</small></div>'+
+    (k===0?'<textarea placeholder="'+(n===0?sparks()[0]:'מה היה ביום הזה?')+'" oninput="put(cur,this.value)">'+esc(t)+'</textarea>'
+          :'<div class="peek'+(t?'':' empty')+'">'+(t?esc(t):'לא נכתב ביום הזה')+'</div>')+'<div class="gl"></div></div>';}
+/* the stack: the page you are on, the two before it under it, and - when
+   there is a newer page - that one waiting off to the left to slide back in */
+function paintStack(){var h='';h+=cardHTML(2,cur-2)+cardHTML(1,cur-1);if(cur<0)h+=cardHTML(-1,cur+1);h+=cardHTML(0,cur);
+  $('stack').innerHTML=h;rest();bindDrag();$('prevl').textContent=cur===0?'אתמול':'יום קודם';$('nextb').disabled=cur>=0;}
+function pos(k,p){/* p: how far the turn has gone, 0..1 */
+  var c=$('c'+k);if(!c)return;
+  if(k===1)c.style.transform='translateY('+(26-26*p)+'px) scale('+(.95+.05*p)+')',c.style.opacity=.85+.15*p;
+  if(k===2)c.style.transform='translateY('+(50-24*p)+'px) scale('+(.9+.05*p)+')',c.style.opacity=.6+.25*p;}
+function rest(){pos(1,0);pos(2,0);var c=$('c-1');if(c){c.style.transform='translateX(-115%) rotate(-6deg)';c.style.opacity=0;}var z=$('c0');z.style.transform='';z.style.zIndex=5;$('c1').style.zIndex=4;$('c2').style.zIndex=3;if(c)c.style.zIndex=6;}
+var W=358;
+function dragTo(dx){var z=$('c0'),gl=z.querySelector('.gl');
+  if(dx>=0){var p=Math.min(1,dx/W);
+    z.style.transform='translateX('+dx+'px) translateY('+(-14*Math.sin(p*Math.PI))+'px) rotate('+(p*9)+'deg) rotateY('+(-p*28)+'deg)';
+    z.style.boxShadow='-4px -4px 10px var(--lit),'+(10+20*p)+'px '+(14+16*p)+'px '+(22+20*p)+'px rgba(120,100,80,'+(.2+.12*p)+')';
+    gl.style.opacity=Math.sin(p*Math.PI)*.9;pos(1,p);pos(2,p);
+    var n=$('c-1');if(n){n.style.transform='translateX(-115%) rotate(-6deg)';n.style.opacity=0;}}
+  else{var n=$('c-1');if(!n){z.style.transform='translateX('+(dx/4)+'px)';return;}
+    var q=Math.min(1,-dx/W);n.style.opacity=1;
+    n.style.transform='translateX(calc(-115% + '+(q*115)+'%)) rotate('+(-6+6*q)+'deg)';
+    n.querySelector('.gl').style.opacity=Math.sin(q*Math.PI)*.9;
+    z.style.transform='translateY('+(26*q)+'px) scale('+(1-.05*q)+')';}}
+function anim(on){[].forEach.call(document.querySelectorAll('.card'),function(c){c.classList.toggle('anim',on);});}
+function settle(dx){anim(true);
+  if(dx>W*.45){dragTo(W*1.25);$('c0').style.opacity=0;setTimeout(function(){cur--;si=0;paint();},330);}
+  else if(dx<-W*.45&&$('c-1')){dragTo(-W);setTimeout(function(){cur++;si=0;paint();},330);}
+  else{rest();$('c0').style.boxShadow='';[].forEach.call(document.querySelectorAll('.gl'),function(g){g.style.opacity=0;});setTimeout(function(){anim(false);},400);}}
+function turn(d){if(d<0){anim(true);settle(W);}else if(cur<0){anim(true);requestAnimationFrame(function(){dragTo(-W*.01);requestAnimationFrame(function(){settle(-W);});});}}
+function bindDrag(){var st=$('stack'),x0=null,y0=0,dx=0,live=false;
+  st.onpointerdown=function(e){if(e.target.tagName==='TEXTAREA'&&document.activeElement===e.target)return;x0=e.clientX;y0=e.clientY;dx=0;live=false;anim(false);};
+  st.onpointermove=function(e){if(x0===null)return;var s=parseFloat(getComputedStyle(document.querySelector('.ph')).transform.split(',')[0].replace('matrix(',''))||1;
+    dx=(e.clientX-x0)/s;if(!live){if(Math.abs(dx)<8)return;if(Math.abs(e.clientY-y0)>Math.abs(e.clientX-x0)){x0=null;return;}live=true;try{st.setPointerCapture(e.pointerId);}catch(_){}}
+    e.preventDefault();dragTo(dx);};
+  st.onpointerup=st.onpointercancel=function(){if(x0===null)return;x0=null;if(live)settle(dx);};}
+function paint(){paintNbs();paintWeek();paintSpark();paintStack();}
+/* notebooks */
+var PRE=[['הכרת תודה','grat'],['חלומות','dream'],['רעיונות','idea'],['מכתבים לעצמי','letter']],newTint=TINTS[2];
+function nbNew(){var h='<h3>מחברת חדשה</h3><div class="chips">'+PRE.map(function(p){return '<button onclick="$(\'nbn\').value=\''+p[0]+'\';$(\'nbn\').dataset.k=\''+p[1]+'\'">'+p[0]+'</button>';}).join('')+'</div>'+
+  '<input id="nbn" placeholder="שם המחברת"><div class="tints">'+TINTS.map(function(t){return '<button style="--c:'+t+'" class="'+(t===newTint?'on':'')+'" onclick="newTint=\''+t+'\';[].forEach.call(this.parentNode.children,function(b){b.classList.remove(\'on\')});this.classList.add(\'on\')"></button>';}).join('')+'</div>'+
+  '<div class="li"><button class="raise" onclick="nbAdd()">צור מחברת</button><button class="raise" style="color:var(--mu)" onclick="shClose()">ביטול</button></div>';sh(h);}
+function nbAdd(){var v=$('nbn').value.trim();if(!v)return;var id='n'+Date.now().toString(36);NB.push({id:id,name:v,c:newTint,kind:$('nbn').dataset.k||''});localStorage.setItem(NBK,JSON.stringify(NB));nb=id;cur=0;shClose();paint();}
+function nbMenu(id){var o=NB.filter(function(x){return x.id===id;})[0];
+  sh('<h3>'+esc(o.name)+'</h3><input id="nbr" value="'+esc(o.name)+'"><div class="tints">'+TINTS.map(function(t){return '<button style="--c:'+t+'" class="'+(t===o.c?'on':'')+'" onclick="nbSet(\''+id+'\',\'c\',\''+t+'\')"></button>';}).join('')+'</div>'+
+  '<div class="li"><button class="raise" onclick="nbSet(\''+id+'\',\'name\',$(\'nbr\').value.trim());shClose()">שמור</button>'+(id!=='main'?'<button class="raise" style="color:#98492c" onclick="nbDel(\''+id+'\')">מחק את המחברת</button>':'')+'<button class="raise" style="color:var(--mu)" onclick="shClose()">ביטול</button></div>');}
+function nbSet(id,k,v){if(!v)return;NB.forEach(function(x){if(x.id===id)x[k]=v;});localStorage.setItem(NBK,JSON.stringify(NB));paint();}
+function nbDel(id){if(!confirm('למחוק את המחברת וכל הדפים בה?'))return;NB=NB.filter(function(x){return x.id!==id;});localStorage.setItem(NBK,JSON.stringify(NB));if(nb===id)nb='main';shClose();paint();}
+function sh(h){$('shin').innerHTML=h;$('sh').classList.add('on');}
+function shClose(){$('sh').classList.remove('on');}
+function srch(){sh('<h3>חיפוש ב'+esc(nbObj().name)+'</h3><input id="q" placeholder="חפש מילה…" oninput="hits()"><div id="hits"></div>');hits();setTimeout(function(){$('q').focus();},50);}
+function hits(){var q=$('q').value.trim(),h='',n;for(n=0;n>-120;n--){var t=get(n);if(!t)continue;var at=q?t.indexOf(q):0;if(q&&at<0)continue;
+  var s=q?esc(t.slice(Math.max(0,at-30),at))+'<mark>'+esc(q)+'</mark>'+esc(t.slice(at+q.length,at+q.length+50)):esc(t.slice(0,80));
+  h+='<button class="hit press" onclick="cur='+n+';shClose();paint()"><b>'+label(n)+' · '+longDate(n)+'</b>'+s+'</button>';}
+  $('hits').innerHTML=h||'<div class="hint" style="padding:8px">'+(q?'לא נמצא':'עוד לא כתבת במחברת הזאת')+'</div>';}
+paint();
+</script>
+</body></html>
