@@ -100,7 +100,7 @@ await send('Page.addScriptToEvaluateOnNewDocument', { source: `(function(){try{
 }catch(e){}})();` });
 
 async function load() {
-  await send('Page.navigate', { url: `http://localhost:${PORT}/dev/` });
+  await send('Page.navigate', { url: `http://localhost:${PORT}/${args.includes('--root') ? '' : 'dev/'}` });   // --root: the stable app, for a before/after
   for (let i = 0; i < 60; i++) {
     await sleep(250);
     try { if (await evalJS(`!!document.getElementById('home-grid')&&document.readyState==='complete'`)) break; } catch {}
