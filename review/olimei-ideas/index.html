@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@24,700&family=Assistant:wght@600;700;800&display=block" rel="stylesheet">
+<title>Olimei: איפה השמש יכולה לעמוד</title>
+<style>
+/* OLIMEI, MANY PLACES FOR THE SUN (Asaf, 24 Oct: "give me more - the sun in
+   all kinds of places: at the end of the word, in place of the other i, in
+   the middle of the O, all kinds of ideas"). One renderer, eleven ideas; the
+   sun is always the icon's own geometry, the word always Fraunces 700. */
+body{margin:0;background:#2b2724;color:#efe6d8;font-family:Assistant,sans-serif}
+.bar{max-width:820px;margin:0 auto;padding:16px}
+.bar h1{font-size:20px;margin:0 0 6px}.bar p{margin:0;color:#cfc4b4;font-size:14px;line-height:1.6}
+.grid{max-width:820px;margin:0 auto;padding:8px 16px 40px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+.opt{background:#3a342f;border-radius:18px;padding:12px}
+.opt h2{font-size:15px;margin:0 0 8px}
+.tile{border-radius:14px;display:flex;align-items:center;justify-content:center;min-height:130px;padding:12px;background:#fbf6ee}
+.tile.n{background:#221f1c;margin-top:8px;min-height:90px}
+.tile.s{min-height:54px;margin-top:8px}
+canvas{max-width:100%;height:auto}
+</style></head><body>
+<div class="bar"><h1>Olimei: איפה השמש יכולה לעמוד</h1>
+<p>אחת־עשרה אפשרויות. השמש תמיד אותה שמש של האייקון, והמילה תמיד באותו גופן. כל אפשרות מוצגת על שמנת, בלילה, ובגודל קטן כמו בכותרת.</p></div>
+<div class="grid" id="g"></div>
+<script>
+var OR='#ff7a1a',P={n:9,c:19.5,d:5.6,r:33,rot:0.5};
+function sun(g,cx,cy,R,o){o=o||{};var q=R/(P.r+P.d);g.save();g.fillStyle=o.col||OR;
+  if(o.clipAbove!=null){g.beginPath();g.rect(cx-R*2,cy-R*2,R*4,o.clipAbove-(cy-R*2));g.clip();}
+  if(!o.noDisc){g.beginPath();g.arc(cx,cy,P.c*q*(o.disc||1),0,Math.PI*2);g.fill();}
+  if(!o.noRays)for(var i=0;i<P.n;i++){var a=(i+P.rot)/P.n*Math.PI*2-Math.PI/2;g.beginPath();g.arc(cx+Math.cos(a)*P.r*q,cy+Math.sin(a)*P.r*q,P.d*q,0,Math.PI*2);g.fill();}
+  g.restore();}
+/* where an i's dot sits, relative to the glyph's origin */
+var DOT=null;
+function dot(px){var f='700 '+px+'px Fraunces',tc=document.createElement('canvas');tc.width=px*2;tc.height=px*2;var t=tc.getContext('2d');
+  t.font=f;t.direction='ltr';t.textAlign='left';t.textBaseline='alphabetic';t.fillText('i',px*.5,px*1.5);var a=t.getImageData(0,0,tc.width,tc.height).data;
+  t.clearRect(0,0,tc.width,tc.height);t.fillText('ı',px*.5,px*1.5);var b=t.getImageData(0,0,tc.width,tc.height).data,sx=0,sy=0,n=0,x,y,k;
+  for(y=0;y<tc.height;y++)for(x=0;x<tc.width;x++){k=(y*tc.width+x)*4+3;if(a[k]>128&&b[k]<40){sx+=x;sy+=y;n++;}}
+  return {x:sx/n-px*.5,y:sy/n-px*1.5};}
+/* each idea: the text to set, and what to draw before / after it */
+var IDEAS=[
+ ['א׳ · נקודת ה־i הראשונה','Olımei',function(m){m.dotSun(1,.30);},true],
+ ['ב׳ · נקודת ה־i האחרונה','Olimeı',function(m){m.dotSun(5,.30);}],
+ ['ג׳ · שתי שמשות, על שתי ה־i','Olımeı',function(m){m.dotSun(1,.22);m.dotSun(5,.22);},true],
+ ['ד׳ · שמש בתוך ה־O','Olimei',function(m){var w=m.w('O'),cx=m.x0+w*.5,cy=m.base-m.cap*.5;sun(m.g,cx,cy,m.px*.17);}],
+ ['ה׳ · שמש כנקודה בסוף, כמו Better Me.','Olimei',function(m){var R=m.px*.13;sun(m.g,m.x0+m.w('Olimei')+R*1.25,m.base-R*1.0,R);}],
+ ['ו׳ · שמש קטנה מעל הסוף, כמו כוכבית','Olimei',function(m){var R=m.px*.15;sun(m.g,m.x0+m.w('Olimei')+R*1.1,m.base-m.cap-R*.15,R);}],
+ ['ז׳ · ה־i כולה בכתום, והשמש היא הנקודה','Olımei',function(m){m.g.save();m.g.fillStyle=OR;m.g.fillText('ı',m.x0+m.w('Ol'),m.base);m.g.restore();m.dotSun(1,.26);}],
+ ['ח׳ · שמש שוקעת בקו של המילה, בסוף','Olimei',function(m){var R=m.px*.28;sun(m.g,m.x0+m.w('Olimei')+R*1.15,m.base,R,{clipAbove:m.base});}],
+ ['ט׳ · שמש מעל מרכז המילה','Olimei',function(m){var R=m.px*.2;sun(m.g,m.x0+m.w('Olimei')*.5,m.base-m.cap-R*1.25,R);}],
+ ['י׳ · אותיות קטנות, שמש על ה־i','olımei',function(m){m.dotSun(1,.30);},true],
+ ['י״א · רק הקרניים סביב ה־O, השמש היא ה־O','Olimei',function(m){var w=m.w('O'),cx=m.x0+w*.5,cy=m.base-m.cap*.5;sun(m.g,cx,cy,m.cap*.86,{noDisc:true});}]
+];
+function draw(cv,idea,px,ink){
+  var g=cv.getContext('2d'),f='700 '+px+'px Fraunces';g.font=f;
+  var w=g.measureText(idea[1]).width,padX=px*.75,padT=px*.8,padB=px*.35;
+  cv.width=Math.ceil(w+padX*2);cv.height=Math.ceil(px*1.05+padT+padB);
+  g=cv.getContext('2d');g.font=f;g.direction='ltr';g.textAlign='left';g.textBaseline='alphabetic';
+  var base=padT+px*.78,m={g:g,px:px,x0:padX,base:base,cap:px*.70,
+    w:function(s){return g.measureText(s).width;},
+    dotSun:function(i,s){var R=s*px,cx=padX+g.measureText(idea[1].slice(0,i)).width+DOT.x,cy=base+DOT.y,xh=px*.5,low=cy+R;
+      if(low>base-xh-px*.04)cy-=low-(base-xh-px*.04);sun(g,cx,cy,R);}};
+  if(idea[3])idea[2](m);           /* drawn behind the word */
+  g.fillStyle=ink;g.fillText(idea[1],padX,base);
+  if(!idea[3])idea[2](m);
+}
+document.fonts.load('700 100px Fraunces').then(function(){
+  DOT=dot(100);var h='';
+  IDEAS.forEach(function(d,i){h+='<div class="opt"><h2>'+d[0]+'</h2><div class="tile"><canvas id="a'+i+'"></canvas></div><div class="tile n"><canvas id="b'+i+'" style="height:52px;width:auto"></canvas></div><div class="tile s"><canvas id="c'+i+'" style="height:26px;width:auto"></canvas></div></div>';});
+  document.getElementById('g').innerHTML=h;
+  IDEAS.forEach(function(d,i){
+    /* the dot is measured at 100px; scale it to the size drawn */
+    var s=function(px){var k=px/100,o=DOT;DOT={x:o.x*k,y:o.y*k};return o;};
+    var o=s(100);draw(document.getElementById('a'+i),d,100,'#2e2925');DOT=o;
+    draw(document.getElementById('b'+i),d,100,'#efe6dc');draw(document.getElementById('c'+i),d,100,'#2e2925');});
+  window.__ready=true;
+});
+</script>
+</body></html>
