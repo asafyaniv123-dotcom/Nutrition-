@@ -61,4 +61,10 @@ for (let i = 0; i < args.length; i++) if (args[i] === '--then') {
   fs.writeFileSync(args[i + 2], Buffer.from(s.result.data, 'base64'));
   console.log('shot ' + args[i + 2]);
 }
+/* --print "<expr>": after every --then, print what the page answers - for
+   audits whose result is text, not a picture */
+if (args.includes('--print')) {
+  const r = await send('Runtime.evaluate', { expression: args[args.indexOf('--print') + 1], returnByValue: true, awaitPromise: true });
+  console.log(r.result && r.result.result ? r.result.result.value : JSON.stringify(r));
+}
 ws.close(); chrome.kill(); server.close();
