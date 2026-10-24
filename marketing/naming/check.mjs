@@ -31,7 +31,15 @@ for (const name of names) {
   /* TikTok and Instagram answer a logged-out visitor with the same page for a
      free handle and a famous one (measured: @mkbhd and a random string), so
      they are not probed: those two are checked by hand at the end. */
-  for (const tld of ['com', 'app']) { try { await dns.resolve(`${h}.${tld}`); row[tld] = 'resolves'; } catch { row[tld] = 'no-dns'; } }
+  /* A clean store search is not clean: Present Days had a same-name app whose
+     only trace was presentdays.app, because it was not live in the store that
+     day. So a domain that resolves is FETCHED, and its page title kept. */
+  for (const tld of ['com', 'app']) {
+    try { await dns.resolve(`${h}.${tld}`); row[tld] = 'resolves'; } catch { row[tld] = 'no-dns'; continue; }
+    try { const r = await fetch(`https://${h}.${tld}`, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(8000) });
+      const t = await r.text(); row[tld + 'Title'] = (r.status + ' ' + ((/<title[^>]*>([^<]*)/i.exec(t) || [])[1] || '').trim()).slice(0, 90);
+    } catch (e) { row[tld + 'Title'] = 'no site (' + (e.cause?.code || e.name) + ')'; }
+  }
   out.push(row);
   process.stderr.write(`${name}: AS ${row.appstore.length} GP ${row.play.length}/${row.playSeen} YT ${row.youtube} .com ${row.com} .app ${row.app}\n`);
 }
