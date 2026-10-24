@@ -43361,13 +43361,29 @@ function tbSync(){
    Remounting keeps what is in the box. */
 var _hcmd={busy:false,q:'',route:null,msg:'',done:null};
 /* one paint per frame, and only while the page is pulled past its top */
+/* the ground the light fades into: the visible screen's own, else the body's */
+function pullGround(){
+  var ids=['me-screen','home-screen'],i,e,c;
+  for(i=0;i<ids.length;i++){e=document.getElementById(ids[i]);
+    if(e&&getComputedStyle(e).display!=='none'){c=getComputedStyle(e).backgroundColor;if(c&&!/rgba\(0, 0, 0, 0\)|transparent/.test(c))return c;}}
+  e=document.querySelector('.app');
+  if(e&&getComputedStyle(e).display!=='none'){c=getComputedStyle(e).backgroundColor;if(c&&!/rgba\(0, 0, 0, 0\)|transparent/.test(c))return c;}
+  return getComputedStyle(document.body).backgroundColor;
+}
+function pullTint(el,at,g){
+  var k=at+'|'+g;if(el._k===k)return;el._k=k;
+  el.style.background='radial-gradient(120% 100% at 50% '+at+',rgba(240,169,46,.42),rgba(240,169,46,.16) 45%,'+g.replace('rgb(','rgba(').replace(')',',0)')+' 100%),'+g;
+}
 function pullGlowPaint(){
   var el=document.getElementById('pull-glow'),y=window.scrollY||0;
   if(!el){el=document.createElement('div');el.id='pull-glow';document.body.insertBefore(el,document.body.firstChild);}
+  var g=(y<0||y>0)?pullGround():'';
+  if(y<0)pullTint(el,'0%',g);
   el.style.height=(y<0?Math.round(-y):0)+'px';
   /* and past the END, from the bottom edge */
   var eb=document.getElementById('pull-glow-b'),over=y-(document.documentElement.scrollHeight-window.innerHeight);
   if(!eb){eb=document.createElement('div');eb.id='pull-glow-b';document.body.insertBefore(eb,document.body.firstChild);}
+  if(over>0)pullTint(eb,'100%',g||pullGround());
   eb.style.height=(over>0?Math.round(over):0)+'px';
 }
 (function(){
