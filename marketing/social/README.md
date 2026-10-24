@@ -21,7 +21,7 @@ and better.me.app were all taken on YouTube.
 
 | Network | Handle | State |
 |---|---|---|
-| YouTube | @trybetterme | channel created 24 Oct; no picture, banner or description yet |
+| YouTube | @trybetterme (free) | NOT created yet: YouTube refused the channel NAME "Better Me" |
 | Instagram | | |
 | TikTok | | |
 
