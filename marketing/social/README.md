@@ -22,7 +22,7 @@ where **@olimei** itself is free.
 
 | Network | Handle | State |
 |---|---|---|
-| Instagram | @olimeiapp | created 24 Oct, signed up with hello@olimei.app; not yet professional; no picture |
+| Instagram | @olimeiapp | created 24 Oct (login: hello.betterme.app@gmail.com); professional (Creator); name "Olimei · Daily Reflection"; bio set |
 | YouTube | @olimei | to create (the Google account was blocked for 24h after the Better Me name attempts) |
 | TikTok | @olimeiapp | to create |
 
