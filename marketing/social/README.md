@@ -17,14 +17,14 @@ offline). The public contact is **hello@olimei.app**, which Cloudflare Email
 Routing forwards to that inbox. Passwords and
 codes never enter this repository or this chat.
 
-The handle is **trybetterme** everywhere it is free. bettermeapp, bettermejournal
-and better.me.app were all taken on YouTube.
+The brand is **Olimei** (24 Oct). The handle is **olimeiapp**, except on YouTube,
+where **@olimei** itself is free.
 
 | Network | Handle | State |
 |---|---|---|
-| YouTube | @trybetterme (free) | NOT created yet: YouTube refused the channel NAME "Better Me" |
-| Instagram | | |
-| TikTok | | |
+| Instagram | @olimeiapp | created 24 Oct, signed up with hello@olimei.app; not yet professional; no picture |
+| YouTube | @olimei | to create (the Google account was blocked for 24h after the Better Me name attempts) |
+| TikTok | @olimeiapp | to create |
 
 ## How a post lives here
 
