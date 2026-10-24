@@ -3,7 +3,7 @@
 ## App Store
 
 **Name** (30)
-Better Me: riflessione serale
+Hayomi: riflessione serale
 
 **Subtitle** (30)
 Il diario che sa com'è andata
@@ -16,9 +16,9 @@ umore,gratitudine,abitudini,alimentazione,pasti,cibo,allenamento,palestra,beness
 
 **Description** (4000)
 
-Quasi tutti i giorni svaniscono. Better Me li custodisce.
+Quasi tutti i giorni svaniscono. Hayomi li custodisce.
 
-Ogni sera Better Me ti fa qualche domanda sulla tua giornata. Non domande
+Ogni sera Hayomi ti fa qualche domanda sulla tua giornata. Non domande
 generiche: domande sul giorno che hai vissuto davvero, a partire da ciò che
 hai annotato strada facendo. Il pranzo, l'allenamento, la telefonata a un
 amico. Una domanda alla volta, mai un modulo. Rispondi a ciò che vuoi,
@@ -68,7 +68,7 @@ automaticamente.
 ## Google Play
 
 **Title** (30)
-Better Me: riflessione serale
+Hayomi: riflessione serale
 
 **Short description** (80)
 Ogni sera, qualche domanda gentile sul giorno che hai vissuto davvero.

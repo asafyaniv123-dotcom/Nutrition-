@@ -3,7 +3,7 @@
 ## App Store
 
 **Name** (30)
-Better Me: Tagesreflexion
+Hayomi: Tagesreflexion
 
 **Subtitle** (30)
 Tagebuch, das deinen Tag kennt
@@ -16,9 +16,9 @@ stimmung,dankbarkeit,gewohnheiten,ernährung,essen,fitness,training,achtsamkeit,
 
 **Description** (4000)
 
-Die meisten Tage verschwinden einfach. Better Me hält sie fest.
+Die meisten Tage verschwinden einfach. Hayomi hält sie fest.
 
-Jeden Abend stellt dir Better Me ein paar Fragen zu deinem Tag. Keine
+Jeden Abend stellt dir Hayomi ein paar Fragen zu deinem Tag. Keine
 Fragen von der Stange, sondern Fragen zu dem Tag, den du wirklich erlebt
 hast – aus dem, was du zwischendurch notiert hast. Das Mittagessen, das
 Training, das Telefonat mit einem Freund. Eine Frage nach der anderen, nie
@@ -70,7 +70,7 @@ lesen, nicht maschinell übersetzt.
 ## Google Play
 
 **Title** (30)
-Better Me: Tagesreflexion
+Hayomi: Tagesreflexion
 
 **Short description** (80)
 Jeden Abend ein paar behutsame Fragen zu dem Tag, den du wirklich erlebt hast.

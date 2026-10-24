@@ -7,7 +7,7 @@ then opens several doors into it.
 ## App Store
 
 **Name** (30)
-Better Me: Daily Reflection
+Hayomi: Daily Reflection
 
 **Subtitle** (30)
 A journal that knows your day
@@ -20,9 +20,9 @@ diary,mood,gratitude,habit,food,meal,fitness,workout,selfcare,wellbeing,mindful,
 
 **Description** (4000)
 
-Most days disappear. Better Me keeps them.
+Most days disappear. Hayomi keeps them.
 
-Every evening, Better Me asks you a few questions about your day. Not
+Every evening, Hayomi asks you a few questions about your day. Not
 generic prompts: questions about the day you actually lived, drawn from what
 you noted along the way. The lunch you had, the workout you did, the friend
 you called. One question at a time, never a form. Answer what you like, skip
@@ -69,7 +69,7 @@ machine-translated.
 ## Google Play
 
 **Title** (30)
-Better Me: Daily Reflection
+Hayomi: Daily Reflection
 
 **Short description** (80)
 A few gentle questions every evening, about the day you actually lived.

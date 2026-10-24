@@ -3,7 +3,7 @@
 ## App Store
 
 **Name** (30)
-Better Me : bilan du soir
+Hayomi : bilan du soir
 
 **Subtitle** (30)
 Journal qui connaît ta journée
@@ -16,9 +16,9 @@ intime,humeur,gratitude,habitudes,alimentation,repas,sport,bien-être,routine,r�
 
 **Description** (4000)
 
-La plupart des jours s'effacent. Better Me les garde.
+La plupart des jours s'effacent. Hayomi les garde.
 
-Chaque soir, Better Me te pose quelques questions sur ta journée. Pas des
+Chaque soir, Hayomi te pose quelques questions sur ta journée. Pas des
 questions toutes faites : des questions sur la journée que tu as vraiment
 vécue, tirées de ce que tu as noté en chemin. Le déjeuner de midi, la séance
 de sport, l'appel à un ami. Une question à la fois, jamais un formulaire.
@@ -69,7 +69,7 @@ pas traduite par une machine.
 ## Google Play
 
 **Title** (30)
-Better Me : bilan du soir
+Hayomi : bilan du soir
 
 **Short description** (80)
 Chaque soir, quelques questions douces sur la journée que tu as vraiment vécue.

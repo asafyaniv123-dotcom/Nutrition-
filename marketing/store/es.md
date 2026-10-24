@@ -3,7 +3,7 @@
 ## App Store
 
 **Name** (30)
-Better Me: reflexión diaria
+Hayomi: reflexión diaria
 
 **Subtitle** (30)
 Un diario que conoce tu día
@@ -16,9 +16,9 @@ Cada noche, unas preguntas amables sobre el día que de verdad viviste. Qué com
 
 **Description** (4000)
 
-La mayoría de los días se pierden. Better Me los guarda.
+La mayoría de los días se pierden. Hayomi los guarda.
 
-Cada noche, Better Me te hace unas preguntas sobre tu día. No son preguntas
+Cada noche, Hayomi te hace unas preguntas sobre tu día. No son preguntas
 genéricas: son preguntas sobre el día que de verdad viviste, a partir de lo
 que fuiste anotando. Lo que comiste al mediodía, el entrenamiento que
 hiciste, esa llamada a un amigo. Una pregunta cada vez, nunca un
@@ -69,7 +69,7 @@ por una máquina.
 ## Google Play
 
 **Title** (30)
-Better Me: reflexión diaria
+Hayomi: reflexión diaria
 
 **Short description** (80)
 Unas preguntas amables cada noche, sobre el día que de verdad viviste.
