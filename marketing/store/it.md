@@ -3,10 +3,10 @@
 ## App Store
 
 **Name** (30)
-Hayomi: riflessione serale
+Olimei
 
 **Subtitle** (30)
-Il diario che sa com'è andata
+Riflessione serale
 
 **Promotional text** (170)
 Ogni sera qualche domanda gentile sul giorno che hai vissuto davvero. Cosa hai mangiato, quanto movimento hai fatto, chi hai visto. Niente pagina bianca, niente obblighi.
@@ -16,9 +16,9 @@ umore,gratitudine,abitudini,alimentazione,pasti,cibo,allenamento,palestra,beness
 
 **Description** (4000)
 
-Quasi tutti i giorni svaniscono. Hayomi li custodisce.
+Quasi tutti i giorni svaniscono. Olimei li custodisce.
 
-Ogni sera Hayomi ti fa qualche domanda sulla tua giornata. Non domande
+Ogni sera Olimei ti fa qualche domanda sulla tua giornata. Non domande
 generiche: domande sul giorno che hai vissuto davvero, a partire da ciò che
 hai annotato strada facendo. Il pranzo, l'allenamento, la telefonata a un
 amico. Una domanda alla volta, mai un modulo. Rispondi a ciò che vuoi,
@@ -68,7 +68,7 @@ automaticamente.
 ## Google Play
 
 **Title** (30)
-Hayomi: riflessione serale
+Olimei: riflessione serale
 
 **Short description** (80)
 Ogni sera, qualche domanda gentile sul giorno che hai vissuto davvero.

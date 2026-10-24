@@ -3,10 +3,10 @@
 ## App Store
 
 **Name** (30)
-Hayomi: reflexão diária
+Olimei
 
 **Subtitle** (30)
-Um diário que conhece seu dia
+Reflexão diária
 
 **Promotional text** (170)
 Toda noite, algumas perguntas gentis sobre o dia que você realmente viveu. O que comeu, como se mexeu, quem encontrou. Sem página em branco, e nada é obrigatório.
@@ -16,9 +16,9 @@ humor,gratidão,hábitos,alimentação,refeições,comida,treino,academia,bem-es
 
 **Description** (4000)
 
-A maioria dos dias passa e some. O Hayomi guarda cada um deles.
+A maioria dos dias passa e some. O Olimei guarda cada um deles.
 
-Toda noite, o Hayomi faz algumas perguntas sobre o seu dia. Não são
+Toda noite, o Olimei faz algumas perguntas sobre o seu dia. Não são
 perguntas genéricas: são sobre o dia que você realmente viveu, a partir do
 que você foi anotando. O almoço, o treino que você fez, aquela ligação para
 um amigo. Uma pergunta de cada vez, nunca um formulário. Responda o que
@@ -67,7 +67,7 @@ automática.
 ## Google Play
 
 **Title** (30)
-Hayomi: reflexão diária
+Olimei: reflexão diária
 
 **Short description** (80)
 Algumas perguntas gentis toda noite, sobre o dia que você realmente viveu.
@@ -86,7 +86,7 @@ Same as the App Store description above.
 - Reader-gender is avoided: "Só seu" agrees with the journal, not the
   reader; "um amigo" genders the friend.
 - "Tracker" is "app de registro".
-- "o Hayomi" / "o Beem" take the masculine article, as app names and
+- "o Olimei" / "o Beem" take the masculine article, as app names and
   characters do in Brazilian Portuguese.
 - Keywords avoid diário, dia and reflexão (in name/subtitle). "treino" is
   also the area's name; "academia" is how Brazilians say gym.
