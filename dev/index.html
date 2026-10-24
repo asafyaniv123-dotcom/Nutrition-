@@ -716,29 +716,6 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .fx-howb{flex:none;border:none;border-radius:14px;padding:8px 11px;background:var(--nu-ground,#e9e7e3);font-family:inherit;font-size:12.5px;font-weight:800;color:var(--nu-ink,#4a453f);cursor:pointer;
   box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
 .fx-head{align-items:flex-start}
-/* ── option I: rows, and the dock ── */
-.fx-rows{display:grid;gap:6px}
-.fx-rh,.fx-sr{display:grid;grid-template-columns:30px 1fr 1fr;gap:8px;align-items:center}
-.fx-rows.nop .fx-rh,.fx-rows.nop .fx-sr{grid-template-columns:30px 1fr}
-.fx-rh span{font-size:12px;font-weight:800;color:var(--nu-muted);text-align:center}
-.fx-sr-i{text-align:center;font-weight:800;color:var(--nu-muted)}
-.fx-sr-w{text-align:center;font-size:14.5px;font-weight:700;color:var(--nu-muted)}
-.fx-sr .fx-sc{flex-direction:row;justify-content:center;padding:9px 6px;font-size:15.5px;font-weight:800}
-.fx-sr .fx-sc.ok::before{content:"✓ ";color:#3f7a52;margin-inline-end:4px}
-.fx-sr .fx-sc.cur{color:var(--nu-muted);font-weight:700}
-.fx-notecard{margin:-2px 0 12px}
-.fx-dock{position:fixed;left:12px;right:12px;z-index:130;max-width:520px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;
-  --nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);--nu-shade:rgba(176,168,156,.44);--nu-shade-soft:rgba(176,168,156,.28);--nu-ink:#4a453f;--nu-muted:#6d675e;
-  background:var(--nu-ground);border-radius:22px;padding:10px 12px;box-shadow:-4px -4px 10px var(--nu-lit),0 -6px 18px rgba(120,100,80,.18)}
-.fx-dock.one{grid-template-columns:1fr}
-.fx-dock .fw-restset{flex-direction:column;align-items:stretch;gap:8px;margin:0}
-.fx-dock .rw-wrap{flex-wrap:wrap}
-.fx-dock .fw-effort{margin:0}
-.fx-dock .ew-n.on .ew-sub{display:none}
-.fx-dock .ew{height:108px}.fx-dock .ew-pad{height:36px}.fx-dock .ew-slot{top:36px}
-body.fx-docked .fw-rest{bottom:var(--fx-dock-top,200px);background:var(--nu-ground,#e9e7e3);color:var(--nu-ink,#4a453f);
-  box-shadow:-3px -3px 8px rgba(255,255,255,.95),4px 6px 16px rgba(120,100,80,.22),inset 0 -3px 0 color-mix(in srgb,var(--terra-500) 60%,transparent)}
-body.fx-docked .fw-rest-x{background:none;color:var(--terra-700)}
 .fx-sets{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:8px}
 .fx-sc{display:flex;flex-direction:column;align-items:center;gap:2px;border:none;border-radius:16px;padding:9px 4px;font-family:inherit;color:var(--nu-ink);
   background:var(--nu-ground);box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
@@ -19411,7 +19388,6 @@ addEventListener('visibilitychange',function(){if(!document.hidden)verWatch();})
    competes with the boot */
 setTimeout(verWatch,4000);
 function goHome(){
-  try{fxDockClear();}catch(e){}
   document.body.classList.remove('rf-night');
   jrnlFlush();
   rfmKeep();
@@ -19591,7 +19567,6 @@ function goRoute(){
   },60);
 }
 function enterModule(mod){
-  try{fxDockClear();}catch(e){}
   setTimeout(function(){areaIntroMaybe(mod);},450);
   try{usageNote('area',mod);}catch(e){}
   if(mod!=='endofday')document.body.classList.remove('rf-night');
@@ -20937,7 +20912,6 @@ function fitwRestore(){
 var _fitHistExercise=null; // which exercise to show progress for
 
 function renderFitness(){
-  fxDockClear();
   fitwSave();   // every mutation ends here, so this is the one place that catches them all
   /* Every view below can show a stored exercise name, and exLabel needs the
      library to turn one into the reader's language. Only the picker used to
@@ -26477,41 +26451,22 @@ function exLastHTML(ex){
 }
 /* THE SETS AS CARDS ACROSS: last time above, today below, the one you are
    on outlined. A logged set is pressed and lit sage, tapped to edit. */
-/* ── THE DOCK ── the rest and the effort, fixed above the tab bar while a
-   workout is on screen. Lives on <body>; every way off this view clears it. */
-var _fxDockEw='',_fxDockRest='';
-function fxDockClear(){document.body.classList.remove('fx-docked');var d=document.getElementById('fx-dock');if(d)d.remove();var p=document.getElementById('fx-dock-pad');if(p)p.remove();}
-function fxDockPaint(){
-  fxDockClear();
-  if(_fitView!=='workout'||!_fitWorkout||!(_fxDockRest||_fxDockEw))return;
-  var d=document.createElement('div');d.id='fx-dock';d.className='fx-dock'+(_fxDockEw?'':' one');
-  d.innerHTML='<div class="fx-dock-r">'+_fxDockRest+'</div>'+(_fxDockEw?'<div class="fx-dock-e">'+_fxDockEw+'</div>':'');
-  document.body.appendChild(d);
-  var tb=document.querySelector('.tabbar'),tbh=tb?tb.getBoundingClientRect().height:84;
-  d.style.bottom=(tbh+8)+'px';
-  document.body.classList.add('fx-docked');
-  document.body.style.setProperty('--fx-dock-top',(tbh+16+d.getBoundingClientRect().height)+'px');
-  /* room under the page for what the dock covers */
-  var pad=document.createElement('div');pad.id='fx-dock-pad';pad.style.height=(d.getBoundingClientRect().height+12)+'px';
-  var c=document.getElementById('content');if(c)c.appendChild(pad);
-}
 function exSetCardsHTML(ex,curPR){
   var prev=exLastTime(ex.name),mine=ex.sets||[],ps=(prev&&prev.sets)||[],i,h,
       n=Math.max(+ex.targetSets||0,mine.length+1,ps.length,1),cardio=isCardioEx(ex.name);
   var num=function(st){return (st.weight?nfmt(edWeightVal(st.weight))+'&times;':'')+nfmt(st.reps);};
-  /* ONE ROW PER SET: last time beside today, set against set */
-  h='<div class="fx-rows'+(prev?'':' nop')+'">';
-  h+='<div class="fx-rh"><span>'+_t('סט')+'</span>'+(prev?'<span>'+esc(agoText(prev.date))+'</span>':'')+'<span>'+_t('היום')+'</span></div>';
+  h='<div class="fx-sets" style="--n:'+Math.min(n,4)+'">';
   for(i=0;i<n;i++){
     var m=mine[i],p=ps[i],cur=(i===mine.length);
-    h+='<div class="fx-sr"><span class="fx-sr-i">'+nfmt(i+1)+'</span>'+
-       (prev?'<span class="fx-sr-w">'+(p&&!cardio?num(p):'&ndash;')+'</span>':'')+
-       '<'+(m?'button onclick="setSelOpen('+i+')"':'span')+' class="fx-sc'+(m?' ok':'')+(cur?' cur':'')+(_setSel===i?' sel':'')+'">'+
-       (m?(cardio?cardioRowHTML(m):num(m))+((curPR&&m.weight>curPR)?' &#9733;':''):(cur?_t('הבא|סט'):'&nbsp;'))+
-       '</'+(m?'button':'span')+'></div>';
+    h+='<'+(m?'button onclick="setSelOpen('+i+')"':'div')+' class="fx-sc'+(m?' ok':'')+(cur?' cur':'')+(_setSel===i?' sel':'')+'">'+
+       '<span class="fx-sc-n">'+_t('סט {n}',{n:i+1})+'</span>'+
+       (prev?'<span class="fx-sc-w">'+(p&&!cardio?num(p):'&ndash;')+'</span>':'')+
+       '<span class="fx-sc-t">'+(m?(cardio?cardioRowHTML(m):num(m))+((curPR&&m.weight>curPR)?' &#9733;':''):(cur?_t('עכשיו'):'&nbsp;'))+'</span>'+
+       '</'+(m?'button':'div')+'>';
   }
   h+='</div>';
-  if(!prev&&!mine.length)h+='<div class="fw-prev none">'+_t('הפעם הראשונה שאתה עושה את זה')+' &mdash; '+_t('מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.')+'</div>';
+  if(prev)h+='<div class="fx-sets-l">'+_t('בפעם הקודמת')+' &middot; '+agoText(prev.date)+'</div>';
+  else if(!mine.length)h+='<div class="fw-prev none">'+_t('הפעם הראשונה שאתה עושה את זה')+' &mdash; '+_t('מה שתרשום היום יהיה מה שתנסה לעבור בפעם הבאה.')+'</div>';
   return h;
 }
 function exPrevHTML(ex,curPR,edOnly){
@@ -28439,7 +28394,6 @@ function renderFitWorkout(){
     return;
   }
   var ex=w.exercises[w.currentEx];
-  _fxDockEw='';_fxDockRest='';
   var prs=loadPRs();
   var elapsed=Math.floor((Date.now()-w.startTime)/60000);
   var h='<div style="padding-bottom:20px">';
@@ -28603,7 +28557,7 @@ function renderFitWorkout(){
   var pf=exPrefill(ex);
   /* THE EFFORT BESIDE THE BOXES (24 Oct): drawn under them it read as
      optional, because it was not next to what has to be filled in. */
-  h+='<div style="margin-top:12px"><div class="fw-fields">';
+  h+='<div style="margin-top:12px"><div class="fw-duo"><div class="fw-fields fw-fields2">';
   /* what was typed wins over what was stored, for exactly as long as it has
      not been logged - see _fitTyped */
   var _boxW=(_fitTyped&&_fitTyped.w!==undefined)?_fitTyped.w
@@ -28614,8 +28568,6 @@ function renderFitWorkout(){
   /* SAVES WHAT IS BESIDE IT. The numbers are typed and the set is logged
      without the eye leaving the row - logSet re-renders and exPrefill opens
      the boxes on the same values, so pressing it again is one tap. */
-  h+='<div class="fw-addcell"><button class="fw-add'+(_fitWarm?' warm':'')+'" onclick="logSet()" '+
-     'aria-label="'+esc(_fitWarm?_t('הוסף חימום'):_t('רשום סט {n}',{n:(ex.sets||[]).length+1}))+'">+</button></div>';
   h+='</div>';
   var _sc=effortScale();
   /* A WHEEL, NOT TEN BUTTONS. Measured at 390px the ten came out about 33px
@@ -28623,9 +28575,12 @@ function renderFitWorkout(){
      the tap that missed landed on 7 or 9 and looked deliberate. One big
      target instead, and the word beside each number, because this field was
      never skipped for being small - it was skipped for being unclear. */
-  /* the wheel goes to the dock, beside the rest - see fxDockPaint */
-  _fxDockEw='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc==='rir'?'RIR':'RPE')+'</button>'+
-    effortWheelHTML('fit')+'</div>';   // i18n-exempt: a stored key
+  h+='<div class="fw-effort"><button onclick="toggleEffort()" class="fw-fl fw-fl-b">'+(_sc==='rir'?'RIR':'RPE')+'</button>';
+  h+=effortWheelHTML('fit');   // i18n-exempt: a stored key
+  h+='</div></div>';
+  /* one button, saying which set it writes */
+  h+='<button class="fw-add fw-logset'+(_fitWarm?' warm':'')+'" onclick="logSet()">'+
+     (_fitWarm?_t('הוסף חימום'):_t('רשום סט {n}',{n:(ex.sets||[]).length+1}))+'</button>';
   /* The toggle used to sit ON the button it changes, "because the decision
      is made at the moment of pressing, not before". The button moved up into
      the row with the numbers and there is no room for a word beside it, so
@@ -28640,8 +28595,7 @@ function renderFitWorkout(){
   h+='</div></div>';
   }
 
-  h+='<div class="fx-notecard">'+exNoteHTML(ex,w.currentEx)+'</div>';
-  _fxDockRest=restRowHTML();
+  h+='<div class="fw-now fx-restcard">'+restRowHTML()+exNoteHTML(ex,w.currentEx)+'</div>';
   /* and now the record, in its own card. Empty on the first set of a new
      exercise, and then there is nothing to draw and no card to draw it in. */
   if(_log.replace(/<[^>]*>/g,'').trim()||/<(input|button|img)/.test(_log))
@@ -28675,7 +28629,6 @@ h+=addExHTML();
   h+='</div>';
   document.getElementById('content').innerHTML=h;
   hydratePhotos();
-  fxDockPaint();
   effortWheelSync();restWheelSync();   // offsetTop is nothing until the node is in the document
   plateHint();   // the boxes open prefilled, so the line has something to say already
 }
