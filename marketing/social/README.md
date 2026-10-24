@@ -4,7 +4,7 @@ Decided by Asaf on 24 Oct 2026:
 
 - **One account per network, in English**, for the whole world. A language
   gets its own account only once its share of installs earns it.
-- **The face is Beem and the app.** Nobody on camera. Content is Beem, real
+- **The face is Mip (formerly Beem) and the app.** Nobody on camera. Content is Mip, real
   screen recordings of the app, and sentences.
 - **Publishing starts after the design is finished.** The handles are claimed
   now, so the name is not taken in the meantime.

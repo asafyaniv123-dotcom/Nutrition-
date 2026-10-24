@@ -78,7 +78,7 @@ function BeemPair(host, kind, ALL){
   function land(){
     phase = 'landed'; T1 = now();
     both(function(b){ b.verb('face', 'happy'); b.verb('burst', 1.6); b.verb('spin', 180); });
-    st[0].textContent = 'מחוברים! ה־Beem של דנה אצלך'; st[1].textContent = 'מחוברים! ה־Beem של אסף אצלך';
+    st[0].textContent = 'מחוברים! ה־Mip של דנה אצלך'; st[1].textContent = 'מחוברים! ה־Mip של אסף אצלך';
     st[0].className = st[1].className = 'bp-st ok';
   }
   this.tick = function(){

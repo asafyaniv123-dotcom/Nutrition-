@@ -1,5 +1,5 @@
 /* Beem's full-screen moments, the Duolingo kind (Asaf, 24.10): the whole
-   screen floods with one colour, Beem does something big in the middle, a
+   screen floods with one colour, Mip does something big in the middle, a
    headline and a line under it, and one button to carry on. What they will be
    used for is not decided; this is the one building block they will all be,
    so that adding one is a call and not a new screen.

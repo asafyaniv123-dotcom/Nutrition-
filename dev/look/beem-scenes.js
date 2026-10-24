@@ -222,7 +222,7 @@ var PROP_SCENES = [
      if (t > 6.8 && sceneOnce(s, 'done')){ b.verb('face', 'content'); b.verb('burst', 1); b.verb('nod', 1, 8); }
    }},
   {img: 'ball', at: .45, loop: 3.6, t: 'כדור',
-   p: 'הכדור נזרק אליו מהצד ומקפץ על הרצפה. Beem עוקב אחריו בעיניים, מקבל אותו בגוף ומחזיר אותו בנגיחה. ההתנגשות היא פיזיקה: הכדור נהדף מהכדור שלו.',
+   p: 'הכדור נזרק אליו מהצד ומקפץ על הרצפה. Mip עוקב אחריו בעיניים, מקבל אותו בגוף ומחזיר אותו בנגיחה. ההתנגשות היא פיזיקה: הכדור נהדף מהכדור שלו.',
    reset: function(s){ s.f = {}; var p = s.props.p; p.free = true; p.bounce = .62; p.x = s.W*1.05; p.y = s.floor - s.H*.55;
      p.vx = -s.W*.55; p.vy = -200; p.vr = -300; s.b.verb('face', 'calm'); },
    update: function(s, t, dt){
@@ -242,7 +242,7 @@ var PROP_SCENES = [
      if (dist > R + r + 20) s.hit = 0;
    }},
   {img: 'gift', at: .42, loop: 8, t: 'מתנה',
-   p: 'קופסה מופיעה לידו ורועדת פעמיים. הוא סקרן, מתקרב, ואז היא נפתחת בהבזק אור. האור עובר אליו, והוא הופך ל־Beem זהב. לאבני דרך.',
+   p: 'קופסה מופיעה לידו ורועדת פעמיים. הוא סקרן, מתקרב, ואז היא נפתחת בהבזק אור. האור עובר אליו, והוא הופך ל־Mip זהב. לאבני דרך.',
    reset: function(s){ s.f = {}; var p = s.props.p; p.free = false; p.x = s.W*.76; p.y = s.floor; p.rot = 0; p.s = 0; p.op = 1;
      s.b.fxTween({t: 'body', v: {gold: 0}, d: 0}); s.b.verb('face', 'calm'); },
    update: function(s, t){
