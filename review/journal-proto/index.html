@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap" rel="stylesheet">
+<title>היומן: שלוש דרכים להזמין לכתוב</title>
+<style>
+/* THE JOURNAL, THE APP'S CENTRE BUTTON (Asaf, 24 Oct: "it should invite
+   people to use it"). Today it is a box with a sunken frame, a search field
+   and "you have not written anything yet". Nothing says this is a notebook,
+   nothing helps the first word, nothing says the days are adding up.
+   Three ways, all working, all writing to this browser only:
+   A  a notebook: a lined page with a margin and a ribbon, the date at the
+      head; days turn like pages; a choice of paper; a spark if you want one;
+   B  a first line: one large line in a book face and nothing else, the
+      days written as a strip of pages under it;
+   C  a stack: today's page on top of the days before it, peeking; swipe or
+      tap to go back through them.
+   In all three: a quiet spark line ("if you need somewhere to start"), the
+   week's pages as lit dots, search behind a magnifier. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--g:#e9e7e3;--lit:rgba(255,255,255,.95);--sh:rgba(176,168,156,.44);--sh2:rgba(176,168,156,.28);--ink:#4a453f;--mu:#6d675e;--am:#f0a92e;--paper:#f6f2ec}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",Arial,sans-serif}
+.bar{max-width:430px;margin:0 auto;padding:12px 14px 6px;color:#efe6d8}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.sw{display:flex;gap:6px;flex-wrap:wrap}
+.sw button{border:none;border-radius:999px;padding:8px 14px;font:700 14px Assistant,sans-serif;background:#3d3732;color:#e6dccd;cursor:pointer}
+.sw button.on{background:#efe6d8;color:#2b2724}
+.wrap{display:flex;justify-content:center;padding:10px 0 30px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:34px;background:var(--g);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.45);transform-origin:50% 0}
+.scr{position:absolute;inset:0;overflow-y:auto;padding:0 16px 110px;scrollbar-width:none}.scr::-webkit-scrollbar{display:none}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:16px 0 4px}.hd h2{font-size:30px;font-weight:800;margin:0}
+.ic{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ic svg{width:19px;height:19px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round}
+.tabs{position:absolute;left:14px;right:14px;bottom:14px;height:60px;border-radius:24px;background:var(--g);display:flex;align-items:center;justify-content:space-around;font-weight:800;color:var(--mu);box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2);z-index:6}
+.tabs .mid{width:56px;height:56px;border-radius:50%;margin-top:-26px;display:flex;align-items:center;justify-content:center;background:var(--g);box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit),0 0 0 3px rgba(240,169,46,.25)}
+button{font-family:inherit}
+.raise{background:var(--g);border:none;color:var(--ink);cursor:pointer;box-shadow:-3px -3px 7px var(--lit),3px 4px 10px var(--sh2)}
+.raise:active{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.press{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.lab{font-size:12.5px;font-weight:800;color:var(--mu)}
+/* the week: seven dots, lit where a page was written */
+.wk{display:flex;align-items:center;gap:10px;margin:8px 2px 0}
+.wk .d{display:flex;gap:7px}
+.wk .d i{width:9px;height:9px;border-radius:50%;background:#d8d2ca;box-shadow:inset 1px 1px 2px var(--sh)}
+.wk .d i.on{background:var(--am);box-shadow:0 0 7px rgba(240,169,46,.7)}
+.wk .d i.now{outline:2px solid rgba(74,69,63,.35);outline-offset:2px}
+.wk span{font-size:12.5px;font-weight:700;color:var(--mu)}
+/* the spark: one line, optional, swappable */
+.spark{display:flex;align-items:center;gap:8px;margin:12px 2px 0;font-size:13.5px;color:var(--mu);font-weight:600}
+.spark b{color:var(--ink);font-weight:700}
+.spark button{border:none;background:none;color:var(--mu);font-size:16px;cursor:pointer;padding:2px 4px}
+.spark .use{font-size:12.5px;font-weight:800;border-radius:999px;padding:5px 10px}
+/* ── A: the notebook ── */
+.book{position:relative;margin-top:12px;perspective:1400px}
+.page{position:relative;border-radius:6px 18px 18px 6px;background:var(--paper);min-height:470px;padding:18px 46px 18px 52px;
+  box-shadow:-4px -4px 10px var(--lit),6px 8px 18px rgba(120,100,80,.22);transform-origin:right center;transition:transform .5s ease,opacity .5s ease}
+[dir=rtl] .page{border-radius:18px 6px 6px 18px;transform-origin:right center}
+.page.lined{background-image:repeating-linear-gradient(180deg,transparent 0 31px,rgba(140,160,190,.28) 31px 32px);background-position:0 58px}
+.page.dots{background-image:radial-gradient(circle,rgba(120,110,100,.28) 1.2px,transparent 1.4px);background-size:22px 22px;background-position:6px 52px}
+.page::after{content:"";position:absolute;inset-block:0;inset-inline-start:34px;width:1px;background:rgba(224,138,114,.35)}
+.page.plain::after,.page.dots::after{display:none}
+.page.turn{transform:rotateY(-100deg);opacity:0}
+.page.back{transform:rotateY(70deg);opacity:0;transition:none}
+.ph-date{font-family:"Frank Ruhl Libre",serif;font-size:19px;font-weight:700;margin-bottom:6px;display:flex;justify-content:flex-start;gap:12px;align-items:baseline}
+.ph-date small{font-family:Assistant;font-size:12.5px;color:var(--mu);font-weight:700}
+.rib{position:absolute;top:-4px;inset-inline-end:26px;width:12px;height:70px;background:var(--am);border-radius:0 0 2px 2px;box-shadow:0 0 8px rgba(240,169,46,.5)}
+.rib::after{content:"";position:absolute;bottom:-7px;left:0;border-left:6px solid var(--am);border-right:6px solid var(--am);border-bottom:7px solid transparent}
+.page textarea{width:100%;min-height:400px;border:none;background:none;outline:none;resize:none;font-family:"Frank Ruhl Libre",serif;font-size:18px;line-height:32px;color:var(--ink);padding:0;margin-top:-2px}
+.page textarea::placeholder{color:#a59c90}
+.turnrow{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.turnrow button{border-radius:999px;padding:9px 14px;font-size:13.5px;font-weight:800}
+.turnrow button[disabled]{opacity:.4}
+.papers{display:flex;gap:8px}
+.papers button{width:38px;height:38px;border-radius:12px;border:none;cursor:pointer;background:var(--paper);box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.papers button.on{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.papers .lined{background-image:repeating-linear-gradient(180deg,transparent 0 7px,rgba(140,160,190,.45) 7px 8px)}
+.papers .dots{background-image:radial-gradient(circle,rgba(120,110,100,.5) 1px,transparent 1.2px);background-size:7px 7px}
+/* ── B: a first line ── */
+.fl{margin-top:22px}
+.fl textarea{width:100%;min-height:300px;border:none;background:none;outline:none;resize:none;font-family:"Frank Ruhl Libre",serif;font-size:26px;line-height:1.45;color:var(--ink);padding:0}
+.fl textarea::placeholder{color:#a59c90}
+.fl .dt{font-size:13px;font-weight:800;color:var(--mu);margin-bottom:8px}
+.strip{display:flex;gap:10px;overflow-x:auto;padding:12px 2px 10px;margin-top:16px;scrollbar-width:none}.strip::-webkit-scrollbar{display:none}
+.mp{flex:none;width:86px;height:112px;border-radius:4px 10px 10px 4px;background:var(--paper);padding:9px 9px;cursor:pointer;text-align:start;border:none;
+  box-shadow:-2px -2px 6px var(--lit),3px 4px 10px rgba(120,100,80,.18);font-family:"Frank Ruhl Libre",serif;font-size:10.5px;line-height:1.35;color:var(--ink);overflow:hidden}
+.mp b{display:block;font-family:Assistant;font-size:11px;font-weight:800;color:var(--mu);margin-bottom:4px}
+.mp.on{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+/* ── C: the stack ── */
+.stack{position:relative;margin-top:14px;height:520px}
+.card{position:absolute;inset-inline:0;top:0;height:470px;border-radius:20px;background:var(--paper);padding:18px;transition:transform .35s ease,opacity .35s ease;
+  box-shadow:-4px -4px 10px var(--lit),6px 8px 18px rgba(120,100,80,.2)}
+.card .ph-date{font-size:18px}
+.card textarea{width:100%;height:390px;border:none;background:none;outline:none;resize:none;font-family:"Frank Ruhl Libre",serif;font-size:18px;line-height:1.6;color:var(--ink);padding:0}
+.card textarea::placeholder{color:#a59c90}
+.card.p1{transform:translateY(26px) scale(.95);opacity:.85;pointer-events:none}
+.card.p2{transform:translateY(50px) scale(.9);opacity:.6;pointer-events:none}
+.card.gone{transform:translateX(-120%) rotate(-8deg);opacity:0;pointer-events:none}
+.card .peek{font-family:"Frank Ruhl Libre",serif;font-size:15px;color:var(--mu);line-height:1.5}
+.saved{position:absolute;bottom:12px;inset-inline-start:16px;font-size:11.5px;font-weight:700;color:var(--mu);opacity:0;transition:opacity .3s}
+/* search sheet */
+.sheet{position:absolute;inset:0;z-index:8;background:rgba(74,67,64,.22);display:none;align-items:flex-end}.sheet.on{display:flex}
+.sheet .in{width:100%;max-height:80%;overflow:auto;background:var(--g);border-radius:26px 26px 0 0;padding:18px 16px 28px;box-shadow:0 -10px 30px rgba(74,67,64,.18)}
+.sheet input{width:100%;border:none;border-radius:14px;padding:12px;font:600 15px Assistant;color:var(--ink);background:var(--g);outline:none;margin-bottom:10px}
+.hit{display:block;width:100%;text-align:start;border:none;border-radius:14px;padding:11px 12px;margin-top:8px;cursor:pointer;font-family:"Frank Ruhl Libre",serif;font-size:14.5px;color:var(--ink)}
+.hit b{display:block;font-family:Assistant;font-size:11.5px;font-weight:800;color:var(--mu)}
+mark{background:rgba(240,169,46,.35);color:inherit;border-radius:3px}
+.v{display:none}.v.on{display:block}
+.notes{max-width:430px;margin:0 auto 40px;padding:0 18px;color:#e6dccd;font-size:14.5px;line-height:1.65}
+.notes h2{font-size:17px;margin:4px 0 6px}.notes li{margin-bottom:6px}
+</style></head><body>
+<div class="bar"><h1>היומן: שלוש דרכים להזמין לכתוב</h1>
+<p>היום היומן הוא תיבה ושדה חיפוש. כאן שלוש דרכים שבהן הוא נראה ומרגיש כמו מחברת שרוצים לפתוח. הכול עובד: כתוב, עבור בין ימים, חפש.</p>
+<div class="sw" id="sw"><button class="on" data-v="a">א׳ · מחברת</button><button data-v="b">ב׳ · שורה ראשונה</button><button data-v="c">ג׳ · ערימת דפים</button></div></div>
+<div class="wrap"><div class="ph" id="ph">
+  <div class="scr">
+    <div class="hd"><h2>יומן</h2><button class="raise ic" onclick="srch()" aria-label="חיפוש"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg></button></div>
+    <div class="wk"><div class="d" id="wk"></div><span id="wkn"></span></div>
+    <div class="spark" id="spark"></div>
+    <div class="v on" id="v-a"></div>
+    <div class="v" id="v-b"></div>
+    <div class="v" id="v-c"></div>
+  </div>
+  <div class="sheet" id="sh" onclick="if(event.target===this)this.classList.remove('on')"><div class="in"><input id="q" placeholder="חפש מילה בכל מה שכתבת…" oninput="paintHits()"><div id="hits"></div></div></div>
+  <div class="tabs"><span>Better</span><span class="mid"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#4a453f;stroke-width:1.8"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><span>Me</span></div>
+</div></div>
+<div class="notes">
+  <h2>מה ההבדל</h2>
+  <ul>
+    <li><b>א׳ · מחברת:</b> דף נייר אמיתי עם שורות, שוליים וסימנייה, והתאריך בראשו בגופן ספרי. "‹ אתמול" הופך את הדף כמו עמוד במחברת. בתחתית בוחרים נייר: שורות, נקודות או חלק.</li>
+    <li><b>ב׳ · שורה ראשונה:</b> אין מסגרת בכלל. שורה גדולה אחת שמחכה למילה הראשונה, ומתחתיה הימים שכתבת כדפים קטנים שאפשר לפתוח.</li>
+    <li><b>ג׳ · ערימת דפים:</b> הדף של היום מונח מעל הדפים של הימים הקודמים, שמציצים מאחוריו. "‹ אתמול" מעיף את הדף העליון הצידה.</li>
+    <li><b>בשלושתן:</b> שבע נקודות של השבוע, שנדלקות ביום שכתבת בו. שורת "אם צריך מאיפה להתחיל" שקטה, שאפשר להחליף (↻) או להכניס לדף. החיפוש עבר מאחורי זכוכית מגדלת. והלחצן המרכזי בסרגל מקבל אור קטן.</li>
+  </ul>
+</div>
+<script>
+function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+var $=function(i){return document.getElementById(i);};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+var DN=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],MN=['בינואר','בפברואר','במרץ','באפריל','במאי','ביוני','ביולי','באוגוסט','בספטמבר','באוקטובר','בנובמבר','בדצמבר'];
+var K='jrnl_proto_';
+function ds(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+var TODAY=new Date();TODAY.setHours(12,0,0,0);
+function shift(n){var d=new Date(TODAY);d.setDate(d.getDate()+n);return d;}
+if(!localStorage.getItem('jrnl_proto_seeded')){localStorage.setItem('jrnl_proto_seeded','1');
+  localStorage.setItem(K+ds(shift(-1)),'יום ארוך במשרד. בערב יצאתי להליכה עם נועה, ודיברנו על מה שבאמת חשוב לנו השנה.');
+  localStorage.setItem(K+ds(shift(-3)),'ישנתי רע. ובכל זאת, האימון של הבוקר הציל את היום.');}
+function get(d){return localStorage.getItem(K+ds(d))||'';}
+function put(d,v){if(v.trim())localStorage.setItem(K+ds(d),v);else localStorage.removeItem(K+ds(d));paintWeek();}
+var cur=0,paper=localStorage.getItem('jrnl_proto_paper')||'lined';
+var SPARKS=['מה הצחיק אותך היום?','מה היה הרגע הכי טוב בבוקר?','על מה אתה מודה היום?','מה למדת היום על עצמך?','מה היית רוצה לזכור מהיום הזה בעוד שנה?','מה מעסיק אותך עכשיו?'],si=0;
+function label(n){var d=shift(n);return n===0?'היום':n===-1?'אתמול':'יום '+DN[d.getDay()];}
+function longDate(n){var d=shift(n);return d.getDate()+' '+MN[d.getMonth()];}
+function paintWeek(){var h='',n=0,dow=TODAY.getDay(),i;for(i=0;i<7;i++){var d=shift(i-dow),w=!!get(d);if(w&&i<=dow)n++;h+='<i class="'+(w?'on':'')+(i===dow?' now':'')+'"></i>';}
+  $('wk').innerHTML=h;$('wkn').textContent=n?'השבוע כתבת '+(n===1?'יום אחד':n+' ימים'):'השבוע עוד לא כתבת';}
+function paintSpark(){$('spark').innerHTML=cur===0?'<span>אם צריך מאיפה להתחיל: <b>'+SPARKS[si]+'</b></span><button onclick="si=(si+1)%SPARKS.length;paintSpark()" aria-label="אחר">↻</button><button class="raise use" onclick="useSpark()">לדף</button>':'';}
+function useSpark(){var t=document.querySelector('.v.on textarea');if(!t)return;if(!t.value.trim())t.value=SPARKS[si]+'\n';else t.value+='\n'+SPARKS[si]+'\n';t.focus();put(shift(cur),t.value);}
+function ta(cls,ph){return '<textarea class="'+cls+'" placeholder="'+ph+'" oninput="put(shift(cur),this.value)">'+esc(get(shift(cur)))+'</textarea>';}
+function ph(){return cur===0?'מה עובר לך בראש היום?':'מה היה ביום הזה?';}
+/* A */
+function paintA(anim){var h='<div class="book"><div class="page '+paper+(anim?' back':'')+'" id="pg"><div class="rib"></div>'+
+  '<div class="ph-date"><span>'+label(cur)+'</span><small>'+longDate(cur)+'</small></div>'+ta('',ph())+'</div></div>'+
+  '<div class="turnrow"><button class="raise" onclick="go(-1)">‹ '+(cur===0?'אתמול':'יום קודם')+'</button>'+
+  '<div class="papers">'+['lined','dots','plain'].map(function(p){return '<button class="'+p+(paper===p?' on':'')+'" onclick="paper=\''+p+'\';localStorage.setItem(\'jrnl_proto_paper\',paper);paintA()" aria-label="'+p+'"></button>';}).join('')+'</div>'+
+  '<button class="raise" onclick="go(1)"'+(cur>=0?' disabled':'')+'>הבא ›</button></div>';
+  $('v-a').innerHTML=h;if(anim)requestAnimationFrame(function(){requestAnimationFrame(function(){$('pg').classList.remove('back');});});}
+/* B */
+function paintB(){var h='<div class="fl"><div class="dt">'+label(cur)+' · '+longDate(cur)+'</div>'+ta('',ph())+'</div><div class="lab">הדפים שלך</div><div class="strip">';
+  for(var n=0;n>-14;n--){var t=get(shift(n));if(!t&&n!==0)continue;h+='<button class="mp'+(n===cur?' on':'')+'" onclick="cur='+n+';paint()"><b>'+label(n)+'</b>'+esc(t.slice(0,70)||'…')+'</button>';}
+  $('v-b').innerHTML=h+'</div>';}
+/* C */
+function paintC(){var h='<div class="stack">';
+  for(var k=2;k>=0;k--){var n=cur-k,t=get(shift(n));
+    h+='<div class="card'+(k===1?' p1':k===2?' p2':'')+'" id="cd'+k+'" style="z-index:'+(3-k)+'"><div class="ph-date"><span>'+label(n)+'</span><small>'+longDate(n)+'</small></div>'+
+      (k===0?ta('',ph()):'<div class="peek">'+esc(t.slice(0,80))+'</div>')+'</div>';}
+  h+='</div><div class="turnrow"><button class="raise" onclick="flip()">‹ '+(cur===0?'אתמול':'יום קודם')+'</button><button class="raise" onclick="go(1)"'+(cur>=0?' disabled':'')+'>הבא ›</button></div>';
+  $('v-c').innerHTML=h;}
+function flip(){var c=$('cd0');if(c){c.classList.add('gone');setTimeout(function(){go(-1);},300);}else go(-1);}
+function go(d){var n=cur+d;if(n>0)return;var a=$('pg');
+  if(d<0&&a&&$('v-a').classList.contains('on')){a.classList.add('turn');setTimeout(function(){cur=n;paint(true);},420);return;}
+  cur=n;paint(d<0);}
+function paint(anim){paintWeek();paintSpark();paintA(anim);paintB();paintC();}
+function srch(){$('sh').classList.add('on');$('q').value='';paintHits();setTimeout(function(){$('q').focus();},50);}
+function paintHits(){var q=$('q').value.trim(),h='',n;for(n=0;n>-120;n--){var t=get(shift(n));if(!t)continue;var at=q?t.indexOf(q):0;if(q&&at<0)continue;
+  var sn=q?esc(t.slice(Math.max(0,at-30),at))+'<mark>'+esc(q)+'</mark>'+esc(t.slice(at+q.length,at+q.length+50)):esc(t.slice(0,80));
+  h+='<button class="hit press" onclick="cur='+n+';$(\'sh\').classList.remove(\'on\');paint()"><b>'+label(n)+' · '+longDate(n)+'</b>'+sn+'</button>';}
+  $('hits').innerHTML=h||'<div class="lab" style="padding:8px">'+(q?'לא נמצא':'עוד לא כתבת כלום')+'</div>';}
+$('sw').onclick=function(e){var v=e.target.dataset.v;if(!v)return;[].forEach.call(this.children,function(b){b.classList.toggle('on',b.dataset.v===v);});['a','b','c'].forEach(function(x){$('v-'+x).classList.toggle('on',x===v);});};
+paint();
+</script>
+</body></html>
