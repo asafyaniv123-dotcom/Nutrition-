@@ -54,5 +54,13 @@ j = await post({ message: 'טעית, זה לא יכול להיות', logged: [Ob
 ok(j.dispute && j.dispute.outcome === 'confirmed' && j.action !== 'update', 'right all along: it stands', JSON.stringify(j.dispute));
 ok(/שקית|עמודה|72|0\.5|חצי/.test(j.message), 'and it explains where the number comes from', flat(j.message));
 
+// 6. short and to the point: no working, no thinking aloud (Asaf: "don't let them drag on")
+const brief = (m) => !/[×≈=]|\d\s*[x*]\s*\d|רגע|בואי נדייק|בוא נדייק|בעצם/.test(m) && flat(m).length <= 260;
+j = await post({ message: 'אכלתי חצי', images: [img(TWO)] });
+ok(brief(j.message), 'logging from a label: short, no arithmetic, no second thoughts', flat(j.message).length + ' chars | ' + flat(j.message));
+j = await post({ message: 'טעית, זה לא יכול להיות', logged: [Object.assign({}, WRONG, { calories: 162 })],
+  dispute: { id: 'lb1', said: 'אכלתי חצי', label: LABEL, image: img(TWO) } });
+ok(brief(j.message), 'a dispute that stands: one short line', flat(j.message).length + ' chars | ' + flat(j.message));
+
 console.log('\n' + (fails.length ? fails.length + ' FAILED' : 'all right'));
 process.exit(fails.length ? 1 : 0);
