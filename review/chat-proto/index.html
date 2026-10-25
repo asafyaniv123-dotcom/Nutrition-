@@ -42,7 +42,21 @@ button{font-family:inherit}
 /* the empty state */
 .empty{position:absolute;left:0;right:0;top:120px;text-align:center;transition:opacity .3s,transform .4s}
 .empty.gone{opacity:0;transform:translateY(-20px);pointer-events:none}
-.mip{width:150px;height:150px;margin:0 auto}
+.sign{position:relative;width:150px;height:150px;margin:0 auto}
+.mip{position:absolute;inset:0;transition:opacity .55s ease,transform .7s cubic-bezier(.22,.61,.36,1),filter .55s ease}
+.picked .mip{opacity:0;transform:scale(.86) translateY(-6px);filter:blur(6px)}
+.adisc{position:absolute;left:50%;top:50%;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;display:grid;place-items:center;
+  opacity:0;transform:scale(.9);filter:blur(4px);transition:opacity .6s ease .25s,transform .8s cubic-bezier(.22,.61,.36,1) .2s,filter .6s ease .25s;
+  background:rgba(255,255,255,.46);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.95),0 1px 2px rgba(110,92,72,.05),0 14px 34px -8px rgba(110,92,72,.16)}
+.adisc::before{content:"";position:absolute;inset:14px;z-index:-1;border-radius:50%;filter:blur(18px);background:color-mix(in srgb,var(--c) 34%,transparent)}
+.adisc svg{width:40px;height:40px;fill:none;stroke:var(--c);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.picked .adisc{opacity:1;transform:none;filter:none}
+.hello,.hello2{transition:opacity .35s ease}
+.swap .hello,.swap .hello2{opacity:0}
+.it .av.area{border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.46);
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.95),0 4px 10px -3px rgba(110,92,72,.14)}
+.it .av.area svg{width:18px;height:18px;fill:none;stroke:var(--c);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .hello{font-size:28px;font-weight:800;margin:16px 0 4px;letter-spacing:-.3px}
 .hello2{font-size:16px;color:var(--mu);margin:0}
 /* the talk */
@@ -80,6 +94,11 @@ button{font-family:inherit}
 .ar svg,.logged .ic svg{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .ar svg{width:19px;height:19px;flex:none;color:var(--c);filter:drop-shadow(0 0 5px var(--c))}
 .ar.hide{opacity:0;pointer-events:none}
+/* the others leave softly, one after another, then the row folds away */
+.areas{transition:max-height .55s cubic-bezier(.4,0,.2,1),padding .55s cubic-bezier(.4,0,.2,1);max-height:240px;overflow:hidden}
+.ph .ar.leave{opacity:0;transform:translateY(8px) scale(.94);filter:blur(4px);pointer-events:none;
+  transition:opacity .42s ease var(--d,0s),transform .5s cubic-bezier(.4,0,.2,1) var(--d,0s),filter .42s ease var(--d,0s)}
+.areas.folded{max-height:0;padding-top:0;padding-bottom:0}
 .ar.top{pointer-events:auto}
 .ar.top::after{content:"×";margin-inline-start:4px;font-size:17px;color:var(--mu);font-weight:700}
 
@@ -131,7 +150,7 @@ button{font-family:inherit}
     <button id="mChat" class="on" onclick="mode('chat')" aria-label="צ׳אט"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 18.5 4 21l3.6-1.4A8.5 8.5 0 1 0 5 18.5Z"/></svg></button></div>
   <div class="chat" id="chat">
     <div class="head" id="head"></div>
-    <div class="empty" id="empty"><div class="mip" id="mip"></div><div class="hello" id="hello"></div><p class="hello2" id="hello2">על מה נדבר?</p></div>
+    <div class="empty" id="empty"><div class="sign"><div class="mip" id="mip"></div><div class="adisc" id="adisc"></div></div><div class="hello" id="hello"></div><p class="hello2" id="hello2">על מה נדבר?</p></div>
     <div class="talk" id="talk"></div>
     <div class="dock" id="dock"><div class="sug" id="sug"></div><div class="areas" id="areas"></div>
       <div class="row"><input class="in" id="in" placeholder="כתוב, או ספר מה קרה…" onkeydown="if(event.key==='Enter')send()">
@@ -173,17 +192,37 @@ function choose(k,el){
   top.style.transform='translate('+((r0.left-r1.left)/sc)+'px,'+((r0.top-r1.top)/sc)+'px) scale('+(r0.width/r1.width)+','+(r0.height/r1.height)+')';
   top.style.transformOrigin='0 0';
   el.classList.add('hide');
-  requestAnimationFrame(function(){requestAnimationFrame(function(){top.style.transition='';top.style.transform='';});});
-  cur=k;var a=area(k);ph.classList.add('picked');
-  hello.textContent=a[2];hello2.textContent='מדבר עם '+a[1];
-  [].forEach.call(areas.children,function(b){if(b!==el)b.classList.add('hide');});
-  areas.style.display='none';
+  /* one uniform scale on the way up: the glass never stretches */
+  var k0=r0.height/r1.height;
+  top.style.transform='translate('+((r0.left+(r0.width-r1.width*k0)/2-r1.left)/sc)+'px,'+((r0.top-r1.top)/sc)+'px) scale('+k0+')';
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    top.style.transition='transform .85s cubic-bezier(.22,.61,.36,1),opacity .5s ease';top.style.transform='';});});
+  cur=k;var a=area(k);
+  adisc.style.setProperty('--c',COL[k]);adisc.innerHTML=ICON[k]||'';
+  /* the words change while they are out of sight */
+  empty.classList.add('swap');
+  setTimeout(function(){hello.textContent=a[2];hello2.textContent='מדבר עם '+a[1];empty.classList.remove('swap');},380);
+  ph.classList.add('picked');
+  /* the others leave from the chosen one outwards */
+  var list=[].slice.call(areas.children),at=list.indexOf(el);
+  list.forEach(function(b,i){if(b===el)return;b.style.setProperty('--d',(Math.abs(i-at)*0.045)+'s');b.classList.add('leave');});
+  clearTimeout(window._fold);window._fold=setTimeout(function(){if(cur)areas.classList.add('folded');sizeDock();},430);
+  setTimeout(sizeDock,1000);
   if(started)note('מעכשיו מדברים על '+a[1]+'.');
   drawSug();
 }
 function back(silent){
-  head.innerHTML='';areas.style.display='';[].forEach.call(areas.children,function(b){b.classList.remove('hide');});
-  ph.classList.remove('picked');cur=null;hello.textContent=greet()+', אסף';hello2.textContent='על מה נדבר?';
+  var top=head.firstChild;
+  if(top&&!silent){top.style.transition='opacity .4s ease,transform .5s ease';top.style.opacity='0';top.style.transform='translateY(-6px) scale(.96)';
+    setTimeout(function(){if(!cur)head.innerHTML='';},420);}
+  else head.innerHTML='';
+  clearTimeout(window._fold);areas.classList.remove('folded');
+  /* the row opens first, then they return, in reverse order */
+  var list=[].slice.call(areas.children),n=list.length;
+  setTimeout(function(){list.forEach(function(b,i){b.classList.remove('hide');b.style.setProperty('--d',((n-1-i)*0.035)+'s');b.classList.remove('leave');});},silent?0:220);
+  empty.classList.add('swap');
+  setTimeout(function(){hello.textContent=greet()+', אסף';hello2.textContent='על מה נדבר?';empty.classList.remove('swap');},silent?0:300);
+  ph.classList.remove('picked');cur=null;setTimeout(sizeDock,700);
   if(started&&!silent)note('חזרנו לשיחה הכללית.');drawSug();
 }
 function note(t){var d=document.createElement('div');d.style.cssText='align-self:center;font-size:13px;color:var(--mu);font-weight:700';d.textContent=t;talk.appendChild(d);talk.scrollTop=1e5;}
@@ -210,12 +249,12 @@ var REPLY={nutrition:['רשמתי. חביתה ושתי פרוסות לחם, בע
 function say(t){
   if(!started){started=true;empty.classList.add('gone');drawSug();}
   var m=document.createElement('div');m.className='me';m.textContent=t;talk.appendChild(m);
-  var w=document.createElement('div');w.className='it';w.innerHTML='<i class="av"></i><div class="dots"><i></i><i></i><i></i></div>';talk.appendChild(w);talk.scrollTop=1e5;
+  var w=document.createElement('div');w.className='it';w.innerHTML=(cur?'<i class="av area" style="--c:'+COL[cur]+'">'+(ICON[cur]||'')+'</i>':'<i class="av"></i>')+'<div class="dots"><i></i><i></i><i></i></div>';talk.appendChild(w);talk.scrollTop=1e5;
   setTimeout(function(){
     var k=route(t),r=REPLY[k];
     if(!r){w.innerHTML='<i class="av"></i><div>אני כאן. ספר עוד, או בחר אזור למטה.</div>';return;}
     var a=area(k);
-    w.innerHTML='<i class="av"></i><div>'+r[0]+'<div class="logged"><span class="ic" style="color:'+COL[k]+'">'+(ICON[k]||'')+'</span><div>'+r[1]+'<small>נשמר ב'+a[1]+' · '+r[2]+'</small></div></div></div>';
+    w.innerHTML=(cur?'<i class="av area" style="--c:'+COL[cur]+'">'+(ICON[cur]||'')+'</i>':'<i class="av"></i>')+'<div>'+r[0]+'<div class="logged"><span class="ic" style="color:'+COL[k]+'">'+(ICON[k]||'')+'</span><div>'+r[1]+'<small>נשמר ב'+a[1]+' · '+r[2]+'</small></div></div></div>';
     talk.scrollTop=1e5;
   },900);
 }
