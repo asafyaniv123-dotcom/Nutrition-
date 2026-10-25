@@ -61,6 +61,7 @@ button{font-family:inherit}
 .hello2{font-size:16px;color:var(--mu);margin:0}
 /* the talk */
 .talk{transition:opacity .3s ease}
+.ph bdi{white-space:nowrap}
 .talk.out{opacity:0}
 .talk{position:absolute;left:0;right:0;top:76px;bottom:var(--dock,190px);overflow-y:auto;padding:8px 18px 14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:none}
 .talk::-webkit-scrollbar{display:none}
@@ -88,6 +89,9 @@ button{font-family:inherit}
 .rb:active{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
 .rb svg{width:21px;height:21px}
 .sug{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 16px 12px}
+.sug.one{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
+.sug.one::-webkit-scrollbar{display:none}
+.sug.one button{flex:none}
 .sug button{border:none;border-radius:999px;padding:8px 13px;font:700 13.5px Assistant,sans-serif;color:var(--mu);background:transparent;cursor:pointer;
   box-shadow:inset 1.5px 2px 5px var(--sh2),inset -1.5px -1.5px 4px var(--lit)}
 /* an area: icon + name */
@@ -161,14 +165,17 @@ button{font-family:inherit}
   </div>
 </div></div>
 <script>
-var AREAS=[['nutrition','תזונה','מה אכלת היום?',['אכלתי חביתה ושתי פרוסות','כמה חלבון נשאר לי?','שתיתי 2 כוסות מים']],
-  ['fitness','כושר','מה עשית היום?',['3 סטים סקוואט 60 קילו','הלכתי 40 דקות','מה האימון הבא?']],
-  ['planning','תכנון זמן','מה צריך לעשות?',['לזכור להתקשר לאמא','פגישה מחר ב-10','מה יש לי היום?']],
-  ['people','האנשים שלי','על מי נדבר?',['דיברתי עם נועה','למי לא התקשרתי מזמן?']],
-  ['hobbies','תחביבים','במה התעסקת?',['ניגנתי חצי שעה','קראתי 20 עמודים']],
-  ['closet','הארון שלי','מה ללבוש?',['מה ללבוש היום?','קניתי חולצה לבנה']],
-  ['insights','תובנות','מה על הלב?',['משהו שלמדתי היום','איך היה השבוע?']],
-  ['endofday','סיום יום','איך היה היום?',['בוא נסכם את היום']]];
+/* [key, name, question when empty, suggestions] - each suggestion is
+   something the area really does, and has its own answer in SCRIPT */
+var AREAS=[['nutrition','תזונה','מה אכלת היום?',['אכלתי חביתה משתי ביצים ושתי פרוסות','כמה חלבון נשאר לי היום?','שתיתי 2 כוסות מים','שקלתי 72.4']],
+  ['fitness','כושר','מה עשית היום?',['סקוואט 3×8 ב-60 קילו','מה האימון הבא שלי?','בנה לי אימון של 30 דקות','הלכתי היום 6,000 צעדים']],
+  ['planning','תכנון זמן','מה צריך לעשות?',['מחר ב-10 רופא שיניים','כל רביעי 9–10 מדיטציה','לזכור להתקשר לאמא','מה יש לי היום?']],
+  ['people','האנשים שלי','על מי נדבר?',['דיברתי עם נועה בטלפון','נועה התחילה עבודה חדשה','למי לא התקשרתי מזמן?']],
+  ['hobbies','תחביבים','במה התעסקת היום?',['ניגנתי גיטרה חצי שעה','קראתי 20 עמודים','כמה ניגנתי השבוע?']],
+  ['closet','הארון שלי','מה נלבש?',['תרכיב לי לוק להיום','לבשתי היום את הלוק הכחול','מה לא לבשתי הרבה זמן?']],
+  ['insights','תובנות','על מה תרצה לכתוב?',['תן לי שאלה לכתוב עליה','למדתי היום שאני צריך יותר שקט בבוקר','מה כתבתי בחודש האחרון?']],
+  ['endofday','סיום יום','איך היה היום?',['בוא נסכם את היום','הרגע הכי טוב היום: ארוחת ערב עם המשפחה','איך הרצף שלי?']]];
+var GENERAL=['אכלתי חביתה משתי ביצים ושתי פרוסות','מחר ב-10 רופא שיניים','נועה התחילה עבודה חדשה','שתיתי 2 כוסות מים'];
 var ICON={},COL={};
 var ph=document.getElementById('ph'),cur=null,started=false,beem=null;
 function pick(v){ph.className='ph '+v;bA.classList.toggle('on',v==='A');bB.classList.toggle('on',v==='B');reset();}
@@ -179,8 +186,11 @@ function drawAreas(){
   areas.innerHTML=AREAS.map(function(a){return '<button class="ar" data-k="'+a[0]+'" style="--c:'+(COL[a[0]]||'#999')+'" onclick="choose(\''+a[0]+'\',this)">'+(ICON[a[0]]||'')+'<span>'+a[1]+'</span></button>';}).join('');
   sizeDock();
 }
-function drawSug(){var list=cur?area(cur)[3]:['אכלתי חביתה ושתי פרוסות','לזכור להתקשר לאמא','איך היה היום שלי?'];
-  sug.innerHTML=started?'':list.map(function(s){return '<button onclick="say(this.textContent)">'+s+'</button>';}).join('');sizeDock();}
+function drawSug(){
+  var list=cur?area(cur)[3]:GENERAL,asked=[].map.call(talk.querySelectorAll('[data-q]'),function(e){return e.dataset.q;});
+  if(started)list=list.filter(function(q){return asked.indexOf(q)<0;});
+  sug.classList.toggle('one',started);
+  sug.innerHTML=list.map(function(q){return '<button data-say="'+q+'" onclick="say(this.dataset.say)">'+ltr(q)+'</button>';}).join('');sizeDock();}
 function sizeDock(){requestAnimationFrame(function(){talk.style.setProperty('--dock','');ph.style.setProperty('--dock',dock.offsetHeight+'px');});}
 /* choose: the pill slides from its place to the top centre (FLIP) */
 function choose(k,el){
@@ -241,34 +251,63 @@ function thread(k){
 }
 function note(t){var d=document.createElement('div');d.style.cssText='align-self:center;font-size:13px;color:var(--mu);font-weight:700';d.textContent=t;talk.appendChild(d);talk.scrollTop=1e5;}
 function send(){var v=document.getElementById('in').value.trim();if(!v)return;document.getElementById('in').value='';say(v);}
-/* scripted answers: what was said, and where it landed */
-function route(t){
-  if(/אכל|שתי|חלבון|ארוח|פרוס|מים/.test(t))return 'nutrition';
-  if(/סט|סקוואט|אימון|הלכתי|רצתי|קילו/.test(t))return 'fitness';
-  if(/לזכור|פגיש|מחר|להתקשר|לעשות/.test(t))return 'planning';
-  if(/דיברתי|נועה|התקשרתי/.test(t))return 'people';
-  if(/ניגנתי|קראתי|עמודים/.test(t))return 'hobbies';
-  if(/ללבוש|חולצה/.test(t))return 'closet';
-  if(/לסכם|היה היום|השבוע/.test(t))return 'endofday';
-  return cur||'';
+/* scripted answers, one per question: the words, where it landed, and a
+   card - [title, detail, saved?]. In the general chat the answer says which
+   area took it. */
+var SCRIPT={
+  'אכלתי חביתה משתי ביצים ושתי פרוסות':['nutrition','רשמתי בארוחת בוקר: חביתה משתי ביצים (עם כפית שמן) ושתי פרוסות לחם מלא. יחד 330 קק״ל ו-20 גרם חלבון.',['ארוחת בוקר · 330 קק״ל','חלבון 20 · פחמימה 27 · שומן 16',1]],
+  'כמה חלבון נשאר לי היום?':['nutrition','אכלת עד עכשיו 64 גרם מתוך 120. נשארו 56 - למשל 150 גרם חזה עוף מבושל (46 גרם) ויוגורט חלבון (10 גרם).',['חלבון היום','64 מתוך 120 ג׳ · נשארו 56',0]],
+  'שתיתי 2 כוסות מים':['nutrition','הוספתי 500 מ״ל. היום 1.5 ליטר מתוך 2.5.',['מים · +500 מ״ל','1.5 מתוך 2.5 ליטר',1]],
+  'שקלתי 72.4':['nutrition','רשמתי שקילה: 72.4 ק״ג, 0.3 פחות מהשקילה הקודמת. המגמה בשבועיים האחרונים יורדת לאט, כ-0.2 ק״ג בשבוע.',['שקילה · 72.4 ק״ג','‎−0.3 מהקודמת · מגמה יורדת',1]],
+  'סקוואט 3×8 ב-60 קילו':['fitness','רשמתי: סקוואט, 3 סטים של 8 ב-60 ק״ג. נפח 1,440 ק״ג. השיא הקודם שלך היה 57.5 - זה שיא חדש.',['סקוואט · 3×8 · 60 ק״ג','נפח 1,440 ק״ג · שיא חדש',1]],
+  'מה האימון הבא שלי?':['fitness','לפי התוכנית שלך (Full Body, שלוש פעמים בשבוע) הבא הוא אימון B ביום שלישי: לחיצת חזה, חתירה בכבל, מכרעים ופלאנק. בערך 45 דקות.',['אימון B · יום שלישי','4 תרגילים · כ-45 דקות',0]],
+  'בנה לי אימון של 30 דקות':['fitness','בניתי אימון של 30 דקות לפי מה שחסר לך השבוע - גב ורגליים: דדליפט רומני 3×10, חתירה בכבל 3×12, לאנג׳ים 3×10 לכל רגל. מנוחה של דקה בין סטים.',['אימון שנבנה לך · 30 דק׳','גב ורגליים · 3 תרגילים',1]],
+  'הלכתי היום 6,000 צעדים':['fitness','רשמתי 6,000 צעדים להיום.',['צעדים · 6,000','היום',1]],
+  'מחר ב-10 רופא שיניים':['planning','הוספתי למחר, יום שני: רופא שיניים, 10:00–11:00.',['רופא שיניים','מחר · 10:00–11:00',1]],
+  'כל רביעי 9–10 מדיטציה':['planning','הוספתי מדיטציה בכל יום רביעי, 9:00–10:00. הראשונה ביום רביעי הקרוב.',['מדיטציה · כל רביעי','9:00–10:00 · חוזר',1]],
+  'לזכור להתקשר לאמא':['planning','הוספתי להיום, בלי שעה: להתקשר לאמא. אם תגיד שעה, אשים אותה בלוח.',['להתקשר לאמא','היום · בלי שעה',1]],
+  'מה יש לי היום?':['planning','היום: 09:00 ישיבת צוות, 13:00 ארוחת צהריים עם דני, 18:30 אימון. ובלי שעה: להתקשר לאמא.',['היום','3 בלוח · 1 בלי שעה',0]],
+  'דיברתי עם נועה בטלפון':['people','רשמתי שיחה עם נועה. הפעם הקודמת הייתה לפני 12 יום.',['נועה · שיחה','היום',1]],
+  'נועה התחילה עבודה חדשה':['people','שמרתי בדף של נועה, תחת "משהו שאני רוצה לזכור": התחילה עבודה חדשה.',['נועה · לזכור','התחילה עבודה חדשה',1]],
+  'למי לא התקשרתי מזמן?':['people','אולי הגיע הזמן לבדוק מה שלום דני - עברו 5 שבועות, וביקשת תזכורת כל 3. וסבתא - 16 יום, תזכורת כל שבועיים.',['הגיע הזמן','דני · סבתא',0]],
+  'ניגנתי גיטרה חצי שעה':['hobbies','הוספתי 30 דקות לגיטרה. השבוע: שעה וחצי.',['גיטרה · 30 דק׳','השבוע: 1:30',1]],
+  'קראתי 20 עמודים':['hobbies','הוספתי 20 עמודים לקריאה. היום 20 מתוך היעד של 25.',['קריאה · 20 עמודים','היום: 20 מתוך 25',1]],
+  'כמה ניגנתי השבוע?':['hobbies','השבוע ניגנת שעה וחצי, בשלושה ימים. בשבוע שעבר: שעה ורבע.',['גיטרה · השבוע','1:30 · שלושה ימים',0]],
+  'תרכיב לי לוק להיום':['closet','מהארון שלך: החולצה הלבנה, הג׳ינס הכהה והסניקרס הלבנות. אף אחד מהם לא נלבש השבוע.',['לוק להיום','חולצה לבנה · ג׳ינס כהה · סניקרס',0]],
+  'לבשתי היום את הלוק הכחול':['closet','סימנתי שלבשת היום את "הלוק הכחול". זו הפעם השלישית ב-30 הימים האחרונים.',['הלוק הכחול · נלבש היום','3 פעמים ב-30 יום',1]],
+  'מה לא לבשתי הרבה זמן?':['closet','שלושה פריטים לא נלבשו 30 יום: הז׳קט האפור, המכנסיים הירוקים והחולצה המשובצת.',['לא נלבשו 30 יום','3 פריטים',0]],
+  'תן לי שאלה לכתוב עליה':['insights','מתוך "רגשות ותודעה": מה הרגש שהכי ליווה אותך השבוע, ומאיפה הוא הגיע?',['רגשות ותודעה','שאלה לכתיבה',0]],
+  'למדתי היום שאני צריך יותר שקט בבוקר':['insights','שמרתי תחת "אני", עם התאריך של היום.',['אני · תובנה','היום',1]],
+  'מה כתבתי בחודש האחרון?':['insights','בחודש האחרון כתבת 6 פעמים - שלוש ב"אני", שתיים ב"אנשים" ואחת ב"הצלחה ועשייה". האחרונה לפני ארבעה ימים.',['החודש','6 רשומות',0]],
+  'בוא נסכם את היום':['endofday','בוא. השאלה הראשונה: מה היה הרגע הטוב ביותר היום?',['סיכום היום','נפתח · 1 מתוך 4',0]],
+  'הרגע הכי טוב היום: ארוחת ערב עם המשפחה':['endofday','שמרתי כרגע הטוב של היום. השאלה הבאה: יש תמונה מהיום?',['הרגע הטוב ביותר','ארוחת ערב עם המשפחה',1]],
+  'איך הרצף שלי?':['endofday','11 ימים ברצף. יום החסד זמין - אם תפספס ערב אחד, הרצף ממשיך.',['רצף · 11 ימים','יום החסד זמין',0]]};
+/* a typed sentence: the question it is closest to, else a plain answer */
+function match(t){
+  if(SCRIPT[t])return t;
+  var best='',score=0,words=t.split(/\s+/).filter(function(w){return w.length>2;});
+  Object.keys(SCRIPT).forEach(function(q){
+    if(cur&&SCRIPT[q][0]!==cur)return;
+    var n=words.filter(function(w){return q.indexOf(w)>=0;}).length;
+    if(n>score){score=n;best=q;}
+  });
+  return score?best:'';
 }
-var REPLY={nutrition:['רשמתי. חביתה ושתי פרוסות לחם, בערך 340 קק״ל ו-19 גרם חלבון. נשארו לך היום עוד כ-60 גרם חלבון.','ארוחת בוקר · 340 קק״ל','חלבון 19 · פחמימה 32 · שומן 15'],
-  fitness:['כל הכבוד. 3 סטים של סקוואט ב-60 קילו, זה 5 קילו יותר מבפעם הקודמת.','סקוואט · 3 סטים','60 ק״ג · נפח 1,800'],
-  planning:['שמתי לך תזכורת. להתקשר לאמא, היום ב-18:00. אם תרצה שעה אחרת, תגיד.','להתקשר לאמא','היום · 18:00'],
-  people:['רשמתי שדיברתם היום. זה היה 12 יום מאז הפעם הקודמת.','נועה · שיחה','היום'],
-  hobbies:['רשמתי. זה היום הרביעי השבוע.','קריאה · 20 עמודים','השבוע: 4 ימים'],
-  closet:['היום 19 מעלות ושמש. החולצה הלבנה עם הג׳ינס הכהה תעבוד.','הצעה מהארון','חולצה לבנה · ג׳ינס כהה'],
-  insights:['רשמתי את זה כתובנה של היום.','תובנה','היום'],
-  endofday:['בוא נסכם. מה היה הרגע הטוב ביותר היום?','סיום יום','נפתח']};
+/* a range of numbers stays left-to-right inside Hebrew */
+function ltr(t){return String(t).replace(/(\d[\d:.,]*\s*[–-]\s*\d[\d:.,]*)/g,'<bdi dir="ltr">$1</bdi>');}
+function avatar(){return cur?'<i class="av area" style="--c:'+COL[cur]+'">'+(ICON[cur]||'')+'</i>':'<i class="av"></i>';}
 function say(t){
-  if(!started){started=true;empty.classList.add('gone');drawSug();}
-  var m=document.createElement('div');m.className='me';m.textContent=t;talk.appendChild(m);
-  var w=document.createElement('div');w.className='it';w.innerHTML=(cur?'<i class="av area" style="--c:'+COL[cur]+'">'+(ICON[cur]||'')+'</i>':'<i class="av"></i>')+'<div class="dots"><i></i><i></i><i></i></div>';talk.appendChild(w);talk.scrollTop=1e5;
+  if(!started){started=true;empty.classList.add('gone');}
+  var q0=match(t);
+  var m=document.createElement('div');m.className='me';m.textContent=t;if(q0)m.dataset.q=q0;talk.appendChild(m);
+  drawSug();
+  var w=document.createElement('div');w.className='it';w.innerHTML=avatar()+'<div class="dots"><i></i><i></i><i></i></div>';talk.appendChild(w);talk.scrollTop=1e5;
   setTimeout(function(){
-    var k=route(t),r=REPLY[k];
-    if(!r){w.innerHTML='<i class="av"></i><div>אני כאן. ספר עוד, או בחר אזור למטה.</div>';return;}
-    var a=area(k);
-    w.innerHTML=(cur?'<i class="av area" style="--c:'+COL[cur]+'">'+(ICON[cur]||'')+'</i>':'<i class="av"></i>')+'<div>'+r[0]+'<div class="logged"><span class="ic" style="color:'+COL[k]+'">'+(ICON[k]||'')+'</span><div>'+r[1]+'<small>נשמר ב'+a[1]+' · '+r[2]+'</small></div></div></div>';
+    var q=q0,r=q&&SCRIPT[q];
+    if(!r){w.innerHTML=avatar()+'<div>'+(cur?'אפשר לבחור באחת השאלות למטה, או לספר במילים שלך.':'אני כאן. ספר מה קרה, או בחר אזור למטה.')+'</div>';talk.scrollTop=1e5;return;}
+    var k=r[0],a=area(k),c=r[2];
+    var where=!cur&&c[2]?'<span class="to">'+a[1]+'</span>':'';
+    w.innerHTML=avatar()+'<div>'+ltr(r[1])+'<div class="logged"><span class="ic" style="color:'+COL[k]+'">'+(ICON[k]||'')+'</span><div>'+ltr(c[0])+'<small>'+(c[2]?'נשמר ב'+a[1]+' · ':'')+ltr(c[1])+'</small></div></div></div>';
     talk.scrollTop=1e5;
   },900);
 }
