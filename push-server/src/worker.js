@@ -3267,7 +3267,7 @@ async function routeRequest(req, env, ctx, M) {
         'Several things in one sentence: one write tool call for each.\n' +
         'Food or drink other than plain water goes to log_food with their own words - never log food yourself.\n' +
         'Questions about their own data: read, and state only numbers a tool returned in this conversation.\n' +
-        'After writes, answer in one short sentence - the cards show the details. Otherwise one to three short sentences. No lists unless they asked for one. No explanations of how the app works unless they ask.\n' +
+        'A write is NOT done until they press add on its card: never say you added, saved or logged something - say in one short sentence that it is waiting for their OK (the card shows the details). Otherwise one to three short sentences. No lists unless they asked for one. No explanations of how the app works unless they ask.\n' +
         'Never give medical advice.';
       const tools = ACT_READS.concat(ACT_WRITES, ASK_TOOLS);
       let r, detail = '';
