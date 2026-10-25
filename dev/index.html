@@ -1574,6 +1574,14 @@ body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
 .pf-row+.pf-row{box-shadow:inset 0 1px 0 var(--nu-lit),inset 0 2px 0 var(--nu-shade-soft)}
 .pf-lbl{flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--nu-ink)}
 .pf-in{flex:1 1 76px;min-width:0;border:none;border-radius:12px;padding:10px 12px;font-size:17px;font-weight:800;color:var(--nu-ink);outline:none;font-family:inherit;background:var(--nu-ground);text-align:center;font-variant-numeric:tabular-nums;box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
+.fq-date{position:relative;display:block}
+.fq-date input{display:block;width:100%;min-height:52px;-webkit-appearance:none;appearance:none;text-align:center}
+.fq-date span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--nu-muted);pointer-events:none}
+.fq-date input:valid+span{display:none}
+.fq-date input[value=""]:not(:focus){color:transparent}
+.macro-guess{display:block;width:100%;border:none;background:none!important;box-shadow:none!important;padding:0 2px 10px;font-family:inherit;
+  font-size:12.5px;font-weight:700;color:var(--nu-muted);text-align:start;cursor:pointer}
+.macro-guess::after{content:" \2039";font-size:15px}
 .pf-in:focus{box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 .pf-note{flex:0 0 auto;font-size:12px;color:var(--nu-muted);font-weight:700}
 .pf-derived{margin-top:13px;padding-top:12px;box-shadow:inset 0 1px 0 var(--nu-lit),inset 0 2px 0 var(--nu-shade-soft);font-size:12.5px;color:var(--nu-muted);font-weight:700;letter-spacing:.04em}
@@ -10010,7 +10018,7 @@ function fqStepHTML(k,p){
       '<button class="pf-sex" onclick="profSet(\u0027sex\u0027,\u0027m\u0027)">'+_t('זכר')+'</button>'+
       '<button class="pf-sex" onclick="profSet(\u0027sex\u0027,\u0027f\u0027)">'+_t('נקבה')+'</button></div>';
   if(k==='birth')
-    return '<div class="pf-row"><input class="pf-in" type="date" value="" onchange="profSet(\u0027birth\u0027,this.value)"></div>';
+    return '<label class="pf-row fq-date"><input class="pf-in" type="date" required value="" onchange="profSet(\u0027birth\u0027,this.value)"><span>'+_t('בחירת תאריך')+'</span></label>';
   /* the profile screen's own row, label dropped: two boxes in imperial and
      one in metric, and centimetres stored either way */
   if(k==='height')return heightRowHTML({},'');
@@ -19980,7 +19988,7 @@ function goRoute(){
   },60);
 }
 function enterModule(mod){
-  setTimeout(function(){areaIntroMaybe(mod);},450);
+  /* (the first-visit card is gone: each area explains itself) */
   try{usageNote('area',mod);}catch(e){}
   if(mod!=='endofday')document.body.classList.remove('rf-night');
   jrnlFlush();
@@ -41395,6 +41403,7 @@ function doorHTML(){
     for(i=0;i<HOME_AREAS.length;i++){a=HOME_AREAS[i];if(a.fixed)continue;
       h+='<button class="dr-chip'+(_doorPick.indexOf(a.id)>=0?' on':'')+'" style="--a:'+a.color+';animation-delay:'+(.35+k*.06).toFixed(2)+'s" '+
          'onclick="doorChip(&#39;'+a.id+'&#39;,this)"><img alt="" src="'+liveBase()+'assets/beem-props/'+DOOR_PROPS[a.id]+'.png">'+esc(a.title)+'</button>';k++;}
+    h+='<button class="dr-chip dr-all'+(doorAllOn()?' on':'')+'" style="animation-delay:'+(.35+k*.06).toFixed(2)+'s" onclick="doorChipAll(this)">'+_t('הכל')+'</button>';
     return h+'</div></div><button class="dr-btn" id="dr-g4" onclick="doorAreas()"'+(_doorPick.length?'':' disabled')+'>'+_t('אפשר להמשיך')+'</button>';
   }
   if(step==='why'){
@@ -41475,7 +41484,9 @@ function doorLangPick(code){
 function doorTyping(){
   var e=document.getElementById('dr-nm'),b=document.getElementById('dr-g2');
   if(b)b.disabled=!(e&&e.value.trim());
-  doorBeem('think');clearTimeout(_dr.tq);_dr.tq=setTimeout(function(){doorBeem('listen');},900);
+  /* once, when typing starts - not on every key, which read as a twitch */
+  if(!_dr.thinking){_dr.thinking=1;doorBeem('think');}
+  clearTimeout(_dr.tq);_dr.tq=setTimeout(function(){_dr.thinking=0;doorBeem('listen');},1200);
 }
 function doorNamed(){
   var e=document.getElementById('dr-nm'),v=e?String(e.value||'').trim().slice(0,24):'';
@@ -41489,11 +41500,21 @@ function doorGender2(g,el){
   /* the very next sentence already speaks to her the way she chose */
   genderSet(g,function(){setTimeout(doorNext,500);});
 }
+function doorAllIds(){return HOME_AREAS.filter(function(a){return !a.fixed;}).map(function(a){return a.id;});}
+function doorAllOn(){var ids=doorAllIds();return ids.length&&ids.every(function(x){return _doorPick.indexOf(x)>=0;});}
+function doorChipAll(el){
+  var on=!doorAllOn();_doorPick=on?doorAllIds():[];
+  [].forEach.call(document.querySelectorAll('.dr-chips .dr-chip:not(.dr-all)'),function(b){b.classList.toggle('on',on);});
+  if(el)el.classList.toggle('on',on);
+  doorBeem(on?'nod':'listen');
+  var g=document.getElementById('dr-g4');if(g)g.disabled=!_doorPick.length;
+}
 function doorChip(id,el){
   var k=_doorPick.indexOf(id);
   if(k>=0){_doorPick.splice(k,1);el.classList.remove('on');doorBeem('listen');}
   else{_doorPick.push(id);el.classList.add('on');doorBeem('nod');}
   var b=document.getElementById('dr-g4');if(b)b.disabled=!_doorPick.length;
+  var al=document.querySelector('.dr-all');if(al)al.classList.toggle('on',doorAllOn());
 }
 /* home_areas already means "what is around"; the first one picked is what
    brought her (CAME_KEY), as the old door asked separately */
