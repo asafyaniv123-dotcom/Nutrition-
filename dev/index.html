@@ -5937,6 +5937,16 @@ html body.mod-planning .pb-anch::before{content:"";flex:none;width:9px;height:9p
 html body.mod-planning .pb-anch.on{color:var(--nu-ink);box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 html body.mod-planning .pb-anch.on::before{background:#f0a92e;box-shadow:0 0 6px rgba(240,169,46,.6)}
 html body.mod-planning #pl-anch-more{width:100%;margin:12px 0;resize:none;font-family:inherit}
+html body.mod-planning .pl-kinds{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+html body.mod-planning .pl-kinds .pb-ans{margin:0}
+html body.mod-planning #pl-other{width:100%;margin:0 0 12px;font-family:inherit}
+html body.mod-planning .pl-of{font-size:13px;font-weight:800;color:var(--nu-muted);margin-bottom:4px}
+html body.mod-planning .pl-lbl{font-size:13.5px;font-weight:800;color:var(--nu-muted);margin:14px 2px 8px}
+html body.mod-planning .pl-grp{display:flex;flex-wrap:wrap;gap:8px}
+html body.mod-planning .pl-c{border:none;border-radius:999px;padding:9px 14px;font-family:inherit;font-size:14px;font-weight:700;color:var(--nu-muted);cursor:pointer;
+  background:var(--nu-ground);box-shadow:-3px -3px 7px var(--nu-lit),4px 5px 10px var(--nu-shade-soft)}
+html body.mod-planning .pl-c.on{color:var(--nu-ink);box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-planning .pb-go{margin-top:18px}
 html body.mod-planning .pb-go::before,html body.mod-planning .pb-opt.pb-yes::before{
   content:"";position:absolute;left:50%;transform:translateX(-50%);width:min(46%,150px);
   bottom:-8px;height:5px;border-radius:3px;
@@ -36047,7 +36057,7 @@ var _plWarm=-1,_plCards=[];           /* -1 = not in the local cards */
    second conversation from silently always planning "the coming week". */
 /* 25.10: the range, then the anchors already in the plan - the waking hours
    moved to the end of the conversation, asked only while unknown */
-function plWarmCards(){return ['horizon','anchors'];}
+function plWarmCards(){return ['horizon','anchors','add'];}
 var _plAnch=null;
 /* what is already fixed: the coming week's items that have an hour, the same
    title at the same time on several days folded into one row */
@@ -36070,35 +36080,95 @@ function plAnchors(){
   });
 }
 function plAnchorToggle(i){if(_plAnch&&_plAnch[i]){_plAnch[i].on=!_plAnch[i].on;planBotPaint();}}
+var _plKept=[];
 function plAnchorsGo(){
-  var kept=(_plAnch||[]).filter(function(a){return a.on;}).map(function(a){return a.label;});
+  _plKept=(_plAnch||[]).filter(function(a){return a.on;}).map(function(a){return a.label;});
   var el=document.getElementById('pl-anch-more'),more=el?String(el.value).trim():'';
-  if(more)kept.push(more);
-  var hz=planProfile().horizon||'';
-  _plWarm=-1;_plAnch=null;
-  planBotSend(kept.length?_t('טווח: {h}. העוגנים הקבועים: {list}.',{h:hz,list:kept.join('; ')})
-                         :_t('טווח: {h}. אין עוגנים קבועים.',{h:hz}));
+  if(more)_plKept.push(more);
+  _plAnch=null;_plWarm++;planBotPaint();
+}
+/* ── WHAT TO ADD: one card of chips, then one card per thing ── */
+/* [kind, how often, how long, around] - the defaults each card opens on */
+var PL_KINDS=[['workout',2,1,2],['meet',0,2,1],['study',1,2,1],['errands',0,1,1],['project',1,2,0],['rest',2,1,0],['other',0,1,0]];
+function plKindLabel(k){
+  return {workout:_t('אימון'),meet:_t('לפגוש מישהו'),study:_t('לימודים'),errands:_t('סידורים וקניות'),
+    project:_t('פרויקט או משימה'),rest:_t('זמן לעצמי'),other:_t('משהו אחר')}[k]||k;
+}
+function plOften(){return [_t('פעם אחת'),_t('פעמיים'),_t('{n} פעמים',{n:3}),_t('כל יום')];}
+function plLens(){return [_t('חצי שעה'),_t('שעה|משך'),_t('שעתיים'),_t('חצי יום')];}
+function plArounds(){return [_t('בבית, בלי נסיעה'),_t('רבע שעה לכל כיוון'),_t('חצי שעה לכל כיוון'),_t('שעה לכל כיוון')];}
+var _plAdd=null,_plItems=[],_plOne=false;   /* _plOne: the range is tomorrow, so nothing repeats */
+function plAddToggle(k){
+  var i=_plAdd.indexOf(k);if(i>=0)_plAdd.splice(i,1);else _plAdd.push(k);planBotPaint();
+}
+function plAddGo(){
+  var o=document.getElementById('pl-other'),other=o?String(o.value).trim():'';
+  _plItems=_plAdd.map(function(k){var d=PL_KINDS.filter(function(x){return x[0]===k;})[0];
+    return {k:k,name:k==='other'?(other||plKindLabel('other')):plKindLabel(k),often:d[1],len:d[2],around:d[3]};});
+  _plCards=_plCards.slice(0,_plWarm+1).concat(_plItems.map(function(x,i){return 'item'+i;}));
+  if(!planProfile().wake)_plCards.push('waking');
+  _plWarm++;
+  if(_plWarm>=_plCards.length){plWarmDone();return;}
+  planBotPaint();
+}
+function plItemSet(i,f,v){_plItems[i][f]=v;planBotPaint();}
+function plItemGo(){_plWarm++;if(_plWarm>=_plCards.length){plWarmDone();return;}planBotPaint();}
+/* everything gathered, said once; the model builds from it */
+function plWarmDone(){
+  _plWarm=-1;
+  var hz=planProfile().horizon||'',one=_plOne;
+  var add=_plItems.map(function(x){
+    return x.name+' ('+(one?'':plOften()[x.often]+', ')+plLens()[x.len]+', '+plArounds()[x.around]+')';});
+  var msg=_plKept.length?_t('טווח: {h}. העוגנים הקבועים: {list}.',{h:hz,list:_plKept.join('; ')}):_t('טווח: {h}. אין עוגנים קבועים.',{h:hz});
+  msg+=' '+(add.length?_t('להוסיף: {list}.',{list:add.join('; ')}):_t('אין מה להוסיף.'));
+  _plItems=[];_plAdd=null;_plKept=[];
+  planBotSend(msg);
+}
+function plChips(i,f,list,cur){
+  var h='<div class="pl-grp">';
+  for(var j=0;j<list.length;j++)h+='<button class="pl-c'+(j===cur?' on':'')+'" onclick="plItemSet('+i+',\''+f+'\','+j+')">'+esc(list[j])+'</button>';
+  return h+'</div>';
 }
 /* Frozen at the start, and read from there afterwards. Asking plWarmCards()
    again between presses reads a profile the last press just wrote to, so the
    list shortens under the index walking it and the last card is skipped. */
 function plWarmStart(){_plCards=plWarmCards();_plWarm=0;planBotPaint();}
 function plWarmPick(field,value,label){
+  if(field==='horizon1'){_plOne=true;field='horizon';}else if(field==='horizon')_plOne=false;
   var add={};add[field==='waking'?'wake':field]=label||value;
   planProfileMerge(add);
   _plWarm++;
-  if(_plWarm>=_plCards.length){_plWarm=-1;planBotSend(planProfile().horizon||value);return;}
+  if(_plWarm>=_plCards.length){plWarmDone();return;}
   planBotPaint();
 }
 function plWarmHTML(){
   /* STAGE ONE OF FIVE, and it says so. These cards used to draw three dots
      of their own and fill them, so the next card - the model's, drawing five
      and lighting the second - read as the bar falling back to the start. */
-  var kind=_plCards[_plWarm]||'horizon',st=kind==='anchors'?2:1;
+  var kind=_plCards[_plWarm]||'horizon',st=kind==='horizon'?1:kind==='anchors'?2:3;
   var h='<div class="pb-stage"><div class="pb-dots">';
   for(var i=1;i<=PLAN_STAGES;i++)h+='<span class="pb-dot'+(i===st?' on':(i<st?' done':''))+'"></span>';
-  h+='</div><span class="pb-stage-t">'+(st===2?_t('העוגנים'):_t('המסגרת'))+'</span></div>';
+  h+='</div><span class="pb-stage-t">'+[_t('המסגרת'),_t('העוגנים'),_t('מה עוד נכנס')][st-1]+'</span></div>';
   var rows=[],q='';
+  if(kind==='add'){
+    if(!_plAdd)_plAdd=[];
+    h+='<div class="pb-q">'+_t('מה עוד להכניס?')+'</div><div class="pl-kinds">';
+    PL_KINDS.forEach(function(x){
+      h+='<button class="pb-ans pb-anch'+(_plAdd.indexOf(x[0])>=0?' on':'')+'" onclick="plAddToggle(\''+x[0]+'\')">'+esc(plKindLabel(x[0]))+'</button>';});
+    h+='</div>';
+    if(_plAdd.indexOf('other')>=0)h+='<input id="pl-other" class="pb-in" placeholder="'+esc(_t('מה זה?'))+'">';
+    h+='<button class="pb-go" onclick="plAddGo()">'+(_plAdd.length?_t('המשך'):_t('אין מה להוסיף, לבנות'))+'</button>';
+    return h;
+  }
+  if(/^item\d+$/.test(kind)){
+    var ii=+kind.slice(4),it=_plItems[ii],one=_plOne;
+    h+='<div class="pl-of">'+_t('{n} מתוך {total}',{n:ii+1,total:_plItems.length})+'</div><div class="pb-q">'+esc(it.name)+'</div>';
+    if(!one)h+='<div class="pl-lbl">'+_t('כמה פעמים בשבוע')+'</div>'+plChips(ii,'often',plOften(),it.often);
+    h+='<div class="pl-lbl">'+_t('כמה זמן')+'</div>'+plChips(ii,'len',plLens(),it.len);
+    h+='<div class="pl-lbl">'+_t('התארגנות והגעה')+'</div>'+plChips(ii,'around',plArounds(),it.around);
+    h+='<button class="pb-go" onclick="plItemGo()">'+_t('המשך')+'</button>';
+    return h;
+  }
   if(kind==='anchors'){
     if(!_plAnch)_plAnch=plAnchors();
     h+='<div class="pb-q">'+(_plAnch.length?_t('אלה הדברים הקבועים שכבר בלו״ז. להשאיר אותם?'):_t('מה קבוע אצלך השבוע, ביום ובשעה?'))+'</div><div class="pb-ans-l">';
@@ -36110,7 +36180,7 @@ function plWarmHTML(){
   }
   if(kind==='horizon'){
     q=_t('לאיזה טווח לתכנן?');
-    rows=[[_t('מחר|אפשרות'),'horizon'],[_t('השבוע'),'horizon'],[_t('החודש'),'horizon'],
+    rows=[[_t('מחר|אפשרות'),'horizon1'],[_t('השבוע'),'horizon'],[_t('החודש'),'horizon'],
           [_t('שלושה חודשים'),'horizon']];
   }else if(kind==='waking'){
     q=_t('מתי היום שלך מתחיל ונגמר?');

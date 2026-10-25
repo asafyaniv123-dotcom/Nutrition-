@@ -2457,22 +2457,13 @@ async function routeRequest(req, env, ctx, M) {
         '   anchor that is plainly away from home (work, studies, a class) needs its travel; if it is\n' +
         '   not known, ask it ONCE for all of them together, as stage 2, before stage 3.\n' +
         '\n' +
-        'STAGE 3 - WHAT ELSE GOES IN. A loop, with exactly these three questions per thing, in order:\n' +
-        '   a. "What else needs to go into the schedule?" Options are the common kinds, written as a\n' +
-        '      person would answer: a workout, meeting someone, a task or project, errands and\n' +
-        '      shopping - and always, as an option, that this is everything. Their answer may name\n' +
-        '      how often ("three times a week") and when ("Tuesday evening"); keep what it names.\n' +
-        '   b. "How long does it take?" - the thing itself. Offer lengths that fit what it is.\n' +
-        '   c. "How long to get ready and get there?" - the time around it: getting ready, travel\n' +
-        '      there and back, a shower after. Options such as: nothing, it is at home; a quarter of\n' +
-        '      an hour each way; half an hour each way; an hour all together.\n' +
-        '   Then back to (a), naming in the question that it is for the next thing. When they say\n' +
-        '   that is everything, gathering is over. Never ask (b) or (c) for something whose answer\n' +
-        '   already said it.\n' +
-        '   A thing given a day or an hour is PINNED, and goes exactly there. A thing given none is\n' +
-        '   FLOATING, and where it lands is your call - never press for a time.\n' +
-        '   Only if the profile does not already hold when their day starts and ends: ask that\n' +
-        '   once, as the last question of stage 3, with rows like "06:30 - 23:00".\n' +
+        'STAGE 3 - WHAT ELSE GOES IN is collected by the app too. The first message lists each\n' +
+        '   thing to add with how often, how long, and the time around it (getting ready, travel\n' +
+        '   there and back). Take it as given: every one of them is FLOATING unless it names a day\n' +
+        '   or an hour, and where a floating thing lands is your call.\n' +
+        '   DO NOT ASK ANYTHING ELSE unless something essential is truly missing or contradictory -\n' +
+        '   and then at most ONE question. The person chose this to be quick. Go straight to the\n' +
+        '   weekly skeleton.\n' +
         '\n' +
         'THEN BUILD IT, IN THREE PHASES:\n' +
         '   PHASE A - FREEZE. Lock sleep and the hard anchors first, with their travel. Nothing\n' +
