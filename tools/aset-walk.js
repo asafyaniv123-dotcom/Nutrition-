@@ -13,7 +13,7 @@
   opt('זכר').click();q('.as-go').click();await wait(80);out.push('sex -> '+step());
   var b=q('#as-birth');b.value='1990-05-14';b.dispatchEvent(new Event('change',{bubbles:true}));await wait(80);out.push('date set, still: '+step());
   q('.as-go').click();await wait(80);out.push('continue -> '+step());
-  q('.fit-back').click();await wait(80);out.push('back -> '+step()+' value kept '+(q('#as-birth')||{}).value);
+  q('.as-back').click();await wait(80);out.push('back -> '+step()+' value kept '+(q('#as-birth')||{}).value);
   q('.as-go').click();await wait(80);
   var h=q('#as-h');h.value='178';q('.as-go').click();await wait(80);out.push('height -> '+step());
   var w=q('#as-w');w.value='76';q('.as-go').click();await wait(80);out.push('weight -> '+step());
