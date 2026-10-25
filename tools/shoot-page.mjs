@@ -32,7 +32,7 @@ const chrome = spawn(CHROME, ['--headless=new', '--no-first-run', '--remote-debu
   '--user-data-dir=' + TMP, '--hide-scrollbars', '--force-color-profile=srgb', 'about:blank'], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let target;
-for (let i = 0; i < 50 && !target; i++) { await sleep(200);
+for (let i = 0; i < 150 && !target; i++) { await sleep(200);
   try { target = (await (await fetch(`http://127.0.0.1:${DBG}/json`)).json()).find((t) => t.type === 'page'); } catch {} }
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((r) => ws.addEventListener('open', r));
