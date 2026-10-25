@@ -3862,6 +3862,9 @@ export default {
       /* the prompt says it receives these, so they are sent - a promise the
          model cannot keep is worse than one never made */
       const phase = String((b && b.phase) || '').slice(0, 20);
+      /* health conditions the person chose to tell the coach (with consent) */
+      const HL = { mg: 'myasthenia gravis', dm: 'diabetes', bp: 'high blood pressure', ckd: 'chronic kidney disease', preg: 'pregnancy', sarc: 'sarcopenia', op: 'osteoporosis' };
+      const health = (Array.isArray(b && b.health) ? b.health : []).filter((x) => HL[x]).map((x) => HL[x]);
       /* HOW TO ADDRESS HER, not biology - Hebrew marks gender on the verb and
          "אכלת" is not "אכלתי". The app keeps the two apart: app_gender is the
          voice she chose, profile.sex is what Mifflin-St Jeor needs. */
@@ -4228,6 +4231,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       msgs.push({ role: 'user', content });
 
       /* One request, as a function, so a reply can be sent back once. */
+      const SYS = health.length ? SYSTEM + '\n\n## Health conditions the user chose to share\n' + health.join(', ') +
+        '.\nTake them into account, following mainstream guidance from recognised medical bodies. You are NOT a doctor: never diagnose, never advise on medication or doses, and if they describe warning signs (for myasthenia: weakness in breathing, swallowing or vision; for diabetes: symptoms of a low) tell them to stop and contact their doctor. Whenever your reply touches their health or one of these conditions, end it with one short line, in their language, saying that you are not a doctor, that this is general information and not medical advice, and that they should check with their own doctor.' : SYSTEM;
       const ask = async (messages) => {
         let r;
         try {
@@ -4243,7 +4248,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                  matching a word against a table. */
               model: 'claude-sonnet-5',
               max_tokens: 1600,
-              system: SYSTEM,
+              system: SYS,
               tools: [TOOL],
               tool_choice: { type: 'tool', name: 'reply' },
               messages,
