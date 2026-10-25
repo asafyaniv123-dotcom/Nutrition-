@@ -4061,6 +4061,10 @@ body.mod-fitness .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
 .hl-card li{position:relative;padding-inline-start:16px;margin-bottom:4px}
 .hl-card li::before{content:"";position:absolute;inset-inline-start:2px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--nu-amber,#f0a92e)}
 .hl-src,.hl-x{font-size:12px;color:var(--nu-muted);font-weight:700;margin-top:6px}
+.hl-pro p{font-size:13.5px;line-height:1.6;margin:6px 0 10px}
+.hl-pb{width:100%;border:none;border-radius:14px;padding:12px;font-family:inherit;font-size:14.5px;font-weight:800;color:var(--nu-ink);cursor:pointer;background:var(--nu-ground);
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.hl-pb:active{box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 .hl-doc{font-size:12.5px;color:var(--nu-muted);font-weight:600;line-height:1.55;margin-top:14px;padding:10px 12px;border-radius:14px;box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 .hl-wn{border-radius:18px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.5;color:var(--nu-ink);box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 .hl-wn b{display:block;font-size:12.5px;color:var(--nu-muted);margin-bottom:6px}
@@ -43214,6 +43218,7 @@ function hlPaint(){
     if(off)h+='<div class="hl-x">'+_t('כבוי. האפליקציה לא משנה דבר בגלל המצב הזה.')+'</div>';
     else h+='<ul>'+hlChanges(id).map(function(t){return '<li>'+esc(t)+'</li>';}).join('')+'</ul>';
     h+='<div class="hl-src">'+esc(_t('מקור: {s}',{s:HL_SRC[id]}))+'</div></div>';}
+  h+=hlProteinHTML();
   h+='<div class="hl-doc">'+_t('מידע כללי ולא ייעוץ רפואי. האפליקציה לא מאבחנת ולא מחליפה רופא, והרופא שלך הוא זה שקובע.')+'</div></div>';
   ov.innerHTML=h;
 }
@@ -43221,6 +43226,27 @@ function hlAck(v){var o=hlLoad();o.ack=v?todayStr():'';if(!v)o.on=[];hlSave(o);h
 function hlPick(id){var o=hlLoad();if(!o.ack)return;var i=o.on.indexOf(id);if(i>=0)o.on.splice(i,1);else o.on.push(id);hlSave(o);hlPaint();}
 function hlOff(id){var o=hlLoad(),i=o.off.indexOf(id);if(i>=0)o.off.splice(i,1);else o.off.push(id);hlSave(o);hlPaint();}
 function hlCoach(){var o=hlLoad();o.coach=!o.coach;hlSave(o);hlPaint();}
+/* the protein line a condition draws, if any: {to, why} */
+function hlProtein(){
+  var kg=fitBodyKg(),p=Math.round(TARGETS.p||0);
+  if(!kg||!p)return null;
+  if(hlHas('ckd')){var mx=Math.round(kg*0.8);if(p>mx+5)return {to:mx,why:_t('במחלת כליות מומלץ לא יותר מ־0.8 גרם חלבון לק״ג.')};}
+  else if(hlHas('sarc')){var mn=Math.round(kg*1.2);if(p<mn-5)return {to:mn,why:_t('בסרקופניה מומלץ לפחות 1.2 גרם חלבון לק״ג, ובכל ארוחה.')};}
+  return null;
+}
+function hlProteinHTML(){
+  var r=hlProtein();if(!r)return '';
+  return '<div class="hl-card hl-pro"><b>'+_t('יעד החלבון שלך')+'</b>'+
+    '<p>'+esc(_t('היעד עכשיו: {a} גרם ביום.',{a:Math.round(TARGETS.p)}))+' '+esc(r.why)+'</p>'+
+    '<button class="hl-pb" onclick="hlProteinApply('+r.to+')">'+esc(_t('לעדכן ל־{n} גרם',{n:r.to}))+'</button>'+
+    '<div class="hl-src">'+_t('הקלוריות נשארות, והפחמימות משלימות את ההפרש. אפשר לשנות כל יעד ידנית.')+'</div></div>';
+}
+function hlProteinApply(to){
+  var t={kcal:TARGETS.kcal,p:TARGETS.p,c:TARGETS.c,f:TARGETS.f,water:TARGETS.water},d=to-t.p;
+  t.p=to;t.c=Math.max(0,Math.round(t.c-d));
+  try{localStorage.setItem(TARGETS_KEY,JSON.stringify(t));}catch(e){}
+  loadTargets();showToast(_t('היעדים עודכנו'));hlPaint();
+}
 /* what the coach is told: nothing without the second yes */
 function hlForCoach(){var o=hlLoad();return o.coach?hlOn():[];}
 /* a built workout, adjusted; the notes say what and why */
