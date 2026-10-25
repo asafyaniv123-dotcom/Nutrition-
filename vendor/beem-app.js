@@ -1846,6 +1846,8 @@ function ringURL(canvas){
        beads:  true,               a burst of Beem's beads behind him
        confetti: true,             confetti drifting down, gently, the whole time
                                    (or an array of colours for its pieces)
+       hat:    url,                a party hat that lands on his head (at hatAt ms, 3900)
+       garland: url,               bunting that swings down from the top (at garlandAt, 1200)
        host:   element,            where to draw it; the page by default
        onClose: function(){}
      })  ->  {close: function}
@@ -1854,6 +1856,21 @@ function ringURL(canvas){
    Loaded raw by the pages under dev/look, and inside beem-app.js for the app,
    where BeemKit.screen calls it. Names are prefixed beemScreen so nothing a
    page declares can shadow them. */
+/* scripts the moments play by name. birthday (25.10, option C): the rings are
+   built bead by bead and close in a burst of light - no hop and no spin, since
+   the hat is a picture over the canvas and would be left in the air. Its dur
+   is long on purpose: a script loops when it ends, and the rings would be
+   rebuilt from nothing every few seconds. */
+var BEEM_SCREEN_SCRIPTS = {
+  birthday: {dur: 600000, ev: [[0, 'fx', {t: 'rings', v: {reveal: 0}, d: 0}], [0, 'face', 'calm'],
+    [500, 'fx', {t: 'fx', v: {track: 0}, d: 0}], [500, 'fx', {t: 'r0', v: {reveal: 1}, d: 1100}],
+    [1600, 'fx', {t: 'fx', v: {track: 1}, d: 0}], [1600, 'fx', {t: 'r1', v: {reveal: 1}, d: 1100}],
+    [2700, 'fx', {t: 'fx', v: {track: 2}, d: 0}], [2700, 'fx', {t: 'r2', v: {reveal: 1}, d: 1200}],
+    [3900, 'fx', {t: 'fx', v: {track: -1}, d: 0}], [3900, 'look', 0, 0], [3900, 'face', 'happy'],
+    [3900, 'burst', 3], [3900, 'fx', {t: 'body', v: {white: .55}, d: 90}],
+    [4000, 'fx', {t: 'body', v: {white: 0}, d: 350, e: 'out'}], [4250, 'face', 'surprised'], [4600, 'face', 'happy'],
+    [5600, 'face', 'content']]}
+};
 var BEEM_SCREEN_CSS_ON = false;
 function beemScreenCss(){
   if (BEEM_SCREEN_CSS_ON) return; BEEM_SCREEN_CSS_ON = true;
@@ -1883,6 +1900,12 @@ function beemScreenCss(){
     '@keyframes bmsFall{to{transform:translateY(calc(var(--H) + 12vh))}}' +
     '@keyframes bmsSway{from{transform:translateX(-14px) rotate(-40deg) rotateY(0)}to{transform:translateX(14px) rotate(50deg) rotateY(160deg)}}' +
     '@media (prefers-reduced-motion:reduce){.bms-cf{display:none}}' +
+    /* the birthday's rendered props (dev/look/beem-props/sheet5) */
+    '.bms-garland{position:absolute;top:calc(8px + env(safe-area-inset-top));left:50%;width:min(84%,330px);transform:translate(-50%,-150%) rotate(-4deg);transform-origin:50% 0;transition:transform .9s cubic-bezier(.3,1.5,.5,1)}' +
+    '.bms-garland.in{transform:translate(-50%,0) rotate(0)}' +
+    '.bms-hat{position:absolute;width:25%;left:37.5%;top:-4%;z-index:2;opacity:0;transform:translateY(-140%) rotate(-30deg);transform-origin:50% 100%;transition:transform .7s cubic-bezier(.3,1.6,.5,1),opacity .2s}' +
+    '.bms-hat.in{opacity:1;transform:rotate(-12deg)}' +
+    '@media (prefers-reduced-motion:reduce){.bms-garland,.bms-hat{transition:none}}' +
     '@media (prefers-reduced-motion:reduce){.bms,.bms.out{transition:none;clip-path:none}.bms-bead{display:none}.bms-t,.bms-s,.bms-b{transition:none}}';
   document.head.appendChild(s);
 }
@@ -1919,8 +1942,13 @@ function beemScreenShow(o){
   btn.style.background = o.ink || '#fff'; btn.style.color = o.accent || o.bg || '#ff7a1a';
   host.appendChild(w);
   if (o.confetti) w.querySelector('.bms-cf').style.setProperty('--H', w.offsetHeight + 'px');
+  function prop(cls, src, into, at){
+    var im = document.createElement('img'); im.className = cls; im.alt = ''; im.src = src; into.appendChild(im);
+    setTimeout(function(){ im.classList.add('in'); }, at); }
+  if (o.garland) prop('bms-garland', o.garland, w, o.garlandAt || 1200);
+  if (o.hat) prop('bms-hat', o.hat, w.querySelector('.bms-stage'), o.hatAt || 3900);
   var b = new Beem(w.querySelector('.bms-beem'));
-  var s = typeof o.play === 'string' ? (byId(COMBO_LIST, o.play) || byId(SPECIAL_LIST, o.play)) : o.play;
+  var s = typeof o.play === 'string' ? (BEEM_SCREEN_SCRIPTS[o.play] || byId(COMBO_LIST, o.play) || byId(SPECIAL_LIST, o.play)) : o.play;
   b.play(s || byId(COMBO_LIST, 'party'));
   if (o.glow && typeof streakGlow === 'function'){
     var L = streakGlow(o.glow), el = w.querySelector('.beem');

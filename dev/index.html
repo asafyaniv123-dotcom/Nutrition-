@@ -10870,6 +10870,7 @@ var LANG_KEY='app_lang';
    reason this is better than the ternary it replaced - that could only say
    "2 ימים", never "יומיים". */
 var HE={
+  '{n} שנים. והיום הזה כולו שלך.':{one:'שנה אחת. והיום הזה כולו שלך.',two:'שנתיים. והיום הזה כולו שלך.',other:'{n} שנים. והיום הזה כולו שלך.'},
   'לפני {n} ימים':{one:'אתמול',two:'לפני יומיים',other:'לפני {n} ימים'},
   'לפני {n} שבועות':{one:'לפני שבוע',two:'לפני שבועיים',other:'לפני {n} שבועות'},
   'לפני {n} חודשים':{one:'לפני חודש',two:'לפני חודשיים',other:'לפני {n} חודשים'},
@@ -42243,6 +42244,50 @@ function beemHelpTurn(messages,depth,wait){
     .catch(function(){_bhelp.msgs.pop();beemHelpDone(wait,_t('אין חיבור כרגע.'),true);});
 }
 window.addEventListener('load',function(){setTimeout(beemHelpMount,800);});
+/* ── MIP'S BIRTHDAY (25.10, option C of dev/look/mip-birthday.html) ──
+   The first time she opens the app on her birthday, the whole screen turns
+   orange: Mip's rings are built bead by bead, bunting swings down, a party hat
+   lands on his head in the burst of light, and confetti - purple too - drifts
+   down until she taps thanks. Once a year. The date is the one her profile
+   already holds, and the DAY is the app's (todayStr, which ends at 04:00), so
+   opening the app at one in the morning of her birthday's eve is not it.
+   Someone born on 29 February has it on the 28th in the years without one.
+   DEV ONLY: ?bday=1 plays it now, so it can be seen without waiting a year. */
+var BDAY_SEEN_KEY='bday_seen';
+function bdayToday(){
+  var p=loadProfile(),b=p&&p.birth;
+  if(!b||profileAge(b)===null)return false;
+  var t=todayStr(),md=b.slice(5),y=+t.slice(0,4);
+  if(md==='02-29'&&!(y%4===0&&(y%100!==0||y%400===0)))md='02-28';
+  return t.slice(5)===md;
+}
+function bdayShow(){
+  beemKit().then(function(K){
+    var nm=greetName(),age=profileAge(loadProfile().birth),A=liveBase()+'assets/beem-props/';
+    K.screen({bg:'#ff7a1a',ink:'#ffffff',accent:'#a84500',play:'birthday',
+      confetti:['#8b5cf6','#fed662','#c4a5ff','#ffffff','#6d3fd6','#fbf6ee','#e2412b','#b388ff'],
+      hat:A+'partyhat.png',garland:A+'bunting.png',
+      title:nm?_t('יום הולדת שמח, {name}!',{name:nm}):_t('יום הולדת שמח!'),
+      sub:age?_t('{n} שנים. והיום הזה כולו שלך.',{n:age}):'',
+      button:_t('תודה, מיפ')});
+  }).catch(function(){});
+}
+function bdayCheck(){
+  try{
+    if(!doorDone()||!bdayToday())return;
+    var y=todayStr().slice(0,4);
+    if(localStorage.getItem(BDAY_SEEN_KEY)===y)return;
+    localStorage.setItem(BDAY_SEEN_KEY,y);
+    bdayShow();
+  }catch(e){}
+}
+window.addEventListener('load',function(){
+  setTimeout(function(){
+    if(window.__DEV__&&/[?&]bday=1(&|$)/.test(location.search))bdayShow();else bdayCheck();
+  },1600);
+});
+/* the app is often left open overnight: coming back to it on the day counts too */
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')setTimeout(bdayCheck,900);});
 /* ── THE FIRST TIME IN AN AREA ── once per area, for someone who came through
    the new door. The card carries the dial's own icon, so what she learns to
    look for is what is really there. */
