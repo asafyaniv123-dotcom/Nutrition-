@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>ממשק שני: צ׳אט — אב־טיפוס</title>
+<style>
+/* THE SECOND INTERFACE (Asaf, 25 Oct): "like there is Claude and Claude Code -
+   a switch between one interface and another that is just a chat."
+   Empty: Mip in the middle and a greeting by the hour. The areas as rounded
+   rectangles above the writing line; choosing one slides it up to stand at
+   the top centre, and from then on the talk is with that area; tapping it
+   there returns to the general chat. What is said lands where it belongs.
+   Two options, the same behaviour, a different material for the areas:
+   A - our material: each area raised out of the ground, its colour only as
+       the light of its icon, one row that scrolls.
+   B - glass: the areas as clear glass over a soft field of their own light,
+       all eight visible in two rows. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--g:#f2eee9;--lit:rgba(255,255,255,.96);--sh:rgba(170,156,140,.42);--sh2:rgba(170,156,140,.26);--ink:#4a453f;--mu:#6d675e;--am:#f0a92e}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",sans-serif}
+.bar{max-width:430px;margin:0 auto;padding:12px 14px 6px;color:#efe6d8}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.sw{display:flex;gap:6px;flex-wrap:wrap}
+.sw button{border:none;border-radius:999px;padding:8px 13px;font:700 13.5px Assistant,sans-serif;background:#3d3732;color:#e6dccd;cursor:pointer}
+.sw button.on{background:#efe6d8;color:#2b2724}
+.wrap{display:flex;justify-content:center;padding:10px 0 30px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:34px;background:var(--g);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.45);transform-origin:50% 0}
+button{font-family:inherit}
+/* the switch, top start corner: dial / chat, a pressed channel with the lit one raised */
+.mode{position:absolute;top:18px;inset-inline-start:16px;z-index:30;display:flex;gap:2px;padding:4px;border-radius:999px;
+  box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.mode button{width:40px;height:34px;border:none;border-radius:999px;background:transparent;color:var(--mu);cursor:pointer;display:grid;place-items:center}
+.mode button.on{background:var(--g);color:var(--ink);box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.mode svg{width:19px;height:19px}
+.dial{position:absolute;inset:0;background:url(dial.png) center top/100% auto no-repeat var(--g);transition:opacity .35s}
+.dial.off{opacity:0;pointer-events:none}
+.chat{position:absolute;inset:0;transition:opacity .35s}
+.chat.off{opacity:0;pointer-events:none}
+/* the top: the chosen area stands here */
+.head{position:absolute;top:16px;left:0;right:0;height:46px;display:flex;justify-content:center;pointer-events:none;z-index:20}
+/* the empty state */
+.empty{position:absolute;left:0;right:0;top:120px;text-align:center;transition:opacity .3s,transform .4s}
+.empty.gone{opacity:0;transform:translateY(-20px);pointer-events:none}
+.mip{width:150px;height:150px;margin:0 auto}
+.hello{font-size:28px;font-weight:800;margin:16px 0 4px;letter-spacing:-.3px}
+.hello2{font-size:16px;color:var(--mu);margin:0}
+/* the talk */
+.talk{position:absolute;left:0;right:0;top:76px;bottom:var(--dock,190px);overflow-y:auto;padding:8px 18px 14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:none}
+.talk::-webkit-scrollbar{display:none}
+.me{align-self:flex-start;max-width:78%;padding:11px 15px;border-radius:20px 20px 6px 20px;font-size:16px;line-height:1.45;font-weight:600;
+  box-shadow:-3px -3px 8px var(--lit),4px 5px 12px var(--sh2)}
+.it{align-self:flex-end;max-width:86%;display:flex;gap:9px;align-items:flex-start;font-size:16px;line-height:1.55}
+.it .av{flex:none;width:38px;height:38px;margin-top:-4px;background:url(../../dev/assets/beem-f-happy.png) center/170% no-repeat,url(../../dev/assets/beem-body.png) center/170% no-repeat}
+.logged{margin-top:8px;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;font-size:14.5px;font-weight:700;
+  box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.logged .ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--g);box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.logged .ic svg{width:17px;height:17px}
+.logged small{display:block;font-weight:600;color:var(--mu);font-size:12.5px}
+.dots{display:flex;gap:4px;padding:8px 0}.dots i{width:7px;height:7px;border-radius:50%;background:#c8bdb0;animation:bl 1s infinite}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes bl{50%{opacity:.3}}
+/* the dock: areas above the writing line */
+.dock{position:absolute;left:0;right:0;bottom:0;padding:0 0 26px;z-index:10}
+.areas{padding:0 16px 14px}
+.row{display:flex;align-items:center;gap:10px;padding:0 16px}
+.in{flex:1;height:56px;border:none;border-radius:999px;padding:0 20px;font:600 16px Assistant,sans-serif;color:var(--ink);background:var(--g);outline:none;
+  box-shadow:inset 3px 4px 9px var(--sh),inset -3px -3px 8px var(--lit)}
+.in::placeholder{color:#8f877d}
+.rb{flex:none;width:52px;height:52px;border:none;border-radius:50%;background:var(--g);color:var(--ink);cursor:pointer;display:grid;place-items:center;
+  box-shadow:-3px -3px 8px var(--lit),4px 5px 11px var(--sh2)}
+.rb:active{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.rb svg{width:21px;height:21px}
+.sug{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 16px 12px}
+.sug button{border:none;border-radius:999px;padding:8px 13px;font:700 13.5px Assistant,sans-serif;color:var(--mu);background:transparent;cursor:pointer;
+  box-shadow:inset 1.5px 2px 5px var(--sh2),inset -1.5px -1.5px 4px var(--lit)}
+/* an area: icon + name */
+.ar{display:flex;align-items:center;gap:8px;border:none;cursor:pointer;color:var(--ink);font:800 14.5px Assistant,sans-serif;white-space:nowrap;
+  padding:0 15px 0 12px;height:44px;border-radius:16px;transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .3s}
+.ar svg,.logged .ic svg{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ar svg{width:19px;height:19px;flex:none;color:var(--c);filter:drop-shadow(0 0 5px var(--c))}
+.ar.hide{opacity:0;pointer-events:none}
+.ar.top{pointer-events:auto}
+.ar.top::after{content:"×";margin-inline-start:4px;font-size:17px;color:var(--mu);font-weight:700}
+
+/* A - our material, one row that scrolls */
+.A .areas{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:6px 16px 16px}
+.A .areas::-webkit-scrollbar{display:none}
+.A .ar{background:var(--g);box-shadow:-3px -3px 8px var(--lit),4px 5px 11px var(--sh2)}
+.A .ar:active{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+/* B - glass over a field of the areas' own light, two rows */
+.B .dock::before{content:"";position:absolute;left:-10%;right:-10%;bottom:40px;height:230px;z-index:-1;filter:blur(34px);opacity:.75;
+  background:radial-gradient(28% 40% at 12% 40%,rgba(166,144,207,.55),transparent),radial-gradient(26% 42% at 38% 30%,rgba(224,138,114,.5),transparent),
+    radial-gradient(26% 40% at 62% 42%,rgba(111,178,131,.5),transparent),radial-gradient(28% 42% at 88% 34%,rgba(58,124,165,.45),transparent),
+    radial-gradient(40% 30% at 50% 80%,rgba(240,169,46,.35),transparent)}
+.B .dock::before{transition:opacity .5s,height .5s}
+.B.picked .dock::before{opacity:.28;height:120px}
+.B .areas{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:0 14px 16px}
+.B .ar{justify-content:center;flex-direction:column;gap:3px;height:62px;padding:0 4px;font-size:12.5px;border-radius:18px;
+  background:rgba(255,255,255,.34);backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 1px rgba(170,156,140,.18),0 6px 16px rgba(120,100,80,.12)}
+.B .ar svg{width:20px;height:20px}
+.B .ar.top{flex-direction:row;height:44px;padding:0 15px 0 12px;font-size:14.5px;gap:8px}
+.B .in{background:rgba(255,255,255,.4);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 2px 3px 8px rgba(170,156,140,.25)}
+.B .rb{background:rgba(255,255,255,.42);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 6px 14px rgba(120,100,80,.14)}
+</style></head><body>
+<div class="bar">
+  <h1>ממשק שני: צ׳אט</h1>
+  <p>אותה התנהגות בשתיהן: מיפ וברכה כשריק, האזורים מעל שורת הכתיבה, ובחירת אזור מעלה אותו לראש המסך. נסה לכתוב (״אכלתי חביתה ושתי פרוסות״, ״לזכור להתקשר לאמא״, ״3 סטים סקוואט 60 קילו״), לבחור אזור, וללחוץ עליו שוב למעלה. המתג בפינה עובר לחוגה.</p>
+  <div class="sw"><button id="bA" class="on" onclick="pick('A')">א׳ · החומר שלנו</button><button id="bB" onclick="pick('B')">ב׳ · זכוכית</button></div>
+</div>
+<div class="wrap"><div class="ph A" id="ph">
+  <div class="dial off" id="dial"></div>
+  <div class="mode"><button id="mDial" onclick="mode('dial')" aria-label="חוגה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/></svg></button>
+    <button id="mChat" class="on" onclick="mode('chat')" aria-label="צ׳אט"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 18.5 4 21l3.6-1.4A8.5 8.5 0 1 0 5 18.5Z"/></svg></button></div>
+  <div class="chat" id="chat">
+    <div class="head" id="head"></div>
+    <div class="empty" id="empty"><div class="mip" id="mip"></div><div class="hello" id="hello"></div><p class="hello2" id="hello2">על מה נדבר?</p></div>
+    <div class="talk" id="talk"></div>
+    <div class="dock" id="dock"><div class="sug" id="sug"></div><div class="areas" id="areas"></div>
+      <div class="row"><input class="in" id="in" placeholder="כתוב, או ספר מה קרה…" onkeydown="if(event.key==='Enter')send()">
+        <button class="rb" aria-label="דבר"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
+        <button class="rb" onclick="send()" aria-label="שלח"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div></div>
+  </div>
+</div></div>
+<script>
+var AREAS=[['nutrition','תזונה','מה אכלת היום?',['אכלתי חביתה ושתי פרוסות','כמה חלבון נשאר לי?','שתיתי 2 כוסות מים']],
+  ['fitness','כושר','מה עשית היום?',['3 סטים סקוואט 60 קילו','הלכתי 40 דקות','מה האימון הבא?']],
+  ['planning','תכנון זמן','מה צריך לעשות?',['לזכור להתקשר לאמא','פגישה מחר ב-10','מה יש לי היום?']],
+  ['people','האנשים שלי','על מי נדבר?',['דיברתי עם נועה','למי לא התקשרתי מזמן?']],
+  ['hobbies','תחביבים','במה התעסקת?',['ניגנתי חצי שעה','קראתי 20 עמודים']],
+  ['closet','הארון שלי','מה ללבוש?',['מה ללבוש היום?','קניתי חולצה לבנה']],
+  ['insights','תובנות','מה על הלב?',['משהו שלמדתי היום','איך היה השבוע?']],
+  ['endofday','סיום יום','איך היה היום?',['בוא נסכם את היום']]];
+var ICON={},COL={};
+var ph=document.getElementById('ph'),cur=null,started=false,beem=null;
+function pick(v){ph.className='ph '+v;bA.classList.toggle('on',v==='A');bB.classList.toggle('on',v==='B');reset();}
+function mode(m){dial.classList.toggle('off',m!=='dial');chat.classList.toggle('off',m==='dial');mDial.classList.toggle('on',m==='dial');mChat.classList.toggle('on',m!=='dial');}
+function greet(){var h=new Date().getHours();return h>=4&&h<12?'בוקר טוב':h<17?'צהריים טובים':h<22?'ערב טוב':'לילה טוב';}
+function area(k){return AREAS.filter(function(a){return a[0]===k;})[0];}
+function drawAreas(){
+  areas.innerHTML=AREAS.map(function(a){return '<button class="ar" data-k="'+a[0]+'" style="--c:'+(COL[a[0]]||'#999')+'" onclick="choose(\''+a[0]+'\',this)">'+(ICON[a[0]]||'')+'<span>'+a[1]+'</span></button>';}).join('');
+  sizeDock();
+}
+function drawSug(){var list=cur?area(cur)[3]:['אכלתי חביתה ושתי פרוסות','לזכור להתקשר לאמא','איך היה היום שלי?'];
+  sug.innerHTML=started?'':list.map(function(s){return '<button onclick="say(this.textContent)">'+s+'</button>';}).join('');sizeDock();}
+function sizeDock(){requestAnimationFrame(function(){talk.style.setProperty('--dock','');ph.style.setProperty('--dock',dock.offsetHeight+'px');});}
+/* choose: the pill slides from its place to the top centre (FLIP) */
+function choose(k,el){
+  if(cur===k){back();return;}
+  if(cur)back(true);
+  var r0=el.getBoundingClientRect(),s=ph.getBoundingClientRect(),sc=s.width/390;
+  var top=el.cloneNode(true);top.classList.add('top');top.onclick=function(){back();};
+  head.appendChild(top);
+  var r1=top.getBoundingClientRect();
+  top.style.transition='none';
+  top.style.transform='translate('+((r0.left-r1.left)/sc)+'px,'+((r0.top-r1.top)/sc)+'px) scale('+(r0.width/r1.width)+','+(r0.height/r1.height)+')';
+  top.style.transformOrigin='0 0';
+  el.classList.add('hide');
+  requestAnimationFrame(function(){requestAnimationFrame(function(){top.style.transition='';top.style.transform='';});});
+  cur=k;var a=area(k);ph.classList.add('picked');
+  hello.textContent=a[2];hello2.textContent='מדבר עם '+a[1];
+  [].forEach.call(areas.children,function(b){if(b!==el)b.classList.add('hide');});
+  areas.style.display='none';
+  if(started)note('מעכשיו מדברים על '+a[1]+'.');
+  drawSug();
+}
+function back(silent){
+  head.innerHTML='';areas.style.display='';[].forEach.call(areas.children,function(b){b.classList.remove('hide');});
+  ph.classList.remove('picked');cur=null;hello.textContent=greet()+', אסף';hello2.textContent='על מה נדבר?';
+  if(started&&!silent)note('חזרנו לשיחה הכללית.');drawSug();
+}
+function note(t){var d=document.createElement('div');d.style.cssText='align-self:center;font-size:13px;color:var(--mu);font-weight:700';d.textContent=t;talk.appendChild(d);talk.scrollTop=1e5;}
+function send(){var v=document.getElementById('in').value.trim();if(!v)return;document.getElementById('in').value='';say(v);}
+/* scripted answers: what was said, and where it landed */
+function route(t){
+  if(/אכל|שתי|חלבון|ארוח|פרוס|מים/.test(t))return 'nutrition';
+  if(/סט|סקוואט|אימון|הלכתי|רצתי|קילו/.test(t))return 'fitness';
+  if(/לזכור|פגיש|מחר|להתקשר|לעשות/.test(t))return 'planning';
+  if(/דיברתי|נועה|התקשרתי/.test(t))return 'people';
+  if(/ניגנתי|קראתי|עמודים/.test(t))return 'hobbies';
+  if(/ללבוש|חולצה/.test(t))return 'closet';
+  if(/לסכם|היה היום|השבוע/.test(t))return 'endofday';
+  return cur||'';
+}
+var REPLY={nutrition:['רשמתי. חביתה ושתי פרוסות לחם, בערך 340 קק״ל ו-19 גרם חלבון. נשארו לך היום עוד כ-60 גרם חלבון.','ארוחת בוקר · 340 קק״ל','חלבון 19 · פחמימה 32 · שומן 15'],
+  fitness:['כל הכבוד. 3 סטים של סקוואט ב-60 קילו, זה 5 קילו יותר מבפעם הקודמת.','סקוואט · 3 סטים','60 ק״ג · נפח 1,800'],
+  planning:['שמתי לך תזכורת. להתקשר לאמא, היום ב-18:00. אם תרצה שעה אחרת, תגיד.','להתקשר לאמא','היום · 18:00'],
+  people:['רשמתי שדיברתם היום. זה היה 12 יום מאז הפעם הקודמת.','נועה · שיחה','היום'],
+  hobbies:['רשמתי. זה היום הרביעי השבוע.','קריאה · 20 עמודים','השבוע: 4 ימים'],
+  closet:['היום 19 מעלות ושמש. החולצה הלבנה עם הג׳ינס הכהה תעבוד.','הצעה מהארון','חולצה לבנה · ג׳ינס כהה'],
+  insights:['רשמתי את זה כתובנה של היום.','תובנה','היום'],
+  endofday:['בוא נסכם. מה היה הרגע הטוב ביותר היום?','סיום יום','נפתח']};
+function say(t){
+  if(!started){started=true;empty.classList.add('gone');drawSug();}
+  var m=document.createElement('div');m.className='me';m.textContent=t;talk.appendChild(m);
+  var w=document.createElement('div');w.className='it';w.innerHTML='<i class="av"></i><div class="dots"><i></i><i></i><i></i></div>';talk.appendChild(w);talk.scrollTop=1e5;
+  setTimeout(function(){
+    var k=route(t),r=REPLY[k];
+    if(!r){w.innerHTML='<i class="av"></i><div>אני כאן. ספר עוד, או בחר אזור למטה.</div>';return;}
+    var a=area(k);
+    w.innerHTML='<i class="av"></i><div>'+r[0]+'<div class="logged"><span class="ic" style="color:'+COL[k]+'">'+(ICON[k]||'')+'</span><div>'+r[1]+'<small>נשמר ב'+a[1]+' · '+r[2]+'</small></div></div></div>';
+    talk.scrollTop=1e5;
+  },900);
+}
+function reset(){talk.innerHTML='';started=false;empty.classList.remove('gone');back(true);drawAreas();}
+/* the dial's own icons and colours, lifted from the shipped home screen */
+fetch('icons.json').then(function(r){return r.json();}).then(function(list){
+  var map={'תזונה':'nutrition','כושר':'fitness','תחביבים':'hobbies','תובנות':'insights','האנשים':'people','תכנון זמן':'planning','הארון':'closet','סיום יום':'endofday'};
+  list.forEach(function(x){Object.keys(map).forEach(function(n){if(x[1].indexOf(n)===0){ICON[map[n]]=x[3].replace(/<svg/,'<svg aria-hidden="true"');COL[map[n]]=x[2];}});});
+}).catch(function(){}).then(reset);
+/* Mip, the app's own */
+window.BEEM_ASSET_BASE='../../dev/assets/';
+var sc=document.createElement('script');sc.src='../../vendor/beem-app.js';
+sc.onload=function(){BeemKit.ready.then(function(){beem=BeemKit.mount(document.getElementById('mip'),{play:{dur:12000,ev:[[0,'face','happy'],[0,'mode',{breathe:[.018,4],idle:0}],[3000,'nod',1,6],[7000,'face','wink'],[7600,'face','happy']]}});});};
+document.head.appendChild(sc);
+function fit(){var s=Math.min(1,(innerWidth-8)/390);ph.style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+</script>
+</body></html>
