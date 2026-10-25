@@ -18,10 +18,14 @@ const SHEETS = {
     'stopwatch', 'drop', 'flame', 'bolt', 'scale']},
   sheet4: {cols: 5, rows: 5, names: ['book', 'pen', 'stickynote', 'calendar', 'magnifier', 'guitar', 'keyboard', 'microphone', 'gamepad', 'dice',
     'flower', 'sunflower', 'gem', 'star', 'rainbow', 'balloon', 'popper', 'cupcake', 'medal', 'crown',
-    'speech', 'puzzle', 'rocket', 'plane', 'house']}
+    'speech', 'puzzle', 'rocket', 'plane', 'house']},
+  /* 25.10: Mip's birthday, one 2x2 at 1K, 0.25 credits (gpt_image_2_5, white ground) */
+  sheet5: {cols: 2, rows: 2, names: ['partyhat', 'cake', 'bdcandle', 'bunting']}
 };
 const which = process.argv[2] || 'sheet', S = SHEETS[which];
-const P = decode(D + which + '.png'), W = P.w, H = P.h, d = P.data;
+const P = decode(D + which + '.png'), W = P.w, H = P.h;
+/* sheet5 came with no alpha at all (RGB on white): give it an opaque one */
+const d = P.data.length === W*H*3 ? (() => { const o = Buffer.alloc(W*H*4); for (let p = 0; p < W*H; p++){ o[p*4] = P.data[p*3]; o[p*4+1] = P.data[p*3+1]; o[p*4+2] = P.data[p*3+2]; o[p*4+3] = 255; } return o; })() : P.data;
 let a0 = 0, a255 = 0, white = 0;
 for (let i = 3; i < d.length; i += 4){ if (d[i] < 10) a0++; if (d[i] > 245) a255++; }
 console.log('sheet', W + 'x' + H, 'alpha<10:', (a0/(W*H)*100).toFixed(1) + '%', 'alpha>245:', (a255/(W*H)*100).toFixed(1) + '%');
