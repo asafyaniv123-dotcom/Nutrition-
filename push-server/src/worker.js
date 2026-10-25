@@ -2485,7 +2485,9 @@ async function routeRequest(req, env, ctx, M) {
         '   PLAN IN FULL, day after day, only once the skeleton is approved.\n' +
         '\n' +
         'PLACEMENT RULES:\n' +
-        '- TRAVEL: every activity away from home gets a travel event there and a travel event back.\n' +
+        '- TRAVEL: every activity the person ADDED that is away from home gets a travel event there\n' +
+        '  and back, of the length they gave. The fixed anchors get NONE: they are taken exactly as\n' +
+        '  they stand in the schedule - no travel, no getting-ready block before them.\n' +
         '  An activity at home starts only after the return leg has ended. If the travel time is\n' +
         '  not known, ask.\n' +
         '- SLEEP: keep the minimum the person asked for. After a day that ends late, do not put\n' +
