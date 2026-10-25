@@ -5883,8 +5883,17 @@ html body.mod-people .ppl-sort.on{background:var(--nu-ground);color:var(--nu-ink
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 .pp-row:last-child{margin-bottom:0}
 .pp-row-x{flex:1;min-width:0}
-/* the party hat after a name on that person's birthday - the rendered one Mip wears on hers */
-.pp-bd{display:inline-block;height:1.2em;width:auto;vertical-align:-.15em;margin-inline-start:.3em;transform:rotate(-12deg);flex:none}
+/* A PERSON'S BIRTHDAY: their row lit warm from inside, and the rendered party
+   hat Mip wears on hers sitting ON their avatar. Where there is no avatar to
+   wear it (the coming-dates tray, the big name on their page) it follows the name. */
+.pp-bd{display:inline-block;height:1.25em;width:auto;vertical-align:-.15em;margin-inline-start:.3em;transform:rotate(-12deg);flex:none}
+.pp-row.pp-bday,.pp-hero.pp-bday{background:color-mix(in srgb,#ffb04a 11%,var(--nu-ground));
+  box-shadow:0 0 0 2px rgba(255,166,77,.7),0 0 22px rgba(255,140,40,.4),-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.pp-face.pp-bday{box-shadow:0 0 0 3px rgba(255,166,77,.8),0 0 30px rgba(255,140,40,.45),8px 10px 22px var(--nu-shade)}
+.pp-bdav{position:relative;display:inline-block;flex:0 0 auto;line-height:0}
+.pp-bdav>.pp-av,.pp-bdav>.pp-avn{box-shadow:0 0 0 2px #ffb04a,0 0 12px rgba(255,140,40,.5)}
+.pp-bdhat{position:absolute;width:54%;height:auto;left:50%;top:-50%;transform:rotate(22deg);transform-origin:50% 100%;
+  pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
 .pp-row-n{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;
   color:var(--nu-ink);overflow:hidden}
 /* the same amber, saying the same thing it says on the hero */
@@ -36805,9 +36814,9 @@ function renderPeopleHome(){
      row - the same rule said once more, rather than a second coloured panel. */
   if(over.length){
     var top=over[0];
-    h+='<button class="pp-hero" onclick="_personIdx='+top.i+';_peopleView=&quot;person&quot;;renderPeople()">'+
+    h+='<button class="pp-hero'+(pplBdayToday(top.p)?' pp-bday':'')+'" onclick="_personIdx='+top.i+';_peopleView=&quot;person&quot;;renderPeople()">'+
        '<span class="pp-hero-k"><i></i>'+_t('אולי הגיע הזמן לבדוק מה שלום...')+'</span>'+
-       '<span class="pp-hero-n">'+esc(top.p.name)+pplBdayHat(top.p)+'</span>'+
+       '<span class="pp-hero-n">'+esc(top.p.name)+'</span>'+
        '<span class="pp-hero-s">'+(top.days===null
           ? _t('עדיין לא דיברתם')
           : _t('עברו {n} ימים',{n:top.days}))+'</span>'+
@@ -36904,10 +36913,10 @@ function pplListHTML(people){
        relationship when there is neither */
     var said=p.currentUpdate?esc(p.currentUpdate)
             :(lastMem?esc(memText(lastMem).substring(0,60))+'\u2026':'');
-    h+='<button class="pp-row" onclick="_personIdx='+pi+';_peopleView=&quot;person&quot;;renderPeople()">'+
+    h+='<button class="pp-row'+(pplBdayToday(p)?' pp-bday':'')+'" onclick="_personIdx='+pi+';_peopleView=&quot;person&quot;;renderPeople()">'+
        personAvatar(p,46)+
        '<span class="pp-row-x">'+
-       '<span class="pp-row-n">'+(over[p.name]?'<i></i>':'')+esc(p.name)+pplBdayHat(p)+'</span>'+
+       '<span class="pp-row-n">'+(over[p.name]?'<i></i>':'')+esc(p.name)+'</span>'+
        '<span class="pp-row-s">'+(said||sub.join(' \u00b7 '))+'</span>'+
        '</span>'+
        '<span class="pp-row-w">'+(days===null?'&mdash;':_t('{n} ימים',{n:days}))+'</span>'+
@@ -37032,6 +37041,12 @@ function personHue(name){
   return PP_HUES[n%PP_HUES.length];
 }
 function personAvatar(p,size){
+  var av=personAvatar0(p,size);
+  /* on their birthday they wear the hat - except at the tiny sizes, where it would be a speck */
+  if(size<40||!pplBdayToday(p))return av;
+  return '<span class="pp-bdav">'+av+'<img class="pp-bdhat" alt="'+esc(_t('יום הולדת היום'))+'" src="'+liveBase()+'assets/beem-props/partyhat.png"></span>';
+}
+function personAvatar0(p,size){
   var initials=(p.name||'?').charAt(0);
   // photoImg tells a stored key from a picture written before the store
   // existed, and hands the first one to hydratePhotos to fill in
@@ -37098,7 +37113,7 @@ function renderPersonPage(){
      With no photo the card keeps its shape and blooms their own hue instead.
      The fade goes to the ground and never to black: this card is made of the
      same material as the page under it. */
-  h+='<div class="pp-face">';
+  h+='<div class="pp-face'+(pplBdayToday(p)?' pp-bday':'')+'">';
   h+=p.avatar
      ? photoImg(p.avatar,'class="pp-face-img"')
      : '<span class="pp-face-no" style="--fhue:'+personHue(p.name)+'"></span>';
