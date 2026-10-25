@@ -2453,9 +2453,8 @@ async function routeRequest(req, env, ctx, M) {
         'STAGE 1 - THE FRAME, and STAGE 2 - THE ANCHORS, are asked by the app before you speak.\n' +
         '   The person\'s first message gives the range to plan and the fixed anchors they kept from\n' +
         '   their own schedule - things with a day and an hour that cannot move - or says there are\n' +
-        '   none. Take them as true and frozen. Do not ask about them again, with one exception: an\n' +
-        '   anchor that is plainly away from home (work, studies, a class) needs its travel; if it is\n' +
-        '   not known, ask it ONCE for all of them together, as stage 2, before stage 3.\n' +
+        '   none. Take them as true and frozen, exactly as they stand in their schedule: ask nothing\n' +
+        '   about them and add no travel around them - the person chose a plan without questions.\n' +
         '\n' +
         'STAGE 3 - WHAT ELSE GOES IN is collected by the app too. The first message lists each\n' +
         '   thing to add with how often, how long, and the time around it (getting ready, travel\n' +
