@@ -6773,6 +6773,15 @@ body.mod-nutrition .macro-col:nth-child(1) .macro-band,body.mod-nutrition .macro
 body.mod-nutrition .macro-col:nth-child(2) .macro-band,body.mod-nutrition .macro-col:nth-child(2) .macro-fill{background:var(--nu-pro)!important;box-shadow:none}
 body.mod-nutrition .macro-col:nth-child(3) .macro-band,body.mod-nutrition .macro-col:nth-child(3) .macro-fill{background:var(--nu-carb)!important;box-shadow:none}
 body.mod-nutrition .macro-col:nth-child(4) .macro-band,body.mod-nutrition .macro-col:nth-child(4) .macro-fill{background:var(--nu-fat)!important;box-shadow:none}
+/* satin (review/tubes-proto, A2): matte, a liquid's rounded surface, deeper
+   toward the bottom, shaded faintly at the walls; no line, no glow */
+body.mod-nutrition .macro-col:nth-child(1){--tb:var(--nu-cal);--tb-deep:#f0ad5a;--tb-hi:#fde7c4}
+body.mod-nutrition .macro-col:nth-child(2){--tb:var(--nu-pro);--tb-deep:#f48f78;--tb-hi:#ffdcd2}
+body.mod-nutrition .macro-col:nth-child(3){--tb:var(--nu-carb);--tb-deep:#93bb83;--tb-hi:#e2eedb}
+body.mod-nutrition .macro-col:nth-child(4){--tb:var(--nu-fat);--tb-deep:#86ade0;--tb-hi:#dbe8f8}
+body.mod-nutrition .macro-col:nth-child(n) .macro-fill{border-radius:15px!important;
+  background:linear-gradient(0deg,var(--tb-deep) -10%,var(--tb) 70%,var(--tb-hi) 115%)!important;
+  box-shadow:inset 4px 0 7px -3px rgba(0,0,0,.10),inset -4px 0 7px -3px rgba(0,0,0,.12),inset 0 3px 4px -2px rgba(255,255,255,.7)!important}
 
 /* name first, then value against target - the comp's order.
    The value is isolated but NOT forced left-to-right. It was, and in Hebrew
@@ -18687,21 +18696,15 @@ function macroBandsHTML(bi,b,meals){
   var tgt=TARGETS[b.k]||0;
   if(!tgt||!meals.length)
     return '<div class="macro-fill" data-k="m'+bi+'" data-h="'+b.pct+'" style="height:'+barBorn('m'+bi,b.pct)+'%;background:'+b.g+'"></div>';
-  var h='',bottom=0,i,share,key,drawn=0;
+  /* ONE fill (25.10, satin): the meals are no longer cut apart by lines. Its
+     height is the sum the bands made - each meal's share, the target the top
+     of the track - so the scale is exactly what it was. */
+  var bottom=0,i,share;
   for(i=0;i<meals.length;i++){
     share=(+meals[i][b.k]||0)/tgt*100;
-    if(share<=0)continue;
-    if(bottom>=100)break;
-    if(bottom+share>100)share=100-bottom;   // the target is the top of the track
-    key='m'+bi+'-'+i;
-    h+='<div class="macro-band'+(drawn===0?' first':'')+'" data-k="'+key+'" data-h="'+share+'"'+
-       ' style="bottom:'+bottom+'%;height:'+bandBorn(key,share)+'%;background:'+
-       (i===meals.length-1?b.g:b.dim)+'"></div>';
-    bottom+=share;drawn++;
+    if(share>0)bottom=Math.min(100,bottom+share);
   }
-  if(!drawn)
-    return '<div class="macro-fill" data-k="m'+bi+'" data-h="0" style="height:0%;background:'+b.g+'"></div>';
-  return h;
+  return '<div class="macro-fill" data-k="m'+bi+'" data-h="'+bottom+'" style="height:'+barBorn('m'+bi,bottom)+'%;background:'+b.g+'"></div>';
 }
 /* The kinds of meal, as DATA: a key, the hour the window closes (for a meal
    that predates the field), and the glyph. The words live in
