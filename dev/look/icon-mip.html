@@ -12,7 +12,7 @@
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Fraunces:opsz,wght@9..144,700&display=swap" rel="stylesheet">
 <style>
   :root{--ink:#2e2925;--muted:#5d554d}
   *{box-sizing:border-box;margin:0}
@@ -28,7 +28,7 @@
   .ic.n1{background:linear-gradient(#5ac8fa,#007aff)}.ic.n2{background:linear-gradient(#ffd60a,#ff9f0a)}.ic.n3{background:#fff}.ic.n4{background:linear-gradient(#34c759,#248a3d)}
   .ic.duo{background:#58cc02}
   .ic.old{background:#fbf6ee}
-  .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:30px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:30px}
   .opt{display:flex;flex-direction:column;gap:8px}
   .big{width:100%;aspect-ratio:1;border-radius:22.5%;overflow:hidden;position:relative;box-shadow:0 6px 18px rgba(80,60,40,.18)}
   .opt b{font-size:17px}
@@ -48,7 +48,7 @@
   <div class="home" id="home"></div>
   <div class="grid" id="grid"></div>
   <div class="note">
-    <b>מה אני ממליץ:</b> א׳. הוא הכי קרוב למה שעושה הינשוף, וזה Mip שלנו כמו שהוא חי באפליקציה, באותה מינוח של כתום שכבר בחרנו.<br>
+    <b>מה אני ממליץ:</b> ב׳ או א׳ אם הדמות היא האייקון, ו־ו׳ אם הסמל של Olimei הוא האייקון. ה׳ נקי, אבל מילה בתוך אייקון קטנה מדי כדי להיקרא מרחוק.<br>
     <b>מה זה משנה:</b> השמש בנקודה של Olimei נשארת הלוגו עם השם (מסך הפתיחה, החנות, השיווק). האייקון במסך הבית הוא Mip. כך בנויים גם דואולינגו (המילה + הינשוף) ו־Headspace.<br>
     <b>מה עוד לא:</b> אם תבחר כיוון, אייצא אותו בכל הגדלים (App Store 1024 בלי שקיפות, Google Play, maskable, 180/192/512) ואחליף ב־dev, כמו בפעם הקודמת.
   </div>
@@ -67,14 +67,33 @@ var OPTS = [
   {id: 'c', name: 'על שמנת', desc: 'הצבעים של היום, אבל Mip במקום השמש השטוחה, גדול וחי.',
    ground: 'radial-gradient(110% 90% at 50% 25%,#fffaf2,#f6ead8)', cx: 50, cy: 52, s: 128, face: 'calm'},
   {id: 'd', name: 'על לילה', desc: 'Mip זוהר על רקע כהה חם. בולט מאוד בין אייקונים בהירים.',
-   ground: 'radial-gradient(100% 90% at 50% 40%,#4a3326,#22181a 80%)', cx: 50, cy: 53, s: 135, face: 'calm'}
+   ground: 'radial-gradient(100% 90% at 50% 40%,#4a3326,#22181a 80%)', cx: 50, cy: 53, s: 135, face: 'calm'},
+  /* the wordmark as the icon (Asaf, 25.10: 'Olimei with the sun over the i, on cream, cleaner') */
+  {id: 'e', name: 'Olimei על שמנת', desc: 'הלוגו המלא, המילה עם השמש מעל ה־i, על שמנת. נקי, אבל המילה קטנה בגודל של אייקון.',
+   ground: '#fbf6ee', word: true},
+  {id: 'f', name: 'ה־i עם השמש', desc: 'רק האות i מהלוגו והשמש במקום הנקודה, גדולים על שמנת. הסמל של Olimei בלי המילה.',
+   ground: '#fbf6ee', mono: true}
 ];
 var STILL = function(face){ return {dur: 600000, ev: [[0, 'face', face], [0, 'look', 0, 2]]}; };
-function iconHTML(o){ return '<div class="lay" style="background:' + o.ground + '"></div><div class="mip" data-o="' + o.id + '"></div>'; }
+var SUN = (function(){ var P = {n: 9, c: 19.5, d: 5.6, r: 33, rot: .5}, x = '<circle cx="50" cy="50" r="' + P.c + '" fill="#ff7a1a"/>', i, a;
+  for (i = 0; i < P.n; i++){ a = (i + P.rot)/P.n*Math.PI*2 - Math.PI/2; x += '<circle cx="' + (50 + Math.cos(a)*P.r).toFixed(2) + '" cy="' + (50 + Math.sin(a)*P.r).toFixed(2) + '" r="' + P.d + '" fill="#ff7a1a"/>'; }
+  return x; })();
+function iconHTML(o){
+  var g = '<div class="lay" style="background:' + o.ground + '"></div>';
+  if (o.word) return g + '<img class="lay" alt="" src="../../brand/wordmark-olimei.png" style="width:100%;height:100%;object-fit:contain;padding:0 12%;box-sizing:border-box">';
+  /* the i: Fraunces 700 dotless, the brand sun where its dot was */
+  if (o.mono) return g + '<svg class="lay" viewBox="0 0 100 100"><text x="50" y="86" text-anchor="middle" font-family="Fraunces,serif" font-weight="700" font-size="82" fill="#2e2925" style="font-variation-settings:&quot;opsz&quot; 48">ı</text><g transform="translate(50 22) scale(.36) translate(-50 -50)">' + SUN + '</g></svg>';
+  return g + '<div class="mip" data-o="' + o.id + '"></div>';
+}
 function place(box, o){
   var W = box.clientWidth, m = box.querySelector('.mip'), S = W*o.s/100;
   m.style.width = m.style.height = S + 'px'; m.style.left = (W*o.cx/100 - S/2) + 'px'; m.style.top = (W*o.cy/100 - S/2) + 'px';
-  var b = new Beem(m); b.play(STILL(o.face)); beemScreenRun(b, m);
+  /* an icon does not move: one frame, settled, then nothing */
+  var b = new Beem(m), i; b.play(STILL(o.face));
+  /* and caught with his eyes open: no blink, ever, in a still */
+  b.nextBlink = 1e9;
+  for (i = 0; i < 90; i++){ b.step(1/60); b.blinkT = -1; b.pend = (b.pend || []).filter(function(e){ return e[1] !== 'blink'; }); }
+  b.step(1/60); b.paint();
 }
 var home = document.getElementById('home'), h = '';
 var N = [['n1', 'מזג אוויר'], ['n2', 'פתקים'], ['n3', 'תמונות'], ['duo', 'Duolingo'], ['old', 'Olimei היום'], ['n4', 'הודעות']];
@@ -89,7 +108,7 @@ document.getElementById('duo').innerHTML = '<svg viewBox="0 0 100 100"><rect wid
 document.getElementById('grid').innerHTML = OPTS.map(function(o){
   return '<div class="opt"><div class="big" data-i="' + o.id + '">' + iconHTML(o) + '</div><b><span class="tag">' + o.id.toUpperCase() + '</span>' + o.name + '</b><span>' + o.desc + '</span></div>'; }).join('');
 BEEM_READY.then(function(){
-  [].forEach.call(document.querySelectorAll('[data-i]'), function(box){ place(box, OPTS.filter(function(o){ return o.id === box.getAttribute('data-i'); })[0]); });
+  [].forEach.call(document.querySelectorAll('[data-i]'), function(box){ var o = OPTS.filter(function(o){ return o.id === box.getAttribute('data-i'); })[0]; if (!o.word && !o.mono) place(box, o); });
 });
 </script>
 </html>
