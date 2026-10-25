@@ -32356,7 +32356,10 @@ function pushStashConfig(o){
          dictionary and no idea who it is speaking to. This is the only place
          that knows both, so it says the sentence here. */
       c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ(),
-        title:sumRemTitle(),body:sumRemMsg()}),
+        title:sumRemTitle(),body:sumRemMsg(),
+        /* birthdays: the sentence per date, names in it. This cache is on her
+           phone; the server is sent the dates alone (pplBdayDates). */
+        bdayTitle:_t('יום הולדת היום'),bdays:pplBdaySentences()}),
         {headers:{'Content-Type':'application/json'}}));
     });
   }catch(e){}
@@ -32384,7 +32387,7 @@ function sumRemPushSync(){
     return fetch(PUSH_SERVER+'/subscribe',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ()})
+      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ(),bdays:pplBdayDates(),bdayTime:PPL_BDAY_TIME})
     });
   }).then(function(r){
     _pushState=r&&r.ok?'ok':'error';renderSumRem();
@@ -32417,8 +32420,11 @@ function remNativeSync(){
     var ids=((p&&p.notifications)||[]).map(function(n){return {id:n.id};});
     return ids.length?LN.cancel({notifications:ids}):null;
   }).then(function(){
-    if(!o.on)return;
-    var hm=String(o.time||'21:00').split(':'),out=[],i,d,day;
+    /* birthdays in the iPhone shell are local notifications: nothing to send
+       anywhere. The next fifteen days, at PPL_BDAY_TIME, like the reminder's window. */
+    var out=pplBdayNative();
+    if(!o.on)return out.length?LN.schedule({notifications:out}):null;
+    var hm=String(o.time||'21:00').split(':'),i,d,day;
     for(i=0;i<15;i++){
       d=new Date(Date.now()+i*86400000);d.setHours(+hm[0]||0,+hm[1]||0,0,0);
       if(d.getTime()<=Date.now()+30000)continue;
@@ -36763,7 +36769,7 @@ function pplBarHTML(people){
 }
 
 function loadPeople(){try{var x=localStorage.getItem('people_v2');return x?JSON.parse(x):[];}catch(e){return[];}}
-function savePeople(arr){try{localStorage.setItem('people_v2',JSON.stringify(arr));}catch(e){}}
+function savePeople(arr){try{localStorage.setItem('people_v2',JSON.stringify(arr));}catch(e){}pplBdayResync();}
 
 function daysSince(ts){if(!ts)return null;return Math.floor((Date.now()-ts)/(1000*60*60*24));}
 
@@ -37077,6 +37083,46 @@ function pplBdayHat(p){
   var a=esc(_t('יום הולדת היום'));
   return '<img class="pp-bd" src="'+liveBase()+'assets/beem-props/partyhat.png" alt="'+a+'" title="'+a+'">';
 }
+/* THE NOTIFICATION (25.10): on a birthday, at nine in the morning, even with
+   the app closed. It rides the evening reminder's subscription. The server is
+   given the DATES only (MM-DD); the names stay on the phone, in the sentence
+   the service worker shows. */
+var PPL_BDAY_TIME='09:00';
+function pplBdayList(){
+  var out=[],ppl=loadPeople(),i,j,ds;
+  for(i=0;i<ppl.length;i++){ds=ppl[i].importantDates||[];
+    for(j=0;j<ds.length;j++)if(ds[j]&&ds[j].type==='birthday'&&/^\d{4}-\d{2}-\d{2}/.test(String(ds[j].date)))
+      out.push({md:String(ds[j].date).slice(5,10),name:ppl[i].name||''});}
+  return out;
+}
+function pplBdayDates(){var seen={},out=[];pplBdayList().forEach(function(b){if(!seen[b.md]){seen[b.md]=1;out.push(b.md);}});return out;}
+function pplBdaySentences(){
+  var by={},out=[];
+  pplBdayList().forEach(function(b){(by[b.md]=by[b.md]||[]).push(_t('היום יום ההולדת של {name}. אולי להתקשר?',{name:b.name}));});
+  for(var md in by)out.push({md:md,body:by[md].join('\n')});
+  return out;
+}
+function pplBdayNative(){
+  var out=[],L=pplBdayList(),hm=PPL_BDAY_TIME.split(':'),i,j,d,md;
+  for(i=0;i<15;i++){
+    d=new Date(Date.now()+i*86400000);d.setHours(+hm[0],+hm[1],0,0);
+    if(d.getTime()<=Date.now()+30000)continue;
+    md=('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+    for(j=0;j<L.length;j++)if(L[j].md===md)
+      out.push({id:300+i*20+(j%20),title:_t('יום הולדת היום'),body:_t('היום יום ההולדת של {name}. אולי להתקשר?',{name:L[j].name}),schedule:{at:d,allowWhileIdle:true}});
+  }
+  return out;
+}
+/* a person or a date added, changed or removed: tell the server the new dates
+   (and the worker the new sentences) - once, a moment after the last change */
+var _pplBdayT=null;
+function pplBdayResync(){
+  clearTimeout(_pplBdayT);
+  _pplBdayT=setTimeout(function(){
+    try{if(remNative()){remNativeSync();return;}var o=loadSumRem();if(o&&o.on)sumRemPushSync();}catch(e){}
+  },1500);
+}
+
 function pplBdayCheck(){
   try{
     if(!doorDone())return;

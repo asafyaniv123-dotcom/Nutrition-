@@ -248,6 +248,15 @@ async function signJWT(aud, env) {
   return signed + '.' + b64url(sig);
 }
 
+/* is one of her people's birthdays today, and not yet sent? 29 February
+   falls on the 28th in the years without one, as it does in the app */
+function bdayDue(rec, now) {
+  if (!rec.bdays || !rec.bdays.length || rec.bdayLast === now.date) return false;
+  const y = +now.date.slice(0, 4), md = now.date.slice(5);
+  const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+  return rec.bdays.includes(md) || (!leap && md === '02-28' && rec.bdays.includes('02-29'));
+}
+
 async function sendPush(endpoint, env) {
   const jwt = await signJWT(new URL(endpoint).origin, env);
   return fetch(endpoint, {
@@ -569,6 +578,22 @@ export default {
 
         let now;
         try { now = localNow(rec.tz); } catch { continue; }
+
+        /* BIRTHDAYS (25.10): the people she keeps, as bare dates - the names
+           never leave her phone; the service worker writes them in. One push
+           on such a day, at bdayTime, separate from the evening reminder. */
+        if (bdayDue(rec, now)) {
+          const late = toMin(now.hhmm) - toMin(rec.bdayTime || '09:00');
+          if (late >= 0) {
+            if (late <= LATE_WINDOW_MIN) {
+              const res = await sendPush(rec.endpoint, env);
+              if (res.status === 404 || res.status === 410) { await env.SUBS.delete(k.name); continue; }
+            }
+            rec.bdayLast = now.date;
+            await env.SUBS.put(k.name, JSON.stringify(rec));
+          }
+        }
+
         if (rec.last === now.date) continue;               // already sent today
 
         const late = toMin(now.hhmm) - toMin(rec.time);
@@ -1239,10 +1264,19 @@ async function routeRequest(req, env, ctx, M) {
 
       const key = await subKey(sub.endpoint);
       const prev = await env.SUBS.get(key, 'json');
+      /* birthdays: MM-DD only. A caller that sends none (an older app, the
+         service worker's resubscribe) keeps what was there. */
+      const bdays = Array.isArray(b.bdays)
+        ? [...new Set(b.bdays.filter(x => /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(String(x))))].slice(0, 400)
+        : ((prev && prev.bdays) || []);
+      const bdayTime = /^\d{2}:\d{2}$/.test(b.bdayTime || '') ? b.bdayTime : ((prev && prev.bdayTime) || '09:00');
       const rec = {
         endpoint: sub.endpoint,
         time: b.time,
         tz,
+        bdays,
+        bdayTime,
+        bdayLast: (prev && prev.bdayLast) || '',
         // Subscribing after today's time has passed starts tomorrow, matching the client.
         last: toMin(now.hhmm) >= toMin(b.time) ? now.date : (prev && prev.time === b.time ? prev.last : ''),
         updated: new Date().toISOString(),
