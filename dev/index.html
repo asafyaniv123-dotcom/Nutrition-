@@ -4071,6 +4071,10 @@ body.mod-fitness .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
 .hl-wn div{display:flex;gap:8px;align-items:flex-start;margin-top:4px}
 .hl-wn i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--nu-amber,#f0a92e);margin-top:6px}
 .hl-wn span{display:block;font-size:11.5px;color:var(--nu-muted);font-weight:700;margin-top:6px}
+.gate{margin-top:14px}
+.gate-yn{display:grid;gap:10px}
+.gate-yn .fq-o{text-align:center;justify-content:center;font-size:16px;padding:16px}
+.gate-s{font-size:14px;line-height:1.6;color:var(--nu-muted,#6d675e);margin:-4px 0 14px}
 .fss-g{font-size:12.5px;font-weight:800;color:var(--nu-muted);margin:14px 4px 8px;text-align:start}
 .fss-l{display:flex;flex-direction:column;border-radius:18px;padding:2px 12px;box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 .fss-l button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:none;background:none;padding:12px 2px;border-top:1px solid rgba(176,168,156,.3);
@@ -9968,6 +9972,31 @@ function fqQuestion(k){
   if(k==='weight')return ''+_t('מה המשקל שלך?')+'';
   return ''+_t('כמה אתה זז בשבוע?')+'';
 }
+/* ── DO YOU HAVE A GOAL? ── the door in front of the goal question */
+var _gate={fitness:'',nutrition:''};
+function gateHTML(area){
+  var st=_gate[area]||'',fit=area==='fitness',h='<div class="gate">';
+  if(st==='add'){
+    h+='<div class="gate-s">'+(fit?_t('מטרה עוזרת לבנות לך אימון שמתאים לך: כמה חזרות, כמה מנוחה, ומתי להעלות משקל.')
+                              :_t('מטרה קובעת את יעד הקלוריות והחלבון שלך. בלי מטרה נשמור על המשקל הנוכחי.'))+'</div>';
+    h+='<button class="gn-go" onclick="gateSet(\''+area+'\',\'pick\')">'+_t('כן, בוא נבחר')+'</button>';
+    h+='<button class="fq-later" onclick="gateNone(\''+area+'\')">'+_t('לא עכשיו')+'</button>';
+  } else {
+    h+='<div class="gate-yn"><button class="fg-b fq-o" onclick="gateSet(\''+area+'\',\'pick\')">'+_t('כן, יש לי מטרה')+'</button>'+
+       '<button class="fg-b fq-o" onclick="gateSet(\''+area+'\',\'add\')">'+_t('לא')+'</button></div>';
+  }
+  return h+'</div>';
+}
+function gateQuestion(area){
+  if(_gate[area]==='add')return _t('תרצה להוסיף מטרה?');
+  return area==='fitness'?_t('יש לך מטרה בכושר?'):_t('יש לך מטרה בתזונה?');
+}
+function gateSet(area,st){_gate[area]=st;if(area==='fitness')renderFitness();else render();}
+function gateNone(area){
+  _gate[area]='';
+  if(area==='fitness'){var o=fitMe();o.out=[];o.outDone=1;try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}renderFitness();}
+  else profSet('goal','keep');
+}
 function fqStepHTML(k,p){
   var h='',i;
   if(k==='goal'){
@@ -10046,14 +10075,15 @@ function fqCardHTML(){
      a plural in eleven languages and Arabic has six categories of it; a row
      that fills up answers "how many are left" and "does this end" in every
      one of them without a word. */
+  var gated=left[0]==='goal'&&_gate.nutrition!=='pick';
   return fqFrameHTML({
     area:'nutrition',
-    q:fqQuestion(left[0]),
+    q:gated?gateQuestion('nutrition'):fqQuestion(left[0]),
     /* the reason, once. After the first answer she has seen the numbers move
        and the sentence has done its work. */
     why:(left.length===FQ_ORDER.length)
         ?''+_t('תשובה אחת, והמספרים במסך הזה יהיו שלך במקום של מישהו אחר')+'':'',
-    body:fqStepHTML(left[0],p),
+    body:gated?gateHTML('nutrition'):fqStepHTML(left[0],p),
     done:FQ_ORDER.length-left.length,
     total:FQ_ORDER.length
   });
@@ -22311,9 +22341,10 @@ function renderFitWelcome(){
   if(left.length){
     var k=left[0];
     h+='<div class="gn-c"><div class="gn-h">'+_t('לפני שנתחיל')+'</div>';
-    h+='<div style="font-size:18px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.35">'+fitMeQuestion(k)+'</div>';
-    h+='<div class="gn-s">'+fitMeWhy(k)+'</div>';
-    h+=fitMeBody(k);
+    var gatedF=k==='out'&&_gate.fitness!=='pick';
+    h+='<div style="font-size:18px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.35">'+(gatedF?gateQuestion('fitness'):fitMeQuestion(k))+'</div>';
+    if(!gatedF)h+='<div class="gn-s">'+fitMeWhy(k)+'</div>';
+    h+=gatedF?gateHTML('fitness'):fitMeBody(k);
     h+='<div class="fq-dots">';
     for(i=0;i<FIT_ME_ORDER.length;i++)
       h+='<span class="fq-dot'+(i<FIT_ME_ORDER.length-left.length?' on':'')+'"></span>';
