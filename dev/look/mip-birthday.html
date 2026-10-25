@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mip · יום הולדת</title>
+<!--
+  MIP ON A BIRTHDAY (25.10). Asaf: "how Mip looks the moment someone has a
+  birthday". Three directions, side by side, each live:
+    A  Mip is the candle's flame - she blows him out, and he comes back as confetti
+    B  a party hat, all day, in the corner of every screen - quiet, no takeover
+    C  the full-screen moment (beem-screen.js) the morning of the day
+  The app knows her date of birth already (loadProfile().birth); a person's
+  birthday from her people list is a second question, written at the bottom.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#e9e7e3;--ink:#433c38;--muted:#57514a;--lit:rgba(255,255,255,.95);--shade:rgba(176,168,156,.44);--or:#ff7a1a}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:#dedbd6;color:var(--ink);font:400 15px/1.55 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:30px max(16px,env(safe-area-inset-right)) 80px max(16px,env(safe-area-inset-left))}
+  h1{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .tag{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-top:8px;border-top:2px solid var(--ink);padding-top:8px;display:inline-block}
+  .lede{font-size:14px;line-height:1.85;color:var(--muted);margin-top:14px;max-width:70ch}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:26px}
+  .opt{background:var(--ground);border-radius:26px;padding:16px;box-shadow:-5px -5px 12px var(--lit),6px 8px 18px rgba(176,168,156,.3);display:flex;flex-direction:column;gap:12px}
+  .opt h2{font-size:22px;font-weight:800;display:flex;gap:10px;align-items:baseline}
+  .opt h2 i{font-style:normal;font-size:13px;font-weight:800;color:#fff;background:var(--ink);border-radius:8px;padding:1px 8px}
+  .opt p{font-size:13.5px;line-height:1.75;color:var(--muted)}
+  .stage{position:relative;height:540px;border-radius:20px;overflow:hidden;box-shadow:inset 3px 3px 8px var(--shade),inset -3px -3px 8px var(--lit)}
+  .replay{align-self:flex-start;border:none;border-radius:14px;padding:9px 16px;font:inherit;font-weight:800;cursor:pointer;color:var(--ink);background:var(--ground);
+    box-shadow:-3px -3px 7px var(--lit),4px 5px 10px rgba(176,168,156,.35)}
+  .note{font-size:13.5px;line-height:1.85;color:var(--muted);margin-top:28px;border-top:1px solid rgba(80,70,60,.15);padding-top:14px;max-width:80ch}
+  .note b{color:var(--ink)}
+
+  /* A - the candle */
+  #sa{background:linear-gradient(#2a2420,#3a302a)}
+  .mip{position:absolute;width:240px;height:240px;left:50%;top:50%;margin:-120px 0 0 -120px;transition:transform 1s cubic-bezier(.3,.8,.3,1),filter .5s}
+  #sa .mip.flame{transform:translate(0,14px) scale(.36)}
+  #sa .mip.out{filter:brightness(.35) saturate(.4)}
+  .cake{position:absolute;left:50%;bottom:-260px;width:200px;margin-left:-100px;transition:bottom 1s cubic-bezier(.3,.8,.3,1)}
+  .cake.up{bottom:58px}
+  .wick{position:absolute;left:50%;top:-4px;width:3px;height:22px;margin-left:-1.5px;border-radius:2px;background:#5a4636}
+  .smoke{position:absolute;left:50%;top:150px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:rgba(220,210,200,.5);filter:blur(4px);opacity:0}
+  .smoke.go{animation:smoke 1.2s ease-out forwards}
+  @keyframes smoke{0%{opacity:.8;transform:translateY(0) scale(.6)}100%{opacity:0;transform:translateY(-70px) scale(2.4)}}
+  .say{position:absolute;left:0;right:0;top:26px;text-align:center;color:#fbf6ee;font-size:24px;font-weight:800;opacity:0;transform:translateY(8px);transition:opacity .5s,transform .5s}
+  .say.on{opacity:1;transform:none}
+  .say small{display:block;font-size:14px;font-weight:600;opacity:.75;margin-top:2px}
+  .blow{position:absolute;left:20px;right:20px;bottom:16px;height:46px;border:none;border-radius:15px;font:inherit;font-size:16px;font-weight:800;cursor:pointer;
+    background:#fbf6ee;color:#2a2420;opacity:0;pointer-events:none;transition:opacity .4s}
+  .blow.on{opacity:1;pointer-events:auto}
+  .conf{position:absolute;left:50%;top:46%;width:var(--s);height:var(--s);margin:calc(var(--s)/-2) 0 0 calc(var(--s)/-2);border-radius:50%;background:var(--c);opacity:0;animation:conf 1.6s cubic-bezier(.15,.7,.3,1) forwards;animation-delay:var(--d)}
+  @keyframes conf{0%{opacity:0;transform:translate(0,0) scale(.4)}12%{opacity:1}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(1)}}
+
+  /* B - the hat */
+  #sb{background:#1f1c1a}
+  .home{position:absolute;inset:0;padding:120px 18px 22px;color:#f3ece4}
+  .home h3{font-size:24px;font-weight:800}
+  .home .d{font-size:13px;opacity:.6}
+  .home .fan{margin:26px auto 0;width:220px;height:220px;border-radius:50%;background:#2a2622;box-shadow:inset 6px 6px 16px rgba(0,0,0,.45),inset -4px -4px 12px rgba(255,255,255,.04)}
+  .corner{position:absolute;top:8px;left:6px;width:96px;height:96px;cursor:pointer}
+  .corner .mip{width:96px;height:96px;margin:-48px 0 0 -48px}
+  .hat{position:absolute;pointer-events:none;transform-origin:50% 100%;z-index:2}
+  .hat svg{display:block;width:100%;height:auto}
+  .corner .hat{width:26px;left:36px;top:-2px;transform:rotate(-16deg)}
+  .bubble{position:absolute;top:30px;left:96px;background:#fbf6ee;color:#2a2420;font-size:13.5px;font-weight:700;padding:7px 12px;border-radius:14px 14px 14px 4px;
+    opacity:0;transform:scale(.9);transform-origin:0 50%;transition:opacity .4s,transform .4s}
+  .bubble.on{opacity:1;transform:none}
+
+  /* C - the morning */
+  #sc{background:#e9e7e3}
+
+  @media (max-width:980px){.grid{grid-template-columns:1fr}.stage{max-width:390px;width:100%;margin:0 auto}}
+  @media (prefers-reduced-motion:reduce){.mip,.cake,.say{transition:none}.conf,.smoke.go{animation:none}}
+</style>
+<div class="wrap">
+  <h1>Mip ביום הולדת</h1>
+  <div class="tag">שלושה כיוונים · חיים, לא תמונות</div>
+  <div class="lede">האפליקציה כבר יודעת מתי נולדת (מהפרופיל). השאלה היא מה Mip עושה ביום הזה: רגע אחד גדול, נוכחות שקטה כל היום, או שניהם.
+    כל כיוון כאן חי. לחיצה על "שוב" מנגנת אותו מההתחלה.</div>
+  <div class="grid">
+    <div class="opt">
+      <h2><i>א</i>Mip הוא הנר</h2>
+      <p>עוגה עולה מלמטה, Mip מתכווץ ונוחת עליה כלהבה של הנר, והטבעות שלו מנצנצות כמו זיקוק. לוחצים "לכבות את הנר": הוא נכבה, עשן קטן, ואז חוזר בגדול ומתפזר לקונפטי. הרגע שבו
+        היא עושה משהו, לא רק מסתכלת.</p>
+      <div class="stage" id="sa"></div>
+      <button class="replay" data-go="a">שוב</button>
+    </div>
+    <div class="opt">
+      <h2><i>ב</i>כובע מסיבה, כל היום</h2>
+      <p>בלי השתלטות על המסך. כל היום Mip יושב בפינה עם כובע מסיבה קטן, בצבעים שלו. לחיצה עליו: "יום הולדת שמח, דנה". שקט, ואפשר לחבר אותו לכל אחד מהשניים האחרים.</p>
+      <div class="stage" id="sb"></div>
+      <button class="replay" data-go="b">שוב</button>
+    </div>
+    <div class="opt">
+      <h2><i>ג</i>רגע על כל המסך, בבוקר</h2>
+      <p>הפעם הראשונה שהיא פותחת את האפליקציה ביום ההולדת: המסך מתמלא בכתום, הטבעות של Mip נבנות חרוז אחרי חרוז, ונסגרות בפרץ אור. נבנה על אבן הבניין של הרגעים על כל המסך, כך שזו שורה אחת באפליקציה.</p>
+      <div class="stage" id="sc"></div>
+      <button class="replay" data-go="c">שוב</button>
+    </div>
+  </div>
+  <div class="note">
+    <b>מה לא הוחלט:</b> אם זה רק יום ההולדת שלה, או גם של אנשים מהרשימה שלה. אצל אנשים אחרים Mip לא חוגג. הוא מזכיר, למשל בכרטיס תגובה קטן: "היום יום ההולדת של יואב. אולי להתקשר?". זה קשור לכיוון "האזורים צריכים לדבר".<br>
+    <b>הערה על הכובע והעוגה:</b> כאן הם מצוירים בקוד, שטוחים. אם כיוון ייבחר, אפשר לרנדר אותם בתלת־ממד כמו החפצים של Mip (המשקולת, הצלחת). את זה נעשה רק אחרי שנסכם על הבריף.
+  </div>
+</div>
+<script src="beem-engine.js"></script>
+<script src="beem-special.js"></script>
+<script src="beem-alive.js"></script>
+<script src="beem-screen.js"></script>
+<script>
+var MB_NAME = 'דנה', MB_AGE = 30;
+/* the party hat: a cone in his own colours, with a bead for a pompom */
+var MB_HAT = '<svg viewBox="0 0 40 52" aria-hidden="true"><defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#ffb04a"/><stop offset=".55" stop-color="#ff7a1a"/><stop offset="1" stop-color="#d55617"/></linearGradient>' +
+  '<clipPath id="hc"><path d="M20 6 L37 48 Q20 53 3 48 Z"/></clipPath></defs>' +
+  '<path d="M20 6 L37 48 Q20 53 3 48 Z" fill="url(#hg)"/>' +
+  '<g clip-path="url(#hc)" fill="#fbf6ee" opacity=".92"><path d="M0 20 L40 12 L40 17 L0 25Z"/><path d="M0 33 L40 25 L40 30 L0 38Z"/><path d="M0 46 L40 38 L40 43 L0 51Z"/></g>' +
+  '<path d="M3 48 Q20 53 37 48" fill="none" stroke="#fac047" stroke-width="3" stroke-linecap="round"/>' +
+  '<circle cx="20" cy="6" r="5.5" fill="#fed662"/><circle cx="18.4" cy="4.4" r="1.8" fill="#fff" opacity=".8"/></svg>';
+/* the cake: the app's soft material, cream tiers, an orange drip, bead sprinkles */
+var MB_CAKE = '<svg viewBox="0 0 200 150" aria-hidden="true"><defs><linearGradient id="ct" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fffaf3"/><stop offset="1" stop-color="#eadfd0"/></linearGradient></defs>' +
+  '<ellipse cx="100" cy="142" rx="96" ry="8" fill="rgba(0,0,0,.28)"/>' +
+  '<rect x="14" y="70" width="172" height="70" rx="16" fill="url(#ct)"/>' +
+  '<rect x="44" y="16" width="112" height="58" rx="14" fill="url(#ct)"/>' +
+  '<path d="M44 30 Q44 16 58 16 H142 Q156 16 156 30 V36 Q150 44 144 36 Q138 50 130 38 Q122 46 114 37 Q106 52 98 38 Q90 46 82 37 Q74 50 66 38 Q58 46 52 37 Q47 44 44 38Z" fill="#ff7a1a"/>' +
+  '<path d="M14 84 Q14 70 30 70 H170 Q186 70 186 84 V90 Q178 99 170 90 Q162 104 152 92 Q142 100 132 91 Q122 106 112 92 Q102 100 92 91 Q82 104 72 92 Q62 100 52 91 Q42 104 32 92 Q22 99 14 92Z" fill="#fac047"/>' +
+  '<g><circle cx="40" cy="116" r="3.2" fill="#d55617"/><circle cx="66" cy="124" r="3.2" fill="#ed861f"/><circle cx="94" cy="114" r="3.2" fill="#fed662"/><circle cx="122" cy="125" r="3.2" fill="#d55617"/>' +
+  '<circle cx="150" cy="116" r="3.2" fill="#ed861f"/><circle cx="168" cy="128" r="3.2" fill="#fed662"/><circle cx="76" cy="58" r="2.8" fill="#d55617"/><circle cx="104" cy="62" r="2.8" fill="#ed861f"/><circle cx="130" cy="56" r="2.8" fill="#fed662"/></g></svg>';
+
+/* each stage runs one Beem with beemScreenRun (beem-screen.js) */
+function mbMount(el){ var b = new Beem(el); beemScreenRun(b, el); return b; }
+function mbConf(stage){
+  var C = ['#d55617', '#ed861f', '#fac047', '#fed662', '#ffffff'], h = '', i, a, d;
+  for (i = 0; i < 30; i++){ a = i/30*Math.PI*2 + (i % 3)*.1; d = 90 + (i*41 % 110);
+    h += '<i class="conf" style="--s:' + (7 + i % 4*3) + 'px;--c:' + C[i % 5] + ';--x:' + Math.round(Math.cos(a)*d) + 'px;--y:' + Math.round(Math.sin(a)*d) + 'px;--d:' + ((i % 6)*.03) + 's"></i>'; }
+  var w = document.createElement('div'); w.innerHTML = h; w.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+  stage.appendChild(w); setTimeout(function(){ w.remove(); }, 2200);
+}
+
+/* A: he settles on the cake as its flame and burns softly until she blows */
+var MB_FLAME = {dur: 600000, ev: [[0, 'face', 'content'], [0, 'mode', {breathe: [.03, 1.6], idle: 0}],
+  [200, 'fx', {t: 'body', v: {white: .22}, d: 700}], [900, 'fx', {t: 'rings', v: {sc: [1.12, 1.18, 1.24]}, d: 900, s: 140}]]};
+var MB_BLOWN = {dur: 4800, ev: [[0, 'mode', {breathe: [0, 4]}], [0, 'face', 'closed'], [0, 'fx', {t: 'body', v: {white: 0}, d: 150}],
+  [0, 'fx', {t: 'rings', v: {sc: .55}, d: 260, s: 60}],
+  [1300, 'face', 'surprised'], [1300, 'fx', {t: 'rings', v: {sc: 1}, d: 600, e: 'back', s: 60}],
+  [1550, 'face', 'happy'], [1550, 'burst', 2.8], [1550, 'fx', {t: 'body', v: {white: .5}, d: 90}], [1650, 'fx', {t: 'body', v: {white: 0}, d: 400, e: 'out'}],
+  [1600, 'hop', 160], [3000, 'face', 'content'], [4300, 'face', 'calm']]};
+function mbA(){
+  var s = document.getElementById('sa');
+  s.innerHTML = '<div class="say"></div><div class="cake"><div class="wick"></div>' + MB_CAKE + '</div><div class="smoke"></div><div class="mip"></div><button class="blow">לכבות את הנר</button>';
+  var m = s.querySelector('.mip'), cake = s.querySelector('.cake'), say = s.querySelector('.say'), btn = s.querySelector('.blow');
+  var b = mbMount(m); b.play(byId(COMBO_LIST, 'hello'));
+  say.innerHTML = 'יום הולדת שמח, ' + MB_NAME + '<small>תביעי משאלה</small>';
+  setTimeout(function(){ say.classList.add('on'); }, 300);
+  setTimeout(function(){ cake.classList.add('up'); m.classList.add('flame'); b.play(MB_FLAME); }, 1400);
+  setTimeout(function(){ btn.classList.add('on'); }, 2600);
+  btn.onclick = function(){
+    btn.classList.remove('on'); say.classList.remove('on');
+    m.classList.add('out'); s.querySelector('.smoke').classList.add('go'); b.play(MB_BLOWN);
+    setTimeout(function(){ m.classList.remove('out', 'flame'); cake.classList.remove('up'); }, 1250);
+    setTimeout(function(){ mbConf(s); say.innerHTML = MB_AGE + '!<small>שהשנה הזו תהיה טובה</small>'; say.classList.add('on'); }, 1550);
+  };
+}
+
+/* B: the corner, with the hat on, and a word when she taps him */
+var MB_IDLE = {dur: 600000, ev: [[0, 'face', 'happy'], [0, 'mode', {breathe: [.016, 4], idle: 0}], [2200, 'face', 'content'], [5200, 'look', -8, 4], [6800, 'look', 0, 0], [9000, 'face', 'happy']]};
+function mbB(){
+  var s = document.getElementById('sb');
+  s.innerHTML = '<div class="home"><div class="d">יום ראשון, 25 באוקטובר</div><h3>בוקר טוב, ' + MB_NAME + '</h3><div class="fan"></div></div>' +
+    '<div class="corner"><div class="mip"></div><div class="hat">' + MB_HAT + '</div></div><div class="bubble">יום הולדת שמח, ' + MB_NAME + '!</div>';
+  var c = s.querySelector('.corner'), b = mbMount(s.querySelector('.corner .mip')), bub = s.querySelector('.bubble');
+  b.play(MB_IDLE);
+  function tap(){ bub.classList.add('on'); b.play(byId(COMBO_LIST, 'party'));
+    setTimeout(function(){ bub.classList.remove('on'); b.play(MB_IDLE); }, 3800); }
+  c.onclick = tap; setTimeout(tap, 1600);
+}
+
+/* C: the morning takeover, the rings built bead by bead and closed in light */
+var MB_RINGS = {dur: 7600, ev: [[0, 'fx', {t: 'rings', v: {reveal: 0}, d: 0}], [0, 'face', 'calm'],
+  [500, 'fx', {t: 'fx', v: {track: 0}, d: 0}], [500, 'fx', {t: 'r0', v: {reveal: 1}, d: 1100}],
+  [1600, 'fx', {t: 'fx', v: {track: 1}, d: 0}], [1600, 'fx', {t: 'r1', v: {reveal: 1}, d: 1100}],
+  [2700, 'fx', {t: 'fx', v: {track: 2}, d: 0}], [2700, 'fx', {t: 'r2', v: {reveal: 1}, d: 1200}],
+  [3900, 'fx', {t: 'fx', v: {track: -1}, d: 0}], [3900, 'look', 0, 0], [3900, 'face', 'happy'],
+  [3900, 'burst', 3], [3900, 'spin', 220], [3900, 'fx', {t: 'body', v: {white: .55}, d: 90}],
+  [4000, 'fx', {t: 'body', v: {white: 0}, d: 350, e: 'out'}], [3950, 'hop', 170],
+  [5600, 'face', 'content'], [7000, 'face', 'calm']]};
+var mbOpenC = null;
+function mbC(){
+  var s = document.getElementById('sc');
+  if (mbOpenC) mbOpenC.close();
+  s.innerHTML = '';
+  mbOpenC = beemScreenShow({host: s, bg: '#ff7a1a', ink: '#ffffff', accent: '#a84500', play: MB_RINGS,
+    title: 'יום הולדת שמח, ' + MB_NAME + '!', sub: MB_AGE + ' שנה. והיום הזה כולו שלך.', button: 'תודה, Mip'});
+}
+
+var MB = {a: mbA, b: mbB, c: mbC};
+BEEM_READY.then(function(){
+  mbA(); mbB(); mbC();
+  [].forEach.call(document.querySelectorAll('.replay'), function(x){ x.onclick = function(){ MB[x.getAttribute('data-go')](); }; });
+});
+</script>
+</html>
