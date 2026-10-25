@@ -1,5 +1,6 @@
 /* The iPhone app's icon is the brand's App Store icon (brand/app-store-1024.png:
- * the orange nine-dot sun on cream, 1024, no alpha - Asaf's choice, 23 Oct).
+ * Mip, big on cream, 1024, no alpha - option C1, Asaf's choice on 25 Oct; it
+ * replaced the orange nine-dot sun of 23 Oct).
  * Copied at build time so the shell never drifts from the brand. The
  * Beem-rendered icon (tools/make-app-icon.mjs) is retired. */
 import fs from 'fs';
