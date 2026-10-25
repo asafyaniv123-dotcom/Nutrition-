@@ -285,7 +285,7 @@ async function aiSpend(env, ip, day) {
    One short answer, no punctuation, and an empty string when the model is
    unsure: a wrong search term returns wrong products with real numbers on
    them, which is worse than returning nothing. */
-async function latinTerm(q, tag, env) {
+async function latinTerm(q, tag, env, fetch = globalThis.fetch) {
   /* With no country chosen the question loses its "in France" and becomes
      the international name instead. Interpolating an empty string would
      have asked what a packet says "on a shelf in ", which is not a
@@ -487,12 +487,514 @@ ME
 const BEEM_SCREENS = { home: 'the home screen', me: 'the Me screen', nutrition: 'Nutrition', fitness: 'Fitness',
   hobbies: 'Hobbies', people: 'People', planning: 'Planning', closet: 'the Closet', insights: 'Insights', endofday: 'End of day' };
 
+/* ── the meter ──
+   What the model calls cost, per day and route, and which install asked. */
+const METER_ROUTES = ['/parse', '/match', '/cross', '/plan', '/transcribe', '/say', '/route', '/schedule',
+  '/beem', '/ask', '/estimate', '/see', '/vision', '/coach', '/week', '/analyze', '/off', '/health'];
+function meterStart(req) {
+  const url = new URL(req.url);
+  const u = url.searchParams.get('u') || '';
+  return { route: METER_ROUTES.includes(url.pathname) ? url.pathname : 'other',
+    uid: /^[0-9a-f]{24}$/.test(u) ? u : '', dev: url.searchParams.get('d') === '1', calls: [], wait: [] };
+}
+async function meterFetch(u, init, M) {
+  const s = typeof u === 'string' ? u : (u && u.url) || '';
+  const prov = s.startsWith('https://api.anthropic.com/') ? 'a' : s.startsWith('https://generativelanguage.googleapis.com/') ? 'g' : '';
+  if (!prov) return fetch(u, init);
+  let model = '';
+  if (prov === 'a') { try { model = String(JSON.parse(init.body).model || ''); } catch {} }
+  else { const mm = s.match(/models\/([^:/?]+)/); model = mm ? mm[1] : ''; }
+  const c = { m: model.slice(0, 40) || '?', i: 0, o: 0, e: '' };
+  M.calls.push(c);
+  let r;
+  try { r = await fetch(u, init); } catch (err) { c.e = 'net'; throw err; }
+  const type = r.headers.get('content-type') || '';
+  if (r.ok) {
+    /* a stream is counted as a call; its tokens are in the stream, which
+       is the person's, and reading a copy of it would hold it back */
+    if (/json/.test(type)) M.wait.push(r.clone().json().then((j) => {
+      const a = j && j.usage, g = j && j.usageMetadata;
+      if (a) { c.i = (a.input_tokens || 0) + (a.cache_creation_input_tokens || 0) + (a.cache_read_input_tokens || 0); c.o = a.output_tokens || 0; }
+      if (g) { c.i = g.promptTokenCount || 0; c.o = (g.candidatesTokenCount || 0) + (g.thoughtsTokenCount || 0); }
+    }).catch(() => {}));
+  } else {
+    c.e = 'http' + r.status;
+    M.wait.push(r.clone().text().then((t) => {
+      if (/credit balance/i.test(t)) c.e = 'credit';
+      else if (r.status === 429 && /quota/i.test(t)) c.e = 'quota';
+      else if (r.status === 529 || /overloaded/i.test(t)) c.e = 'overloaded';
+    }).catch(() => {}));
+  }
+  return r;
+}
+async function meterSave(env, M) {
+  await Promise.all(M.wait);
+  const key = 'mt:' + new Date().toISOString().slice(0, 10) + ':' + M.route;
+  let rec = {};
+  try { rec = JSON.parse((await env.SUBS.get(key)) || '{}') || {}; } catch { rec = {}; }
+  const add = (o, c) => { o.n = (o.n || 0) + 1; o.i = (o.i || 0) + c.i; o.o = (o.o || 0) + c.o; if (c.e) o.f = (o.f || 0) + 1; };
+  rec.t = rec.t || {}; rec.m = rec.m || {}; rec.e = rec.e || {}; rec.u = rec.u || {};
+  for (const c of M.calls) {
+    add(rec.t, c);
+    add(rec.m[c.m] = rec.m[c.m] || {}, c);
+    if (c.e) rec.e[c.e] = (rec.e[c.e] || 0) + 1;
+    const who = M.uid || (M.dev ? 'dev' : 'anon');
+    if (rec.u[who] || Object.keys(rec.u).length < 500) {
+      add(rec.u[who] = rec.u[who] || {}, c);
+      if (M.dev) rec.u[who].d = true;
+    }
+  }
+  if (rec.e.credit) rec.lastCredit = new Date().toISOString();
+  await env.SUBS.put(key, JSON.stringify(rec), { expirationTtl: 120 * 86400 });
+}
+
 export default {
   /* ctx is here for one reason: a streaming response returns while its writer
      is still running, and the runtime cancels pending work once the request is
      done unless waitUntil holds it. Without it /say answered in two chunks and
      stopped mid-word. */
   async fetch(req, env, ctx) {
+    const M = meterStart(req);
+    try { return await routeRequest(req, env, ctx, M); }
+    finally { if (M.calls.length) ctx.waitUntil(meterSave(env, M)); }
+  },
+
+  async scheduled(event, env, ctx) {
+    let cursor;
+    do {
+      const page = await env.SUBS.list({ cursor, prefix: 'sub:' });
+      for (const k of page.keys) {
+        const rec = await env.SUBS.get(k.name, 'json');
+        if (!rec) continue;
+
+        let now;
+        try { now = localNow(rec.tz); } catch { continue; }
+        if (rec.last === now.date) continue;               // already sent today
+
+        const late = toMin(now.hhmm) - toMin(rec.time);
+        if (late < 0) continue;                            // not yet
+        if (late > LATE_WINDOW_MIN) {                      // too late to be useful
+          rec.last = now.date;
+          await env.SUBS.put(k.name, JSON.stringify(rec));
+          continue;
+        }
+
+        const res = await sendPush(rec.endpoint, env);
+        if (res.status === 404 || res.status === 410) {
+          await env.SUBS.delete(k.name);                   // subscription is gone for good
+          continue;
+        }
+        // Mark sent even on a transient failure - better a missed day than a retry storm.
+        rec.last = now.date;
+        rec.lastStatus = res.status;
+        await env.SUBS.put(k.name, JSON.stringify(rec));
+      }
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+  },
+};
+
+/* ── /route, THE PURE HALF ──
+   The model's answer is a suggestion, not an instruction. Everything it can
+   name is checked against what the app actually has: a person it names must
+   be one the app sent, a date must be a date, a number must be a sane number.
+   Anything that fails comes back empty rather than guessed at, because the
+   app shows this to the person before writing it - and a wrong field on that
+   card is worse than an empty one. */
+const ROUTE_INTENTS = ['food', 'water', 'quote', 'moment', 'journal', 'task',
+  'person_note', 'steps', 'goal', 'open', 'unknown'];
+const ROUTE_AREAS = ['nutrition', 'fitness', 'hobbies', 'endofday', 'insights',
+  'people', 'planning', 'closet', 'journal', ''];
+function routeClean(o, people) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const int = (v, lo, hi) => { const x = Math.round(Number(v)); return isFinite(x) && x >= lo && x <= hi ? x : 0; };
+  const out = {
+    intent: ROUTE_INTENTS.includes(o && o.intent) ? o.intent : 'unknown',
+    text: str(o && o.text, 1000),
+    person: '',
+    // round-tripped: Date rolls 2026-02-30 over into March without a word
+    date: (/^\d{4}-\d{2}-\d{2}$/.test(o && o.date) &&
+           new Date(o.date + 'T12:00:00Z').toISOString().slice(0, 10) === o.date) ? o.date : '',
+    time: '',
+    amount: 0,
+    page: int(o && o.page, 0, 100000),
+    area: ROUTE_AREAS.includes(o && o.area) ? o.area : '',
+  };
+  const tm = /^(\d{1,2}):(\d{2})$/.exec(String((o && o.time) || ''));
+  if (tm && +tm[1] < 24 && +tm[2] < 60) out.time = tm[1].padStart(2, '0') + ':' + tm[2];
+  // a person is only ever one the app already knows, matched without case
+  const want = str(o && o.person, 60).toLowerCase();
+  if (want) for (const p of people || []) if (String(p).toLowerCase() === want) { out.person = p; break; }
+  if (out.intent === 'water') out.amount = int(o && o.amount, 1, 5000);
+  if (out.intent === 'steps') out.amount = int(o && o.amount, 1, 200000);
+  if (out.intent === 'person_note' && !out.person) out.intent = 'unknown';
+  if (out.intent === 'open' && !out.area) out.intent = 'unknown';
+  if (['quote', 'moment', 'journal', 'task', 'person_note', 'goal', 'food'].includes(out.intent) && !out.text)
+    out.intent = 'unknown';
+  if ((out.intent === 'water' || out.intent === 'steps') && !out.amount) out.intent = 'unknown';
+  return out;
+}
+
+/* ── /schedule, THE PURE HALF ──
+   Same rule as routeClean: the model suggests, this decides what reaches the
+   card. Weekdays are 0 (Sunday) to 6, times are HH:MM, an end before its start
+   is no end, a weekly entry with no day takes its date's day or is dropped,
+   and a one-off with no date is today's. A last day (until) belongs only to
+   a repeat and never comes before its first; a removal whose span is empty
+   is dropped rather than widened. */
+const SCHED_REPEATS = ['none', 'weekly', 'daily'];
+function scheduleClean(o, today) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const hm = (v) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || ''));
+    return m && +m[1] < 24 && +m[2] < 60 ? m[1].padStart(2, '0') + ':' + m[2] : '';
+  };
+  // round-tripped, because Date rolls 2026-02-30 over into March without a word
+  const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '') &&
+    new Date(v + 'T12:00:00Z').toISOString().slice(0, 10) === v;
+  const day0 = isDate(today) ? today : '';
+  const out = [];
+  for (const it of ((o && Array.isArray(o.items)) ? o.items : []).slice(0, 10)) {
+    const text = str(it && it.text, 200);
+    if (!text) continue;
+    let repeat = SCHED_REPEATS.includes(it && it.repeat) ? it.repeat : 'none';
+    let date = isDate(it && it.date) ? it.date : '';
+    let days = [...new Set((Array.isArray(it && it.days) ? it.days : [])
+      .map((d) => Math.round(Number(d))).filter((d) => d >= 0 && d <= 6))].sort();
+    const start = hm(it && it.start);
+    let end = start ? hm(it && it.end) : '';
+    if (end && end <= start) end = '';
+    if (repeat === 'daily') days = [0, 1, 2, 3, 4, 5, 6];
+    if (repeat === 'weekly' && !days.length) {
+      if (!date) continue;
+      days = [new Date(date + 'T12:00:00Z').getUTCDay()];
+    }
+    if (repeat === 'none') { days = []; if (!date) date = day0; if (!date) continue; }
+    const action = it && it.action === 'remove' ? 'remove' : 'add';
+    let until = repeat !== 'none' && isDate(it && it.until) ? it.until : '';
+    if (until && until < (date || day0)) {
+      if (action === 'remove') continue;
+      until = '';
+    }
+    out.push({ text, repeat, date, days, start, end, until, action });
+  }
+  return out;
+}
+
+/* What the app tells /schedule about the board, so "remove it" has something
+   to point at. It came from a phone and goes into a prompt: every field is
+   cut to a type and a size, and there are at most forty entries. */
+function scheduleBoard(b) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+  const entries = ((b && Array.isArray(b.board)) ? b.board : []).slice(0, 40).map((e) => ({
+    text: str(e && e.text, 80), from: isDate(e && e.from) ? e.from : '', to: isDate(e && e.to) ? e.to : '',
+    n: Math.max(0, Math.min(999, Math.round(Number(e && e.n)) || 0)),
+  })).filter((e) => e.text && e.from && e.to);
+  const last = ((b && Array.isArray(b.last)) ? b.last : []).slice(0, 5).map((t) => str(t, 80)).filter(Boolean);
+  return { entries, last };
+}
+
+/* WHAT ONE ITEM COMES TO, worked out here and not by the model. Two photos of
+   one sushi plate and "I ate twice what's in the picture" came back as one
+   plate of 9 pieces and two spoons of sauce - 490 kcal for what was about
+   820. The model now says what ONE portion is and how many times it was
+   eaten, and for food in pieces how many pieces and what one piece is; the
+   multiplying happens here, where it cannot be skipped or done twice.
+   Every figure is bounded, since it is written into her day. */
+function coachTotals(it) {
+  const num = (v, hi) => { const x = Number(v); return isFinite(x) && x > 0 && x <= hi ? x : 0; };
+  const portions = num(it && it.portions, 20) || 1;
+  const units = num(it && it.unit_count, 200), ku = num(it && it.kcal_per_unit, 3000);
+  let k, p, c, f;
+  if (units && ku) {
+    k = ku * units;
+    p = num(it.protein_per_unit, 300) * units;
+    c = num(it.carbs_per_unit, 600) * units;
+    f = num(it.fat_per_unit, 300) * units;
+  } else {
+    k = num(it && it.calories, 20000); p = num(it && it.protein, 2000);
+    c = num(it && it.carbs, 4000); f = num(it && it.fat, 2000);
+  }
+  const r1 = (x) => Math.round(x * portions * 10) / 10;
+  /* portions and units go back too: the app reads only the fields it knows,
+     and a test can then see what the model counted, not just the product */
+  return { calories: Math.round(k * portions), protein: r1(p), carbs: r1(c), fat: r1(f),
+           portions, units: units && ku ? units : 0 };
+}
+
+/* ── A NUTRITION LABEL ──
+   The columns as printed, the package weight, and what was eaten - as a
+   fraction of the package or in grams. labelCompute decides which column to
+   use (the package one for a fraction, per 100 g for grams), never mixes
+   them, and checks the two columns against each other when both are there:
+   per 100 g x weight / 100 must come within 5% of the package column. */
+const LABEL_COL = { type: 'object', properties: { kcal: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' } } };
+function labelClean(l) {
+  if (!l || typeof l !== 'object') return null;
+  const n = (v, hi) => { const x = Number(v); return isFinite(x) && x >= 0 && x <= hi ? x : null; };
+  const col = (c) => {
+    if (!c || typeof c !== 'object') return null;
+    const o = { kcal: n(c.kcal, 5000), p: n(c.protein, 1000), c: n(c.carbs, 1000), f: n(c.fat, 1000) };
+    return o.kcal === null ? null : { kcal: o.kcal, p: o.p || 0, c: o.c || 0, f: o.f || 0 };
+  };
+  const o = { per100: col(l.per_100g), perPkg: col(l.per_package), package_g: n(l.package_weight_g, 10000) || 0,
+    fraction: n(l.portion_fraction, 20) || 0, portion_g: n(l.portion_g, 10000) || 0 };
+  return o.per100 || o.perPkg ? o : null;
+}
+function labelCompute(L) {
+  const r1 = (x) => Math.round(x * 10) / 10;
+  const out = (col, k, column, how) => ({ kcal: Math.round(col.kcal * k), p: r1(col.p * k), c: r1(col.c * k), f: r1(col.f * k), column, how });
+  let mismatch = null;
+  if (L.per100 && L.perPkg && L.package_g) {
+    const expected = Math.round(L.per100.kcal * L.package_g / 100);
+    if (L.perPkg.kcal && Math.abs(expected - L.perPkg.kcal) / L.perPkg.kcal > 0.05) mismatch = { expected, printed: L.perPkg.kcal };
+  }
+  let r = null;
+  if (L.fraction > 0) {
+    if (L.perPkg) r = out(L.perPkg, L.fraction, 'per_package', 'package column x ' + L.fraction);
+    else if (L.per100 && L.package_g) r = out(L.per100, L.package_g / 100 * L.fraction, 'per_100g', 'per 100 g x ' + L.package_g + ' g / 100 x ' + L.fraction);
+  } else if (L.portion_g > 0) {
+    if (L.per100) r = out(L.per100, L.portion_g / 100, 'per_100g', 'per 100 g x ' + L.portion_g + ' g / 100');
+    else if (L.perPkg && L.package_g) r = out(L.perPkg, L.portion_g / L.package_g, 'per_package', 'package column x ' + L.portion_g + ' / ' + L.package_g + ' g');
+  }
+  return Object.assign(r || { kcal: null, p: null, c: null, f: null, column: '', how: '' }, { mismatch });
+}
+/* what a logged item becomes when it came from a label: the code's figures,
+   and the label data kept with it for the next question */
+function labelItem(it) {
+  const L = labelClean(it && it.label);
+  if (!L) return {};
+  const r = labelCompute(L);
+  const keep = { per_100g: L.per100 && { kcal: L.per100.kcal, protein: L.per100.p, carbs: L.per100.c, fat: L.per100.f },
+    per_package: L.perPkg && { kcal: L.perPkg.kcal, protein: L.perPkg.p, carbs: L.perPkg.c, fat: L.perPkg.f },
+    package_weight_g: L.package_g || 0, portion_fraction: L.fraction || 0, portion_g: L.portion_g || 0 };
+  if (r.mismatch) return { label: keep, label_mismatch: true };
+  if (r.kcal === null) return { label: keep };
+  return { calories: r.kcal, protein: r.p, carbs: r.c, fat: r.f, portions: 1, units: 0, label: keep };
+}
+/* the separate reading for a dispute: the label from scratch, from the
+   picture and the stored data, without the coach's earlier reply */
+async function labelRecheck(env, dsp, was, fetch = globalThis.fetch) {
+  const content = [];
+  if (dsp.image) content.push({ type: 'image', source: { type: 'base64', media_type: String(dsp.image.mime || 'image/jpeg'), data: String(dsp.image.data) } });
+  content.push({ type: 'text', text:
+    'Read this nutrition label from scratch, column by column, and fill read_label. Copy each column exactly as printed; never mix columns.\n' +
+    'What they wrote when they logged it: "' + (dsp.said || '') + '"  - from that, the portion eaten: a fraction of the package, or grams.\n' +
+    'The item as it was logged (it is disputed - it may be wrong): ' + JSON.stringify(was ? { name: was.name, quantity: was.quantity } : {}) + '\n' +
+    (dsp.label ? 'Label data stored from the first reading (check it; it may hold the mistake): ' + JSON.stringify(dsp.label) + '\n' : '') +
+    (dsp.image ? '' : 'There is no picture: work from the stored label data, and correct it only where it contradicts itself.') });
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': env.AI_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 700,
+        system: 'You read nutrition labels for an app. You never answer the person; you only fill the tool.',
+        tools: [{ name: 'read_label', description: 'The label, as printed, and the portion eaten.', input_schema: { type: 'object',
+          properties: { per_100g: LABEL_COL, per_package: LABEL_COL, package_weight_g: { type: 'number' },
+            portion_fraction: { type: 'number' }, portion_g: { type: 'number' } } } }],
+        tool_choice: { type: 'tool', name: 'read_label' },
+        messages: [{ role: 'user', content }] }),
+    });
+  } catch { return null; }
+  if (!r.ok) return null;
+  let d; try { d = await r.json(); } catch { return null; }
+  const u = ((d && d.content) || []).find((c) => c && c.type === 'tool_use');
+  return u ? labelClean(u.input) : null;
+}
+
+/* TODAY'S ACTIVITY, as the app sends it */
+function actCtxClean(a) {
+  if (!a || typeof a !== 'object') return null;
+  const num = (v, lo, hi, d) => { const x = Number(v); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x))) : d; };
+  return {
+    steps: num(a.steps, 0, 200000, 0), base: num(a.base, 0, 50000, 8000), kg: num(a.kg, 20, 400, 70), cm: num(a.cm, 100, 250, 170),
+    strength: a.strength === true, cardio_min: num(a.cardio_min, 0, 600, 0),
+    target: num(a.target, 0, 10000, 0), left: num(a.left, -20000, 20000, 0),
+    ask: a.ask === true, asked: a.asked === true, has: a.has === true,
+    now: /^\d{2}:\d{2}$/.test(String(a.now || '')) ? String(a.now) : '00:00',
+  };
+}
+/* THE BONUS, in code. Steps over her baseline cost what the distance costs:
+   ACSM's walking equation puts the net cost of level walking at 0.1 ml O2
+   per kg per metre - about 0.5 kcal per kg per km - and the distance is
+   steps x stride, the stride about 0.415 of her height. So a heavier body
+   spends more on the same step and a shorter one less (a shorter stride),
+   which a flat per-kg figure got wrong most for small people. 70 kg and
+   170 cm when nothing is known. Then 200 for strength,
+   300 an hour of cardio, at most 800; seventy percent of it as carbs and the
+   rest as fat - protein does not move. The app computes the same thing
+   (actBonus) for its own screen. */
+const ACT = { kcalPerKgKm: 0.5, strideOfHeight: 0.415, strength: 200, cardioHour: 300, cap: 800, carbShare: 0.7 };
+function activityBonus(a) {
+  const km = Math.max(0, (a.steps || 0) - (a.base || 0)) * ACT.strideOfHeight * (a.cm || 170) / 100000;
+  const steps = km * (a.kg || 70) * ACT.kcalPerKgKm;
+  const raw = steps + (a.strength ? ACT.strength : 0) + (a.cardio_min || 0) / 60 * ACT.cardioHour;
+  const kcal = Math.round(Math.min(ACT.cap, raw));
+  return { kcal, carbs: Math.round(kcal * ACT.carbShare / 4), fat: Math.round(kcal * (1 - ACT.carbShare) / 9), capped: raw > ACT.cap };
+}
+
+/* the ADMIN_KEY secret, as a Bearer token */
+function adminOk(req, env) {
+  const want = env.ADMIN_KEY || '';
+  const got = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  return !!want && got.length === want.length && got === want;
+}
+/* which daily counters one coach turn is charged to, each with its cap */
+function coachBuckets(o) {
+  if (o.test) return [{ key: 'co:test:' + o.today, cap: o.testCap }];
+  const uid = /^[0-9a-f]{24}$/.test(String(o.uid || '')) ? String(o.uid) : '';
+  if (!uid) return [{ key: 'co:' + o.today + ':' + o.ip, cap: o.cap }];
+  return [{ key: 'co:' + o.today + ':u:' + uid, cap: o.cap }, { key: 'co:' + o.today + ':n:' + o.ip, cap: o.ipCap }];
+}
+
+/* WHAT THE APP KNOWS ABOUT THE TREND, sent every turn while weigh-ins are
+   tracked. trend_before_kg is the seven-day mean before today; for weekly
+   weighers this week's other readings (sum, count) and last week's mean. */
+function weighCtxClean(c) {
+  if (!c || typeof c !== 'object') return null;
+  const num = (v, lo, hi) => { const x = Number(v); return v !== null && v !== '' && v !== undefined && isFinite(x) && x >= lo && x <= hi ? Math.round(x * 100) / 100 : null; };
+  const day = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '';
+  return {
+    mode: c.mode === 'weekly' ? 'weekly' : 'daily',
+    hidden: c.hidden === true,
+    trend_before_kg: num(c.trend_before_kg, 20, 400),
+    week_sum_kg: num(c.week_sum_kg, 0, 2800), week_n: num(c.week_n, 0, 7),
+    last_week_kg: num(c.last_week_kg, 20, 400),
+    rate_kg_per_week: num(c.rate_kg_per_week, -10, 10),
+    expected_kg_per_week: num(c.expected_kg_per_week, -10, 10),
+    expected_vs_actual: c.expected_vs_actual === true,
+    weeks_of_data: num(c.weeks_of_data, 0, 520),
+    goal_kg: num(c.goal_kg, 20, 400),
+    flags: (Array.isArray(c.flags) ? c.flags : []).slice(0, 2).map((f) => ({
+      day: day(f && f.day),
+      flags: (Array.isArray(f && f.flags) ? f.flags : []).filter((x) => WEIGH_FLAGS.indexOf(x) >= 0),
+    })).filter((f) => f.day),
+  };
+}
+/* today's weight against the trend, in code. Hidden: directions and
+   differences only - no weight reaches the prompt. */
+function weighResult(ctx, kg) {
+  const r2 = (x) => (x === null || !isFinite(x) ? null : Math.round(x * 100) / 100);
+  let change = null;
+  if (ctx.mode === 'weekly') {
+    const n = (ctx.week_n || 0) + 1, mean = ((ctx.week_sum_kg || 0) + kg) / n;
+    if (ctx.last_week_kg !== null) change = mean - ctx.last_week_kg;
+  } else if (ctx.trend_before_kg !== null) change = kg - ctx.trend_before_kg;
+  const rate = ctx.rate_kg_per_week;
+  const dir = rate !== null ? (rate < -0.1 ? 'down' : rate > 0.1 ? 'up' : 'flat')
+    : change !== null ? (change < -0.2 ? 'down' : change > 0.2 ? 'up' : 'flat') : '';
+  const o = {
+    mode: ctx.mode, hidden: ctx.hidden,
+    compared_with: ctx.mode === 'weekly' ? 'this week\'s mean against last week\'s' : 'the seven days before today',
+    change_vs_trend_kg: r2(change), trend_direction: dir, rate_kg_per_week: rate,
+    expected_kg_per_week: ctx.expected_kg_per_week, expected_vs_actual: ctx.expected_vs_actual,
+    weeks_of_data: ctx.weeks_of_data, flags: ctx.flags,
+  };
+  if (!ctx.hidden) {
+    o.today_kg = kg; o.trend_kg = ctx.trend_before_kg; o.goal_kg = ctx.goal_kg;
+    o.to_goal_kg = ctx.goal_kg !== null ? r2(kg - ctx.goal_kg) : null;
+  }
+  return o;
+}
+/* any figure within three kilos of the weight, as she or the model wrote it */
+function weighScrub(text, kg) {
+  return String(text).replace(/(\d{2,3})(?:[.,](\d{1,2}))?\s*(?:ק"?ג|ק״ג|קילו(?:גרם)?|kg)?/g, (m, a, b) => {
+    const v = Number(a + (b ? '.' + b : ''));
+    return Math.abs(v - kg) <= 3 ? '' : m;
+  }).replace(/\s{2,}/g, ' ').replace(/\s+([.,:;!?])/g, '$1').trim();
+}
+
+const WEIGH_FLAGS = ['sodium', 'carbs', 'alcohol', 'restaurant', 'late_meal', 'training'];
+
+/* AN EDIT TOUCHES ONE ITEM. The app sent one id and will update one row, so
+   whatever the model answers, what leaves here is an update of that id or
+   nothing: an add would put a second copy of the food in her day. One item
+   under another id is taken to be the one meant; several are not guessed. */
+function coachEditOnly(action, items, ids) {
+  ids = (Array.isArray(ids) ? ids : [ids]).map(String).filter(Boolean);
+  let mine = items.filter((it) => ids.indexOf(it.id) >= 0);
+  if (!mine.length && items.length === 1 && ids.length === 1) mine = [Object.assign({}, items[0], { id: ids[0] })];
+  mine = mine.slice(0, ids.length);
+  return mine.length && action !== 'delete' && action !== 'none'
+    ? { action: 'update', items: mine } : { action: 'none', items: [] };
+}
+
+/* ONE CORRECTION, as the app reports it. It came from a phone and is kept for
+   ninety days for Asaf to read, so every field has a type and a size. */
+const CORR_TYPES = ['delete', 'swipe_edit', 'chat_edit', 'dispute'];
+function corrClean(c) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const num = (v, lo, hi) => { const x = Number(v); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x * 10) / 10)) : 0; };
+  const item = (m) => (m && typeof m === 'object') ? {
+    id: str(m.id, 40), name: str(m.name, 120), amount: str(m.amount, 80), kcal: num(m.kcal, 0, 20000),
+    p: num(m.p, 0, 2000), c: num(m.c, 0, 4000), f: num(m.f, 0, 2000), note: str(m.note, 200), kind: str(m.kind, 12),
+  } : null;
+  if (!c || CORR_TYPES.indexOf(c.type) < 0) return null;
+  const ts = Number(c.ts);
+  return {
+    type: c.type, ts: isFinite(ts) && ts > 1.6e12 && ts < 4e12 ? Math.round(ts) : Date.now(),
+    before: item(c.before), after: item(c.after), kcal_diff: num(c.kcal_diff, -20000, 20000),
+    message: str(c.message, 600), photo: c.photo === true,
+  };
+}
+
+/* An item whose protein, carbs and fat account for less than 60% of its
+   calories is one whose macros were left out - the cottage that came back as
+   119 kcal and 6.3 g of fat is 48%. Below 60 kcal it is not worth asking:
+   a black coffee is honestly almost nothing. Returns the names, for the
+   message that sends the reply back. */
+function coachMacrosShort(items) {
+  const out = [];
+  for (const it of Array.isArray(items) ? items : []) {
+    const k = Number(it && it.calories) || 0;
+    if (k < 60) continue;
+    const m = 4 * (Number(it.protein) || 0) + 4 * (Number(it.carbs) || 0) + 9 * (Number(it.fat) || 0);
+    if (m < 0.6 * k) out.push(String(it.name || '').slice(0, 60) || 'an item');
+  }
+  return out;
+}
+
+/* ── /together, THE PURE HALF ──
+   What one phone may tell the room about itself, and what the room holds.
+   Everything here came from another person's phone, so every field is cut
+   to a size and a type before it is stored or handed on. */
+const TG_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O, 1/I/L: it is read aloud and typed
+function tgCode(rand) {
+  let c = '';
+  for (let i = 0; i < 6; i++) c += TG_ABC[Math.floor(rand() * TG_ABC.length) % TG_ABC.length];
+  return c;
+}
+function tgPlan(p) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const ex = (p && Array.isArray(p.exercises) ? p.exercises : []).slice(0, 30).map((e) => ({
+    name: str(e && e.name, 60),
+    sets: Math.max(1, Math.min(20, Math.round(Number(e && e.sets)) || 3)),
+    reps: str(e && e.reps, 12),
+  })).filter((e) => e.name);
+  return { name: str(p && p.name, 80), exercises: ex };
+}
+function tgMember(m) {
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const num = (v, hi) => { const x = Number(v); return isFinite(x) && x >= 0 && x <= hi ? Math.round(x * 10) / 10 : 0; };
+  const ex = (m && Array.isArray(m.ex) ? m.ex : []).slice(0, 30).map((e) => ({
+    n: str(e && e.n, 60),
+    s: (Array.isArray(e && e.s) ? e.s : []).slice(0, 30).map((x) => [num(x && x[0], 1000), num(x && x[1], 1000)]),
+  }));
+  return { name: str(m && m.name, 24), ex, cur: Math.max(0, Math.min(29, Math.round(Number(m && m.cur)) || 0)),
+           done: !!(m && m.done), mins: num(m && m.mins, 600) };
+}
+
+// Exported for the test harness; unused by the Worker runtime itself.
+export { signJWT, localNow, toMin, subKey, b64url,
+         toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
+         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+
+/* The request handler. Its first line is the meter: every model call below
+   goes through it, see meterFetch. */
+async function routeRequest(req, env, ctx, M) {
+    const fetch = (u, init) => meterFetch(u, init, M);
     const url = new URL(req.url);
 
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -955,7 +1457,7 @@ export default {
       const hasLatinWord = /[a-z]{2,}/i.test(q);
       if (wantVia && rows.length <= THIN && !hasLatinWord && env.AI_KEY &&
           (await aiSpend(env, ip, day))) {
-        via = await latinTerm(q, tag, env);
+        via = await latinTerm(q, tag, env, fetch);
         if (via) {
           const seen = new Set(rows.map((r) => r.id));
           for (const r of usable(await hits(via), true)) {
@@ -3831,6 +4333,23 @@ export default {
       return json({ ok: true, days: out });
     }
 
+    /* the meter, per UTC day and route: what was called, with what, by whom */
+    if (url.pathname === '/admin/cost' && req.method === 'GET') {
+      if (!adminOk(req, env)) return json({ error: 'not allowed' }, 401);
+      const days = Math.max(1, Math.min(60, Number(url.searchParams.get('days')) || 14));
+      const out = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+        const routes = {};
+        await Promise.all(METER_ROUTES.concat('other').map(async (r) => {
+          const v = await env.SUBS.get('mt:' + d + ':' + r);
+          if (v) { try { routes[r] = JSON.parse(v); } catch {} }
+        }));
+        if (Object.keys(routes).length) out.push({ day: d, routes });
+      }
+      return json({ ok: true, days: out });
+    }
+
     if (url.pathname === '/admin/corrections' && req.method === 'GET') {
       if (!adminOk(req, env)) return json({ error: 'not allowed' }, 401);
       const days = Math.max(1, Math.min(90, Number(url.searchParams.get('days')) || 7));
@@ -4216,7 +4735,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         const was = logged.find((x) => String(x && x.id) === dispute.id) || null;
         if (!dispute.image && !dispute.label) disp = { id: dispute.id, outcome: 'no_source', was };
         else {
-          const rc = await labelRecheck(env, dispute, was);
+          const rc = await labelRecheck(env, dispute, was, fetch);
           const now = rc && labelCompute(rc);
           if (!now || now.kcal === null) disp = { id: dispute.id, outcome: dispute.image ? 'unreadable' : 'no_source', was };
           else {
@@ -4743,436 +5262,4 @@ If they logged two or three days, say so without reproach and write about what t
     }
 
     return json({ error: 'not found' }, 404);
-  },
-
-  async scheduled(event, env, ctx) {
-    let cursor;
-    do {
-      const page = await env.SUBS.list({ cursor, prefix: 'sub:' });
-      for (const k of page.keys) {
-        const rec = await env.SUBS.get(k.name, 'json');
-        if (!rec) continue;
-
-        let now;
-        try { now = localNow(rec.tz); } catch { continue; }
-        if (rec.last === now.date) continue;               // already sent today
-
-        const late = toMin(now.hhmm) - toMin(rec.time);
-        if (late < 0) continue;                            // not yet
-        if (late > LATE_WINDOW_MIN) {                      // too late to be useful
-          rec.last = now.date;
-          await env.SUBS.put(k.name, JSON.stringify(rec));
-          continue;
-        }
-
-        const res = await sendPush(rec.endpoint, env);
-        if (res.status === 404 || res.status === 410) {
-          await env.SUBS.delete(k.name);                   // subscription is gone for good
-          continue;
-        }
-        // Mark sent even on a transient failure - better a missed day than a retry storm.
-        rec.last = now.date;
-        rec.lastStatus = res.status;
-        await env.SUBS.put(k.name, JSON.stringify(rec));
-      }
-      cursor = page.list_complete ? null : page.cursor;
-    } while (cursor);
-  },
-};
-
-/* ── /route, THE PURE HALF ──
-   The model's answer is a suggestion, not an instruction. Everything it can
-   name is checked against what the app actually has: a person it names must
-   be one the app sent, a date must be a date, a number must be a sane number.
-   Anything that fails comes back empty rather than guessed at, because the
-   app shows this to the person before writing it - and a wrong field on that
-   card is worse than an empty one. */
-const ROUTE_INTENTS = ['food', 'water', 'quote', 'moment', 'journal', 'task',
-  'person_note', 'steps', 'goal', 'open', 'unknown'];
-const ROUTE_AREAS = ['nutrition', 'fitness', 'hobbies', 'endofday', 'insights',
-  'people', 'planning', 'closet', 'journal', ''];
-function routeClean(o, people) {
-  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
-  const int = (v, lo, hi) => { const x = Math.round(Number(v)); return isFinite(x) && x >= lo && x <= hi ? x : 0; };
-  const out = {
-    intent: ROUTE_INTENTS.includes(o && o.intent) ? o.intent : 'unknown',
-    text: str(o && o.text, 1000),
-    person: '',
-    // round-tripped: Date rolls 2026-02-30 over into March without a word
-    date: (/^\d{4}-\d{2}-\d{2}$/.test(o && o.date) &&
-           new Date(o.date + 'T12:00:00Z').toISOString().slice(0, 10) === o.date) ? o.date : '',
-    time: '',
-    amount: 0,
-    page: int(o && o.page, 0, 100000),
-    area: ROUTE_AREAS.includes(o && o.area) ? o.area : '',
-  };
-  const tm = /^(\d{1,2}):(\d{2})$/.exec(String((o && o.time) || ''));
-  if (tm && +tm[1] < 24 && +tm[2] < 60) out.time = tm[1].padStart(2, '0') + ':' + tm[2];
-  // a person is only ever one the app already knows, matched without case
-  const want = str(o && o.person, 60).toLowerCase();
-  if (want) for (const p of people || []) if (String(p).toLowerCase() === want) { out.person = p; break; }
-  if (out.intent === 'water') out.amount = int(o && o.amount, 1, 5000);
-  if (out.intent === 'steps') out.amount = int(o && o.amount, 1, 200000);
-  if (out.intent === 'person_note' && !out.person) out.intent = 'unknown';
-  if (out.intent === 'open' && !out.area) out.intent = 'unknown';
-  if (['quote', 'moment', 'journal', 'task', 'person_note', 'goal', 'food'].includes(out.intent) && !out.text)
-    out.intent = 'unknown';
-  if ((out.intent === 'water' || out.intent === 'steps') && !out.amount) out.intent = 'unknown';
-  return out;
 }
-
-/* ── /schedule, THE PURE HALF ──
-   Same rule as routeClean: the model suggests, this decides what reaches the
-   card. Weekdays are 0 (Sunday) to 6, times are HH:MM, an end before its start
-   is no end, a weekly entry with no day takes its date's day or is dropped,
-   and a one-off with no date is today's. A last day (until) belongs only to
-   a repeat and never comes before its first; a removal whose span is empty
-   is dropped rather than widened. */
-const SCHED_REPEATS = ['none', 'weekly', 'daily'];
-function scheduleClean(o, today) {
-  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
-  const hm = (v) => {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || ''));
-    return m && +m[1] < 24 && +m[2] < 60 ? m[1].padStart(2, '0') + ':' + m[2] : '';
-  };
-  // round-tripped, because Date rolls 2026-02-30 over into March without a word
-  const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '') &&
-    new Date(v + 'T12:00:00Z').toISOString().slice(0, 10) === v;
-  const day0 = isDate(today) ? today : '';
-  const out = [];
-  for (const it of ((o && Array.isArray(o.items)) ? o.items : []).slice(0, 10)) {
-    const text = str(it && it.text, 200);
-    if (!text) continue;
-    let repeat = SCHED_REPEATS.includes(it && it.repeat) ? it.repeat : 'none';
-    let date = isDate(it && it.date) ? it.date : '';
-    let days = [...new Set((Array.isArray(it && it.days) ? it.days : [])
-      .map((d) => Math.round(Number(d))).filter((d) => d >= 0 && d <= 6))].sort();
-    const start = hm(it && it.start);
-    let end = start ? hm(it && it.end) : '';
-    if (end && end <= start) end = '';
-    if (repeat === 'daily') days = [0, 1, 2, 3, 4, 5, 6];
-    if (repeat === 'weekly' && !days.length) {
-      if (!date) continue;
-      days = [new Date(date + 'T12:00:00Z').getUTCDay()];
-    }
-    if (repeat === 'none') { days = []; if (!date) date = day0; if (!date) continue; }
-    const action = it && it.action === 'remove' ? 'remove' : 'add';
-    let until = repeat !== 'none' && isDate(it && it.until) ? it.until : '';
-    if (until && until < (date || day0)) {
-      if (action === 'remove') continue;
-      until = '';
-    }
-    out.push({ text, repeat, date, days, start, end, until, action });
-  }
-  return out;
-}
-
-/* What the app tells /schedule about the board, so "remove it" has something
-   to point at. It came from a phone and goes into a prompt: every field is
-   cut to a type and a size, and there are at most forty entries. */
-function scheduleBoard(b) {
-  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
-  const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
-  const entries = ((b && Array.isArray(b.board)) ? b.board : []).slice(0, 40).map((e) => ({
-    text: str(e && e.text, 80), from: isDate(e && e.from) ? e.from : '', to: isDate(e && e.to) ? e.to : '',
-    n: Math.max(0, Math.min(999, Math.round(Number(e && e.n)) || 0)),
-  })).filter((e) => e.text && e.from && e.to);
-  const last = ((b && Array.isArray(b.last)) ? b.last : []).slice(0, 5).map((t) => str(t, 80)).filter(Boolean);
-  return { entries, last };
-}
-
-/* WHAT ONE ITEM COMES TO, worked out here and not by the model. Two photos of
-   one sushi plate and "I ate twice what's in the picture" came back as one
-   plate of 9 pieces and two spoons of sauce - 490 kcal for what was about
-   820. The model now says what ONE portion is and how many times it was
-   eaten, and for food in pieces how many pieces and what one piece is; the
-   multiplying happens here, where it cannot be skipped or done twice.
-   Every figure is bounded, since it is written into her day. */
-function coachTotals(it) {
-  const num = (v, hi) => { const x = Number(v); return isFinite(x) && x > 0 && x <= hi ? x : 0; };
-  const portions = num(it && it.portions, 20) || 1;
-  const units = num(it && it.unit_count, 200), ku = num(it && it.kcal_per_unit, 3000);
-  let k, p, c, f;
-  if (units && ku) {
-    k = ku * units;
-    p = num(it.protein_per_unit, 300) * units;
-    c = num(it.carbs_per_unit, 600) * units;
-    f = num(it.fat_per_unit, 300) * units;
-  } else {
-    k = num(it && it.calories, 20000); p = num(it && it.protein, 2000);
-    c = num(it && it.carbs, 4000); f = num(it && it.fat, 2000);
-  }
-  const r1 = (x) => Math.round(x * portions * 10) / 10;
-  /* portions and units go back too: the app reads only the fields it knows,
-     and a test can then see what the model counted, not just the product */
-  return { calories: Math.round(k * portions), protein: r1(p), carbs: r1(c), fat: r1(f),
-           portions, units: units && ku ? units : 0 };
-}
-
-/* ── A NUTRITION LABEL ──
-   The columns as printed, the package weight, and what was eaten - as a
-   fraction of the package or in grams. labelCompute decides which column to
-   use (the package one for a fraction, per 100 g for grams), never mixes
-   them, and checks the two columns against each other when both are there:
-   per 100 g x weight / 100 must come within 5% of the package column. */
-const LABEL_COL = { type: 'object', properties: { kcal: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' } } };
-function labelClean(l) {
-  if (!l || typeof l !== 'object') return null;
-  const n = (v, hi) => { const x = Number(v); return isFinite(x) && x >= 0 && x <= hi ? x : null; };
-  const col = (c) => {
-    if (!c || typeof c !== 'object') return null;
-    const o = { kcal: n(c.kcal, 5000), p: n(c.protein, 1000), c: n(c.carbs, 1000), f: n(c.fat, 1000) };
-    return o.kcal === null ? null : { kcal: o.kcal, p: o.p || 0, c: o.c || 0, f: o.f || 0 };
-  };
-  const o = { per100: col(l.per_100g), perPkg: col(l.per_package), package_g: n(l.package_weight_g, 10000) || 0,
-    fraction: n(l.portion_fraction, 20) || 0, portion_g: n(l.portion_g, 10000) || 0 };
-  return o.per100 || o.perPkg ? o : null;
-}
-function labelCompute(L) {
-  const r1 = (x) => Math.round(x * 10) / 10;
-  const out = (col, k, column, how) => ({ kcal: Math.round(col.kcal * k), p: r1(col.p * k), c: r1(col.c * k), f: r1(col.f * k), column, how });
-  let mismatch = null;
-  if (L.per100 && L.perPkg && L.package_g) {
-    const expected = Math.round(L.per100.kcal * L.package_g / 100);
-    if (L.perPkg.kcal && Math.abs(expected - L.perPkg.kcal) / L.perPkg.kcal > 0.05) mismatch = { expected, printed: L.perPkg.kcal };
-  }
-  let r = null;
-  if (L.fraction > 0) {
-    if (L.perPkg) r = out(L.perPkg, L.fraction, 'per_package', 'package column x ' + L.fraction);
-    else if (L.per100 && L.package_g) r = out(L.per100, L.package_g / 100 * L.fraction, 'per_100g', 'per 100 g x ' + L.package_g + ' g / 100 x ' + L.fraction);
-  } else if (L.portion_g > 0) {
-    if (L.per100) r = out(L.per100, L.portion_g / 100, 'per_100g', 'per 100 g x ' + L.portion_g + ' g / 100');
-    else if (L.perPkg && L.package_g) r = out(L.perPkg, L.portion_g / L.package_g, 'per_package', 'package column x ' + L.portion_g + ' / ' + L.package_g + ' g');
-  }
-  return Object.assign(r || { kcal: null, p: null, c: null, f: null, column: '', how: '' }, { mismatch });
-}
-/* what a logged item becomes when it came from a label: the code's figures,
-   and the label data kept with it for the next question */
-function labelItem(it) {
-  const L = labelClean(it && it.label);
-  if (!L) return {};
-  const r = labelCompute(L);
-  const keep = { per_100g: L.per100 && { kcal: L.per100.kcal, protein: L.per100.p, carbs: L.per100.c, fat: L.per100.f },
-    per_package: L.perPkg && { kcal: L.perPkg.kcal, protein: L.perPkg.p, carbs: L.perPkg.c, fat: L.perPkg.f },
-    package_weight_g: L.package_g || 0, portion_fraction: L.fraction || 0, portion_g: L.portion_g || 0 };
-  if (r.mismatch) return { label: keep, label_mismatch: true };
-  if (r.kcal === null) return { label: keep };
-  return { calories: r.kcal, protein: r.p, carbs: r.c, fat: r.f, portions: 1, units: 0, label: keep };
-}
-/* the separate reading for a dispute: the label from scratch, from the
-   picture and the stored data, without the coach's earlier reply */
-async function labelRecheck(env, dsp, was) {
-  const content = [];
-  if (dsp.image) content.push({ type: 'image', source: { type: 'base64', media_type: String(dsp.image.mime || 'image/jpeg'), data: String(dsp.image.data) } });
-  content.push({ type: 'text', text:
-    'Read this nutrition label from scratch, column by column, and fill read_label. Copy each column exactly as printed; never mix columns.\n' +
-    'What they wrote when they logged it: "' + (dsp.said || '') + '"  - from that, the portion eaten: a fraction of the package, or grams.\n' +
-    'The item as it was logged (it is disputed - it may be wrong): ' + JSON.stringify(was ? { name: was.name, quantity: was.quantity } : {}) + '\n' +
-    (dsp.label ? 'Label data stored from the first reading (check it; it may hold the mistake): ' + JSON.stringify(dsp.label) + '\n' : '') +
-    (dsp.image ? '' : 'There is no picture: work from the stored label data, and correct it only where it contradicts itself.') });
-  let r;
-  try {
-    r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': env.AI_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 700,
-        system: 'You read nutrition labels for an app. You never answer the person; you only fill the tool.',
-        tools: [{ name: 'read_label', description: 'The label, as printed, and the portion eaten.', input_schema: { type: 'object',
-          properties: { per_100g: LABEL_COL, per_package: LABEL_COL, package_weight_g: { type: 'number' },
-            portion_fraction: { type: 'number' }, portion_g: { type: 'number' } } } }],
-        tool_choice: { type: 'tool', name: 'read_label' },
-        messages: [{ role: 'user', content }] }),
-    });
-  } catch { return null; }
-  if (!r.ok) return null;
-  let d; try { d = await r.json(); } catch { return null; }
-  const u = ((d && d.content) || []).find((c) => c && c.type === 'tool_use');
-  return u ? labelClean(u.input) : null;
-}
-
-/* TODAY'S ACTIVITY, as the app sends it */
-function actCtxClean(a) {
-  if (!a || typeof a !== 'object') return null;
-  const num = (v, lo, hi, d) => { const x = Number(v); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x))) : d; };
-  return {
-    steps: num(a.steps, 0, 200000, 0), base: num(a.base, 0, 50000, 8000), kg: num(a.kg, 20, 400, 70), cm: num(a.cm, 100, 250, 170),
-    strength: a.strength === true, cardio_min: num(a.cardio_min, 0, 600, 0),
-    target: num(a.target, 0, 10000, 0), left: num(a.left, -20000, 20000, 0),
-    ask: a.ask === true, asked: a.asked === true, has: a.has === true,
-    now: /^\d{2}:\d{2}$/.test(String(a.now || '')) ? String(a.now) : '00:00',
-  };
-}
-/* THE BONUS, in code. Steps over her baseline cost what the distance costs:
-   ACSM's walking equation puts the net cost of level walking at 0.1 ml O2
-   per kg per metre - about 0.5 kcal per kg per km - and the distance is
-   steps x stride, the stride about 0.415 of her height. So a heavier body
-   spends more on the same step and a shorter one less (a shorter stride),
-   which a flat per-kg figure got wrong most for small people. 70 kg and
-   170 cm when nothing is known. Then 200 for strength,
-   300 an hour of cardio, at most 800; seventy percent of it as carbs and the
-   rest as fat - protein does not move. The app computes the same thing
-   (actBonus) for its own screen. */
-const ACT = { kcalPerKgKm: 0.5, strideOfHeight: 0.415, strength: 200, cardioHour: 300, cap: 800, carbShare: 0.7 };
-function activityBonus(a) {
-  const km = Math.max(0, (a.steps || 0) - (a.base || 0)) * ACT.strideOfHeight * (a.cm || 170) / 100000;
-  const steps = km * (a.kg || 70) * ACT.kcalPerKgKm;
-  const raw = steps + (a.strength ? ACT.strength : 0) + (a.cardio_min || 0) / 60 * ACT.cardioHour;
-  const kcal = Math.round(Math.min(ACT.cap, raw));
-  return { kcal, carbs: Math.round(kcal * ACT.carbShare / 4), fat: Math.round(kcal * (1 - ACT.carbShare) / 9), capped: raw > ACT.cap };
-}
-
-/* the ADMIN_KEY secret, as a Bearer token */
-function adminOk(req, env) {
-  const want = env.ADMIN_KEY || '';
-  const got = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-  return !!want && got.length === want.length && got === want;
-}
-/* which daily counters one coach turn is charged to, each with its cap */
-function coachBuckets(o) {
-  if (o.test) return [{ key: 'co:test:' + o.today, cap: o.testCap }];
-  const uid = /^[0-9a-f]{24}$/.test(String(o.uid || '')) ? String(o.uid) : '';
-  if (!uid) return [{ key: 'co:' + o.today + ':' + o.ip, cap: o.cap }];
-  return [{ key: 'co:' + o.today + ':u:' + uid, cap: o.cap }, { key: 'co:' + o.today + ':n:' + o.ip, cap: o.ipCap }];
-}
-
-/* WHAT THE APP KNOWS ABOUT THE TREND, sent every turn while weigh-ins are
-   tracked. trend_before_kg is the seven-day mean before today; for weekly
-   weighers this week's other readings (sum, count) and last week's mean. */
-function weighCtxClean(c) {
-  if (!c || typeof c !== 'object') return null;
-  const num = (v, lo, hi) => { const x = Number(v); return v !== null && v !== '' && v !== undefined && isFinite(x) && x >= lo && x <= hi ? Math.round(x * 100) / 100 : null; };
-  const day = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '';
-  return {
-    mode: c.mode === 'weekly' ? 'weekly' : 'daily',
-    hidden: c.hidden === true,
-    trend_before_kg: num(c.trend_before_kg, 20, 400),
-    week_sum_kg: num(c.week_sum_kg, 0, 2800), week_n: num(c.week_n, 0, 7),
-    last_week_kg: num(c.last_week_kg, 20, 400),
-    rate_kg_per_week: num(c.rate_kg_per_week, -10, 10),
-    expected_kg_per_week: num(c.expected_kg_per_week, -10, 10),
-    expected_vs_actual: c.expected_vs_actual === true,
-    weeks_of_data: num(c.weeks_of_data, 0, 520),
-    goal_kg: num(c.goal_kg, 20, 400),
-    flags: (Array.isArray(c.flags) ? c.flags : []).slice(0, 2).map((f) => ({
-      day: day(f && f.day),
-      flags: (Array.isArray(f && f.flags) ? f.flags : []).filter((x) => WEIGH_FLAGS.indexOf(x) >= 0),
-    })).filter((f) => f.day),
-  };
-}
-/* today's weight against the trend, in code. Hidden: directions and
-   differences only - no weight reaches the prompt. */
-function weighResult(ctx, kg) {
-  const r2 = (x) => (x === null || !isFinite(x) ? null : Math.round(x * 100) / 100);
-  let change = null;
-  if (ctx.mode === 'weekly') {
-    const n = (ctx.week_n || 0) + 1, mean = ((ctx.week_sum_kg || 0) + kg) / n;
-    if (ctx.last_week_kg !== null) change = mean - ctx.last_week_kg;
-  } else if (ctx.trend_before_kg !== null) change = kg - ctx.trend_before_kg;
-  const rate = ctx.rate_kg_per_week;
-  const dir = rate !== null ? (rate < -0.1 ? 'down' : rate > 0.1 ? 'up' : 'flat')
-    : change !== null ? (change < -0.2 ? 'down' : change > 0.2 ? 'up' : 'flat') : '';
-  const o = {
-    mode: ctx.mode, hidden: ctx.hidden,
-    compared_with: ctx.mode === 'weekly' ? 'this week\'s mean against last week\'s' : 'the seven days before today',
-    change_vs_trend_kg: r2(change), trend_direction: dir, rate_kg_per_week: rate,
-    expected_kg_per_week: ctx.expected_kg_per_week, expected_vs_actual: ctx.expected_vs_actual,
-    weeks_of_data: ctx.weeks_of_data, flags: ctx.flags,
-  };
-  if (!ctx.hidden) {
-    o.today_kg = kg; o.trend_kg = ctx.trend_before_kg; o.goal_kg = ctx.goal_kg;
-    o.to_goal_kg = ctx.goal_kg !== null ? r2(kg - ctx.goal_kg) : null;
-  }
-  return o;
-}
-/* any figure within three kilos of the weight, as she or the model wrote it */
-function weighScrub(text, kg) {
-  return String(text).replace(/(\d{2,3})(?:[.,](\d{1,2}))?\s*(?:ק"?ג|ק״ג|קילו(?:גרם)?|kg)?/g, (m, a, b) => {
-    const v = Number(a + (b ? '.' + b : ''));
-    return Math.abs(v - kg) <= 3 ? '' : m;
-  }).replace(/\s{2,}/g, ' ').replace(/\s+([.,:;!?])/g, '$1').trim();
-}
-
-const WEIGH_FLAGS = ['sodium', 'carbs', 'alcohol', 'restaurant', 'late_meal', 'training'];
-
-/* AN EDIT TOUCHES ONE ITEM. The app sent one id and will update one row, so
-   whatever the model answers, what leaves here is an update of that id or
-   nothing: an add would put a second copy of the food in her day. One item
-   under another id is taken to be the one meant; several are not guessed. */
-function coachEditOnly(action, items, ids) {
-  ids = (Array.isArray(ids) ? ids : [ids]).map(String).filter(Boolean);
-  let mine = items.filter((it) => ids.indexOf(it.id) >= 0);
-  if (!mine.length && items.length === 1 && ids.length === 1) mine = [Object.assign({}, items[0], { id: ids[0] })];
-  mine = mine.slice(0, ids.length);
-  return mine.length && action !== 'delete' && action !== 'none'
-    ? { action: 'update', items: mine } : { action: 'none', items: [] };
-}
-
-/* ONE CORRECTION, as the app reports it. It came from a phone and is kept for
-   ninety days for Asaf to read, so every field has a type and a size. */
-const CORR_TYPES = ['delete', 'swipe_edit', 'chat_edit', 'dispute'];
-function corrClean(c) {
-  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
-  const num = (v, lo, hi) => { const x = Number(v); return isFinite(x) ? Math.max(lo, Math.min(hi, Math.round(x * 10) / 10)) : 0; };
-  const item = (m) => (m && typeof m === 'object') ? {
-    id: str(m.id, 40), name: str(m.name, 120), amount: str(m.amount, 80), kcal: num(m.kcal, 0, 20000),
-    p: num(m.p, 0, 2000), c: num(m.c, 0, 4000), f: num(m.f, 0, 2000), note: str(m.note, 200), kind: str(m.kind, 12),
-  } : null;
-  if (!c || CORR_TYPES.indexOf(c.type) < 0) return null;
-  const ts = Number(c.ts);
-  return {
-    type: c.type, ts: isFinite(ts) && ts > 1.6e12 && ts < 4e12 ? Math.round(ts) : Date.now(),
-    before: item(c.before), after: item(c.after), kcal_diff: num(c.kcal_diff, -20000, 20000),
-    message: str(c.message, 600), photo: c.photo === true,
-  };
-}
-
-/* An item whose protein, carbs and fat account for less than 60% of its
-   calories is one whose macros were left out - the cottage that came back as
-   119 kcal and 6.3 g of fat is 48%. Below 60 kcal it is not worth asking:
-   a black coffee is honestly almost nothing. Returns the names, for the
-   message that sends the reply back. */
-function coachMacrosShort(items) {
-  const out = [];
-  for (const it of Array.isArray(items) ? items : []) {
-    const k = Number(it && it.calories) || 0;
-    if (k < 60) continue;
-    const m = 4 * (Number(it.protein) || 0) + 4 * (Number(it.carbs) || 0) + 9 * (Number(it.fat) || 0);
-    if (m < 0.6 * k) out.push(String(it.name || '').slice(0, 60) || 'an item');
-  }
-  return out;
-}
-
-/* ── /together, THE PURE HALF ──
-   What one phone may tell the room about itself, and what the room holds.
-   Everything here came from another person's phone, so every field is cut
-   to a size and a type before it is stored or handed on. */
-const TG_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O, 1/I/L: it is read aloud and typed
-function tgCode(rand) {
-  let c = '';
-  for (let i = 0; i < 6; i++) c += TG_ABC[Math.floor(rand() * TG_ABC.length) % TG_ABC.length];
-  return c;
-}
-function tgPlan(p) {
-  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
-  const ex = (p && Array.isArray(p.exercises) ? p.exercises : []).slice(0, 30).map((e) => ({
-    name: str(e && e.name, 60),
-    sets: Math.max(1, Math.min(20, Math.round(Number(e && e.sets)) || 3)),
-    reps: str(e && e.reps, 12),
-  })).filter((e) => e.name);
-  return { name: str(p && p.name, 80), exercises: ex };
-}
-function tgMember(m) {
-  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
-  const num = (v, hi) => { const x = Number(v); return isFinite(x) && x >= 0 && x <= hi ? Math.round(x * 10) / 10 : 0; };
-  const ex = (m && Array.isArray(m.ex) ? m.ex : []).slice(0, 30).map((e) => ({
-    n: str(e && e.n, 60),
-    s: (Array.isArray(e && e.s) ? e.s : []).slice(0, 30).map((x) => [num(x && x[0], 1000), num(x && x[1], 1000)]),
-  }));
-  return { name: str(m && m.name, 24), ex, cur: Math.max(0, Math.min(29, Math.round(Number(m && m.cur)) || 0)),
-           done: !!(m && m.done), mins: num(m && m.mins, 600) };
-}
-
-// Exported for the test harness; unused by the Worker runtime itself.
-export { signJWT, localNow, toMin, subKey, b64url,
-         toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };

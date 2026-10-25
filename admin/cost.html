@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>עלות ה-AI — ניהול</title>
+<!-- Asaf's page, not the app's: the server's meter on every model call, from
+     /admin/cost, read with the ADMIN_KEY secret (the same one as usage.html).
+     Days are UTC days. A person here is a random install id; nothing they
+     wrote is ever counted - a route, a model and numbers.
+     The dollars are an ESTIMATE from the price list below, which is typed by
+     hand: check it against the provider's price page, and the real bill is
+     the provider's console. -->
+<style>
+  body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:#efebe6;color:#3f3a35}
+  main{max-width:960px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:30px 0 4px}
+  .sub{color:#5f564e;font-size:13px;margin-bottom:18px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  input,select,button{font:inherit;border-radius:10px;border:1px solid #d8d0c6;padding:8px 10px;background:#fff;color:inherit}
+  button{cursor:pointer;font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .card{background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  .card b{display:block;font-size:26px;font-variant-numeric:tabular-nums}
+  .card span{color:#5f564e;font-size:12.5px}
+  .panel{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-top:8px;overflow-x:auto}
+  table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%}
+  th,td{padding:6px 8px;text-align:start;font-size:13px;border-bottom:1px solid #f0ebe5}
+  th{background:#f6f3ef;font-weight:700}
+  td.n{text-align:end}td.id{font-family:ui-monospace,monospace;color:#5f564e}
+  .meta{color:#5f564e;font-size:12.5px}.err{color:#a2412a;font-weight:700}
+  .alarm{background:#fbe1d6;border-radius:12px;padding:10px 14px;font-weight:700;color:#7a2e14;margin-bottom:14px}
+  .hb i{display:inline-block;height:10px;border-radius:5px;background:#8a5a1c;vertical-align:middle}
+</style>
+</head>
+<body>
+<main>
+  <h1>כמה עולה ה-AI, ועל מה</h1>
+  <div class="sub">כל פנייה של השרת ל-Claude או ל-Gemini: איזה מסלול, איזה מודל, כמה טוקנים, ומאיזו התקנה (מזהה אקראי). שום תוכן.</div>
+  <div class="bar">
+    <input id="key" type="password" placeholder="ADMIN_KEY" size="22">
+    <select id="days"><option value="14">שבועיים</option><option value="7">שבוע</option><option value="30">30 יום</option><option value="60">60 יום</option></select>
+    <label><input id="nodev" type="checkbox" checked> בלי dev</label>
+    <button onclick="load()">טען</button>
+    <span id="st" class="meta"></span>
+  </div>
+  <div id="out"></div>
+</main>
+<script>
+var HOST='https://nutrition-push.nutrition-push.workers.dev';
+/* dollars per million tokens, in / out - TYPED BY HAND, an estimate */
+var PRICE={'claude-haiku-4-5-20251001':[1,5],'claude-sonnet-5':[3,15],'claude-opus-5-5':[5,25],'gemini-3.6-flash':[0.5,3]};
+var ROUTE={'/parse':'פירוק טקסט מזון','/match':'התאמה למאגר','/cross':'הצלבה','/plan':'מתכנן','/transcribe':'תמלול קול','/say':'דיבור',
+  '/route':'ניתוב פקודה','/schedule':'לו״ז','/beem':'מיפ העוזר','/ask':'שאלה','/estimate':'הערכת מנה','/see':'צילום מזון',
+  '/vision':'צילום (vision)','/coach':'המאמן','/week':'סיכום שבועי','/analyze':'ניתוח','/off':'חיפוש מוצר','/health':'בדיקת שרת','other':'אחר'};
+var keyEl=document.getElementById('key');keyEl.value=localStorage.getItem('admin_key')||'';
+var DATA=null;
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function usd(m,i,o){var p=PRICE[m];return p?(i*p[0]+o*p[1])/1e6:0;}
+function money(x){return '$'+(x<1?x.toFixed(3):x.toFixed(2));}
+function k(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(n);}
+function load(){
+  var key=keyEl.value.trim();localStorage.setItem('admin_key',key);
+  document.getElementById('st').textContent='טוען…';
+  fetch(HOST+'/admin/cost?days='+document.getElementById('days').value,{headers:{Authorization:'Bearer '+key}})
+    .then(function(r){return r.json();}).then(function(j){
+      if(!j.ok)throw new Error(j.error||'error');DATA=j.days;document.getElementById('st').textContent='';draw();
+    }).catch(function(e){document.getElementById('st').innerHTML='<span class="err">'+esc(e.message)+'</span>';});
+}
+document.getElementById('nodev').onchange=function(){if(DATA)draw();};
+function draw(){
+  var nodev=document.getElementById('nodev').checked;
+  var tot={n:0,f:0,usd:0},byDay=[],byRoute={},byModel={},byUid={},errs={},lastCredit='',unpriced={};
+  DATA.forEach(function(d){
+    var day={day:d.day,n:0,f:0,usd:0};
+    Object.keys(d.routes).forEach(function(r){
+      var rec=d.routes[r];
+      if(rec.lastCredit&&rec.lastCredit>lastCredit)lastCredit=rec.lastCredit;
+      Object.keys(rec.e||{}).forEach(function(e){errs[e]=(errs[e]||0)+rec.e[e];});
+      /* the dollars come from the models, which are not split by install;
+         an install's share of a route is its share of the route's tokens */
+      var rUsd=0;Object.keys(rec.m||{}).forEach(function(m){var x=rec.m[m];
+        if(!PRICE[m])unpriced[m]=1;
+        var c=usd(m,x.i||0,x.o||0);rUsd+=c;
+        var bm=byModel[m]=byModel[m]||{n:0,i:0,o:0,usd:0};bm.n+=x.n||0;bm.i+=x.i||0;bm.o+=x.o||0;bm.usd+=c;});
+      var tt=(rec.t.i||0)+(rec.t.o||0),devTok=0,devN=0;
+      Object.keys(rec.u||{}).forEach(function(u){var x=rec.u[u];
+        if(x.d||u==='dev'){devTok+=(x.i||0)+(x.o||0);devN+=x.n||0;if(nodev)return;}
+        var bu=byUid[u]=byUid[u]||{n:0,usd:0,days:{},routes:{}};bu.n+=x.n||0;bu.usd+=tt?rUsd*((x.i||0)+(x.o||0))/tt:0;bu.days[d.day]=1;bu.routes[r]=(bu.routes[r]||0)+(x.n||0);});
+      var share=nodev&&tt?1-devTok/tt:1,n=(rec.t.n||0)-(nodev?devN:0);
+      var br=byRoute[r]=byRoute[r]||{n:0,f:0,usd:0};br.n+=n;br.f+=rec.t.f||0;br.usd+=rUsd*share;
+      day.n+=n;day.f+=rec.t.f||0;day.usd+=rUsd*share;
+    });
+    tot.n+=day.n;tot.f+=day.f;tot.usd+=day.usd;byDay.push(day);
+  });
+  var h='';
+  if(errs.credit)h+='<div class="alarm">נגמר הקרדיט: '+errs.credit+' פניות נכשלו על "credit balance too low"'+(lastCredit?' (אחרונה: '+esc(lastCredit.slice(0,16).replace('T',' '))+' UTC)':'')+'.</div>';
+  h+='<div class="cards"><div class="card"><b>'+money(tot.usd)+'</b><span>עלות משוערת בתקופה</span></div>'+
+     '<div class="card"><b>'+tot.n+'</b><span>פניות למודל</span></div>'+
+     '<div class="card"><b>'+tot.f+'</b><span>פניות שנכשלו</span></div>'+
+     '<div class="card"><b>'+money(byDay.length?tot.usd/byDay.length:0)+'</b><span>ממוצע ליום שהיה בו שימוש</span></div></div>';
+  if(Object.keys(unpriced).length)h+='<div class="meta" style="margin-top:8px">אין מחיר למודל: '+esc(Object.keys(unpriced).join(', '))+' - העלות שלו לא נספרה.</div>';
+  var max=Math.max.apply(null,byDay.map(function(d){return d.usd;}).concat([1e-9]));
+  h+='<h2>יום אחרי יום</h2><div class="panel"><table><tr><th>יום</th><th>פניות</th><th>נכשלו</th><th>עלות</th><th></th></tr>'+
+    byDay.map(function(d){return '<tr><td>'+d.day+'</td><td class="n">'+d.n+'</td><td class="n">'+(d.f||'')+'</td><td class="n">'+money(d.usd)+'</td><td class="hb"><i style="width:'+Math.round(160*d.usd/max)+'px"></i></td></tr>';}).join('')+'</table></div>';
+  h+='<h2>לפי מסלול</h2><div class="meta">מה באפליקציה עולה כסף.</div><div class="panel"><table><tr><th>מסלול</th><th>פניות</th><th>נכשלו</th><th>עלות</th></tr>'+
+    Object.keys(byRoute).sort(function(a,b){return byRoute[b].usd-byRoute[a].usd;}).map(function(r){var x=byRoute[r];
+      return '<tr><td>'+esc(ROUTE[r]||r)+' <span class="meta">'+esc(r)+'</span></td><td class="n">'+x.n+'</td><td class="n">'+(x.f||'')+'</td><td class="n">'+money(x.usd)+'</td></tr>';}).join('')+'</table></div>';
+  h+='<h2>לפי מודל</h2><div class="panel"><table><tr><th>מודל</th><th>פניות</th><th>טוקנים נכנסים</th><th>יוצאים</th><th>עלות</th></tr>'+
+    Object.keys(byModel).sort(function(a,b){return byModel[b].usd-byModel[a].usd;}).map(function(m){var x=byModel[m];
+      return '<tr><td>'+esc(m)+'</td><td class="n">'+x.n+'</td><td class="n">'+k(x.i)+'</td><td class="n">'+k(x.o)+'</td><td class="n">'+money(x.usd)+'</td></tr>';}).join('')+'</table></div>';
+  var uids=Object.keys(byUid).sort(function(a,b){return byUid[b].usd-byUid[a].usd;});
+  h+='<h2>לפי התקנה</h2><div class="meta">מזהה אקראי של כל התקנה. "anon" הן פניות מגרסה שעוד לא שולחת מזהה (היציבה, עד השחרור הבא).</div><div class="panel"><table><tr><th>התקנה</th><th>ימים</th><th>פניות</th><th>עלות</th><th>בעיקר</th></tr>'+
+    uids.map(function(u){var x=byUid[u],top=Object.keys(x.routes).sort(function(a,b){return x.routes[b]-x.routes[a];}).slice(0,3);
+      return '<tr><td class="id">'+esc(u.slice(0,8))+'</td><td class="n">'+Object.keys(x.days).length+'</td><td class="n">'+x.n+'</td><td class="n">'+money(x.usd)+'</td><td>'+top.map(function(r){return esc(ROUTE[r]||r)+' '+x.routes[r];}).join(' · ')+'</td></tr>';}).join('')+'</table></div>';
+  h+='<h2>מחירון</h2><div class="meta">דולר למיליון טוקנים, נכנס / יוצא. מוקלד ידנית - לבדוק מול דף המחירים של הספק. החשבון האמיתי הוא בקונסולה של הספק.</div><div class="panel"><table>'+
+    Object.keys(PRICE).map(function(m){return '<tr><td>'+esc(m)+'</td><td class="n">$'+PRICE[m][0]+' / $'+PRICE[m][1]+'</td></tr>';}).join('')+'</table></div>';
+  document.getElementById('out').innerHTML=h;
+}
+if(keyEl.value)load();
+</script>
+</body>
+</html>

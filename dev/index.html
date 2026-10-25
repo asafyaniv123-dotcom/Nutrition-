@@ -14291,7 +14291,7 @@ function coachPost(d,text,pics,rec,ed){
   for(var q=0;q<picTurns.length;q++){var im=b64(urls[q]);if(im)histImages.push({h:picTurns[q].h,mime:im.mime,data:im.data});}
   var dispImg=disp&&disp.key?b64(urls[urls.length-1]):null;
 
-  fetch(SYNC_SERVER+'/coach',{
+  fetch(SYNC_SERVER+'/coach'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
       day:d,lang:appLang(),units:APP_UNITS,
@@ -14614,6 +14614,9 @@ function coachEditSend(){
    the server for Asaf's review page. Sent with a random id for this install
    and nothing else about who it is. A send that fails waits in a queue. */
 var CORR_KEY='corrections_local',CORR_Q='corrections_queue',INSTALL_KEY='install_id';
+/* the address suffix for a route that may call a model: the server's meter
+   counts what each install spent. Anonymous - the same random id as /ping. */
+function meterQ(){return '?u='+installId()+(window.__DEV__?'&d=1':'');}
 function installId(){
   var t='';try{t=localStorage.getItem(INSTALL_KEY)||'';}catch(e){}
   if(!/^[0-9a-f]{24}$/.test(t)){
@@ -15317,7 +15320,7 @@ function picServingG(t){
 function picVision(shots,note){
   var list=(typeof shots==='string')?[shots]:shots;
   _sayText=note||'';
-  fetch(SYNC_SERVER+'/vision',{
+  fetch(SYNC_SERVER+'/vision'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     /* BOTH fields on purpose. A worker that has not been deployed yet reads
        `image` and answers about the first picture, which is exactly what this
@@ -15466,7 +15469,7 @@ function picSee(dataUrl,note){
   _sayText=note||'';
   var comma=dataUrl.indexOf(',');
   foodsLoad(function(){});
-  fetch(SYNC_SERVER+'/see',{
+  fetch(SYNC_SERVER+'/see'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({image:dataUrl.slice(comma+1),mime:'image/jpeg',note:note||'',lang:appLang()})
   }).then(function(r){return r.json();})
@@ -15549,7 +15552,7 @@ function gemGo(){
   if(q.length<2){_gemErr=''+_t('כתוב שאלה.')+'';gemPaint();return;}
   if(!SYNC_SERVER){_gemErr=''+_t('השאלות דורשות חיבור לשרת.')+'';gemPaint();return;}
   _gemBusy=true;_gemErr='';_gemOut='';gemPaint();
-  fetch(SYNC_SERVER+'/say',{
+  fetch(SYNC_SERVER+'/say'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({q:q,lang:appLang()})
   }).then(function(r){
@@ -15674,7 +15677,7 @@ function micSend(blob){
     var b64=String(fr.result||'');
     b64=b64.slice(b64.indexOf(',')+1);
     if(!b64){micFail();return;}
-    fetch(SYNC_SERVER+'/transcribe',{
+    fetch(SYNC_SERVER+'/transcribe'+meterQ(),{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({mime:(blob.type||'audio/webm').split(';')[0],data:b64,lang:appLang()})
@@ -15778,7 +15781,7 @@ function sayGo(){
   _sayText=text;   // the loop asks about the ORIGINAL sentence, not the rows
   _sayBusy=true;_sayErr='';_sayItems=null;_sayXState='';sayPaint();
   foodsLoad(function(){});
-  fetch(SYNC_SERVER+'/parse',{
+  fetch(SYNC_SERVER+'/parse'+meterQ(),{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({text:text,lang:appLang()})
@@ -16115,7 +16118,7 @@ function sayResolveAI(it,done){
   if(!cands.length){done(local);return;}
   var names=cands.map(sayCandLine);
   var t=setTimeout(function(){t=0;done(local);},9000);   // never hang the panel
-  fetch(SYNC_SERVER+'/match',{
+  fetch(SYNC_SERVER+'/match'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({q:q,unit:it.unit||'unit',cands:names,lang:appLang()})
   }).then(function(r){return r.json();})
@@ -16835,7 +16838,7 @@ function sayCross(depth){
     rows.push({name:r.food.n,grams:Math.round((r.g||0)*(r.amount||1)),
                kcal:(a&&a.kcal)||0,protein:(a&&a.p)||0});
   }
-  fetch(SYNC_SERVER+'/cross',{
+  fetch(SYNC_SERVER+'/cross'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({q:_sayText,rows:rows,lang:appLang()})
   }).then(function(r){return r.json();})
@@ -16908,7 +16911,7 @@ function sayEstimate(i){
   if(!row)return;
   if(!SYNC_SERVER){showToast(''+_t('ההערכה דורשת חיבור לשרת')+'');return;}
   row.esting=true;sayPaint();
-  fetch(SYNC_SERVER+'/estimate',{
+  fetch(SYNC_SERVER+'/estimate'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({food:row.q,lang:appLang()})
   }).then(function(r){return r.json();})
@@ -17239,7 +17242,7 @@ function offLive(q){
   var term=String(q||'').trim();
   if(term.length<2)return;
   if(!SYNC_SERVER)return;
-  fetch(SYNC_SERVER+'/off',{
+  fetch(SYNC_SERVER+'/off'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     /* This copy understands a translated row - it aliases it and shows it
        under its own heading - so it is allowed to ask for one. The released
@@ -17305,7 +17308,7 @@ function offLive(q){
     .catch(function(){});
 }
 function fdbAskMatch(q,cands,done){
-  fetch(SYNC_SERVER+'/match',{
+  fetch(SYNC_SERVER+'/match'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({q:q,unit:'unit',n:5,cands:cands.map(sayCandLine),lang:appLang()})
   }).then(function(r){return r.json();}).then(done).catch(function(){done(null);});
@@ -17687,7 +17690,7 @@ function askTurn(messages,depth){
     _askErr=''+_t('לא הצלחתי לסגור את זה. נסה לשאול יותר ממוקד.')+'';
     askPaint();return;
   }
-  fetch(SYNC_SERVER+'/ask',{
+  fetch(SYNC_SERVER+'/ask'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({messages:messages,lang:appLang()})
   }).then(function(r){return r.json();})
@@ -17793,7 +17796,7 @@ function estAsk(q){
   if(food.length<2)return;
   if(!SYNC_SERVER){_estErr=''+_t('ההערכה דורשת חיבור לשרת.')+'';fdbPaint();return;}
   _est=null;_estErr='';_estBusy=true;fdbPaint();
-  fetch(SYNC_SERVER+'/estimate',{
+  fetch(SYNC_SERVER+'/estimate'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({food:food,lang:appLang()})
   }).then(function(r){return r.json();})
@@ -17940,7 +17943,7 @@ function anTurn(messages,depth,dish,cb){
     if(cb)cb(null,''+_t('הפירוק לא הסתיים')+'');else anPaint();
     return;
   }
-  fetch(SYNC_SERVER+'/analyze',{
+  fetch(SYNC_SERVER+'/analyze'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({messages:messages,lang:appLang()})
   }).then(function(r){return r.json();})
@@ -35935,7 +35938,7 @@ function planBotSend(text){
   _planPending=t;
   _planSaid='';_planErr='';_planBusy=true;planBotPaint();
   var d=appNow();
-  fetch(SYNC_SERVER+'/plan',{
+  fetch(SYNC_SERVER+'/plan'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
       lang:appLang(),
@@ -36275,7 +36278,7 @@ function psayGo(){
   if(!SYNC_SERVER){_psay.busy=false;_psay.msg=_t('אין חיבור כרגע.');psayPaint();return;}
   psayPaint();
   var n=new Date();
-  fetch(SYNC_SERVER+'/schedule',{
+  fetch(SYNC_SERVER+'/schedule'+meterQ(),{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     /* the day is the app's day (04:00), the time is the wall clock's */
@@ -41174,7 +41177,7 @@ function wkFetch(from){
     days.push({d:r.date,kcal:Math.round(k),p:Math.round(pr),c:Math.round(c),f:Math.round(ft),
       trained:!!trainedOn(r.date,r.sum),rating:(r.sum&&r.sum.dayRating)||null,steps:r.steps||0});
   }
-  fetch(SYNC_SERVER+'/week',{
+  fetch(SYNC_SERVER+'/week'+meterQ(),{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({from:from,lang:appLang(),units:APP_UNITS,
       gender:appGender()||(p.sex||''),
@@ -42210,7 +42213,7 @@ function beemHelpDone(wait,text,failed){
    a day, the phone reads it from its own log and sends it back */
 function beemHelpTurn(messages,depth,wait){
   if(depth>=6){beemHelpDone(wait,_t('לא הצלחתי לענות כרגע.'),true);return;}
-  fetch(SYNC_SERVER+'/beem',{method:'POST',headers:{'Content-Type':'application/json'},
+  fetch(SYNC_SERVER+'/beem'+meterQ(),{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({messages:messages,lang:appLang(),screen:beemHelpScreen(),name:greetName(),form:appGender(),today:todayStr()})
   }).then(function(r){return r.json();})
     .then(function(j){
@@ -44251,7 +44254,7 @@ function hcmdHint(q){
   var words=q.split(/\s+/).filter(Boolean).length;
   if(v.busy||v.hintN>=6||words-v.hintWords<2||Date.now()-v.hintAt<2000)return;
   v.busy=true;v.hintAt=Date.now();v.hintWords=words;v.hintN++;
-  fetch(SYNC_SERVER+'/route',{method:'POST',headers:{'Content-Type':'application/json'},body:hcmdBody(q)})
+  fetch(SYNC_SERVER+'/route'+meterQ(),{method:'POST',headers:{'Content-Type':'application/json'},body:hcmdBody(q)})
     .then(function(r){return r.json();}).then(function(j){
       v.busy=false;
       if(_hv===v&&j&&j.ok)hcmdHeardFrom(j.routes||[j.route]);
@@ -44280,7 +44283,7 @@ function hcmdGo(){
   _hcmd={busy:true,q:q,route:null,msg:'',done:null};
   if(!SYNC_SERVER){_hcmd.busy=false;_hcmd.msg=_t('אין חיבור כרגע.');hcmdPaint();return;}
   hcmdPaint();
-  fetch(SYNC_SERVER+'/route',{
+  fetch(SYNC_SERVER+'/route'+meterQ(),{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:hcmdBody(q)
