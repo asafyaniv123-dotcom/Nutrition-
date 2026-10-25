@@ -1639,6 +1639,8 @@ body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
 .set-hl b{display:block;font-size:16px;font-weight:800}.set-hl i{display:block;font-style:normal;font-size:12.5px;color:var(--nu-muted,#6d675e);font-weight:600;margin-top:2px}
 .set-hl em{flex:none;font-style:normal;font-size:13px;font-weight:800;color:var(--nu-muted,#6d675e)}
 .fq-date{position:relative;display:block}
+.ep-datebtn{cursor:pointer;font-family:inherit;text-align:center;color:var(--nu-muted,#6d675e);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ep-datebtn.set{color:var(--nu-ink,#4a453f)}
 .fq-date input{display:block;width:100%;min-height:52px;-webkit-appearance:none;appearance:none;text-align:center}
 .fq-date span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--nu-muted);pointer-events:none}
 .fq-date input:valid+span{display:none}
@@ -10222,18 +10224,22 @@ function fqQuestion(k){
    age said as it turns. No system date picker: on the iPhone it opens a
    calendar sheet and jumps. */
 function bwParse(v){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');return m?{y:+m[1],m:+m[2]-1,d:+m[3]}:{y:1990,m:0,d:1};}
-function bwYears(){var y=appNow().getFullYear(),a=[],i;for(i=y-10;i>=y-100;i--)a.push(i);return a;}
-function bwHTML(id){
+/* the years a wheel offers: a birth date's by default, or its own range */
+var _bwY={},_bwNoAge={};
+function bwYears(id){if(id&&_bwY[id])return _bwY[id];var y=appNow().getFullYear(),a=[],i;for(i=y-10;i>=y-100;i--)a.push(i);return a;}
+function bwHTML(id,opt){
+  if(opt&&opt.years)_bwY[id]=opt.years;else delete _bwY[id];
+  _bwNoAge[id]=!!(opt&&opt.noAge);
   var h='<div class="dr-wheel bw"><div class="win"></div><div class="dr-col bw-d" id="'+id+'-d">',i;
   for(i=1;i<=31;i++)h+='<div>'+nfmt(i)+'</div>';
   h+='</div><div class="dr-col bw-m" id="'+id+'-m">';
   for(i=0;i<12;i++)h+='<div>'+esc(dfmt(new Date(2000,i,1,12),{month:'long'}))+'</div>';
   h+='</div><div class="dr-col bw-y" id="'+id+'-y">';
-  bwYears().forEach(function(y){h+='<div>'+String(y)+'</div>';});   // i18n-exempt: a year, written as the year
-  return h+'</div></div><div class="bw-age" id="'+id+'-age"></div>';
+  bwYears(id).forEach(function(y){h+='<div>'+String(y)+'</div>';});   // i18n-exempt: a year, written as the year
+  return h+'</div></div>'+(_bwNoAge[id]?'':'<div class="bw-age" id="'+id+'-age"></div>');
 }
 function bwInit(id,val){
-  var v=bwParse(val),cols=[[id+'-d',v.d-1],[id+'-m',v.m],[id+'-y',Math.max(0,bwYears().indexOf(v.y))]];
+  var v=bwParse(val),cols=[[id+'-d',v.d-1],[id+'-m',v.m],[id+'-y',Math.max(0,bwYears(id).indexOf(v.y))]];
   cols.forEach(function(c){var el=document.getElementById(c[0]);if(!el)return;
     el.scrollTop=c[1]*60;doorMark(el);
     el.addEventListener('scroll',function(){doorMark(el);bwAge(id);});});
@@ -10241,7 +10247,7 @@ function bwInit(id,val){
 }
 function bwVal(id){
   var k=function(s2){var el=document.getElementById(id+'-'+s2);return el?Math.round(el.scrollTop/60):0;};
-  var y=bwYears()[k('y')]||1990,m=k('m'),d=Math.min(k('d')+1,new Date(y,m+1,0).getDate());
+  var y=bwYears(id)[k('y')]||1990,m=k('m'),d=Math.min(k('d')+1,new Date(y,m+1,0).getDate());
   return y+'-'+(m<9?'0':'')+(m+1)+'-'+(d<10?'0':'')+d;
 }
 function pfBirthSheet(){
@@ -10252,6 +10258,23 @@ function pfBirthSheet(){
   var close=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
   document.getElementById('bw-x').onclick=close;ov.onclick=function(e){if(e.target===ov)close();};
   document.getElementById('bw-ok').onclick=function(){var v=bwVal('pf-b');close();profSet('birth',v);};
+}
+/* a person's important date: the same wheel, ten years ahead to a hundred back */
+function epDatePick(){
+  var hid=document.getElementById('ep-date-val');if(!hid)return;
+  var y=appNow().getFullYear(),ys=[],i;for(i=y+10;i>=y-100;i--)ys.push(i);
+  var ov=document.createElement('div');ov.className='cf-ov fss-ov';ov.id='bw-ov';
+  ov.innerHTML='<div class="cf-card fss"><div class="cf-q" style="margin-bottom:12px">'+esc(_t('בחירת תאריך'))+'</div>'+bwHTML('ep-b',{years:ys,noAge:true})+
+    '<div class="tm-sv-col" style="margin-top:14px"><button class="cf-yes" id="bw-ok">'+esc(_t('שמור'))+'</button><button class="cf-no" id="bw-x">'+esc(_t('ביטול'))+'</button></div></div>';
+  document.body.appendChild(ov);bwInit('ep-b',hid.value||todayStr());
+  var close=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
+  document.getElementById('bw-x').onclick=close;ov.onclick=function(e){if(e.target===ov)close();};
+  document.getElementById('bw-ok').onclick=function(){hid.value=bwVal('ep-b');close();epDateShow();};
+}
+function epDateShow(){
+  var hid=document.getElementById('ep-date-val'),b=document.getElementById('ep-date-btn');if(!hid||!b)return;
+  b.textContent=hid.value?dfmt(new Date(hid.value+'T12:00:00'),{day:'numeric',month:'long',year:'numeric'}):_t('בחירת תאריך');
+  b.classList.toggle('set',!!hid.value);
 }
 function bwAge(id){var e=document.getElementById(id+'-age'),a=profileAge(bwVal(id));if(e)e.textContent=a===null?'':_t('גיל {n}',{n:a});}
 /* ── THE ONE-TIME SETUP SCREEN ── */
@@ -37526,7 +37549,9 @@ function renderEditPerson(){
   h+='<span class="pp-fl">'+_t('+ תאריך חשוב')+'</span>';
   h+='<div class="pp-row2">';
   h+='<input id="ep-date-title" class="mtin" style="flex:2;margin-bottom:0" placeholder="'+_t("למשל: יום הולדת")+'">';
-  h+='<input id="ep-date-val" class="mtin" type="date" style="flex:1;margin-bottom:0">';
+  /* the app's wheel, not the system calendar: see epDatePick */
+  h+='<button type="button" id="ep-date-btn" class="mtin ep-datebtn" style="flex:1;margin-bottom:0" onclick="epDatePick()">'+_t('בחירת תאריך')+'</button>'+
+     '<input id="ep-date-val" type="hidden" value="">';
   h+='</div>';
   h+='<div class="pp-chips">';
   var dtypes=PEOPLE_DATE_TYPES;
@@ -37572,11 +37597,11 @@ function addDateToPerson(){
   if(!p){// temp — will save with person
     window._pendingDates=window._pendingDates||[];
     window._pendingDates.push({title:title.value.trim(),date:val.value,type:dtype.value,yearly:yearly.checked});
-    showToast(''+_t('תאריך נוסף')+'');title.value='';val.value='';return;
+    showToast(''+_t('תאריך נוסף')+'');title.value='';val.value='';epDateShow();return;
   }
   if(!p.importantDates)p.importantDates=[];
   p.importantDates.push({title:title.value.trim(),date:val.value,type:dtype.value,yearly:yearly.checked});
-  savePeople(people);showToast(''+_t('תאריך נוסף')+' ✓');title.value='';val.value='';
+  savePeople(people);showToast(''+_t('תאריך נוסף')+' ✓');title.value='';val.value='';epDateShow();
 }
 
 function savePersonEdit(){
