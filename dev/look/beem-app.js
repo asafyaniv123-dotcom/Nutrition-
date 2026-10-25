@@ -1845,6 +1845,7 @@ function ringURL(canvas){
        glow:   7,                  the streak worn as light, optional
        beads:  true,               a burst of Beem's beads behind him
        confetti: true,             confetti drifting down, gently, the whole time
+                                   (or an array of colours for its pieces)
        host:   element,            where to draw it; the page by default
        onClose: function(){}
      })  ->  {close: function}
@@ -1902,10 +1903,10 @@ function beemScreenShow(o){
   var cf = '';
   if (o.confetti){
     /* light colours that read on any flood, a few of them strips and the rest beads */
-    var K = ['#fbf6ee', '#fed662', '#ffffff', '#fac047', '#e2412b', '#ffd9b0'], j;
-    for (j = 0; j < 28; j++){ var strip = j % 3 !== 0, t = 7 + (j*1.7 % 6);
-      cf += '<i style="--l:' + ((j*37 % 100) + .5) + '%;--t:' + t.toFixed(1) + 's;--d:-' + (j*t/28*1.9 % t).toFixed(1) + 's">' +
-        '<b style="--w:' + (strip ? 6 : 7) + 'px;--h:' + (strip ? 11 : 7) + 'px;--r:' + (strip ? '2px' : '50%') + ';--c:' + K[j % K.length] + ';--s:' + (1.4 + (j % 5)*.35).toFixed(2) + 's"></b></i>'; }
+    var K = o.confetti.length ? o.confetti : ['#fbf6ee', '#fed662', '#ffffff', '#fac047', '#e2412b', '#ffd9b0'], j;
+    for (j = 0; j < 36; j++){ var strip = j % 3 !== 0, t = 7 + (j*1.7 % 6);
+      cf += '<i style="--l:' + ((j*37 % 100) + .5) + '%;--t:' + t.toFixed(1) + 's;--d:-' + (j*t/36*1.9 % t).toFixed(1) + 's">' +
+        '<b style="--w:' + (strip ? 7 : 8) + 'px;--h:' + (strip ? 13 : 8) + 'px;--r:' + (strip ? '2px' : '50%') + ';--c:' + K[j % K.length] + ';--s:' + (1.4 + (j % 5)*.35).toFixed(2) + 's"></b></i>'; }
     cf = '<div class="bms-cf">' + cf + '</div>';
   }
   w.innerHTML = cf + '<div class="bms-stage">' + beads + '<div class="bms-beem" style="position:absolute;inset:0"></div></div>' +
