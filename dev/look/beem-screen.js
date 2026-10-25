@@ -14,6 +14,7 @@
        play:   'streak',           a combo or special by id, or a script object
        glow:   7,                  the streak worn as light, optional
        beads:  true,               a burst of Beem's beads behind him
+       confetti: true,             confetti drifting down, gently, the whole time
        host:   element,            where to draw it; the page by default
        onClose: function(){}
      })  ->  {close: function}
@@ -42,6 +43,15 @@ function beemScreenCss(){
     '.bms-bead{position:absolute;left:50%;top:50%;border-radius:50%;width:var(--s);height:var(--s);margin:calc(var(--s)/-2) 0 0 calc(var(--s)/-2);background:var(--c);opacity:0}' +
     '.bms.show .bms-bead{animation:bmsBurst 1.3s cubic-bezier(.15,.7,.3,1) forwards;animation-delay:var(--d)}' +
     '@keyframes bmsBurst{0%{opacity:0;transform:translate(0,0) scale(.4)}15%{opacity:1}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(1)}}' +
+    /* the confetti: each piece falls on the outer element and sways and turns on the inner one */
+    /* z-index -1: under the words and the button, still over the flood - .bms is its own stacking context (clip-path) */
+    '.bms-cf{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;opacity:0;transition:opacity .8s}' +
+    '.bms.show .bms-cf{opacity:1}' +
+    '.bms-cf i{position:absolute;top:-6%;left:var(--l);animation:bmsFall var(--t) linear infinite;animation-delay:var(--d)}' +
+    '.bms-cf b{display:block;width:var(--w);height:var(--h);border-radius:var(--r);background:var(--c);animation:bmsSway var(--s) ease-in-out infinite alternate}' +
+    '@keyframes bmsFall{to{transform:translateY(calc(var(--H) + 12vh))}}' +
+    '@keyframes bmsSway{from{transform:translateX(-14px) rotate(-40deg) rotateY(0)}to{transform:translateX(14px) rotate(50deg) rotateY(160deg)}}' +
+    '@media (prefers-reduced-motion:reduce){.bms-cf{display:none}}' +
     '@media (prefers-reduced-motion:reduce){.bms,.bms.out{transition:none;clip-path:none}.bms-bead{display:none}.bms-t,.bms-s,.bms-b{transition:none}}';
   document.head.appendChild(s);
 }
@@ -59,7 +69,16 @@ function beemScreenShow(o){
     for (i = 0; i < 22; i++){ a = i/22*Math.PI*2 + (i % 2)*.12; d = 110 + (i*37 % 90);
       beads += '<i class="bms-bead" style="--s:' + (8 + i % 4*3) + 'px;--c:' + C[i % C.length] + ';--x:' + Math.round(Math.cos(a)*d) + 'px;--y:' + Math.round(Math.sin(a)*d) + 'px;--d:' + (.35 + (i % 5)*.04) + 's"></i>'; }
   }
-  w.innerHTML = '<div class="bms-stage">' + beads + '<div class="bms-beem" style="position:absolute;inset:0"></div></div>' +
+  var cf = '';
+  if (o.confetti){
+    /* light colours that read on any flood, a few of them strips and the rest beads */
+    var K = ['#fbf6ee', '#fed662', '#ffffff', '#fac047', '#e2412b', '#ffd9b0'], j;
+    for (j = 0; j < 28; j++){ var strip = j % 3 !== 0, t = 7 + (j*1.7 % 6);
+      cf += '<i style="--l:' + ((j*37 % 100) + .5) + '%;--t:' + t.toFixed(1) + 's;--d:-' + (j*t/28*1.9 % t).toFixed(1) + 's">' +
+        '<b style="--w:' + (strip ? 6 : 7) + 'px;--h:' + (strip ? 11 : 7) + 'px;--r:' + (strip ? '2px' : '50%') + ';--c:' + K[j % K.length] + ';--s:' + (1.4 + (j % 5)*.35).toFixed(2) + 's"></b></i>'; }
+    cf = '<div class="bms-cf">' + cf + '</div>';
+  }
+  w.innerHTML = cf + '<div class="bms-stage">' + beads + '<div class="bms-beem" style="position:absolute;inset:0"></div></div>' +
     '<div class="bms-t"></div>' + (o.sub ? '<div class="bms-s"></div>' : '') +
     '<button class="bms-b"></button>';
   w.querySelector('.bms-t').textContent = o.title || '';
@@ -68,6 +87,7 @@ function beemScreenShow(o){
   /* the button wears the flood's colour on the text's: it is the one way out */
   btn.style.background = o.ink || '#fff'; btn.style.color = o.accent || o.bg || '#ff7a1a';
   host.appendChild(w);
+  if (o.confetti) w.querySelector('.bms-cf').style.setProperty('--H', w.offsetHeight + 'px');
   var b = new Beem(w.querySelector('.bms-beem'));
   var s = typeof o.play === 'string' ? (byId(COMBO_LIST, o.play) || byId(SPECIAL_LIST, o.play)) : o.play;
   b.play(s || byId(COMBO_LIST, 'party'));
