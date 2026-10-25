@@ -5931,6 +5931,12 @@ html body.mod-planning .pb-go,html body.mod-planning .pb-opt.pb-yes{position:rel
   background:var(--nu-ground);color:var(--nu-ink);
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 html body.mod-planning .pb-go{border-radius:15px;margin-bottom:10px}
+/* an anchor row: kept is pressed in with a lit mark, dropped is raised and quiet */
+html body.mod-planning .pb-anch{display:flex;align-items:center;gap:10px;text-align:start;color:var(--nu-muted)}
+html body.mod-planning .pb-anch::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;box-shadow:inset 1px 1px 2px var(--nu-shade),inset -1px -1px 2px var(--nu-lit)}
+html body.mod-planning .pb-anch.on{color:var(--nu-ink);box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-planning .pb-anch.on::before{background:#f0a92e;box-shadow:0 0 6px rgba(240,169,46,.6)}
+html body.mod-planning #pl-anch-more{width:100%;margin:12px 0;resize:none;font-family:inherit}
 html body.mod-planning .pb-go::before,html body.mod-planning .pb-opt.pb-yes::before{
   content:"";position:absolute;left:50%;transform:translateX(-50%);width:min(46%,150px);
   bottom:-8px;height:5px;border-radius:3px;
@@ -32842,13 +32848,13 @@ function renderRecipeList(){
     for(var gi=0;gi<group.length;gi++){
       var rec=group[gi].r,ridx=group[gi].idx;
       h+='<div class="rcp-row" onclick="_recipeView=\'view\';_recipeIdx='+ridx+';render()">'+
-        (rec.photo?'<img class="rcp-th" src="'+rec.photo+'" alt="">':'<div class="rcp-ph">'+RCP_I.pot+'</div>')+
+        (rec.photo?photoImg(rec.photo,'class="rcp-th" alt=""'):'<div class="rcp-ph">'+RCP_I.pot+'</div>')+
         '<div class="rcp-rt"><b>'+esc(rec.name)+'</b>'+(rec.tags?'<span>'+esc(rec.tags)+'</span>':'')+'</div>'+
         '<div class="rcp-go">&rsaquo;</div></div>';
     }
   }
   h+='</div>';
-  document.getElementById('content').innerHTML=h;
+  document.getElementById('content').innerHTML=h;hydratePhotos(document.getElementById('content'));
 }
 
 /* The servings field is free text, so what reaches the chip could be "4" or
@@ -32872,7 +32878,7 @@ function renderViewRecipe(){
   var h='<div class="rcp">';
   h+='<div class="rcp-top"><button class="fit-back" onclick="_recipeView=\'list\';render()">&#8249; '+_t('חזרה')+'</button>'+
      '<button class="rcp-btn" onclick="_recipeView=\'edit\';render()">'+_t('ערוך')+'</button></div>';
-  if(rec.photo)h+='<img class="rcp-photo" src="'+rec.photo+'" alt="">';
+  if(rec.photo)h+=photoImg(rec.photo,'class="rcp-photo" alt=""');
   h+='<div class="rcp-name">'+esc(rec.name)+'</div>';
   if(rec.tags)h+='<div class="rcp-tags">'+esc(rec.tags)+'</div>';
   if(rec.time||rec.servings||rec.difficulty){
@@ -32901,7 +32907,7 @@ function renderViewRecipe(){
        '<div class="rcp-note">'+esc(rec.notes)+'</div></div>';
   }
   h+='</div>';
-  document.getElementById('content').innerHTML=h;
+  document.getElementById('content').innerHTML=h;hydratePhotos(document.getElementById('content'));
 }
 
 function renderEditRecipe(){
@@ -32911,7 +32917,7 @@ function renderEditRecipe(){
   h+='<div class="rcp-top"><button class="fit-back" onclick="_recipeView=\''+(_recipeIdx>=0?'view':'list')+'\';render()">&#8249; '+_t('חזרה')+'</button></div>';
   h+='<div class="rcp-form-h">'+(_recipeIdx>=0?_t('עריכת מתכון'):_t('מתכון חדש'))+'</div>';
   h+='<div style="margin-bottom:12px">';
-  if(rec.photo)h+='<img class="rcp-photo" src="'+rec.photo+'" id="rec-photo-prev" alt="">';
+  if(rec.photo)h+=photoImg(rec.photo,'class="rcp-photo" id="rec-photo-prev" alt=""');
   else h+='<div id="rec-photo-prev"></div>';
   h+='<div class="rcp-shot"><button class="rcp-btn" onclick="document.getElementById(\'rec-photo-inp\').click()">'+RCP_I.camera+_t('הוסף תמונה')+'</button></div>';
   h+='<input id="rec-photo-inp" type="file" accept="image/*" style="display:none" onchange="handleRecipePhoto(this)">';
@@ -32938,7 +32944,7 @@ function renderEditRecipe(){
   h+='<div class="rcp-save"><button class="rcp-btn" onclick="saveRecipe()">'+_t('שמור')+'</button>'+
      '<button class="rcp-btn ghost" onclick="_recipeView=\''+(_recipeIdx>=0?'view':'list')+'\';render()">'+_t('ביטול')+'</button>'+
      (_recipeIdx>=0?'<button class="rcp-btn ghost danger" onclick="deleteRecipe()">'+_t('מחק')+'</button>':'')+'</div></div>';
-  document.getElementById('content').innerHTML=h;
+  document.getElementById('content').innerHTML=h;hydratePhotos(document.getElementById('content'));
   window._editRecipePhoto=rec.photo||'';
 }
 
@@ -32950,11 +32956,11 @@ function handleRecipePhoto(input){
     var img=new Image();
     img.onload=function(){
       var canvas=document.createElement('canvas');
-      var maxW=600,maxH=400;
-      var scale=Math.min(maxW/img.width,maxH/img.height,1);
+      /* the size it is shown at: a full-width frame on a phone is ~1200 device pixels */
+      var scale=Math.min(1600/Math.max(img.width,img.height),1);
       canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
       canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      _editRecipePhoto=canvas.toDataURL('image/jpeg',0.8);
+      _editRecipePhoto=canvas.toDataURL('image/jpeg',0.86);
       var prev=document.getElementById('rec-photo-prev');
       if(prev){prev.outerHTML='<img class="rcp-photo" src="'+_editRecipePhoto+'" id="rec-photo-prev" alt="">';}
     };img.src=e.target.result;
@@ -32964,7 +32970,13 @@ function handleRecipePhoto(input){
 function saveRecipe(){
   var name=document.getElementById('rec-name');
   if(!name||!name.value.trim()){showToast(''+_t('נא הזן שם מתכון')+'');return;}
-  var recipes=loadRecipes();
+  var recipes=loadRecipes(),was=_recipeIdx>=0&&recipes[_recipeIdx]?recipes[_recipeIdx].photo||'':'';
+  /* a new picture goes to the photo store and the recipe keeps its key */
+  if(_editRecipePhoto&&!isPhotoKey(_editRecipePhoto)&&_editRecipePhoto!==was){
+    var pic=_editRecipePhoto;
+    photoPut(pic).then(function(k){_editRecipePhoto=k||pic;if(k&&isPhotoKey(was))photoDel(was);saveRecipe();});
+    return;
+  }
   var rec={
     name:(name.value.trim()),
     time:(document.getElementById('rec-time')||{}).value||'',
@@ -32984,7 +32996,7 @@ function saveRecipe(){
 }
 
 function deleteRecipe(){
-  var recipes=loadRecipes();recipes.splice(_recipeIdx,1);saveRecipes(recipes);
+  var recipes=loadRecipes();if(recipes[_recipeIdx])photoDel(recipes[_recipeIdx].photo);recipes.splice(_recipeIdx,1);saveRecipes(recipes);
   _recipeIdx=-1;_recipeView='list';render();
 }
 /* ── PLANNING MODULE ── */
@@ -36003,7 +36015,7 @@ function planSecHeadHTML(k,title,sub,open){
    The blob is OPAQUE. The model writes it and the model reads it; nothing
    here looks inside. That is what lets its shape grow without touching the
    worker - and it is why it is capped, and why there is a way to clear it. */
-var PLAN_PROF='plan_profile',PLAN_PROF_MAX=6000,PLAN_STAGES=5;
+var PLAN_PROF='plan_profile',PLAN_PROF_MAX=6000,PLAN_STAGES=3;
 function planProfile(){
   try{var x=localStorage.getItem(PLAN_PROF),o=x?JSON.parse(x):null;
     return(o&&typeof o==='object'&&!Array.isArray(o))?o:{};}catch(e){return{};}
@@ -36033,11 +36045,39 @@ var _plWarm=-1,_plCards=[];           /* -1 = not in the local cards */
    this Tuesday than it was last Tuesday; when she wakes is not. So the range
    is asked every time and the other two once - which is also what stops the
    second conversation from silently always planning "the coming week". */
-function plWarmCards(){
-  var p=planProfile(),c=['horizon'];
-  if(!p.wake)c.push('waking');
-  if(!p.routines)c.push('routines');
-  return c;
+/* 25.10: the range, then the anchors already in the plan - the waking hours
+   moved to the end of the conversation, asked only while unknown */
+function plWarmCards(){return ['horizon','anchors'];}
+var _plAnch=null;
+/* what is already fixed: the coming week's items that have an hour, the same
+   title at the same time on several days folded into one row */
+function plAnchors(){
+  var out={},list=[],k,i,d=appNow();
+  for(k=0;k<7;k++){
+    var dt=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k),date=wkStamp(dt),all=dpAll(date);
+    for(i=0;i<all.length;i++){
+      var it=all[i];if(it.hour===null||!it.w)continue;
+      var key=it.w+'|'+it.hour+':'+(it.min||0)+'|'+(it.end||0);
+      if(!out[key]){out[key]={w:it.w,h:it.hour,m:it.min||0,e:it.end||0,days:[]};list.push(out[key]);}
+      if(out[key].days.indexOf(dt.getDay())<0)out[key].days.push(dt.getDay());
+    }
+  }
+  list.sort(function(a,b){return (a.h*60+a.m)-(b.h*60+b.m);});
+  return list.slice(0,14).map(function(a){
+    var days=a.days.sort().map(function(x){return dfmt(new Date(2023,0,1+x,12),{weekday:'short'});}).join(', ');
+    var t=dpHM(a.h,a.m)+(a.e?'–'+dpHM(Math.floor(a.e/60),a.e%60):'');
+    return {label:a.w+' · '+days+' · \u2066'+t+'\u2069',on:true};   /* the range stays left-to-right inside Hebrew */
+  });
+}
+function plAnchorToggle(i){if(_plAnch&&_plAnch[i]){_plAnch[i].on=!_plAnch[i].on;planBotPaint();}}
+function plAnchorsGo(){
+  var kept=(_plAnch||[]).filter(function(a){return a.on;}).map(function(a){return a.label;});
+  var el=document.getElementById('pl-anch-more'),more=el?String(el.value).trim():'';
+  if(more)kept.push(more);
+  var hz=planProfile().horizon||'';
+  _plWarm=-1;_plAnch=null;
+  planBotSend(kept.length?_t('טווח: {h}. העוגנים הקבועים: {list}.',{h:hz,list:kept.join('; ')})
+                         :_t('טווח: {h}. אין עוגנים קבועים.',{h:hz}));
 }
 /* Frozen at the start, and read from there afterwards. Asking plWarmCards()
    again between presses reads a profile the last press just wrote to, so the
@@ -36047,23 +36087,27 @@ function plWarmPick(field,value,label){
   var add={};add[field==='waking'?'wake':field]=label||value;
   planProfileMerge(add);
   _plWarm++;
-  if(_plWarm>=_plCards.length){
-    _plWarm=-1;
-    /* the horizon is her first sentence; everything else is already in the
-       profile, so the model opens at stage two */
-    planBotSend(planProfile().horizon||value);
-    return;
-  }
+  if(_plWarm>=_plCards.length){_plWarm=-1;planBotSend(planProfile().horizon||value);return;}
   planBotPaint();
 }
 function plWarmHTML(){
   /* STAGE ONE OF FIVE, and it says so. These cards used to draw three dots
      of their own and fill them, so the next card - the model's, drawing five
      and lighting the second - read as the bar falling back to the start. */
+  var kind=_plCards[_plWarm]||'horizon',st=kind==='anchors'?2:1;
   var h='<div class="pb-stage"><div class="pb-dots">';
-  for(var i=1;i<=PLAN_STAGES;i++)h+='<span class="pb-dot'+(i===1?' on':'')+'"></span>';
-  h+='</div><span class="pb-stage-t">'+_t('המסגרת')+'</span></div>';
-  var rows=[],q='',kind=_plCards[_plWarm]||'horizon';
+  for(var i=1;i<=PLAN_STAGES;i++)h+='<span class="pb-dot'+(i===st?' on':(i<st?' done':''))+'"></span>';
+  h+='</div><span class="pb-stage-t">'+(st===2?_t('העוגנים'):_t('המסגרת'))+'</span></div>';
+  var rows=[],q='';
+  if(kind==='anchors'){
+    if(!_plAnch)_plAnch=plAnchors();
+    h+='<div class="pb-q">'+(_plAnch.length?_t('אלה הדברים הקבועים שכבר בלו״ז. להשאיר אותם?'):_t('מה קבוע אצלך השבוע, ביום ובשעה?'))+'</div><div class="pb-ans-l">';
+    for(var a=0;a<_plAnch.length;a++)
+      h+='<button class="pb-ans pb-anch'+(_plAnch[a].on?' on':'')+'" onclick="plAnchorToggle('+a+')">'+esc(_plAnch[a].label)+'</button>';
+    h+='</div><textarea id="pl-anch-more" class="pb-in" rows="2" placeholder="'+esc(_t('עוד משהו קבוע? למשל: עבודה א׳–ה׳ מ-9:00 עד 17:00'))+'"></textarea>'+
+       '<button class="pb-go" onclick="plAnchorsGo()">'+_t('המשך')+'</button>';
+    return h;
+  }
   if(kind==='horizon'){
     q=_t('לאיזה טווח לתכנן?');
     rows=[[_t('מחר|אפשרות'),'horizon'],[_t('השבוע'),'horizon'],[_t('החודש'),'horizon'],

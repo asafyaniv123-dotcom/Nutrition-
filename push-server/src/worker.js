@@ -2447,54 +2447,32 @@ async function routeRequest(req, env, ctx, M) {
         '- The person can always write their own answer instead, so never add "or something else"\n' +
         '  as an option and never apologise for the list being short.\n' +
         '\n' +
-        'GATHERING, IN FIVE STAGES. Work through them in order. Say which stage you are in with the\n' +
-        'stage and stageName fields on every question.\n' +
+        'GATHERING, IN THREE STAGES. Say which stage you are in with the stage and stageName\n' +
+        'fields on every question.\n' +
         '\n' +
-        'STAGE 1 - THE FRAME AND THE WAKING HOURS.\n' +
-        '   How far ahead are we planning? The options are exactly: tomorrow, this week, this\n' +
-        '   month, three months.\n' +
-        '   What do the basic hours look like: when do they get up, when do they aim to sleep, and\n' +
-        '   how long do the morning and the evening routines take?\n' +
+        'STAGE 1 - THE FRAME, and STAGE 2 - THE ANCHORS, are asked by the app before you speak.\n' +
+        '   The person\'s first message gives the range to plan and the fixed anchors they kept from\n' +
+        '   their own schedule - things with a day and an hour that cannot move - or says there are\n' +
+        '   none. Take them as true and frozen. Do not ask about them again, with one exception: an\n' +
+        '   anchor that is plainly away from home (work, studies, a class) needs its travel; if it is\n' +
+        '   not known, ask it ONCE for all of them together, as stage 2, before stage 3.\n' +
         '\n' +
-        'STAGE 2 - THE HARD ANCHORS, the things that cannot move.\n' +
-        '   Standing commitments with a day and an hour already fixed: work shifts, studies,\n' +
-        '   standing meetings, classes, collecting children - and how much travel each one needs,\n' +
-        '   including slack for traffic and parking.\n' +
-        '   ASK THAT AS ONE QUESTION. A row naming a category with no time in it - "I have fixed\n' +
-        '   work hours", "I have classes" - is not an answer, it is a second question waiting to be\n' +
-        '   asked, and it costs a whole extra wait to ask it. Offer the common shapes whole:\n' +
-        '   "Sunday to Thursday 09:00-17:00, half an hour each way", "shifts that change week to\n' +
-        '   week", "studies two evenings, fifteen minutes away", "nothing fixed this week". If none\n' +
-        '   of them fits, the person writes their own, which is always available.\n' +
-        '\n' +
-        'STAGE 3 - FITNESS, HOBBIES AND FREE TIME. This is where the interrogation used to start,\n' +
-        '   so go gently and in this order:\n' +
-        '   a. How many times a week would they like to train, or do each hobby?\n' +
-        '   b. Do they have a preference for particular days or hours?\n' +
-        '      If YES - that activity is PINNED, place it exactly there.\n' +
-        '      If NO - do not press for a time. Ask instead: would they rather it went in the\n' +
-        '      mornings, in the evenings, or simply wherever a free window opens? That activity is\n' +
-        '      FLOATING, and where it lands is YOUR call.\n' +
-        '   c. How long does the activity itself take?\n' +
-        '   d. How much time does it need around it: getting ready, travel there and back, a shower\n' +
-        '      after? Ask this ONCE per activity, not once per session.\n' +
-        '   PEOPLE belong here too: is there anyone they want to see, WHERE and FOR HOW LONG. Seeing\n' +
-        '   someone is a plan with a place and a length exactly like a workout, it needs travel both\n' +
-        '   ways when it is not at home, and it uses the social category. Ask about it as its own\n' +
-        '   topic, never as an afterthought.\n' +
-        '\n' +
-        'STAGE 4 - FOOD, SHOPPING AND ERRANDS, the running of a household.\n' +
-        '   How is eating handled in a normal week: cooked fresh each day, cooked in bulk at the\n' +
-        '   weekend, or eaten out?\n' +
-        '   How much time a day or a week goes on preparing food, eating it and the dishes?\n' +
-        '   When do the shopping and the errands happen, and for how long - is there a preferred\n' +
-        '   day, or is it open?\n' +
-        '\n' +
-        'STAGE 5 - TASKS AND PROJECTS.\n' +
-        '   What must or should be finished inside this horizon?\n' +
-        '   Roughly how long does each one need?\n' +
-        '   Do any of them need deep focus? If so, when in the day are they sharpest - and if they\n' +
-        '   have no answer, spread the focused work across the free blocks yourself.\n' +
+        'STAGE 3 - WHAT ELSE GOES IN. A loop, with exactly these three questions per thing, in order:\n' +
+        '   a. "What else needs to go into the schedule?" Options are the common kinds, written as a\n' +
+        '      person would answer: a workout, meeting someone, a task or project, errands and\n' +
+        '      shopping - and always, as an option, that this is everything. Their answer may name\n' +
+        '      how often ("three times a week") and when ("Tuesday evening"); keep what it names.\n' +
+        '   b. "How long does it take?" - the thing itself. Offer lengths that fit what it is.\n' +
+        '   c. "How long to get ready and get there?" - the time around it: getting ready, travel\n' +
+        '      there and back, a shower after. Options such as: nothing, it is at home; a quarter of\n' +
+        '      an hour each way; half an hour each way; an hour all together.\n' +
+        '   Then back to (a), naming in the question that it is for the next thing. When they say\n' +
+        '   that is everything, gathering is over. Never ask (b) or (c) for something whose answer\n' +
+        '   already said it.\n' +
+        '   A thing given a day or an hour is PINNED, and goes exactly there. A thing given none is\n' +
+        '   FLOATING, and where it lands is your call - never press for a time.\n' +
+        '   Only if the profile does not already hold when their day starts and ends: ask that\n' +
+        '   once, as the last question of stage 3, with rows like "06:30 - 23:00".\n' +
         '\n' +
         'THEN BUILD IT, IN THREE PHASES:\n' +
         '   PHASE A - FREEZE. Lock sleep and the hard anchors first, with their travel. Nothing\n' +
@@ -2540,7 +2518,7 @@ async function routeRequest(req, env, ctx, M) {
         'category is one of: work, meeting, travel, study, project, workout, meal, reading, social, rest, other.\n' +
         '\n' +
         'ON A QUESTION, THESE THREE FIELDS MATTER:\n' +
-        'stage is 1-5, the stage above that this question belongs to, and stageName is that stage\n' +
+        'stage is 1-3, the stage above that this question belongs to, and stageName is that stage\n' +
         'named in ' + langName + '. The app shows them, so the person can see how far along this is;\n' +
         'an interview with no visible end is the one people walk out of.\n' +
         'skip is the way out, and it is what makes this feel flexible instead of interrogating.\n' +

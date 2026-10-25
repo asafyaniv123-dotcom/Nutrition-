@@ -1,0 +1,13 @@
+import fs from 'fs';
+const L = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', 'ar'];
+const T = {
+  'העוגנים': ['The anchors', 'Die festen Punkte', 'Lo fijo', 'Les points fixes', 'I punti fissi', 'Os compromissos fixos', '固定の予定', '固定安排', '固定安排', 'الثوابت'],
+  'אלה הדברים הקבועים שכבר בלו״ז. להשאיר אותם?': ['These are the fixed things already in your schedule. Keep them?', 'Das steht schon fest in deinem Plan. Behalten?', 'Esto ya está fijo en tu agenda. ¿Lo mantengo?', 'Voici ce qui est déjà fixe dans ton planning. On le garde ?', 'Questo è già fisso nella tua agenda. Lo teniamo?', 'Isto já está fixo na sua agenda. Mantemos?', 'すでに予定に入っている固定の予定です。このままにしますか？', '这些是你日程里已固定的安排。保留吗？', '這些是你行程裡已固定的安排。保留嗎？', 'هذه الأمور الثابتة الموجودة في جدولك. نبقيها؟'],
+  'מה קבוע אצלך השבוע, ביום ובשעה?': ['What is fixed for you this week, on a day and at an hour?', 'Was steht diese Woche fest, mit Tag und Uhrzeit?', '¿Qué tienes fijo esta semana, con día y hora?', "Qu'est-ce qui est fixe cette semaine, avec un jour et une heure ?", 'Cosa hai di fisso questa settimana, con giorno e ora?', 'O que está fixo para você esta semana, com dia e hora?', '今週、曜日と時間が決まっている予定は？', '这周有哪些固定在某天某时的安排？', '這週有哪些固定在某天某時的安排？', 'ما الثابت لديك هذا الأسبوع، بيوم وساعة؟'],
+  'עוד משהו קבוע? למשל: עבודה א׳–ה׳ מ-9:00 עד 17:00': ['Anything else fixed? E.g. work Mon–Fri 9:00–17:00', 'Noch etwas Festes? Z. B. Arbeit Mo–Fr 9:00–17:00', '¿Algo más fijo? P. ej.: trabajo lun–vie 9:00–17:00', 'Autre chose de fixe ? Ex. : travail lun–ven 9:00–17:00', "Altro di fisso? Es.: lavoro lun–ven 9:00–17:00", 'Mais algo fixo? Ex.: trabalho seg–sex 9:00–17:00', 'ほかに固定の予定は？ 例：仕事 月〜金 9:00〜17:00', '还有别的固定安排吗？例如：工作 周一至周五 9:00–17:00', '還有別的固定安排嗎？例如：工作 週一至週五 9:00–17:00', 'شيء ثابت آخر؟ مثلًا: عمل من الأحد إلى الخميس 9:00–17:00'],
+  'טווח: {h}. העוגנים הקבועים: {list}.': ['Range: {h}. Fixed anchors: {list}.', 'Zeitraum: {h}. Feste Punkte: {list}.', 'Periodo: {h}. Lo fijo: {list}.', 'Période : {h}. Points fixes : {list}.', 'Periodo: {h}. Punti fissi: {list}.', 'Período: {h}. Compromissos fixos: {list}.', '期間：{h}。固定の予定：{list}。', '范围：{h}。固定安排：{list}。', '範圍：{h}。固定安排：{list}。', 'المدة: {h}. الثوابت: {list}.'],
+  'טווח: {h}. אין עוגנים קבועים.': ['Range: {h}. Nothing fixed.', 'Zeitraum: {h}. Nichts Festes.', 'Periodo: {h}. Nada fijo.', 'Période : {h}. Rien de fixe.', 'Periodo: {h}. Niente di fisso.', 'Período: {h}. Nada fixo.', '期間：{h}。固定の予定はなし。', '范围：{h}。没有固定安排。', '範圍：{h}。沒有固定安排。', 'المدة: {h}. لا ثوابت.'],
+};
+for (let i = 0; i < L.length; i++) { const f = 'data/lang/' + L[i] + '.json', d = JSON.parse(fs.readFileSync(f, 'utf8'));
+  for (const k of Object.keys(T)) d[k] = T[k][i]; fs.writeFileSync(f, JSON.stringify(d, null, 2) + '\n'); }
+console.log('ok');
