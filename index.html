@@ -5883,6 +5883,17 @@ html body.mod-people .ppl-sort.on{background:var(--nu-ground);color:var(--nu-ink
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 .pp-row:last-child{margin-bottom:0}
 .pp-row-x{flex:1;min-width:0}
+/* A PERSON'S BIRTHDAY: their row lit warm from inside, and the rendered party
+   hat Mip wears on hers sitting ON their avatar. Where there is no avatar to
+   wear it (the coming-dates tray, the big name on their page) it follows the name. */
+.pp-bd{display:inline-block;height:1.25em;width:auto;vertical-align:-.15em;margin-inline-start:.3em;transform:rotate(-12deg);flex:none}
+.pp-row.pp-bday,.pp-hero.pp-bday{background:color-mix(in srgb,#ffb04a 11%,var(--nu-ground));
+  box-shadow:0 0 0 2px rgba(255,166,77,.7),0 0 22px rgba(255,140,40,.4),-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+.pp-face.pp-bday{box-shadow:0 0 0 3px rgba(255,166,77,.8),0 0 30px rgba(255,140,40,.45),8px 10px 22px var(--nu-shade)}
+.pp-bdav{position:relative;display:inline-block;flex:0 0 auto;line-height:0}
+.pp-bdav>.pp-av,.pp-bdav>.pp-avn{box-shadow:0 0 0 2px #ffb04a,0 0 12px rgba(255,140,40,.5)}
+.pp-bdhat{position:absolute;width:54%;height:auto;left:50%;top:-50%;transform:rotate(22deg);transform-origin:50% 100%;
+  pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
 .pp-row-n{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;
   color:var(--nu-ink);overflow:hidden}
 /* the same amber, saying the same thing it says on the hero */
@@ -32345,7 +32356,10 @@ function pushStashConfig(o){
          dictionary and no idea who it is speaking to. This is the only place
          that knows both, so it says the sentence here. */
       c.put('config',new Response(JSON.stringify({server:PUSH_SERVER,time:o.time,tz:localTZ(),
-        title:sumRemTitle(),body:sumRemMsg()}),
+        title:sumRemTitle(),body:sumRemMsg(),
+        /* birthdays: the sentence per date, names in it. This cache is on her
+           phone; the server is sent the dates alone (pplBdayDates). */
+        bdayTitle:_t('יום הולדת היום'),bdays:pplBdaySentences()}),
         {headers:{'Content-Type':'application/json'}}));
     });
   }catch(e){}
@@ -32373,7 +32387,7 @@ function sumRemPushSync(){
     return fetch(PUSH_SERVER+'/subscribe',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ()})
+      body:JSON.stringify({subscription:sub.toJSON(),time:o.time,tz:localTZ(),bdays:pplBdayDates(),bdayTime:PPL_BDAY_TIME})
     });
   }).then(function(r){
     _pushState=r&&r.ok?'ok':'error';renderSumRem();
@@ -32406,8 +32420,11 @@ function remNativeSync(){
     var ids=((p&&p.notifications)||[]).map(function(n){return {id:n.id};});
     return ids.length?LN.cancel({notifications:ids}):null;
   }).then(function(){
-    if(!o.on)return;
-    var hm=String(o.time||'21:00').split(':'),out=[],i,d,day;
+    /* birthdays in the iPhone shell are local notifications: nothing to send
+       anywhere. The next fifteen days, at PPL_BDAY_TIME, like the reminder's window. */
+    var out=pplBdayNative();
+    if(!o.on)return out.length?LN.schedule({notifications:out}):null;
+    var hm=String(o.time||'21:00').split(':'),i,d,day;
     for(i=0;i<15;i++){
       d=new Date(Date.now()+i*86400000);d.setHours(+hm[0]||0,+hm[1]||0,0,0);
       if(d.getTime()<=Date.now()+30000)continue;
@@ -36752,7 +36769,7 @@ function pplBarHTML(people){
 }
 
 function loadPeople(){try{var x=localStorage.getItem('people_v2');return x?JSON.parse(x):[];}catch(e){return[];}}
-function savePeople(arr){try{localStorage.setItem('people_v2',JSON.stringify(arr));}catch(e){}}
+function savePeople(arr){try{localStorage.setItem('people_v2',JSON.stringify(arr));}catch(e){}pplBdayResync();}
 
 function daysSince(ts){if(!ts)return null;return Math.floor((Date.now()-ts)/(1000*60*60*24));}
 
@@ -36803,7 +36820,7 @@ function renderPeopleHome(){
      row - the same rule said once more, rather than a second coloured panel. */
   if(over.length){
     var top=over[0];
-    h+='<button class="pp-hero" onclick="_personIdx='+top.i+';_peopleView=&quot;person&quot;;renderPeople()">'+
+    h+='<button class="pp-hero'+(pplBdayToday(top.p)?' pp-bday':'')+'" onclick="_personIdx='+top.i+';_peopleView=&quot;person&quot;;renderPeople()">'+
        '<span class="pp-hero-k"><i></i>'+_t('אולי הגיע הזמן לבדוק מה שלום...')+'</span>'+
        '<span class="pp-hero-n">'+esc(top.p.name)+'</span>'+
        '<span class="pp-hero-s">'+(top.days===null
@@ -36815,14 +36832,18 @@ function renderPeopleHome(){
   /* ── WHAT IS COMING ──
      A yearly date is carried to its next occurrence, so a birthday in March
      is not reported as three hundred days ago. */
-  var now=appNow(),upcoming=[];
+  /* the app's day, floored to its midnight: compared with the clock, a date
+     that is TODAY had already passed and was carried a year on, so the tray
+     never said היום! */
+  var now=appNow(),upcoming=[];now=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   for(i=0;i<people.length;i++){
     var p2=people[i],dates2=p2.importantDates||[],di;
     for(di=0;di<dates2.length;di++){
-      var d2=dates2[di],dt=new Date(d2.date);
+      var d2=dates2[di],dt=new Date(String(d2.date).slice(0,10)+'T12:00:00');
+      if(isNaN(dt))continue;
       var next=new Date(now.getFullYear(),dt.getMonth(),dt.getDate());
       if(next<now)next=new Date(now.getFullYear()+1,dt.getMonth(),dt.getDate());
-      var inDays=Math.ceil((next-now)/(1000*60*60*24));
+      var inDays=Math.round((next-now)/(1000*60*60*24));
       if(inDays<=14)upcoming.push({person:p2,pidx:i,date:d2,inDays:inDays,when:next});
     }
   }
@@ -36834,7 +36855,7 @@ function renderPeopleHome(){
       h+='<button class="pp-when" onclick="_personIdx='+u.pidx+';_peopleView=&quot;person&quot;;renderPeople()">'+
          '<span class="pp-when-d"><b>'+esc(dfmt(u.when,{day:'numeric'}))+'</b>'+
          '<span>'+esc(dfmt(u.when,{month:'short'}))+'</span></span>'+
-         '<span class="pp-when-x"><span class="pp-when-t">'+esc(u.person.name)+'</span>'+
+         '<span class="pp-when-x"><span class="pp-when-t">'+esc(u.person.name)+pplBdayHat(u.person)+'</span>'+
          '<span class="pp-when-s">'+esc(u.date.title)+'</span></span>'+
          '<span class="pp-row-w">'+(u.inDays===0?_t('היום!'):_t('בעוד {n} ימים',{n:u.inDays}))+
          '</span></button>';
@@ -36898,7 +36919,7 @@ function pplListHTML(people){
        relationship when there is neither */
     var said=p.currentUpdate?esc(p.currentUpdate)
             :(lastMem?esc(memText(lastMem).substring(0,60))+'\u2026':'');
-    h+='<button class="pp-row" onclick="_personIdx='+pi+';_peopleView=&quot;person&quot;;renderPeople()">'+
+    h+='<button class="pp-row'+(pplBdayToday(p)?' pp-bday':'')+'" onclick="_personIdx='+pi+';_peopleView=&quot;person&quot;;renderPeople()">'+
        personAvatar(p,46)+
        '<span class="pp-row-x">'+
        '<span class="pp-row-n">'+(over[p.name]?'<i></i>':'')+esc(p.name)+'</span>'+
@@ -37026,6 +37047,12 @@ function personHue(name){
   return PP_HUES[n%PP_HUES.length];
 }
 function personAvatar(p,size){
+  var av=personAvatar0(p,size);
+  /* on their birthday they wear the hat - except at the tiny sizes, where it would be a speck */
+  if(size<40||!pplBdayToday(p))return av;
+  return '<span class="pp-bdav">'+av+'<img class="pp-bdhat" alt="'+esc(_t('יום הולדת היום'))+'" src="'+liveBase()+'assets/beem-props/partyhat.png"></span>';
+}
+function personAvatar0(p,size){
   var initials=(p.name||'?').charAt(0);
   // photoImg tells a stored key from a picture written before the store
   // existed, and hands the first one to hydratePhotos to fill in
@@ -37033,6 +37060,82 @@ function personAvatar(p,size){
   return '<div class="pp-avn" style="width:'+size+'px;height:'+size+'px;font-size:'+
          Math.round(size*0.38)+'px;--fhue:'+personHue(p.name)+'">'+esc(initials)+'</div>';
 }
+
+/* ── A PERSON'S BIRTHDAY (25.10) ──
+   On the day, a small party hat sits after their name wherever this area
+   writes it, and Mip says so once, in a card, the first time she opens the app
+   that day. He reminds rather than celebrates: it is not her day. The day is
+   the app's (todayStr, ending at 04:00), not new Date()'s, and 29 February
+   falls on the 28th in the years without one - the same rules as hers. */
+var PPL_BDAY_KEY='ppl_bday_seen';
+function pplBdayToday(p){
+  var t=todayStr(),y=+t.slice(0,4),ds=(p&&p.importantDates)||[],i,md;
+  for(i=0;i<ds.length;i++){
+    if(!ds[i]||ds[i].type!=='birthday'||!ds[i].date)continue;
+    md=String(ds[i].date).slice(5,10);
+    if(md==='02-29'&&!(y%4===0&&(y%100!==0||y%400===0)))md='02-28';
+    if(md===t.slice(5))return true;
+  }
+  return false;
+}
+function pplBdayHat(p){
+  if(!pplBdayToday(p))return '';
+  var a=esc(_t('יום הולדת היום'));
+  return '<img class="pp-bd" src="'+liveBase()+'assets/beem-props/partyhat.png" alt="'+a+'" title="'+a+'">';
+}
+/* THE NOTIFICATION (25.10): on a birthday, at nine in the morning, even with
+   the app closed. It rides the evening reminder's subscription. The server is
+   given the DATES only (MM-DD); the names stay on the phone, in the sentence
+   the service worker shows. */
+var PPL_BDAY_TIME='09:00';
+function pplBdayList(){
+  var out=[],ppl=loadPeople(),i,j,ds;
+  for(i=0;i<ppl.length;i++){ds=ppl[i].importantDates||[];
+    for(j=0;j<ds.length;j++)if(ds[j]&&ds[j].type==='birthday'&&/^\d{4}-\d{2}-\d{2}/.test(String(ds[j].date)))
+      out.push({md:String(ds[j].date).slice(5,10),name:ppl[i].name||''});}
+  return out;
+}
+function pplBdayDates(){var seen={},out=[];pplBdayList().forEach(function(b){if(!seen[b.md]){seen[b.md]=1;out.push(b.md);}});return out;}
+function pplBdaySentences(){
+  var by={},out=[];
+  pplBdayList().forEach(function(b){(by[b.md]=by[b.md]||[]).push(_t('היום יום ההולדת של {name}. אולי להתקשר?',{name:b.name}));});
+  for(var md in by)out.push({md:md,body:by[md].join('\n')});
+  return out;
+}
+function pplBdayNative(){
+  var out=[],L=pplBdayList(),hm=PPL_BDAY_TIME.split(':'),i,j,d,md;
+  for(i=0;i<15;i++){
+    d=new Date(Date.now()+i*86400000);d.setHours(+hm[0],+hm[1],0,0);
+    if(d.getTime()<=Date.now()+30000)continue;
+    md=('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+    for(j=0;j<L.length;j++)if(L[j].md===md)
+      out.push({id:300+i*20+(j%20),title:_t('יום הולדת היום'),body:_t('היום יום ההולדת של {name}. אולי להתקשר?',{name:L[j].name}),schedule:{at:d,allowWhileIdle:true}});
+  }
+  return out;
+}
+/* a person or a date added, changed or removed: tell the server the new dates
+   (and the worker the new sentences) - once, a moment after the last change */
+var _pplBdayT=null;
+function pplBdayResync(){
+  clearTimeout(_pplBdayT);
+  _pplBdayT=setTimeout(function(){
+    try{if(remNative()){remNativeSync();return;}var o=loadSumRem();if(o&&o.on)sumRemPushSync();}catch(e){}
+  },1500);
+}
+
+function pplBdayCheck(){
+  try{
+    if(!doorDone())return;
+    /* her own birthday screen goes first; the card waits for it to close */
+    if(document.querySelector('.bms')){setTimeout(pplBdayCheck,2500);return;}
+    var t=todayStr();if(localStorage.getItem(PPL_BDAY_KEY)===t)return;
+    var who=loadPeople().filter(pplBdayToday);if(!who.length)return;
+    localStorage.setItem(PPL_BDAY_KEY,t);
+    beemCard(_t('היום יום ההולדת של {name}. אולי להתקשר?',{name:who[0].name}),'gift','react',6000);
+  }catch(e){}
+}
+window.addEventListener('load',function(){setTimeout(pplBdayCheck,2600);});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')setTimeout(pplBdayCheck,1500);});
 
 function upcomingEmoji(type){
   var m={birthday:'&#x1F382;',anniversary:'&#x1F48D;',trip:'&#x2708;',exam:'&#x1F4DA;',interview:'&#x1F4BC;',event:'&#x1F389;'};
@@ -37056,14 +37159,14 @@ function renderPersonPage(){
      With no photo the card keeps its shape and blooms their own hue instead.
      The fade goes to the ground and never to black: this card is made of the
      same material as the page under it. */
-  h+='<div class="pp-face">';
+  h+='<div class="pp-face'+(pplBdayToday(p)?' pp-bday':'')+'">';
   h+=p.avatar
      ? photoImg(p.avatar,'class="pp-face-img"')
      : '<span class="pp-face-no" style="--fhue:'+personHue(p.name)+'"></span>';
   h+='<span class="pp-face-fade"></span>';
   h+='<button class="pp-face-e" onclick="_peopleView=&quot;edit-person&quot;;renderPeople()">'+
      _t('ערוך')+'</button>';
-  h+='<span class="pp-face-x"><span class="pp-face-n">'+esc(p.name)+'</span>';
+  h+='<span class="pp-face-x"><span class="pp-face-n">'+esc(p.name)+pplBdayHat(p)+'</span>';
   if(p.relationship)h+='<span class="pp-face-r">'+esc(labelOf(p.relationship))+'</span>';
   if(days!==null)
     h+='<span class="pp-face-s">'+_t('דיברנו')+' '+_t('לפני {n} ימים',{n:days})+'</span>';

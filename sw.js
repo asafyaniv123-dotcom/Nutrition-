@@ -57,19 +57,24 @@ self.addEventListener('push', function (e) {
   // one where the cache cannot be read at all.
   e.waitUntil(
     (async function () {
-      var title = MSG_TITLE, body = pushed || MSG_BODY;
+      var title = MSG_TITLE, body = pushed || MSG_BODY, tag = 'sumrem';
       try {
         // the page left the sentence here when it subscribed: already in the
         // reader's language, and already in the voice she chose
         var cfg = await readConfig();
         if (cfg && cfg.title) title = cfg.title;
         if (!pushed && cfg && cfg.body) body = cfg.body;
+        /* A BIRTHDAY (25.10). The server knows only that today is one of the
+           dates; the names are here, in the sentence the page wrote. Before
+           the evening reminder's hour, a push on such a day is the birthday. */
+        var b = !pushed && bdayToday(cfg);
+        if (b) { title = cfg.bdayTitle || title; body = b; tag = 'bday'; }
       } catch (err) {}
       return self.registration.showNotification(title, {
         body: body,
         icon: ICON,
         badge: ICON,
-        tag: 'sumrem',
+        tag: tag,
         renotify: true,
       });
     })()
@@ -113,6 +118,21 @@ self.addEventListener('pushsubscriptionchange', function (e) {
     })()
   );
 });
+
+// the birthday sentence for today, if today is one and it is still before
+// the evening reminder's hour; the page wrote one per date, names included
+function bdayToday(cfg) {
+  if (!cfg || !cfg.bdays || !cfg.bdays.length) return '';
+  var d = new Date(), md = ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  var y = d.getFullYear(), leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+  var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  if (cfg.time && hm >= cfg.time) return '';
+  for (var i = 0; i < cfg.bdays.length; i++) {
+    var e = cfg.bdays[i];
+    if (e.md === md || (!leap && md === '02-28' && e.md === '02-29')) return e.body;
+  }
+  return '';
+}
 
 // The page stashes what the resubscribe needs, since the SW cannot read localStorage.
 async function readConfig() {
