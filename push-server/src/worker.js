@@ -3864,7 +3864,35 @@ export default {
       const phase = String((b && b.phase) || '').slice(0, 20);
       /* health conditions the person chose to tell the coach (with consent) */
       const HL = { mg: 'myasthenia gravis', dm: 'diabetes', bp: 'high blood pressure', ckd: 'chronic kidney disease', preg: 'pregnancy', sarc: 'sarcopenia', op: 'osteoporosis' };
-      const health = (Array.isArray(b && b.health) ? b.health : []).filter((x) => HL[x]).map((x) => HL[x]);
+      const healthIds = (Array.isArray(b && b.health) ? b.health : []).filter((x) => HL[x]).slice(0, 7);
+      const health = healthIds.map((x) => HL[x]);
+      /* MedlinePlus, the National Library of Medicine's public health topics:
+         one summary per shared condition, cached a week in KV */
+      const medline = [];
+      const MLP_TERM = { mg: 'myasthenia gravis', dm: 'diabetes', bp: 'hypertension', ckd: 'chronic kidney disease', preg: 'pregnancy', op: 'osteoporosis' };
+      for (const id of healthIds.filter((x) => MLP_TERM[x]).slice(0, 3)) {
+        const key = 'mlp2:' + id;
+        let got = null;
+        try { got = await env.SUBS.get(key, 'json'); } catch {}
+        if (!got) {
+          try {
+            const r = await fetch('https://wsearch.nlm.nih.gov/ws/query?db=healthTopics&retmax=1&term=' + encodeURIComponent(MLP_TERM[id]),
+              { headers: { 'User-Agent': 'Olimei/0.1 (personal health app)' } });
+            if (r.ok) {
+              const x = await r.text();
+              const doc = (x.match(/<document[^>]*url="([^"]+)"[\s\S]*?<\/document>/) || []);
+              const pick = (name) => { const m = (doc[0] || '').match(new RegExp('<content name="' + name + '">([\\s\\S]*?)</content>')); return m ? m[1] : ''; };
+              const unesc = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+              const text = (s) => unesc(s).replace(/<\/?(p|li|h\d)>/g, '\n').replace(/<[^>]+>/g, '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+              if (doc[1]) {
+                got = { title: text(pick('title')), url: doc[1], summary: text(pick('FullSummary')).slice(0, 2400) };
+                try { await env.SUBS.put(key, JSON.stringify(got), { expirationTtl: 7 * 86400 }); } catch {}
+              }
+            }
+          } catch {}
+        }
+        if (got && got.summary) medline.push(got);
+      }
       /* HOW TO ADDRESS HER, not biology - Hebrew marks gender on the verb and
          "אכלת" is not "אכלתי". The app keeps the two apart: app_gender is the
          voice she chose, profile.sex is what Mifflin-St Jeor needs. */
@@ -4231,7 +4259,9 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       msgs.push({ role: 'user', content });
 
       /* One request, as a function, so a reply can be sent back once. */
-      const SYS = health.length ? SYSTEM + '\n\n## Health conditions the user chose to share\n' + health.join(', ') +
+      const MLP = medline.length ? '\n\n## Reference: MedlinePlus (U.S. National Library of Medicine)\nUse this as your factual basis on these conditions. When your answer relies on it, name the source as MedlinePlus and give the link once, at the end. Do not quote it at length; explain in the user\'s language.\n' +
+        medline.map((m) => '### ' + m.title + ' (' + m.url + ')\n' + m.summary).join('\n\n') : '';
+      const SYS = health.length ? SYSTEM + MLP + '\n\n## Health conditions the user chose to share\n' + health.join(', ') +
         '.\nTake them into account, following mainstream guidance from recognised medical bodies. You are NOT a doctor: never diagnose, never advise on medication or doses, and if they describe warning signs (for myasthenia: weakness in breathing, swallowing or vision; for diabetes: symptoms of a low) tell them to stop and contact their doctor. Whenever your reply touches their health or one of these conditions, end it with one short line, in their language, saying that you are not a doctor, that this is general information and not medical advice, and that they should check with their own doctor.' : SYSTEM;
       const ask = async (messages) => {
         let r;
