@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>התקדמות — שלוש אפשרויות</title>
+<style>
+/* PROGRESS, three ways (Asaf, 25 Oct): "three options for showing our user
+   their progress - for example if they tracked their weight, or in fitness,
+   lifting heavier". A render of the three (render.png, 0.25 credits) is the
+   direction; these are the three built, on numbers shaped like the app's
+   own: weigh-ins (weights, kg by day) and the top set of each session
+   (fit_log). Each option shows either series - body weight or an exercise.
+   A - the trend line: the smoothed weight (the app's ewma, not the noisy
+       daily number) as one lit line in a pressed groove, the days as faint
+       dots, the goal as a soft band.
+   B - the climb: one pill per week filling with light to that week's top
+       set, the newest brightest, a star on a personal best.
+   C - then and now: two raised cards, four weeks ago and today, each number
+       with a ring of how far toward the goal, and one sentence. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--g:#e9e7e3;--lit:rgba(255,255,255,.95);--sh:rgba(168,160,148,.5);--sh2:rgba(168,160,148,.3);--ink:#4a453f;--mu:#6d675e;
+  --w:#f08f78;--w-hi:#ffcdbf;--s:#e9845f;--s-hi:#ffd2bd;--gr:#7fb27a;--bl:#7fa8d8}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",sans-serif}
+.bar{max-width:430px;margin:0 auto;padding:12px 14px 6px;color:#efe6d8}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.sw{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.sw button{border:none;border-radius:999px;padding:8px 13px;font:700 13.5px Assistant,sans-serif;background:#3d3732;color:#e6dccd;cursor:pointer}
+.sw button.on{background:#efe6d8;color:#2b2724}
+.bar img{width:100%;border-radius:12px;margin-top:6px;display:block}
+.wrap{display:flex;justify-content:center;padding:10px 0 30px}
+.ph{position:relative;width:390px;height:780px;overflow:hidden;border-radius:34px;background:var(--g);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.45);transform-origin:50% 0;padding:26px 20px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.top h2{margin:0;font-size:24px;font-weight:800}
+.seg{display:flex;gap:3px;padding:4px;border-radius:999px;box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.seg button{border:none;background:transparent;border-radius:999px;padding:7px 12px;font:800 13px Assistant,sans-serif;color:var(--mu);cursor:pointer}
+.seg button.on{background:var(--g);color:var(--ink);box-shadow:-2px -2px 5px var(--lit),2px 3px 7px var(--sh2)}
+.big{margin:26px 4px 2px;display:flex;align-items:baseline;gap:8px}
+.big b{font-size:58px;font-weight:800;letter-spacing:-1px;line-height:1}
+.big span{font-size:18px;color:var(--mu);font-weight:700}
+.chg{display:inline-flex;align-items:center;gap:6px;margin:8px 4px 0;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:800;
+  box-shadow:inset 2px 3px 6px var(--sh2),inset -2px -2px 5px var(--lit)}
+.chg i{width:8px;height:8px;border-radius:50%;background:var(--gr);box-shadow:0 0 7px var(--gr)}
+.sub{color:var(--mu);font-size:14px;margin:6px 4px 0}
+.card{border-radius:24px;padding:16px;margin-top:20px;box-shadow:-5px -5px 12px var(--lit),6px 7px 15px var(--sh2)}
+.well{border-radius:20px;padding:12px;box-shadow:inset 3px 4px 9px var(--sh),inset -3px -3px 8px var(--lit)}
+svg text{font:700 11px Assistant,sans-serif;fill:#8f877d}
+.note{display:flex;align-items:center;gap:12px;margin-top:18px;padding:14px 16px;border-radius:20px;box-shadow:-4px -4px 10px var(--lit),5px 6px 13px var(--sh2);font-size:15px;font-weight:700}
+.note .d{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 2px 3px 5px var(--sh),inset -2px -2px 4px var(--lit)}
+.note small{display:block;color:var(--mu);font-weight:600;font-size:13px;margin-top:2px}
+/* B */
+.pills{direction:ltr;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;height:250px;padding:10px 6px 0}
+.pill{position:relative;flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px}
+.pill .t{position:relative;width:100%;max-width:26px;border-radius:13px;overflow:hidden;box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit);flex:1}
+.pill .f{position:absolute;left:0;right:0;bottom:0;border-radius:13px;background:linear-gradient(0deg,var(--s) -10%,#f3a786 70%,var(--s-hi) 115%);opacity:.55;
+  transition:height .9s cubic-bezier(.22,.61,.36,1);box-shadow:inset 4px 0 7px -3px rgba(0,0,0,.08),inset -4px 0 7px -3px rgba(0,0,0,.1),inset 0 3px 4px -2px rgba(255,255,255,.7)}
+.pill.now .f{opacity:1}
+.pill .lb{font-size:11px;font-weight:700;color:#8f877d}
+.pill .star{position:absolute;top:-22px;font-size:15px;color:#e9a23b;text-shadow:0 0 8px rgba(233,162,59,.7)}
+/* C */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+.tc{border-radius:24px;padding:16px 10px;text-align:center;box-shadow:-5px -5px 12px var(--lit),6px 7px 15px var(--sh2)}
+.tc.then{box-shadow:inset 3px 4px 9px var(--sh),inset -3px -3px 8px var(--lit)}
+.tc h3{margin:0 0 10px;font-size:15px;color:var(--mu)}
+.tc .lbl{font-size:13px;color:var(--mu);font-weight:700;margin-top:14px}
+.tc .n{font-size:30px;font-weight:800;margin:2px 0 8px}
+.tc .n small{font-size:14px;color:var(--mu);margin-inline-start:3px}
+.ring{width:84px;height:84px;margin:0 auto;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:15px}
+.ring b small{display:block;font-size:10.5px;color:var(--mu);font-weight:700;margin-top:-26px}
+</style></head><body>
+<div class="bar">
+  <h1>התקדמות: שלוש אפשרויות</h1>
+  <p>ההדמיה למטה היא הכיוון (0.25 קרדיט). מתחתיה שלושתן בנויות על מספרים בצורה שהאפליקציה שומרת: שקילות, והסט הכבד של כל אימון. בכל אחת אפשר לעבור בין משקל גוף לסקוואט.</p>
+  <div class="sw"><button data-v="A" class="on" onclick="pick('A')">א׳ · קו המגמה</button><button data-v="B" onclick="pick('B')">ב׳ · הטיפוס</button><button data-v="C" onclick="pick('C')">ג׳ · אז ועכשיו</button></div>
+  <img src="render.png" alt="">
+</div>
+<div class="wrap"><div class="ph" id="ph"></div></div>
+<script>
+/* sample data, shaped like the app's: weigh-ins by day, top set per session */
+var DAYS=56,W=[],i,seed=7;function rnd(){seed=(seed*9301+49297)%233280;return seed/233280;}
+for(i=0;i<DAYS;i++){if(rnd()<.62)W.push({d:i,kg:74.4-i*0.034+(rnd()-.5)*0.9});}
+var GOAL=70,START=74.4;
+/* the app's trend: exponentially weighted, so a salty dinner is not a gain */
+var E=[],e=null;W.forEach(function(p){e=e===null?p.kg:e+0.15*(p.kg-e);E.push({d:p.d,kg:e});});
+var SQ=[40,42.5,45,45,50,52.5,57.5,60],SQ_GOAL=80;
+var V='A',S='w';
+function pick(v){V=v;[].forEach.call(document.querySelectorAll('.sw button'),function(b){b.classList.toggle('on',b.dataset.v===v);});draw();}
+function series(s){S=s;draw();}
+function f1(x){return (Math.round(x*10)/10).toFixed(1);}
+function seg(){return '<div class="seg"><button class="'+(S==='w'?'on':'')+'" onclick="series(\'w\')">משקל</button><button class="'+(S==='s'?'on':'')+'" onclick="series(\'s\')">סקוואט</button></div>';}
+function head(t){return '<div class="top"><h2>'+t+'</h2>'+seg()+'</div>';}
+function draw(){
+  var ph=document.getElementById('ph'),h='';
+  var now=S==='w'?E[E.length-1].kg:SQ[SQ.length-1],was=S==='w'?(E.filter(function(p){return p.d<=DAYS-29;}).pop()||E[0]).kg:SQ[SQ.length-5];
+  var diff=now-was,unit='ק"ג';
+  if(V==='A'){
+    h+=head(S==='w'?'המשקל שלי':'סקוואט');
+    h+='<div class="big"><b>'+(S==='w'?f1(now):now)+'</b><span>'+unit+'</span></div>';
+    h+='<div class="chg"><i></i><bdi dir="ltr">'+(diff>0?'+':'−')+f1(Math.abs(diff))+'</bdi> '+unit+' בארבעה שבועות</div>';
+    h+='<div class="card"><div class="well">'+lineSVG()+'</div></div>';
+    var left=S==='w'?now-GOAL:SQ_GOAL-now;
+    h+='<div class="note"><span class="d">'+dot('#7fb27a')+'</span><div>'+(S==='w'?'עוד '+f1(left)+' ק"ג עד היעד':'עוד '+left+' ק"ג עד '+SQ_GOAL)+'<small>'+(S==='w'?'בקצב הזה, בעוד כ-'+Math.round(left/0.24)+' שבועות':'בקצב הזה, בעוד כ-'+Math.round(left/2.9)+' שבועות')+'</small></div></div>';
+  } else if(V==='B'){
+    h+=head(S==='w'?'המשקל שלי':'סקוואט');
+    h+='<div class="big"><b>'+(S==='w'?f1(now):now)+'</b><span>'+unit+'</span></div>';
+    h+='<div class="sub">'+(S==='w'?'הממוצע של כל שבוע':'הסט הכבד של כל שבוע')+'</div>';
+    h+='<div class="card"><div class="pills" id="pills">'+pillsHTML()+'</div></div>';
+    h+='<div class="note"><span class="d">'+dot('#e9845f')+'</span><div>'+(S==='w'?'−'+f1(Math.abs(weekly()[7]-weekly()[0]))+' ק"ג מהשבוע הראשון':'+'+(SQ[7]-SQ[0])+' ק"ג מהשבוע הראשון')+'<small>'+(S==='w'?downs()+' מתוך 7 שבועות ירדו':'שיא אישי חדש השבוע')+'</small></div></div>';
+  } else {
+    h+='<div class="top"><h2>אז ועכשיו</h2></div>';
+    var ew=(E.filter(function(p){return p.d<=DAYS-29;}).pop()||E[0]).kg,nw=E[E.length-1].kg;
+    var wp=function(x){return Math.max(0,Math.min(1,(START-x)/(START-GOAL)));},sp=function(x){return x/SQ_GOAL;};
+    h+='<div class="two">'+tcard('לפני 4 שבועות','then',ew,SQ[3],wp(ew),sp(SQ[3]))+tcard('היום','now',nw,SQ[7],wp(nw),sp(SQ[7]))+'</div>';
+    h+='<div class="note"><span class="d">'+dot('#7fb27a')+'</span><div>'+f1(ew-nw)+' ק"ג פחות, '+(SQ[7]-SQ[3])+' ק"ג יותר בסקוואט<small>חודש של עבודה, וזה רואים.</small></div></div>';
+  }
+  ph.innerHTML=h;
+  if(V==='B')requestAnimationFrame(function(){requestAnimationFrame(function(){[].forEach.call(document.querySelectorAll('.pill .f'),function(f){f.style.height=f.dataset.h+'%';});});});
+}
+function dot(c){return '<i style="width:10px;height:10px;border-radius:50%;background:'+c+';box-shadow:0 0 8px '+c+'"></i>';}
+/* a week with no weigh-in carries the one before - never a zero */
+function weekly(){var out=[],k;for(k=0;k<8;k++){var w=W.filter(function(p){return p.d>=k*7&&p.d<k*7+7;});out.push(w.length?w.reduce(function(a,p){return a+p.kg;},0)/w.length:(out[k-1]||W[0].kg));}return out;}
+function downs(){var v=weekly(),n=0;for(var k=1;k<v.length;k++)if(v[k]<v[k-1])n++;return n;}
+function lineSVG(){
+  var Wd=310,Hd=220,pad=18;
+  var pts=S==='w'?E.map(function(p){return [p.d,p.kg];}):SQ.map(function(v,k){return [k*8,v];});
+  var raw=S==='w'?W.map(function(p){return [p.d,p.kg];}):[];
+  var ys=pts.map(function(p){return p[1];}).concat(raw.map(function(p){return p[1];})).concat([S==='w'?GOAL:SQ[0]]);
+  var y0=Math.min.apply(null,ys)-0.6,y1=Math.max.apply(null,ys)+0.6,x1=S==='w'?DAYS-1:56;
+  var X=function(x){return pad+(x/x1)*(Wd-2*pad);}   /* time runs left to right, as charts do in every language */,Y=function(y){return pad+(1-(y-y0)/(y1-y0))*(Hd-2*pad);};
+  var col=S==='w'?'#f08f78':'#e9845f';
+  var path=pts.map(function(p,k){return (k?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1);}).join(' ');
+  var s='<svg viewBox="0 0 '+Wd+' '+Hd+'" width="100%" direction="ltr" style="direction:ltr"><defs><filter id="gl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3.5"/></filter></defs>';
+  if(S==='w'){var gy=Y(GOAL);s+='<rect x="'+pad+'" y="'+(gy-7)+'" width="'+(Wd-2*pad)+'" height="14" rx="7" fill="rgba(127,178,122,.22)"/><text x="'+(Wd-pad-4)+'" y="'+(gy-11)+'" text-anchor="end">יעד '+GOAL+'</text>';}
+  raw.forEach(function(p){s+='<circle cx="'+X(p[0]).toFixed(1)+'" cy="'+Y(p[1]).toFixed(1)+'" r="2.2" fill="rgba(168,150,135,.45)"/>';});
+  s+='<path d="'+path+'" fill="none" stroke="'+col+'" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".45" filter="url(#gl)"/>';
+  s+='<path d="'+path+'" fill="none" stroke="'+col+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+  var last=pts[pts.length-1];s+='<circle cx="'+X(last[0])+'" cy="'+Y(last[1])+'" r="6" fill="#fff" stroke="'+col+'" stroke-width="3"/>';
+  s+='<text x="'+pad+'" y="'+(Hd-2)+'" text-anchor="start">לפני 8 שבועות</text><text x="'+(Wd-pad)+'" y="'+(Hd-2)+'" text-anchor="end">היום</text>';
+  return s+'</svg>';
+}
+function pillsHTML(){
+  var v=S==='w'?weekly():SQ,mn=Math.min.apply(null,v),mx=Math.max.apply(null,v),h='',best=-1;
+  v.forEach(function(x,k){
+    var p=S==='w'?30+70*(mx-x)/(mx-mn||1):25+75*(x-mn)/(mx-mn||1);   /* weight: lower is the climb */
+    var star=S==='s'&&k===v.length-1&&x>Math.max.apply(null,v.slice(0,-1));
+    h+='<div class="pill'+(k===v.length-1?' now':'')+'">'+(star?'<span class="star">★</span>':'')+'<div class="t"><div class="f" data-h="'+p.toFixed(0)+'" style="height:0"></div></div><span class="lb">'+(k===v.length-1?'השבוע':'ש׳ '+(k+1))+'</span></div>';});
+  return h;
+}
+function ring(p,c){var r=34,C=2*Math.PI*r;return '<div class="ring"><svg width="84" height="84"><circle cx="42" cy="42" r="'+r+'" fill="none" stroke="rgba(168,160,148,.25)" stroke-width="7"/><circle cx="42" cy="42" r="'+r+'" fill="none" stroke="'+c+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+(C*p).toFixed(1)+' '+C.toFixed(1)+'" style="filter:drop-shadow(0 0 4px '+c+')"/></svg><b>'+Math.round(p*100)+'%</b></div>';}
+function tcard(t,cls,w,s,wp,sp){return '<div class="tc '+cls+'"><h3>'+t+'</h3><div class="lbl">משקל</div><div class="n">'+f1(w)+'<small>ק"ג</small></div>'+ring(wp,cls==='now'?'#7fb27a':'#9fbfa0')+
+  '<div class="lbl">סקוואט</div><div class="n">'+s+'<small>ק"ג</small></div>'+ring(sp,cls==='now'?'#e9845f':'#eab39b')+'</div>';}
+draw();
+function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(780*s+30)+'px';}
+addEventListener('resize',fit);fit();
+</script>
+</body></html>
