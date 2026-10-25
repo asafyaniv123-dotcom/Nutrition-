@@ -2087,6 +2087,8 @@ body.bg-busy .er-auto::after{content:"";display:inline-block;width:1.2em;text-al
    A filter that is generous by default: "all year" is lit until you narrow it,
    and narrowing still shows every untagged garment. */
 .cl-seasons{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:0 2px 10px}
+.cl-sic{width:17px;height:17px;vertical-align:-3.5px;fill:none;stroke:var(--nu-muted,#6d675e);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:stroke .25s,filter .25s}
+.cl-season.on .cl-sic,.cl-iseason.on .cl-sic{stroke:var(--sc);filter:drop-shadow(0 0 3px var(--sc))}
 .cl-season{flex:0 0 auto;background:var(--card);border:1.5px solid var(--line);border-radius:999px;
   padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--muted);font-family:inherit;cursor:pointer;white-space:nowrap}
 .cl-season.on{background:var(--violet-100);border-color:var(--violet-700);color:var(--violet-700)}
@@ -24853,11 +24855,12 @@ function loadCloset(){
 function saveCloset(a){try{localStorage.setItem(CLOSET_KEY,JSON.stringify(a));}catch(e){}}
 /* Keys are ASCII and get stored; the Hebrew is a label and is translated where
    it is shown, never here - these values end up on a garment. */
+/* line icons in the app's stroke; the colour is the light when lit */
 var CLOSET_SEASONS=[
-  {k:'w',ic:'\u2744\uFE0F',t:'חורף'},
-  {k:'p',ic:'\uD83C\uDF38',t:'אביב'},
-  {k:'s',ic:'\u2600\uFE0F',t:'קיץ'},
-  {k:'a',ic:'\uD83C\uDF42',t:'סתיו'}
+  {k:'w',c:'#5b8fc7',ic:'<svg class="cl-sic" viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5"/></svg>',t:'חורף'},
+  {k:'p',c:'#d4799a',ic:'<svg class="cl-sic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8c-2-3.3-1-6 0-6.3 1 .3 2 3 0 6.3ZM14.1 11.3c3.7-1 5.9.8 5.9 1.8-.6.8-3.4 1.4-5.9-1.8ZM13.3 14c2 3.3.4 5.9-.6 6.1-.9-.6-1.3-3.4.6-6.1ZM10.7 14c-1.9 2.7-1.5 5.5-.6 6.1-1-.2-2.6-2.8-.6-6.1ZM9.9 11.3c-2.5 3.2-5.3 2.6-5.9 1.8 0-1 2.2-2.8 5.9-1.8Z"/></svg>',t:'אביב'},
+  {k:'s',c:'#e9a23b',ic:'<svg class="cl-sic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>',t:'קיץ'},
+  {k:'a',c:'#c9763d',ic:'<svg class="cl-sic" viewBox="0 0 24 24"><path d="M5 19C5 10 10 5 19.5 4.5 19 14 14 19 5 19Z"/><path d="M5 19 13 11"/></svg>',t:'סתיו'}
 ];
 var _closetSeason='';   // '' is everything
 
@@ -24922,7 +24925,7 @@ function closetSeasonsHTML(){
   for(i=0;i<CLOSET_SEASONS.length;i++){
     var sn=CLOSET_SEASONS[i];
     n=closetSeasonCount(sn.k);
-    h+='<button class="cl-season'+(_closetSeason===sn.k?' on':'')+'" onclick="closetSeasonSet(\''+sn.k+'\')">'+
+    h+='<button class="cl-season'+(_closetSeason===sn.k?' on':'')+'" style="--sc:'+sn.c+'" onclick="closetSeasonSet(\''+sn.k+'\')">'+
        sn.ic+' '+_t(sn.t)+(n?'<span class="cl-season-n">'+n+'</span>':'')+'</button>';
   }
   h+='</div>';
@@ -24948,7 +24951,7 @@ function closetItemSeasonsHTML(it){
   h+='<div class="cl-iseasons">';
   for(i=0;i<CLOSET_SEASONS.length;i++){
     var sn=CLOSET_SEASONS[i];
-    h+='<button class="cl-iseason'+(a.indexOf(sn.k)>=0?' on':'')+'" '+
+    h+='<button class="cl-iseason'+(a.indexOf(sn.k)>=0?' on':'')+'" style="--sc:'+sn.c+'" '+
        'onclick="closetSeasonToggle(\''+it.id+'\',\''+sn.k+'\')">'+
        sn.ic+' '+_t(sn.t)+'</button>';
   }
@@ -26814,7 +26817,7 @@ function renderCloset(){
   h+='<div id="cl-picked">'+closetPickedHTML()+'</div>';
 
   h+='<div class="cl-acts">';
-  h+='<button class="cl-b1" onclick="closetShuffle()">&#127922; '+_t('גלגל הכל')+'</button>';
+  h+='<button class="cl-b1" onclick="closetShuffle()"><svg class="cl-sic" viewBox="0 0 24 24"><path d="M3 7h3.5c4 0 6 10 10.5 10H21M3 17h3.5c1.7 0 3-1.7 4.2-3.8M13.3 9.8C14.5 8 15.6 7 17 7h4"/><path d="m18.5 4.5 2.5 2.5-2.5 2.5M18.5 14.5 21 17l-2.5 2.5"/></svg> '+_t('גלגל הכל')+'</button>';
   h+='<button class="cl-b2" onclick="closetSaveOutfit()">'+_t('שמור לוק')+'</button>';
   h+='</div>';
   h+='<div class="cl-acts">';
