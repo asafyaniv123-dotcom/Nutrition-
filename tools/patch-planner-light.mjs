@@ -21,7 +21,7 @@ CRLF('dev/index.html', (s0) => {
   if(more)kept.push(more);
   var hz=planProfile().horizon||'';
   _plWarm=-1;_plAnch=null;
-  planBotSend(kept.length?_t('טווח: {h}. העוגנים הקבועים: {list}.',{h:hz,list:kept.join('; ')})
+  planBotSend(kept.length?_t('טווח: {h}. העוגנים הקבועים, כמו שהם וכולל הדרך: {list}.',{h:hz,list:kept.join('; ')})
                          :_t('טווח: {h}. אין עוגנים קבועים.',{h:hz}));
 }`, `var _plKept=[];
 function plAnchorsGo(){
@@ -62,7 +62,7 @@ function plWarmDone(){
   var hz=planProfile().horizon||'',one=hz===_t('מחר|אפשרות');
   var add=_plItems.map(function(x){
     return x.name+' ('+(one?'':plOften()[x.often]+', ')+plLens()[x.len]+', '+plArounds()[x.around]+')';});
-  var msg=_plKept.length?_t('טווח: {h}. העוגנים הקבועים: {list}.',{h:hz,list:_plKept.join('; ')}):_t('טווח: {h}. אין עוגנים קבועים.',{h:hz});
+  var msg=_plKept.length?_t('טווח: {h}. העוגנים הקבועים, כמו שהם וכולל הדרך: {list}.',{h:hz,list:_plKept.join('; ')}):_t('טווח: {h}. אין עוגנים קבועים.',{h:hz});
   msg+=' '+(add.length?_t('להוסיף: {list}.',{list:add.join('; ')}):_t('אין מה להוסיף.'));
   _plItems=[];_plAdd=null;_plKept=[];
   planBotSend(msg);

@@ -55,7 +55,7 @@ function plAnchorsGo(){
   if(more)kept.push(more);
   var hz=planProfile().horizon||'';
   _plWarm=-1;_plAnch=null;
-  planBotSend(kept.length?_t('טווח: {h}. העוגנים הקבועים: {list}.',{h:hz,list:kept.join('; ')})
+  planBotSend(kept.length?_t('טווח: {h}. העוגנים הקבועים, כמו שהם וכולל הדרך: {list}.',{h:hz,list:kept.join('; ')})
                          :_t('טווח: {h}. אין עוגנים קבועים.',{h:hz}));
 }`);
   m.rep(`  _plWarm++;
