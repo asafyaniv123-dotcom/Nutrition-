@@ -1378,6 +1378,8 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .prg-entry.lit{box-shadow:-4px -4px 10px var(--nu-lit,rgba(255,255,255,.95)),5px 6px 13px var(--nu-shade-soft,rgba(168,160,148,.3)),0 0 0 1.5px rgba(240,169,46,.35),0 0 18px rgba(240,169,46,.35);
   animation:prg-glow 2.4s ease-in-out infinite}
 @keyframes prg-glow{50%{box-shadow:-4px -4px 10px rgba(255,255,255,.95),5px 6px 13px rgba(168,160,148,.3),0 0 0 1.5px rgba(240,169,46,.55),0 0 26px rgba(240,169,46,.5)}}
+/* the flood's button in the material: raised soft white, dark ink */
+body.prg-flood .bms-b{background:#f6f2fb!important;color:#3a2f55!important;box-shadow:-4px -4px 10px rgba(255,255,255,.7),6px 8px 18px rgba(80,60,120,.22)!important}
 .prg-spot{position:fixed;inset:0;z-index:960;cursor:pointer;animation:prg-fade .4s ease}
 @keyframes prg-fade{from{opacity:0}}
 .prg-spot i{position:fixed;border-radius:24px;box-shadow:0 0 0 9999px rgba(43,39,36,.62),0 0 0 3px rgba(240,169,46,.9),0 0 26px 6px rgba(240,169,46,.7);animation:prg-ring 1.8s ease-in-out infinite}
@@ -9936,7 +9938,12 @@ html body.mod-journal .set-country{background:var(--nu-ground);border:none;color
   if(!/(^|\/)dev(\/|$)/.test(location.pathname))return;
   window.__DEV__=true;
   var raw;try{raw=window.localStorage;}catch(e){return;}
-  var P='dev:',SEEDED=P+'__seeded';
+  /* ?demo=progress: a throwaway sandbox of its own, emptied on every load */
+  var DEMO=/[?&]demo=progress(&|$)/.test(location.search);
+  var P=DEMO?'demo:':'dev:',SEEDED=P+'__seeded';
+  if(DEMO){window.__DEMO__=true;
+    for(var di=raw.length-1;di>=0;di--){var dk=raw.key(di);if(dk&&dk.indexOf(P)===0)raw.removeItem(dk);}
+    raw.setItem(SEEDED,'1');raw.setItem(P+'app_onboarded','1');}
 
   // Sandbox keys, minus the bookkeeping one - the app should never see it.
   function devKeys(){
@@ -45869,10 +45876,11 @@ function prgUnlockCheck(){
     if(!['nutrition','fitness','me'].some(prgGroupReady))return;
     localStorage.setItem(PRG_INTRO,'1');
     beemKit().then(function(K){
-      K.screen({bg:'#7a64b0',ink:'#ffffff',accent:'#3f2f6e',play:DOOR_BEEM.glad,beads:true,
+      document.body.classList.add('prg-flood');
+    K.screen({bg:'#d4c8ea',ink:'#3a2f55',accent:'#3a2f55',play:DOOR_BEEM.glad,beads:true,
         title:_t('שבוע של מעקב'),
         sub:_t('מעכשיו יש כפתור חדש: ההתקדמות שלי. בו רואים איך דברים זזים לאורך השבועות.'),
-        button:_t('להראות לי'),onClose:prgSpot});
+        button:_t('להראות לי'),onClose:function(){document.body.classList.remove('prg-flood');prgSpot();}});
     }).catch(function(){});
   }catch(e){}
 }
@@ -45892,7 +45900,30 @@ function prgSpot(){
     },350);
   },400);
 }
-window.addEventListener('load',function(){setTimeout(prgUnlockCheck,2600);});
+/* the demo's eight weeks, shaped like real records */
+function prgDemoSeed(){
+  var W={},i,d;
+  for(i=0;i<56;i++){if(i%2)continue;d=dayShift(-i);W[d]=Math.round((72.4+i*0.035+Math.sin(i)*0.3)*100)/100;}
+  saveWeights(W);
+  var wc={};try{wc=JSON.parse(localStorage.getItem(WEIGH_KEY)||'{}')||{};}catch(e){}wc.on=true;wc.goal=70;localStorage.setItem(WEIGH_KEY,JSON.stringify(wc));
+  for(i=0;i<14;i++){d=dayShift(-i);var day=loadDay(d);
+    day.meals=[{name:'a',time:'08:00',kcal:600+((i*137)%400),p:40+(i*7)%30,c:50,f:20},{name:'b',time:'13:00',kcal:900+((i*91)%500),p:50+(i*5)%30,c:80,f:30},{name:'c',time:'19:00',kcal:450,p:30,c:40,f:15}];
+    day.water=1200+((i*347)%1600);saveDay(d,day);saveSteps(d,5000+((i*2311)%8000),'manual');}
+  var L=[],EX=[['סקוואט',40],['דדליפט',60],['לחיצת חזה',35],['חתירה',30]];   // i18n-exempt: demo data, never shown outside ?demo=progress
+  for(i=55;i>=0;i-=3){var t=new Date(dayShift(-i)+'T18:00:00').getTime(),wk=(55-i)/56;
+    L.push({date:t,name:_t('אימון'),duration:50,exercises:EX.map(function(e){var w=Math.round((e[1]+wk*e[1]*0.4)/2.5)*2.5;return {name:e[0],targetSets:3,targetReps:8,sets:[{weight:w,reps:8},{weight:w,reps:8},{weight:w,reps:8}],warm:[]};})});}
+  saveWorkoutLog(L);
+  saveHabits(['גיטרה','קריאה']);   // i18n-exempt: demo data, never shown outside ?demo=progress
+  var H={};for(i=0;i<14;i++){if(i%2===0)H['גיטרה__'+dayShift(-i)]=30;if(i%3===0)H['קריאה__'+dayShift(-i)]=25;}   // i18n-exempt: demo data, never shown outside ?demo=progress
+  saveHabitLog(H);
+  for(i=0;i<14;i++){d=dayShift(-i);var r=loadSummary(d)||{date:d};r.mood=1+((i*3)%5);r.dayRating=4+((i*5)%6);saveSummary(d,r);}
+  saveBook({title:'האיש שחיפש משמעות',page:124,total:180,cover:''});   // i18n-exempt: demo data, never shown outside ?demo=progress
+  saveBookQuotes([{text:'למי שיש "למה" לחיות, יוכל לשאת כמעט כל "איך".',page:41},{text:'אפשר לקחת מאדם הכול מלבד דבר אחד.',page:86}]);   // i18n-exempt: demo data, never shown outside ?demo=progress
+}
+window.addEventListener('load',function(){
+  if(window.__DEMO__){try{prgDemoSeed();}catch(e){}try{render();}catch(e){}}
+  setTimeout(prgUnlockCheck,2600);
+});
 document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(prgUnlockCheck,1200);});
 // Build home screen DOM
 (function(){
