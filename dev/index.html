@@ -32817,8 +32817,8 @@ function remNativeSync(){
   }).then(function(){
     /* birthdays in the iPhone shell are local notifications: nothing to send
        anywhere. The next fifteen days, at PPL_BDAY_TIME, like the reminder's window. */
-    var out=pplBdayNative();
-    if(!o.on)return out.length?LN.schedule({notifications:out}):null;
+    var out=pplBdayNative().concat(dpRemNative());
+    if(!o.on)return out.length?LN.schedule({notifications:remNativeCap(out)}):null;
     var hm=String(o.time||'21:00').split(':'),i,d,day;
     for(i=0;i<15;i++){
       d=new Date(Date.now()+i*86400000);d.setHours(+hm[0]||0,+hm[1]||0,0,0);
@@ -32826,9 +32826,35 @@ function remNativeSync(){
       day=appDayOf(d);if(rfDone(rfRec(day)))continue;
       out.push({id:100+i,title:sumRemTitle(),body:sumRemMsg(),schedule:{at:d,allowWhileIdle:true}});
     }
-    return out.length?LN.schedule({notifications:out}):null;
+    return out.length?LN.schedule({notifications:remNativeCap(out)}):null;
   }).catch(function(){});
 }
+/* the phone holds at most 64 pending: keep the soonest */
+function remNativeCap(a){return a.sort(function(x,y){return x.schedule.at-y.schedule.at;}).slice(0,60);}
+/* every planning reminder of the next seven app days, for the phone to ring */
+function dpRemNative(){
+  var out=[],k,i,now=Date.now();
+  for(k=0;k<7;k++){
+    var date=dayShift(k),dp=loadDPlan(date);if(!dp.rem)continue;
+    var all=dpAll(date);
+    for(i=0;i<all.length;i++){
+      var t=all[i],off=dp.rem[t.id];
+      if(t.hour===null||typeof off!=='number')continue;
+      var at=new Date(date+'T00:00:00');at.setHours(t.hour,t.min||0,0,0);
+      if(t.hour<DAY_ENDS_AT)at.setDate(at.getDate()+1);
+      at=new Date(at.getTime()-off*60000);
+      if(at.getTime()<=now+30000)continue;
+      var when=dpHM(t.hour,t.min||0);
+      out.push({id:1000+k*100+(i%100),title:t.w,
+        body:off?_t('בעוד {n} דק׳ ({when})',{n:off,when:when}):_t('עכשיו ({when})',{when:when}),
+        schedule:{at:at,allowWhileIdle:true}});
+    }
+  }
+  return out;
+}
+/* a plan saved: tell the phone, once, a moment after the last change */
+var _dpRemT=null;
+function dpRemResync(){if(!remNative())return;clearTimeout(_dpRemT);_dpRemT=setTimeout(function(){try{remNativeSync();}catch(e){}},800);}
 function remNativeAsk(){
   var LN=remNative();if(!LN)return;
   LN.requestPermissions().then(function(r){
@@ -33887,7 +33913,7 @@ function loadDPlan(date){
     if(o&&Array.isArray(o.items))return{items:o.items,hours:o.hours||{},mins:o.mins||{},ends:o.ends||{},notes:o.notes||{},rem:o.rem||{}};}catch(e){}
   return{items:[],hours:{},mins:{},ends:{},notes:{},rem:{}};
 }
-function saveDPlan(date,o){planPush(dpKey(date));try{localStorage.setItem(dpKey(date),JSON.stringify(o));}catch(e){}}
+function saveDPlan(date,o){planPush(dpKey(date));try{localStorage.setItem(dpKey(date),JSON.stringify(o));}catch(e){}if(typeof dpRemResync==='function')dpRemResync();}
 
 // Everything on this day, from both sources, in one shape.
 function dpAll(date){
@@ -33992,7 +34018,8 @@ function dpRemFire(t,off){
   var when=dpHM(t.hour,t.min||0);
   var body=off?(t.w+' &mdash; '+_t('בעוד {n} דק׳ ({when})',{n:off,when:when})):(t.w+' &mdash; '+_t('עכשיו ({when})',{when:when}));
   var plain=body.replace(/&mdash;/g,'—');
-  sumRemShowOS(''+_t('תכנון זמן')+'',plain);
+  /* in the phone shells the phone itself rings it (dpRemNative) */
+  if(!remNative())sumRemShowOS(''+_t('תכנון זמן')+'',plain);
   if(!document.hidden)showToast('⏰ '+t.w);
 }
 setInterval(dpRemCheck,20000);
