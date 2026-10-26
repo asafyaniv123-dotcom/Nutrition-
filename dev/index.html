@@ -4429,10 +4429,11 @@ body.mod-fitness .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
   -webkit-mask-image:radial-gradient(120% 90% at 0% 0%,#000 0,#000 30%,transparent 72%);mask-image:radial-gradient(120% 90% at 0% 0%,#000 0,#000 30%,transparent 72%);filter:blur(6px)}
 .as-in{position:relative;min-height:100%;max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 24px calc(env(safe-area-inset-bottom) + 16px);
   display:flex;flex-direction:column;text-align:center}
-.as-top{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:10px;min-height:44px}
-.as-back{width:40px;height:40px;border:none;border-radius:50%;font-family:inherit;font-size:22px;line-height:1;color:var(--nu-muted);cursor:pointer;background:var(--nu-ground);
+.as-top{display:grid;grid-template-columns:96px 1fr 96px;align-items:center;gap:6px;min-height:44px}
+.as-back{justify-self:start;height:40px;padding:0 14px;white-space:nowrap;border:none;border-radius:999px;font-family:inherit;font-size:14.5px;font-weight:800;line-height:1;color:var(--nu-muted);cursor:pointer;background:var(--nu-ground);
   box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 11px var(--nu-shade-soft)}
 .as-dots{display:flex;justify-content:center;gap:6px}
+.as-back span{font-size:20px;vertical-align:-1px}
 .as-dots i{width:7px;height:7px;border-radius:50%;background:rgba(186,160,124,.45)}
 .as-dots i.on{background:var(--nu-amber);box-shadow:0 0 7px rgba(240,169,46,.6)}
 .as-beem{width:120px;height:120px;margin:18px auto 8px;flex:none}
@@ -4446,6 +4447,11 @@ body.mod-fitness .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
 .as-grid .as-o{align-items:center;text-align:center;padding:15px 6px}
 .as-o b{font-size:17px;font-weight:800}.as-o span{font-size:13.5px;font-weight:600;color:var(--nu-muted)}
 .as-o.on b::before{content:"\2713  ";color:#336843}
+.as-o.as-chk{flex-direction:row;align-items:flex-start;gap:14px}
+.as-o.as-chk::before{content:"";flex:none;width:28px;height:28px;margin-top:2px;border-radius:50%;
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+.as-o.as-chk.on::before{content:"\2713";display:grid;place-items:center;background:#3f7a4f;color:#fff;font-weight:800;font-size:16px;box-shadow:none}
+.as-o.as-chk.on b::before{content:none}
 .as-row{display:flex;align-items:center;gap:10px}
 .as-row .pf-in{min-height:58px;font-size:22px;background:var(--nu-ground);box-shadow:inset 3px 4px 9px var(--nu-shade),inset -3px -3px 8px var(--nu-lit)}
 .as-pts{margin:6px auto 0;padding:0;list-style:none;display:grid;gap:14px;text-align:start;max-width:340px}
@@ -10623,13 +10629,17 @@ function asetGoalWhy(g){
   if(g==='gain')return _t('לפי מה שסיפרת: עלייה במסה, עם עודף קטן לבנייה.');
   return _t('לפי מה שסיפרת: לשמור על המשקל שלך.');
 }
+/* back from the goals to the last question; finishing again saves again */
+function asetGoalsBack(){if(!_aset)return;var i=_aset.steps.length-1;while(i>0&&asetSkip(_aset.steps[i]))i--;_aset.i=i;asetPaint();}
 function asetGoals(){
   var ov=document.getElementById('as-ov');if(!ov||!_aset){asetClose();render();return;}
   loadTargets();
   var T0=TARGETS,p=loadProfile(),i,
-      tubes=[[_t('חלבון'),fmtGrams(T0.p),'#c7b2e8','#a690cf'],[_t('פחמימה'),fmtGrams(T0.c),'#f3c98a','#e9a24f'],
-             [_t('שומן'),fmtGrams(T0.f),'#f2b2a0','#e48a73'],[_t('מים'),fmtVolume(T0.water),'#bcd6ee','#8db8e0']];
-  var h='<div class="as-in"><div class="as-top"><span></span><span></span><span></span></div>'+
+      gr=function(n){return nfmt(n)+' '+_t('גרם');},
+      wl=APP_UNITS==='imperial'?fmtVolume(T0.water):_t('{n} ליטר',{n:Math.round(T0.water/100)/10}),
+      tubes=[[_t('חלבון'),gr(T0.p),'#c7b2e8','#a690cf'],[_t('פחמימה'),gr(T0.c),'#f3c98a','#e9a24f'],
+             [_t('שומן'),gr(T0.f),'#f2b2a0','#e48a73'],[_t('מים'),wl,'#bcd6ee','#8db8e0']];
+  var h='<div class="as-in"><div class="as-top"><button class="as-back" onclick="asetGoalsBack()"><span>&#8249;</span> '+_t('חזרה')+'</button><span></span><span></span></div>'+
     '<div class="as-beem" id="as-beem"></div>'+
     '<div class="as-mid"><div class="dr-q2">'+_t('המטרות שלך')+'</div><div class="dr-w2">'+esc(asetGoalWhy(p.goal))+'</div>'+
     '<div class="asg-kc"><div><b>'+nfmt(T0.kcal)+'</b><span>'+_t('קלוריות ביום')+'</span></div></div><div class="asg-tubes">';
@@ -10641,6 +10651,8 @@ function asetGoals(){
   var slot=document.getElementById('as-beem');if(keep&&slot)slot.appendChild(keep);
   if(_aset.beem)try{_aset.beem.play(DOOR_BEEM.glad);}catch(e){}
 }
+/* an agreement reads as one: a circle that fills and ticks */
+function asetChk(f,v,label,sub,multi){return asetChoice(f,v,label,sub,multi).replace('class="dr-r2 as-o','class="dr-r2 as-o as-chk');}
 function asetChoice(f,v,label,sub,multi){
   var t=_aset.t,on=multi?t[f].indexOf(v)>=0:t[f]===v;
   return '<button class="dr-r2 as-o'+(on?' on':'')+'" onclick="asetSet(\''+f+'\','+(typeof v==='number'?v:'\''+v+'\'')+(multi?',1':'')+')"><b>'+label+'</b>'+(sub?'<span>'+sub+'</span>':'')+'</button>';
@@ -10674,11 +10686,11 @@ function asetPaint(nudge){
   if(k==='exp'){q=fitMeQuestion('exp');for(i=0;i<GENPROG_EXP.length;i++)body+=asetChoice('exp',GENPROG_EXP[i][0],esc(_t(GENPROG_EXP[i][1])),genExpSub(GENPROG_EXP[i][0]));}
   if(k==='equip'){q=fitMeQuestion('equip');for(i=0;i<GEN_EQUIP_ORDER.length;i++)body+=asetChoice('equip',GEN_EQUIP_ORDER[i],genEquipLabel(GEN_EQUIP_ORDER[i]),genEquipSub(GEN_EQUIP_ORDER[i]));}
   if(k==='limits'){q=fitMeQuestion('limits');why=_t('אפשר לבחור יותר מאחת.');body='<div class="as-grid">';for(i=0;i<FIT_ME_LIMITS.length;i++)body+=asetChoice('limits',FIT_ME_LIMITS[i][0],esc(_t(FIT_ME_LIMITS[i][1])),'',1);body+='</div>';}
-  if(k==='hack'){q=_t('לפני שבוחרים');body=asetChoice('ack','yes',_t('אני מבין/ה שזה מידע כללי ולא ייעוץ רפואי. ההתאמות מבוססות על המלצות של גופים רפואיים, אבל הן לא מותאמות אישית, לא מחליפות רופא, ואני מחליט/ה מה לעשות. לפני שינוי בפעילות או בתזונה אתייעץ עם הרופא שלי.'));}
+  if(k==='hack'){q=_t('לפני שבוחרים');body=asetChk('ack','yes',_t('אני מבין/ה שזה מידע כללי ולא ייעוץ רפואי. ההתאמות מבוססות על המלצות של גופים רפואיים, אבל הן לא מותאמות אישית, לא מחליפות רופא, ואני מחליט/ה מה לעשות. לפני שינוי בפעילות או בתזונה אתייעץ עם הרופא שלי.'));}
   if(k==='hconds'){q=_t('מצב רפואי שהאפליקציה תתחשב בו');why=_t('אפשר לבחור יותר מאחת.');for(i=0;i<HL_IDS.length;i++)body+=asetChoice('hl',HL_IDS[i],esc(hlName(HL_IDS[i])),'',1);}
   if(k==='hcoach'){q=_t('שהמאמן ידע');why=_t('כדי שתוכל להתייעץ איתו. הוא תמיד יזכיר שהוא לא רופא.');body=asetChoice('coach','yes',_t('כן'))+asetChoice('coach','no',_t('לא'));}
   if(k==='health'){q=_t('הבריאות שלך');why=_t('יש משהו בבריאות שלך שהאפליקציה צריכה לקחת בחשבון? זה לא חובה, ואפשר לשנות בכל רגע.');body=asetChoice('health','yes',_t('כן'))+asetChoice('health','no',_t('לא'));}
-  var h='<div class="as-in"><div class="as-top">'+(pos>0?'<button class="as-back" onclick="asetMove(-1)" aria-label="'+esc(_t('חזרה'))+'">&#8249;</button>':'<span></span>')+
+  var h='<div class="as-in"><div class="as-top">'+(pos>0?'<button class="as-back" onclick="asetMove(-1)"><span>&#8249;</span> '+_t('חזרה')+'</button>':'<span></span>')+
     '<div class="as-dots">';for(i=0;i<shown.length;i++)h+='<i class="'+(i<=pos?'on':'')+'"></i>';h+='</div><span></span></div>';
   h+='<div class="as-beem'+(k==='welcome'?' big':'')+'" id="as-beem"></div>';
   h+='<div class="as-mid"><div class="dr-q2">'+q+'</div>'+(why?'<div class="dr-w2">'+why+'</div>':'')+'<div class="as-body">'+body+'</div></div>';
@@ -10689,7 +10701,7 @@ function asetPaint(nudge){
   if(keep)slot.appendChild(keep);
   else beemKit().then(function(K){var el=document.createElement('div');el.className='as-bm';slot.appendChild(el);_aset&&(_aset.beemEl=el);
     try{_aset.beem=K.mount(el,{play:DOOR_BEEM.smile});}catch(e){}}).catch(function(){});
-  if(_aset.beem)try{_aset.beem.play(DOOR_BEEM[k==='welcome'?'glad':'listen']);}catch(e){}
+  if(_aset.beem&&_aset.playedAt!==_aset.i){_aset.playedAt=_aset.i;try{_aset.beem.play(DOOR_BEEM[k==='welcome'?'glad':'listen']);}catch(e){}}
   if(k==='birth')bwInit('as-b',t.birth);
 }
 /* ── DO YOU HAVE A GOAL? ── the door in front of the goal question */
@@ -11462,6 +11474,7 @@ var HE={
     other:'עוד {n} ימים ואפשר יהיה לומר לאן זה הולך. עד אז זה בעיקר מים.'},
   'בעוד {n} דקות · {when}':{one:'בעוד דקה · {when}',two:'בעוד שתי דקות · {when}',other:'בעוד {n} דקות · {when}'},
   'עוד {n} דקות':{one:'עוד דקה',two:'עוד שתי דקות',other:'עוד {n} דקות'},
+  '{n} ליטר':{one:'ליטר אחד',two:'{n} ליטר',other:'{n} ליטר'},
   '{n} ימים מאז שדיברתם. אולי היום?':{one:'יום מאז שדיברתם. אולי היום?',two:'יומיים מאז שדיברתם. אולי היום?',other:'{n} ימים מאז שדיברתם. אולי היום?'},
   '{n} שבועות מאז שדיברתם. אולי היום?':{one:'שבוע מאז שדיברתם. אולי היום?',two:'שבועיים מאז שדיברתם. אולי היום?',other:'{n} שבועות מאז שדיברתם. אולי היום?'}
 };
