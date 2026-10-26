@@ -51,3 +51,46 @@ workflows:
         # the beta test information filled in App Store Connect first - set this
         # back to true then
         submit_to_testflight: false
+
+  # The Android build, same shell, same stable app -> Google Play.
+  # One-time setup (with Asaf):
+  #   Google Play Console: create the app "Olimei" (package com.asafyaniv.betterme).
+  #   Codemagic > Team settings > Code signing identities > Android keystores:
+  #     add the UPLOAD keystore and name it exactly "olimei_upload".
+  #   Codemagic > Application > Environment variables, group "google_play":
+  #     GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (secret) - the JSON of a Google Cloud
+  #     service account invited to the Play Console with release rights.
+  #   The very first AAB may have to be uploaded by hand in the Play Console;
+  #   after that every build lands on the track below by itself.
+  android-play:
+    name: Android to Google Play
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      android_signing:
+        - olimei_upload
+      groups:
+        - google_play
+      node: 22
+      java: 21
+      vars:
+        PACKAGE_NAME: "com.asafyaniv.betterme"
+    scripts:
+      - name: Install Capacitor
+        script: cd native && npm ci
+      - name: Assemble the stable app into the shell
+        script: node tools/native-www.mjs && node tools/native-android.mjs && cd native && npx cap sync android
+      - name: Build the AAB with the next build number
+        script: |
+          LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" || echo 0)
+          NEXT=$((LATEST + 1))
+          cd native/android && chmod +x gradlew && ./gradlew bundleRelease -PversionCode=$NEXT -PversionName=1.0.$NEXT
+    artifacts:
+      - native/android/app/build/outputs/**/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        # internal first: no review, up to 100 testers by email; the 12-tester
+        # closed test for production access is a track of its own in the Console
+        track: internal
+        submit_as_draft: true

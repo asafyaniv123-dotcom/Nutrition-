@@ -66,3 +66,12 @@ The same shell for Android, on Google Play's closed track. The Play rule —
 12 testers opted in for 14 consecutive days, for a personal developer
 account — is counted by Google from its own opt-ins; nothing we measure
 counts toward it. Only Android phones installed from Play count.
+
+**Built 26 Oct (app session):** native/android (Capacitor 8), dressed by
+tools/native-android.mjs - Mip's icon as an adaptive icon, the cream splash,
+a one-colour notification icon, release signing from Codemagic's keystore.
+Workflow android-play in codemagic.yaml builds the AAB and sends it to the
+internal track. Not built locally (no Java here) - the first Codemagic run
+is the first compile. Waiting on Asaf: a Play Console app record, the upload
+keystore in Codemagic (made on his machine, C:UsersasafyOlimei-keys,
+never in the repo), and a service account for publishing.
