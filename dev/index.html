@@ -1261,6 +1261,8 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   --lit:rgba(255,255,255,.95);--sh:rgba(168,160,148,.5);--sh2:rgba(168,160,148,.3)}
 .prg-in{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 30px)}
 .prg-top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.prg-ttl{font-size:17px;font-weight:800;color:#4a453f}
+.prg-sec{margin-bottom:34px}
 .prg-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:4px;border-radius:999px;flex:1;
   box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
 .prg-tabs::-webkit-scrollbar{display:none}
@@ -45570,19 +45572,24 @@ function prgOpen(group,start){
   prgDraw();
 }
 function prgClose(){var o=document.getElementById('prg');if(o)o.parentNode.removeChild(o);var f=_prg.after;_prg.after=null;if(f)setTimeout(f,250);}
-function prgPick(k){_prg.cur=k;prgDraw();}
+/* everything of the group, one after another; each enters as it is reached */
 function prgDraw(){
   var o=document.getElementById('prg');if(!o)return;
-  var h='<div class="prg-in"><div class="prg-top"><button class="fit-back" onclick="prgClose()">&#8249; '+_t('חזרה')+'</button>';
-  if(_prg.list.length>1){h+='<div class="prg-tabs">';
-    _prg.list.forEach(function(k){h+='<button class="'+(k===_prg.cur?'on':'')+'" onclick="prgPick(\''+k+'\')">'+esc(prgName(k))+'</button>';});
-    h+='</div>';}
-  h+='</div>';
-  var b=PRG_B[_prg.cur],body='';
-  try{body=b?b():'';}catch(e){body='';}
-  h+=body||('<h2>'+esc(prgName(_prg.cur))+'</h2><div class="card"><div class="empty">'+_t('עוד אין כאן מספיק כדי להראות התקדמות. אחרי עוד כמה ימים של רישום, זה יופיע כאן.')+'</div></div>');
+  var h='<div class="prg-in"><div class="prg-top"><button class="fit-back" onclick="prgClose()">&#8249; '+_t('חזרה')+'</button>'+
+    '<span class="prg-ttl">'+_t('ההתקדמות שלי')+'</span></div>',n=0;
+  _prg.list.forEach(function(k){
+    var b=PRG_B[k],body='';try{body=b?b():'';}catch(e){body='';}
+    if(!body)return;n++;
+    /* several trackers share the page now: every id carries its tracker */
+    body=body.replace(/(id="|url\(#)((?:prg-|pl)[\w-]*)/g,'$1$2-'+k);
+    h+='<section class="prg-sec" data-k="'+k+'">'+body+'</section>';});
+  if(!n)h+='<div class="card"><div class="empty">'+_t('עוד אין כאן מספיק כדי להראות התקדמות. אחרי עוד כמה ימים של רישום, זה יופיע כאן.')+'</div></div>';
   o.innerHTML=h+'</div>';o.scrollTop=0;
-  prgEnter();
+  var secs=o.querySelectorAll('.prg-sec');
+  [].forEach.call(secs,function(s){var c=s.querySelector('.card');if(c){c.style.opacity='0';c.style.transform='translateX(-60px)';}});
+  if(!window.IntersectionObserver){[].forEach.call(secs,prgEnter);return;}
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){io.unobserve(e.target);prgEnter(e.target);}});},{root:o,threshold:.25});
+  [].forEach.call(secs,function(s){io.observe(s);});
 }
 /* ── pieces ── */
 function prgSmooth(P){var n=P.length,d=[],m=[],i;if(n<2)return 'M'+P[0][0]+' '+P[0][1];
@@ -45793,9 +45800,9 @@ PRG_B.bookdone=function(){
 };
 /* the card glides in from the left; a sweep runs left to right, lines draw
    behind it, each piece and each fill arrives as it passes; the pie draws round */
-function prgEnter(){
-  var c=document.getElementById('prg-cc');if(!c)return;
-  var r=document.getElementById('prg-rvR'),an=c.querySelectorAll('.an'),RW=r?+r.getAttribute('width'):0,pm=document.getElementById('prg-pmc');
+function prgEnter(sec){
+  var c=sec&&sec.querySelector('.card');if(!c)return;
+  var r=sec.querySelector('[id^="prg-rvR"]'),an=c.querySelectorAll('.an'),RW=r?+r.getAttribute('width'):0,pm=sec.querySelector('[id^="prg-pmc"]');
   c.style.transition='none';c.style.opacity='0';c.style.transform='translateX(-60px)';if(r)r.setAttribute('width','0');
   [].forEach.call(an,function(e){e.style.transition='none';e.style.opacity='0';e.style.transform='translateY(6px)';});
   requestAnimationFrame(function(){requestAnimationFrame(function(){
