@@ -1263,6 +1263,15 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .prg-top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .prg-ttl{font-size:17px;font-weight:800;color:#4a453f}
 .prg-sec{margin-bottom:34px}
+/* the cards */
+.prg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.prg-tile{display:flex;flex-direction:column;gap:8px;padding:12px 10px 10px;border:none;border-radius:22px;background:#e9e7e3;cursor:pointer;font-family:inherit;text-align:start;overflow:hidden;
+  box-shadow:-5px -5px 12px var(--lit),6px 7px 15px var(--sh2)}
+.prg-tile:active{box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit)}
+.prg-tile b{font-size:15px;font-weight:800;color:#4a453f;padding:0 4px}
+.prg-th{position:relative;height:150px;overflow:hidden;border-radius:14px;pointer-events:none}
+.prg-thi{position:absolute;top:0;right:0;width:358px;padding:0 14px;transform-origin:top right}
+[dir=ltr] .prg-thi{right:auto;left:0;transform-origin:top left}
 .prg-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:4px;border-radius:999px;flex:1;
   box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
 .prg-tabs::-webkit-scrollbar{display:none}
@@ -45586,25 +45595,55 @@ var PRG_C={violet:['#a690cf','#8d7ab0','#ddd2f2'],coral:['#f09a85','#e9775c','#f
   blue:['#8db3df','#6f97c8','#d6e5f5'],green:['#86bf84','#5f9f60','#cfe6c9'],amber:['#f1c470','#d9a441','#fbe6bd']};
 var PRG_GROUPS={nutrition:['weight','food','water'],fitness:['strength','volume','steps'],
   me:['weight','food','water','strength','volume','steps','hobbies','mood','book']};
-var PRG_W=330,_prg={list:[],cur:''};
+var PRG_W=330,_prg={list:[],cur:'',one:null},PRG_GRID='prg_grid';
 function prgName(k){
   return {weight:_t('משקל גוף'),food:_t('קלוריות'),water:_t('מים'),strength:_t('כוח בתרגילים'),volume:_t('נפח אימונים'),
     steps:_t('צעדים'),hobbies:_t('תחביבים'),mood:_t('מצב רוח'),book:_t('הספר שלי'),bookdone:_t('הספר האחרון')}[k]||k;
 }
 function prgOpen(group,start){
+  _prg.one=null;
   _prg.list=(PRG_GROUPS[group]||[group]).slice();_prg.cur=start||_prg.list[0];
   var o=document.getElementById('prg');
   if(!o){o=document.createElement('div');o.className='prg';o.id='prg';document.body.appendChild(o);}
   if(!exAll().length)exLoad(function(){if(document.getElementById('prg'))prgDraw();});
   prgDraw();
 }
-function prgClose(){var o=document.getElementById('prg');if(o)o.parentNode.removeChild(o);var f=_prg.after;_prg.after=null;if(f)setTimeout(f,250);}
+function prgClose(){
+  /* from one tracker, back to the cards */
+  if(_prg.one){_prg.one=null;prgDraw();return;}
+  /* the long page is the first visit; after it, the cards */
+  try{localStorage.setItem(PRG_GRID,'1');}catch(e){}
+  var o=document.getElementById('prg');if(o)o.parentNode.removeChild(o);var f=_prg.after;_prg.after=null;if(f)setTimeout(f,250);}
+function prgOne(k){_prg.one=k;prgDraw();}
+/* the cards: each tracker's chart in miniature, at rest */
+function prgGrid(o){
+  var h='<div class="prg-in"><div class="prg-top"><button class="fit-back" onclick="prgClose()">&#8249; '+_t('חזרה')+'</button>'+
+    '<span class="prg-ttl">'+_t('ההתקדמות שלי')+'</span></div><div class="prg-grid">',n=0,tmp=document.createElement('div');
+  _prg.list.forEach(function(k){
+    var b=PRG_B[k],body='';try{body=b?b():'';}catch(e){body='';}
+    if(!body)return;n++;
+    tmp.innerHTML=body.replace(/(id="|url\(#)((?:prg-|pl)[\w-]*)/g,'$1$2-t'+k);
+    var card=tmp.querySelector('.card');if(!card)return;
+    /* at rest: every fill at its height, nothing waiting to enter */
+    [].forEach.call(card.querySelectorAll('.grow'),function(g){var v=g.getAttribute('data-v')+'%';if(g.getAttribute('data-dim')==='w')g.style.width=v;else g.style.height=v;});
+    [].forEach.call(card.querySelectorAll('[id^="prg-pmc"]'),function(c){c.setAttribute('stroke-dasharray','400 400');});
+    [].forEach.call(card.querySelectorAll('.plate'),function(p){p.style.animation='none';});
+    h+='<button class="prg-tile" onclick="prgOne(\''+k+'\')"><b>'+esc(prgName(k))+'</b><div class="prg-th"><div class="prg-thi">'+card.innerHTML+'</div></div></button>';});
+  if(!n)h+='<div class="card"><div class="empty">'+_t('עוד אין כאן מספיק כדי להראות התקדמות. אחרי עוד כמה ימים של רישום, זה יופיע כאן.')+'</div></div>';
+  o.innerHTML=h+'</div></div>';o.scrollTop=0;
+  [].forEach.call(o.querySelectorAll('.prg-th'),function(th,i){
+    var in2=th.firstChild,sc=Math.min(th.clientWidth/358,150/Math.max(1,in2.offsetHeight));in2.style.transform='scale('+sc.toFixed(3)+')';in2.style.right=((th.clientWidth-358*sc)/2).toFixed(1)+'px';in2.style.top=Math.max(0,(150-in2.offsetHeight*sc)/2).toFixed(1)+'px';
+    var t=th.parentNode;t.style.opacity='0';t.style.transform='translateX(-40px)';
+    setTimeout(function(){t.style.transition='opacity .45s ease,transform .6s cubic-bezier(.22,.61,.36,1)';t.style.opacity='1';t.style.transform='none';},80+i*70);});
+}
 /* everything of the group, one after another; each enters as it is reached */
 function prgDraw(){
   var o=document.getElementById('prg');if(!o)return;
+  if(!_prg.one&&prgFlag(PRG_GRID)&&_prg.list.length>1){prgGrid(o);return;}
+  var list=_prg.one?[_prg.one]:_prg.list;
   var h='<div class="prg-in"><div class="prg-top"><button class="fit-back" onclick="prgClose()">&#8249; '+_t('חזרה')+'</button>'+
     '<span class="prg-ttl">'+_t('ההתקדמות שלי')+'</span></div>',n=0;
-  _prg.list.forEach(function(k){
+  list.forEach(function(k){
     var b=PRG_B[k],body='';try{body=b?b():'';}catch(e){body='';}
     if(!body)return;n++;
     /* several trackers share the page now: every id carries its tracker */
