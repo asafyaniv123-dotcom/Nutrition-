@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>התראות — איך ייראו וישמעו</title>
+<style>
+/* NOTIFICATIONS, STEP 2 (Asaf, 26 Oct): how each reminder looks and sounds
+   where it lands. The phone draws a notification itself - its colours and
+   shape are the phone's - so what is ours is the words, Mip's icon, the
+   buttons under a long press, and the banner inside the app. Each kind shows
+   what it says today beside what it would say in Mip's voice. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:#2b2724;font-family:Assistant,"Segoe UI",sans-serif;color:#efe6d8}
+.bar{max-width:430px;margin:0 auto;padding:12px 14px 6px}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.sw{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.sw button{border:none;border-radius:999px;padding:7px 12px;font:700 13px Assistant,sans-serif;background:#3d3732;color:#e6dccd;cursor:pointer}
+.sw button.on{background:#efe6d8;color:#2b2724}
+.wrap{display:flex;justify-content:center;padding:10px 0 30px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:46px;transform-origin:50% 0;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+/* the lock screen */
+.lock{position:absolute;inset:0;background:linear-gradient(170deg,#c9b8a6 0%,#a88f7c 40%,#6f5d58 100%);font-family:-apple-system,"SF Pro","Segoe UI",Assistant,sans-serif}
+.lock .tm{text-align:center;color:rgba(255,255,255,.95);margin-top:70px}
+.lock .tm small{display:block;font-size:19px;font-weight:600}
+.lock .tm b{display:block;font-size:84px;font-weight:600;letter-spacing:-2px;line-height:1}
+.stack{position:absolute;left:10px;right:10px;bottom:120px;max-height:560px;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:8px}
+/* iOS card */
+.ios{border-radius:20px;padding:12px 14px;background:rgba(245,242,238,.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);color:#1c1c1e;display:flex;gap:10px;align-items:flex-start;cursor:pointer;direction:rtl}
+.ios img{width:38px;height:38px;border-radius:9px;flex:none}
+.ios .tx{flex:1;min-width:0}
+.ios .hd{display:flex;justify-content:space-between;gap:8px;font-size:15px;font-weight:600}
+.ios .hd span{font-weight:400;font-size:13px;color:rgba(60,60,67,.6)}
+.ios p{margin:1px 0 0;font-size:15px;line-height:1.3}
+/* Android card */
+.and{border-radius:26px;padding:14px 16px;background:#f3eee8;color:#1d1b18;cursor:pointer;direction:rtl;font-family:Roboto,"Segoe UI",Assistant,sans-serif}
+.and .ah{display:flex;align-items:center;gap:7px;font-size:12px;color:#5c564f}
+.and .ah i{width:20px;height:20px;border-radius:50%;background:#f0a92e;display:grid;place-items:center}
+.and .ah i svg{width:14px;height:14px}
+.and b{display:block;font-size:15px;font-weight:600;margin-top:6px}
+.and p{margin:2px 0 0;font-size:14px;color:#3f3a35;line-height:1.35}
+.and .acts{display:flex;gap:16px;margin-top:10px}
+.and .acts span{font-size:14px;font-weight:600;color:#9a5e10}
+/* iOS long-press: the card grows and the actions appear */
+.press{position:absolute;inset:0;background:rgba(40,32,28,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:none;flex-direction:column;justify-content:center;padding:0 14px;gap:10px}
+.press.on{display:flex}
+.press .ios{cursor:default}
+.press .menu{border-radius:14px;overflow:hidden;background:rgba(245,242,238,.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.press .menu div{padding:13px 16px;font-size:16px;color:#1c1c1e;border-top:.5px solid rgba(60,60,67,.25);font-family:-apple-system,"Segoe UI",Assistant,sans-serif}
+.press .menu div:first-child{border-top:none}
+/* inside the app */
+.app{position:absolute;inset:0;background:#e9e7e3;display:none}
+.app .bg{position:absolute;inset:0;background:url(../../review/progress-show/flood-3.png) top/cover;filter:blur(1px) saturate(.9);opacity:.7}
+.ban{position:absolute;left:12px;right:12px;top:54px;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:22px;background:#e9e7e3;color:#4a453f;
+  box-shadow:-5px -5px 14px rgba(255,255,255,.9),8px 10px 24px rgba(120,100,80,.22);animation:drop .55s cubic-bezier(.22,.61,.36,1) both}
+@keyframes drop{from{transform:translateY(-130%)}}
+.ban .ic{flex:none;width:42px;height:42px;border-radius:50%;background:url(../../dev/assets/beem-f-happy.png) center/125% no-repeat,url(../../dev/assets/beem-body.png) center/125% no-repeat}
+.ban .ic.dot{background:none;display:grid;place-items:center;box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
+.ban .ic.dot i{width:12px;height:12px;border-radius:50%}
+.ban .t{flex:1;min-width:0}
+.ban .t b{display:block;font-size:15px}
+.ban .t span{display:block;font-size:13.5px;color:#6d675e;margin-top:1px}
+.ban .bs{display:flex;flex-direction:column;gap:6px}
+.ban button{border:none;border-radius:999px;padding:7px 12px;font:800 13px Assistant,sans-serif;color:#4a453f;background:#e9e7e3;box-shadow:-2px -2px 5px rgba(255,255,255,.95),3px 3px 7px rgba(168,160,148,.3);white-space:nowrap}
+.ban button.q{background:transparent;box-shadow:none;color:#6d675e;padding:3px 6px}
+/* the copy table under the phone */
+.copy{max-width:430px;margin:0 auto;padding:0 14px 40px}
+.copy h2{font-size:16px;margin:16px 0 8px}
+.row{background:#3a342f;border-radius:16px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.55}
+.row .k{font-weight:800;color:#f0c98a;margin-bottom:4px}
+.row .was{color:#a99c8c;text-decoration:line-through;text-decoration-color:rgba(169,156,140,.5)}
+.row .now{color:#efe6d8}
+.row .act{color:#cfc4b4;font-size:13px;margin-top:4px}
+.row .new{display:inline-block;font-size:11px;font-weight:800;background:#6a8f5a;color:#fff;border-radius:999px;padding:1px 8px;margin-inline-start:6px}
+</style></head><body>
+<div class="bar">
+  <h1>התראות — איך ייראו</h1>
+  <p>את הצבעים והצורה של התראה הטלפון מצייר בעצמו. שלנו: המילים, האייקון של מיפ, הכפתורים בלחיצה ארוכה, והבאנר בתוך האפליקציה. לחץ על התראה באייפון כדי לראות את הכפתורים שלה.</p>
+  <div class="sw" id="sw"><button data-v="ios" class="on">אייפון</button><button data-v="and">אנדרואיד</button><button data-v="app">בתוך האפליקציה</button></div>
+  <div class="sw" id="tx"><button data-t="new" class="on">המילים המוצעות</button><button data-t="old">המילים היום</button></div>
+</div>
+<div class="wrap"><div class="ph" id="ph">
+  <div class="lock" id="lock"><div class="tm"><small id="date"></small><b>21:00</b></div><div class="stack" id="stack"></div>
+    <div class="press" id="press"></div></div>
+  <div class="app" id="app"><div class="bg"></div><div id="bans"></div></div>
+</div></div>
+<div class="copy" id="copy"></div>
+<script>
+/* each kind: what it says today (old), what it would say (new), its buttons,
+   when it comes, and whether it exists today */
+var K=[
+  {k:'evening',when:'21:00',dot:'#7a6fb0',name:'סיום יום',
+   old:{t:'תזכורת לסיכום יום',b:'עוד לא עצרת לסכם את היום.'},
+   now:{t:'סיום יום',b:'שתי דקות לפני שהיום נגמר? אני כאן.'},
+   acts:['לסכם עכשיו','בעוד שעה'],has:true},
+  {k:'plan',when:'09:45',dot:'#6f97c8',name:'תכנון זמן',
+   old:{t:'רופא שיניים',b:'בעוד 15 דק׳ (10:00)'},
+   now:{t:'רופא שיניים',b:'בעוד רבע שעה · 10:00'},
+   acts:['בוצע','עוד 10 דקות'],has:true},
+  {k:'bday',when:'09:00',dot:'#e9946f',name:'האנשים שלי',
+   old:{t:'יום הולדת היום',b:'היום יום ההולדת של נועה. אולי להתקשר?'},
+   now:{t:'יום הולדת לנועה',b:'היום. מילה קטנה ממך תעשה לה את היום.'},
+   acts:['להתקשר','לשלוח הודעה'],has:true},
+  {k:'people',when:'18:00',dot:'#e9946f',name:'האנשים שלי',
+   old:null,
+   now:{t:'עבר זמן מנועה',b:'שלושה שבועות מאז שדיברתם. אולי היום?'},
+   acts:['רשמתי שדיברנו','מחר'],has:false},
+  {k:'weigh',when:'07:30',dot:'#a690cf',name:'תזונה',
+   old:null,
+   now:{t:'בוקר טוב',b:'היום יום שקילה. לפני הקפה, אם אפשר.'},
+   acts:['רשמתי'],has:false},
+  {k:'streak',when:'22:30',dot:'#f0a92e',name:'סיום יום',
+   old:null,
+   now:{t:'11 ימים ברצף',b:'עוד שתי דקות הערב והרצף ממשיך.'},
+   acts:['לסכם עכשיו'],has:false}
+];
+var V='ios',T='new';
+function txt(x){return T==='old'&&x.old?x.old:x.now;}
+function draw(){
+  document.getElementById('lock').style.display=V==='app'?'none':'block';
+  document.getElementById('app').style.display=V==='app'?'block':'none';
+  var st='';
+  K.forEach(function(x,i){if(T==='old'&&!x.has)return;var c=txt(x);
+    if(V==='ios')st+='<div class="ios" onclick="press('+i+')"><img src="../../brand/apple-touch-180.png" alt=""><div class="tx"><div class="hd">'+c.t+'<span>'+x.when+'</span></div><p>'+c.b+'</p></div></div>';
+    else st+='<div class="and"><div class="ah"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#fff"/></svg></i>Olimei · '+x.when+'</div><b>'+c.t+'</b><p>'+c.b+'</p>'+
+      (T==='new'?'<div class="acts">'+x.acts.map(function(a){return '<span>'+a+'</span>';}).join('')+'</div>':'')+'</div>';});
+  document.getElementById('stack').innerHTML=V==='app'?'':st;
+  /* inside the app: one banner at a time, the first three kinds cycling */
+  if(V==='app'){var x=K[_bi%K.length],c=txt(x);
+    document.getElementById('bans').innerHTML='<div class="ban" key="'+_bi+'"><span class="ic'+(x.k==='evening'||x.k==='streak'?'':' dot')+'">'+(x.k==='evening'||x.k==='streak'?'':'<i style="background:'+x.dot+'"></i>')+'</span>'+
+      '<div class="t"><b>'+c.t+'</b><span>'+c.b+'</span></div><div class="bs"><button>'+x.acts[0]+'</button><button class="q">✕</button></div></div>';}
+  var cp='<h2>המילים, אחת אחת</h2>';
+  K.forEach(function(x){cp+='<div class="row"><div class="k">'+x.name+' · '+x.when+(x.has?'':'<span class="new">חדש</span>')+'</div>'+
+    (x.old?'<div class="was">'+x.old.t+' — '+x.old.b+'</div>':'')+'<div class="now">'+x.now.t+' — '+x.now.b+'</div><div class="act">כפתורים: '+x.acts.join(' · ')+'</div></div>';});
+  document.getElementById('copy').innerHTML=cp;
+}
+var _bi=0;setInterval(function(){if(V==='app'){_bi++;draw();}},3200);
+function press(i){var x=K[i],c=txt(x),p=document.getElementById('press');
+  p.innerHTML='<div class="ios"><img src="../../brand/apple-touch-180.png" alt=""><div class="tx"><div class="hd">'+c.t+'<span>'+x.when+'</span></div><p>'+c.b+'</p></div></div>'+
+    '<div class="menu">'+(T==='new'?x.acts:[]).map(function(a){return '<div>'+a+'</div>';}).join('')+'</div>';
+  p.classList.add('on');p.onclick=function(){p.classList.remove('on');};}
+document.getElementById('date').textContent=new Date().toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+[].forEach.call(document.querySelectorAll('#sw button'),function(b){b.onclick=function(){V=b.dataset.v;[].forEach.call(document.querySelectorAll('#sw button'),function(x){x.classList.toggle('on',x===b);});draw();};});
+[].forEach.call(document.querySelectorAll('#tx button'),function(b){b.onclick=function(){T=b.dataset.t;[].forEach.call(document.querySelectorAll('#tx button'),function(x){x.classList.toggle('on',x===b);});draw();};});
+draw();
+function fit(){var s=Math.min(1,(innerWidth-8)/390);document.getElementById('ph').style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+</script>
+</body></html>
