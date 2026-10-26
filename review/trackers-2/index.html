@@ -72,6 +72,15 @@ svg text.b{font:800 14px Assistant,sans-serif;fill:#4a453f}
 .lv span{font-size:12px;color:#8f877d;font-weight:700}.lv span::after{content:" →";}
 .lv b{font-size:16px;font-weight:800;color:#4a453f}
 .lv em{display:none}
+/* strength: loaded bars */
+.bbs{display:grid;gap:6px}
+.bbr{padding:3px 2px 0;border-bottom:1px solid rgba(168,160,148,.16)}.bbr:last-child{border-bottom:none}
+.bbh{display:flex;justify-content:space-between;align-items:baseline}
+.bbv{font-size:12px;color:#6d675e;font-weight:700}.bbv b{font-size:17px;color:#4a453f}
+.bbv em{font-style:normal;color:#4f7d4b;font-weight:800;margin-inline-start:6px;padding:2px 7px;border-radius:999px;box-shadow:inset 1px 2px 4px rgba(168,160,148,.3),inset -1px -1px 3px rgba(255,255,255,.95)}
+.bb{display:block;width:100%;height:44px;direction:ltr}
+.plate{animation:slide .7s cubic-bezier(.22,.61,.36,1) both;animation-delay:calc(var(--d) + 500ms)}
+@keyframes slide{from{transform:translateX(var(--from));opacity:0}to{transform:none;opacity:1}}
 /* the book */
 .bcov{position:relative;flex:none;aspect-ratio:2/3;border-radius:4px 10px 10px 4px;padding:12px 10px 10px 16px;display:flex;flex-direction:column;justify-content:space-between;
   background:linear-gradient(135deg,#e9c88a,#d9a441);color:#4a3418;box-shadow:-3px -3px 8px rgba(255,255,255,.9),5px 7px 14px rgba(140,110,70,.35);direction:rtl}
@@ -220,15 +229,32 @@ var T={};
 T.weight={name:'משקל גוף',liked:1,build:function(){
   return frame({t:'המשקל שלי',thenL:'לפני 8 שבועות',thenV:'74.4',nowL:'השבוע',nowV:'72.6',chip:'<bdi dir="ltr">−1.8</bdi> ק"ג',c:C.violet[0],
     chart:line([74.4,74.1,73.7,73.7,73.1,73.0,73.0,72.6],C.violet,{goal:72,fmt:f1,id:'w'}),say:'עוד 0.6 ק"ג עד היעד',sub:'כל נקודה היא הממוצע של אותו שבוע'});}};
+/* plates for one side of a 20 kg bar */
+function plates(kg){var side=Math.max(0,(kg-20)/2),out=[],P=[20,10,5,2.5,1.25];
+  P.forEach(function(p){while(side>=p-1e-9){out.push(p);side-=p;}});return out;}
+var PL={20:[48,9],10:[40,8],5:[31,7],2.5:[24,6],1.25:[19,5]};
+function barbell(was,now,i){
+  var a=plates(was),b=plates(now),W2=210,cx=W2/2,H2=56,cy=H2/2,c=C.terra;
+  /* the plates it had are matched from the inside out; whatever is beyond them is new */
+  var keep=0;for(var k=0;k<b.length&&k<a.length&&b[k]===a[k];k++)keep++;
+  var s2='<svg viewBox="0 0 '+W2+' '+H2+'" class="bb"><defs><linearGradient id="pn'+i+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+c[2]+'"/><stop offset=".5" stop-color="'+c[0]+'"/><stop offset="1" stop-color="'+c[1]+'"/></linearGradient>'+
+    '<linearGradient id="po'+i+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6f4f1"/><stop offset=".5" stop-color="#e3dfd9"/><stop offset="1" stop-color="#cfc8bf"/></linearGradient>'+
+    '<linearGradient id="bar'+i+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9d4cd"/><stop offset=".5" stop-color="#f4f2ee"/><stop offset="1" stop-color="#b9b1a6"/></linearGradient></defs>';
+  s2+='<rect x="6" y="'+(cy-2.5)+'" width="'+(W2-12)+'" height="5" rx="2.5" fill="url(#bar'+i+')"/>';
+  s2+='<rect x="'+(cx-40)+'" y="'+(cy-6)+'" width="6" height="12" rx="2" fill="#cdc6bc"/><rect x="'+(cx+34)+'" y="'+(cy-6)+'" width="6" height="12" rx="2" fill="#cdc6bc"/>';
+  [-1,1].forEach(function(side){var x=side<0?cx-42:cx+42;
+    b.forEach(function(p,k){var d=PL[p],nw=k>=keep,w=d[1];x+=side<0?-w-1:0;
+      s2+='<rect class="plate'+(nw?' nw':'')+'" style="--d:'+(k*90)+'ms;--from:'+(side*-26)+'px" x="'+x.toFixed(1)+'" y="'+(cy-d[0]/2)+'" width="'+w+'" height="'+d[0]+'" rx="2.5" fill="url(#'+(nw?'pn':'po')+i+')"'+(nw?' filter="drop-shadow(0 0 3px '+c[0]+')"':'')+'/>';
+      if(side>0)x+=w+1;});});
+  return s2+'</svg>';
+}
 T.strength={name:'כוח בתרגילים',build:function(){
-  var E=[['דדליפט',60,85,1],['סקוואט',40,60,1],['לחיצת חזה',35,45,1],['חתירה',30,40,0],['לחיצת כתפיים',20,27.5,1]],MX=100,c=C.terra,h='<div class="lift">';
-  E.forEach(function(e,i){var a=e[1]/MX*100,b=e[2]/MX*100;
-    h+='<div class="lr an" data-x="'+(i*55)+'"><div class="ln">'+e[0]+(e[3]?'<span class="star">★</span>':'')+'</div>'+
-      '<div class="lch"><div class="lbase grow" data-dim="w" data-v="'+a.toFixed(1)+'" style="width:0"></div>'+
-      '<div class="lgain grow" data-dim="w" data-v="'+b.toFixed(1)+'" style="width:0;--c:'+c[0]+';--dp:'+c[1]+';--hi:'+c[2]+'"></div></div>'+
-      '<div class="lv"><span>'+e[1]+'</span><b>'+e[2]+'</b><em>+'+(e[2]-e[1])+'</em></div></div>';});
-  h+='</div><div class="lb" style="text-align:center;margin:10px 0 2px">ק"ג · הבהיר: מה שנוסף ב-8 שבועות · ★ שיא השבוע</div>';
-  return frame({t:'כוח בתרגילים',thenL:'שיאים בחודש שעבר',thenV:'2',nowL:'שיאים החודש',nowV:'4',chip:'<bdi dir="ltr">+2</bdi> שיאים',c:c[0],
+  var E=[['דדליפט',60,85,1],['סקוואט',40,60,1],['לחיצת חזה',35,45,1],['חתירה',30,40,0],['לחיצת כתפיים',20,27.5,1]],h='<div class="bbs">';
+  E.forEach(function(e,i){
+    h+='<div class="bbr an" data-x="'+(i*55)+'"><div class="bbh"><span class="ln">'+e[0]+(e[3]?'<span class="star">★</span>':'')+'</span>'+
+      '<span class="bbv"><b>'+e[2]+'</b> ק"ג <em><bdi dir="ltr">+'+(e[2]-e[1])+'</bdi></em></span></div>'+barbell(e[1],e[2],i)+'</div>';});
+  h+='</div><div class="lb" style="text-align:center;margin:8px 0 2px">המשקלות על המוט, בכל צד · הכתומים: מה שנוסף ב-8 שבועות</div>';
+  return frame({t:'כוח בתרגילים',thenL:'שיאים בחודש שעבר',thenV:'2',nowL:'שיאים החודש',nowV:'4',chip:'<bdi dir="ltr">+2</bdi> שיאים',c:C.terra[0],
     chart:h,say:'כל חמשת התרגילים עלו',sub:'דדליפט עלה הכי הרבה: 25 ק"ג'});}};
 T.food={name:'קלוריות',build:function(){
   var K=[1850,2100,1720,1980,2250,1600,1900],P=[120,145,98,150,160,90,130],TG=2000,MX=2400,H=170,c=C.violet,h='<div style="position:relative">';
@@ -251,7 +277,7 @@ T.water={name:'מים',build:function(){
     chart:h,say:'2 ימים מלאים השבוע',sub:'כוס מלאה = 2.5 ליטר'});}};
 
 T.volume={name:'נפח אימונים',build:function(){
-  var G=[['רגליים',16,'#d9724f'],['גב',14,'#e58c66'],['חזה',11,'#eea583'],['כתפיים',8,'#f3bea3'],['ידיים',7,'#f7d4c2']],tot=56,r=62,Cc=2*Math.PI*r,at=0,arcs='',li='';
+  var G=[['רגליים',16,'#e9946f'],['גב',14,'#e8b86d'],['חזה',11,'#d99aa8'],['כתפיים',8,'#9db8d6'],['ידיים',7,'#9cc49a']],tot=56,r=62,Cc=2*Math.PI*r,at=0,arcs='',li='';
   G.forEach(function(g,i){var L=g[1]/tot*Cc-4;
     arcs+='<circle cx="85" cy="85" r="'+r+'" fill="none" stroke="'+g[2]+'" stroke-width="22" stroke-dasharray="'+L.toFixed(1)+' '+Cc.toFixed(1)+'" stroke-dashoffset="'+(-at).toFixed(1)+'" transform="rotate(-90 85 85)"/>';
     at+=L+4;li+='<li class="an" data-x="'+(60+i*50)+'"><i style="background:'+g[2]+'"></i>'+g[0]+'<span>'+g[1]+' · '+Math.round(g[1]/tot*100)+'%</span></li>';});
