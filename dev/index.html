@@ -4453,6 +4453,37 @@ body.mod-fitness .hdr-title{font-size:30px;font-weight:800;letter-spacing:-.6px;
 .as-pts li::before{content:"";position:absolute;inset-inline-start:2px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--nu-amber);box-shadow:0 0 7px rgba(240,169,46,.6)}
 .as-mid .as-pts+.as-why,.as-body .as-why{font-size:15px;line-height:1.55;color:var(--nu-muted);margin-top:16px;text-align:center}
 .as-go{margin-top:6px}
+/* the history's intake as tubes (5B, 26.10) */
+.hst-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hst-chip{flex:none;padding:5px 12px;border-radius:999px;font-size:12.5px;font-weight:800;color:var(--nu-ink,#4a453f);
+  box-shadow:-2px -2px 5px var(--nu-lit,rgba(255,255,255,.95)),3px 3px 7px var(--nu-shade-soft,rgba(168,160,148,.3))}
+.hst-row{display:flex;justify-content:space-between;margin-top:16px;direction:ltr}
+.hst-d{width:13%;text-align:center}
+.hst-t{position:relative;height:160px;width:26px;margin:0 auto;border-radius:13px;overflow:hidden;
+  box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(168,160,148,.45)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+.hst-t i{position:absolute;left:4px;right:4px;bottom:4px;border-radius:10px;transform-origin:50% 100%;animation:asgFill 1.1s cubic-bezier(.22,.61,.36,1) both}
+.hst-t i.on,.hst-leg i.on{background:linear-gradient(#f6c46b,#f0a92e)}
+.hst-t i.over,.hst-leg i.over{background:linear-gradient(#ee9f86,#d9735a)}
+.hst-t i.under,.hst-leg i.under{background:linear-gradient(#f5dcae,#efc27c)}
+.hst-d b{display:block;font-size:10.5px;font-weight:800;color:var(--nu-ink,#4a453f);margin-top:6px;min-height:13px}
+.hst-d span{display:block;font-size:10.5px;color:var(--nu-muted,#6d675e);font-weight:600}
+.hst-d.now span{font-weight:800;color:var(--nu-ink,#4a453f)}
+.hst-leg{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:11.5px;font-weight:700;color:var(--nu-muted,#6d675e)}
+.hst-leg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:5px;vertical-align:-1px}
+/* the goals, once the nutrition questions are answered (4A, 26.10) */
+.asg-kc{width:180px;height:180px;margin:14px auto 22px;border-radius:50%;display:grid;place-items:center;flex:none;
+  box-shadow:inset 6px 8px 16px var(--nu-shade),inset -6px -6px 14px var(--nu-lit)}
+.asg-kc b{display:block;font-size:42px;font-weight:800;letter-spacing:-1px;line-height:1}
+.asg-kc span{display:block;font-size:13px;color:var(--nu-muted);font-weight:700;margin-top:4px}
+.asg-tubes{display:flex;justify-content:space-around;margin:0 0 20px}
+.asg-tb{width:70px;text-align:center}
+.asg-t{position:relative;height:140px;width:50px;margin:0 auto;border-radius:25px;overflow:hidden;
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+.asg-t i{position:absolute;inset:5px;border-radius:21px;transform-origin:50% 100%;animation:asgFill 1.3s cubic-bezier(.22,.61,.36,1) both}
+@keyframes asgFill{from{transform:scaleY(0)}}
+.asg-tb b{display:block;font-size:15px;margin-top:9px}
+.asg-tb span{display:block;font-size:12.5px;color:var(--nu-muted);font-weight:700}
+@media (max-height:700px){.asg-kc{width:140px;height:140px;margin:6px auto 14px}.asg-kc b{font-size:34px}.asg-t{height:100px}}
 .as-go.nudge{animation:as-nudge .35s}
 @keyframes as-nudge{25%{transform:translateX(6px)}75%{transform:translateX(-6px)}}
 .bw{gap:2px}
@@ -10567,6 +10598,9 @@ function asetFinish(){
     if(+t.height>0)p.height=+t.height;if(+t.weight>0)p.weight=fromDisplayWeight(+t.weight);
     if(+t.activity>0)p.activity=+t.activity;
     p.updatedAt=new Date().toISOString();saveProfile(p);targetsAutoApply();
+    if(t.health==='yes'&&t.ack==='yes'&&t.hl.length)hlSave({ack:todayStr(),on:t.hl.slice(),off:[],coach:t.coach==='yes'});
+    if(_aset.steps.indexOf('health')>=0&&t.health)asetMark('health');
+    asetGoals();return;
   } else {
     var o=fitMe();o.started=1;
     if(_aset.steps.indexOf('out')>=0){o.out=t.out.slice();o.outDone=1;}
@@ -10581,6 +10615,31 @@ function asetFinish(){
   if(t.health==='yes'&&t.ack==='yes'&&t.hl.length)hlSave({ack:todayStr(),on:t.hl.slice(),off:[],coach:t.coach==='yes'});
   asetClose();
   if(a==='fitness'){_fitView=fitMePending().length?'home':'welcome';renderFitness();}else render();
+}
+/* WHAT CAME OUT OF THE ANSWERS: the goals, and why, before the area opens */
+function asetGoalWhy(g){
+  if(g==='lose')return _t('לפי מה שסיפרת: ירידה יציבה במשקל, בלי לוותר על חלבון.');
+  if(g==='recomp')return _t('לפי מה שסיפרת: חיטוב. קרוב לתחזוקה, עם הרבה חלבון.');
+  if(g==='gain')return _t('לפי מה שסיפרת: עלייה במסה, עם עודף קטן לבנייה.');
+  return _t('לפי מה שסיפרת: לשמור על המשקל שלך.');
+}
+function asetGoals(){
+  var ov=document.getElementById('as-ov');if(!ov||!_aset){asetClose();render();return;}
+  loadTargets();
+  var T0=TARGETS,p=loadProfile(),i,
+      tubes=[[_t('חלבון'),fmtGrams(T0.p),'#c7b2e8','#a690cf'],[_t('פחמימה'),fmtGrams(T0.c),'#f3c98a','#e9a24f'],
+             [_t('שומן'),fmtGrams(T0.f),'#f2b2a0','#e48a73'],[_t('מים'),fmtVolume(T0.water),'#bcd6ee','#8db8e0']];
+  var h='<div class="as-in"><div class="as-top"><span></span><span></span><span></span></div>'+
+    '<div class="as-beem" id="as-beem"></div>'+
+    '<div class="as-mid"><div class="dr-q2">'+_t('המטרות שלך')+'</div><div class="dr-w2">'+esc(asetGoalWhy(p.goal))+'</div>'+
+    '<div class="asg-kc"><div><b>'+nfmt(T0.kcal)+'</b><span>'+_t('קלוריות ביום')+'</span></div></div><div class="asg-tubes">';
+  for(i=0;i<tubes.length;i++)
+    h+='<div class="asg-tb"><div class="asg-t"><i style="background:linear-gradient('+tubes[i][2]+','+tubes[i][3]+');animation-delay:'+(.35+i*.15)+'s"></i></div><b>'+tubes[i][1]+'</b><span>'+tubes[i][0]+'</span></div>';
+  h+='</div></div><button class="dr-btn as-go" onclick="asetClose();render()">'+_t('מתחילים')+'</button>'+
+     '<button class="dr-later" onclick="asetClose();switchTab(\'profile\')">'+_t('לשנות את המטרות')+'</button></div>';
+  var keep=_aset.beemEl;ov.innerHTML=h;ov.scrollTop=0;
+  var slot=document.getElementById('as-beem');if(keep&&slot)slot.appendChild(keep);
+  if(_aset.beem)try{_aset.beem.play(DOOR_BEEM.glad);}catch(e){}
 }
 function asetChoice(f,v,label,sub,multi){
   var t=_aset.t,on=multi?t[f].indexOf(v)>=0:t[f]===v;
@@ -11089,9 +11148,7 @@ function renderProfile(){
   var age=profileAge(p.birth),bmi=profileBMI(p);
 
   h+='<div class="card"><div class="cttl">'+_t('פרטים אישיים')+'</div>';
-  h+='<div class="pf-row"><label class="pf-lbl">'+_t('שם')+'</label>'+
-     '<input class="pf-in" type="text" maxlength="24" placeholder="'+_t("השם שלך")+'" value="'+esc(p.name||'')+'" onchange="profName(this.value)">'+
-     '<span class="pf-note">'+_t('לברכה בבית')+'</span></div>';
+  /* the name lives in Settings only (26.10) */
   h+='<div class="pf-row"><label class="pf-lbl">'+_t('תאריך לידה')+'</label>'+
      '<button class="pf-in pf-bd" onclick="pfBirthSheet()">'+(p.birth?esc(dfmt(p.birth+'T12:00:00',{day:'numeric',month:'long',year:'numeric'})):'&ndash;')+'</button>'+
      '<span class="pf-note">'+(age===null?'':''+_t('{n} שנים',{n:age})+'')+'</span></div>';
@@ -19634,7 +19691,16 @@ function makeSVG(series,refs,minV,maxV,h){
     var kp=[];for(var ix=0;ix<days.length;ix++)if(days[ix].kcal>0)kp.push({i:ix,v:days[ix].kcal});
     var ak=days.map(function(d){return d.kcal;}).filter(function(v){return v>0;}).concat([TARGETS.kcal]);
     var minK=ak.length>1?Math.max(0,Math.min.apply(null,ak)-200):0,maxK=Math.max.apply(null,ak)+200;
-    chartCard='<div class="card"><div class="cttl">'+_t('צריכה קלורית מול יעד')+'</div>'+makeSVG([{pts:kp,col:PAL.terra500}],[{v:TARGETS.kcal,col:PAL.violet500,lbl:_t('יעד {n}',{n:TARGETS.kcal})}],minK,maxK,150)+'<div style="display:flex;gap:14px;margin-top:8px;font-size:10px"><span style="font-weight:700"><span style="color:var(--terra-700)">&#x25CF;</span> '+_t('קלוריות')+'</span><span><span style="color:var(--violet-700)">&#x2013;&#x2013;</span> '+_t('יעד {n}',{n:TARGETS.kcal})+'</span></div></div>';
+    /* a tube per day, full = the goal (5B, 26.10) - no line */
+    var tb='',G=TARGETS.kcal||1;
+    for(var tx=0;tx<days.length;tx++){
+      var kv=days[tx].kcal,cls=kv>G*1.06?'over':kv>=G*.94?'on':'under',fr=Math.min(1,kv/G);
+      tb+='<div class="hst-d'+(days[tx].isToday?' now':'')+'"><div class="hst-t">'+(kv>0?'<i class="'+cls+'" style="top:'+(4+(1-fr)*152).toFixed(1)+'px;animation-delay:'+(tx*.07).toFixed(2)+'s"></i>':'')+'</div>'+
+        '<b>'+(kv>0?nfmt(kv):'')+'</b><span>'+days[tx].label+'</span></div>';
+    }
+    chartCard='<div class="card hst"><div class="hst-h"><div class="cttl" style="margin:0">'+_t('צריכה קלורית מול יעד')+'</div><span class="hst-chip">'+_t('יעד {n}',{n:TARGETS.kcal})+'</span></div>'+
+      '<div class="hst-row">'+tb+'</div>'+
+      '<div class="hst-leg"><span><i class="on"></i>'+_t('ביעד')+'</span><span><i class="over"></i>'+_t('מעל היעד')+'</span><span><i class="under"></i>'+_t('מתחת ליעד')+'</span></div></div>';
   } else if(histTab==='deficit'){
     var dp=[];for(var ix2=0;ix2<days.length;ix2++)if(days[ix2].deficit>0)dp.push({i:ix2,v:days[ix2].deficit});
     var maxD=dp.length>0?Math.max.apply(null,dp.map(function(p){return p.v;}))+200:1500;
@@ -20651,6 +20717,7 @@ function goRoute(){
 function enterModule(mod){
   /* (the first-visit card is gone: each area explains itself) */
   if(mod==='nutrition'||mod==='fitness')setTimeout(function(){asetMaybe(mod);},350);
+  setTimeout(function(){areaTourMaybe(mod);},1100);
   try{usageNote('area',mod);}catch(e){}
   if(mod!=='endofday')document.body.classList.remove('rf-night');
   jrnlFlush();
@@ -42694,6 +42761,123 @@ function homeTour(){
   document.addEventListener('click',hold,true);
   function end(){try{localStorage.setItem(TOUR_KEY,'1');}catch(e){}document.removeEventListener('click',hold,true);
     var t=document.getElementById('tour');if(t)t.remove();}
+  document.getElementById('tour-n').onclick=function(){k++;if(k>=N)end();else show();};
+  document.getElementById('tour-x').onclick=end;
+  show();
+}
+/* ── MIP SHOWS EACH AREA ── once, on the first entry (6B, 26.10). A step is
+   asked for when it is shown, like the home tour's: a list of translated
+   strings is one refactor from being compared against. */
+var AREA_TOUR_KEY='area_tour_done';
+function areaTourStep(a,i){
+  var S=null;
+  if(a==='nutrition')S=[
+    [null,_t('זה אזור התזונה.'),_t('כאן רושמים מה אכלת, ואני סופר קלוריות, חלבון ומים מול המטרות שלך.')],
+    ['.co-bar',_t('פשוט כותבים מה אכלת.'),_t('במילים רגילות, כמו "2 ביצים וטוסט". אני מפרק את זה לקלוריות ולחלבון. אפשר גם לשאול אותי על אוכל.')],
+    ['.co-cam',_t('או מצלמים את הצלחת.'),_t('תמונה אחת או כמה, ואני מזהה מה יש בה.')],
+    ['.kind-row',_t('הארוחות של היום.'),_t('לחיצה על ארוחה ריקה מוסיפה אותה. לחיצה ארוכה על ארוחה שנרשמה פותחת עריכה, העתקה או מחיקה.')],
+    ['.tabs',_t('ולמעלה עוד שלושה מקומות.'),_t('ההיסטוריה של הימים הקודמים, מתכונים, וגם "אישי" עם המטרות.')]];
+  if(a==='fitness')S=[
+    [null,_t('זה אזור הכושר.'),_t('כאן בונים תוכניות אימון, רושמים כל אימון ורואים איך מתחזקים.')],
+    ['.fh',_t('מתחילים אימון כאן.'),_t('מתוכנית שלך, אימון ריק, אימון מהיר שאני מרכיב לפי זמן וציוד, או תוכנית שלמה שאני בונה.')],
+    ['.fwk-tap',_t('השבוע שלך.'),_t('לחיצה פותחת את לוח האימונים: באילו ימים, ומה בכל יום.')],
+    ['.ftk',_t('המעקב.'),_t('משקלות, צעדים, היסטוריה והתקדמות, במקום אחד.')],
+    ['.fr-list',_t('וכלים לאימון.'),_t('טיימרים לאינטרוולים ולטבטה, וסרטונים ששמרת.')]];
+  if(a==='closet')S=[
+    [null,_t('זה הארון.'),_t('כאן מצלמים את הבגדים, מרכיבים מהם לוקים, ורואים מה באמת לובשים.')],
+    ['.cl-empty,.cl-add',_t('מוסיפים בגד עם ה־+.'),_t('מצלמים, או בוחרים כמה תמונות בבת אחת. כדאי לצלם כל בגד מאותו מרחק.')],
+    ['.cl-track',_t('גוללים כל שורה הצידה.'),_t('מה שעומד באמצע כל שורה הוא מה שלובשים, וכל השורות יחד הן הלוק.')],
+    ['.cl-b1',_t('ומכאן הלוק.'),_t('לערבב הכול, לשמור לוק, ולרשום מה לבשת היום.')],
+    ['.cl-seasons',_t('עונות.'),_t('מסננים לפי עונה, ובגד שמוסיפים כשעונה מסומנת נשמר בה.')]];
+  if(a==='planning')S=[
+    [null,_t('זה תכנון הזמן.'),_t('כאן מתכננים את השבוע ואת היום שאחרי, ואני מזכיר כשמגיע הזמן.')],
+    ['#psay',_t('אפשר פשוט לכתוב.'),_t('במילים רגילות, כמו "כל רביעי 9–10 מדיטציה". אני מבין משימה חד־פעמית או קבועה, שעות וטווחים, וגם "להוריד מהלוח".')],
+    ['.pb-lamp',_t('או לתת למתכנן לבנות.'),_t('מספרים לו מה יש השבוע, והוא מחזיר לוח שלם. אחר כך מאשרים מה נכנס.')],
+    ['#plan-sec-week .pl-add',_t('ה־+ מחזיק משימות בצד.'),_t('כותבים משימה ב־+, והיא מחכה בשורה. משם גוררים אותה ליום ולשעה.')],
+    ['#plan-sec-week',_t('ולמחוק? מחליקים.'),_t('גוררים משימה לפח, או מחליקים אותה הצידה, והיא יורדת מהלוח. החלקה על הלוח עצמו מעבירה שבוע.')],
+    ['.pl-door',_t('חודש, שבוע ויום.'),_t('לחיצה על כל אחד פותחת או סוגרת את הלוח שלו.')]];
+  if(a==='people')S=[
+    [null,_t('אלה האנשים שלך.'),_t('כאן שומרים את מי שחשוב: מה קורה איתו, ימי הולדת, ומתי דיברתם לאחרונה.')],
+    ['.pp-add',_t('מוסיפים אדם.'),_t('שם, מה הוא בשבילך, וכל כמה זמן לדבר איתו. כשעובר זמן, אני מזכיר.')],
+    ['#ppl-q',_t('מחפשים ומסדרים.'),_t('לפי שם, מקום או תפקיד, או לפי מי שהכי מזמן.')],
+    ['.pp-row',_t('לחיצה על אדם פותחת את הדף שלו.'),_t('שם רושמים שיחה, זיכרונות ותאריכים חשובים.')]];
+  if(a==='hobbies')S=[
+    [null,_t('אלה התחביבים.'),_t('כאן עוקבים אחרי מה שאוהבים לעשות: כמה זמן, כמה פעמים, ואיך זה מתקדם.')],
+    ['.hb-first,.hb-addp',_t('מוסיפים תחביב.'),_t('שלוש שאלות: מה זה, איך מודדים, ומה היעד.')],
+    ['.hbt-bars',_t('לחיצה על עמודה רושמת.'),_t('תחביב של כן או לא נרשם מיד. אחרים פותחים כמות או טיימר.')],
+    ['#hb-map',_t('מפת השנה.'),_t('לחיצה על יום מוסיפה זמן ליום שעבר.')]];
+  if(a==='insights')S=[
+    [null,_t('אלה התובנות.'),_t('כאן נשמרות מחשבות, שאלות וגילויים, כדי שלא ילכו לאיבוד.')],
+    ['.ins-grid',_t('בוחרים נושא.'),_t('בכל נושא יש שאלות שעוזרות לחשוב. בכל שאלה מוסיפים תובנה, ואפשר גם לרשום "שיניתי דעה".')]];
+  if(a==='endofday')S=[
+    ['.rf-next',_t('זה סיום היום.'),_t('כל ערב כמה שאלות קצרות על היום. זה הלב של האפליקציה: מכאן מבינים מה טוב בשבילך.')],
+    ['#rf-vlog',_t('יומן וידאו.'),_t('כמה שניות מול המצלמה על היום.')],
+    ['#rfm-in',_t('דברים לזכור.'),_t('רגע קטן מהיום? רושמים כאן, והוא מחכה לסיכום של הערב.')],
+    ['.rf-secs-b',_t('ומה נשאל.'),_t('בוחרים אילו שאלות יופיעו כל ערב, ומה ייכנס לסיכום.')]];
+  if(!S)return null;
+  if(i==='n')return S.length;
+  return S[i]?{el:S[i][0],t:S[i][1],d:S[i][2]}:null;
+}
+function areaTourSeen(a){try{return !!(JSON.parse(localStorage.getItem(AREA_TOUR_KEY)||'{}')||{})[a];}catch(e){return true;}}
+function areaTourMark(a){var o={};try{o=JSON.parse(localStorage.getItem(AREA_TOUR_KEY)||'{}')||{};}catch(e){}o[a]=1;try{localStorage.setItem(AREA_TOUR_KEY,JSON.stringify(o));}catch(e){}}
+function areaTourMaybe(a,tries){
+  try{if(!localStorage.getItem(FIRST_RUN_KEY))return;}catch(e){return;}
+  if(areaTourSeen(a)||!areaTourStep(a,'n'))return;
+  if(typeof currentModule!=='undefined'&&currentModule!==a)return;
+  /* the setup questions, the home tour or a sheet first - then try again */
+  if(document.getElementById('as-ov')||document.getElementById('tour')||document.querySelector('.bms')){
+    if((tries||0)<40)setTimeout(function(){areaTourMaybe(a,(tries||0)+1);},1500);return;
+  }
+  areaTour(a);
+}
+function areaTour(a){
+  var N=areaTourStep(a,'n'),k=0,w=document.createElement('div');
+  w.className='tour';w.id='tour';
+  w.innerHTML='<svg><path id="tour-hole" fill-rule="evenodd"/></svg><div class="tour-c" id="tour-c"><div class="tour-r"><div class="tour-b" id="tour-b"></div>'+
+    '<div><div class="tour-t" id="tour-t"></div><div class="tour-d" id="tour-d"></div></div></div>'+
+    '<div class="tour-f"><div class="tour-dots" id="tour-dots"></div><div><button class="tour-x" id="tour-x">'+_t('דלג')+'</button>'+
+    '<button class="tour-n" id="tour-n"></button></div></div></div>';
+  document.body.appendChild(w);
+  var B=null;
+  function circ(cx,cy,r){return 'M'+(cx-r)+' '+cy+'a'+r+' '+r+' 0 1 0 '+(2*r)+' 0a'+r+' '+r+' 0 1 0 '+(-2*r)+' 0Z';}
+  function rr(x,y,ww,hh,r){r=Math.min(r,hh/2,ww/2);return 'M'+(x+r)+' '+y+'h'+(ww-2*r)+'a'+r+' '+r+' 0 0 1 '+r+' '+r+'v'+(hh-2*r)+'a'+r+' '+r+' 0 0 1 '+(-r)+' '+r+
+    'h'+(2*r-ww)+'a'+r+' '+r+' 0 0 1 '+(-r)+' '+(-r)+'v'+(2*r-hh)+'a'+r+' '+r+' 0 0 1 '+r+' '+(-r)+'Z';}
+  /* the corner Mip is the speaker wherever he is on screen */
+  function corner(){var c=document.getElementById('bhelp'),r=c&&c.getBoundingClientRect();
+    if(r&&r.width&&getComputedStyle(c).opacity!=='0')return r;
+    c=document.getElementById('rf-beem');r=c&&c.getBoundingClientRect();
+    return (r&&r.width&&r.bottom>0&&r.top<innerHeight)?r:null;}
+  function show(){
+    var st=areaTourStep(a,k);
+    while(st&&st.el&&!document.querySelector(st.el)){k++;st=areaTourStep(a,k);}
+    if(!st)return end();
+    var W=innerWidth,H=innerHeight,cr=corner(),hole='',top,e=st.el?document.querySelector(st.el):null;
+    if(e){try{e.scrollIntoView({block:'center'});}catch(er){}}
+    if(cr)hole+=circ(cr.left+cr.width/2,cr.top+cr.height/2,cr.width/2+8);
+    if(e){
+      var b=e.getBoundingClientRect(),bt=Math.max(b.top,6),bb=Math.min(b.bottom,H-6);
+      if(bb-bt>H*.42){try{window.scrollBy(0,b.top-(cr?cr.bottom+16:90));}catch(er){}b=e.getBoundingClientRect();bt=Math.max(b.top,6);bb=Math.min(bt+240,H-6);}
+      hole+=rr(b.left-6,bt-6,b.width+12,bb-bt+12,22);
+      top=(bb+16+210<H)?bb+16:Math.max(12,bt-226);
+    }else top=cr?cr.bottom+22:120;
+    document.getElementById('tour-hole').setAttribute('d','M0 0H'+W+'V'+H+'H0Z'+hole);
+    top=Math.min(top,H-230);if(cr&&top<cr.bottom+10)top=cr.bottom+10;
+    document.getElementById('tour-c').style.top=top+'px';
+    document.getElementById('tour-t').textContent=st.t;document.getElementById('tour-d').textContent=st.d;
+    var h='',i;for(i=0;i<N;i++)h+='<i'+(i===k?' class="on"':'')+'></i>';document.getElementById('tour-dots').innerHTML=h;
+    var last=!areaTourNext(k);
+    document.getElementById('tour-n').textContent=last?_t('הבנתי'):_t('הבא');
+    document.getElementById('tour-x').style.visibility=last?'hidden':'';
+    /* with the corner Mip lit, he speaks; without him (סיום יום), Mip in the card */
+    var tb=document.getElementById('tour-b');tb.style.display=cr?'none':'';
+    if(cr){try{if(_bhelp.B)_bhelp.B.play(k%2?DOOR_BEEM.nod:DOOR_BEEM.glad);}catch(er){}}
+    else if(!B)beemKit().then(function(K){B=K.mount(tb,{play:DOOR_BEEM.smile});}).catch(function(){});
+    else try{B.play(k%2?DOOR_BEEM.nod:DOOR_BEEM.glad);}catch(er){}
+  }
+  function areaTourNext(i){for(var j=i+1;j<N;j++){var x=areaTourStep(a,j);if(x&&(!x.el||document.querySelector(x.el)))return true;}return false;}
+  function hold(ev){if(document.getElementById('tour')&&!(ev.target.closest&&ev.target.closest('.tour-c'))){ev.stopPropagation();ev.preventDefault();}}
+  document.addEventListener('click',hold,true);
+  function end(){areaTourMark(a);document.removeEventListener('click',hold,true);var t=document.getElementById('tour');if(t)t.remove();}
   document.getElementById('tour-n').onclick=function(){k++;if(k>=N)end();else show();};
   document.getElementById('tour-x').onclick=end;
   show();
