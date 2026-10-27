@@ -14,7 +14,7 @@
   pe('pointerdown',ax,ay,chip);for(var k=1;k<=14;k++){pe('pointermove',ax+(bx-ax)*k/14,ay+(by-ay)*k/14,window);await w(30);}pe('pointerup',bx,by,window);await w(400);
   var it=loadDPlan(todayStr()).items.filter(function(x){return x.w==='לקנות חלב';})[0];out.push('hour '+(it&&it.h));
   // swipe the strip to the next week
-  var st=document.getElementById('plws');st.scrollLeft=st.children[2].offsetLeft-(st.clientWidth-st.children[2].offsetWidth)/2;st.dispatchEvent(new Event('scroll'));await w(500);
+  var st=document.getElementById('plws');st.scrollLeft=st.children[2].offsetLeft-(st.clientWidth-st.children[2].offsetWidth)/2;st.dispatchEvent(new Event('pointerdown'));st.scrollLeft=st.scrollLeft;st.dispatchEvent(new Event('scroll'));await w(500);
   out.push('day after swipe '+_dpDate+' (was '+todayStr()+')');
   return out.join(' | ');
 }catch(e){return 'ERR '+e.message;}})()

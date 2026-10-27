@@ -15,7 +15,7 @@ const [OUT, PAGE, WAIT = '4000'] = process.argv.slice(2);
 const args = process.argv.slice(2);
 const PORT = 8796, DBG = 9336;
 const types = { '.html': 'text/html; charset=utf-8', '.json': 'application/json', '.js': 'text/javascript',
-  '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
+  '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp4': 'video/mp4' };
 const server = http.createServer((req, res) => {
   const p = decodeURIComponent(req.url.split('?')[0]);
   const file = path.resolve(ROOT, '.' + (p.endsWith('/') ? p + 'index.html' : p));

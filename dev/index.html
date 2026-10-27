@@ -36778,13 +36778,21 @@ function planWeekStripHTML(){
    moves the day by seven and the strip re-centres on the new middle */
 function planWeekStripInit(){
   var el=document.getElementById('plws');if(!el)return;
-  var mid=el.children[1];el.scrollLeft=mid.offsetLeft-(el.clientWidth-mid.offsetWidth)/2;
-  var t=null;
-  el.addEventListener('scroll',function(){clearTimeout(t);t=setTimeout(function(){
+  var mid=el.children[1],y=window.scrollY;
+  /* centre without trusting scrollLeft's sign, and without moving the page */
+  var r0=el.getBoundingClientRect(),rm=mid.getBoundingClientRect();
+  el.style.scrollSnapType='none';el.scrollLeft+=(rm.left+rm.width/2)-(r0.left+r0.width/2);el.style.scrollSnapType='';
+  if(window.scrollY!==y)window.scrollTo(0,y);
+  var t=null,armed=false;
+  /* only a finger moves the week - a scroll the code made is not a swipe */
+  el.addEventListener('touchstart',function(){armed=true;},{passive:true});
+  el.addEventListener('pointerdown',function(){armed=true;});
+  el.addEventListener('wheel',function(){armed=true;},{passive:true});
+  el.addEventListener('scroll',function(){if(!armed)return;clearTimeout(t);t=setTimeout(function(){
     var c=el.getBoundingClientRect(),cx=c.left+c.width/2,k,best=1,bd=1e9;
     for(k=0;k<3;k++){var r=el.children[k].getBoundingClientRect(),dd=Math.abs(r.left+r.width/2-cx);if(dd<bd){bd=dd;best=k;}}
-    if(best!==1)planWeekStep(best-1);
-  },140);},{passive:true});
+    if(best!==1){armed=false;planWeekStep(best-1);}
+  },160);},{passive:true});
 }
 function planOpenDayHere(d){_dpDate=d;_dpRailOpen=false;renderPlanning();}
 function planWeekStep(n){_dpDate=wkStamp(wkDateOf(new Date(_dpDate+'T12:00:00'),n*7));renderPlanning();}
