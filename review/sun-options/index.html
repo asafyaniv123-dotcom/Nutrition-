@@ -50,6 +50,18 @@ function sun(s){
   function fill(c, id){ if (c.indexOf('g:') !== 0) return c;
     var p = c.slice(2).split(','); defs += '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + p[0] + '"/><stop offset="1" stop-color="' + p[1] + '"/></linearGradient>'; return 'url(#' + id + ')'; }
   var uid = 'u' + Math.random().toString(36).slice(2, 7), fc = fill(s.core, uid + 'c'), fr = fill(s.ray, uid + 'r');
+  /* DEPTH (27.10): the same sun, made less flat. A radial fill lit from the top-left
+     (objectBoundingBox, so each bead is lit on its own), and a filter on the group */
+  var D = s.depth, flt = '';
+  if (D){
+    var lit = {soft: ['#ffffff', '#fff3e6'], clay: ['#ffffff', '#ffe2c4'], gloss: ['#ffffff', '#f7c08f'], sphere: ['#ffffff', '#eea66f'], pearl: ['#ffffff', '#f3d6c2'], glow: ['#ffffff', '#fff1e0'], lit: ['#ffffff', '#ffe8cf'], emboss: ['#fffaf4', '#fff0e0']}[D];
+    if (lit){ defs += '<radialGradient id="' + uid + 'L" cx=".36" cy=".3" r=".8"><stop offset=".25" stop-color="' + lit[0] + '"/><stop offset="1" stop-color="' + lit[1] + '"/></radialGradient>'; fc = fr = 'url(#' + uid + 'L)'; }
+    if (D === 'shadow' || D === 'soft' || D === 'lit') flt = '<feDropShadow dx="0" dy="1.4" stdDeviation="1.3" flood-color="#7a2c00" flood-opacity=".32"/>';
+    if (D === 'clay' || D === 'gloss' || D === 'sphere' || D === 'pearl') flt = '<feDropShadow dx="0" dy="2.2" stdDeviation="1.8" flood-color="#6e2600" flood-opacity=".42"/>';
+    if (D === 'glow') flt = '<feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="b"/><feFlood flood-color="#fff3d6" flood-opacity=".85"/><feComposite in2="b" operator="in" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>';
+    if (D === 'emboss') flt = '<feOffset in="SourceAlpha" dx="0" dy="1.6" result="o"/><feGaussianBlur in="o" stdDeviation="1" result="ob"/><feComposite in="SourceAlpha" in2="ob" operator="out" result="rim"/><feFlood flood-color="#e8a070" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="r2"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="r2"/></feMerge>';
+    if (flt) defs += '<filter id="' + uid + 'F" x="-30%" y="-30%" width="160%" height="160%">' + flt + '</filter>';
+  }
   for (i = 0; i < s.n; i++){
     a = (i + s.rot)/s.n*Math.PI*2 - Math.PI/2; x = 50 + Math.cos(a)*s.r; y = 50 + Math.sin(a)*s.r;
     var deg = a*180/Math.PI + 90;
@@ -69,9 +81,15 @@ function sun(s){
       (s.dbl ? '<circle cx="50" cy="50" r="' + (s.c - cs*2.4) + '" fill="none" stroke="' + fc + '" stroke-width="' + (cs*.7) + '"/>' : '')
     : '<circle cx="50" cy="50" r="' + s.c + '" fill="' + fc + '"/>';
   var shadow = s.shadow ? '<filter id="' + uid + 's" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.6" flood-color="#8a3200" flood-opacity=".35"/></filter>' : '';
-  return '<svg viewBox="0 0 100 100"><defs>' + defs + shadow + '</defs><g' + (s.shadow ? ' filter="url(#' + uid + 's)"' : '') + ' transform="translate(50 50) scale(' + s.k + ') translate(-50 -50)">' + h + core + '</g></svg>';
+  /* gloss: a highlight on the core, where the light comes from */
+  var gloss = (D === 'gloss' || D === 'sphere') ? '<ellipse cx="' + (50 - s.c*.32) + '" cy="' + (50 - s.c*.38) + '" rx="' + (s.c*.38) + '" ry="' + (s.c*.24) + '" fill="#fff" opacity=".95" transform="rotate(-30 ' + (50 - s.c*.32) + ' ' + (50 - s.c*.38) + ')"/>' : '';
+  var gf = flt ? ' filter="url(#' + uid + 'F)"' : s.shadow ? ' filter="url(#' + uid + 's)"' : '';
+  return '<svg viewBox="0 0 100 100"><defs>' + defs + shadow + '</defs><g' + gf + ' transform="translate(50 50) scale(' + s.k + ') translate(-50 -50)">' + h + core + gloss + '</g></svg>';
 }
 var ROWS = [
+  {t: 'השמש של היום, עם עומק (27.10)', d: 'אותה שמש בדיוק, תשע נקודות, רק פחות שטוחה. מהעדין לחזק: צל בלבד, אור רך מלמעלה, אור עם צל, חומר כמו חימר, ברק, כדורים לבנים בתלת־ממד, פנינה, זוהר, ושוליים מוטבעים.', items: [
+    ['שטוחה · היום', {}, 1], ['צל בלבד', {depth: 'shadow'}], ['אור רך', {depth: 'soft'}], ['אור וצל', {depth: 'lit'}],
+    ['חימר', {depth: 'clay'}], ['ברק', {depth: 'gloss'}], ['כדורים', {depth: 'sphere'}], ['פנינה', {depth: 'pearl'}], ['זוהר', {depth: 'glow'}], ['מוטבע', {depth: 'emboss'}]]},
   {t: 'ליבה טבעת, עוד (27.10)', d: 'הכיוון שאהבת מהטלפון, ועוד: טבעת עבה או דקה, נקודה באמצע, טבעת כפולה, ו<b>חורים גם בעיגולים שמסביב</b>, קטנים או גדולים, בכולם או לסירוגין.', items: [
     ['ליבה טבעת · מה שאהבת', {coreRing: 1}], ['טבעת עבה', {coreRing: 1, cs: 7.5}], ['טבעת דקה', {coreRing: 1, cs: 3.2}], ['טבעת גדולה', {coreRing: 1, c: 23, cs: 5.4}],
     ['טבעת ונקודה באמצע', {coreRing: 1, cd: 5.5}], ['טבעת כפולה', {coreRing: 1, dbl: 1, c: 21}],
