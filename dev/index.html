@@ -1727,7 +1727,7 @@ body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
 .lp-src{visibility:hidden}
 .lp-back{position:fixed;inset:0;z-index:940;background:rgba(30,26,22,0);transition:background .22s,backdrop-filter .22s,-webkit-backdrop-filter .22s}
 .lp-back.on{background:rgba(30,26,22,.22);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
-.lp-lift{position:fixed;z-index:942;margin:0;box-sizing:border-box;pointer-events:none;
+.lp-lift{position:fixed!important;z-index:942;margin:0;box-sizing:border-box;pointer-events:none;
   transition:transform .26s cubic-bezier(.2,.9,.3,1.2),box-shadow .26s;box-shadow:0 14px 34px rgba(0,0,0,.24)}
 .lp-menu{position:fixed;z-index:945;min-width:200px;border-radius:16px;overflow:hidden;
   background:var(--nu-ground,var(--card));box-shadow:0 16px 40px rgba(0,0,0,.25);
@@ -1740,6 +1740,17 @@ body.mod-nutrition .log-sw>.log-item{margin-bottom:0}
 .lp-menu button:active{background:rgba(60,50,40,.06)}
 .lp-menu svg{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .lp-menu .lp-del{color:var(--terra-700)}
+/* a task being moved after a long press: it hangs over the board, and a day
+   lights under it */
+.pt-ghost{position:fixed;z-index:960;transform:translate(-50%,-115%) rotate(-2deg);pointer-events:none;padding:10px 16px;border-radius:14px;text-align:center;
+  box-shadow:0 14px 30px rgba(60,48,36,.3);transition:left .05s,top .05s}
+.pt-ghost b{display:block;font-size:15px;font-weight:800;white-space:nowrap}
+.pt-ghost span{display:block;font-size:11.5px;font-weight:700;opacity:.75;margin-top:2px;white-space:nowrap}
+.pt-cancel{position:fixed;z-index:961;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom));border:none;border-radius:999px;padding:11px 22px;
+  font-family:inherit;font-size:14.5px;font-weight:800;color:#4a453f;background:#f3f0eb;box-shadow:-3px -3px 9px rgba(255,255,255,.85),6px 10px 22px rgba(90,74,60,.22)}
+body.pt-moving .mo-cell[data-date],body.pt-moving .wk-cell[data-date]{transition:background .12s}
+.pt-wl{font-size:13px;font-weight:800;color:var(--nu-muted,#6d675e);margin:12px 0 2px}
+[data-ptk]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 @media (prefers-reduced-motion:reduce){.lp-lift,.lp-menu,.lp-back{transition:none}}
 /* editing in the chat's own bar */
 .co-edit{display:flex;align-items:center;gap:10px;margin:8px 4px 6px;padding:8px 12px;border-radius:12px;
@@ -15019,7 +15030,11 @@ function coachDisputeLog(d,res,text,disp){
 /* toward the inline end - the side the planning boards keep their trash on */
 function lswEndSign(){return document.documentElement.dir==='rtl'?-1:1;}
 var LP_MS=480,_lp=null;
-function lpTarget(t){return t&&t.closest?t.closest('.log-sw > .log-item, .co-u[data-ti]'):null;}
+function lpTarget(t){
+  if(!t||!t.closest)return null;
+  if(t.closest('[data-stretch],[data-mostretch]'))return null;
+  return t.closest('.log-sw > .log-item, .co-u[data-ti], [data-ptk]');
+}
 document.addEventListener('touchstart',function(e){
   /* never close the menu from here: a finger landing on "מחיקה" closed it
      before the tap could reach the button, so on the phone nothing in it
@@ -15066,7 +15081,13 @@ function lpOpen(el){
   var m=document.createElement('div');
   m.id='lp-menu';m.className='lp-menu';m.setAttribute('role','menu');
   var ic=function(d){return '<svg viewBox="0 0 24 24">'+d+'</svg>';};
-  m.innerHTML='<div class="lp-grp">'+
+  if(el.hasAttribute('data-ptk'))m.innerHTML='<div class="lp-grp">'+
+      '<button role="menuitem" onclick="lpAct(\'pdrag\')"><span>'+_t('גרירת משימה')+'</span>'+ic('<path d="M12 3v18M3 12h18"/><path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>')+'</button>'+
+      '<button role="menuitem" onclick="lpAct(\'pdates\')"><span>'+_t('תאריך התחלה וסיום')+'</span>'+ic('<rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>')+'</button>'+
+    '</div><div class="lp-grp">'+
+      '<button role="menuitem" class="lp-del" onclick="lpAct(\'pdel\')"><span>'+_t('מחיקה')+'</span>'+ic('<path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 13h9l1-13"/>')+'</button>'+
+    '</div>';
+  else m.innerHTML='<div class="lp-grp">'+
       '<button role="menuitem" onclick="lpAct(\'edit\')"><span>'+_t('עריכה')+'</span>'+ic('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>')+'</button>'+
       '<button role="menuitem" onclick="lpAct(\'copy\')"><span>'+_t('העתקה')+'</span>'+ic('<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/>')+'</button>'+
     '</div><div class="lp-grp">'+
@@ -15098,6 +15119,7 @@ function lpAct(what){
   var m=document.getElementById('lp-menu');if(!m)return;
   var el=m._el;lpClose();
   if(!el)return;
+  if(el.hasAttribute('data-ptk')){ptAct(what,el.getAttribute('data-ptk'),el.getAttribute('data-pdate'),!!el.getAttribute('data-pday'),el);return;}
   var bubble=el.classList.contains('co-u');
   if(what==='copy'){
     var txt='';
@@ -15110,6 +15132,102 @@ function lpAct(what){
     var id=el.parentNode.getAttribute('data-mid');
     if(what==='del')mealSoftDel(id);else mealEditOpen(id);
   }
+}
+/* ── A TASK ON THE BOARDS, PRESSED ──
+   Where a task lives: a week task in its week's record, or an item written on
+   one day. Found by id from the day it was pressed on. */
+function ptFind(id,date,isDay){
+  if(isDay){var dp=loadDPlan(date),i;for(i=0;i<dp.items.length;i++)if(dp.items[i].id===id)return {kind:'day',date:date,t:dp.items[i]};}
+  var k,sun;for(k=0;k<=MO_SPAN_BACK;k++){sun=wkDateOf(weekSunday(new Date(date+'T12:00:00')),-7*k);
+    var wk=loadWeek(sun),j;for(j=0;j<wk.tasks.length;j++)if(wk.tasks[j].id===id)return {kind:'week',sun:sun,t:wk.tasks[j]};}
+  return null;
+}
+/* a task to a new start (and a length): out of wherever it is, into the
+   week its new day belongs to, with what it keeps on its day */
+function ptPlace(id,date,isDay,to,len,slot){
+  var f=ptFind(id,date,isDay);if(!f)return false;
+  if(f.kind==='day'&&(len||1)<2){
+    if(to===date)return true;
+    var a=loadDPlan(date),b=loadDPlan(to),i,it=null;
+    for(i=0;i<a.items.length;i++)if(a.items[i].id===id){it=a.items.splice(i,1)[0];break;}
+    if(!it)return false;b.items.push(it);
+    if(a.rem&&a.rem[id]!==undefined){b.rem=b.rem||{};b.rem[id]=a.rem[id];delete a.rem[id];}
+    saveDPlan(date,a);saveDPlan(to,b);return true;
+  }
+  if(f.kind==='day'){dpPromote(date,id);f=ptFind(id,date,false);if(!f)return false;}
+  var from=f.t.d,old=loadWeek(f.sun),t=null,n;
+  old.tasks=old.tasks.filter(function(x){if(x.id===id){t=x;return false;}return true;});
+  if(!t)return false;
+  t.d=to;if(slot)t.s=slot;
+  if(len!==undefined){if(len>1)t.len=Math.min(len,WK_MAX_LEN);else delete t.len;}
+  var sun2=weekSunday(new Date(to+'T12:00:00'));
+  if(wkStamp(sun2)===wkStamp(f.sun)){old.tasks.push(t);saveWeek(f.sun,old);}
+  else{saveWeek(f.sun,old);n=loadWeek(sun2);n.tasks.push(t);saveWeek(sun2,n);}
+  if(from&&from!==to)dpCarry(from,to,id);
+  return true;
+}
+function ptAct(what,id,date,isDay,el){
+  if(what==='pdel'){
+    var f=ptFind(id,date,isDay);if(!f)return;
+    if(f.kind==='day'){var dp=loadDPlan(date);dp.items=dp.items.filter(function(x){return x.id!==id;});saveDPlan(date,dp);}
+    else{var wk=loadWeek(f.sun);wk.tasks=wk.tasks.filter(function(x){return x.id!==id;});saveWeek(f.sun,wk);}
+    renderPlanning();showToast(_t('נמחק'));return;
+  }
+  if(what==='pdates'){ptDates(id,date,isDay);return;}
+  if(what==='pdrag')ptDrag(id,date,isDay,el);
+}
+/* start and end, on the app's wheels */
+function ptDates(id,date,isDay){
+  var f=ptFind(id,date,isDay);if(!f)return;
+  var start=f.kind==='day'?date:f.t.d,len=f.kind==='day'?1:wkLenOf(f.t),end=wkStamp(wkDateOf(new Date(start+'T12:00:00'),len-1));
+  var y=appNow().getFullYear(),ys=[y-1,y,y+1,y+2];
+  var ov=document.createElement('div');ov.className='cf-ov fss-ov';ov.id='bw-ov';
+  ov.innerHTML='<div class="cf-card fss"><div class="cf-q" style="margin-bottom:4px">'+esc(f.t.w)+'</div>'+
+    '<div class="pt-wl">'+esc(_t('התחלה'))+'</div>'+bwHTML('pt-s',{years:ys,noAge:true})+
+    '<div class="pt-wl">'+esc(_t('סיום'))+'</div>'+bwHTML('pt-e',{years:ys,noAge:true})+
+    '<div class="tm-sv-col" style="margin-top:14px"><button class="cf-yes" id="bw-ok">'+esc(_t('שמור'))+'</button><button class="cf-no" id="bw-x">'+esc(_t('ביטול'))+'</button></div></div>';
+  document.body.appendChild(ov);bwInit('pt-s',start);bwInit('pt-e',end);
+  var close=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
+  document.getElementById('bw-x').onclick=close;ov.onclick=function(e){if(e.target===ov)close();};
+  document.getElementById('bw-ok').onclick=function(){
+    var a=bwVal('pt-s'),b=bwVal('pt-e'),n=Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000)+1;
+    if(n<1){showToast(_t('הסיום לפני ההתחלה'));return;}
+    if(n>WK_MAX_LEN){showToast(_t('עד {n} ימים',{n:WK_MAX_LEN}));return;}
+    close();ptPlace(id,date,isDay,a,n);renderPlanning();
+    showToast(n>1?_t('{n} ימים',{n:n}):_t('נשמר'));
+  };
+}
+/* the task comes up under the finger: touch anywhere and drag it to a day,
+   or tap the day */
+function ptDrag(id,date,isDay,el){
+  var f=ptFind(id,date,isDay);if(!f)return;
+  var r=el.getBoundingClientRect(),g=document.createElement('div'),c=wkColor(f.t.c);
+  g.className='pt-ghost';g.innerHTML='<b></b><span>'+esc(_t('גוררים ליום, או לוחצים עליו'))+'</span>';g.querySelector('b').textContent=f.t.w;
+  g.style.background=c.soft;g.style.color=c.ink;
+  var x=r.left+r.width/2,y=r.top+r.height/2;
+  g.style.left=x+'px';g.style.top=y+'px';
+  var x0=document.createElement('button');x0.className='pt-cancel';x0.textContent=_t('ביטול');
+  document.body.appendChild(g);document.body.appendChild(x0);document.body.classList.add('pt-moving');
+  var hot=null,live=false;
+  function cellAt(px,py){g.style.display='none';var e=document.elementFromPoint(px,py);g.style.display='';
+    return e&&e.closest?e.closest('.mo-cell[data-date],.wk-cell[data-date],.dp-slot'):null;}
+  function mark(cell){if(hot)hot.classList.remove('hot');hot=cell;if(hot)hot.classList.add('hot');}
+  function at(px,py){g.style.left=px+'px';g.style.top=py+'px';mark(cellAt(px,py));}
+  function done(){document.removeEventListener('pointerdown',down,true);window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',up,true);
+    mark(null);g.remove();x0.remove();document.body.classList.remove('pt-moving');}
+  function drop(cell){
+    var to=cell.getAttribute('data-date')||(cell.classList.contains('dp-slot')?(typeof _dpDate!=='undefined'?_dpDate:''):''),sl=cell.getAttribute('data-slot')||'';
+    done();if(!to)return;
+    var len=f.kind==='week'?wkLenOf(f.t):1;
+    if(ptPlace(id,date,isDay,to,len,sl)){renderPlanning();showToast(_t('הועבר ל{d}',{d:dfmt(new Date(to+'T12:00:00'),{weekday:'long',day:'numeric',month:'numeric'})}));}
+  }
+  function down(e){
+    if(e.target===x0){e.preventDefault();e.stopPropagation();done();return;}
+    e.preventDefault();e.stopPropagation();live=true;at(e.clientX,e.clientY);
+  }
+  function move(e){if(!live)return;e.preventDefault();e.stopPropagation();at(e.clientX,e.clientY);}
+  function up(e){if(!live)return;e.preventDefault();e.stopPropagation();live=false;var cell=cellAt(e.clientX,e.clientY);if(cell)drop(cell);}
+  setTimeout(function(){document.addEventListener('pointerdown',down,true);window.addEventListener('pointermove',move,true);window.addEventListener('pointerup',up,true);},50);
 }
 function lpCopy(txt){
   var done=function(){showToast(_t('✓ הועתק'));};
@@ -33823,7 +33941,7 @@ function wkSpanBarsHTML(tasks){
     var slot=wkSlotOf(t), stack=rows[slot]?rows[slot].indexOf(t.id):0;
     if(stack<0)stack=0;
     var c=wkColor(t.c);
-    h+='<div style="position:absolute;z-index:4;pointer-events:none;'+
+    h+='<div data-ptk="'+esc(t.id)+'" data-pdate="'+esc(t.d)+'" style="position:absolute;z-index:4;pointer-events:auto;'+
        'inset-inline-start:calc('+(ci*100/7)+'% + 3px);'+
        'inline-size:calc('+(len*100/7)+'% - 6px);'+
        'top:calc('+(band*100/3)+'% + '+(3+stack*WK_SPAN_H)+'px);'+
@@ -33917,7 +34035,7 @@ function planWeekHTML(){
         h+='<div class="wk-free"'+(_pad?' style="padding-top:'+_pad+'px"':'')+'>';
         for(t=0;t<list.length;t++){
           var cc=wkColor(list[t].c),ech=wkIsEcho(list[t],st);
-          h+='<div class="wk-chip" style="position:relative;background:'+cc.soft+';color:'+cc.ink+(ech?';opacity:.55':'')+'">'+
+          h+='<div class="wk-chip"'+(ech?'':' data-ptk="'+esc(list[t].id)+'" data-pdate="'+esc(list[t].d)+'"')+' style="position:relative;background:'+cc.soft+';color:'+cc.ink+(ech?';opacity:.55':'')+'">'+
              (ech?'<span style="opacity:.7">&#8635; </span>':'')+esc(list[t].w)+
              /* the same grab point a bar has, so a one-day task can become a
                 longer one without first being something else */
@@ -33936,7 +34054,7 @@ function planWeekHTML(){
         h+='<div class="wk-timed">';
         for(t=0;t<dl.length;t++){
           var p=dl[t],dc=wkColor(p.c),up=p.ct?2:0,dn=p.cb?2:0;
-          h+='<div class="wk-blk'+(p.ct?' ct':'')+(p.cb?' cb':'')+'" style="'+
+          h+='<div class="wk-blk'+(p.ct?' ct':'')+(p.cb?' cb':'')+'"'+((p.src==='day'||p.src==='week')?' data-ptk="'+esc(p.id)+'" data-pdate="'+st+'"'+(p.src==='day'?' data-pday="1"':''):'')+' style="'+
              'top:calc('+p.top.toFixed(2)+'% - '+up+'px);'+
              'height:calc('+p.hgt.toFixed(2)+'% + '+(up+dn)+'px);'+
              'background:'+dc.soft+';color:'+dc.ink+'">';
@@ -36231,6 +36349,7 @@ function moPlaceSpans(){
         soft=src.getAttribute('data-spansoft')||'';
     var bar=document.createElement('div');
     bar.className='mo-span';
+    bar.setAttribute('data-ptk',id);bar.setAttribute('data-pdate',src.getAttribute('data-spanstart')||'');
     /* the run's colour, for whatever the stylesheet wants to do with it - the
        seam at its start, the handle at its end. Assigned to the label inline,
        as it was, no stylesheet could reach it. */
@@ -36367,7 +36486,7 @@ function planMonthHTML(){
            one without first having to be one somewhere else. */
         /* the one difference left is not a look: this one can be dragged
            longer, and the grab point needs room at its end */
-        h+='<div class="mo-chip mo-grabs'+(_moSel===wt[t].id?' mo-chip-sel':'')+'"'+
+        h+='<div class="mo-chip mo-grabs'+(_moSel===wt[t].id?' mo-chip-sel':'')+'" data-ptk="'+esc(wt[t].id)+'" data-pdate="'+esc(wt[t].d)+'"'+
            ' onclick="event.stopPropagation();moSelOpen(&quot;'+esc(wt[t].id)+'&quot;)"'+
            ' style="background:'+wc.soft+';color:'+wc.ink+'">'+esc(wt[t].w)+
            '<div data-mostretch="'+esc(wt[t].id)+'" data-mostart="'+esc(wt[t].d)+'"'+
@@ -36384,7 +36503,7 @@ function planMonthHTML(){
     for(t=0;t<di.length;t++){
       if(shown>=MO_CELL_MAX){extra+=di.length-t;break;}
       var dc=wkColor(di[t].c);
-      h+='<div class="mo-chip mo-grabs" style="background:'+dc.soft+';color:'+dc.ink+'">'+esc(di[t].w)+
+      h+='<div class="mo-chip mo-grabs" data-ptk="'+esc(di[t].id)+'" data-pdate="'+st+'" data-pday="1" style="background:'+dc.soft+';color:'+dc.ink+'">'+esc(di[t].w)+
          '<div data-mostretch="'+esc(di[t].id)+'" data-mostart="'+st+'" data-moday="1"'+
          ' data-mosun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
          ' style="position:absolute;inset-inline-end:-10px;top:50%;margin-top:-14px;width:28px;height:28px;z-index:2;'+
