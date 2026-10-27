@@ -54,13 +54,19 @@ function sun(s){
      (objectBoundingBox, so each bead is lit on its own), and a filter on the group */
   var D = s.depth, flt = '';
   if (D){
-    var lit = {soft: ['#ffffff', '#fff3e6'], clay: ['#ffffff', '#ffe2c4'], gloss: ['#ffffff', '#f7c08f'], sphere: ['#ffffff', '#eea66f'], pearl: ['#ffffff', '#f3d6c2'], glow: ['#ffffff', '#fff1e0'], lit: ['#ffffff', '#ffe8cf'], emboss: ['#fffaf4', '#fff0e0'], eg: ['#fffaf4', '#fff0e0']}[D];
+    var lit = {soft: ['#ffffff', '#fff3e6'], clay: ['#ffffff', '#ffe2c4'], gloss: ['#ffffff', '#f7c08f'], sphere: ['#ffffff', '#eea66f'], pearl: ['#ffffff', '#f3d6c2'], glow: ['#ffffff', '#fff1e0'], lit: ['#ffffff', '#ffe8cf'], emboss: ['#fffaf4', '#fff0e0'], eg: ['#fffaf4', '#fff0e0'], inv: s.flat ? ['#ff7a1a', '#ff7a1a'] : ['#ffa24a', '#e8590c']}[D];
     if (lit){ defs += '<radialGradient id="' + uid + 'L" cx=".36" cy=".3" r=".8"><stop offset=".25" stop-color="' + lit[0] + '"/><stop offset="1" stop-color="' + lit[1] + '"/></radialGradient>'; fc = fr = 'url(#' + uid + 'L)'; }
     if (D === 'shadow' || D === 'soft' || D === 'lit') flt = '<feDropShadow dx="0" dy="1.4" stdDeviation="1.3" flood-color="#7a2c00" flood-opacity=".32"/>';
     if (D === 'clay' || D === 'gloss' || D === 'sphere' || D === 'pearl') flt = '<feDropShadow dx="0" dy="2.2" stdDeviation="1.8" flood-color="#6e2600" flood-opacity=".42"/>';
     if (D === 'glow') flt = '<feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="b"/><feFlood flood-color="#fff3d6" flood-opacity=".85"/><feComposite in2="b" operator="in" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>';
     if (D === 'emboss') flt = '<feOffset in="SourceAlpha" dx="0" dy="1.6" result="o"/><feGaussianBlur in="o" stdDeviation="1" result="ob"/><feComposite in="SourceAlpha" in2="ob" operator="out" result="rim"/><feFlood flood-color="#e8a070" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="r2"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="r2"/></feMerge>';
     /* eg: the embossed rim on top of a glow; s.gl is how strong the glow is (0..1) */
+    /* inv: the same emboss and glow, turned for an orange sun on white - the rim
+       a deeper orange, the glow the sunrise's light */
+    if (D === 'inv'){ var gi = s.gl == null ? .2 : s.gl;
+      flt = '<feGaussianBlur in="SourceAlpha" stdDeviation="' + (1.2 + 2.6*gi).toFixed(2) + '" result="b"/><feFlood flood-color="#ffb35c" flood-opacity="' + (.3 + .5*gi).toFixed(2) + '"/><feComposite in2="b" operator="in" result="g"/>' +
+        '<feOffset in="SourceAlpha" dx="0" dy="1.6" result="o"/><feGaussianBlur in="o" stdDeviation="1" result="ob"/><feComposite in="SourceAlpha" in2="ob" operator="out" result="rim"/><feFlood flood-color="#a8400a" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="r2"/>' +
+        '<feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/><feMergeNode in="r2"/></feMerge>'; }
     if (D === 'eg'){ var gl = s.gl == null ? .5 : s.gl;
       flt = '<feGaussianBlur in="SourceAlpha" stdDeviation="' + (1.2 + 2.6*gl).toFixed(2) + '" result="b"/><feFlood flood-color="#fff3d6" flood-opacity="' + (.35 + .55*gl).toFixed(2) + '"/><feComposite in2="b" operator="in" result="g"/>' +
         '<feOffset in="SourceAlpha" dx="0" dy="1.6" result="o"/><feGaussianBlur in="o" stdDeviation="1" result="ob"/><feComposite in="SourceAlpha" in2="ob" operator="out" result="rim"/><feFlood flood-color="#e8a070" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="r2"/>' +
@@ -91,7 +97,17 @@ function sun(s){
   var gf = flt ? ' filter="url(#' + uid + 'F)"' : s.shadow ? ' filter="url(#' + uid + 's)"' : '';
   return '<svg viewBox="0 0 100 100"><defs>' + defs + shadow + '</defs><g' + gf + ' transform="translate(50 50) scale(' + s.k + ') translate(-50 -50)">' + h + core + gloss + '</g></svg>';
 }
+/* the white of today's sun, as a ground: lit from the top-left like each bead is */
+var WHITE_GROUND = 'radial-gradient(120% 100% at 36% 22%,#fffdf9 0%,#fffaf4 35%,#fff0e0 100%)';
 var ROWS = [
+  {t: 'הפוך: שמש כתומה על לבן (27.10)', d: 'השמש כתומה, מוטבעת וזוהרת, ומסביב הלבן של השמש של היום. הראשון הוא בדיוק ההיפוך; האחרים משנים דבר אחד.', items: [
+    ['ההיפוך', {depth: 'inv', gl: .2, k: .98, bg: WHITE_GROUND}],
+    ['כתום אחיד במקום זריחה', {depth: 'inv', gl: .2, k: .98, flat: 1, bg: WHITE_GROUND}],
+    ['זוהר בינוני', {depth: 'inv', gl: .5, k: .98, bg: WHITE_GROUND}],
+    ['רקע לבן נקי', {depth: 'inv', gl: .2, k: .98, bg: '#ffffff'}],
+    ['רקע שמנת', {depth: 'inv', gl: .2, k: .98, bg: '#fbf6ee'}],
+    ['שמש קטנה יותר', {depth: 'inv', gl: .2, k: .9, bg: WHITE_GROUND}],
+    ['והמקור, להשוואה', {depth: 'eg', gl: .2, k: .98}]]},
   {t: 'מוטבע, עם זוהר (27.10)', d: 'השוליים המוטבעים שאהבת, ומתחת להם זוהר חם שיוצא אל הכתום. בשלוש עוצמות, ולידן המוטבע לבד.', items: [
     ['מוטבע · מה שאהבת', {depth: 'emboss'}], ['זוהר קל', {depth: 'eg', gl: .2}], ['זוהר בינוני', {depth: 'eg', gl: .5}], ['זוהר חזק', {depth: 'eg', gl: .9}],
     ['זוהר בינוני, שמש גדולה', {depth: 'eg', gl: .5, k: .98}]]},
@@ -121,7 +137,9 @@ var ROWS = [
 document.getElementById('out').innerHTML = ROWS.map(function(r){
   return '<section><h2>' + r.t + '</h2><p>' + r.d + '</p><div class="row">' + r.items.map(function(it){
     var s = sun(V(it[1]));
-    return '<figure' + (it[2] ? ' class="now"' : '') + '><div class="ic">' + s + '</div><div class="mini">' + s + '</div><figcaption>' + it[0] + (it[2] ? ' <span class="tagnow">היום</span>' : '') + '</figcaption></figure>';
+    /* a light icon on a light card needs its edge drawn, as a phone's wallpaper would */
+    var bg = it[1].bg ? ' style="background:' + it[1].bg + ';box-shadow:0 0 0 1px rgba(80,50,20,.08),0 3px 10px rgba(80,50,20,.14)"' : '';
+    return '<figure' + (it[2] ? ' class="now"' : '') + '><div class="ic"' + bg + '>' + s + '</div><div class="mini"' + bg + '>' + s + '</div><figcaption>' + it[0] + (it[2] ? ' <span class="tagnow">היום</span>' : '') + '</figcaption></figure>';
   }).join('') + '</div></section>';
 }).join('');
 </script>
