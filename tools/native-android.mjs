@@ -1,5 +1,6 @@
-/* The Android shell, dressed: Mip's icon (brand/android-*.png, rendered from
- * the App Store icon by tools/android-icons.html), the cream behind it and
+/* The Android shell, dressed: the sunrise icon (27.10: brand/android-foreground-432.png
+ * is the gradient full-bleed with the white sun inside the safe zone, so the
+ * orange behind it only shows if a launcher ever lets it), the cream
  * behind the splash, a one-colour notification icon (Android paints a small
  * icon white, so a coloured one becomes a white square), and release signing
  * read from the environment Codemagic provides. Run after `npx cap add
@@ -9,17 +10,17 @@
  *   (with the JSON, first writes brand/android-*.png from it) */
 import fs from 'fs';
 import path from 'path';
-const R = 'native/android/app/src/main/res', CREAM = '#f9eedf', SPLASH = '#ece3d4';
+const R = 'native/android/app/src/main/res', CREAM = '#ff7a1a', SPLASH = '#ece3d4';
 const j = process.argv[2] ? JSON.parse(fs.readFileSync(process.argv[2], 'utf8')) : null;
-if (j) for (const [k, f] of [['fg', 'android-fg-mip-432.png'], ['sq', 'android-legacy-mip-192.png'], ['round', 'android-round-mip-192.png']])
+if (j) for (const [k, f] of [['fg', 'android-foreground-432.png'], ['sq', 'android-legacy-192.png'], ['round', 'android-round-192.png']])
   fs.writeFileSync('brand/' + f, Buffer.from(j[k].split(',')[1], 'base64'));
 if (!fs.existsSync(R)) { console.log('no Android project - run `cd native && npx cap add android` first'); process.exit(1); }
 /* icons: one density, the largest; Android scales down */
 for (const d of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'])
   for (const f of ['ic_launcher.png', 'ic_launcher_round.png', 'ic_launcher_foreground.png']) { const p = `${R}/mipmap-${d}/${f}`; if (fs.existsSync(p)) fs.unlinkSync(p); }
-fs.copyFileSync('brand/android-fg-mip-432.png', `${R}/mipmap-xxxhdpi/ic_launcher_foreground.png`);
-fs.copyFileSync('brand/android-legacy-mip-192.png', `${R}/mipmap-xxxhdpi/ic_launcher.png`);
-fs.copyFileSync('brand/android-round-mip-192.png', `${R}/mipmap-xxxhdpi/ic_launcher_round.png`);
+fs.copyFileSync('brand/android-foreground-432.png', `${R}/mipmap-xxxhdpi/ic_launcher_foreground.png`);
+fs.copyFileSync('brand/android-legacy-192.png', `${R}/mipmap-xxxhdpi/ic_launcher.png`);
+fs.copyFileSync('brand/android-round-192.png', `${R}/mipmap-xxxhdpi/ic_launcher_round.png`);
 fs.writeFileSync(`${R}/values/ic_launcher_background.xml`, `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">${CREAM}</color>\n    <color name="olimei_ground">${SPLASH}</color>\n</resources>\n`);
 fs.writeFileSync(`${R}/mipmap-anydpi-v26/ic_launcher_round.xml`, fs.readFileSync(`${R}/mipmap-anydpi-v26/ic_launcher.xml`));
 /* the splash: the app's own ground, nothing on it - the app draws its own */
