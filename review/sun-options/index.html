@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Olimei · השמש</title>
+<!--
+  THE SUN ITSELF (27.10). Asaf kept the sunrise ground and asked for more
+  colours and proportions for the sun on it. Every tile is drawn from the same
+  five numbers the shipped sun is made of (n, core, bead, orbit, rotation),
+  changed one family at a time against today's, so each row answers one
+  question. Each tile also shows at home-screen size beneath it, because the
+  differences that matter at 60pt are not the ones that show at 160.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#2e2925;--muted:#675f57;--line:rgba(80,70,60,.16);--card:#fffdf9;
+    --rise:radial-gradient(120% 100% at 50% 15%,#ffb35c 0%,#ff7a1a 55%,#e8590c 100%)}
+  *{box-sizing:border-box;margin:0}
+  body{background:#efebe5;color:var(--ink);font:400 15px/1.6 Assistant,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px max(16px,env(safe-area-inset-right)) 90px max(16px,env(safe-area-inset-left))}
+  h1{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .lede{color:var(--muted);margin-top:10px;max-width:70ch}
+  section{margin-top:40px;padding-top:16px;border-top:2px solid var(--ink)}
+  h2{font-size:22px;font-weight:800}
+  section>p{color:var(--muted);margin-top:4px;max-width:80ch;font-size:14px}
+  .row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:14px}
+  figure{background:var(--card);border-radius:18px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:9px;box-shadow:0 1px 3px rgba(60,40,20,.08)}
+  figure.now{box-shadow:0 0 0 2.5px var(--ink)}
+  .ic{width:100%;aspect-ratio:1;border-radius:22.5%;background:var(--rise);overflow:hidden}
+  .ic svg,.mini svg{width:100%;height:100%;display:block}
+  .mini{width:44px;height:44px;border-radius:10px;background:var(--rise);overflow:hidden}
+  figcaption{font-size:13px;font-weight:800;text-align:center;line-height:1.35}
+  figcaption small{display:block;font-weight:600;color:var(--muted);font-size:11.5px}
+  .tagnow{font-size:10.5px;font-weight:800;background:var(--ink);color:#fff;border-radius:6px;padding:0 6px}
+</style>
+<div class="wrap">
+  <h1>השמש</h1>
+  <div class="lede">הרקע נשאר הזריחה. כאן משתנה רק השמש: צבע, מידות, כמה נקודות, וצורת הקרניים. כל שורה משנה דבר אחד לעומת השמש של היום (המסומנת), ומתחת לכל אחת היא בגודל של מסך הבית.</div>
+  <div id="out"></div>
+</div>
+<script>
+/* today's sun: the five numbers of brand/index.html, at 90% of the icon */
+var NOW = {n: 9, c: 19.5, d: 5.6, r: 33, rot: .5, k: .9, core: '#ffffff', ray: '#ffffff', shape: 'dot'};
+function V(o){ var x = {}, k; for (k in NOW) x[k] = NOW[k]; for (k in o) x[k] = o[k]; return x; }
+function sun(s){
+  var h = '', i, a, x, y, defs = '';
+  /* a fill may be a gradient: 'g:<top>,<bottom>' */
+  function fill(c, id){ if (c.indexOf('g:') !== 0) return c;
+    var p = c.slice(2).split(','); defs += '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + p[0] + '"/><stop offset="1" stop-color="' + p[1] + '"/></linearGradient>'; return 'url(#' + id + ')'; }
+  var uid = 'u' + Math.random().toString(36).slice(2, 7), fc = fill(s.core, uid + 'c'), fr = fill(s.ray, uid + 'r');
+  for (i = 0; i < s.n; i++){
+    a = (i + s.rot)/s.n*Math.PI*2 - Math.PI/2; x = 50 + Math.cos(a)*s.r; y = 50 + Math.sin(a)*s.r;
+    var deg = a*180/Math.PI + 90;
+    if (s.shape === 'dot') h += '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' + s.d + '" fill="' + fr + '"/>';
+    else if (s.shape === 'cap') h += '<rect x="' + (x - s.d*.8).toFixed(2) + '" y="' + (y - s.d*1.7).toFixed(2) + '" width="' + (s.d*1.6).toFixed(2) + '" height="' + (s.d*3.4).toFixed(2) + '" rx="' + (s.d*.8).toFixed(2) + '" fill="' + fr + '" transform="rotate(' + deg.toFixed(1) + ' ' + x.toFixed(2) + ' ' + y.toFixed(2) + ')"/>';
+    else if (s.shape === 'petal') h += '<path d="M' + x.toFixed(2) + ' ' + (y - s.d*2).toFixed(2) + ' Q' + (x + s.d*1.15).toFixed(2) + ' ' + y.toFixed(2) + ' ' + x.toFixed(2) + ' ' + (y + s.d*1.5).toFixed(2) + ' Q' + (x - s.d*1.15).toFixed(2) + ' ' + y.toFixed(2) + ' ' + x.toFixed(2) + ' ' + (y - s.d*2).toFixed(2) + 'Z" fill="' + fr + '" transform="rotate(' + deg.toFixed(1) + ' ' + x.toFixed(2) + ' ' + y.toFixed(2) + ')"/>';
+    else if (s.shape === 'grad'){ var t = Math.abs(((i + s.rot)/s.n) - .5)*2; /* bigger at the bottom, smaller toward the top gap */
+      h += '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' + (s.d*(.6 + .65*(1 - t))).toFixed(2) + '" fill="' + fr + '"/>'; }
+    else if (s.shape === 'ring') h += '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' + (s.d*.82) + '" fill="none" stroke="' + fr + '" stroke-width="' + (s.d*.55) + '"/>';
+  }
+  var core = s.coreRing ? '<circle cx="50" cy="50" r="' + (s.c - 2.4) + '" fill="none" stroke="' + fc + '" stroke-width="4.8"/>' : '<circle cx="50" cy="50" r="' + s.c + '" fill="' + fc + '"/>';
+  var shadow = s.shadow ? '<filter id="' + uid + 's" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.6" flood-color="#8a3200" flood-opacity=".35"/></filter>' : '';
+  return '<svg viewBox="0 0 100 100"><defs>' + defs + shadow + '</defs><g' + (s.shadow ? ' filter="url(#' + uid + 's)"' : '') + ' transform="translate(50 50) scale(' + s.k + ') translate(-50 -50)">' + h + core + '</g></svg>';
+}
+var ROWS = [
+  {t: 'צבע', d: 'אותה שמש, בגווני לבן ושמנת, בשני צבעים, ובמעבר עדין.', items: [
+    ['היום · לבן', {}, 1], ['שנהב', {core: '#faf9f5', ray: '#faf9f5'}], ['שמנת', {core: '#fff1de', ray: '#fff1de'}],
+    ['צהוב חיוור', {core: '#fff3c4', ray: '#fff3c4'}], ['ליבה לבנה, נקודות צהובות', {ray: '#ffe08a'}], ['ליבה צהובה, נקודות לבנות', {core: '#ffe08a'}],
+    ['מעבר לבן לשמנת', {core: 'g:#ffffff,#ffe2b8', ray: 'g:#ffffff,#ffe2b8'}], ['עם צל רך', {shadow: 1}]]},
+  {t: 'מידות', d: 'ליבה גדולה או קטנה, נקודות גדולות או קטנות, ומסלול צפוף או רחב.', items: [
+    ['היום', {}, 1], ['ליבה גדולה', {c: 24}], ['ליבה קטנה', {c: 15}], ['נקודות גדולות', {d: 7.2}],
+    ['נקודות קטנות', {d: 4.2}], ['מסלול צפוף', {r: 29, d: 5}], ['מסלול רחב', {r: 37}], ['כולה גדולה', {k: 1.02}]]},
+  {t: 'כמה נקודות', d: 'תשע הן האזורים של האפליקציה. כאן עוד כמה, לראות איך זה מרגיש.', items: [
+    ['7', {n: 7, d: 6.2}], ['8', {n: 8, d: 5.9, rot: .5}], ['9 · היום', {}, 1], ['10', {n: 10, d: 5.2}], ['12', {n: 12, d: 4.5, rot: .5}], ['16, דקות', {n: 16, d: 3.2}]]},
+  {t: 'צורת הקרניים', d: 'נקודות, כמוסות, עלי כותרת, נקודות שגדלות לכיוון התחתית, וטבעות.', items: [
+    ['נקודות · היום', {}, 1], ['כמוסות', {shape: 'cap', d: 4.4}], ['עלי כותרת', {shape: 'petal', d: 4.6}],
+    ['נקודות בגדלים', {shape: 'grad'}], ['טבעות', {shape: 'ring'}], ['ליבה טבעת', {coreRing: 1}], ['כמוסות עם ליבה גדולה', {shape: 'cap', d: 4.4, c: 23}]]}
+];
+document.getElementById('out').innerHTML = ROWS.map(function(r){
+  return '<section><h2>' + r.t + '</h2><p>' + r.d + '</p><div class="row">' + r.items.map(function(it){
+    var s = sun(V(it[1]));
+    return '<figure' + (it[2] ? ' class="now"' : '') + '><div class="ic">' + s + '</div><div class="mini">' + s + '</div><figcaption>' + it[0] + (it[2] ? ' <span class="tagnow">היום</span>' : '') + '</figcaption></figure>';
+  }).join('') + '</div></section>';
+}).join('');
+</script>
+</html>
