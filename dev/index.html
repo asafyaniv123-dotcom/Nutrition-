@@ -9991,6 +9991,33 @@ html body #me-screen.me-screen{padding-top:calc(34px + env(safe-area-inset-top))
 /* the grab point that stretches a task, findable (27.10) */
 html body.mod-planning .mo-grip{width:11px;height:11px;border-radius:50%;background:#f0a92e;opacity:1;box-shadow:0 0 0 2.5px rgba(255,255,255,.95),0 1px 3px rgba(90,70,40,.3)}
 html body.mod-planning .mo-grabs{padding-inline-end:16px}
+/* the open day, under the week and the month (27.10) */
+html body.mod-planning .wk-open,.pod{position:relative;margin-top:16px;border-radius:24px;padding:16px;background:var(--nu-ground,#e9e7e3);
+  box-shadow:-5px -5px 12px var(--nu-lit,rgba(255,255,255,.95)),7px 9px 20px var(--nu-shade-soft,rgba(168,160,148,.3))}
+.pod-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.pod-t{font-size:16px;font-weight:800;color:var(--nu-ink,#4a453f)}
+.pod-x{border:none;border-radius:999px;padding:7px 14px;font:700 13px/1 inherit;color:var(--nu-muted,#6d675e);cursor:pointer;background:var(--nu-ground,#e9e7e3);
+  box-shadow:-2px -2px 5px var(--nu-lit,rgba(255,255,255,.95)),3px 3px 7px var(--nu-shade-soft,rgba(168,160,148,.3))}
+.pod-go{position:relative;width:100%;display:flex;align-items:center;gap:12px;border:none;border-radius:18px;padding:12px 14px;margin-bottom:12px;cursor:pointer;
+  text-align:start;font-family:inherit;color:var(--nu-ink,#4a453f);background:var(--nu-ground,#e9e7e3);
+  box-shadow:-4px -4px 10px var(--nu-lit,rgba(255,255,255,.95)),5px 7px 14px var(--nu-shade,rgba(168,160,148,.45))}
+.pod-go::after{content:"";position:absolute;left:50%;transform:translateX(-50%);width:54px;bottom:-5px;height:2px;border-radius:2px;background:var(--nu-amber,#f0a92e)}
+.pod-go i{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(168,160,148,.45)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+.pod-go svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pod-go b{flex:1;font-size:15px;font-weight:800}
+.pod-e{font-size:14px;color:var(--nu-muted,#6d675e);line-height:1.6;margin-bottom:10px}
+.pod-r{display:flex;align-items:center;gap:10px;padding:10px 2px}
+.pod-r+.pod-r{border-top:1px solid rgba(168,160,148,.22)}
+.pod-d{width:9px;height:9px;border-radius:50%;flex:none}
+.pod-w{flex:1;min-width:0;font-size:15px;font-weight:700;color:var(--nu-ink,#4a453f)}
+.pod-c{font-size:13px;font-weight:700;color:var(--nu-muted,#6d675e);font-variant-numeric:tabular-nums}
+.pod-s{font-size:12px;color:var(--nu-muted,#6d675e)}
+.pod-del{flex:none;width:30px;height:30px;border:none;border-radius:50%;font-size:17px;line-height:1;color:var(--nu-muted,#6d675e);cursor:pointer;background:var(--nu-ground,#e9e7e3);
+  box-shadow:-2px -2px 5px var(--nu-lit,rgba(255,255,255,.95)),3px 3px 7px var(--nu-shade-soft,rgba(168,160,148,.3))}
+html body.mod-planning .mo-chip.mo-grabs{position:relative;overflow:visible}
+.wk-blk-g{position:absolute;inset-inline-end:-12px;top:-2px;width:28px;height:28px;z-index:3;pointer-events:auto;cursor:ew-resize;touch-action:none;display:flex;align-items:center;justify-content:center}
+html body.mod-planning .wk-blk{overflow:visible}
 html body.mod-planning .mo-grab-e{background:#f0a92e!important;width:11px;height:11px;box-shadow:0 0 0 2.5px rgba(255,255,255,.95),0 1px 3px rgba(90,70,40,.3)}
 /* the day board's + in the material */
 .dp-plus{flex:none;width:46px;min-height:44px;border:none;border-radius:14px;cursor:pointer;font:700 22px/1 inherit;color:var(--nu-ink,#4a453f);
@@ -33921,6 +33948,10 @@ function planWeekHTML(){
           if(!p.ct){
             if(p.hgt<22)h+=esc(p.w);
             else h+='<span class="wk-t">'+dpHM(p.h,p.mn)+(p.e?'&ndash;'+dpFmt(p.e):'')+'</span>'+esc(p.w);
+            /* the bead that stretches it, on the piece that starts it */
+            if(p.src==='day'||p.src==='week')
+              h+='<div data-stretch="'+esc(p.id)+'"'+(p.src==='day'?' data-stday="'+st+'"':'')+' class="wk-blk-g">'+
+                 '<div class="mo-grip"></div></div>';
           }
           h+='</div>';
         }
@@ -33941,14 +33972,9 @@ function planWeekHTML(){
        arithmetic runs from the right. */
     h+='<div class="wk-open">';
     h+='<div class="wk-point" id="wk-point"></div>';
-    h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
-    h+='<div style="font-size:12.5px;font-weight:800;color:var(--ink)">'+WK_DAYS[_wkOpen]+' &middot; '+wkShort(od)+'</div>';
-    h+='<button onclick="wkOpen('+_wkOpen+')" style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">'+_t('סגור')+'</button></div>';
-    h+='<button onclick="planOpenDay(\''+ost+'\')" style="width:100%;display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--water-100),#d6ebf7);border:none;border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;text-align:start;font-family:inherit">';
-    h+='<div style="width:32px;height:32px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--water-700);flex-shrink:0">';
-    h+='<svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 2"/></svg></div>';
-    h+='<div style="flex:1;font-size:12.5px;font-weight:800;color:#2f5a73">'+_t('תכנן את היום הזה לפי שעות')+'</div>';
-    h+='<div style="font-size:14px;color:#8fbdd8">&#8250;</div></button>';
+    h+='<div class="pod-h"><div class="pod-t">'+WK_DAYS[_wkOpen]+' &middot; '+wkShort(od)+'</div>';
+    h+='<button class="pod-x" onclick="wkOpen('+_wkOpen+')">'+_t('סגור')+'</button></div>';
+    h+='<button class="pod-go" onclick="planOpenDay(\''+ost+'\')"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 2"/></svg></i><b>'+_t('תכנן את היום הזה לפי שעות')+'</b></button>';
     var anyDay=false;
     for(j=0;j<3;j++){
       var dl=wkIn(wk.tasks,ost,WK_SLOTS[j][0]);
@@ -34081,6 +34107,7 @@ function wkDown(e){
      because the handle sits inside the thing that would otherwise be dragged. */
   var gh=e.target.closest?e.target.closest('[data-stretch]'):null;
   if(gh){
+    if(gh.getAttribute('data-stday'))dpPromote(gh.getAttribute('data-stday'),gh.getAttribute('data-stretch'));
     var sid=gh.getAttribute('data-stretch'),wk=loadWeek(_wkSun),st=null,q;
     for(q=0;q<wk.tasks.length;q++)if(wk.tasks[q].id===sid)st=wk.tasks[q];
     if(!st||!st.d)return;
@@ -36022,6 +36049,21 @@ function wkSpanEdge(t,date){
    rather than pushed down from a week or a month. dpAll would answer this too
    but it reloads the week and the month on every call, and a month grid asks
    thirty-one times. */
+/* A DAY ITEM BECOMES A WEEK TASK, so it can run across days. Same id, so
+   its reminder (dp.rem) and anything keyed by it keep working; its hour, end
+   and note move to where a week task keeps them on its day. */
+function dpPromote(date,id){
+  var dp=loadDPlan(date),i,it=null;
+  for(i=0;i<dp.items.length;i++)if(dp.items[i].id===id){it=dp.items.splice(i,1)[0];break;}
+  if(!it)return false;
+  var sun=weekSunday(new Date(date+'T12:00:00')),wk=loadWeek(sun),h=typeof it.h==='number'?it.h:null,slot='m',j;
+  if(h!==null)for(j=0;j<WK_SLOTS.length;j++)if(h>=WK_SLOTS[j][3]&&h<WK_SLOTS[j][4])slot=WK_SLOTS[j][0];
+  wk.tasks.push({id:id,w:it.w,c:it.c||'lav',d:date,s:slot});
+  if(h!==null){dp.hours=dp.hours||{};dp.hours[id]=h;if(it.mn){dp.mins=dp.mins||{};dp.mins[id]=it.mn;}if(it.e){dp.ends=dp.ends||{};dp.ends[id]=it.e;}}
+  if(it.n){dp.notes=dp.notes||{};dp.notes[id]=it.n;}
+  saveDPlan(date,dp);saveWeek(sun,wk);
+  return true;
+}
 function moDayItemsOn(date){
   var dp=null;try{dp=loadDPlan(date);}catch(e){}
   return (dp&&dp.items)||[];
@@ -36081,27 +36123,27 @@ function moDayDel(id){
 function moDayPanelHTML(){
   if(!_moOpen)return '';
   var all=dpAll(_moOpen),i,h='';
-  h+='<div style="background:var(--card);border-radius:18px;padding:14px;margin-top:14px;box-shadow:0 4px 18px rgba(200,180,160,.12)">';
-  h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">';
-  h+='<div style="font-size:13px;font-weight:800;color:var(--ink)">'+fmtDate(_moOpen)+'</div>';
-  h+='<button onclick="moOpenDay(\''+_moOpen+'\')" style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">'+_t('סגור')+'</button></div>';
-  if(!all.length)h+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;margin-bottom:10px">'+_t('אין כאן כלום עדיין.')+'</div>';
+  h+='<div class="pod">';
+  h+='<div class="pod-h">';
+  h+='<div class="pod-t">'+fmtDate(_moOpen)+'</div>';
+  h+='<button class="pod-x" onclick="moOpenDay(\''+_moOpen+'\')">'+_t('סגור')+'</button></div>';
+  if(!all.length)h+='<div class="pod-e">'+_t('אין כאן כלום עדיין.')+'</div>';
   for(i=0;i<all.length;i++){
     var it=all[i],c=wkColor(it.c);
-    h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--line)">';
-    h+='<span style="width:7px;height:7px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span>';
-    h+='<span style="flex:1;min-width:0;font-size:12.5px;color:var(--ink)">'+esc(it.w)+'</span>';
+    h+='<div class="pod-r">';
+    h+='<span class="pod-d" style="background:'+c.dot+'"></span>';
+    h+='<span class="pod-w">'+esc(it.w)+'</span>';
     if(it.hour!==null&&it.hour!==undefined)
-      h+='<span style="font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums">'+dpClock(it.hour,it.min)+'</span>';
-    h+='<span style="font-size:9px;color:var(--muted-soft);flex-shrink:0">'+(it.src==='week'?''+_t('מהשבוע')+'':it.src==='month'?''+_t('מהחודש')+'':'')+'</span>';
-    if(it.src==='day')h+='<button onclick="moDayDel(\''+it.id+'\')" style="background:none;border:none;color:var(--terra-700);font-size:15px;cursor:pointer;font-family:inherit;padding:0 2px">&times;</button>';
+      h+='<span class="pod-c">'+dpClock(it.hour,it.min)+'</span>';
+    if(it.src==='week'||it.src==='month')h+='<span class="pod-s">'+(it.src==='week'?_t('מהשבוע'):_t('מהחודש'))+'</span>';
+    if(it.src==='day')h+='<button class="pod-del" onclick="moDayDel(\''+it.id+'\')" aria-label="'+esc(_t('מחק'))+'">&times;</button>';
     h+='</div>';
   }
   /* THE FIFTH BOX IS GONE. Writing here wrote into the day store, which is a
      third owner reached from the month - the shape this whole change exists
      to remove. What this day holds is read here; what it should hold is
      written in the one strip above, or by the hour on the day board. */
-  h+='<button onclick="planOpenDay(\''+_moOpen+'\')" style="width:100%;margin-top:10px;background:var(--surface);border:none;border-radius:12px;padding:9px;font-size:11.5px;color:var(--ink-soft);cursor:pointer;font-family:inherit">'+_t('לתכנן את היום הזה לפי שעות')+' &#8250;</button>';
+  h+='<button class="pod-go" style="margin-top:12px" onclick="planOpenDay(\''+_moOpen+'\')"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 2"/></svg></i><b>'+_t('לתכנן את היום הזה לפי שעות')+'</b></button>';
   return h+'</div>';
 }
 
@@ -36324,7 +36366,12 @@ function planMonthHTML(){
     for(t=0;t<di.length;t++){
       if(shown>=MO_CELL_MAX){extra+=di.length-t;break;}
       var dc=wkColor(di[t].c);
-      h+='<div class="mo-chip" style="background:'+dc.soft+';color:'+dc.ink+'">'+esc(di[t].w)+'</div>';
+      h+='<div class="mo-chip mo-grabs" style="background:'+dc.soft+';color:'+dc.ink+'">'+esc(di[t].w)+
+         '<div data-mostretch="'+esc(di[t].id)+'" data-mostart="'+st+'" data-moday="1"'+
+         ' data-mosun="'+wkStamp(weekSunday(new Date(st+'T12:00:00')))+'"'+
+         ' style="position:absolute;inset-inline-end:-10px;top:50%;margin-top:-14px;width:28px;height:28px;z-index:2;'+
+         'pointer-events:auto;cursor:ew-resize;touch-action:none;display:flex;align-items:center;justify-content:center">'+
+         '<div class="mo-grip"></div></div></div>';
       shown++;
     }
     if(extra>0)h+='<div class="mo-more">+'+nfmt(extra)+'</div>';
@@ -36375,6 +36422,7 @@ function moDown(e){
   if(gh){
     var sd=gh.getAttribute('data-mostart'),sn=gh.getAttribute('data-mosun');
     if(!sd||!sn)return;
+    if(gh.getAttribute('data-moday'))dpPromote(sd,gh.getAttribute('data-mostretch'));
     _moStretch={id:gh.getAttribute('data-mostretch'),sun:sn,start:sd,
                 dow:new Date(sd+'T12:00:00').getDay()};
     window.addEventListener('pointermove',moMove);
