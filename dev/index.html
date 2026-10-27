@@ -35244,9 +35244,11 @@ if(window.visualViewport){visualViewport.addEventListener('resize',dpDockPin);vi
 document.addEventListener('focusin',function(){setTimeout(dpDockPin,0);});
 function dpRail(){
   dpRailClear();
-  if(typeof planView==='function'?planView()!=='day':!planSecsGet().day)return;
-  var loose=[],all=dpAll(_dpDate),i,lib=loadTaskLib();
-  for(i=0;i<all.length;i++)if(all[i].hour===null)loose.push(all[i]);
+  var _mo=typeof planView==='function'&&planView()==='month';
+  if(!_mo&&(typeof planView==='function'?planView()!=='day':!planSecsGet().day))return;
+  var loose=[],all=_mo?[]:dpAll(_dpDate),i,lib=loadTaskLib();
+  if(_mo)loose=loadPool().tasks.slice();
+  else for(i=0;i<all.length;i++)if(all[i].hour===null)loose.push(all[i]);
   var h='<div id="dp-rail" class="dpk">';
   var row=_dpLibShow?lib:loose;
   if(row.length){
@@ -35257,14 +35259,15 @@ function dpRail(){
   }else if(_dpLibShow)h+='<div class="dpk-hint">'+_t('שמור כאן משימה שחוזרת אצלך, וגרור אותה מכאן במקום לכתוב אותה שוב.')+'</div>';
   h+='<div class="dpk-bar">'+
      '<button class="dpk-lib'+(_dpLibShow?' on':'')+'" onclick="_dpLibShow=!_dpLibShow;dpRail()" aria-label="'+esc(_t('משימות חוזרות'))+'">&#9734;</button>'+
-     '<input id="dp-rail-in" placeholder="'+esc(_t('מה להכניס ליום הזה?'))+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">'+
+     '<input id="dp-rail-in" placeholder="'+esc(_mo?_t('מה להכניס לחודש?'):_t('מה להכניס ליום הזה?'))+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">'+
      '<button class="dpk-add" onclick="dpRailAdd()">+</button></div>';
   h+='</div>';
   document.body.insertAdjacentHTML('beforeend',h);
   document.body.classList.add('dpk-on');
   var rail=document.getElementById('dp-rail');
-  rail.removeEventListener('pointerdown',dpDown);
-  rail.addEventListener('pointerdown',dpDown);
+  rail.removeEventListener('pointerdown',dpDown);rail.removeEventListener('pointerdown',moDown);
+  rail.addEventListener('pointerdown',_mo?moDown:dpDown);
+  rail.classList.toggle('mo',_mo);
 }
 
 /* Asked for: a tap anywhere else puts the panel away. It listens only
@@ -35290,6 +35293,13 @@ function dpRailToggle(){
 function dpRailAdd(){
   var el=document.getElementById('dp-rail-in');
   if(!el||!el.value.trim())return;
+  if(typeof planView==='function'&&planView()==='month'){
+    var p=loadPool();
+    p.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),c:_wkNewColor||'lav'});
+    savePool(p);el.value='';_dpRailText='';renderPlanning();
+    setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
+    return;
+  }
   var dp=loadDPlan(_dpDate);
   dp.items.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
                  w:el.value.trim(),c:_dpNewColor});
@@ -36583,7 +36593,7 @@ function planMonthHTML(){
        '<button class="pl-sel-b" onclick="moSelClose()">'+_t('ביטול')+'</button>'+
        '</div>'+
        (_moSelRun?'<div class="pl-sel-s">'+_t('הקש על יום מאוחר יותר כדי למתוח עד אליו')+'</div>':'');
-  } else {
+  } else if(false){
     var pool=loadPool().tasks;
     h+=planAddBarHTML({k:'pl',pool:pool,pick:'moPick',
       ph:_t("משימה או פגישה"),add:'poolAdd()',
@@ -36700,7 +36710,7 @@ function poolSetColor(id,k){
 /* ── the drag ── */
 var _moStretch=null;
 function moDown(e){
-  if(e.target.closest&&!e.target.closest('#plan-sec-month'))return;   // not this panel's drag
+  if(e.target.closest&&!e.target.closest('#plan-sec-month,#dp-rail'))return;   // not this panel's drag
   var gh=e.target.closest?e.target.closest('[data-mostretch]'):null;
   if(gh){
     var sd=gh.getAttribute('data-mostart'),sn=gh.getAttribute('data-mosun');
@@ -36755,7 +36765,7 @@ function moHitCell(x,y){
   return null;
 }
 function moOverPool(x,y){
-  var p=document.getElementById('mo-pool');
+  var p=document.getElementById('dp-rail')||document.getElementById('mo-pool');
   if(!p)return false;
   var r=p.getBoundingClientRect();
   return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
@@ -37724,6 +37734,7 @@ function renderPlanning(){
   }
   if(o.week)wkPlacePoint();
   if(o.day){planWeekStripInit();dpRail();dpNowLine();dpNowStart();dpLayout();}
+  else if(o.month)dpRail();
 
   /* all three attached at once now, each fenced to its own panel */
   var box=document.getElementById('content');
