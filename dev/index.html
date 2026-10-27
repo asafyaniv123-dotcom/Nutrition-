@@ -1824,6 +1824,13 @@ body.sheet-open .dpk{display:none}
 .dpk-lib.on{box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
 body.dpk-on #content{padding-bottom:150px}
 .dpk-cols{padding:8px 10px 12px}
+.dpk-undo{flex:none;width:44px;height:44px;border:none;border-radius:16px;cursor:pointer;display:grid;place-items:center;background:#e9e7e3;
+  box-shadow:-3px -3px 7px rgba(255,255,255,.95),4px 5px 10px rgba(168,160,148,.3);animation:dpkTray .3s cubic-bezier(.22,.61,.36,1) both}
+.dpk-undo[hidden]{display:none}
+.dpk-undo svg{width:20px;height:20px;fill:none;stroke:#4a453f;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* the toast clears the bar */
+html body.dpk-on .toast{bottom:calc(196px + env(safe-area-inset-bottom))}
+body.dpk-on #plan-undo{display:none!important}
 .dp-allday{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:10px 12px;border-radius:18px;
   box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(168,160,148,.45)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .dp-allday>span{flex:none;font-size:13px;font-weight:800;color:var(--nu-muted,#6d675e)}
@@ -35005,6 +35012,9 @@ function planUndo(){
 function renderPlanUndo(){
   var el=document.getElementById('plan-undo');
   var want=currentModule==='planning'&&_planUndo.length>0;
+  /* with the writing bar on screen, undo is its button, not a pill */
+  var du=document.getElementById('dpk-undo');
+  if(du){du.hidden=!want;if(el)el.remove();return;}
   if(!want){if(el)el.remove();return;}
   if(!el){
     el=document.createElement('button');
@@ -35330,6 +35340,8 @@ function dpRail(){
     h+='</div>';
   }
   h+='<div class="dpk-bar">'+
+     '<button class="dpk-undo" id="dpk-undo" onclick="planUndo()" aria-label="'+esc(_t('בטל'))+'"'+((typeof _planUndo!=='undefined'&&_planUndo.length)?'':' hidden')+'>'+
+       '<svg viewBox="0 0 24 24"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H12"/></svg></button>'+
      '<button class="dpk-lib'+(_dpLibShow?' on':'')+'" onclick="_dpColShow=false;_dpLibShow=!_dpLibShow;dpRail()" aria-label="'+esc(_t('משימות חוזרות'))+'">&#9734;</button>'+
      '<button class="dpk-col'+(_dpColShow?' on':'')+'" onclick="_dpLibShow=false;_dpColShow=!_dpColShow;dpRail()" aria-label="'+esc(_t('צבע'))+'"><i style="background:'+wkColor(_mo?(_wkNewColor||'lav'):(_dpNewColor||'lav')).dot+'"></i></button>'+
      '<input id="dp-rail-in" placeholder="'+esc(_mo?_t('מה להכניס לחודש?'):_t('מה להכניס ליום הזה?'))+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">'+
