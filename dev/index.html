@@ -1822,6 +1822,13 @@ body.sheet-open .dpk{display:none}
 .dpk-lib{font-size:19px;color:#b0782e}
 .dpk-lib.on{box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
 body.dpk-on #content{padding-bottom:150px}
+.dpf{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:18px 0 10px;border:none;border-radius:22px;padding:16px 18px;
+  font-family:inherit;text-align:start;cursor:pointer;color:var(--nu-ink,#4a453f);background:var(--nu-ground,#e9e7e3);
+  box-shadow:-4px -4px 10px var(--nu-lit,rgba(255,255,255,.95)),5px 7px 14px var(--nu-shade-soft,rgba(168,160,148,.3))}
+.dpf.on{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(168,160,148,.45)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+.dpf b{display:block;font-size:17px;font-weight:800}
+.dpf i{display:block;font-style:normal;font-size:13px;font-weight:600;color:var(--nu-muted,#6d675e);margin-top:3px}
+.dpf em{font-style:normal;font-size:20px;color:var(--nu-muted,#6d675e)}
 /* the keyboard is up: nothing fixed to the bottom rides up over the field */
 body.kb-open .tabbar,body.kb-open .plan-undo{display:none!important}
 body.kb-open:not(.kb-dock) .dpk{display:none}
@@ -35094,6 +35101,12 @@ function planDayHTML(){
   var dpl=deepGet(),tm=dayShift(1);
   var when=(_dpDate===tm)?_t('מחר'):_t('ביום {day}',{day:WK_DAYS[d.getDay()]});
   var feels=(dpl.feeling||'');
+  /* folded behind one card until asked for (27.10) */
+  var _dn=(dpl.intent?1:0)+(feels?1:0)+(dpl.blocker?1:0)+((Array.isArray(dpl.reminders)&&dpl.reminders.length)?1:0);
+  out+='<button class="dpf'+(_dpDeepOpen?' on':'')+'" onclick="_dpDeepOpen=!_dpDeepOpen;renderPlanDay()">'+
+       '<span><b>'+_t('למקד את היום')+'</b><i>'+(_dn?_t('{n} מתוך 4 נענו',{n:_dn}):_t('מה חשוב, איך להרגיש, מה עלול להפריע'))+'</i></span>'+
+       '<em>'+(_dpDeepOpen?'&#8963;':'&#8964;')+'</em></button>';
+  if(!_dpDeepOpen)return out+'</div>';
   out+='<div class="dp-deep">';
 
   out+='<div class="dp-q">'+_t('מה חשוב לך ש{when} יקרה?',{when:when})+'</div>';
@@ -35142,7 +35155,7 @@ var _dpRailOpen=false,_dpRailText='',_dpRailWasOpen=false;
    - written here, or put on this day by the week - to drag onto an hour; or,
    with ☆, the saved recurring ones. Kept the rail's ids so the drag that
    already knows the rail knows this. */
-var _dpLibShow=false;
+var _dpLibShow=false,_dpDeepOpen=false;
 /* is the keyboard up? A field with focus is the honest signal on both
    platforms; the blur is checked a moment later, because focus moving from
    one field to the next passes through nothing. */
