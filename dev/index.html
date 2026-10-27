@@ -12185,7 +12185,7 @@ function beemKit(){
    the streak - so the screen draws at once and the number arrives with him. */
 function beemMount(el,opts){
   beemKit().then(function(K){
-    if(el&&el.isConnected&&!el.firstChild)K.mount(el,typeof opts==='function'?opts(K):opts);
+    if(el&&el.isConnected&&!el.firstChild)el._beem=K.mount(el,typeof opts==='function'?opts(K):opts);
   }).catch(function(){});
 }
 var BEEM_MILESTONES=[7,30,100,365];
@@ -40926,7 +40926,11 @@ function renderReflectHome(){
   document.getElementById('content').innerHTML=h;
   var _bNight=_bDone&&_rfDate===todayStr();
   document.body.classList.toggle('rf-night',_bNight);
-  beemMount(document.getElementById('rf-beem'),_bNight?{play:'moon'}:_bDone?{play:BEEM_COUNTED_ONCE,glow:_bN}:{play:'invite',glow:_bN});   // i18n-exempt: kit script names
+  beemMount(document.getElementById('rf-beem'),function(K){
+    var o=_bNight?{play:'moon'}:_bDone?{play:BEEM_COUNTED_ONCE,glow:_bN}:{play:'invite',glow:_bN};   // i18n-exempt: kit script names
+    setTimeout(function(){rfBeemTouch(document.getElementById('rf-beem'),_bNight);},0);
+    return o;
+  });   // i18n-exempt: kit script names
   /* Facing TODAY. weekCardHTML walks the week oldest-first, so the newest
      picture is the last card - and opening on a photograph from six days ago,
      with today's behind your shoulder, is the wrong way round. */
@@ -43409,6 +43413,24 @@ function beemHelpMount(){
 }
 /* ── THE MOON ── the day is closed when today's summary is finished, and the
    app's day ends at 04:00, so the moon stays until then by itself */
+/* the character sheet's touch, on the page's own Mip */
+var RF_TAP={dur:1e9,ev:[[0,'face','happy'],[0,'squash',3.2],[0,'hop',45],[0,'burst',.9],[1000,'face','calm'],[1000,'mode',{breathe:[.016,4],idle:0}]]};
+var RF_SULK={dur:1e9,ev:[[0,'face','sad'],[0,'look',40,-6],[2200,'look',0,0],[2200,'blink'],[2250,'face','content'],[3100,'face','calm'],[3100,'mode',{breathe:[.016,4],idle:0}]]};
+var RF_PEEK={dur:1e9,ev:[[0,'face','calm'],[700,'blink'],[900,'face','closed']]};
+function rfBeemTouch(el,night){
+  if(!el||el._touch)return;el._touch=1;el.style.cursor='pointer';
+  var taps=[],sulk=0;
+  el.addEventListener('click',function(){
+    var b=el._beem||(el.firstChild&&el.firstChild._beem);
+    if(!b)return;
+    appHaptic&&appHaptic();
+    if(night){try{b.play(RF_PEEK);}catch(e){}return;}
+    if(sulk)return;
+    var now=Date.now();taps=taps.filter(function(t){return now-t<2600;});taps.push(now);
+    if(taps.length>=5){taps=[];sulk=1;try{b.play(RF_SULK);}catch(e){}setTimeout(function(){sulk=0;},3100);return;}
+    try{b.play(RF_TAP);}catch(e){}
+  });
+}
 var BEEM_SUN_IDLE={dur:1e9,ev:[[0,'face','calm'],[0,'mode',{breathe:[.016,4],idle:0}]]};
 var BEEM_MOON_STILL={dur:1e9,ev:[[0,'fx',{t:'fx',v:{beads:1},d:0}],[0,'fx',{t:'body',v:{moon:1},d:0}],[0,'face','closed'],
   [0,'mode',{idle:0,breathe:[.02,5.4],spinMul:.18}]]};
