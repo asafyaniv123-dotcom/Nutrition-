@@ -1822,6 +1822,10 @@ body.sheet-open .dpk{display:none}
 .dpk-lib{font-size:19px;color:#b0782e}
 .dpk-lib.on{box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
 body.dpk-on #content{padding-bottom:150px}
+/* the keyboard is up: nothing fixed to the bottom rides up over the field */
+body.kb-open .tabbar,body.kb-open .plan-undo{display:none!important}
+body.kb-open:not(.kb-dock) .dpk{display:none}
+body.kb-open.kb-dock .dpk{bottom:8px}
 /* with the writing bar at the foot, undo moves to the top, between the home pill and Mip */
 html body.dpk-on .plan-undo{top:calc(40px + env(safe-area-inset-top));bottom:auto;inset-inline-end:auto;left:50%;transform:translateX(-50%)}
 html body.mod-planning .mo-chip-sel{outline:none;transform:translateY(-1px) scale(1.06);box-shadow:-2px -2px 5px var(--nu-lit),3px 6px 12px var(--nu-shade)}
@@ -35137,6 +35141,23 @@ var _dpRailOpen=false,_dpRailText='',_dpRailWasOpen=false;
    with ☆, the saved recurring ones. Kept the rail's ids so the drag that
    already knows the rail knows this. */
 var _dpLibShow=false;
+/* is the keyboard up? A field with focus is the honest signal on both
+   platforms; the blur is checked a moment later, because focus moving from
+   one field to the next passes through nothing. */
+function kbIsField(el){
+  if(!el||!el.tagName)return false;
+  var t=el.tagName;if(t==='TEXTAREA'||el.isContentEditable)return true;
+  if(t!=='INPUT')return false;
+  return !/^(button|checkbox|radio|range|color|file|submit|reset|image|hidden)$/i.test(el.type||'');
+}
+document.addEventListener('focusin',function(e){
+  if(!kbIsField(e.target))return;
+  document.body.classList.add('kb-open');
+  document.body.classList.toggle('kb-dock',!!(e.target.closest&&e.target.closest('#dp-rail')));
+});
+document.addEventListener('focusout',function(){
+  setTimeout(function(){if(!kbIsField(document.activeElement))document.body.classList.remove('kb-open','kb-dock');},60);
+});
 function dpRail(){
   dpRailClear();
   if(typeof planView==='function'?planView()!=='day':!planSecsGet().day)return;
