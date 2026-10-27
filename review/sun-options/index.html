@@ -54,12 +54,17 @@ function sun(s){
      (objectBoundingBox, so each bead is lit on its own), and a filter on the group */
   var D = s.depth, flt = '';
   if (D){
-    var lit = {soft: ['#ffffff', '#fff3e6'], clay: ['#ffffff', '#ffe2c4'], gloss: ['#ffffff', '#f7c08f'], sphere: ['#ffffff', '#eea66f'], pearl: ['#ffffff', '#f3d6c2'], glow: ['#ffffff', '#fff1e0'], lit: ['#ffffff', '#ffe8cf'], emboss: ['#fffaf4', '#fff0e0']}[D];
+    var lit = {soft: ['#ffffff', '#fff3e6'], clay: ['#ffffff', '#ffe2c4'], gloss: ['#ffffff', '#f7c08f'], sphere: ['#ffffff', '#eea66f'], pearl: ['#ffffff', '#f3d6c2'], glow: ['#ffffff', '#fff1e0'], lit: ['#ffffff', '#ffe8cf'], emboss: ['#fffaf4', '#fff0e0'], eg: ['#fffaf4', '#fff0e0']}[D];
     if (lit){ defs += '<radialGradient id="' + uid + 'L" cx=".36" cy=".3" r=".8"><stop offset=".25" stop-color="' + lit[0] + '"/><stop offset="1" stop-color="' + lit[1] + '"/></radialGradient>'; fc = fr = 'url(#' + uid + 'L)'; }
     if (D === 'shadow' || D === 'soft' || D === 'lit') flt = '<feDropShadow dx="0" dy="1.4" stdDeviation="1.3" flood-color="#7a2c00" flood-opacity=".32"/>';
     if (D === 'clay' || D === 'gloss' || D === 'sphere' || D === 'pearl') flt = '<feDropShadow dx="0" dy="2.2" stdDeviation="1.8" flood-color="#6e2600" flood-opacity=".42"/>';
     if (D === 'glow') flt = '<feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="b"/><feFlood flood-color="#fff3d6" flood-opacity=".85"/><feComposite in2="b" operator="in" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>';
     if (D === 'emboss') flt = '<feOffset in="SourceAlpha" dx="0" dy="1.6" result="o"/><feGaussianBlur in="o" stdDeviation="1" result="ob"/><feComposite in="SourceAlpha" in2="ob" operator="out" result="rim"/><feFlood flood-color="#e8a070" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="r2"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="r2"/></feMerge>';
+    /* eg: the embossed rim on top of a glow; s.gl is how strong the glow is (0..1) */
+    if (D === 'eg'){ var gl = s.gl == null ? .5 : s.gl;
+      flt = '<feGaussianBlur in="SourceAlpha" stdDeviation="' + (1.2 + 2.6*gl).toFixed(2) + '" result="b"/><feFlood flood-color="#fff3d6" flood-opacity="' + (.35 + .55*gl).toFixed(2) + '"/><feComposite in2="b" operator="in" result="g"/>' +
+        '<feOffset in="SourceAlpha" dx="0" dy="1.6" result="o"/><feGaussianBlur in="o" stdDeviation="1" result="ob"/><feComposite in="SourceAlpha" in2="ob" operator="out" result="rim"/><feFlood flood-color="#e8a070" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="r2"/>' +
+        '<feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/><feMergeNode in="r2"/></feMerge>'; }
     if (flt) defs += '<filter id="' + uid + 'F" x="-30%" y="-30%" width="160%" height="160%">' + flt + '</filter>';
   }
   for (i = 0; i < s.n; i++){
@@ -87,6 +92,9 @@ function sun(s){
   return '<svg viewBox="0 0 100 100"><defs>' + defs + shadow + '</defs><g' + gf + ' transform="translate(50 50) scale(' + s.k + ') translate(-50 -50)">' + h + core + gloss + '</g></svg>';
 }
 var ROWS = [
+  {t: 'מוטבע, עם זוהר (27.10)', d: 'השוליים המוטבעים שאהבת, ומתחת להם זוהר חם שיוצא אל הכתום. בשלוש עוצמות, ולידן המוטבע לבד.', items: [
+    ['מוטבע · מה שאהבת', {depth: 'emboss'}], ['זוהר קל', {depth: 'eg', gl: .2}], ['זוהר בינוני', {depth: 'eg', gl: .5}], ['זוהר חזק', {depth: 'eg', gl: .9}],
+    ['זוהר בינוני, שמש גדולה', {depth: 'eg', gl: .5, k: .98}]]},
   {t: 'השמש של היום, עם עומק (27.10)', d: 'אותה שמש בדיוק, תשע נקודות, רק פחות שטוחה. מהעדין לחזק: צל בלבד, אור רך מלמעלה, אור עם צל, חומר כמו חימר, ברק, כדורים לבנים בתלת־ממד, פנינה, זוהר, ושוליים מוטבעים.', items: [
     ['שטוחה · היום', {}, 1], ['צל בלבד', {depth: 'shadow'}], ['אור רך', {depth: 'soft'}], ['אור וצל', {depth: 'lit'}],
     ['חימר', {depth: 'clay'}], ['ברק', {depth: 'gloss'}], ['כדורים', {depth: 'sphere'}], ['פנינה', {depth: 'pearl'}], ['זוהר', {depth: 'glow'}], ['מוטבע', {depth: 'emboss'}]]},
