@@ -35158,8 +35158,17 @@ document.addEventListener('focusin',function(e){
   document.body.classList.toggle('kb-dock',!!(e.target.closest&&e.target.closest('#dp-rail')));
 });
 document.addEventListener('focusout',function(){
-  setTimeout(function(){if(!kbIsField(document.activeElement))document.body.classList.remove('kb-open','kb-dock');},60);
+  setTimeout(function(){if(!kbIsField(document.activeElement)){document.body.classList.remove('kb-open','kb-dock');dpDockPin();}},60);
 });
+/* the writing bar rides the keyboard: its top follows the visible area */
+function dpDockPin(){
+  var d=document.getElementById('dp-rail');if(!d)return;
+  var vv=window.visualViewport;
+  if(!vv||!document.body.classList.contains('kb-dock')){d.style.top='';d.style.bottom='';return;}
+  d.style.bottom='auto';d.style.top=Math.round(vv.offsetTop+vv.height-d.offsetHeight-8)+'px';
+}
+if(window.visualViewport){visualViewport.addEventListener('resize',dpDockPin);visualViewport.addEventListener('scroll',dpDockPin);}
+document.addEventListener('focusin',function(){setTimeout(dpDockPin,0);});
 function dpRail(){
   dpRailClear();
   if(typeof planView==='function'?planView()!=='day':!planSecsGet().day)return;
