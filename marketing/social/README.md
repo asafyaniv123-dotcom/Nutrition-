@@ -23,7 +23,7 @@ where **@olimei** itself is free.
 | Network | Handle | State |
 |---|---|---|
 | Instagram | @olimeiapp | created 24 Oct (login: hello.betterme.app@gmail.com); professional (Creator); name "Olimei · Daily Reflection"; bio set |
-| YouTube | @olimei | tomorrow (25 Oct): the Google account was blocked for 24h after the Better Me name attempts. Channel name "Olimei" |
+| YouTube | @Olimei | created 27 Oct, channel "Olimei"; banner marketing/brand/out/youtube-banner.png |
 | TikTok | @olimeiapp | tomorrow: the web signup sends you to the app, and the app demands a phone number. Asaf's own is already on another TikTok account, so it needs a relative's number for the one-time code, or his old account converted |
 
 ## How a post lives here
