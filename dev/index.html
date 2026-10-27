@@ -1801,6 +1801,29 @@ html body.mod-planning .plv button.on{color:var(--nu-ink);background:var(--nu-gr
 .plws-d button.t i{background:#f0a92e}
 .plws-d button.on{background:var(--nu-ground,#e9e7e3);box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 .plws-n{flex:none;width:30px;height:44px;border:none;background:none;font-size:22px;font-weight:800;color:var(--nu-muted,#6d675e);cursor:pointer;font-family:inherit}
+/* the week strip as a wheel, and the writing bar (27.10) */
+.plws{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 0 12px;-webkit-overflow-scrolling:touch}
+.plws::-webkit-scrollbar{display:none}
+.plws .plws-d{flex:0 0 100%;scroll-snap-align:center}
+.dpk{position:fixed;left:12px;right:12px;bottom:calc(108px + env(safe-area-inset-bottom));z-index:120;max-width:480px;margin:0 auto}
+body.sheet-open .dpk{display:none}
+.dpk-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:4px 4px 10px}
+.dpk-row::-webkit-scrollbar{display:none}
+.dpk-chip{flex:none;padding:9px 14px;border-radius:12px;font-size:14px;font-weight:800;cursor:grab;touch-action:none;white-space:nowrap;
+  box-shadow:-2px -2px 5px rgba(255,255,255,.9),3px 5px 12px rgba(120,104,88,.22)}
+.dpk-hint{font-size:13px;color:#6d675e;padding:4px 8px 10px;line-height:1.5}
+.dpk-bar{display:flex;align-items:center;gap:8px;padding:6px;border-radius:22px;background:#e9e7e3;
+  box-shadow:-4px -4px 10px rgba(255,255,255,.95),6px 8px 20px rgba(120,104,88,.22)}
+.dpk-bar input{flex:1;min-width:0;height:44px;border:none;border-radius:16px;padding:0 14px;font-family:inherit;font-size:15px;color:#4a453f;background:#e9e7e3;outline:none;
+  box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
+.dpk-bar input::placeholder{color:#6d675e}
+.dpk-add,.dpk-lib{flex:none;width:44px;height:44px;border:none;border-radius:16px;font-family:inherit;font-size:22px;font-weight:800;color:#4a453f;cursor:pointer;
+  background:#e9e7e3;box-shadow:-3px -3px 7px rgba(255,255,255,.95),4px 5px 10px rgba(168,160,148,.3)}
+.dpk-lib{font-size:19px;color:#b0782e}
+.dpk-lib.on{box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
+body.dpk-on #content{padding-bottom:150px}
+/* with the writing bar at the foot, undo moves to the top, between the home pill and Mip */
+html body.dpk-on .plan-undo{top:calc(40px + env(safe-area-inset-top));bottom:auto;inset-inline-end:auto;left:50%;transform:translateX(-50%)}
 html body.mod-planning .mo-chip-sel{outline:none;transform:translateY(-1px) scale(1.06);box-shadow:-2px -2px 5px var(--nu-lit),3px 6px 12px var(--nu-shade)}
 /* a block that continues into the next band: no shadow on the joined edge */
 html body.mod-planning .wk-blk.ct,html body.mod-planning .wk-blk.cb{box-shadow:none}
@@ -34801,7 +34824,7 @@ function planStep(dir,where){
 function daySwipeDown(e){
   if(!onDayScreen()||_dpDrag)return;                       // a task is being dragged
   var t=e.target;
-  if(t.closest&&(t.closest('[data-task]')||t.closest('[data-lib]')||t.closest('[data-stretch]')||t.closest('[data-mostretch]')||
+  if(t.closest&&(t.closest('[data-task]')||t.closest('[data-lib]')||t.closest('#plws')||t.closest('[data-stretch]')||t.closest('[data-mostretch]')||
                  t.closest('button')||t.closest('input')||t.closest('textarea')))return;
   _daySwipe={x:e.clientX,y:e.clientY,t:Date.now(),where:planSectionAt(t)};
 }
@@ -35031,11 +35054,8 @@ function planDayHTML(){
 
   out+='<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">';
   out+='<div><div style="font-size:17px;font-weight:800;color:var(--ink)">'+WK_DAYS[d.getDay()]+(isToday?' &middot; '+_t('היום')+'':'')+'</div>';
-  out+='<div style="font-size:11px;color:var(--muted);margin-top:2px">'+wkShort(d)+' &middot; <span style="font-size:9.5px;color:var(--muted-soft)">'+_t('החלק להחלפת יום')+'</span></div></div>';
-  out+='<div style="display:flex;gap:6px">';
-  out+='<button onclick="dpShift(-1)" style="background:var(--card);border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8249;</button>';
-  out+='<button onclick="dpShift(1)" style="background:var(--card);border:none;border-radius:10px;width:28px;height:28px;font-size:14px;color:var(--muted);cursor:pointer;box-shadow:0 2px 7px rgba(200,180,160,.16);font-family:inherit">&#8250;</button>';
-  out+='</div></div>';
+  out+='<div style="font-size:13px;color:var(--nu-muted);margin-top:2px">'+wkShort(d)+'</div></div>';
+  out+='</div>';
 
   // the hours
   out+='<div class="dp-grid">';
@@ -35060,37 +35080,8 @@ function planDayHTML(){
   out+=dpLayerHTML(all);
   out+='</div>';
 
-  // what the week put here, still without an hour
-  var fromWeek=[],mine=[];
-  for(i=0;i<all.length;i++){
-    if(all[i].hour!==null)continue;
-    (all[i].src==='day'?mine:fromWeek).push(all[i]);
-  }
-  if(fromWeek.length){
-    out+='<div style="margin-top:18px">';
-    out+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:var(--muted);margin-bottom:9px">'+_t('מהתכנון שמעל')+'</div>';
-    out+='<div id="dp-week" class="wk-pool">';
-    for(i=0;i<fromWeek.length;i++)out+=dpTaskHTML(fromWeek[i]);
-    out+='</div></div>';
-  }
-
-  out+='<div style="margin-top:18px">';
-  out+='<div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:var(--muted);margin-bottom:9px">'+_t('רק ליום הזה')+'</div>';
-  out+='<div id="dp-pool" class="wk-pool">';
-  for(i=0;i<mine.length;i++)out+=dpTaskHTML(mine[i]);
-  if(!mine.length)out+='<div style="font-size:11.5px;color:var(--muted-soft);line-height:1.6;padding:8px 2px">'+_t('כתוב למטה, ואז גרור לשעה. מה שנכתב כאן נשאר כאן ולא עולה לטבלה השבועית.')+'</div>';
-  out+='</div>';
-
-  out+='<div style="display:flex;align-items:center;gap:9px;margin-top:12px">';
-  out+='<div style="font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0">'+_t('צבע')+'</div>';
-  out+=wkSwatches("_dpNewColor='%K%';renderPlanDay()",_dpNewColor);
-  out+='</div>';
-  out+=taskLibHTML();
-  out+='<div style="display:flex;gap:8px;margin-top:8px">';
-  out+='<input id="dp-in" class="mtin" style="flex:1;margin-bottom:0" placeholder="'+_t("משהו ליום הזה")+'" onkeydown="if(event.key===\'Enter\')dpAdd()">';
-  out+='<button class="dp-plus" onclick="dpAdd()">+</button>';
-  out+='</div></div>';
-
+  /* what has no hour waits in the writing bar at the foot of the screen
+     (dpRail) - not in a pile down here */
   /* The deeper questions, open in place under the hours rather than behind a
      button. Four of them, saved as you go. "מחר" only when the day really is
      tomorrow - on any other day it names the day instead. */
@@ -35140,58 +35131,37 @@ function planDayHTML(){
    ever leaving the hours. It lives outside #content so a re-render cannot take
    it out from under a finger mid-drag. */
 var _dpRailOpen=false,_dpRailText='',_dpRailWasOpen=false;
+/* THE WRITING BAR (27.10): at the foot of the screen while the day is open,
+   staying there as the hours scroll. Above it, the day's tasks with no hour
+   - written here, or put on this day by the week - to drag onto an hour; or,
+   with ☆, the saved recurring ones. Kept the rail's ids so the drag that
+   already knows the rail knows this. */
+var _dpLibShow=false;
 function dpRail(){
-  dpRailClear();          // the panel is a sibling, not a child - clear both
-  if(!planSecsGet().day)return;   // the rail belongs to the day panel, so it follows it open and shut
-  var loose=[],all=dpAll(_dpDate),i;
-  for(i=0;i<all.length;i++)if(all[i].hour===null&&all[i].src==='day')loose.push(all[i]);
-
-  var h='<div id="dp-rail" class="dp-rail">';
-  h+='<button class="dp-rail-add" onclick="dpRailToggle()">'+(_dpRailOpen?'&times;':'+')+'</button>';
-  for(i=0;i<loose.length&&i<5;i++){
-    var c=wkColor(loose[i].c);
-    h+='<div class="dp-rail-chip" data-task="'+loose[i].id+'" style="background:'+c.soft+';color:'+c.ink+'" title="'+esc(loose[i].w)+'">'+esc(loose[i].w)+'</div>';
-  }
+  dpRailClear();
+  if(typeof planView==='function'?planView()!=='day':!planSecsGet().day)return;
+  var loose=[],all=dpAll(_dpDate),i,lib=loadTaskLib();
+  for(i=0;i<all.length;i++)if(all[i].hour===null)loose.push(all[i]);
+  var h='<div id="dp-rail" class="dpk">';
+  var row=_dpLibShow?lib:loose;
+  if(row.length){
+    h+='<div class="dpk-row">';
+    for(i=0;i<row.length;i++){var c=wkColor(row[i].c);
+      h+='<div class="dpk-chip" '+(_dpLibShow?'data-lib':'data-task')+'="'+row[i].id+'" style="background:'+c.soft+';color:'+c.ink+'">'+esc(row[i].w)+'</div>';}
+    h+='</div>';
+  }else if(_dpLibShow)h+='<div class="dpk-hint">'+_t('שמור כאן משימה שחוזרת אצלך, וגרור אותה מכאן במקום לכתוב אותה שוב.')+'</div>';
+  h+='<div class="dpk-bar">'+
+     '<button class="dpk-lib'+(_dpLibShow?' on':'')+'" onclick="_dpLibShow=!_dpLibShow;dpRail()" aria-label="'+esc(_t('משימות חוזרות'))+'">&#9734;</button>'+
+     '<input id="dp-rail-in" placeholder="'+esc(_t('מה להכניס ליום הזה?'))+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">'+
+     '<button class="dpk-add" onclick="dpRailAdd()">+</button></div>';
   h+='</div>';
-  if(_dpRailOpen){
-    /* Beside the button rather than down at the foot of the screen: the point
-       of the rail is not having to travel, and a panel at the bottom is the
-       same journey again. */
-    var lib=loadTaskLib();
-    h+='<div id="dp-rail-bar" class="dp-rail-bar">';
-    h+='<div style="display:flex;gap:7px">';
-    h+='<input id="dp-rail-in" class="mtin" style="flex:1;margin-bottom:0;font-size:13px" placeholder="'+_t("משימה חדשה")+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">';
-    h+='<button class="dp-plus" onclick="dpRailAdd()">+</button>';
-    h+='</div>';
-    /* the colour, where the task is written. Without it a task from the rail
-       took whatever was last chosen at the foot of the screen - the one place
-       the rail exists so you never have to go. Same variable, so the two
-       stay in step. */
-    h+='<div class="dp-rail-sw">'+wkSwatches("dpRailColor('%K%')",_dpNewColor)+'</div>';
-    if(lib.length){
-      h+='<div style="font-size:9.5px;letter-spacing:.08em;font-weight:700;color:var(--muted);margin:11px 0 7px">'+_t('משימות חוזרות')+'</div>';
-      h+='<div class="dp-rail-lib">';
-      for(i=0;i<lib.length;i++){
-        var lc=wkColor(lib[i].c);
-        h+='<div class="dp-rail-libchip" data-lib="'+lib[i].id+'" style="background:'+lc.soft+';color:'+lc.ink+'">'+esc(lib[i].w)+'</div>';
-      }
-      h+='</div>';
-      h+='<div style="font-size:9px;color:var(--muted-soft);line-height:1.5;margin-top:8px">'+_t('גרור אחת מהן ישר לשעה')+'</div>';
-    }
-    h+='</div>';
-  }
   document.body.insertAdjacentHTML('beforeend',h);
+  document.body.classList.add('dpk-on');
   var rail=document.getElementById('dp-rail');
   rail.removeEventListener('pointerdown',dpDown);
   rail.addEventListener('pointerdown',dpDown);
-  var bar=document.getElementById('dp-rail-bar');
-  if(bar){bar.removeEventListener('pointerdown',dpDown);bar.addEventListener('pointerdown',dpDown);}
-  document.removeEventListener('pointerdown',dpRailOutside,true);
-  if(_dpRailOpen)document.addEventListener('pointerdown',dpRailOutside,true);
-  if(_dpRailOpen&&!_dpRailWasOpen)
-    setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
-  _dpRailWasOpen=_dpRailOpen;
 }
+
 /* Asked for: a tap anywhere else puts the panel away. It listens only
    while the panel is open, and ignores taps on the panel, on the rail, or
    on the button itself - that one already toggles. Capture phase, so it
@@ -35224,6 +35194,7 @@ function dpRailAdd(){
   setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
 }
 function dpRailClear(){
+  document.body.classList.remove('dpk-on');
   var r=document.getElementById('dp-rail');if(r)r.remove();
   var b=document.getElementById('dp-rail-bar');if(b)b.remove();
 }
@@ -36767,15 +36738,30 @@ function planViewSet(v){try{localStorage.setItem(PLAN_VIEW_KEY,v==='month'?'mont
 /* the day's week, seven days in a row: the chosen one pressed, today with
    its amber dot, a quiet dot under any day that holds something */
 function planWeekStripHTML(){
-  var sun=weekSunday(new Date(_dpDate+'T12:00:00')),i,h='<div class="plws">',today=todayStr();
-  h+='<button class="plws-n" onclick="planWeekStep(-1)" aria-label="'+esc(_t('השבוע הקודם'))+'">&#8250;</button><div class="plws-d">';
-  for(i=0;i<7;i++){
-    var d=wkStamp(wkDateOf(sun,i)),dt=new Date(d+'T12:00:00'),has=false;
-    try{has=dpAll(d).length>0;}catch(e){}
-    h+='<button class="'+(d===_dpDate?'on':'')+(d===today?' t':'')+'" onclick="planOpenDayHere(\''+d+'\')">'+
-       '<span>'+esc(dfmt(dt,{weekday:'narrow'}))+'</span><b>'+nfmt(dt.getDate())+'</b><i'+(has?' class="has"':'')+'></i></button>';
+  var sun=weekSunday(new Date(_dpDate+'T12:00:00')),w,i,h='<div class="plws" id="plws">',today=todayStr();
+  for(w=-1;w<=1;w++){
+    h+='<div class="plws-d" data-w="'+w+'">';
+    for(i=0;i<7;i++){
+      var d=wkStamp(wkDateOf(sun,w*7+i)),dt=new Date(d+'T12:00:00'),has=false;
+      try{has=dpAll(d).length>0;}catch(e){}
+      h+='<button class="'+(d===_dpDate?'on':'')+(d===today?' t':'')+'" onclick="planOpenDayHere(\''+d+'\')">'+
+         '<span>'+esc(dfmt(dt,{weekday:'narrow'}))+'</span><b>'+nfmt(dt.getDate())+'</b><i'+(has?' class="has"':'')+'></i></button>';
+    }
+    h+='</div>';
   }
-  return h+'</div><button class="plws-n" onclick="planWeekStep(1)" aria-label="'+esc(_t('השבוע הבא'))+'">&#8249;</button></div>';
+  return h+'</div>';
+}
+/* the strip starts on the middle week; a swipe that settles on a side week
+   moves the day by seven and the strip re-centres on the new middle */
+function planWeekStripInit(){
+  var el=document.getElementById('plws');if(!el)return;
+  var mid=el.children[1];el.scrollLeft=mid.offsetLeft-(el.clientWidth-mid.offsetWidth)/2;
+  var t=null;
+  el.addEventListener('scroll',function(){clearTimeout(t);t=setTimeout(function(){
+    var c=el.getBoundingClientRect(),cx=c.left+c.width/2,k,best=1,bd=1e9;
+    for(k=0;k<3;k++){var r=el.children[k].getBoundingClientRect(),dd=Math.abs(r.left+r.width/2-cx);if(dd<bd){bd=dd;best=k;}}
+    if(best!==1)planWeekStep(best-1);
+  },140);},{passive:true});
 }
 function planOpenDayHere(d){_dpDate=d;_dpRailOpen=false;renderPlanning();}
 function planWeekStep(n){_dpDate=wkStamp(wkDateOf(new Date(_dpDate+'T12:00:00'),n*7));renderPlanning();}
@@ -37611,7 +37597,7 @@ function renderPlanning(){
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moPlaceSpans);
   }
   if(o.week)wkPlacePoint();
-  if(o.day){dpRail();dpNowLine();dpNowStart();dpLayout();}
+  if(o.day){planWeekStripInit();dpRail();dpNowLine();dpNowStart();dpLayout();}
 
   /* all three attached at once now, each fenced to its own panel */
   var box=document.getElementById('content');
