@@ -1,6 +1,6 @@
 /* The iPhone app's icon is the brand's App Store icon (brand/app-store-1024.png:
- * the white Olimei sun on the sunrise gradient, 1024, no alpha - Asaf's choice on
- * 27 Oct, after Mip on cream (25 Oct) and the orange sun on cream (23 Oct)).
+ * the white Olimei sun, embossed with a light glow and large, on the sunrise
+ * gradient, 1024, no alpha - Asaf's choice on 27 Oct (the flat one came first that day), after Mip on cream (25 Oct) and the orange sun on cream (23 Oct)).
  * Copied at build time so the shell never drifts from the brand. The
  * Beem-rendered icon (tools/make-app-icon.mjs) is retired. */
 import fs from 'fs';
