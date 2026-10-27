@@ -1823,6 +1823,14 @@ body.sheet-open .dpk{display:none}
 .dpk-lib{font-size:19px;color:#b0782e}
 .dpk-lib.on{box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
 body.dpk-on #content{padding-bottom:150px}
+.dpk-cols{padding:8px 10px 12px}
+.dpk-cols .wk-sw{max-width:none;gap:10px;justify-content:center}
+.dpk-cols .wk-swatch{width:28px;height:28px}
+.dpk-col{flex:none;width:44px;height:44px;border:none;border-radius:16px;cursor:pointer;display:grid;place-items:center;background:#e9e7e3;
+  box-shadow:-3px -3px 7px rgba(255,255,255,.95),4px 5px 10px rgba(168,160,148,.3)}
+.dpk-col i{width:18px;height:18px;border-radius:50%;box-shadow:0 1px 3px rgba(90,74,60,.3)}
+.dpk-col.on{box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
+html body.mod-planning .mo-cell.mo-next .mo-n{opacity:.4}
 .dpf{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:18px 0 10px;border:none;border-radius:22px;padding:16px 18px;
   font-family:inherit;text-align:start;cursor:pointer;color:var(--nu-ink,#4a453f);background:var(--nu-ground,#e9e7e3);
   box-shadow:-4px -4px 10px var(--nu-lit,rgba(255,255,255,.95)),5px 7px 14px var(--nu-shade-soft,rgba(168,160,148,.3))}
@@ -35215,7 +35223,8 @@ var _dpRailOpen=false,_dpRailText='',_dpRailWasOpen=false;
    - written here, or put on this day by the week - to drag onto an hour; or,
    with ☆, the saved recurring ones. Kept the rail's ids so the drag that
    already knows the rail knows this. */
-var _dpLibShow=false,_dpDeepOpen=false;
+var _dpLibShow=false,_dpDeepOpen=false,_dpColShow=false;
+function dpkColor(k){_dpNewColor=k;_wkNewColor=k;_dpColShow=false;dpRail();var e=document.getElementById('dp-rail-in');if(e)e.focus();}
 /* is the keyboard up? A field with focus is the honest signal on both
    platforms; the blur is checked a moment later, because focus moving from
    one field to the next passes through nothing. */
@@ -35251,14 +35260,17 @@ function dpRail(){
   else for(i=0;i<all.length;i++)if(all[i].hour===null)loose.push(all[i]);
   var h='<div id="dp-rail" class="dpk">';
   var row=_dpLibShow?lib:loose;
-  if(row.length){
+  if(_dpColShow){
+    h+='<div class="dpk-cols">'+wkSwatches("dpkColor('%K%')",_mo?(_wkNewColor||'lav'):(_dpNewColor||'lav'))+'</div>';
+  }else if(row.length){
     h+='<div class="dpk-row">';
     for(i=0;i<row.length;i++){var c=wkColor(row[i].c);
       h+='<div class="dpk-chip" '+(_dpLibShow?'data-lib':'data-task')+'="'+row[i].id+'" style="background:'+c.soft+';color:'+c.ink+'">'+esc(row[i].w)+'</div>';}
     h+='</div>';
   }else if(_dpLibShow)h+='<div class="dpk-hint">'+_t('שמור כאן משימה שחוזרת אצלך, וגרור אותה מכאן במקום לכתוב אותה שוב.')+'</div>';
   h+='<div class="dpk-bar">'+
-     '<button class="dpk-lib'+(_dpLibShow?' on':'')+'" onclick="_dpLibShow=!_dpLibShow;dpRail()" aria-label="'+esc(_t('משימות חוזרות'))+'">&#9734;</button>'+
+     '<button class="dpk-lib'+(_dpLibShow?' on':'')+'" onclick="_dpColShow=false;_dpLibShow=!_dpLibShow;dpRail()" aria-label="'+esc(_t('משימות חוזרות'))+'">&#9734;</button>'+
+     '<button class="dpk-col'+(_dpColShow?' on':'')+'" onclick="_dpLibShow=false;_dpColShow=!_dpColShow;dpRail()" aria-label="'+esc(_t('צבע'))+'"><i style="background:'+wkColor(_mo?(_wkNewColor||'lav'):(_dpNewColor||'lav')).dot+'"></i></button>'+
      '<input id="dp-rail-in" placeholder="'+esc(_mo?_t('מה להכניס לחודש?'):_t('מה להכניס ליום הזה?'))+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">'+
      '<button class="dpk-add" onclick="dpRailAdd()">+</button></div>';
   h+='</div>';
@@ -36608,10 +36620,14 @@ function planMonthHTML(){
 
   h+='<div class="mo-grid">';
   for(i=0;i<lead;i++)h+='<div class="mo-cell mo-blank"></div>';
-  for(i=1;i<=days;i++){
-    var st=year+'-'+(mi<9?'0':'')+(mi+1)+'-'+(i<10?'0':'')+i;
-    h+='<div class="mo-cell'+(st===today?' today':'')+(st===_moOpen?' mo-open':'')+'" data-date="'+st+'" onclick="moCellTap(\''+st+'\')">';
-    h+='<div class="mo-n">'+nfmt(i)+'</div>';
+  /* the last week runs on into the next month, so a run can cross into it */
+  /* and when the month ends on a Saturday, the next week is shown too - a
+     run reaching past the month end needs somewhere to land */
+  var _trail=(7-(lead+days)%7)%7;if(_trail<7)_trail+=_trail?0:7;
+  for(i=1;i<=days+_trail;i++){
+    var st=wkStamp(new Date(year,mi,i,12));
+    h+='<div class="mo-cell'+(i>days?' mo-next':'')+(st===today?' today':'')+(st===_moOpen?' mo-open':'')+'" data-date="'+st+'" onclick="moCellTap(\''+st+'\')">';
+    h+='<div class="mo-n">'+nfmt(i>days?i-days:i)+'</div>';
     /* the month's own tasks used to be drawn here, above the week's. They no
        longer exist: planMigrate moved them into the week their date belongs
        to, which is what gave them a delete and a stretch. */
