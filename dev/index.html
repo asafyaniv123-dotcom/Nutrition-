@@ -1897,13 +1897,12 @@ html[dir=rtl] .hch-mode.c::before{transform:translateX(-40px)}
 html[dir=ltr] .hch-mode.c::before{transform:translateX(40px)}
 html body .hch-mode button.on{background:transparent!important;box-shadow:none!important}
 .hch-mode button{transition:color .3s}
-#home-screen.hch-out>*:not(.home-menu):not(.hch-mode):not(.hch),#home-screen.hch-out.hch-on .hch{transition:opacity .2s ease,transform .2s ease;opacity:0}
-html[dir=rtl] #home-screen.hch-out.to-chat>*:not(.home-menu):not(.hch-mode):not(.hch),html[dir=ltr] #home-screen.hch-out.to-dial.hch-on .hch{transform:translateX(-36px)}
-html[dir=rtl] #home-screen.hch-out.to-dial.hch-on .hch,html[dir=ltr] #home-screen.hch-out.to-chat>*:not(.home-menu):not(.hch-mode):not(.hch){transform:translateX(36px)}
-#home-screen.hch-in>*:not(.home-menu):not(.hch-mode):not(.hch),#home-screen.hch-in.hch-on .hch{animation:hchIn .4s cubic-bezier(.22,.61,.36,1) both}
-html[dir=rtl] #home-screen.hch-in.to-chat,html[dir=ltr] #home-screen.hch-in.to-dial{--hch-from:36px}
-html[dir=rtl] #home-screen.hch-in.to-dial,html[dir=ltr] #home-screen.hch-in.to-chat{--hch-from:-36px}
-@keyframes hchIn{from{opacity:0;transform:translateX(var(--hch-from,0))}}
+/* the veil the two views change under */
+#hch-veil{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;
+  -webkit-backdrop-filter:blur(0);backdrop-filter:blur(0);background:rgba(245,240,233,0);
+  transition:opacity .24s ease,backdrop-filter .24s ease,-webkit-backdrop-filter .24s ease,background .24s ease}
+#hch-veil.on{opacity:1;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);background:rgba(245,240,233,.35)}
+#hch-veil.off{transition-duration:.42s}
 @media (prefers-reduced-motion:reduce){.sg-glide{transition:none}#home-screen.hch-swap>*{animation:none}}
 html body.mod-planning .mo-chip-sel{outline:none;transform:translateY(-1px) scale(1.06);box-shadow:-2px -2px 5px var(--nu-lit),3px 6px 12px var(--nu-shade)}
 /* a block that continues into the next band: no shadow on the joined edge */
@@ -46217,15 +46216,15 @@ function hchSetMode(m){
   /* the thumb goes first */
   if(sw){sw.classList.toggle('c',m==='chat');var b=sw.children;if(b.length===2){b[0].className=m==='chat'?'':'on';b[1].className=m==='chat'?'on':'';}}
   if(!hs||matchMedia('(prefers-reduced-motion: reduce)').matches){hchSync();if(m==='dial'){try{renderHomeGrid();}catch(e){}}return;}
-  /* what shows leaves the way the thumb went, then the other arrives */
+  /* a veil of blur rises, the views change beneath it, and it clears */
   clearTimeout(_hchT);
-  hs.classList.remove('hch-in','to-chat','to-dial');void hs.offsetWidth;
-  hs.classList.add('hch-out','to-'+m);
+  var v=document.getElementById('hch-veil');
+  if(!v){v=document.createElement('div');v.id='hch-veil';document.body.appendChild(v);}
+  v.classList.remove('off');void v.offsetWidth;v.classList.add('on');
   _hchT=setTimeout(function(){
     hchSync();if(m==='dial'){try{renderHomeGrid();}catch(e){}}
-    hs.classList.remove('hch-out');void hs.offsetWidth;hs.classList.add('hch-in');
-    _hchT=setTimeout(function(){hs.classList.remove('hch-in','to-chat','to-dial');},420);
-  },200);
+    requestAnimationFrame(function(){v.classList.remove('on');v.classList.add('off');});
+  },240);
 }
 function hchLoad(){
   var o=null;try{o=JSON.parse(localStorage.getItem(HCH_KEY)||'null');}catch(e){}
