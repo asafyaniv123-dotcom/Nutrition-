@@ -34077,9 +34077,20 @@ function wkAssign(id,date,slot){
   if(poolHas(id)){poolToWeek(id,date,slot||'m');renderPlanWeek();return;}
   /* a task with no day cannot repeat from one */
   if(!date){var _w=loadWeek(_wkSun),_i;for(_i=0;_i<_w.tasks.length;_i++)if(_w.tasks[_i].id===id){delete _w.tasks[_i].ev;delete _w.tasks[_i].len;}saveWeek(_wkSun,_w);}
-  var wk=loadWeek(_wkSun),i;
-  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){wk.tasks[i].d=date||'';wk.tasks[i].s=date?(slot||'m'):'';}
-  saveWeek(_wkSun,wk);renderPlanWeek();
+  var wk=loadWeek(_wkSun),i,from='';
+  for(i=0;i<wk.tasks.length;i++)if(wk.tasks[i].id===id){from=wk.tasks[i].d||'';wk.tasks[i].d=date||'';wk.tasks[i].s=date?(slot||'m'):'';}
+  saveWeek(_wkSun,wk);
+  if(from&&date&&from!==date)dpCarry(from,date,id);
+  renderPlanWeek();
+}
+/* what a week task keeps on its day - hour, minutes, end, note, reminder -
+   goes with it when it moves to another day */
+function dpCarry(from,to,id){
+  var a=loadDPlan(from),b=loadDPlan(to),ch=false;
+  ['hours','mins','ends','notes','rem'].forEach(function(k){
+    if(a[k]&&a[k][id]!==undefined){b[k]=b[k]||{};b[k][id]=a[k][id];delete a[k][id];ch=true;}
+  });
+  if(ch){saveDPlan(from,a);saveDPlan(to,b);}
 }
 // A shelf task dropped on the week becomes a new week task; the shelf keeps
 // its own copy.
@@ -34107,13 +34118,14 @@ function wkDown(e){
      because the handle sits inside the thing that would otherwise be dragged. */
   var gh=e.target.closest?e.target.closest('[data-stretch]'):null;
   if(gh){
-    if(gh.getAttribute('data-stday'))dpPromote(gh.getAttribute('data-stday'),gh.getAttribute('data-stretch'));
-    var sid=gh.getAttribute('data-stretch'),wk=loadWeek(_wkSun),st=null,q;
+    var sid=gh.getAttribute('data-stretch'),wk=loadWeek(_wkSun),st=null,q,pd=gh.getAttribute('data-stday')||'';
     for(q=0;q<wk.tasks.length;q++)if(wk.tasks[q].id===sid)st=wk.tasks[q];
+    /* a day item becomes a week task only once it really grows (dpPromote) */
+    if(!st&&pd)st={d:pd};
     if(!st||!st.d)return;
     var c0=wkColIndex(st.d);
     if(c0<0)return;
-    _wkDrag={mode:'stretch',id:sid,c0:c0,len:wkLenOf(st)};
+    _wkDrag={mode:'stretch',id:sid,c0:c0,len:st.id?wkLenOf(st):1,promote:st.id?'':pd};
     window.addEventListener('pointermove',wkMove);
     window.addEventListener('pointerup',wkUp);
     window.addEventListener('pointercancel',wkUp);
@@ -34193,7 +34205,8 @@ function wkMove(e){
     }
     if(ci<_wkDrag.c0)ci=_wkDrag.c0;                 // never shorter than its own day
     var L=Math.min(ci-_wkDrag.c0+1,7-_wkDrag.c0,WK_MAX_LEN);
-    if(L!==_wkDrag.len&&wkStretchTo(_wkDrag.id,L))_wkDrag.len=L;
+    if(L>1&&_wkDrag.promote){dpPromote(_wkDrag.promote,_wkDrag.id);_wkDrag.promote='';}
+    if(!_wkDrag.promote&&L!==_wkDrag.len&&wkStretchTo(_wkDrag.id,L))_wkDrag.len=L;
     return;
   }
   _wkDrag.moved=true;
@@ -34610,13 +34623,14 @@ function planStep(dir,where){
 function daySwipeDown(e){
   if(!onDayScreen()||_dpDrag)return;                       // a task is being dragged
   var t=e.target;
-  if(t.closest&&(t.closest('[data-task]')||t.closest('[data-lib]')||
+  if(t.closest&&(t.closest('[data-task]')||t.closest('[data-lib]')||t.closest('[data-stretch]')||t.closest('[data-mostretch]')||
                  t.closest('button')||t.closest('input')||t.closest('textarea')))return;
   _daySwipe={x:e.clientX,y:e.clientY,t:Date.now(),where:planSectionAt(t)};
 }
 function daySwipeUp(e){
   var s=_daySwipe;_daySwipe=null;
   if(!s||_dpDrag||!onDayScreen())return;
+  if((typeof _wkDrag!=='undefined'&&_wkDrag)||(typeof _moStretch!=='undefined'&&_moStretch))return;
   var dx=e.clientX-s.x, dy=e.clientY-s.y;
   if(Math.abs(dx)<DAY_SWIPE_X)return;      // not far enough to mean it
   if(Math.abs(dy)>DAY_SWIPE_Y)return;      // that was a scroll
@@ -35347,6 +35361,10 @@ function overTrash(e){
    then the strip has lost its "on" and overTrash answers no. */
 function swipeArmed(d,e){
   if(d.mode==='end'){d.overT=false;return false;}
+  /* not before the finger has really gone somewhere: the trash opens at the
+     edge the day rail sits on, under a finger that has barely moved */
+  var tx=e.clientX-d.sx,ty=e.clientY-d.sy;
+  if(tx*tx+ty*ty<36*36){d.overT=false;return false;}
   // over the strip is a delete no matter how the finger travelled there
   d.overT=overTrash(e);
   if(d.overT)return true;
@@ -36422,8 +36440,7 @@ function moDown(e){
   if(gh){
     var sd=gh.getAttribute('data-mostart'),sn=gh.getAttribute('data-mosun');
     if(!sd||!sn)return;
-    if(gh.getAttribute('data-moday'))dpPromote(sd,gh.getAttribute('data-mostretch'));
-    _moStretch={id:gh.getAttribute('data-mostretch'),sun:sn,start:sd,
+    _moStretch={id:gh.getAttribute('data-mostretch'),sun:sn,start:sd,promote:gh.getAttribute('data-moday')?sd:'',
                 dow:new Date(sd+'T12:00:00').getDay()};
     window.addEventListener('pointermove',moMove);
     window.addEventListener('pointerup',moUp);
@@ -36490,7 +36507,8 @@ function moMove(e){
        dragged down a row carries the run into the next week. */
     var max=WK_MAX_LEN-1;
     if(diff>max)diff=max;
-    moStretchTo(_moStretch.sun,_moStretch.id,diff+1);
+    if(diff>0&&_moStretch.promote){dpPromote(_moStretch.promote,_moStretch.id);_moStretch.promote='';}
+    if(!_moStretch.promote)moStretchTo(_moStretch.sun,_moStretch.id,diff+1);
     return;
   }
   if(!_moDrag)return;
