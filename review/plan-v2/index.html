@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>תכנון זמן — טיוטה חדשה</title>
+<style>
+/* PLANNING, REBUILT (draft, 27 Oct). The audit found seven ways to add that
+   made three kinds of task, each behaving differently on each board. Here:
+   one kind of task (a day, and if wanted an hour and a length), one place to
+   add, one board at a time reached by zooming (month > week > day, like a
+   calendar), and the same four gestures everywhere - drag to move, the bead
+   to stretch, the bin to delete, one undo per action. Everything is live. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:#2b2724;font-family:Assistant,sans-serif;color:#efe6d8}
+.bar{max-width:440px;margin:0 auto;padding:12px 14px 4px}
+.bar h1{font-size:19px;margin:0 0 4px}.bar p{margin:0 0 6px;font-size:13.5px;line-height:1.5;color:#cfc4b4}
+.wrap{display:flex;justify-content:center;padding:8px 0 30px}
+.ph{position:relative;width:390px;height:844px;overflow:hidden;border-radius:46px;transform-origin:50% 0;flex:none;
+  background:#e9e7e3;color:#4a453f;box-shadow:0 18px 50px rgba(0,0,0,.45);
+  --lit:rgba(255,255,255,.95);--sh:rgba(168,160,148,.5);--sh2:rgba(168,160,148,.3);--amber:#f0a92e;--mut:#6d675e}
+.ph *{user-select:none;-webkit-user-select:none}
+.ph input{user-select:text;-webkit-user-select:text}
+.raise{background:#e9e7e3;box-shadow:-4px -4px 10px var(--lit),5px 7px 14px var(--sh2)}
+.press{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+/* header */
+.hd{position:absolute;top:0;left:0;right:0;padding:50px 18px 8px}
+.hd h2{margin:0;font-size:30px;font-weight:800}
+.crumbs{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+.crumbs button{border:none;font:inherit;cursor:pointer;border-radius:999px;padding:7px 13px;font-size:14px;font-weight:700;color:var(--mut)}
+.crumbs button.on{color:#4a453f;font-weight:800}
+.crumbs i{font-style:normal;color:#b0a08c;font-weight:800}
+.steps{position:absolute;top:52px;inset-inline-end:16px;display:flex;gap:8px}
+.steps button{width:38px;height:38px;border:none;border-radius:50%;font-weight:800;font-size:18px;line-height:1;font-family:inherit;color:#4a453f;cursor:pointer}
+/* the board */
+.board{position:absolute;top:150px;left:12px;right:12px;bottom:206px;border-radius:26px;overflow:hidden;touch-action:pan-y}
+.scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain}
+/* month */
+.mhd,.mgrid{display:grid;grid-template-columns:repeat(7,1fr)}
+.mhd div{text-align:center;font-size:12px;font-weight:800;color:var(--mut);padding:10px 0 4px}
+.mrow{position:relative;display:grid;grid-template-columns:repeat(7,1fr);min-height:86px;border-top:1px solid rgba(168,160,148,.25)}
+.mcell{padding:4px 2px 2px;min-height:86px}
+.mcell .n{font-size:12.5px;font-weight:800;color:var(--mut);text-align:center;height:20px;line-height:20px}
+.mcell.today .n{color:#4a453f}
+.mcell.today .n span{display:inline-block;min-width:22px;border-radius:11px;background:var(--amber);color:#fff}
+.mcell.out .n{opacity:.35}
+.mcell.drop,.wcol.drop,.hrow.drop,.allday.drop{background:rgba(240,169,46,.14)}
+/* a task, everywhere: a soft pill with its colour */
+.tk{position:relative;display:flex;align-items:center;gap:4px;border-radius:9px;font-weight:800;color:#3f3a35;cursor:grab;touch-action:none;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk .tm{font-weight:700;opacity:.7;font-size:.9em}
+.mlane{position:absolute;height:19px;font-size:11px;padding:0 6px}
+.mlane.cont-s{border-start-start-radius:0;border-end-start-radius:0}
+.mlane.cont-e{border-start-end-radius:0;border-end-end-radius:0}
+.bead{position:absolute;inset-inline-end:-2px;top:50%;width:26px;height:26px;margin-top:-13px;display:grid;place-items:center;cursor:ew-resize;touch-action:none;z-index:2}
+.wtk .bead,.mlane .bead{top:auto;bottom:-9px;margin-top:0;inset-inline-end:-9px;width:22px;height:22px}
+.mlane{overflow:visible}
+.bead i{width:11px;height:11px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2.5px #fff,0 1px 3px rgba(90,70,40,.3)}
+/* week */
+.wgrid{display:grid;grid-template-columns:repeat(7,1fr);min-height:100%}
+.wcol{position:relative;border-inline-start:1px solid rgba(168,160,148,.22);min-height:520px;padding-bottom:20px}
+.wcol:first-child{border-inline-start:none}
+.whd{text-align:center;padding:10px 0 8px;cursor:pointer}
+.whd b{display:block;font-size:12.5px}.whd span{display:block;font-size:11.5px;color:var(--mut);font-weight:700}
+.wcol.today .whd b{color:#b0782e}
+.wbody{position:relative;padding:0 3px}
+.wtk{margin-bottom:8px;padding:6px 6px;overflow:visible;font-size:11.5px;flex-direction:column;align-items:flex-start;white-space:normal;line-height:1.2}
+.wbar{position:absolute;height:24px;font-size:11.5px;padding:0 8px;z-index:1}
+/* day */
+.allday{min-height:54px;padding:8px 10px 8px 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-bottom:1px solid rgba(168,160,148,.25)}
+.allday .lbl{font-size:12px;font-weight:800;color:var(--mut);margin-inline-end:4px}
+.allday .tk{padding:7px 12px;font-size:13.5px}
+.hours{position:relative}
+.hrow{height:56px;border-top:1px solid rgba(168,160,148,.2);display:flex}
+.hrow b{width:52px;font-size:12px;color:var(--mut);padding:4px 0 0 0;text-align:center;font-weight:700}
+.blk{position:absolute;inset-inline-start:58px;inset-inline-end:10px;padding:6px 10px;font-size:13.5px;flex-direction:column;align-items:flex-start;border-radius:12px;white-space:normal}
+.blk .rs{position:absolute;left:30%;right:30%;bottom:0;height:16px;cursor:ns-resize;touch-action:none}
+.blk .rs i{display:block;width:30px;height:4px;border-radius:2px;margin:7px auto 0;background:rgba(74,69,63,.3)}
+/* the tray: what is waiting, and the one place to add */
+.tray{position:absolute;left:12px;right:12px;bottom:96px;height:96px;border-radius:24px;padding:10px 12px}
+.tray h4{margin:0 0 6px;font-size:12.5px;color:var(--mut)}
+.pool{display:flex;gap:8px;overflow-x:auto;min-height:40px;padding:2px}
+.pool .tk{padding:9px 14px;font-size:13.5px;flex:none}
+.pool .empty{font-size:13px;color:var(--mut);padding-top:9px}
+.compose{position:absolute;left:12px;right:12px;bottom:26px;height:58px;border-radius:22px;display:flex;align-items:center;gap:8px;padding:6px}
+.compose input{flex:1;min-width:0;height:46px;border:none;border-radius:16px;padding:0 14px;font:inherit;font-size:15px;color:#4a453f;background:#e9e7e3;outline:none}
+.compose button{flex:none;width:46px;height:46px;border:none;border-radius:16px;font-weight:800;font-size:22px;line-height:1;font-family:inherit;color:#4a453f;cursor:pointer;position:relative}
+.compose button::after{content:"";position:absolute;left:50%;transform:translateX(-50%);width:24px;bottom:-4px;height:2px;border-radius:2px;background:var(--amber)}
+/* drag */
+.ghost{position:absolute;z-index:50;pointer-events:none;padding:8px 14px;border-radius:12px;font-size:13.5px;font-weight:800;color:#3f3a35;
+  box-shadow:0 10px 24px rgba(90,74,60,.3);transform:translate(-50%,-120%) rotate(-2deg);white-space:nowrap}
+.ghost small{display:block;font-size:11.5px;font-weight:700;opacity:.75}
+.tk.lift{opacity:.3}
+.bin{position:absolute;left:50%;bottom:120px;width:64px;height:64px;margin-left:-32px;border-radius:50%;display:grid;place-items:center;z-index:40;
+  background:#e9e7e3;box-shadow:-3px -3px 8px var(--lit),5px 7px 16px var(--sh);transform:scale(.4);opacity:0;transition:transform .2s,opacity .2s,background .2s}
+.bin.on{transform:none;opacity:1}
+.bin.hot{background:#b0503a;transform:scale(1.15)}
+.bin svg{width:26px;height:26px;fill:none;stroke:#b0503a;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.bin.hot svg{stroke:#fff}
+/* undo, and a word of what happened */
+.undo{position:absolute;bottom:206px;left:50%;transform:translate(-50%,30px);opacity:0;z-index:45;display:flex;align-items:center;gap:12px;padding:9px 10px 9px 16px;
+  border-radius:999px;background:#f3f0eb;font-size:14px;font-weight:700;box-shadow:-3px -3px 9px rgba(255,255,255,.85),6px 10px 22px rgba(90,74,60,.22);transition:transform .35s cubic-bezier(.22,.61,.36,1),opacity .3s;white-space:nowrap}
+.undo.on{transform:translate(-50%,0);opacity:1}
+.undo button{border:none;border-radius:999px;padding:6px 12px;font-weight:800;font-size:13.5px;line-height:1;font-family:inherit;color:#4a453f;background:#e9e7e3;box-shadow:-2px -2px 5px var(--lit),3px 3px 7px var(--sh2);cursor:pointer}
+/* the sheet: a tap on a task */
+.veil{position:absolute;inset:0;z-index:60;background:rgba(74,69,63,.22);opacity:0;pointer-events:none;transition:opacity .25s}
+.veil.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:10px;right:10px;bottom:10px;z-index:61;border-radius:30px;padding:20px 18px 18px;transform:translateY(110%);transition:transform .4s cubic-bezier(.22,.61,.36,1)}
+.sheet.on{transform:none}
+.sheet input{width:100%;height:50px;border:none;border-radius:16px;padding:0 14px;font:inherit;font-size:17px;font-weight:800;color:#4a453f;background:#e9e7e3;outline:none}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.srow>span{font-size:14px;font-weight:800;color:var(--mut)}
+.cols{display:flex;gap:8px}
+.cols button{width:28px;height:28px;border-radius:50%;border:none;cursor:pointer}
+.cols button.on{box-shadow:0 0 0 3px #e9e7e3,0 0 0 5px #4a453f}
+.step{display:flex;align-items:center;gap:6px}
+.step button{width:36px;height:36px;border:none;border-radius:50%;font-weight:800;font-size:18px;line-height:1;font-family:inherit;color:#4a453f;cursor:pointer}
+.step b{min-width:74px;text-align:center;font-size:15px}
+.sbtns{display:flex;gap:10px;margin-top:18px}
+.sbtns button{flex:1;height:48px;border:none;border-radius:16px;font-weight:800;font-size:15px;line-height:1;font-family:inherit;color:#4a453f;cursor:pointer}
+.sbtns .del{color:#9a3d2a}
+.sbtns .ok{position:relative}
+.sbtns .ok::after{content:"";position:absolute;left:50%;transform:translateX(-50%);width:44px;bottom:-5px;height:2px;border-radius:2px;background:var(--amber)}
+.list{max-width:440px;margin:0 auto;padding:0 14px 40px}
+.list .it{background:#3a342f;border-radius:16px;padding:12px 14px;margin-bottom:8px;font-size:14px;line-height:1.55}
+.list .it b{color:#f0c98a}
+</style></head><body>
+<div class="bar">
+  <h1>תכנון זמן — טיוטה חדשה</h1>
+  <p>הכול כאן עובד באמת. לוח אחד בכל פעם: לוחצים על יום בחודש כדי להיכנס לשבוע שלו, ועל שם של יום בשבוע כדי להיכנס ליום. חוזרים למעלה בפירורים שליד הכותרת.</p>
+</div>
+<div class="wrap"><div class="ph" id="ph">
+  <div class="hd"><h2>תכנון זמן</h2><div class="crumbs" id="crumbs"></div></div>
+  <div class="steps"><button class="raise" id="prev">&#8250;</button><button class="raise" id="next">&#8249;</button></div>
+  <div class="board press" id="board"><div class="scroll" id="scroll"></div></div>
+  <div class="tray raise" id="tray"><h4>בצד — מחכה ליום</h4><div class="pool" id="pool" data-drop-pool="1"></div></div>
+  <div class="compose raise"><input id="in" placeholder="מה להכניס? למשל: רופא מחר 10:00"><button class="raise" id="add">+</button></div>
+  <div class="bin" id="bin"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 4.2h4"/><path d="M6.2 7l.9 12.1A1.9 1.9 0 0 0 9 21h6a1.9 1.9 0 0 0 1.9-1.9L17.8 7"/><path d="M10 10.8v6.2"/><path d="M14 10.8v6.2"/></svg></div>
+  <div class="undo" id="undo"><span id="undo-t"></span><button id="undo-b">&#8630; בטל</button></div>
+  <div class="veil" id="veil"></div>
+  <div class="sheet raise" id="sheet"></div>
+</div></div>
+<div class="list">
+  <div class="it"><b>משימה אחת, סוג אחד.</b> יום, ואם רוצים גם שעה ואורך. אותה משימה נראית בחודש, בשבוע וביום, ומתנהגת אותו דבר בכולם.</div>
+  <div class="it"><b>מקום אחד להוסיף.</b> השורה למטה. "רופא מחר 10:00" נכנס למחר ב-10:00. בלי יום, המשימה נכנסת ל"בצד", ומשם גוררים אותה ליום. ביום פתוח היא נכנסת לאותו יום.</div>
+  <div class="it"><b>אותן תנועות בכל לוח.</b> גוררים כדי להזיז. בחודש ובשבוע, הנקודה הכתומה בקצה מותחת על פני כמה ימים. ביום, גוררים למעלה ולמטה כדי לשנות שעה, ואת הקו בתחתית כדי לשנות משך. גוררים לפח כדי למחוק. גוררים חזרה ל"בצד" כדי להוריד מהלוח.</div>
+  <div class="it"><b>לחיצה על משימה</b> פותחת אותה: שם, צבע, שעה, כמה ימים, מחיקה.</div>
+  <div class="it"><b>"בטל" אחד מחזיר פעולה שלמה,</b> כולל מה שהיא שינתה בכמה לוחות.</div>
+</div>
+<script>
+var TODAY='2026-10-27';
+var C={lav:['#dcd3ef','#a690cf'],blue:['#d6e4f2','#6f97c8'],green:['#d5e8d2','#6a9a62'],amber:['#f5e2bc','#e0a34a'],terra:['#f2d6cc','#d07a5e'],gray:['#e2ddd6','#9c948a']};
+function iso(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function D(s){return new Date(s+'T12:00:00');}
+function add(s,n){var d=D(s);d.setDate(d.getDate()+n);return iso(d);}
+function diff(a,b){return Math.round((D(b)-D(a))/864e5);}
+function sunOf(s){return add(s,-D(s).getDay());}
+var DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],DL=['א','ב','ג','ד','ה','ו','ש'];
+var MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function hm(m){return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+m%60).slice(-2);}
+function dm(s){var d=D(s);return d.getDate()+'.'+(d.getMonth()+1);}
+/* THE ONE TASK: id, w, c, d (a day or '' when waiting), s (start minute or null), e (end minute), len (days) */
+var S={view:'week',at:TODAY,tasks:[
+  {id:'a',w:'רופא שיניים',c:'blue',d:'2026-10-28',s:600,e:660,len:1},
+  {id:'b',w:'ללמוד',c:'lav',d:'2026-10-27',s:960,e:1080,len:1},
+  {id:'c',w:'חופשה בצפון',c:'green',d:'2026-10-29',s:null,len:3},
+  {id:'d',w:'לשלם חשבון',c:'amber',d:'2026-10-27',s:null,len:1},
+  {id:'e',w:'ריצה',c:'terra',d:'2026-10-26',s:420,e:480,len:1},
+  {id:'f',w:'ארוחת שישי',c:'terra',d:'2026-10-30',s:1200,e:1320,len:1}],
+  pool:[{id:'p1',w:'לקנות מתנה',c:'gray'},{id:'p2',w:'להתקשר לסבתא',c:'lav'}]};
+var UNDO=[];
+function snap(){return JSON.stringify({t:S.tasks,p:S.pool});}
+function act(label,fn){var before=snap();fn();if(snap()!==before){UNDO.push(before);toast(label,true);}draw();}
+function undo(){var b=UNDO.pop();if(!b)return;var o=JSON.parse(b);S.tasks=o.t;S.pool=o.p;toast('בוטל',false);draw();}
+var _ut=null;function toast(t,canUndo){var u=document.getElementById('undo');document.getElementById('undo-t').textContent=t;
+  document.getElementById('undo-b').style.display=canUndo?'':'none';u.classList.add('on');clearTimeout(_ut);_ut=setTimeout(function(){u.classList.remove('on');},3200);}
+function on(t,day){return t.d&&diff(t.d,day)>=0&&diff(t.d,day)<(t.len||1);}
+function find(id){var i;for(i=0;i<S.tasks.length;i++)if(S.tasks[i].id===id)return S.tasks[i];for(i=0;i<S.pool.length;i++)if(S.pool[i].id===id)return S.pool[i];return null;}
+function tkStyle(t){return 'background:'+C[t.c][0]+';box-shadow:inset 3px 0 0 '+C[t.c][1];}
+
+/* ── drawing ── */
+function crumbs(){
+  var d=D(S.at),m=MONTHS[d.getMonth()],sun=sunOf(S.at),h='';
+  h+='<button class="'+(S.view==='month'?'on press':'raise')+'" data-go="month">'+m+'</button><i>›</i>';
+  h+='<button class="'+(S.view==='week'?'on press':'raise')+'" data-go="week">'+dm(sun)+'–'+dm(add(sun,6))+'</button>';
+  if(S.view==='day')h+='<i>›</i><button class="on press" data-go="day">'+DAYS[d.getDay()]+' '+dm(S.at)+'</button>';
+  return h;
+}
+function drawMonth(){
+  var d=D(S.at),first=iso(new Date(d.getFullYear(),d.getMonth(),1,12)),start=sunOf(first),h='<div class="mhd">',r,c,k;
+  for(c=0;c<7;c++)h+='<div>'+DL[c]+'</div>';h+='</div>';
+  for(r=0;r<6;r++){
+    var rs=add(start,r*7);if(r>0&&D(rs).getMonth()!==d.getMonth())break;
+    h+='<div class="mrow">';
+    for(c=0;c<7;c++){var day=add(rs,c);h+='<div class="mcell'+(day===TODAY?' today':'')+(D(day).getMonth()!==d.getMonth()?' out':'')+'" data-drop-date="'+day+'"><div class="n"><span>'+D(day).getDate()+'</span></div></div>';}
+    /* lanes: one per task touching this row, the same lane in every cell it crosses */
+    var inRow=S.tasks.filter(function(t){return t.d&&diff(t.d,add(rs,6))>=0&&diff(t.d,rs)<(t.len||1);})
+      .sort(function(a,b){return diff(b.d,a.d)||((b.len||1)-(a.len||1));});
+    for(k=0;k<inRow.length&&k<3;k++){
+      var t=inRow[k],a=Math.max(0,diff(rs,t.d)),z=Math.min(6,diff(rs,t.d)+(t.len||1)-1),contS=diff(rs,t.d)<0,contE=diff(rs,t.d)+(t.len||1)-1>6;
+      h+='<div class="tk mlane'+(contS?' cont-s':'')+(contE?' cont-e':'')+'" data-id="'+t.id+'" style="'+tkStyle(t)+';top:'+(26+k*22)+'px;inset-inline-start:calc('+(a*100/7)+'% + 2px);width:calc('+((z-a+1)*100/7)+'% - 4px)">'+
+        (contS?'':t.w)+(contE?'':'<span class="bead" data-bead="'+t.id+'"><i></i></span>')+'</div>';
+    }
+    if(inRow.length>3)h+='<div style="position:absolute;bottom:2px;inset-inline-end:6px;font-size:11px;font-weight:800;color:#6d675e">+'+(inRow.length-3)+'</div>';
+    h+='</div>';
+  }
+  return h;
+}
+function drawWeek(){
+  var sun=sunOf(S.at),h='<div class="wgrid">',c,i;
+  var multi=S.tasks.filter(function(t){return (t.len||1)>1&&t.d&&diff(t.d,add(sun,6))>=0&&diff(t.d,sun)<t.len;});
+  for(c=0;c<7;c++){
+    var day=add(sun,c),singles=S.tasks.filter(function(t){return (t.len||1)===1&&t.d===day;}).sort(function(a,b){return (a.s==null?-1:a.s)-(b.s==null?-1:b.s);});
+    h+='<div class="wcol'+(day===TODAY?' today':'')+'" data-drop-date="'+day+'"><div class="whd" data-day="'+day+'"><b>'+DL[c]+'</b><span>'+D(day).getDate()+'</span></div>';
+    h+='<div class="wbody" style="padding-top:'+(multi.length*28)+'px">';
+    for(i=0;i<singles.length;i++){var t=singles[i];
+      h+='<div class="tk wtk" data-id="'+t.id+'" style="'+tkStyle(t)+'">'+(t.s!=null?'<span class="tm">'+hm(t.s)+'</span>':'')+t.w+'<span class="bead" data-bead="'+t.id+'"><i></i></span></div>';}
+    h+='</div></div>';
+  }
+  h+='</div>';
+  /* the runs, drawn over the columns */
+  for(i=0;i<multi.length;i++){var m=multi[i],a=Math.max(0,diff(sun,m.d)),z=Math.min(6,diff(sun,m.d)+m.len-1);
+    h+='<div class="tk wbar" data-id="'+m.id+'" style="'+tkStyle(m)+';top:'+(52+i*28)+'px;inset-inline-start:calc('+(a*100/7)+'% + 3px);width:calc('+((z-a+1)*100/7)+'% - 6px)">'+m.w+
+      (diff(sun,m.d)+m.len-1<=6?'<span class="bead" data-bead="'+m.id+'"><i></i></span>':'')+'</div>';}
+  return '<div style="position:relative">'+h+'</div>';
+}
+var H0=6,HN=24,HH=56;
+function drawDay(){
+  var day=S.at,h='<div class="allday" data-drop-date="'+day+'" data-drop-allday="1"><span class="lbl">כל היום</span>',i;
+  var all=S.tasks.filter(function(t){return on(t,day)&&(t.s==null||t.d!==day);});
+  for(i=0;i<all.length;i++)h+='<div class="tk" data-id="'+all[i].id+'" style="'+tkStyle(all[i])+'">'+all[i].w+((all[i].len||1)>1?'<span class="tm">'+((diff(all[i].d,day)+1)+'/'+all[i].len)+'</span>':'')+'</div>';
+  if(!all.length)h+='<span style="font-size:12.5px;color:#8a8278">גוררים לכאן משימה בלי שעה</span>';
+  h+='</div><div class="hours">';
+  for(i=H0;i<HN;i++)h+='<div class="hrow" data-drop-date="'+day+'" data-drop-hour="'+i+'"><b>'+('0'+i).slice(-2)+':00</b></div>';
+  var timed=S.tasks.filter(function(t){return t.d===day&&t.s!=null;});
+  for(i=0;i<timed.length;i++){var t=timed[i],top=(t.s-H0*60)/60*HH,ht=Math.max(28,((t.e||t.s+30)-t.s)/60*HH-2);
+    h+='<div class="tk blk" data-id="'+t.id+'" style="'+tkStyle(t)+';top:'+top+'px;height:'+ht+'px"><span class="tm">'+hm(t.s)+'–'+hm(t.e||t.s+30)+'</span>'+t.w+'<span class="rs" data-resize="'+t.id+'"><i></i></span></div>';}
+  return h+'</div>';
+}
+function draw(){
+  document.getElementById('crumbs').innerHTML=crumbs();
+  var sc=document.getElementById('scroll'),y=sc.scrollTop;
+  sc.innerHTML=S.view==='month'?drawMonth():S.view==='week'?drawWeek():drawDay();
+  if(S.view==='day'&&!draw._dayScrolled){sc.scrollTop=(8-H0)*HH;draw._dayScrolled=1;}else sc.scrollTop=y;
+  var p='',i;for(i=0;i<S.pool.length;i++)p+='<div class="tk" data-id="'+S.pool[i].id+'" style="'+tkStyle(S.pool[i])+'">'+S.pool[i].w+'</div>';
+  document.getElementById('pool').innerHTML=p||'<div class="empty">אין כלום בצד. מה שנכתב בלי יום מחכה כאן.</div>';
+}
+function go(view,at){S.view=view;if(at)S.at=at;draw._dayScrolled=0;draw();}
+
+/* ── one place to add ── */
+function addText(){
+  var el=document.getElementById('in'),v=el.value.trim();if(!v)return;
+  var day='',s=null,m;
+  if(/מחר/.test(v)){day=add(TODAY,1);v=v.replace(/מחר/,'');}
+  else if(/היום/.test(v)){day=TODAY;v=v.replace(/היום/,'');}
+  if((m=v.match(/(?:ב-?)?(\d{1,2}):(\d{2})/))){s=+m[1]*60+(+m[2]);v=v.replace(m[0],'');if(!day)day=S.view==='day'?S.at:TODAY;}
+  else if((m=v.match(/ב-?(\d{1,2})(?!\d)/))&&+m[1]<24){s=+m[1]*60;v=v.replace(m[0],'');if(!day)day=S.view==='day'?S.at:TODAY;}
+  if(!day&&S.view==='day')day=S.at;
+  var w=v.replace(/\s+/g,' ').trim()||el.value.trim(),id='n'+Date.now().toString(36);
+  act(day?'נכנס ל'+DAYS[D(day).getDay()]+(s!=null?' ב-'+hm(s):''):'נכנס לבצד',function(){
+    if(day)S.tasks.push({id:id,w:w,c:'lav',d:day,s:s,e:s!=null?s+60:null,len:1});else S.pool.push({id:id,w:w,c:'lav'});});
+  el.value='';
+}
+document.getElementById('add').onclick=addText;
+document.getElementById('in').addEventListener('keydown',function(e){if(e.key==='Enter')addText();});
+document.getElementById('undo-b').onclick=undo;
+document.getElementById('crumbs').onclick=function(e){var b=e.target.closest('[data-go]');if(b)go(b.dataset.go);};
+function step(n){var u=S.view==='month'?'m':S.view==='week'?7:1;
+  if(u==='m'){var d=D(S.at);S.at=iso(new Date(d.getFullYear(),d.getMonth()+n,1,12));}else S.at=add(S.at,n*u);draw();}
+document.getElementById('prev').onclick=function(){step(-1);};document.getElementById('next').onclick=function(){step(1);};
+
+/* ── the gestures: the same on every board ── */
+var ph=document.getElementById('ph'),G=null;
+function scale(){return ph.getBoundingClientRect().width/390;}
+function local(x,y){var r=ph.getBoundingClientRect(),k=scale();return {x:(x-r.left)/k,y:(y-r.top)/k};}
+function under(x,y){var g=document.querySelector('.ghost');if(g)g.style.display='none';var el=document.elementFromPoint(x,y);if(g)g.style.display='';return el;}
+ph.addEventListener('pointerdown',function(e){
+  if(e.target.closest('.sheet,.compose,.crumbs,.steps,.undo'))return;
+  var bead=e.target.closest('[data-bead]'),rs=e.target.closest('[data-resize]'),tk=e.target.closest('[data-id]');
+  if(bead){G={mode:'stretch',id:bead.dataset.bead,x0:e.clientX,y0:e.clientY};}
+  else if(rs){var t=find(rs.dataset.resize);G={mode:'resize',id:t.id,y0:e.clientY,e0:t.e||t.s+30};}
+  else if(tk){G={mode:'press',id:tk.dataset.id,el:tk,x0:e.clientX,y0:e.clientY};}
+  else{G={mode:'swipe',x0:e.clientX,y0:e.clientY,t:Date.now(),onBoard:!!e.target.closest('#board')};return;}
+  G.before=snap();e.preventDefault();
+});
+window.addEventListener('pointermove',function(e){
+  if(!G)return;var k=scale();
+  if(G.mode==='press'){if(Math.hypot(e.clientX-G.x0,e.clientY-G.y0)<8)return;startDrag(e);}
+  if(G.mode==='drag'){moveDrag(e);return;}
+  if(G.mode==='stretch'){var el=under(e.clientX,e.clientY),c=el&&el.closest('[data-drop-date]'),t=find(G.id);
+    if(c&&t&&t.d){var n=Math.max(1,diff(t.d,c.dataset.dropDate)+1);if(n!==t.len){t.len=Math.min(n,31);if(t.len>1)t.s=t.s;G.changed=1;draw();}}return;}
+  if(G.mode==='resize'){var t2=find(G.id),dy=(e.clientY-G.y0)/k,e1=Math.round((G.e0+dy/HH*60)/15)*15;e1=Math.max(t2.s+15,Math.min(HN*60,e1));if(e1!==t2.e){t2.e=e1;G.changed=1;draw();}}
+});
+window.addEventListener('pointerup',function(e){
+  if(!G)return;var g=G;G=null;
+  if(g.mode==='press'){openSheet(g.id);return;}
+  if(g.mode==='drag'){endDrag(g,e);return;}
+  if(g.mode==='stretch'||g.mode==='resize'){if(g.changed){UNDO.push(g.before);var t=find(g.id);toast(g.mode==='stretch'?(t.len>1?t.len+' ימים':'יום אחד'):'עד '+hm(t.e),true);}return;}
+  if(g.mode==='swipe'&&g.onBoard){var dx=e.clientX-g.x0,dy=e.clientY-g.y0;
+    if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.8&&Date.now()-g.t<700)step(dx>0?-1:1);}
+});
+function startDrag(e){
+  var t=find(G.id);G.mode='drag';G.el.classList.add('lift');
+  var gh=document.createElement('div');gh.className='ghost';gh.style.cssText+=tkStyle(t);gh.innerHTML=t.w+'<small></small>';ph.appendChild(gh);G.g=gh;
+  document.getElementById('bin').classList.add('on');moveDrag(e);
+}
+function moveDrag(e){
+  var p=local(e.clientX,e.clientY),t=find(G.id);G.g.style.left=p.x+'px';G.g.style.top=p.y+'px';
+  document.querySelectorAll('.drop').forEach(function(x){x.classList.remove('drop');});
+  var bin=document.getElementById('bin'),br=bin.getBoundingClientRect(),overBin=Math.hypot(e.clientX-(br.left+br.width/2),e.clientY-(br.top+br.height/2))<br.width*0.75;
+  bin.classList.toggle('hot',overBin);G.target=null;var lbl='';
+  if(overBin){G.target={bin:1};lbl='מחיקה';}
+  else{var el=under(e.clientX,e.clientY),pool=el&&el.closest('[data-drop-pool]'),hr=el&&el.closest('[data-drop-hour]'),c=el&&el.closest('[data-drop-date]');
+    if(pool){G.target={pool:1};lbl='לבצד';}
+    else if(hr){var r=hr.getBoundingClientRect(),q=Math.min(3,Math.floor((e.clientY-r.top)/r.height*4)),s=(+hr.dataset.dropHour)*60+q*15;hr.classList.add('drop');G.target={d:hr.dataset.dropDate,s:s};lbl=hm(s);}
+    else if(c){c.classList.add('drop');G.target={d:c.dataset.dropDate,allday:!!c.dataset.dropAllday};lbl=DAYS[D(c.dataset.dropDate).getDay()]+' '+dm(c.dataset.dropDate);}}
+  G.g.querySelector('small').textContent=lbl;
+}
+function endDrag(g,e){
+  document.getElementById('bin').classList.remove('on','hot');if(g.g)g.g.remove();
+  document.querySelectorAll('.drop').forEach(function(x){x.classList.remove('drop');});
+  var T=g.target,t=find(g.id);if(!T||!t){draw();return;}
+  var inPool=S.pool.indexOf(t)>=0;
+  act(T.bin?'נמחק':T.pool?'הורד לבצד':T.s!=null?'עבר ל-'+hm(T.s):'עבר ל'+DAYS[D(T.d).getDay()],function(){
+    if(T.bin){S.tasks=S.tasks.filter(function(x){return x!==t;});S.pool=S.pool.filter(function(x){return x!==t;});return;}
+    if(T.pool){if(inPool)return;S.tasks=S.tasks.filter(function(x){return x!==t;});S.pool.push({id:t.id,w:t.w,c:t.c});return;}
+    if(inPool){S.pool=S.pool.filter(function(x){return x!==t;});t={id:t.id,w:t.w,c:t.c,len:1,s:null};S.tasks.push(t);}
+    var dur=(t.s!=null&&t.e)?t.e-t.s:60;t.d=T.d;
+    if(T.s!=null){t.s=T.s;t.e=Math.min(HN*60,T.s+dur);}
+    else if(T.allday){t.s=null;t.e=null;}
+  });
+}
+
+/* ── a tap opens the task ── */
+var SH=null;
+function openSheet(id){
+  var t=find(id);if(!t)return;SH={id:id,before:snap()};var inPool=S.pool.indexOf(t)>=0,h='',k;
+  h+='<input id="sh-w" value="'+t.w.replace(/"/g,'&quot;')+'">';
+  h+='<div class="srow"><span>צבע</span><div class="cols">';for(k in C)h+='<button data-c="'+k+'" class="'+(t.c===k?'on':'')+'" style="background:'+C[k][1]+'"></button>';h+='</div></div>';
+  if(!inPool){
+    h+='<div class="srow"><span>שעה</span><div class="step"><button class="raise" data-s="-30">−</button><b id="sh-s">'+(t.s!=null?hm(t.s):'בלי שעה')+'</b><button class="raise" data-s="30">+</button></div></div>';
+    h+='<div class="srow"><span>כמה ימים</span><div class="step"><button class="raise" data-l="-1">−</button><b id="sh-l">'+((t.len||1)>1?t.len+' ימים':'יום אחד')+'</b><button class="raise" data-l="1">+</button></div></div>';
+  }
+  h+='<div class="sbtns"><button class="raise del" id="sh-del">מחיקה</button><button class="raise ok" id="sh-ok">סגירה</button></div>';
+  var sh=document.getElementById('sheet');sh.innerHTML=h;sh.classList.add('on');document.getElementById('veil').classList.add('on');
+  sh.onclick=function(e){var b=e.target.closest('button');if(!b)return;var t=find(SH.id);
+    if(b.dataset.c){t.c=b.dataset.c;sh.querySelectorAll('[data-c]').forEach(function(x){x.classList.toggle('on',x===b);});draw();}
+    if(b.dataset.s){var n=+b.dataset.s;if(t.s==null){t.s=n>0?540:1080;}else{t.s+=n;if(t.s<H0*60){t.s=null;}else if(t.s>HN*60-30)t.s=HN*60-30;}t.e=t.s!=null?t.s+60:null;document.getElementById('sh-s').textContent=t.s!=null?hm(t.s):'בלי שעה';draw();}
+    if(b.dataset.l){t.len=Math.max(1,Math.min(31,(t.len||1)+(+b.dataset.l)));document.getElementById('sh-l').textContent=t.len>1?t.len+' ימים':'יום אחד';draw();}
+    if(b.id==='sh-del'){S.tasks=S.tasks.filter(function(x){return x.id!==SH.id;});S.pool=S.pool.filter(function(x){return x.id!==SH.id;});closeSheet('נמחק');}
+    if(b.id==='sh-ok')closeSheet('נשמר');};
+}
+function closeSheet(lbl){
+  var i=document.getElementById('sh-w'),t=SH&&find(SH.id);if(t&&i&&i.value.trim())t.w=i.value.trim();
+  document.getElementById('sheet').classList.remove('on');document.getElementById('veil').classList.remove('on');
+  if(SH&&snap()!==SH.before){UNDO.push(SH.before);toast(lbl,true);}SH=null;draw();
+}
+document.getElementById('veil').onclick=function(){closeSheet('נשמר');};
+
+/* zoom: a day in the month opens its week; a day's name in the week opens the day */
+document.getElementById('scroll').addEventListener('click',function(e){
+  if(e.target.closest('[data-id]'))return;
+  var wh=e.target.closest('[data-day]');if(wh&&S.view==='week'){go('day',wh.dataset.day);return;}
+  var c=e.target.closest('.mcell');if(c&&S.view==='month')go('week',c.dataset.dropDate);
+});
+draw();
+function fit(){var s=Math.min(1,(innerWidth-8)/390);ph.style.transform='scale('+s+')';document.querySelector('.wrap').style.height=(844*s+30)+'px';}
+addEventListener('resize',fit);fit();
+</script>
+</body></html>
