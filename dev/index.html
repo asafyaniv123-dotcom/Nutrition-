@@ -1904,17 +1904,18 @@ html[dir=rtl] .hch-mode.c::before{transform:translateX(-40px)}
 html[dir=ltr] .hch-mode.c::before{transform:translateX(40px)}
 html body .hch-mode button.on{background:transparent!important;box-shadow:none!important}
 .hch-mode button{transition:color .3s}
-/* the veil the two views change under */
-#hch-veil{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;
-  -webkit-backdrop-filter:blur(0);backdrop-filter:blur(0);background:rgba(245,240,233,0);
-  transition:opacity .34s cubic-bezier(.4,0,.2,1),backdrop-filter .34s cubic-bezier(.4,0,.2,1),-webkit-backdrop-filter .34s cubic-bezier(.4,0,.2,1),background .34s cubic-bezier(.4,0,.2,1)}
-/* a breath of blur, not a curtain: 16px under a 35% cream read as a wall (29.10) */
-#hch-veil.on{opacity:1;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);background:rgba(245,240,233,.1)}
-#hch-veil.off{transition-duration:.6s}
+/* the two views cross-fade: what shows dims away, the other rises in its place.
+   Opacity only - a blur veil read as a smear twice (27.10, 29.10), and a
+   transform on these children makes each a frame for the fixed things inside.
+   An animation, not a transition, so no child loses a transition of its own. */
+@keyframes hchOut{to{opacity:0}}
+@keyframes hchIn{from{opacity:0}}
+#home-screen.hch-out>*:not(.hch-mode):not(.home-menu){animation:hchOut .2s cubic-bezier(.4,0,1,1) forwards}
+#home-screen.hch-in>*:not(.hch-mode):not(.home-menu){animation:hchIn .38s cubic-bezier(0,0,.2,1) both}
 .mip-fly{position:fixed;left:0;top:0;z-index:960;pointer-events:none;transform-origin:50% 50%;
   transition:transform .6s cubic-bezier(.45,.05,.2,1),opacity .2s}
 .mip-fly.done{opacity:0}
-@media (prefers-reduced-motion:reduce){.sg-glide{transition:none}#home-screen.hch-swap>*{animation:none}}
+@media (prefers-reduced-motion:reduce){.sg-glide{transition:none}#home-screen.hch-out>*,#home-screen.hch-in>*{animation:none}}
 html body.mod-planning .mo-chip-sel{outline:none;transform:translateY(-1px) scale(1.06);box-shadow:-2px -2px 5px var(--nu-lit),3px 6px 12px var(--nu-shade)}
 /* a block that continues into the next band: no shadow on the joined edge */
 html body.mod-planning .wk-blk.ct,html body.mod-planning .wk-blk.cb{box-shadow:none}
@@ -43556,33 +43557,34 @@ function rfBeemTouch(el,night){
     var R=room();P.tx=Math.max(R.l,Math.min(R.r,P.px+dx));P.ty=Math.max(R.t,Math.min(R.b,P.py+dy));
     if(!P.follow){P.follow=1;pos.vx=pos.vy=0;follow();}
   });
-  /* held, he follows the finger on the sheet's spring (700, 48: just under
-     critical), so he is carried rather than pinned to it */
+  /* held, he drifts after the finger on a slow spring (90, 17: just under
+     critical, about half a second behind) - carried, not chasing (29.10) */
   function follow(){
     mipTrail(el,B,1);
     var last=performance.now();
     (function step(now){
       if(!P||P.mode!=='drag')return;
       var h=Math.min(.033,(now-last)/1000);last=now;
-      pos.vx+=((P.tx-pos.x)*700-pos.vx*48)*h;pos.vy+=((P.ty-pos.y)*700-pos.vy*48)*h;
+      pos.vx+=((P.tx-pos.x)*90-pos.vx*17)*h;pos.vy+=((P.ty-pos.y)*90-pos.vy*17)*h;
       pos.x+=pos.vx*h;pos.y+=pos.vy*h;put();
       raf=requestAnimationFrame(step);
     })(last);
   }
-  /* THROW: under gravity, off the walls and the floor, then home */
+  /* LET GO: he floats - no gravity, he does not fall. He glides on with the
+     speed he was let go at (capped, so a flick is a drift), slows in the air,
+     turns softly off the card's walls, and when he has all but stopped */
   function fly(){
     mipTrail(el,B,1);
-    var R=room(),last=performance.now(),hits=0,rest=0;
+    var R=room(),last=performance.now(),hits=0,rest=0,sp=Math.hypot(pos.vx,pos.vy),cap=520;
+    if(sp>cap){pos.vx*=cap/sp;pos.vy*=cap/sp;}
     (function step(now){
       var h=Math.min(.033,(now-last)/1000);last=now;
-      pos.vy+=2600*h;
-      var onFloor=pos.y>=R.b-.5;if(onFloor)pos.vx-=pos.vx*Math.min(1,2.8*h);
+      var f=Math.exp(-2.2*h);pos.vx*=f;pos.vy*=f;
       pos.x+=pos.vx*h;pos.y+=pos.vy*h;
-      if(pos.x<R.l||pos.x>R.r){pos.x=pos.x<R.l?R.l:R.r;if(Math.abs(pos.vx)>200){verb('squash',Math.min(4,Math.abs(pos.vx)*.0022));hits++;}pos.vx=-pos.vx*.62;}
-      if(pos.y<R.t){pos.y=R.t;pos.vy=-pos.vy*.5;}
-      if(pos.y>R.b){pos.y=R.b;if(pos.vy>220){verb('squash',Math.min(8,pos.vy*.0032));hits++;pos.vy=-pos.vy*.5;}else pos.vy=0;}
+      if(pos.x<R.l||pos.x>R.r){pos.x=pos.x<R.l?R.l:R.r;if(Math.abs(pos.vx)>160){verb('squash',Math.min(1.6,Math.abs(pos.vx)*.002));hits++;}pos.vx=-pos.vx*.45;}
+      if(pos.y<R.t||pos.y>R.b){pos.y=pos.y<R.t?R.t:R.b;if(Math.abs(pos.vy)>160){verb('squash',Math.min(1.6,Math.abs(pos.vy)*.002));hits++;}pos.vy=-pos.vy*.45;}
       put();
-      if(pos.y>=R.b-.5&&Math.abs(pos.vx)<20&&Math.abs(pos.vy)<20){rest+=h;if(rest>.35){landed(hits);return;}}else rest=0;
+      if(Math.hypot(pos.vx,pos.vy)<14){rest+=h;if(rest>.25){landed(hits);return;}}else rest=0;
       raf=requestAnimationFrame(step);
     })(last);
   }
@@ -43592,9 +43594,9 @@ function rfBeemTouch(el,night){
       face('calm');
       /* and he floats back to where he lives */
       var x0=pos.x,y0=pos.y,t0=performance.now();
-      (function back(now){var k=Math.min(1,(now-t0)/700),e2=1-Math.pow(1-k,3);pos.x=x0*(1-e2);pos.y=y0*(1-e2);put();
+      (function back(now){var k=Math.min(1,(now-t0)/1200),e2=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;pos.x=x0*(1-e2);pos.y=y0*(1-e2);put();
         if(k<1)raf=requestAnimationFrame(back);else{pos.x=pos.y=0;put();}})(t0);
-    },1000);
+    },700);
   }
   function up(){
     clearTimeout(petT);
@@ -46265,11 +46267,9 @@ function hchSetMode(m){
   /* the thumb goes first */
   if(sw){sw.classList.toggle('c',m==='chat');var b=sw.children;if(b.length===2){b[0].className=m==='chat'?'':'on';b[1].className=m==='chat'?'on':'';}}
   if(!hs||matchMedia('(prefers-reduced-motion: reduce)').matches){hchSync();if(m==='dial'){try{renderHomeGrid();}catch(e){}}return;}
-  /* a veil of blur rises, the views change beneath it, and it clears */
+  /* what shows dims away, the views change, and the other rises */
   clearTimeout(_hchT);
-  var v=document.getElementById('hch-veil');
-  if(!v){v=document.createElement('div');v.id='hch-veil';document.body.appendChild(v);}
-  v.classList.remove('off');void v.offsetWidth;v.classList.add('on');
+  hs.classList.remove('hch-in');void hs.offsetWidth;hs.classList.add('hch-out');
   /* Mip carries the change: from where he stands now to where he will stand */
   var from=m==='chat'?document.getElementById('bhelp'):document.getElementById('hch-mip'),fr=from&&from.getBoundingClientRect();
   var fly=null;
@@ -46277,7 +46277,8 @@ function hchSetMode(m){
     fly=document.createElement('div');fly.className='mip-fly';var S=170;fly.style.width=fly.style.height=S+'px';
     fly.style.transform='translate('+(fr.left+fr.width/2-S/2)+'px,'+(fr.top+fr.height/2-S/2)+'px) scale('+(fr.width/S)+')';
     document.body.appendChild(fly);from.style.visibility='hidden';
-    beemKit().then(function(K){try{var b=K.mount(fly,{play:DOOR_BEEM.glad});mipTrail(fly,function(){return b;});}catch(e){}});
+    /* no trailing rings in flight: at the cap, growing from a fifth of his size, they read as a broken Mip */
+    beemKit().then(function(K){try{K.mount(fly,{play:DOOR_BEEM.glad});}catch(e){}});
   }
   _hchT=setTimeout(function(){
     hchSync();if(m==='dial'){try{renderHomeGrid();}catch(e){}}
@@ -46290,8 +46291,9 @@ function hchSetMode(m){
         setTimeout(function(){to.style.visibility='';fly.classList.add('done');setTimeout(function(){fly.remove();},220);},760);}
       else fly.remove();
     }
-    requestAnimationFrame(function(){v.classList.remove('on');v.classList.add('off');});
-  },300);
+    hs.classList.remove('hch-out');void hs.offsetWidth;hs.classList.add('hch-in');
+    _hchT=setTimeout(function(){hs.classList.remove('hch-in');},420);
+  },210);
 }
 /* The rings come after the body. The engine already lags them behind HIS
    motion inside his box (LAG, from beem-soft), but a box moved by CSS
