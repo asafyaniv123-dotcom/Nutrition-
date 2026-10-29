@@ -1907,9 +1907,10 @@ html body .hch-mode button.on{background:transparent!important;box-shadow:none!i
 /* the veil the two views change under */
 #hch-veil{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;
   -webkit-backdrop-filter:blur(0);backdrop-filter:blur(0);background:rgba(245,240,233,0);
-  transition:opacity .24s ease,backdrop-filter .24s ease,-webkit-backdrop-filter .24s ease,background .24s ease}
-#hch-veil.on{opacity:1;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);background:rgba(245,240,233,.35)}
-#hch-veil.off{transition-duration:.42s}
+  transition:opacity .34s cubic-bezier(.4,0,.2,1),backdrop-filter .34s cubic-bezier(.4,0,.2,1),-webkit-backdrop-filter .34s cubic-bezier(.4,0,.2,1),background .34s cubic-bezier(.4,0,.2,1)}
+/* a breath of blur, not a curtain: 16px under a 35% cream read as a wall (29.10) */
+#hch-veil.on{opacity:1;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);background:rgba(245,240,233,.1)}
+#hch-veil.off{transition-duration:.6s}
 .mip-fly{position:fixed;left:0;top:0;z-index:960;pointer-events:none;transform-origin:50% 50%;
   transition:transform .6s cubic-bezier(.45,.05,.2,1),opacity .2s}
 .mip-fly.done{opacity:0}
@@ -43538,7 +43539,7 @@ function rfBeemTouch(el,night){
     b.idle=false;b.lkX=Math.max(-38,Math.min(38,dx/2.2));b.lkY=Math.max(-22,Math.min(22,-dy/3));
     clearTimeout(lookT);lookT=setTimeout(function(){var bb=B();if(bb&&!P){bb.idle=true;bb.lkX=0;bb.lkY=0;}},1600);}
   el.addEventListener('pointerdown',function(e){
-    if(night)return;cancelAnimationFrame(raf);
+    if(night)return;cancelAnimationFrame(raf);mipTrail(el,B,1);
     try{el.setPointerCapture(e.pointerId);}catch(er){}
     P={x0:e.clientX,y0:e.clientY,px:pos.x,py:pos.y,t0:Date.now(),mode:'press',s:[{x:e.clientX,y:e.clientY,t:performance.now()}]};
     /* a long, still press is petting */
@@ -43552,10 +43553,25 @@ function rfBeemTouch(el,night){
     if(P.mode==='press'&&Math.hypot(dx,dy)>12){clearTimeout(petT);P.mode='drag';face('surprised');setTimeout(function(){if(P&&P.mode==='drag')face('happy');},300);}
     if(P.mode==='pet'){lookAt(e);return;}
     if(P.mode!=='drag')return;
-    var R=room();pos.x=Math.max(R.l,Math.min(R.r,P.px+dx));pos.y=Math.max(R.t,Math.min(R.b,P.py+dy));pos.vx=pos.vy=0;put();
+    var R=room();P.tx=Math.max(R.l,Math.min(R.r,P.px+dx));P.ty=Math.max(R.t,Math.min(R.b,P.py+dy));
+    if(!P.follow){P.follow=1;pos.vx=pos.vy=0;follow();}
   });
+  /* held, he follows the finger on the sheet's spring (700, 48: just under
+     critical), so he is carried rather than pinned to it */
+  function follow(){
+    mipTrail(el,B,1);
+    var last=performance.now();
+    (function step(now){
+      if(!P||P.mode!=='drag')return;
+      var h=Math.min(.033,(now-last)/1000);last=now;
+      pos.vx+=((P.tx-pos.x)*700-pos.vx*48)*h;pos.vy+=((P.ty-pos.y)*700-pos.vy*48)*h;
+      pos.x+=pos.vx*h;pos.y+=pos.vy*h;put();
+      raf=requestAnimationFrame(step);
+    })(last);
+  }
   /* THROW: under gravity, off the walls and the floor, then home */
   function fly(){
+    mipTrail(el,B,1);
     var R=room(),last=performance.now(),hits=0,rest=0;
     (function step(now){
       var h=Math.min(.033,(now-last)/1000);last=now;
@@ -46261,7 +46277,7 @@ function hchSetMode(m){
     fly=document.createElement('div');fly.className='mip-fly';var S=170;fly.style.width=fly.style.height=S+'px';
     fly.style.transform='translate('+(fr.left+fr.width/2-S/2)+'px,'+(fr.top+fr.height/2-S/2)+'px) scale('+(fr.width/S)+')';
     document.body.appendChild(fly);from.style.visibility='hidden';
-    beemKit().then(function(K){try{K.mount(fly,{play:DOOR_BEEM.glad});}catch(e){}});
+    beemKit().then(function(K){try{var b=K.mount(fly,{play:DOOR_BEEM.glad});mipTrail(fly,function(){return b;});}catch(e){}});
   }
   _hchT=setTimeout(function(){
     hchSync();if(m==='dial'){try{renderHomeGrid();}catch(e){}}
@@ -46270,13 +46286,34 @@ function hchSetMode(m){
       var to=m==='chat'?document.getElementById('hch-mip'):document.getElementById('bhelp'),tr=to&&to.getBoundingClientRect();
       if(tr&&tr.width){to.style.visibility='hidden';var S=170;
         fly.style.transform='translate('+(tr.left+tr.width/2-S/2)+'px,'+(tr.top+tr.height/2-S/2)+'px) scale('+(tr.width/S)+')';
-        setTimeout(function(){to.style.visibility='';fly.classList.add('done');setTimeout(function(){fly.remove();},220);},620);}
+        /* 760, not 620: the rings land a beat after him, and the hand-over waits for them */
+        setTimeout(function(){to.style.visibility='';fly.classList.add('done');setTimeout(function(){fly.remove();},220);},760);}
       else fly.remove();
     }
     requestAnimationFrame(function(){v.classList.remove('on');v.classList.add('off');});
-  },240);
+  },300);
 }
-function hchLoad(){
+/* The rings come after the body. The engine already lags them behind HIS
+   motion inside his box (LAG, from beem-soft), but a box moved by CSS
+   carries body and rings together as one stiff picture. So each frame the
+   box's own travel is handed back to the rings as a debt, in the engine's
+   1024 units, and the engine pays it off at its own pace - capped by its
+   LAGCAP, so a fast throw drags them by the same 15px the sheet allows. */
+function mipTrail(el,getB,idleStop){
+  if(el._trail)return;
+  var last=null,moved=performance.now();
+  (function f(){
+    if(!el.isConnected){el._trail=0;return;}
+    var b=getB(),r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+    if(b&&b.rx&&last&&r.width){var k=1024/r.width,dx=(cx-last.x)*k,dy=(cy-last.y)*k;
+      if(dx||dy){moved=performance.now();for(var i=0;i<3;i++){b.rx[i]-=dx;b.ry[i]-=dy;}}}
+    last={x:cx,y:cy};
+    /* a box that has stood still for three seconds has nothing left to hand
+       on - counted in time, not frames, which a 120Hz phone would halve */
+    if(idleStop&&performance.now()-moved>3000){el._trail=0;return;}
+    el._trail=requestAnimationFrame(f);
+  })();
+}function hchLoad(){
   var o=null;try{o=JSON.parse(localStorage.getItem(HCH_KEY)||'null');}catch(e){}
   if(!o||o.day!==todayStr()||!o.t)o={day:todayStr(),t:{}};
   return o;
