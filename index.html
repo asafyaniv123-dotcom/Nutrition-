@@ -12058,6 +12058,20 @@ function appGender(){
   try{var v=localStorage.getItem(GENDER_KEY);if(v==='f'||v==='m'||v==='x')return v;}catch(e){}
   return '';
 }
+/* WHICH FORMS A LANGUAGE CAN HONOUR. Hebrew marks gender and number on the
+   verb, so it has three: feminine, masculine, and the plural Asaf chose for
+   "other". Arabic, Spanish, French, Italian and Portuguese mark the woman
+   being spoken to - Arabic on almost every verb, the Romance languages on
+   every adjective and participle about her - and each has an overlay in
+   data/gender/. None of them has a plural that reads as addressing ONE
+   person in an app, so they offer two, and an 'x' kept from Hebrew reads
+   the language's own default. German, English, Japanese and Chinese do not
+   mark it at all, so the question is not asked there: a control that
+   changes nothing is worse than no control. */
+function addrForms(code){
+  if(code==='he')return 'fmx';
+  return /^(ar|es|fr|it|pt)$/.test(code||'')?'fm':'';
+}
 function genderSet(g,cb){
   try{localStorage.setItem(GENDER_KEY,g==='f'||g==='x'?g:'m');}catch(e){}
   /* the clock's voice follows this answer too, so what is decoded is now the
@@ -12084,9 +12098,23 @@ function langLoad(code,cb){
       },function(){_lang=HE;cb&&cb();});
     return;
   }
+  /* The same overlay, for every other language that marks her: the keys
+     whose sentence changes for a woman, layered over the dictionary. A
+     missing overlay is a masculine app, never a broken one. */
+  var _og=appGender(),_ov=(_og&&addrForms(code).indexOf(_og)>=0&&_og!=='m')
+    ?fetch(liveBase()+'data/gender/'+code+'.json').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;})
+    :null;
   fetch(liveBase()+'data/lang/'+code+'.json')
     .then(function(r){return r.json();})
-    .then(function(j){_lang=j;cb&&cb();},function(){_lang=null;cb&&cb();});
+    .then(function(j){
+      if(!_ov){_lang=j;cb&&cb();return;}
+      _ov.then(function(f){
+        var o={},k;
+        for(k in j)o[k]=j[k];
+        if(f)for(k in f)o[k]=f[k];
+        _lang=o;cb&&cb();
+      });
+    },function(){_lang=null;cb&&cb();});
 }
 var LOCALE_KEY='app_locale',UNITS_KEY='app_units';
 var APP_LOCALE=(function(){
@@ -20631,7 +20659,7 @@ function sumFactValue(sum,id,dateStr){
   if(id==='dayRating')return v?nfmt(v)+'<i> / '+nfmt(10)+'</i>':'';
   if(id==='bodyFeelings'||id==='energyGivers'||id==='energyDrainers'){
     a=Array.isArray(v)?v:[];
-    return a.length?a.map(function(x){return _t(x);}).join(' · '):'';
+    return a.length?a.map(function(x){return labelOf(x);}).join(' · '):'';
   }
   if(id==='steps')return v?nfmt(v):'';
   if(id==='workoutDone'){
@@ -20648,7 +20676,7 @@ function sumFactValue(sum,id,dateStr){
     if(v!==true&&v!==false)return '';
     if(!v)return ''+_t('לא')+'';
     a=Array.isArray(sum.selfCareActivity)?sum.selfCareActivity:[];
-    return a.length?a.map(function(x){return _t(x);}).join(' · '):''+_t('כן')+'';
+    return a.length?a.map(function(x){return labelOf(x);}).join(' · '):''+_t('כן')+'';
   }
   if(id==='procrastinated'){
     if(v!==true&&v!==false)return '';
@@ -43441,7 +43469,7 @@ function meInsights(rows){
   }
   var top=Object.keys(givers).sort(function(x,y){return givers[y]-givers[x];})[0];
   if(top&&givers[top]>=2)
-    cards+=meInsight(''+_t('מה מילא אותך הכי הרבה')+'',_t('"{what}" חזר {n} פעמים',{what:top,n:givers[top]}),
+    cards+=meInsight(''+_t('מה מילא אותך הכי הרבה')+'',_t('"{what}" חזר {n} פעמים',{what:labelOf(top),n:givers[top]}),
       ''+_t('מתוך התשובות שלך לשאלות ההעמקה')+'',ME_C[0]);
   if(!cards)cards='<div class="me-empty">'+_t('עוד אין מספיק ימים מסוכמים כדי למצוא דפוסים. זה יתמלא מעצמו.')+'</div>';
   return meCard('ins',''+_t('מה עולה מהנתונים')+'','',cards);
@@ -43613,7 +43641,7 @@ var _doorStep=0,_doorPick=[],_doorSteps=[];
    every step approved before it was built. In order:
      hi      ברוכים הבאים ל־Olimei, the language list in the corner
      name    Beem asks her name
-     gender  how to address her - Hebrew only, where the feminine text exists
+     gender  how to address her - wherever addrForms says the language marks it
      areas   what matters, a cloud of chips, each a rendered object
      why     what the app is for, and how: a short questionnaire each evening
      time    at what hour to remind her - a wheel, and morning is a fine answer
@@ -43627,7 +43655,7 @@ var _doorStep=0,_doorPick=[],_doorSteps=[];
 var _dr={beem:null,name:'',time:[21,30],picked:[]};
 function doorSteps(){
   var a=['hi','lang','name'];
-  if(appLang()==='he')a.push('gender');
+  if(addrForms(appLang()))a.push('gender');
   a.push('birth');
   return a.concat(['areas','why','time','remind','bridge','mood','moment','day1']);
 }
@@ -43746,10 +43774,11 @@ function doorHTML(){
   }
   if(step==='gender'){
     return '<div class="dr-body"><div class="dr-q2">'+_t('איך לפנות אלייך?')+'</div>'+
-      '<div class="dr-w2">'+_t('בעברית כל משפט נושא מגדר, אז זה משנה איך כל מסך מדבר אלייך.')+'</div>'+
+      '<div class="dr-w2">'+(appLang()==='he'?_t('בעברית כל משפט נושא מגדר, אז זה משנה איך כל מסך מדבר אלייך.'):_t('בשפה הזו חלק מהמילים משתנות לפי מי שקורא אותן, אז זה משנה איך האפליקציה מדברת אלייך.'))+'</div>'+
       '<div class="dr-rows"><button class="dr-r2" onclick="doorGender2(&#39;f&#39;,this)">'+_t('בלשון נקבה')+'</button>'+
       '<button class="dr-r2" onclick="doorGender2(&#39;m&#39;,this)">'+_t('בלשון זכר')+'</button>'+
-      '<button class="dr-r2" onclick="doorGender2(&#39;x&#39;,this)">'+_t('אחר')+'<span class="dr-r2s">'+_t('אפנה אליכם בלשון רבים')+'</span></button></div></div>';
+      (addrForms(appLang()).indexOf('x')<0?'':
+      '<button class="dr-r2" onclick="doorGender2(&#39;x&#39;,this)">'+_t('אחר')+'<span class="dr-r2s">'+_t('אפנה אליכם בלשון רבים')+'</span></button>')+'</div></div>';
   }
   if(step==='areas'){
     h='<div class="dr-body"><div class="dr-q2">'+_t('במה חשוב לך להתמקד?')+'</div>'+
@@ -45777,17 +45806,19 @@ function renderSettings(){
 
      Shown only where the app can honour it, exactly as the door's card is: a
      control that changes nothing is worse than no control. */
-  if(cur==='he'){
-    var _g=appGender();
+  if(addrForms(cur)){
+    var _g=appGender(),_gx=addrForms(cur).indexOf('x')>=0;
+    /* an 'x' kept from Hebrew reads the default here, so the default is lit */
+    if(_g==='x'&&!_gx)_g='m';
     h+='<div class="set-sec"><div class="set-t">'+_t('איך לפנות אליך?')+'</div>'+
-       '<div class="set-s">'+_t('בעברית כל משפט נושא מגדר, אז זה משנה איך כל מסך מדבר אלייך.')+'</div></div>';
+       '<div class="set-s">'+(cur==='he'?_t('בעברית כל משפט נושא מגדר, אז זה משנה איך כל מסך מדבר אלייך.'):_t('בשפה הזו חלק מהמילים משתנות לפי מי שקורא אותן, אז זה משנה איך האפליקציה מדברת אלייך.'))+'</div></div>';
     h+='<div class="set-langs">'+
        '<button class="set-lang'+(_g==='f'?' on':'')+'" onclick="genderSet(\'f\',renderSettings)">'+
          _t('בלשון נקבה')+'</button>'+
        '<button class="set-lang'+(_g!=='f'&&_g!=='x'?' on':'')+'" onclick="genderSet(\'m\',renderSettings)">'+
          _t('בלשון זכר')+'</button>'+
-       '<button class="set-lang'+(_g==='x'?' on':'')+'" onclick="genderSet(\'x\',renderSettings)">'+
-         _t('בלשון רבים')+'</button>'+
+       (_gx?'<button class="set-lang'+(_g==='x'?' on':'')+'" onclick="genderSet(\'x\',renderSettings)">'+
+         _t('בלשון רבים')+'</button>':'')+
        '</div>';
   }
   /* ── THE HOUR THE DOOR ASKED FOR ──
