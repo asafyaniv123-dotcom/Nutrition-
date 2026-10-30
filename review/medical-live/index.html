@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>לנסות: רקע רפואי</title>
+<style>
+/* MEDICAL BACKGROUND, LIVE - a prototype to try by hand (30 Oct 2026).
+   Asaf (25 Oct): people with a medical background should get ADJUSTMENTS in
+   nutrition and fitness - not decisions, defaults moved and explained, each
+   with a named source. He judges by touching, so this is one working phone:
+   a switcher on top, one line saying what to try, the screens themselves.
+   State lives in memory; nothing is saved, nothing is sent anywhere.
+   The material was photographed from dev (fitness program, nutrition day)
+   over CDP on 30 Oct before drawing: ground #e9e7e3, cards r26, macro tubes. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--g:#e9e7e3;--lit:rgba(255,255,255,.95);--sh:rgba(176,168,156,.44);--sh2:rgba(176,168,156,.30);
+  --ink:#4a4340;--mu:#6b655c;--amber:#f0a92e;--dk:#2b2724}
+html,body{margin:0;background:var(--g);font-family:Assistant,"Segoe UI",Arial,sans-serif;color:var(--ink)}
+button,input{font-family:inherit;color:inherit}
+a{color:#7a5310}
+.ph{position:relative;min-height:100vh;background:var(--g)}
+@media (min-width:600px){
+  html,body{background:var(--dk)}
+  .ph{width:390px;height:844px;min-height:0;margin:24px auto;border-radius:40px;overflow:hidden;transform:translateZ(0);
+    box-shadow:0 18px 50px rgba(0,0,0,.45)}
+  .sc{height:100%;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+  .sc::-webkit-scrollbar{display:none}
+  .outside{max-width:640px;margin:0 auto 40px;color:#d8cfc2}
+  .outside a{color:#f0c98a}
+}
+/* ── the prototype's own strip, dark so it never reads as the app ── */
+.sw{position:sticky;top:0;z-index:50;background:var(--dk);color:#efe6d8;padding:8px 0 7px}
+.sw-row{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:0 10px}
+.sw-row::-webkit-scrollbar{display:none}
+.sw-row button{flex:none;border:none;border-radius:999px;padding:7px 11px;font-size:12.5px;font-weight:700;background:#3d3732;color:#e6dccd;cursor:pointer;white-space:nowrap}
+.sw-row button b{font-weight:800;margin-inline-end:4px;color:#f0c98a}
+.sw-row button.on{background:#efe6d8;color:var(--dk)}
+.sw-row button.on b{color:#9a5e10}
+.sw-try{display:flex;align-items:center;gap:8px;padding:7px 12px 0;font-size:13px;line-height:1.4;color:#d6ccbd}
+.sw-try span{flex:1;min-width:0}
+.sw-try button{flex:none;border:none;background:none;color:#f0c98a;font-size:12.5px;font-weight:800;cursor:pointer;padding:2px 0}
+
+/* ── the app, as photographed ── */
+.hd{position:relative;min-height:112px;padding:42px 20px 14px 90px}
+.home{position:absolute;top:14px;right:20px;border:none;padding:5px 13px;border-radius:13px;font-size:12px;font-weight:800;color:var(--mu);background:var(--g);
+  box-shadow:-3px -3px 7px var(--lit),3px 4px 9px var(--sh2)}
+.ttl{font-size:30px;font-weight:800;letter-spacing:-.6px;line-height:1.15}
+.sub{font-size:13.5px;font-weight:600;color:var(--mu);margin-top:4px}
+.mip{position:absolute;top:12px;left:14px;width:60px;height:60px;border-radius:50%;background:var(--g);overflow:hidden;
+  box-shadow:-4px -4px 10px var(--lit),5px 6px 14px var(--sh2)}
+.mip .bm,.mip>div{position:absolute;left:7px;top:7px;width:46px;height:46px}
+.ct{padding:0 16px 40px}
+.card{position:relative;border-radius:26px;background:var(--g);padding:18px 18px 16px;margin-bottom:16px;
+  box-shadow:-9px -9px 20px var(--lit),11px 14px 30px rgba(158,166,188,.42),inset 1px 1px 0 rgba(255,255,255,.7)}
+.cap{display:block;font-size:12px;font-weight:700;color:var(--mu)}
+.h2{font-size:19px;font-weight:800;margin:2px 0 4px;letter-spacing:-.2px}
+.ln{font-size:13.5px;font-weight:600;line-height:1.55;color:var(--mu)}
+.ln b{color:var(--ink)}
+.pill{border:none;border-radius:16px;padding:12px 16px;font-size:15px;font-weight:800;background:var(--g);cursor:pointer;
+  box-shadow:-4px -4px 9px var(--lit),4px 5px 12px var(--sh2)}
+.pill:active,.pill.on{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.wide{display:block;width:100%}
+.quiet{display:block;width:100%;border:none;background:none;padding:12px;font-size:14px;font-weight:700;color:var(--mu);cursor:pointer}
+.back{display:inline-flex;align-items:center;gap:4px;margin:2px 0 14px;border:none;border-radius:20px;padding:6px 13px;font-size:12px;font-weight:700;color:var(--mu);
+  background:var(--g);box-shadow:-3px -3px 6px var(--lit),3px 4px 8px var(--sh2)}
+.dot{display:inline-block;flex:none;width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 7px 2px rgba(240,169,46,.55)}
+
+/* stage 1 - the question */
+.q{font-size:22px;font-weight:800;line-height:1.3;letter-spacing:-.3px;margin:4px 2px 6px}
+.qs{font-size:13.5px;font-weight:600;color:var(--mu);line-height:1.5;margin:0 2px 16px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:16px;padding:11px 14px;font-size:14.5px;font-weight:700;color:var(--ink);background:var(--g);cursor:pointer;
+  box-shadow:-4px -4px 9px var(--lit),4px 5px 12px var(--sh2)}
+.chip .dot{opacity:0;transition:opacity .2s}
+.chip.on{box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.chip.on .dot{opacity:1}
+.chip.none{color:var(--mu)}
+.seg{display:flex;gap:6px;padding:5px;border-radius:18px;margin:2px 0 14px;box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.seg button{flex:1;border:none;background:none;border-radius:13px;padding:9px 4px;font-size:13px;font-weight:700;color:var(--mu);cursor:pointer}
+.seg button.on{background:var(--g);color:var(--ink);box-shadow:-3px -3px 7px var(--lit),3px 4px 9px var(--sh2)}
+.priv{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:var(--mu);margin:6px 4px 18px}
+.priv svg{width:18px;height:18px;flex:none;fill:none;stroke:#5f7f9e;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* stage 2 - what changed */
+.intro{font-size:14px;font-weight:600;line-height:1.55;color:var(--mu);margin:0 2px 16px}
+.grp{font-size:13px;font-weight:800;color:var(--mu);margin:22px 4px 10px;display:flex;align-items:center;gap:8px}
+.adj{transition:opacity .25s}
+.adj.off .chg,.adj.off .h2{opacity:.5}
+.adj .top{display:flex;align-items:flex-start;gap:12px}
+.adj .top>div{flex:1;min-width:0}
+.chg{display:flex;flex-direction:column;gap:3px;margin-top:8px;font-size:13.5px;line-height:1.45}
+.chg .was{color:var(--mu);font-weight:600}
+.chg .now{font-weight:800}
+.why{display:block;margin-top:8px;border:none;background:none;padding:4px 0;font-size:13px;font-weight:800;color:var(--mu);cursor:pointer}
+.whyx{margin-top:8px;border-radius:18px;padding:13px 14px;font-size:13px;font-weight:600;line-height:1.6;color:var(--ink);
+  box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit)}
+.whyx .src{display:block;margin-top:8px;font-size:12px;font-weight:700;color:var(--mu)}
+.whyx .doc{display:block;margin-top:6px;font-size:12.5px;font-weight:800;color:var(--ink)}
+.ind{display:block;margin-top:6px;font-size:12px;font-weight:800;color:#8a5a12}
+/* the switch: a pressed channel; ON is light inside it */
+.tg{flex:none;position:relative;width:50px;height:30px;border:none;border-radius:999px;cursor:pointer;background:var(--g);
+  box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.tg::before{content:"";position:absolute;inset:6px 8px;border-radius:999px;background:radial-gradient(ellipse at 50% 50%,rgba(240,169,46,.55),rgba(240,169,46,0) 75%);opacity:0;transition:opacity .25s}
+.tg i{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:var(--g);transition:right .22s;
+  box-shadow:-2px -2px 4px var(--lit),2px 3px 6px var(--sh)}
+.tg.on::before{opacity:1}
+.tg.on i{right:24px}
+.empty{text-align:center;padding:40px 10px;font-size:15px;font-weight:700;color:var(--mu);line-height:1.6}
+.srcs{margin-top:26px;padding:16px 16px 12px;border-radius:22px;box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit)}
+.srcs h3{margin:0 0 8px;font-size:14px;font-weight:800}
+.srcs ol{margin:0;padding-inline-start:18px}
+.srcs li{font-size:12px;font-weight:600;line-height:1.5;color:var(--mu);margin-bottom:7px;direction:ltr;text-align:left}
+.srcs li a{word-break:break-word}
+.srcs p{font-size:12px;font-weight:600;color:var(--mu);line-height:1.5;margin:8px 0 0}
+
+/* the "adjusted" tag - raised, an amber dot, never paint */
+.tag{display:inline-flex;align-items:center;gap:5px;border:none;border-radius:10px;padding:3px 8px 3px 9px;font-size:11px;font-weight:800;color:var(--ink);background:var(--g);cursor:pointer;vertical-align:middle;
+  box-shadow:-2px -2px 5px var(--lit),2px 3px 6px var(--sh2)}
+.tag .dot{width:5px;height:5px}
+.tag:active{box-shadow:inset 1px 2px 4px var(--sh),inset -1px -1px 3px var(--lit)}
+
+/* stage 3 - fitness program, as photographed */
+.ph-row{display:flex;align-items:center;justify-content:space-between;margin:0 2px 12px}
+.ph-row .h{font-size:19px;font-weight:800}
+.ex .nm{font-size:19px;font-weight:800;letter-spacing:-.2px}
+.ex .nm small{display:block;font-size:12px;font-weight:700;color:var(--mu);margin-top:1px}
+.ex .meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:13px;font-weight:600;color:var(--mu);margin-top:4px}
+.ex .note{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;font-weight:700;line-height:1.45;color:var(--ink);margin-top:9px}
+.ex .note .dot{margin-top:6px}
+.fld{display:flex;gap:10px;align-items:flex-end;margin-top:12px}
+.fld label{flex:1;font-size:12px;font-weight:700;color:var(--mu)}
+.fld span{display:block;margin-top:5px;border-radius:14px;padding:9px;text-align:center;font-size:15px;font-weight:600;color:var(--mu);
+  box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.fld .pill{padding:10px 14px;font-size:14px}
+.chk li{margin-bottom:6px}
+.chk{margin:8px 0 0;padding-inline-start:18px;font-size:13px;font-weight:600;line-height:1.5;color:var(--ink)}
+
+/* stage 3 - nutrition day, as photographed */
+.tabs4{display:flex;border-radius:22px;padding:5px;margin:0 0 18px;box-shadow:-5px -5px 12px var(--lit),5px 7px 15px var(--sh2)}
+.tabs4 span{flex:1;text-align:center;padding:10px 0;border-radius:17px;font-size:14px;font-weight:700;color:var(--mu)}
+.tabs4 .on{color:var(--ink);box-shadow:-3px -3px 7px var(--lit),3px 4px 9px var(--sh2)}
+.mac-hd{font-size:13.5px;font-weight:700;color:var(--mu);margin-bottom:12px}
+.mac{display:flex;justify-content:space-between;gap:6px}
+.mac>div{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0}
+.tube{position:relative;width:30px;height:142px;border-radius:15px;background:#e6e3de;overflow:hidden;
+  box-shadow:inset 3px 5px 9px rgba(168,160,148,.5),inset -3px -3px 7px var(--lit)}
+.tube i{position:absolute;left:0;right:0;bottom:0;border-radius:15px;transition:height .45s;
+  box-shadow:inset 4px 0 7px -3px rgba(0,0,0,.1),inset -4px 0 7px -3px rgba(0,0,0,.12),inset 0 3px 4px -2px rgba(255,255,255,.7)}
+.mac b{font-size:16px;font-weight:800;margin-top:10px}
+.mac em{font-style:normal;font-size:12px;font-weight:600;color:var(--mu);margin-top:3px;white-space:nowrap}
+.mac .tag{margin-top:6px}
+.bar{height:14px;border-radius:7px;background:#e6e3de;overflow:hidden;margin-top:10px;box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px var(--lit)}
+.bar i{display:block;height:100%;border-radius:7px;background:linear-gradient(90deg,#dfe4f2,#b9c6e6)}
+.rowv{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rowv .k{font-size:16px;font-weight:800}
+.rowv .v{font-size:14px;font-weight:700;color:var(--mu)}
+.meals-h{font-size:22px;font-weight:800;margin:6px 4px 12px}
+.meals{display:flex;gap:8px;margin-bottom:18px}
+.meal{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;border-radius:20px;padding:10px 2px 10px;background:var(--g);
+  box-shadow:-4px -4px 10px var(--lit),4px 5px 12px var(--sh2)}
+.meal.emp{box-shadow:none}
+.meal .ic{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;box-shadow:-3px -3px 7px var(--lit),3px 4px 9px var(--sh2)}
+.meal .ic svg{width:20px;height:20px;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.meal .l{font-size:11px;font-weight:700;color:var(--mu);margin-top:6px;white-space:nowrap}
+.meal .n{font-size:14px;font-weight:800;margin-top:2px}
+.meal .c{font-size:10.5px;font-weight:800;color:#5c7d4c;margin-top:2px;white-space:nowrap}
+
+/* stage 4 - the coach */
+.ask{display:flex;gap:10px;align-items:center;margin:4px 0 14px}
+.ask .in{flex:1;min-width:0;border:none;border-radius:20px;padding:13px 14px;font-size:14px;font-weight:600;background:var(--g);
+  box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit);outline:none}
+.ask .go{flex:none;width:50px;height:50px;border:none;border-radius:16px;background:#4a4340;color:#fff;font-size:22px;font-weight:800;cursor:pointer;
+  box-shadow:-3px -3px 7px var(--lit),3px 4px 9px var(--sh)}
+.msg{max-width:86%;border-radius:20px;padding:11px 14px;font-size:14px;font-weight:600;line-height:1.55;margin-bottom:6px}
+.msg.me{margin-inline-start:auto;box-shadow:inset 2px 3px 6px var(--sh),inset -2px -2px 5px var(--lit)}
+.msg.co{background:var(--g);box-shadow:-4px -4px 10px var(--lit),4px 5px 12px var(--sh2)}
+.sent{font-size:11.5px;font-weight:700;color:var(--mu);margin:0 4px 14px;text-align:left}
+.sent.co{text-align:right}
+.shr{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;font-size:13px;font-weight:700;color:var(--mu)}
+.shr button{border:none;background:none;font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;text-decoration:underline}
+
+/* sheets and toast */
+.dim{position:fixed;inset:0;z-index:60;background:rgba(60,52,44,.42);animation:fade .2s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;background:var(--g);border-radius:30px 30px 0 0;padding:12px 20px calc(24px + env(safe-area-inset-bottom));
+  max-height:86%;overflow-y:auto;box-shadow:0 -10px 30px rgba(60,52,44,.2);animation:up .26s cubic-bezier(.2,.8,.2,1)}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.grab{width:40px;height:5px;border-radius:3px;background:#d3cdc4;margin:0 auto 14px}
+.sheet .h2{font-size:21px;line-height:1.3}
+.sheet .p{font-size:14px;font-weight:600;line-height:1.6;color:var(--mu);margin:8px 0 0}
+.sheet .p b{color:var(--ink)}
+.sheet .btns{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.box{margin-top:12px;border-radius:18px;padding:12px 14px;font-size:13px;font-weight:700;line-height:1.55;box-shadow:inset 3px 4px 8px var(--sh),inset -3px -3px 7px var(--lit)}
+.box .k{display:block;font-size:11px;font-weight:800;color:var(--mu)}
+.toast{position:fixed;left:50%;bottom:30px;z-index:80;pointer-events:none;transform:translateX(-50%);border-radius:999px;padding:11px 18px;font-size:14px;font-weight:800;white-space:nowrap;
+  background:var(--g);box-shadow:-3px -3px 8px var(--lit),5px 7px 18px rgba(120,104,88,.3);animation:toast 1.8s both}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}12%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+.outside{padding:16px;font-size:13px;line-height:1.6;color:var(--mu)}
+.outside h3{font-size:14px;margin:0 0 6px}
+.outside ol{padding-inline-start:18px;margin:0;direction:ltr;text-align:left}
+</style></head><body>
+<div class="ph"><div class="sc" id="sc">
+  <div class="sw">
+    <div class="sw-row" id="sw-row"></div>
+    <div class="sw-try"><span id="sw-try"></span><button id="reset">↺ להתחיל מחדש</button></div>
+  </div>
+  <div class="hd"><span class="home">⌂ בית</span><div class="mip"><div id="mip"></div></div>
+    <div class="ttl" id="ttl"></div><div class="sub" id="sub"></div></div>
+  <div class="ct" id="ct"></div>
+</div>
+<div id="ov"></div>
+</div>
+<div class="outside" id="outside"></div>
+
+<script>
+/* ── SOURCES - each one read for this page; see the second-pass note at the bottom ── */
+var SRC={
+  mgpt:{n:'MGFA (Myasthenia Gravis Foundation of America) - Physical Therapy and Myasthenia Gravis, webinar recap, Oct 2024',u:'https://myasthenia.org/blog/2024/10/29/physical-therapy-and-myasthenia-gravis-webinar-recap/'},
+  mgheat:{n:'MGFA - Beating the Heat During Summer Months, Jun 2024',u:'https://myasthenia.org/blog/2024/06/20/beating-the-heat-during-summer-months/'},
+  mgem:{n:'MGFA Medical Advisory Council - Emergency Management for People with MG and Caregivers (brochure), 2018',u:'https://myasthenia.org/wp-content/uploads/2024/09/MGFA-brochure-Emergency-Mgt-People-with-MG-Caregivers.pdf'},
+  ccmg:{n:'Cleveland Clinic - Managing Your Energy With Myasthenia Gravis',u:'https://health.clevelandclinic.org/living-with-myasthenia-gravis'},
+  ada5:{n:'ADA Standards of Care in Diabetes - 2026, Section 5: Facilitating Positive Health Behaviors (Diabetes Care 49, Suppl 1)',u:'https://pmc.ncbi.nlm.nih.gov/articles/PMC12690188/'},
+  adahypo:{n:'ADA - Low Blood Glucose (Hypoglycemia)',u:'https://diabetes.org/living-with-diabetes/hypoglycemia-low-blood-glucose'},
+  adasym:{n:'ADA - Symptoms of Low Blood Glucose',u:'https://diabetes.org/living-with-diabetes/hypoglycemia-low-blood-glucose/symptoms'},
+  aha25:{n:'2025 AHA/ACC/Multisociety Guideline for the Prevention, Detection, Evaluation and Management of High Blood Pressure in Adults',u:'https://doi.org/10.1161/HYP.0000000000000249'},
+  acsmhtn:{n:'ACSM - Exercise for the Prevention and Treatment of Hypertension (A. Zaleski, 2019)',u:'https://acsm.org/exercise-for-the-prevention-and-treatment-of-hypertension/'},
+  kdigo:{n:'KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 105(4S))',u:'https://kdigo.org/wp-content/uploads/2024/03/KDIGO-2024-CKD-Guideline.pdf'},
+  acogex:{n:'ACOG - Exercise During Pregnancy (FAQ119, updated Sep 2024), built on Committee Opinion 804',u:'https://www.acog.org/womens-health/faqs/exercise-during-pregnancy'},
+  iom:{n:'Institute of Medicine / National Academies - Weight Gain During Pregnancy: Reexamining the Guidelines (2009), energy requirements',u:'https://www.nationalacademies.org/read/12584/chapter/14'}
+};
+
+/* ── CONDITIONS ── */
+var COND=[
+  {id:'mg',t:'מיאסטניה גרביס'},
+  {id:'t1',t:'סכרת סוג 1'},
+  {id:'t2',t:'סכרת סוג 2'},
+  {id:'htn',t:'יתר לחץ דם'},
+  {id:'ckd',t:'מחלת כליות כרונית'},
+  {id:'preg',t:'הריון'}
+];
+function cname(id){for(var i=0;i<COND.length;i++)if(COND[i].id===id)return COND[i].t;return id;}
+
+/* ── THE ADJUSTMENTS ──
+   c: the conditions that produce it. area: where it lands. was/now: what the
+   default was and what it becomes (now may read the state). why: the reason.
+   src: source ids. ind: the source gives no number - "personal". */
+var WEIGHT=75;   /* the profile's weight in the demo */
+var ADJ=[
+  /* myasthenia */
+  {id:'mg-rest',c:['mg'],area:'כושר',t:'מנוחה ארוכה יותר בין סטים',
+    was:'90 שניות',now:'2–3 דקות, ויותר אם צריך',
+    why:'ההנחיה היא לאזן בין מאמץ למנוחה מספיקה, כדי לא להגיע לעייפות יתר. אין בה מספר דקות בין סטים — 2–3 דקות הן ברירת המחדל שלנו, לא מספר מהמקור. אם הכוח עוד לא חזר, נחים יותר.',
+    src:['mgpt'],ind:1},
+  {id:'mg-vol',c:['mg'],area:'כושר',t:'פחות סטים, בלי להגיע לעייפות',
+    was:'4 סטים לכל תרגיל',now:'3 סטים, ומעלים לאט',
+    why:'ההמלצה היא אימון כוח הדרגתי, ולהימנע מאימונים בעצימות גבוהה שמובילים לעייפות יתר של השרירים. מספר הסטים הוא ברירת המחדל שלנו; העומס הנכון אישי ומשתנה מיום ליום.',
+    src:['mgpt'],ind:1},
+  {id:'mg-time',c:['mg'],area:'כושר',t:'האימון בבוקר',
+    was:'כל שעה ביום',now:'הצעה לבוקר, לפני שהעייפות מצטברת',
+    why:'במיאסטניה העייפות מצטברת במהלך היום, ולכן ממליצים להתאמן ולעשות את הדברים החשובים בבוקר. אם השעה הטובה שלך אחרת — אפשר לשנות.',
+    src:['ccmg']},
+  {id:'mg-stop',c:['mg'],area:'באימון',t:'מתי לעצור',
+    was:'אין',now:'חולשה שמחמירה (עפעף צונח, ראייה כפולה) — עוצרים ונחים. קושי לנשום, לבלוע, לדבר או ללעוס — פונים מיד לעזרה',
+    why:'קוצר נשימה, קושי לבלוע, דיבור לא ברור וקושי ללעוס הם סימנים שבהם פונים מיד לרופא או למיון. פעילות ממושכת מגבירה את החולשה במיאסטניה; עפעף צונח או ראייה כפולה שמופיעים באימון הם סימן לכך — לעצור ולנוח הוא הכלל שלנו, לא ניסוח של המקור.',
+    src:['mgem','mgpt']},
+  {id:'mg-heat',c:['mg'],area:'באימון',t:'להימנע מחום',
+    was:'אין',now:'תזכורת: מקום מאוורר, ובחוץ רק בבוקר או בערב',
+    why:'חום יכול להחמיר את התסמינים ולהשאיר חולשה ועייפות. בימים חמים ממליצים להגביל פעילות בחוץ לשעות הבוקר המוקדמות או הערב.',
+    src:['mgheat']},
+  /* diabetes */
+  {id:'dm-carb',c:['t1','t2'],area:'תזונה',t:'פחמימות לכל ארוחה',
+    was:'רק סך היום',now:'כמה פחמימות בכל ארוחה, ליד הקלוריות',
+    why:'למי שמקבל מינון קבוע של אינסולין, ההמלצה היא דפוס עקבי של פחמימות — בזמן ובכמות. אין מספר גרמים לארוחה: היעד אישי, ונקבע עם הצוות המטפל.',
+    src:['ada5'],ind:1},
+  {id:'dm-glu',c:['t1','t2'],area:'באימון',t:'למדוד סוכר לפני, במהלך ואחרי האימון',
+    was:'אין',now:'תזכורת לפני האימון ואחריו',
+    why:'פעילות גופנית מורידה סוכר. למי שמטופל באינסולין או בתרופות שמגבירות הפרשת אינסולין, ההמלצה היא לבדוק סוכר במהלך האימון ואחריו, וייתכן שיצטרך פחמימה אם הסוכר לפני האימון מתחת ל־90 מ״ג/ד״ל.',
+    src:['ada5']},
+  {id:'dm-hypo',c:['t1','t2'],area:'באימון',t:'סימנים של סוכר נמוך',
+    was:'אין',now:'רעד, הזעה, דופק מהיר, סחרחורת, רעב, בלבול — עוצרים ומודדים',
+    why:'סוכר נמוך הוא מתחת ל־70 מ״ג/ד״ל. כלל ה־15: 15 גרם פחמימה מהירה, ומודדים שוב אחרי 15 דקות. הסימנים שונים מאדם לאדם — כדאי להכיר את שלך. סוכר נמוך חמור, כשאי אפשר לטפל לבד, הוא מצב חירום: מזעיקים עזרה.',
+    src:['adahypo','adasym']},
+  {id:'dm-move',c:['t2'],area:'כושר',t:'לא יותר מיומיים רצופים בלי פעילות',
+    was:'3 אימונים בשבוע',now:'3 אימונים, ולא יותר מיומיים רצופים בלי פעילות',
+    why:'ההמלצה: 150 דקות ומעלה בשבוע של פעילות אירובית בינונית עד נמרצת, על פני 3 ימים לפחות, בלי יותר מיומיים רצופים ללא פעילות; 2–3 אימוני כוח בימים לא רצופים; ולקום לפחות כל 30 דקות של ישיבה.',
+    src:['ada5']},
+  /* hypertension */
+  {id:'htn-na',c:['htn'],area:'תזונה',t:'יעד נתרן',
+    was:'לא נספר',now:'פחות מ־2,300 מ״ג ביום, ובהדרגה עד 1,500',
+    why:'ההנחיה ממליצה להפחית נתרן לפחות מ־2,300 מ״ג ביום, ולהתקדם לעבר גבול אידאלי של פחות מ־1,500 מ״ג.',
+    src:['aha25']},
+  {id:'htn-breath',c:['htn'],area:'כושר',t:'לא לעצור את הנשימה בהרמה',
+    was:'אין',now:'נושפים בזמן המאמץ, בתרגילים הכבדים',
+    why:'שאיפה ועצירת נשימה בזמן ההרמה עצמה (ולסלבה) עלולות לגרום לעלייה חדה מאוד בלחץ הדם, לסחרחורת ולעילפון.',
+    src:['acsmhtn']},
+  /* kidney */
+  {id:'ckd-pro',c:['ckd'],area:'תזונה',t:'יעד החלבון לא עולה',
+    was:'155 גרם (לפי מטרת מסת שריר)',now:function(){return Math.round(0.8*WEIGHT)+' גרם — 0.8 גרם לק״ג (שלב G3–G5, לא בדיאליזה)';},
+    why:'במחלת כליות שלב G3–G5 ההצעה היא 0.8 גרם חלבון לק״ג ליום, ולהימנע מיותר מ־1.3 גרם לק״ג. אצל מבוגרים עם שבריריות או ירידה במסת השריר ייתכן שהיעד גבוה יותר. ההמלצה הזאת לא מיועדת למי שבדיאליזה — שם היעד שונה ונקבע עם הצוות. היעד שלך אישי.',
+    src:['kdigo'],ind:1},
+  {id:'ckd-na',c:['ckd'],area:'תזונה',t:'יעד נתרן',
+    was:'לא נספר',now:'פחות מ־2,000 מ״ג ביום',
+    why:'ההצעה היא פחות מ־2 גרם נתרן ביום (כ־5 גרם מלח).',
+    src:['kdigo']},
+  {id:'ckd-kp',c:['ckd'],area:'תזונה',t:'אשלגן וזרחן',
+    was:'אין',now:'בלי יעד — לפי בדיקות הדם שלך',
+    why:'ההנחיה אומרת להתאים את הנתרן, הזרחן, האשלגן והחלבון לצרכים האישיים, ולכן אין כאן מספר אחד שמתאים לכולם.',
+    src:['kdigo'],ind:1},
+  /* pregnancy */
+  {id:'pr-kcal',c:['preg'],area:'תזונה',t:'קלוריות',
+    was:'1,975',now:function(){return S.tri===1?'אין תוספת בשליש הראשון':('+'+(S.tri===2?340:452)+' ביום (שליש '+(S.tri===2?'שני':'שלישי')+')');},
+    why:'בשליש הראשון אין תוספת. בשליש השני כ־340 קלוריות נוספות ביום, ובשלישי כ־452. אלה ממוצעים; הצורך האישי תלוי במשקל לפני ההריון ובפעילות.',
+    src:['iom'],ind:1},
+  {id:'pr-supine',c:['preg'],area:'כושר',t:'בלי שכיבה ממושכת על הגב',
+    was:'לחיצת חזה על ספסל, כפיפות בטן',now:'לחיצה בשיפוע, ותרגיל בטן בעמידה',
+    why:'כשוכבים על הגב, הרחם לוחץ על וריד גדול שמחזיר דם ללב, ולחץ הדם יכול לרדת לזמן קצר. ההמלצה היא להימנע משכיבה על הגב ככל האפשר.',
+    src:['acogex']},
+  {id:'pr-risk',c:['preg'],area:'כושר',t:'בלי מגע ובלי סכנת נפילה',
+    was:'אין',now:'לא מוצעים: ספורט מגע, צניחה, סקי, גלישה, רכיבה בשטח או על סוס, התעמלות קרקע, צלילה, יוגה ופילאטיס חמים, ופעילות מעל 1,800 מטר (אם אינך גר בגובה)',
+    why:'פעילות עם מכה אפשרית בבטן או עם סיכון לנפילה מגבירה את הסיכון לפציעה. יוגה ופילאטיס חמים עלולים לגרום להתחממות יתר.',
+    src:['acogex']},
+  {id:'pr-stop',c:['preg'],area:'באימון',t:'מתי לעצור',
+    was:'אין',now:'דימום, סחרחורת או עילפון, קוצר נשימה לפני מאמץ, כאב בחזה, כאב ראש, חולשת שרירים, כאב או נפיחות בשוק, צירים סדירים וכואבים, דליפת מים',
+    why:'אלה סימני האזהרה: אם אחד מהם מופיע — מפסיקים ומתקשרים לרופא.',
+    src:['acogex']}
+];
+function nowOf(a){return typeof a.now==='function'?a.now():a.now;}
+function active(){return ADJ.filter(function(a){for(var i=0;i<a.c.length;i++)if(S.sel.indexOf(a.c[i])>-1)return true;return false;});}
+function on(id){if(S.off.indexOf(id)>-1)return false;for(var i=0,A=active();i<A.length;i++)if(A[i].id===id)return true;return false;}
+function adjById(id){for(var i=0;i<ADJ.length;i++)if(ADJ[i].id===id)return ADJ[i];}
+
+/* ── STAGES ── */
+var STAGES=[
+  {id:'q',n:'1',name:'השאלה',tr:'נסה: לבחור מצב אחד או יותר, ולשמור'},
+  {id:'adj',n:'2',name:'מה השתנה',tr:'נסה: ״למה?״ על כרטיס, ולכבות התאמה'},
+  {id:'fit',n:'3',name:'תוכנית כושר',tr:'נסה: לגעת ב״מותאם״ ליד ערך'},
+  {id:'nut',n:'3',name:'היום בתזונה',tr:'נסה: לגעת ב״מותאם״ ליד יעד'},
+  {id:'coach',n:'4',name:'המאמן',tr:'נסה: לשלוח שאלה למאמן'}
+];
+var S;
+function reset(){S={stage:'q',sel:[],none:false,tri:2,off:[],open:{},saved:false,consent:null,chat:[],draft:'מה כדאי לאכול אחרי אימון?'};}
+reset();
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+var IC={lock:'<svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>',
+  sun:'<svg viewBox="0 0 24 24" stroke="#d29a2c"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5L19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5L19 5"/></svg>',
+  fork:'<svg viewBox="0 0 24 24" stroke="#5c9a55"><path d="M5.5 3v4.2M8.5 3v4.2M11.5 3v4.2M5.5 7.2h6M8.5 7.2V21M18.2 21v-9M18.2 12c-2 0-2.9-1-2.9-2.6 0-2.4 1-4.9 2.9-6.4z"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" stroke="#8a8478"><path d="M12 4a6 6 0 1 0 6 8 5 5 0 0 1-6-8z"/></svg>',
+  apple:'<svg viewBox="0 0 24 24" stroke="#c96a5e"><path d="M12 8c3.5-2 7 0 7 4.5S15 21 12 21 5 17 5 12.5 8.5 6 12 8z"/><path d="M12 8c0-2 1-3.5 2.5-4"/></svg>',
+  cup:'<svg viewBox="0 0 24 24" stroke="#8a8478"><path d="M6 4h12l-1.4 15.2a2 2 0 0 1-2 1.8H9.4a2 2 0 0 1-2-1.8z"/><path d="M6.6 11h10.8"/></svg>'};
+function tag(id){return on(id)?'<button class="tag" data-a="why" data-id="'+id+'"><span class="dot"></span>מותאם</button>':'';}
+function nf(n){return Math.round(n).toLocaleString('en-US');}
+
+/* 1 - the question */
+function vQ(){
+  var h='<div class="q">יש משהו בבריאות שלך שהאפליקציה צריכה לקחת בחשבון?</div>'+
+    '<div class="qs">לא חובה. אם תבחר, נתאים את ברירות המחדל בכושר ובתזונה ונסביר כל שינוי. את כל ההתאמות אפשר לכבות.</div><div class="chips">';
+  COND.forEach(function(c){h+='<button class="chip'+(S.sel.indexOf(c.id)>-1?' on':'')+'" data-a="c" data-id="'+c.id+'"><span class="dot"></span>'+c.t+'</button>';});
+  h+='<button class="chip none'+(S.none?' on':'')+'" data-a="none"><span class="dot"></span>אין / מעדיף לא לענות</button></div>';
+  if(S.sel.indexOf('preg')>-1){
+    h+='<div class="cap" style="margin:0 4px 6px">באיזה שליש?</div><div class="seg">';
+    [1,2,3].forEach(function(t){h+='<button class="'+(S.tri===t?'on':'')+'" data-a="tri" data-t="'+t+'">'+['ראשון','שני','שלישי'][t-1]+'</button>';});
+    h+='</div>';
+  }
+  h+='<div class="priv">'+IC.lock+'<span>נשמר רק בטלפון שלך. לא נשלח לשרת ולא למאמן בלי שתסכים.</span></div>'+
+    '<button class="pill wide" data-a="save">שמירה</button><button class="quiet" data-a="skip">לא עכשיו</button>';
+  return h;
+}
+
+/* 2 - what changed */
+function vAdj(){
+  var A=active();
+  if(!A.length)return '<div class="empty">'+(S.none?'סימנת שאין מה לקחת בחשבון.<br>הכול נשאר כרגיל.':'עוד לא נבחר מצב.<br>הכול נשאר כרגיל.')+
+    '</div><button class="pill wide" data-a="go" data-s="q">לשאלה</button>';
+  var h='<div class="intro">לא קבענו כלום בשבילך. שינינו ברירות מחדל, ולכל שינוי יש סיבה ומקור. כדאי לעבור עליהם עם הרופא שלך.</div>';
+  S.sel.forEach(function(cid){
+    var L=A.filter(function(a){return a.c.indexOf(cid)>-1&&(cid!=='t2'||S.sel.indexOf('t1')<0||a.c.indexOf('t1')<0);});
+    if(!L.length)return;
+    h+='<div class="grp"><span class="dot"></span>'+cname(cid)+(cid==='preg'?' · שליש '+['ראשון','שני','שלישי'][S.tri-1]:'')+'</div>';
+    L.forEach(function(a){h+=card(a);});
+  });
+  h+=srcList();
+  return h;
+}
+function card(a){
+  var isOn=S.off.indexOf(a.id)<0,op=S.open[a.id];
+  var h='<div class="card adj'+(isOn?'':' off')+'" id="c-'+a.id+'"><div class="top"><div><span class="cap">'+a.area+'</span><div class="h2">'+a.t+'</div></div>'+
+    '<button class="tg'+(isOn?' on':'')+'" data-a="tg" data-id="'+a.id+'" aria-label="'+(isOn?'לכבות':'להדליק')+'"><i></i></button></div>'+
+    '<div class="chg"><span class="was">עד עכשיו: '+a.was+'</span><span class="now">'+(isOn?'עכשיו: '+nowOf(a):'כבוי — נשאר כמו קודם')+'</span></div>'+
+    (a.ind?'<span class="ind">אישי — לבדוק עם הרופא</span>':'')+
+    '<button class="why" data-a="exp" data-id="'+a.id+'">'+(op?'פחות ‹':'למה? ›')+'</button>';
+  if(op)h+=whyBox(a);
+  return h+'</div>';
+}
+function whyBox(a){
+  return '<div class="whyx">'+a.why+'<span class="src">מקור: '+a.src.map(function(s){return '<a href="'+SRC[s].u+'" target="_blank" rel="noopener">'+esc(SRC[s].n)+'</a>';}).join(' · ')+'</span>'+
+    '<span class="doc">כדאי לבדוק עם הרופא שלך.</span></div>';
+}
+function srcList(){
+  var used={};active().forEach(function(a){a.src.forEach(function(s){used[s]=1;});});
+  var h='<div class="srcs"><h3>המקורות</h3><ol>';
+  Object.keys(SRC).forEach(function(k){if(used[k])h+='<li><a href="'+SRC[k].u+'" target="_blank" rel="noopener">'+esc(SRC[k].n)+'</a></li>';});
+  return h+'</ol><p>האפליקציה לא מחליפה רופא ולא נותנת המלצות על תרופות או מינונים.</p></div>';
+}
+
+/* 3a - the fitness program */
+var PROG=[{n:'סקוואט',heavy:1},{n:'מתח'},{n:'לחיצת חזה במוט',heavy:1,sup:1,alt:'לחיצת חזה בשיפוע',altw:'במקום לחיצה על ספסל שטוח'},
+  {n:'דדליפט רומני',heavy:1},{n:'לחיצת לנדמיין'},{n:'כפיפות בטן',sup:1,alt:'פאלוף פרס בעמידה',altw:'במקום כפיפות בטן על הגב'}];
+function vFit(){
+  var sets=on('mg-vol')?3:4,rest=on('mg-rest')?'2–3 דק׳':'90 ש׳',supOff=on('pr-supine');
+  var h='<button class="back">‹ חזרה</button><div class="ph-row"><span class="h">תוכנית מסה</span></div>';
+  /* the cards that come before the first set */
+  var pre=[];
+  if(on('mg-time'))pre.push(['mg-time','מתי','בבוקר, לפני שהעייפות מצטברת']);
+  if(on('dm-glu'))pre.push(['dm-glu','לפני','למדוד סוכר. ותזכורת גם אחרי האימון']);
+  if(on('mg-heat'))pre.push(['mg-heat','איפה','מקום מאוורר, לא בשעות החמות']);
+  if(on('dm-move'))pre.push(['dm-move','השבוע','לא יותר מיומיים רצופים בלי פעילות']);
+  if(pre.length){
+    h+='<div class="card"><span class="cap">לפני שמתחילים</span>';
+    pre.forEach(function(p){h+='<div class="ex"><div class="note"><span class="dot"></span><span><b>'+p[1]+':</b> '+p[2]+' '+tag(p[0])+'</span></div></div>';});
+    h+='</div>';
+  }
+  var stops=[];
+  if(on('mg-stop'))stops.push(['mg-stop','עפעף שצונח או ראייה כפולה — לעצור ולנוח. קושי לנשום, לבלוע, לדבר או ללעוס — לפנות מיד לעזרה']);
+  if(on('dm-hypo'))stops.push(['dm-hypo','רעד, הזעה, דופק מהיר, סחרחורת, בלבול — לעצור ולמדוד סוכר. סוכר נמוך חמור — להזעיק עזרה']);
+  if(on('pr-stop'))stops.push(['pr-stop','דימום, סחרחורת או עילפון, קוצר נשימה לפני המאמץ, כאב בחזה, כאב ראש, חולשת שרירים, כאב או נפיחות בשוק, צירים סדירים וכואבים, דליפת מים — לעצור ולהתקשר לרופא']);
+  if(stops.length){
+    h+='<div class="card"><span class="cap">מתי לעצור</span><ul class="chk">';
+    stops.forEach(function(p){h+='<li>'+p[1]+' '+tag(p[0])+'</li>';});
+    h+='</ul></div>';
+  }
+  PROG.forEach(function(e,i){
+    var swap=supOff&&e.sup,nm=swap?e.alt:e.n;
+    h+='<div class="card ex"><div class="nm">'+nm+(swap?' '+tag('pr-supine')+'<small>'+e.altw+'</small>':'')+'</div>'+
+      '<div class="meta"><span>'+sets+' סטים × 9 חזר</span>'+(on('mg-vol')?tag('mg-vol'):'')+'<span>·</span><span>מנוחה '+rest+'</span>'+(on('mg-rest')?tag('mg-rest'):'')+'</div>';
+    if(e.heavy&&on('htn-breath'))h+='<div class="note"><span class="dot"></span><span>נושפים בזמן ההרמה, לא עוצרים נשימה '+tag('htn-breath')+'</span></div>';
+    h+='<div class="fld"><label>ק״ג<span>0</span></label><label>חזרות<span>9</span></label><button class="pill">רשום</button></div></div>';
+  });
+  if(on('pr-risk'))h+='<div class="card"><span class="cap">לא מוצע בתוכנית</span><div class="ln">למשל: ספורט מגע, צניחה, סקי וגלישה, רכיבה בשטח, צלילה, יוגה חמה '+tag('pr-risk')+'</div></div>';
+  if(!active().length)h+='<div class="ln" style="text-align:center;margin-top:6px">בלי מצב שמור — זו התוכנית הרגילה.</div>';
+  return h;
+}
+
+/* 3b - the nutrition day */
+var MEALS=[{k:'בוקר',l:'ארוחת בוקר',ic:'sun',kcal:320,c:42,p:18,f:9,na:120},{k:'צהריים',l:'ארוחת צהריים',ic:'fork',kcal:610,c:70,p:48,f:12,na:540},
+  {k:'ערב',l:'ארוחת ערב',ic:'moon'},{k:'חטיף',l:'חטיף',ic:'apple',kcal:95,c:25,p:.5,f:.3,na:2},{k:'משקה',l:'משקה',ic:'cup'}];
+function vNut(){
+  var eaten={kcal:0,p:0,c:0,f:0,na:0};MEALS.forEach(function(m){if(m.kcal)for(var k in eaten)eaten[k]+=m[k==='na'?'na':k]||0;});
+  var kT=1975,extra=on('pr-kcal')?(S.tri===2?340:S.tri===3?452:0):0;kT+=extra;
+  var pT=on('ckd-pro')?Math.round(.8*WEIGHT):155,cT=200,fT=60;
+  var naT=on('ckd-na')?2000:on('htn-na')?2300:0,naTag=on('ckd-na')?'ckd-na':'htn-na';
+  var h='<div class="tabs4"><span>היסטוריה</span><span class="on">יומי</span><span>מתכונים</span><span>אישי</span></div>';
+  h+='<div class="card"><div class="mac-hd">יעד התחלתי · לפי הפרופיל</div><div class="mac">'+
+    tube('קק״ל',eaten.kcal,kT,'#f9d39d','#eda957',nf(eaten.kcal)+' / '+nf(kT),extra?'pr-kcal':'')+
+    tube('חלבון',eaten.p,pT,'#fbc0b2','#ee8e7a',nf(eaten.p)+'ג / '+pT+'ג',on('ckd-pro')?'ckd-pro':'')+
+    tube('פחמימה',eaten.c,cT,'#cfe3c6','#8fbb86',nf(eaten.c)+'ג / '+cT+'ג',on('dm-carb')?'dm-carb':'')+
+    tube('שומן',eaten.f,fT,'#c6d8f2','#88a9df',nf(eaten.f)+'ג / '+fT+'ג','')+'</div>';
+  if(on('ckd-pro'))h+='<div class="ln" style="margin-top:12px">יעד החלבון אישי — 0.8 גרם לק״ג הוא נקודת המוצא לשלבים G3–G5; בדיאליזה הוא שונה.</div>';
+  if(on('dm-carb'))h+='<div class="ln" style="margin-top:12px">יעד הפחמימות אישי — לקבוע עם הצוות המטפל.</div>';
+  h+='</div>';
+  if(naT)h+='<div class="card"><div class="rowv"><span class="k">נתרן '+tag(naTag)+'</span><span class="v">'+nf(eaten.na)+' / '+nf(naT)+' מ״ג</span></div>'+
+    '<div class="bar"><i style="width:'+Math.min(100,eaten.na/naT*100).toFixed(1)+'%"></i></div>'+
+    (on('htn-na')&&!on('ckd-na')?'<div class="ln" style="margin-top:8px">היעד האידאלי: 1,500 מ״ג</div>':'')+'</div>';
+  if(on('ckd-kp'))h+='<div class="card"><div class="rowv"><span class="k">אשלגן וזרחן '+tag('ckd-kp')+'</span></div><div class="ln" style="margin-top:4px">אין כאן יעד. הכמות שמתאימה לך תלויה בבדיקות הדם — לשאול את הרופא או הדיאטנית.</div></div>';
+  h+='<div class="card"><div class="rowv"><span class="k" style="color:#3f6e95">מים</span><span class="v">4 / 3,000 מ״ל</span></div><div class="bar"><i style="width:4%"></i></div></div>';
+  h+='<div class="meals-h">ארוחות היום '+(on('dm-carb')?tag('dm-carb'):'')+'</div><div class="meals">';
+  MEALS.forEach(function(m){
+    h+='<div class="meal'+(m.kcal?'':' emp')+'"><span class="ic">'+IC[m.ic]+'</span><span class="l">'+m.l+'</span>'+
+      (m.kcal?'<span class="n">'+m.kcal+'</span>'+(on('dm-carb')?'<span class="c">'+m.c+'ג פחמ׳</span>':''):'')+'</div>';
+  });
+  return h+'</div>';
+}
+function tube(lab,v,t,a,b,line,id){
+  var pct=Math.max(4,Math.min(100,v/t*100));
+  return '<div><span class="tube"><i style="height:'+pct.toFixed(1)+'%;background:linear-gradient(180deg,'+a+','+b+')"></i></span><b>'+lab+'</b><em>'+line+'</em>'+(id?tag(id):'')+'</div>';
+}
+
+/* 4 - the coach */
+function vCoach(){
+  var h='<div class="tabs4"><span>היסטוריה</span><span class="on">יומי</span><span>מתכונים</span><span>אישי</span></div>'+
+    '<div class="cap" style="margin:0 4px 8px">המאמן התזונתי</div>';
+  S.chat.forEach(function(m){
+    h+='<div class="msg '+m.w+'">'+esc(m.t)+'</div>';
+    if(m.sent)h+='<div class="sent'+(m.w==='co'?' co':'')+'">'+m.sent+'</div>';
+  });
+  h+='<div class="ask"><input class="in" id="draft" value="'+esc(S.draft)+'" placeholder="מה אכלת? אפשר גם לשאול"><button class="go" data-a="send" aria-label="שליחה">↑</button></div>';
+  if(S.sel.length){
+    h+='<div class="card"><div class="shr"><span>שיתוף המצב עם המאמן: <b style="color:var(--ink)">'+(S.consent==='yes'?'מופעל':S.consent==='no'?'כבוי':'עוד לא נשאלת')+'</b></span>'+
+      (S.consent?'<button data-a="ask">לשנות</button>':'')+'</div></div>';
+  }else h+='<div class="ln" style="margin:6px 4px">אין מצב שמור, אז אין מה לשאול — המאמן מקבל רק את השאלה.</div>';
+  return h;
+}
+function send(){
+  var d=document.getElementById('draft');S.draft=(d&&d.value.trim())||S.draft;
+  if(!S.draft)return;
+  if(S.sel.length&&!S.consent){sheetConsent(true);return;}
+  answer();
+}
+function answer(){
+  var q=S.draft,sh=S.consent==='yes'&&S.sel.length;
+  S.chat.push({w:'me',t:q,sent:'נשלח לשרת: השאלה'+(sh?' + '+S.sel.map(cname).join(', '):' בלבד')});
+  var r='אחרי אימון כדאי ארוחה עם חלבון ופחמימה — למשל יוגורט עם פרי, או כריך עם ביצה וירקות.';
+  if(sh){
+    if(S.sel.indexOf('t1')>-1||S.sel.indexOf('t2')>-1)r+=' ובגלל הסכרת: לספור את הפחמימות של הארוחה כרגיל, ולמדוד סוכר אחרי האימון.';
+    if(S.sel.indexOf('ckd')>-1)r+=' וכדאי שהחלבון בארוחה יישאר בתוך היעד שקבעת עם הצוות המטפל.';
+    if(S.sel.indexOf('htn')>-1||S.sel.indexOf('ckd')>-1)r+=' עדיף כריך בלי נקניק — הוא עשיר בנתרן.';
+    if(S.sel.indexOf('preg')>-1)r+=' והארוחה נספרת בתוך יעד הקלוריות של ההריון שלך.';
+  }
+  S.chat.push({w:'co',t:r,sent:sh?'המאמן התחשב ב: '+S.sel.map(cname).join(', '):''});
+  S.draft='';render();
+  setTimeout(function(){var sc=document.getElementById('sc');if(sc)sc.scrollTop=sc.scrollHeight;window.scrollTo(0,document.body.scrollHeight);},30);
+}
+
+/* ── sheets ── */
+function closeOv(){document.getElementById('ov').innerHTML='';}
+function sheetWhy(id){
+  var a=adjById(id);
+  document.getElementById('ov').innerHTML='<div class="dim" data-a="close"></div><div class="sheet"><div class="grab"></div>'+
+    '<span class="cap">מותאם · '+a.c.filter(function(c){return S.sel.indexOf(c)>-1;}).map(cname).join(', ')+'</span><div class="h2">'+a.t+'</div>'+
+    '<div class="chg"><span class="was">עד עכשיו: '+a.was+'</span><span class="now">עכשיו: '+nowOf(a)+'</span></div>'+
+    (a.ind?'<span class="ind">אישי — לבדוק עם הרופא</span>':'')+whyBox(a)+
+    '<div class="btns"><button class="pill wide" data-a="off-from-sheet" data-id="'+id+'">לכבות את ההתאמה הזאת</button><button class="quiet" data-a="close">סגירה</button></div></div>';
+}
+function sheetConsent(thenAnswer){
+  S._then=!!thenAnswer;
+  document.getElementById('ov').innerHTML='<div class="dim"></div><div class="sheet"><div class="grab"></div>'+
+    '<div class="h2">לשתף את המצב עם המאמן כדי שיתחשב בו?</div>'+
+    '<div class="p">המאמן עונה בעזרת בינה מלאכותית שרצה בשרת. בלי הסכמה הוא מקבל רק את השאלה שלך.</div>'+
+    '<div class="box"><span class="k">אם תשתף, יישלח גם:</span>'+S.sel.map(cname).join(', ')+'<span class="k" style="margin-top:6px">לא יישלח:</span>שם, משקל, היסטוריה או כל פרט אחר</div>'+
+    '<div class="p">אפשר לשנות את זה בכל רגע.</div>'+
+    '<div class="btns"><button class="pill wide" data-a="consent" data-v="no" id="c-no">לא, בלי</button>'+
+    '<button class="quiet" data-a="consent" data-v="yes">כן, לשתף</button></div></div>';
+}
+function toast(t){var e=document.createElement('div');e.className='toast';e.textContent=t;document.querySelector('.ph').appendChild(e);setTimeout(function(){e.remove();},1900);}
+
+/* ── render ── */
+var HEAD={q:['הבריאות שלך','פרופיל'],adj:['מה השתנה בשבילך',''],fit:['כושר',''],nut:['היום','יום שישי, 30 באוקטובר'],coach:['היום','יום שישי, 30 באוקטובר']};
+function render(top){
+  var st=STAGES.filter(function(x){return x.id===S.stage;})[0];
+  document.getElementById('sw-row').innerHTML=STAGES.map(function(x){return '<button data-s="'+x.id+'" class="'+(x.id===S.stage?'on':'')+'"><b>'+x.n+'</b>'+x.name+'</button>';}).join('');
+  document.getElementById('sw-try').textContent=st.tr;
+  document.getElementById('ttl').textContent=HEAD[S.stage][0];
+  document.getElementById('sub').textContent=S.stage==='adj'?(active().length?active().filter(function(a){return S.off.indexOf(a.id)<0;}).length+' התאמות פעילות':''):HEAD[S.stage][1];
+  var v={q:vQ,adj:vAdj,fit:vFit,nut:vNut,coach:vCoach}[S.stage]();
+  document.getElementById('ct').innerHTML=v;
+  if(top){var sc=document.getElementById('sc');if(sc)sc.scrollTop=0;window.scrollTo(0,0);}
+}
+function go(s){S.stage=s;closeOv();render(true);}
+document.addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-a],[data-s]');if(!b)return;
+  if(b.closest('.sw-row')){go(b.getAttribute('data-s'));return;}
+  var a=b.getAttribute('data-a'),id=b.getAttribute('data-id');
+  if(a==='c'){var i=S.sel.indexOf(id);if(i>-1)S.sel.splice(i,1);else{S.sel.push(id);S.none=false;}render();return;}
+  if(a==='none'){S.none=!S.none;if(S.none)S.sel=[];render();return;}
+  if(a==='tri'){S.tri=+b.getAttribute('data-t');render();return;}
+  if(a==='save'){S.saved=true;S.consent=null;toast(S.sel.length?'נשמר בטלפון שלך ✓':'נשמר ✓');go('adj');return;}
+  if(a==='skip'){S.sel=[];S.none=false;go('adj');return;}
+  if(a==='go'){go(b.getAttribute('data-s'));return;}
+  if(a==='tg'){var j=S.off.indexOf(id);if(j>-1)S.off.splice(j,1);else S.off.push(id);render();return;}
+  if(a==='exp'){S.open[id]=!S.open[id];render();return;}
+  if(a==='why'){sheetWhy(id);return;}
+  if(a==='off-from-sheet'){if(S.off.indexOf(id)<0)S.off.push(id);closeOv();render();toast('כבוי. אפשר להדליק שוב ב״מה השתנה״');return;}
+  if(a==='close'){closeOv();return;}
+  if(a==='send'){send();return;}
+  if(a==='ask'){sheetConsent(false);return;}
+  if(a==='consent'){S.consent=b.getAttribute('data-v');closeOv();if(S._then)answer();else render();toast(S.consent==='yes'?'המאמן יתחשב במצב':'המאמן לא מקבל את המצב');return;}
+});
+document.addEventListener('input',function(ev){if(ev.target.id==='draft')S.draft=ev.target.value;});
+document.addEventListener('keydown',function(ev){if(ev.target.id==='draft'&&ev.key==='Enter'){ev.preventDefault();send();}});
+document.getElementById('reset').addEventListener('click',function(){reset();closeOv();render(true);});
+
+/* the sources again, outside the phone, so they are reachable from any stage */
+(function(){var h='<h3>Sources used by this prototype</h3><ol>';
+  Object.keys(SRC).forEach(function(k){h+='<li><a href="'+SRC[k].u+'" target="_blank" rel="noopener">'+esc(SRC[k].n)+'</a></li>';});
+  document.getElementById('outside').innerHTML=h+'</ol>';})();
+render(true);
+</script>
+<script>window.BEEM_ASSET_BASE='../../dev/assets/';</script>
+<script src="../../vendor/beem-app.js"></script>
+<script>if(window.BeemKit)BeemKit.ready.then(function(){var m=document.getElementById('mip');if(m)BeemKit.mount(m,{play:'sun'});});</script>
+</body></html>
