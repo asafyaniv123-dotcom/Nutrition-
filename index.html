@@ -7089,6 +7089,8 @@ html body.mod-home.tod-golden .rim-ch{stroke:#e2d7c5}
 html body.mod-home.tod-golden,html body.mod-home.tod-golden #home-screen,
 html body.mod-home.tod-night,html body.mod-home.tod-night #home-screen{background:var(--nu-ground)}
 html body.mod-home #home-screen{transition:background 1.2s ease}
+/* the sand kept through the night: no low sun after dark, so no window shaft */
+html body.mod-home.tod-golden.tod-late #home-screen::before{display:none}
 /* golden hour: a shaft of low sun coming in from the left, the side the
    light already comes from (--lx) - asked for by name on 20 Oct. It lies
    over everything as light does, and never takes a press. */
@@ -43518,12 +43520,18 @@ function homeTod(h){
   if(h>=16&&h<19)return'golden';
   return'night';
 }
-var _todHoldUntil=0;
+var _todHoldUntil=0,NIGHT_DARK=false;
 function homeTodPaint(){
   /* right after the door, home opens in the door's sand and only then eases
      into the hour's colour */
   var t=Date.now()<_todHoldUntil?'golden':homeTod(new Date().getHours()),b=document.body,k=['morning','noon','golden','night'],i;
+  /* 30 Oct: the dark room was too dark for him, every shade of it - "maybe we
+     keep the sand for the night too". So the night wears golden hour's sand,
+     and tod-late takes away what only the low sun can give: the window
+     shaft. The dark night's rules stay in the file, unused. */
+  var late=t==='night'&&!NIGHT_DARK;if(late)t='golden';
   for(i=0;i<k.length;i++)b.classList.toggle('tod-'+k[i],k[i]===t);
+  b.classList.toggle('tod-late',late);
 }
 function paintSky(){
   homeTodPaint();
@@ -46956,7 +46964,12 @@ var HCH_MODE_KEY='home_mode',HCH_KEY='home_chat';
 var _hch={area:'',busy:false,fold:0,mip:null};
 var HCH_DIAL='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/></svg>';
 var HCH_CHAT='<svg viewBox="0 0 24 24"><path d="M5 18.5 4 21l3.6-1.4A8.5 8.5 0 1 0 5 18.5Z"/></svg>';
-function hchMode(){try{return localStorage.getItem(HCH_MODE_KEY)==='chat'?'chat':'dial';}catch(e){return 'dial';}}
+/* 30 Oct: taken off the home screen ("I think I'll remove this feature").
+   Kept whole behind this one flag, not deleted - true brings back the
+   switch, and the chat as it was. While false home is the dial, whatever
+   home_mode a phone has stored. */
+var HCH_ON=false;
+function hchMode(){if(!HCH_ON)return 'dial';try{return localStorage.getItem(HCH_MODE_KEY)==='chat'?'chat':'dial';}catch(e){return 'dial';}}
 var _hchT=0;
 function hchSetMode(m){
   if(m===hchMode())return;
@@ -48044,7 +48057,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)setT
     '<div id="home-greet" class="greet-wrap"></div>'+
     '<button class="home-menu" id="home-menu-btn" aria-label="'+_t("מה במעקב")+'"><i></i><i></i><i></i></button>'+
     /* dial or chat - the second interface, see hchSync */
-    '<div class="hch-mode" id="hch-mode"></div><div class="hch" id="hch"></div>'+
+    '<div class="hch-mode" id="hch-mode"'+(HCH_ON?'':' style="display:none"')+'></div><div class="hch" id="hch"></div>'+
     '<div class="home-grid" id="home-grid"></div>'+
     /* the streak sits in the room under the hub it belongs beside */
     '<div id="home-stk" class="home-stk"></div>'+
