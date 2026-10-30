@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Night Picker</title>
+<style>
+:root{--pn:#f6f1ea;--pn-ink:#3a332d;--pn-mu:#6d655c;--pn-line:rgba(58,51,45,.12);--pn-on:#3a332d;--pn-on-ink:#f6f1ea}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pn:#2b2724;--pn-ink:#efe6dc;--pn-mu:#b3a698;--pn-line:rgba(239,230,220,.14);--pn-on:#efe6dc;--pn-on-ink:#2b2724}}
+:root[data-theme="dark"]{--pn:#2b2724;--pn-ink:#efe6dc;--pn-mu:#b3a698;--pn-line:rgba(239,230,220,.14);--pn-on:#efe6dc;--pn-on-ink:#2b2724}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#1c1a18;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+#app{position:fixed;inset:0;width:100%;height:100%;border:0;display:block}
+@media (min-width:600px){#app{width:390px;height:844px;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:36px;box-shadow:0 30px 80px rgba(0,0,0,.5)}}
+.pn{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:10;max-width:420px;margin:0 auto;
+  background:var(--pn);color:var(--pn-ink);border-radius:20px;padding:12px 14px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .3s ease}
+.pn.min{transform:translateY(calc(100% - 44px))}
+.pn-hd{display:flex;align-items:center;gap:8px;min-height:24px}
+.pn-hd b{flex:1;font-size:14px}
+.pn-hd button{border:0;background:none;color:var(--pn-mu);font:inherit;font-size:13px;font-weight:700;padding:6px 8px;cursor:pointer}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;border:1px solid var(--pn-line);background:none;color:var(--pn-ink);border-radius:999px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+.chips button i{width:14px;height:14px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.chips button.on{background:var(--pn-on);color:var(--pn-on-ink);border-color:var(--pn-on)}
+.row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--pn-mu)}
+.row span{flex:none;width:52px}
+.row input{flex:1;accent-color:#b08a5a}
+.row output{flex:none;width:38px;text-align:start;font-variant-numeric:tabular-nums;color:var(--pn-ink);font-weight:700}
+.note{margin:10px 0 0;font-size:12.5px;line-height:1.45;color:var(--pn-mu)}
+.note b{color:var(--pn-ink)}
+</style>
+</head>
+<body>
+<iframe id="app" src="../../dev/" title="האפליקציה ב-dev, בלילה"></iframe>
+
+<div class="pn" id="pn">
+  <div class="pn-hd"><b>הלילה: כמה חשוך?</b><button id="tg" type="button">הסתר</button></div>
+  <div class="chips" id="chips"></div>
+  <div class="row"><span>בהירות</span><input id="L" type="range" min="12" max="56" step="1"><output id="Lo"></output></div>
+  <div class="row"><span>חום</span><input id="S" type="range" min="0" max="30" step="1"><output id="So"></output></div>
+  <p class="note" id="note"></p>
+</div>
+
+<script>
+/* The real home screen from dev, held at night, with the night's material
+   recomputed from three numbers. Nothing here changes the app: the style is
+   injected into this frame only, and a reload brings the real night back. */
+var PRESETS=[
+  {n:'עכשיו',h:26,s:9,l:15},
+  {n:'קקאו',h:26,s:10,l:22},
+  {n:'דמדום',h:24,s:14,l:29},
+  {n:'אגוז',h:28,s:16,l:36},
+  {n:'שזיף',h:310,s:9,l:25},
+  {n:'כחול לילה',h:218,s:16,l:25},
+  {n:'צפחה',h:30,s:4,l:30},
+  {n:'ערב חול',h:32,s:20,l:46}
+];
+var st={h:26,s:9,l:15,n:'עכשיו'};
+try{var sv=JSON.parse(localStorage.getItem('night-live')||'null');if(sv&&typeof sv.l==='number')st=sv;}catch(e){}
+var $=function(id){return document.getElementById(id);};
+function hsl(h,s,l){return 'hsl('+h+','+s+'%,'+Math.max(0,Math.min(100,l))+'%)';}
+function css(){
+  var h=st.h,s=st.s,l=st.l,k=(l-12)/44,light=l>=44;
+  var ink=light?'#3a332d':'#f1e9df',mu=light?hsl(h,10,l-30):hsl(h,12,Math.min(l+46,80));
+  var lit='rgba(255,240,222,'+(0.06+k*0.3).toFixed(3)+')',sh=(0.55-k*0.28),shs=sh*0.72;
+  var sel='html body.mod-home.tod-night';
+  return sel+'{--nu-ground:'+hsl(h,s,l)+';--nu-lit:'+lit+';--nu-shade:rgba(0,0,0,'+sh.toFixed(3)+');--nu-shade-soft:rgba(0,0,0,'+shs.toFixed(3)+');--nu-ink:'+ink+';--nu-muted:'+mu+'}'+
+    sel+' .rim-ch{stroke:'+hsl(h,s,l-5)+'}'+
+    sel+' .rim-tk{stroke:'+hsl(h,s*0.8,light?l-18:l+16)+'}'+
+    sel+' .rim-lip{stroke:'+lit+'}'+
+    sel+' .hdial-n{fill:'+mu+'}'+
+    sel+' .hdial-notch{background:'+hsl(h,s,l+7)+'}'+
+    sel+' .hdial .chub{box-shadow:inset 7px 9px 16px rgba(0,0,0,'+(sh+0.05).toFixed(3)+'),inset -5px -5px 12px '+lit+',0 0 46px 16px rgba(120,168,226,'+(0.38-k*0.1).toFixed(3)+')}';
+}
+function apply(){
+  $('L').value=st.l;$('Lo').textContent=st.l+'%';$('S').value=st.s;$('So').textContent=st.s;
+  [].forEach.call($('chips').children,function(b,i){var p=PRESETS[i];b.classList.toggle('on',p.h===st.h&&p.s===st.s&&p.l===st.l);});
+  $('note').innerHTML='כדי לבחור, שלח לי: <b>'+st.n+', בהירות '+st.l+'%, חום '+st.s+'</b>. אפשר ללחוץ באפליקציה עצמה כרגיל.';
+  try{localStorage.setItem('night-live',JSON.stringify(st));}catch(e){}
+  var w=$('app').contentWindow,d=w&&w.document;if(!d||!d.body)return;
+  /* keep the frame at night: the app re-asks the hour on its own clock */
+  try{w.homeTod=function(){return 'night';};if(w.homeTodPaint)w.homeTodPaint();}catch(e){}
+  var el=d.getElementById('np-style');if(!el){el=d.createElement('style');el.id='np-style';d.head.appendChild(el);}
+  el.textContent=css();
+}
+PRESETS.forEach(function(p){
+  var b=document.createElement('button');b.type='button';
+  b.innerHTML='<i style="background:'+hsl(p.h,p.s,p.l)+'"></i>'+p.n;
+  b.onclick=function(){st={h:p.h,s:p.s,l:p.l,n:p.n};apply();};
+  $('chips').appendChild(b);
+});
+$('L').oninput=function(){st.l=+this.value;st.n='משלי';apply();};
+$('S').oninput=function(){st.s=+this.value;st.n='משלי';apply();};
+$('tg').onclick=function(){var m=$('pn').classList.toggle('min');this.textContent=m?'הצג':'הסתר';};
+$('app').addEventListener('load',function(){apply();setTimeout(apply,800);setTimeout(apply,2500);});
+/* the app may rebuild home or repaint the hour; hold the night */
+setInterval(apply,4000);
+apply();
+</script>
+</body>
+</html>
