@@ -1904,16 +1904,18 @@ html[dir=rtl] .hch-mode.c::before{transform:translateX(-40px)}
 html[dir=ltr] .hch-mode.c::before{transform:translateX(40px)}
 html body .hch-mode button.on{background:transparent!important;box-shadow:none!important}
 .hch-mode button{transition:color .3s}
-/* the veil the two views change under */
-#hch-veil{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0;
-  -webkit-backdrop-filter:blur(0);backdrop-filter:blur(0);background:rgba(245,240,233,0);
-  transition:opacity .24s ease,backdrop-filter .24s ease,-webkit-backdrop-filter .24s ease,background .24s ease}
-#hch-veil.on{opacity:1;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);background:rgba(245,240,233,.35)}
-#hch-veil.off{transition-duration:.42s}
+/* the two views cross-fade: what shows dims away, the other rises in its place.
+   Opacity only - a blur veil read as a smear twice (27.10, 29.10), and a
+   transform on these children makes each a frame for the fixed things inside.
+   An animation, not a transition, so no child loses a transition of its own. */
+@keyframes hchOut{to{opacity:0}}
+@keyframes hchIn{from{opacity:0}}
+#home-screen.hch-out>*:not(.hch-mode):not(.home-menu){animation:hchOut .2s cubic-bezier(.4,0,1,1) forwards}
+#home-screen.hch-in>*:not(.hch-mode):not(.home-menu){animation:hchIn .38s cubic-bezier(0,0,.2,1) both}
 .mip-fly{position:fixed;left:0;top:0;z-index:960;pointer-events:none;transform-origin:50% 50%;
   transition:transform .6s cubic-bezier(.45,.05,.2,1),opacity .2s}
 .mip-fly.done{opacity:0}
-@media (prefers-reduced-motion:reduce){.sg-glide{transition:none}#home-screen.hch-swap>*{animation:none}}
+@media (prefers-reduced-motion:reduce){.sg-glide{transition:none}#home-screen.hch-out>*,#home-screen.hch-in>*{animation:none}}
 html body.mod-planning .mo-chip-sel{outline:none;transform:translateY(-1px) scale(1.06);box-shadow:-2px -2px 5px var(--nu-lit),3px 6px 12px var(--nu-shade)}
 /* a block that continues into the next band: no shadow on the joined edge */
 html body.mod-planning .wk-blk.ct,html body.mod-planning .wk-blk.cb{box-shadow:none}
@@ -3308,6 +3310,9 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
    with a thumb, small enough to ignore. */
 .swipe-trash{position:fixed;inset-inline-end:14px;top:50%;width:72px;height:72px;border-radius:50%;z-index:190;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transform:translate(-140%,-50%) scale(.8);transition:transform .2s cubic-bezier(.2,.9,.3,1),background .15s,opacity .15s,box-shadow .15s;background:rgba(176,96,78,.72);box-shadow:0 6px 18px rgba(140,70,52,.28)}
 .swipe-trash.on{transform:translate(0,-50%) scale(1)}
+/* the resting state hides it past the INLINE END - which is the left edge in
+   Hebrew and the right in English; -140% put it in mid-screen for every LTR reader */
+html[dir=ltr] .swipe-trash:not(.on){transform:translate(140%,-50%) scale(.8)}
 .swipe-trash.hot{background:#b0503a;box-shadow:0 8px 26px rgba(140,70,52,.45)}
 .swipe-trash.on.hot{transform:translate(0,-50%) scale(1.12)}
 /* the minute steps open across the same strip of screen; a bin floating
@@ -3340,7 +3345,11 @@ body.night .sr-srctag{background:rgba(143,199,158,.16);color:#9ed3ad}
 .ppl-tf{margin-inline-end:-8px;display:block}
 .ppl-tf:first-child{margin-inline-end:0}
 .ppl-tf img,.ppl-tf>div{border:2px solid #fdf0eb}
-.ppl-back{background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0 0 6px;display:block}
+/* the raised pill every back button is (fit-back, the header's home), not a bare text link (29.10) */
+.ppl-back{display:inline-flex;align-items:center;gap:4px;border:none;border-radius:20px;padding:6px 13px;margin:0 0 12px;font-family:inherit;
+  font-size:12px;font-weight:700;color:var(--nu-muted,#6d675e);background:var(--nu-ground,#e9e7e3);cursor:pointer;
+  box-shadow:-3px -3px 6px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 8px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.ppl-back:active{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .ppl-grp{font-size:10px;letter-spacing:.1em;font-weight:800;color:var(--terra-700);margin:14px 2px 7px}
 .ppl-grp:first-child{margin-top:0}
 .ep-av{display:flex;align-items:center;gap:14px;margin-bottom:16px}
@@ -6184,6 +6193,60 @@ html body.mod-planning .dp-w{min-width:0;overflow-wrap:anywhere}
 html body.mod-planning .dp-min{margin:0}
 /* the hour's own rows no longer hold blocks, so nothing grows them but notes */
 html body.mod-planning .dp-chip .dp-min{color:inherit;opacity:.62}
+/* ── PEOPLE IN PLANNING (30.10) ──
+   A name is lit the way this material lights anything: a soft glow of the
+   person's own hue under the letters, never a stroke. The faces on a chip are
+   the people area's discs, small, each its own button. */
+.ppn-fs{display:inline-flex;order:3;align-items:center;margin-inline-start:2px;vertical-align:middle}
+.ppn-f{border:none;background:none;padding:0;margin-inline-start:-5px;cursor:pointer;display:inline-flex;border-radius:50%}
+.ppn-f:first-child{margin-inline-start:0}
+.ppn-f>*{box-shadow:0 0 0 1.5px rgba(255,255,255,.85)}
+.ppn-inw{flex:1;min-width:0;position:relative;display:flex;border-radius:16px;background:#e9e7e3;
+  box-shadow:inset 2px 3px 6px rgba(168,160,148,.45),inset -2px -2px 5px rgba(255,255,255,.95)}
+.dpk-bar .ppn-inw input{position:relative;z-index:1;width:100%;background:transparent;box-shadow:none}
+.ppn-hl{position:absolute;inset:0;padding:0 14px;font-family:inherit;font-size:15px;line-height:44px;white-space:pre;overflow:hidden;
+  color:transparent;pointer-events:none;text-align:start;border-radius:16px}
+.ppn-lit{border-radius:6px}
+.ppn-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 4px 10px}
+.ppn-row::-webkit-scrollbar{display:none}
+.ppn-pill{flex:none;display:flex;align-items:center;gap:7px;height:34px;border-radius:17px;padding:0 12px 0 5px;padding-inline:5px 12px;
+  font-size:13.5px;font-weight:800;color:#4a453f;background:#e9e7e3;
+  box-shadow:-3px -3px 7px rgba(255,255,255,.95),3px 4px 9px rgba(168,160,148,.3)}
+.ppn-ask{border-radius:20px;padding:13px 14px;margin:0 0 10px;background:#e9e7e3;color:#4a453f;
+  box-shadow:-4px -4px 10px rgba(255,255,255,.95),6px 8px 18px rgba(120,104,88,.22)}
+.dps .ppn-ask{box-shadow:-3px -3px 7px var(--l),4px 5px 10px var(--d2)}
+.ppn-ask-r{display:flex;align-items:center;gap:11px}
+.ppn-ask-r b{display:block;font-size:15.5px;font-weight:800;line-height:1.35}
+.ppn-ask-bs{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.ppn-ask-bs button,.ppn-who{border:none;border-radius:15px;padding:10px 14px;font-family:inherit;font-size:13.5px;font-weight:800;color:#4a453f;cursor:pointer;
+  background:#e9e7e3;box-shadow:-3px -3px 7px rgba(255,255,255,.95),3px 4px 9px rgba(168,160,148,.3)}
+.ppn-ask-bs button.q{background:none;box-shadow:none;color:#6d675e}
+.ppn-ask-bs button.w{flex:1}
+.ppn-who{display:flex;align-items:center;gap:11px;width:100%;margin-top:9px;padding:9px 12px;text-align:start}
+.ppn-who span{display:block;min-width:0}
+.ppn-who small{display:block;font-size:11.5px;font-weight:700;color:#6d675e;margin-top:1px}
+.ppn-pc{border-radius:20px;padding:12px 14px 13px;margin-bottom:10px;background:var(--g);box-shadow:-3px -3px 7px var(--l),4px 5px 10px var(--d2)}
+.ppn-pc-h{display:flex;align-items:center;gap:10px;width:100%;border:none;background:none;padding:0;font-family:inherit;cursor:pointer;text-align:start;color:#4a453f}
+.ppn-pc-h b{flex:1;min-width:0;font-size:16px;font-weight:800}
+.ppn-pc-h i{font-style:normal;font-size:20px;font-weight:700;color:#6d675e}
+.ppn-k{display:block;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:#6d675e;margin-top:10px}
+.ppn-v{display:block;font-size:13.5px;font-weight:600;color:#4a453f;line-height:1.55;margin-top:2px;white-space:pre-wrap;unicode-bidi:plaintext}
+.ppn-pop{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin-top:10px;font-size:13px;font-weight:800;color:#4a453f}
+.ppn-pop i{flex:none;width:6px;height:6px;border-radius:50%;background:#f0a92e;box-shadow:0 0 7px 2px rgba(240,169,46,.55);align-self:center}
+.ppn-pop span{unicode-bidi:plaintext}
+.ppn-pop em{font-style:normal;font-weight:700;color:#6d675e;font-size:12px}
+.ppn-eve-fc{display:flex;gap:6px;margin-bottom:10px}
+.ppn-eve-k{font-size:11.5px;font-weight:800;color:var(--nu-muted,#6d675e);margin-bottom:3px;unicode-bidi:plaintext}
+.ppn-eve-in{display:block;width:100%;box-sizing:border-box;margin-top:14px;min-height:96px}
+.ppn-keep{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px}
+.ppn-keep>span{font-size:12px;font-weight:800;color:var(--nu-muted,#6d675e)}
+.ppn-tg{display:flex;align-items:center;gap:7px;height:36px;border:none;border-radius:18px;padding:0 13px 0 5px;padding-inline:5px 13px;
+  font-family:inherit;font-size:13.5px;font-weight:800;color:var(--nu-muted,#6d675e);cursor:pointer;background:var(--nu-ground,#e9e7e3);
+  box-shadow:-3px -3px 7px var(--nu-lit,#fff),3px 4px 9px var(--nu-shade-soft,rgba(168,160,148,.3))}
+.ppn-tg.on{color:var(--nu-ink,#4a453f);box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(168,160,148,.45)),inset -2px -2px 5px var(--nu-lit,#fff)}
+.ppn-tg:not(.on)>*{opacity:.45}
+.ppn-eve-go{display:block;width:100%;margin-top:14px;padding:14px 16px}
+.ppn-eve-no{display:block;width:100%;margin-top:6px;border:none;background:none;padding:10px;font-family:inherit;font-size:13px;font-weight:700;color:var(--nu-muted,#6d675e);cursor:pointer}
 html body.mod-planning .wk-task{background:var(--nu-ground);border-radius:15px;
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 html body.mod-planning .wk-grip{color:var(--nu-muted)}
@@ -6547,6 +6610,40 @@ html body.mod-people .ppl-tf img,html body.mod-people .ppl-tf>div{border:2px sol
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 
 /* ── WE SPOKE ── the row that resets the clock ── */
+/* (30.10) the row is gone from the page: one way to reach them, one way to
+   remember. A reach is recorded only because it was used. */
+.pp-reach{display:flex;width:100%;align-items:center;justify-content:center;gap:9px;margin:16px 0 12px;border:none;border-radius:16px;padding:14px;
+  font-family:inherit;font-size:14px;font-weight:800;color:var(--nu-ink,#4a453f);background:var(--nu-ground,#e9e7e3);cursor:pointer;
+  box-shadow:-3px -3px 7px var(--nu-lit,#fff),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.pp-reach:active{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,#fff)}
+.pp-reach svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ppc-way{display:flex;width:100%;align-items:center;gap:13px;border:none;border-radius:20px;padding:13px 15px;margin-bottom:11px;font-family:inherit;
+  color:#4a453f;background:var(--g);cursor:pointer;text-align:start;box-shadow:-3px -3px 7px var(--l),4px 5px 10px var(--d2)}
+.ppc-way:active{box-shadow:inset 2px 3px 6px var(--d),inset -2px -2px 5px var(--l)}
+.ppc-ic{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 2px 3px 6px var(--d2),inset -2px -2px 5px var(--l)}
+.ppc-ic svg{width:19px;height:19px;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ppc-way b{display:block;font-size:15.5px;font-weight:800}
+.ppc-way small{display:block;font-size:12px;font-weight:700;color:#6d675e;margin-top:1px;direction:ltr;text-align:start;unicode-bidi:plaintext}
+.ppc-t{font-size:21px;font-weight:800;color:#4a453f;margin:2px 4px 4px;padding-inline-end:48px}
+.ppc-s{font-size:13px;font-weight:600;color:#6d675e;margin:0 4px 16px;line-height:1.55}
+.ppc-num{display:block;width:100%;box-sizing:border-box;border:none;outline:none;border-radius:16px;padding:14px 16px;margin-bottom:12px;font-family:inherit;font-size:16px;
+  font-weight:600;color:#4a453f;background:var(--g);direction:ltr;text-align:start;box-shadow:inset 3px 4px 8px var(--d),inset -3px -3px 7px var(--l)}
+.ppc-num::placeholder{color:#6d675e}
+/* the one met by chance: a card under the bar, and a quick add on My people */
+.ppm-r{display:flex;align-items:center;gap:11px}
+.ppm-r b{display:block;font-size:15px;font-weight:800;color:var(--nu-ink,#4a453f);line-height:1.35}
+.ppm-r span{display:block;font-size:12.5px;font-weight:600;color:var(--nu-muted,#6d675e);margin-top:2px;line-height:1.45}
+.hch-dock .ppm-card{margin:0 12px 10px}
+.ppm-met-b{display:flex;width:100%;align-items:center;justify-content:center;border:none;border-radius:20px;padding:14px;margin:0 0 14px;font-family:inherit;
+  font-size:14px;font-weight:800;color:var(--nu-ink,#4a453f);background:var(--nu-ground,#e9e7e3);cursor:pointer;
+  box-shadow:-4px -4px 9px var(--nu-lit,#fff),5px 6px 13px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.ppm-met{border-radius:22px;padding:14px 15px 15px;margin:0 0 14px;background:var(--nu-ground,#e9e7e3);
+  box-shadow:-4px -4px 9px var(--nu-lit,#fff),5px 6px 13px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.ppm-met-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:15px;font-weight:800;color:var(--nu-ink,#4a453f);margin-bottom:12px}
+.ppm-met-h small{font-size:12px;font-weight:700;color:var(--nu-muted,#6d675e)}
+.ppm-met .mtin{display:block;width:100%;box-sizing:border-box;margin-bottom:9px}
+.ppm-met-go{display:block;width:100%;border:none;border-radius:15px;padding:12px;font-family:inherit;font-size:14px;font-weight:800;color:var(--nu-ink,#4a453f);
+  background:var(--nu-ground,#e9e7e3);cursor:pointer;box-shadow:-3px -3px 7px var(--nu-lit,#fff),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
 .pp-ways{display:flex;gap:7px;margin-bottom:18px}
 .pp-way{flex:1;min-width:0;border:none;cursor:pointer;font-family:inherit;font-size:11px;
   font-weight:800;color:var(--nu-muted);background:var(--nu-ground);border-radius:14px;
@@ -10619,7 +10716,7 @@ var ACT_LEVELS;langOn(function(){ACT_LEVELS=[
    smallest calorie cut of the three and the largest protein bonus. */
 var GOALS;langOn(function(){GOALS=[
   {v:'lose',  t:''+_t('ירידה במשקל')+'',   k:0.85, p:0.2, n:''+_t('גירעון של 15%')+' &mdash; '+_t('ירידה יציבה')+''},
-  {v:'recomp',t:''+_t('חיטוב')+'',         k:0.95, p:0.4, n:''+_t('קרוב לתחזוקה, חלבון גבוה')+' &mdash; '+_t('לרדת אחוז שומן בלי לאבד מסה')+''},
+  {v:'recomp',t:''+_t('חיטוב')+'',         k:0.95, p:0.4, n:''+_t('קרוב לשמירה על המשקל, חלבון גבוה')+' &mdash; '+_t('לרדת אחוז שומן בלי לאבד מסה')+''},
   {v:'keep',  t:''+_t('שמירה על המשקל')+'',k:1.00, p:0,   n:''+_t('בדיוק מה שאתה שורף')+''},
   {v:'gain',  t:''+_t('עלייה במסה')+'',    k:1.10, p:0.1, n:''+_t('עודף של 10% לבנייה')+''}
 ];});
@@ -10664,7 +10761,7 @@ function profSet(field,val){
      dismissal - כושר's is a different question and she did not answer it. */
   if(p.fqOff&&typeof p.fqOff==='object')delete p.fqOff.nutrition;
   saveProfile(p);
-  if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
+  if(targetsAutoApply())showToast('\u2713 '+_t('מעכשיו אלה היעדים שלך'));
   render();
 }
 /* Two boxes in imperial, one in metric. The stored value is centimetres in
@@ -10705,7 +10802,7 @@ function profHeight(){
   else p.height=fromDisplayHeight(parseFloat(f.value),parseFloat(i.value));
   if(p.fqOff&&typeof p.fqOff==='object')delete p.fqOff.nutrition;
   saveProfile(p);
-  if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
+  if(targetsAutoApply())showToast('\u2713 '+_t('מעכשיו אלה היעדים שלך'));
   render();
 }
 function profNum(field,el){
@@ -10731,7 +10828,7 @@ function profNum(field,el){
   p.updatedAt=new Date().toISOString();
   if(p.fqOff&&typeof p.fqOff==='object')delete p.fqOff.nutrition;
   saveProfile(p);
-  if(targetsAutoApply())showToast('\u2713 '+_t('היעדים האלה שלך עכשיו'));
+  if(targetsAutoApply())showToast('\u2713 '+_t('מעכשיו אלה היעדים שלך'));
   render();
 }
 
@@ -10765,7 +10862,7 @@ function fqQuestion(k){
   /* Hebrew is the source and the source is masculine, as everywhere here;
      data/he-f.json answers the two that inflect. נולדת and שלך are the
      same word in both, which is why only two of the six are overlaid. */
-  if(k==='goal')return ''+_t('למה אתה מכוון?')+'';
+  if(k==='goal')return ''+_t('מה אתה רוצה להשיג?')+'';
   if(k==='sex')return ''+_t('מה המין שלך?')+'';
   if(k==='birth')return ''+_t('מתי נולדת?')+'';
   if(k==='height')return ''+_t('מה הגובה שלך?')+'';
@@ -10932,7 +11029,7 @@ function asetFinish(){
 /* WHAT CAME OUT OF THE ANSWERS: the goals, and why, before the area opens */
 function asetGoalWhy(g){
   if(g==='lose')return _t('לפי מה שסיפרת: ירידה יציבה במשקל, בלי לוותר על חלבון.');
-  if(g==='recomp')return _t('לפי מה שסיפרת: חיטוב. קרוב לתחזוקה, עם הרבה חלבון.');
+  if(g==='recomp')return _t('לפי מה שסיפרת: חיטוב. קרוב לשמירה על המשקל, עם הרבה חלבון.');
   if(g==='gain')return _t('לפי מה שסיפרת: עלייה במסה, עם עודף קטן לבנייה.');
   return _t('לפי מה שסיפרת: לשמור על המשקל שלך.');
 }
@@ -10973,7 +11070,7 @@ function asetPaint(nudge){
     var L=fit?[_t('בונים אימון, או מתחילים אחד בקליק'),_t('רושמים סטים, משקלים ומנוחה'),_t('ורואים את ההתקדמות לאורך זמן')]
              :[_t('רושמים מה אוכלים, בטקסט, בתמונה או בקול'),_t('רואים מול היעד שלך כמה נשאר להיום'),_t('ומתייעצים עם המאמן על כל ארוחה')];
     body='<ul class="as-pts">'+L.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'+
-      '<div class="as-why">'+(fit?_t('לפני שנתחיל, כמה שאלות קצרות, כדי שהאימונים יתאימו לך.'):_t('לפני שנתחיל, כמה שאלות קצרות, כדי שהמספרים יהיו שלך.'))+'</div>';
+      '<div class="as-why">'+(fit?_t('לפני שנתחיל, כמה שאלות קצרות, כדי שהאימונים יתאימו לך.'):_t('לפני שנתחיל, כמה שאלות קצרות, כדי שהמספרים יתאימו לך.'))+'</div>';
   }
   if(k==='gate'){q=fit?_t('יש לך מטרה בכושר?'):_t('יש לך מטרה בתזונה?');body=asetChoice('gate','yes',_t('כן, יש לי מטרה'))+asetChoice('gate','no',_t('לא'));}
   if(k==='add'){q=_t('תרצה להוסיף מטרה?');why=fit?_t('מטרה עוזרת לבנות לך אימון שמתאים לך: כמה חזרות, כמה מנוחה, ומתי להעלות משקל.'):_t('מטרה קובעת את יעד הקלוריות והחלבון שלך. בלי מטרה נשמור על המשקל הנוכחי.');
@@ -11122,7 +11219,7 @@ function fqCardHTML(){
     /* the reason, once. After the first answer she has seen the numbers move
        and the sentence has done its work. */
     why:(left.length===FQ_ORDER.length)
-        ?''+_t('תשובה אחת, והמספרים במסך הזה יהיו שלך במקום של מישהו אחר')+'':'',
+        ?''+_t('תשובה אחת, והמספרים כאן יותאמו אליך ולא לאדם ממוצע')+'':'',
     body:gated?gateHTML('nutrition'):fqStepHTML(left[0],p),
     done:FQ_ORDER.length-left.length,
     total:FQ_ORDER.length
@@ -11266,8 +11363,8 @@ function fitMeQuestion(k){
   return ''+_t('מה עוד כדאי שאדע?')+'';
 }
 function fitMeWhy(k){
-  if(k==='out')return ''+_t('אפשר לבחור יותר מאחת. מהן אני מגיע לטווח החזרות, למנוחה ולקפיצת המשקל.')+'';
-  if(k==='days')return ''+_t('יכול, לא רוצה. עדיף תוכנית שמתקיימת.')+'';
+  if(k==='out')return ''+_t('אפשר לבחור יותר מאחת. לפיהן אקבע את טווח החזרות, את המנוחה ואת הקפיצה במשקל.')+'';
+  if(k==='days')return ''+_t('כמה אתה באמת יכול, לא כמה היית רוצה. עדיף תוכנית שמחזיקה.')+'';
   if(k==='minutes')return ''+_t('זה קובע כמה תרגילים נכנסים.')+'';
   if(k==='exp')return ''+_t('זה קובע כמה מורכבת החלוקה.')+'';
   if(k==='equip')return ''+_t('זה קובע אילו תרגילים בכלל אפשריים — ואין תשובה גרועה.')+'';
@@ -11512,7 +11609,7 @@ function renderProfile(){
        numbers printed directly above it, and a person checking the app's
        arithmetic would find it wrong. */
     if(rec.floored)
-      h+='<div class="pf-floor">'+_t('החשבון יצא נמוך מדי, אז היעד הועלה לרצפה בטוחה')+'</div>';
+      h+='<div class="pf-floor">'+_t('החישוב יצא נמוך מדי, אז העליתי את היעד למינימום בטוח')+'</div>';
     var rows=[
       /* the -700s, not PAL.*500: these are 21px NUMBERS, so the floor is
          3:1, and the fill palette measured violet 2.26, terra 2.11,
@@ -11598,7 +11695,7 @@ var QUESTIONS;langOn(function(){QUESTIONS=[
   {id:'mood',type:'stars',text:''+_t('איך היה מצב הרוח שלך היום?')+''},
   {id:'body',type:'stars',text:''+_t('איך הגוף שלך הרגיש?')+''},
   {id:'moment',type:'text',text:''+_t('מה היה הרגע הכי טוב שלך היום?')+'',placeholder:''+_t('כתוב במילים שלך...')+''},
-  {id:'flow',type:'flow',text:''+_t('תרשים זרימת היום')+''},
+  {id:'flow',type:'flow',text:''+_t('מהלך היום')+''},
   {id:'timeclock',type:'timeclock',text:''+_t('איך חולק הזמן שלך היום?')+''},
   {id:'workout',type:'text',text:''+_t('פעילות גופנית היום?')+'',placeholder:''+_t('אימון כוח, ריצה, מנוחה...')+''},
   {id:'steps',type:'number',text:''+_t('כמה צעדים צעדת היום?')+'',placeholder:'10000'},
@@ -11670,6 +11767,7 @@ var HE={
   '{n} משפטים שמורים':{one:'משפט שמור אחד',two:'שני משפטים שמורים',other:'{n} משפטים שמורים'},
   '{n} שנים. והיום הזה כולו שלך.':{one:'שנה אחת. והיום הזה כולו שלך.',two:'שנתיים. והיום הזה כולו שלך.',other:'{n} שנים. והיום הזה כולו שלך.'},
   'לפני {n} ימים':{one:'אתמול',two:'לפני יומיים',other:'לפני {n} ימים'},
+  'דיברנו לפני {n} ימים':{one:'דיברנו אתמול',two:'דיברנו לפני יומיים',other:'דיברנו לפני {n} ימים'},
   'לפני {n} שבועות':{one:'לפני שבוע',two:'לפני שבועיים',other:'לפני {n} שבועות'},
   'לפני {n} חודשים':{one:'לפני חודש',two:'לפני חודשיים',other:'לפני {n} חודשים'},
   'יציב ב־{n} ימים':{one:'יציב כבר יום',two:'יציב כבר יומיים',other:'יציב ב־{n} ימים'},
@@ -18002,7 +18100,7 @@ function sayPaint(){
           h+='</div><div class="sr-src">'+_t('{p} מהקלוריות מערכים מדודים במאגר.',{p:pfmt(row.measured)})+'</div>';
         }
         if(row.aiG)
-          h+='<div class="sr-src">'+_t('כמה יש בצלחת נאמד מהתמונה. זה החלק הכי קשה לצלם נכון — אם המשקל נראה רחוק, תקן אותו.')+'</div>';
+          h+='<div class="sr-src">'+_t('כמה יש בצלחת נאמד מהתמונה. זה החלק שהכי קשה להעריך מתמונה — אם המשקל נראה רחוק, תקן אותו.')+'</div>';
         if(row.unit!=='g'&&GSRC_SAY[row.gsrc])
           h+='<div class="sr-src">'+GSRC_SAY[row.gsrc]+'</div>';
         if(row.unit!=='g'&&row.gsrc==='guess')
@@ -18417,7 +18515,7 @@ function fdbPaint(){
      when the two disagree, and when they agree it costs one label. */
   var aiOn=(foodKey(_fdbAIQ)===foodKey(_fdbQ));
   if(aiOn&&_fdbAI&&_fdbAI.length){
-    h+='<div class="fdb-ai-h">'+_t('התאמות לפי המשמעות')+'</div><div class="fdb-list">';
+    h+='<div class="fdb-ai-h">'+_t('תוצאות דומות')+'</div><div class="fdb-list">';
     for(i=0;i<_fdbAI.length;i++){
       f=null;
       for(var j=0;j<_foods.length;j++)if(_foods[j].n===_fdbAI[i]){f=_foods[j];break;}
@@ -18462,7 +18560,7 @@ function fdbPaint(){
   }
 
   if(rest.length){
-    if(h)h+='<div class="fdb-ai-h plain">'+_t('מכילים את מה שכתבת')+'</div>';
+    if(h)h+='<div class="fdb-ai-h plain">'+_t('תוצאות שמכילות את מה שכתבת')+'</div>';
     h+='<div class="fdb-list">';
     for(i=0;i<rest.length;i++){
       h+='<button class="fdb-row" onclick="fdbSelect(\u0027'+rest[i].id+'\u0027)">'+
@@ -18581,9 +18679,9 @@ var ASK_TOOLS={
 };
 // what it looked up, in words, so an answer can be checked rather than believed
 function askSay(name,inp){
-  if(name==='get_day')return ''+_t('קרא את היום')+' '+askDateShow(inp&&inp.date);
+  if(name==='get_day')return ''+_t('קורא את היום')+' '+askDateShow(inp&&inp.date);
   if(name==='get_range')return ''+_t('קרא {from} עד {to}',{from:askDateShow(inp&&inp.from),to:askDateShow(inp&&inp.to)});
-  if(name==='get_targets')return ''+_t('קרא את היעדים שלך')+'';
+  if(name==='get_targets')return ''+_t('קורא את היעדים שלך')+'';
   if(name==='search_food')return ''+_t('חיפש במאגר:')+' '+String((inp&&inp.query)||'');
   return name;
 }
@@ -18605,7 +18703,7 @@ function askGo(){
 function askTurn(messages,depth){
   if(depth>=6){
     _askBusy=false;
-    _askErr=''+_t('לא הצלחתי לסגור את זה. נסה לשאול יותר ממוקד.')+'';
+    _askErr=''+_t('לא הצלחתי לענות על זה. נסה לשאול שאלה ממוקדת יותר.')+'';
     askPaint();return;
   }
   fetch(SYNC_SERVER+'/ask'+meterQ(),{
@@ -19020,7 +19118,7 @@ function anCardHTML(){
   }
   if(_anErr)return '<div class="est-err">'+esc(_anErr)+'</div>';
   if(!_an)return '';
-  var CONF={high:''+_t('פירוק בטוח')+'',medium:''+_t('פירוק סביר')+'',low:''+_t('פירוק גס')+''};
+  var CONF={high:''+_t('פירוק מדויק')+'',medium:''+_t('פירוק משוער')+'',low:''+_t('פירוק גס')+''};
   var h='<div class="est-card">';
   h+='<div class="est-hd"><span class="est-tag">'+_t('פירוק')+'</span>'+
      '<span class="est-conf">'+(CONF[_an.conf]||CONF.low)+' &middot; '+_t('{p} מהמאגר',{p:pfmt(_an.measured)})+'</span>'+
@@ -20712,7 +20810,7 @@ function summaryBodyHTML(dateStr){
   }
 
   if(flowStops.length>0&&sumSecOn('flow')){
-    h+='<div class="sm2-blk"><div class="sm2-pz-l">'+_t('זרימת היום')+'</div><div class="sm2-flw">';
+    h+='<div class="sm2-blk"><div class="sm2-pz-l">'+_t('מהלך היום')+'</div><div class="sm2-flw">';
     for(i=0;i<flowStops.length;i++){
       if(flowStops[i].p)
         h+=photoImg(flowStops[i].p,'class="sm2-flw-ph" style="width:30px;height:30px;'+
@@ -21150,7 +21248,7 @@ function goRoute(){
 function enterModule(mod){
   /* (the first-visit card is gone: each area explains itself) */
   if(mod==='nutrition'||mod==='fitness')setTimeout(function(){asetMaybe(mod);},350);
-  setTimeout(function(){areaTourMaybe(mod);},1600);
+  setTimeout(function(){areaTourMaybe(mod);},550);
   try{usageNote('area',mod);}catch(e){}
   if(mod!=='endofday')document.body.classList.remove('rf-night');
   jrnlFlush();
@@ -23477,7 +23575,7 @@ function fitWCaveats(){
     c.push(''+_t('שומן ומסה יחד: בעיקר בהתחלה, אחרי הפסקה, או כשיש מה להוריד. אחרת זה שלב אחרי שלב, ואגיד לך מתי להחליף.')+'');
   /* the NUMBER decides this one rather than a hand-written pairing */
   if(per<SETS_BAND.lo&&out.indexOf('mass')>=0)   // i18n-exempt: a stored key
-    c.push(''+_t('יוצאים בערך {n} סטים לשריר בשבוע, והטווח לגדילה מתחיל ב־{lo}. אימון נוסף או עשרים דקות יסגרו את הפער.',{n:per,lo:SETS_BAND.lo})+'');
+    c.push(''+_t('זה יוצא בערך {n} סטים לשריר בשבוע, ולגדילה צריך לפחות {lo}. עוד אימון, או עוד עשרים דקות, יסגרו את הפער.',{n:per,lo:SETS_BAND.lo})+'');
   return c;
 }
 function fitWRows(){
@@ -23504,7 +23602,7 @@ function renderFitWelcome(){
   if(!me.started){
     h+='<div class="gn-c"><div class="gn-h">'+_t('כושר')+'</div>';
     h+='<div class="fq-wel">'+_t('ברוך הבא לאזור הכושר')+'</div>';
-    h+='<p class="fq-welp">'+_t('כאן אתה בונה אימון, עוקב אחרי המשקלים ורואה את ההתקדמות לאורך זמן. כמה שאלות קצרות, ואכוון את זה אליך.')+'</p>';
+    h+='<p class="fq-welp">'+_t('כאן אתה בונה אימון, עוקב אחרי המשקלים ורואה את ההתקדמות לאורך זמן. כמה שאלות קצרות, ואתאים את זה אליך.')+'</p>';
     h+='<button class="gn-go" onclick="fitWNext()">'+_t('בוא נתחיל')+'</button>';
     h+='<button class="fq-later" onclick="fqLater(\'fitness\');_fitView=\'home\';renderFitness()">'+_t('אחר כך')+'</button>';
     return void(document.getElementById('content').innerHTML=h+'</div>');
@@ -23655,7 +23753,7 @@ function renderFitGenProg(){
   h+='</div>';
 
   h+='<div class="gn-c"><div class="gn-h">'+_t('כמה פעמים בשבוע אתה יכול להתאמן')+'</div>';
-  h+='<div class="gn-s">'+_t('יכול, לא רוצה. עדיף תוכנית שמתקיימת.')+'</div><div class="gn-w">';
+  h+='<div class="gn-s">'+_t('כמה אתה באמת יכול, לא כמה היית רוצה. עדיף תוכנית שמחזיקה.')+'</div><div class="gn-w">';
   for(i=0;i<GENPROG_DAYS.length;i++)
     h+='<button class="gn-e'+(g.days===GENPROG_DAYS[i]?' on':'')+'" onclick="genProgSet(\'days\','+GENPROG_DAYS[i]+')">'+nfmt(GENPROG_DAYS[i])+'</button>';
   h+='</div></div>';
@@ -23840,7 +23938,7 @@ var FIT_AREAS;langOn(function(){FIT_AREAS=[
   {id:'weights',t:''+_t('מעקב משקלים')+'',s:''+_t('כמה אתה מרים בכל תרגיל')+'',g:'lav',ic:'<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h9"/>'},
   {id:'weekly-plan',t:''+_t('לוז האימונים')+'',s:''+_t('מה עושים ומתי')+'',g:'blu',ic:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17"/><path d="M8.5 3v4"/><path d="M15.5 3v4"/>'},
   {id:'stats',t:''+_t('המספרים שלי')+'',s:''+_t('נפח, שרירים, והשיא שלך')+'',g:'grn',ic:'<path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-5"/>'},
-  {id:'steps',t:''+_t('צעדים')+'',s:''+_t('הדבר שזז כל יום')+'',g:'grn',ic:'<path d="M8 4.5c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9S5.8 13.9 5.8 12.7c0-1.8-1-3.1-1-5.1C4.8 5.7 6.4 4.5 8 4.5Z"/><path d="M16.4 9c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9s-1.9-.7-1.9-1.9c0-1.8-1-3.1-1-5.1 0-1.9 1.6-3.1 3.2-3.1Z"/>'},
+  {id:'steps',t:''+_t('צעדים')+'',s:''+_t('כמה זזת היום')+'',g:'grn',ic:'<path d="M8 4.5c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9S5.8 13.9 5.8 12.7c0-1.8-1-3.1-1-5.1C4.8 5.7 6.4 4.5 8 4.5Z"/><path d="M16.4 9c1.6 0 2.6 1.2 2.6 3.1 0 2-1 3.3-1 5.1 0 1.2-.7 1.9-1.9 1.9s-1.9-.7-1.9-1.9c0-1.8-1-3.1-1-5.1 0-1.9 1.6-3.1 3.2-3.1Z"/>'},
   {id:'history',t:''+_t('היסטוריה')+'',s:''+_t('כל אימון שרשמת')+'',g:'gry',ic:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.8"/>'},
 ];});
 /* When you last trained and what it was - the fact that decides whether you
@@ -24086,7 +24184,7 @@ function renderFitWeights(){
     h+='</div>';
   }
   h+='</div>';
-  h+='<div class="exw-note">'+_t('המספר מתעדכן לבד מכל אימון שתסיים. אפשר גם להקליד אותו — והאימון הבא יעדכן מעליו.')+'</div>';
+  h+='<div class="exw-note">'+_t('המספר מתעדכן לבד מכל אימון שתסיים. אפשר גם להקליד אותו — והאימון הבא יעדכן אותו שוב.')+'</div>';
 
   /* the advice about what to do next time belongs with the weights, not on a
      hub you pass through */
@@ -24162,7 +24260,7 @@ function renderFitStats(){
     }
     h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:10px">'+_t('מי שמתאמן כדי לגדול נמצא בדרך כלל בין {lo} ל־{hi} סטים לשריר בשבוע. זה טווח, לא ציון — וריצה או שחייה לא נמדדות בו.',{lo:SETS_BAND.lo,hi:SETS_BAND.hi})+'</div>';
     if(now.byMuscle['אחר'])
-      h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:6px">&ldquo;'+_t('אחר')+'&rdquo; '+_t('הם תרגילים שהקלדת בעצמך — לספרייה אין להם שריר. בחירה מהספרייה תשבץ אותם.')+'</div>';
+      h+='<div style="font-size:10px;color:var(--muted-soft);line-height:1.6;margin-top:6px">&ldquo;'+_t('אחר')+'&rdquo; '+_t('הם תרגילים שהקלדת בעצמך, ולכן לא ידוע איזה שריר הם עובדים. בחירה מהספרייה תשייך אותם.')+'</div>';
     h+='</div>';
   }
 
@@ -24315,7 +24413,7 @@ function renderFitStepsSetup(){
   if(connected)h+='<div style="color:var(--green-700);font-size:18px;flex-shrink:0">&#10003;</div>';
   h+='</div>';
 
-  h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.65;margin-bottom:13px">'+_t('השעון והאפליקציות שלך כותבים אל הבריאות בלאו הכי, אז זה החיבור היחיד שצריך לעשות:')+'</div>';
+  h+='<div style="font-size:11.5px;color:#7d746e;line-height:1.65;margin-bottom:13px">'+_t('השעון והאפליקציות שלך כבר מעדכנים את אפליקציית בריאות, אז רק אותה צריך לחבר:')+'</div>';
   var feeds=[''+_t('שעון גארמין')+'',''+_t('אפל וואטש')+'',''+_t('פיטביט')+'',''+_t('האייפון עצמו')+''];
   h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
   for(var fi=0;fi<feeds.length;fi++)h+='<span style="background:var(--surface);border-radius:10px;padding:5px 10px;font-size:10.5px;font-weight:700;color:var(--muted)">'+feeds[fi]+'</span>';
@@ -25640,7 +25738,7 @@ function closetSeasonsHTML(){
     var cur='';
     for(i=0;i<CLOSET_SEASONS.length;i++)
       if(CLOSET_SEASONS[i].k===_closetSeason)cur=_t(CLOSET_SEASONS[i].t);
-    h+='<div class="cl-seasons-n">'+_t('בגד שתוסיף עכשיו ייכנס אל {season}',{season:cur})+'</div>';
+    h+='<div class="cl-seasons-n">'+_t('בגד שתוסיף עכשיו יישמר תחת {season}',{season:cur})+'</div>';
   }
   return h;
 }
@@ -30196,7 +30294,7 @@ function exDetailHTML(e){
     else if(st.prev&&st.delta>0)
       h+='<div class="xd-say up">'+_t('עלית מ־{a} ל־{b} מאז הפעם הקודמת.',{a:setLabel(st.prev.top),b:setLabel(st.last.top)})+'</div>';
     else if(st.prev&&st.delta<0)
-      h+='<div class="xd-say down">'+_t('בפעם הקודמת עשית {s}. יום פחות טוב זה חלק מזה.',{s:setLabel(st.prev.top)})+'</div>';
+      h+='<div class="xd-say down">'+_t('בפעם הקודמת עשית {s}. גם ימים פחות טובים הם חלק מהדרך.',{s:setLabel(st.prev.top)})+'</div>';
     if(st.n>1)h+=exBarsHTML(st);
     if(st.n>2){
       var g=exWork(st.last.top)-exWork(st.first.top);
@@ -30378,7 +30476,7 @@ var FIT_CASES;langOn(function(){FIT_CASES=[
   {k:'pain', t:''+_t('כואב לי תוך כדי')+'', ic:'&#9888;',
    h:''+_t('עצור את הסט עכשיו. אל תסיים אותו.')+'',
    list:[
-    ''+_t('הבחן בין השניים: שריר שנשרף ומתעייף הוא בסדר. כאב חד, דוקר, או במפרק עצמו — לא.')+'',
+    ''+_t('חשוב להבדיל: שריר שנשרף ומתעייף זה בסדר. כאב חד, דוקר, או במפרק עצמו — לא.')+'',
     ''+_t('כאב חד או במפרק: סיים את התרגיל להיום. אל תנסה משקל קל יותר "רק לבדוק".')+'',
     ''+_t('כאב בגב תחתון בדדליפט או סקוואט: עצור לגמרי. אלה התרגילים שבהם המשך פוגע.')+'',
     ''+_t('הרגשת "משהו נתפס" ועבר: עבור לתרגיל על אותו שריר בלי עומס על אותו מפרק — למשל ממוט למכונה.')+'',
@@ -30389,14 +30487,14 @@ var FIT_CASES;langOn(function(){FIT_CASES=[
    list:[
     ''+_t('הורד 10–20% מהמשקל והשלם את החזרות המתוכננות.')+'',
     ''+_t('אם גם זה לא הולך: השלם את הסטים שנשארו במשקל שאתה שולט בו והפסק שם.')+'',
-    ''+_t('עדיף אימון קצר שהיה מאשר אימון מלא שלא.')+'',
+    ''+_t('עדיף אימון קצר שקרה מאשר אימון מלא שלא קרה.')+'',
     ''+_t('אם זה קורה שלושה אימונים ברצף — הבעיה היא שינה, אוכל או עומס, לא האימון.')+''
    ]},
   {k:'time', t:''+_t('נגמר לי הזמן')+'', ic:'&#8986;',
    h:''+_t('קצץ בסדר הזה, מהסוף להתחלה.')+'',
    list:[
     ''+_t('ותר קודם על תרגילי הבידוד — כפיפות מרפק, הרחקות כתף, תאומים.')+'',
-    ''+_t('שמור על התרגיל המורכב הראשון: הוא רוב הערך של האימון.')+'',
+    ''+_t('שמור על התרגיל המורכב הראשון: בו נמצאת רוב התועלת של האימון.')+'',
     ''+_t('הורד סט מכל תרגיל לפני שאתה מוריד תרגיל שלם.')+'',
     ''+_t('קצר את המנוחות ל־60 שניות במקום לוותר על עוד תרגיל.')+''
    ]},
@@ -30404,8 +30502,8 @@ var FIT_CASES;langOn(function(){FIT_CASES=[
    h:''+_t('זה מידע, לא כישלון. רשום מה שהצלחת.')+'',
    list:[
     ''+_t('רשום את מה שבאמת עשית — סט של 6 שנרשם כ־8 הורס את ההשוואה לפעם הבאה.')+'',
-    ''+_t('נשארת סט אחד או שניים מתחת: המשך באותו משקל בפעם הבאה.')+'',
-    ''+_t('נשארת בכל הסטים: רד למשקל של האימון הקודם.')+'',
+    ''+_t('בסט אחד או שניים לא הגעת לטווח: המשך באותו משקל בפעם הבאה.')+'',
+    ''+_t('לא הגעת לטווח באף סט: חזור למשקל של האימון הקודם.')+'',
     ''+_t('הסט האחרון תמיד נופל — זה נורמלי ולא סימן לרדת.')+''
    ]},
   {k:'nomach', t:''+_t('אין את המכונה בחדר')+'', ic:'&#128683;',
@@ -30415,7 +30513,7 @@ var FIT_CASES;langOn(function(){FIT_CASES=[
    h:''+_t('פתח את דף התרגיל וקרא את הטעויות הנפוצות — הן כתובות בדיוק בשביל הרגע הזה.')+'',
    list:[
     ''+_t('הורד למשקל שבו אתה יכול לעשות את התנועה לאט ובשליטה מלאה.')+'',
-    ''+_t('צלם את עצמך מהצד. זה קצר את הדרך יותר מכל הסבר.')+'',
+    ''+_t('צלם את עצמך מהצד. זה יעזור יותר מכל הסבר.')+'',
     ''+_t('תרגיל שלא מרגיש נכון אחרי שני ניסיונות — החלף אותו היום, ותבדוק את זה אחר כך.')+''
    ]}
 ];});
@@ -33029,7 +33127,7 @@ function renderHabits(){
   h+='<div class="hbb-new"><input id="hb-part-inp" enterkeyhint="done" placeholder="'+
      _t('הוסף תת-נושא')+'" onkeydown="if(event.key===&quot;Enter&quot;)hbPartAdd()">'+
      '<button onclick="hbPartAdd()" aria-label="'+_t('הוסף תת-נושא')+'">+</button></div>';
-  h+='</div><div class="hb-lab"><span>'+_t('על מה הזמן הלך')+'</span></div>';
+  h+='</div><div class="hb-lab"><span>'+_t('על מה הלך הזמן')+'</span></div>';
 
   /* ── THE TWO THINGS THAT WERE ALREADY HERE ──
      The month's intentions and the notes page predate this screen and are not
@@ -33366,7 +33464,8 @@ function remNativeSync(){
    set for is kept, and the next one waits seven days after it. */
 var PPL_NUDGE_KEY='ppl_nudge_at';
 function pplNudgeNative(){
-  var over=pplOverdue(loadPeople());if(!over.length)return [];
+  var _met=ppnPlannedPids(todayStr());
+  var over=pplOverdue(loadPeople()).filter(function(o){return !(o.p&&o.p.pid&&_met[o.p.pid]);});if(!over.length)return [];
   var o=over[0],now=Date.now(),last=0,at;
   try{last=+localStorage.getItem(PPL_NUDGE_KEY)||0;}catch(e){}
   if(last>now+30000)at=new Date(last);
@@ -33382,7 +33481,7 @@ function pplNudgeNative(){
     if(days>=14)body=_t('{n} שבועות מאז שדיברתם. אולי היום?',{n:Math.floor(days/7)});
     else body=_t('{n} ימים מאז שדיברתם. אולי היום?',{n:days});
   }
-  return [{id:200,title:_t('עבר זמן מ{name}',{name:nm}),body:body,
+  return [{id:200,title:_t('מזמן לא דיברת עם {name}',{name:nm}),body:body,
     schedule:{at:at,allowWhileIdle:true},actionTypeId:'olm-ppl',extra:{k:'ppl',name:nm}}];
 }
 /* A WEIGH-IN MORNING: 07:30 on the days she chose to weigh, unless that
@@ -33490,7 +33589,7 @@ function dpRemNative(){
       at=new Date(at.getTime()-off*60000);
       if(at.getTime()<=now+30000)continue;
       var when=dpHM(t.hour,t.min||0);
-      out.push({id:1000+k*100+(i%100),title:t.w,body:dpRemBody(off,when),
+      out.push({id:1000+k*100+(i%100),title:t.w,body:dpRemBody(off,when,ppnNamesOf(t)),
         schedule:{at:at,allowWhileIdle:true},actionTypeId:'olm-plan',extra:{k:'plan'}});
     }
   }
@@ -34673,7 +34772,16 @@ function dpRemCheck(){
 }
 /* "in a quarter of an hour · 10:00": the four choices the sheet offers are
    said the way a person says them, anything else counts minutes */
-function dpRemBody(off,when){
+function dpRemBody(off,when,names){
+  /* with people in it: their names, never what was meant to be asked - a
+     lock screen is read by whoever is holding the phone */
+  if(names){
+    if(!off)return _t('עכשיו, עם {names} · {when}',{names:names,when:when});
+    if(off===15)return _t('בעוד רבע שעה עם {names} · {when}',{names:names,when:when});
+    if(off===30)return _t('בעוד חצי שעה עם {names} · {when}',{names:names,when:when});
+    if(off===60)return _t('בעוד שעה עם {names} · {when}',{names:names,when:when});
+    return _t('בעוד {n} דקות עם {names} · {when}',{n:off,names:names,when:when});
+  }
   if(!off)return _t('עכשיו · {when}',{when:when});
   if(off===15)return _t('בעוד רבע שעה · {when}',{when:when});
   if(off===30)return _t('בעוד חצי שעה · {when}',{when:when});
@@ -34683,8 +34791,9 @@ function dpRemBody(off,when){
 function dpRemFire(t,off){
   var when=dpHM(t.hour,t.min||0);
   /* in the phone shells the phone itself rings it (dpRemNative) */
-  if(!remNative())sumRemShowOS(t.w,dpRemBody(off,when));
-  if(!document.hidden)remBanner({f:function(){return {t:t.w,b:dpRemBody(off,when),btn:_t('בוצע')};},ttl:15000});
+  var who=ppnNamesOf(t);
+  if(!remNative())sumRemShowOS(t.w,dpRemBody(off,when,who));
+  if(!document.hidden)remBanner({f:function(){return {t:t.w,b:dpRemBody(off,when,ppnNamesOf(t)),btn:_t('בוצע')};},ttl:15000});
 }
 setInterval(dpRemCheck,20000);
 function dpOpenDetail(id){_dpDetail=id;renderDpSheet();}
@@ -34751,6 +34860,7 @@ function renderDpSheet(){
     h+='<input id="dp-d-title" class="dps-title dps-in" value="'+esc(t.w)+'">';
   else
     h+='<div class="dps-title">'+esc(t.w)+'</div>';
+  h+=ppnSheetHTML(t);
   h+='<div class="dps-l">'+_t('פרטים שחשוב לזכור')+'</div>';
   h+='<textarea id="dp-d-note" class="dps-note" placeholder="'+_t("מה צריך להביא, עם מי, מה להגיד, מה לא לשכוח...")+'">'+esc(note)+'</textarea>';
   if(t.src==='day')h+='<div style="margin-top:14px">'+wkSwatches("dpSetColor('"+t.id+"','%K%');renderDpSheet()",t.c||'lav')+'</div>';
@@ -34766,6 +34876,7 @@ function renderDpSheet(){
   h+='</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
   document.body.classList.add('sheet-open');
+  hydratePhotos(document.getElementById('dp-sheet'));
 }
 /* the sheet's steppers: move the start (the end moves with it) or the end */
 function dpSheetTime(ds,de){
@@ -35122,7 +35233,7 @@ function dpLayerHTML(all){
          ' data-ln="'+x.ln+'" data-n="'+x.n+'" style="background:'+c.soft+';color:'+c.ink+'">';
     if(x.e)out+='<span class="dp-min">'+dpFmt(x.s)+'&ndash;'+dpFmt(x.e)+'</span>';
     else if(x.t.min)out+='<span class="dp-min">'+dpHM(x.t.hour,x.t.min)+'</span>';
-    out+='<span class="dp-w">'+esc(x.t.w)+'</span>'+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
+    out+='<span class="dp-w">'+esc(x.t.w)+'</span>'+ppnFacesHTML(x.t)+(nt?'<span class="dp-note-m">&#9679;</span>':'')+'</div>';
   }
   return out+'</div>';
 }
@@ -35342,12 +35453,14 @@ function dpRail(){
       h+='<div class="dpk-chip" data-task="'+row[i].id+'" style="background:'+c.soft+';color:'+c.ink+'">'+esc(row[i].w)+'</div>';}
     h+='</div>';
   }
+  h+='<div id="ppn-rail"></div>';
   h+='<div class="dpk-bar">'+
      '<button class="dpk-undo" id="dpk-undo" onclick="planUndo()" aria-label="'+esc(_t('בטל'))+'"'+((typeof _planUndo!=='undefined'&&_planUndo.length)?'':' hidden')+'>'+
        '<svg viewBox="0 0 24 24"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H12"/></svg></button>'+
      '<button class="dpk-lib'+(_dpLibShow?' on':'')+'" onclick="_dpColShow=false;_dpLibShow=!_dpLibShow;dpRail()" aria-label="'+esc(_t('משימות חוזרות'))+'">&#9734;</button>'+
      '<button class="dpk-col'+(_dpColShow?' on':'')+'" onclick="_dpLibShow=false;_dpColShow=!_dpColShow;dpRail()" aria-label="'+esc(_t('צבע'))+'"><i style="background:'+wkColor(_mo?(_wkNewColor||'lav'):(_dpNewColor||'lav')).dot+'"></i></button>'+
-     '<input id="dp-rail-in" placeholder="'+esc(_mo?_t('מה להכניס לחודש?'):_t('מה להכניס ליום הזה?'))+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value" onkeydown="if(event.key===\'Enter\')dpRailAdd()">'+
+     '<span class="ppn-inw"><span class="ppn-hl" id="ppn-hl" aria-hidden="true"></span>'+
+     '<input id="dp-rail-in" placeholder="'+esc(_mo?_t('מה להכניס לחודש?'):_t('מה להכניס ליום הזה?'))+'" value="'+esc(_dpRailText)+'" oninput="_dpRailText=this.value;ppnRailPaint()" onscroll="ppnHLSync()" onkeydown="if(event.key===\'Enter\')dpRailAdd()"></span>'+
      '<button class="dpk-add" onclick="dpRailAdd()">+</button></div>';
   h+='</div>';
   document.body.insertAdjacentHTML('beforeend',h);
@@ -35356,6 +35469,7 @@ function dpRail(){
   rail.removeEventListener('pointerdown',dpDown);rail.removeEventListener('pointerdown',moDown);
   rail.addEventListener('pointerdown',_mo?moDown:dpDown);
   rail.classList.toggle('mo',_mo);
+  ppnRailPaint();
 }
 
 /* Asked for: a tap anywhere else puts the panel away. It listens only
@@ -35375,26 +35489,334 @@ function dpRailColor(k){
 }
 function dpRailToggle(){
   _dpRailOpen=!_dpRailOpen;
-  if(!_dpRailOpen)_dpRailText='';   // closing it deliberately clears the draft
+  if(!_dpRailOpen){_dpRailText='';_ppnDraft={};}   // closing it deliberately clears the draft
   dpRail();
 }
 function dpRailAdd(){
   var el=document.getElementById('dp-rail-in');
   if(!el||!el.value.trim())return;
   if(typeof planView==='function'&&planView()==='month'){
-    var p=loadPool();
-    p.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:el.value.trim(),c:_wkNewColor||'lav'});
-    savePool(p);el.value='';_dpRailText='';renderPlanning();
+    var p=loadPool(),_pid='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    p.tasks.push({id:_pid,w:el.value.trim(),c:_wkNewColor||'lav'});
+    savePool(p);ppnAdopt(_pid);el.value='';_dpRailText='';renderPlanning();
     setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
     return;
   }
-  var dp=loadDPlan(_dpDate);
-  dp.items.push({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+  var dp=loadDPlan(_dpDate),_did='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  dp.items.push({id:_did,
                  w:el.value.trim(),c:_dpNewColor});
+  ppnAdopt(_did);
   saveDPlan(_dpDate,dp);
   el.value='';_dpRailText='';   // or the rebuild puts the draft straight back
   renderPlanDay();
   setTimeout(function(){var e=document.getElementById('dp-rail-in');if(e)e.focus();},40);
+}
+/* ── PEOPLE IN PLANNING (30.10) ──
+   A task that names someone from האנשים שלי is linked to them, on the phone,
+   from its text alone: nothing about a person is copied into the plan, so a
+   renamed task or a renamed person is read afresh every time. Only what the
+   text cannot decide is stored - which of two people with one name, and
+   whether a name that is also a word (שחר, טל) meant the person. A "yes" to
+   a word-name holds for every task after; a "no" holds for that task only.
+   Only when the people area is one the person keeps. */
+var PPN_LINKS_KEY='ppn_links',PPN_WORD_KEY='ppn_word_ok',PPN_EVE_KEY='ppn_eve';
+var PPN_PRE='ולבמשהכ';   // i18n-exempt: the Hebrew letters that join a word in front, read and never shown
+var PPN_AR_PRE='وفبلك';   // i18n-exempt: the Arabic letters that join a word in front, read and never shown
+var PPN_CJK=/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/;
+/* First names that are also everyday words, in every language the app
+   speaks - compared, never shown. A name here is lit softly and asked about
+   once; every other name is lit at once. */
+var PPN_WORDS=[].concat(
+  'טל אור שחר גל ים שקד חן שיר רז נוי דור שי לב אביב מור גפן ירדן הדס אלה רון שמש אגם גיל ארז אלון תמר יעל ברק רעות שלום אושר מעיין נגה זיו סהר דקל אורן ורד עדן יונה רוני'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  'will rose may summer bill grace hope joy faith mark pat sue jack frank art dawn april june rob ray sky iris lily daisy amber ruby violet jade page dean drew grant hunter miles penny bob sandy sunny autumn brook cliff reed rich holly ivy pearl crystal honey river storm'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  'ernst frank heide rose kai wolf erika iris adler fink'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  'rosa dolores pilar luz paz consuelo mercedes soledad rocío alba esperanza victoria sol cielo amparo ángel salvador blanca clara perla reyes flor nieves milagros'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  'rose claire blanche pierre marguerite olive aimé constant désiré prudence aurore violette colombe céleste ange noël pascal'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  'rosa felice gioia serena chiara bianca fortunato vittoria stella aurora luce sole marina speranza angelo viola margherita'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  'rosa glória luz graça vitória aurora pérola estrela céu flor branca clara dores conceição sol esperança ângelo cândido serena jasmim'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  'نور أمل ورد سعيد كريم جميل هدى سلام صباح فرح ريم ندى منى رحمة حياة زهرة سعادة نبيل لطيف صابر حسن شريف وفاء أمين أمينة بدر شمس قمر بسمة'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  '光 空 海 花 愛 桜 翼 誠 優 希望 陽 健 静 ひかり さくら はな あい そら うみ まこと'.split(' '),   // i18n-exempt: names compared against a text, never shown
+  '平安 安 静 明 华 華 强 強 勇 伟 偉 丽 麗 芳 秀 春 雪 梅 兰 蘭 玉 月 宇 星 阳 陽 快乐 快樂'.split(' '));   // i18n-exempt: names compared against a text, never shown
+/* a name compared as a key: the search's own key, and Arabic without its
+   vowel marks, which a name may be written with or without */
+function ppnNorm(x){return pplKey(x).replace(/[\u064B-\u0652\u0670\u0640]/g,'');}
+/* the ways a written word can be a name with something attached: Hebrew
+   ו ל ב מ ש ה כ in front; Arabic و ف ب ل ك and the article ال (and لل, which
+   is ل with ال); French and Italian elision (d', l', dell'); English 's */
+function ppnVariants(w){
+  var out=[{cut:0,end:0,s:w}],c,r,m;
+  if(/^[\u05d0-\u05ea]/.test(w)){
+    for(c=1;c<=3&&c<w.length-1;c++){if(PPN_PRE.indexOf(w.charAt(c-1))<0)break;out.push({cut:c,end:0,s:w.slice(c)});}
+  } else if(/^[\u0621-\u064A]/.test(w)){
+    for(c=0;c<=2&&c<w.length-2;c++){
+      if(c>0&&PPN_AR_PRE.indexOf(w.charAt(c-1))<0)break;
+      r=w.slice(c);
+      if(c>0)out.push({cut:c,end:0,s:r});
+      if(r.indexOf('ال')===0&&r.length>3)out.push({cut:c+2,end:0,s:r.slice(2)});   // i18n-exempt: the Arabic article
+      if(c>0&&w.charAt(c-1)==='ل'&&r.charAt(0)==='ل'&&r.length>2)out.push({cut:c+1,end:0,s:r.slice(1)});   // i18n-exempt: the Arabic article after ל
+    }
+  } else {
+    m=/^(?:[dlcjmnst]|qu|dell|dall|nell|sull|all)['’]/i.exec(w);
+    if(m&&w.length>m[0].length+1)out.push({cut:m[0].length,end:0,s:w.slice(m[0].length)});
+    m=/['’]s$/i.exec(w);
+    if(m&&w.length>3)out.push({cut:0,end:2,s:w.slice(0,-2)});
+  }
+  return out;
+}
+var _ppnDraft={},_ppnEveOff={};
+function ppnOn(){return areaShown('people')&&loadPeople().length>0;}
+/* a person is addressed by position everywhere else; a link has to outlive a
+   deletion above it, so each person is given a lasting id the first time
+   one is needed */
+function ppnPeople(){
+  var P=loadPeople(),i,ch=false;
+  for(i=0;i<P.length;i++)if(P[i]&&!P[i].pid){P[i].pid='p'+Date.now().toString(36)+i+Math.random().toString(36).slice(2,5);ch=true;}
+  if(ch)savePeople(P);
+  return P;
+}
+function ppnFind(P,pid){for(var i=0;i<P.length;i++)if(P[i]&&P[i].pid===pid)return P[i];return null;}
+function ppnStrip(w,map){
+  var v=ppnVariants(w),i,k;
+  for(i=0;i<v.length;i++){k=ppnNorm(v[i].s);if(k&&map[k])return {cut:v[i].cut,end:v[i].end,key:k,pids:map[k]};}
+  return null;
+}
+/* every name in a text: a whole two-word name first, then a first name with
+   up to three of ו ל ב מ ש ה כ in front of it; a name in a script written
+   without spaces is found where it stands */
+function ppnScan(text,P){
+  var out=[],first={},full={},i,k,f,nm;
+  text=String(text||'');
+  for(i=0;i<P.length;i++){
+    nm=String((P[i]&&P[i].name)||'').trim();if(!nm||!P[i].pid)continue;
+    /* a name in a script written without spaces is found where it stands -
+       and a one-character name only with something that says it is a
+       person (さん, 先生, 老师) or standing on its own, or 光 would light
+       inside 観光 */
+    if(PPN_CJK.test(nm)){var at=0,j,kk=ppnNorm(nm),wd=PPN_WORDS.indexOf(kk)>=0;
+      while((j=text.indexOf(nm,at))>=0){
+        if(nm.length>1||/^(?:さん|くん|ちゃん|様|さま|先生|老师|老師)/.test(text.slice(j+1))||(!PPN_CJK.test(text.charAt(j-1)||'')&&!PPN_CJK.test(text.charAt(j+1)||'')))   // i18n-exempt: honorifics read, never shown
+          out.push({s:j,e:j+nm.length,key:kk,pids:[P[i].pid],word:wd});
+        at=j+nm.length;}
+      continue;}
+    f=ppnNorm(nm.split(/\s+/)[0]);if(f)(first[f]=first[f]||[]).push(P[i].pid);
+    k=ppnNorm(nm);if(k&&k!==f)(full[k]=full[k]||[]).push(P[i].pid);
+  }
+  /* words by script, so a Latin or Arabic name written inside a Japanese or
+     Chinese sentence ("Danaさんとランチ") is still a word of its own */
+  var re=/[\p{Script=Latin}\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Cyrillic}\p{Script=Greek}\p{M}'’׳"״\-]+/gu,m,toks=[];
+  while((m=re.exec(text)))toks.push({s:m.index,w:m[0]});
+  for(i=0;i<toks.length;i++){
+    var t=toks[i],hit=null,two=null,one;
+    if(i+1<toks.length)two=ppnStrip(t.w+' '+toks[i+1].w,full);
+    if(two){hit={s:t.s+two.cut,e:toks[i+1].s+toks[i+1].w.length-two.end,key:two.key,pids:two.pids,word:false};i++;}
+    else{one=ppnStrip(t.w,first);
+      if(one)hit={s:t.s+one.cut,e:t.s+t.w.length-one.end,key:one.key,pids:one.pids,word:PPN_WORDS.indexOf(one.key)>=0};}
+    if(hit)out.push(hit);
+  }
+  out.sort(function(a,b){return a.s-b.s;});
+  return out;
+}
+function ppnLinks(){try{return JSON.parse(localStorage.getItem(PPN_LINKS_KEY)||'{}')||{};}catch(e){return {};}}
+function ppnLinksSave(o){try{localStorage.setItem(PPN_LINKS_KEY,JSON.stringify(o));}catch(e){}}
+function ppnWordOk(){try{return JSON.parse(localStorage.getItem(PPN_WORD_KEY)||'{}')||{};}catch(e){return {};}}
+/* who a text names, each with its state: ok, word (asks once), pick (asks which) */
+function ppnWho(text,rec){
+  if(!text||!ppnOn())return [];
+  var P=ppnPeople(),hits=ppnScan(text,P),ok=ppnWordOk(),out=[],seen={},i,h,pk;
+  rec=rec||{};var pick=rec.pick||{},no=rec.no||{};
+  for(i=0;i<hits.length;i++){
+    h=hits[i];h.state='ok';h.pid='';
+    if(h.pids.length>1){pk=pick[h.key];
+      if(pk==='-')continue;
+      if(pk&&h.pids.indexOf(pk)>=0)h.pid=pk;else h.state='pick';}
+    else h.pid=h.pids[0];
+    if(h.state==='ok'&&h.word&&!ok[h.pid]){if(no[h.key])continue;h.state='word';}
+    if(h.pid){if(seen[h.pid+h.state])continue;seen[h.pid+h.state]=1;}
+    h.p=h.pid?ppnFind(P,h.pid):null;
+    h.ps=h.pids.map(function(x){return ppnFind(P,x);}).filter(Boolean);
+    out.push(h);
+  }
+  return out;
+}
+function ppnTask(t){return ppnWho(t&&t.w,ppnLinks()[t&&t.id]);}
+function ppnOkOf(t){return ppnTask(t).filter(function(x){return x.state==='ok'&&x.p;});}
+function ppnList(a){try{return new Intl.ListFormat(APP_LOCALE,{style:'long',type:'conjunction'}).format(a);}catch(e){return a.join(', ');}}
+function ppnNamesOf(t){var a=ppnOkOf(t).map(function(x){return x.p.name;});return a.length?ppnList(a):'';}
+function ppnRGBA(hex,a){var n=parseInt(String(hex).slice(1),16);return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')';}
+function ppnOpen(pid){
+  var P=loadPeople(),i;for(i=0;i<P.length;i++)if(P[i]&&P[i].pid===pid)break;
+  if(i>=P.length)return;
+  if(_dpDetail)dpCloseDetail(true);
+  enterModule('people');_personIdx=i;_peopleView='person';renderPeople();
+}
+function ppnFacesHTML(t){
+  var a=ppnOkOf(t),h='',i;if(!a.length)return '';
+  for(i=0;i<a.length&&i<4;i++)
+    h+='<button class="ppn-f" onclick="ppnOpen(&quot;'+a[i].pid+'&quot;)" aria-label="'+esc(a[i].p.name)+'">'+personAvatar0(a[i].p,18)+'</button>';
+  return '<span class="ppn-fs">'+h+'</span>';
+}
+/* the one question a name still needs, for the bar (id '') or for a task */
+function ppnAskHTML(x,id){
+  var q='&quot;',a=q+(id||'')+q+','+q+encodeURIComponent(x.key)+q,h='<div class="ppn-ask">';
+  if(x.state==='word'){
+    h+='<div class="ppn-ask-r">'+personAvatar0(x.p,40)+'<b>'+esc(_t('זה {name} שלך?',{name:x.p.name}))+'</b></div>'+
+       '<div class="ppn-ask-bs"><button class="w" onclick="ppnAns('+a+','+q+'yes'+q+','+q+x.pid+q+')">'+esc(_t('כן, זה {name} שלי',{name:x.p.name}))+'</button>'+   // i18n-exempt: answer kind
+       '<button class="q" onclick="ppnAns('+a+','+q+'no'+q+','+q+q+')">'+_t('סתם מילה')+'</button></div>';   // i18n-exempt: answer kind
+  } else {
+    var nm=x.ps.length?String(x.ps[0].name).split(/\s+/)[0]:'';
+    h+='<div class="ppn-ask-r"><b>'+esc(_t('יש אצלך כמה בשם {name}. למי התכוונת?',{name:nm}))+'</b></div>';
+    for(var i=0;i<x.ps.length;i++){var p=x.ps[i],sub=[p.relationship?labelOf(p.relationship):'',p.place||''].filter(Boolean).join(' · ');
+      h+='<button class="ppn-who" onclick="ppnAns('+a+','+q+'pick'+q+','+q+p.pid+q+')">'+personAvatar0(p,36)+   // i18n-exempt: answer kind
+         '<span><b>'+esc(p.name)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span></button>';}
+    h+='<div class="ppn-ask-bs"><button class="q" onclick="ppnAns('+a+','+q+'pick'+q+','+q+'-'+q+')">'+_t('אף אחד מהם')+'</button></div>';   // i18n-exempt: answer kind
+  }
+  return h+'</div>';
+}
+function ppnAns(id,key,kind,val){
+  key=decodeURIComponent(key);
+  if(kind==='yes'){var o=ppnWordOk();o[val]=1;try{localStorage.setItem(PPN_WORD_KEY,JSON.stringify(o));}catch(e){}}
+  else{
+    var L=id?ppnLinks():null,rec=id?(L[id]=L[id]||{}):_ppnDraft;
+    rec[kind]=rec[kind]||{};rec[kind][key]=(kind==='no'?1:val);
+    if(id)ppnLinksSave(L);
+  }
+  if(id){
+    var n=document.getElementById('dp-d-note'),nv=n?n.value:null;
+    renderPlanDay();renderDpSheet();dpRemResync();
+    if(nv!==null){var n2=document.getElementById('dp-d-note');if(n2)n2.value=nv;}
+  } else {ppnRailPaint();var e=document.getElementById('dp-rail-in');if(e)e.focus();}
+}
+/* what was answered while a task was being written goes with it */
+function ppnAdopt(id){
+  var d=_ppnDraft;_ppnDraft={};
+  if(!d.pick&&!d.no)return;
+  var L=ppnLinks();L[id]=d;ppnLinksSave(L);
+}
+function ppnHLSync(){var i=document.getElementById('dp-rail-in'),h=document.getElementById('ppn-hl');if(i&&h)h.scrollLeft=i.scrollLeft;}
+function ppnRailPaint(){
+  var box=document.getElementById('ppn-rail'),hl=document.getElementById('ppn-hl');
+  if(!box||!hl)return;
+  var text=_dpRailText||'',hits=ppnWho(text,_ppnDraft),i,x,c,h='',at=0,ask=null,row='';
+  for(i=0;i<hits.length;i++){
+    x=hits[i];
+    c=x.state==='pick'?'#9a9188':personHue(x.p?x.p.name:'');
+    var lit=x.state==='ok'?'background:'+ppnRGBA(c,.24)+';box-shadow:0 0 0 2px '+ppnRGBA(c,.24)+',0 0 10px '+ppnRGBA(c,.32)
+                         :'background:'+ppnRGBA(c,.13)+';box-shadow:0 0 0 2px '+ppnRGBA(c,.1);
+    if(x.s>=at){h+=esc(text.slice(at,x.s))+'<span class="ppn-lit" style="'+lit+'">'+esc(text.slice(x.s,x.e))+'</span>';at=x.e;}
+    if(x.state!=='ok'&&!ask)ask=x;
+    if(x.state==='ok')row+='<span class="ppn-pill">'+personAvatar0(x.p,26)+esc(x.p.name)+'</span>';
+  }
+  hl.innerHTML=h+esc(text.slice(at));
+  box.innerHTML=ask?ppnAskHTML(ask,''):(row?'<div class="ppn-row">'+row+'</div>':'');
+  hydratePhotos(box);
+  ppnHLSync();
+  /* the bar rides the keyboard by its top: a card that grew above it would
+     otherwise push the bar itself under the keyboard */
+  dpDockPin();
+}
+function ppnPops(p,date){
+  var out=[],ds=p.importantDates||[],i,d,y=+date.slice(0,4),base=Date.UTC(y,+date.slice(5,7)-1,+date.slice(8,10));
+  for(i=0;i<ds.length;i++){
+    d=ds[i];if(!d||!/^\d{4}-\d{2}-\d{2}/.test(String(d.date)))continue;
+    var Y=+d.date.slice(0,4),M=+d.date.slice(5,7)-1,D=+d.date.slice(8,10),u;
+    if(d.yearly||d.type==='birthday'){u=Date.UTC(y,M,D);if(u<base){Y=y+1;u=Date.UTC(Y,M,D);}else Y=y;}
+    else u=Date.UTC(Y,M,D);
+    var dd=Math.round((u-base)/864e5);
+    if(dd<0||dd>14)continue;
+    out.push({t:d.title||(d.type==='birthday'?_t('יום הולדת'):''),when:new Date(Y,M,D,12)});
+  }
+  (p.memories||[]).forEach(function(m){if(m&&(m.pinned||m.type==='important')){var x=memText(m);if(x)out.push({t:x});}});
+  return out.slice(0,3);
+}
+function ppnSheetHTML(t){
+  var hits=ppnTask(t);if(!hits.length)return '';
+  var h='<div class="dps-l">'+_t('עם מי')+'</div>',i,x,p,pops,j;
+  for(i=0;i<hits.length;i++){
+    x=hits[i];
+    if(x.state!=='ok'){h+=ppnAskHTML(x,t.id);continue;}
+    p=x.p;if(!p)continue;
+    h+='<div class="ppn-pc"><button class="ppn-pc-h" onclick="ppnOpen(&quot;'+p.pid+'&quot;)">'+personAvatar(p,36)+'<b>'+esc(p.name)+'</b><i aria-hidden="true">&#8250;</i></button>';
+    if(p.toAsk&&p.toAsk.trim())h+='<span class="ppn-k">'+_t('דברים שאני רוצה לשאול')+'</span><span class="ppn-v">'+esc(p.toAsk.trim())+'</span>';
+    if(p.currentUpdate&&p.currentUpdate.trim())h+='<span class="ppn-k">'+_t('מה קורה עכשיו')+'</span><span class="ppn-v">'+esc(p.currentUpdate.trim())+'</span>';
+    pops=ppnPops(p,_dpDate||todayStr());
+    for(j=0;j<pops.length;j++)
+      h+='<div class="ppn-pop"><i></i><span>'+esc(pops[j].t)+'</span>'+(pops[j].when?'<em>'+esc(dfmt(pops[j].when,{weekday:'long',day:'numeric',month:'long'}))+'</em>':'')+'</div>';
+    h+='</div>';
+  }
+  return h;
+}
+/* everyone a task of this day is linked to */
+function ppnPlannedPids(date){
+  var out={};if(!ppnOn())return out;
+  dpAll(date).forEach(function(t){ppnOkOf(t).forEach(function(x){out[x.pid]=1;});});
+  return out;
+}
+/* ── THE EVENING ── every task of today with people in it, once its hour
+   has come, asked one at a time; what is written lands on each page */
+function ppnEveDone(){
+  var o={};try{o=JSON.parse(localStorage.getItem(PPN_EVE_KEY)||'{}')||{};}catch(e){}
+  return o.d===todayStr()?(o.ids||{}):{};
+}
+function ppnEveMark(id){
+  var ids=ppnEveDone();ids[id]=1;
+  try{localStorage.setItem(PPN_EVE_KEY,JSON.stringify({d:todayStr(),ids:ids}));}catch(e){}
+}
+function ppnEveList(){
+  if(!ppnOn())return [];
+  var d=todayStr(),done=ppnEveDone(),out=[],now=new Date(),nm=now.getHours()*60+now.getMinutes();
+  if(now.getHours()<DAY_ENDS_AT)nm+=24*60;
+  dpAll(d).forEach(function(t){
+    if(done[t.id])return;
+    if(t.hour!==null){var st=t.hour*60+(t.min||0);if(t.hour<DAY_ENDS_AT)st+=24*60;if(st>nm)return;}
+    var ps=ppnOkOf(t);if(ps.length)out.push({t:t,ps:ps});
+  });
+  return out;
+}
+function ppnEveHTML(){
+  var L=ppnEveList();if(!L.length)return '';
+  var x=L[0],h='<div class="rfm ppn-eve" id="ppn-eve">',i,y;
+  h+='<div class="ppn-eve-fc">';for(i=0;i<x.ps.length;i++)h+=personAvatar(x.ps[i].p,30);h+='</div>';
+  h+='<div class="ppn-eve-k">'+esc(x.t.w)+'</div>';
+  h+='<div class="rfm-t">'+esc(_t('איך היה עם {names}?',{names:ppnList(x.ps.map(function(z){return z.p.name;}))}))+'</div>';
+  h+='<div class="rfm-s">'+_t('מה שתכתוב יישמר בדף שלהם.')+'</div>';
+  h+='<textarea id="ppn-eve-in" class="rfm-in ppn-eve-in" rows="3" maxlength="2000" oninput="rfmGrow(this)"></textarea>';
+  if(x.ps.length>1){
+    h+='<div class="ppn-keep"><span>'+_t('לשמור אצל')+'</span>';
+    for(i=0;i<x.ps.length;i++){y=x.ps[i];
+      h+='<button class="ppn-tg'+(_ppnEveOff[y.pid]?'':' on')+'" onclick="ppnEveToggle(&quot;'+y.pid+'&quot;)">'+personAvatar0(y.p,26)+'<span>'+esc(y.p.name)+'</span></button>';}
+    h+='</div>';
+  }
+  h+='<button class="rfm-b ppn-eve-go" onclick="ppnEveSave(&quot;'+x.t.id+'&quot;)">'+_t('שמור')+'</button>';
+  h+='<button class="ppn-eve-no" onclick="ppnEveSkip(&quot;'+x.t.id+'&quot;)">'+_t('לא הערב')+'</button>';
+  return h+'</div>';
+}
+function ppnEveRepaint(keep){
+  var el=document.getElementById('ppn-eve');if(!el)return;
+  var i=document.getElementById('ppn-eve-in'),v=(keep&&i)?i.value:'';
+  var h=ppnEveHTML();
+  if(!h){el.remove();return;}
+  el.outerHTML=h;
+  var j=document.getElementById('ppn-eve-in');if(j&&v){j.value=v;rfmGrow(j);}
+  hydratePhotos(document.getElementById('ppn-eve'));
+}
+function ppnEveToggle(pid){_ppnEveOff[pid]=!_ppnEveOff[pid];ppnEveRepaint(true);}
+function ppnEveSkip(id){ppnEveMark(id);_ppnEveOff={};ppnEveRepaint(false);}
+function ppnEveSave(id){
+  var x=ppnEveList().filter(function(z){return z.t.id===id;})[0];if(!x)return;
+  var i=document.getElementById('ppn-eve-in'),v=i?i.value.trim():'';
+  var P=loadPeople(),now=Date.now();
+  x.ps.forEach(function(y,k){
+    if(_ppnEveOff[y.pid])return;
+    var p=ppnFind(P,y.pid);if(!p)return;
+    /* we were together today: the clock that "it has been a while" reads */
+    p.lastContact=now;p.lastVia={k:'plan',day:todayStr()};
+    if(v){if(!p.memories)p.memories=[];
+      p.memories.push({id:now+''+k,content:v,type:'conversation',date:now,pinned:false,plan:x.t.w});}
+  });
+  savePeople(P);ppnEveMark(id);_ppnEveOff={};
+  showToast(_t('נשמר')+' ✓');
+  try{if(remNative())remNativeSync();}catch(e){}
+  ppnEveRepaint(false);
 }
 function dpRailClear(){
   document.body.classList.remove('dpk-on');
@@ -37120,7 +37542,7 @@ function plWarmDone(){
   var hz=planProfile().horizon||'',one=_plOne;
   var add=_plItems.map(function(x){
     return x.name+' ('+(one?'':plOften()[x.often]+', ')+plLens()[x.len]+', '+plArounds()[x.around]+')';});
-  var msg=_plKept.length?_t('טווח: {h}. העוגנים הקבועים, כמו שהם וכולל הדרך: {list}.',{h:hz,list:_plKept.join('; ')}):_t('טווח: {h}. אין עוגנים קבועים.',{h:hz});
+  var msg=_plKept.length?_t('טווח: {h}. הדברים הקבועים, כולל זמן הדרך: {list}.',{h:hz,list:_plKept.join('; ')}):_t('טווח: {h}. אין עוגנים קבועים.',{h:hz});
   msg+=' '+(add.length?_t('להוסיף: {list}.',{list:add.join('; ')}):_t('אין מה להוסיף.'));
   _plItems=[];_plAdd=null;_plKept=[];
   planBotSend(msg);
@@ -37158,7 +37580,7 @@ function plWarmHTML(){
       h+='<button class="pb-ans pb-anch'+(_plAdd.indexOf(x[0])>=0?' on':'')+'" onclick="plAddToggle(\''+x[0]+'\')">'+esc(plKindLabel(x[0]))+'</button>';});
     h+='</div>';
     if(_plAdd.indexOf('other')>=0)h+='<input id="pl-other" class="pb-in" placeholder="'+esc(_t('מה זה?'))+'">';
-    h+='<button class="pb-go" onclick="plAddGo()">'+(_plAdd.length?_t('המשך'):_t('אין מה להוסיף, לבנות'))+'</button>';
+    h+='<button class="pb-go" onclick="plAddGo()">'+(_plAdd.length?_t('המשך'):_t('אין מה להוסיף — אפשר לבנות'))+'</button>';
     return h;
   }
   if(/^item\d+$/.test(kind)){
@@ -37470,8 +37892,8 @@ function planBotHTML(){
     if(_planBusy)h+='<div class="pb-it pb-wait">'+_t('חושב…')+'</div>';
   }
   if(!_planBusy&&last&&last.type==='skeleton')
-    h+='<div class="pb-opts"><button class="pb-opt pb-yes" onclick="planBotSend(&quot;'+esc(_t('השלד מאושר, תכנן את הימים'))+'&quot;)">'+
-       _t('אשר את השלד')+'</button></div>';
+    h+='<div class="pb-opts"><button class="pb-opt pb-yes" onclick="planBotSend(&quot;'+esc(_t('המבנה מאושר, עכשיו מתכננים את הימים'))+'&quot;)">'+
+       _t('אשר את המבנה')+'</button></div>';
   /* the row for the answer nobody listed stays on the screen while the next
      question is on its way - it is only unpressable. Hiding it was another
      sixty pixels of the card collapsing under you at every tap. */
@@ -37843,6 +38265,7 @@ function renderPlanning(){
   box.addEventListener('pointerdown',wkDown);
   box.addEventListener('pointerdown',dpDown);
   box.addEventListener('pointerdown',moDown);
+  hydratePhotos(box);
 }
 /* Fifty-seven call sites redraw through these three names. They are the page. */
 function renderPlanWeek(){renderPlanning();}
@@ -38092,12 +38515,14 @@ function renderPeopleHome(){
   if(people.length===0){
     h+='<div class="pp-empty"><span class="pp-empty-t">'+_t('מי האנשים שלך?')+'</span>'+
        '<span class="pp-empty-s">'+
-       _t('התחל להוסיף את האנשים שאתה רוצה לזכור ולהיות נוכח בחיים שלהם.')+'</span></div>';
+       _t('הוסף את האנשים שחשוב לך לזכור ולשמור איתם על קשר.')+'</span></div>';
     h+='<button class="pp-add" onclick="_peopleView=&quot;edit-person&quot;;_personIdx=-1;renderPeople()">'+
        _t('+ הוסף אדם')+'</button></div>';
     document.getElementById('content').innerHTML=h;
     return;
   }
+
+  h+=ppmMetHTML();
 
   /* ── THE ONE WHO IS WAITING ──
      This screen's "now" is a person, so it gets the shape אימון חדש has and
@@ -38210,7 +38635,7 @@ function pplListHTML(people){
        '<span class="pp-row-n">'+(over[p.name]?'<i></i>':'')+esc(p.name)+'</span>'+
        '<span class="pp-row-s">'+(said||sub.join(' \u00b7 '))+'</span>'+
        '</span>'+
-       '<span class="pp-row-w">'+(days===null?'&mdash;':_t('{n} ימים',{n:days}))+'</span>'+
+       '<span class="pp-row-w">'+(days===null?'&mdash;':days===0?_t('היום'):days===1?_t('אתמול'):_t('{n} ימים',{n:days}))+'</span>'+
        '</button>';
   }
   return h+'</div>';
@@ -38383,7 +38808,7 @@ function pplBdayList(){
 function pplBdayDates(){var seen={},out=[];pplBdayList().forEach(function(b){if(!seen[b.md]){seen[b.md]=1;out.push(b.md);}});return out;}
 function pplBdaySentences(){
   var by={},out=[];
-  pplBdayList().forEach(function(b){(by[b.md]=by[b.md]||[]).push(_t('היום יום ההולדת של {name}. מילה קטנה ממך יכולה לעשות את היום.',{name:b.name}));});
+  pplBdayList().forEach(function(b){(by[b.md]=by[b.md]||[]).push(_t('היום יום ההולדת של {name}. הודעה קטנה ממך יכולה לשמח מאוד.',{name:b.name}));});
   for(var md in by)out.push({md:md,body:by[md].join('\n')});
   return out;
 }
@@ -38394,7 +38819,7 @@ function pplBdayNative(){
     if(d.getTime()<=Date.now()+30000)continue;
     md=('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
     for(j=0;j<L.length;j++)if(L[j].md===md)
-      out.push({id:300+i*20+(j%20),title:_t('יום הולדת ל{name}',{name:L[j].name}),body:_t('מילה קטנה ממך יכולה לעשות את היום.'),
+      out.push({id:300+i*20+(j%20),title:_t('יום הולדת ל{name}',{name:L[j].name}),body:_t('הודעה קטנה ממך יכולה לשמח מאוד.'),
         schedule:{at:d,allowWhileIdle:true},actionTypeId:'olm-bday',extra:{k:'bday',name:L[j].name}});
   }
   return out;
@@ -38455,16 +38880,19 @@ function renderPersonPage(){
   h+='<span class="pp-face-x"><span class="pp-face-n">'+esc(p.name)+pplBdayHat(p)+'</span>';
   if(p.relationship)h+='<span class="pp-face-r">'+esc(labelOf(p.relationship))+'</span>';
   if(days!==null)
-    h+='<span class="pp-face-s">'+_t('דיברנו')+' '+_t('לפני {n} ימים',{n:days})+'</span>';
+    h+='<span class="pp-face-s">'+(days===0?pplTodayLine(p):_t('דיברנו לפני {n} ימים',{n:days}))+'</span>';
   else
     h+='<span class="pp-face-s"><i></i>'+_t('עדיין לא דיברתם')+'</span>';
   h+='</span></div>';
 
-  /* ── WE SPOKE ── the row that resets the clock ── */
-  h+='<div class="pp-ways">';
-  for(var ci=0;ci<CONTACT_N;ci++)
-    h+='<button class="pp-way" onclick="logContact('+ci+')">'+esc(contactLabel(ci))+'</button>';
-  h+='</div>';
+  /* ── REACH THEM, OR REMEMBER ── (30.10) the five chips that logged a
+     contact are gone: a reach is recorded because it was used, a memory
+     marks the day it was written. What they logged before still reads. */
+  h+='<button class="pp-reach" onclick="pplReachOpen()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/></svg>'+
+     esc(_t('לכתוב ל{name}',{name:p.name}))+'</button>';
+  h+='<button class="pp-add" style="margin:0 0 18px" '+
+     'onclick="_peopleView=&quot;add-memory&quot;;_memoryIdx=-1;renderPeople()">'+
+     _t('+ משהו שאני רוצה לזכור')+'</button>';
 
   /* ── WHAT THIS PERSON IS ── */
   if(p.whatTheyMean||p.whatILove||p.currentUpdate){
@@ -38502,9 +38930,6 @@ function renderPersonPage(){
   }
 
   /* ── THE TIMELINE ── */
-  h+='<button class="pp-add" style="margin:0 0 18px" '+
-     'onclick="_peopleView=&quot;add-memory&quot;;_memoryIdx=-1;renderPeople()">'+
-     _t('+ משהו שאני רוצה לזכור')+'</button>';
   if(mems.length){
     h+='<div class="pp-panel">';
     var sorted=mems.slice().sort(function(a,b){return b.date-a.date;});
@@ -38517,6 +38942,7 @@ function renderPersonPage(){
          '<span class="pp-mem-x">'+
          '<span class="pp-mem-w">'+esc(fmtDay(md))+(kind?' &middot; '+esc(kind):'')+'</span>'+
          '<span class="pp-mem-t">'+esc(memText(mem))+'</span>'+
+         (mem.plan?'<span class="pp-mem-w" style="margin-top:4px">'+esc(_t('מסיום היום · {task}',{task:mem.plan}))+'</span>':'')+
          '<span class="pp-mem-b">'+
          '<button onclick="togglePinMemory(&quot;'+mem.id+'&quot;)">'+
          (mem.pinned?_t('קשור'):_t('קבע'))+'</button>'+
@@ -38568,6 +38994,8 @@ function saveMemory(){
   var people=loadPeople();
   if(!people[_personIdx].memories)people[_personIdx].memories=[];
   people[_personIdx].memories.push({id:Date.now()+'',content:inp.value.trim(),type:window._newMemType||'note',date:Date.now(),pinned:false});
+  /* something to remember came from talking: that is a day you spoke */
+  people[_personIdx].lastContact=Date.now();people[_personIdx].lastVia={k:'mem',day:todayStr()};
   savePeople(people);
   showToast(''+_t('נשמר')+' ✓');
   _peopleView='person';renderPeople();
@@ -38590,6 +39018,274 @@ function togglePinMemory(memId){
    translation stored in a record is frozen in the language it was tapped in:
    log a call in Hebrew, read the app in English, and your own timeline is
    still Hebrew. The sentence is written at display time instead. */
+/* ── ONE THING INSTEAD OF FIVE (30.10) ──
+   A person is reached from here - WhatsApp, a message, a call - and that use
+   is the record: lastContact moves and lastVia says how, for the line on the
+   card. Nothing is logged by hand any more; logContact stays for the
+   contacts already stored and the notification's "we talked" button. */
+var PPC_IC={wa:'<svg viewBox="0 0 24 24" stroke="#3f8f5f"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/><path d="M9.5 9.2c.3 2 2.3 4.2 4.6 4.8l.9-1.1 1.6.8-.4 1.5c-3.4.2-7.3-3.6-7.3-7.1l1.5-.5.8 1.6z"/></svg>',
+  sms:'<svg viewBox="0 0 24 24" stroke="#4c76b4"><rect x="3.5" y="5" width="17" height="12" rx="3"/><path d="M8 21l3-4"/><path d="M8 10h8M8 13h5"/></svg>',
+  tel:'<svg viewBox="0 0 24 24" stroke="#a16646"><path d="M5 4h4l1.5 4.5-2.3 1.4a11 11 0 0 0 5.9 5.9l1.4-2.3L20 15v4a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4z"/></svg>'};
+/* the line on the card for a day you spoke - the way it happened, when today
+   is the day it was recorded, and one whole sentence for each */
+function pplTodayLine(p){
+  var v=p&&p.lastVia,k=(v&&v.day===todayStr())?v.k:'';
+  if(k==='wa')return _t('דיברנו היום · בוואטסאפ');
+  if(k==='sms')return _t('דיברנו היום · בהודעה');
+  if(k==='tel')return _t('דיברנו היום · בטלפון');
+  if(k==='mem')return _t('דיברנו היום · זיכרון חדש');
+  if(k==='plan')return _t('דיברנו היום · פגישה בתכנון');
+  if(k==='met')return _t('הכרנו היום');
+  return _t('דיברנו היום');
+}
+/* the number as each app wants it: digits only; an Israeli mobile written
+   locally (05x, ten digits) is given its country code; a number written with
+   + or 00 keeps its own */
+/* Each country's calling code and the trunk prefix a local number is
+   written with (0 in most, 8 in Russia, 06 in Hungary, none in Italy, Spain
+   or North America). A local number takes the country the app already
+   knows - the one chosen for products, else the phone's region, else the
+   app's language. */
+var PPC_CC={AE:['971','0'],AR:['54','0'],AT:['43','0'],AU:['61','0'],BE:['32','0'],BR:['55','0'],CA:['1',''],CH:['41','0'],CL:['56',''],CN:['86','0'],
+  CO:['57',''],CZ:['420',''],DE:['49','0'],DK:['45',''],EG:['20','0'],ES:['34',''],FI:['358','0'],FR:['33','0'],GB:['44','0'],GR:['30',''],HK:['852',''],
+  HU:['36','06'],ID:['62','0'],IE:['353','0'],IL:['972','0'],IN:['91','0'],IT:['39',''],JO:['962','0'],JP:['81','0'],KR:['82','0'],LB:['961','0'],
+  MA:['212','0'],MX:['52',''],MY:['60','0'],NL:['31','0'],NO:['47',''],NZ:['64','0'],PH:['63','0'],PL:['48',''],PT:['351',''],RO:['40','0'],RU:['7','8'],
+  SA:['966','0'],SE:['46','0'],SG:['65',''],TH:['66','0'],TN:['216',''],TR:['90','0'],TW:['886','0'],UA:['380','0'],US:['1',''],VN:['84','0'],ZA:['27','0']};
+var PPC_LANG_CC={he:'IL',en:'US',de:'DE',fr:'FR',it:'IT',es:'ES',pt:'BR',ar:'SA',ja:'JP','zh-Hans':'CN','zh-Hant':'TW'};
+function pplPhoneCountry(){
+  var c='';try{c=appCountry()||countryFromBrowser()||'';}catch(e){}
+  return PPC_CC[c]?c:(PPC_LANG_CC[appLang()]||'');
+}
+function pplPhoneIntl(raw,cc){
+  var s=String(raw||'').trim(),d=s.replace(/\D/g,'');
+  if(!d)return '';
+  if(/^\s*\+/.test(s))return d;
+  if(/^00/.test(d))return d.slice(2);
+  var c=PPC_CC[cc||pplPhoneCountry()];
+  if(!c)return d;
+  var code=c[0],tr=c[1];
+  if(code==='1')return d.length===10?'1'+d:d;
+  if(tr){
+    if(d.indexOf(tr)===0)return code+d.slice(tr.length);
+    if(d.indexOf(code)===0&&d.length>=code.length+8)return d;   // already international, written without the +
+    return code+d;
+  }
+  if(d.indexOf(code)===0&&d.length>=code.length+9)return d;
+  return code+d;
+}
+function pplReachUrl(k,raw){
+  var intl=pplPhoneIntl(raw),plain=String(raw||'').replace(/[^\d+]/g,'');
+  if(!plain)return '';
+  if(k==='wa')return 'https://wa.me/'+intl;
+  if(k==='sms')return 'sms:'+plain;
+  return 'tel:'+plain;
+}
+/* Outside the app. In the phone shells the web view hands any address that
+   is not the app's own to the system (Capacitor's navigation handler), so a
+   plain navigation opens WhatsApp, Messages or the dialer. In a browser a
+   web address opens beside the app rather than replacing it. */
+function pplOpenExt(url){
+  var C=window.Capacitor,nat=C&&C.isNativePlatform&&C.isNativePlatform();
+  if(!nat&&/^https?:/.test(url)){window.open(url,'_blank','noopener');return;}
+  location.href=url;
+}
+function pplReachClose(){
+  document.body.classList.remove('sheet-open');
+  var o=document.getElementById('ppc-sheet');if(o)o.remove();
+}
+function pplReachOpen(){
+  var p=loadPeople()[_personIdx];if(!p)return;
+  pplReachClose();
+  var h='<div class="summary-overlay" id="ppc-sheet" onclick="if(event.target===this)pplReachClose()">'+
+    '<div class="summary-sheet dps" style="padding-bottom:calc(30px + env(safe-area-inset-bottom))"><div class="summary-pull"></div>'+
+    '<button class="dps-x" onclick="pplReachClose()" aria-label="'+esc(_t('סגור'))+'">&times;</button>';
+  if(!p.phone){
+    h+='<div class="ppc-t">'+esc(_t('אין עדיין מספר של {name}',{name:p.name}))+'</div>'+
+       '<div class="ppc-s">'+_t('הוסף מספר, ובפעם הבאה זה ייפתח ישר.')+'</div>'+
+       '<input id="ppc-num" class="ppc-num" type="tel" inputmode="tel" autocomplete="tel" placeholder="'+esc(_t('מספר טלפון'))+'"'+
+       ' onkeydown="if(event.key===\'Enter\')pplPhoneSave()">'+
+       '<button class="dps-ok" onclick="pplPhoneSave()">'+_t('שמור מספר')+'</button>'+
+       (pplCanPick()?'<button class="dps-lib" onclick="pplPickContact()">'+_t('לבחור מאנשי הקשר')+'</button>':'');
+  } else {
+    h+='<div class="ppc-t">'+esc(_t('לכתוב ל{name}',{name:p.name}))+'</div>'+
+       '<div class="ppc-s">'+_t('נרשום שדיברתם רק אם תשתמש באחד מאלה.')+'</div>';
+    [['wa',_t('וואטסאפ')],['sms',_t('הודעה')],['tel',_t('שיחה')]].forEach(function(w){
+      h+='<button class="ppc-way" onclick="pplReach(\''+w[0]+'\')"><span class="ppc-ic">'+PPC_IC[w[0]]+'</span>'+
+         '<span><b>'+esc(w[1])+'</b><small>'+esc(p.phone)+'</small></span></button>';
+    });
+  }
+  h+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+  document.body.classList.add('sheet-open');
+  if(!p.phone)setTimeout(function(){var i=document.getElementById('ppc-num');if(i)i.focus();},120);
+}
+function pplPhoneSave(){
+  var i=document.getElementById('ppc-num'),v=i?i.value.trim():'';
+  if(!pplPhoneIntl(v)){if(i)i.focus();return;}
+  var P=loadPeople();if(!P[_personIdx])return;
+  P[_personIdx].phone=v;savePeople(P);
+  pplReachOpen();
+}
+/* The Contact Picker: Android's Chrome has it, Safari does not, and the
+   phone shells add no plugin for it - so the button is offered only where
+   it will work. */
+function pplCanPick(){return !!(navigator.contacts&&navigator.contacts.select&&('ContactsManager' in window));}
+function pplPickContact(){
+  try{navigator.contacts.select(['tel'],{multiple:false}).then(function(r){
+    var t=r&&r[0]&&r[0].tel&&r[0].tel[0];if(!t)return;
+    var i=document.getElementById('ppc-num');if(i)i.value=t;
+    pplPhoneSave();
+  }).catch(function(){});}catch(e){}
+}
+/* A tap is an intention, not a conversation. What is recorded is leaving
+   for WhatsApp, Messages or the dialer and coming back: the tap leaves a
+   note, the page going to the background marks it, and the return records
+   it with the time it left. A page that never left - a cancelled call
+   prompt - records nothing. The note survives the page being closed while
+   away, and is not kept for longer than six hours. */
+var PPC_PEND_KEY='ppc_pending';
+function ppcPend(){try{return JSON.parse(localStorage.getItem(PPC_PEND_KEY)||'null');}catch(e){return null;}}
+function ppcPendSet(x){try{if(x)localStorage.setItem(PPC_PEND_KEY,JSON.stringify(x));else localStorage.removeItem(PPC_PEND_KEY);}catch(e){}}
+function pplReach(k){
+  var P=loadPeople(),p=P[_personIdx];if(!p||!p.phone)return;
+  var url=pplReachUrl(k,p.phone);if(!url)return;
+  var at=Date.now();
+  ppcPendSet({i:_personIdx,name:p.name,k:k,at:at,left:0});
+  setTimeout(function(){var x=ppcPend();if(x&&x.at===at&&!x.left)ppcPendSet(null);},30000);
+  pplReachClose();
+  pplOpenExt(url);
+}
+function ppcSettle(){
+  var x=ppcPend();if(!x||!x.left)return;
+  ppcPendSet(null);
+  if(Date.now()-x.left>6*3600000)return;
+  var P=loadPeople(),i=x.i;
+  if(!P[i]||P[i].name!==x.name){i=pplIdxByName(x.name);if(i<0)return;}
+  P[i].lastContact=x.left;P[i].lastVia={k:x.k,day:todayStr()};
+  savePeople(P);
+  try{if(remNative())remNativeSync();}catch(e){}
+  if(currentModule==='people'&&_peopleView==='person'&&_personIdx===i)renderPeople();
+}
+document.addEventListener('visibilitychange',function(){
+  var x=ppcPend();if(!x)return;
+  if(document.visibilityState==='hidden'){if(!x.left){x.left=Date.now();ppcPendSet(x);}return;}
+  ppcSettle();
+});
+window.addEventListener('pageshow',function(){setTimeout(ppcSettle,400);});
+/* ── SOMEONE MET BY CHANCE ──
+   A new person in the shape savePersonEdit writes, with the line as their
+   first memory and today as the day you spoke. */
+function pplCreate(name,line,via){
+  var P=loadPeople(),now=Date.now();
+  P.push({memories:line?[{id:now+'',content:line,type:'memory',date:now,pinned:false}]:[],importantDates:[],
+    name:name,relationship:'',place:'',whatTheyMean:'',whatILove:'',currentUpdate:'',toAsk:'',contactFreq:'monthly',avatar:'',
+    lastContact:now,lastVia:{k:via||'met',day:todayStr()}});
+  savePeople(P);
+  return P.length-1;
+}
+/* MET BY CHANCE, in every language the app speaks. Each shape names the
+   person straight after the verb. Where a script has capitals the name must
+   start with one; Arabic, Japanese and Chinese have none, so there the
+   shape itself has to hold the name (على X, Xさんに会った, 认识了X). Only a
+   name not already in My people, and not a family word, a role or a pronoun
+   in that language. The app's language is tried first and the others after
+   it, so a sentence written in a second language still counts. Read on the
+   phone; it never asks unprompted, only answers a sentence. */
+var PPM_SHAPES={
+  he:[/(?:^|[\s,.;:!?])(?:פגשתי|הכרתי|פגשנו|הכרנו)\s+(?:(?:היום|אתמול|הבוקר|הערב)\s+)?את\s+([\u05d0-\u05ea][\u05d0-\u05ea'׳\-]{1,15})/,
+      /(?:^|[\s,.;:!?])(?:נפגשתי|נפגשנו)\s+(?:(?:היום|אתמול|הבוקר|הערב)\s+)?עם\s+([\u05d0-\u05ea][\u05d0-\u05ea'׳\-]{1,15})/],
+  en:[/\bI\s+(?:just\s+|finally\s+)?(?:met|got\s+to\s+know|ran\s+into|bumped\s+into)\s+(?:with\s+)?([A-Z][\p{L}'’\-]{1,15})/u,
+      /\bmet\s+someone\s+new,?\s+([A-Z][\p{L}'’\-]{1,15})/u],
+  de:[/(?:^|[^\p{L}])(?:[Ii]ch\s+)?habe\s+(?:heute\s+|gestern\s+|endlich\s+)?([A-ZÄÖÜ][\p{L}'\-]{1,15})\s+(?:kennengelernt|getroffen)(?![\p{L}])/u,
+      /(?:^|[^\p{L}])[Ii]ch\s+traf\s+(?:heute\s+|gestern\s+)?([A-ZÄÖÜ][\p{L}'\-]{1,15})/u],
+  fr:[/(?:^|[^\p{L}])[Jj]['’]ai\s+(?:enfin\s+)?(?:rencontré|rencontrée|croisé|croisée|fait\s+la\s+connaissance\s+(?:de\s+|d['’]))\s*(?:aujourd['’]hui\s+|hier\s+)?([A-ZÀ-ÖØ-Ý][\p{L}'’\-]{1,15})/u],
+  it:[/(?:^|[^\p{L}])[Hh]o\s+(?:conosciuto|conosciuta|incontrato|incontrata|fatto\s+la\s+conoscenza\s+di)\s+(?:oggi\s+|ieri\s+)?([A-ZÀ-Ý][\p{L}'’\-]{1,15})/u],
+  es:[/(?:^|[^\p{L}])(?:[Cc]onocí|[Cc]onoci|[Hh]e\s+conocido|[Mm]e\s+encontré\s+con|[Ee]ncontré)\s+(?:hoy\s+|ayer\s+)?(?:a\s+)?([A-ZÁÉÍÓÚÑ][\p{L}'’\-]{1,15})/u],
+  pt:[/(?:^|[^\p{L}])(?:[Cc]onheci|[Ee]ncontrei|[Cc]ruzei\s+com)\s+(?:hoje\s+|ontem\s+)?(?:(?:a|o|com\s+a|com\s+o|com)\s+)?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\p{L}'’\-]{1,15})/u],
+  ar:[/(?:^|[\s،,.؛!؟])(?:تعرفت|تعارفت)\s+(?:اليوم\s+|أمس\s+)?(?:على|إلى)\s+([\u0621-\u064A]{2,15})/,
+      /(?:^|[\s،,.؛!؟])(?:قابلت|صادفت)\s+(?:اليوم\s+|أمس\s+)?([\u0621-\u064A]{2,15})/,
+      /(?:^|[\s،,.؛!؟])التقيت\s+(?:اليوم\s+|أمس\s+)?(?:ب|مع\s+)([\u0621-\u064A]{2,15})/],
+  ja:[/([\u30A0-\u30FF\u4E00-\u9FFF々]{1,8})(?:さん|くん|ちゃん)(?:に|と)(?:会|出会|知り合)(?:った|いました)/,
+      /([\u30A0-\u30FF\u4E00-\u9FFF々]{1,8})(?:さん|くん|ちゃん)?と知り合(?:った|いました)/],
+  zh:[/(?:认识了|認識了|结识了|結識了|遇到了|遇见了|遇見了|碰到了)(?:一个叫|一個叫|一位叫)?([\u4E00-\u9FFF]{2,3})(?=$|[，。！？、,.!?\s]|是|在|的|和)/]
+};
+/* the words that follow those verbs without being a name - family, roles,
+   pronouns, "someone", "today" - in each language, compared as keys */
+var PPM_STOP={};
+[ 'אמא אבא סבתא סבא אחי אחותי אחיי אחיותיי אחים חבר חברה חברים חברות חברה׳ה מישהו מישהי כולם אותו אותה אותם אותן אותך אותי אותנו הורים בוס מנהל מנהלת רופא רופאה מורה מורים מורות שכן שכנה שכנים שכנות צוות לקוח לקוחה לקוחות משפחה דוד דודה בן בת ילד ילדה ילדים זוג אשתי בעלי אישתי חתול כלב אנשים מישהם כמה עוד שני שתי שלושה',   // i18n-exempt: words a name is compared against, never shown
+  'the a an my our his her their some someone somebody everyone everybody mom mum dad him them you up with people friends this that mr mrs ms dr today yesterday',   // i18n-exempt: words a name is compared against, never shown
+  'mama papa oma opa freund freunde freundin freundinnen kollegen kollege kollegin chef chefin lehrer lehrerin nachbarn nachbar nachbarin leute familie bruder schwester team arzt ärztin mutter vater kinder sohn tochter jemanden niemanden ihn sie ihr euch uns dich mich meine meinen mein meiner deine den die das einen eine ein heute gestern',   // i18n-exempt: words a name is compared against, never shown
+  'maman papa mamie papi mon ma mes le la les un une quelqu personne aujourd hier',   // i18n-exempt: words a name is compared against, never shown
+  'mamma papà nonna nonno mio mia miei il lo gli un una qualcuno oggi ieri',   // i18n-exempt: words a name is compared against, never shown
+  'mamá papá abuela abuelo mi mis el los las alguien nadie hoy ayer',   // i18n-exempt: words a name is compared against, never shown
+  'mãe pai avó avô meu minha meus minhas o os as um uma alguém ninguém hoje ontem',   // i18n-exempt: words a name is compared against, never shown
+  'أمي أبي صديقي صديقتي صديق صديقة أصدقائي أخي أختي زميلي زميلتي زملائي مديري جاري جارتي جيراني عائلتي شخص شخصا أحد احد أحدا أستاذي معلمي معلمتي طبيبي ابني ابنتي زوجي زوجتي جدتي جدي عمي خالي',   // i18n-exempt: words a name is compared against, never shown
+  '母 父 友達 友人 先生 上司 同僚 家族 兄 姉 弟 妹 誰か 皆 彼 彼女 子供 息子 娘 お客',   // i18n-exempt: words a name is compared against, never shown
+  '朋友 同事 老师 老師 妈妈 媽媽 爸爸 邻居 鄰居 家人 新朋友 一个 一個 一位 他们 她们 他們 她們 大家 客户 客戶 同学 同學 医生 醫生'   // i18n-exempt: words a name is compared against, never shown
+].forEach(function(l){l.split(' ').forEach(function(w){PPM_STOP[ppnNorm(w)]=1;});});
+var _ppm=null,_ppmNo={};
+function ppmLangs(){
+  var L=appLang(),first=(L==='zh-Hans'||L==='zh-Hant')?'zh':L,out=[first],k;
+  for(k in PPM_SHAPES)if(k!==first)out.push(k);
+  return out;
+}
+function ppmFind(q){
+  if(!areaShown('people'))return null;
+  q=String(q||'');
+  var t=q.replace(/[\u064B-\u0652\u0670\u0640]/g,''),L=ppmLangs(),i,j,m=null,n='';
+  for(i=0;i<L.length&&!m;i++){var sh=PPM_SHAPES[L[i]]||[];for(j=0;j<sh.length&&!m;j++)m=t.match(sh[j]);}
+  if(!m)return null;
+  n=m[1].replace(/['’׳\-]+$/,'').replace(/^(?:今日|昨日|今朝|先日|この前)/,'');   // i18n-exempt: Japanese time words read, never shown
+  var k=ppnNorm(n);
+  if(n.length<1||(n.length<2&&!PPN_CJK.test(n))||PPM_STOP[k])return null;
+  if(n.charAt(0)==='ה'&&PPM_STOP[ppnNorm(n.slice(1))])return null;   // i18n-exempt: the Hebrew definite article
+  if(n.indexOf('ال')===0)return null;   // i18n-exempt: the Arabic definite article makes a noun, not a name
+  var P=loadPeople();
+  for(i=0;i<P.length;i++){var pn=String((P[i]&&P[i].name)||'');
+    if(ppnNorm(pn.split(/\s+/)[0])===k||ppnNorm(pn)===k)return null;}
+  if(_ppmNo[k])return null;
+  return {name:n,line:q.trim()};
+}
+function ppmOffer(q,where){
+  var f=ppmFind(q);
+  _ppm=f?{name:f.name,line:f.line,where:where}:null;
+  ppmPaint();
+}
+function ppmHTML(){
+  return '<div class="hcmd-card ppm-card"><div class="ppm-r">'+personAvatar0({name:_ppm.name},40)+
+    '<div><b>'+esc(_t('להוסיף את {name} לאנשים שלי?',{name:_ppm.name}))+'</b><span>'+_t('מה שכתבת יהיה הזיכרון הראשון.')+'</span></div></div>'+
+    '<div class="hcmd-btns"><button class="hcmd-b" onclick="ppmAdd()">'+_t('להוסיף')+'</button>'+
+    '<button class="hcmd-b ghost" onclick="ppmNo()">'+_t('לא עכשיו')+'</button></div></div>';
+}
+function ppmPaint(){
+  var o=document.getElementById('ppm-out');
+  if(o)o.innerHTML=(_ppm&&_ppm.where==='ppm-out')?ppmHTML():'';
+  var d=document.getElementById('hch-dock'),c=document.getElementById('ppm-hch');
+  if(d&&!c){c=document.createElement('div');c.id='ppm-hch';d.insertBefore(c,d.firstChild);}
+  if(c)c.innerHTML=(_ppm&&_ppm.where==='ppm-hch')?ppmHTML():'';
+}
+function ppmNo(){if(_ppm)_ppmNo[pplKey(_ppm.name)]=1;_ppm=null;ppmPaint();}
+function ppmAdd(){
+  if(!_ppm)return;
+  var x=_ppm;_ppm=null;ppmPaint();
+  pplCreate(x.name,x.line,'met');
+  showToast(_t('נשמר')+' ✓');
+  enterModule('people');_peopleView='home';renderPeople();
+}
+var _ppmMetOpen=false;
+function ppmMetHTML(){
+  if(!_ppmMetOpen)return '<button class="ppm-met-b" onclick="_ppmMetOpen=true;renderPeople();setTimeout(function(){var i=document.getElementById(\'ppm-n\');if(i)i.focus();},60)">'+_t('+ פגשתי מישהו')+'</button>';
+  return '<div class="ppm-met"><div class="ppm-met-h">'+_t('פגשתי מישהו')+'<small>'+_t('שם ושורה אחת')+'</small></div>'+
+    '<input id="ppm-n" class="mtin" autocomplete="off" placeholder="'+esc(_t('שם'))+'">'+
+    '<input id="ppm-l" class="mtin" autocomplete="off" placeholder="'+esc(_t('איפה נפגשתם, מה כדאי לזכור'))+'" onkeydown="if(event.key===\'Enter\')ppmMetAdd()">'+
+    '<button class="ppm-met-go" onclick="ppmMetAdd()">'+_t('להוסיף')+'</button></div>';
+}
+function ppmMetAdd(){
+  var n=((document.getElementById('ppm-n')||{}).value||'').trim(),l=((document.getElementById('ppm-l')||{}).value||'').trim();
+  if(!n){var i=document.getElementById('ppm-n');if(i)i.focus();return;}
+  pplCreate(n,l,'met');_ppmMetOpen=false;
+  showToast(_t('נשמר')+' ✓');renderPeople();
+}
 function logContact(i){
   var people=loadPeople();
   people[_personIdx].lastContact=Date.now();
@@ -38643,6 +39339,7 @@ function renderEditPerson(){
   }
   h+=epAvatarHTML();
   h+=pfield(''+_t('שם')+'','ep-name',p.name,''+_t('שם האדם')+'');
+  h+=pfield(''+_t('טלפון')+'','ep-phone',p.phone,'');
   // Relationship
   h+='<div class="pp-f"><span class="pp-fl">'+_t('סוג הקשר')+'</span>';
   h+='<div class="pp-chips">';
@@ -38749,6 +39446,7 @@ function savePersonEdit(){
     whatILove:(document.getElementById('ep-love')||{}).value||'',
     currentUpdate:(document.getElementById('ep-update')||{}).value||'',
     toAsk:(document.getElementById('ep-ask')||{}).value||'',
+    phone:((document.getElementById('ep-phone')||{}).value||'').trim(),
     contactFreq:(document.getElementById('ep-freq')||{}).value||'monthly'
   });
   // Merge pending dates
@@ -38964,7 +39662,7 @@ function renderInsEntry(){
   h+='<div class="ins-lbl">'+_t('פעם חשבתי:')+'</div>';
   h+='<input id="ins-changed-from" class="ins-in" value="'+esc(draft.from||'')+'" placeholder="'+_t("מה היתה הדעה הקודמת...")+'">';
   h+='<div class="ins-lbl">'+_t('מה שינה את דעתי:')+'</div>';
-  h+='<input id="ins-changed-why" class="ins-in" value="'+esc(draft.why||'')+'" placeholder="'+_t("מה התקיים, מה קרה...")+'">';
+  h+='<input id="ins-changed-why" class="ins-in" value="'+esc(draft.why||'')+'" placeholder="'+_t("מה קרה, מה שכנע אותך...")+'">';
   h+='</div>';
   h+='<button class="ins-add" onclick="saveInsEntry()">'+_t('שמור')+'</button>';
   h+='</div>';
@@ -39412,7 +40110,7 @@ function renderVisionBoard(){
   if(!items.length){
     h+='<div class="vb-empty">'+
          '<div style="font-size:34px">&#x1F5BC;&#xFE0F;</div>'+
-         '<div style="font-size:12px;margin-bottom:4px">'+_t('תמונות ומילים של מה שאתה רוצה לראות קורה')+'</div>'+
+         '<div style="font-size:12px;margin-bottom:4px">'+_t('תמונות ומילים של מה שהיית רוצה שיקרה')+'</div>'+
          '<div style="display:flex;gap:8px">'+
            '<button class="vb-add" onclick="vbPick()">'+_t('+ תמונה')+'</button>'+
            '<button class="vb-add" onclick="vbOpenText(\'\')">'+_t('+ טקסט')+'</button>'+
@@ -39452,7 +40150,7 @@ function renderVisionBoard(){
   h+='<div style="background:var(--panel);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:20px 18px 34px">';
   h+='<div class="summary-pull" style="margin-bottom:16px"></div>';
   h+='<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:14px">'+_t('טקסט על הלוח')+'</div>';
-  h+='<textarea id="vb-text-inp" rows="2" placeholder="'+_t("מה אתה רוצה לראות קורה?")+'" style="width:100%;border:1.5px solid #eae3dc;border-radius:14px;padding:12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--card);resize:none;margin-bottom:14px"></textarea>';
+  h+='<textarea id="vb-text-inp" rows="2" placeholder="'+_t("מה היית רוצה שיקרה?")+'" style="width:100%;border:1.5px solid #eae3dc;border-radius:14px;padding:12px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--card);resize:none;margin-bottom:14px"></textarea>';
   h+='<div style="font-size:9px;color:var(--muted);font-weight:700;margin-bottom:8px">'+_t('צבע')+'</div>';
   h+='<div id="vb-swatches" style="display:flex;gap:10px;margin-bottom:20px">';
   VB_COLORS.forEach(function(c){
@@ -39803,7 +40501,7 @@ function exportPanel(){
     '<div class="bk-sheet">'+
     '<div class="bk-hd">'+_t('הגיבוי מוכן')+'<span class="bk-kb">'+exportKB()+'KB</span></div>'+
     '<div class="bk-sub">'+_t('כל מה שרשמת: ארוחות, תכנון, יומן, אנשים, הרגלים.')+' '+
-    ''+_t('שמור אותו במקום שישרוד את הטלפון')+' &mdash; '+_t('הודעה לעצמך, מייל, או פתק בענן.')+'</div>'+
+    ''+_t('שמור אותו גם מחוץ לטלפון')+' &mdash; '+_t('הודעה לעצמך, מייל, או פתק בענן.')+'</div>'+
     '<button class="bk-copy" id="bk-copy" onclick="exportCopy()">'+_t('העתק הכל')+'</button>'+
     '<button class="bk-share" onclick="exportShare()">'+_t('שתף כקובץ')+'</button>'+
     '<div class="bk-or">'+_t('או סמן והעתק ידנית:')+'</div>'+
@@ -39970,7 +40668,7 @@ function exportLockedHTML(){
   return '<div class="bk-lock">'+
     '<div class="bk-lockttl">&#128274; '+_t('להצפין בסיסמה?')+'</div>'+
     '<div class="bk-locksub">'+_t('בלי הסיסמה הגיבוי לא ניתן לפתיחה. אם תשכח אותה, הוא אבוד')+' &mdash; '+
-    ''+_t('אין דרך לשחזר אותו, לא דרכי ולא דרך אף אחד.')+'</div>'+
+    ''+_t('אי אפשר לשחזר אותו — לא אני ולא אף אחד אחר.')+'</div>'+
     '<div class="bk-lockrow">'+
     '<input class="bk-pass" id="bk-pass" type="password" placeholder="'+_t("סיסמה")+'" autocomplete="new-password">'+
     '<button class="bk-lockbtn" onclick="exportLock()">'+_t('הצפן')+'</button>'+
@@ -40215,9 +40913,9 @@ var RF_PARTS;langOn(function(){RF_PARTS=[''+_t('בוקר')+'',''+_t('צהריי�
    recorded still reads back. What changed is who has to ask for it. */
 var RF_STAGE1;langOn(function(){RF_STAGE1=[
   {id:'moment',kind:'text',q:''+_t('מה היה הרגע הכי טוב שלך היום?')+'',ph:''+_t('אפילו רגע קטן.')+''},
-  {id:'photo',kind:'photo',q:''+_t('איזו תמונה מספרת את היום שלך?')+'',sub:''+_t('זה יכול להיות רגע, מקום, אדם, משהו שעשית — או פשוט תמונה שמרגישה כמו היום שעבר עליך.')+''},
+  {id:'photo',kind:'photo',q:''+_t('איזו תמונה הכי מסכמת את היום שלך?')+'',sub:''+_t('זה יכול להיות רגע, מקום, אדם, משהו שעשית — או פשוט תמונה שמזכירה לך את היום שעבר עליך.')+''},
   {id:'song',kind:'song',q:''+_t('מה השיר של היום שלך?')+'',sub:''+_t('איזה שיר הכי מתאים למה שעבר עליך היום?')+''},
-  {id:'quote',kind:'text',q:''+_t('יש משפט שלקחת איתך היום?')+'',sub:''+_t('משהו ששמעת, קראת או חשבת ולא עזב אותך.')+'',ph:''+_t('משפט, מחשבה, רגע...')+''}
+  {id:'quote',kind:'text',q:''+_t('יש משפט שנשאר איתך היום?')+'',sub:''+_t('משהו ששמעת, קראת או חשבת ולא עזב אותך.')+'',ph:''+_t('משפט, מחשבה, רגע...')+''}
 ];});
 
 /* ── THE BANK ──
@@ -40235,15 +40933,15 @@ var RF_STAGE2;langOn(function(){RF_STAGE2=[
   {id:'mood',kind:'mood',t:''+_t('איך הרגשת')+'',s:''+_t('היום, בגדול')+'',ic:'face',g:'ter',q:''+_t('איך הרגשת היום?')+''},
   {id:'bodyFeelings',kind:'chips',t:''+_t('הגוף שלך')+'',s:''+_t('איך הוא הרגיש')+'',ic:'body',g:'grn',q:''+_t('ואיך הגוף שלך הרגיש היום?')+'',sub:''+_t('אפשר לבחור יותר מאחד.')+'',opts:RF_BODY},
   {id:'dayRating',kind:'scale',t:''+_t('ציון היום')+'',s:''+_t('מספר אחד')+'',ic:'star',g:'amb',q:''+_t('אם היית צריך לתת ליום הזה ציון — איזה ציון הוא מקבל?')+''},
-  {id:'flow',kind:'flow',t:''+_t('איך זרם היום')+'',s:''+_t('עוגנים לפי הסדר')+'',ic:'wave',g:'blu',q:''+_t('איך זרם היום שלך?')+'',sub:''+_t('כמה עוגנים לפי הסדר. זה גם מה שיישאר ממנו בזיכרון.')+''},
-  {id:'plannedVsActual',kind:'ladder',t:''+_t('מתוכנן מול בפועל')+'',s:''+_t('כמה זה דמה')+'',ic:'target',g:'gry',q:''+_t('עד כמה היום שלך נראה כמו היום שרצית שיהיה?')+'',opts:RF_PLANNED},
+  {id:'flow',kind:'flow',t:''+_t('איך עבר היום')+'',s:''+_t('עוגנים לפי הסדר')+'',ic:'wave',g:'blu',q:''+_t('איך עבר עליך היום?')+'',sub:''+_t('כמה נקודות ציון לפי הסדר — ככה תזכור אותו.')+''},
+  {id:'plannedVsActual',kind:'ladder',t:''+_t('מתוכנן מול בפועל')+'',s:''+_t('כמה זה דומה לתוכנית')+'',ic:'target',g:'gry',q:''+_t('עד כמה היום שלך היה כמו שתכננת?')+'',opts:RF_PLANNED},
   /* Only ever reaches the board on a day the schedule planned something and
      nothing was recorded - see rfSteps. The text names the type, so it is a
      yes/no about one specific thing rather than a general audit. */
   {id:'workoutDone',kind:'branch',t:''+_t('האימון')+'',s:''+_t('יצא לך?')+'',ic:'dumbbell',g:'grn',q:''+_t('היום היה מתוכנן אימון. יצא לך?')+''},
-  {id:'takeawayForTomorrow',kind:'text',t:''+_t('למחר')+'',s:''+_t('מה אתה לוקח')+'',ic:'sunrise',g:'lav',q:''+_t('מה אתה לוקח מהיום הזה למחר?')+'',ph:''+_t('מחשבה, כוונה, או משהו קטן.')+''},
+  {id:'takeawayForTomorrow',kind:'text',t:''+_t('למחר')+'',s:''+_t('מה לוקחים למחר')+'',ic:'sunrise',g:'lav',q:''+_t('מה מהיום הזה תרצה לקחת איתך למחר?')+'',ph:''+_t('מחשבה, כוונה, או משהו קטן.')+''},
   {id:'grateful',kind:'text',t:''+_t('הכרת תודה')+'',s:''+_t('על מה היום')+'',ic:'hands',g:'amb',q:''+_t('על מה אתה אסיר תודה היום?')+'',ph:''+_t('דבר אחד. אפילו קטן מאוד.')+''},
-  {id:'impactfulMoment',kind:'text',t:''+_t('הרגע שהשפיע')+'',s:''+_t('מה שינה את היום')+'',ic:'spark',g:'lav',q:''+_t('מה היה הרגע שהכי השפיע עליך היום?')+'',ph:''+_t('משהו ששינה את איך שהרגשת, חשבת או המשכת את היום.')+''},
+  {id:'impactfulMoment',kind:'text',t:''+_t('הרגע שהשפיע')+'',s:''+_t('מה שינה את היום')+'',ic:'spark',g:'lav',q:''+_t('מה היה הרגע שהכי השפיע עליך היום?')+'',ph:''+_t('משהו ששינה לך את ההרגשה, את המחשבות או את המשך היום.')+''},
   {id:'proudOf',kind:'text',t:''+_t('גאווה')+'',s:''+_t('גם משהו קטן')+'',ic:'medal',g:'amb',q:''+_t('במה אתה הכי גאה היום?')+'',ph:''+_t('גם משהו קטן נחשב.')+''},
   {id:'energyGivers',kind:'chipsNote',t:''+_t('מה מילא אותך')+'',s:''+_t('מאיפה הגיעה האנרגיה')+'',ic:'sun',g:'grn',q:''+_t('מה נתן לך הכי הרבה אנרגיה היום?')+'',opts:RF_ENERGY,note:'energyGiversNote',ph:''+_t('רוצה לפרט?')+''},
   {id:'energyDrainers',kind:'chipsNote',t:''+_t('מה רוקן אותך')+'',s:''+_t('מה לקח את האנרגיה')+'',ic:'cloud',g:'ter',q:''+_t('מה הכי רוקן אותך היום?')+'',opts:RF_DRAIN,note:'energyDrainersNote',ph:''+_t('רוצה לפרט?')+''},
@@ -40262,7 +40960,7 @@ var RF_STAGE2;langOn(function(){RF_STAGE2=[
      a whole and this minute - and two identical icons is two cards nobody can
      tell apart at a glance. */
   {id:'endOfDayMood',kind:'mood',t:''+_t('איך אתה עכשיו')+'',s:''+_t('ברגע הזה')+'',ic:'moon',g:'ter',q:''+_t('איך אתה מרגיש עכשיו, ברגע הזה?')+''},
-  {id:'gratefulOverlooked',kind:'text',t:''+_t('מה שמובן מאליו')+'',s:''+_t('ולא באמת')+'',ic:'bowl',g:'amb',q:''+_t('מה היה שם היום שאתה בדרך כלל לא שם לב אליו — ובלעדיו היום היה נראה אחרת?')+'',ph:''+_t('משהו שתמיד שם.')+''}
+  {id:'gratefulOverlooked',kind:'text',t:''+_t('מה שמובן מאליו')+'',s:''+_t('ולא אמור להיות')+'',ic:'bowl',g:'amb',q:''+_t('מה היה שם היום שאתה בדרך כלל לא שם לב אליו — ובלעדיו היום היה נראה אחרת?')+'',ph:''+_t('משהו שתמיד שם.')+''}
 ];});
 
 var RF_GRAD={
@@ -40346,12 +41044,12 @@ var SUM_SECS_KEY='sum_sections';
 var SUM_SECS;langOn(function(){SUM_SECS=[
   {k:'moment', t:''+_t('הרגעים הטובים')+'', d:''+_t('הרגע הכי טוב, מה שהשפיע, במה אתה גאה')+'',
    ids:['moment','impactfulMoment','proudOf']},
-  {k:'photo',  t:''+_t('תמונת היום')+'',    d:''+_t('התמונה שמספרת את היום')+'', ids:['photo']},
+  {k:'photo',  t:''+_t('תמונת היום')+'',    d:''+_t('התמונה שמסכמת את היום')+'', ids:['photo']},
   {k:'food',   t:''+_t('סיכום תזונה')+'',   d:''+_t('קלוריות, מאקרו ומים של אותו יום')+'', auto:true},
   {k:'fit',    t:''+_t('כושר וצעדים')+'',   d:''+_t('פעילות גופנית וספירת צעדים')+'', ids:['steps','workoutDone'], auto:true},
   {k:'think',  t:''+_t('תובנות ומחשבות')+'',d:''+_t('משפט שלקחת, מחשבה שחזרה, מה היית משנה')+'',
    ids:['quote','recurringThought','differently','takeawayForTomorrow']},
-  {k:'flow',   t:''+_t('זרימת היום')+'',    d:''+_t('עוגנים לפי הסדר וציר היום')+'', ids:['flow','dayTimeline']},
+  {k:'flow',   t:''+_t('מהלך היום')+'',    d:''+_t('עוגנים לפי הסדר וציר היום')+'', ids:['flow','dayTimeline']},
   {k:'time',   t:''+_t('לאן הלך הזמן')+'',  d:''+_t('חלוקת השעות')+'', ids:['timeclock']},
   {k:'energy', t:''+_t('אנרגיה')+'',        d:''+_t('מה מילא אותך ומה רוקן')+'', ids:['energyGivers','energyDrainers']},
   {k:'people', t:''+_t('אנשים')+'',         d:''+_t('מי השפיע על היום')+'', ids:['influentialPerson']},
@@ -40835,9 +41533,9 @@ function monthCardHTML(){
       var up=mrate.over>0;
       h+='<div style="font-size:11.5px;font-weight:700;margin-top:8px;color:'+
          (flat?'var(--muted)':(up?'var(--green-700)':'var(--muted)'))+'">'+
-         (flat?_t('מזג האוויר הפנימי שלך יציב החודש.')
-              :(up?_t('הימים שלך נעשו טובים יותר לאורך החודש.')
-                  :_t('החודש היה כבד יותר מהתחלתו.')))+'</div>';
+         (flat?_t('מצב הרוח שלך היה יציב החודש.')
+              :(up?_t('הימים שלך השתפרו במהלך החודש.')
+                  :_t('סוף החודש היה כבד יותר מתחילתו.')))+'</div>';
     }
   }
 
@@ -40976,7 +41674,7 @@ function renderReflectHome(){
   if(_bDone&&_bN)h+='<div class="rf-streak">'+esc(_t('יום {n} ברצף',{n:_bN}))+'</div>';
   if(!r){
     h+='<div class="rf-hero-t">'+_t('עוד לא עצרת לסכם את היום.')+'</div>';
-    h+='<div class="rf-hero-s">'+_t('כמה דקות, וזה שלך.')+'</div>';
+    h+='<div class="rf-hero-s">'+_t('כמה דקות רק בשבילך.')+'</div>';
     h+='<button onclick="rfStart()" class="rf-next" style="margin-top:20px">'+_t('התחל סיכום')+'</button>';
   } else if(!rfDone(r)){
     h+='<div class="rf-hero-t">'+_t('התחלת לסכם את היום.')+'</div>';
@@ -40991,6 +41689,7 @@ function renderReflectHome(){
   }
   h+='</div>';
 
+  h+=ppnEveHTML();
   h+=rfVlogHTML();
   h+=rfmCardHTML();
 
@@ -41097,7 +41796,7 @@ function rfNightlyOpen(){
     '<div class="rf-secs">'+
     '<div class="rf-secs-hd"><span>'+_t('שאלות הערב')+'</span>'+
     '<button class="rf-secs-x" onclick="rfNightlyClose()">&times;</button></div>'+
-    '<div class="rf-secs-n">'+_t('מה שמסומן כאן תישאל עליו כל ערב. השאר נשאר בבנק, ואפשר לפתוח אותו מתי שבא לך. שום דבר לא נמחק.')+'</div>';
+    '<div class="rf-secs-n">'+_t('מה שמסומן כאן תישאל עליו כל ערב. השאר מחכה בצד, ואפשר לפתוח אותו מתי שבא לך. שום דבר לא נמחק.')+'</div>';
   if(custom)h+='<button class="rf-secs-all" onclick="rfNightlyReset()">'+_t('חזרה לארבע המקוריות')+'</button>';
   for(i=0;i<all.length;i++){
     q=all[i];on=o.on.indexOf(q.id)>=0;isDef=RF_NIGHTLY_DEF.indexOf(q.id)>=0;
@@ -41169,8 +41868,8 @@ function rfOpenCard(i){_rfStage=2;_rfStep=i;_rfView='step';rfSave({lastStage:2,l
 function renderReflectIntro(){
   var h='<div class="rf"><div class="rf-body" style="text-align:center">';
   h+='<div class="rf-beem" id="rf-beem"></div>';
-  h+='<div class="rf-q" style="font-size:27px">'+_t('בוא ניקח רגע להסתכל על היום שלך.')+'</div>';
-  h+='<div class="rf-sub" style="font-size:14px">'+_t('כמה דקות, וזה שלך.')+'</div>';
+  h+='<div class="rf-q" style="font-size:27px">'+_t('בוא נעצור רגע ונסתכל על היום שלך.')+'</div>';
+  h+='<div class="rf-sub" style="font-size:14px">'+_t('כמה דקות רק בשבילך.')+'</div>';
   var _rfm=rfmLoad(_rfDate);
   if(_rfm.length)
     h+='<div class="rfm rfm-recall"><div class="rfm-t">'+_t('מה שרשמת היום')+'</div>'+rfmRowsHTML(_rfm,false)+'</div>';
@@ -42505,7 +43204,7 @@ function wkPages(from){
   if(lh)p.push({kick:''+_t('ולסיום')+'',ttl:''+_t('מה שראיתי')+'',body:lh,ref:bg(6)});
 
   /* 7 - the one thing you carry forward */
-  p.push({kick:''+_t('לשבוע הבא')+'',ttl:''+_t('דבר אחד שלוקחים איתך')+'',
+  p.push({kick:''+_t('לשבוע הבא')+'',ttl:''+_t('דבר אחד לקחת איתך')+'',
           note:''+_t('לא רשימה. משפט אחד שיחכה לך בראש סיום היום, ושאפתח איתו את הסיכום הבא.')+'',
           body:wkCarryPage(d),ref:bg(7)});
   return p;
@@ -42558,7 +43257,7 @@ function wkCarryKeep(){
   var t=(_wkCarryTxt||'').trim();
   if(!t)return;
   wkCarrySave(t,dayShift(7,wkDate(_wkDeck)));
-  showToast(''+_t('נשמר. נתראה עם זה כל ערב.')+'');
+  showToast(''+_t('נשמר. נשאל על זה כל ערב.')+'');
   wkDeckClose();
 }
 
@@ -42669,7 +43368,7 @@ function renderMe(){
 
   h+=wkCardHTML();
   h+='<div class="me-top"><div class="me-logo">Me</div>';
-  h+='<div class="me-sub">'+_t('מה שהימים מצטברים אליו')+'</div></div>';
+  h+='<div class="me-sub">'+_t('התמונה הגדולה של הימים שלך')+'</div></div>';
   h+=prgEntryHTML('me');
 
   /* Language and sounds live behind the gear in the drawer: they are chosen
@@ -42741,7 +43440,7 @@ function meInsights(rows){
   var top=Object.keys(givers).sort(function(x,y){return givers[y]-givers[x];})[0];
   if(top&&givers[top]>=2)
     cards+=meInsight(''+_t('מה מילא אותך הכי הרבה')+'',_t('"{what}" חזר {n} פעמים',{what:top,n:givers[top]}),
-      ''+_t('מתוך התשובות שלך בהעמקה')+'',ME_C[0]);
+      ''+_t('מתוך התשובות שלך לשאלות ההעמקה')+'',ME_C[0]);
   if(!cards)cards='<div class="me-empty">'+_t('עוד אין מספיק ימים מסוכמים כדי למצוא דפוסים. זה יתמלא מעצמו.')+'</div>';
   return meCard('ins',''+_t('מה עולה מהנתונים')+'','',cards);
 }
@@ -42867,9 +43566,9 @@ var HOME_AREAS;langOn(function(){HOME_AREAS=[
    svg:'<svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 7c0-1 1-1.5 1-2.5S9 3 9 3"/><path d="M13.5 7c0-1 1-1.5 1-2.5s-1-1.5-1-1.5"/></svg>'},
   {id:'fitness',color:PAL.terra500,title:''+_t('כושר')+'',sub:''+_t('אימונים ומעקב התקדמות')+'',
    svg:'<svg viewBox="0 0 24 24"><path d="M3 9.5v5"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M21 9.5v5"/><path d="M6.5 12h11"/></svg>'},
-  {id:'hobbies',color:PAL.green600,title:''+_t('תחביבים')+'',sub:''+_t('מעקב דברים שאתה אוהב')+'',
+  {id:'hobbies',color:PAL.green600,title:''+_t('תחביבים')+'',sub:''+_t('מעקב אחרי מה שאתה אוהב לעשות')+'',
    svg:'<svg viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 1.9 1.9 0 0 0 1.5-3.1 1.9 1.9 0 0 1 1.5-3.1h2.1a3 3 0 0 0 2.9-3A8.8 8.8 0 0 0 12 3.2Z"/><circle cx="8.2" cy="10" r=".9"/><circle cx="12" cy="7.6" r=".9"/><circle cx="15.8" cy="10" r=".9"/></svg>'},
-  {id:'endofday',color:PAL.water500,title:''+_t('סיום יום')+'',sub:''+_t('ראיון יומי ושיקוף')+'',fixed:true,
+  {id:'endofday',color:PAL.water500,title:''+_t('סיום יום')+'',sub:''+_t('כמה שאלות בערב, ומבט על היום')+'',fixed:true,
    svg:'<svg viewBox="0 0 24 24"><path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.6 8.6 0 1 0 20 14.4Z"/></svg>'},
   {id:'insights',color:'#7a716b',title:''+_t('תובנות')+'',sub:''+_t('מחשבות, שאלות וגילויים')+'',
    svg:'<svg viewBox="0 0 24 24"><path d="M9.2 17.6h5.6"/><path d="M10.2 20.4h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.3 10.1c.5.4.8 1 .8 1.6v.4h5v-.4c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4Z"/></svg>'},
@@ -43313,7 +44012,7 @@ function homeTour(){
   function step(i){
     if(i===0)return {el:'.hdial',ring:false,t:_t('זו החוגה שלך.'),d:_t('כל האזורים שבחרת יושבים עליה. סובב אותה באגודל, ולחיצה על אזור פותחת אותו.')};
     if(i===1)return {el:'.hdial .chub',t:_t('וזה סיום היום.'),d:_t('כל אזור שאתה עוקב אחריו מזין אותו. בערב לוחצים כאן, מסכמים את היום, והוא מתמלא באור.')};
-    if(i===2)return {el:'.hdial',ring:true,t:_t('השפה של החוגה היא היום שלך.'),d:_t('השעות מסביב, הדברים שבלו״ז כנקודות צבעוניות, והאור הכתום מראה איפה אתה עכשיו.')};
+    if(i===2)return {el:'.hdial',ring:true,t:_t('החוגה הזאת היא היום שלך.'),d:_t('השעות מסביב, הדברים שבלו״ז כנקודות צבעוניות, והאור הכתום מראה איפה אתה עכשיו.')};
     if(i===3)return {el:'.hcmd-row',t:_t('ופה פשוט כותבים.'),d:_t('מה אכלת, מה לזכור, מה לעשות. אפשר גם לדבר. אני כבר אדע לאן זה שייך.')};
     /* the last word: where to find him afterwards */
     return {el:'#bhelp',corner:true,t:_t('ואני כאן לכל שאלה.'),d:_t('יש לך שאלה על האפליקציה? לוחצים עליי כאן למעלה, ואני עונה.')};
@@ -43382,8 +44081,8 @@ function areaTourStep(a,i){
   if(a==='planning')S=[
     [null,_t('זה תכנון הזמן.'),_t('כאן מתכננים את השבוע ואת היום שאחרי, ואני מזכיר כשמגיע הזמן.')],
     ['#psay',_t('אפשר פשוט לכתוב.'),_t('במילים רגילות, כמו "כל רביעי 9–10 מדיטציה". אני מבין משימה חד־פעמית או קבועה, שעות וטווחים, וגם "להוריד מהלוח".')],
-    ['.pb-lamp',_t('או לתת למתכנן לבנות.'),_t('מספרים לו מה יש השבוע, והוא מחזיר לוח שלם. אחר כך מאשרים מה נכנס.')],
-    ['#plan-sec-week .pl-add',_t('ה־+ מחזיק משימות בצד.'),_t('כותבים משימה ב־+, והיא מחכה בשורה. משם גוררים אותה ליום ולשעה.'),'add'],
+    ['.pb-lamp',_t('או לתת למתכנן לבנות את הלו״ז.'),_t('מספרים לו מה יש השבוע, והוא בונה לו״ז מלא. אחר כך מאשרים מה נכנס.')],
+    ['#plan-sec-week .pl-add',_t('ב־+ שומרים משימות בצד.'),_t('כותבים משימה ב־+, והיא מחכה בשורה. משם גוררים אותה ליום ולשעה.'),'add'],
     ['#plan-sec-week',_t('ולמחוק? מחליקים.'),_t('גוררים משימה לפח, או מחליקים אותה הצידה, והיא יורדת מהלוח. החלקה על הלוח עצמו מעבירה שבוע.'),'swipe'],
     ['#plan-sec-week',_t('משימה של כמה ימים? מותחים.'),_t('בלוח השבוע או החודש, תופסים את הנקודה הכתומה בקצה של משימה ומושכים אותה על פני כמה ימים. כך היא מופיעה על כולם.'),'stretch'],
     ['.pl-door',_t('חודש, שבוע ויום.'),_t('מה ששמים בחודש או בשבוע מגיע גם ליום שלו, ושם נותנים לו שעה. לחיצה על כל אחד פותחת או סוגרת את הלוח שלו.'),'flow'],
@@ -43391,7 +44090,7 @@ function areaTourStep(a,i){
   if(a==='people')S=[
     [null,_t('אלה האנשים שלך.'),_t('כאן שומרים את מי שחשוב: מה קורה איתו, ימי הולדת, ומתי דיברתם לאחרונה.')],
     ['.pp-add',_t('מוסיפים אדם.'),_t('שם, מה הוא בשבילך, וכל כמה זמן לדבר איתו. כשעובר זמן, אני מזכיר.')],
-    ['#ppl-q',_t('מחפשים ומסדרים.'),_t('לפי שם, מקום או תפקיד, או לפי מי שהכי מזמן.')],
+    ['#ppl-q',_t('מחפשים ומסדרים.'),_t('לפי שם, מקום או תפקיד, או לפי מי שהכי הרבה זמן לא דיברתם.')],
     ['.pp-row',_t('לחיצה על אדם פותחת את הדף שלו.'),_t('שם רושמים שיחה, זיכרונות ותאריכים חשובים.')]];
   if(a==='hobbies')S=[
     [null,_t('אלה התחביבים.'),_t('כאן עוקבים אחרי מה שאוהבים לעשות: כמה זמן, כמה פעמים, ואיך זה מתקדם.')],
@@ -43430,7 +44129,7 @@ function areaTourMaybe(a,tries){
   if(typeof currentModule!=='undefined'&&currentModule!==a)return;
   /* the setup questions, the home tour or a sheet first - then try again */
   if(document.getElementById('as-ov')||document.getElementById('tour')||document.querySelector('.bms')){
-    if((tries||0)<40)setTimeout(function(){areaTourMaybe(a,(tries||0)+1);},1500);return;
+    if((tries||0)<150)setTimeout(function(){areaTourMaybe(a,(tries||0)+1);},400);return;
   }
   areaTour(a);
 }
@@ -43538,7 +44237,7 @@ function rfBeemTouch(el,night){
     b.idle=false;b.lkX=Math.max(-38,Math.min(38,dx/2.2));b.lkY=Math.max(-22,Math.min(22,-dy/3));
     clearTimeout(lookT);lookT=setTimeout(function(){var bb=B();if(bb&&!P){bb.idle=true;bb.lkX=0;bb.lkY=0;}},1600);}
   el.addEventListener('pointerdown',function(e){
-    if(night)return;cancelAnimationFrame(raf);
+    if(night)return;cancelAnimationFrame(raf);mipTrail(el,B,1);
     try{el.setPointerCapture(e.pointerId);}catch(er){}
     P={x0:e.clientX,y0:e.clientY,px:pos.x,py:pos.y,t0:Date.now(),mode:'press',s:[{x:e.clientX,y:e.clientY,t:performance.now()}]};
     /* a long, still press is petting */
@@ -43552,21 +44251,37 @@ function rfBeemTouch(el,night){
     if(P.mode==='press'&&Math.hypot(dx,dy)>12){clearTimeout(petT);P.mode='drag';face('surprised');setTimeout(function(){if(P&&P.mode==='drag')face('happy');},300);}
     if(P.mode==='pet'){lookAt(e);return;}
     if(P.mode!=='drag')return;
-    var R=room();pos.x=Math.max(R.l,Math.min(R.r,P.px+dx));pos.y=Math.max(R.t,Math.min(R.b,P.py+dy));pos.vx=pos.vy=0;put();
+    var R=room();P.tx=Math.max(R.l,Math.min(R.r,P.px+dx));P.ty=Math.max(R.t,Math.min(R.b,P.py+dy));
+    if(!P.follow){P.follow=1;pos.vx=pos.vy=0;follow();}
   });
-  /* THROW: under gravity, off the walls and the floor, then home */
+  /* held, he drifts after the finger on a slow spring (90, 17: just under
+     critical, about half a second behind) - carried, not chasing (29.10) */
+  function follow(){
+    mipTrail(el,B,1);
+    var last=performance.now();
+    (function step(now){
+      if(!P||P.mode!=='drag')return;
+      var h=Math.min(.033,(now-last)/1000);last=now;
+      pos.vx+=((P.tx-pos.x)*90-pos.vx*17)*h;pos.vy+=((P.ty-pos.y)*90-pos.vy*17)*h;
+      pos.x+=pos.vx*h;pos.y+=pos.vy*h;put();
+      raf=requestAnimationFrame(step);
+    })(last);
+  }
+  /* LET GO: he floats - no gravity, he does not fall. He glides on with the
+     speed he was let go at (capped, so a flick is a drift), slows in the air,
+     turns softly off the card's walls, and when he has all but stopped */
   function fly(){
-    var R=room(),last=performance.now(),hits=0,rest=0;
+    mipTrail(el,B,1);
+    var R=room(),last=performance.now(),hits=0,rest=0,sp=Math.hypot(pos.vx,pos.vy),cap=520;
+    if(sp>cap){pos.vx*=cap/sp;pos.vy*=cap/sp;}
     (function step(now){
       var h=Math.min(.033,(now-last)/1000);last=now;
-      pos.vy+=2600*h;
-      var onFloor=pos.y>=R.b-.5;if(onFloor)pos.vx-=pos.vx*Math.min(1,2.8*h);
+      var f=Math.exp(-2.2*h);pos.vx*=f;pos.vy*=f;
       pos.x+=pos.vx*h;pos.y+=pos.vy*h;
-      if(pos.x<R.l||pos.x>R.r){pos.x=pos.x<R.l?R.l:R.r;if(Math.abs(pos.vx)>200){verb('squash',Math.min(4,Math.abs(pos.vx)*.0022));hits++;}pos.vx=-pos.vx*.62;}
-      if(pos.y<R.t){pos.y=R.t;pos.vy=-pos.vy*.5;}
-      if(pos.y>R.b){pos.y=R.b;if(pos.vy>220){verb('squash',Math.min(8,pos.vy*.0032));hits++;pos.vy=-pos.vy*.5;}else pos.vy=0;}
+      if(pos.x<R.l||pos.x>R.r){pos.x=pos.x<R.l?R.l:R.r;if(Math.abs(pos.vx)>160){verb('squash',Math.min(1.6,Math.abs(pos.vx)*.002));hits++;}pos.vx=-pos.vx*.45;}
+      if(pos.y<R.t||pos.y>R.b){pos.y=pos.y<R.t?R.t:R.b;if(Math.abs(pos.vy)>160){verb('squash',Math.min(1.6,Math.abs(pos.vy)*.002));hits++;}pos.vy=-pos.vy*.45;}
       put();
-      if(pos.y>=R.b-.5&&Math.abs(pos.vx)<20&&Math.abs(pos.vy)<20){rest+=h;if(rest>.35){landed(hits);return;}}else rest=0;
+      if(Math.hypot(pos.vx,pos.vy)<14){rest+=h;if(rest>.25){landed(hits);return;}}else rest=0;
       raf=requestAnimationFrame(step);
     })(last);
   }
@@ -43576,9 +44291,9 @@ function rfBeemTouch(el,night){
       face('calm');
       /* and he floats back to where he lives */
       var x0=pos.x,y0=pos.y,t0=performance.now();
-      (function back(now){var k=Math.min(1,(now-t0)/700),e2=1-Math.pow(1-k,3);pos.x=x0*(1-e2);pos.y=y0*(1-e2);put();
+      (function back(now){var k=Math.min(1,(now-t0)/1200),e2=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;pos.x=x0*(1-e2);pos.y=y0*(1-e2);put();
         if(k<1)raf=requestAnimationFrame(back);else{pos.x=pos.y=0;put();}})(t0);
-    },1000);
+    },700);
   }
   function up(){
     clearTimeout(petT);
@@ -43721,7 +44436,7 @@ function beemStreakOpen(){
   if(n)h+='<div class="bst-n"><b>'+nfmt(n)+'</b><span>'+esc(_t('ימים ברצף',{n:n}))+'</span></div>';
   else if(stats.total)h+='<div class="bst-n"><span>'+esc(_t('{n} סיכומי יום',{n:stats.total}))+'</span></div>';
   h+='<div class="bst-l">'+esc(_t('כל אור הוא ערב שבו סיימת את סיכום היום.'))+'</div>';
-  if(st.graceYesterday&&n)h+='<div class="bst-today">'+esc(_t('אתמול פוספס, ויום החסד שמר על הרצף.'))+'</div>';
+  if(st.graceYesterday&&n)h+='<div class="bst-today">'+esc(_t('פספסת אתמול, אבל יום החסד שמר על הרצף.'))+'</div>';
   else if(!st.today)h+='<div class="bst-today">'+esc(n?_t('היום עוד לא נספר. סיכום היום הערב ימשיך את הרצף.'):_t('סיכום היום הערב יתחיל רצף חדש.'))+'</div>';
   if(stats.best>n)h+='<div class="bst-l">'+esc(_t('הרצף הארוך ביותר שלך: {n} ימים.',{n:stats.best}))+'</div>';
   h+='<div class="bst-rule">'+esc(_t('יום נספר כשסיכום היום שלו הושלם.'))+' '+esc(_t('יום אחד שפוספס לא שובר את הרצף: יום חסד שומר עליו, והוא חוזר אחרי שבעה סיכומים ברצף.'))+'</div>';
@@ -43940,13 +44655,13 @@ function areaIntroText(id){
     later2:function(){_fitView='welcome';fitWNext();},
     dismiss:function(){if(_fitView==='welcome'&&fitCardMet()){_fitView='home';renderFitness();}}};
   if(id==='hobbies')return {l:_t('הדברים שעושים לך טוב, ולאן הזמן שלך באמת הולך.'),
-    p:[_t('מוסיפים תחביב במילה אחת'),_t('מסמנים בכל פעם שעשית אותו'),_t('רואים לאורך שבועות מה מקבל מקום')],
+    p:[_t('מוסיפים תחביב במילה אחת'),_t('מסמנים בכל פעם שעשית אותו'),_t('רואים לאורך השבועות למה אתה מקדיש זמן')],
     go:_t('להוסיף תחביב ראשון'),later:_t('אחר כך'),
     go2:function(){hbWizOpen('');}};
   if(id==='insights')return {l:_t('שאלות עמוקות יותר על החיים, כשבא לך. אין פה חובה.'),
-    p:[_t('נושאים: אני, אנשים, החיים, העולם'),_t('שאלה אחת בכל פעם, בקצב שלך'),_t('התשובות נשמרות ונהיות תמונה של מי שאתה')],
+    p:[_t('נושאים: אני, אנשים, החיים, העולם'),_t('שאלה אחת בכל פעם, בקצב שלך'),_t('מהתשובות מצטיירת תמונה של מי שאתה')],
     go:_t('לבחור שאלה ראשונה'),later:_t('אחר כך')};
-  if(id==='people')return {l:_t('מי שחשובים לך, כדי שאף אחד לא ייעלם בין הימים.'),
+  if(id==='people')return {l:_t('מי שחשובים לך, כדי שלא תאבד קשר עם אף אחד.'),
     p:[_t('מוסיפים אדם, עם תמונה אם בא לך'),_t('תזכורת עדינה כשמזמן לא דיברתם'),_t('מי היה איתך, בכל סיכום ערב')],
     go:_t('להוסיף אדם ראשון'),later:_t('אחר כך'),
     go2:function(){_peopleView='edit-person';_personIdx=-1;renderPeople();}};
@@ -45093,7 +45808,7 @@ function renderSettings(){
      'onclick="sumRemToggle('+(_sr.on?'false':'true')+');renderSettings()">'+
        _t('בלי תזכורת')+'</button></div>';
   h+='<div class="set-sec"><div class="set-t">'+_t('מדינה')+'</div>'+
-     '<div class="set-s">'+_t('איזה מדף מחפשים בו מוצרים. לא חייב להיות המקום שבו נולדת.')+'</div></div>';
+     '<div class="set-s">'+_t('מאיזו מדינה לחפש מוצרים? לא חייבת להיות זו שבה נולדת.')+'</div></div>';
   var cc=appCountry(),ci,names=[];
   for(ci=0;ci<COUNTRIES.length;ci++)names.push({c:COUNTRIES[ci],n:countryName(COUNTRIES[ci])});
   names.sort(function(a,b){return a.n.localeCompare(b.n,APP_LOCALE);});
@@ -45327,11 +46042,11 @@ var GREETS;langOn(function(){GREETS={
   ],
   noon:[
     ''+_t('צהריים טובים')+'',''+_t('צהריים נעימים')+'',''+_t('המשך יום טוב')+'',''+_t('חצי יום מאחוריך')+'',
-    ''+_t('צהריים מוארים')+'',''+_t('שיהיה המשך יום מצוין')+'',''+_t('אמצע היום')+''
+    ''+_t('צהריים נפלאים')+'',''+_t('שיהיה המשך יום מצוין')+'',''+_t('אמצע היום')+''
   ],
   evening:[
     ''+_t('ערב טוב')+'',''+_t('ערב נעים')+'',''+_t('ערב שקט')+'',''+_t('סוף יום טוב')+'',
-    ''+_t('ערב רגוע')+'',''+_t('שיהיה ערב נעים')+'',''+_t('ערב מואר')+''
+    ''+_t('ערב רגוע')+'',''+_t('שיהיה ערב נעים')+'',''+_t('ערב נפלא')+''
   ],
   night:[
     ''+_t('לילה טוב')+'',''+_t('לילה שקט')+'',''+_t('לילה רגוע')+'',''+_t('זמן לנוח')+'',
@@ -45523,7 +46238,7 @@ function streakOpen(){
     '<div class="stk-row">'+days+'</div>'+
     '<div class="stk-note">'+_t('יום נספר כשסיכום היום שלו הושלם.')+' '+
     _t('יום אחד שפוספס לא שובר את הרצף: יום חסד שומר עליו, והוא חוזר אחרי שבעה סיכומים ברצף.')+'</div>'+
-    (s.graceYesterday&&s.n?'<div class="stk-today">'+_t('אתמול פוספס, ויום החסד שמר על הרצף.')+'</div>':'')+
+    (s.graceYesterday&&s.n?'<div class="stk-today">'+_t('פספסת אתמול, אבל יום החסד שמר על הרצף.')+'</div>':'')+
     (best>s.n?'<div class="stk-best">'+_t('הרצף הארוך ביותר שלך: {n} ימים.',{n:best})+'</div>':'')+
     (!s.today?'<div class="stk-today">'+(s.n?_t('היום עוד לא נספר. סיכום היום הערב ימשיך את הרצף.')
                                             :_t('סיכום היום הערב יתחיל רצף חדש.'))+'</div>':'')+
@@ -45882,10 +46597,10 @@ function hcmdMount(){
       '<svg viewBox="0 0 24 24"><path d="M12 3.5a2.8 2.8 0 0 1 2.8 2.8v5a2.8 2.8 0 0 1-5.6 0v-5A2.8 2.8 0 0 1 12 3.5z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3.5"/></svg></button>':'')+
     '<button class="hcmd-go" onclick="hcmdGo()" aria-label="'+_t('שלח')+'">'+
     '<svg viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg></button>'+
-    '</div><div id="hcmd-out"></div>';
+    '</div><div id="hcmd-out"></div><div id="ppm-out"></div>';
   var i=document.getElementById('hcmd-in');
   if(i&&v){i.value=v;rfmGrow(i);}
-  hcmdPaint();
+  hcmdPaint();ppmPaint();
 }
 langOn(hcmdMount);
 function hcmdTwo(n){return (n<10?'0':'')+n;}
@@ -45993,6 +46708,7 @@ function hcmdGo(){
   var el=document.getElementById('hcmd-in');
   var q=el?String(el.value).trim():'';
   if(q.length<2||_hcmd.busy)return;
+  ppmOffer(q,'ppm-out');
   _hcmd={busy:true,q:q,route:null,msg:'',done:null};
   if(!SYNC_SERVER){_hcmd.busy=false;_hcmd.msg=_t('אין חיבור כרגע.');hcmdPaint();return;}
   hcmdPaint();
@@ -46249,11 +46965,9 @@ function hchSetMode(m){
   /* the thumb goes first */
   if(sw){sw.classList.toggle('c',m==='chat');var b=sw.children;if(b.length===2){b[0].className=m==='chat'?'':'on';b[1].className=m==='chat'?'on':'';}}
   if(!hs||matchMedia('(prefers-reduced-motion: reduce)').matches){hchSync();if(m==='dial'){try{renderHomeGrid();}catch(e){}}return;}
-  /* a veil of blur rises, the views change beneath it, and it clears */
+  /* what shows dims away, the views change, and the other rises */
   clearTimeout(_hchT);
-  var v=document.getElementById('hch-veil');
-  if(!v){v=document.createElement('div');v.id='hch-veil';document.body.appendChild(v);}
-  v.classList.remove('off');void v.offsetWidth;v.classList.add('on');
+  hs.classList.remove('hch-in');void hs.offsetWidth;hs.classList.add('hch-out');
   /* Mip carries the change: from where he stands now to where he will stand */
   var from=m==='chat'?document.getElementById('bhelp'):document.getElementById('hch-mip'),fr=from&&from.getBoundingClientRect();
   var fly=null;
@@ -46261,6 +46975,7 @@ function hchSetMode(m){
     fly=document.createElement('div');fly.className='mip-fly';var S=170;fly.style.width=fly.style.height=S+'px';
     fly.style.transform='translate('+(fr.left+fr.width/2-S/2)+'px,'+(fr.top+fr.height/2-S/2)+'px) scale('+(fr.width/S)+')';
     document.body.appendChild(fly);from.style.visibility='hidden';
+    /* no trailing rings in flight: at the cap, growing from a fifth of his size, they read as a broken Mip */
     beemKit().then(function(K){try{K.mount(fly,{play:DOOR_BEEM.glad});}catch(e){}});
   }
   _hchT=setTimeout(function(){
@@ -46270,13 +46985,35 @@ function hchSetMode(m){
       var to=m==='chat'?document.getElementById('hch-mip'):document.getElementById('bhelp'),tr=to&&to.getBoundingClientRect();
       if(tr&&tr.width){to.style.visibility='hidden';var S=170;
         fly.style.transform='translate('+(tr.left+tr.width/2-S/2)+'px,'+(tr.top+tr.height/2-S/2)+'px) scale('+(tr.width/S)+')';
-        setTimeout(function(){to.style.visibility='';fly.classList.add('done');setTimeout(function(){fly.remove();},220);},620);}
+        /* 760, not 620: the rings land a beat after him, and the hand-over waits for them */
+        setTimeout(function(){to.style.visibility='';fly.classList.add('done');setTimeout(function(){fly.remove();},220);},760);}
       else fly.remove();
     }
-    requestAnimationFrame(function(){v.classList.remove('on');v.classList.add('off');});
-  },240);
+    hs.classList.remove('hch-out');void hs.offsetWidth;hs.classList.add('hch-in');
+    _hchT=setTimeout(function(){hs.classList.remove('hch-in');},420);
+  },210);
 }
-function hchLoad(){
+/* The rings come after the body. The engine already lags them behind HIS
+   motion inside his box (LAG, from beem-soft), but a box moved by CSS
+   carries body and rings together as one stiff picture. So each frame the
+   box's own travel is handed back to the rings as a debt, in the engine's
+   1024 units, and the engine pays it off at its own pace - capped by its
+   LAGCAP, so a fast throw drags them by the same 15px the sheet allows. */
+function mipTrail(el,getB,idleStop){
+  if(el._trail)return;
+  var last=null,moved=performance.now();
+  (function f(){
+    if(!el.isConnected){el._trail=0;return;}
+    var b=getB(),r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+    if(b&&b.rx&&last&&r.width){var k=1024/r.width,dx=(cx-last.x)*k,dy=(cy-last.y)*k;
+      if(dx||dy){moved=performance.now();for(var i=0;i<3;i++){b.rx[i]-=dx;b.ry[i]-=dy;}}}
+    last={x:cx,y:cy};
+    /* a box that has stood still for three seconds has nothing left to hand
+       on - counted in time, not frames, which a 120Hz phone would halve */
+    if(idleStop&&performance.now()-moved>3000){el._trail=0;return;}
+    el._trail=requestAnimationFrame(f);
+  })();
+}function hchLoad(){
   var o=null;try{o=JSON.parse(localStorage.getItem(HCH_KEY)||'null');}catch(e){}
   if(!o||o.day!==todayStr()||!o.t)o={day:todayStr(),t:{}};
   return o;
@@ -46320,14 +47057,26 @@ function hchBuild(){
         '<div class="hch-row" id="hch-row"></div></div>';
     beemKit().then(function(K){var el=document.getElementById('hch-mip');if(el&&!el.firstChild)_hch.mip=K.mount(el,{play:DOOR_BEEM.smile});}).catch(function(){});
   }
-  var tb=document.querySelector('.tabbar');
-  if(tb){var r=tb.getBoundingClientRect();if(r.height)w.style.setProperty('--hch-bottom',Math.max(0,innerHeight-r.top)+'px');}
+  hchFitBottom();
   hchRowPaint();hchTilesPaint();
   if(_hch.area){var top=hchTopTile(_hch.area);var hd=document.getElementById('hch-head');hd.innerHTML='';if(top)hd.appendChild(top);
     document.getElementById('hch-areas').classList.add('folded');}
   w.classList.toggle('in-area',!!_hch.area);
   hchFill();
 }
+/* The chat ends where the Better/Me bar begins. Measured from the bar, but
+   only a measure a resting bar can give is believed: caught while the
+   keyboard was up or the page had scrolled, it read the bar near the TOP,
+   and the chat became a strip a hundred pixels tall - the writing bar over
+   the switch, the tiles and suggestions above the screen (29.10, his phone).
+   Anything outside 40-200px keeps the CSS default instead. */
+function hchFitBottom(){
+  var w=document.getElementById('hch'),tb=document.querySelector('.tabbar');if(!w)return;
+  var r=tb&&tb.getBoundingClientRect(),b=r&&r.height?innerHeight-r.top:0;
+  if(b>=40&&b<=200)w.style.setProperty('--hch-bottom',Math.round(b)+'px');
+  else w.style.removeProperty('--hch-bottom');
+}
+addEventListener('resize',function(){if(document.body.classList.contains('hch-chat')&&!document.body.classList.contains('kb-open'))hchFitBottom();});
 function hchRowPaint(){
   var row=document.getElementById('hch-row');if(!row)return;
   var old=document.getElementById('hch-in'),v=old?old.value:'';
@@ -46484,6 +47233,7 @@ function hchSend(text){
   var el=document.getElementById('hch-in');
   var q=String(text!=null?text:(el?el.value:'')).trim();
   if(q.length<2||_hch.busy)return;
+  ppmOffer(q,'ppm-hch');
   if(el&&text==null){el.value='';rfmGrow(el);}
   var k=_hch.area;
   if(k==='nutrition'){hchCoach(q);return;}
