@@ -54,16 +54,34 @@ while ((m = re.exec(src))) {
   keys.add(m[1].replace(/\\n/g, '\n').replace(/\\t/g, '\t')
     .replace(/\\'/g, "'").replace(/\\\\/g, '\\'));
 }
+/* The literal calls are not every key. A list drawn through _t(variable) -
+   the training levels, the goals - is keyed by its data, and the template
+   is where those keys are gathered. Reading only the literal calls reported
+   "not in the app" for every one of them, which is a guard crying wolf. */
+try { for (const k of Object.keys(JSON.parse(fs.readFileSync('data/lang/_template.json', 'utf8')))) keys.add(k); } catch (e) {}
 
 const holes = t => (t.match(/\{(\w+)\}/g) || []).sort().join(',');
 const problems = [];
 
+/* A plural key is an object of categories, in the masculine and in the
+   feminine alike: the two must name the same categories, and each category
+   is then judged as a sentence of its own. */
+const flat = [];
 for (const [k, v] of Object.entries(pairs)) {
+  const masc = dict ? dict[k] : k;
+  if (masc && typeof masc === 'object' && v && typeof v === 'object') {
+    const a = Object.keys(masc).sort().join(','), b = Object.keys(v).sort().join(',');
+    if (a !== b) { problems.push(['plural categories differ: ' + a + ' vs ' + b, k]); continue; }
+    if (JSON.stringify(masc) === JSON.stringify(v)) problems.push(['feminine is identical to the masculine', k]);
+    for (const c of Object.keys(v)) if (v[c] !== masc[c]) flat.push([k, v[c], masc[c]]);
+  } else flat.push([k, v, masc]);
+}
+
+for (const [k, v, masc] of flat) {
   /* What the feminine form is compared AGAINST. In Hebrew the key IS the
      masculine sentence; in every other language the masculine lives in that
      language's dictionary, and comparing a Spanish form to a Hebrew key would
      report nonsense in both directions. */
-  const masc = dict ? dict[k] : k;
 
   if (/\\u[0-9a-fA-F]{4}/.test(k)) problems.push(['escape in key', k]);
   if (!keys.has(k)) problems.push(['key is not in the app', k]);
