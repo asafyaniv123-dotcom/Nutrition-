@@ -3345,7 +3345,11 @@ html[dir=ltr] .swipe-trash:not(.on){transform:translate(140%,-50%) scale(.8)}
 .ppl-tf{margin-inline-end:-8px;display:block}
 .ppl-tf:first-child{margin-inline-end:0}
 .ppl-tf img,.ppl-tf>div{border:2px solid #fdf0eb}
-.ppl-back{background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0 0 6px;display:block}
+/* the raised pill every back button is (fit-back, the header's home), not a bare text link (29.10) */
+.ppl-back{display:inline-flex;align-items:center;gap:4px;border:none;border-radius:20px;padding:6px 13px;margin:0 0 12px;font-family:inherit;
+  font-size:12px;font-weight:700;color:var(--nu-muted,#6d675e);background:var(--nu-ground,#e9e7e3);cursor:pointer;
+  box-shadow:-3px -3px 6px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 8px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.ppl-back:active{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .ppl-grp{font-size:10px;letter-spacing:.1em;font-weight:800;color:var(--terra-700);margin:14px 2px 7px}
 .ppl-grp:first-child{margin-top:0}
 .ep-av{display:flex;align-items:center;gap:14px;margin-bottom:16px}
@@ -46698,14 +46702,26 @@ function hchBuild(){
         '<div class="hch-row" id="hch-row"></div></div>';
     beemKit().then(function(K){var el=document.getElementById('hch-mip');if(el&&!el.firstChild)_hch.mip=K.mount(el,{play:DOOR_BEEM.smile});}).catch(function(){});
   }
-  var tb=document.querySelector('.tabbar');
-  if(tb){var r=tb.getBoundingClientRect();if(r.height)w.style.setProperty('--hch-bottom',Math.max(0,innerHeight-r.top)+'px');}
+  hchFitBottom();
   hchRowPaint();hchTilesPaint();
   if(_hch.area){var top=hchTopTile(_hch.area);var hd=document.getElementById('hch-head');hd.innerHTML='';if(top)hd.appendChild(top);
     document.getElementById('hch-areas').classList.add('folded');}
   w.classList.toggle('in-area',!!_hch.area);
   hchFill();
 }
+/* The chat ends where the Better/Me bar begins. Measured from the bar, but
+   only a measure a resting bar can give is believed: caught while the
+   keyboard was up or the page had scrolled, it read the bar near the TOP,
+   and the chat became a strip a hundred pixels tall - the writing bar over
+   the switch, the tiles and suggestions above the screen (29.10, his phone).
+   Anything outside 40-200px keeps the CSS default instead. */
+function hchFitBottom(){
+  var w=document.getElementById('hch'),tb=document.querySelector('.tabbar');if(!w)return;
+  var r=tb&&tb.getBoundingClientRect(),b=r&&r.height?innerHeight-r.top:0;
+  if(b>=40&&b<=200)w.style.setProperty('--hch-bottom',Math.round(b)+'px');
+  else w.style.removeProperty('--hch-bottom');
+}
+addEventListener('resize',function(){if(document.body.classList.contains('hch-chat')&&!document.body.classList.contains('kb-open'))hchFitBottom();});
 function hchRowPaint(){
   var row=document.getElementById('hch-row');if(!row)return;
   var old=document.getElementById('hch-in'),v=old?old.value:'';
