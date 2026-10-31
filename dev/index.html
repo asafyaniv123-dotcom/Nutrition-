@@ -16701,8 +16701,11 @@ function micPaint(){
   if(b)b.className=(b.getAttribute('data-base')||'one-ic mic-btn')+(_micState==='idle'?'':' '+_micState);
   var e=document.getElementById('mic-err');
   if(e)e.textContent=_micErr||'';
+  /* no error line on this screen (the journal): say it out loud once */
+  else if(_micErr&&_micErr!==_micSaid){_micSaid=_micErr;showToast(_micErr);}
+  if(!_micErr)_micSaid='';
 }
-var _micErr='';
+var _micErr='',_micSaid='';
 function micFail(){
   _micErr=''+_t('התמלול נכשל')+'';
   micReset();
@@ -16780,15 +16783,17 @@ function micToggle(box,btn,after,mode){
     _micRec.onstop=function(){
       var blob=new Blob(_micChunks,{type:(_micRec&&_micRec.mimeType)||mt||'audio/webm'});
       if(_micStream){try{_micStream.getTracks().forEach(function(t){t.stop();});}catch(e){}_micStream=null;}
-      if(!blob.size){micReset();return;}
+      if(!blob.size){micFail();return;}
       micSend(blob);
     };
     _micRec.onerror=micFail;
     _micState='listening';micPaint();
     try{_micRec.start();}catch(e){micFail();}
   },function(){
-    /* refused the microphone, or there is none. Nothing to say that the
-       browser's own prompt did not already say. */
+    /* refused the microphone, or there is none. On the phone the refusal is
+       remembered and no prompt comes again, so the app has to say where to
+       give it back. */
+    _micErr=''+_t('אין גישה למיקרופון. אפשר לאשר אותה בהגדרות של הטלפון.')+'';
     micReset();
   });
 }
