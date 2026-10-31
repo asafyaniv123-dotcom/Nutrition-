@@ -45885,9 +45885,53 @@ function renderSettings(){
   h+='<div class="set-langs"><button class="set-lang'+(sndOn()?' on':'')+'" onclick="sndToggle()">'+_t('מופעל')+'</button>'+
      '<button class="set-lang'+(sndOn()?'':' on')+'" onclick="sndToggle()">'+_t('מושתק')+'</button></div>';
   h+='<div id="set-backup"></div>';
+  /* WRITE TO US. Last, under the backup: it is not a setting, and it should
+     not push one down. Same row as "your health", so it reads as part of
+     this sheet rather than as a banner laid over it. */
+  h+='<button class="set-hl" onclick="fbOpen()"><span><b>'+_t('כתוב לנו')+'</b><i>'+_t('מה מבלבל, מה חסר, מה טוב. אנחנו קוראים כל הודעה.')+'</i></span>'+
+     '<em>&#8249;</em></button>';
   v.innerHTML=h;
   renderBackup();
 }
+/* ── WRITE TO US ──
+   A letter the person writes in their own mail app, to the address on the
+   privacy page. Below a blank space for their words, four lines that tell us
+   WHICH app they were in - the copy and its build, the language, the kind of
+   phone and how the app was opened, the screen - and nothing they ever wrote
+   into it: no name, no entries, nothing stored.
+
+   The build is the document's own Last-Modified, which Pages sets on every
+   deploy: the file carries no version number, and a second one kept by hand
+   is a number that goes stale. The subject and the technical lines stay
+   English because they are read by us, and one subject keeps every language
+   in one thread of the inbox; the sentence above them is the reader's.
+
+   pplOpenExt is what the people sheet opens WhatsApp and the dialer with: in
+   the phone shells a non-app address is handed to the system, which is what
+   makes mailto: open Mail there rather than nothing. */
+var FB_MAIL='hello.betterme.app@gmail.com';   // i18n-exempt: an address
+function fbTech(){
+  var C=window.Capacitor,nat=!!(C&&C.isNativePlatform&&C.isNativePlatform()),ua=navigator.userAgent||'',m;
+  var os=(/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1))?'iOS':/Android/.test(ua)?'Android':'desktop';   // i18n-exempt: read by us, not shown
+  if(os==='iOS'&&(m=ua.match(/OS (\d+)[_.](\d+)/)))os+=' '+m[1]+'.'+m[2];
+  else if(os==='Android'&&(m=ua.match(/Android (\d+(?:\.\d+)?)/)))os+=' '+m[1];
+  var sa=!!((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true);
+  var how=nat?'native shell':sa?'home screen':'browser';   // i18n-exempt: read by us, not shown
+  /* with no Last-Modified header (a local server, maybe the shell) the
+     browser answers "now", which is not a build: then say nothing */
+  var lm=new Date(document.lastModified),lt=lm.getTime();
+  var built=(isNaN(lt)||Math.abs(Date.now()-lt)<120000)?'':lm.toISOString().slice(0,16).replace('T',' ')+' UTC';   // i18n-exempt: read by us, not shown
+  return ['App: Olimei '+(window.__DEV__?'dev':'stable')+(built?', built '+built:''),   // i18n-exempt: read by us, not shown
+    'Language: '+appLang(),   // i18n-exempt: read by us, not shown
+    'Platform: '+os+', '+how,   // i18n-exempt: read by us, not shown
+    'Screen: '+screen.width+'x'+screen.height+' @'+(window.devicePixelRatio||1)+'x, window '+innerWidth+'x'+innerHeight   // i18n-exempt: read by us, not shown
+  ].join('\n');
+}
+function fbMailUrl(){
+  var body='\n\n\n\n————————\n'+_t('מתחת לקו: פרטים טכניים שעוזרים לנו להבין, בלי שום מידע אישי.')+'\n'+fbTech()+'\n';
+  return 'mailto:'+FB_MAIL+'?subject='+encodeURIComponent('Olimei feedback')+'&body='+encodeURIComponent(body);   // i18n-exempt: one subject for every language, read by us
+}
+function fbOpen(){pplOpenExt(fbMailUrl());}
 /* ── YOUR HEALTH ──
    Seven conditions that change what the app suggests. It never diagnoses and
    never prescribes: each changes a DEFAULT, says why, and names where the
