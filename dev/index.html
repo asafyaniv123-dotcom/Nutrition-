@@ -3373,6 +3373,9 @@ html[dir=ltr] .swipe-trash:not(.on){transform:translate(140%,-50%) scale(.8)}
 .jb-ic{flex:none;width:40px;height:40px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;background:var(--nu-ground);
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
 .jb-ic svg{width:18px;height:18px;fill:none;stroke:var(--nu-ink);stroke-width:1.8;stroke-linecap:round}
+/* while search is open the magnifier stays pressed in, so it is clear where you are and how to leave (31.10) */
+.jb-ic.on{box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit)}
+.jb-ic.on svg{stroke-width:2.2}
 .jb-wk{display:flex;align-items:center;gap:10px;margin:2px 2px 0;font-size:12.5px;font-weight:700;color:var(--nu-muted)}
 .jb-dots{display:flex;gap:7px}
 .jb-dots i{width:9px;height:9px;border-radius:50%;background:#d8d2ca;box-shadow:inset 1px 1px 2px var(--nu-shade)}
@@ -3392,6 +3395,10 @@ html[dir=ltr] .swipe-trash:not(.on){transform:translate(140%,-50%) scale(.8)}
 [dir=rtl] .jb-edge{border-radius:3px 0 0 3px}
 .jb-dt{font-family:"Frank Ruhl Libre",serif;font-size:19px;font-weight:700;display:flex;gap:12px;align-items:baseline;height:38px;color:var(--nu-ink)}
 .jb-dt small{font-family:Assistant,sans-serif;font-size:12.5px;color:var(--nu-muted);font-weight:700}
+/* dictation, at the far end of today's date line: raised like the page's other round buttons */
+.jb-mic{margin-inline-start:auto;align-self:center;flex:none;width:34px;height:34px;border:none;border-radius:50%;cursor:pointer;background:var(--jb-paper);color:var(--nu-ink);
+  box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+.jb-mic.listening{box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 /* the writing: one line of text per rule, the rules scroll with it */
 .jb-wr{display:block;width:100%;height:calc(var(--jb-lh)*12);border:none;outline:none;resize:none;padding:0;margin:0;
   font-family:"Frank Ruhl Libre",serif;font-size:18px;line-height:var(--jb-lh);color:var(--nu-ink);white-space:pre-wrap;overflow-y:auto;
@@ -16685,7 +16692,7 @@ var _micState='idle',_micRec=null,_micChunks=null,_micStream=null;
 /* Where the words go and what happens next. Nutrition's box is the default,
    exactly as it always was; the home bar names its own box, its own button,
    and asks for the sentence to be sent as soon as it is written down. */
-var _micBox='fdb-q',_micBtn='mic-btn',_micAfter=null;
+var _micBox='fdb-q',_micBtn='mic-btn',_micAfter=null,_micMode='';
 function micCan(){
   return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder);
 }
@@ -16726,12 +16733,21 @@ function micSend(blob){
     fetch(SYNC_SERVER+'/transcribe'+meterQ(),{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({mime:(blob.type||'audio/webm').split(';')[0],data:b64,lang:appLang()})
+      body:JSON.stringify({mime:(blob.type||'audio/webm').split(';')[0],data:b64,lang:appLang(),mode:_micMode||undefined})
     }).then(function(r){return r.json();}).then(function(j){
       var said=(j&&j.text||'').trim();
       if(!said){micFail();return;}
       var box=document.getElementById(_micBox);
-      if(box){
+      if(box&&_micMode==='prose'){
+        /* where the caret is, as typing would put it - a page is not a box that
+           only grows at the end - with one space or line break to its left */
+        var at=typeof box.selectionStart==='number'?box.selectionStart:box.value.length,pre=box.value.slice(0,at),post=box.value.slice(at);
+        var glue=!pre||/\s$/.test(pre)?'':' ';
+        box.value=pre+glue+said+(post&&!/^\s/.test(post)?' ':'')+post;
+        var c=(pre+glue+said).length;try{box.setSelectionRange(c,c);}catch(e){}
+        if(box.id==='jrnl-text')jrnlType(box);
+      }
+      else if(box){
         box.value=(box.value?box.value.replace(/\s+$/,'')+' ':'')+said;
         /* the same two calls typing makes, so the parse button and the box's
            own height do not care where the words came from */
@@ -16749,11 +16765,11 @@ function micStop(){
   if(_micRec&&_micState==='listening'){try{_micRec.stop();}catch(e){micFail();}}
   else micReset();
 }
-function micToggle(box,btn,after){
+function micToggle(box,btn,after,mode){
   if(_micState==='listening'){micStop();return;}
   if(_micState==='sending')return;
   if(!micCan())return;
-  _micBox=box||'fdb-q';_micBtn=btn||'mic-btn';_micAfter=after||null;
+  _micBox=box||'fdb-q';_micBtn=btn||'mic-btn';_micAfter=after||null;_micMode=mode||'';
   _micErr='';
   navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
     _micStream=stream;_micChunks=[];
@@ -36527,7 +36543,9 @@ function jbLabel(d){
 function jbPageHTML(k,d){
   var b=jbCur(),p='jb-'+(b.paper||'lines'),t=loadJournal(d),dt=new Date(d+'T12:00:00');
   return '<div class="jb-card'+(k===1?' jb-c1':k===2?' jb-c2':'')+'" id="jb'+k+'" style="--c:'+b.c+';z-index:'+(10-k)+'"><i class="jb-edge"></i>'+
-    '<div class="jb-dt"><span>'+esc(jbLabel(d))+'</span><small>'+esc(dfmt(dt,{day:'numeric',month:'long'}))+'</small></div>'+
+    '<div class="jb-dt"><span>'+esc(jbLabel(d))+'</span><small>'+esc(dfmt(dt,{day:'numeric',month:'long'}))+'</small>'+
+      (k===0&&micCan()?'<button class="jb-mic mic-btn" id="jb-mic" data-base="jb-mic mic-btn" onclick="micToggle(\'jrnl-text\',\'jb-mic\',null,\'prose\')" aria-label="'+esc(_t('הכתבה'))+'">'+
+        '<svg viewBox="0 0 24 24"><path d="M12 3.5a2.8 2.8 0 0 1 2.8 2.8v5a2.8 2.8 0 0 1-5.6 0v-5A2.8 2.8 0 0 1 12 3.5z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3.5"/></svg></button>':'')+'</div>'+
     (k===0?'<textarea id="jrnl-text" class="jb-wr '+p+'" placeholder="'+esc(d===todayStr()?jbSparks()[0]:_t('מה היה ביום הזה?'))+'" oninput="jrnlType(this)">'+esc(t)+'</textarea>'
           :'<div class="jb-wr '+p+(t?'':' jb-empty')+'">'+(t?esc(t):esc(_t('לא נכתב ביום הזה')))+'</div>')+'</div>';
 }
@@ -36539,7 +36557,7 @@ function renderJournal(){
   for(i=0;i<books.length;i++)
     h+='<button class="jb-nb'+(books[i].id===_jrnlNb?' on':'')+'" style="--c:'+books[i].c+'" onclick="jbOpen(\''+books[i].id+'\')"><i></i>'+esc(jbName(books[i]))+'</button>';
   h+='<button class="jb-nb" onclick="jbNew()">'+_t('+ מחברת')+'</button></div>';
-  h+='<button class="jb-ic" onclick="_jbSearch=!_jbSearch;renderJournal()" aria-label="'+esc(_t('חיפוש'))+'"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg></button>';
+  h+='<button class="jb-ic'+(_jbSearch?' on':'')+'" aria-pressed="'+_jbSearch+'" onclick="_jbSearch=!_jbSearch;renderJournal()" aria-label="'+esc(_t('חיפוש'))+'"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg></button>';
   h+='<button class="jb-ic" onclick="jbMenu()" aria-label="'+esc(_t('אפשרויות|שעון'))+'"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/></svg></button></div>';
   if(_jbSearch){
     h+='<div class="jrnl-srch"><input class="jrnl-in" id="jrnl-q" type="search" placeholder="'+_t("חפש מילה בכל מה שכתבת…")+'" value="'+esc(_jrnlQ)+'" oninput="jrnlSearch(this.value)"></div>';
@@ -36573,6 +36591,9 @@ function jbUseSpark(){
   var sp=jbSparks(),q=sp[_jbSi%sp.length];
   el.value=el.value.replace(/\s+$/,'')?el.value.replace(/\s+$/,'')+'\n'+q+'\n':q+'\n';
   saveJournal(_jrnlDate,el.value);el.focus();
+  /* the answer goes UNDER the question: on the phone focus() left the caret at
+     the start, so everything written pushed the question along ahead of it (31.10) */
+  var n=el.value.length;try{el.setSelectionRange(n,n);}catch(e){}el.scrollTop=el.scrollHeight;
 }
 function jbPaper(p){var a=jbBooks(),i;for(i=0;i<a.length;i++)if(a[i].id===_jrnlNb)a[i].paper=p;jbSave(a);jrnlFlush();renderJournal();}
 function jbGo(n){jrnlFlush();_jrnlDate=jbDay(_jrnlDate,n);_jbSi=0;renderJournal();}

@@ -2650,13 +2650,34 @@ async function routeRequest(req, env, ctx, M) {
          that "helpfully" turns speech into a tidy food list here would be
          guessing twice on the same words with nobody able to see the first
          guess. */
-      const SYSTEM =
-        'You transcribe a short spoken note about food, in ' + lang + '.\n' +
-        '- Write exactly what was said, in the same language it was said in.\n' +
-        '- Keep numbers and units as spoken.\n' +
-        '- No punctuation you did not hear, no headings, no preamble, no\n' +
-        '  commentary, and never an answer to what was said.\n' +
-        '- If there is no speech, return an empty string.';
+      /* 'prose' is dictation into the journal (31 Oct): there the words are
+         the page, so they get the punctuation a person would WRITE - full
+         stops, commas, question and exclamation marks, a new paragraph where
+         the thought turns - while every word stays exactly as spoken. The
+         default stays the food note, where punctuation is noise for /parse. */
+      const prose = b && b.mode === 'prose';
+      const SYSTEM = prose
+        ? 'You transcribe a spoken journal entry, in ' + lang + '.\n' +
+          '- Write exactly the words that were said, in the same language. Do not\n' +
+          '  add, drop, reorder, correct or summarise words; keep filler words\n' +
+          '  only when they carry meaning.\n' +
+          '- Punctuate it the way the speaker would WRITE it: full stops, commas,\n' +
+          '  question marks for questions, exclamation marks where the voice\n' +
+          '  exclaims, quotation marks for quoted speech, and the punctuation\n' +
+          '  conventions of that language and script (e.g. 。、？ in Japanese and\n' +
+          '  Chinese, ، ؟ in Arabic, ¿ ¡ in Spanish, a space before ? ! : ; in\n' +
+          '  French).\n' +
+          '- Start a new paragraph only where the speaker clearly moves to a new\n' +
+          '  subject.\n' +
+          '- No headings, no preamble, no commentary, and never an answer to what\n' +
+          '  was said.\n' +
+          '- If there is no speech, return an empty string.'
+        : 'You transcribe a short spoken note about food, in ' + lang + '.\n' +
+          '- Write exactly what was said, in the same language it was said in.\n' +
+          '- Keep numbers and units as spoken.\n' +
+          '- No punctuation you did not hear, no headings, no preamble, no\n' +
+          '  commentary, and never an answer to what was said.\n' +
+          '- If there is no speech, return an empty string.';
 
       let r;
       try {
@@ -2669,7 +2690,8 @@ async function routeRequest(req, env, ctx, M) {
               systemInstruction: { parts: [{ text: SYSTEM }] },
               contents: [{ role: 'user', parts: [{ inlineData: { mimeType: mime, data } }] }],
               generationConfig: {
-                maxOutputTokens: 700,
+                /* a journal entry runs to minutes, a food note to a sentence */
+                maxOutputTokens: prose ? 3000 : 700,
                 temperature: 0,
                 thinkingConfig: { thinkingBudget: 0 },
               },
