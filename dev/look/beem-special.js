@@ -293,7 +293,7 @@ var EASE = {
         this.bk = mk(1); this.fw = mk(4);
       }
       var Wc = this.cv.width, kp = Wc/VB;
-      [this.bk, this.fw].forEach(function(c){ if (c.width !== Wc){ c.width = c.height = Wc; }
+      [this.bk, this.fw].forEach(function(c){ if (c.width !== Wc || c.height !== Wc){ c.width = c.height = Wc; }
         c.getContext('2d').clearRect(0, 0, Wc, Wc); c.style.opacity = 1; });
       var br = 1 + this.breathe[0]*Math.sin(this.t*2*Math.PI/this.breathe[1]), list = [], D = 3*VB;
       for (i = 0; i < 3; i++){
@@ -354,7 +354,7 @@ var EASE = {
       this.hist.unshift(this.bodyEl.style.transform); if (this.hist.length > 30) this.hist.pop();
       for (i = 0; i < 5; i++){
         var gc = this.gh[i];
-        if (gc.width !== this.cv.width){ gc.width = gc.height = this.cv.width;
+        if (gc.width !== this.cv.width || gc.height !== this.cv.width){ gc.width = gc.height = this.cv.width;
           gc.getContext('2d').drawImage(EB, 0, 0, gc.width, gc.width); }
         gc.style.transform = this.hist[Math.min(this.hist.length - 1, (i + 1)*4)];
         gc.style.opacity = (f.ghosts*[.42, .3, .2, .13, .07][i]).toFixed(3);
