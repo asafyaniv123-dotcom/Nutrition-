@@ -20879,7 +20879,8 @@ function summaryBodyHTML(dateStr){
     h+='</div></div>';
   }
 
-  if(sum.kcal!==undefined&&sumSecOn('food')){
+  /* only a day something was eaten or drunk on: zeros are not a fact about it */
+  if(sum.kcal!==undefined&&(sum.kcal>0||sum.water>0)&&sumSecOn('food')){
   var kp=Math.min(100,Math.round(sum.kcal/TARGETS.kcal*100)),pp2=Math.min(100,Math.round(sum.p/TARGETS.p*100)),cp3=Math.min(100,Math.round(sum.c/TARGETS.c*100)),fp2=Math.min(100,Math.round(sum.f/TARGETS.f*100));
   h+='<div class="sm2-nut"><div class="sm2-pz-l">'+_t('תזונה')+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
   var smb=[{v:nfmt(sum.kcal),pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))'},{v:fmtGrams(sum.p),pct:pp2,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)'},{v:fmtGrams(sum.c),pct:cp3,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)'},{v:fmtGrams(sum.f),pct:fp2,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)'}];
@@ -20935,8 +20936,8 @@ function summaryBodyHTML(dateStr){
 
   /* What the person wrote by themselves, so it carries no question label. */
   if(jrnl&&jrnl.trim()){
-    var lines=jrnl.split('\n'),jh='';
-    for(i=0;i<lines.length;i++)if(lines[i].trim())jh+='<p>'+esc(lines[i])+'</p>';
+    var lines=jrnlOwnLines(jrnl),jh='';
+    for(i=0;i<lines.length;i++)jh+='<p>'+esc(lines[i])+'</p>';
     if(jh)h+='<section class="sm2-jr"><h4>'+_t('יומן')+'</h4>'+jh+'</section>';
   }
   var _rfm=rfmLoad(dateStr);
@@ -36539,6 +36540,15 @@ function jbSparks(){
   return [_t('מה עובר לך בראש היום?'),_t('מה הצחיק אותך היום?'),_t('מה היה הרגע הכי טוב היום?'),_t('מה היית רוצה לזכור מהיום הזה?')];
 }
 var _jbSi=0,_jbSearch=false;
+/* every question the page can offer, in any notebook: a line that is one of
+   these is the app's prompt, not her writing */
+var JB_SPARK_KEYS=['מה עובר לך בראש היום?','מה הצחיק אותך היום?','מה היה הרגע הכי טוב היום?','מה היית רוצה לזכור מהיום הזה?',
+  'על מה אתה מודה היום?','מי עשה לך טוב השבוע?','איזה דבר קטן שימח אותך היום?','מה חלמת הלילה?','איזה רעיון לא עוזב אותך?',
+  'מה היית רוצה להגיד לעצמך בעוד שנה?'];   // i18n-exempt: keys, compared - shown only through _t in jbSparks
+function jrnlOwnLines(t){
+  var ask={},i;for(i=0;i<JB_SPARK_KEYS.length;i++){ask[JB_SPARK_KEYS[i]]=1;ask[_t(JB_SPARK_KEYS[i]).trim()]=1;}
+  return String(t||'').split('\n').filter(function(l){l=l.trim();return l&&!ask[l];});
+}
 function jbDay(d,n){var x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return dayStr(x);}
 function jbLabel(d){
   var t=todayStr();
