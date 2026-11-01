@@ -736,6 +736,8 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   font-size:13px;color:var(--terra-700)}
 .co-pc{display:inline-block;margin-inline-start:7px;font-size:11px;font-weight:700;color:var(--nu-muted,#6d675e)}
 .co-err{align-self:center;font-size:12.5px;color:var(--terra-700);padding:6px}
+.co-retry{margin-inline-start:6px;border:none;border-radius:999px;padding:5px 12px;font:inherit;font-weight:800;cursor:pointer;color:var(--nu-ink,#4a453f);
+  background:var(--nu-ground,#e9e7e3);box-shadow:-2px -2px 5px var(--nu-lit,#fff),2px 3px 7px var(--nu-shade-soft,rgba(176,168,156,.28))}
 .co-left{align-self:stretch;display:flex;flex-wrap:wrap;gap:4px 12px;padding:10px 13px;border-radius:13px;
   box-shadow:inset 1px 2px 4px var(--nu-shade,rgba(176,168,156,.44)),inset -1px -1px 3px var(--nu-lit,rgba(255,255,255,.95))}
 .co-left-t{flex:0 0 100%;font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--nu-muted,#6d675e)}
@@ -15407,7 +15409,7 @@ function loadCoach(d){
 function saveCoach(d,o){
   try{o.turns=o.turns.slice(-60);localStorage.setItem(COACH_KEY+d,JSON.stringify(o));}catch(e){}
 }
-var _coachBusy=false,_coachErr='',_coachPics=[];
+var _coachBusy=false,_coachErr='',_coachPics=[],_coachRetry=null;
 /* WHAT IS LEFT, COMPUTED HERE. The model is told never to total anything, so
    this is the only place the four figures come from - which is why they
    cannot disagree with themselves. */
@@ -15602,7 +15604,7 @@ function coachPost(d,text,pics,rec,ed){
   for(var q=0;q<picTurns.length;q++){var im=b64(urls[q]);if(im)histImages.push({h:picTurns[q].h,mime:im.mime,data:im.data});}
   var dispImg=disp&&disp.key?b64(urls[urls.length-1]):null;
 
-  fetch(SYNC_SERVER+'/coach'+meterQ(),{
+  var _coOpts={
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
       day:d,lang:appLang(),units:APP_UNITS,
@@ -15627,7 +15629,10 @@ function coachPost(d,text,pics,rec,ed){
       corrections_recent:corrRecent(),
       images:pics.map(function(p){return{mime:'image/jpeg',data:p.split(',')[1]||''};})
     })
-  }).then(function(r){return r.json();}).then(function(j){
+  };
+  _coachRetry=null;
+  (function coGo(left){
+  fetch(SYNC_SERVER+'/coach'+meterQ(),_coOpts).then(function(r){if(r.status>=500)throw new Error(String(r.status));return r.json();}).then(function(j){
     if(j&&j.ok&&j.dispute)coachDisputeLog(d,j.dispute,text,disp);
     _coachBusy=false;
     if(!j||!j.ok){
@@ -15670,8 +15675,13 @@ function coachPost(d,text,pics,rec,ed){
     /* the whole screen, because the bars above it have just moved */
     render();
   },function(){
-    _coachBusy=false;_coachErr=''+_t('לא הצלחתי לענות כרגע.')+'';coachPaint();
+    /* lost on the way: once more, quietly; then the same request on a tap */
+    if(left>0){setTimeout(function(){coGo(left-1);},1500);return;}
+    _coachBusy=false;_coachErr=''+_t('לא הצלחתי לענות כרגע.')+'';
+    _coachRetry=function(){_coachRetry=null;_coachBusy=true;_coachErr='';coachPaint();coGo(1);};
+    coachPaint();
   });
+  })(1);
   });
 }
 /* ── "THAT'S WRONG" ──
@@ -16504,7 +16514,8 @@ function coachInnerHTML(){
     }
   }
   if(_coachBusy)h+='<div class="co-a co-wait">&hellip;</div>';
-  if(_coachErr)h+='<div class="co-err">'+esc(_coachErr)+'</div>';
+  if(_coachErr)h+='<div class="co-err">'+esc(_coachErr)+
+    (_coachRetry?' <button class="co-retry" onclick="_coachRetry&&_coachRetry()">'+_t('נסה שוב')+'</button>':'')+'</div>';
   h+='</div></div>';
   if(_coachPics.length){
     h+='<div class="co-strip">';
@@ -33771,6 +33782,21 @@ function sumRemSetTime(v){
 // and works in both copies. They hold separate tokens, so a dev experiment
 // never writes into the real app's steps.
 var SYNC_SERVER='https://nutrition-push.nutrition-push.workers.dev';
+/* A dropped connection, or a 5xx, gets ONE more try after 1.5 s - only for the
+   AI routes, which write nothing on the server (the app applies the answer),
+   so resending cannot record anything twice. A request the app cancelled
+   itself stays cancelled. (1 Nov: the coach and 21 others gave up at once.) */
+var SRV_RETRY=/^\/(route|match|estimate|week|vision|transcribe|say|plan|parse|off|cross|beem|ask|analyze|act|schedule|see)(\?|$)/;
+(function(){
+  var F0=window.fetch;if(!F0)return;
+  window.fetch=function(u,o){
+    var url=String(u&&u.url||u),self=this,args=arguments;
+    if(!SYNC_SERVER||url.indexOf(SYNC_SERVER)!==0||!SRV_RETRY.test(url.slice(SYNC_SERVER.length)))return F0.apply(self,args);
+    var again=function(){return new Promise(function(r){setTimeout(r,1500);}).then(function(){return F0.apply(self,args);});};
+    return F0.apply(self,args).then(function(r){return r.status>=500?again():r;},
+      function(e){if(o&&o.signal&&o.signal.aborted)throw e;return again();});
+  };
+})();
 var PUSH_SERVER=window.__DEV__?'':SYNC_SERVER;
 var VAPID_PUBLIC='BGZWOIHQcO_gj3wDvRa78k3g7A60BDJnhckbC9W15vfgsrQeQYMXu7X6FT0RPqGZhOGjzQgtQyJ_jDktq4GuU-o';
 
