@@ -43,6 +43,16 @@ var APP_SCRIPTS = {
     [0, 'fx', {t: 'fx', v: {beads: 1}, d: 0}], [200, 'fx', {t: 'body', v: {moon: 1}, d: 2400}], [1400, 'face', 'closed']]}
 };
 
+/* waiting on us (1.11): the sheet's own 'think', cut where its "aha" begins.
+   'thinking' holds the first half for as long as the answer takes; aha(b)
+   plays the second half from that moment, exactly as the sheet times it. */
+var THINK = byId(COMBO_LIST, 'think'), THINK_CUT = 3100;
+APP_SCRIPTS.thinking = {dur: 1e9, ev: THINK.ev.filter(function(e){ return e[0] < THINK_CUT; })};
+function ahaPlay(b){
+  THINK.ev.forEach(function(e){ if (e[0] >= THINK_CUT)
+    setTimeout(function(){ b.verb(e[1], e[2], e[3], e[4]); }, e[0] - THINK_CUT); });
+}
+
 var LIVE = [], running = false, io = null;
 function loop(){
   var last = null;
@@ -133,6 +143,7 @@ window.BeemKit = {
   pair: pairFlash,
   streak: streakState,
   scripts: APP_SCRIPTS,
+  aha: ahaPlay,
   /* the app's own scripts by name too, so a moment can play 'invite' or 'sun' */
   screen: function(o){
     o = o || {};
