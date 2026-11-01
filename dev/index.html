@@ -720,6 +720,10 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   box-shadow:inset 1px 2px 4px var(--nu-shade,rgba(176,168,156,.44)),inset -1px -1px 3px rgba(255,255,255,.8)}
 /* muted measures 3.97:1 on the sand, so nothing muted goes inside it */
 .co-u .co-pc{color:var(--nu-ink,#4a453f)}
+/* the logged rows under a reply: quiet, one per line, so the assumption can be read and corrected */
+.co-its{align-self:flex-start;max-width:88%;display:flex;flex-direction:column;gap:4px;margin:-3px 0 2px;padding:0 6px;font-size:12.5px;line-height:1.45;color:var(--nu-muted,#6d675e)}
+.co-it b{color:var(--nu-ink,#4a453f);font-weight:700}
+.co-it-v{white-space:nowrap}
 .co-a{align-self:flex-start;max-width:88%;background:#f3f1ed;border-radius:15px 15px 15px 4px;
   padding:11px 14px;font-size:14px;line-height:1.75;color:var(--nu-ink,#4a453f);
   box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
@@ -15080,7 +15084,7 @@ function coachApply(j,onDate){
          with no time at all kindFromTime read NaN, defaulted the hour to
          12, and filed EVERY meal the coach ever logged as lunch. */
       day.meals.push({id:q.id,src:'coach',name:q.name,amount:q.quantity,
-        kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',
+        kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',g:q.approx_g>0?q.approx_g:undefined,
         na:q.sodium_level||'',rest:q.restaurant?1:0,label:q.label||undefined,
         kind:coachMealOk(q.meal),time:fmtTime(),at:Date.now()});
       added.push(q.id);}
@@ -15100,6 +15104,7 @@ function coachApply(j,onDate){
         if(typeof u.protein==='number')day.meals[i].p=u.protein;
         if(typeof u.carbs==='number')day.meals[i].c=u.carbs;
         if(typeof u.fat==='number')day.meals[i].f=u.fat;
+        if(typeof u.approx_g==='number'&&u.approx_g>0)day.meals[i].g=u.approx_g;
         if(u.assumption!==undefined)day.meals[i].note=u.assumption||'';
         if(u.sodium_level)day.meals[i].na=u.sodium_level;
         if(u.label)day.meals[i].label=u.label;
@@ -15130,6 +15135,19 @@ function coachKindSet(ids,k){
   render();
 }
 /* the chips, lit on whatever those meals are filed under now */
+/* What was logged, row by row: name, amount, the weight that was assumed,
+   calories and protein - read from the day, so an edit shows here too and a
+   deleted row simply leaves. */
+function coachItemsHTML(ids,d){
+  var day=loadDay(d||todayStr()),h='',i,j,m;
+  for(j=0;j<ids.length;j++)for(i=0;i<day.meals.length;i++){m=day.meals[i];
+    if(String(m.id)!==String(ids[j]))continue;
+    h+='<div class="co-it"><b>'+esc(m.name||'')+'</b>'+(m.amount?', '+esc(m.amount):'')+
+       (m.g>0?' <span class="co-it-g">(\u2248'+fmtGrams(Math.round(m.g))+')</span>':'')+
+       ' <span class="co-it-v">\u00b7 '+_t('{n} קק"ל',{n:Math.round(m.kcal||0)})+', '+_t('{n} גרם חלבון',{n:Math.round(m.p||0)})+'</span></div>';
+    break;}
+  return h?'<div class="co-its">'+h+'</div>':'';
+}
 function coachKindsHTML(ids){
   var d=todayStr(),day=loadDay(d),cur='',i,j2,w,h='';
   for(i=0;i<day.meals.length&&!cur;i++)
@@ -16121,6 +16139,7 @@ function coachInnerHTML(){
       /* a reply written before the number was hidden may still say it */
       h+='<div class="co-a">'+mdLite(t.weigh&&weighHidden()?weighScrubTxt(t.text||'',loadWeights()[d]):(t.text||''))+
          (t.q?'<div class="co-q">'+esc(t.q)+'</div>':'')+'</div>';
+      if(Array.isArray(t.ids)&&t.ids.length)h+=coachItemsHTML(t.ids,d);
       /* only when something moved - see the data model */
       if(t.changed&&!t.edit&&i===rec.turns.length-1){
         h+=coachLeftHTML(d);

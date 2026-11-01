@@ -841,6 +841,17 @@ function labelItem(it) {
   if (r.kcal === null) return { label: keep };
   return { calories: r.kcal, protein: r.p, carbs: r.c, fat: r.f, portions: 1, units: 0, label: keep };
 }
+/* The weight the item stands for, shown beside it in the app so the person
+   can see what was assumed and correct it (1 Nov). From a label the grams are
+   the label's own: what they said they ate, or the part of the printed
+   package weight; otherwise the model's estimate. 0 when nobody knows. */
+function approxGrams(it) {
+  const L = labelClean(it && it.label);
+  if (L && L.portion_g) return Math.round(L.portion_g);
+  if (L && L.fraction && L.package_g) return Math.round(L.fraction * L.package_g);
+  const g = Number(it && it.approx_g);
+  return isFinite(g) && g > 0 && g < 5000 ? Math.round(g) : 0;
+}
 /* the separate reading for a dispute: the label from scratch, from the
    picture and the stored data, without the coach's earlier reply */
 async function labelRecheck(env, dsp, was, fetch = globalThis.fetch) {
@@ -4722,8 +4733,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - Weight: judge by the weekly average. Explain water swings (salt, carbs, alcohol, travel) and never react to a single day.
 
 ## Tone and format
-- Hebrew, short, mobile-friendly. Lead with the answer. One item per line, with the item name in bold and its values after it.
-- Logging or correcting food is 1-3 short lines: what was logged and its figures, and at most one short warm note. Precise, to the point, kind.
+- Hebrew, short, mobile-friendly. Lead with the answer.
+- When you log or correct food, the app lists every item under your reply itself - its name, amount, the weight you assumed (approx_g), calories and protein. Do not repeat that list. Write 1-2 short lines: the meal in a few words and its total, the column you read when it came from a label, and at most one short warm note. Precise, to the point, kind.
 - Never show your working: no arithmetic, no formulas, no "≈", no estimates of how you got there, and never think aloud or correct yourself mid-reply ("רגע", "בואי נדייק", "בעצם"). The reply is the result, not the way to it.
 - After logging, add at most one short, practical note (for example, "החלבון נמוך, כדאי 40 גרם בארוחה הבאה").
 - Honest, never guilt-tripping. Over target? Give perspective (weekly average, activity, maintenance) and move on. Never suggest compensating with extreme restriction the next day.
@@ -4748,6 +4759,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - Israeli labels often have two columns: per 100g and per package. Read each value from ONE column only.
 - Prefer the per-package column when the user ate a whole or a fraction of a package. Use per-100g only when the user gives grams.
 - Never mix values from different columns in the same item.
+- When a label lists ingredients, name the product by what the label says (e.g. pork ham, not turkey; Schweinefleisch is pork). Never guess the meat type or the product from how it looks.
+- If you can't read the ingredients, use a neutral name in the user's language (e.g. "נקניק פרוס", "sliced cold cut") rather than guessing.
 - Logged items carry the label data they were logged from (label). Use it to recalculate when asked; it is the source.
 
 ## Honesty when challenged
@@ -4796,6 +4809,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                   carbs: { type: 'number' },
                   fat: { type: 'number' },
                   assumption: { type: 'string' },
+                  approx_g: { type: 'number', description: 'your estimate of the weight eaten, in grams, for this item as logged (2 slices of bread is about 76). Always fill it; the app shows it beside the item so the person can correct it.' },
                   portions: { type: 'number', description: 'how many times this portion was eaten; 1 if not said' },
                   unit_count: { type: 'number', description: 'pieces in ONE portion, for food that comes in pieces' },
                   kcal_per_unit: { type: 'number' },
@@ -5064,6 +5078,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         quantity: String(it.quantity || '').slice(0, 80),
         ...coachTotals(it),
         ...labelItem(it),
+        approx_g: approxGrams(it),
         assumption: String(it.assumption || '').slice(0, 200),
         /* one of the five or nothing: an unknown slot would be written
            into her day and then shown as a meal that does not exist */
