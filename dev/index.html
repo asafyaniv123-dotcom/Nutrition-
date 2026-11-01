@@ -729,6 +729,7 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .co-its{align-self:flex-start;max-width:88%;display:flex;flex-direction:column;gap:4px;margin:-3px 0 2px;padding:0 6px;font-size:12.5px;line-height:1.45;color:var(--nu-muted,#6d675e)}
 .co-it b{color:var(--nu-ink,#4a453f);font-weight:700}
 .co-it-v{white-space:nowrap}
+.co-it-sum{margin-top:2px;padding-top:5px;border-top:1px solid var(--nu-line,rgba(120,100,80,.16));color:var(--nu-ink,#4a453f);font-weight:700}
 .co-a{align-self:flex-start;max-width:88%;background:#f3f1ed;border-radius:15px 15px 15px 4px;
   padding:11px 14px;font-size:14px;line-height:1.75;color:var(--nu-ink,#4a453f);
   box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
@@ -15500,13 +15501,17 @@ function coachKindSet(ids,k){
    calories and protein - read from the day, so an edit shows here too and a
    deleted row simply leaves. */
 function coachItemsHTML(ids,d){
-  var day=loadDay(d||todayStr()),h='',i,j,m;
+  var day=loadDay(d||todayStr()),h='',i,j,m,n=0,T={k:0,p:0,c:0,f:0};
   for(j=0;j<ids.length;j++)for(i=0;i<day.meals.length;i++){m=day.meals[i];
     if(String(m.id)!==String(ids[j]))continue;
+    n++;T.k+=Math.round(m.kcal||0);T.p+=Math.round(m.p||0);T.c+=Math.round(m.c||0);T.f+=Math.round(m.f||0);
     h+='<div class="co-it"><b>'+esc(m.name||'')+'</b>'+(m.amount?', '+esc(m.amount):'')+
        (m.g>0?' <span class="co-it-g">(\u2248'+fmtGrams(Math.round(m.g))+')</span>':'')+
        ' <span class="co-it-v">\u00b7 '+_t('{n} קק"ל',{n:Math.round(m.kcal||0)})+', '+_t('{n} גרם חלבון',{n:Math.round(m.p||0)})+'</span></div>';
     break;}
+  /* the meal as one line, from the rows above it - with one row it would only repeat it */
+  if(n>=2)h+='<div class="co-it co-it-sum">'+_t('סה״כ הארוחה: {v}',{v:[_t('{n} קק"ל',{n:T.k}),_t('{n} גרם חלבון',{n:T.p}),
+    _t('{n} גרם פחמימה',{n:T.c}),_t('{n} גרם שומן',{n:T.f})].join(' \u00b7 ')})+'</div>';
   return h?'<div class="co-its">'+h+'</div>':'';
 }
 function coachKindsHTML(ids){
