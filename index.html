@@ -738,6 +738,19 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .co-img{width:92px;height:92px;object-fit:cover;border-radius:10px;display:block}
 .co-a b{font-weight:800}
 .co-wait{color:var(--nu-muted,#6d675e);letter-spacing:.2em}
+/* Mip waiting with them (mipWaitHTML): a square box, and the line beside it */
+.mip-wait{display:flex;align-items:center;gap:8px}
+.mip-wait.sm{display:inline-flex;gap:5px;vertical-align:middle}
+.mip-wait-b{width:40px;height:40px;flex:none;position:relative}
+.mip-wait.sm .mip-wait-b{width:22px;height:22px}
+.mip-wait-l{transition:opacity .25s}
+.mip-wait-l.out{opacity:0}
+.say-msg.mip-wait,.hcmd-mip{justify-content:center}
+.mip-wait.co-mip{align-self:flex-start;gap:6px;align-items:flex-end}
+.co-mip .mip-wait-l{background:#f3f1ed;border-radius:15px 15px 15px 4px;padding:9px 14px;font-size:13.5px;line-height:1.75;
+  color:var(--nu-muted,#6d675e);min-width:150px;
+  box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.hch-b.mip-wait .mip-wait-l{font-size:14px;color:var(--nu-muted,#6d675e)}
 .co-q{margin-top:8px;padding-top:8px;border-top:1px solid rgba(176,168,156,.3);
   font-size:13px;color:var(--terra-700)}
 .co-pc{display:inline-block;margin-inline-start:7px;font-size:11px;font-weight:700;color:var(--nu-muted,#6d675e)}
@@ -12740,6 +12753,54 @@ function beemMount(el,opts){
     if(el&&el.isConnected&&!el.firstChild)el._beem=K.mount(el,typeof opts==='function'?opts(K):opts);
   }).catch(function(){});
 }
+/* MIP THINKING (1 Nov) - wherever a person waits on an answer from us, Mip
+   waits with them: the character sheet's own 'think', held for as long as the
+   answer takes (BeemKit's 'thinking'), beside a line saying what is going on.
+   Asaf chose it over the three dots, from three options on a review page.
+   mipWaitHTML is a string because every screen here draws with strings; the
+   box is mounted when it reaches the page, by the one observer below, so no
+   caller has to remember to. The box is SQUARE, which the engine needs - a
+   40x46 one drew the rings off the body. */
+var _mipLine=0,_mipTick=0;
+function mipWaitHTML(lines,cls,sm){
+  lines=[].concat(lines||[]);
+  return '<span class="mip-wait'+(sm?' sm':'')+(cls?' '+cls:'')+'" role="status"'+
+    (lines.length>1?' data-lines="'+esc(JSON.stringify(lines))+'"':'')+'><span class="mip-wait-b"></span>'+
+    (lines.length?'<span class="mip-wait-l">'+esc(lines[_mipLine%lines.length])+'</span>':'')+'</span>';
+}
+function mipWaitScan(){
+  var bs=document.getElementsByClassName('mip-wait-b'),i;
+  for(i=0;i<bs.length;i++)if(!bs[i]._mip){bs[i]._mip=1;beemMount(bs[i],{play:'thinking'});}
+  if(!_mipTick&&document.querySelector('.mip-wait[data-lines]'))_mipTick=setInterval(mipWaitStep,1700);
+}
+/* the line moves on while he thinks; one count for all, so a screen drawn
+   again mid-wait goes on from where it was instead of starting over */
+function mipWaitStep(){
+  var ws=document.querySelectorAll('.mip-wait[data-lines]');
+  if(!ws.length){clearInterval(_mipTick);_mipTick=0;return;}
+  _mipLine++;
+  ws.forEach(function(w){
+    var l=w.querySelector('.mip-wait-l'),ls;
+    try{ls=JSON.parse(w.getAttribute('data-lines'));}catch(e){return;}
+    if(!l)return;
+    l.classList.add('out');
+    setTimeout(function(){l.textContent=ls[_mipLine%ls.length];l.classList.remove('out');},250);
+  });
+}
+/* the answer has come: a thinking Mip on the screen has his "aha" first - the
+   second half of the same moment - and then the answer takes his place */
+function mipAha(cb){
+  var bs=document.getElementsByClassName('mip-wait-b'),b=null,i;
+  for(i=0;i<bs.length;i++)if(bs[i]._beem&&bs[i].isConnected){b=bs[i]._beem;break;}
+  if(!b||!window.BeemKit||!window.BeemKit.aha){cb();return;}
+  window.BeemKit.aha(b);setTimeout(cb,1000);
+}
+(function(){
+  function go(){new MutationObserver(function(){
+    if(document.getElementsByClassName('mip-wait-b').length)mipWaitScan();
+  }).observe(document.body,{childList:true,subtree:true});}
+  if(document.body)go();else document.addEventListener('DOMContentLoaded',go);
+})();
 var BEEM_MILESTONES=[7,30,100,365];
 /* The card. Once per area per day - a card on every meal would nag - and the
    record of which areas have had theirs is the mechanism, as with the
@@ -15642,7 +15703,7 @@ function coachPost(d,text,pics,rec,ed){
   };
   _coachRetry=null;
   (function coGo(left){
-  fetch(SYNC_SERVER+'/coach'+meterQ(),_coOpts).then(function(r){if(r.status>=500)throw new Error(String(r.status));return r.json();}).then(function(j){
+  fetch(SYNC_SERVER+'/coach'+meterQ(),_coOpts).then(function(r){if(r.status>=500)throw new Error(String(r.status));return r.json();}).then(function(j){mipAha(function(){
     if(j&&j.ok&&j.dispute)coachDisputeLog(d,j.dispute,text,disp);
     _coachBusy=false;
     if(!j||!j.ok){
@@ -15684,7 +15745,7 @@ function coachPost(d,text,pics,rec,ed){
     if(ed&&j.message)showToast(String(j.message).replace(/[*_]/g,'').slice(0,140));
     /* the whole screen, because the bars above it have just moved */
     render();
-  },function(){
+  });},function(){
     /* lost on the way: once more, quietly; then the same request on a tap */
     if(left>0){setTimeout(function(){coGo(left-1);},1500);return;}
     _coachBusy=false;_coachErr=''+_t('לא הצלחתי לענות כרגע.')+'';
@@ -16523,7 +16584,7 @@ function coachInnerHTML(){
       }
     }
   }
-  if(_coachBusy)h+='<div class="co-a co-wait">&hellip;</div>';
+  if(_coachBusy)h+=mipWaitHTML([_t('קורא מה אכלת…'),_t('מחפש במאגר המזונות…'),_t('מחשב קלוריות וחלבון…')],'co-mip');
   if(_coachErr)h+='<div class="co-err">'+esc(_coachErr)+
     (_coachRetry?' <button class="co-retry" onclick="_coachRetry&&_coachRetry()">'+_t('נסה שוב')+'</button>':'')+'</div>';
   h+='</div></div>';
@@ -16984,7 +17045,7 @@ function gemPaint(){
   if(!el)return;
   var h='';
   if(_gemErr)h+='<div class="gem-err">'+esc(_gemErr)+'</div>';
-  else if(_gemBusy&&!_gemOut)h+='<div class="gem-out">'+esc(''+_t('חושב…')+'')+'</div>';
+  else if(_gemBusy&&!_gemOut)h+=mipWaitHTML(_t('חושב…'),'gem-out');
   if(_gemOut){
     h+='<div class="gem-out">'+esc(_gemOut)+'</div>';
     /* It says so while it is still writing, not only at the end - the moment
@@ -17095,6 +17156,8 @@ function micCan(){
 function micPaint(){
   var b=document.getElementById(_micBtn);
   if(b)b.className=(b.getAttribute('data-base')||'one-ic mic-btn')+(_micState==='idle'?'':' '+_micState);
+  if(b&&_micState==='sending'&&b._ic==null){b._ic=b.innerHTML;b.innerHTML=mipWaitHTML([],'',1);}
+  else if(b&&_micState!=='sending'&&b._ic!=null){b.innerHTML=b._ic;b._ic=null;}
   var e=document.getElementById('mic-err');
   if(e)e.textContent=_micErr||'';
   /* no error line on this screen (the journal): say it out loud once */
@@ -18429,9 +18492,9 @@ function sayPaint(){
   oneRest();
   var el=document.getElementById('say-body');
   if(!el)return;
-  if(_sayBusy){el.innerHTML='<div class="say-msg">'+
+  if(_sayBusy){el.innerHTML=mipWaitHTML(
     (_sayXState==='busy'?_t('בודק מול מקור שני…')
-     :_picBusy?_t('מסתכל על התמונה…'):_t('קורא מה כתבת…'))+'</div>';return;}
+     :_picBusy?_t('מסתכל על התמונה…'):_t('קורא מה כתבת…')),'say-msg');return;}
   if(_sayErr){
     el.innerHTML='<div class="say-msg">'+esc(_sayErr)+'</div>'+
       (_picAsk&&_picData?'<button class="say-go" onclick="picRetry()">'+
@@ -18470,7 +18533,7 @@ function sayPaint(){
     } else {
       h+='<button class="sr-name" onclick="sayLookup('+i+')">'+esc(row.q)+
          '<span class="sr-find">'+_t('חפש')+'</span></button>';
-      h+=row.esting?'<span class="sr-esting">'+_t('מעריך…')+'</span>'
+      h+=row.esting?mipWaitHTML(_t('מעריך…'),'sr-esting',1)
                    :'<button class="sr-est" onclick="sayEstimate('+i+')">'+_t('הערך')+'</button>';
       h+='<button class="sr-fill" onclick="sayExpand('+i+')">'+_t('הזן ערכים')+'</button>';
     }
@@ -18578,9 +18641,9 @@ function sayPaint(){
            and asking again is the whole point, and hiding these after one
            answer made that answer final. */
         h+='<button class="sr-estall" onclick="sayEstimate('+i+')">'+
-           (row.esting?''+_t('מעריך…')+'':''+_t('הערכה מהירה של מה שכתבתי')+'')+'</button>';
+           (row.esting?mipWaitHTML(_t('מעריך…'),'',1):''+_t('הערכה מהירה של מה שכתבתי')+'')+'</button>';
         h+='<button class="sr-anall" onclick="sayAnalyze('+i+')">'+
-           (row.esting?''+_t('מפרק…')+'':''+_t('פירוק מעמיק — לפי מרכיבים מהמאגר')+'')+'</button>';
+           (row.esting?mipWaitHTML(_t('מפרק…'),'',1):''+_t('פירוק מעמיק — לפי מרכיבים מהמאגר')+'')+'</button>';
         h+='<button class="sr-other" onclick="sayLookup('+i+')">'+_t('משהו אחר לגמרי…')+'</button>';
         /* The search, on the row. Two characters before it answers, so a
            half-typed word does not flash the whole table past. */
@@ -19017,9 +19080,9 @@ function fdbPaint(){
     h+='</div>';
   }
 
-  if(aiOn&&_fdbAIBusy)h+='<div class="fdb-ai-w">'+_t('מחפש גם לפי המשמעות…')+'</div>';
+  if(aiOn&&_fdbAIBusy)h+=mipWaitHTML(_t('מחפש גם לפי המשמעות…'),'fdb-ai-w');
   var card=estCardHTML();
-  if(!h&&!card)h='<div class="fdb-msg">'+(_fdbAIBusy?''+_t('מחפש…')+'':''+_t('לא נמצא במאגר.')+'')+'</div>';
+  if(!h&&!card)h='<div class="fdb-msg">'+(_fdbAIBusy?mipWaitHTML(_t('מחפש…')):''+_t('לא נמצא במאגר.')+'')+'</div>';
   /* The tables do not have most cooked food, so a search that finds nothing
      is the ordinary case rather than a failure, and it used to be a dead end
      - the food simply could not be logged. */
@@ -19206,7 +19269,7 @@ function askPaint(){
     for(var i=0;i<_askTrace.length;i++)h+='<div>'+esc(_askTrace[i])+'</div>';
     h+='</div>';
   }
-  if(_askBusy)h+='<div class="ask-w">'+_t('בודק בנתונים שלך…')+'</div>';
+  if(_askBusy)h+=mipWaitHTML(_t('בודק בנתונים שלך…'),'ask-w');
   if(_askErr)h+='<div class="ask-err">'+esc(_askErr)+'</div>';
   if(_askAns)h+='<div class="ask-a">'+askFmt(_askAns)+'</div>';
   el.innerHTML=h;
@@ -19312,7 +19375,7 @@ function estAdd(){
   _est=null;_fdbQ='';_estErr='';render();
 }
 function estCardHTML(){
-  if(_estBusy)return '<div class="est-w">'+_t('מעריך…')+'</div>';
+  if(_estBusy)return mipWaitHTML(_t('מעריך…'),'est-w');
   if(_estErr)return '<div class="est-err">'+esc(_estErr)+'</div>';
   if(!_est)return '';
   var CONF={high:''+_t('הערכה טובה')+'',medium:''+_t('הערכה סבירה')+'',low:''+_t('הערכה גסה')+''};
@@ -19558,7 +19621,7 @@ function anTotHTML(){
 }
 function anCardHTML(){
   if(_anBusy){
-    var h='<div class="est-w">'+_t('מפרק את המנה לרכיבים…')+'</div>';
+    var h=mipWaitHTML(_t('מפרק את המנה לרכיבים…'),'est-w');
     if(_anTrace.length)h+='<div class="ask-tr">'+_anTrace.map(function(q){
       return '<div>'+_t('חיפש במאגר:')+' '+esc(q)+'</div>';}).join('')+'</div>';
     return h;
@@ -38366,7 +38429,7 @@ function planBotHTML(){
       if(skip)h+=ansRow(skip,'skip');
       h+='</div>';
     }
-    if(_planBusy)h+='<div class="pb-it pb-wait">'+_t('חושב…')+'</div>';
+    if(_planBusy)h+=mipWaitHTML(_t('חושב…'),'pb-it pb-wait');
   }
   if(!_planBusy&&last&&last.type==='skeleton')
     h+='<div class="pb-opts"><button class="pb-opt pb-yes" onclick="planBotSend(&quot;'+esc(_t('המבנה מאושר, עכשיו מתכננים את הימים'))+'&quot;)">'+
@@ -38438,7 +38501,7 @@ function psayWhen(it){
   return w;
 }
 function psayCardHTML(){
-  if(_psay.busy)return '<div class="hcmd-card hcmd-busy" role="status"><i></i><i></i><i></i></div>';
+  if(_psay.busy)return '<div class="hcmd-card">'+mipWaitHTML(_t('חושב…'),'hcmd-mip')+'</div>';
   if(_psay.done)return '<div class="hcmd-card"><div class="hcmd-q">'+_t('נשמר')+' &#10003;</div>'+
     '<div class="hcmd-btns"><button class="hcmd-b ghost" onclick="psayReset()">'+_t('סגור')+'</button></div></div>';
   if(_psay.msg)return '<div class="hcmd-card"><div class="hcmd-q">'+_psay.msg+'</div>'+
@@ -43675,7 +43738,7 @@ function wkPages(from){
 
   /* 6 - the letter */
   var lh='';
-  if(_wkRevBusy)lh='<div class="wkd-letter">'+_t('כותב לך על השבוע')+'&hellip;</div>';
+  if(_wkRevBusy)lh=mipWaitHTML(_t('כותב לך על השבוע')+'…','wkd-letter');
   else if(_wkRevErr)lh='<div class="wkd-letter">'+esc(_wkRevErr)+'</div>';
   else if(_wkRevText)lh='<div class="wkd-letter">'+mdLite(_wkRevText)+'</div>';
   if(lh)p.push({kick:''+_t('ולסיום')+'',ttl:''+_t('מה שראיתי')+'',body:lh,ref:bg(6)});
@@ -45013,7 +45076,7 @@ function beemHelpAsk(q){
   _bhelp.msgs.push({role:'user',content:q});
   beemHelpSugPaint();
   var wait=beemHelpSay('b wait',_t('מיפ חושב…'));
-  if(_bhelp.C)try{_bhelp.C.play({dur:30000,ev:[[0,'face','thinking'],[0,'mode',{breathe:[.016,4],idle:0}]]});}catch(e){}
+  if(_bhelp.C)try{_bhelp.C.play(window.BeemKit.scripts.thinking);}catch(e){}
   if(!SYNC_SERVER){beemHelpDone(wait,_t('השאלות דורשות חיבור לשרת.'),true);return;}
   _bhelp.busy=true;
   foodsLoad(function(){beemHelpTurn(_bhelp.msgs.slice(-16),0,wait);});
@@ -45022,7 +45085,7 @@ function beemHelpDone(wait,text,failed){
   _bhelp.busy=false;
   wait.classList.remove('wait');wait.textContent=text;
   var l=document.getElementById('bhs-log');l.scrollTop=l.scrollHeight;
-  if(_bhelp.C)try{_bhelp.C.play(failed?DOOR_BEEM.calm:DOOR_BEEM.nod);}catch(e){}
+  if(_bhelp.C)try{if(failed)_bhelp.C.play(DOOR_BEEM.calm);else window.BeemKit.aha(_bhelp.C);}catch(e){}
 }
 /* the /ask loop, with the screen and the person attached: the model asks for
    a day, the phone reads it from its own log and sends it back */
@@ -47309,7 +47372,7 @@ function hcmdPaint(){
   if(!out)return;
   var h='',r=_hcmd.route,q='',edit=true,meta='',ok=true;
   if(_hcmd.busy){
-    out.innerHTML='<div class="hcmd-card hcmd-busy" role="status"><i></i><i></i><i></i></div>';
+    out.innerHTML='<div class="hcmd-card">'+mipWaitHTML(_t('חושב…'),'hcmd-mip')+'</div>';
     return;
   }
   if(_hcmd.done){
@@ -47713,7 +47776,7 @@ function hchThreadHTML(k){
     if(m.w==='u'){h+='<div class="hch-u">'+esc(m.x)+'</div>';continue;}
     h+='<div class="hch-b">'+hchAvatar()+'<div>'+(m.x?mdLite(m.x):'')+hchCardHTML(k,i,m)+'</div></div>';
   }
-  if(_hch.busy)h+='<div class="hch-b">'+hchAvatar()+'<div class="hch-dots"><i></i><i></i><i></i></div></div>';
+  if(_hch.busy)h+=mipWaitHTML(_t('חושב…'),'hch-b');
   return h;
 }
 /* the command line's own question for a route, as a card in the talk */
@@ -47942,12 +48005,12 @@ function hchAct(k){
   foodsLoad(function(){hchActTurn(k,msgs,0,null);});
 }
 function hchActTurn(k,messages,depth,food){
-  var done=function(text){
+  var done=function(text){mipAha(function(){
     _hch.busy=false;
     if(text)hchPush(k,{w:'b',x:text});
     if(food){hchPush(k,{w:'b',go:'nutrition'});if(_hch.area===k)hchFill();hchChoose('nutrition');setTimeout(function(){hchCoach(food);},500);return;}
     if(_hch.area===k)hchFill();
-  };
+  });};
   if(depth>=7){done(_t('לא הצלחתי לענות כרגע.'));return;}
   var now=new Date();
   fetch(SYNC_SERVER+'/act'+meterQ(),{method:'POST',headers:{'Content-Type':'application/json'},

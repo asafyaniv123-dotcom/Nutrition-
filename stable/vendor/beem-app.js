@@ -873,10 +873,6 @@ var EASE = {
         this.bk = mk(1); this.fw = mk(4);
       }
       var Wc = this.cv.width, kp = Wc/VB;
-      /* the HEIGHT too: a canvas is born 300x150, so where the box needs exactly
-         300 (a 150px Mip at 2x - the day's-end card) the width already matched,
-         the height stayed 150, and every bead was drawn stretched to twice its
-         height: the lower ring dripped down and was cut off (31 Oct, his phone) */
       [this.bk, this.fw].forEach(function(c){ if (c.width !== Wc || c.height !== Wc){ c.width = c.height = Wc; }
         c.getContext('2d').clearRect(0, 0, Wc, Wc); c.style.opacity = 1; });
       var br = 1 + this.breathe[0]*Math.sin(this.t*2*Math.PI/this.breathe[1]), list = [], D = 3*VB;
@@ -2028,6 +2024,16 @@ var APP_SCRIPTS = {
     [0, 'fx', {t: 'fx', v: {beads: 1}, d: 0}], [200, 'fx', {t: 'body', v: {moon: 1}, d: 2400}], [1400, 'face', 'closed']]}
 };
 
+/* waiting on us (1.11): the sheet's own 'think', cut where its "aha" begins.
+   'thinking' holds the first half for as long as the answer takes; aha(b)
+   plays the second half from that moment, exactly as the sheet times it. */
+var THINK = byId(COMBO_LIST, 'think'), THINK_CUT = 3100;
+APP_SCRIPTS.thinking = {dur: 1e9, ev: THINK.ev.filter(function(e){ return e[0] < THINK_CUT; })};
+function ahaPlay(b){
+  THINK.ev.forEach(function(e){ if (e[0] >= THINK_CUT)
+    setTimeout(function(){ b.verb(e[1], e[2], e[3], e[4]); }, e[0] - THINK_CUT); });
+}
+
 var LIVE = [], running = false, io = null;
 function loop(){
   var last = null;
@@ -2118,6 +2124,7 @@ window.BeemKit = {
   pair: pairFlash,
   streak: streakState,
   scripts: APP_SCRIPTS,
+  aha: ahaPlay,
   /* the app's own scripts by name too, so a moment can play 'invite' or 'sun' */
   screen: function(o){
     o = o || {};
