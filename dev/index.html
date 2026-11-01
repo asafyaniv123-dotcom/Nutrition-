@@ -5503,6 +5503,24 @@ html body.mod-endofday .rf-vlog .vlog-dot svg{stroke:#4d7fbe}
 html body.mod-endofday .rf-vlog-t{display:flex;flex-direction:column;gap:3px;min-width:0}
 html body.mod-endofday .rf-vlog-t b{font-size:14px;font-weight:800}
 html body.mod-endofday .rf-vlog-t i{font-style:normal;font-size:11.5px;color:var(--nu-muted);line-height:1.4}
+/* two tabs: what you do tonight, and what you read back */
+html body.mod-endofday .rf-tabs{display:flex;padding:4px;border-radius:999px;margin:0 0 16px;
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-endofday .rf-tabs button{flex:1;border:none;background:none;font-family:inherit;font-size:14px;font-weight:800;
+  color:var(--nu-muted);padding:9px;border-radius:999px;cursor:pointer}
+html body.mod-endofday .rf-tabs button.on{color:var(--nu-ink);background:var(--nu-ground);
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 8px var(--nu-shade-soft)}
+.rf-pane{display:none}.rf-pane.on{display:block}
+html body.mod-endofday .rf-tiles{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0 16px}
+html body.mod-endofday .rf-tiles .rf-vlog{flex-direction:column;align-items:flex-start;margin:0;padding:16px;height:100%}
+html body.mod-endofday .rf-mem .vlog-dot{box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 11px var(--nu-shade-soft)}
+html body.mod-endofday .rf-mem .vlog-dot svg{stroke:#c98a1e}
+html body.mod-endofday .rf-quiet{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 18px;margin-top:4px}
+html body.mod-endofday .rf-quiet button{border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:700;
+  color:var(--nu-muted);padding:8px 2px;cursor:pointer}
+html body.mod-endofday .rf-wk-empty{text-align:center;font-size:13px;font-weight:600;color:var(--nu-muted);padding:60px 24px}
+.rf-mem-sh .rfm{box-shadow:none;padding:0;background:none}
+.rf-mem-sh .rfm-t{display:none}
 /* ── THE FLOW ── the day as a line of stops ── */
 html body.mod-endofday .rf-flow-box,html body.mod-endofday .rf-flow-add{background:var(--nu-ground);
   border:none;border-radius:16px;
@@ -12178,6 +12196,7 @@ var HE={
   'התאמנת איתו {n} פעמים':{one:'התאמנת איתו פעם אחת',two:'התאמנת איתו פעמיים',other:'התאמנת איתו {n} פעמים'},
   '{n} ימים שסיכמת':{one:'יום אחד שסיכמת',two:'יומיים שסיכמת',other:'{n} ימים שסיכמת'},
   '{n} תמונות':{one:'תמונה אחת',two:'שתי תמונות',other:'{n} תמונות'},
+  '{n} רגעים מהיום':{one:'רגע אחד מהיום',two:'שני רגעים מהיום',other:'{n} רגעים מהיום'},
   '{n} שירים':{one:'שיר אחד',two:'שני שירים',other:'{n} שירים'},
   '{n} שעות':{one:'שעה',two:'שעתיים',other:'{n} שעות'},
   '{n} ארוחות השבוע':{one:'ארוחה אחת השבוע',two:'שתי ארוחות השבוע',other:'{n} ארוחות השבוע'},
@@ -41764,7 +41783,7 @@ function rfArr(id){var v=rfVal(id);return Array.isArray(v)?v:[];}
 function rfDone(r){return !!(r&&r.done);}
 function rfProgress(){return Math.round(_rfStep/rfSteps().length*100);}
 
-function enterReflect(){_rfDate=todayStr();_rfView='home';renderReflect();}
+function enterReflect(){_rfDate=todayStr();_rfView='home';_rfTab='today';renderReflect();}
 function renderReflect(){
   /* THE HEADER SAYS WHICH DAY, whenever it is not today. The failure this
      prevents is writing tonight's thoughts into Tuesday and only noticing
@@ -42206,6 +42225,9 @@ function rfmDel(n){
 function renderReflectHome(){
   var today=todayStr(),r=rfRec(today);
   var h='<div style="padding-bottom:24px">';
+  h+='<div class="rf-tabs"><button class="'+(_rfTab==='week'?'':'on')+'" onclick="rfTabSet(&quot;today&quot;)">'+_t('היום')+'</button>'+
+     '<button class="'+(_rfTab==='week'?'on':'')+'" onclick="rfTabSet(&quot;week&quot;)">'+_t('השבוע')+'</button></div>';
+  h+='<div class="rf-pane'+(_rfTab==='week'?'':' on')+'">';
   h+='<div class="rf-hero">';
   /* BEEM LIVES HERE. Entering סיום יום lands on this screen, not on the
      intro behind "התחל סיכום" - so the first build, which put him only on
@@ -42233,18 +42255,27 @@ function renderReflectHome(){
   h+='</div>';
 
   h+=ppnEveHTML();
-  h+=rfVlogHTML();
-  h+=rfmCardHTML();
+  /* the vlog and the moments to remember are two tiles side by side, and the
+     moments open in a sheet: as eight cards in a column the screen read as
+     too full (Asaf, 1 Nov, option 3 of four) */
+  var _rm=rfmLoad(today).length;
+  h+='<div class="rf-tiles">'+rfVlogHTML()+
+     '<button class="rf-vlog rf-mem" onclick="rfmSheetOpen()"><span class="vlog-dot" aria-hidden="true">'+
+     '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg></span>'+
+     '<span class="rf-vlog-t"><b>'+_t('לזכור')+'</b>'+
+     '<i>'+(_rm?_t('{n} רגעים מהיום',{n:_rm}):_t('משהו קטן שקרה…'))+'</i></span></button></div>';
 
   /* The one sentence carried out of the last weekly summary. It lives HERE
      and not on the home screen, which is not ours to change. */
   h+=wkCarryLine();
 
-  h+='<button class="rf-secs-b" onclick="rfNightlyOpen()">'+rfNightlyLabel()+'</button>';
-  h+='<button class="rf-secs-b" onclick="rfSecsOpen()">'+rfSecsLabel()+'</button>';
+  /* the two settings are quiet links now, not two more raised doors */
+  h+='<div class="rf-quiet"><button onclick="rfNightlyOpen()">'+rfNightlyLabel()+'</button>'+
+     '<button onclick="rfSecsOpen()">'+rfSecsLabel()+'</button></div>';
+  h+='</div><div class="rf-pane'+(_rfTab==='week'?' on':'')+'">';
 
-  h+=weekCardHTML();
-  h+=monthCardHTML();
+  var _wk=weekCardHTML(),_mo=monthCardHTML();
+  h+=_wk+_mo;
   /* the wheel is placed by wkPlace, which needs the cards to exist - so it is
      called once the home has been put in the page below */
 
@@ -42271,7 +42302,9 @@ function renderReflectHome(){
       h+='</button>';
     }
   }
-  h+='</div>';
+  /* nothing summarised yet: the tab says what it is for, rather than nothing */
+  if(!_wk&&!_mo&&!prev.length)h+='<div class="rf-wk-empty">'+_t('השבוע יתמלא כאן, יום אחרי יום.')+'</div>';
+  h+='</div></div>';
   document.getElementById('content').innerHTML=h;
   var _bNight=_bDone&&_rfDate===todayStr();
   document.body.classList.toggle('rf-night',_bNight);
@@ -42285,6 +42318,22 @@ function renderReflectHome(){
      with today's behind your shoulder, is the wrong way round. */
   if(document.getElementById('wkr-ring'))wkPlace(_wkRing.pos);
 }
+/* which half of the screen is showing. Not stored: entering סיום יום is for
+   tonight, so it always opens on היום */
+var _rfTab='today';
+function rfTabSet(t){_rfTab=t;renderReflectHome();window.scrollTo(0,0);}
+/* the moments to remember, in a sheet - the same card the screen used to
+   carry, so adding and deleting work exactly as they did */
+function rfmSheetOpen(){
+  var old=document.getElementById('rf-secs');if(old)old.remove();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="rf-secs-ov" id="rf-secs" onclick="if(event.target===this)rfmSheetClose()"><div class="rf-secs rf-mem-sh">'+
+    '<div class="rf-secs-hd"><span>'+_t('דברים שאני רוצה לזכור')+'</span>'+
+    '<button class="rf-secs-x" onclick="rfmSheetClose()">&times;</button></div>'+rfmCardHTML()+'</div></div>');
+  document.body.style.overflow='hidden';
+  setTimeout(function(){var i=document.getElementById('rfm-in');if(i)i.focus();},60);
+}
+function rfmSheetClose(){rfSecsClose();if(_rfView==='home'&&document.querySelector('.rf-tabs'))renderReflectHome();}
 function rfRecap(r){
   var bits=[];
   if(r.mood)bits.push(RF_MOODS[Math.max(1,Math.min(5,r.mood))-1].l);
