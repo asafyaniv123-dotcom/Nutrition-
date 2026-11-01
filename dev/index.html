@@ -7090,9 +7090,9 @@ html body.mod-home .hdial-notch{position:absolute;left:50%;top:-15px;width:4px;h
 html body.mod-home .hdisc{position:absolute;left:50%;top:50%;width:96px;margin:-21px 0 0 -48px;padding:0;border:none;
   background:none;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;
   -webkit-tap-highlight-color:transparent}
-html body.mod-home .hdial.snap .hdisc{transition:transform .34s cubic-bezier(.2,.9,.3,1)}
+/* (the snap is a spring in dialTick now, not a transition on each disc) */
 html body.mod-home .hdisc-ic{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;
-  background:var(--nu-ground);transition:width .25s,height .25s,box-shadow .25s;
+  background:var(--nu-ground);transition:box-shadow .25s;will-change:transform;
   box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 11px var(--nu-shade-soft),
     0 0 14px 3px color-mix(in srgb,var(--area,#a49a8e) 34%,transparent)}
 html body.mod-home .hdisc-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;
@@ -7100,15 +7100,22 @@ html body.mod-home .hdisc-ic svg{width:20px;height:20px;fill:none;stroke:current
 html body.mod-home .hdisc-t{font-size:10.5px;font-weight:700;color:var(--nu-muted);line-height:1.15;text-align:center;
   max-width:96px;transition:font-size .25s,color .25s}
 html body.mod-home .hdisc-s{display:none}
-/* the one under the notch */
-html body.mod-home .hdisc.on{width:184px;margin:-28px 0 0 -92px;z-index:1}
-html body.mod-home .hdisc.on .hdisc-ic{width:56px;height:56px;
+/* the one under the notch. It keeps its box: the glyph grows by nearness and
+   its name gives way to the channel above, both from dialLay, because a
+   class that switched size at the halfway line was the jump (1 Nov) */
+html body.mod-home .hdisc.on{z-index:1}
+html body.mod-home .hdisc.on .hdisc-ic{
   box-shadow:-5px -5px 12px var(--nu-lit),6px 8px 16px var(--nu-shade),
     0 0 20px 5px color-mix(in srgb,var(--area,#a49a8e) 40%,transparent)}
-html body.mod-home .hdisc.on .hdisc-ic svg{width:25px;height:25px}
-html body.mod-home .hdisc.on .hdisc-t{font-size:14px;font-weight:800;color:var(--nu-ink);max-width:184px}
-html body.mod-home .hdisc.on .hdisc-s{display:block;max-width:184px;font-size:10.5px;font-weight:600;color:var(--nu-muted);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* its name and line, in a pressed channel of their own above the dial - the
+   words used to spill into the dial between the discs (1 Nov) */
+html body.mod-home .hdial-cap{width:min(290px,86%);margin:12px auto 0;padding:6px 16px 7px;border-radius:999px;text-align:center;
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-home .hdial-cap b{display:block;font-size:14px;font-weight:800;color:var(--nu-ink);line-height:1.3;
+  transition:opacity .15s,transform .15s}
+html body.mod-home .hdial-cap span{display:block;font-size:11px;font-weight:600;color:var(--nu-muted);line-height:1.35;
+  transition:opacity .15s,transform .15s}
+html body.mod-home .hdial-cap.out b,html body.mod-home .hdial-cap.out span{opacity:0;transform:translateY(3px)}
 html body.mod-home .hdisc.heard .hdisc-ic{box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 11px var(--nu-shade-soft),
     0 0 0 2.5px color-mix(in srgb,var(--area,#a49a8e) 75%,transparent),0 0 26px 10px color-mix(in srgb,var(--area,#a49a8e) 55%,transparent)}
 /* the well, smaller, at the very centre of the plate */
@@ -45826,8 +45833,9 @@ function homeDialHTML(hub,rest){
   try{saved=localStorage.getItem(DIAL_KEY)||'';}catch(e){}
   _dialN=rest.length;_dialIds=[];
   for(i=0;i<rest.length;i++){_dialIds[_dialIds.length]=rest[i].id;if(rest[i].id===saved)at=i;}
-  _dialRot=dialRotFor(at);
-  var h='<div class="hdial" style="width:'+DIAL_S+'px;height:'+DIAL_S+'px">'+
+  _dialRot=_dialShown=_dialTarget=dialRotFor(at);_dialMode='';_dialVel=0;_dialThen=null;
+  var h='<div class="hdial-cap" id="hdial-cap" aria-live="polite"><b></b><span></span></div>'+
+    '<div class="hdial" style="width:'+DIAL_S+'px;height:'+DIAL_S+'px">'+
     '<svg class="hdial-rim" id="hdial-rim" viewBox="'+(-DIAL_S/2)+' '+(-DIAL_S/2)+' '+DIAL_S+' '+DIAL_S+'" aria-hidden="true">'+dialRimInner()+'</svg>'+
     '<span class="hdial-notch"></span>';
   for(i=0;i<rest.length;i++){
@@ -45845,17 +45853,35 @@ function homeDialHTML(hub,rest){
 /* place every area for the current rotation and light the one at the notch */
 function dialLay(root){
   var d=root||document.querySelector('.hdial');if(!d)return;
-  var els=d.querySelectorAll('.hdisc'),i,ang,x,y,best=-1,bd=999,dist;
+  var els=d.querySelectorAll('.hdisc'),i,ang,x,y,best=-1,bd=999,dist,near;
   for(i=0;i<els.length;i++){
-    ang=_dialRot+dialDir()*i*dialStep();          // 0 = the notch, degrees clockwise
+    ang=_dialShown+dialDir()*i*dialStep();        // 0 = the notch, degrees clockwise
     x=DIAL_RING*Math.sin(ang*Math.PI/180);y=-DIAL_RING*Math.cos(ang*Math.PI/180);
-    els[i].style.transform='translate('+x.toFixed(1)+'px,'+y.toFixed(1)+'px)';
+    els[i].style.transform='translate('+x.toFixed(2)+'px,'+y.toFixed(2)+'px)';
     dist=Math.abs(((ang%360)+540)%360-180);
     if(dist<bd){bd=dist;best=i;}
+    /* nearness to the notch, eased: the glyph grows 42 -> 56 and the small
+       name gives way to the channel as the disc arrives, not at a line */
+    near=Math.max(0,1-dist/dialStep());near=near*near*(3-2*near);
+    els[i].querySelector('.hdisc-ic').style.transform='scale('+(1+near/3).toFixed(3)+')';
+    els[i].querySelector('.hdisc-t').style.opacity=(1-near).toFixed(3);
   }
   for(i=0;i<els.length;i++)els[i].classList.toggle('on',i===best);
-  dialNumFree(d);
+  dialCapSet(els[best]);
+  if(!_dialMode)dialNumFree(d);
   return best;
+}
+/* the channel above the dial: the name and line of the disc at the notch,
+   crossfaded when another one arrives */
+function dialCapSet(b){
+  var c=document.getElementById('hdial-cap');if(!c||!b)return;
+  var t=b.querySelector('.hdisc-t').textContent,sub=b.querySelector('.hdisc-s').textContent;
+  if(c._k===t)return;
+  var first=!c._k;c._k=t;clearTimeout(c._t);
+  function put(){c.querySelector('b').textContent=t;c.querySelector('span').textContent=sub;}
+  if(first){put();return;}
+  c.classList.add('out');
+  c._t=setTimeout(function(){put();c.classList.remove('out');},150);
 }
 /* an hour numeral that a label is lying on steps aside, by measurement */
 function dialNumFree(d){
@@ -45864,19 +45890,50 @@ function dialNumFree(d){
   for(i=0;i<ns.length;i++){
     a=ns[i].getBoundingClientRect();hit=false;
     for(j=0;j<ls.length&&!hit;j++){
+      if(ls[j].style.opacity!==''&&+ls[j].style.opacity<.3)continue;
       b=ls[j].getBoundingClientRect();
       hit=b.width>0&&a.left<b.right+3&&a.right>b.left-3&&a.top<b.bottom+2&&a.bottom>b.top-2;
     }
     ns[i].classList.toggle('under',hit);
   }
 }
-function dialSnap(d,i,then){
-  /* the shortest way round to item i */
-  var target=dialRotFor(i),turn=((target-_dialRot)%360+540)%360-180;
-  _dialRot+=turn;
-  d.classList.add('snap');dialLay(d);
+/* THE MOTION (1 Nov, option A). A CSS transition on each disc's translate
+   carried it in a straight line between two points on the circle, so a long
+   turn cut across the dial, in .34s. Now one loop turns the whole ring: while
+   dragging, the drawn ring eases after the finger; let go, a spring carries
+   it - with the flick's speed - round the circle to the nearest area. */
+var _dialShown=0,_dialTarget=0,_dialVel=0,_dialMode='',_dialRaf=0,_dialLast=0,_dialThen=null,_dialHist=[];
+function dialTick(now){
+  var d=document.querySelector('.hdial');
+  if(!d){_dialRaf=0;_dialMode='';return;}
+  var dt=Math.min(.034,_dialLast?(now-_dialLast)/1000:.016);_dialLast=now;
+  if(_dialMode==='drag')_dialShown+=(_dialRot-_dialShown)*(1-Math.pow(.55,dt*60));
+  else if(_dialMode==='spring'){
+    var k=70,c=2*Math.sqrt(k)*.92;
+    _dialVel+=(k*(_dialTarget-_dialShown)-c*_dialVel)*dt;_dialShown+=_dialVel*dt;
+    /* a press opens its area once the ring has visibly arrived, not after the last tremor */
+    if(_dialThen&&Math.abs(_dialTarget-_dialShown)<2){var t=_dialThen;_dialThen=null;setTimeout(t,0);}
+    if(Math.abs(_dialTarget-_dialShown)<.05&&Math.abs(_dialVel)<.5){_dialShown=_dialRot=_dialTarget;_dialVel=0;_dialMode='';}
+  }
+  dialLay(d);
+  if(_dialMode)_dialRaf=requestAnimationFrame(dialTick);else{_dialRaf=0;_dialLast=0;}
+}
+function dialGo(){if(!_dialRaf){_dialLast=0;_dialRaf=requestAnimationFrame(dialTick);}}
+/* the area nearest a rotation */
+function dialNear(r){
+  var i,b=0,bd=999,dd;
+  for(i=0;i<_dialN;i++){dd=Math.abs(((dialRotFor(i)-r)%360+540)%360-180);if(dd<bd){bd=dd;b=i;}}
+  return b;
+}
+function dialSnap(d,i,then,v){
+  /* the shortest way round to item i, from where the ring is drawn */
+  var turn=((dialRotFor(i)-_dialShown)%360+540)%360-180;
+  _dialTarget=_dialRot=_dialShown+turn;_dialVel=v||0;
   try{localStorage.setItem(DIAL_KEY,_dialIds[i]);}catch(e){}
-  setTimeout(function(){d.classList.remove('snap');dialNumFree(d);if(then)then();},Math.abs(turn)<1?0:340);
+  var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(still||(Math.abs(turn)<.05&&!v)){
+    _dialShown=_dialTarget;_dialMode='';_dialThen=null;dialLay(d);if(then)then();return;}
+  _dialThen=then||null;_dialMode='spring';dialGo();
 }
 function dialMount(g){
   var d=g.querySelector('.hdial');if(!d)return;
@@ -45886,18 +45943,25 @@ function dialMount(g){
     return Math.atan2(e.clientX-(r.left+r.width/2),-(e.clientY-(r.top+r.height/2)))*180/Math.PI;}
   d.addEventListener('pointerdown',function(e){
     if(e.target.closest&&e.target.closest('.chub'))return;   // the well is a button, not the ring
-    drag={a:angOf(e),rot:_dialRot,x:e.clientX,y:e.clientY};moved=false;
+    if(_dialMode==='spring'){_dialMode='';_dialVel=0;_dialThen=null;}   // caught mid-turn
+    drag={a:angOf(e),rot:_dialShown,x:e.clientX,y:e.clientY};moved=false;_dialHist=[];
   });
   d.addEventListener('pointermove',function(e){
     if(!drag)return;
     if(!moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<8)return;
-    if(!moved){moved=true;try{d.setPointerCapture(e.pointerId);}catch(x){}}
+    if(!moved){moved=true;try{d.setPointerCapture(e.pointerId);}catch(x){}_dialMode='drag';dialGo();}
     var da=((angOf(e)-drag.a)%360+540)%360-180;
-    _dialRot=drag.rot+da;dialLay(d);
+    _dialRot=drag.rot+da;
+    _dialHist.push([e.timeStamp||Date.now(),_dialRot]);if(_dialHist.length>6)_dialHist.shift();
   });
   function end(){
     if(!drag)return;drag=null;
-    if(moved)dialSnap(d,dialLay(d));
+    if(!moved)return;
+    /* the flick: how fast the finger was turning as it let go, carried on */
+    var v=0,a=_dialHist[0],b=_dialHist[_dialHist.length-1];
+    if(_dialHist.length>1&&b[0]>a[0])v=(b[1]-a[1])/((b[0]-a[0])/1000);
+    v=Math.max(-900,Math.min(900,v));
+    dialSnap(d,dialNear(_dialRot+v*.16),null,v*.6);
   }
   d.addEventListener('pointerup',end);
   d.addEventListener('pointercancel',end);
