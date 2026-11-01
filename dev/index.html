@@ -33782,6 +33782,21 @@ function sumRemSetTime(v){
 // and works in both copies. They hold separate tokens, so a dev experiment
 // never writes into the real app's steps.
 var SYNC_SERVER='https://nutrition-push.nutrition-push.workers.dev';
+/* A dropped connection, or a 5xx, gets ONE more try after 1.5 s - only for the
+   AI routes, which write nothing on the server (the app applies the answer),
+   so resending cannot record anything twice. A request the app cancelled
+   itself stays cancelled. (1 Nov: the coach and 21 others gave up at once.) */
+var SRV_RETRY=/^\/(route|match|estimate|week|vision|transcribe|say|plan|parse|off|cross|beem|ask|analyze|act|schedule|see)(\?|$)/;
+(function(){
+  var F0=window.fetch;if(!F0)return;
+  window.fetch=function(u,o){
+    var url=String(u&&u.url||u),self=this,args=arguments;
+    if(!SYNC_SERVER||url.indexOf(SYNC_SERVER)!==0||!SRV_RETRY.test(url.slice(SYNC_SERVER.length)))return F0.apply(self,args);
+    var again=function(){return new Promise(function(r){setTimeout(r,1500);}).then(function(){return F0.apply(self,args);});};
+    return F0.apply(self,args).then(function(r){return r.status>=500?again():r;},
+      function(e){if(o&&o.signal&&o.signal.aborted)throw e;return again();});
+  };
+})();
 var PUSH_SERVER=window.__DEV__?'':SYNC_SERVER;
 var VAPID_PUBLIC='BGZWOIHQcO_gj3wDvRa78k3g7A60BDJnhckbC9W15vfgsrQeQYMXu7X6FT0RPqGZhOGjzQgtQyJ_jDktq4GuU-o';
 
