@@ -542,7 +542,7 @@ const BEEM_SCREENS = { home: 'the home screen', me: 'the Me screen', nutrition: 
 /* ── the meter ──
    What the model calls cost, per day and route, and which install asked. */
 const METER_ROUTES = ['/act', '/parse', '/match', '/cross', '/plan', '/transcribe', '/say', '/route', '/schedule',
-  '/beem', '/ask', '/estimate', '/see', '/vision', '/coach', '/week', '/analyze', '/off', '/health'];
+  '/beem', '/ask', '/estimate', '/see', '/vision', '/coach', '/week', '/analyze', '/off', '/health', '/recipe'];
 function meterStart(req) {
   const url = new URL(req.url);
   const u = url.searchParams.get('u') || '';
@@ -3596,6 +3596,134 @@ async function routeRequest(req, env, ctx, M) {
        picture is never asked for a calorie figure: a model will give one,
        and it would sit on screen in the same typeface as the measured rows
        with nothing to say it was invented. */
+    if (url.pathname === '/recipe' && req.method === 'POST') {
+      /* THE RECIPE BOX'S SMART ADD (2 Nov 2026). Up to six pictures - pages
+         of a cookbook, screenshots - and/or pasted text holding ONE recipe,
+         returned as the box's own shape in the reader's language. The phone
+         lays it into the form and saves nothing until the person has read it. */
+      if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'not configured' }, 503);
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const LANG = langName(b && b.lang);
+      const text = String((b && b.text) || '').slice(0, 12000).trim();
+      const imgs = [];
+      for (const im of (Array.isArray(b && b.images) ? b.images : []).slice(0, 6)) {
+        const data = String((im && im.data) || ''), mime = String((im && im.mime) || 'image/jpeg');
+        if (!/^image\/(jpeg|png|webp)$/.test(mime)) return json({ error: 'bad image type' }, 400);
+        if (!/^[A-Za-z0-9+/]+=*$/.test(data) || data.length < 500) return json({ error: 'bad image' }, 400);
+        /* the phone sends 1600px JPEGs at 0.85, a few hundred KB each */
+        if (data.length > 1500000) return json({ error: 'image too large' }, 413);
+        imgs.push({ data, mime });
+      }
+      if (!imgs.length && text.length < 20) return json({ error: 'nothing to read' }, 400);
+
+      /* its own budget: six pictures are several /see calls in one */
+      const cap = Number(env.RECIPE_DAILY_CAP || 15);
+      const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+      const day = new Date().toISOString().slice(0, 10);
+      const ipKey = 'rc:' + day + ':' + ip;
+      const used = Number((await env.SUBS.get(ipKey)) || 0);
+      if (used >= cap) return json({ error: 'too many for today' }, 429);
+      await env.SUBS.put(ipKey, String(used + 1), { expirationTtl: 172800 });
+
+      const SYSTEM =
+        'You receive screenshots or photographs of cookbook pages, and/or text, holding ONE recipe.\n' +
+        'It may be split across several pictures (ingredients in one, steps in another). Join it into one recipe.\n' +
+        'The original may be in any language. Return everything in natural ' + LANG + ', the way a home cook\n' +
+        'who speaks it writes a recipe.\n' +
+        '\n' +
+        'Rules:\n' +
+        '- Amounts: keep the numbers exactly. Write units the way ' + LANG + ' writes them (g, ml, tablespoon,\n' +
+        '  teaspoon, pinch). Never convert between grams and cups, or between metric and imperial.\n' +
+        '- Every ingredient is ONE line that starts with its amount when it has one: "200 g flour".\n' +
+        '  Small instructions go after a comma: "1/2 lemon, zest". A line with no amount has none ("salt and pepper").\n' +
+        '- If the recipe is divided into parts (For the base / Für den Teig), make groups with a group name,\n' +
+        '  in both ingredients and steps. One part only: one group with an empty name.\n' +
+        '- Steps: rewrite them short and clear, one or two sentences each, in the impersonal or plural voice\n' +
+        '  a recipe uses in ' + LANG + '. Keep every time, temperature and appliance setting\n' +
+        '  ("6-8 seconds, speed 9" on a Thermomix).\n' +
+        '- Do not copy back-stories or introductions. Practical tips go into notes.\n' +
+        '- References to other pages ("see p. 229") go into notes.\n' +
+        '- source: the book or app name and the page number, if they are visible.\n' +
+        '- serves: if a range is given (4-6) take the middle, rounded. "Makes 1 tart" -> a sensible number of\n' +
+        '  servings, and say so in notes. 0 if unknown.\n' +
+        '- time: the total in minutes, including waiting (rising, chilling). 0 if it cannot be judged.\n' +
+        '- cat: one of breakfast, main, side, soup, bake, dessert, drink.\n' +
+        '- emoji: one food emoji that fits the dish.\n' +
+        '- tags: up to 3, short, in ' + LANG + ' (vegetarian, quick, for guests).\n' +
+        '- If something is unreadable, do not invent it: write [unreadable] in ' + LANG + ' in its place.\n' +
+        '- If there is no recipe at all, return {"ok":false}.\n' +
+        '\n' +
+        'Return JSON only, no other text, in this shape:\n' +
+        '{"title":"","emoji":"","cat":"","time":0,"serves":0,\n' +
+        ' "ingredients":[{"group":"","items":[""]}],\n' +
+        ' "steps":[{"group":"","items":[""]}],\n' +
+        ' "tags":[""],"notes":"","source":""}';
+      /* the evidence first and the question after it */
+      const ASK = 'Here is the recipe' + (imgs.length ? ' in ' + imgs.length + ' picture' + (imgs.length > 1 ? 's' : '') : '') +
+        (text ? (imgs.length ? ' and this text' : '') : '') + '. Return it as JSON.';
+      let r, why = '', out = '';
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': env.AI_KEY, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-5',
+            max_tokens: 4000,
+            system: SYSTEM,
+            messages: [{ role: 'user', content: [
+              ...imgs.map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mime, data: im.data } })),
+              ...(text ? [{ type: 'text', text: 'Text:\n' + text }] : []),
+              { type: 'text', text: ASK },
+            ] }],
+          }),
+        });
+      } catch { r = null; }
+      if (r && r.ok) {
+        let d = null; try { d = await r.json(); } catch { d = null; }
+        out = d ? (d.content || []).map((c) => c.text || '').join('').trim() : '';
+      } else if (r) {
+        try { const e = await r.json(); why = String((e && e.error && e.error.message) || '').slice(0, 200); } catch {}
+      }
+      if (!out) {
+        const g = await geminiAsk(SYSTEM, [
+          ...imgs.map((im) => ({ inlineData: { mimeType: im.mime, data: im.data } })),
+          ...(text ? [{ text: 'Text:\n' + text }] : []),
+          { text: ASK },
+        ], 6000, true);
+        if (g) out = g;
+      }
+      if (!out) return json({ error: r && !r.ok ? 'the model refused' : 'could not reach the model', why }, 502);
+      let o = null;
+      try { o = JSON.parse(firstJson(out.replace(/^```(?:json)?|```$/g, '')) || 'null'); } catch { o = null; }
+      if (!o || o.ok === false) return json({ ok: false, why: 'no recipe' });
+
+      /* rebuilt field by field: whatever it sent reaches a screen and a form */
+      const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+      const groups = (v) => (Array.isArray(v) ? v : []).slice(0, 12).map((g) => ({
+        group: str(g && g.group, 80),
+        items: (Array.isArray(g && g.items) ? g.items : []).map((x) => str(x, 400)).filter(Boolean).slice(0, 60),
+      })).filter((g) => g.items.length);
+      const CATS = ['breakfast', 'main', 'side', 'soup', 'bake', 'dessert', 'drink'];
+      const num = (v, max) => { const n = Math.round(Number(v)); return isFinite(n) && n > 0 ? Math.min(n, max) : 0; };
+      const recipe = {
+        title: str(o.title, 120),
+        /* one picture: the first grapheme, since 🌶️ is two code points */
+        emoji: (() => { const e = str(o.emoji, 16); if (!e) return '';
+          try { return [...new Intl.Segmenter().segment(e)][0].segment; } catch { return [...e][0]; } })(),
+        cat: CATS.includes(o.cat) ? o.cat : '',
+        time: num(o.time, 7 * 24 * 60),
+        serves: num(o.serves, 200),
+        ingredients: groups(o.ingredients),
+        steps: groups(o.steps),
+        tags: (Array.isArray(o.tags) ? o.tags : []).map((t) => str(t, 30)).filter(Boolean).slice(0, 3),
+        notes: String(o.notes == null ? '' : o.notes).trim().slice(0, 2000),
+        source: str(o.source, 160),
+      };
+      if (!recipe.title && !recipe.ingredients.length && !recipe.steps.length) return json({ ok: false, why: 'no recipe' });
+      return json({ ok: true, recipe });
+    }
+
     if (url.pathname === '/see' && req.method === 'POST') {
       /* EITHER provider can look at a picture. */
       if (!env.AI_KEY && !env.GEMINI_KEY) return json({ error: 'photos are not configured' }, 503);

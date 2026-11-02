@@ -76,7 +76,9 @@ const VIA_VARIABLE = ['SAY_DERIVED_NONE', 'PLAN_FEELINGS', 'RELATIONSHIP_TYPES',
                          Hebrew in every other language - in the part of the
                          app the rest of it exists to serve. */
                       'RF_IMPACT', 'RF_BODY', 'RF_ENERGY', 'RF_DRAIN',
-                      'RF_PROC', 'RF_SELFCARE', 'RF_PLANNED'];
+                      'RF_PROC', 'RF_SELFCARE', 'RF_PLANNED',
+                      /* the recipe box's two examples, drawn through _t while it is empty */
+                      'RBX_SAMPLES'];
 /* Bracket-matched rather than cut at the next "];", which is fragile for a
    multi-line collection: indexOf can run past the end of the declaration and
    let the regex pick fragments out of unrelated code.
