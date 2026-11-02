@@ -68,6 +68,7 @@ const lineOf = (i) => app.slice(0, i).split(LF).length;
    quiet about that string forever, so add one only with a reason. */
 const KEPT = [
   'Better Me', 'Better', 'Apple Health',                       // proper nouns
+  'Olimei',                                                    // the app's name since 24 Oct - the page title
   'HABIT TRACKER', 'THIS MONTH I WILL', 'NOTES',               // the paper spread
   'progress, not perfection', 'VISION BOARD',
   'Become the best version of yourself',
