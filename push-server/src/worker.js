@@ -3683,8 +3683,10 @@ async function routeRequest(req, env, ctx, M) {
         'who speaks it writes a recipe.\n' +
         '\n' +
         'Rules:\n' +
-        '- Amounts: keep the numbers exactly. Write units the way ' + LANG + ' writes them (g, ml, tablespoon,\n' +
-        '  teaspoon, pinch). Never convert between grams and cups, or between metric and imperial.\n' +
+        '- Amounts: keep the numbers exactly. Write every unit in ' + LANG + ', the word or abbreviation a\n' +
+        '  cookbook in ' + LANG + ' uses (German: EL, TL, Prise; Hebrew: כף, כפית, קורט; Japanese: 大さじ, 小さじ).\n' +
+        '  Never leave an English unit word in another language. Never convert between grams and cups, or\n' +
+        '  between metric and imperial.\n' +
         '- Every ingredient is ONE line that starts with its amount when it has one: "200 g flour".\n' +
         '  Small instructions go after a comma: "1/2 lemon, zest". A line with no amount has none ("salt and pepper").\n' +
         '- If the recipe is divided into parts (For the base / Für den Teig), make groups with a group name,\n' +
