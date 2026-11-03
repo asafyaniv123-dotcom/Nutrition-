@@ -775,6 +775,43 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   box-shadow:-4px -4px 10px var(--nu-lit),5px 6px 14px var(--nu-shade-soft)}
 .rbx-cook-nav button.go{flex:1.4}
 .rbx-cook-nav button:disabled{opacity:.4}
+/* the step's timer: a clock pressed into the material, its time as light */
+.rbx-tgo{width:auto;margin:26px 0 0;padding:14px 20px;font-size:16px}
+.rbx-timer{margin-top:24px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.rbx-clock{position:relative;width:200px;height:200px;border-radius:50%;display:grid;place-items:center;
+  box-shadow:inset 6px 7px 14px var(--nu-shade),inset -6px -6px 13px var(--nu-lit)}
+.rbx-clock svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+[dir=rtl] .rbx-clock svg{transform:rotate(-90deg) scaleY(-1)}
+.rbx-clock .trk{fill:none;stroke:rgba(176,168,156,.25);stroke-width:7}
+.rbx-clock .arc{fill:none;stroke:#f0a92e;stroke-width:7;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(240,169,46,.6));transition:stroke-dashoffset .25s linear}
+.rbx-clock b{position:relative;font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--nu-ink)}
+.rbx-clock.done{box-shadow:inset 6px 7px 14px var(--nu-shade),inset -6px -6px 13px var(--nu-lit),0 0 28px 6px rgba(240,169,46,.45)}
+.rbx-clock.done b{font-size:22px}
+.rbx-clock-b{display:flex;gap:10px}
+.rbx-clock-b button{border:none;border-radius:999px;padding:12px 22px;font:inherit;font-size:15px;font-weight:800;color:var(--nu-ink);background:var(--nu-ground);cursor:pointer;
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.rbx-pill{display:inline-flex;align-items:center;gap:6px;margin-inline-start:auto;margin-inline-end:10px;border:none;border-radius:999px;padding:8px 13px;
+  font:inherit;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--nu-ink);background:var(--nu-ground);cursor:pointer;
+  box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.rbx-pill svg{width:16px;height:16px;fill:none;stroke:#b07a1e;stroke-width:1.9;stroke-linecap:round}
+.rbx-pill.done{box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft),0 0 12px 3px rgba(240,169,46,.5)}
+/* nutrition on request: a quiet row that opens */
+.rbx-nut{border-radius:20px;margin-bottom:14px;padding:4px 14px;box-shadow:inset 2px 3px 7px var(--nu-shade),inset -2px -2px 6px var(--nu-lit)}
+.rbx-nut-b{display:flex;align-items:center;gap:9px;width:100%;border:none;background:none;padding:11px 0;font:inherit;font-size:14px;font-weight:800;color:var(--nu-ink);cursor:pointer;text-align:start}
+.rbx-nut-b span{flex:1}
+.rbx-nut-ic{width:18px;height:18px;fill:none;stroke:#b07a1e;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rbx-chev{font-style:normal;font-size:20px;color:var(--nu-muted);transition:transform .2s}
+.rbx-chev.on{transform:rotate(-90deg)}
+[dir=rtl] .rbx-chev.on{transform:rotate(90deg)}
+.rbx-nut-h{font-size:12.5px;font-weight:800;color:var(--nu-muted);margin:2px 0 8px}
+.rbx-nut-g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rbx-nut-g div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:14px;background:var(--nu-ground);
+  box-shadow:-2px -2px 5px var(--nu-lit),2px 3px 7px var(--nu-shade-soft)}
+.rbx-nut-g b{font-size:16px;font-weight:800;color:var(--nu-ink);font-variant-numeric:tabular-nums}
+.rbx-nut-g span{font-size:11.5px;font-weight:700;color:var(--nu-muted)}
+.rbx-nut-msg{font-size:12.5px;color:var(--nu-muted);line-height:1.5;margin:10px 0 10px}
+.rbx-nut-w{padding:6px 0 12px}
+.rbx-act.on{color:var(--nu-ink)}
 /* the form */
 .rbx-smart{border-radius:22px;padding:16px;margin-bottom:22px;background:var(--nu-ground);box-shadow:-4px -4px 10px var(--nu-lit),5px 6px 14px var(--nu-shade-soft)}
 .rbx-smart p{font-size:13.5px;color:var(--nu-muted);line-height:1.55;margin:0 0 12px}
@@ -34638,7 +34675,7 @@ function rbxSearch(v){
 function rbxFind(id){var a=rbxAll();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
 function rbxOpen(id){
   var r=rbxFind(id);if(!r)return;
-  _rbxOpen=id;_rbxServ=r.serves||1;_rbxDone={};_rbxDel=false;
+  _rbxOpen=id;_rbxServ=r.serves||1;_rbxDone={};_rbxDel=false;_rbxNutOpen=false;_rbxNutErr='';
   rbxSheetPaint(true);
 }
 function rbxFactor(r){return r.serves?_rbxServ/r.serves:_rbxServ;}
@@ -34655,7 +34692,7 @@ function rbxSheetPaint(first){
   h+='<div class="rbx-acts"><button class="rbx-cook" onclick="rbxCookOpen()">'+RCP_I.play+_t('מצב בישול')+'</button>'+
      (r.sample?'':'<button class="rbx-act'+(r.fav?' on':'')+'" onclick="rbxFavToggle()" aria-pressed="'+!!r.fav+'">'+RCP_I.heart+'<span>'+(r.fav?_t('במועדפים'):_t('למועדפים'))+'</span></button>'+
        '<button class="rbx-act" onclick="rbxEditOpen()">'+RCP_I.pen+'<span>'+_t('עריכה')+'</span></button>')+
-     '<button class="rbx-act" onclick="rbxCopy()">'+RCP_I.copy+'<span>'+_t('העתקה')+'</span></button></div>';
+     '<button class="rbx-act" id="rbx-copy" onclick="rbxCopy()">'+RCP_I.copy+'<span>'+_t('העתקה')+'</span></button></div>';
   if(rbxCount(r.ingredients)){
     h+='<div class="rcp-card"><div class="rcp-ch"><span class="rcp-ic">'+RCP_I.basket+'</span>'+_t('מצרכים')+
        '<span class="rbx-serv"><button onclick="rbxServ(-1)" aria-label="−">−</button><b>'+
@@ -34671,6 +34708,7 @@ function rbxSheetPaint(first){
     }
     h+='</div>';
   }
+  if(rbxCount(r.ingredients))h+=rbxNutHTML(r);
   if(rbxCount(r.steps)){
     h+='<div class="rcp-card"><div class="rcp-ch"><span class="rcp-ic">'+RCP_I.steps+'</span>'+_t('אופן הכנה')+'</div>';
     for(i=0;i<r.steps.length;i++){
@@ -34730,11 +34768,33 @@ function rbxPlain(r){
   if(r.source)out.push('',_t('מקור')+': '+r.source);
   return out.join('\n');
 }
+/* The answer is on the button itself: a toast is drawn under the sheet,
+   which is how a copy that worked looked like one that did nothing (3 Nov).
+   Where the clipboard API refuses, a selected textarea, and where that
+   refuses too, the phone's share sheet. */
 function rbxCopy(){
   var r=rbxFind(_rbxOpen);if(!r)return;
   var t=rbxPlain(r);
-  (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject())
-    .then(function(){showToast(_t('המתכון הועתק'));},function(){showToast(_t('ההעתקה לא הצליחה'));});
+  function said(ok){
+    var b=document.getElementById('rbx-copy'),sp=b&&b.querySelector('span');if(!sp)return;
+    sp.textContent=ok?_t('הועתק'):_t('ההעתקה לא הצליחה');b.classList.toggle('on',!!ok);
+    clearTimeout(b._t);b._t=setTimeout(function(){if(sp.isConnected){sp.textContent=_t('העתקה');b.classList.remove('on');}},1800);
+  }
+  function old(){
+    var ta=document.createElement('textarea'),ok=false;
+    ta.value=t;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:0;left:0;opacity:0;font-size:16px';
+    (document.getElementById('rbx-ov')||document.body).appendChild(ta);
+    ta.focus();ta.select();try{ta.setSelectionRange(0,t.length);}catch(e){}
+    try{ok=document.execCommand('copy');}catch(e){}
+    ta.remove();return ok;
+  }
+  function last(){
+    if(navigator.share)navigator.share({title:r.title,text:t}).then(function(){said(true);},function(){said(false);});
+    else said(false);
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(function(){said(true);},function(){if(old())said(true);else last();});
+  else if(old())said(true);else last();
 }
 function rbxDelete(){
   var a=loadRecipes(),r=null,i;
@@ -34764,13 +34824,18 @@ function rbxCookOpen(){
 }
 function rbxCookPaint(){
   var el=document.getElementById('rbx-cook');if(!el||!_rbxCook)return;
-  var c=_rbxCook,s=c.st[c.i],last=c.i===c.st.length-1;
+  var c=_rbxCook,s=c.st[c.i],last=c.i===c.st.length-1,du=rbxDur(s.t),T=_rbxTimer,
+      here=T&&T.step===c.i,away=T&&!here;
   el.innerHTML='<div class="rbx-cooking">'+
-    '<div class="rbx-cook-top"><span>'+esc(c.r.title)+'</span><button class="rbx-x" onclick="rbxCookClose()" aria-label="'+esc(_t('סגור'))+'">'+RCP_I.x+'</button></div>'+
+    '<div class="rbx-cook-top"><span>'+esc(c.r.title)+'</span>'+
+    (away?'<button class="rbx-pill'+(T.done?' done':'')+'" onclick="rbxCookGo('+(T.step-c.i)+')">'+RCP_I.clock+'<span id="rbx-pill-t">'+(T.done?_t('הזמן עבר'):rbxClock(rbxTimerLeft()))+'</span></button>':'')+
+    '<button class="rbx-x" onclick="rbxCookClose()" aria-label="'+esc(_t('סגור'))+'">'+RCP_I.x+'</button></div>'+
     '<div class="rbx-cook-n">'+_t('שלב {n} מתוך {total}',{n:c.i+1,total:c.st.length})+'</div>'+
     '<div class="rbx-cook-bar"><i style="width:'+((c.i+1)/c.st.length*100).toFixed(1)+'%"></i></div>'+
     (s.g?'<div class="rbx-cook-g">'+esc(s.g)+'</div>':'')+
-    '<div class="rbx-cook-t">'+esc(s.t)+'</div>'+
+    '<div class="rbx-cook-t">'+esc(s.t)+
+    (here?'<div class="rbx-timer">'+rbxTimerHTML()+'</div>'
+     :du?'<button class="rbx-cook rbx-tgo" onclick="rbxTimerStart('+du+')">'+rbxIco('clock',_t('הפעל טיימר · {t}',{t:rbxDurLabel(du)}))+'</button>':'')+'</div>'+
     '<div class="rbx-cook-nav"><button onclick="rbxCookGo(-1)"'+(c.i?'':' disabled')+'>'+_t('הקודם')+'</button>'+
     '<button class="go" onclick="'+(last?'rbxCookClose()':'rbxCookGo(1)')+'">'+(last?_t('סיימתי')+' ✓':_t('הבא'))+'</button></div></div>';
 }
@@ -34788,10 +34853,154 @@ function rbxCookKey(e){
   else if(e.key==='ArrowRight')rbxCookGo(rtl?-1:1);
 }
 function rbxCookClose(){
+  rbxTimerStop(true);
   var el=document.getElementById('rbx-cook');if(el)el.remove();
   document.removeEventListener('keydown',rbxCookKey);
   if(_rbxLock){try{_rbxLock.release();}catch(e){}_rbxLock=null;}
   _rbxCook=null;
+}
+
+/* ── A TIMER IN THE STEP (3 Nov) ── a step that says how long - "10 דקות",
+   "12–15 minutes", "6 Min", "10分" - offers a timer for it, the low end of a
+   range, since that is when to look. It runs on a clock time rather than a
+   count of ticks, so a phone that throttles the page in the background still
+   ends it on time, and it keeps running while you move between steps. */
+/* the words a step is READ for - never shown, so never translated */
+var RBX_DU=[[3600,'שעות|שעה|hours?|hrs?|Stunden?|Std\\.?|heures?|or[ae]|horas?|ساعات|ساعة|時間|小时|小時'],   // i18n-exempt: words read, not shown
+  [60,'דקות|דקה|דק׳|minutes?|mins?|Minuten?|Min\\.?|minut[oi]|minutos?|دقائق|دقيقة|分钟|分鐘|分'],   // i18n-exempt: words read, not shown
+  [1,'שניות|שנייה|seconds?|secs?|Sekunden?|Sek\\.?|secondes?|second[oi]|segundos?|ثوانٍ|ثوان|ثانية|秒']];   // i18n-exempt: words read, not shown
+var RBX_DUR=new RegExp('(\\d+(?:[.,]\\d+)?)(?:\\s*[-–—~〜]\\s*\\d+(?:[.,]\\d+)?)?\\s*(?:('+RBX_DU[0][1]+')|('+RBX_DU[1][1]+')|('+RBX_DU[2][1]+'))(?![A-Za-zÀ-ÿ])','i');
+function rbxDur(text){
+  var t=String(text||'').replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);});
+  if(/חצי שעה/.test(t))return 1800;
+  if(/רבע שעה/.test(t))return 900;
+  if(/(^|[^\d\s]\s*)שעה וחצי/.test(t))return 5400;
+  var m=t.match(RBX_DUR);if(!m)return 0;
+  var n=parseFloat(m[1].replace(',','.')),u=m[2]?3600:m[3]?60:1;
+  return n>0?Math.round(n*u):0;
+}
+function rbxDurLabel(sec){
+  if(sec>=3600&&sec%3600===0)return _t('{n} שעות',{n:sec/3600});
+  if(sec>=60)return _t('{n} דקות',{n:Math.round(sec/60)});
+  return _t('{n} שניות',{n:sec});
+}
+function rbxClock(sec){
+  var m=Math.floor(sec/60),x=sec%60;
+  return nfmt(m)+':'+(x<10?nfmt(0):'')+nfmt(x);
+}
+var _rbxTimer=null;
+function rbxTimerLeft(){
+  var T=_rbxTimer;if(!T)return 0;
+  return Math.max(0,Math.ceil(((T.paused?T.left:(T.end-Date.now()))/1000)));
+}
+function rbxTimerHTML(){
+  var T=_rbxTimer,left=rbxTimerLeft(),done=T.done,R=54,C=2*Math.PI*R,frac=done?0:left/T.total;
+  return '<div class="rbx-clock'+(done?' done':'')+'"><svg viewBox="0 0 128 128" aria-hidden="true"><circle class="trk" cx="64" cy="64" r="'+R+'"/>'+
+    '<circle class="arc" id="rbx-arc" cx="64" cy="64" r="'+R+'" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+(C*(1-frac)).toFixed(1)+'"/></svg>'+
+    '<b id="rbx-left">'+(done?_t('הזמן עבר'):rbxClock(left))+'</b></div>'+
+    '<div class="rbx-clock-b">'+(done?'':'<button onclick="rbxTimerPause()">'+(T.paused?_t('המשך'):_t('השהה'))+'</button>')+
+    '<button onclick="rbxTimerStop()">'+(done?_t('סגור'):_t('עצור'))+'</button></div>';
+}
+function rbxTimerStart(sec){
+  rbxTimerStop(true);
+  _rbxTimer={step:_rbxCook.i,total:sec,end:Date.now()+sec*1000,paused:false,left:0,done:false};
+  try{if(typeof sndPrime==='function')sndPrime();}catch(e){}
+  _rbxTimer.iv=setInterval(rbxTimerTick,250);
+  rbxCookPaint();
+}
+function rbxTimerTick(){
+  var T=_rbxTimer;if(!T)return;
+  var left=rbxTimerLeft();
+  if(!T.paused&&left<=0&&!T.done){
+    T.done=true;clearInterval(T.iv);
+    try{restBeep();setTimeout(restBeep,700);setTimeout(restBeep,1400);}catch(e){}
+    try{if(navigator.vibrate)navigator.vibrate([300,150,300,150,300]);}catch(e){}
+    rbxCookPaint();return;
+  }
+  var a=document.getElementById('rbx-left');if(a)a.textContent=rbxClock(left);
+  var p=document.getElementById('rbx-pill-t');if(p)p.textContent=rbxClock(left);
+  var arc=document.getElementById('rbx-arc');
+  if(arc){var C=2*Math.PI*54;arc.setAttribute('stroke-dashoffset',(C*(1-left/T.total)).toFixed(1));}
+}
+function rbxTimerPause(){
+  var T=_rbxTimer;if(!T||T.done)return;
+  if(T.paused){T.end=Date.now()+T.left;T.paused=false;}else{T.left=T.end-Date.now();T.paused=true;}
+  rbxCookPaint();
+}
+function rbxTimerStop(quiet){
+  if(_rbxTimer){clearInterval(_rbxTimer.iv);_rbxTimer=null;}
+  if(!quiet)rbxCookPaint();
+}
+
+/* ── WHAT IS IN A SERVING (3 Nov) ── on request, never in the way. The
+   ingredient list is priced by the COACH, the door every meal logged in the
+   day goes through, and the totals are its own per-item figures added up.
+   /parse was tried first and is wrong for this: its serving_g is the weight
+   of a portion, not of one unit, so "4 ביצים" came back as 4 x 200 g = 1240
+   kcal and "2 כפות שמן זית" as 60 g of oil - 989 kcal a serving of a
+   shakshuka that is about 360. The same list through /coach: oil 28 g fat,
+   four eggs 25 g protein, about 725 kcal for the whole pan. Nothing is
+   logged: the reply is read and dropped. The coach folds line breaks into
+   spaces, so the lines go joined by semicolons. The total is kept on the
+   recipe with the ingredients it was counted from, so it is worked out
+   again only when they change. */
+var _rbxNutOpen=false,_rbxNutBusy=false,_rbxNutErr='',_rbxNutMem={};
+function rbxSig(r){var t=rbxText(r.ingredients),h=0;for(var i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;return 'n'+h;}
+function rbxNutOf(r){
+  var n=r.sample?_rbxNutMem[r.id]:r.nutri;
+  return n&&n.sig===rbxSig(r)?n:null;
+}
+function rbxNutHTML(r){
+  var n=rbxNutOf(r),h='<div class="rbx-nut"><button class="rbx-nut-b" onclick="rbxNutToggle()" aria-expanded="'+_rbxNutOpen+'">'+
+    RCP_I.bulb.replace('<svg','<svg class="rbx-nut-ic"')+'<span>'+_t('ערכים תזונתיים, בהערכה')+'</span><i class="rbx-chev'+(_rbxNutOpen?' on':'')+'">&lsaquo;</i></button>';
+  if(!_rbxNutOpen)return h+'</div>';
+  if(_rbxNutBusy)return h+mipWaitHTML(_t('מחשב לפי המצרכים…'),'rbx-nut-w')+'</div>';
+  if(!n)return h+'<div class="rbx-nut-msg">'+esc(_rbxNutErr||_t('לא הצלחתי לחשב ערכים למתכון הזה.'))+'</div></div>';
+  var d=r.serves||1,v=function(x){return x/d;};
+  h+='<div class="rbx-nut-h">'+(r.serves?_t('למנה אחת'):_t('לכל המתכון'))+'</div><div class="rbx-nut-g">'+
+     '<div><b>'+nfmt(Math.round(v(n.kcal)))+'</b><span>'+_t('קק"ל')+'</span></div>'+
+     '<div><b>'+fmtGrams(Math.round(v(n.p)))+'</b><span>'+_t('חלבון')+'</span></div>'+
+     '<div><b>'+fmtGrams(Math.round(v(n.c)))+'</b><span>'+_t('פחמימה')+'</span></div>'+
+     '<div><b>'+fmtGrams(Math.round(v(n.f)))+'</b><span>'+_t('שומן')+'</span></div></div>'+
+     '<div class="rbx-nut-msg">'+_t('הערכה לפי המצרכים.')+'</div>';
+  return h+'</div>';
+}
+function rbxNutToggle(){
+  _rbxNutOpen=!_rbxNutOpen;
+  var r=rbxFind(_rbxOpen);
+  if(_rbxNutOpen&&r&&!rbxNutOf(r)&&!_rbxNutBusy)rbxNutCalc(r);
+  rbxSheetPaint();
+}
+function rbxNutCalc(r){
+  if(!SYNC_SERVER){_rbxNutErr=_t('בלי חיבור לשרת אין חישוב.');return;}
+  var lines=[],id=r.id,sig=rbxSig(r);
+  (r.ingredients||[]).forEach(function(g){g.items.forEach(function(x){lines.push(String(x).replace(/;/g,','));});});
+  if(!lines.length){_rbxNutErr=_t('אין מצרכים לחשב.');return;}
+  _rbxNutBusy=true;_rbxNutErr='';
+  function out(res,limit){
+    _rbxNutBusy=false;
+    if(res){
+      if(r.sample)_rbxNutMem[id]=res;
+      else{var x=rbxGet(id);if(x){x.nutri=res;rbxPut(x);}}
+    } else _rbxNutErr=limit?_t('הגעת למגבלה של היום.'):_t('לא הצלחתי לחשב ערכים למתכון הזה.');
+    if(_rbxOpen===id)rbxSheetPaint();
+  }
+  fetch(SYNC_SERVER+'/coach'+meterQ(),{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({day:todayStr(),lang:appLang(),units:APP_UNITS,gender:appGender()||'',
+      targets:{kcal:TARGETS.kcal,p:TARGETS.p,c:TARGETS.c,f:TARGETS.f},logged:[],history:[],weights:[],
+      /* a bare list reads to the coach as a question and comes back with no
+         items; said as a meal, it is priced. Words for the server, never shown */
+      message:('אכלתי: '+lines.join('; ')).slice(0,1400),uid:installId()})})   // i18n-exempt: an instruction to the server
+  .then(function(x){return x.json().then(function(j){return {s:x.status,j:j};},function(){return {s:x.status,j:null};});})
+  .then(function(o){
+    var it=o.j&&Array.isArray(o.j.items)?o.j.items:[];
+    if(!it.length){out(null,o.s===429||(o.j&&o.j.error==='too many for today'));return;}
+    var t={kcal:0,p:0,c:0,f:0};
+    it.forEach(function(i){t.kcal+=+i.calories||0;t.p+=+i.protein||0;t.c+=+i.carbs||0;t.f+=+i.fat||0;});
+    /* no "not counted" figure: the coach merges lines (salt and pepper is
+       one item), so lines minus items is not a count of anything left out */
+    out(t.kcal?{sig:sig,kcal:Math.round(t.kcal),p:Math.round(t.p*10)/10,c:Math.round(t.c*10)/10,f:Math.round(t.f*10)/10}:null);
+  },function(){out(null);});
 }
 
 /* ── ADD AND EDIT ── a page, like the rest of the tab. "# " in either box opens
@@ -46301,11 +46510,13 @@ function dialLay(root){
     els[i].style.transform='translate('+x.toFixed(2)+'px,'+y.toFixed(2)+'px)';
     dist=Math.abs(((ang%360)+540)%360-180);
     if(dist<bd){bd=dist;best=i;}
-    /* nearness to the notch, eased: the glyph grows 42 -> 56 and the small
-       name gives way to the channel as the disc arrives, not at a line */
+    /* nearness to the notch, eased: the glyph grows 42 -> 56 as the disc
+       arrives, not at a line. Its small name stays under it, as well as in
+       the channel above (Asaf, 3 Nov), and steps down the 7px the glyph
+       grows below its own box, so the two never touch */
     near=Math.max(0,1-dist/dialStep());near=near*near*(3-2*near);
     els[i].querySelector('.hdisc-ic').style.transform='scale('+(1+near/3).toFixed(3)+')';
-    els[i].querySelector('.hdisc-t').style.opacity=(1-near).toFixed(3);
+    els[i].querySelector('.hdisc-t').style.transform=near?'translateY('+(near*7).toFixed(1)+'px)':'';
   }
   for(i=0;i<els.length;i++)els[i].classList.toggle('on',i===best);
   dialCapSet(els[best]);
