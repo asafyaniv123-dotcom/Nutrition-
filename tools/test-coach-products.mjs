@@ -78,7 +78,10 @@ it = j.items && j.items[0];
 ok(it && it.calories === 140, 'two eggs still counted by the piece: 140 kcal - got ' + (it && it.calories));
 
 /* 6. the prompt asks about what is in the photo and not in the words */
-const sys = sent[0] && sent[0].system;
+const sys0 = sent[0] && sent[0].system;
+const sys = Array.isArray(sys0) ? sys0.map((x) => x.text).join('') : sys0;
+ok(Array.isArray(sys0) && sys0.at(-1).cache_control && sys0.at(-1).cache_control.type === 'ephemeral', 'the instructions are marked for the cache');
+ok(!/2026-11-03|"id":"p1"/.test(sys), 'nothing that changes per turn (the day, her products) is inside the cached instructions');
 ok(sys && sys.includes('Compare the photo with their words') && sys.includes('Do NOT log that food until they confirm'), 'the prompt asks about unmentioned food in the photo');
 ok(sys && sys.includes('## Their own products'), 'the prompt explains her products');
 ok(sent.length === 1, 'none of these was sent back for macros - one call each');

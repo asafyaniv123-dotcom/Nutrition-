@@ -566,7 +566,11 @@ async function meterFetch(u, init, M) {
        is the person's, and reading a copy of it would hold it back */
     if (/json/.test(type)) M.wait.push(r.clone().json().then((j) => {
       const a = j && j.usage, g = j && j.usageMetadata;
-      if (a) { c.i = (a.input_tokens || 0) + (a.cache_creation_input_tokens || 0) + (a.cache_read_input_tokens || 0); c.o = a.output_tokens || 0; }
+      /* i stays the whole prompt, so days before and after caching compare;
+         cr and cw say how much of it was read from the cache (about a tenth
+         of the price) and written to it (a quarter more) */
+      if (a) { c.i = (a.input_tokens || 0) + (a.cache_creation_input_tokens || 0) + (a.cache_read_input_tokens || 0); c.o = a.output_tokens || 0;
+        c.cr = a.cache_read_input_tokens || 0; c.cw = a.cache_creation_input_tokens || 0; }
       if (g) { c.i = g.promptTokenCount || 0; c.o = (g.candidatesTokenCount || 0) + (g.thoughtsTokenCount || 0); }
     }).catch(() => {}));
   } else {
@@ -584,7 +588,8 @@ async function meterSave(env, M) {
   const key = 'mt:' + new Date().toISOString().slice(0, 10) + ':' + M.route;
   let rec = {};
   try { rec = JSON.parse((await env.SUBS.get(key)) || '{}') || {}; } catch { rec = {}; }
-  const add = (o, c) => { o.n = (o.n || 0) + 1; o.i = (o.i || 0) + c.i; o.o = (o.o || 0) + c.o; if (c.e) o.f = (o.f || 0) + 1; };
+  const add = (o, c) => { o.n = (o.n || 0) + 1; o.i = (o.i || 0) + c.i; o.o = (o.o || 0) + c.o; if (c.e) o.f = (o.f || 0) + 1;
+    if (c.cr) o.cr = (o.cr || 0) + c.cr; if (c.cw) o.cw = (o.cw || 0) + c.cw; };
   rec.t = rec.t || {}; rec.m = rec.m || {}; rec.e = rec.e || {}; rec.u = rec.u || {};
   for (const c of M.calls) {
     add(rec.t, c);
@@ -5140,7 +5145,14 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                  matching a word against a table. */
               model: 'claude-sonnet-5',
               max_tokens: 1600,
-              system: SYS,
+              /* CACHED (3 Nov): the tool and these instructions are the same
+                 bytes on every turn - about 84% of the app's whole spend went
+                 on sending them again. Marked, they are read back at a tenth
+                 of the price for five minutes after each use, which covers a
+                 meal told in several messages and every send-back below.
+                 Nothing that changes per turn may go into SYS, or every turn
+                 writes a new entry and none is ever read. */
+              system: [{ type: 'text', text: SYS, cache_control: { type: 'ephemeral' } }],
               tools: [TOOL],
               tool_choice: { type: 'tool', name: 'reply' },
               messages,
@@ -5311,7 +5323,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       const u = (d && d.usage) || {};
       return json({
         ok: true,
-        usage: { in: u.input_tokens || 0, out: u.output_tokens || 0 },
+        usage: { in: u.input_tokens || 0, out: u.output_tokens || 0,
+          cache_read: u.cache_read_input_tokens || 0, cache_write: u.cache_creation_input_tokens || 0 },
         retried,   // sent back once because its numbers did not add up
         action,
         date: at,
