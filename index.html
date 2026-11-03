@@ -948,6 +948,14 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
 .co-go{background:var(--cta-fill);color:var(--white);font-size:20px;font-weight:800}
 .co-go[disabled]{opacity:.45;cursor:default}
+/* another day's conversation: where the writing line was, a pressed channel
+   that says whose day it is, and a raised way back - nothing to type into */
+.co-closed{display:flex;align-items:center;gap:10px;margin-top:10px;min-height:46px;padding:9px 9px 9px 14px;border-radius:14px;
+  padding-inline:14px 9px;background:var(--nu-ground,#e9e7e3);font-size:12.5px;line-height:1.45;color:var(--nu-muted,#6d675e);
+  box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+.co-closed span{flex:1;min-width:0}
+.co-closed button{flex:0 0 auto;border:none;border-radius:999px;padding:8px 14px;font:inherit;font-weight:800;cursor:pointer;color:var(--nu-ink,#4a453f);
+  background:var(--nu-ground,#e9e7e3);box-shadow:-2px -2px 5px var(--nu-lit,#fff),2px 3px 7px var(--nu-shade-soft,rgba(176,168,156,.28))}
 .fw-fields{display:grid;grid-template-columns:1fr 1fr auto;gap:9px;margin-bottom:9px;align-items:end}
 /* the third cell is one button of a fixed width, which is the whole reason
    it is allowed to be here - see the comment where this grid is written */
@@ -16800,18 +16808,23 @@ function coachTurnAct(ti,del){
   if(del)mealSoftDel(ids,d);
   else coachEditStart({ids:ids.map(String),was:loadCoach(d).turns[ti].text||'',ti:ti,kind:'msg',date:d});
 }
+/* THE DAY THE ARROWS ARE ON (Asaf, 3 Nov): walking back to yesterday shows
+   yesterday's conversation with yesterday's food, as it was. Only today's
+   can be written in - the coach files what it logs under the day it is
+   asked on - so another day has no writing line, no hold-to-edit, no
+   "left today" and no meal chips, and says so, with a way back. */
 function coachInnerHTML(){
-  var d=todayStr(),rec=loadCoach(d),h='',i;
-  h+='<div class="co-frame">';
+  var d=curDate||todayStr(),past=d!==todayStr(),rec=loadCoach(d),h='',i;
+  h+='<div class="co-frame'+(past?' co-past':'')+'">';
   h+='<div class="co-list" id="co-list">';
   if(!rec.turns.length)
-    h+='<div class="co-empty">'+_t('מה אכלת? אפשר גם לשאול')+'</div>';
+    h+='<div class="co-empty">'+(past?_t('אין שיחה מהיום הזה.'):_t('מה אכלת? אפשר גם לשאול'))+'</div>';
   for(i=0;i<rec.turns.length;i++){
     var t=rec.turns[i];
     if(t.role==='user'){
       var ks=Array.isArray(t.pics)?t.pics:[];
       /* a message that logged something can be held for edit and delete, like the rows below */
-      h+='<div class="co-u"'+(coachTurnIds(i).length?' data-ti="'+i+'"':'')+'>'+
+      h+='<div class="co-u"'+(!past&&coachTurnIds(i).length?' data-ti="'+i+'"':'')+'>'+
          (ks.length?'<span class="co-shots">'+ks.map(function(k){
             return photoImg(k,'class="co-img" alt=""');}).join('')+'</span>':'')+
          /* AN OLDER TURN KEPT A NUMBER HERE, before the pictures were
@@ -16831,11 +16844,17 @@ function coachInnerHTML(){
          (t.q?'<div class="co-q">'+esc(t.q)+'</div>':'')+'</div>';
       if(Array.isArray(t.ids)&&t.ids.length)h+=coachItemsHTML(t.ids,d,t.was);
       /* only when something moved - see the data model */
-      if(t.changed&&!t.edit&&i===rec.turns.length-1){
+      if(!past&&t.changed&&!t.edit&&i===rec.turns.length-1){
         h+=coachLeftHTML(d);
         if(Array.isArray(t.ids)&&t.ids.length)h+=coachKindsHTML(t.ids);
       }
     }
+  }
+  if(past){
+    h+='</div></div><div class="co-closed"><span>'+esc(_t('זו השיחה של {date}. כותבים רק בשיחה של היום.',
+         {date:dfmt(d+'T12:00:00',{weekday:'long',day:'numeric',month:'long'})}))+'</span>'+
+       '<button onclick="curDate=todayStr();render()">'+_t('חזרה להיום')+'</button></div>';
+    return h;
   }
   if(_coachBusy)h+=mipWaitHTML([_t('קורא מה אכלת…'),_t('מחפש במאגר המזונות…'),_t('מחשב קלוריות וחלבון…')],'co-mip');
   if(_coachErr)h+='<div class="co-err">'+esc(_coachErr)+
