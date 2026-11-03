@@ -32460,6 +32460,12 @@ function renderFitSummary(){
   /* The photo sits last, under the numbers: it is the thing you keep, not the
      thing you read. An empty state that says nothing is better than one that
      asks - there is no reason a workout should have a picture. */
+  /* DIABETES: sugar before a workout AND after it (ADA). Before is in the
+     workout's notes; after is here, and only for the workout just finished -
+     a summary opened from the history a week later is not the moment. */
+  if(typeof hlHas==='function'&&hlHas('dm')&&Date.now()-entry.date<2*3600000)
+    h+='<div class="hl-wn"><div><i></i>'+esc(_t('סכרת: זה זמן טוב לבדוק סוכר, ולאכול משהו אם הוא נמוך'))+'</div>'+
+       '<span>'+_t('מידע כללי ולא ייעוץ רפואי.')+'</span></div>';
   h+=fitPhotoBlockHTML(entry.photo,'fitAddPhoto','fitClearPhoto');
 
   // Action buttons
@@ -47395,9 +47401,23 @@ function hlAdjust(exs){
   if(hlHas('preg')&&out.length<exs.length)notes.push(_t('הריון: תרגילים בשכיבה על הגב ובכפיפת בטן הוצאו'));
   return {exs:out.length?out:exs,notes:notes};
 }
+/* EVERY WORKOUT, not only a built one (3 Nov). A workout the app built
+   carries its own notes; one from a program, or started empty, carries none -
+   so a person with myasthenia started her own program and was never told
+   two sets and a long rest. Those are worked out here from what is in force,
+   and where the app removed nothing from someone else's exercise list, it
+   says what to leave out instead. */
+function hlNotesFor(w){
+  if(w&&w.hlNotes&&w.hlNotes.length)return w.hlNotes;
+  var n=hlAdjust([]).notes;
+  if(hlHas('op'))n.push(_t('אוסטאופורוזיס: בלי כפיפת גב עם עומס ובלי סיבובים חזקים'));
+  if(hlHas('preg'))n.push(_t('הריון: בלי תרגילים בשכיבה על הגב ובלי כפיפות בטן'));
+  return n;
+}
 function hlNotesHTML(w){
-  if(!w||!w.hlNotes||!w.hlNotes.length)return '';
-  return '<div class="hl-wn"><b>'+_t('מה הותאם לך')+'</b>'+w.hlNotes.map(function(t){return '<div><i></i>'+esc(t)+'</div>';}).join('')+
+  var notes=w?hlNotesFor(w):[];
+  if(!notes.length)return '';
+  return '<div class="hl-wn"><b>'+_t('מה הותאם לך')+'</b>'+notes.map(function(t){return '<div><i></i>'+esc(t)+'</div>';}).join('')+
     '<span>'+_t('מידע כללי ולא ייעוץ רפואי.')+'</span></div>';
 }
 /* Stored the same way the language and the country are, and repainted the same
