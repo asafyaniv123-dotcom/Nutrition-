@@ -15731,7 +15731,7 @@ function myProdLearn(items){
 }
 function coachApply(j,onDate){
   if(!j||j.action==='none'||!j.items||!j.items.length)return [];
-  var d=onDate||j.date||todayStr(),day=loadDay(d),i,q,added=[],moved=[];
+  var d=onDate||j.date||todayStr(),day=loadDay(d),i,q,added=[],moved=[],updated=[];
   if(j.action==='add'){
     for(i=0;i<j.items.length;i++){q=j.items[i];
       /* THE CLOCK TIME, which was missing. kind is left empty on purpose -
@@ -15749,6 +15749,7 @@ function coachApply(j,onDate){
          always answers with text, so its corrections never landed */
       for(q=0;q<j.items.length;q++) if(String(day.meals[i].id)===String(j.items[q].id)){
         var u=j.items[q],mk=coachMealOk(u.meal);
+        if(updated.indexOf(u.id)<0)updated.push(u.id);
         if(mk){day.meals[i].kind=mk;moved.push(u.id);}
         /* MOVING IS NOT RE-ESTIMATING. "זאת הייתה ארוחת בוקר" changes the
            slot and nothing else; writing the numbers back on every update
@@ -15776,7 +15777,10 @@ function coachApply(j,onDate){
     day.meals=keep;
   }
   saveDay(d,day);
-  return added.length?added:moved;
+  /* an update answers with the rows it changed, so they are listed under
+     the reply like an add - it used to answer with nothing unless the meal
+     moved, and a correction showed no numbers at all */
+  return added.length?added:(updated.length?updated:moved);
 }
 /* One tap moves everything that turn logged to another meal of the day.
    The coach guesses from the clock and the clock is often wrong about a
@@ -15793,14 +15797,18 @@ function coachKindSet(ids,k){
 /* What was logged, row by row: name, amount, the weight that was assumed,
    calories and protein - read from the day, so an edit shows here too and a
    deleted row simply leaves. */
-function coachItemsHTML(ids,d){
+function coachItemsHTML(ids,d,was){
   var day=loadDay(d||todayStr()),h='',i,j,m,n=0,T={k:0,p:0,c:0,f:0};
   for(j=0;j<ids.length;j++)for(i=0;i<day.meals.length;i++){m=day.meals[i];
     if(String(m.id)!==String(ids[j]))continue;
     n++;T.k+=Math.round(m.kcal||0);T.p+=Math.round(m.p||0);T.c+=Math.round(m.c||0);T.f+=Math.round(m.f||0);
-    h+='<div class="co-it"><b>'+esc(m.name||'')+'</b>'+(m.amount?', '+esc(m.amount):'')+
+    /* a correction says what it was: "2 מקלות → 3 מקלות (+17 קק"ל)" */
+    var w=was&&was[String(m.id)],dk=w?Math.round(m.kcal||0)-w.k:0,
+        ar=document.documentElement.dir==='rtl'?' \u2190 ':' \u2192 ';
+    h+='<div class="co-it"><b>'+esc(m.name||'')+'</b>'+
+       (w&&w.a&&w.a!==m.amount?', '+esc(w.a)+ar+esc(m.amount||''):(m.amount?', '+esc(m.amount):''))+
        (m.g>0?' <span class="co-it-g">(\u2248'+fmtGrams(Math.round(m.g))+')</span>':'')+
-       ' <span class="co-it-v">\u00b7 '+_t('{n} קק"ל',{n:Math.round(m.kcal||0)})+', '+_t('{n} גרם חלבון',{n:Math.round(m.p||0)})+'</span></div>';
+       ' <span class="co-it-v">\u00b7 '+_t('{n} קק"ל',{n:Math.round(m.kcal||0)})+(w&&dk?' ('+(dk>0?'+':'\u2212')+_t('{n} קק"ל',{n:Math.abs(dk)})+')':'')+', '+_t('{n} גרם חלבון',{n:Math.round(m.p||0)})+'</span></div>';
     break;}
   /* the meal as one line, from the rows above it - with one row it would only repeat it */
   if(n>=2)h+='<div class="co-it co-it-sum">'+_t('סה״כ הארוחה: {v}',{v:[_t('{n} קק"ל',{n:T.k}),_t('{n} גרם חלבון',{n:T.p}),
@@ -15880,7 +15888,10 @@ function coachPost(d,text,pics,rec,ed){
       /* where it is filed NOW - it cannot move what it cannot see */
       meal:mealKind(m),
       /* what it was read from, so "that's wrong" can be worked out again */
-      label:m.label||undefined});}
+      label:m.label||undefined,
+      /* when it was logged: "a new eating or a correction of that" is
+         partly a question of time (3 Nov, the surimi rewritten at lunch) */
+      time:m.time||'',at:+m.at||0});}
   var hist=[];
   /* hidden: an earlier weigh-in's turn may hold the number, so it is not sent */
   var _hideW=weighHidden();
@@ -15910,7 +15921,7 @@ function coachPost(d,text,pics,rec,ed){
   var _coOpts={
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
-      day:d,lang:appLang(),units:APP_UNITS,
+      day:d,lang:appLang(),units:APP_UNITS,now_time:fmtTime(),now_ms:Date.now(),
       gender:appGender()||(loadProfile().sex||''),
       phase:(goalDef(loadProfile().goal)||{}).v||'',
       health:hlForCoach(),
@@ -15949,6 +15960,9 @@ function coachPost(d,text,pics,rec,ed){
     var snapD=j.date||d,snap={},k0,day0=loadDay(ed?ed.date:snapD);
     for(k0=0;k0<day0.meals.length;k0++)snap[String(day0.meals[k0].id)]=JSON.parse(JSON.stringify(day0.meals[k0]));
     var added=coachApply(j,ed?ed.date:'');
+    /* an update shows what it changed: the row as it was, kept with the turn */
+    var was={};
+    if(j.action==='update')(added||[]).forEach(function(id){var b=snap[String(id)];if(b)was[String(id)]={a:b.amount||'',k:Math.round(b.kcal||0),g:b.g||0};});
     if(j.action==='add'||j.action==='update')myProdLearn(j.items);
     var changed=!!(added&&added.length)||
                 (j.action==='update'||j.action==='delete')&&j.items&&j.items.length;
@@ -15974,7 +15988,7 @@ function coachPost(d,text,pics,rec,ed){
     }
     rec2.turns.push({role:'assistant',text:j.message||'',
       q:j.question||'',changed:changed?1:0,edit:ed?1:0,weigh:wkg!==null?1:0,
-      ids:(added||[]).slice(0,12),at:Date.now()});
+      ids:(added||[]).slice(0,12),was:Object.keys(was).length?was:undefined,at:Date.now()});
     saveCoach(d,rec2);
     if(ed&&j.message)showToast(String(j.message).replace(/[*_]/g,'').slice(0,140));
     /* the whole screen, because the bars above it have just moved */
@@ -16810,7 +16824,7 @@ function coachInnerHTML(){
       /* a reply written before the number was hidden may still say it */
       h+='<div class="co-a">'+mdLite(t.weigh&&weighHidden()?weighScrubTxt(t.text||'',loadWeights()[d]):(t.text||''))+
          (t.q?'<div class="co-q">'+esc(t.q)+'</div>':'')+'</div>';
-      if(Array.isArray(t.ids)&&t.ids.length)h+=coachItemsHTML(t.ids,d);
+      if(Array.isArray(t.ids)&&t.ids.length)h+=coachItemsHTML(t.ids,d,t.was);
       /* only when something moved - see the data model */
       if(t.changed&&!t.edit&&i===rec.turns.length-1){
         h+=coachLeftHTML(d);

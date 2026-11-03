@@ -1046,6 +1046,26 @@ const WEIGH_FLAGS = ['sodium', 'carbs', 'alcohol', 'restaurant', 'late_meal', 't
    whatever the model answers, what leaves here is an update of that id or
    nothing: an add would put a second copy of the food in her day. One item
    under another id is taken to be the one meant; several are not guessed. */
+/* A NEW EATING IS NOT A CORRECTION (3 Nov). Two surimi sticks at breakfast,
+   then at 13:30 "אכלתי סורימי 1": the coach answered "updated to 3 sticks"
+   and rewrote the breakfast row, then did it again for a fourth. An update
+   to a row logged more than an hour ago, from words with no sign of a
+   correction in them, is a new eating. Returns the ids it applies to. */
+/* Hebrew has no \b in a JS regex, so its words carry their own edges: one
+   prefix letter in front at most (ורק, שבעצם), and the short ones an end -
+   otherwise רק is found in ירקות, חצי in חציל and רבע in ארבע. */
+const COACH_FIX_HE = new RegExp('(?:^|[^\\u0590-\\u05ff])[והשכלבמ]?(?:' +
+  '(?:רק|חצי|רבע|שליש)(?=$|[^\\u0590-\\u05ff])|' +
+  'טעית|טעות|תתקנ|תתקן|תקן|תקני|בעצם|במקום|לא היה|לא היו|היה בלי|היה עם|זה היה|לא נכון|תשנ|שנה את|תעדכנ|עדכן|תורי|הורד|תמחק|מחק|תעביר|העבר|ארוחת)');
+const COACH_FIX_WORDS = /\bonly\b|actually|instead|wrong|mistake|correct|\bfix|change|\bhalf\b|\bnot\b|wasn'?t|remove|delete|\bmove|\bnur\b|eigentlich|statt|falsch|\bhalb|\bsolo\b|en realidad|en vez|\bmal\b|\bmedio\b|seulement|en fait|au lieu|faux|moitié|soltanto|invece|sbagli|metà|apenas|na verdade|em vez|errad|metade|だけ|実は|間違|半分|只|其实|错|錯|一半|فقط|بالأحرى|بدل|خطأ|غلط|نصف/i;
+function coachStaleUpdates(items, logged, message, nowMs) {
+  const said = String(message || '');
+  if (COACH_FIX_HE.test(said) || COACH_FIX_WORDS.test(said)) return [];
+  const at = {};
+  for (const x of Array.isArray(logged) ? logged : []) if (x && x.id != null) at[String(x.id)] = Number(x.at) || 0;
+  return (Array.isArray(items) ? items : []).map((it) => String(it && it.id))
+    .filter((id) => at[id] > 0 && nowMs - at[id] > 3600 * 1000);
+}
 function coachEditOnly(action, items, ids) {
   ids = (Array.isArray(ids) ? ids : [ids]).map(String).filter(Boolean);
   let mine = items.filter((it) => ids.indexOf(it.id) >= 0);
@@ -1123,7 +1143,7 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, coachStaleUpdates, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
 
 /* The request handler. Its first line is the meter: every model call below
    goes through it, see meterFetch. */
@@ -4709,6 +4729,10 @@ async function routeRequest(req, env, ctx, M) {
       /* capped, because they are sent whole on every turn and a long day is
          still a day - sixty rows is more than anyone logs */
       const logged = Array.isArray(b && b.logged) ? b.logged.slice(0, 60) : [];
+      /* the clock on her phone, and when each row was logged (ms there) -
+         "a new eating or a correction" is partly a question of time */
+      const nowTime = /^\d{2}:\d{2}$/.test(String((b && b.now_time) || '')) ? b.now_time : '';
+      const nowMs = Number(b && b.now_ms) > 0 ? Number(b.now_ms) : Date.now();
       const left = (b && b.left) || {};
       /* the prompt says it receives these, so they are sent - a promise the
          model cannot keep is worse than one never made */
@@ -4846,8 +4870,9 @@ async function routeRequest(req, env, ctx, M) {
 Never do your own math for daily totals or remaining amounts. The app computes them and appends a "נשאר להיום" block after your message, so do not write that block yourself.
 
 ## Decide what the message is
-1. Report of eating ("אכלתי", "שתיתי", a photo of a meal they ate) → log it (action: add)
-2. Correction ("רק חצי", "זה היה עוף", "לא היה צ'יפס", "היה חלב בקפה") → update the existing item by id (action: update), never add a duplicate
+1. Report of eating ("אכלתי", "שתיתי", a photo of a meal they ate) → log it (action: add). A new message about eating something is a NEW item, even if the same food was already logged earlier today: two surimi sticks at breakfast and "אכלתי סורימי 1" at lunch are two items, and the breakfast one stays as it was.
+2. Correction of something already logged ("רק חצי", "זה היה עוף", "לא היה צ'יפס", "היה חלב בקפה", "טעית, היו 2") → update the existing item by id (action: update), never add a duplicate. Use update ONLY for a correction.
+If it is unclear whether they ate more or are clarifying their previous message ("אכלתי מקל 1" a minute after "אכלתי סורימי 1"), ask in one short line ("עוד מקל, או שהתכוונת שבסך הכל אכלת מקל אחד?") and log nothing until they answer. Today's log gives each item's time, and the state gives the time now.
 3. Hypothetical or question ("יש לי מקום ל...?", "מה לאכול?", a menu photo, a recipe, "במה להחליף", "למה יצא יבש") → answer only (action: none)
 4. Steps, a workout, or a weight → see Activity and Weigh-ins; an activity screenshot → answer only
 5. Late addition ("אתמול גם שתיתי...") → log to the correct date
@@ -4865,7 +4890,7 @@ When they say they ate it ("אכלתי"), it is eaten: action is add, even if it
 - Nutrition label in the photo: use the per-100g values and the package size. Branded items: use the package numbers. "PRO 20" means 20g protein per unit, not 20%.
 - Restaurants: account for oil, butter, dressings, and fried items. Greek and Mediterranean dishes usually carry a lot of olive oil.
 - Shared table: ask what share was theirs (half, a third, and so on).
-- Compare the photo with their words. If you clearly see a food in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"), and put the same line in question. Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see on what they ate - never ask about something hidden, merely likely, or standing elsewhere on the table. Every item says whether it came from their words (from_words); the app does not log an item that is only in the photo.
+- Compare the photo with their words. If you clearly see a food in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"). Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see on what they ate - never ask about something hidden, merely likely, or standing elsewhere on the table. Every item says whether it came from their words (from_words); the app does not log an item that is only in the photo.
 - For every item that is not from a label and not counted in pieces, give per_100g (what this food is per 100 g: kcal, protein, carbs, fat - the reference values, as for the food in general) and approx_g, the total weight eaten. The app works out the item from these two, so they must describe the same food; calories and the macros you give are then only a fallback.
 - Ask at most ONE follow-up, and only about something that changes the numbers a lot (oil, dressing, milk in coffee, portion size, whether they finished). Log with your best assumption anyway, and offer to update.
 - If the user challenges a number, re-check it honestly. If you were wrong, say so and fix it.
@@ -5059,7 +5084,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 
       /* Everything it needs, every turn. It keeps nothing between calls. */
       const STATE =
-        'Today is ' + day + '.\n' +
+        'Today is ' + day + (nowTime ? ', and the time is ' + nowTime : '') + '.\n' +
         'You are speaking to: ' + (gender === 'f' ? 'a woman - address her in the feminine'
           : gender === 'm' ? 'a man - address him in the masculine'
           : 'someone whose gender is not recorded - write so it does not show') + '\n' +
@@ -5237,6 +5262,24 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
           if (!again.err) { got = again; retried = true; }
         }
       }
+      /* A NEW EATING, sent back once when the reply rewrote an old row - see
+         coachStaleUpdates. Not for an edit, which names its row itself. */
+      let stale = [];
+      if (!editId && !dispute && got.use.input.action === 'update') {
+        stale = coachStaleUpdates(got.use.input.items, logged, message, nowMs);
+        if (stale.length) {
+          const names = logged.filter((x) => stale.indexOf(String(x.id)) >= 0).map((x) => '"' + String(x.name || '').slice(0, 60) + '"' + (x.time ? ' (logged at ' + x.time + ')' : ''));
+          const again = await ask(msgs.concat([
+            { role: 'assistant', content: got.d.content },
+            { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id, is_error: true,
+              content: 'Not logged. ' + names.join(', ') + ' was logged more than an hour ago, and their words are not a correction of it: ' +
+                'this is a NEW eating. Send the whole reply again with action add and a NEW item (a new id) for only what they ate now; ' +
+                'leave the earlier row exactly as it is. If you truly cannot tell whether it is more food or a correction, use action none ' +
+                'and ask in one short line.' }] },
+          ]));
+          if (!again.err) got = again;
+        }
+      }
       /* SEEN, NOT SAID (3 Nov). Asaf's breakfast photo had a slice of dark
          bread under the pastrami that he never wrote, and the coach logged
          it unasked; live, it did the same with a Finnish salami roll twice in
@@ -5269,7 +5312,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
             { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id, is_error: true,
               content: 'Not logged yet. ' + seen.join(', ') + ' - only in the photo, not in their words. Send the whole reply again ' +
                 'WITHOUT ' + (seen.length > 1 ? 'those items' : 'that item') + ', every kept item with from_words true, and end the message with ' +
-                'one short line in their language asking whether to add it (like "רואה בתמונה גם פרוסת לחם, להוסיף?"); put the same line in question. ' +
+                'one short line in their language asking whether to add it (like "רואה בתמונה גם פרוסת לחם, להוסיף?"). ' +
                 'Do not say it was logged.' }] },
           ]));
           if (!again.err) {
@@ -5347,6 +5390,23 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       })).filter((it) => it.name);
       let action = ['add', 'update', 'delete', 'none'].indexOf(out.action) >= 0 ? out.action : 'none';
       if (editId) ({ action, items } = coachEditOnly(action, items, editIds));
+      /* still rewriting an old row after the send-back: the old row is left
+         alone. When every row in the reply is such a rewrite, what was added
+         to it is logged as a new row - the difference, not the new total, or
+         the morning's two sticks would be counted twice. */
+      if (!editId && !disp && action === 'update') {
+        const st2 = coachStaleUpdates(items, logged, message, nowMs);
+        if (st2.length && st2.length === items.length) {
+          const r1 = (x) => Math.max(0, Math.round(x * 10) / 10);
+          items = items.map((it) => {
+            const w = logged.find((x) => String(x.id) === it.id) || {};
+            return Object.assign({}, it, { id: 'c' + Math.random().toString(36).slice(2, 8), quantity: '',
+              calories: Math.max(0, Math.round(it.calories - (Number(w.calories) || 0))), protein: r1(it.protein - (Number(w.protein) || 0)),
+              carbs: r1(it.carbs - (Number(w.carbs) || 0)), fat: r1(it.fat - (Number(w.fat) || 0)), approx_g: 0, label: undefined, portions: 1, units: 0 });
+          }).filter((it) => it.calories > 0);
+          action = items.length ? 'add' : 'none';
+        } else if (st2.length) items = items.filter((it) => st2.indexOf(it.id) < 0);
+      }
       /* a label whose columns disagree is asked about, never logged */
       items = items.filter((it) => !it.label_mismatch).map((it) => { const o = Object.assign({}, it); delete o.label_mismatch; return o; });
       if (!items.length && (action === 'add' || action === 'update')) action = 'none';
@@ -5370,7 +5430,11 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
          seen it. It is added when the message asks nothing at all; one that
          already asks, in other words, is left alone rather than asked twice. */
       const qOut = String(out.question || '').replace(/\s+/g, ' ').trim().slice(0, 300);
-      if (qOut && !/[?؟？]/.test(msgOut)) msgOut = (msgOut ? msgOut + '\n\n' : '') + qOut;
+      /* the app draws question under the message, so once it is in the
+         message the field goes - or she reads it twice */
+      let qSend = String(out.question || '').slice(0, 300);
+      if (qOut && !/[?؟？]/.test(msgOut)) { msgOut = (msgOut ? msgOut + '\n\n' : '') + qOut; qSend = ''; }
+      else if (qOut && msgOut.replace(/\s+/g, ' ').indexOf(qOut) >= 0) qSend = '';
       if (weighedKg !== null && wctx.hidden) msgOut = weighScrub(msgOut, weighedKg);
       const hs = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 120);
 
@@ -5385,7 +5449,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         action,
         date: at,
         items,
-        question: String(out.question || '').slice(0, 300),
+        question: qSend,
         habit_offer: hs(out.habit_offer),
         habit_save: hs(out.habit_save),
         message: msgOut,
