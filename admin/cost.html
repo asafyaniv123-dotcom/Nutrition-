@@ -111,6 +111,18 @@ function draw(){
      '<div class="card"><b>'+tot.n+'</b><span>פניות למודל</span></div>'+
      '<div class="card"><b>'+tot.f+'</b><span>פניות שנכשלו</span></div>'+
      '<div class="card"><b>'+money(byDay.length?tot.usd/byDay.length:0)+'</b><span>ממוצע ליום שהיה בו שימוש</span></div></div>';
+  /* FOR PRICING (3 Nov): what one person costs. A day counts only when the
+     install asked something that day, so a month is its average active day
+     x30 - the upper end, for someone who uses it every day. anon and dev are
+     not people: anon is several installs at once, dev is us testing. */
+  var per=Object.keys(byUid).filter(function(u){return u!=='anon'&&u!=='dev'&&!byUid[u].dev;}).map(function(u){
+    var x=byUid[u],dd=Object.keys(x.days).length;return dd?x.usd/dd*30:0;}).sort(function(a,b){return a-b;});
+  var med=per.length?(per.length%2?per[(per.length-1)/2]:(per[per.length/2-1]+per[per.length/2])/2):0;
+  var co=byRoute['/coach'];
+  h+='<h2>לתמחור</h2><div class="meta">חודש = ממוצע היום הפעיל של ההתקנה ×30, כלומר מי שמשתמש בכל יום. בלי anon ובלי dev.</div>'+
+     '<div class="cards"><div class="card"><b>'+(per.length?money(med):'–')+'</b><span>לחודש, משתמש פעיל טיפוסי (חציון, '+per.length+' התקנות)</span></div>'+
+     '<div class="card"><b>'+(per.length?money(per[per.length-1]):'–')+'</b><span>לחודש, המשתמש היקר ביותר</span></div>'+
+     '<div class="card"><b>'+(co&&co.n?money(co.usd/co.n):'–')+'</b><span>לפנייה של המאמן למודל</span></div></div>';
   if(Object.keys(unpriced).length)h+='<div class="meta" style="margin-top:8px">אין מחיר למודל: '+esc(Object.keys(unpriced).join(', '))+' - העלות שלו לא נספרה.</div>';
   var max=Math.max.apply(null,byDay.map(function(d){return d.usd;}).concat([1e-9]));
   h+='<h2>יום אחרי יום</h2><div class="panel"><table><tr><th>יום</th><th>פניות</th><th>נכשלו</th><th>עלות</th><th></th></tr>'+
@@ -122,9 +134,9 @@ function draw(){
     Object.keys(byModel).sort(function(a,b){return byModel[b].usd-byModel[a].usd;}).map(function(m){var x=byModel[m];
       return '<tr><td>'+esc(m)+'</td><td class="n">'+x.n+'</td><td class="n">'+k(x.i)+'</td><td class="n">'+(x.i?Math.round(100*x.cr/x.i)+'%':'')+'</td><td class="n">'+k(x.o)+'</td><td class="n">'+money(x.usd)+'</td></tr>';}).join('')+'</table></div>';
   var uids=Object.keys(byUid).sort(function(a,b){return byUid[b].usd-byUid[a].usd;});
-  h+='<h2>לפי התקנה</h2><div class="meta">מזהה אקראי של כל התקנה. "anon" הן פניות מגרסה שעוד לא שולחת מזהה (היציבה, עד השחרור הבא).</div><div class="panel"><table><tr><th>התקנה</th><th>ימים</th><th>פניות</th><th>עלות</th><th>בעיקר</th></tr>'+
-    uids.map(function(u){var x=byUid[u],top=Object.keys(x.routes).sort(function(a,b){return x.routes[b]-x.routes[a];}).slice(0,3);
-      return '<tr><td class="id">'+esc(u.slice(0,8))+'</td><td class="n">'+Object.keys(x.days).length+'</td><td class="n">'+x.n+'</td><td class="n">'+money(x.usd)+'</td><td>'+top.map(function(r){return esc(ROUTE[r]||r)+' '+x.routes[r];}).join(' · ')+'</td></tr>';}).join('')+'</table></div>';
+  h+='<h2>לפי התקנה</h2><div class="meta">מזהה אקראי של כל התקנה. "anon" הן פניות מגרסה שעוד לא שולחת מזהה (היציבה, עד השחרור הבא).</div><div class="panel"><table><tr><th>התקנה</th><th>ימים</th><th>פניות</th><th>עלות</th><th>ליום פעיל</th><th>לחודש</th><th>בעיקר</th></tr>'+
+    uids.map(function(u){var x=byUid[u],top=Object.keys(x.routes).sort(function(a,b){return x.routes[b]-x.routes[a];}).slice(0,3),dd=Object.keys(x.days).length||1;
+      return '<tr><td class="id">'+esc(u.slice(0,8))+'</td><td class="n">'+Object.keys(x.days).length+'</td><td class="n">'+x.n+'</td><td class="n">'+money(x.usd)+'</td><td class="n">'+money(x.usd/dd)+'</td><td class="n">'+money(x.usd/dd*30)+'</td><td>'+top.map(function(r){return esc(ROUTE[r]||r)+' '+x.routes[r];}).join(' · ')+'</td></tr>';}).join('')+'</table></div>';
   h+='<h2>מחירון</h2><div class="meta">דולר למיליון טוקנים, נכנס / יוצא. מוקלד ידנית - לבדוק מול דף המחירים של הספק. החשבון האמיתי הוא בקונסולה של הספק.</div><div class="panel"><table>'+
     Object.keys(PRICE).map(function(m){return '<tr><td>'+esc(m)+'</td><td class="n">$'+PRICE[m][0]+' / $'+PRICE[m][1]+'</td></tr>';}).join('')+'</table></div>';
   document.getElementById('out').innerHTML=h;
