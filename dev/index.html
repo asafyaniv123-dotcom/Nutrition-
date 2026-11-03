@@ -15695,6 +15695,40 @@ function coachMealOk(k){
 /* Returns the ids it ADDED, so the reply can offer to re-file them. An
    empty array means nothing was added - which is not the same as nothing
    happening, since update and delete also change the day. */
+/* ── HER OWN PRODUCTS (3 Nov) ──
+   Asaf: "ממה ששלחתי" - a label she sent once is not read again. Every item
+   the coach logged from a label is kept here per 100 g, with its brand and
+   package and unit weights, and the whole list goes with every turn; the
+   worker copies the figures from it, so a product is never re-estimated.
+   Keyed by name and brand, the newest first, sixty at most. */
+var MYPROD_KEY='my_products';
+function myProdLoad(){try{var a=JSON.parse(localStorage.getItem(MYPROD_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function myProdForCoach(){
+  return myProdLoad().slice(0,60).map(function(x){return {id:x.id,name:x.name,brand:x.brand||'',per_100g:x.per_100g,package_g:x.package_g||0,unit_g:x.unit_g||0};});
+}
+function myProdLearn(items){
+  if(!Array.isArray(items)||!items.length)return;
+  var a=myProdLoad(),hit=false,norm=function(s){return String(s||'').toLowerCase().replace(/\s+/g,' ').trim();};
+  items.forEach(function(it){
+    var L=it&&it.label;if(!L)return;
+    var c=L.per_100g,pk=+L.package_weight_g||0;
+    /* only a package column: per 100 g is worked out from the package weight */
+    if((!c||!c.kcal)&&L.per_package&&L.per_package.kcal&&pk){var m=100/pk,r=function(v){return Math.round((+v||0)*m*10)/10;};
+      c={kcal:r(L.per_package.kcal),protein:r(L.per_package.protein),carbs:r(L.per_package.carbs),fat:r(L.per_package.fat)};}
+    if(!c||!(+c.kcal>0))return;
+    var k=-1,i;
+    for(i=0;i<a.length&&k<0;i++)if((it.product_id&&a[i].id===it.product_id)||
+      (norm(a[i].name)===norm(it.name)&&norm(a[i].brand)===norm(it.brand)))k=i;
+    var was=k>=0?a.splice(k,1)[0]:{id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:String(it.name||'').slice(0,80)};
+    /* the coach answers a saved product with its own figures, so this only
+       moves it to the front; a new label replaces the values */
+    if(!it.product_id){was.per_100g={kcal:+c.kcal||0,protein:+c.protein||0,carbs:+c.carbs||0,fat:+c.fat||0};
+      if(it.brand)was.brand=String(it.brand).slice(0,40);
+      if(pk)was.package_g=pk;if(+L.unit_weight_g>0)was.unit_g=+L.unit_weight_g;}
+    was.used=Date.now();a.unshift(was);hit=true;
+  });
+  if(hit)try{localStorage.setItem(MYPROD_KEY,JSON.stringify(a.slice(0,60)));}catch(e){}
+}
 function coachApply(j,onDate){
   if(!j||j.action==='none'||!j.items||!j.items.length)return [];
   var d=onDate||j.date||todayStr(),day=loadDay(d),i,q,added=[],moved=[];
@@ -15896,6 +15930,7 @@ function coachPost(d,text,pics,rec,ed){
         nudged:localStorage.getItem('weigh_nudged')===d}:null,
       habits:fhGet(),habits_offered:fhOffered(),
       corrections_recent:corrRecent(),
+      products:myProdForCoach(),
       images:pics.map(function(p){return{mime:'image/jpeg',data:p.split(',')[1]||''};})
     })
   };
@@ -15914,6 +15949,7 @@ function coachPost(d,text,pics,rec,ed){
     var snapD=j.date||d,snap={},k0,day0=loadDay(ed?ed.date:snapD);
     for(k0=0;k0<day0.meals.length;k0++)snap[String(day0.meals[k0].id)]=JSON.parse(JSON.stringify(day0.meals[k0]));
     var added=coachApply(j,ed?ed.date:'');
+    if(j.action==='add'||j.action==='update')myProdLearn(j.items);
     var changed=!!(added&&added.length)||
                 (j.action==='update'||j.action==='delete')&&j.items&&j.items.length;
     corrFromReply(j,snap,ed,text,pics.length>0);

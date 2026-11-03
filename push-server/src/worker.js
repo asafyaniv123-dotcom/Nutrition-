@@ -774,6 +774,19 @@ function coachTotals(it) {
   const num = (v, hi) => { const x = Number(v); return isFinite(x) && x > 0 && x <= hi ? x : 0; };
   const portions = num(it && it.portions, 20) || 1;
   const units = num(it && it.unit_count, 200), ku = num(it && it.kcal_per_unit, 3000);
+  /* GRAMS TIMES PER 100 G (3 Nov). Surimi came back as 36 g = 60 kcal and
+     cottage as 40 g = 65 kcal - a weight and a calorie figure the model
+     wrote independently, which no longer agreed with each other. When it
+     gives what the food is per 100 g and how much was eaten, the figure is
+     worked out here and the two can never drift apart. Food in pieces keeps
+     its per-piece path, and a label item is worked out by labelItem. */
+  const r100 = it && it.per_100g && typeof it.per_100g === 'object' ? it.per_100g : null;
+  const g100 = num(it && it.approx_g, 5000);
+  if (!(units && ku) && !(it && it.label) && r100 && num(r100.kcal, 900) && g100) {
+    const r1 = (x) => Math.round(x * 10) / 10, m = g100 / 100;
+    return { calories: Math.round(num(r100.kcal, 900) * m), protein: r1(num(r100.protein, 100) * m),
+             carbs: r1(num(r100.carbs, 100) * m), fat: r1(num(r100.fat, 100) * m), portions: 1, units: 0 };
+  }
   let k, p, c, f;
   if (units && ku) {
     k = ku * units;
@@ -807,7 +820,7 @@ function labelClean(l) {
     return o.kcal === null ? null : { kcal: o.kcal, p: o.p || 0, c: o.c || 0, f: o.f || 0 };
   };
   const o = { per100: col(l.per_100g), perPkg: col(l.per_package), package_g: n(l.package_weight_g, 10000) || 0,
-    fraction: n(l.portion_fraction, 20) || 0, portion_g: n(l.portion_g, 10000) || 0 };
+    fraction: n(l.portion_fraction, 20) || 0, portion_g: n(l.portion_g, 10000) || 0, unit_g: n(l.unit_weight_g, 5000) || 0 };
   return o.per100 || o.perPkg ? o : null;
 }
 function labelCompute(L) {
@@ -836,7 +849,8 @@ function labelItem(it) {
   const r = labelCompute(L);
   const keep = { per_100g: L.per100 && { kcal: L.per100.kcal, protein: L.per100.p, carbs: L.per100.c, fat: L.per100.f },
     per_package: L.perPkg && { kcal: L.perPkg.kcal, protein: L.perPkg.p, carbs: L.perPkg.c, fat: L.perPkg.f },
-    package_weight_g: L.package_g || 0, portion_fraction: L.fraction || 0, portion_g: L.portion_g || 0 };
+    package_weight_g: L.package_g || 0, portion_fraction: L.fraction || 0, portion_g: L.portion_g || 0,
+    unit_weight_g: L.unit_g || 0 };
   if (r.mismatch) return { label: keep, label_mismatch: true };
   if (r.kcal === null) return { label: keep };
   return { calories: r.kcal, protein: r.p, carbs: r.c, fat: r.f, portions: 1, units: 0, label: keep };
@@ -851,6 +865,42 @@ function approxGrams(it) {
   if (L && L.fraction && L.package_g) return Math.round(L.fraction * L.package_g);
   const g = Number(it && it.approx_g);
   return isFinite(g) && g > 0 && g < 5000 ? Math.round(g) : 0;
+}
+/* HER OWN PRODUCTS (3 Nov): every label she has sent, kept on the phone as
+   per 100 g, and sent with every turn. Cut to a type and a size like
+   anything else that reaches a prompt from a phone. */
+function coachProducts(a) {
+  const n = (v, hi) => { const x = Number(v); return isFinite(x) && x >= 0 && x <= hi ? Math.round(x * 10) / 10 : 0; };
+  const s = (v, len) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, len);
+  return (Array.isArray(a) ? a : []).slice(0, 60).map((x) => {
+    const c = (x && x.per_100g) || {};
+    return { id: s(x && x.id, 24), name: s(x && x.name, 80), brand: s(x && x.brand, 40),
+      per_100g: { kcal: n(c.kcal, 900), protein: n(c.protein, 100), carbs: n(c.carbs, 100), fat: n(c.fat, 100) },
+      package_g: n(x && x.package_g, 10000), unit_g: n(x && x.unit_g, 5000) };
+  }).filter((x) => x.id && x.name && x.per_100g.kcal);
+}
+/* Before anything is worked out from an item: a product she saved becomes a
+   label with HER figures - copied here, not retyped by the model - and a
+   label that has per 100 g but no portion takes the grams the model gave.
+   That second gap is the cottage of 3 Nov: per 100 g read, no portion_g,
+   so the code had nothing to multiply and the model's own guess stood. */
+function coachUseGrams(items, products) {
+  for (const it of (Array.isArray(items) ? items : [])) {
+    if (!it || typeof it !== 'object') continue;
+    const pr = it.product_id && products.find((x) => x.id === String(it.product_id));
+    if (pr) {
+      it.label = { per_100g: pr.per_100g, package_weight_g: pr.package_g || undefined, unit_weight_g: pr.unit_g || undefined,
+        portion_fraction: Number(it.label && it.label.portion_fraction) || undefined,
+        portion_g: Number(it.label && it.label.portion_g) || undefined };
+      if (!it.brand) it.brand = pr.brand;
+    } else if (it.product_id) it.product_id = '';
+    const l = it.label;
+    if (l && typeof l === 'object' && l.per_100g && !(Number(l.portion_fraction) > 0) && !(Number(l.portion_g) > 0)) {
+      const g = Number(it.approx_g);
+      if (isFinite(g) && g > 0 && g < 5000) l.portion_g = g;
+    }
+  }
+  return items;
 }
 /* the separate reading for a dispute: the label from scratch, from the
    picture and the stored data, without the coach's earlier reply */
@@ -4726,6 +4776,7 @@ async function routeRequest(req, env, ctx, M) {
       const recentFix = (Array.isArray(b && b.corrections_recent) ? b.corrections_recent : []).slice(-10).map((c) => ({
         type: String((c && c.type) || '').slice(0, 12), before: String((c && c.before) || '').slice(0, 120),
         after: String((c && c.after) || '').slice(0, 120), said: String((c && c.said) || '').slice(0, 200) }));
+      const products = coachProducts(b && b.products);
       const images = Array.isArray(b && b.images) ? b.images.slice(0, 4) : [];
       if (!message && !images.length) return json({ error: 'nothing to read' }, 400);
       /* the pictures of the last few turns, so "half of that" still has the
@@ -4807,6 +4858,8 @@ When they say they ate it ("אכלתי"), it is eaten: action is add, even if it
 - Nutrition label in the photo: use the per-100g values and the package size. Branded items: use the package numbers. "PRO 20" means 20g protein per unit, not 20%.
 - Restaurants: account for oil, butter, dressings, and fried items. Greek and Mediterranean dishes usually carry a lot of olive oil.
 - Shared table: ask what share was theirs (half, a third, and so on).
+- Compare the photo with their words. If you clearly see a food in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"), and put the same line in question. Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see - never ask about something hidden or merely likely.
+- For every item that is not from a label and not counted in pieces, give per_100g (what this food is per 100 g: kcal, protein, carbs, fat - the reference values, as for the food in general) and approx_g, the total weight eaten. The app works out the item from these two, so they must describe the same food; calories and the macros you give are then only a fallback.
 - Ask at most ONE follow-up, and only about something that changes the numbers a lot (oil, dressing, milk in coffee, portion size, whether they finished). Log with your best assumption anyway, and offer to update.
 - If the user challenges a number, re-check it honestly. If you were wrong, say so and fix it.
 
@@ -4891,6 +4944,11 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 - If you can't read the ingredients, use a neutral name in the user's language (e.g. "נקניק פרוס", "sliced cold cut") rather than guessing.
 - Logged items carry the label data they were logged from (label). Use it to recalculate when asked; it is the source.
 
+## Their own products
+- The state lists THEIR PRODUCTS: every label they have sent before, per 100 g, with brand, package weight and unit weight when known. When they name one, or one is in the photo (the brand and product match), put its id in product_id and give approx_g, the grams eaten (from what they said: "2 כפות" of cottage is about 40 g; one unit is unit_g; half a package is half of package_g). Do not fill label or per_100g then - the app takes the figures from their product. Never re-estimate a saved product, and never answer that you do not have its label: you do.
+- If they say "ממה ששלחתי", "like the one I sent" and a saved product fits, it is that product.
+- When an item comes from a label in THIS message, fill brand (as printed, e.g. "Milram"; empty if none) and, in label, unit_weight_g when one unit's weight is printed (a cup, a bar). The app then saves it for next time.
+
 ## Honesty when challenged
 - Never say "I checked again" unless you actually have the label data or image in front of you now.
 - If the user says a number is wrong and you don't have the source, say so plainly and ask for the label or the correct number. Don't defend the previous number.
@@ -4937,7 +4995,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                   carbs: { type: 'number' },
                   fat: { type: 'number' },
                   assumption: { type: 'string' },
-                  approx_g: { type: 'number', description: 'your estimate of the weight eaten, in grams, for this item as logged (2 slices of bread is about 76). Always fill it; the app shows it beside the item so the person can correct it.' },
+                  approx_g: { type: 'number', description: 'the total weight eaten, in grams, for this item as logged, all portions together (2 slices of bread is about 76). Always fill it; the app shows it beside the item so the person can correct it.' },
+                  per_100g: Object.assign({ description: 'what this food is per 100 g, for an item NOT from a label and not counted in pieces; the app multiplies by approx_g' }, LABEL_COL),
+                  product_id: { type: 'string', description: 'the id of one of THEIR PRODUCTS, when this item is that product' },
+                  brand: { type: 'string', description: 'the brand, when the item is a packaged product read from a label' },
                   portions: { type: 'number', description: 'how many times this portion was eaten; 1 if not said' },
                   unit_count: { type: 'number', description: 'pieces in ONE portion, for food that comes in pieces' },
                   kcal_per_unit: { type: 'number' },
@@ -4952,6 +5013,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                       package_weight_g: { type: 'number' },
                       portion_fraction: { type: 'number', description: 'part of the package eaten: 0.5 for half, 1 for all' },
                       portion_g: { type: 'number', description: 'grams eaten, when they said grams' },
+                      unit_weight_g: { type: 'number', description: 'the weight of one unit (a cup, a bar), when printed' },
                     },
                   },
                   sodium_level: { type: 'string', enum: ['low', 'medium', 'high'] },
@@ -4993,6 +5055,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         'Left of each target: ' + JSON.stringify(left) + '\n' +
         'Recent morning weigh-ins: ' + (wctx && wctx.hidden ? 'hidden by the user - never mention a weight'
           : weights.length ? JSON.stringify(weights) : 'none recorded') + '\n' +
+        'THEIR PRODUCTS (saved from labels they sent; per 100 g): ' + (products.length ? JSON.stringify(products) : 'none yet') + '\n' +
         'Their habits: ' + (habits.length ? JSON.stringify(habits) : 'none saved') + '\n' +
         'Habits already offered (never offer again): ' + (offered.length ? JSON.stringify(offered) : 'none') + '\n' +
         'Their recent corrections, oldest first: ' + (recentFix.length ? JSON.stringify(recentFix) : 'none') +
@@ -5093,6 +5156,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         try { dd = await r.json(); } catch { return { err: json({ error: 'unreadable answer' }, 502) }; }
         const u0 = ((dd && dd.content) || []).find((c) => c && c.type === 'tool_use' && c.name === 'reply');
         if (!u0 || !u0.input) return { err: json({ error: 'no answer' }, 502) };
+        coachUseGrams(u0.input.items, products);
         return { d: dd, use: u0 };
       };
 
@@ -5207,6 +5271,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         ...coachTotals(it),
         ...labelItem(it),
         approx_g: approxGrams(it),
+        brand: String(it.brand || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+        product_id: String(it.product_id || '').slice(0, 24),
         assumption: String(it.assumption || '').slice(0, 200),
         /* one of the five or nothing: an unknown slot would be written
            into her day and then shown as a meal that does not exist */
