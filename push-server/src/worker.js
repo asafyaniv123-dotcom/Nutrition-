@@ -4865,7 +4865,7 @@ When they say they ate it ("אכלתי"), it is eaten: action is add, even if it
 - Nutrition label in the photo: use the per-100g values and the package size. Branded items: use the package numbers. "PRO 20" means 20g protein per unit, not 20%.
 - Restaurants: account for oil, butter, dressings, and fried items. Greek and Mediterranean dishes usually carry a lot of olive oil.
 - Shared table: ask what share was theirs (half, a third, and so on).
-- Compare the photo with their words. If you clearly see a food in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"), and put the same line in question. Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see - never ask about something hidden or merely likely.
+- Compare the photo with their words. If you clearly see a food in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"), and put the same line in question. Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see on what they ate - never ask about something hidden, merely likely, or standing elsewhere on the table. Every item says whether it came from their words (from_words); the app does not log an item that is only in the photo.
 - For every item that is not from a label and not counted in pieces, give per_100g (what this food is per 100 g: kcal, protein, carbs, fat - the reference values, as for the food in general) and approx_g, the total weight eaten. The app works out the item from these two, so they must describe the same food; calories and the macros you give are then only a fallback.
 - Ask at most ONE follow-up, and only about something that changes the numbers a lot (oil, dressing, milk in coffee, portion size, whether they finished). Log with your best assumption anyway, and offer to update.
 - If the user challenges a number, re-check it honestly. If you were wrong, say so and fix it.
@@ -4987,6 +4987,11 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                told "twice", the model kept counting six rolls standing in
                pairs as three per plate, while every "once" counted six */
             photo_count: { type: 'string', description: 'When there is a photo of food: what you see in it, piece by piece, counted as if they had eaten it ONCE - before reading anything they wrote. Empty when there is no photo.' },
+            /* SECOND, for the same reason: written before the items, it is a
+               reading of the photo against the words, not a defence of a
+               list already made - asked per item, the bread under the salami
+               was marked "from their words" two times in three */
+            not_in_words: { type: 'array', items: { type: 'string' }, description: 'When there is a photo AND words: every food you see on what they ate that their words do not name or plainly contain (bread under a topping, a spread, a sauce, a side). A sandwich contains its bread; "this" or "the plate" contains everything. Empty when there is no photo, no words, or nothing unsaid.' },
             action: { type: 'string', enum: ['add', 'update', 'delete', 'none'] },
             date: { type: 'string', description: 'YYYY-MM-DD, the day these rows belong to' },
             items: {
@@ -5005,6 +5010,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                   approx_g: { type: 'number', description: 'the total weight eaten, in grams, for this item as logged, all portions together (2 slices of bread is about 76). Always fill it; the app shows it beside the item so the person can correct it.' },
                   per_100g: Object.assign({ description: 'what this food is per 100 g, for an item NOT from a label and not counted in pieces; the app multiplies by approx_g' }, LABEL_COL),
                   product_id: { type: 'string', description: 'the id of one of THEIR PRODUCTS, when this item is that product' },
+                  from_words: { type: 'boolean', description: 'true when their words name this food or plainly contain it (a sandwich contains bread; "this", "the plate", "what is in the picture" contain everything on it), or when they have just said yes to adding it. false when you only see it in the photo.' },
                   brand: { type: 'string', description: 'the brand, when the item is a packaged product read from a label' },
                   portions: { type: 'number', description: 'how many times this portion was eaten; 1 if not said' },
                   unit_count: { type: 'number', description: 'pieces in ONE portion, for food that comes in pieces' },
@@ -5231,6 +5237,48 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
           if (!again.err) { got = again; retried = true; }
         }
       }
+      /* SEEN, NOT SAID (3 Nov). Asaf's breakfast photo had a slice of dark
+         bread under the pastrami that he never wrote, and the coach logged
+         it unasked; live, it did the same with a Finnish salami roll twice in
+         two, and logged margarine standing on the table while asking about
+         it in the same reply. Told in the prompt alone, it logs what it
+         sees. So each item says whether it came from their words, and an
+         item from the photo alone is sent back: the reply comes again
+         without it, asking. Only when there are both words and a picture -
+         a photo with no words is the meal itself. */
+      /* an item is "only seen" when it says so, or when its name meets a
+         food the reply listed in not_in_words - one word inside the other,
+         so לחם finds לחמנייה and פרוסת לחם. Hebrew final letters are read
+         as their ordinary forms first: לחם ends in ם and לחמנייה has מ. */
+      const FIN = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
+      const toks = (s) => String(s || '').toLowerCase().replace(/[ךםןףץ]/g, (c) => FIN[c])
+        .split(/[\s/(),.\-–]+/).filter((w) => w.length >= 3);
+      const seenOnly = (it, unsaid) => !!it && (it.from_words === false ||
+        toks(it.name).some((a) => (Array.isArray(unsaid) ? unsaid : []).some((u) => toks(u).some((b) => a.includes(b) || b.includes(a)))));
+      const askSeen = images.length > 0 && !!message && !editId && !dispute;
+      /* what any version of the reply said it only saw - a rewritten reply
+         that drops the list does not thereby make the bread said */
+      let unsaidAll = [];
+      if (askSeen && got.use.input.action === 'add') {
+        const un0 = got.use.input.not_in_words;
+        unsaidAll = Array.isArray(un0) ? un0.slice(0, 10) : [];
+        const seen = (got.use.input.items || []).filter((it) => seenOnly(it, un0)).map((it) => String(it.name || '').slice(0, 60));
+        if (seen.length) {
+          const again = await ask(msgs.concat([
+            { role: 'assistant', content: got.d.content },
+            { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id, is_error: true,
+              content: 'Not logged yet. ' + seen.join(', ') + ' - only in the photo, not in their words. Send the whole reply again ' +
+                'WITHOUT ' + (seen.length > 1 ? 'those items' : 'that item') + ', every kept item with from_words true, and end the message with ' +
+                'one short line in their language asking whether to add it (like "רואה בתמונה גם פרוסת לחם, להוסיף?"); put the same line in question. ' +
+                'Do not say it was logged.' }] },
+          ]));
+          if (!again.err) {
+            got = again;
+            const un1 = got.use.input.not_in_words;
+            if (Array.isArray(un1)) unsaidAll = unsaidAll.concat(un1.slice(0, 10));
+          }
+        }
+      }
       /* A WEIGH-IN. The model only noticed the number; the arithmetic is
          done here, from the trend the app sent, and the reply is written
          from those figures in a second pass. */
@@ -5278,7 +5326,9 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       /* The tool fixes the SHAPE, not the values: a date is still a string it
          chose, and this one is written into a day of her food. */
       const at = /^\d{4}-\d{2}-\d{2}$/.test(String(out.date || '')) ? out.date : day;
-      let items = (Array.isArray(out.items) ? out.items : []).slice(0, 30).map((it) => ({
+      /* and whatever is still only seen after the send-back is not logged */
+      let items = (Array.isArray(out.items) ? out.items : []).filter((it) => !(askSeen && out.action === 'add' && seenOnly(it, unsaidAll)))
+        .slice(0, 30).map((it) => ({
         id: String(it.id || '').slice(0, 40) || ('c' + Math.random().toString(36).slice(2, 8)),
         name: String(it.name || '').slice(0, 120),
         quantity: String(it.quantity || '').slice(0, 80),
@@ -5315,6 +5365,12 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       /* a line break the model wrote as the two characters \ and n reached
          her screen as "n\" in the middle of a word, and broke the bold */
       let msgOut = String(out.message || '').replace(/\\n/g, '\n').slice(0, 4000);
+      /* The app shows the message, not question - and live, the bread
+         question was written into question alone, so she would never have
+         seen it. It is added when the message asks nothing at all; one that
+         already asks, in other words, is left alone rather than asked twice. */
+      const qOut = String(out.question || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      if (qOut && !/[?؟？]/.test(msgOut)) msgOut = (msgOut ? msgOut + '\n\n' : '') + qOut;
       if (weighedKg !== null && wctx.hidden) msgOut = weighScrub(msgOut, weighedKg);
       const hs = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 120);
 

@@ -28,8 +28,9 @@ async function coach(body, items, extra = {}) {
   globalThis.fetch = async (url, init) => {
     if (String(url).includes('api.anthropic.com')) {
       sent.push(JSON.parse(init.body));
+      const its = typeof items === 'function' ? items(sent.length - 1) : items;
       return new Response(JSON.stringify({ content: [{ type: 'tool_use', id: 't1', name: 'reply',
-        input: Object.assign({ photo_count: '', action: 'add', date: '2026-11-03', items, message: 'נרשם' }, extra) }] }), { status: 200 });
+        input: Object.assign({ photo_count: '', action: 'add', date: '2026-11-03', items: its, message: 'נרשם' }, extra) }] }), { status: 200 });
     }
     return new Response('', { status: 404 });
   };
@@ -85,6 +86,30 @@ ok(!/2026-11-03|"id":"p1"/.test(sys), 'nothing that changes per turn (the day, h
 ok(sys && sys.includes('Compare the photo with their words') && sys.includes('Do NOT log that food until they confirm'), 'the prompt asks about unmentioned food in the photo');
 ok(sys && sys.includes('## Their own products'), 'the prompt explains her products');
 ok(sent.length === 1, 'none of these was sent back for macros - one call each');
+
+/* 6b. seen, not said: bread in the photo only is sent back, and never logged */
+const PIC = [{ mime: 'image/jpeg', data: 'A'.repeat(800) }];
+const SAL = { id: 's', name: 'סלמי', quantity: '2 פרוסות', calories: 80, protein: 5, carbs: 0.5, fat: 6.5, approx_g: 20, from_words: true };
+const BRD = { id: 'l', name: 'לחם כהה', quantity: 'פרוסה', calories: 80, protein: 3, carbs: 15, fat: 1, approx_g: 35, from_words: false };
+j = await coach({ message: 'אכלתי סלמי', images: PIC }, (n) => n === 0 ? [SAL, BRD] : [SAL]);
+ok(sent.length === 2, 'an item only in the photo sends the reply back once - calls: ' + sent.length);
+const back = JSON.stringify(sent[1] && sent[1].messages.at(-1));
+ok(/only in the photo/.test(back) && /לחם כהה/.test(back), 'the send-back names the bread');
+ok(j.items.length === 1 && j.items[0].name === 'סלמי', 'only the salami is logged');
+j = await coach({ message: 'אכלתי סלמי', images: PIC }, [SAL, BRD]);
+ok(j.items.length === 1 && j.items[0].name === 'סלמי', 'a model that ignores the send-back still cannot log the bread');
+j = await coach({ message: '', images: PIC }, [SAL, BRD]);
+ok(sent.length === 1 && j.items.length === 2, 'a photo with no words is the meal itself: both logged, nothing sent back');
+j = await coach({ message: 'אכלתי סלמי' }, [SAL, BRD]);
+ok(sent.length === 1 && j.items.length === 2, 'words and no photo: nothing is "seen", nothing sent back');
+/* the live failure: bread marked from_words true, but listed in not_in_words first */
+const BRD2 = Object.assign({}, BRD, { name: 'לחמנייה/באגט', from_words: true });
+j = await coach({ message: 'אכלתי ביצה וגבינה', images: PIC }, [SAL, BRD2], { not_in_words: ['פרוסת לחם'] });
+ok(sent.length === 2 && j.items.length === 1 && j.items[0].name === 'סלמי', 'calls ' + sent.length + ' items ' + j.items.map((x) => x.name) + ' - not_in_words finds לחמנייה/באגט by לחם: sent back, and not logged');
+j = await coach({ message: 'אכלתי סלמי', images: PIC }, [SAL], { not_in_words: ['פרוסת לחם'], question: 'רואה בתמונה גם פרוסת לחם, להוסיף?' });
+ok(/פרוסת לחם, להוסיף\?/.test(j.message), 'a question written only into question reaches the message: ' + JSON.stringify(j.message));
+j = await coach({ message: 'אכלתי סלמי', images: PIC }, [SAL], { message: 'רשמתי. גם לחם?', question: 'רואה בתמונה גם פרוסת לחם, להוסיף?' });
+ok(j.message === 'רשמתי. גם לחם?', 'a message that already asks is not asked twice');
 
 /* 7. the app: what is kept from a reply */
 const src = fs.readFileSync(appPath, 'utf8');
