@@ -811,6 +811,7 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .rbx-nut-g span{font-size:11.5px;font-weight:700;color:var(--nu-muted)}
 .rbx-nut-msg{font-size:12.5px;color:var(--nu-muted);line-height:1.5;margin:10px 0 10px}
 .rbx-nut-w{padding:6px 0 12px}
+.rbx-nut-again{margin:0 0 12px}
 .rbx-act.on{color:var(--nu-ink)}
 /* the form */
 .rbx-smart{border-radius:22px;padding:16px;margin-bottom:22px;background:var(--nu-ground);box-shadow:-4px -4px 10px var(--nu-lit),5px 6px 14px var(--nu-shade-soft)}
@@ -34944,14 +34945,26 @@ function rbxTimerStop(quiet){
    spaces, so the lines go joined by semicolons. The total is kept on the
    recipe with the ingredients it was counted from, so it is worked out
    again only when they change. */
-var _rbxNutOpen=false,_rbxNutBusy=false,_rbxNutErr='',_rbxNutMem={};
-function rbxSig(r){var t=rbxText(r.ingredients),h=0;for(var i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;return 'n'+h;}
+/* ONCE COUNTED, KEPT (3 Nov): every count costs a model call, so a value is
+   never thrown away. A recipe keeps it on itself; the two examples, which
+   are never stored, keep theirs here. An edit to the ingredients does not
+   recount by itself either - the old figures stay, marked, with a button. */
+var RBX_NUT_KEY='rbx_nut_samples';
+var _rbxNutOpen=false,_rbxNutBusy=false,_rbxNutErr='',
+    _rbxNutMem=(function(){try{return JSON.parse(localStorage.getItem(RBX_NUT_KEY)||'{}')||{};}catch(e){return {};}})();
+/* an example is translated, so its text changes with the language while its
+   ingredients do not: its fingerprint is the example itself */
+function rbxSig(r){
+  if(r.sample)return 's:'+r.id;
+  var t=rbxText(r.ingredients),h=0;for(var i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;return 'n'+h;
+}
+function rbxNutAny(r){return r.sample?_rbxNutMem[r.id]:r.nutri;}
 function rbxNutOf(r){
-  var n=r.sample?_rbxNutMem[r.id]:r.nutri;
+  var n=rbxNutAny(r);
   return n&&n.sig===rbxSig(r)?n:null;
 }
 function rbxNutHTML(r){
-  var n=rbxNutOf(r),h='<div class="rbx-nut"><button class="rbx-nut-b" onclick="rbxNutToggle()" aria-expanded="'+_rbxNutOpen+'">'+
+  var any=rbxNutAny(r),n=rbxNutOf(r)||any,stale=!!any&&!rbxNutOf(r),h='<div class="rbx-nut"><button class="rbx-nut-b" onclick="rbxNutToggle()" aria-expanded="'+_rbxNutOpen+'">'+
     RCP_I.bulb.replace('<svg','<svg class="rbx-nut-ic"')+'<span>'+_t('ערכים תזונתיים, בהערכה')+'</span><i class="rbx-chev'+(_rbxNutOpen?' on':'')+'">&lsaquo;</i></button>';
   if(!_rbxNutOpen)return h+'</div>';
   if(_rbxNutBusy)return h+mipWaitHTML(_t('מחשב לפי המצרכים…'),'rbx-nut-w')+'</div>';
@@ -34962,14 +34975,20 @@ function rbxNutHTML(r){
      '<div><b>'+fmtGrams(Math.round(v(n.p)))+'</b><span>'+_t('חלבון')+'</span></div>'+
      '<div><b>'+fmtGrams(Math.round(v(n.c)))+'</b><span>'+_t('פחמימה')+'</span></div>'+
      '<div><b>'+fmtGrams(Math.round(v(n.f)))+'</b><span>'+_t('שומן')+'</span></div></div>'+
-     '<div class="rbx-nut-msg">'+_t('הערכה לפי המצרכים.')+'</div>';
+     '<div class="rbx-nut-msg">'+(_rbxNutErr?esc(_rbxNutErr):stale?_t('המצרכים השתנו מאז החישוב.'):_t('הערכה לפי המצרכים.'))+'</div>'+
+     (stale?'<button class="rcp-btn rbx-nut-again" onclick="rbxNutAgain()">'+_t('חשב מחדש')+'</button>':'');
   return h+'</div>';
 }
 function rbxNutToggle(){
   _rbxNutOpen=!_rbxNutOpen;
   var r=rbxFind(_rbxOpen);
-  if(_rbxNutOpen&&r&&!rbxNutOf(r)&&!_rbxNutBusy)rbxNutCalc(r);
+  if(_rbxNutOpen&&r&&!rbxNutAny(r)&&!_rbxNutBusy)rbxNutCalc(r);
   rbxSheetPaint();
+}
+/* the one way a kept value is replaced: asked for */
+function rbxNutAgain(){
+  var r=rbxFind(_rbxOpen);if(!r||_rbxNutBusy)return;
+  rbxNutCalc(r);rbxSheetPaint();
 }
 function rbxNutCalc(r){
   if(!SYNC_SERVER){_rbxNutErr=_t('בלי חיבור לשרת אין חישוב.');return;}
@@ -34980,7 +34999,7 @@ function rbxNutCalc(r){
   function out(res,limit){
     _rbxNutBusy=false;
     if(res){
-      if(r.sample)_rbxNutMem[id]=res;
+      if(r.sample){_rbxNutMem[id]=res;try{localStorage.setItem(RBX_NUT_KEY,JSON.stringify(_rbxNutMem));}catch(e){}}
       else{var x=rbxGet(id);if(x){x.nutri=res;rbxPut(x);}}
     } else _rbxNutErr=limit?_t('הגעת למגבלה של היום.'):_t('לא הצלחתי לחשב ערכים למתכון הזה.');
     if(_rbxOpen===id)rbxSheetPaint();
