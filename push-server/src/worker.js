@@ -976,6 +976,18 @@ function adminOk(req, env) {
   return !!want && got.length === want.length && got === want;
 }
 /* which daily counters one coach turn is charged to, each with its cap */
+/* THE FREE TIER (3 Nov): so many coach messages a day per install, for the
+   day there is a paid tier. OFF unless FREE_COACH_DAILY is set to a number
+   above zero - until then nothing changes for anyone. It counts messages,
+   not model calls (a send-back is the app's cost, not hers), by install id,
+   or by network for an app too old to send one. A test run is never
+   counted. Returns the KV key, or '' when there is no cap. */
+function coachFreeKey(o) {
+  const cap = Number(o && o.cap);
+  if (!(cap > 0) || o.test) return '';
+  const uid = /^[0-9a-f]{24}$/.test(String(o.uid || '')) ? String(o.uid) : '';
+  return 'fc:' + o.today + ':' + (uid ? 'u:' + uid : 'n:' + o.ip);
+}
 function coachBuckets(o) {
   if (o.test) return [{ key: 'co:test:' + o.today, cap: o.testCap }];
   const uid = /^[0-9a-f]{24}$/.test(String(o.uid || '')) ? String(o.uid) : '';
@@ -1143,7 +1155,7 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, coachStaleUpdates, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, coachStaleUpdates, coachFreeKey, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
 
 /* The request handler. Its first line is the meter: every model call below
    goes through it, see meterFetch. */
@@ -4851,6 +4863,12 @@ async function routeRequest(req, env, ctx, M) {
         ipCap: Number(env.COACH_IP_DAILY_CAP || 400),
         testCap: Number(env.COACH_TEST_DAILY_CAP || 600),
       });
+      /* the free tier first: its answer says which limit it was */
+      const freeCap = Number(env.FREE_COACH_DAILY || 0);
+      const freeKey = coachFreeKey({ cap: freeCap, today, ip, uid: b && b.uid, test: adminOk(req, env) });
+      const freeUsed = freeKey ? Number((await env.SUBS.get(freeKey)) || 0) : 0;
+      if (freeKey && freeUsed >= freeCap) return json({ error: 'free limit', limit: freeCap }, 429);
+      if (freeKey) await env.SUBS.put(freeKey, String(freeUsed + 1), { expirationTtl: 172800 });
       const usedNow = await Promise.all(buckets.map((x) => env.SUBS.get(x.key)));
       for (let i = 0; i < buckets.length; i++)
         if (Number(usedNow[i] || 0) >= buckets[i].cap) return json({ error: 'too many for today' }, 429);
