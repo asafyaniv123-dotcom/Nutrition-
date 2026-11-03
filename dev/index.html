@@ -549,6 +549,13 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .fx-how .fx-h{color:var(--terra-700)}
 /* the steps in the sheet lead, so the first one needs no gap above it */
 #xh-ov .xd-steps{margin-top:2px}
+/* the demo loop: the warm dark it was made on, so the clip's own ground
+   meets the edge of its frame; the muscles in amber over its corner */
+.xd-demo{position:relative;width:100%;max-width:340px;aspect-ratio:1/1;margin:6px auto 12px;border-radius:16px;overflow:hidden;background:#140f0c;
+  box-shadow:0 0 0 1px rgba(240,169,46,.18)}
+.xd-demo video{width:100%;height:100%;display:block;object-fit:cover}
+.xd-demo-m{position:absolute;inset-block-end:10px;inset-inline-start:10px;font-size:11.5px;font-weight:800;color:#f0a92e;
+  padding:4px 10px;border-radius:999px;background:rgba(20,15,12,.72);box-shadow:0 0 0 1px rgba(240,169,46,.35)}
 .fx-bulb{font-size:26px;line-height:1}
 /* the machine, drawn at whatever size the square leaves it */
 .fx-gear{align-items:center;justify-content:center;gap:7px;cursor:pointer;text-align:center}
@@ -29653,7 +29660,7 @@ function exHowPaint(){
   if(!_exHowOn)return;
   var ex=_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx];
   if(!ex){exHowClose();return;}
-  var e=exByName(ex.name),how=e?exHow(e):null,b='',j;
+  var e=exByName(ex.name),how=e?exHow(e):null,b=exDemoHTML(e),j;
   if(how&&how.s&&how.s.length){
     b+='<ol class="xd-steps">';
     for(j=0;j<how.s.length;j++)b+='<li>'+esc(how.s[j])+'</li>';
@@ -31104,9 +31111,10 @@ function exDetailHTML(e){
   }
 
   // ── how it is done ──
-  var how=exHow(e);
+  var how=exHow(e),demo=exDemoHTML(e);
+  if(demo&&!(how.s&&how.s.length))h+='<div class="xd-h">'+_t('איך מבצעים')+'</div>'+demo;
   if(how.s&&how.s.length){
-    h+='<div class="xd-h">'+_t('איך מבצעים')+'</div><ol class="xd-steps">';
+    h+='<div class="xd-h">'+_t('איך מבצעים')+'</div>'+demo+'<ol class="xd-steps">';
     for(var j=0;j<how.s.length;j++)h+='<li>'+esc(how.s[j])+'</li>';
     h+='</ol>';
   }
@@ -31138,6 +31146,21 @@ function exHow(e){
   var l=appLang(),src=e.sl&&(e.sl[l]||e.sl.en);
   if(l!=="he"&&src)return {s:src.s,k:src.k,lang:(e.sl[l]?l:"en")};
   return {s:e.s,k:e.k,lang:"he"};
+}
+/* ── HOW IT LOOKS (3 Nov) ──
+   A silent five-second loop of one correct repetition, for the exercises
+   that have one (assets/exdemo/<id>.mp4, see the README there): a warm
+   amber figure on the warm dark it was made on, with the muscles it works
+   over its corner, from the exercise's own data. The written steps stay -
+   the loop shows the shape, the words say what to feel for. A reader who
+   asked for less motion gets it standing still, with controls. */
+var EX_DEMO={x131:1,x18:1,x57:1,x1:1,x229:1,x192:1,x27:1,x71:1,x41:1,x162:1};
+function exDemoHTML(e){
+  if(!e||!EX_DEMO[e.id])return '';
+  var still=false;try{still=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(x){}
+  return '<div class="xd-demo"><video src="'+liveBase()+'assets/exdemo/'+e.id+'.mp4" muted loop playsinline preload="metadata"'+
+    (still?' controls':' autoplay')+' aria-hidden="true"></video>'+
+    (e.m&&e.m.length?'<span class="xd-demo-m">'+esc(e.m.map(_t).join(' · '))+'</span>':'')+'</div>';
 }
 function exDetailOpen(i){
   _exDetail=exList()[i];
