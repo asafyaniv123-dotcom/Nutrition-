@@ -34605,11 +34605,18 @@ function rbxFmt(v){
   return nfmt(Math.round(v*10)/10);
 }
 /* the line as HTML: escaped, and the amount marked when it moved */
+/* JAPANESE AND CHINESE put the amount after the food or the unit - 卵 6個,
+   大さじ2, 盐 1/2小勺 - so a line in those scripts with nothing at its start
+   scales its FIRST number instead. Only there: in a Latin or Hebrew line a
+   later number is a pan's 24 cm or chocolate's 70%, not an amount. */
+var RBX_CJK=/[぀-ヿ㐀-鿿]/;
+var RBX_MID=new RegExp('(^|[^\\d.,/])('+RBX_NUM+')(?:(\\s*[-–—~～〜]\\s*)('+RBX_NUM+'))?');
 function rbxScaleHTML(line,f){
-  var m=line.match(RBX_LEAD);
+  var m=line.match(RBX_LEAD),at=0;
+  if(!m&&RBX_CJK.test(line)){var k=line.match(RBX_MID);if(k){at=k.index+k[1].length;m=[k[0].slice(k[1].length),k[2],k[3],k[4]];}}
   if(!m||Math.abs(f-1)<1e-9)return esc(line);
   var a=rbxFmt(rbxVal(m[1])*f),b=m[3]?rbxFmt(rbxVal(m[3])*f):'';
-  return '<b class="rbx-q">'+a+(m[3]?m[2]+b:'')+'</b>'+esc(line.slice(m[0].length));
+  return esc(line.slice(0,at))+'<b class="rbx-q">'+a+(m[3]?m[2]+b:'')+'</b>'+esc(line.slice(at+m[0].length));
 }
 
 /* ── STATE ── */
