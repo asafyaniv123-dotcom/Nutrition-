@@ -23,3 +23,15 @@ Redone from the research: x1 (the first had the bar running along the body),
 x229 (the first stepped back, then both feet moved; now only the front foot
 steps), x71 (was a front view with the plates leaving the frame; now a side
 view showing the bar path). x192 (plank) is a hold, so it barely moves.
+
+Six more (3 Nov), from reports/טכניקה נכונה לשישה תרגילים נוספים.md, which
+names for each exercise the one part that must stay still - every clip was
+checked against it: x34 lat pulldown (torso angle constant, bar in front of
+the face), x149 Romanian deadlift (knee angle constant; goes to mid-shin,
+deeper than the report's conservative just-below-the-knee), x96 dumbbell curl
+(elbows fixed; palms turn up during the lift - the image model would not draw
+a palms-forward start), x108 triceps pushdown (upper arms fixed), x135 leg
+press (hips stay on the pad, knees not locked), x72 dumbbell shoulder press
+(seated against an upright back rest, the report's safest choice). Their
+frames were built from the written spec alone: the good references for these
+six are CC BY-SA, whose terms would carry over to a close redraw.
