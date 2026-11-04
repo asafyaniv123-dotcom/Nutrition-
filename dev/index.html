@@ -560,6 +560,8 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
    measures 2.43:1 as 8.5px text. This is 5.87:1 on the same panel and is still
    the same terracotta. The fills keep #e08a72, which is what it is for. */
 .fx-how .fx-h{color:var(--terra-700)}
+/* on an exercise's page the door is a full-width row under the movement */
+.xd-howb{flex-direction:row;width:100%;min-height:0;padding:13px 16px;margin:2px 0 14px}
 /* the steps in the sheet lead, so the first one needs no gap above it */
 #xh-ov .xd-steps{margin-top:2px}
 /* the demo loop: the warm dark it was made on, so the clip's own ground
@@ -29702,19 +29704,22 @@ function exGearPaint(){
   if(old){old.outerHTML=html;}
   else{document.body.insertAdjacentHTML('beforeend',html);document.body.style.overflow='hidden';}
 }
-function exHowBoxHTML(){
-  return '<button class="fx-box fx-how" onclick="exHowOpen()">'+
+function exHowBoxHTML(go){
+  return '<button class="fx-box fx-how'+(go?' xd-howb':'')+'" onclick="'+(go||'exHowOpen()')+'">'+
     '<span class="fx-bulb">\uD83D\uDCA1</span>'+
     '<span class="fx-h">'+_t('איך מבצעים')+'</span></button>';
 }
 /* The library is fetched on demand and exAll() is empty until it lands, so
    the press waits for it rather than reporting that nothing is written. */
-var _exHowOn=false;
-function exHowOpen(){_exHowOn=true;exLoad(exHowPaint);}
+var _exHowOn=false,_exHowE=null;
+function exHowOpen(){_exHowOn=true;_exHowE=null;exLoad(exHowPaint);}
+/* from an exercise's page: the sheet for THAT exercise, over the page */
+function exDetailHow(){if(!_exDetail)return;_exHowOn=true;_exHowE=_exDetail;exHowPaint();}
 function exHowClose(){
-  _exHowOn=false;
+  _exHowOn=false;_exHowE=null;
   var o=document.getElementById('xh-ov');if(o)o.remove();
-  document.body.style.overflow='';
+  /* over an exercise's page, that sheet still holds the scroll */
+  document.body.style.overflow=document.getElementById('ex-ov')?'hidden':'';
 }
 /* A workout stores the exercise as its id, so the library entry has to be
    found again - and an exercise somebody typed themselves is not in there at
@@ -29726,9 +29731,9 @@ function exByName(nm){
 }
 function exHowPaint(){
   if(!_exHowOn)return;
-  var ex=_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx];
+  var ex=_exHowE?{name:_exHowE.n}:(_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx]);
   if(!ex){exHowClose();return;}
-  var e=exByName(ex.name),how=e?exHow(e):null,b=exDemoHTML(e,how),j;
+  var e=_exHowE||exByName(ex.name),how=e?exHow(e):null,b=exDemoHTML(e,how),j;
   if(how&&how.s&&how.s.length){
     b+='<ol class="xd-steps">';
     for(j=0;j<how.s.length;j++)b+='<li>'+esc(how.s[j])+'</li>';
@@ -31168,6 +31173,9 @@ function exDetailHTML(e){
      '<span class="xd-name">'+esc(exTitle(e))+'</span></div>';
   h+='<div class="xd-meta">'+esc(e.m.map(_t).join(' · '))+' &middot; '+esc(e.q.map(_t).join(', '))+
      (e.en?' &middot; <span class="xd-en">'+esc(e.en)+'</span>':'')+'</div>';
+  /* THE MOVEMENT FIRST, AND ONLY THE MOVEMENT (Asaf, 4 Nov). Choosing an
+     exercise shows how it looks; how it is done is a door below. */
+  h+=exDemoHTML(e);
 
   // ── where you stand ──
   if(!st){
@@ -31202,28 +31210,11 @@ function exDetailHTML(e){
   }
 
   // ── how it is done ──
-  var how=exHow(e),demo=exDemoHTML(e,how);
-  if(demo&&!(how.s&&how.s.length))h+='<div class="xd-h">'+_t('איך מבצעים')+'</div>'+demo;
-  if(how.s&&how.s.length){
-    h+='<div class="xd-h">'+_t('איך מבצעים')+'</div>'+demo+'<ol class="xd-steps">';
-    for(var j=0;j<how.s.length;j++)h+='<li>'+esc(how.s[j])+'</li>';
-    h+='</ol>';
-  }
-  if(how.k&&how.k.length){
-    h+='<div class="xd-h warn">'+_t('טעויות נפוצות')+'</div><ul class="xd-miss">';
-    for(var m=0;m<how.k.length;m++)h+='<li>'+esc(how.k[m])+'</li>';
-    h+='</ul>';
-  }
-  /* Not the language being read. Saying which one it is costs a line and
-     turns "why is this gibberish" into "ah, it is in Hebrew". */
-  if(how.s&&how.s.length&&how.lang!==appLang()){
-    var lname=how.lang;
-    for(var li2=0;li2<LANGS.length;li2++)if(LANGS[li2].code===how.lang)lname=LANGS[li2].name;
-    h+='<div class="xd-lang">'+
-       _t('ההסבר עוד לא נכתב בשפה שלך. מה שמופיע כאן הוא ב{lang}.',{lang:lname})+'</div>';
-  }
-  if(!(how.s&&how.s.length))
-    h+='<div class="xd-none small">'+_t('ההסבר לתרגיל הזה עוד לא נכתב.')+'</div>';
+  /* how it is done: behind a door, in the same sheet a workout opens - the
+     guided demo, the steps, the mistakes and which language they are in */
+  var how=exHow(e);
+  if(how.s&&how.s.length)h+=exHowBoxHTML('exDetailHow()');
+  else h+='<div class="xd-none small">'+_t('ההסבר לתרגיל הזה עוד לא נכתב.')+'</div>';
 
   h+='<button class="xd-pick" onclick="exDetailChoose()">'+_t('בחר את התרגיל הזה')+'</button>';
   return h+'</div>';
