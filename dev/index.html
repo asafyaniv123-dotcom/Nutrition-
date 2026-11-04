@@ -13037,7 +13037,9 @@ function mipAha(cb){
   var bs=document.getElementsByClassName('mip-wait-b'),b=null,i;
   for(i=0;i<bs.length;i++)if(bs[i]._beem&&bs[i].isConnected){b=bs[i]._beem;break;}
   if(!b||!window.BeemKit||!window.BeemKit.aha){cb();return;}
-  window.BeemKit.aha(b);setTimeout(cb,1000);
+  /* the reply waits on this, so a Mip that cannot animate must not keep it */
+  try{window.BeemKit.aha(b);}catch(e){cb();return;}
+  setTimeout(cb,1000);
 }
 (function(){
   function go(){new MutationObserver(function(){
@@ -15786,6 +15788,7 @@ function coachApply(j,onDate){
          12, and filed EVERY meal the coach ever logged as lunch. */
       day.meals.push({id:q.id,src:'coach',name:q.name,amount:q.quantity,
         kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',g:q.approx_g>0?q.approx_g:undefined,
+        gw:q.whole_g>0?q.whole_g:undefined,
         na:q.sodium_level||'',rest:q.restaurant?1:0,label:q.label||undefined,
         kind:coachMealOk(q.meal),time:fmtTime(),at:Date.now()});
       added.push(q.id);}
@@ -15806,7 +15809,7 @@ function coachApply(j,onDate){
         if(typeof u.protein==='number')day.meals[i].p=u.protein;
         if(typeof u.carbs==='number')day.meals[i].c=u.carbs;
         if(typeof u.fat==='number')day.meals[i].f=u.fat;
-        if(typeof u.approx_g==='number'&&u.approx_g>0)day.meals[i].g=u.approx_g;
+        if(typeof u.approx_g==='number'&&u.approx_g>0){day.meals[i].g=u.approx_g;day.meals[i].gw=u.whole_g>0?u.whole_g:undefined;}
         if(u.assumption!==undefined)day.meals[i].note=u.assumption||'';
         if(u.sodium_level)day.meals[i].na=u.sodium_level;
         if(u.label)day.meals[i].label=u.label;
@@ -15853,7 +15856,9 @@ function coachItemsHTML(ids,d,was){
         ar=document.documentElement.dir==='rtl'?' \u2190 ':' \u2192 ';
     h+='<div class="co-it"><b>'+esc(m.name||'')+'</b>'+
        (w&&w.a&&w.a!==m.amount?', '+esc(w.a)+ar+esc(m.amount||''):(m.amount?', '+esc(m.amount):''))+
-       (m.g>0?' <span class="co-it-g">(\u2248'+fmtGrams(Math.round(m.g))+')</span>':'')+
+       /* a share of a dish says what it was a share of: "≈149 of ≈450 g" */
+       (m.g>0?' <span class="co-it-g">('+(m.gw>0?_t('≈{a} מתוך ≈{b}',{a:fmtGrams(Math.round(m.g)),b:fmtGrams(Math.round(m.gw))})
+         :'\u2248'+fmtGrams(Math.round(m.g)))+')</span>':'')+
        ' <span class="co-it-v">\u00b7 '+_t('{n} קק"ל',{n:Math.round(m.kcal||0)})+(w&&dk?' ('+(dk>0?'+':'\u2212')+_t('{n} קק"ל',{n:Math.abs(dk)})+')':'')+', '+_t('{n} גרם חלבון',{n:Math.round(m.p||0)})+'</span></div>';
     break;}
   /* the meal as one line, from the rows above it - with one row it would only repeat it */
@@ -15994,6 +15999,11 @@ function coachPost(d,text,pics,rec,ed){
   _coachRetry=null;
   (function coGo(left){
   fetch(SYNC_SERVER+'/coach'+meterQ(),_coOpts).then(function(r){if(r.status>=500)throw new Error(String(r.status));return r.json();}).then(function(j){mipAha(function(){
+    /* HANDLING THE REPLY MAY NOT HANG THE CHAT (4 Nov). Whatever throws in
+       here used to leave _coachBusy set and the waiting bubble up for good -
+       no answer, no error, and the message could not be long-pressed. It
+       now ends like a lost reply: the error, and the same request on a tap. */
+    try{
     if(j&&j.ok&&j.dispute)coachDisputeLog(d,j.dispute,text,disp);
     _coachBusy=false;
     if(!j||!j.ok){
@@ -16044,6 +16054,11 @@ function coachPost(d,text,pics,rec,ed){
     if(ed&&j.message)showToast(String(j.message).replace(/[*_]/g,'').slice(0,140));
     /* the whole screen, because the bars above it have just moved */
     render();
+    }catch(e){
+      _coachBusy=false;_coachErr=''+_t('לא הצלחתי לענות כרגע.')+'';
+      _coachRetry=function(){_coachRetry=null;_coachBusy=true;_coachErr='';coachPaint();coGo(1);};
+      try{coachPaint();}catch(e2){}
+    }
   });},function(){
     /* lost on the way: once more, quietly; then the same request on a tap */
     if(left>0){setTimeout(function(){coGo(left-1);},1500);return;}

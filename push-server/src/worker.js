@@ -777,7 +777,13 @@ function scheduleBoard(b) {
    Every figure is bounded, since it is written into her day. */
 function coachTotals(it) {
   const num = (v, hi) => { const x = Number(v); return isFinite(x) && x > 0 && x <= hi ? x : 0; };
-  const portions = num(it && it.portions, 20) || 1;
+  /* THE SHARE (4 Nov). "We were three, I ate a third of every plate": the
+     items said "a third" and carried the whole dish's figures - 2,590 kcal
+     for about 1,060 - because the per-100 g path below never read portions
+     at all. portion_fraction is how much of the dish as served was eaten (a
+     third, half, twice) and it is applied on every path; portions is what
+     the same thing was called before, and is still read. */
+  const portions = num(it && it.portion_fraction, 20) || num(it && it.portions, 20) || 1;
   const units = num(it && it.unit_count, 200), ku = num(it && it.kcal_per_unit, 3000);
   /* GRAMS TIMES PER 100 G (3 Nov). Surimi came back as 36 g = 60 kcal and
      cottage as 40 g = 65 kcal - a weight and a calorie figure the model
@@ -786,11 +792,14 @@ function coachTotals(it) {
      worked out here and the two can never drift apart. Food in pieces keeps
      its per-piece path, and a label item is worked out by labelItem. */
   const r100 = it && it.per_100g && typeof it.per_100g === 'object' ? it.per_100g : null;
-  const g100 = num(it && it.approx_g, 5000);
+  /* the whole dish, then the share of it: grams_whole is the weight as
+     served, approx_g what it was called before */
+  const whole = num(it && it.grams_whole, 10000) || num(it && it.approx_g, 5000);
+  const g100 = Math.min(5000, whole * portions);
   if (!(units && ku) && !(it && it.label) && r100 && num(r100.kcal, 900) && g100) {
     const r1 = (x) => Math.round(x * 10) / 10, m = g100 / 100;
     return { calories: Math.round(num(r100.kcal, 900) * m), protein: r1(num(r100.protein, 100) * m),
-             carbs: r1(num(r100.carbs, 100) * m), fat: r1(num(r100.fat, 100) * m), portions: 1, units: 0 };
+             carbs: r1(num(r100.carbs, 100) * m), fat: r1(num(r100.fat, 100) * m), portions, units: 0 };
   }
   let k, p, c, f;
   if (units && ku) {
@@ -868,8 +877,39 @@ function approxGrams(it) {
   const L = labelClean(it && it.label);
   if (L && L.portion_g) return Math.round(L.portion_g);
   if (L && L.fraction && L.package_g) return Math.round(L.fraction * L.package_g);
+  const f = coachFraction(it), w = Number(it && it.grams_whole);
+  if (isFinite(w) && w > 0 && w <= 10000) return Math.min(5000, Math.round(w * f));
   const g = Number(it && it.approx_g);
-  return isFinite(g) && g > 0 && g < 5000 ? Math.round(g) : 0;
+  return isFinite(g) && g > 0 && g < 5000 ? Math.min(5000, Math.round(g * f)) : 0;
+}
+/* how much of the dish was eaten, as coachTotals reads it */
+function coachFraction(it) {
+  const num = (v) => { const x = Number(v); return isFinite(x) && x > 0 && x <= 20 ? x : 0; };
+  return num(it && it.portion_fraction) || num(it && it.portions) || 1;
+}
+/* the whole dish's weight, for "≈150 of ≈450 g" - only when a share of it was eaten */
+function coachWholeG(it) {
+  const f = coachFraction(it);
+  if (f === 1 || labelClean(it && it.label)) return 0;
+  const w = Number(it && it.grams_whole) || Number(it && it.approx_g);
+  return isFinite(w) && w > 0 && w <= 10000 ? Math.round(w) : 0;
+}
+/* A SHARE SAID IN WORDS (4 Nov). "I ate a third of every plate", and every
+   item came back whole. When their words name a share and not one item -
+   apart from a label or a saved product, which carry grams of their own -
+   says anything but 1, the reply is sent back once. Hebrew has no \b, so
+   the short words carry their own edges, as in COACH_FIX_HE: חצי is not
+   חציל and רבע is not ארבע. */
+const COACH_SHARE_HE = new RegExp('(?:^|[^\\u0590-\\u05ff])[והשכלבמ]?(?:' +
+  '(?:חצי|שליש|רבע|פעמיים|כפול)(?=$|[^\\u0590-\\u05ff])|' +
+  'חלקנו|התחלקנו|חילקנו|ביחד עם|יחד עם|משותפ|בשלושה|בשניים|בארבעה|בשלוש|לשניים|לשלושה|לשלוש)');
+const COACH_SHARE_WORDS = /\bhalf\b|\bthird\b|\bquarter\b|\bshared?\b|\bsplit\b|\btwice\b|\bdouble\b|together with|\bhälfte\b|\bhalb|drittel|viertel|geteilt|zweimal|\bmitad\b|tercio|compart|\bdos veces\b|moitié|\btiers\b|partag|deux fois|\bmetà\b|\bterzo\b|condivis|due volte|metade|\bterço\b|dividi|duas vezes|半分|三分の一|分け|二回|一半|三分之一|分享|两份|兩份|نصف|ثلث|ربع|تقاسم|مرتين/i;
+function coachShareMissed(message, items) {
+  const said = String(message || '');
+  if (!(COACH_SHARE_HE.test(said) || COACH_SHARE_WORDS.test(said))) return false;
+  const own = (Array.isArray(items) ? items : []).filter((it) => it && !it.product_id && !labelClean(it.label));
+  if (!own.length) return false;
+  return own.every((it) => coachFraction(it) === 1);
 }
 /* HER OWN PRODUCTS (3 Nov): every label she has sent, kept on the phone as
    per 100 g, and sent with every turn. Cut to a type and a size like
@@ -901,8 +941,8 @@ function coachUseGrams(items, products) {
     } else if (it.product_id) it.product_id = '';
     const l = it.label;
     if (l && typeof l === 'object' && l.per_100g && !(Number(l.portion_fraction) > 0) && !(Number(l.portion_g) > 0)) {
-      const g = Number(it.approx_g);
-      if (isFinite(g) && g > 0 && g < 5000) l.portion_g = g;
+      const g = approxGrams(it);
+      if (g > 0) l.portion_g = g;
     }
   }
   return items;
@@ -1155,7 +1195,7 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, coachStaleUpdates, coachFreeKey, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, coachStaleUpdates, coachFreeKey, coachShareMissed, coachFraction, approxGrams, coachWholeG, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
 
 /* The request handler. Its first line is the meter: every model call below
    goes through it, see meterFetch. */
@@ -4907,9 +4947,9 @@ When they say they ate it ("אכלתי"), it is eaten: action is add, even if it
 - Break meals into items. Give each item a realistic portion and state the assumption ("הנחתי כ-150 גרם מבושל").
 - Nutrition label in the photo: use the per-100g values and the package size. Branded items: use the package numbers. "PRO 20" means 20g protein per unit, not 20%.
 - Restaurants: account for oil, butter, dressings, and fried items. Greek and Mediterranean dishes usually carry a lot of olive oil.
-- Shared table: ask what share was theirs (half, a third, and so on).
-- Compare the photo with their words. If you clearly see a food in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"). Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see on what they ate - never ask about something hidden, merely likely, or standing elsewhere on the table. Every item says whether it came from their words (from_words); the app does not log an item that is only in the photo.
-- For every item that is not from a label and not counted in pieces, give per_100g (what this food is per 100 g: kcal, protein, carbs, fat - the reference values, as for the food in general) and approx_g, the total weight eaten. The app works out the item from these two, so they must describe the same food; calories and the macros you give are then only a fallback.
+- Shared table: when they say what share was theirs ("אכלתי שליש מכל צלחת", "חלקנו פיצה", "half"), every item it applies to keeps the WHOLE dish - grams_whole and its figures - and gets portion_fraction (a third is 0.33, half 0.5, a quarter 0.25). When a table was shared and the share is not said, ask.
+- Compare the photo with their words. If you clearly see a food or a drink in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish, a drink at their place - alcohol counts: a glass of beer, ouzo or wine), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"). Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see on what they ate - never ask about something hidden, merely likely, or standing elsewhere on the table. Every item says whether it came from their words (from_words); the app does not log an item that is only in the photo.
+- For every item that is not from a label, not one of THEIR PRODUCTS and not counted in pieces, give per_100g (what this food is per 100 g: kcal, protein, carbs, fat - the reference values, as for the food in general), grams_whole (the weight of the whole dish or portion as served) and portion_fraction (how much of it they ate). The app works out grams eaten = grams_whole x portion_fraction and the item from that, so they must describe the same food; calories and the macros you give are then only a fallback. Never write the eaten weight or the eaten calories yourself.
 - Ask at most ONE follow-up, and only about something that changes the numbers a lot (oil, dressing, milk in coffee, portion size, whether they finished). Log with your best assumption anyway, and offer to update.
 - If the user challenges a number, re-check it honestly. If you were wrong, say so and fix it.
 
@@ -4926,18 +4966,18 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 ## Quantity rules
 - Before logging, re-read the user's text for quantity words: "twice", "פעמיים", "2 מנות", "חצי", "עוד אחד", "כל הצלחת". These override what the photo shows.
 - Multiple photos of the same plate = ONE plate, unless the user says otherwise. The number of photos is never the number of portions.
-- The photo shows ONE portion. If the user says they ate it X times, portions = X.
+- The photo shows ONE portion. If the user says they ate it X times, portion_fraction = X; a part of it (a third, half) is portion_fraction below 1.
 - Count the pieces in the single clearest photo. Never add counts from two photos of the same plate together, and never split a plate between them - each photo shows the whole plate.
-- portions = X goes on EVERY item that came from that plate, not only on some of them.
-- unit_count is exactly what you wrote in photo_count - what you would count in the photo if they had eaten it ONCE. Being told "twice" never changes what you count in the photo - it only sets portions. Pieces standing in pairs or stacks are still counted one by one.
+- portion_fraction = X goes on EVERY item that came from that plate, not only on some of them.
+- unit_count is exactly what you wrote in photo_count - what you would count in the photo if they had eaten it ONCE. Being told "twice" never changes what you count in the photo - it only sets portion_fraction. Pieces standing in pairs or stacks are still counted one by one.
 - Always state your count in the reply: "~7 pieces × 2 = 14 pieces".
 - Sauce in a dish/ramekin ≈ 3-4 tbsp, not 1-2. Teriyaki ≈ 40-45 kcal/tbsp, mostly sugar.
 - Restaurant food: when unsure between two estimates, take the higher one. Restaurants use more oil, sugar and sauce than home cooking.
 
 ### How to fill the numbers
-- calories, protein, carbs and fat are for ONE portion. portions says how many times it was eaten (1 if not said; 0.5 for half). The app multiplies - never multiply yourself.
+- calories, protein, carbs and fat are for the WHOLE portion as served - the whole plate, before their share. portion_fraction says how much of it was eaten (1 if not said; 0.5 for half, 0.33 for a third, 2 for twice). The app multiplies - never multiply yourself, and never state a total of your own: the app sends you its figures when they matter.
 - Food that comes in pieces (sushi, dumplings, cookies, eggs, slices): also give unit_count (pieces in one portion) and the per-piece figures (kcal_per_unit, protein_per_unit, carbs_per_unit, fat_per_unit). The app then computes the totals from them.
-- quantity describes everything that was eaten, for example "14 יחידות (7 × 2)".
+- quantity describes everything that was eaten, for example "14 יחידות (7 × 2)" or "שליש מנה".
 
 ### Sushi reference (per piece)
 - Maki (thin roll): 25-35 kcal
@@ -5034,7 +5074,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                reading of the photo against the words, not a defence of a
                list already made - asked per item, the bread under the salami
                was marked "from their words" two times in three */
-            not_in_words: { type: 'array', items: { type: 'string' }, description: 'When there is a photo AND words: every food you see on what they ate that their words do not name or plainly contain (bread under a topping, a spread, a sauce, a side). A sandwich contains its bread; "this" or "the plate" contains everything. Empty when there is no photo, no words, or nothing unsaid.' },
+            not_in_words: { type: 'array', items: { type: 'string' }, description: 'When there is a photo AND words: every food or drink you see on what they ate that their words do not name or plainly contain (bread under a topping, a spread, a sauce, a side, a drink at their place - alcohol too: a glass of beer, ouzo or wine). A sandwich contains its bread; "this" or "the plate" contains everything. Empty when there is no photo, no words, or nothing unsaid.' },
             action: { type: 'string', enum: ['add', 'update', 'delete', 'none'] },
             date: { type: 'string', description: 'YYYY-MM-DD, the day these rows belong to' },
             items: {
@@ -5050,12 +5090,13 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                   carbs: { type: 'number' },
                   fat: { type: 'number' },
                   assumption: { type: 'string' },
-                  approx_g: { type: 'number', description: 'the total weight eaten, in grams, for this item as logged, all portions together (2 slices of bread is about 76). Always fill it; the app shows it beside the item so the person can correct it.' },
-                  per_100g: Object.assign({ description: 'what this food is per 100 g, for an item NOT from a label and not counted in pieces; the app multiplies by approx_g' }, LABEL_COL),
+                  grams_whole: { type: 'number', description: 'the weight of the WHOLE dish or portion as served or as in the photo, in grams - the whole plate, the whole pizza - before their share of it. For every item that is not one of THEIR PRODUCTS.' },
+                  portion_fraction: { type: 'number', description: 'how much of grams_whole they ate: 1 for all of it, 0.5 for half, 0.33 for a third, 0.25 for a quarter, 2 for twice. 1 if not said. The app multiplies - never multiply yourself.' },
+                  approx_g: { type: 'number', description: 'ONLY for one of THEIR PRODUCTS: the grams eaten. Every other item gives grams_whole and portion_fraction instead.' },
+                  per_100g: Object.assign({ description: 'what this food is per 100 g, for an item NOT from a label and not counted in pieces; the app multiplies by grams_whole x portion_fraction' }, LABEL_COL),
                   product_id: { type: 'string', description: 'the id of one of THEIR PRODUCTS, when this item is that product' },
                   from_words: { type: 'boolean', description: 'true when their words name this food or plainly contain it (a sandwich contains bread; "this", "the plate", "what is in the picture" contain everything on it), or when they have just said yes to adding it. false when you only see it in the photo.' },
                   brand: { type: 'string', description: 'the brand, when the item is a packaged product read from a label' },
-                  portions: { type: 'number', description: 'how many times this portion was eaten; 1 if not said' },
                   unit_count: { type: 'number', description: 'pieces in ONE portion, for food that comes in pieces' },
                   kcal_per_unit: { type: 'number' },
                   protein_per_unit: { type: 'number' },
@@ -5193,7 +5234,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
               /* Sonnet: it is looking at plates and reading labels, not
                  matching a word against a table. */
               model: 'claude-sonnet-5',
-              max_tokens: 1600,
+              /* 1,600 was the ceiling until four product photos and a list of
+                 seven met it (4 Nov): the reply stopped mid-way. It is paid
+                 by what is written, not by the ceiling. */
+              max_tokens: 4000,
               /* CACHED (3 Nov): the tool and these instructions are the same
                  bytes on every turn - about 84% of the app's whole spend went
                  on sending them again. Marked, they are read back at a tenth
@@ -5217,6 +5261,9 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         }
         let dd;
         try { dd = await r.json(); } catch { return { err: json({ error: 'unreadable answer' }, 502) }; }
+        /* cut off: whatever the tool input holds is half a reply, and it
+           arrived as "nothing to log" with an empty message */
+        if (dd && dd.stop_reason === 'max_tokens') return { err: json({ error: 'the answer was cut off' }, 502) };
         const u0 = ((dd && dd.content) || []).find((c) => c && c.type === 'tool_use' && c.name === 'reply');
         if (!u0 || !u0.input) return { err: json({ error: 'no answer' }, 502) };
         coachUseGrams(u0.input.items, products);
@@ -5340,6 +5387,38 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
           }
         }
       }
+      /* A SHARE SAID BUT NOT GIVEN - see coachShareMissed. Once. */
+      if (!editId && !dispute && got.use.input.action === 'add' && coachShareMissed(message, got.use.input.items)) {
+        const again = await ask(msgs.concat([
+          { role: 'assistant', content: got.d.content },
+          { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id, is_error: true,
+            content: 'Not logged yet. Their words say they ate a share ("' + String(message).slice(0, 160) + '"), but every item has portion_fraction 1. ' +
+              'Send the whole reply again: for every item the share applies to, keep grams_whole and the figures of the WHOLE dish and set portion_fraction ' +
+              '(a third is 0.33, half 0.5, a quarter 0.25, twice 2). An item the share truly does not apply to keeps 1.' }] },
+        ]));
+        if (!again.err) got = again;
+      }
+      /* THE FIGURES OF A SHARE. With a fraction the code's numbers are not
+         the ones the model had in front of it, and a reply that says "2,590
+         kcal" over rows that add to 1,060 is the bug all over again in the
+         words. So the reply is written once more from what the code worked
+         out - only when some item was a share. */
+      if ((got.use.input.action === 'add' || got.use.input.action === 'update') &&
+          (got.use.input.items || []).some((it) => it && coachFraction(it) !== 1 && !labelClean(it.label))) {
+        let tk = 0;
+        const fig = (got.use.input.items || []).map((it) => {
+          const t = coachTotals(it); tk += t.calories || 0;
+          return '"' + String(it.name || '').slice(0, 60) + '": ' + t.calories + ' kcal, ' + t.protein + ' g protein' +
+            (coachWholeG(it) ? ' (' + approxGrams(it) + ' g of ' + coachWholeG(it) + ' g, x ' + coachFraction(it) + ')' : '');
+        });
+        const again = await ask(msgs.concat([
+          { role: 'assistant', content: got.d.content },
+          { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id,
+            content: 'The app worked out the items with their share (in code - use these figures, do not recompute): ' + fig.join('; ') +
+              '. Together: ' + tk + ' kcal. Send the whole reply again, unchanged in its items, with a message that uses these figures.' }] },
+        ]));
+        if (!again.err) got = again;
+      }
       /* A WEIGH-IN. The model only noticed the number; the arithmetic is
          done here, from the trend the app sent, and the reply is written
          from those figures in a second pass. */
@@ -5396,6 +5475,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         ...coachTotals(it),
         ...labelItem(it),
         approx_g: approxGrams(it),
+        /* the whole it was a share of, for "≈150 of ≈450 g" beside the row */
+        whole_g: coachWholeG(it),
         brand: String(it.brand || '').replace(/\s+/g, ' ').trim().slice(0, 40),
         product_id: String(it.product_id || '').slice(0, 24),
         assumption: String(it.assumption || '').slice(0, 200),
