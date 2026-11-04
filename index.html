@@ -967,7 +967,7 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .co-left-t{flex:0 0 100%;font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--nu-muted,#6d675e)}
 .co-l{font-size:12.5px;color:var(--nu-ink,#4a453f)}
 .co-l b{font-weight:700;color:var(--nu-muted,#6d675e)}
-.co-strip{display:flex;gap:7px;padding:8px 2px 0}
+.co-strip{display:flex;flex-wrap:wrap;gap:7px;padding:8px 2px 0}
 .co-thumb{position:relative;width:52px;height:52px;border:none;padding:0;border-radius:11px;
   overflow:hidden;cursor:pointer;background:none}
 .co-thumb img{width:100%;height:100%;object-fit:cover;display:block;border-radius:11px}
@@ -1414,6 +1414,8 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;
   background:var(--nu-ground);color:var(--nu-muted);
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.tm-adds{display:flex;gap:10px}
+.tm-adds .tm-add{flex:1;min-width:0}
 .tm-x:active,.tm-add:active{box-shadow:inset 2px 3px 6px var(--nu-shade),
   inset -2px -2px 5px var(--nu-lit)}
 /* saved timers */
@@ -13035,7 +13037,9 @@ function mipAha(cb){
   var bs=document.getElementsByClassName('mip-wait-b'),b=null,i;
   for(i=0;i<bs.length;i++)if(bs[i]._beem&&bs[i].isConnected){b=bs[i]._beem;break;}
   if(!b||!window.BeemKit||!window.BeemKit.aha){cb();return;}
-  window.BeemKit.aha(b);setTimeout(cb,1000);
+  /* the reply waits on this, so a Mip that cannot animate must not keep it */
+  try{window.BeemKit.aha(b);}catch(e){cb();return;}
+  setTimeout(cb,1000);
 }
 (function(){
   function go(){new MutationObserver(function(){
@@ -15784,6 +15788,7 @@ function coachApply(j,onDate){
          12, and filed EVERY meal the coach ever logged as lunch. */
       day.meals.push({id:q.id,src:'coach',name:q.name,amount:q.quantity,
         kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',g:q.approx_g>0?q.approx_g:undefined,
+        gw:q.whole_g>0?q.whole_g:undefined,
         na:q.sodium_level||'',rest:q.restaurant?1:0,label:q.label||undefined,
         kind:coachMealOk(q.meal),time:fmtTime(),at:Date.now()});
       added.push(q.id);}
@@ -15804,7 +15809,7 @@ function coachApply(j,onDate){
         if(typeof u.protein==='number')day.meals[i].p=u.protein;
         if(typeof u.carbs==='number')day.meals[i].c=u.carbs;
         if(typeof u.fat==='number')day.meals[i].f=u.fat;
-        if(typeof u.approx_g==='number'&&u.approx_g>0)day.meals[i].g=u.approx_g;
+        if(typeof u.approx_g==='number'&&u.approx_g>0){day.meals[i].g=u.approx_g;day.meals[i].gw=u.whole_g>0?u.whole_g:undefined;}
         if(u.assumption!==undefined)day.meals[i].note=u.assumption||'';
         if(u.sodium_level)day.meals[i].na=u.sodium_level;
         if(u.label)day.meals[i].label=u.label;
@@ -15851,7 +15856,9 @@ function coachItemsHTML(ids,d,was){
         ar=document.documentElement.dir==='rtl'?' \u2190 ':' \u2192 ';
     h+='<div class="co-it"><b>'+esc(m.name||'')+'</b>'+
        (w&&w.a&&w.a!==m.amount?', '+esc(w.a)+ar+esc(m.amount||''):(m.amount?', '+esc(m.amount):''))+
-       (m.g>0?' <span class="co-it-g">(\u2248'+fmtGrams(Math.round(m.g))+')</span>':'')+
+       /* a share of a dish says what it was a share of: "≈149 of ≈450 g" */
+       (m.g>0?' <span class="co-it-g">('+(m.gw>0?_t('≈{a} מתוך ≈{b}',{a:fmtGrams(Math.round(m.g)),b:fmtGrams(Math.round(m.gw))})
+         :'\u2248'+fmtGrams(Math.round(m.g)))+')</span>':'')+
        ' <span class="co-it-v">\u00b7 '+_t('{n} קק"ל',{n:Math.round(m.kcal||0)})+(w&&dk?' ('+(dk>0?'+':'\u2212')+_t('{n} קק"ל',{n:Math.abs(dk)})+')':'')+', '+_t('{n} גרם חלבון',{n:Math.round(m.p||0)})+'</span></div>';
     break;}
   /* the meal as one line, from the rows above it - with one row it would only repeat it */
@@ -15887,12 +15894,16 @@ function coachGrow(el){
   el.style.height=Math.min(el.scrollHeight,Math.round(window.innerHeight*0.3))+'px';
 }
 function coachDropPic(i){_coachPics.splice(i,1);coachPaint();}
+/* TEN, not four (4 Nov): a meal of packages is easily more than four
+   photos. The worker reads the same number. */
+var COACH_PICS_MAX=10;
 function coachFiles(input){
   var fl=input&&input.files?input.files:[],n=0;
-  for(var i=0;i<fl.length&&_coachPics.length<4;i++){
+  if(fl.length&&_coachPics.length+fl.length>COACH_PICS_MAX)showToast(_t('זה המקסימום של תמונות בהודעה אחת'));
+  for(var i=0;i<fl.length&&_coachPics.length<COACH_PICS_MAX;i++){
     n++;
     picShrink(fl[i],function(d){
-      if(d&&_coachPics.length<4){_coachPics.push(d);coachPaint();}
+      if(d&&_coachPics.length<COACH_PICS_MAX){_coachPics.push(d);coachPaint();}
     });
   }
   input.value='';
@@ -15992,6 +16003,11 @@ function coachPost(d,text,pics,rec,ed){
   _coachRetry=null;
   (function coGo(left){
   fetch(SYNC_SERVER+'/coach'+meterQ(),_coOpts).then(function(r){if(r.status>=500)throw new Error(String(r.status));return r.json();}).then(function(j){mipAha(function(){
+    /* HANDLING THE REPLY MAY NOT HANG THE CHAT (4 Nov). Whatever throws in
+       here used to leave _coachBusy set and the waiting bubble up for good -
+       no answer, no error, and the message could not be long-pressed. It
+       now ends like a lost reply: the error, and the same request on a tap. */
+    try{
     if(j&&j.ok&&j.dispute)coachDisputeLog(d,j.dispute,text,disp);
     _coachBusy=false;
     if(!j||!j.ok){
@@ -16042,6 +16058,11 @@ function coachPost(d,text,pics,rec,ed){
     if(ed&&j.message)showToast(String(j.message).replace(/[*_]/g,'').slice(0,140));
     /* the whole screen, because the bars above it have just moved */
     render();
+    }catch(e){
+      _coachBusy=false;_coachErr=''+_t('לא הצלחתי לענות כרגע.')+'';
+      _coachRetry=function(){_coachRetry=null;_coachBusy=true;_coachErr='';coachPaint();coGo(1);};
+      try{coachPaint();}catch(e2){}
+    }
   });},function(){
     /* lost on the way: once more, quietly; then the same request on a tap */
     if(left>0){setTimeout(function(){coGo(left-1);},1500);return;}
@@ -25777,6 +25798,20 @@ function wtCycNote(){
   if(el)el.style.display=(k&&(wtNums().rounds|0)>1)?'':'none';
 }
 function wtNameAdd(){ wtNamesEdit().push(''); wtRoundsFollow(); renderFitness(); }
+/* ── A ROUND FROM THE LIBRARY ──
+   The same picker a workout uses. The chosen exercise fills the first empty
+   row, or becomes a new one, and is kept as the library's own name so it is
+   shown in whatever language is being read. */
+function wtNameFromLib(){
+  exPickInto(function(name){
+    if(!name)return;
+    var a=wtNamesEdit(),i;
+    for(i=0;i<a.length;i++)if(!(a[i]||'').replace(/^\s+|\s+$/g,''))break;
+    if(i<a.length)a[i]=name;else a.push(name);
+    wtRoundsFollow();
+    renderFitness();
+  });
+}
 function wtNameDel(i){
   var a=wtNamesEdit();
   if(i>=0&&i<a.length)a.splice(i,1);
@@ -25840,7 +25875,7 @@ function wtSameShape(a,b){
 function wtSavedLine(p){
   var t=p.kind==='amrap'?wtFace(p.work):p.kind==='emom'?nfmt(p.rounds)+' &times; '+wtFace(p.work)
        :nfmt(p.rounds)+' &times; '+nfmt(p.work)+'/'+nfmt(p.rest);
-  return esc(wtPlanLabel(p.kind))+' &middot; '+t+((p.names&&p.names.length)?' &middot; '+esc(p.names.join(', ')):'');
+  return esc(wtPlanLabel(p.kind))+' &middot; '+t+((p.names&&p.names.length)?' &middot; '+esc(p.names.map(exLabel).join(', ')):'');
 }
 function wtSavedHTML(){
   var a=wtSavedAll(),h='<div class="tm-card"><div class="tm-h">'+_t('השמורים שלי')+'</div>',i,p;
@@ -25871,7 +25906,7 @@ function wtSavedUse(id){
    first exercise. */
 function wtSaveSheet(plan,after){
   var cur=_wtSavedId!==null?wtSavedGet(_wtSavedId):null,
-      name=cur?cur.name:(wtPlanLabel(plan.kind)+(plan.names&&plan.names.length?' · '+plan.names[0]:'')),h;
+      name=cur?cur.name:(wtPlanLabel(plan.kind)+(plan.names&&plan.names.length?' · '+exLabel(plan.names[0]):'')),h;
   wtSheetClose();
   var ov=document.createElement('div');ov.className='cf-ov';ov.id='wt-sv-ov';
   h='<div class="cf-card"><div class="cf-q" style="margin-bottom:6px">'+esc(after?_t('לשמור את השעון הזה?'):_t('שמירת השעון'))+'</div>'+
@@ -25976,15 +26011,19 @@ function renderFitTimer(){
   /* exactly the rows the list holds. Adding one is the + button's job and
      nobody else's. */
   var nm=wtNames(),ni;
+  /* a round taken from the library is shown by its name in the reader's
+     language, which the library only knows once it has arrived */
+  if(wtNamesClean().length&&_exState!=='ready')exLoad();
   for(ni=0;ni<nm.length;ni++){
     h+='<div class="tm-row"><span class="tm-rn">'+nfmt(ni+1)+'</span>'+
-       '<input type="text" value="'+esc(nm[ni])+'" maxlength="40" '+
+       '<input type="text" value="'+esc(exLabel(nm[ni]))+'" maxlength="40" '+
        'placeholder="'+esc(_t('למשל: סקוואט'))+'" '+
        'oninput="wtNameSet('+ni+',this.value)">'+
        '<button class="tm-x" onclick="wtNameDel('+ni+')" aria-label="'+esc(_t('הסר'))+'">&times;</button>'+
        '</div>';
   }
-  h+='<button class="tm-add" onclick="wtNameAdd()">'+_t('+ עוד שורה')+'</button>';
+  h+='<div class="tm-adds"><button class="tm-add" onclick="wtNameAdd()">'+_t('+ עוד שורה')+'</button>'+
+     '<button class="tm-add" onclick="wtNameFromLib()">'+_t('+ תרגיל מהספרייה')+'</button></div>';
   /* ONLY when he has raised the rounds himself above the number of exercises.
      Then they do repeat, and a repeat nobody mentioned is the thing that
      looked like a bug. */
@@ -29805,7 +29844,7 @@ var WT_PLAN_KEY='fit_wtplan';
 function wtNameAt(i){
   var p=_wtPlan;
   if(!p||!p.names||!p.names.length||i<0)return '';
-  return p.names[i%p.names.length]||'';
+  return exLabel(p.names[i%p.names.length]||'');
 }
 function wtPlanLoad(){
   try{
@@ -29912,6 +29951,7 @@ function wtPlanStart(kind,work,rest,rounds,prep,names){
            rounds:Math.max(1,rounds|0),prep:Math.max(0,prep|0),
            names:(names&&names.length)?names.slice(0):[]};
   wtPlanSave(_wtPlan);
+  if(_wtPlan.names.length&&_exState!=='ready')exLoad();
   _wtMode='plan';_wtPhase='';_wtRound=0;_wtPaused=0;
   _wtFrom=Date.now();
   _wtOpen=true;
