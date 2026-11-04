@@ -4860,7 +4860,8 @@ async function routeRequest(req, env, ctx, M) {
         type: String((c && c.type) || '').slice(0, 12), before: String((c && c.before) || '').slice(0, 120),
         after: String((c && c.after) || '').slice(0, 120), said: String((c && c.said) || '').slice(0, 200) }));
       const products = coachProducts(b && b.products);
-      const images = Array.isArray(b && b.images) ? b.images.slice(0, 4) : [];
+      /* ten, as the app allows (COACH_PICS_MAX) - four was too few for a meal of packages */
+      const images = Array.isArray(b && b.images) ? b.images.slice(0, 10) : [];
       if (!message && !images.length) return json({ error: 'nothing to read' }, 400);
       /* the pictures of the last few turns, so "half of that" still has the
          label in front of it - a coach that had only the words once said it
@@ -4948,6 +4949,7 @@ When they say they ate it ("אכלתי"), it is eaten: action is add, even if it
 - Nutrition label in the photo: use the per-100g values and the package size. Branded items: use the package numbers. "PRO 20" means 20g protein per unit, not 20%.
 - Restaurants: account for oil, butter, dressings, and fried items. Greek and Mediterranean dishes usually carry a lot of olive oil.
 - Shared table: when they say what share was theirs ("אכלתי שליש מכל צלחת", "חלקנו פיצה", "half"), every item it applies to keeps the WHOLE dish - grams_whole and its figures - and gets portion_fraction (a third is 0.33, half 0.5, a quarter 0.25). When a table was shared and the share is not said, ask.
+- "The ones I sent you", "from the photos", "של כל אחד", "מכל נקניק": the photos of THIS message are what they mean, and they are in front of you - never ask them to send one again. When their words say "each" or "מכל" about what is in the photos, log ONE item per distinct product you see there (two packages of cold cuts are two items, each with its own brand), not one item for the kind.
 - Compare the photo with their words. If you clearly see a food or a drink in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish, a drink at their place - alcohol counts: a glass of beer, ouzo or wine), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"). Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see on what they ate - never ask about something hidden, merely likely, or standing elsewhere on the table. Every item says whether it came from their words (from_words); the app does not log an item that is only in the photo.
 - For every item that is not from a label, not one of THEIR PRODUCTS and not counted in pieces, give per_100g (what this food is per 100 g: kcal, protein, carbs, fat - the reference values, as for the food in general), grams_whole (the weight of the whole dish or portion as served) and portion_fraction (how much of it they ate). The app works out grams eaten = grams_whole x portion_fraction and the item from that, so they must describe the same food; calories and the macros you give are then only a fallback. Never write the eaten weight or the eaten calories yourself.
 - Ask at most ONE follow-up, and only about something that changes the numbers a lot (oil, dressing, milk in coffee, portion size, whether they finished). Log with your best assumption anyway, and offer to update.
