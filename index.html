@@ -406,6 +406,19 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 [dir="rtl"] .ex-back-a{transform:scaleX(-1)}
 .ex-back-t{flex:1;min-width:0;font-size:12.5px;font-weight:800;color:var(--violet-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ex-list{display:flex;flex-direction:column;gap:6px}
+/* the picker as tiles: two to a row on a phone, the warm dark of the loops
+   inside each square so a tile without one still reads as the same object */
+.ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.ex-tile{display:flex;flex-direction:column;gap:7px;min-width:0;border:none;padding:0;background:none;cursor:pointer;font-family:inherit;text-align:start}
+.ex-tile-n{font-size:13.5px;font-weight:800;line-height:1.3;color:var(--ink);padding-inline:2px;min-height:2.6em;display:flex;align-items:flex-end;unicode-bidi:plaintext}
+.ex-tile-v{position:relative;display:block;width:100%;aspect-ratio:1/1;max-width:100%;border-radius:15px;overflow:hidden;background:#140f0c;
+  box-shadow:0 0 0 1px rgba(240,169,46,.18),0 8px 18px -12px rgba(20,15,12,.55)}
+.ex-tile-v video{width:100%;height:100%;display:block;object-fit:cover}
+.ex-tile-m{position:absolute;inset-block-end:7px;inset-inline-start:7px;font-size:10.5px;font-weight:800;color:#f0a92e;padding:3px 8px;border-radius:999px;background:rgba(20,15,12,.72)}
+.ex-tile-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px;text-align:center}
+.ex-tile-ph b{font-size:12.5px;font-weight:800;color:#f0a92e}
+.ex-tile-ph span{font-size:11px;color:rgba(240,169,46,.62)}
+.ex-tile:active .ex-tile-v{transform:scale(.98)}
 .ex-row{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:none;border-radius:13px;padding:10px 12px;background:var(--card);cursor:pointer;font-family:inherit;text-align:start;box-shadow:0 2px 8px rgba(200,180,160,.1)}
 .ex-n{font-size:13.5px;font-weight:800;color:var(--ink)}
 .ex-meta{font-size:10px;color:var(--muted)}
@@ -549,6 +562,13 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .fx-how .fx-h{color:var(--terra-700)}
 /* the steps in the sheet lead, so the first one needs no gap above it */
 #xh-ov .xd-steps{margin-top:2px}
+/* the demo loop: the warm dark it was made on, so the clip's own ground
+   meets the edge of its frame; the muscles in amber over its corner */
+.xd-demo{position:relative;width:100%;max-width:340px;aspect-ratio:1/1;margin:6px auto 12px;border-radius:16px;overflow:hidden;background:#140f0c;
+  box-shadow:0 0 0 1px rgba(240,169,46,.18)}
+.xd-demo video{width:100%;height:100%;display:block;object-fit:cover}
+.xd-demo-m{position:absolute;inset-block-end:10px;inset-inline-start:10px;font-size:11.5px;font-weight:800;color:#f0a92e;
+  padding:4px 10px;border-radius:999px;background:rgba(20,15,12,.72);box-shadow:0 0 0 1px rgba(240,169,46,.35)}
 .fx-bulb{font-size:26px;line-height:1}
 /* the machine, drawn at whatever size the square leaves it */
 .fx-gear{align-items:center;justify-content:center;gap:7px;cursor:pointer;text-align:center}
@@ -29653,7 +29673,7 @@ function exHowPaint(){
   if(!_exHowOn)return;
   var ex=_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx];
   if(!ex){exHowClose();return;}
-  var e=exByName(ex.name),how=e?exHow(e):null,b='',j;
+  var e=exByName(ex.name),how=e?exHow(e):null,b=exDemoHTML(e),j;
   if(how&&how.s&&how.s.length){
     b+='<ol class="xd-steps">';
     for(j=0;j<how.s.length;j++)b+='<li>'+esc(how.s[j])+'</li>';
@@ -30919,14 +30939,19 @@ function _exPaintBody(){
   if(!list.length){
     h+='<div class="ex-none">'+_t('לא מצאתי. אפשר גם להקליד שם משלך למטה.')+'</div>';
   } else {
-    h+='<div class="ex-list">';
+    /* TILES (Asaf, 4 Nov): choose by seeing the movement. The name above,
+       the loop below; an exercise without a loop yet keeps the same square
+       and says what it works and with what, so the grid reads as one. */
+    h+='<div class="ex-grid">';
     for(var j=0;j<list.length;j++){
-      var e=list[j];
-      h+='<button class="ex-row" onclick="exDetailOpen('+j+')">'+
-         '<span class="ex-n">'+esc(exTitle(e))+'</span>'+
-         '<span class="ex-meta">'+esc(e.m.map(_t).join(' · '))+' &middot; '+esc(e.q.map(_t).join(', '))+'</span>'+
-         (e.en?'<span class="ex-en">'+esc(e.en)+'</span>':'')+
-         '</button>';
+      var e=list[j],has=EX_DEMO[e.id];
+      h+='<button class="ex-tile" onclick="exDetailOpen('+j+')">'+
+         '<span class="ex-tile-n">'+esc(exTitle(e))+'</span>'+
+         '<span class="ex-tile-v">'+(has
+           ?'<video data-src="'+liveBase()+'assets/exdemo/'+e.id+'.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>'+
+            '<span class="ex-tile-m">'+esc(e.m.map(_t).join(' · '))+'</span>'
+           :'<span class="ex-tile-ph"><b>'+esc(e.m.map(_t).join(' · '))+'</b><span>'+esc(e.q.map(_t).join(', '))+'</span></span>')+
+         '</span></button>';
     }
     h+='</div>';
   }
@@ -30934,6 +30959,23 @@ function _exPaintBody(){
   h+='<div class="ex-own"><input class="ex-q" id="ex-own" placeholder="'+_t("או תרגיל משלך&hellip;")+'">'+
      '<button class="ex-add" onclick="exChooseOwn()">'+_t('הוסף')+'</button></div>';
   el.innerHTML=h;
+  exTilesWatch(el);
+}
+/* A loop is fetched the first time its tile comes on screen, and plays only
+   while it is there - a phone cannot run two hundred videos at once. A reader
+   who asked for less motion sees each loop's first frame, still. */
+var _exTileIO=null;
+function exTilesWatch(root){
+  if(_exTileIO){_exTileIO.disconnect();_exTileIO=null;}
+  var vs=root.querySelectorAll('.ex-tile video[data-src]');
+  if(!vs.length)return;
+  var still=false;try{still=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(x){}
+  function on(v){if(!v.src){v.src=v.getAttribute('data-src');v.preload='auto';}if(!still){var p=v.play();if(p&&p.catch)p.catch(function(){});}}
+  if(!('IntersectionObserver' in window)){for(var i=0;i<vs.length;i++)on(vs[i]);return;}
+  _exTileIO=new IntersectionObserver(function(es){
+    es.forEach(function(x){if(x.isIntersecting)on(x.target);else if(!x.target.paused)x.target.pause();});
+  },{rootMargin:'120px 0px'});
+  for(var k=0;k<vs.length;k++)_exTileIO.observe(vs[k]);
 }
 function exChooseOwn(){
   var el=document.getElementById('ex-own');
@@ -31104,9 +31146,10 @@ function exDetailHTML(e){
   }
 
   // ── how it is done ──
-  var how=exHow(e);
+  var how=exHow(e),demo=exDemoHTML(e);
+  if(demo&&!(how.s&&how.s.length))h+='<div class="xd-h">'+_t('איך מבצעים')+'</div>'+demo;
   if(how.s&&how.s.length){
-    h+='<div class="xd-h">'+_t('איך מבצעים')+'</div><ol class="xd-steps">';
+    h+='<div class="xd-h">'+_t('איך מבצעים')+'</div>'+demo+'<ol class="xd-steps">';
     for(var j=0;j<how.s.length;j++)h+='<li>'+esc(how.s[j])+'</li>';
     h+='</ol>';
   }
@@ -31138,6 +31181,22 @@ function exHow(e){
   var l=appLang(),src=e.sl&&(e.sl[l]||e.sl.en);
   if(l!=="he"&&src)return {s:src.s,k:src.k,lang:(e.sl[l]?l:"en")};
   return {s:e.s,k:e.k,lang:"he"};
+}
+/* ── HOW IT LOOKS (3 Nov) ──
+   A silent five-second loop of one correct repetition, for the exercises
+   that have one (assets/exdemo/<id>.mp4, see the README there): a warm
+   amber figure on the warm dark it was made on, with the muscles it works
+   over its corner, from the exercise's own data. The written steps stay -
+   the loop shows the shape, the words say what to feel for. A reader who
+   asked for less motion gets it standing still, with controls. */
+var EX_DEMO={x131:1,x18:1,x57:1,x1:1,x229:1,x192:1,x27:1,x71:1,x41:1,x162:1,
+  x34:1,x149:1,x96:1,x108:1,x135:1,x72:1};
+function exDemoHTML(e){
+  if(!e||!EX_DEMO[e.id])return '';
+  var still=false;try{still=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(x){}
+  return '<div class="xd-demo"><video src="'+liveBase()+'assets/exdemo/'+e.id+'.mp4" muted loop playsinline preload="metadata"'+
+    (still?' controls':' autoplay')+' aria-hidden="true"></video>'+
+    (e.m&&e.m.length?'<span class="xd-demo-m">'+esc(e.m.map(_t).join(' · '))+'</span>':'')+'</div>';
 }
 function exDetailOpen(i){
   _exDetail=exList()[i];
