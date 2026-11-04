@@ -27,6 +27,10 @@ for (const kf of [0, 1]) {
   for (let i = 0; i < 40; i++) { await sleep(250); const r = await send('Runtime.evaluate', { expression: '!!window.__done', returnByValue: true }); if (r.result?.result?.value) break; }
   const t = await send('Runtime.evaluate', { expression: "document.getElementById('ang').textContent", returnByValue: true });
   console.log(`kf${kf}:`, String(t.result?.result?.value || '').replace(/\n/g, ' | '));
+  const sp = await send('Runtime.evaluate', { expression: 'JSON.stringify(window.__spec||[])', returnByValue: true });
+  const rows = JSON.parse(sp.result?.result?.value || '[]');
+  for (const r of rows) console.log(`   ${r.ok ? "PASS" : "FAIL"}  ${r.text}: ${r.val} (${r.min}..${r.max} ${r.unit})`);
+  fs.writeFileSync(path.join(OUT, `${EX}-${kf}.spec.json`), JSON.stringify(rows));
   const s = await send('Page.captureScreenshot', { format: 'png' });
   fs.writeFileSync(path.join(OUT, `${EX}-${kf}.png`), Buffer.from(s.result.data, 'base64'));
 }

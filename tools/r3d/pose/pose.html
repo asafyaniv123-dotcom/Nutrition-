@@ -77,6 +77,20 @@ renderer.render(scene, cam);
 const flat = (p, m) => m && m.side ? [p[0], p[1], 0] : p;
 const ang = (a, o, b, m) => { const u = V(flat(a, m)).sub(V(flat(o, m))).normalize(), w = V(flat(b, m)).sub(V(flat(o, m))).normalize(); return Math.round(THREE.MathUtils.radToDeg(Math.acos(Math.max(-1, Math.min(1, u.dot(w)))))); };
 const tilt = (a, b) => { const d = V(b).sub(V(a)).normalize(); return Math.round(THREE.MathUtils.radToDeg(Math.acos(Math.abs(d.y)))); };
+/* one value, by the kind of measure: an angle at a joint, a segment's angle from vertical
+   or horizontal, or a distance in centimetres (dy up, dx along the body, dz across it) */
+function value(m) {
+  if (m.tilt) return tilt(J[m.tilt[0]], J[m.tilt[1]]);
+  if (m.horiz) return 90 - tilt(J[m.horiz[0]], J[m.horiz[1]]);
+  if (m.dy) return Math.round((J[m.dy[0]][1] - J[m.dy[1]][1]) * 100);
+  if (m.dx) return Math.round((J[m.dx[0]][0] - J[m.dx[1]][0]) * 100);
+  if (m.dz) return Math.round(Math.abs(J[m.dz[0]][2] - J[m.dz[1]][2]) * 100);
+  return ang(J[m.at[0]], J[m.at[1]], J[m.at[2]], m);
+}
+window.__spec = (ex.spec || []).filter((r) => r.kf === 'both' || r.kf === kf).map((r) => {
+  const v = value(r.m);
+  return { text: r.text, src: r.src, min: r.min, max: r.max, unit: r.m.dy || r.m.dx || r.m.dz ? 'cm' : 'deg', val: v, ok: v >= r.min && v <= r.max };
+});
 document.getElementById('ang').textContent = ex.name + ' - ' + (kf ? ex.kfNames[1] : ex.kfNames[0]) + '\n' +
   (ex.measures || []).map((m) => m.label + ': ' + (m.tilt ? tilt(J[m.tilt[0]], J[m.tilt[1]]) : m.horiz ? 90 - tilt(J[m.horiz[0]], J[m.horiz[1]]) : m.dy ? Math.round((J[m.dy[0]][1] - J[m.dy[1]][1]) * 100) : ang(J[m.at[0]], J[m.at[1]], J[m.at[2]], m)) + (m.dy ? ' ס"מ' : '°')).join('\n');
 window.__done = true;
