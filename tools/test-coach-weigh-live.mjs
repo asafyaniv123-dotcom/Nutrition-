@@ -13,7 +13,7 @@ const BASE = { day: DAY, lang: 'he', units: 'metric', gender: 'f', history: [], 
   corrections_recent: [], targets: { kcal: 1700, p: 110, c: 170, f: 60 }, left: { kcal: 1200, p: 80, c: 120, f: 40 } };
 const EGGS = { id: '1001', name: 'ביצים', quantity: '2', calories: 140, protein: 12, carbs: 1, fat: 10, meal: 'breakfast' };
 const post = async (o) => {
-  const r = await fetch(HOST + '/coach', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, process.env.ADMIN_KEY ? { Authorization: 'Bearer ' + process.env.ADMIN_KEY } : {}), body: JSON.stringify(Object.assign({}, BASE, o)) });
+  const r = await fetch(HOST + '/coach', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, process.env.ADMIN_KEY ? { Authorization: 'Bearer ' + process.env.ADMIN_KEY } : {}), body: JSON.stringify(Object.assign({}, BASE, o, process.env.COACH_UID ? { uid: process.env.COACH_UID } : {})) });
   return r.json();
 };
 const fails = [];

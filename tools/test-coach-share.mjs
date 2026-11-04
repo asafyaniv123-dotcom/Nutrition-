@@ -81,9 +81,27 @@ const tot = j.items.reduce((s, x) => s + x.calories, 0);
 ok(j.action === 'add' && j.items.length === 4 && Math.abs(tot - 1060) <= 25, 'four rows, about 1,060 kcal - got ' + tot);
 ok(j.items[2].approx_g === 149 && j.items[2].whole_g === 450, 'the steak row carries ≈149 g of 450 g');
 ok(j.message === FINAL.message, 'the message is the one written from the figures');
+ok(sent[2].tool_choice.name === 'say' && sent[0].tool_choice.name === 'reply' && sent[1].tool_choice.name === 'reply',
+  'the figures ask for the words alone (say); the share not given asks for the whole reply - got ' + sent.map((x) => x.tool_choice.name).join(','));
+ok(sent.every((x) => x.tools.map((t) => t.name).join() === 'reply,say'), 'both tools on every call, so the cached prefix never changes');
 
 j = await coach({ message: 'אכלתי סלט ירקות' }, [{ action: 'add', items: [{ id: 's', name: 'סלט', quantity: 'קערה', grams_whole: 250, per_100g: P(40, 1.5, 6, 1.2) }] }]);
 ok(sent.length === 1 && j.items[0].calories === 100 && j.items[0].whole_g === 0, 'no share: one call, the whole, nothing extra');
+
+/* seen, not said: the short route (say) only for an item the model itself marked as seen;
+   one caught by its name - perhaps merged with food they did say - gets the whole reply */
+const PIC = [{ mime: 'image/jpeg', data: 'A'.repeat(600) }];
+const EGG = { id: 'e', name: 'ביצה', quantity: '1', grams_whole: 50, per_100g: P(140, 12.6, 1, 10), from_words: true };
+j = await coach({ message: 'אכלתי ביצה', images: PIC }, [
+  { action: 'add', not_in_words: ['לחמנייה'], items: [EGG, { id: 'r', name: 'לחמנייה', quantity: '1', grams_whole: 60, per_100g: P(270, 9, 50, 3), from_words: false }] },
+  { message: 'רשמתי ביצה. רואה בתמונה גם לחמנייה, להוסיף?' }]);
+ok(sent.length === 2 && sent[1].tool_choice.name === 'say', 'an item the model marked as seen: the words alone - ' + sent.map((x) => x.tool_choice.name).join(','));
+ok(j.items.length === 1 && j.items[0].id === 'e' && /להוסיף/.test(j.message), 'the roll is not logged, the egg is, and the message asks');
+j = await coach({ message: 'אכלתי ביצה וגבינה', images: PIC }, [
+  { action: 'add', not_in_words: ['לחמנייה'], items: [{ id: 'm', name: 'לחמנייה עם ביצה וגבינה', quantity: '1', grams_whole: 160, per_100g: P(250, 12, 25, 11), from_words: true }] },
+  { action: 'add', not_in_words: ['לחמנייה'], items: [EGG, { id: 'c', name: 'גבינה מגוררת', quantity: '20 ג', grams_whole: 20, per_100g: P(350, 25, 2, 27), from_words: true }], message: 'רשמתי ביצה וגבינה. רואה גם לחמנייה, להוסיף?' }]);
+ok(sent.length === 2 && sent[1].tool_choice.name === 'reply', 'a merged item caught by its name: the whole reply, to split it - ' + sent.map((x) => x.tool_choice.name).join(','));
+ok(j.items.map((x) => x.id).join() === 'e,c', 'the egg and the cheese kept, the roll asked about - got ' + j.items.map((x) => x.id).join());
 
 /* cut off at max_tokens: four product photos met the ceiling on 4 Nov, and the half reply
    reached the app as "nothing to log" with an empty message - an empty bubble */

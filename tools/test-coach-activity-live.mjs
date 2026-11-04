@@ -13,7 +13,7 @@ const ACT = { steps: 0, base: 8000, kg: 69, cm: 170, strength: false, cardio_min
 const post = async (o) => {
   const r = await fetch(HOST + '/coach', { method: 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' }, process.env.ADMIN_KEY ? { Authorization: 'Bearer ' + process.env.ADMIN_KEY } : {}),
-    body: JSON.stringify(Object.assign({}, BASE, o)) });
+    body: JSON.stringify(Object.assign({}, BASE, o, process.env.COACH_UID ? { uid: process.env.COACH_UID } : {})) });
   return r.json();
 };
 const fails = [];

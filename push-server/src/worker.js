@@ -5222,8 +5222,23 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         medline.map((m) => '### ' + m.title + ' (' + m.url + ')\n' + m.summary).join('\n\n') : '';
       const SYS = health.length ? SYSTEM + MLP + '\n\n## Health conditions the user chose to share\n' + health.join(', ') +
         '.\nTake them into account, following mainstream guidance from recognised medical bodies. You are NOT a doctor: never diagnose, never advise on medication or doses, and if they describe warning signs (for myasthenia: weakness in breathing, swallowing or vision; for diabetes: symptoms of a low) tell them to stop and contact their doctor. Whenever your reply touches their health or one of these conditions, end it with one short line, in their language, saying that you are not a doctor, that this is general information and not medical advice, and that they should check with their own doctor.' : SYSTEM;
-      const ask = async (messages) => {
+      /* every model call this turn: ms, tokens, and the start of what sent it */
+      const calls = [];
+      /* THE WORDS ALONE. When the items are settled in code and only the
+         message has to change, the reply is asked for through this tool - a
+         hundred tokens instead of the whole reply again (4 Nov: that was
+         2,100 tokens and 18 seconds of a 35-second turn). */
+      const SAY = {
+        name: 'say',
+        description: 'Only the message and the question, when the app has already settled the items. Same rules for the message as the reply tool.',
+        input_schema: { type: 'object', properties: { message: { type: 'string' }, question: { type: 'string' } }, required: ['message'] },
+      };
+      const ask = async (messages, tool) => {
+        tool = tool || 'reply';
         let r;
+        const t0 = Date.now();
+        const last = messages[messages.length - 1], lc = last && Array.isArray(last.content) && last.content[0];
+        const why = lc && lc.type === 'tool_result' ? String(lc.content || '').slice(0, 40) : 'first';
         try {
           r = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -5248,8 +5263,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                  Nothing that changes per turn may go into SYS, or every turn
                  writes a new entry and none is ever read. */
               system: [{ type: 'text', text: SYS, cache_control: { type: 'ephemeral' } }],
-              tools: [TOOL],
-              tool_choice: { type: 'tool', name: 'reply' },
+              tools: [TOOL, SAY],
+              tool_choice: { type: 'tool', name: tool },
               messages,
             }),
           });
@@ -5263,13 +5278,34 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         }
         let dd;
         try { dd = await r.json(); } catch { return { err: json({ error: 'unreadable answer' }, 502) }; }
+        calls.push({ why, ms: Date.now() - t0, in: (dd.usage && dd.usage.input_tokens) || 0, out: (dd.usage && dd.usage.output_tokens) || 0 });
+        /* a test may ask to see what was written - the turn's own data, nobody else's */
+        if (b && b.debugCalls === 1) { const tu = ((dd && dd.content) || []).find((c) => c && c.type === 'tool_use'); calls[calls.length - 1].input = tu && tu.input; }
         /* cut off: whatever the tool input holds is half a reply, and it
            arrived as "nothing to log" with an empty message */
         if (dd && dd.stop_reason === 'max_tokens') return { err: json({ error: 'the answer was cut off' }, 502) };
+        if (tool === 'say') {
+          const sv = ((dd && dd.content) || []).find((c) => c && c.type === 'tool_use' && c.input && typeof c.input.message === 'string');
+          return sv ? { say: sv.input } : { err: json({ error: 'no answer' }, 502) };
+        }
         const u0 = ((dd && dd.content) || []).find((c) => c && c.type === 'tool_use' && c.name === 'reply');
         if (!u0 || !u0.input) return { err: json({ error: 'no answer' }, 502) };
         coachUseGrams(u0.input.items, products);
         return { d: dd, use: u0 };
+      };
+      /* the message written again, the items left as they are. It changes the
+         reply in place - got.use is part of got.d.content - so a later
+         send-back sees the new words. false when it could not be had, and the
+         words stand as they were. */
+      const sayAgain = async (content) => {
+        const sv = await ask(msgs.concat([
+          { role: 'assistant', content: got.d.content },
+          { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id, content }] },
+        ]), 'say');
+        if (sv.err || !sv.say) return false;
+        got.use.input.message = String(sv.say.message || '');
+        got.use.input.question = String(sv.say.question || '');
+        return true;
       };
 
       let got = await ask(msgs), retried = false;
@@ -5290,15 +5326,9 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         else if (r.kcal !== null) labelNotes.push('"' + it.name + '": ' + JSON.stringify({ kcal: r.kcal, protein: r.p, carbs: r.c, fat: r.f }) +
           ' from the ' + r.column + ' column (' + r.how + ').');
       }
-      if (labelNotes.length) {
-        const again = await ask(msgs.concat([
-          { role: 'assistant', content: got.d.content },
-          { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id,
-            content: 'The app worked out the label items (in code - use these figures, do not recompute): ' +
-              labelNotes.join(' ') + ' Send the whole reply again with these figures - short, naming the column in a few words, with no calculation.' }] },
-        ]));
-        if (!again.err) got = again;
-      }
+      if (labelNotes.length)
+        await sayAgain('The app worked out the label items (in code - use these figures, do not recompute; an item whose columns disagree is not logged): ' +
+          labelNotes.join(' ') + ' Write the message again with the say tool - short, naming the column in a few words, with no calculation.');
       /* THE CALORIES MUST BE THE MACROS. Asked to add half a tub of cottage
          5%, it once answered with the calories and no protein; her bars took
          the calories and not the protein, and only her own suspicion - "you
@@ -5373,14 +5403,22 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         const un0 = got.use.input.not_in_words;
         unsaidAll = Array.isArray(un0) ? un0.slice(0, 10) : [];
         const seen = (got.use.input.items || []).filter((it) => seenOnly(it, un0)).map((it) => String(it.name || '').slice(0, 60));
-        if (seen.length) {
+        /* the words alone are enough only when every such item is one the
+           model itself marked as seen; one caught by its name may be merged
+           with food they did say, and only the whole reply can split it */
+        const pure = (got.use.input.items || []).filter((it) => seenOnly(it, un0)).every((it) => it.from_words === false);
+        if (seen.length && pure)
+          await sayAgain('The app does not log ' + seen.join(', ') + ' - only in the photo, not in their words. Write the message again with the say tool: ' +
+            'about the rest only, ending with one short line in their language asking whether to add ' + (seen.length > 1 ? 'them' : 'it') +
+            ' (like "רואה בתמונה גם פרוסת לחם, להוסיף?"). Do not say it was logged.');
+        else if (seen.length) {
           const again = await ask(msgs.concat([
             { role: 'assistant', content: got.d.content },
             { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id, is_error: true,
               content: 'Not logged yet. ' + seen.join(', ') + ' - only in the photo, not in their words. Send the whole reply again ' +
-                'WITHOUT ' + (seen.length > 1 ? 'those items' : 'that item') + ', every kept item with from_words true, and end the message with ' +
-                'one short line in their language asking whether to add it (like "רואה בתמונה גם פרוסת לחם, להוסיף?"). ' +
-                'Do not say it was logged.' }] },
+                'WITHOUT ' + (seen.length > 1 ? 'those foods' : 'that food') + ' - if one is part of an item they did name, split it out and keep the rest - ' +
+                'every kept item with from_words true, and end the message with one short line in their language asking whether to add it ' +
+                '(like "רואה בתמונה גם פרוסת לחם, להוסיף?"). Do not say it was logged.' }] },
           ]));
           if (!again.err) {
             got = again;
@@ -5413,13 +5451,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
           return '"' + String(it.name || '').slice(0, 60) + '": ' + t.calories + ' kcal, ' + t.protein + ' g protein' +
             (coachWholeG(it) ? ' (' + approxGrams(it) + ' g of ' + coachWholeG(it) + ' g, x ' + coachFraction(it) + ')' : '');
         });
-        const again = await ask(msgs.concat([
-          { role: 'assistant', content: got.d.content },
-          { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id,
-            content: 'The app worked out the items with their share (in code - use these figures, do not recompute): ' + fig.join('; ') +
-              '. Together: ' + tk + ' kcal. Send the whole reply again, unchanged in its items, with a message that uses these figures.' }] },
-        ]));
-        if (!again.err) got = again;
+        await sayAgain('The app worked out the items with their share (in code - use these figures, do not recompute): ' + fig.join('; ') +
+          '. Together: ' + tk + ' kcal. Write the message again with the say tool, using these figures.');
       }
       /* A WEIGH-IN. The model only noticed the number; the arithmetic is
          done here, from the trend the app sent, and the reply is written
@@ -5429,6 +5462,8 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
       if (wctx && isFinite(wk) && wk >= 20 && wk <= 400) {
         weighedKg = Math.round(wk * 100) / 100;
         const fig = weighResult(wctx, weighedKg);
+        /* the whole reply, not the words alone: a weigh-in carries no items,
+           so it is short either way */
         const again = await ask(msgs.concat([
           { role: 'assistant', content: got.d.content },
           { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id,
@@ -5547,6 +5582,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
         usage: { in: u.input_tokens || 0, out: u.output_tokens || 0,
           cache_read: u.cache_read_input_tokens || 0, cache_write: u.cache_creation_input_tokens || 0 },
         retried,   // sent back once because its numbers did not add up
+        calls,     // every model call: why, ms, tokens in and out
         action,
         date: at,
         items,

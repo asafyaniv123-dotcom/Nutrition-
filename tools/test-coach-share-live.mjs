@@ -13,7 +13,7 @@ const ok = (cond, what) => { console.log((cond ? '  ok   ' : '  FAIL ') + what);
 async function coach(message, history) {
   const r = await fetch(H + '/coach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ day: '2026-11-04', lang: 'he', gender: 'm', now_time: '21:30', now_ms: Date.now(), message,
-      history: history || [], logged: [], targets: { kcal: 2200, p: 150, c: 220, f: 75 }, uid: 'sharetest' }) });
+      history: history || [], logged: [], targets: { kcal: 2200, p: 150, c: 220, f: 75 }, uid: [...Array(24)].map(() => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('') }) });
   return r.json();
 }
 const line = (j) => (j.items || []).map((x) => `${x.name} ×${x.portions} ${x.calories}kcal ${x.approx_g}/${x.whole_g}g`).join(' ; ');
