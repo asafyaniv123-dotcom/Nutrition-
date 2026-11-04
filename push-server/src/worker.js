@@ -894,6 +894,44 @@ function coachWholeG(it) {
   const w = Number(it && it.grams_whole) || Number(it && it.approx_g);
   return isFinite(w) && w > 0 && w <= 10000 ? Math.round(w) : 0;
 }
+/* NOTHING TO WORK IT OUT FROM (4 Nov). Since the four figures are no
+   longer required, an item could arrive with no per_100g, no grams, no label,
+   no pieces and no figures - and be logged at 0 kcal. A 0 the model wrote
+   itself (water, black coffee) is a figure and stands; a label whose columns
+   disagree is asked about anyway. Returns the names, for the send-back. */
+function coachNoFigures(items) {
+  const out = [];
+  for (const it of Array.isArray(items) ? items : []) {
+    if (!it || typeof it !== 'object') continue;
+    const L = labelClean(it.label);
+    if (L && labelCompute(L).mismatch) continue;
+    const k = Object.assign({}, coachTotals(it), labelItem(it)).calories;
+    if (k > 0) continue;
+    const said0 = it.calories === 0 || (it.per_100g && Number(it.per_100g.kcal) === 0) || it.kcal_per_unit === 0;
+    if (!said0) out.push(String(it.name || '').slice(0, 60) || 'an item');
+  }
+  return out;
+}
+/* BREAD, by name - the food the seen-not-said rule was written for. In a
+   message it is anything that implies bread (a sandwich, a wrap, toast); in
+   an item it is the bread itself. */
+const COACH_BREAD = /לחם|לחמני|באגט|בגט|בגאט|טוסט|פיתה|פיתות|לאפה|בייגל|קרואסון|ציאבט|טורטי|bread|\broll\b|\bbuns?\b|toast|baguette|\bpita|bagel|croissant|tortilla|brot|brötchen|semmel|\bpain\b|\bpane\b|\bpão\b/i;
+const COACH_BREAD_SAID = new RegExp(COACH_BREAD.source + '|כריך|כריכ|סנדוויץ|סנדביץ|sandwich|\\bwrap|panino|bocadillo|sándwich|サンド|パン|面包|麵包|三明治|خبز|ساندويش', 'i');
+/* the bread items, when there are words and a photo and the words name none */
+function coachBreadUnsaid(message, items) {
+  if (COACH_BREAD_SAID.test(String(message || ''))) return [];
+  /* the bread WORD, not the item's name: the name of a merged item also
+     holds the egg and the cheese, and every item that meets an unsaid word
+     is dropped at the end */
+  const out = [];
+  for (const it of Array.isArray(items) ? items : []) {
+    const m = it && !it.product_id && COACH_BREAD.exec(String(it.name || ''));
+    if (m && out.indexOf(m[0]) < 0) out.push(m[0]);
+  }
+  return out;
+}
+/* does a message state calories - in any of the eleven languages? */
+const COACH_KCAL_SAID = /\d[\d,.]*\s*(?:-\s*\d[\d,.]*\s*)?(?:קק|קל['׳"״]|קלורי|kcal|cal\b|kalor|calor|カロリー|キロカロリー|千卡|大卡|卡路里|سعر)/i;
 /* A SHARE SAID IN WORDS (4 Nov). "I ate a third of every plate", and every
    item came back whole. When their words name a share and not one item -
    apart from a label or a saved product, which carry grams of their own -
@@ -1195,7 +1233,7 @@ function tgMember(m) {
 // Exported for the test harness; unused by the Worker runtime itself.
 export { signJWT, localNow, toMin, subKey, b64url,
          toGeminiTools, toGeminiContents, fromGeminiContent, geminiCallId, nameFromCallId,
-         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, coachStaleUpdates, coachFreeKey, coachShareMissed, coachFraction, approxGrams, coachWholeG, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
+         stripGemSig, cleanEst, labelClean, labelCompute, labelItem, coachBuckets, actCtxClean, activityBonus, weighCtxClean, weighResult, weighScrub, routeClean, scheduleClean, scheduleBoard, coachTotals, coachEditOnly, coachStaleUpdates, coachFreeKey, coachShareMissed, coachFraction, approxGrams, coachWholeG, coachNoFigures, coachBreadUnsaid, corrClean, coachMacrosShort, tgCode, tgPlan, tgMember };
 
 /* The request handler. Its first line is the meter: every model call below
    goes through it, see meterFetch. */
@@ -4951,7 +4989,7 @@ When they say they ate it ("אכלתי"), it is eaten: action is add, even if it
 - Shared table: when they say what share was theirs ("אכלתי שליש מכל צלחת", "חלקנו פיצה", "half"), every item it applies to keeps the WHOLE dish - grams_whole and its figures - and gets portion_fraction (a third is 0.33, half 0.5, a quarter 0.25). When a table was shared and the share is not said, ask.
 - "The ones I sent you", "from the photos", "של כל אחד", "מכל נקניק": the photos of THIS message are what they mean, and they are in front of you - never ask them to send one again. When their words say "each" or "מכל" about what is in the photos, log ONE item per distinct product you see there (two packages of cold cuts are two items, each with its own brand), not one item for the kind.
 - Compare the photo with their words. If you clearly see a food or a drink in the photo that the text does not mention (bread under a topping, a sauce, oil, a side dish, a drink at their place - alcohol counts: a glass of beer, ouzo or wine), ask about it in one short line at the end of the message, in their language ("רואה בתמונה גם פרוסת לחם, להוסיף?"). Do NOT log that food until they confirm; log the rest as usual. When the next message says yes, log it then. Only what you clearly see on what they ate - never ask about something hidden, merely likely, or standing elsewhere on the table. Every item says whether it came from their words (from_words); the app does not log an item that is only in the photo.
-- For every item that is not from a label, not one of THEIR PRODUCTS and not counted in pieces, give per_100g (what this food is per 100 g: kcal, protein, carbs, fat - the reference values, as for the food in general), grams_whole (the weight of the whole dish or portion as served) and portion_fraction (how much of it they ate). The app works out grams eaten = grams_whole x portion_fraction and the item from that, so they must describe the same food; calories and the macros you give are then only a fallback. Never write the eaten weight or the eaten calories yourself.
+- For every item that is not from a label, not one of THEIR PRODUCTS and not counted in pieces, give per_100g (what this food is per 100 g: kcal, protein, carbs, fat - the reference values, as for the food in general), grams_whole (the weight of the whole dish or portion as served) and portion_fraction (how much of it they ate). The app works out grams eaten = grams_whole x portion_fraction and the item from that, so they must describe the same food. Leave calories, protein, carbs and fat OUT of such an item - the app computes them; give those four only for an item that has no per_100g, no label and is not one of THEIR PRODUCTS. Never write the eaten weight or the eaten calories yourself.
 - Ask at most ONE follow-up, and only about something that changes the numbers a lot (oil, dressing, milk in coffee, portion size, whether they finished). Log with your best assumption anyway, and offer to update.
 - If the user challenges a number, re-check it honestly. If you were wrong, say so and fix it.
 
@@ -5007,7 +5045,7 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
 
 ## Tone and format
 - Hebrew, short, mobile-friendly. Lead with the answer.
-- When you log or correct food, the app lists every item under your reply itself - its name, amount, the weight you assumed (approx_g), calories and protein. Do not repeat that list. Write 1-2 short lines: the meal in a few words and its total, the column you read when it came from a label, and at most one short warm note. Precise, to the point, kind.
+- When you log or correct food, the app lists every item under your reply itself - its name, amount, the weight you assumed (approx_g), calories and protein. Do not repeat that list. Write 1-2 short lines: the meal in a few words - no calorie or macro figures and no total, the app shows them right under your words - the column you read when it came from a label, and at most one short warm note. Precise, to the point, kind.
 - Never show your working: no arithmetic, no formulas, no "≈", no estimates of how you got there, and never think aloud or correct yourself mid-reply ("רגע", "בואי נדייק", "בעצם"). The reply is the result, not the way to it.
 - After logging, add at most one short, practical note (for example, "החלבון נמוך, כדאי 40 גרם בארוחה הבאה").
 - Honest, never guilt-tripping. Over target? Give perspective (weekly average, activity, maintenance) and move on. Never suggest compensating with extreme restriction the next day.
@@ -5126,7 +5164,11 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
                       + 'or when moving something already logged.',
                   },
                 },
-                required: ['id', 'name', 'quantity', 'calories', 'protein', 'carbs', 'fat'],
+                /* the four figures are not required: an item with per_100g and
+                   grams_whole is worked out in code, and writing them again was
+                   a fifth of the reply (4 Nov). coachNoFigures catches an item
+                   left with nothing to work out from. */
+                required: ['id', 'name', 'quantity'],
               },
             },
             question: { type: 'string' },
@@ -5359,6 +5401,19 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
           if (!again.err) { got = again; retried = true; }
         }
       }
+      /* an item with nothing to work its figures out from - see coachNoFigures */
+      if (got.use.input.action === 'add' || got.use.input.action === 'update') {
+        const none = coachNoFigures(got.use.input.items);
+        if (none.length) {
+          const again = await ask(msgs.concat([
+            { role: 'assistant', content: got.d.content },
+            { role: 'user', content: [{ type: 'tool_result', tool_use_id: got.use.id, is_error: true,
+              content: 'Not logged yet. For ' + none.join(', ') + ' there is nothing to work the figures out from. Send the whole reply again, ' +
+                'giving every such item per_100g and grams_whole (or, if neither fits, its calories, protein, carbs and fat).' }] },
+          ]));
+          if (!again.err) { got = again; retried = true; }
+        }
+      }
       /* A NEW EATING, sent back once when the reply rewrote an old row - see
          coachStaleUpdates. Not for an edit, which names its row itself. */
       let stale = [];
@@ -5400,8 +5455,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
          that drops the list does not thereby make the bread said */
       let unsaidAll = [];
       if (askSeen && got.use.input.action === 'add') {
-        const un0 = got.use.input.not_in_words;
-        unsaidAll = Array.isArray(un0) ? un0.slice(0, 10) : [];
+        /* what the model listed, and any bread it did not - see coachBreadUnsaid */
+        const un0 = (Array.isArray(got.use.input.not_in_words) ? got.use.input.not_in_words.slice(0, 10) : [])
+          .concat(coachBreadUnsaid(message, got.use.input.items));
+        unsaidAll = un0.slice(0);
         const seen = (got.use.input.items || []).filter((it) => seenOnly(it, un0)).map((it) => String(it.name || '').slice(0, 60));
         /* the words alone are enough only when every such item is one the
            model itself marked as seen; one caught by its name may be merged
@@ -5444,7 +5501,10 @@ Scale them by the amount actually eaten. If a label in a photo disagrees with th
          words. So the reply is written once more from what the code worked
          out - only when some item was a share. */
       if ((got.use.input.action === 'add' || got.use.input.action === 'update') &&
-          (got.use.input.items || []).some((it) => it && coachFraction(it) !== 1 && !labelClean(it.label))) {
+          (got.use.input.items || []).some((it) => it && coachFraction(it) !== 1 && !labelClean(it.label)) &&
+          /* told to state no figures, it usually states none - then there is
+             nothing to correct, and the app shows the total under it */
+          COACH_KCAL_SAID.test(String(got.use.input.message || ''))) {
         let tk = 0;
         const fig = (got.use.input.items || []).map((it) => {
           const t = coachTotals(it); tk += t.calories || 0;

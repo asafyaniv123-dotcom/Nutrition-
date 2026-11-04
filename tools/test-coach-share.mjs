@@ -70,7 +70,7 @@ async function coach(body, replies) {
   return (await worker.fetch(req, env, { waitUntil: () => {} })).json();
 }
 const WHOLE = { action: 'add', items: whole, message: 'רשמתי. סה"כ 2,590 קק"ל' };
-const THIRD = { action: 'add', items: PLATES, message: 'רשמתי שליש מכל צלחת' };
+const THIRD = { action: 'add', items: PLATES, message: 'רשמתי שליש מכל צלחת - סה"כ 2,590 קק"ל' };
 const FINAL = { action: 'add', items: PLATES, message: 'רשמתי שליש מכל צלחת - בערך 1,060 קק"ל' };
 
 let j = await coach({ message: 'אכלנו 3 אנשים, אכלתי שליש מכל צלחת' }, [WHOLE, THIRD, FINAL]);
@@ -84,6 +84,22 @@ ok(j.message === FINAL.message, 'the message is the one written from the figures
 ok(sent[2].tool_choice.name === 'say' && sent[0].tool_choice.name === 'reply' && sent[1].tool_choice.name === 'reply',
   'the figures ask for the words alone (say); the share not given asks for the whole reply - got ' + sent.map((x) => x.tool_choice.name).join(','));
 ok(sent.every((x) => x.tools.map((t) => t.name).join() === 'reply,say'), 'both tools on every call, so the cached prefix never changes');
+
+/* a message that states no figures has nothing to correct: no rewrite, the app shows the total */
+j = await coach({ message: 'אכלנו 3 אנשים, אכלתי שליש מכל צלחת' }, [{ action: 'add', items: PLATES, message: 'רשמתי שליש מכל צלחת 🍽️' }]);
+ok(sent.length === 1 && Math.abs(j.items.reduce((s2, x) => s2 + x.calories, 0) - 1060) <= 25, 'thirds given, no figures in the words: one call - calls: ' + sent.length);
+ok(!W.coachNoFigures(PLATES.map((x) => { const o = Object.assign({}, x); delete o.calories; delete o.protein; delete o.carbs; delete o.fat; return o; })).length,
+  'per_100g and grams_whole without the four figures: computed, nothing missing');
+
+/* nothing to compute from: sent back; a 0 the model wrote itself stands */
+const N = W.coachNoFigures;
+ok(N([{ name: 'פסטה', quantity: 'צלחת' }]).join() === 'פסטה', 'an item with no figures and nothing to compute them from is caught');
+ok(!N([{ name: 'מים', quantity: 'כוס', calories: 0 }]).length && !N([{ name: 'קפה שחור', per_100g: P(0, 0, 0, 0), grams_whole: 200 }]).length, 'water and black coffee: a 0 they were given stands');
+ok(!N([{ name: 'סושי', unit_count: 8, kcal_per_unit: 40 }]).length, 'pieces with a per-piece figure: computed');
+j = await coach({ message: 'אכלתי פסטה' }, [{ action: 'add', items: [{ id: 'p', name: 'פסטה', quantity: 'צלחת' }] },
+  { action: 'add', items: [{ id: 'p', name: 'פסטה', quantity: 'צלחת', grams_whole: 300, per_100g: P(158, 5.8, 31, 0.9) }] }]);
+ok(sent.length === 2 && /nothing to work the figures out from/.test(JSON.stringify(sent[1].messages.at(-1))) && j.items[0].calories === 474,
+  'a figureless item is sent back once and comes back computed (474) - calls: ' + sent.length);
 
 j = await coach({ message: 'אכלתי סלט ירקות' }, [{ action: 'add', items: [{ id: 's', name: 'סלט', quantity: 'קערה', grams_whole: 250, per_100g: P(40, 1.5, 6, 1.2) }] }]);
 ok(sent.length === 1 && j.items[0].calories === 100 && j.items[0].whole_g === 0, 'no share: one call, the whole, nothing extra');
@@ -102,6 +118,18 @@ j = await coach({ message: 'אכלתי ביצה וגבינה', images: PIC }, [
   { action: 'add', not_in_words: ['לחמנייה'], items: [EGG, { id: 'c', name: 'גבינה מגוררת', quantity: '20 ג', grams_whole: 20, per_100g: P(350, 25, 2, 27), from_words: true }], message: 'רשמתי ביצה וגבינה. רואה גם לחמנייה, להוסיף?' }]);
 ok(sent.length === 2 && sent[1].tool_choice.name === 'reply', 'a merged item caught by its name: the whole reply, to split it - ' + sent.map((x) => x.tool_choice.name).join(','));
 ok(j.items.map((x) => x.id).join() === 'e,c', 'the egg and the cheese kept, the roll asked about - got ' + j.items.map((x) => x.id).join());
+
+/* bread the model never flagged: one merged item, from_words true, no not_in_words (live, 4 Nov) */
+const B = W.coachBreadUnsaid;
+ok(B('אכלתי ביצה וגבינה מגורדת', [{ name: 'לחמנייה עם ביצה וגבינה מגורדת' }]).join() === 'לחמני', 'a roll in the item, none in the words: the bread word alone');
+ok(!B('אכלתי כריך סלמי וגבינה', [{ name: 'לחם' }]).length && !B('ate a toast with cheese', [{ name: 'toast bread' }]).length, 'a sandwich or toast in the words implies the bread');
+ok(!B('אכלתי סלמי', [{ name: 'סלמי' }, { name: 'גבינה צהובה' }]).length, 'no bread anywhere: nothing');
+j = await coach({ message: 'אכלתי ביצה וגבינה מגורדת', images: PIC }, [
+  { action: 'add', items: [{ id: 'm', name: 'לחמנייה עם ביצה וגבינה מגורדת', quantity: '1', grams_whole: 160, per_100g: P(250, 12, 25, 11), from_words: true }] },
+  { action: 'add', items: [EGG, { id: 'c', name: 'גבינה מגוררת', quantity: '20 ג', grams_whole: 20, per_100g: P(350, 25, 2, 27), from_words: true }], message: 'רשמתי ביצה וגבינה. רואה גם לחמנייה, להוסיף?' }]);
+ok(sent.length === 2 && sent[1].tool_choice.name === 'reply' && /לחמני/.test(JSON.stringify(sent[1].messages.at(-1))),
+  'an unflagged merged roll: sent back whole, to be split - ' + sent.map((x) => x.tool_choice.name).join(','));
+ok(j.items.map((x) => x.id).join() === 'e,c', 'the egg and the cheese stay after the split, the roll is not logged - got ' + j.items.map((x) => x.id).join());
 
 /* cut off at max_tokens: four product photos met the ceiling on 4 Nov, and the half reply
    reached the app as "nothing to log" with an empty message - an empty bubble */
