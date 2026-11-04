@@ -1414,6 +1414,8 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
   font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;
   background:var(--nu-ground);color:var(--nu-muted);
   box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.tm-adds{display:flex;gap:10px}
+.tm-adds .tm-add{flex:1;min-width:0}
 .tm-x:active,.tm-add:active{box-shadow:inset 2px 3px 6px var(--nu-shade),
   inset -2px -2px 5px var(--nu-lit)}
 /* saved timers */
@@ -25777,6 +25779,20 @@ function wtCycNote(){
   if(el)el.style.display=(k&&(wtNums().rounds|0)>1)?'':'none';
 }
 function wtNameAdd(){ wtNamesEdit().push(''); wtRoundsFollow(); renderFitness(); }
+/* ── A ROUND FROM THE LIBRARY ──
+   The same picker a workout uses. The chosen exercise fills the first empty
+   row, or becomes a new one, and is kept as the library's own name so it is
+   shown in whatever language is being read. */
+function wtNameFromLib(){
+  exPickInto(function(name){
+    if(!name)return;
+    var a=wtNamesEdit(),i;
+    for(i=0;i<a.length;i++)if(!(a[i]||'').replace(/^\s+|\s+$/g,''))break;
+    if(i<a.length)a[i]=name;else a.push(name);
+    wtRoundsFollow();
+    renderFitness();
+  });
+}
 function wtNameDel(i){
   var a=wtNamesEdit();
   if(i>=0&&i<a.length)a.splice(i,1);
@@ -25840,7 +25856,7 @@ function wtSameShape(a,b){
 function wtSavedLine(p){
   var t=p.kind==='amrap'?wtFace(p.work):p.kind==='emom'?nfmt(p.rounds)+' &times; '+wtFace(p.work)
        :nfmt(p.rounds)+' &times; '+nfmt(p.work)+'/'+nfmt(p.rest);
-  return esc(wtPlanLabel(p.kind))+' &middot; '+t+((p.names&&p.names.length)?' &middot; '+esc(p.names.join(', ')):'');
+  return esc(wtPlanLabel(p.kind))+' &middot; '+t+((p.names&&p.names.length)?' &middot; '+esc(p.names.map(exLabel).join(', ')):'');
 }
 function wtSavedHTML(){
   var a=wtSavedAll(),h='<div class="tm-card"><div class="tm-h">'+_t('השמורים שלי')+'</div>',i,p;
@@ -25871,7 +25887,7 @@ function wtSavedUse(id){
    first exercise. */
 function wtSaveSheet(plan,after){
   var cur=_wtSavedId!==null?wtSavedGet(_wtSavedId):null,
-      name=cur?cur.name:(wtPlanLabel(plan.kind)+(plan.names&&plan.names.length?' · '+plan.names[0]:'')),h;
+      name=cur?cur.name:(wtPlanLabel(plan.kind)+(plan.names&&plan.names.length?' · '+exLabel(plan.names[0]):'')),h;
   wtSheetClose();
   var ov=document.createElement('div');ov.className='cf-ov';ov.id='wt-sv-ov';
   h='<div class="cf-card"><div class="cf-q" style="margin-bottom:6px">'+esc(after?_t('לשמור את השעון הזה?'):_t('שמירת השעון'))+'</div>'+
@@ -25976,15 +25992,19 @@ function renderFitTimer(){
   /* exactly the rows the list holds. Adding one is the + button's job and
      nobody else's. */
   var nm=wtNames(),ni;
+  /* a round taken from the library is shown by its name in the reader's
+     language, which the library only knows once it has arrived */
+  if(wtNamesClean().length&&_exState!=='ready')exLoad();
   for(ni=0;ni<nm.length;ni++){
     h+='<div class="tm-row"><span class="tm-rn">'+nfmt(ni+1)+'</span>'+
-       '<input type="text" value="'+esc(nm[ni])+'" maxlength="40" '+
+       '<input type="text" value="'+esc(exLabel(nm[ni]))+'" maxlength="40" '+
        'placeholder="'+esc(_t('למשל: סקוואט'))+'" '+
        'oninput="wtNameSet('+ni+',this.value)">'+
        '<button class="tm-x" onclick="wtNameDel('+ni+')" aria-label="'+esc(_t('הסר'))+'">&times;</button>'+
        '</div>';
   }
-  h+='<button class="tm-add" onclick="wtNameAdd()">'+_t('+ עוד שורה')+'</button>';
+  h+='<div class="tm-adds"><button class="tm-add" onclick="wtNameAdd()">'+_t('+ עוד שורה')+'</button>'+
+     '<button class="tm-add" onclick="wtNameFromLib()">'+_t('+ תרגיל מהספרייה')+'</button></div>';
   /* ONLY when he has raised the rounds himself above the number of exercises.
      Then they do repeat, and a repeat nobody mentioned is the thing that
      looked like a bug. */
@@ -29805,7 +29825,7 @@ var WT_PLAN_KEY='fit_wtplan';
 function wtNameAt(i){
   var p=_wtPlan;
   if(!p||!p.names||!p.names.length||i<0)return '';
-  return p.names[i%p.names.length]||'';
+  return exLabel(p.names[i%p.names.length]||'');
 }
 function wtPlanLoad(){
   try{
@@ -29912,6 +29932,7 @@ function wtPlanStart(kind,work,rest,rounds,prep,names){
            rounds:Math.max(1,rounds|0),prep:Math.max(0,prep|0),
            names:(names&&names.length)?names.slice(0):[]};
   wtPlanSave(_wtPlan);
+  if(_wtPlan.names.length&&_exState!=='ready')exLoad();
   _wtMode='plan';_wtPhase='';_wtRound=0;_wtPaused=0;
   _wtFrom=Date.now();
   _wtOpen=true;
