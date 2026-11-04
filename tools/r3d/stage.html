@@ -1,0 +1,94 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#140f0c;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+/* THE STAGE: the approved look, rebuilt in code. A glowing amber figure (fresnel rim +
+   soft inner glow, additive), the equipment as dim amber outlines over a faint fill,
+   a warm dark ground with a pool of golden light and a soft reflection, then bloom. */
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const SIZE = 720;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(SIZE, SIZE);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x140f0c);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+
+/* the figure's material: brighter where the surface turns away from the eye (the rim),
+   a warm translucent body inside, never fully opaque */
+const figMat = new THREE.ShaderMaterial({
+  uniforms: { cIn: { value: new THREE.Color(0xb8661a) }, cRim: { value: new THREE.Color(0xffd27a) }, k: { value: 1.0 } },
+  vertexShader: `
+    #include <common>
+    #include <skinning_pars_vertex>
+    varying vec3 vN; varying vec3 vV;
+    void main(){
+      #include <skinbase_vertex>
+      #include <begin_vertex>
+      #include <beginnormal_vertex>
+      #include <skinnormal_vertex>
+      #include <skinning_vertex>
+      vec4 mv = modelViewMatrix * vec4(transformed,1.0);
+      vN = normalize(normalMatrix * objectNormal); vV = normalize(-mv.xyz);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform vec3 cIn; uniform vec3 cRim; uniform float k; varying vec3 vN; varying vec3 vV;
+    void main(){
+      float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+      float rim = pow(f, 2.2);
+      float body = 0.32 + 0.25*pow(1.0-f, 1.5);
+      vec3 c = cIn*body + cRim*rim*1.35;
+      gl_FragColor = vec4(c*k, 0.55 + rim*0.45);
+    }`,
+  transparent: true, depthWrite: true, blending: THREE.AdditiveBlending,
+});
+window.THREE = THREE; window.scene = scene; window.camera = camera; window.figMat = figMat;
+
+/* the ground: a pool of warm light under the figure, fading to the background */
+const groundMat = new THREE.ShaderMaterial({
+  uniforms: { c: { value: new THREE.Color(0xf0a92e) }, r: { value: 1.1 } },
+  vertexShader: `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `uniform vec3 c; uniform float r; varying vec2 vP; void main(){ float d = length(vP/vec2(r*1.5,r)); float a = exp(-d*d*2.6)*0.55; gl_FragColor = vec4(c*a, 1.0); }`,
+  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+});
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), groundMat);
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+window.ground = ground;
+
+/* equipment: dim amber outlines over a faint additive fill */
+window.equip = function (geo) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x5a3410, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })));
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), new THREE.LineBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending })));
+  return g;
+};
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(SIZE, SIZE), 0.9, 0.55, 0.12);
+composer.addPass(bloom); composer.addPass(new OutputPass());
+window.bloom = bloom;
+
+window.loadFigure = (url) => new Promise((res) => new GLTFLoader().load(url, (g) => {
+  const root = g.scene; const bones = {};
+  root.traverse((o) => {
+    if (o.isBone) bones[o.name.replace('mixamorig', '')] = o;
+    if (o.isSkinnedMesh) { o.material = figMat; o.frustumCulled = false; o.renderOrder = 2; }
+  });
+  scene.add(root); window.fig = root; window.bones = bones;
+  res(Object.keys(bones));
+}));
+window.render = () => { composer.render(); return renderer.domElement.toDataURL('image/png'); };
+window.ready = true;
+</script>
+</body></html>
