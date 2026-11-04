@@ -81,3 +81,7 @@ export const POSES = {
     ],
   },
 };
+
+// the other eight exercises of round 3
+import { MORE } from './poses-more.js';
+Object.assign(POSES, MORE);
