@@ -569,6 +569,22 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .xd-demo video{width:100%;height:100%;display:block;object-fit:cover}
 .xd-demo-m{position:absolute;inset-block-end:10px;inset-inline-start:10px;font-size:11.5px;font-weight:800;color:#f0a92e;
   padding:4px 10px;border-radius:999px;background:rgba(20,15,12,.72);box-shadow:0 0 0 1px rgba(240,169,46,.35)}
+/* the guided demo: one ring of light that travels between steps, the rest of
+   the frame dimmed by its own shadow; under it the app tour's card. The ring
+   is placed in the clip's own coordinates, so left/top stay physical in RTL. */
+.xg{max-width:340px;margin:6px auto 14px}
+.xg .xd-demo{margin:0}
+.xg-spot{position:absolute;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--d)*1%);aspect-ratio:1/1;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
+  box-shadow:0 0 0 2px rgba(240,169,46,.95),0 0 18px 4px rgba(240,169,46,.55),0 0 0 999px rgba(14,10,8,.58);
+  transition:left .6s cubic-bezier(.2,.9,.3,1),top .6s cubic-bezier(.2,.9,.3,1),width .6s,opacity .35s}
+.xg-spot.off{opacity:0}
+.xg-c{margin-top:10px;background:#ece3d4;border-radius:20px;padding:14px 16px 12px;color:#4a453f;box-shadow:0 12px 28px -18px rgba(20,14,8,.45)}
+.xg-t{font-size:12px;font-weight:800;letter-spacing:.03em;color:#8a5a1c;margin-bottom:4px}
+.xg-d{font-size:15.5px;line-height:1.55;color:#3f3a35;min-height:3.1em}
+.xg-m{margin:2px 0 0;padding-inline-start:18px;display:flex;flex-direction:column;gap:5px;font-size:14.5px;line-height:1.5;color:#3f3a35}
+.xg-f{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.xg-b{display:flex;align-items:center;gap:4px}
+@media (prefers-reduced-motion:reduce){.xg-spot{transition:none}}
 .fx-bulb{font-size:26px;line-height:1}
 /* the machine, drawn at whatever size the square leaves it */
 .fx-gear{align-items:center;justify-content:center;gap:7px;cursor:pointer;text-align:center}
@@ -29673,7 +29689,7 @@ function exHowPaint(){
   if(!_exHowOn)return;
   var ex=_fitWorkout&&_fitWorkout.exercises[_fitWorkout.currentEx];
   if(!ex){exHowClose();return;}
-  var e=exByName(ex.name),how=e?exHow(e):null,b=exDemoHTML(e),j;
+  var e=exByName(ex.name),how=e?exHow(e):null,b=exDemoHTML(e,how),j;
   if(how&&how.s&&how.s.length){
     b+='<ol class="xd-steps">';
     for(j=0;j<how.s.length;j++)b+='<li>'+esc(how.s[j])+'</li>';
@@ -31146,7 +31162,7 @@ function exDetailHTML(e){
   }
 
   // ── how it is done ──
-  var how=exHow(e),demo=exDemoHTML(e);
+  var how=exHow(e),demo=exDemoHTML(e,how);
   if(demo&&!(how.s&&how.s.length))h+='<div class="xd-h">'+_t('איך מבצעים')+'</div>'+demo;
   if(how.s&&how.s.length){
     h+='<div class="xd-h">'+_t('איך מבצעים')+'</div>'+demo+'<ol class="xd-steps">';
@@ -31191,8 +31207,97 @@ function exHow(e){
    asked for less motion gets it standing still, with controls. */
 var EX_DEMO={x131:1,x18:1,x57:1,x1:1,x229:1,x192:1,x27:1,x71:1,x41:1,x162:1,
   x34:1,x149:1,x96:1,x108:1,x135:1,x72:1};
-function exDemoHTML(e){
+/* ── HOW IT IS DONE, GUIDED (Asaf, 4 Nov) ──
+   Each step of the library's own instructions gets the moment of the loop
+   to stop at and the part of the frame to light: [seconds, x%, y%, ring
+   diameter %], measured from the clip's frames. The words are the steps
+   the library already carries in every language, so the guide needs none
+   of its own. A step count that does not match falls back to the plain
+   loop rather than lighting the wrong thing. */
+var EX_GUIDE={
+  x1:[[.15,34,42,30],[.15,50,20,42],[2.45,50,46,34],[3.7,50,30,44]],
+  x18:[[.1,78,52,34],[.1,50,48,34],[2.2,78,56,32],[4.2,78,52,36]],
+  x27:[[.1,48,10,40],[.1,48,28,34],[2.4,47,14,34],[4.7,48,22,44]],
+  x34:[[.1,56,58,26],[.1,42,21,40],[2.2,40,38,34],[4.7,42,28,44]],
+  x41:[[.1,46,66,34],[.1,46,32,38],[2.3,52,36,36],[4.7,55,41,40]],
+  x57:[[.1,50,70,30],[.1,48,40,44],[.9,48,58,34],[2.6,48,36,30]],
+  x71:[[.1,48,35,26],[.1,46,52,28],[1.1,48,26,30],[2.4,45,20,30]],
+  x72:[[.1,45,20,46],[.1,46,40,40],[2.3,46,12,50],[4.7,45,20,46]],
+  x96:[[.1,47,42,30],[1,50,33,34],[2.4,53,22,30],[4.7,52,42,32]],
+  x108:[[.1,44,36,28],[1.8,45,42,30],[2.4,43,46,28],[4.6,47,35,30]],
+  x131:[[.1,46,80,30],[.9,45,50,36],[2.3,47,58,34],[3.6,45,82,30]],
+  x135:[[.1,68,30,28],[2.3,38,36,32],[2.3,27,56,30],[4.7,52,44,30]],
+  x149:[[.1,48,56,34],[1,36,42,30],[2.3,38,52,34],[4,42,40,30]],
+  x162:[[.1,74,50,34],[1,82,60,24],[2.2,50,44,40],[4.3,50,50,36]],
+  x192:[[.1,76,52,28],[.1,48,48,62],[.1,50,47,30],[2.5,50,48,62]],
+  x229:[[.1,42,37,30],[1.5,66,68,34],[2.3,55,65,50],[3,67,80,26]]
+};
+function exGuideHTML(e,how){
+  var g=EX_GUIDE[e.id],n=g.length,h,j,dots='';
+  h='<div class="xg" data-i="0"><div class="xd-demo"><video src="'+liveBase()+'assets/exdemo/'+e.id+'.mp4" muted playsinline preload="auto" aria-hidden="true" onloadedmetadata="xgShow(this,0)"></video>'+
+    '<span class="xg-spot off"></span>'+
+    (e.m&&e.m.length?'<span class="xd-demo-m">'+esc(e.m.map(_t).join(' · '))+'</span>':'')+'</div><div class="xg-c">';
+  for(j=0;j<n;j++){
+    h+='<div class="xg-p" data-g="'+g[j].join(',')+'"'+(j?' hidden':'')+'><div class="xg-t">'+_t('שלב {n} מתוך {total}',{n:j+1,total:n})+'</div>'+
+       '<div class="xg-d">'+esc(how.s[j])+'</div></div>';
+    dots+='<i'+(j?'':' class="on"')+'></i>';
+  }
+  if(how.k&&how.k.length){
+    h+='<div class="xg-p" hidden><div class="xg-t">'+_t('טעויות נפוצות')+'</div><ul class="xg-m">';
+    for(j=0;j<how.k.length;j++)h+='<li>'+esc(how.k[j])+'</li>';
+    h+='</ul></div>';
+    dots+='<i></i>';
+  }
+  return h+'<div class="xg-f"><div class="tour-dots">'+dots+'</div><div class="xg-b">'+
+    '<button class="tour-x xg-pv" style="visibility:hidden" onclick="xgGo(this,-1)">'+_t('הקודם')+'</button>'+
+    '<button class="tour-n xg-nx" onclick="xgGo(this,1)">'+_t('הבא')+'</button>'+
+    '</div></div></div></div>';
+}
+/* Show step i: light its part of the frame and move the loop to its moment -
+   played forward into it when it lies ahead, so the movement itself is seen,
+   and jumped back to when it lies behind. The last card is the mistakes, and
+   the loop then runs whole. A reader who asked for less motion is only ever
+   shown the still frame of each step. */
+function xgShow(el,i){
+  var r=el.closest('.xg');if(!r)return;
+  var ps=r.querySelectorAll('.xg-p'),ds=r.querySelectorAll('.tour-dots i'),v=r.querySelector('video'),sp=r.querySelector('.xg-spot'),
+      nx=r.querySelector('.xg-nx'),k,g,still=false;
+  try{still=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(x){}
+  if(!(i>=0)||i>=ps.length)i=0;
+  r.setAttribute('data-i',i);
+  for(k=0;k<ps.length;k++){ps[k].hidden=k!==i;if(ds[k])ds[k].className=k===i?'on':'';}
+  r.querySelector('.xg-pv').style.visibility=i?'visible':'hidden';
+  nx.textContent=i<ps.length-1?_t('הבא'):_t('התחל מחדש');
+  v._xgStop=null;
+  g=ps[i].getAttribute('data-g');
+  if(!g){
+    sp.classList.add('off');v.loop=true;
+    if(!still){var p=v.play();if(p&&p.catch)p.catch(function(){});}
+    return;
+  }
+  g=g.split(',').map(Number);
+  sp.style.setProperty('--x',g[1]);sp.style.setProperty('--y',g[2]);sp.style.setProperty('--d',g[3]);
+  sp.classList.remove('off');
+  v.loop=false;
+  if(!still&&g[0]>v.currentTime+.3){
+    v._xgStop=g[0];
+    var q=v.play();if(q&&q.catch)q.catch(function(){});
+    (function tick(){
+      if(v._xgStop!==g[0])return;
+      /* a frame late is a frame past the pose the ring was placed on, so
+         land on the measured moment itself */
+      if(v.currentTime>=g[0]||v.ended){v.pause();v._xgStop=null;v.currentTime=g[0];return;}
+      requestAnimationFrame(tick);
+    })();
+  } else {v.pause();v.currentTime=g[0];}
+}
+function xgGo(b,d){
+  var r=b.closest('.xg');if(!r)return;
+  xgShow(b,(+r.getAttribute('data-i')||0)+d);
+}
+function exDemoHTML(e,how){
   if(!e||!EX_DEMO[e.id])return '';
+  if(how&&how.s&&EX_GUIDE[e.id]&&how.s.length===EX_GUIDE[e.id].length)return exGuideHTML(e,how);
   var still=false;try{still=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(x){}
   return '<div class="xd-demo"><video src="'+liveBase()+'assets/exdemo/'+e.id+'.mp4" muted loop playsinline preload="metadata"'+
     (still?' controls':' autoplay')+' aria-hidden="true"></video>'+
