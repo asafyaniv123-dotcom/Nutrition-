@@ -46,8 +46,11 @@ export const MORE = {
       }
       const back = add([J.lsh[0], J.lsh[1], 0], t, 0.25);
       return { joints: J, props: [
-        { box: add(add(back, n, -0.10), [0, 0, 0]), size: [0.62, 0.06, 0.30], rotZ: 30 },
-        { box: [0.12, 0.45, 0], size: [0.34, 0.06, 0.30] }, { box: [0.0, 0.21, 0], size: [0.6, 0.06, 0.26] },
+        /* the backrest under the back, along the trunk (it rises toward -x, so -30) */
+        { box: add(back, n, -0.13), size: [0.66, 0.06, 0.30], rotZ: -30 },
+        /* the seat under the hips, the frame on the floor */
+        { box: [0.17, 0.43, 0], size: [0.36, 0.06, 0.30] }, { box: [-0.10, 0.03, 0], size: [0.95, 0.06, 0.26] },
+        { box: [0.17, 0.22, 0], size: [0.06, 0.40, 0.20] }, { box: [-0.28, 0.30, 0], size: [0.05, 0.56, 0.20] },
       ].concat([1, -1].map((s) => ({ dumbbell: add(J[(s > 0 ? 'l' : 'r') + 'wr'], [0, 0.04, 0]), axis: [0, 0, 1], len: 0.32 }))) };
     }),
   },
