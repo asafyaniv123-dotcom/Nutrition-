@@ -2,7 +2,7 @@
 // node tools/r3d/pose/shoot.mjs <exercise> <outdir>     (e.g. bench, hipthrust)
 import fs from 'fs'; import http from 'http'; import path from 'path'; import os from 'os';
 import { spawn } from 'child_process';
-const [EX, OUT] = process.argv.slice(2);
+const [EX, OUT, ALT] = process.argv.slice(2);      // ALT = 'alt' renders the checking view
 const DIR = path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1'));
 fs.mkdirSync(OUT, { recursive: true });
 const server = http.createServer((req, res) => {
@@ -23,7 +23,7 @@ const send = (method, params = {}) => new Promise((r) => { const id = ++seq; pen
 await send('Page.enable'); await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 900, height: 900, deviceScaleFactor: 1, mobile: false });
 for (const kf of [0, 1]) {
-  await send('Page.navigate', { url: `http://127.0.0.1:8995/pose.html?ex=${EX}&kf=${kf}` });
+  await send('Page.navigate', { url: `http://127.0.0.1:8995/pose.html?ex=${EX}&kf=${kf}${ALT ? '&alt=1' : ''}` });
   for (let i = 0; i < 40; i++) { await sleep(250); const r = await send('Runtime.evaluate', { expression: '!!window.__done', returnByValue: true }); if (r.result?.result?.value) break; }
   const t = await send('Runtime.evaluate', { expression: "document.getElementById('ang').textContent", returnByValue: true });
   console.log(`kf${kf}:`, String(t.result?.result?.value || '').replace(/\n/g, ' | '));
@@ -32,6 +32,6 @@ for (const kf of [0, 1]) {
   for (const r of rows) console.log(`   ${r.ok ? "PASS" : "FAIL"}  ${r.text}: ${r.val} (${r.min}..${r.max} ${r.unit})`);
   fs.writeFileSync(path.join(OUT, `${EX}-${kf}.spec.json`), JSON.stringify(rows));
   const s = await send('Page.captureScreenshot', { format: 'png' });
-  fs.writeFileSync(path.join(OUT, `${EX}-${kf}.png`), Buffer.from(s.result.data, 'base64'));
+  fs.writeFileSync(path.join(OUT, `${EX}-${kf}${ALT ? '-alt' : ''}.png`), Buffer.from(s.result.data, 'base64'));
 }
 ws.close(); chrome.kill(); server.close(); process.exit(0);

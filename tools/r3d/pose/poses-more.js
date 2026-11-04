@@ -79,22 +79,28 @@ export const MORE = {
       { kf: 0, text: 'הידית בגובה הבטן העליונה עד החזה התחתון', src: 'מחקר x48, התחלה', m: { dy: ['lwr', 'pelvis'] }, min: 28, max: 45 },
       { kf: 1, text: 'הידית נוגעת בבטן העליונה', src: 'מחקר x48, נקודת המפנה', m: { dx: ['lwr', 'pelvis'] }, min: 10, max: 18 },
       { kf: 1, text: 'מרפקים מעט מאחורי קו הגב', src: 'מחקר x48, נקודת המפנה', m: { dx: ['lel', 'pelvis'] }, min: -26, max: -13 },
+      { kf: 1, text: 'המרפקים נמוכים, צמודים לצלעות (לא מורמים)', src: 'מחקר x48 ("elbows tight to the ribs")', m: { dy: ['lel', 'pelvis'] }, min: 18, max: 36 },
+      { kf: 1, text: 'השכמות מתקרבות (הכתף זזה מעט אחורה)', src: 'הספרייה; מחקר x48', m: { dx: ['lsh', 'pelvis'] }, min: -9, max: -3 },
     ],
     keyframes: [0, 1].map((pulled) => () => {
       const J = { lhip: [0.15, 0.52, 0.10], lan: [1.0, 0.43, 0.12], ltoe: [1.05, 0.59, 0.13], lheel: [0.99, 0.37, 0.12],
         lsh: [0.15, 1.05, 0.19], pelvis: [0.15, 0.52, 0], chest: [0.15, 0.85, 0], neck: [0.15, 1.12, 0], head: [0.16, 1.25, 0], seat: [0, 0.43, 0], floor: [0, 0, 0] };
       J.lkn = twoBone(J.lhip, J.lan, L.thigh, L.shin, [0, 1, 0]);
+      /* the shoulder blades draw together at the end of the pull: the shoulder joint
+         moves back and a little in; the trunk does not move */
+      if (pulled) J.lsh = [0.09, 1.05, 0.17];
       mirror(J);
-      const handle = pulled ? [0.29, 0.86, 0] : [0.72, 0.86, 0];
+      /* the handle sits in the hands, a hand's depth in front of the wrists */
+      const handle = pulled ? [0.33, 0.86, 0] : [0.78, 0.86, 0];
       for (const s of [1, -1]) {
-        const p = s > 0 ? 'l' : 'r', sh = J[p + 'sh'], wr = [handle[0] - 0.02, handle[1], 0.05 * s];
-        J[p + 'wr'] = wr; J[p + 'el'] = pulled ? twoBone(sh, wr, L.upper, L.fore, [-1, -0.05, 0.25 * s]) : add(sh, norm(sub(wr, sh)), L.upper);
+        const p = s > 0 ? 'l' : 'r', sh = J[p + 'sh'], wr = [handle[0] - 0.08, handle[1], 0.075 * s];
+        J[p + 'wr'] = wr; J[p + 'el'] = pulled ? twoBone(sh, wr, L.upper, L.fore, [-1, -0.6, 0.35 * s]) : add(sh, norm(sub(wr, sh)), L.upper);
       }
       return { joints: J, props: [
         { box: [0.17, 0.41, 0], size: [0.40, 0.06, 0.32] }, { box: [0.17, 0.2, 0], size: [0.08, 0.4, 0.2] },
         { box: [1.06, 0.50, 0], size: [0.04, 0.34, 0.36], rotZ: -20 }, { cyl: [1.15, 0.40, 0], axis: [0, 0, 1], r: 0.05, len: 0.05 },
-        { line: [[handle[0] + 0.05, handle[1], 0], [1.15, 0.40, 0]] }, { box: [1.42, 1.0, 0], size: [0.12, 2.0, 0.30] },
-        { box: [handle[0] + 0.02, handle[1], 0], size: [0.10, 0.03, 0.12] }, { box: [0.6, 0.02, 0], size: [1.7, 0.04, 0.3] }] };
+        { line: [[handle[0] + 0.04, handle[1], 0], [1.15, 0.40, 0]] }, { box: [1.42, 1.0, 0], size: [0.12, 2.0, 0.30] },
+        { box: [handle[0], handle[1], 0], size: [0.08, 0.03, 0.15] }, { box: [0.6, 0.02, 0], size: [1.7, 0.04, 0.3] }] };
     }),
   },
 
@@ -186,6 +192,8 @@ export const MORE = {
       { kf: 'both', text: 'פיקות הברכיים ממש מעבר לקצה הספסל', src: 'מחקר x153, המכונה', m: { dx: ['lkn', 'benchEnd'] }, min: 0, max: 6 },
       { kf: 0, text: 'התחלה בכיפוף של 10°–15°', src: 'NASM ("just short of full extension")', m: { at: ['lhip', 'lkn', 'lan'], side: true }, min: 165, max: 170 },
       { kf: 1, text: 'השוק עוברת את האנך (כיפוף של כ־120°)', src: 'ACE; מחקר x153', m: { at: ['lhip', 'lkn', 'lan'], side: true }, min: 50, max: 65 },
+      { kf: 0, text: 'כף הרגל ניטרלית, הבהונות כלפי הרצפה', src: 'מחקר x153, המכונה', m: { dy: ['ltoe', 'lan'] }, min: -16, max: -8 },
+      { kf: 1, text: 'כף הרגל מסתובבת עם השוק: הבהונות הרחק מהראש', src: 'מחקר x153 (כף רגל ניטרלית)', m: { dx: ['ltoe', 'lan'] }, min: 8, max: 16 },
     ],
     keyframes: [0, 1].map((curled) => () => {
       const kn = [0.45, 0.86, 0.12], hip = [0.0, 1.0, 0.10];
@@ -195,9 +203,13 @@ export const MORE = {
       const thigh = Math.atan2(kn[1] - hip[1], kn[0] - hip[0]) * 180 / Math.PI;
       const th = rad(thigh + (curled ? 120 : 12));
       const dir = [Math.cos(th), Math.sin(th), 0];
-      J.lan = add(kn, dir, L.shin); J.ltoe = add(J.lan, curled ? [-0.15, 0.03, 0] : [0.02, -0.15, 0]); J.lheel = add(J.lan, curled ? [0.03, 0.05, 0] : [0.05, 0.03, 0]);
+      J.lan = add(kn, dir, L.shin);
+      /* the foot stays at a right angle to the shin and turns with it: the toes on the
+         side the kneecap faces, the heel behind the shin */
+      const toeDir = [Math.sin(th), -Math.cos(th), 0];
+      J.ltoe = add(J.lan, toeDir, 0.15); J.lheel = add(add(J.lan, toeDir, -0.05), dir, 0.03);
       mirror(J);
-      const pad = add(add(kn, dir, L.shin - 0.10), curled ? [0.06, 0, 0] : [0, 0.06, 0]);
+      const pad = add(add(kn, dir, L.shin - 0.10), [-toeDir[0] * 0.06, -toeDir[1] * 0.06, 0]);
       return { joints: J, props: [
         { box: [-0.48, 0.76, 0], size: [0.55, 0.06, 0.30] }, { box: [-0.05, 0.86, 0], size: [0.34, 0.06, 0.30], rotZ: 15 }, { box: [0.27, 0.81, 0], size: [0.32, 0.06, 0.30], rotZ: -15 },
         { box: [-0.1, 0.38, 0], size: [0.08, 0.76, 0.20] }, { cyl: [kn[0], kn[1], 0.30], axis: [0, 0, 1], r: 0.07, len: 0.03 },
