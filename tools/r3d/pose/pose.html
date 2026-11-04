@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pose Guide</title>
+<style>html,body{margin:0;background:#140f0c}canvas{display:block}#ang{position:fixed;left:14px;top:12px;font:600 15px/1.5 system-ui,sans-serif;color:#ffd27a;white-space:pre}</style>
+<div id="ang"></div>
+<script type="module">
+/* A POSE GUIDE, NOT A FIGURE (4 Nov). The image model cannot hold an angle:
+   asked for elbows 45-60 degrees from the torso it drew them at the ribs.
+   Here every joint is placed by arithmetic from the research's numbers, the
+   angles that matter are measured back off the geometry and printed on the
+   frame, and the still is approved before anything is spent. The approved
+   still then goes to the image model as the pose to copy, not to guess.
+   Units are metres; y is up. ?ex=<name>&kf=<0|1> picks an exercise and a
+   keyframe from poses.js. */
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { POSES } from './poses.js';
+const q = new URLSearchParams(location.search), ex = POSES[q.get('ex')], kf = +(q.get('kf') || 0);
+const S = 900;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(S, S); renderer.setPixelRatio(1); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x140f0c);
+scene.add(new THREE.HemisphereLight(0xffe2b0, 0x2a1a10, 1.1));
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(2, 4, 3); scene.add(key);
+const body = new THREE.MeshStandardMaterial({ color: 0xe0a050, emissive: 0x6a3a10, roughness: 0.6 });
+const joint = new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0x8a5a1c, roughness: 0.5 });
+const kit = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, emissive: 0x2a1a0c, roughness: 0.8 });
+const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+/* a limb: a capsule between two joints */
+function limb(a, b, r, m) {
+  const A = V(a), B = V(b), d = B.clone().sub(A), len = d.length();
+  const g = new THREE.Mesh(new THREE.CapsuleGeometry(r, Math.max(0.001, len), 6, 14), m || body);
+  g.position.copy(A.clone().add(B).multiplyScalar(0.5));
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+  scene.add(g);
+}
+function ball(p, r, m) { const g = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14), m || joint); g.position.copy(V(p)); scene.add(g); }
+function box(c, s, m) { const g = new THREE.Mesh(new THREE.BoxGeometry(s[0], s[1], s[2]), m || kit); g.position.copy(V(c)); scene.add(g); }
+/* a dumbbell: a handle along `axis` with a hexagonal head at each end */
+function dumbbell(c, axis, len) {
+  const C = V(c), A = V(axis).normalize(), h = (len || 0.32) / 2;
+  limb(C.clone().addScaledVector(A, -h).toArray(), C.clone().addScaledVector(A, h).toArray(), 0.016, kit);
+  for (const s of [-1, 1]) {
+    const g = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.09, 6), kit);
+    g.position.copy(C.clone().addScaledVector(A, s * (h - 0.03)));
+    g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), A); scene.add(g);
+  }
+}
+function barbell(c, len, plateR) {
+  limb([c[0], c[1], c[2] - len / 2], [c[0], c[1], c[2] + len / 2], 0.014, kit);
+  for (const s of [-1, 1]) {
+    const g = new THREE.Mesh(new THREE.CylinderGeometry(plateR, plateR, 0.05, 32), new THREE.MeshStandardMaterial({ color: 0x8a6a4a, transparent: true, opacity: 0.35, depthWrite: false }));
+    g.position.set(c[0], c[1], c[2] + s * (len / 2 - 0.12)); g.rotation.x = Math.PI / 2; scene.add(g);
+  }
+}
+const P = ex.keyframes[kf](), J = P.joints;
+/* the skeleton: every pair is a limb, every joint a ball */
+const BONES = [['head', 'neck', 0.075], ['neck', 'chest', 0.07], ['chest', 'pelvis', 0.11], ['lsh', 'rsh', 0.055], ['lhip', 'rhip', 0.07],
+  ['lsh', 'lel', 0.045], ['lel', 'lwr', 0.038], ['rsh', 'rel', 0.045], ['rel', 'rwr', 0.038],
+  ['lhip', 'lkn', 0.065], ['lkn', 'lan', 0.05], ['lan', 'ltoe', 0.035], ['rhip', 'rkn', 0.065], ['rkn', 'ran', 0.05], ['ran', 'rtoe', 0.035]];
+for (const [a, b, r] of BONES) if (J[a] && J[b]) limb(J[a], J[b], r);
+ball(J.head, 0.11);
+for (const k of ['lsh', 'rsh', 'lel', 'rel', 'lwr', 'rwr', 'lhip', 'rhip', 'lkn', 'rkn', 'lan', 'ran']) if (J[k]) ball(J[k], 0.04);
+(P.props || []).forEach((p) => {
+  if (p.box) box(p.box, p.size);
+  if (p.dumbbell) dumbbell(p.dumbbell, p.axis, p.len);
+  if (p.barbell) barbell(p.barbell, p.len, p.plateR);
+});
+box([0, -0.005, 0], [6, 0.01, 6], new THREE.MeshStandardMaterial({ color: 0x241810, roughness: 1 }));
+const cam = new THREE.PerspectiveCamera(ex.camera.fov || 30, 1, 0.05, 50);
+cam.position.copy(V(ex.camera.pos)); cam.lookAt(V(ex.camera.at));
+renderer.render(scene, cam);
+/* the numbers, measured back off the joints that were drawn */
+const flat = (p, m) => m && m.side ? [p[0], p[1], 0] : p;
+const ang = (a, o, b, m) => { const u = V(flat(a, m)).sub(V(flat(o, m))).normalize(), w = V(flat(b, m)).sub(V(flat(o, m))).normalize(); return Math.round(THREE.MathUtils.radToDeg(Math.acos(Math.max(-1, Math.min(1, u.dot(w)))))); };
+const tilt = (a, b) => { const d = V(b).sub(V(a)).normalize(); return Math.round(THREE.MathUtils.radToDeg(Math.acos(Math.abs(d.y)))); };
+document.getElementById('ang').textContent = ex.name + ' - ' + (kf ? ex.kfNames[1] : ex.kfNames[0]) + '\n' +
+  (ex.measures || []).map((m) => m.label + ': ' + (m.tilt ? tilt(J[m.tilt[0]], J[m.tilt[1]]) : m.horiz ? 90 - tilt(J[m.horiz[0]], J[m.horiz[1]]) : ang(J[m.at[0]], J[m.at[1]], J[m.at[2]], m)) + '°').join('\n');
+window.__done = true;
+</script>
