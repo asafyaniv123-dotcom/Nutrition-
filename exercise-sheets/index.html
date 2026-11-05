@@ -67,7 +67,10 @@ pre{white-space:pre-wrap;font-size:.8rem;color:var(--soft);margin:6px 0 0}
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const li = (arr, f) => (arr || []).map(f).join('');
 function sheetHTML(d, dir) {
-  const p = (f) => dir + '/' + f;
+  /* every file's address carries the jobs that made it: a re-run gets a new address, so a
+     phone that cached the old clip for Pages' ten minutes cannot keep showing it (5 Nov) */
+  const pr = d.production || {}, ver = [pr.frames && pr.frames.start_job, pr.frames && pr.frames.end_job, pr.video && pr.video.job].filter(Boolean).map((s) => s.slice(0, 8)).join('-');
+  const p = (f) => dir + '/' + f + (ver ? '?v=' + ver : '');
   const spec = (d.spec || []).map((r) => `<tr><td>${esc(r.text)}</td><td>${esc(r.when)}</td><td>${esc(r.range)}</td><td class="${r.ok ? 'pass' : 'fail'}">${esc(r.val)} ${r.ok ? '✓' : '✗'}</td><td><small>${esc(r.src)}</small></td></tr>`).join('');
   return `<article id="${esc(d.id)}">
   <header><h2>${esc(d.name.he)}</h2><span class="tag">${esc((d.muscle || []).join(', '))}</span><span class="sub">${esc(d.name.en)} · ${esc(d.id)}</span><span class="status">${esc(d.status)}</span></header>
