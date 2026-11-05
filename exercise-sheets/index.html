@@ -51,6 +51,15 @@ th{color:var(--soft);font-weight:500}
 .open li{color:var(--bad)}
 a{color:var(--amber)}
 details summary{cursor:pointer;color:var(--soft)}
+/* the feed: one clip per exercise, everything else behind one tap */
+article{gap:12px}
+video.clip{width:100%;max-width:540px;aspect-ratio:1;margin-inline:auto;display:block;border-radius:8px;background:#000}
+details.more>summary{list-style:none;text-align:center;padding:10px;border:1px solid var(--line);border-radius:999px;color:var(--amber);font-weight:600}
+details.more>summary::-webkit-details-marker{display:none}
+details.more[open]>summary{margin-bottom:16px}
+.more-body{display:grid;gap:18px}
+details.jump>summary{color:var(--amber)}
+details.jump nav{margin-top:10px}
 pre{white-space:pre-wrap;font-size:.8rem;color:var(--soft);margin:6px 0 0}
 </style>
 </head>
@@ -58,8 +67,8 @@ pre{white-space:pre-wrap;font-size:.8rem;color:var(--soft);margin:6px 0 0}
 <main>
 <header style="display:grid;gap:8px">
   <h1>דפי תרגיל</h1>
-  <p class="lead">לכל תרגיל דף אחד, כמו דף הדמות של מיפ: התנוחה בהתחלה ובסוף, זווית הצילום שבה רואים את התנועה, מה שאסור לו לזוז, הדגשים, הטעויות הנפוצות, והמספרים שהבובה נבדקה מולם. כל פריים וכל סרטון של התרגיל מצוירים מהדף הזה.</p>
-  <nav id="nav"></nav>
+  <p class="lead">סרטון אחרי סרטון. כל הפרטים של תרגיל נפתחים רק בלחיצה על "פרטי התרגיל".</p>
+  <details class="jump"><summary>קפיצה לתרגיל</summary><nav id="nav"></nav></details>
 </header>
 <div id="list" style="display:grid;gap:28px"><p class="lead">טוען…</p></div>
 </main>
@@ -74,15 +83,14 @@ function sheetHTML(d, dir) {
   const spec = (d.spec || []).map((r) => `<tr><td>${esc(r.text)}</td><td>${esc(r.when)}</td><td>${esc(r.range)}</td><td class="${r.ok ? 'pass' : 'fail'}">${esc(r.val)} ${r.ok ? '✓' : '✗'}</td><td><small>${esc(r.src)}</small></td></tr>`).join('');
   return `<article id="${esc(d.id)}">
   <header><h2>${esc(d.name.he)}</h2><span class="tag">${esc((d.muscle || []).join(', '))}</span><span class="sub">${esc(d.name.en)} · ${esc(d.id)}</span><span class="status">${esc(d.status)}</span></header>
-  <div class="hero">
-    ${d.files.loop ? `<video src="${p(d.files.loop)}" autoplay muted loop playsinline controls preload="metadata"></video>` : '<p class="sub">אין עדיין סרטון.</p>'}
+  ${d.files.loop ? `<video class="clip" data-src="${p(d.files.loop)}" muted loop playsinline controls preload="none" poster="${p(d.files.start)}"></video>` : '<p class="sub">אין עדיין סרטון.</p>'}
+  <details class="more"><summary>פרטי התרגיל</summary><div class="more-body">
     <div class="frames">
       <figure><img src="${p(d.files.start)}" alt="התחלה" loading="lazy"><figcaption>התחלה · ${esc(d.start)}</figcaption></figure>
       <figure><img src="${p(d.files.end)}" alt="סוף" loading="lazy"><figcaption>סוף · ${esc(d.end)}</figcaption></figure>
       ${d.files.poseStart ? `<figure class="pose"><img src="${p(d.files.poseStart)}" alt="בובה, התחלה" loading="lazy"><figcaption>הבובה · התחלה</figcaption></figure>
       <figure class="pose"><img src="${p(d.files.poseEnd)}" alt="בובה, סוף" loading="lazy"><figcaption>הבובה · סוף</figcaption></figure>` : ''}
     </div>
-  </div>
   <div class="two">
     <section><h3>זווית צילום</h3><p>${esc(d.camera.view)}<span class="why">${esc(d.camera.why)}</span></p></section>
     <section><h3>מה קבוע ומה זז</h3><p><b>קבוע:</b> ${esc(d.still)}</p><p><b>זז:</b> ${esc(d.moves)}</p></section>
@@ -105,6 +113,7 @@ function sheetHTML(d, dir) {
     <ul>${li(d.sources, (s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a></li>`)}</ul>
     <pre>${esc(JSON.stringify(d.production, null, 1))}</pre>
   </details>
+  </div></details>
 </article>`;
 }
 (async () => {
@@ -114,6 +123,13 @@ function sheetHTML(d, dir) {
     const sheets = await Promise.all(dirs.map(async (dir) => [dir, await (await fetch(dir + '/sheet.json')).json()]));
     document.getElementById('nav').innerHTML = sheets.map(([, d]) => `<a href="#${esc(d.id)}">${esc(d.name.he)}</a>`).join('');
     list.innerHTML = sheets.map(([dir, d]) => sheetHTML(d, dir)).join('');
+    /* a clip loads and plays only while it is on screen - with dozens on one page a phone
+       would otherwise fetch and decode all of them at once */
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      const v = e.target;
+      if (e.isIntersecting) { if (!v.src) v.src = v.dataset.src; v.play().catch(() => {}); } else v.pause();
+    }), { rootMargin: '200px 0px' });
+    document.querySelectorAll('video.clip').forEach((v) => io.observe(v));
     if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
   } catch (e) { list.innerHTML = '<p class="lead">הדפים לא נטענו (' + esc(e.message) + '). הדף צריך שרת: פתח אותו דרך GitHub Pages ולא כקובץ.</p>'; }
 })();
