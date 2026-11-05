@@ -1,6 +1,6 @@
 // Render one repetition of the mannequin as a clip, frame by frame from pose(t) - free, and exact
 // to the research's angles, which is what the video model cannot be told in words (Asaf, 5 Nov).
-// node tools/r3d/pose/anim.mjs <exercise> <out.mp4> [look=a|glow] [frames=48]
+// node tools/r3d/pose/anim.mjs <exercise> <out.mp4> [look=a|glow] [frames=48] [once]
 // The rep eases in and out (a smooth start and turn), and the clip is the rep then its reverse,
 // so it loops. Needs an exercise whose poses are written as pose(t); calf is the first.
 import fs from 'fs'; import http from 'http'; import path from 'path'; import os from 'os';
@@ -35,6 +35,8 @@ for (let i = 0; i < N; i++) {
   fs.writeFileSync(path.join(frames, String(i).padStart(3, '0') + '.png'), Buffer.from(s.result.data, 'base64'));
 }
 ws.close(); chrome.kill(); server.close();
-execFileSync(FF, ['-v', 'error', '-y', '-framerate', '24', '-i', path.join(frames, '%03d.png'), '-filter_complex', '[0:v]scale=540:540,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0,format=yuv420p', '-c:v', 'libx264', '-crf', '24', '-movflags', '+faststart', OUT]);
+/* `once`: the rep one way only - the shape a video model takes as a motion reference */
+const ONCE = FLAGS.includes('once');
+execFileSync(FF, ['-v', 'error', '-y', '-framerate', '24', '-i', path.join(frames, '%03d.png'), '-filter_complex', ONCE ? '[0:v]scale=720:720,format=yuv420p' : '[0:v]scale=540:540,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0,format=yuv420p', '-c:v', 'libx264', '-crf', '24', '-movflags', '+faststart', OUT]);
 console.log(OUT, N, 'frames each way');
 process.exit(0);
