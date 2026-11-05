@@ -3,6 +3,7 @@
 <title>Pose Guide</title>
 <style>html,body{margin:0;background:#140f0c}canvas{display:block}#ang{position:fixed;left:14px;top:12px;font:600 15px/1.5 system-ui,sans-serif;color:#ffd27a;white-space:pre}</style>
 <div id="ang"></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 /* A POSE GUIDE, NOT A FIGURE (4 Nov). The image model cannot hold an angle:
    asked for elbows 45-60 degrees from the torso it drew them at the ribs.
@@ -12,7 +13,11 @@
    still then goes to the image model as the pose to copy, not to guess.
    Units are metres; y is up. ?ex=<name>&kf=<0|1> picks an exercise and a
    keyframe from poses.js. */
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { POSES } from './poses.js';
 const q = new URLSearchParams(location.search), ex = POSES[q.get('ex')], kf = +(q.get('kf') || 0);
 const S = 900;
@@ -21,9 +26,23 @@ renderer.setSize(S, S); renderer.setPixelRatio(1); document.body.appendChild(ren
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x140f0c);
 scene.add(new THREE.HemisphereLight(0xffe2b0, 0x2a1a10, 1.1));
 const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(2, 4, 3); scene.add(key);
-const body = new THREE.MeshStandardMaterial({ color: 0xe0a050, emissive: 0x6a3a10, roughness: 0.6 });
-const joint = new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0x8a5a1c, roughness: 0.5 });
-const kit = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, emissive: 0x2a1a0c, roughness: 0.8 });
+/* ?look=glow (5 Nov): the approved look, from tools/r3d/stage.html - the figure brighter where
+   its surface turns away from the eye, a warm translucent body inside, the kit as dim amber
+   outlines, a pool of light on the ground, then bloom. The question it answers: how close can
+   code alone come to the Higgsfield frames, before a credit is spent. */
+const look = q.get('look'), GLOW = look === 'glow';
+function fres(cIn, cRim, k) {
+  return new THREE.ShaderMaterial({
+    uniforms: { cIn: { value: new THREE.Color(cIn) }, cRim: { value: new THREE.Color(cRim) }, k: { value: k } },
+    vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }',
+    fragmentShader: 'uniform vec3 cIn; uniform vec3 cRim; uniform float k; varying vec3 vN; varying vec3 vV; void main(){ float f = 1.0-abs(dot(normalize(vN),normalize(vV))); float rim = pow(f,2.2); float body = 0.32+0.25*pow(1.0-f,1.5); gl_FragColor = vec4((cIn*body+cRim*rim*1.35)*k, 0.55+rim*0.45); }',
+    transparent: true, depthWrite: true, blending: THREE.AdditiveBlending });
+}
+const body = GLOW ? fres(0xb8661a, 0xffd27a, 1) : new THREE.MeshStandardMaterial({ color: 0xe0a050, emissive: 0x6a3a10, roughness: 0.6 });
+const joint = GLOW ? body : new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0x8a5a1c, roughness: 0.5 });
+const kit = GLOW ? new THREE.MeshBasicMaterial({ color: 0x5a3410, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+  : new THREE.MeshStandardMaterial({ color: 0x8a6a4a, emissive: 0x2a1a0c, roughness: 0.8 });
+const edges = (g) => { if (GLOW) g.add(new THREE.LineSegments(new THREE.EdgesGeometry(g.geometry, 25), new THREE.LineBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending }))); return g; };
 const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 /* a limb: a capsule between two joints */
 function limb(a, b, r, m) {
@@ -34,9 +53,9 @@ function limb(a, b, r, m) {
   scene.add(g);
 }
 function ball(p, r, m) { const g = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14), m || joint); g.position.copy(V(p)); scene.add(g); }
-function box(c, s, m, rz) { const g = new THREE.Mesh(new THREE.BoxGeometry(s[0], s[1], s[2]), m || kit); g.position.copy(V(c)); if (rz) g.rotation.z = rz * Math.PI / 180; scene.add(g); }
+function box(c, s, m, rz) { const g = edges(new THREE.Mesh(new THREE.BoxGeometry(s[0], s[1], s[2]), m || kit)); g.position.copy(V(c)); if (rz) g.rotation.z = rz * Math.PI / 180; scene.add(g); }
 /* a roller pad or a pulley: a cylinder along an axis */
-function cyl(c, axis, r, len) { const g = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 24), kit); g.position.copy(V(c)); g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), V(axis).normalize()); scene.add(g); }
+function cyl(c, axis, r, len) { const g = edges(new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 24), kit)); g.position.copy(V(c)); g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), V(axis).normalize()); scene.add(g); }
 /* a dumbbell: a handle along `axis` with a hexagonal head at each end */
 function dumbbell(c, axis, len) {
   const C = V(c), A = V(axis).normalize(), h = (len || 0.32) / 2;
@@ -54,7 +73,8 @@ function barbell(c, len, plateR) {
     g.position.set(c[0], c[1], c[2] + s * (len / 2 - 0.12)); g.rotation.x = Math.PI / 2; scene.add(g);
   }
 }
-const P = ex.keyframes[kf](), J = P.joints;
+/* ?t=0..1 - a moment inside the rep, for an exercise whose pose is written as a function of it */
+const tq = q.get('t'), P = tq != null && ex.pose ? ex.pose(+tq) : ex.keyframes[kf](), J = P.joints;
 /* the skeleton: every pair is a limb, every joint a ball */
 const BONES = [['head', 'neck', 0.075], ['neck', 'chest', 0.07], ['chest', 'pelvis', 0.11], ['lsh', 'rsh', 0.055], ['lhip', 'rhip', 0.07],
   ['lsh', 'lel', 0.045], ['lel', 'lwr', 0.038], ['rsh', 'rel', 0.045], ['rel', 'rwr', 0.038],
@@ -76,13 +96,12 @@ for (const k of ['lsh', 'rsh', 'lel', 'rel', 'lwr', 'rwr', 'lhip', 'rhip', 'lkn'
    says: the trunk's front comes from the pose's `front`, and a limb's front is the trunk's
    front carried round by the same rotation that turned the limb - so a quad stays on top
    of a seated thigh and a hamstring under a prone one, whatever the pose. */
-const look = q.get('look');
 if (look === 'b') {
   body.color.set(0x3a2c22); body.emissive.set(0x120a06); joint.color.set(0x4a382a); joint.emissive.set(0x140c06);
   kit.color.set(0x3a3028); kit.emissive.set(0x0c0805);
 }
 if (look && ex.m) {
-  const glow = new THREE.MeshStandardMaterial(look === 'b' ? { color: 0xff9050, emissive: 0xff5a1a, emissiveIntensity: 0.9, roughness: 0.5 } : { color: 0xffd890, emissive: 0xffb040, emissiveIntensity: 0.75, roughness: 0.5 });
+  const glow = GLOW ? fres(0xffb347, 0xfff1c8, 1.7) : new THREE.MeshStandardMaterial(look === 'b' ? { color: 0xff9050, emissive: 0xff5a1a, emissiveIntensity: 0.9, roughness: 0.5 } : { color: 0xffd890, emissive: 0xffb040, emissiveIntensity: 0.75, roughness: 0.5 });
   const halo = new THREE.MeshBasicMaterial({ color: look === 'b' ? 0xff7a30 : 0xffe6a8, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false });
   const U = V(J.neck).sub(V(J.pelvis)).normalize();
   const F = V(ex.front).addScaledVector(U, -V(ex.front).dot(U)).normalize();
@@ -120,13 +139,23 @@ if (look && ex.m) {
   for (const m of ex.m) if (MUSCLE[m]) MUSCLE[m](); else throw new Error('no belly for muscle ' + m);
 }
 if (q.get('clean')) document.getElementById('ang').style.display = 'none';
-box([0, -0.005, 0], [6, 0.01, 6], new THREE.MeshStandardMaterial({ color: look === 'b' ? 0x140d09 : 0x241810, roughness: 1 }));
+if (GLOW) {
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.ShaderMaterial({ uniforms: { c: { value: new THREE.Color(0xf0a92e) } },
+    vertexShader: 'varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: 'uniform vec3 c; varying vec2 vP; void main(){ float d = length(vP/vec2(1.65,1.1)); gl_FragColor = vec4(c*exp(-d*d*2.6)*0.28, 1.0); }',
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  g.rotation.x = -Math.PI / 2; g.position.set(J.pelvis[0], 0, 0); scene.add(g);
+} else box([0, -0.005, 0], [6, 0.01, 6], new THREE.MeshStandardMaterial({ color: look === 'b' ? 0x140d09 : 0x241810, roughness: 1 }));
 const cam = new THREE.PerspectiveCamera(ex.camera.fov || 30, 1, 0.05, 50);
 /* ?alt=1: a second, checking view - three-quarter from in front and above - for what a
    pure side view hides (a foot turned the wrong way, a limb inside the trunk) */
 if (q.get('alt')) { const at = ex.camera.at; cam.position.set(at[0] + 2.0, at[1] + 1.7, at[2] + 2.3); cam.lookAt(V(at)); }
 else { cam.position.copy(V(ex.camera.pos)); cam.lookAt(V(ex.camera.at)); }
-renderer.render(scene, cam);
+if (GLOW) {
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  const comp = new EffectComposer(renderer); comp.addPass(new RenderPass(scene, cam));
+  comp.addPass(new UnrealBloomPass(new THREE.Vector2(S, S), 0.55, 0.5, 0.2)); comp.addPass(new OutputPass()); comp.render();
+} else renderer.render(scene, cam);
 /* the numbers, measured back off the joints that were drawn */
 const flat = (p, m) => m && m.side ? [p[0], p[1], 0] : p;
 const ang = (a, o, b, m) => { const u = V(flat(a, m)).sub(V(flat(o, m))).normalize(), w = V(flat(b, m)).sub(V(flat(o, m))).normalize(); return Math.round(THREE.MathUtils.radToDeg(Math.acos(Math.max(-1, Math.min(1, u.dot(w)))))); };

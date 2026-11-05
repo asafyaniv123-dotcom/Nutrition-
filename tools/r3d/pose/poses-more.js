@@ -264,8 +264,11 @@ export const MORE = {
       { kf: 0, text: '...ומתחת לראש הבלוק', src: 'מחקר x176', m: { dy: ['lheel', 'block'] }, min: -10, max: -2 },
       { kf: 1, text: 'למעלה, כ־30° מעל', src: 'מחקר x176, נקודת המפנה', m: { horiz: ['lheel', 'lball'] }, min: 25, max: 35 },
     ],
-    keyframes: [0, 1].map((up) => () => {
-      const ball = [0.06, 0.15, 0.10], a = rad(up ? 30 : -18);
+    /* up runs 0..1 (pose.html ?t=): the foot turns about the ball of the foot from 18 degrees
+       heel-down to 30 heel-up, and the straight body rides on the ankle */
+    keyframes: [0, 1].map((up) => () => MORE.calf.pose(up)),
+    pose: (up) => {
+      const ball = [0.06, 0.15, 0.10], a = rad(-18 + 48 * up);
       const f = [-Math.cos(a), Math.sin(a), 0], u = [Math.sin(a), Math.cos(a), 0];
       const heel = add(ball, f, 0.20), ankle = add(add(ball, f, 0.13), u, 0.08);
       const J = { lan: ankle, lheel: heel, ltoe: add(ball, [0.06, -0.01, 0]), lball: ball, block: [0, 0.15, 0], floor: [0, 0, 0] };
@@ -276,6 +279,6 @@ export const MORE = {
       mirror(J);
       return { joints: J, props: [{ box: [0.03, 0.075, 0], size: [0.30, 0.15, 0.60] }, { box: [J.lsh[0], J.lsh[1] + 0.07, 0], size: [0.14, 0.06, 0.62] },
         { box: [0.55, 1.1, 0], size: [0.12, 2.2, 0.30] }, { line: [[J.lsh[0] + 0.07, J.lsh[1] + 0.07, 0], [0.5, J.lsh[1] + 0.07, 0]], r: 0.025 }] };
-    }),
+    },
   },
 };
