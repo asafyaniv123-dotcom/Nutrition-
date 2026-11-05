@@ -77,7 +77,11 @@ export const POSES = {
       { kf: 'both', text: 'הגב העליון על קצה הספסל', src: 'מחקר x159', m: { dy: ['lsh', 'benchTop'] }, min: -4, max: 4 },
       { kf: 0, text: 'בתחתית הגו בכ־30°–45° מהאופק', src: 'מחקר x159 (30°–35°); ExRx (כ־45°)', m: { horiz: ['chest', 'pelvis'] }, min: 30, max: 45 },
       { kf: 0, text: 'הישבן ממש מעל הרצפה', src: 'מחקר x159, התחלה', m: { dy: ['pelvis', 'floor'] }, min: 12, max: 22 },
-      { kf: 0, text: 'בתחתית הברך בכ־110°', src: 'מחקר x159, טבלת זמנים', m: { at: ['lhip', 'lkn', 'lan'], side: true }, min: 100, max: 120 },
+      /* "knee about 110 at the bottom" was the research's own timing-table default, not a
+         published number; vertical shins at the top is the published definition of a correct
+         rep (Plotkin 2023). With the feet fixed the bottom knee follows from it - 77 here -
+         so the row records the consequence instead of fighting it (5 Nov). */
+      { kf: 0, text: 'בתחתית הברך נובעת מהשוק האנכית למעלה (Plotkin 2023)', src: 'Plotkin et al. 2023; מחקר x159', m: { at: ['lhip', 'lkn', 'lan'], side: true }, min: 70, max: 85 },
       { kf: 1, text: 'כתף, אגן וברך בקו ישר', src: 'הספרייה; ExRx ("until straight")', m: { at: ['lsh', 'lhip', 'lkn'], side: true }, min: 175, max: 180 },
       { kf: 1, text: 'השוק אנכית למעלה', src: 'הספרייה; מחקר x159', m: { tilt: ['lkn', 'lan'] }, min: 0, max: 4 },
     ],
