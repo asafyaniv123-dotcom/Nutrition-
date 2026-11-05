@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>דפי תרגיל</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;800&display=swap">
+<style>
+/* THE EXERCISE SHEETS (Asaf, 5 Nov): what Mip's model sheet is to Mip, a sheet is to an
+   exercise - the one place every frame, clip and line of text about it is drawn from.
+   Each folder holds sheet.json plus its pictures; this page only reads them. A frame or a
+   clip that disagrees with its sheet is wrong, not the sheet. */
+:root{--ground:#140f0c;--card:#1d1612;--line:#33261d;--ink:#f2e2c8;--soft:#c2a98c;--amber:#e8a24e;--ok:#9cc37a;--bad:#e58066;
+  --f:Assistant,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+/* grid children default to min-width:auto, and a table's widest row then widens the page */
+main>*,article>*,.two>*,section{min-width:0}
+body{overflow-wrap:anywhere}
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.6 var(--f);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px}
+main{max-width:920px;margin:0 auto;display:grid;gap:28px}
+h1{margin:0;font-size:1.6rem}
+.lead{margin:0;color:var(--soft);max-width:65ch}
+nav{display:flex;flex-wrap:wrap;gap:8px}
+nav a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.9rem}
+nav a:focus-visible,nav a:hover{border-color:var(--amber)}
+article{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:18px;scroll-margin-top:12px}
+article>header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+article h2{margin:0;font-size:1.35rem}
+.tag{color:var(--amber);font-weight:500}.sub{color:var(--soft);font-size:.9rem}
+.status{font-size:.8rem;border:1px solid var(--line);border-radius:999px;padding:1px 10px;color:var(--soft)}
+.hero{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;align-items:start}
+@media (max-width:680px){.hero{grid-template-columns:1fr}}
+video,.frames img{width:100%;height:auto;display:block;border-radius:6px;background:#000}
+.frames{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.frames figure{margin:0;display:grid;gap:4px}
+.frames figcaption{font-size:.8rem;color:var(--soft)}
+.pose{opacity:.85}
+h3{margin:0 0 6px;font-size:1rem;color:var(--amber)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:680px){.two{grid-template-columns:1fr}}
+section>p{margin:0}
+ol,ul{margin:0;padding-inline-start:20px;display:grid;gap:6px}
+li small{color:var(--soft)}
+.why{display:block;color:var(--soft);font-size:.9rem}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{text-align:start;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--soft);font-weight:500}
+.pass{color:var(--ok)}.fail{color:var(--bad)}
+.open li{color:var(--bad)}
+a{color:var(--amber)}
+details summary{cursor:pointer;color:var(--soft)}
+pre{white-space:pre-wrap;font-size:.8rem;color:var(--soft);margin:6px 0 0}
+</style>
+</head>
+<body>
+<main>
+<header style="display:grid;gap:8px">
+  <h1>דפי תרגיל</h1>
+  <p class="lead">לכל תרגיל דף אחד, כמו דף הדמות של מיפ: התנוחה בהתחלה ובסוף, זווית הצילום שבה רואים את התנועה, מה שאסור לו לזוז, הדגשים, הטעויות הנפוצות, והמספרים שהבובה נבדקה מולם. כל פריים וכל סרטון של התרגיל מצוירים מהדף הזה.</p>
+  <nav id="nav"></nav>
+</header>
+<div id="list" style="display:grid;gap:28px"><p class="lead">טוען…</p></div>
+</main>
+<script>
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const li = (arr, f) => (arr || []).map(f).join('');
+function sheetHTML(d, dir) {
+  const p = (f) => dir + '/' + f;
+  const spec = (d.spec || []).map((r) => `<tr><td>${esc(r.text)}</td><td>${esc(r.when)}</td><td>${esc(r.range)}</td><td class="${r.ok ? 'pass' : 'fail'}">${esc(r.val)} ${r.ok ? '✓' : '✗'}</td><td><small>${esc(r.src)}</small></td></tr>`).join('');
+  return `<article id="${esc(d.id)}">
+  <header><h2>${esc(d.name.he)}</h2><span class="tag">${esc((d.muscle || []).join(', '))}</span><span class="sub">${esc(d.name.en)} · ${esc(d.id)}</span><span class="status">${esc(d.status)}</span></header>
+  <div class="hero">
+    ${d.files.loop ? `<video src="${p(d.files.loop)}" autoplay muted loop playsinline controls preload="metadata"></video>` : '<p class="sub">אין עדיין סרטון.</p>'}
+    <div class="frames">
+      <figure><img src="${p(d.files.start)}" alt="התחלה" loading="lazy"><figcaption>התחלה · ${esc(d.start)}</figcaption></figure>
+      <figure><img src="${p(d.files.end)}" alt="סוף" loading="lazy"><figcaption>סוף · ${esc(d.end)}</figcaption></figure>
+      <figure class="pose"><img src="${p(d.files.poseStart)}" alt="בובה, התחלה" loading="lazy"><figcaption>הבובה · התחלה</figcaption></figure>
+      <figure class="pose"><img src="${p(d.files.poseEnd)}" alt="בובה, סוף" loading="lazy"><figcaption>הבובה · סוף</figcaption></figure>
+    </div>
+  </div>
+  <div class="two">
+    <section><h3>זווית צילום</h3><p>${esc(d.camera.view)}<span class="why">${esc(d.camera.why)}</span></p></section>
+    <section><h3>מה קבוע ומה זז</h3><p><b>קבוע:</b> ${esc(d.still)}</p><p><b>זז:</b> ${esc(d.moves)}</p></section>
+  </div>
+  ${d.setup && d.setup.length ? `<section><h3>הכנה</h3><ul>${li(d.setup, (s) => `<li>${esc(s)}</li>`)}</ul></section>` : ''}
+  <div class="two">
+    <section><h3>דגשים</h3><ol>${li(d.cues, (c) => `<li>${esc(c.text)} <small>(${esc(c.src)})</small></li>`)}</ol></section>
+    <section><h3>טעויות נפוצות</h3><ol>${li(d.mistakes, (m) => `<li>${esc(m.text)}<span class="why">${esc(m.why)} <small>(${esc(m.src)})</small></span></li>`)}</ol></section>
+  </div>
+  ${d.tempo && d.tempo.length ? `<section><h3>קצב החזרה</h3><div class="scroll"><table><tr><th>זמן</th><th>מה קורה</th></tr>${li(d.tempo, (t) => `<tr><td>${esc(t.t)}</td><td>${esc(t.state)}</td></tr>`)}</table></div>${d.breathing ? `<p class="sub">נשימה: ${esc(d.breathing)}</p>` : ''}</section>` : ''}
+  <section><h3>הבדיקות על הבובה</h3><div class="scroll"><table><tr><th>מה המחקר אומר</th><th>מתי</th><th>טווח</th><th>נמדד</th><th>מקור</th></tr>${spec}</table></div></section>
+  ${(d.variations && (d.variations.easier.length || d.variations.harder.length || d.variations.substitute.length)) ? `<section><h3>גרסאות</h3><ul>${li(d.variations.easier, (s) => `<li>קל יותר: ${esc(s)}</li>`)}${li(d.variations.harder, (s) => `<li>קשה יותר: ${esc(s)}</li>`)}${li(d.variations.substitute, (s) => `<li>תחליף: ${esc(s)}</li>`)}</ul></section>` : ''}
+  ${d.safety && d.safety.length ? `<section><h3>בטיחות</h3><ul>${li(d.safety, (s) => `<li>${esc(s)}</li>`)}</ul></section>` : ''}
+  ${(d.open && d.open.length) ? `<section class="open"><h3>פתוח, מחכה להחלטה</h3><ul>${li(d.open, (s) => `<li>${esc(s)}</li>`)}</ul></section>` : ''}
+  ${d.app_text_conflicts && d.app_text_conflicts.length ? `<section><h3>מה הטקסט באפליקציה אומר אחרת</h3><ul>${li(d.app_text_conflicts, (s) => `<li>${esc(s)}</li>`)}</ul></section>` : ''}
+  <details><summary>מקורות והפקה</summary>
+    <ul>${li(d.sources, (s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a></li>`)}</ul>
+    <pre>${esc(JSON.stringify(d.production, null, 1))}</pre>
+  </details>
+</article>`;
+}
+(async () => {
+  const list = document.getElementById('list');
+  try {
+    const dirs = await (await fetch('sheets.json')).json();
+    const sheets = await Promise.all(dirs.map(async (dir) => [dir, await (await fetch(dir + '/sheet.json')).json()]));
+    document.getElementById('nav').innerHTML = sheets.map(([, d]) => `<a href="#${esc(d.id)}">${esc(d.name.he)}</a>`).join('');
+    list.innerHTML = sheets.map(([dir, d]) => sheetHTML(d, dir)).join('');
+    if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+  } catch (e) { list.innerHTML = '<p class="lead">הדפים לא נטענו (' + esc(e.message) + '). הדף צריך שרת: פתח אותו דרך GitHub Pages ולא כקובץ.</p>'; }
+})();
+</script>
+</body>
+</html>
