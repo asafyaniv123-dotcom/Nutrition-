@@ -18,7 +18,8 @@ const dir = `${R.id}-${P.slug}`, D = path.join(ROOT, dir); fs.mkdirSync(D, { rec
 ff(['-i', P.start_png, '-vf', 'scale=768:-1', '-q:v', '4', path.join(D, 'start.jpg')]);
 ff(['-i', P.end_png, '-vf', 'scale=768:-1', '-q:v', '4', path.join(D, 'end.jpg')]);
 let clip = P.clip_mp4;
-if (P.trim) { clip = path.join(os.tmpdir(), `trim-${R.id}.mp4`); ff(['-i', P.clip_mp4, '-vf', `trim=start_frame=${P.trim.from_frame},setpts=${P.trim.slow || 1.4}*(PTS-STARTPTS),fps=24`, '-an', '-c:v', 'libx264', '-crf', '18', clip]); }
+if (P.trim) { clip = path.join(os.tmpdir(), `trim-${R.id}.mp4`); /* past about 1.6x, repeated frames stutter, so new frames are interpolated in between */
+ff(['-i', P.clip_mp4, '-vf', `trim=start_frame=${P.trim.from_frame},setpts=${P.trim.slow || 1.4}*(PTS-STARTPTS)` + ((P.trim.slow || 1.4) > 1.6 ? ',minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1' : ',fps=24'), '-an', '-c:v', 'libx264', '-crf', '18', clip]); }
 ff(['-i', clip, '-filter_complex', '[0:v]scale=540:540,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0,format=yuv420p', '-an', '-c:v', 'libx264', '-crf', '26', '-preset', 'slow', '-movflags', '+faststart', path.join(D, 'loop.mp4')]);
 const sheet = {
   id: R.id, slug: P.slug, name: { he: L.n, en: L.en }, muscle: L.m, equipment: L.q,
