@@ -18,6 +18,7 @@ const BENCH = [{ box: [-0.25, 0.42, 0], size: [1.2, 0.06, 0.30] }, { box: [-0.75
 
 export const POSES = {
   bench: {
+    id: 'x2', m: ['חזה'], front: [0, 1, 0],
     name: 'לחיצת חזה במשקולות', kfNames: ['למעלה', 'למטה'],
     camera: { pos: [2.1, 2.0, 2.5], at: [-0.15, 0.55, 0], fov: 33 },
     measures: [
@@ -62,6 +63,7 @@ export const POSES = {
      degrees: the research's "about 110 at the bottom" cannot hold at the same time, and
      the spec says so rather than hiding it. */
   hipthrust: {
+    id: 'x159', m: ['ישבן'], front: [0, 1, 0],
     name: "היפ ת'ראסט", kfNames: ['למטה', 'למעלה'],
     camera: { pos: [0.25, 0.6, 4.4], at: [0.25, 0.33, 0], fov: 30 },
     measures: [

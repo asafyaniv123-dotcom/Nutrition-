@@ -32,6 +32,7 @@ const DB = (J, p, up, axis, len) => ({ dumbbell: add(J[p + 'wr'], [0, up, 0]), a
 
 export const MORE = {
   incline: {
+    id: 'x4', m: ['חזה'], front: [0.5, 0.87, 0],
     name: 'לחיצת חזה בשיפוע', kfNames: ['למעלה', 'למטה'],
     camera: { pos: [0.1, 1.0, 3.6], at: [-0.1, 0.75, 0], fov: 32 },
     measures: [{ label: 'משענת מהאופק', horiz: ['chest', 'pelvis'] }, { label: 'זרוע עליונה מהגו', at: ['lel', 'lsh', 'lhip'] }, { label: 'אמה מהאנך', tilt: ['lel', 'lwr'] }],
@@ -68,6 +69,7 @@ export const MORE = {
   },
 
   cablerow: {
+    id: 'x48', m: ['גב'], front: [1, 0, 0],
     name: 'חתירה בפולי בישיבה', kfNames: ['זרועות ישרות', 'הידית בבטן'],
     camera: { pos: [0.55, 1.0, 3.5], at: [0.55, 0.7, 0], fov: 32 },
     measures: [{ label: 'גו מהאנך', tilt: ['pelvis', 'neck'] }, { label: 'ברך', at: ['lhip', 'lkn', 'lan'], side: true }, { label: 'מרפק', at: ['lsh', 'lel', 'lwr'] }],
@@ -105,6 +107,7 @@ export const MORE = {
   },
 
   onearm: {
+    id: 'x44', m: ['גב'], front: [0, -1, 0],
     name: 'חתירה במשקולת יד', kfNames: ['זרוע תלויה', 'המשקולת במותן'],
     camera: { pos: [0.15, 0.9, -3.6], at: [0.15, 0.72, 0], fov: 32 },
     measures: [{ label: 'גו מהאופק', horiz: ['pelvis', 'neck'] }, { label: 'אמה מהאנך', tilt: ['rel', 'rwr'] }, { label: 'מרפק מעל קו הגב (ס"מ)', dy: ['rel', 'rsh'] }],
@@ -136,6 +139,7 @@ export const MORE = {
   },
 
   lateral: {
+    id: 'x78', m: ['כתפיים'], front: [1, 0, 0],
     name: 'הרחקת כתף', kfNames: ['ידיים למטה', 'גובה הכתף'],
     camera: { pos: [2.7, 1.45, 1.6], at: [0, 1.0, 0], fov: 34 },
     measures: [{ label: 'זרוע עליונה מהאופק', horiz: ['lsh', 'lel'] }, { label: 'מרפק', at: ['lsh', 'lel', 'lwr'] }, { label: 'ברך', at: ['lhip', 'lkn', 'lan'] }],
@@ -160,6 +164,7 @@ export const MORE = {
   },
 
   legext: {
+    id: 'x140', m: ['ארבע ראשי'], front: [1, 0, 0],
     name: 'פשיטת ברך', kfNames: ['ברך ב-90°', 'כמעט ישרה'],
     camera: { pos: [0.25, 0.85, 3.4], at: [0.25, 0.65, 0], fov: 32 },
     measures: [{ label: 'ברך', at: ['lhip', 'lkn', 'lan'], side: true }, { label: 'ירך מהאופק', horiz: ['lhip', 'lkn'] }],
@@ -184,6 +189,7 @@ export const MORE = {
   },
 
   legcurl: {
+    id: 'x153', m: ['ירך אחורית'], front: [0, -1, 0],
     name: 'כפיפת ברך בשכיבה', kfNames: ['רגליים כמעט ישרות', 'השוק עברה את האנך'],
     camera: { pos: [0.0, 1.15, 3.6], at: [0.05, 0.85, 0], fov: 32 },
     measures: [{ label: 'ברך (מהצד)', at: ['lhip', 'lkn', 'lan'], side: true }, { label: 'ירך-גו (מהצד)', at: ['lsh', 'lhip', 'lkn'], side: true }],
@@ -218,6 +224,7 @@ export const MORE = {
   },
 
   goblet: {
+    id: 'x130', m: ['ארבע ראשי'], front: [1, 0, 0],
     name: 'סקוואט גובלט', kfNames: ['עמידה', 'תחתית'],
     camera: { pos: [3.3, 1.35, 2.3], at: [0, 0.88, 0], fov: 34 },
     measures: [{ label: 'ירך מתחת לברך (ס"מ)', dy: ['lkn', 'lhip'] }, { label: 'גו מהאנך', tilt: ['pelvis', 'neck'] }],
@@ -245,6 +252,7 @@ export const MORE = {
   },
 
   calf: {
+    id: 'x176', m: ['תאומים'], front: [1, 0, 0],
     name: 'הרמת עקבים בעמידה', kfNames: ['עקב מתחת לבלוק', 'על הבהונות'],
     camera: { pos: [0.2, 1.05, 4.8], at: [0.1, 0.98, 0], fov: 34 },
     measures: [{ label: 'כף רגל מהאופק', horiz: ['lheel', 'lball'] }, { label: 'ברך', at: ['lhip', 'lkn', 'lan'], side: true }],
