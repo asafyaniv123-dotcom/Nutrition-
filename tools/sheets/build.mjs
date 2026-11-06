@@ -9,8 +9,9 @@
 import fs from 'fs'; import path from 'path'; import os from 'os'; import { execFileSync } from 'child_process';
 const [RES, PROD] = process.argv.slice(2);
 const R = JSON.parse(fs.readFileSync(RES, 'utf8')), P = JSON.parse(fs.readFileSync(PROD, 'utf8'));
-const ROOT = new URL('../../exercise-sheets/', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
-const L = JSON.parse(fs.readFileSync(path.join(ROOT, '../data/exercises.json'), 'utf8')).exercises.find((e) => e.id === R.id);
+/* the round-3 sheets are a draft since 6 Nov (Asaf: start over - two frames, his approval, a GIF; see gif.mjs) */
+const ROOT = new URL('../../drafts/exercise-sheets-v1/', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
+const L = JSON.parse(fs.readFileSync(path.join(ROOT, '../../data/exercises.json'), 'utf8')).exercises.find((e) => e.id === R.id);
 if (!L) throw new Error('no library entry for ' + R.id);
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 const ff = (a) => execFileSync(FF, ['-v', 'error', '-y', ...a]);
