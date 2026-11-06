@@ -45,4 +45,8 @@ for (let i = 0; i < hold; i++) frames.push(b);
 change(b, a);
 ff(['-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${N}x${N}`, '-r', String(FPS), '-i', '-', '-filter_complex',
   'split[s1][s2];[s1]palettegen=max_colors=256:stats_mode=full[p];[s2][p]paletteuse=dither=sierra2_4a', '-loop', '0', path.join(OUT, NAME)], Buffer.concat(frames));
+/* the same cycle as a video, for the app: a GIF is 1.5-2 MB, this is a tenth of it, and the app's
+   "how it looks" already plays assets/exdemo/<id>.mp4 in a looping <video> */
+ff(['-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${N}x${N}`, '-r', String(FPS), '-i', '-', '-c:v', 'libx264', '-crf', '22', '-preset', 'slow',
+  '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', path.join(OUT, NAME.replace(/\.gif$/, '.mp4'))], Buffer.concat(frames));
 console.log(`${NAME}: ${frames.length} frames, ${(frames.length / FPS).toFixed(1)} s, ${fs.statSync(path.join(OUT, NAME)).size} bytes`);

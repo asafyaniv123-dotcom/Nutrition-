@@ -35,3 +35,13 @@ press (hips stay on the pad, knees not locked), x72 dumbbell shoulder press
 (seated against an upright back rest, the report's safest choice). Their
 frames were built from the written spec alone: the good references for these
 six are CC BY-SA, whose terms would carry over to a close redraw.
+
+## 6 Nov: two poses and a cross-fade
+
+From here on a loop is made the way exercise-sheets/ describes: Asaf sends two
+poses (or a screen recording of a reference GIF, read by
+tools/sheets/poses-from-video.mjs), each is copied in the app's style and he
+approves it, tools/sheets/align.mjs makes the still body identical in both, and
+tools/sheets/gif.mjs writes the cycle - 1.0 s on each pose, a 0.6 s cross-fade -
+as anim.gif for the review page and anim.mp4 for here. No video model. Twelve so
+far: x13 x24 x236 x6 x84 x115 x67 x82 x74 x86 x17 x237.
