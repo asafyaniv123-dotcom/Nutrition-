@@ -10,7 +10,10 @@
    they are copied in the app's style, he approves the two frames, and the animation is a GIF
    that only moves between them. progress.json says where each exercise stands; the checklist
    is every exercise in data/exercises.json, so none can be missed. The earlier sheets are a
-   draft in drafts/exercise-sheets-v1/. */
+   draft in drafts/exercise-sheets-v1/.
+   Only what he APPROVED is on this page (his ask, 6 Nov): an exercise waiting for him is on
+   review.html and nowhere here - not in the feed and not as a mark in the checklist. The muscle
+   chips filter both, by any of the exercise's muscles, not only its first. */
 :root{--ground:#140f0c;--card:#1d1612;--line:#33261d;--ink:#f2e2c8;--soft:#c2a98c;--amber:#e8a24e;--ok:#9cc37a;--wait:#8a7560;
   --f:Assistant,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
 *{box-sizing:border-box}
@@ -24,12 +27,19 @@ h2{margin:0;font-size:1.25rem}
 .count{display:grid;gap:6px}
 .bar{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
 .bar>i{display:block;height:100%;background:var(--amber)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:inherit;font-size:.92rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;
+  padding:4px 12px;min-height:36px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chips button span{color:var(--soft);font-size:.8rem;font-variant-numeric:tabular-nums}
+.chips button[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:#1a120c}
+.chips button[aria-pressed="true"] span{color:#1a120c}
 .feed{display:grid;gap:24px}
 article{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;scroll-margin-top:12px}
 article header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
 article h3{margin:0;font-size:1.2rem}
 .sub{color:var(--soft);font-size:.9rem}
-.pending{color:var(--amber);font-size:.85rem;border:1px solid var(--amber);border-radius:999px;padding:0 10px}
+.muscles{display:flex;flex-wrap:wrap;gap:6px}
+.muscles span{font-size:.8rem;color:var(--soft);border:1px solid var(--line);border-radius:999px;padding:0 8px}
 .anim{width:100%;max-width:540px;aspect-ratio:1;margin-inline:auto;display:block;border-radius:8px;background:#000}
 .frames{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .frames figure{margin:0;display:grid;gap:4px}
@@ -42,7 +52,7 @@ ul{list-style:none;margin:10px 0 2px;padding:0;display:grid;gap:4px}
 li{display:grid;grid-template-columns:1.6em 1fr auto;gap:8px;align-items:baseline}
 li .st{text-align:center}
 li .id{color:var(--wait);font-size:.8rem;font-variant-numeric:tabular-nums}
-li.done{color:var(--ok)} li.frames{color:var(--amber)} li.waiting{color:var(--soft)}
+li.done{color:var(--ok)} li.waiting{color:var(--soft)}
 li a{color:inherit}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.9rem;color:var(--soft)}
 </style>
@@ -51,45 +61,79 @@ li a{color:inherit}
 <main>
 <header style="display:grid;gap:10px">
   <h1>אנימציות תרגילים</h1>
-  <p class="lead">לכל תרגיל: שתי תמונות בעיצוב שלנו, ואנימציה שעוברת ביניהן.</p>
+  <p class="lead">לכל תרגיל: שתי תמונות בעיצוב שלנו, ואנימציה שעוברת ביניהן. כאן רק מה שאושר.</p>
   <div class="count"><div id="count" class="lead"></div><div class="bar"><i id="bar" style="width:0"></i></div></div>
 </header>
-<section style="display:grid;gap:14px"><h2>תרגילים</h2><div id="feed" class="feed"><p class="lead">טוען…</p></div></section>
+<section style="display:grid;gap:10px" aria-label="סינון לפי שריר">
+  <h2>לפי שריר</h2>
+  <div id="chips" class="chips"></div>
+</section>
+<section style="display:grid;gap:14px"><h2 id="feed-h">תרגילים</h2><div id="feed" class="feed"><p class="lead">טוען…</p></div></section>
 <section style="display:grid;gap:10px">
   <h2>צ'ק ליסט</h2>
-  <div class="legend"><span>✓ מוכן</span><span>◐ פריימים מחכים לאישור</span><span>○ מחכה לתמונות</span></div>
+  <div class="legend"><span>✓ מוכן</span><span>○ עוד לא</span></div>
   <div id="check" style="display:grid;gap:8px"></div>
 </section>
 </main>
 <script>
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const MARK = { done: '✓', frames: '◐', waiting: '○' };
 /* a fresh fetch every time: Pages caches for ten minutes, and this page is read right after a change */
 const get = (u) => fetch(u, { cache: 'no-store' }).then((r) => r.json());
 Promise.all([get('../data/exercises.json'), get('progress.json')]).then(([lib, prog]) => {
-  const ex = lib.exercises, st = (e) => (prog[e.id] && prog[e.id].status) || 'waiting';
+  const ex = lib.exercises;
+  /* anything not approved reads as not done here - its frames live on review.html */
+  const st = (e) => (prog[e.id] && prog[e.id].status === 'done') ? 'done' : 'waiting';
   const done = ex.filter((e) => st(e) === 'done');
   document.getElementById('count').textContent = `${done.length} מתוך ${ex.length} תרגילים מוכנים`;
   document.getElementById('bar').style.width = (100 * done.length / ex.length) + '%';
   /* the files carry the date they were made, so a remade GIF is never served from an old cache */
   const f = (p, n) => `${p.dir}/${n}?v=${encodeURIComponent(p.date || '')}`;
-  /* an exercise whose GIF waits for Asaf's approval is shown too, marked, so he can approve it here */
-  const shown = ex.filter((e) => st(e) !== 'waiting');
-  document.getElementById('feed').innerHTML = shown.length ? shown.map((e) => { const p = prog[e.id];
-    return `<article id="${esc(e.id)}"><header><h3>${esc(e.n)}</h3><span class="sub">${esc(e.en)} · ${esc(e.id)}</span>${st(e) === 'frames' ? '<span class="pending">מחכה לאישור שלך</span>' : ''}</header>
-      <img class="anim" src="${esc(f(p, 'anim.gif'))}" alt="${esc(e.n)}" loading="lazy">
-      <div class="frames"><figure><img src="${esc(f(p, 'start.jpg'))}" alt="התחלה" loading="lazy"><figcaption>התחלה</figcaption></figure>
-      <figure><img src="${esc(f(p, 'end.jpg'))}" alt="סוף" loading="lazy"><figcaption>סוף</figcaption></figure></div></article>`; }).join('')
-    : '<p class="lead">עוד אין תרגיל.</p>';
-  /* grouped by the exercise's first muscle, in the library's own order */
-  const groups = new Map();
-  for (const e of ex) { const g = (e.m && e.m[0]) || 'אחר'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(e); }
-  document.getElementById('check').innerHTML = [...groups].map(([g, list]) => {
-    const n = list.filter((e) => st(e) === 'done').length;
-    return `<details class="group"><summary>${esc(g)}<span>${n} מתוך ${list.length}</span></summary><ul>${list.map((e) => { const s = st(e);
-      const name = s === 'done' ? `<a href="#${esc(e.id)}">${esc(e.n)}</a>` : esc(e.n);
-      return `<li class="${s}"><span class="st">${MARK[s]}</span><span>${name}</span><span class="id">${esc(e.id)}</span></li>`; }).join('')}</ul></details>`;
-  }).join('');
+  const muscles = [];
+  for (const e of ex) for (const m of e.m || []) if (!muscles.includes(m)) muscles.push(m);
+  let pick = '';
+  try { pick = new URLSearchParams(location.search).get('m') || ''; } catch {}
+  if (!muscles.includes(pick)) pick = '';
+  const has = (e) => !pick || (e.m || []).includes(pick);
+
+  const chips = () => {
+    const btn = (m, label, n) => `<button type="button" data-m="${esc(m)}" aria-pressed="${m === pick}">${esc(label)}<span>${n}</span></button>`;
+    document.getElementById('chips').innerHTML = btn('', 'הכל', `${done.length}/${ex.length}`) + muscles.map((m) => {
+      const all = ex.filter((e) => (e.m || []).includes(m));
+      return btn(m, m, `${all.filter((e) => st(e) === 'done').length}/${all.length}`);
+    }).join('');
+  };
+  const feed = () => {
+    const shown = done.filter(has);
+    document.getElementById('feed-h').textContent = pick ? `תרגילים · ${pick}` : 'תרגילים';
+    document.getElementById('feed').innerHTML = shown.length ? shown.map((e) => { const p = prog[e.id];
+      return `<article id="${esc(e.id)}"><header><h3>${esc(e.n)}</h3><span class="sub">${esc(e.en)} · ${esc(e.id)}</span></header>
+        <div class="muscles">${(e.m || []).map((m) => `<span>${esc(m)}</span>`).join('')}</div>
+        <img class="anim" src="${esc(f(p, 'anim.gif'))}" alt="${esc(e.n)}" loading="lazy">
+        <div class="frames"><figure><img src="${esc(f(p, 'start.jpg'))}" alt="התחלה" loading="lazy"><figcaption>התחלה</figcaption></figure>
+        <figure><img src="${esc(f(p, 'end.jpg'))}" alt="סוף" loading="lazy"><figcaption>סוף</figcaption></figure></div></article>`; }).join('')
+      : `<p class="lead">${pick ? `עוד אין תרגיל מוכן ל${esc(pick)}.` : 'עוד אין תרגיל.'}</p>`;
+  };
+  /* grouped by the exercise's first muscle, in the library's own order; with a muscle picked,
+     every exercise that works it, in one open list */
+  const check = () => {
+    const groups = new Map();
+    if (pick) groups.set(pick, ex.filter(has));
+    else for (const e of ex) { const g = (e.m && e.m[0]) || 'אחר'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(e); }
+    document.getElementById('check').innerHTML = [...groups].map(([g, list]) => {
+      const n = list.filter((e) => st(e) === 'done').length;
+      return `<details class="group"${pick ? ' open' : ''}><summary>${esc(g)}<span>${n} מתוך ${list.length}</span></summary><ul>${list.map((e) => { const s = st(e);
+        const name = s === 'done' ? `<a href="#${esc(e.id)}">${esc(e.n)}</a>` : esc(e.n);
+        return `<li class="${s}"><span class="st">${s === 'done' ? '✓' : '○'}</span><span>${name}</span><span class="id">${esc(e.id)}</span></li>`; }).join('')}</ul></details>`;
+    }).join('');
+  };
+  const draw = () => { chips(); feed(); check(); };
+  document.getElementById('chips').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-m]'); if (!b) return;
+    pick = b.dataset.m === pick ? '' : b.dataset.m;
+    try { history.replaceState(null, '', pick ? `?m=${encodeURIComponent(pick)}` : location.pathname); } catch {}
+    draw();
+  });
+  draw();
   if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
 }).catch((err) => { document.getElementById('feed').innerHTML = `<p class="lead">שגיאה בטעינה: ${esc(err.message)}</p>`; });
 </script>

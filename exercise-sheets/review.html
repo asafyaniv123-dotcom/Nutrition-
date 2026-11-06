@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>מחכים לאישור</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;800&display=swap">
+<style>
+/* What waits for Asaf's approval (status "frames" in progress.json). Kept off index.html at his
+   ask: that page holds only what he approved. Same look, nothing else. */
+:root{--ground:#140f0c;--card:#1d1612;--line:#33261d;--ink:#f2e2c8;--soft:#c2a98c;--amber:#e8a24e;
+  --f:Assistant,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+main>*,article>*{min-width:0}
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.6 var(--f);overflow-wrap:anywhere;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px}
+main{max-width:760px;margin:0 auto;display:grid;gap:24px}
+h1{margin:0;font-size:1.6rem}
+.lead{margin:0;color:var(--soft)}
+article{background:var(--card);border:1px solid var(--amber);border-radius:12px;padding:16px;display:grid;gap:12px}
+article header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+article h2{margin:0;font-size:1.2rem}
+.sub{color:var(--soft);font-size:.9rem}
+.anim{width:100%;max-width:540px;aspect-ratio:1;margin-inline:auto;display:block;border-radius:8px;background:#000}
+.frames{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.frames figure{margin:0;display:grid;gap:4px}
+.frames img{width:100%;height:auto;display:block;border-radius:6px}
+.frames figcaption{font-size:.8rem;color:var(--soft)}
+</style>
+</head>
+<body>
+<main>
+<header style="display:grid;gap:8px"><h1>מחכים לאישור שלך</h1><p class="lead" id="n">טוען…</p></header>
+<div id="feed" style="display:grid;gap:24px"></div>
+</main>
+<script>
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const get = (u) => fetch(u, { cache: 'no-store' }).then((r) => r.json());
+Promise.all([get('../data/exercises.json'), get('progress.json')]).then(([lib, prog]) => {
+  const wait = lib.exercises.filter((e) => prog[e.id] && prog[e.id].status === 'frames');
+  const f = (p, n) => `${p.dir}/${n}?v=${encodeURIComponent(p.date || '')}`;
+  document.getElementById('n').textContent = wait.length ? `${wait.length} תרגילים. מה שתאשר עובר לעמוד הראשי.` : 'אין כרגע תרגיל שמחכה לאישור.';
+  document.getElementById('feed').innerHTML = wait.map((e) => { const p = prog[e.id];
+    return `<article><header><h2>${esc(e.n)}</h2><span class="sub">${esc(e.en)} · ${esc(e.id)} · ${esc((e.m || []).join(', '))}</span></header>
+      <img class="anim" src="${esc(f(p, 'anim.gif'))}" alt="${esc(e.n)}" loading="lazy">
+      <div class="frames"><figure><img src="${esc(f(p, 'start.jpg'))}" alt="התחלה" loading="lazy"><figcaption>התחלה</figcaption></figure>
+      <figure><img src="${esc(f(p, 'end.jpg'))}" alt="סוף" loading="lazy"><figcaption>סוף</figcaption></figure></div></article>`; }).join('');
+}).catch((err) => { document.getElementById('n').textContent = 'שגיאה בטעינה: ' + err.message; });
+</script>
+</body>
+</html>
