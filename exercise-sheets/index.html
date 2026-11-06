@@ -29,6 +29,7 @@ article{background:var(--card);border:1px solid var(--line);border-radius:12px;p
 article header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
 article h3{margin:0;font-size:1.2rem}
 .sub{color:var(--soft);font-size:.9rem}
+.pending{color:var(--amber);font-size:.85rem;border:1px solid var(--amber);border-radius:999px;padding:0 10px}
 .anim{width:100%;max-width:540px;aspect-ratio:1;margin-inline:auto;display:block;border-radius:8px;background:#000}
 .frames{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .frames figure{margin:0;display:grid;gap:4px}
@@ -53,7 +54,7 @@ li a{color:inherit}
   <p class="lead">לכל תרגיל: שתי תמונות בעיצוב שלנו, ואנימציה שעוברת ביניהן.</p>
   <div class="count"><div id="count" class="lead"></div><div class="bar"><i id="bar" style="width:0"></i></div></div>
 </header>
-<section style="display:grid;gap:14px"><h2>מוכנים</h2><div id="feed" class="feed"><p class="lead">טוען…</p></div></section>
+<section style="display:grid;gap:14px"><h2>תרגילים</h2><div id="feed" class="feed"><p class="lead">טוען…</p></div></section>
 <section style="display:grid;gap:10px">
   <h2>צ'ק ליסט</h2>
   <div class="legend"><span>✓ מוכן</span><span>◐ פריימים מחכים לאישור</span><span>○ מחכה לתמונות</span></div>
@@ -72,12 +73,14 @@ Promise.all([get('../data/exercises.json'), get('progress.json')]).then(([lib, p
   document.getElementById('bar').style.width = (100 * done.length / ex.length) + '%';
   /* the files carry the date they were made, so a remade GIF is never served from an old cache */
   const f = (p, n) => `${p.dir}/${n}?v=${encodeURIComponent(p.date || '')}`;
-  document.getElementById('feed').innerHTML = done.length ? done.map((e) => { const p = prog[e.id];
-    return `<article id="${esc(e.id)}"><header><h3>${esc(e.n)}</h3><span class="sub">${esc(e.en)} · ${esc(e.id)}</span></header>
+  /* an exercise whose GIF waits for Asaf's approval is shown too, marked, so he can approve it here */
+  const shown = ex.filter((e) => st(e) !== 'waiting');
+  document.getElementById('feed').innerHTML = shown.length ? shown.map((e) => { const p = prog[e.id];
+    return `<article id="${esc(e.id)}"><header><h3>${esc(e.n)}</h3><span class="sub">${esc(e.en)} · ${esc(e.id)}</span>${st(e) === 'frames' ? '<span class="pending">מחכה לאישור שלך</span>' : ''}</header>
       <img class="anim" src="${esc(f(p, 'anim.gif'))}" alt="${esc(e.n)}" loading="lazy">
       <div class="frames"><figure><img src="${esc(f(p, 'start.jpg'))}" alt="התחלה" loading="lazy"><figcaption>התחלה</figcaption></figure>
       <figure><img src="${esc(f(p, 'end.jpg'))}" alt="סוף" loading="lazy"><figcaption>סוף</figcaption></figure></div></article>`; }).join('')
-    : '<p class="lead">עוד אין תרגיל מוכן.</p>';
+    : '<p class="lead">עוד אין תרגיל.</p>';
   /* grouped by the exercise's first muscle, in the library's own order */
   const groups = new Map();
   for (const e of ex) { const g = (e.m && e.m[0]) || 'אחר'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(e); }
