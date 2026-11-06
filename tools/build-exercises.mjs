@@ -143,7 +143,7 @@ const RAW=[
 ['דדליפט במוט טרפז',M.back,[Q.trap],'Trap Bar Deadlift',['הקס בר','hex bar']],
 ['ראק פול',M.back,[Q.bar],'Rack Pull',['רק פול']],
 // ── טרפז ──
-['משיכת כתפיים במשקולות',M.traps,[Q.db],'Dumbbell Shrugs',['שראגס','שראג','משיכת כתפיים']],
+['משיכת כתפיים במשקולות',M.traps,[Q.db],'Dumbbell Shrugs',['שראגס','שראג','משיכת כתפיים','שרוגים']],
 ['משיכת כתפיים במוט',M.traps,[Q.bar],'Barbell Shrugs',[]],
 ['משיכת כתפיים בפולי',M.traps,[Q.cable],'Cable Shrugs',[]],
 ['משיכת כתפיים במכונה',M.traps,[Q.machine],'Machine Shrugs',[]],
@@ -163,14 +163,14 @@ const RAW=[
 ['לחיצת כתפיים בסמית׳',M.shoulders,[Q.smith],'Smith Machine Shoulder Press',[]],
 ['לחיצת ארנולד',M.shoulders,[Q.db],'Arnold Press',['ארנולד']],
 ['פוש פרס',M.shoulders,[Q.bar],'Push Press',[]],
-['הרחקת כתף',M.shoulders,[Q.db],'Lateral Raise',['לטרל רייז','הרמות צד','פרפר צד']],
+['הרחקת כתף',M.shoulders,[Q.db],'Lateral Raise',['לטרל רייז','הרמות צד','פרפר צד','כתף צדדית','דלתא אמצעית']],
 ['הרחקת כתף בפולי',M.shoulders,[Q.cable],'Cable Lateral Raise',[]],
 ['הרחקת כתף במכונה',M.shoulders,[Q.machine],'Machine Lateral Raise',[]],
 ['הרחקת כתף בהטיה',M.shoulders,[Q.cable],'Leaning Cable Lateral Raise',[]],
 ['הרמה קדמית',M.shoulders,[Q.db],'Front Raise',['פרונט רייז','הרמה מלפנים']],
 ['הרמה קדמית בפלטה',M.shoulders,[Q.plate],'Plate Front Raise',[]],
 ['הרמה קדמית בפולי',M.shoulders,[Q.cable],'Cable Front Raise',[]],
-['פרפר הפוך',M.shoulders,[Q.db],'Rear Delt Fly',['ריר דלט','פרפר אחורי']],
+['פרפר הפוך',M.shoulders,[Q.db],'Rear Delt Fly',['ריר דלט','פרפר אחורי','כתף אחורית','דלתא אחורית']],
 ['פרפר הפוך במכונה',M.shoulders,[Q.machine],'Reverse Pec Deck',[]],
 ['פרפר הפוך בפולי',M.shoulders,[Q.cable],'Cable Rear Delt Fly',[]],
 ['פייס פול',M.shoulders,[Q.cable],'Face Pull',['פייספול']],
@@ -230,10 +230,10 @@ const RAW=[
 ['סקוואט מטוטלת',M.quads,[Q.machine],'Pendulum Squat',[]],
 ['סקוואט בחגורה',M.quads,[Q.machine],'Belt Squat',[]],
 ['פשיטת ברך',M.quads,[Q.machine],'Leg Extension',['לג אקסטנשן','אקסטנשן']],
-['לאנג׳',M.quads,[Q.db],'Lunges',['לאנג','מספריים','לונג׳']],
+['לאנג׳',M.quads,[Q.db],'Lunges',['לאנג','מספריים','לונג׳','לאנץ','לאנץ׳','מכרע','מכרעים','lunge']],
 ['לאנג׳ בהליכה',M.quads,[Q.db],'Walking Lunges',[]],
 ['לאנג׳ לאחור',M.quads,[Q.db],'Reverse Lunge',[]],
-['סקוואט בולגרי',M.quads,[Q.db,Q.bench],'Bulgarian Split Squat',['בולגרי','ספליט סקוואט']],
+['סקוואט בולגרי',M.quads,[Q.db,Q.bench],'Bulgarian Split Squat',['בולגרי','ספליט סקוואט','לאנג׳ בולגרי','לאנץ בולגרי','לאנץ׳ בולגרי','מכרע בולגרי']],
 ['עליות מדרגה',M.quads,[Q.db,Q.box],'Step Ups',['סטפ אפ']],
 ['ירידות מדרגה',M.quads,[Q.box],'Step Downs',[]],
 ['סקוואט סיסי',M.quads,[Q.bw],'Sissy Squat',[]],
@@ -250,7 +250,7 @@ const RAW=[
 ['הרמת ירך אחורית',M.hams,[Q.machine],'Glute Ham Raise',['ghr']],
 ['משיכה בין הרגליים',M.glutes,[Q.cable],'Cable Pull Through',['פול ת׳רו']],
 // ── ישבן ──
-['היפ ת׳ראסט',M.glutes,[Q.bar,Q.bench],'Hip Thrust',['היפ תראסט','hip thrust','דחיקת אגן']],
+['היפ ת׳ראסט',M.glutes,[Q.bar,Q.bench],'Hip Thrust',['היפ תראסט','hip thrust','דחיקת אגן','היפ טראסט']],
 ['היפ ת׳ראסט במכונה',M.glutes,[Q.machine],'Machine Hip Thrust',[]],
 ['היפ ת׳ראסט ברגל אחת',M.glutes,[Q.bw],'Single Leg Hip Thrust',[]],
 ['גשר ישבן',M.glutes,[Q.bw],'Glute Bridge',['ברידג׳']],
@@ -333,7 +333,9 @@ const RAW=[
 ['כפיפת מרפק בגומייה',M.biceps,[Q.band],'Resistance Band Curl',['כפיפת יד בגומייה','ביצפס בגומייה']],
 ['משיכת כתפיים בגומייה',M.traps,[Q.band],'Resistance Band Shrug',['שראגים בגומייה','טרפז בגומייה']],
 ['הרחקת ירך בשכיבה על הצד',[M.abduct,M.glutes],[Q.bw,Q.mat],'Side-Lying Hip Abduction',['הרמת רגל בשכיבה על הצד','מרחיקים במזרן']],
-['הרחקת ירך בגומייה',[M.abduct,M.glutes],[Q.band],'Banded Hip Abduction',['פתיחת רגליים בגומייה','מרחיקים בגומייה']]
+['הרחקת ירך בגומייה',[M.abduct,M.glutes],[Q.band],'Banded Hip Abduction',['פתיחת רגליים בגומייה','מרחיקים בגומייה']],
+/* 6 Nov, Asaf: added for its exercise animation. Appended, never inserted - the id is the row's place. */
+['לחיצה צמודה בשיפוע במשקולות',[M.chest,M.triceps],[Q.db,Q.bench],'Close-Grip Incline Dumbbell Press',['סקוויז פרס בשיפוע','לחיצה צמודה במשקולות','לחיצת משקולות צמודות']]
 ];
 
 const list=RAW.map(function(r,i){

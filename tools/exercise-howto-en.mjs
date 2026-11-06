@@ -2058,6 +2058,15 @@ export const EN = {
       'Steps too long, which lose the momentum between one and the next.',
       'Arms bending and the body standing up, which takes the drive away from your legs.'] },
 
+'לחיצה צמודה בשיפוע במשקולות': {
+  s: ['Bench at 30 degrees, a dumbbell in each hand; lie back with them over your upper chest.',
+      'Press the dumbbells together, palms facing each other, and keep squeezing them into each other all the way through.',
+      'Lower them together until they nearly touch your upper chest, elbows close to your body.',
+      'Press straight up until your arms are nearly straight, without letting them come apart.'],
+  m: ['Letting the dumbbells drift apart mid-rep — squeezing them together is the whole point.',
+      'Elbows flaring out to the sides, which turns it into an ordinary press.',
+      'Too steep an incline — the shoulder takes the work.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
