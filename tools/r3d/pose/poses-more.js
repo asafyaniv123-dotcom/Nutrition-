@@ -68,6 +68,60 @@ export const MORE = {
     }),
   },
 
+  /* x13 (6 Nov). Rebuilt from Asaf's reference after the first clip drew a PRESS: handles across
+     the body and elbows that bend and straighten. A fly holds a NEUTRAL grip - each handle along
+     the body, palms facing - and one elbow angle through the whole rep. Camera from the side, a
+     little toward the feet and above, where the handle's direction and the arc can be read. */
+  inclinefly: {
+    id: 'x13', m: ['חזה'], front: [0.5, 0.87, 0],
+    name: 'פרפר בשיפוע', kfNames: ['למעלה', 'למטה'],
+    /* framed like the approved start frame - head to feet, dumbbells near the top - because a motion
+       transfer takes its framing from this clip: framed tighter, it cut the man's feet off (6 Nov) */
+    camera: { pos: [2.75, 1.65, 1.15], at: [-0.05, 0.55, 0], fov: 36 },
+    measures: [{ label: 'משענת מהאופק', horiz: ['chest', 'pelvis'] }, { label: 'מרפק', at: ['lsh', 'lel', 'lwr'] }, { label: 'זרוע מהגו', at: ['lel', 'lsh', 'lhip'] }],
+    spec: [
+      { kf: 'both', text: 'משענת בזווית 30°', src: 'דף x13 (ברירת מחדל, כמו x4)', m: { horiz: ['chest', 'pelvis'] }, min: 28, max: 32 },
+      { kf: 'both', text: 'ברכיים בערך 90°, כפות רגליים על הרצפה', src: 'ACE, הועבר', m: { at: ['lhip', 'lkn', 'lan'], side: true }, min: 75, max: 105 },
+      { kf: 'both', text: 'כיפוף מרפק קל וקבוע: 150°–160°', src: 'Solstad 2020; הרפרנס של אסף', m: { at: ['lsh', 'lel', 'lwr'] }, min: 150, max: 160 },
+      { kf: 0, text: 'המשקולות מעל הכתפיים, על קו אנכי', src: 'ACE ("above your shoulders")', m: { dx: ['lwr', 'lsh'] }, min: -3, max: 3 },
+      { kf: 0, text: 'המשקולות כמעט נוגעות: מרכזי האגרופים 12–17 ס"מ זה מזה', src: 'הרפרנס של אסף', m: { dz: ['lwr', 'rwr'] }, min: 12, max: 17 },
+      { kf: 1, text: 'הזרוע העליונה 70°–85° מהגו, לצדדים', src: 'דף x13; הרפרנס של אסף', m: { at: ['lel', 'lsh', 'lhip'] }, min: 70, max: 85 },
+      { kf: 1, text: 'שורש היד בגובה הכתף, לא מתחת לקו המשענת', src: 'ACE; Kolber 2010', m: { dy: ['lwr', 'lsh'] }, min: -4, max: 8 },
+    ],
+    keyframes: [0, 1].map((bottom) => () => MORE.inclinefly.pose(bottom)),
+    /* down runs 0 (top) .. 1 (bottom). The wrist travels a great-circle arc around the shoulder at a
+       FIXED distance, so the elbow angle cannot change on the way - the one thing that makes this a
+       fly; a video model left to itself bends the elbow mid-rep and draws a press (6 Nov, clip 1). */
+    pose: (down) => {
+      const t = [Math.cos(rad(30)), -Math.sin(rad(30)), 0], n = [Math.sin(rad(30)), Math.cos(rad(30)), 0];
+      const J = { lhip: [0.05, 0.55, 0.10], lan: [0.42, 0.09, 0.16], ltoe: [0.58, 0.03, 0.17], lheel: [0.37, 0.04, 0.16] };
+      J.lkn = twoBone(J.lhip, J.lan, L.thigh, L.shin, [1, 0.3, 0]);
+      J.lsh = add([J.lhip[0], J.lhip[1], 0.19], t, -0.50); J.pelvis = [0.05, 0.55, 0]; J.chest = add([J.lsh[0], J.lsh[1], 0], t, 0.12);
+      J.neck = add([J.lsh[0], J.lsh[1], 0], t, -0.09); J.head = add(add(J.neck, t, -0.13), n, 0.03);
+      mirror(J);
+      /* the elbow held at 155 degrees: shoulder-to-wrist distance is fixed by it */
+      const D = Math.sqrt(L.upper ** 2 + L.fore ** 2 - 2 * L.upper * L.fore * Math.cos(rad(155)));
+      const lerp = (a, b, k) => [0, 1, 2].map((i) => a[i] * (1 - k) + b[i] * k);
+      for (const s of [1, -1]) {
+        const p = s > 0 ? 'l' : 'r', sh = [J.lsh[0], J.lsh[1], 0.19 * s];
+        const dz = 0.072 * s - sh[2], top = norm([0, Math.sqrt(D * D - dz * dz), dz]);
+        const th = rad(72), bot = norm(add(add(t.map((x) => x * Math.cos(th)), [0, 0, s * Math.sin(th)]), n, 0.22));
+        /* slerp: the arc, not the chord - a straight line between the two would shorten the arm mid-way */
+        const om = Math.acos(Math.max(-1, Math.min(1, top[0] * bot[0] + top[1] * bot[1] + top[2] * bot[2])));
+        const k0 = Math.sin((1 - down) * om) / Math.sin(om), k1 = Math.sin(down * om) / Math.sin(om);
+        const dir = [0, 1, 2].map((i) => top[i] * k0 + bot[i] * k1);
+        J[p + 'wr'] = add(sh, dir, D); J[p + 'el'] = twoBone(sh, J[p + 'wr'], L.upper, L.fore, norm(lerp([0, 0, s], norm(add([0, -1, 0], t, -0.4)), down)));
+      }
+      const bottom = down;
+      const back = add([J.lsh[0], J.lsh[1], 0], t, 0.25);
+      /* neutral grip: each handle along the body (x), never across it */
+      return { joints: J, props: [
+        { box: add(back, n, -0.13), size: [0.66, 0.06, 0.30], rotZ: -30 },
+        { box: [0.17, 0.43, 0], size: [0.36, 0.06, 0.30] }, { box: [-0.10, 0.03, 0], size: [0.95, 0.06, 0.26] },
+        { box: [0.17, 0.22, 0], size: [0.06, 0.40, 0.20] }, { box: [-0.28, 0.30, 0], size: [0.05, 0.56, 0.20] },
+        { dumbbell: J.lwr, axis: norm(lerp([1, 0, 0], t, bottom)), len: 0.30 }, { dumbbell: J.rwr, axis: norm(lerp([1, 0, 0], t, bottom)), len: 0.30 }] };
+    },
+  },
   cablerow: {
     id: 'x48', m: ['גב'], front: [1, 0, 0],
     name: 'חתירה בפולי בישיבה', kfNames: ['זרועות ישרות', 'הידית בבטן'],
