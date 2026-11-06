@@ -1,6 +1,6 @@
 // The exercise animation (Asaf, 6 Nov): two approved frames and a GIF that only moves between them. No
 // video model, no credits. Run align.mjs on the end frame first, so whatever does not move is identical.
-// node tools/sheets/gif.mjs <start.png> <end.png> <out-dir> [hold=0.8] [fade=0.7] [name=anim.gif]
+// node tools/sheets/gif.mjs <start.png> <end.png> <out-dir> [hold=1.0] [fade=0.6] [mode=cross] [name=anim.gif]
 //   writes start.jpg, end.jpg and the GIF into out-dir; hold and fade are seconds
 //
 // The change is never a cross-fade. A cross-fade shows both frames at once, and with arms in two places
@@ -16,10 +16,11 @@ if (!OUT) { console.log('usage: gif.mjs <start.png> <end.png> <out-dir> [hold=s]
 const opt = (k, d) => { const o = OPT.find((a) => a.startsWith(k + '=')); return o ? o.slice(k.length + 1) : d; };
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 const ff = (a, input) => execFileSync(FF, ['-v', 'error', '-y', ...a], { input, maxBuffer: 1 << 28 });
-/* mode=through (default): out to the ground, then in. mode=cross: a straight cross-fade - with a short
-   fade it is a soft snap rather than four arms. mode=cut: no fade at all. (6 Nov: "through" showed him
-   a moment with no arms; these two are the alternatives that need no new frame.) */
-const N = 540, FPS = 20, HOLD = +opt('hold', 0.8), FADE = +opt('fade', 0.7), NAME = opt('name', 'anim.gif'), MODE = opt('mode', 'through');
+/* mode=cross (default since 6 Nov, when Asaf sent a recording of exactly the GIF he wants): a cross-fade,
+   1.0 s held on each pose and 0.6 s to change, as measured off that recording. It works because align.mjs
+   has made the still body identical, so only the moving limb is seen in both places. mode=through: out to
+   the ground, then in (he saw a moment with no arms). mode=cut: no fade. */
+const N = 540, FPS = 20, HOLD = +opt('hold', 1.0), FADE = +opt('fade', 0.6), NAME = opt('name', 'anim.gif'), MODE = opt('mode', 'cross');
 fs.mkdirSync(OUT, { recursive: true });
 ff(['-i', A, '-vf', 'scale=768:-1', '-q:v', '3', path.join(OUT, 'start.jpg')]);
 ff(['-i', B, '-vf', 'scale=768:-1', '-q:v', '3', path.join(OUT, 'end.jpg')]);
@@ -34,7 +35,8 @@ const go = (p, q) => { for (let i = 1; i <= half; i++) frames.push(mix(p, q, eas
 const full = Math.max(1, Math.round(FADE * FPS));
 const change = (p, q) => {
   if (MODE === 'cut') return;
-  if (MODE === 'cross') { for (let i = 1; i < full; i++) frames.push(mix(p, q, ease(i / full))); return; }
+  /* ease-out, measured off the reference GIF he recorded (6 Nov): 27, 50, 68, 82, 92, 100 per tenth of a second */
+  if (MODE === 'cross') { for (let i = 1; i < full; i++) frames.push(mix(p, q, Math.sin(Math.PI / 2 * i / full))); return; }
   go(p, m); go(m, q);
 };
 for (let i = 0; i < hold; i++) frames.push(a);
