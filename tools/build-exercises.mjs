@@ -335,7 +335,8 @@ const RAW=[
 ['הרחקת ירך בשכיבה על הצד',[M.abduct,M.glutes],[Q.bw,Q.mat],'Side-Lying Hip Abduction',['הרמת רגל בשכיבה על הצד','מרחיקים במזרן']],
 ['הרחקת ירך בגומייה',[M.abduct,M.glutes],[Q.band],'Banded Hip Abduction',['פתיחת רגליים בגומייה','מרחיקים בגומייה']],
 /* 6 Nov, Asaf: added for its exercise animation. Appended, never inserted - the id is the row's place. */
-['לחיצה צמודה בשיפוע במשקולות',[M.chest,M.triceps],[Q.db,Q.bench],'Close-Grip Incline Dumbbell Press',['סקוויז פרס בשיפוע','לחיצה צמודה במשקולות','לחיצת משקולות צמודות']]
+['לחיצה צמודה בשיפוע במשקולות',[M.chest,M.triceps],[Q.db,Q.bench],'Close-Grip Incline Dumbbell Press',['סקוויז פרס בשיפוע','לחיצה צמודה במשקולות','לחיצת משקולות צמודות']],
+['לחיצת חזה בשיפוע בסמית׳',M.chest,[Q.smith,Q.bench],'Smith Machine Incline Bench Press',['אינקליין בסמית','לחיצת חזה עליון בסמית׳','לחיצה בשיפוע בסמית']]
 ];
 
 const list=RAW.map(function(r,i){

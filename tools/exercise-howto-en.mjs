@@ -2067,6 +2067,15 @@ export const EN = {
       'Elbows flaring out to the sides, which turns it into an ordinary press.',
       'Too steep an incline — the shoulder takes the work.'] },
 
+'לחיצת חזה בשיפוע בסמית׳': {
+  s: ['Set a bench at about 30 degrees under the bar, so the bar comes down to your upper chest.',
+      'Grip a little wider than your shoulders and unhook the bar by turning your wrists.',
+      'Lower it under control to your upper chest, elbows a little below shoulder line.',
+      'Press up until your arms are nearly straight, and hook the bar at the end of the set.'],
+  m: ['A bench placed so the bar lands on your neck or stomach — the bar runs on a fixed track, so the bench decides where it lands.',
+      'Too steep an incline — the shoulder takes the work.',
+      'Elbows flared all the way out to the sides, which loads the shoulder.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
