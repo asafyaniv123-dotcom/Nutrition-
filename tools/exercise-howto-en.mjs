@@ -2103,6 +2103,15 @@ export const EN = {
       'Arching your lower back at the top.',
       'Kicking the raised leg to help you up.'] },
 
+'שכיבות סמיכה על הברכיים': {
+  s: ['Kneel on a mat and place your hands on the floor a little wider than your shoulders, wrists under your shoulders.',
+      'Lift your lower legs, cross your ankles, and set your body in a straight line from head to knees.',
+      'Bend your elbows and lower your whole body as one piece until your chest nearly touches the floor.',
+      'Press the floor away and straighten your arms again, keeping your hands and knees where they are.'],
+  m: ['Leaving your hips high so only your shoulders drop.',
+      'Flaring your elbows out to the sides at a right angle to your body.',
+      'Letting your lower back sag into an arch.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',

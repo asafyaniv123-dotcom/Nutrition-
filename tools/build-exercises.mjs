@@ -339,7 +339,8 @@ const RAW=[
 ['לחיצת חזה בשיפוע בסמית׳',M.chest,[Q.smith,Q.bench],'Smith Machine Incline Bench Press',['אינקליין בסמית','לחיצת חזה עליון בסמית׳','לחיצה בשיפוע בסמית']],
 ['כפיפות בטן עם משקולת',M.abs,[Q.db,Q.mat],'Dumbbell Reach Crunch',['קראנץ עם משקולת','כפיפות בטן עם משקל','קראנץ לתקרה']],
 ['גשר ישבן עם משקולת',[M.glutes,M.hams],[Q.db,Q.mat],'Dumbbell Glute Bridge',['גלוט ברידג׳ עם משקולת','גשר עם משקל','הרמת אגן עם משקולת']],
-['היפ ת׳ראסט ברגל אחת עם משקולת',[M.glutes,M.hams],[Q.db,Q.bench],'Single-Leg Dumbbell Hip Thrust',['היפ תראסט רגל אחת עם משקל','גשר על ספסל ברגל אחת']]
+['היפ ת׳ראסט ברגל אחת עם משקולת',[M.glutes,M.hams],[Q.db,Q.bench],'Single-Leg Dumbbell Hip Thrust',['היפ תראסט רגל אחת עם משקל','גשר על ספסל ברגל אחת']],
+['שכיבות סמיכה על הברכיים',M.chest,[Q.bw,Q.mat],'Knee Push Ups',['שכיבות סמיכה מהברכיים','פושאפ על הברכיים','שכיבות סמיכה מקלות']]
 ];
 
 const list=RAW.map(function(r,i){
