@@ -11,7 +11,9 @@ if (!OUT) { console.log('usage: poses-from-video.mjs <recording.mp4> <out-dir> [
 const CROP = ((OPT.find((o) => o.startsWith('crop=')) || 'crop=880:1150:160:150').slice(5));
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 fs.mkdirSync(OUT, { recursive: true });
-const S = 64, buf = execFileSync(FF, ['-v', 'error', '-i', V, '-vf', `crop=${CROP},scale=${S}:${S}`, '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], { maxBuffer: 1 << 28 });
+/* -fps_mode passthrough: a phone recording can have a variable frame rate, and without it the raw output
+   is padded to a constant rate - frame numbers here would then not be the n that select= picks below */
+const S = 64, buf = execFileSync(FF, ['-v', 'error', '-i', V, '-vf', `crop=${CROP},scale=${S}:${S}`, '-fps_mode', 'passthrough', '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], { maxBuffer: 1 << 28 });
 const n = buf.length / (S * S), fr = (i) => buf.subarray(i * S * S, (i + 1) * S * S);
 const dist = (p, q) => { let s = 0; for (let i = 0; i < p.length; i++) s += Math.abs(p[i] - q[i]); return s / p.length; };
 /* The two poses are where the picture STANDS longest. Not the first frame and not the extremes: the
