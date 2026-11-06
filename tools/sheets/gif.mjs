@@ -1,28 +1,37 @@
-// The exercise animation (Asaf, 6 Nov): two approved frames and a GIF that only moves between them -
-// hold the start, cross-fade to the end, hold, cross-fade back. No video model, no credits.
-// node tools/sheets/gif.mjs <start.png> <end.png> <out-dir> [hold=0.9] [fade=1.1] [name=anim.gif]
+// The exercise animation (Asaf, 6 Nov): two approved frames and a GIF that only moves between them. No
+// video model, no credits. Run align.mjs on the end frame first, so whatever does not move is identical.
+// node tools/sheets/gif.mjs <start.png> <end.png> <out-dir> [hold=0.8] [fade=0.7] [name=anim.gif]
 //   writes start.jpg, end.jpg and the GIF into out-dir; hold and fade are seconds
+//
+// The change is never a cross-fade. A cross-fade shows both frames at once, and with arms in two places
+// that reads as four arms (his words: "they hide each other instead of being soft and clean"). Here the
+// start frame's moving part fades out to the background and only then does the end frame's fade in.
+// The background in between is min(start, end) per pixel: the figure glows brighter than the dark
+// ground, so wherever either frame has a limb the other does not, the minimum is the ground - and
+// wherever the two are identical (the aligned body, the bench) it is that same picture, which therefore
+// never moves. No mask, no threshold.
 import fs from 'fs'; import path from 'path'; import os from 'os'; import { execFileSync } from 'child_process';
 const [A, B, OUT, ...OPT] = process.argv.slice(2);
 if (!OUT) { console.log('usage: gif.mjs <start.png> <end.png> <out-dir> [hold=s] [fade=s] [name=file.gif]'); process.exit(2); }
 const opt = (k, d) => { const o = OPT.find((a) => a.startsWith(k + '=')); return o ? o.slice(k.length + 1) : d; };
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
-const ff = (a) => execFileSync(FF, ['-v', 'error', '-y', ...a]);
-const SIZE = 540, FPS = 15, HOLD = +opt('hold', 0.9), FADE = +opt('fade', 1.1), NAME = opt('name', 'anim.gif');
+const ff = (a, input) => execFileSync(FF, ['-v', 'error', '-y', ...a], { input, maxBuffer: 1 << 28 });
+const N = 540, FPS = 20, HOLD = +opt('hold', 0.8), FADE = +opt('fade', 0.7), NAME = opt('name', 'anim.gif');
 fs.mkdirSync(OUT, { recursive: true });
 ff(['-i', A, '-vf', 'scale=768:-1', '-q:v', '3', path.join(OUT, 'start.jpg')]);
 ff(['-i', B, '-vf', 'scale=768:-1', '-q:v', '3', path.join(OUT, 'end.jpg')]);
-const seg = HOLD + FADE;
-/* a still image is one frame: -loop 1 with -t makes it a clip long enough for xfade on both sides */
-const len = (seg * 2).toFixed(2);
-const graph = [
-  `[0:v]scale=${SIZE}:${SIZE},fps=${FPS},format=rgb24[a]`, `[1:v]scale=${SIZE}:${SIZE},fps=${FPS},format=rgb24[b]`,
-  `[a]split[a1][a2]`, `[b]split[b1][b2]`,
-  `[a1][b1]xfade=transition=fade:duration=${FADE}:offset=${HOLD}[ab]`,
-  `[b2][a2]xfade=transition=fade:duration=${FADE}:offset=${HOLD}[ba]`,
-  `[ab]trim=duration=${seg + HOLD},setpts=PTS-STARTPTS[x]`, `[ba]trim=start=${HOLD},setpts=PTS-STARTPTS[y]`,
-  `[x][y]concat=n=2:v=1:a=0,split[s1][s2]`,
-  `[s1]palettegen=max_colors=256:stats_mode=full[p]`, `[s2][p]paletteuse=dither=sierra2_4a`,
-].join(';');
-ff(['-loop', '1', '-t', len, '-i', A, '-loop', '1', '-t', len, '-i', B, '-filter_complex', graph, '-loop', '0', path.join(OUT, NAME)]);
-console.log(fs.readdirSync(OUT).map((n) => `${n} ${fs.statSync(path.join(OUT, n)).size}`).join('\n'));
+const px = (f) => ff(['-i', f, '-vf', `scale=${N}:${N}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+const a = px(A), b = px(B), m = Buffer.alloc(a.length);
+for (let i = 0; i < a.length; i++) m[i] = Math.min(a[i], b[i]);
+const mix = (p, q, k) => { const o = Buffer.alloc(p.length); for (let i = 0; i < p.length; i++) o[i] = Math.round(p[i] + (q[i] - p[i]) * k); return o; };
+const ease = (t) => (1 - Math.cos(Math.PI * t)) / 2;
+/* one cycle: hold start, start -> ground, ground -> end, hold end, end -> ground, ground -> start */
+const frames = [], hold = Math.round(HOLD * FPS), half = Math.max(1, Math.round(FADE * FPS / 2));
+const go = (p, q) => { for (let i = 1; i <= half; i++) frames.push(mix(p, q, ease(i / half))); };
+for (let i = 0; i < hold; i++) frames.push(a);
+go(a, m); go(m, b);
+for (let i = 0; i < hold; i++) frames.push(b);
+go(b, m); go(m, a);
+ff(['-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${N}x${N}`, '-r', String(FPS), '-i', '-', '-filter_complex',
+  'split[s1][s2];[s1]palettegen=max_colors=256:stats_mode=full[p];[s2][p]paletteuse=dither=sierra2_4a', '-loop', '0', path.join(OUT, NAME)], Buffer.concat(frames));
+console.log(`${NAME}: ${frames.length} frames, ${(frames.length / FPS).toFixed(1)} s, ${fs.statSync(path.join(OUT, NAME)).size} bytes`);
