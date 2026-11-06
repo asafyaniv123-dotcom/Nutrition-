@@ -2085,6 +2085,24 @@ export const EN = {
       'Letting your arms drift toward your knees — the dumbbell travels straight up to the ceiling.',
       'Dropping back to the floor instead of lowering under control.'] },
 
+'גשר ישבן עם משקולת': {
+  s: ['Lie on your back, knees bent and feet flat on the floor at hip width.',
+      'Rest one dumbbell across your hips and hold it in place with both hands.',
+      'Drive through your heels and lift your hips until your shoulders, hips and knees are in a line, squeezing your glutes at the top.',
+      'Lower slowly until your hips almost touch the floor, then start the next rep.'],
+  m: ['Arching your lower back at the top instead of squeezing your glutes.',
+      'Pushing through your toes instead of your heels.',
+      'Dropping down fast and letting the dumbbell bounce on your hips.'] },
+
+'היפ ת׳ראסט ברגל אחת עם משקולת': {
+  s: ['Sit on the floor with your upper back against the edge of a bench and a dumbbell on the hip of your working leg.',
+      'Keep one foot flat on the floor and hold the other leg straight in the air.',
+      'Drive through the heel on the floor and lift your hips until your shoulders, hip and knee are in a line.',
+      'Lower under control until your glutes almost touch the floor, and finish all reps before switching legs.'],
+  m: ['Letting your hips twist toward the raised leg.',
+      'Arching your lower back at the top.',
+      'Kicking the raised leg to help you up.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
