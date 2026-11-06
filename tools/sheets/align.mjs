@@ -36,14 +36,31 @@ for (let s = c0.s - 0.012; s <= c0.s + 0.012; s += 0.002) for (let dx = c0.dx - 
 }
 console.log(`scale ${best.s.toFixed(3)}  shift ${best.dx},${best.dy}  (before: ${Math.round(cost(1, 0, 0, 3))}, after: ${Math.round(best.c)})`);
 /* apply it to the colour picture, then blend the start frame's still part in over a soft band */
-const ca = raw(A, 'rgb24'), cb = raw(B, 'rgb24'), out = Buffer.alloc(N * N * 3);
+/* Below the line, a pixel is taken from the start frame only where the two frames ALREADY nearly agree
+   there - the same bench, the same leg drawn a shade differently. Where they differ, something moved into
+   that place (the pullover's dumbbell hangs below the line; 6 Nov, the first version wiped it out and
+   half-blended two heads), and the end frame's pixel stays. */
+const ca = raw(A, 'rgb24'), cb = raw(B, 'rgb24'), moved = Buffer.alloc(N * N * 3), out = Buffer.alloc(N * N * 3);
+for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+  const bx = Math.min(N - 1, Math.max(0, Math.round((x - N / 2 - best.dx) / best.s + N / 2)));
+  const by = Math.min(N - 1, Math.max(0, Math.round((y - N / 2 - best.dy) / best.s + N / 2)));
+  for (let c = 0; c < 3; c++) moved[(y * N + x) * 3 + c] = cb[(by * N + bx) * 3 + c];
+}
+/* how far apart the frames are at each pixel, smoothed over a few pixels so the mask has no speckle */
+const R = 6, diff = new Float32Array(N * N), sm = new Float32Array(N * N);
+for (let i = 0; i < N * N; i++) diff[i] = (Math.abs(ca[i * 3] - moved[i * 3]) + Math.abs(ca[i * 3 + 1] - moved[i * 3 + 1]) + Math.abs(ca[i * 3 + 2] - moved[i * 3 + 2])) / 3;
+for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+  let s = 0, n = 0;
+  for (let j = -R; j <= R; j += 2) for (let i = -R; i <= R; i += 2) { const yy = y + j, xx = x + i; if (yy >= 0 && yy < N && xx >= 0 && xx < N) { s += diff[yy * N + xx]; n++; } }
+  sm[y * N + x] = s / n;
+}
 const y0 = N * STILL, band = N * 0.08;
 for (let y = 0; y < N; y++) {
-  const k = Math.min(1, Math.max(0, (y - y0) / band));          // 0 above the band: B; 1 below it: A
+  const below = Math.min(1, Math.max(0, (y - y0) / band));
   for (let x = 0; x < N; x++) {
-    const bx = Math.min(N - 1, Math.max(0, Math.round((x - N / 2 - best.dx) / best.s + N / 2)));
-    const by = Math.min(N - 1, Math.max(0, Math.round((y - N / 2 - best.dy) / best.s + N / 2)));
-    for (let c = 0; c < 3; c++) out[(y * N + x) * 3 + c] = Math.round(cb[(by * N + bx) * 3 + c] * (1 - k) + ca[(y * N + x) * 3 + c] * k);
+    const agree = Math.min(1, Math.max(0, 1 - (sm[y * N + x] - 12) / 28));   // 1 under ~12 levels apart, 0 past ~40
+    const k = below * agree, i = (y * N + x) * 3;
+    for (let c = 0; c < 3; c++) out[i + c] = Math.round(moved[i + c] * (1 - k) + ca[i + c] * k);
   }
 }
 execFileSync(FF, ['-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${N}x${N}`, '-i', '-', OUT], { input: out });
