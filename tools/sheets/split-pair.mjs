@@ -9,10 +9,15 @@ const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffm
 let W, H;
 try { execFileSync(FF, ['-i', IN], { stdio: 'pipe' }); } catch (e) { const m = String(e.stderr).match(/, (\d{3,5})x(\d{3,5})/); W = +m[1]; H = +m[2]; }
 const g = execFileSync(FF, ['-v', 'error', '-i', IN, '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], { maxBuffer: 1 << 28 });
-/* the divider: the column near the middle whose brightness differs most from both neighbours, top to bottom */
+/* the divider: the column near the middle whose mean brightness, over the WHOLE height, stands furthest from
+   the columns 8 px either side - dark band or light line. A sharp vertical edge (the side of a box) is only
+   part of the height, so it loses; the first version scored local sharpness, took the box edge at 0.40 W and
+   cut the two panels 42 px apart. Searched only in the middle tenth, where a divider has to be. */
+const col = new Float64Array(W);
+for (let x = 0; x < W; x++) { let s = 0; for (let y = 0; y < H; y++) s += g[y * W + x]; col[x] = s / H; }
 let best = W >> 1, bestScore = -1;
-for (let x = Math.round(W * 0.4); x < Math.round(W * 0.6); x++) {
-  let s = 0; for (let y = 0; y < H; y += 2) { const i = y * W + x; s += Math.abs(2 * g[i] - g[i - 2] - g[i + 2]); }
+for (let x = Math.round(W * 0.45); x < Math.round(W * 0.55); x++) {
+  const s = Math.abs(col[x] - (col[x - 8] + col[x + 8]) / 2);
   if (s > bestScore) { bestScore = s; best = x; }
 }
 const gap = 4, side = Math.min(H, best - gap, W - best - gap - 1);
