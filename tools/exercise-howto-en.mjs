@@ -2076,6 +2076,15 @@ export const EN = {
       'Too steep an incline — the shoulder takes the work.',
       'Elbows flared all the way out to the sides, which loads the shoulder.'] },
 
+'כפיפות בטן עם משקולת': {
+  s: ['Lie on your back, knees bent and feet flat on the floor.',
+      'Hold one dumbbell in both hands and reach it straight up above your chest, arms straight.',
+      'Curl your shoulders off the floor and push the dumbbell toward the ceiling, keeping your arms in line.',
+      'Lower slowly until your shoulder blades touch the floor, then start the next rep.'],
+  m: ['Pulling your head forward with your neck instead of curling up from your stomach.',
+      'Letting your arms drift toward your knees — the dumbbell travels straight up to the ceiling.',
+      'Dropping back to the floor instead of lowering under control.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
