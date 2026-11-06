@@ -14,18 +14,19 @@ fs.mkdirSync(OUT, { recursive: true });
 const S = 64, buf = execFileSync(FF, ['-v', 'error', '-i', V, '-vf', `crop=${CROP},scale=${S}:${S}`, '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], { maxBuffer: 1 << 28 });
 const n = buf.length / (S * S), fr = (i) => buf.subarray(i * S * S, (i + 1) * S * S);
 const dist = (p, q) => { let s = 0; for (let i = 0; i < p.length; i++) s += Math.abs(p[i] - q[i]); return s / p.length; };
-const d = Array.from({ length: n }, (_, i) => dist(fr(i), fr(0))), top = Math.max(...d);
-/* the longest run of frames within 5% of each end of the scale; its middle frame is the cleanest */
-function middleOfLongestRun(test) {
-  let best = [0, -1], from = -1;
-  for (let i = 0; i <= n; i++) {
-    if (i < n && test(d[i])) { if (from < 0) from = i; continue; }
-    if (from >= 0 && i - from > best[1] - best[0]) best = [from, i - 1];
-    from = -1;
-  }
-  return Math.round((best[0] + best[1]) / 2);
-}
-const a = middleOfLongestRun((v) => v <= top * 0.05), b = middleOfLongestRun((v) => v >= top * 0.95);
+/* The two poses are where the picture STANDS longest. Not the first frame and not the extremes: the
+   pullover's GIF (6 Nov) starts mid-fade and flashes a single frame of both poses at once between holds,
+   and that blended frame is the one farthest from everything. So: split the recording into runs of frames
+   that do not change, take the longest run, then the longest run that looks different from it, and the
+   middle frame of each. */
+const runs = []; let from = 0;
+for (let i = 1; i <= n; i++) if (i === n || dist(fr(i), fr(i - 1)) > 0.25) { runs.push([from, i - 1]); from = i; }
+const mid = ([lo, hi]) => Math.round((lo + hi) / 2), len = ([lo, hi]) => hi - lo;
+runs.sort((x, y) => len(y) - len(x));
+const r1 = runs[0], r2 = runs.find((r) => dist(fr(mid(r)), fr(mid(r1))) > 3);
+if (!r2) { console.log('only one pose found - is this a recording of a two-pose GIF?'); process.exit(1); }
+/* the start pose is the one the recording reaches first */
+const [a, b] = [mid(r1), mid(r2)].sort((x, y) => x - y);
 const [w, h] = CROP.split(':').map(Number), side = Math.max(w, h);
 for (const [i, name] of [[a, 'ref-start.png'], [b, 'ref-end.png']])
   execFileSync(FF, ['-v', 'error', '-y', '-i', V, '-vf', `select=eq(n\\,${i}),crop=${CROP},pad=${side}:${side}:(ow-iw)/2:(oh-ih)/2:white`, '-frames:v', '1', path.join(OUT, name)]);
