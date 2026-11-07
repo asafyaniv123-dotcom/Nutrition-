@@ -2112,6 +2112,15 @@ export const EN = {
       'Flaring your elbows out to the sides at a right angle to your body.',
       'Letting your lower back sag into an arch.'] },
 
+'שכיבות סמיכה מול הקיר': {
+  s: ['Stand about a step away from a wall and place your hands on it at shoulder height and shoulder width.',
+      'Straighten your arms and hold your body in a straight line from head to heels.',
+      'Bend your elbows, keeping them close to your body, and lean your whole body toward the wall as one piece until your chest nearly touches it.',
+      'Push the wall away and straighten your arms again, without moving your hands or feet.'],
+  m: ['Letting your hips drift back instead of keeping your body straight.',
+      'Flaring your elbows out to the sides.',
+      'Reaching toward the wall with your head before your chest.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
