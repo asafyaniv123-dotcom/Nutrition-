@@ -2148,6 +2148,15 @@ export const EN = {
       'Lifting your back off the bench to pull.',
       'Dropping fast and stopping short of straight arms.'] },
 
+'כפיפת ברך בשכיבה עם משקולת': {
+  s: ['Lie face down on a flat bench with your knees at its end and your lower legs past it.',
+      'Hold one dumbbell between your feet, legs straight, and grip the bench with your hands.',
+      'Bend your knees and lift the dumbbell until your shins are vertical, without lifting your hips.',
+      'Lower it slowly until your legs are straight again.'],
+  m: ['Lifting your hips off the bench to help.',
+      'A loose grip on the dumbbell between your feet.',
+      'Dropping fast and losing control.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
