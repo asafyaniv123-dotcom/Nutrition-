@@ -27,7 +27,8 @@ console.log('approved', files[0].split(/[\\/]/).pop(), JSON.stringify(ref));
 for (const f of files.slice(1)) {
   const m = measure(f);
   const d = { hue: +(m.hue - ref.hue).toFixed(1), sat: +(m.sat - ref.sat).toFixed(3), bright: m.bright - ref.bright, rough: +(m.rough - ref.rough).toFixed(2) };
-  /* tolerances from what passed his eye: hue within 2 degrees, saturation within 0.04, roughness within 25% */
-  const ok = Math.abs(d.hue) <= 1 && Math.abs(d.sat) <= 0.02 && m.rough <= ref.rough * 1.15;   // x20 at hue -1.5 read as "more orange" to him
+  /* tolerances: hue within 1 degree, saturation within 0.02, roughness within 15% - x20 at hue -1.5 read as
+     "more orange" to him. The numbers alone passed that frame's lumpy texture, so the crop stays mandatory. */
+  const ok = Math.abs(d.hue) <= 1 && Math.abs(d.sat) <= 0.02 && m.rough <= ref.rough * 1.15;
   console.log(ok ? 'PASS' : 'FAIL', f.split(/[\\/]/).pop(), JSON.stringify(m), 'diff', JSON.stringify(d));
 }
