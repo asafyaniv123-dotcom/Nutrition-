@@ -16,8 +16,12 @@ const cost = (k, dx, dy) => { let s = 0, n = 0; const c = N / 2;
 let best = [1, 0, 0, cost(1, 0, 0)];
 for (let k = 0.95; k <= 1.05; k += 0.005) for (let dx = -30; dx <= 30; dx += 2) for (let dy = -20; dy <= 20; dy += 2) { const v = cost(k, dx, dy); if (v < best[3]) best = [k, dx, dy, v]; }
 console.log('k', best[0].toFixed(3), 'dx', best[1], 'dy', best[2], 'cost', best[3].toFixed(2), 'was', cost(1, 0, 0).toFixed(2));
-const [k, dx, dy] = best, rgb = px(process.argv[3], 'rgb24'), out = Buffer.alloc(rgb.length), c = N / 2;
-for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-  const xs = Math.min(N - 1, Math.max(0, Math.round((x - dx - c) / k + c))), ys = Math.min(N - 1, Math.max(0, Math.round((y - dy - c) / k + c)));
-  for (let q = 0; q < 3; q++) out[(y * N + x) * 3 + q] = rgb[(ys * N + xs) * 3 + q]; }
-execFileSync(FF, ['-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${N}x${N}`, '-i', '-', process.argv[4]], { input: out });
+/* the search runs at 576; the move is applied at the END frame's own size, so a 1152 frame comes out 1152
+   (it used to come out 576 - half the detail - x248, 7 Nov) */
+let S = N; try { execFileSync(FF, ['-i', process.argv[3]], { stdio: 'pipe' }); } catch (e) { S = +String(e.stderr).match(/, (\d{3,5})x\d{3,5}/)[1]; }
+const f = S / N, [k, dxs, dys] = best, dx = dxs * f, dy = dys * f, c = S / 2;
+const rgb = execFileSync(FF, ['-v', 'error', '-i', process.argv[3], '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: 1 << 28 }), out = Buffer.alloc(rgb.length);
+for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+  const xs = Math.min(S - 1, Math.max(0, Math.round((x - dx - c) / k + c))), ys = Math.min(S - 1, Math.max(0, Math.round((y - dy - c) / k + c)));
+  for (let q = 0; q < 3; q++) out[(y * S + x) * 3 + q] = rgb[(ys * S + xs) * 3 + q]; }
+execFileSync(FF, ['-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${S}x${S}`, '-i', '-', process.argv[4]], { input: out });
