@@ -12,11 +12,12 @@ const g = execFileSync(FF, ['-v', 'error', '-i', IN, '-f', 'rawvideo', '-pix_fmt
 /* the divider: the column near the middle whose mean brightness, over the WHOLE height, stands furthest from
    the columns 8 px either side - dark band or light line. A sharp vertical edge (the side of a box) is only
    part of the height, so it loses; the first version scored local sharpness, took the box edge at 0.40 W and
-   cut the two panels 42 px apart. Searched only in the middle tenth, where a divider has to be. */
+   cut the two panels 42 px apart; a dark divider on a dark ground barely differs, so a bright box edge can
+   still win - searched only in the middle 4 percent, where the model puts it. */
 const col = new Float64Array(W);
 for (let x = 0; x < W; x++) { let s = 0; for (let y = 0; y < H; y++) s += g[y * W + x]; col[x] = s / H; }
 let best = W >> 1, bestScore = -1;
-for (let x = Math.round(W * 0.45); x < Math.round(W * 0.55); x++) {
+for (let x = Math.round(W * 0.48); x < Math.round(W * 0.52); x++) {
   const s = Math.abs(col[x] - (col[x - 8] + col[x + 8]) / 2);
   if (s > bestScore) { bestScore = s; best = x; }
 }

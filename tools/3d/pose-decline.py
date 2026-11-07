@@ -14,7 +14,7 @@ ARM = (B['upperarm01.L'].head_local - B['lowerarm01.L'].head_local).length + (B[
 LEG = 0.995 * ((B['upperleg01.L'].head_local - B['lowerleg01.L'].head_local).length + (B['lowerleg01.L'].head_local - B['foot.L'].head_local).length)
 K = ARM / 0.5182
 
-BENCH_Z = 0.74 * K
+BENCH_Z = 0.48 * K
 HAND_X, WRIST_Z = 0.24 * K, 0.055 * K
 ANK_Y, ANK_Z, ANK_X = 0.62 * K, BENCH_Z + 0.10 * K, 0.10 * K
 A = Vector((ANK_Y, ANK_Z))
@@ -28,7 +28,7 @@ def circles(c1, r1, c2, r2):
 W = Vector((ANK_Y - math.sqrt((LEG + TORSO) ** 2 - (ARM * 0.985 + WRIST_Z - ANK_Z) ** 2), WRIST_Z))
 
 def solve(t):
-    r = ARM * (0.985 - 0.42 * t)           # shoulder-to-wrist: straight arms at the top, elbows ~85 deg at the bottom
+    r = ARM * (0.985 - 0.56 * t)           # shoulder-to-wrist: straight arms at the top, elbows ~85 deg at the bottom
     s = max(circles(A, LEG + TORSO, W, r), key=lambda v: v.y)   # the upper answer
     d = (s - A).normalized()
     h = A + d * LEG
@@ -80,3 +80,10 @@ for k, t in enumerate(TS):
     sc.render.filepath = f'{OUT}{k}.png'
     bpy.ops.render.render(write_still=True)
     print('RENDERED', k, 'hip', tuple(round(v, 3) for v in Ht), 'sho', tuple(round(v, 3) for v in St), 'wrist', round(W.x, 3))
+
+# the empty scene: the same camera and bench with the man hidden - the one background every frame is placed on
+for o in bpy.data.objects:
+    if o.type == 'MESH' and o.name not in ('Bench', 'BenchLeg', 'Floor'): o.hide_render = True
+sc.render.filepath = f'{OUT}empty.png'
+bpy.ops.render.render(write_still=True)
+print('RENDERED empty')
