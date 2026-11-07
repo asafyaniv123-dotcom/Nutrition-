@@ -86,6 +86,12 @@ the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and 
   tight over round, firm, clean glutes, like the approved frames - no folds, no creases, no bunched fabric,
   no lumpy or saggy seat, a clean hem. Prompt: "smooth tight shorts fitted cleanly over firm rounded glutes,
   no folds or wrinkles in the fabric". The 3D shorts are cut tight and smooth for the same reason.
+- He has to HAVE glutes (x20, 7 Nov: "why has he no backside? you have a character sheet"): round, firm,
+  athletic, filling the shorts - see `exercise-sheets/character/ref-glutes-good.jpg` (right) and
+  `ref-glutes-flat.jpg` (wrong). The flat one came from MY 3D settings: `buttocks-volume-decr` shrank them
+  and the shorts ended below the top of the glutes. The 3D man now uses `buttocks-volume-incr 1.0` and the
+  shorts run up to 0.605 of the height so they cover the glutes whole. Never shrink the glutes to "match
+  the sheet": the sheet's compact glutes are still round.
 - Glow: ONLY the active muscles from step 0, clearly brighter, moderate, not blown out, no hot spots.
 - Each frame = the 3D render as image 1 (pose, camera, contacts) + the sheet as image 2 (+ x19 for shorts).
 

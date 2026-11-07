@@ -1,6 +1,6 @@
 # Decline push-up on the MPFB man: the feet on a bench, the hands on the floor, both IK-pinned, the body one
 # straight line from the ankles to the shoulders. t = 0 top (arms straight), 1 bottom (chest near the floor).
-# blender -b man7.blend --python scene.py --python look2.py --python pose-decline.py -- <out-prefix> <t0> [t1 ...]
+# blender -b man7.blend --python scene.py --python look.py --python pose-decline.py -- <out-prefix> <t0> [t1 ...]
 import bpy, sys, math
 from mathutils import Vector, Matrix
 args = sys.argv[sys.argv.index('--') + 1:]

@@ -1,5 +1,5 @@
 # The guide render is SMOOTH: the curvature shading of look2 is switched off, so the drawing does not copy
-# every crease as a wrinkle (x20, 7 Nov). Run after look2.py.
+# every crease as a wrinkle (x20, 7 Nov). Run after look.py.
 import bpy
 for name in ('Glow2', 'ShortsM'):
     m = bpy.data.materials.get(name)

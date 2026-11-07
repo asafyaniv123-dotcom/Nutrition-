@@ -7,6 +7,13 @@ Two published copies of the same app, both served by GitHub Pages from `main`:
 | stable | https://asafyaniv123-dotcom.github.io/Nutrition-/ | installed on the phone, lived in for a week at a time |
 | dev | https://asafyaniv123-dotcom.github.io/Nutrition-/dev/ | updated on every change we make |
 
+## Exercise animations
+
+Every exercise demo (exercise-sheets/, the glowing figure) is built by the skill
+`.claude/skills/exercise-animation/SKILL.md` - read it first, every time, and add to it every time Asaf
+corrects something or a method works. It lives in the repo so a new session gets it with the clone. Its
+tools are `tools/3d/` (Blender + MPFB) and `tools/sheets/`; its references are `exercise-sheets/character/`.
+
 ## Working rule
 
 **Edit `dev/index.html`, never `index.html`.** The root copy is the app being
