@@ -59,7 +59,10 @@ the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and 
 7b. Match the colour to x19 before compositing: run tone-check on a first composite, then scale the figure's
    channels by approved-mean / ours-mean (`colorchannelmixer=rr=..:gg=..:bb=..` on the rgba figure). x20 came
    out 3 degrees too yellow and passed after rr 0.97, gg 0.915, bb 1.06. Uniform grading only.
-8. check-sheet, tone-check (step 5), gif, review.
+8. Framing: if a seated figure runs past the frame (x20's head did), never shift the shot - that pushes
+   the equipment out. Extend the background (stretch its plain edge strips right / top), composite on the
+   bigger canvas, and scale the whole frame down to 1024: equipment, figure and margins all stay in.
+9. check-sheet, tone-check (step 5), gif, review.
 
 ## 4. The figure - our character, always the same (the design does not drift)
 - The LOOK is the approved exercise frames, not a new interpretation: smooth translucent skin lit from
