@@ -23,12 +23,13 @@ def empty(name, loc):
     e.location = loc; return e
 
 # fixed floor points (metres): hands ahead (-Y), feet behind (+Y)
-HAND_Y, WRIST_Z, HAND_X = -0.56, 0.055, 0.25
-ANK_Y, ANK_Z, ANK_X = 0.42, 0.11, 0.11
+K = ARM / 0.5182   # the layout was made on a 1.73 m man; scale it to this one
+HAND_Y, WRIST_Z, HAND_X = -0.56 * K, 0.055 * K, 0.25 * K
+ANK_Y, ANK_Z, ANK_X = 0.42 * K, 0.11 * K, 0.11 * K
 H = Vector((0, 0.0, 0.83))          # hip joint centre
 W = Vector((0, HAND_Y, WRIST_Z))
 
-LEG = 0.845
+LEG = 0.99 * ((B['upperleg01.L'].head_local - B['lowerleg01.L'].head_local).length + (B['lowerleg01.L'].head_local - B['foot.L'].head_local).length)
 A = Vector((0, ANK_Y, ANK_Z))
 def yz(v): return Vector((v.y, v.z))
 def solve(t):
@@ -43,7 +44,7 @@ def solve(t):
         e = abs((h - a2).length - LEG)
         if best is None or e < best[0]: best = (e, w + u * ARM * 0.985)
     s0 = best[1]
-    s1 = w + Vector((0.03, 0.33))                          # bottom: shoulders just behind the hands, elbows ~85 deg
+    s1 = w + Vector((0.03, 0.33)) * K                          # bottom: shoulders just behind the hands, elbows ~85 deg
     s = s0.lerp(s1, t)
     # hip: TORSO from the shoulder and LEG from the ankle, the upper of the two answers
     d = (a2 - s).length
