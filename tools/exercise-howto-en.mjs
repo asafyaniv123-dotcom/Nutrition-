@@ -2139,6 +2139,15 @@ export const EN = {
       'Arching your lower back to push the weight.',
       'Moving at the shoulder instead of only at the elbow.'] },
 
+'כפיפת מרפק בפולי על ספסל משופע': {
+  s: ['Set an incline bench facing the low pulley and lie back on it, the cable coming from the direction of your feet.',
+      'Hold the handle with both hands, arms straight, elbows close to your body.',
+      'Bend your elbows and curl the handle up to your shoulders without moving your elbows.',
+      'Lower it slowly until your arms are straight again.'],
+  m: ['Letting your elbows drift forward instead of staying at your sides.',
+      'Lifting your back off the bench to pull.',
+      'Dropping fast and stopping short of straight arms.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
