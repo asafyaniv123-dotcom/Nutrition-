@@ -65,6 +65,13 @@ the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and 
   (`exercise-sheets/character/sheet-2.jpg`). x19 is also the shorts reference.
 - Prompt words for the skin: "smooth glowing translucent skin lit from within, soft inner light, no wrinkles,
   no bumps, no rough texture, yellow-gold like image N".
+- His word for the look is CLEAN (7 Nov, x20): smooth, soft, clean surfaces - not lumpy, not grainy, no
+  speckle. Two things made it lumpy and are not used any more:
+  1. `background: transparent` - the model draws a figure alone on transparency noisier, with dotted speckle
+     at the edges and on the shorts. Generate on a plain dark background like the approved frames, and lift
+     the figure off it by brightness (`tools/sheets/luma-key.mjs`): the figure glows, the ground is dark,
+     so the matte is clean and the halo comes along.
+  2. A lumpy 3D body - the drawing copies the guide's bulges. Keep the guide man smooth (muscle macro ~0.7).
 - Smooth bald head: NO face, NO ears, NO facial details - in every frame, including the bottom one where the
   head turns toward the camera. Barefoot with toes, never shoes. Short, tight shorts ending high on the thigh.
 - Body proportions of the sheet: broad shoulders, V-taper, narrow hips, compact glutes, normal head size.
