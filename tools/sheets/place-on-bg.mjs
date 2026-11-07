@@ -43,11 +43,38 @@ const free = process.argv.includes('--free-scale');
 const ke = free ? num / den : ks, te = [cS[0] - ke * cE[0], cS[1] - ke * cE[1]];
 const eF = place(eA.feet, ke, te), eP = place(eA.palm, ke, te);
 fs.mkdirSync(OUT, { recursive: true });
+const r = (p) => p.map((v) => v.toFixed(0)).join(',');
 const put = (fig, k, t, out) => { const [w, h] = size(fig);
   execFileSync(FF, ['-v', 'error', '-y', '-i', BG, '-i', fig, '-filter_complex',
     `[1:v]scale=${Math.round(w * k)}:${Math.round(h * k)}:flags=lanczos[f];[0:v][f]overlay=${Math.round(t[0])}:${Math.round(t[1])}:format=auto`, '-frames:v', '1', out]); };
 put(S, ks, ts, path.join(OUT, 'start.png'));
-put(E, ke, te, path.join(OUT, 'end.png'));
-const r = (p) => p.map((v) => v.toFixed(0)).join(',');
+/* --stretch: the end figure, whole and uncut, is stretched along its own feet-to-palm line (and only along it)
+   until its feet and palms land EXACTLY on the start's - one smooth affine map, no pieces. Asaf, 7 Nov: "can't
+   you just put the figure where it belongs, without credits?" The wall push-up end was 8% short on that line. */
+if (process.argv.includes('--stretch')) {
+  const [bw, bh] = size(BG), [w, h] = size(E);
+  /* the end on a transparent canvas the size of the background, at the start's scale */
+  const can = path.join(OUT, 'end-canvas.png');
+  execFileSync(FF, ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=c=black@0.0:s=${bw}x${bh},format=rgba`, '-i', E, '-filter_complex',
+    `[1:v]scale=${Math.round(w * ks)}:${Math.round(h * ks)}:flags=lanczos,format=rgba[f];[0:v][f]overlay=${Math.round(te[0])}:${Math.round(te[1])}:format=auto,format=rgba`, '-frames:v', '1', can]);
+  const f0 = place(eA.feet, ke, te), p0 = place(eA.palm, ke, te);
+  const v = [p0[0] - f0[0], p0[1] - f0[1]], wv = [sP[0] - sF[0], sP[1] - sF[1]];
+  const L = Math.hypot(...v), Lw = Math.hypot(...wv);
+  /* M takes v to wv, and the direction across the body to the same direction across, unscaled */
+  const A = [[v[0], -v[1]], [v[1], v[0]]];
+  const B = [[wv[0], -wv[1] * L / Lw], [wv[1], wv[0] * L / Lw]];
+  const det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+  const Ai = [[A[1][1] / det, -A[0][1] / det], [-A[1][0] / det, A[0][0] / det]];
+  const M = [[B[0][0] * Ai[0][0] + B[0][1] * Ai[1][0], B[0][0] * Ai[0][1] + B[0][1] * Ai[1][1]],
+             [B[1][0] * Ai[0][0] + B[1][1] * Ai[1][0], B[1][0] * Ai[0][1] + B[1][1] * Ai[1][1]]];
+  const map = (x, y) => [sF[0] + M[0][0] * (x - f0[0]) + M[0][1] * (y - f0[1]), sF[1] + M[1][0] * (x - f0[0]) + M[1][1] * (y - f0[1])];
+  const c = [map(0, 0), map(bw, 0), map(0, bh), map(bw, bh)].map((p) => p.map((n) => n.toFixed(2)));
+  const warped = path.join(OUT, 'end-warped.png');
+  execFileSync(FF, ['-v', 'error', '-y', '-i', can, '-vf',
+    `format=rgba,perspective=x0=${c[0][0]}:y0=${c[0][1]}:x1=${c[1][0]}:y1=${c[1][1]}:x2=${c[2][0]}:y2=${c[2][1]}:x3=${c[3][0]}:y3=${c[3][1]}:sense=destination:interpolation=cubic`, warped]);
+  execFileSync(FF, ['-v', 'error', '-y', '-i', BG, '-i', warped, '-filter_complex', '[0:v][1:v]overlay=0:0:format=auto', '-frames:v', '1', path.join(OUT, 'end.png')]);
+  const wA = anchors(warped);
+  console.log(`stretched ${(Lw / L * 100 - 100).toFixed(1)}% along feet-palm; measured again: feet ${r(wA.feet)} palm ${r(wA.palm)}, off by ${dist(wA.feet, sF).toFixed(1)} and ${dist(wA.palm, sP).toFixed(1)} px`);
+} else put(E, ke, te, path.join(OUT, 'end.png'));
 console.log(`start x${ks.toFixed(3)}: feet ${r(sF)} palm ${r(sP)}`);
 console.log(`end   x${ke.toFixed(3)}: feet ${r(eF)} palm ${r(eP)}   off by ${dist(eF, sF).toFixed(1)} and ${dist(eP, sP).toFixed(1)} px`);
