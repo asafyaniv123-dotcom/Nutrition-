@@ -73,7 +73,7 @@ const Q={
      a straight one - filtering by equipment is only useful if it matches what
      is actually standing in the room. */
   smith:'סמית׳', ez:'מוט EZ', trap:'מוט טרפז', plate:'פלטה',
-  trx:'רצועות TRX', box:'מדרגה', sled:'מזחלת', rope:'חבל קרב'
+  trx:'רצועות TRX', box:'מדרגה', sled:'מזחלת', rope:'חבל קרב', medball:'כדור כוח'
 };
 
 /* name, primary muscle, equipment, English name, and the other words for it.
@@ -347,7 +347,7 @@ const RAW=[
 ['כפיפת מרפק בפולי על ספסל משופע',M.biceps,[Q.cable,Q.bench],'Incline Bench Cable Curl',['כפיפת מרפק בשכיבה על ספסל משופע בפולי','כפיפת יד קדמית בפולי על ספסל','כפיפה בפולי בשיפוע']],
 ['כפיפת ברך בשכיבה עם משקולת',M.hams,[Q.db,Q.bench],'Dumbbell Lying Leg Curl',['לג קרל עם משקולת','כפיפת ברכיים עם משקולת יד','כפיפת ברך על ספסל']],
 ['קירוב ברכיים לחזה בשכיבה',M.abs,[Q.mat],'Lying Knee Tucks',['ברכיים לחזה בשכיבה','ני טאק בשכיבה','קיפול רגליים בשכיבה']],
-['שכיבות סמיכה על כדור כוח',M.chest,[Q.bw],'Medicine Ball Push Ups',['שכיבות סמיכה על כדור','שכיבות סמיכה כדור מדיסין','שכיבות סמיכה צרות על כדור']]
+['שכיבות סמיכה על כדור כוח',M.chest,[Q.medball],'Medicine Ball Push Ups',['שכיבות סמיכה על כדור','שכיבות סמיכה כדור מדיסין','שכיבות סמיכה צרות על כדור']]
 ];
 
 const list=RAW.map(function(r,i){
@@ -413,7 +413,7 @@ for(const e of list)for(const a of (e.aka||[])){
 const MUSCLES=[M.chest,M.back,M.lats,M.traps,M.shoulders,M.biceps,M.triceps,M.forearm,
                M.quads,M.hams,M.glutes,M.adduct,M.abduct,M.calves,M.abs,M.obliques,M.lower,M.cardio];
 const EQUIP=[Q.bar,Q.db,Q.machine,Q.cable,Q.bw,Q.bar_pull,Q.kb,Q.bench,Q.band,Q.mat,Q.card,Q.ball,
-             Q.smith,Q.ez,Q.trap,Q.plate,Q.trx,Q.box,Q.sled,Q.rope];
+             Q.smith,Q.ez,Q.trap,Q.plate,Q.trx,Q.box,Q.sled,Q.rope,Q.medball];
 
 /* every muscle and every equipment an exercise claims has to be one the app
    knows how to draw a filter for */
