@@ -2130,6 +2130,15 @@ export const EN = {
       'Flaring your elbows out to the sides.',
       'Lowering your head straight between your hands instead of slightly in front of them.'] },
 
+'פשיטת מרפק מעל הראש בפולי תחתון': {
+  s: ['Attach a rope to the low pulley and stand with your back to the machine, the cable running up behind you.',
+      'Hold the rope ends behind your head, elbows bent and pointing up, close to your head.',
+      'Straighten your elbows and raise the rope above your head until your arms are straight.',
+      'Lower it slowly back behind your head without letting your elbows drift forward or flare out.'],
+  m: ['Letting your elbows flare out instead of staying beside your head.',
+      'Arching your lower back to push the weight.',
+      'Moving at the shoulder instead of only at the elbow.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
