@@ -36,10 +36,32 @@ the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and 
   feet to fixed points: they cannot move between frames by construction.
 - Render top and bottom (and in-between frames if the rep needs them). Compare side by side with his frames
   at full size before going on. Fix the pose in 3D (free), not with credits.
+- The guide render must be SMOOTH: plain material, no curvature/pointiness shading. Every crease the guide
+  shows comes back as a wrinkle in the drawing - x20 came out lumpy and "rough" for exactly this reason.
+- Shrink the ears and flatten the face in the 3D head (MPFB `ears/` and `head/` targets): the drawing copies
+  them from the guide however hard the prompt says "no ears".
 
-## 4. The figure - our character, always the same
-- Style reference: the approved character sheet, job `54d6e9b8-b02b-472c-8e93-393483523fd6`
-  (`exercise-sheets/character/sheet-2.jpg`). Shorts reference: x19 frame, job `2b2c3f25-...`.
+## 3b. The method that worked (x20 decline push-up, 7 Nov - "much better")
+1. Measure his reference (bench height = feet level with the shoulders at the top; depth at the bottom).
+2. `pose-<exercise>.py` renders top, bottom AND the empty scene (man hidden) from the same camera.
+3. ONE generation: the empty scene -> the styled empty background (bench drawn once).
+4. ONE generation, 21:9, `resolution: 2k`, `background: transparent`: both 3D poses side by side as the guide
+   (`hstack` + pad to 21:9) -> both figures drawn together, so the man keeps one size.
+5. `node tools/sheets/split-fig.mjs <pair> <left> <right>` - cuts at the empty column, each figure WHOLE
+   (cropping at the guide's panel edges cut the head off).
+6. Seat each figure on the background by its contacts (toes on the bench, hands on the floor): scale and
+   offset from the two anchor points (`tools/sheets/anchor-align.mjs` measures them).
+7. Add the halo back (a blurred copy of the figure under it): a transparent figure loses its glow.
+8. check-sheet, tone-check (step 5), gif, review.
+
+## 4. The figure - our character, always the same (the design does not drift)
+- The LOOK is the approved exercise frames, not a new interpretation: smooth translucent skin lit from
+  inside, yellow-gold (not orange), a bright gold rim and a soft halo, NO wrinkles, NO bumpy or rough texture.
+  Primary style reference: an approved frame (x19 job `2b2c3f25-3b27-4735-8b60-2a7bb7cce653`, x13).
+  Body reference: the approved character sheet, job `54d6e9b8-b02b-472c-8e93-393483523fd6`
+  (`exercise-sheets/character/sheet-2.jpg`). x19 is also the shorts reference.
+- Prompt words for the skin: "smooth glowing translucent skin lit from within, soft inner light, no wrinkles,
+  no bumps, no rough texture, yellow-gold like image N".
 - Smooth bald head: NO face, NO ears, NO facial details - in every frame, including the bottom one where the
   head turns toward the camera. Barefoot with toes, never shoes. Short, tight shorts ending high on the thigh.
 - Body proportions of the sheet: broad shoulders, V-taper, narrow hips, compact glutes, normal head size.
@@ -56,6 +78,10 @@ Fail any one = not sent; fix first (one paid retry per defect, then stop and ask
 6. Bare feet, short tight shorts, sheet proportions.
 7. What is held still through the rep stays still; full range of motion.
 8. Whole body and equipment inside the frame with a margin.
+9. THE LOOK matches the approved frames: `node tools/sheets/tone-check.mjs exercise-sheets/x19-incline-push-ups/start.jpg <ours...>`
+   (hue within 1 degree, saturation within 0.02) AND a side-by-side crop of the same body part next to an
+   approved frame, looked at up close - colour, smoothness, rim, halo. The numbers passed x20 while his eye
+   saw "more orange and rough"; the crop is what shows it, so the crop is mandatory.
 
 ## 6. Deliver
 - `node tools/sheets/gif.mjs <start> <end> exercise-sheets/<id>-<slug>`; progress.json status `frames`
