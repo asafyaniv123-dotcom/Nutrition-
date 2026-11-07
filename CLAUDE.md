@@ -10,9 +10,11 @@ Two published copies of the same app, both served by GitHub Pages from `main`:
 ## Exercise animations
 
 Every exercise demo (exercise-sheets/, the glowing figure) is built by the skill
-`.claude/skills/exercise-animation/SKILL.md` - read it first, every time, and add to it every time Asaf
-corrects something or a method works. It lives in the repo so a new session gets it with the clone. Its
-tools are `tools/3d/` (Blender + MPFB) and `tools/sheets/`; its references are `exercise-sheets/character/`.
+`.claude/skills/exercise-animation/SKILL.md` - read it first, every time, and run its steps in order. It
+is a procedure, not a log (Asaf, 7 Nov): when he rejects something, change the step that should have caught
+it - never append a paragraph about what happened. It lives in the repo so a new session gets it with the
+clone. Its tools are `tools/sheets/` (each documents its usage on line 1); its references are
+`exercise-sheets/character/`, THE-FIGURE-3.jpg first.
 
 ## Working rule
 
