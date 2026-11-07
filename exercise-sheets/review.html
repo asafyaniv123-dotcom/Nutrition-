@@ -39,12 +39,16 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': 
    exercise was missing on his phone after the site already had it (7 Nov) */
 const get = (u) => fetch(u + '?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json());
 Promise.all([get('../data/exercises.json'), get('progress.json')]).then(([lib, prog]) => {
-  const wait = lib.exercises.filter((e) => prog[e.id] && prog[e.id].status === 'frames');
+  /* newest first, at his ask (7 Nov): progress.json gains each exercise as a new key at its end, so key
+     order is the order they were made - read backwards. Library order buried the latest one mid-page. */
+  const made = Object.keys(prog);
+  const wait = lib.exercises.filter((e) => prog[e.id] && prog[e.id].status === 'frames')
+    .sort((a, b) => made.indexOf(b.id) - made.indexOf(a.id));
   const f = (p, n) => `${p.dir}/${n}?v=${encodeURIComponent(p.date || '')}`;
   document.getElementById('n').textContent = wait.length ? `${wait.length} תרגילים. מה שתאשר עובר לעמוד הראשי.` : 'אין כרגע תרגיל שמחכה לאישור.';
   /* an exercise may wait with several attempts side by side ("tries": [{d, label}]), each its own card */
   const cards = wait.flatMap((e) => { const p = prog[e.id];
-    return p.tries ? p.tries.map((t) => ({ e, p: { dir: `${p.dir}/${t.d}`, date: p.date }, label: t.label })) : [{ e, p }]; });
+    return p.tries ? p.tries.slice().sort((a, b) => parseInt(b.d.match(/\d+$/)) - parseInt(a.d.match(/\d+$/))).map((t) => ({ e, p: { dir: `${p.dir}/${t.d}`, date: p.date }, label: t.label })) : [{ e, p }]; });
   document.getElementById('feed').innerHTML = cards.map(({ e, p, label }) => {
     return `<article><header><h2>${esc(e.n)}${label ? ` · ${esc(label)}` : ''}</h2><span class="sub">${esc(e.en)} · ${esc(e.id)} · ${esc((e.m || []).join(', '))}</span></header>
       <img class="anim" src="${esc(f(p, 'anim.gif'))}" alt="${esc(e.n)}" loading="lazy">
