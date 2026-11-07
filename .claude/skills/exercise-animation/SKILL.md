@@ -96,7 +96,9 @@ the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and 
   athletic, filling the shorts - see `exercise-sheets/character/ref-glutes-good.jpg` (right) and
   `ref-glutes-flat.jpg` (wrong). The flat one came from MY 3D settings: `buttocks-volume-decr` shrank them
   and the shorts ended below the top of the glutes. The 3D man now uses `buttocks-volume-incr 1.0` and the
-  shorts run up to 0.605 of the height so they cover the glutes whole. Never shrink the glutes to "match
+  shorts run up to 0.63 of the height, pushed out 0.016, so they cover the glutes whole. In the GUIDE the
+  shorts wear the body's own material (`tools/3d/guide.py`): a darker shorts material with its own rim light
+  made the shorts' top edge glow like a separate bump, and the drawing turned it into glutes poking out. Never shrink the glutes to "match
   the sheet": the sheet's compact glutes are still round.
 - Glow: ONLY the active muscles from step 0, clearly brighter, moderate, not blown out, no hot spots.
 - Each frame = the 3D render as image 1 (pose, camera, contacts) + the sheet as image 2 (+ x19 for shorts).
