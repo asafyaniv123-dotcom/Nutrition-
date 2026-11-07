@@ -40,8 +40,11 @@ Promise.all([get('../data/exercises.json'), get('progress.json')]).then(([lib, p
   const wait = lib.exercises.filter((e) => prog[e.id] && prog[e.id].status === 'frames');
   const f = (p, n) => `${p.dir}/${n}?v=${encodeURIComponent(p.date || '')}`;
   document.getElementById('n').textContent = wait.length ? `${wait.length} תרגילים. מה שתאשר עובר לעמוד הראשי.` : 'אין כרגע תרגיל שמחכה לאישור.';
-  document.getElementById('feed').innerHTML = wait.map((e) => { const p = prog[e.id];
-    return `<article><header><h2>${esc(e.n)}</h2><span class="sub">${esc(e.en)} · ${esc(e.id)} · ${esc((e.m || []).join(', '))}</span></header>
+  /* an exercise may wait with several attempts side by side ("tries": [{d, label}]), each its own card */
+  const cards = wait.flatMap((e) => { const p = prog[e.id];
+    return p.tries ? p.tries.map((t) => ({ e, p: { dir: `${p.dir}/${t.d}`, date: p.date }, label: t.label })) : [{ e, p }]; });
+  document.getElementById('feed').innerHTML = cards.map(({ e, p, label }) => {
+    return `<article><header><h2>${esc(e.n)}${label ? ` · ${esc(label)}` : ''}</h2><span class="sub">${esc(e.en)} · ${esc(e.id)} · ${esc((e.m || []).join(', '))}</span></header>
       <img class="anim" src="${esc(f(p, 'anim.gif'))}" alt="${esc(e.n)}" loading="lazy">
       <div class="frames"><figure><img src="${esc(f(p, 'start.jpg'))}" alt="התחלה" loading="lazy"><figcaption>התחלה</figcaption></figure>
       <figure><img src="${esc(f(p, 'end.jpg'))}" alt="סוף" loading="lazy"><figcaption>סוף</figcaption></figure></div></article>`; }).join('');
