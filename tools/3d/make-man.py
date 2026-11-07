@@ -10,10 +10,14 @@ h = HumanService.create_human(macro_detail_dict=d, feet_on_ground=True, scale=0.
 T = r'C:\Users\asafy\AppData\Roaming\Blender Foundation\Blender\5.2\extensions\blender_org\mpfb\data\targets'
 for rel, w in (('torso/torso-vshape-incr', 0.9), ('torso/measure-shoulder-dist-incr', 0.6), ('hip/hip-scale-horiz-decr', 0.5),
                ('hip/hip-scale-depth-decr', 0.4), ('buttocks/buttocks-volume-decr', 0.7), ('head/head-scale-horiz-decr', 0.25),
-               ('head/head-scale-vert-decr', 0.2), ('head/head-scale-depth-decr', 0.2)):
+               ('head/head-scale-vert-decr', 0.2), ('head/head-scale-depth-decr', 0.2),
+               # a smooth head for the guide: the drawing copies ears and a nose from it (x20)
+               ('ears/l-ear-scale-decr', 1.0), ('ears/r-ear-scale-decr', 1.0), ('ears/l-ear-flap-decr', 1.0), ('ears/r-ear-flap-decr', 1.0),
+               ('ears/l-ear-scale-depth-decr', 1.0), ('ears/r-ear-scale-depth-decr', 1.0),
+               ('nose/nose-scale-depth-decr', 1.0), ('nose/nose-volume-decr', 1.0), ('nose/nose-scale-vert-decr', 0.6)):
     TargetService.load_target(h, os.path.join(T, *rel.split('/')) + '.target.gz', weight=w)
 rig = HumanService.add_builtin_rig(h, 'default')
 P = r'C:\Users\asafy\AppData\Roaming\Blender Foundation\Blender\5.2\extensions\.user\blender_org\mpfb\data\proxymeshes\male_muscle_13290\male_muscle_13290.proxy'
 px = HumanService.add_mhclo_asset(P, h, asset_type='Proxymeshes', subdiv_levels=1)
 print('MAN5', h.dimensions[:], px.name)
-bpy.ops.wm.save_as_mainfile(filepath=r'C:\Users\asafy\AppData\Local\Temp\claude\C--Projects-Nutrition-\745c06f2-c953-5ac2-ba7d-7e682c847577\scratchpad\r33\man5.blend')
+bpy.ops.wm.save_as_mainfile(filepath=r'C:\Users\asafy\AppData\Local\Temp\claude\C--Projects-Nutrition-\745c06f2-c953-5ac2-ba7d-7e682c847577\scratchpad\r33\man8.blend')

@@ -16,4 +16,4 @@ for md in list(sh.modifiers):
 s = sh.modifiers.new('Thick', 'SOLIDIFY'); s.thickness = 0.006; s.offset = 1
 sub = sh.modifiers.new('Sub', 'SUBSURF'); sub.levels = sub.render_levels = 1
 print('SHORTS', len(sh.data.vertices), 'verts, z', round(lo, 3), '-', round(hi, 3))
-bpy.ops.wm.save_as_mainfile(filepath=r'C:\Users\asafy\AppData\Local\Temp\claude\C--Projects-Nutrition-\745c06f2-c953-5ac2-ba7d-7e682c847577\scratchpad\r33\man7.blend')
+bpy.ops.wm.save_as_mainfile(filepath=r'C:\Users\asafy\AppData\Local\Temp\claude\C--Projects-Nutrition-\745c06f2-c953-5ac2-ba7d-7e682c847577\scratchpad\r33\man9.blend')
