@@ -59,6 +59,12 @@ the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and 
 7b. Match the colour to x19 before compositing: run tone-check on a first composite, then scale the figure's
    channels by approved-mean / ours-mean (`colorchannelmixer=rr=..:gg=..:bb=..` on the rgba figure). x20 came
    out 3 degrees too yellow and passed after rr 0.97, gg 0.915, bb 1.06. Uniform grading only.
+7c. If the model draws the equipment anyway on the dark ground (x20 drew a bench), key it out: raise the
+   luma-key threshold (`luma-key.mjs in out 48 100`) and check the alpha in the equipment's area is ~0, so
+   only the static background's bench is ever seen.
+7d. The x20 pass that worked (7 Nov, attempt 6): guide from the round-glutes man, refs [guide, x19 look,
+   sheet body, ref-glutes-good], the chest named first and "the brightest part of the whole body", the
+   look words, dark ground; result: chest lit, round glutes, no ears, both figures within 0.2% in size.
 8. Framing: if a seated figure runs past the frame (x20's head did), never shift the shot - that pushes
    the equipment out. Extend the background (stretch its plain edge strips right / top), composite on the
    bigger canvas, and scale the whole frame down to 1024: equipment, figure and margins all stay in.
