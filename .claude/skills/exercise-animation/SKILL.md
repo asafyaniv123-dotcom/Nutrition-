@@ -12,9 +12,13 @@ the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and 
 - Identify the exercise from his reference. It exists in `data/exercises.json` (find by name) or is added
   (`tools/build-exercises.mjs` row + `exercise-names-3.mjs` + `exercise-howto.mjs` + `exercise-howto-en.mjs`,
   rebuild, prove no existing row changed, `node tools/test-exercise-search.mjs` 118/118).
-- Write down the ACTIVE MUSCLES from the library row (`m`) and from the reference's red highlight. These, and
-  only these, glow. Name them per exercise - decline push-up: upper chest, front shoulders, triceps; pike
-  push-up: shoulders, triceps. Seen from this camera a muscle may be hidden: say which visible part glows.
+- Write down the ACTIVE MUSCLES: the PRIMARY one is the library row's first muscle (`m[0]`) - it MUST glow,
+  most of all, in every frame. Then the helpers from the reference's red highlight. Decline push-up: CHEST
+  first (`m` = חזה), then front shoulders and triceps; pike push-up: shoulders, triceps. x20 was sent with
+  the shoulder and triceps lit and the chest dark - Asaf: "the chest is what this exercise works".
+- When the camera hides part of the primary muscle (the chest under a push-up), the visible part of it still
+  glows - its side and underside between the arm and the floor - and the prompt names it first and says
+  "clearly visible".
 - Watch the WHOLE recording on a dense contact sheet, not two stills. Note: start pose, end pose, what stays
   still for the whole rep, the equipment and its exact size and height relative to the body.
 
@@ -75,6 +79,10 @@ the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and 
 - Smooth bald head: NO face, NO ears, NO facial details - in every frame, including the bottom one where the
   head turns toward the camera. Barefoot with toes, never shoes. Short, tight shorts ending high on the thigh.
 - Body proportions of the sheet: broad shoulders, V-taper, narrow hips, compact glutes, normal head size.
+- GLUTES AND SHORTS are part of the look (x20, 7 Nov: "what is this backside?"): the shorts sit smooth and
+  tight over round, firm, clean glutes, like the approved frames - no folds, no creases, no bunched fabric,
+  no lumpy or saggy seat, a clean hem. Prompt: "smooth tight shorts fitted cleanly over firm rounded glutes,
+  no folds or wrinkles in the fabric". The 3D shorts are cut tight and smooth for the same reason.
 - Glow: ONLY the active muscles from step 0, clearly brighter, moderate, not blown out, no hot spots.
 - Each frame = the 3D render as image 1 (pose, camera, contacts) + the sheet as image 2 (+ x19 for shorts).
 
@@ -84,7 +92,9 @@ Fail any one = not sent; fix first (one paid retry per defect, then stop and ask
 2. Equipment: same size/height as HIS reference, and identical in both our frames (overlay shows no double edge).
 3. Hands and feet: same pixels in both frames (zoom both).
 4. Head: no face, no ears, same tilt.
-5. Glow on the active muscles only, moderate, no bright spot elsewhere.
+5. Glow: the PRIMARY muscle (library `m[0]`) glows clearly and most, in both frames; the helpers glow less;
+   nothing else glows; moderate, no bright spot elsewhere. Name the lit muscles in the report to Asaf.
+5b. Glutes and shorts: a close crop next to an approved frame - smooth, tight, clean, no folds.
 6. Bare feet, short tight shorts, sheet proportions.
 7. What is held still through the rep stays still; full range of motion.
 8. Whole body and equipment inside the frame with a margin.
