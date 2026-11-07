@@ -1,133 +1,118 @@
 ---
 name: exercise-animation
-description: Build one exercise animation for the library (exercise-sheets/) - Asaf's rules for the glowing figure, the locked 3D pose, the static equipment, the active-muscle glow and the checks, in order. Use whenever Asaf sends exercise pictures or a recording, or asks to make, fix or redo an exercise demo.
+description: בניית אנימציה של תרגיל אחד למאגר (exercise-sheets/) לפי הכללים של אסף - הדמות הזוהרת, הציוד הקבוע, השריר העובד, הבדיקות, לפי הסדר. להשתמש בכל פעם שאסף שולח תמונות או הקלטה של תרגיל, או מבקש ליצור, לתקן או לעשות מחדש הדגמה.
 ---
 
-# Exercise animation - the rules, in order
+# אנימציה של תרגיל - הכללים, לפי הסדר
 
-Every rule here was a rejection first. Go through the steps in order for EVERY exercise; do not skip one because
-the last exercise did not need it. Talk to Asaf in Hebrew only, every line, and end every result with a link.
+כל כלל כאן היה קודם פסילה. עוברים על השלבים לפי הסדר בכל תרגיל, גם אם בתרגיל הקודם לא היה בהם צורך.
+**הכל בעברית:** כל תשובה, כל עדכון ביניים וכל תיאור של פעולה שמריצים. בלי מונחים באנגלית. בסוף כל תוצאה: קישור.
 
-## 0. Before anything
-- Identify the exercise from his reference. It exists in `data/exercises.json` (find by name) or is added
-  (`tools/build-exercises.mjs` row + `exercise-names-3.mjs` + `exercise-howto.mjs` + `exercise-howto-en.mjs`,
-  rebuild, prove no existing row changed, `node tools/test-exercise-search.mjs` 118/118).
-- Write down the ACTIVE MUSCLES: the PRIMARY one is the library row's first muscle (`m[0]`) - it MUST glow,
-  most of all, in every frame. Then the helpers from the reference's red highlight. Decline push-up: CHEST
-  first (`m` = חזה), then front shoulders and triceps; pike push-up: shoulders, triceps. x20 was sent with
-  the shoulder and triceps lit and the chest dark - Asaf: "the chest is what this exercise works".
-- When the camera hides part of the primary muscle (the chest under a push-up), the visible part of it still
-  glows - its side and underside between the arm and the floor - and the prompt names it first and says
-  "clearly visible".
-- Watch the WHOLE recording on a dense contact sheet, not two stills. Note: start pose, end pose, what stays
-  still for the whole rep, the equipment and its exact size and height relative to the body.
+## 0. לפני הכל
+- מזהים את התרגיל ב-`data/exercises.json`. אם הוא לא קיים, מוסיפים אותו:
+  - שורה ב-`tools/build-exercises.mjs`, שם ב-11 שפות ב-`exercise-names-3.mjs`, שלבים וטעויות ב-`exercise-howto.mjs` וב-`exercise-howto-en.mjs`.
+  - בונים מחדש ומוודאים שאף תרגיל קיים לא השתנה.
+  - בדיקת החיפוש (`tools/test-exercise-search.mjs`) צריכה לתת 118 מתוך 118.
+- **השריר העובד:**
+  - השריר הראשי הוא הראשון ברשימת השרירים של התרגיל בספרייה. הוא חייב לזהור יותר מכל השאר, בכל פריים.
+  - אחריו השרירים המסייעים, לפי האדום ברפרנס.
+  - דוגמה, שכיבות סמיכה בשיפוע שלילי: קודם החזה, אחריו קדמת הכתף והיד האחורית. x20 נשלח עם הכתף מוארת והחזה כבוי, ואסף כתב "החזה זה מה שעובדים עליו".
+  - אם המצלמה מסתירה חלק מהשריר הראשי, החלק הנראה שלו עדיין זוהר. בפרומפט הוא מופיע ראשון, עם הדרישה "בולט בבירור".
+- צופים בכל ההקלטה על דף צפוף של פריימים, לא רק בשתי תמונות. רושמים:
+  - תנוחת התחלה ותנוחת סוף.
+  - מה נשאר קבוע לאורך החזרה.
+  - הציוד, והגודל והגובה שלו ביחס לגוף.
 
-## 1. Measure the reference - copy it, do not interpret it
-- The equipment height, length and position relative to the body come from HIS frames, measured in pixels
-  against a body length (e.g. bench top height / shoulder-to-ankle length). Never pick a "reasonable" value.
-- Body angle, joint angles at the start and the end, where hands and feet touch: measured from his frames.
-- The camera angle matches his.
+## 1. מודדים את הרפרנס ומעתיקים, לא מפרשים
+- גובה, אורך ומיקום הציוד נמדדים בפיקסלים מהתמונות שלו, ביחס לאורך הגוף. לא בוחרים ערך "סביר".
+- **דוגמה, x20:**
+  - **למעלה:** כפות הרגליים בגובה הכתפיים, והגוף כמעט אופקי.
+  - **למטה:** החזה כמעט ברצפה.
+- זווית המצלמה כמו אצלו.
 
-## 2. Static background FIRST (before designing the figure)
-- The equipment and the floor are made ONCE and are pixel-identical in every frame. In the 3D scene the bench,
-  box or wall is modelled at the measured size; in the final frames it must not be redrawn per frame:
-  generate the empty scene once (or take it from the 3D render) and place each figure on it
-  (`tools/sheets/place-on-bg.mjs`, figure generated with `background: transparent`).
-- A redrawn bench whose edge doubles in the crossfade is a rejection, however small.
+## 2. הרקע והציוד קבועים, לפני שמעצבים את הדמות
+- הציוד והרצפה נוצרים פעם אחת, וזהים לגמרי בכל הפריימים. זה הרקע הקבוע.
+- כל דמות מונחת עליו לפי נקודות המגע: האצבעות על הספסל, הידיים על הרצפה.
+- ספסל שמצויר מחדש בכל פריים, וקצה שלו מוכפל במעבר, זו פסילה, גם אם ההבדל קטן.
 
-## 3. Pose in 3D (Blender + MPFB, `tools/3d/`)
-- `make-man.py` (sheet proportions), `shorts.py` (short, tight), a `pose-<exercise>.py` that IK-pins hands and
-  feet to fixed points: they cannot move between frames by construction.
-- Render top and bottom (and in-between frames if the rep needs them). Compare side by side with his frames
-  at full size before going on. Fix the pose in 3D (free), not with credits.
-- The guide render must be SMOOTH: plain material, no curvature/pointiness shading. Every crease the guide
-  shows comes back as a wrinkle in the drawing - x20 came out lumpy and "rough" for exactly this reason.
-- Shrink the ears and flatten the face in the 3D head (MPFB `ears/` and `head/` targets): the drawing copies
-  them from the guide however hard the prompt says "no ears".
+## 3. השיטה - ישירות מהתמונות שלו (ברירת המחדל, 7.11)
+**התמונות שמראות את השיטה:** הדמויות שאסף אהב (x19, x13 ושאר המאושרים) נוצרו ישירות מהתמונות שלו. מדריך תלת-ממד מעתיק לציור את הגוף הפחות טוב של המודל: גבשושיות, ישבן שטוח, קפלים במכנס. לכן מדריך התלת-ממד מושבת, ומשתמשים בו רק בתרגיל שבו ההחלקה של הידיים והרגליים באמת בולטת.
 
-## 3b. The method that worked (x20 decline push-up, 7 Nov - "much better")
-1. Measure his reference (bench height = feet level with the shoulders at the top; depth at the bottom).
-2. `pose-<exercise>.py` renders top, bottom AND the empty scene (man hidden) from the same camera.
-3. ONE generation: the empty scene -> the styled empty background (bench drawn once).
-4. ONE generation, 21:9, `resolution: 2k`, `background: transparent`: both 3D poses side by side as the guide
-   (`hstack` + pad to 21:9) -> both figures drawn together, so the man keeps one size.
-5. `node tools/sheets/split-fig.mjs <pair> <left> <right>` - cuts at the empty column, each figure WHOLE
-   (cropping at the guide's panel edges cut the head off).
-6. Seat each figure on the background by its contacts (toes on the bench, hands on the floor): scale and
-   offset from the two anchor points (`tools/sheets/anchor-align.mjs` measures them).
-7. Add the halo back (a blurred copy of the figure under it): a transparent figure loses its glow.
-7b. Match the colour to x19 before compositing: run tone-check on a first composite, then scale the figure's
-   channels by approved-mean / ours-mean (`colorchannelmixer=rr=..:gg=..:bb=..` on the rgba figure). x20 came
-   out 3 degrees too yellow and passed after rr 0.97, gg 0.915, bb 1.06. Uniform grading only.
-7c. If the model draws the equipment anyway on the dark ground (x20 drew a bench), key it out: raise the
-   luma-key threshold (`luma-key.mjs in out 48 100`) and check the alpha in the equipment's area is ~0, so
-   only the static background's bench is ever seen.
-7d. The x20 pass that worked (7 Nov, attempt 6): guide from the round-glutes man, refs [guide, x19 look,
-   sheet body, ref-glutes-good], the chest named first and "the brightest part of the whole body", the
-   look words, dark ground; result: chest lit, round glutes, no ears, both figures within 0.2% in size.
-8. Framing: if a seated figure runs past the frame (x20's head did), never shift the shot - that pushes
-   the equipment out. Extend the background (stretch its plain edge strips right / top), composite on the
-   bigger canvas, and scale the whole frame down to 1024: equipment, figure and margins all stay in.
-9. check-sheet, tone-check (step 5), gif, review.
+השלבים:
+1. **מדריך:** שתי התנוחות שלו זו לצד זו, בתמונה רחבה ביחס 21:9.
+2. **ציור אחד:** שתי הדמויות מצוירות יחד, ברזולוציה כפולה, על רקע כהה ואחיד, בלי ציוד, בלי רצפה ובלי השתקפויות.
+   - **הרפרנסים:** המדריך, פריים מאושר (x19), דף הדמות.
+   - **למה ציור אחד:** כך הדמות יוצאת באותו גודל בשני הפריימים.
+3. **הפרדה לפי בהירות:** `node tools/sheets/luma-key.mjs <in> <out> 48 100`. הדמות זוהרת והרקע כהה, ולכן ההפרדה נקייה וההילה נשארת. אם המודל צייר ציוד בכל זאת, הוא נעלם בשלב הזה. בודקים שבאזור הציוד לא נשאר כלום.
+4. **פיצול:** `node tools/sheets/split-fig.mjs` חותך בעמודה הריקה שבין הדמויות, וכל דמות נשארת שלמה. חיתוך בקצות הפאנלים חתך פעם את הראש.
+5. **הנחה על הרקע:** לפי שתי נקודות המגע. אם הגודל בין הפריימים שונה, מתפשרים חצי-חצי בין הבדל גודל לבין החלקה. מדווחים לו על שניהם.
+6. **מסגור:**
+   - אם הדמות חורגת מהמסגרת, לא מזיזים את הצילום, כי זה דוחף את הציוד החוצה.
+   - מרחיבים את הרקע ימינה ולמעלה, ומקטינים את כל הפריים.
+7. **צבע:** מתאימים לפריים המאושר. מכפילים את ערוצי הצבע של הדמות ביחס הממוצעים, ובודקים עם `tone-check.mjs` (שלב 5).
+8. דף בדיקה, ואחר כך GIF ועמוד האישור.
 
-## 4. The figure - our character, always the same (the design does not drift)
-- The LOOK is the approved exercise frames, not a new interpretation: smooth translucent skin lit from
-  inside, yellow-gold (not orange), a bright gold rim and a soft halo, NO wrinkles, NO bumpy or rough texture.
-  Primary style reference: an approved frame (x19 job `2b2c3f25-3b27-4735-8b60-2a7bb7cce653`, x13).
-  Body reference: the approved character sheet, job `54d6e9b8-b02b-472c-8e93-393483523fd6`
-  (`exercise-sheets/character/sheet-2.jpg`). x19 is also the shorts reference.
-- Prompt words for the skin: "smooth glowing translucent skin lit from within, soft inner light, no wrinkles,
-  no bumps, no rough texture, yellow-gold like image N".
-- His word for the look is CLEAN (7 Nov, x20): smooth, soft, clean surfaces - not lumpy, not grainy, no
-  speckle. Two things made it lumpy and are not used any more:
-  1. `background: transparent` - the model draws a figure alone on transparency noisier, with dotted speckle
-     at the edges and on the shorts. Generate on a plain dark background like the approved frames, and lift
-     the figure off it by brightness (`tools/sheets/luma-key.mjs`): the figure glows, the ground is dark,
-     so the matte is clean and the halo comes along.
-  2. A lumpy 3D body - the drawing copies the guide's bulges. Keep the guide man smooth (muscle macro ~0.7).
-- Smooth bald head: NO face, NO ears, NO facial details - in every frame, including the bottom one where the
-  head turns toward the camera. Barefoot with toes, never shoes. Short, tight shorts ending high on the thigh.
-- Body proportions of the sheet: broad shoulders, V-taper, narrow hips, compact glutes, normal head size.
-- GLUTES AND SHORTS are part of the look (x20, 7 Nov: "what is this backside?"): the shorts sit smooth and
-  tight over round, firm, clean glutes, like the approved frames - no folds, no creases, no bunched fabric,
-  no lumpy or saggy seat, a clean hem. Prompt: "smooth tight shorts fitted cleanly over firm rounded glutes,
-  no folds or wrinkles in the fabric". The 3D shorts are cut tight and smooth for the same reason.
-- He has to HAVE glutes (x20, 7 Nov: "why has he no backside? you have a character sheet"): round, firm,
-  athletic, filling the shorts - see `exercise-sheets/character/ref-glutes-good.jpg` (right) and
-  `ref-glutes-flat.jpg` (wrong). The flat one came from MY 3D settings: `buttocks-volume-decr` shrank them
-  and the shorts ended below the top of the glutes. The 3D man now uses `buttocks-volume-incr 1.0` and the
-  shorts run up to 0.63 of the height, pushed out 0.016, so they cover the glutes whole. In the GUIDE the
-  shorts wear the body's own material (`tools/3d/guide.py`): a darker shorts material with its own rim light
-  made the shorts' top edge glow like a separate bump, and the drawing turned it into glutes poking out. Never shrink the glutes to "match
-  the sheet": the sheet's compact glutes are still round.
-- Glow: ONLY the active muscles from step 0, clearly brighter, moderate, not blown out, no hot spots.
-- Each frame = the 3D render as image 1 (pose, camera, contacts) + the sheet as image 2 (+ x19 for shorts).
+**מדריך תלת-ממד, כשבכל זאת צריך** (`tools/3d/`, קובץ README שם):
+- גוף חלק, בלי הצללת קמטים.
+- אוזניים ואף מוקטנים.
+- ישבן מלא.
+- מכנס שמכסה את הישבן כולו, ובחומר של הגוף עצמו. חומר נפרד עם אור שוליים יצר "בליטה" מזויפת מעל המכנס.
 
-## 5. Check before he sees it (`tools/sheets/check-sheet.mjs`)
-Fail any one = not sent; fix first (one paid retry per defect, then stop and ask).
-1. Pose and angle vs his frames, start and end, full size.
-2. Equipment: same size/height as HIS reference, and identical in both our frames (overlay shows no double edge).
-3. Hands and feet: same pixels in both frames (zoom both).
-4. Head: no face, no ears, same tilt.
-5. Glow: the PRIMARY muscle (library `m[0]`) glows clearly and most, in both frames; the helpers glow less;
-   nothing else glows; moderate, no bright spot elsewhere. Name the lit muscles in the report to Asaf.
-5b. Glutes and shorts: a close crop next to an approved frame - smooth, tight, clean, no folds.
-6. Bare feet, short tight shorts, sheet proportions.
-7. What is held still through the rep stays still; full range of motion.
-8. Whole body and equipment inside the frame with a margin.
-9. THE LOOK matches the approved frames: `node tools/sheets/tone-check.mjs exercise-sheets/x19-incline-push-ups/start.jpg <ours...>`
-   (hue within 1 degree, saturation within 0.02) AND a side-by-side crop of the same body part next to an
-   approved frame, looked at up close - colour, smoothness, rim, halo. The numbers passed x20 while his eye
-   saw "more orange and rough"; the crop is what shows it, so the crop is mandatory.
+## 4. הדמות - שלנו, תמיד אותה דמות, והעיצוב לא זז
+- **המראה הוא המראה של הפריימים המאושרים:**
+  - עור שקוף, חלק ונקי, מואר מבפנים.
+  - צהוב-זהוב, לא כתום.
+  - שוליים זהובים בהירים והילה רכה.
+  - בלי קמטים, בלי גושים, בלי גרגור ובלי נקודות.
+  - **המילה שלו: נקי.**
+- **הרפרנסים:**
+  - **מראה:** פריים מאושר (x19, job `2b2c3f25-3b27-4735-8b60-2a7bb7cce653`).
+  - **גוף:** דף הדמות, job `54d6e9b8-b02b-472c-8e93-393483523fd6`, הקובץ `exercise-sheets/character/sheet-2.jpg`.
+- **לא מציירים על רקע שקוף.** זה יוצא גושי ומנוקד. תמיד רקע כהה, ואז הפרדה לפי בהירות.
+- **הראש:** חלק וקירח, בלי פנים, בלי אוזניים ובלי אף, בכל פריים.
+- **הרגליים:** יחפות עם אצבעות, אף פעם לא נעליים.
+- **הפרופורציות:** של דף הדמות. כתפיים רחבות, גו בצורת V, אגן צר.
+- **ישבן ומכנס הם חלק מהמראה:**
+  - ישבן עגול, מוצק ואתלטי, שממלא מכנס קצר, חלק וצמוד.
+  - בלי קפלים ובלי ישבן שטוח.
+  - שום דבר לא בולט מעל קו המותן.
+  - **רפרנסים:** `exercise-sheets/character/ref-glutes-good.jpg` (נכון) ו-`ref-glutes-flat.jpg` (לא נכון).
+  - לא מקטינים את הישבן כדי "להתאים לדף".
+- **הזוהר:** השריר הראשי בולט מכולם, המסייעים פחות, וכל השאר לא זוהר. מתון, לא שרוף.
 
-## 6. Deliver
-- `node tools/sheets/gif.mjs <start> <end> exercise-sheets/<id>-<slug>`; progress.json status `frames`
-  (several attempts: `tries`); check `review.html` in headless Chrome; commit by path; push; wait until the
-  page is live (nudge Pages with an empty commit only if it did not build); send the link.
-- Report in Hebrew: what passed, every known defect, the cost. End with מחכה לך.
-- Approved -> `done`, copy `anim.mp4` to `assets/exdemo/<id>.mp4`, add `<id>:1` to EX_DEMO in `dev/index.html`,
-  verify it plays (devcheck), commit, link.
+## 5. בדיקה לפני שהוא רואה (`tools/sheets/check-sheet.mjs`)
+סעיף שנכשל = לא נשלח. מותר ניסיון חוזר בתשלום אחד לכל פגם, ואחר כך עוצרים ושואלים.
+1. **התנוחה והזווית:** מול התמונות שלו, בהתחלה ובסוף, בגודל מלא.
+2. **הציוד:** בגודל ובגובה של הרפרנס שלו, וזהה בשני הפריימים. במפת החפיפה אין קצה כפול.
+3. **הידיים וכפות הרגליים:** באותם פיקסלים, או החלקה שמדווחת לו במספרים.
+4. **הראש:** בלי פנים ובלי אוזניים.
+5. **הזוהר:** השריר הראשי זוהר הכי חזק בשני הפריימים. בדיווח אליו כותבים אילו שרירים מוארים.
+6. **ישבן ומכנס:** חיתוך מקרוב, צד לצד עם `ref-glutes-good.jpg`.
+7. **רגליים, מכנס ופרופורציות:** רגליים יחפות, מכנס קצר וצמוד, פרופורציות של דף הדמות.
+8. **מה שקבוע בחזרה:** נשאר קבוע, וטווח התנועה מלא.
+9. **מסגור:** כל הגוף והציוד בתוך הפריים, עם שוליים.
+10. **המראה:**
+    - `node tools/sheets/tone-check.mjs exercise-sheets/x19-incline-push-ups/start.jpg <שלנו>`: הגוון בתוך מעלה אחת, הרוויה בתוך 0.02.
+    - ובנוסף חיתוך מקרוב של אותו חלק גוף, צד לצד עם פריים מאושר.
+    - החיתוך חובה, כי המספרים עברו ב-x20 בזמן שהעין שלו ראתה "כתום וגושי".
 
-## Money
-- Image ~0.5 credit (1k medium). No video models without his explicit yes (motion control is 8 credits).
-- Two failures on the same defect: stop and ask. Never spend on a defect already known.
+## 6. מסירה
+- **בנייה:** `node tools/sheets/gif.mjs <התחלה> <סוף> exercise-sheets/<id>-<slug>`.
+- **סטטוס:** ב-progress.json הסטטוס הוא `frames`. כמה ניסיונות נשמרים תחת `tries`, עם תוויות בעברית.
+- **פרסום:**
+  - בודקים את עמוד האישור בכרום.
+  - מחייבים לפי נתיב, ודוחפים.
+  - מחכים שהאתר יתעדכן. דחיפה ריקה רק אם הוא לא נבנה.
+  - שולחים קישור.
+- **דיווח בעברית:** מה עבר, כל פגם ידוע, העלות. בסוף: מחכה לך.
+- **אחרי אישור:**
+  - הסטטוס הופך ל-`done`.
+  - `anim.mp4` מועתק ל-`assets/exdemo/<id>.mp4`.
+  - מוסיפים `<id>:1` ל-EX_DEMO ב-`dev/index.html`.
+  - בודקים שהוא מתנגן, מחייבים ושולחים קישור.
+
+## כסף
+- **תמונה:** בערך 0.5 קרדיט. ציור כפול ברזולוציה גבוהה: בערך קרדיט אחד.
+- **מודלי וידאו:** לא בלי אישור מפורש שלו. העברת תנועה עולה 8 קרדיטים.
+- **שני כישלונות על אותו פגם:** עוצרים ושואלים.
+- **פגם שכבר ידוע:** לא מוציאים עליו קרדיטים.
