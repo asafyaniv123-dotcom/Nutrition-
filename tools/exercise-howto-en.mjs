@@ -2121,6 +2121,15 @@ export const EN = {
       'Flaring your elbows out to the sides.',
       'Reaching toward the wall with your head before your chest.'] },
 
+'שכיבות סמיכה פייק': {
+  s: ['Start in a push-up position and walk your feet toward your hands until your hips are high and your body forms an upside-down V.',
+      'Keep your hands shoulder-width apart, your legs straight or nearly straight, and your head between your arms.',
+      'Bend your elbows and lower the top of your head toward the floor, slightly in front of your hands.',
+      'Press the floor away and straighten your arms again, keeping your hips high.'],
+  m: ['Letting your hips drop, which turns it into an ordinary push-up.',
+      'Flaring your elbows out to the sides.',
+      'Lowering your head straight between your hands instead of slightly in front of them.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',

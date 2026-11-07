@@ -63,5 +63,6 @@ export const PART3 = {
 'Single-Leg Dumbbell Hip Thrust':{de:'Einbeiniger Hip Thrust mit Kurzhantel',es:'Hip thrust a una pierna con mancuerna',fr:'Hip thrust unilatéral avec haltère',it:'Hip thrust a una gamba con manubrio',pt:'Elevação de quadril unilateral com halter',ja:'シングルレッグ・ダンベルヒップスラスト','zh-Hans':'单腿哑铃臀推','zh-Hant':'單腿啞鈴臀推',ar:'دفع الورك برجل واحدة بالدمبل'},
 'Knee Push Ups':{de:'Liegestütze auf den Knien',es:'Flexiones de rodillas',fr:'Pompes sur les genoux',it:'Piegamenti sulle ginocchia',pt:'Flexões de joelhos',ja:'膝つき腕立て伏せ','zh-Hans':'跪姿俯卧撑','zh-Hant':'跪姿伏地挺身',ar:'تمرين الضغط على الركبتين'},
 'Wall Push Ups':{de:'Liegestütze an der Wand',es:'Flexiones en la pared',fr:'Pompes contre le mur',it:'Piegamenti al muro',pt:'Flexões na parede',ja:'壁腕立て伏せ','zh-Hans':'靠墙俯卧撑','zh-Hant':'靠牆伏地挺身',ar:'تمرين الضغط على الحائط'},
+'Pike Push Ups':{de:'Pike-Liegestütze',es:'Flexiones en pica',fr:'Pompes en pike',it:'Piegamenti pike',pt:'Flexões pike',ja:'パイクプッシュアップ','zh-Hans':'屈体俯卧撑','zh-Hant':'屈體伏地挺身',ar:'تمرين الضغط بوضعية الحرف V المقلوب'},
 'Banded Hip Abduction':{de:'Hüftabduktion mit Band',es:'Abducción de cadera con banda',fr:'Abduction de hanche avec élastique',it:'Abduzione dell’anca con elastico',pt:'Abdução de quadril com elástico',ja:'バンド・ヒップアブダクション','zh-Hans':'弹力带髋外展','zh-Hant':'彈力帶髖外展',ar:'إبعاد الورك بشريط المقاومة'},
 };
