@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'שכיבות סמיכה על כדור כוח': {
+  s: ['Put a medicine ball on the floor and place both hands on it, close together, under your chest.',
+      'Step your feet back until your body is straight from head to heels, on your toes.',
+      'Bend your elbows and lower your chest toward the ball, keeping your body straight.',
+      'Push back up until your arms are straight.'],
+  m: ['Letting your hips sag or pike instead of holding a straight line.',
+      'Letting your hands slide off the sides of the ball.',
+      'Going only part of the way down.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
