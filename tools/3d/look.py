@@ -35,12 +35,15 @@ rim = N.new('ShaderNodeEmission'); rim.inputs['Color'].default_value = (1.0, 0.4
 mix = N.new('ShaderNodeMixShader')
 L.new(lw.outputs['Facing'], mix.inputs['Fac']); L.new(body_em.outputs[0], mix.inputs[1]); L.new(rim.outputs[0], mix.inputs[2])
 L.new(mix.outputs[0], out.inputs['Surface'])
-body = bpy.data.objects['Human']
+# the muscular proxy body when there is one (male_muscle_13290), the base mesh otherwise
+proxies = [o for o in bpy.data.objects if o.type == 'MESH' and 'muscle' in o.name]
+body = proxies[0] if proxies else bpy.data.objects['Human']
+if proxies: bpy.data.objects['Human'].hide_render = True
 body.data.materials.clear(); body.data.materials.append(m)
 if not any(md.type == 'SUBSURF' for md in body.modifiers):
     s = body.modifiers.new('Sub', 'SUBSURF'); s.levels = s.render_levels = 1
 for o in bpy.data.objects:
-    if o.type == 'MESH' and o is not body and o.parent and o.parent.name == 'Human.rig': o.hide_render = True
+    if o.type == 'MESH' and o is not body and o.name not in ('Human', 'Shorts') and o.parent and o.parent.name == 'Human.rig': o.hide_render = True
 
 # floor: near-black, slightly glossy, so the figure's glow pools and reflects under the contacts
 bpy.ops.mesh.primitive_plane_add(size=30, location=(0, 0, 0)); fl = bpy.context.object; fl.name = 'Floor'
@@ -50,3 +53,10 @@ p.inputs['Base Color'].default_value = (0.035, 0.02, 0.012, 1); p.inputs['Roughn
 fl.data.materials.append(fm)
 w = sc.world or bpy.data.worlds.new('W'); sc.world = w; w.use_nodes = True
 bg = w.node_tree.nodes['Background']; bg.inputs['Color'].default_value = (0.006, 0.0028, 0.001, 1); bg.inputs['Strength'].default_value = 1.0
+# shorts: the same glow, a shade deeper, so they read as cloth over the body
+if 'Shorts' in bpy.data.objects:
+    so = bpy.data.objects['Shorts']; so.hide_render = False
+    sm = m.copy(); sm.name = 'ShortsM'
+    for n in sm.node_tree.nodes:
+        if n.type == 'EMISSION': n.inputs['Strength'].default_value *= 0.7
+    so.data.materials.clear(); so.data.materials.append(sm)
