@@ -44,7 +44,7 @@ def solve(t):
         e = abs((h - a2).length - LEG)
         if best is None or e < best[0]: best = (e, w + u * ARM * 0.985)
     s0 = best[1]
-    s1 = w + Vector((0.03, 0.33)) * K                          # bottom: shoulders just behind the hands, elbows ~85 deg
+    s1 = w + Vector((0.08, 0.32)) * K                          # bottom: shoulders just behind the hands, elbows ~85 deg
     s = s0.lerp(s1, t)
     # hip: TORSO from the shoulder and LEG from the ankle, the upper of the two answers
     d = (a2 - s).length
