@@ -2157,6 +2157,15 @@ export const EN = {
       'A loose grip on the dumbbell between your feet.',
       'Dropping fast and losing control.'] },
 
+'קירוב ברכיים לחזה בשכיבה': {
+  s: ['Lie on your back, arms straight at your sides and palms on the floor.',
+      'Lift both legs slightly off the floor, straight and together.',
+      'Pull your knees in to your chest together, keeping your legs side by side.',
+      'Straighten your legs back out slowly without resting them on the floor.'],
+  m: ['Letting your lower back arch off the floor when your legs are straight.',
+      'Pushing hard with your hands instead of working your abs.',
+      'Letting your feet touch down between reps.'] },
+
 'חבלי קרב': {
   s: ['Take an end in each hand, feet about shoulder width, knees softly bent.',
       'Step back until the ropes are nearly taut, stomach braced.',
