@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'חתירה במשקולות בשכיבה על ספסל משופע': {
+  s: ['Set a bench to a low incline and lie on it face down, your chest against the top end.',
+      'Hold a dumbbell in each hand with your arms hanging straight down.',
+      'Row the dumbbells up to the sides of your body, elbows driving back.',
+      'Lower slowly until your arms are straight.'],
+  m: ['Lifting your chest off the bench to help the pull.',
+      'Shrugging your shoulders up instead of pulling with your back.',
+      'Dropping the weights without control.'] },
+
 'ירידות אגן בפלאנק צידי': {
   s: ['Lie on your side propped on your hand, arm straight under your shoulder, legs straight and stacked.',
       'Rest your top hand on your hip and lift your hips into a straight line from ankles to head.',
