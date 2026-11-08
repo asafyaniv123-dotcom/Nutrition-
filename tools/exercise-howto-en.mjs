@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'חתירה בפולי תחתון בהטיה': {
+  s: ['Stand facing a low pulley with a straight bar, knees slightly bent, torso leaning forward with a flat back.',
+      'Hold the bar with your arms straight toward the pulley.',
+      'Row the bar to your stomach, elbows driving back close to your body.',
+      'Return slowly until your arms are straight, without changing your torso angle.'],
+  m: ['Standing up a little more on every rep.',
+      'Rounding your back.',
+      'Pulling with your arms instead of your back.'] },
+
 'חתירה ביד אחת בגומייה בישיבה': {
   s: ['Sit on the floor with your legs straight in front of you and the band anchored ahead of you at foot height.',
       'Hold the handle in one hand, arm straight forward, back tall.',
