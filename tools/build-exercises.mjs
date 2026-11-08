@@ -351,7 +351,8 @@ const RAW=[
 ['פשיטת מרפק מעל הראש במוט EZ בישיבה',M.triceps,[Q.ez,Q.bench],'Seated EZ-Bar Overhead Tricep Extension',['פרנץ׳ פרס בישיבה','פשיטת מרפק מאחורי הראש במוט','טרייספס מעל הראש במוט EZ']],
 ['פרנץ׳ פרס בשכיבה במוט',M.triceps,[Q.bar,Q.bench],'Lying Barbell French Press',['פרנץ׳ פרס','פשיטת מרפק בשכיבה במוט','פשיטת מרפק מאחורי הראש בשכיבה']],
 ['היפ ת׳ראסט בסמית׳',[M.glutes,M.hams],[Q.smith,Q.bench],'Smith Machine Hip Thrust',['היפ תראסט בסמית','גשר ישבן בסמית׳','הרמת אגן בסמית׳']],
-['נגיעה בבהונות עם פלטה',M.abs,[Q.plate,Q.mat],'Plate Toe Touch',['נגיעה בבהונות','טו טאץ׳ עם פלטה','כפיפות בטן עם רגליים למעלה']]
+['נגיעה בבהונות עם פלטה',M.abs,[Q.plate,Q.mat],'Plate Toe Touch',['נגיעה בבהונות','טו טאץ׳ עם פלטה','כפיפות בטן עם רגליים למעלה']],
+['כפיפה צידית על ספסל 45°',M.obliques,[Q.bench],'45 Degree Bench Side Bend',['כפיפה לצד על ספסל היפראקסטנשן','כפיפה צידית בשיפוע','אלכסונים על ספסל 45']]
 ];
 
 const list=RAW.map(function(r,i){

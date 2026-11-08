@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'כפיפה צידית על ספסל 45°': {
+  s: ['Lock your feet at the bottom of a 45 degree bench and rest your hips on the pad, body in a straight line.',
+      'Put your hands behind your head, elbows out.',
+      'Bend your torso to the side from the waist, without twisting forward or back.',
+      'Return slowly to a straight line, and switch sides on the next set.'],
+  m: ['Twisting the torso instead of bending cleanly to the side.',
+      'Pulling on your head with your hands.',
+      'Letting your hips move on the pad instead of staying still.'] },
+
 'נגיעה בבהונות עם פלטה': {
   s: ['Lie on your back and raise your legs straight up, soles toward the ceiling.',
       'Hold a weight plate in both hands, arms straight above your chest.',
