@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'קירוב ברכיים לחזה בישיבה על ספסל': {
+  s: ['Sit on the end of a flat bench and hold it with your hands beside your hips.',
+      'Lean your torso back and extend your legs forward and down, feet off the floor.',
+      'Pull your knees in to your chest and bring your torso up a little to meet them.',
+      'Extend your legs again slowly without touching the floor.'],
+  m: ['Touching the floor between reps.',
+      'Swinging from the legs instead of contracting your abs.',
+      'Shrugging your shoulders up toward your ears.'] },
+
 'כפיפה צידית על ספסל 45°': {
   s: ['Lock your feet at the bottom of a 45 degree bench and rest your hips on the pad, body in a straight line.',
       'Put your hands behind your head, elbows out.',
