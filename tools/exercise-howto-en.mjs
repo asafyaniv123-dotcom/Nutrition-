@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'ירידות אגן בפלאנק צידי': {
+  s: ['Lie on your side propped on your hand, arm straight under your shoulder, legs straight and stacked.',
+      'Rest your top hand on your hip and lift your hips into a straight line from ankles to head.',
+      'Lower your hips slowly toward the floor without touching it.',
+      'Lift them back into the straight line with your obliques, then switch sides.'],
+  m: ['Letting your shoulder sink over the supporting hand.',
+      'Rotating forward or back instead of moving straight up and down.',
+      'Resting your hips on the floor between reps.'] },
+
 'קירוב ברכיים לחזה בישיבה על ספסל': {
   s: ['Sit on the end of a flat bench and hold it with your hands beside your hips.',
       'Lean your torso back and extend your legs forward and down, feet off the floor.',
