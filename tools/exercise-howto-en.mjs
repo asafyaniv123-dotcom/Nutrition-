@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'גוד מורנינג בישיבה': {
+  s: ['Sit on the end of a flat bench, feet wide, a bar resting on your upper back.',
+      'Hold the bar, back flat and chest open.',
+      'Hinge your torso forward from the hips, back flat, until it is nearly parallel to your thighs.',
+      'Return to sitting upright using your lower back and glutes.'],
+  m: ['Rounding your back on the way down.',
+      'Going too deep before your back is ready.',
+      'Moving too fast.'] },
+
 'חתירה בפולי תחתון בהטיה': {
   s: ['Stand facing a low pulley with a straight bar, knees slightly bent, torso leaning forward with a flat back.',
       'Hold the bar with your arms straight toward the pulley.',
