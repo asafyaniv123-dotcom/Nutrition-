@@ -27,7 +27,8 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
 4. **ffmpeg:** הכלים מחפשים אותו ב-`%TEMP%/fftool/node_modules/ffmpeg-static/ffmpeg.exe`. אם חסר: `npm i ffmpeg-static --prefix "$TEMP/fftool"`.
 5. **Higgsfield:** צריך את כלי ה-MCP שלו. העלאה תקפה 24 שעות, אז את THE-FIGURE-3 ואת THE-FIGURE-2 מעלים מחדש בכל סשן.
 6. **כרום:** `review-check.mjs` ו-`dev-check.mjs` מריצים אותו מ-`C:/Program Files/Google/Chrome/Application/chrome.exe`.
-7. **עמוד האישור:** https://asafyaniv123-dotcom.github.io/Nutrition-/exercise-sheets/review.html. החדש ביותר מופיע ראשון.
+7. **מה נשאר:** `exercise-sheets/plan.html` מחלק כל תרגיל בלי הדגמה לקל או לקשה, לפי הטבלה בסקיל, עם הסיבה ליד כל קשה. בונים אותו מחדש אחרי כל אישור: `node tools/sheets/plan.mjs`. הקלים נעשים בסבבים, הקשים אחריהם (אסף, 8.11).
+8. **עמוד האישור:** https://asafyaniv123-dotcom.github.io/Nutrition-/exercise-sheets/review.html. החדש ביותר מופיע ראשון.
 
 ## בחירת שיטה - לפני הקרדיט הראשון
 
