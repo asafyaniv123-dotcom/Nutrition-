@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'פרנץ׳ פרס בשכיבה במוט': {
+  s: ['Lie on a flat bench, feet on the floor, holding a barbell with a narrow grip over your chest, arms straight.',
+      'Tilt your arms slightly back toward your head and hold them there.',
+      'Bend only at the elbows and lower the bar behind your head, down to the level of the bench.',
+      'Straighten your elbows until your arms are straight again.'],
+  m: ['Letting your elbows flare out to the sides.',
+      'Moving from the shoulders instead of only the elbows.',
+      'Stopping short instead of lowering the bar behind your head.'] },
+
 'פשיטת מרפק מעל הראש במוט EZ בישיבה': {
   s: ['Sit upright at the end of a flat bench, feet flat on the floor.',
       'Hold an EZ bar with a narrow grip on the inner bends and press it overhead, arms straight.',
