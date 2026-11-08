@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'נגיעה בבהונות עם פלטה': {
+  s: ['Lie on your back and raise your legs straight up, soles toward the ceiling.',
+      'Hold a weight plate in both hands, arms straight above your chest.',
+      'Crunch your abs to lift your shoulder blades off the floor and reach the plate toward your feet.',
+      'Lower your shoulder blades back to the floor slowly.'],
+  m: ['Pulling with your neck instead of your abs.',
+      'Letting your legs drop forward instead of staying vertical.',
+      'Swinging instead of moving under control.'] },
+
 'היפ ת׳ראסט בסמית׳': {
   s: ['Set a low bench crosswise inside the Smith machine and sit on the floor with your shoulder blades against its edge.',
       'Set the bar so it runs across your upper thighs, with a pad on it.',
