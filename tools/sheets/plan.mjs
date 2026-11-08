@@ -9,7 +9,7 @@ const demo = new Set(html.match(/EX_DEMO\s*=\s*\{([^}]*)\}/)[1].replace(/\/\*[\s
 const EASY = new Set(('x2 x3 x5 x10 x11 x12 x13 x21 x26 x39 x42 x43 x45 x47 x49 x50 x58 x59 x60 x61 x62 x64 x65 x66 x68 x69 '
   + 'x73 x76 x77 x79 x81 x83 x85 x88 x89 x90 x91 x92 x94 x95 x97 x98 x99 x101 x103 x104 x105 x106 x109 x110 x111 x116 '
   + 'x120 x121 x123 x124 x127 x129 x133 x134 x141 x147 x148 x151 x152 x158 x159 x161 x163 x167 x169 x171 x175 x179 x181 '
-  + 'x188 x189 x193 x196 x200 x202 x205 x206 x232 x233 x234 x235 x241 x242 x256 x257').split(' '));
+  + 'x188 x189 x193 x196 x200 x202 x205 x206 x232 x233 x234 x235 x241 x242 x256 x257 x258').split(' '));
 const WHY = { // why a hard one is hard, in the skill's words
   machine: 'מכונה עם חלק נע', body: 'כל הגוף זז מול מוט או ספסל', floor: 'שכיבה ותנועה גדולה', swap: 'איברים מתחלפים',
   multi: 'יותר משתי תנוחות', walk: 'הליכה, ריצה או קפיצה', cross: 'כבלים שנחצים', retry: 'נכשל כבר, ברשימת החזרה' };
