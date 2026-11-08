@@ -349,7 +349,8 @@ const RAW=[
 ['קירוב ברכיים לחזה בשכיבה',M.abs,[Q.mat],'Lying Knee Tucks',['ברכיים לחזה בשכיבה','ני טאק בשכיבה','קיפול רגליים בשכיבה']],
 ['שכיבות סמיכה על כדור כוח',M.chest,[Q.medball],'Medicine Ball Push Ups',['שכיבות סמיכה על כדור','שכיבות סמיכה כדור מדיסין','שכיבות סמיכה צרות על כדור']],
 ['פשיטת מרפק מעל הראש במוט EZ בישיבה',M.triceps,[Q.ez,Q.bench],'Seated EZ-Bar Overhead Tricep Extension',['פרנץ׳ פרס בישיבה','פשיטת מרפק מאחורי הראש במוט','טרייספס מעל הראש במוט EZ']],
-['פרנץ׳ פרס בשכיבה במוט',M.triceps,[Q.bar,Q.bench],'Lying Barbell French Press',['פרנץ׳ פרס','פשיטת מרפק בשכיבה במוט','פשיטת מרפק מאחורי הראש בשכיבה']]
+['פרנץ׳ פרס בשכיבה במוט',M.triceps,[Q.bar,Q.bench],'Lying Barbell French Press',['פרנץ׳ פרס','פשיטת מרפק בשכיבה במוט','פשיטת מרפק מאחורי הראש בשכיבה']],
+['היפ ת׳ראסט בסמית׳',[M.glutes,M.hams],[Q.smith,Q.bench],'Smith Machine Hip Thrust',['היפ תראסט בסמית','גשר ישבן בסמית׳','הרמת אגן בסמית׳']]
 ];
 
 const list=RAW.map(function(r,i){

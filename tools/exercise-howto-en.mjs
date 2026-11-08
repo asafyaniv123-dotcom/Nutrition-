@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'היפ ת׳ראסט בסמית׳': {
+  s: ['Set a low bench crosswise inside the Smith machine and sit on the floor with your shoulder blades against its edge.',
+      'Set the bar so it runs across your upper thighs, with a pad on it.',
+      'Feet flat on the floor about shoulder width apart, drive the bar up until your body is straight from shoulders to knees.',
+      'Hold for a moment at the top, then lower slowly to just above the floor.'],
+  m: ['Arching your lower back at the top instead of finishing with your glutes.',
+      'Feet too close or too far, so your shins are not vertical at the top.',
+      'Letting your shoulder blades slide along the bench instead of staying on its edge.'] },
+
 'פרנץ׳ פרס בשכיבה במוט': {
   s: ['Lie on a flat bench, feet on the floor, holding a barbell with a narrow grip over your chest, arms straight.',
       'Tilt your arms slightly back toward your head and hold them there.',
