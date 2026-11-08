@@ -1,8 +1,8 @@
-// For each "id:slug", open the M&S exercise page in headless Chrome, autoplay its YouTube video muted inside the page,
+// For each "id:slug", open the M&S exercise page in headless Chrome, autoplay its YouTube or Vimeo video muted inside the page,
 // and screenshot the player once a second -> <outRoot>/<id>/NNN.jpg  (YouTube refuses direct playback here; the page works)
-// node masgrab.mjs <outRoot> <seconds> id:slug [id:slug ...]
+// node masgrab.mjs <outRoot> <frames> <intervalMs> id:slug [id:slug ...]   (8 Nov: 120 frames at 250 ms catches the ends of a rep; 1 s missed them)
 import fs from 'fs'; import os from 'os'; import path from 'path'; import { spawn } from 'child_process';
-const [outRoot, secs, ...jobs] = process.argv.slice(2);
+const [outRoot, secs, every, ...jobs] = process.argv.slice(2);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mas-'));
 const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=9521', '--window-size=1300,1300', '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36', '--user-data-dir=' + tmp, 'about:blank'], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -18,12 +18,12 @@ for (const job of jobs) {
   await cmd('Page.navigate', { url: 'https://www.muscleandstrength.com/exercises/' + slug + '.html' });
   for (let i = 0; i < 12; i++) { await sleep(2500); const ti = await ev('document.title'); if (ti && !/moment|רגע/i.test(ti)) break; }
   await ev(`(()=>{const b=[...document.querySelectorAll('button')].find(x=>/Reject/.test(x.innerText)); if(b) b.click();})()`);
-  const r = await ev(`(()=>{const f=[...document.querySelectorAll('iframe')].find(x=>/youtube/.test(x.src)); if(!f) return ''; f.src=f.src+'&autoplay=1&mute=1'; const b=f.getBoundingClientRect(); return JSON.stringify({x:b.x+scrollX,y:b.y+scrollY,w:b.width,h:b.height});})()`);
+  const r = await ev(`(()=>{const f=[...document.querySelectorAll('iframe')].find(x=>/youtube|vimeo/.test(x.src||x.getAttribute('data-src')||'')); if(!f) return ''; f.scrollIntoView(); f.src=(f.getAttribute('data-src')||f.src)+'&autoplay=1&mute=1&muted=1'; const b=f.getBoundingClientRect(); return JSON.stringify({x:b.x+scrollX,y:b.y+scrollY,w:b.width,h:b.height});})()`);
   if (!r) { console.log(xid, 'no video'); continue; }
   const b = JSON.parse(r); await sleep(4000);
   for (let i = 0; i < +secs; i++) {
     const shot = await cmd('Page.captureScreenshot', { format: 'jpeg', quality: 88, clip: { x: b.x, y: b.y, width: b.w, height: b.h, scale: 1 } });
-    fs.writeFileSync(path.join(dir, String(i).padStart(3, '0') + '.jpg'), Buffer.from(shot.data, 'base64')); await sleep(1000);
+    fs.writeFileSync(path.join(dir, String(i).padStart(3, '0') + '.jpg'), Buffer.from(shot.data, 'base64')); await sleep(+every);
   }
   console.log(xid, 'done');
 }
