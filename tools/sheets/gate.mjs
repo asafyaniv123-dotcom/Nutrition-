@@ -22,7 +22,9 @@ for (const [id, e] of Object.entries(prog)) {
     const k = c.checks?.[n];
     if (!k) { bad.push(`${id}: check ${n} missing`); continue; }
     if (k.pass !== true) bad.push(`${id}: check ${n} failed (his ${k.his}, ours ${k.ours}) - stop and ask in chat, not on the page`);
-    if (!/\d/.test(String(k.his ?? '')) || !/\d/.test(String(k.ours ?? ''))) bad.push(`${id}: check ${n} has no measured numbers`);
+    // ours is always measured; his has a number only where we measure against him (pose, proportion, tone, range)
+    if (!/\d/.test(String(k.ours ?? '')) || ([1, 3, 8, 11].includes(n) && !/\d/.test(String(k.his ?? ''))))
+      bad.push(`${id}: check ${n} has no measured numbers`);
   }
 }
 if (bad.length) { console.log(bad.join('\n')); process.exit(1); }
