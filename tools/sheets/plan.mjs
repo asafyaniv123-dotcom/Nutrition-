@@ -4,7 +4,8 @@ import fs from 'fs';
 const R = 'C:/Projects/Nutrition-/';
 const d = JSON.parse(fs.readFileSync(R + 'data/exercises.json', 'utf8')); const L = d.exercises || d;
 const html = fs.readFileSync(R + 'dev/index.html', 'utf8');
-const demo = new Set(html.match(/EX_DEMO\s*=\s*\{([^}]*)\}/)[1].split(',').map((x) => x.split(':')[0].trim()));
+// EX_DEMO carries /* comments */ between ids; strip them, or the id after each comment reads as missing (x13 did)
+const demo = new Set(html.match(/EX_DEMO\s*=\s*\{([^}]*)\}/)[1].replace(/\/\*[\s\S]*?\*\//g, '').split(',').map((x) => x.split(':')[0].trim()));
 const EASY = new Set(('x2 x3 x5 x10 x11 x12 x13 x21 x26 x39 x42 x43 x45 x47 x49 x50 x58 x59 x60 x61 x62 x64 x65 x66 x68 x69 '
   + 'x73 x76 x77 x79 x81 x83 x85 x88 x89 x90 x91 x92 x94 x95 x97 x98 x99 x101 x103 x104 x105 x106 x109 x110 x111 x116 '
   + 'x120 x121 x123 x124 x127 x129 x133 x134 x141 x147 x148 x151 x152 x158 x159 x161 x163 x167 x169 x171 x175 x179 x181 '
