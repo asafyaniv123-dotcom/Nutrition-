@@ -11,21 +11,28 @@ const [IN, OUT, ...chains] = process.argv.slice(2);
 if (!chains.length) { console.log('usage: skeleton.mjs <in> <out> "name:x,y x,y ..." [...]'); process.exit(2); }
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 const colors = ['0x00E5FF', '0xFF2A6D', '0x7CFF4F', '0xFFD400', '0xB26BFF'];
+/* Which leg is in front (8 Nov, Asaf: "the leg you put forward is not the one in front - how do we notice?").
+   A limb named L... is the FIGURE's left and always cyan, R... its right and always pink, in every picture,
+   so his reference and ours read the same. A name ending in + is the limb nearer the camera: thick and solid;
+   one ending in - is the far limb: thin and dotted. Put the two skeletons side by side - a colour on the
+   other side, or the thick line on the other leg, is a swapped limb. Other names keep the old colours. */
+const sideCol = (n) => /^L/.test(n) ? '0x00E5FF' : /^R/.test(n) ? '0xFF2A6D' : null;
 const boxes = [], report = {};
 chains.forEach((c, ci) => {
   const [name, pts] = c.includes(':') ? c.split(':') : ['chain' + ci, c];
-  const P = pts.trim().split(/\s+/).map((p) => p.split(',').map(Number)), col = colors[ci % colors.length];
+  const P = pts.trim().split(/\s+/).map((p) => p.split(',').map(Number)), col = sideCol(name) || colors[ci % colors.length];
+  const near = name.endsWith('+'), far = name.endsWith('-'), w = near ? 12 : far ? 4 : 6, step = far ? 10 : 3;
   const seg = [], bend = [];
   for (let i = 1; i < P.length; i++) {
     const [x0, y0] = P[i - 1], [x1, y1] = P[i], len = Math.hypot(x1 - x0, y1 - y0);
     seg.push({ len: Math.round(len), deg: Math.round(Math.atan2(y0 - y1, x1 - x0) * 180 / Math.PI) });
-    for (let t = 0; t <= len; t += 3) boxes.push(`drawbox=x=${Math.round(x0 + (x1 - x0) * t / len) - 3}:y=${Math.round(y0 + (y1 - y0) * t / len) - 3}:w=6:h=6:color=${col}:t=fill`);
+    for (let t = 0; t <= len; t += step) boxes.push(`drawbox=x=${Math.round(x0 + (x1 - x0) * t / len) - w / 2}:y=${Math.round(y0 + (y1 - y0) * t / len) - w / 2}:w=${w}:h=${w}:color=${col}:t=fill`);
   }
   for (let i = 1; i < P.length - 1; i++) {
     const a = Math.atan2(P[i - 1][1] - P[i][1], P[i - 1][0] - P[i][0]), b = Math.atan2(P[i + 1][1] - P[i][1], P[i + 1][0] - P[i][0]);
     let d = Math.abs(a - b) * 180 / Math.PI; if (d > 180) d = 360 - d; bend.push(Math.round(d));
   }
-  for (const [x, y] of P) boxes.push(`drawbox=x=${x - 9}:y=${y - 9}:w=18:h=18:color=white:t=fill`);
+  for (const [x, y] of P) boxes.push(`drawbox=x=${x - 9}:y=${y - 9}:w=18:h=18:color=${far ? col : 'white'}:t=${far ? 3 : 'fill'}`);
   const total = seg.reduce((s, q) => s + q.len, 0);
   report[name] = { segments: seg, ratios: seg.map((q) => +(q.len / total).toFixed(3)), bends: bend };
 });
