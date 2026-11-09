@@ -14,8 +14,9 @@ Every exercise demo (exercise-sheets/, the glowing figure) is built by the skill
 is a procedure, not a log (Asaf, 7 Nov): when he rejects something, change the step that should have caught
 it - never append a paragraph about what happened. It lives in the repo so a new session gets it with the
 clone. Its tools are `tools/sheets/` (each documents its usage on line 1); its one body is
-the character sheet `exercise-sheets/character/sheet-2.jpg` (Asaf, 9 Nov: "we have a body we work with") -
-passed to every generation and never described in words.
+the first amber loops of 3 Nov, `exercise-sheets/character/EARLY-*.jpg` (Asaf, 9 Nov: "the versions right
+after the blue one - body and colour") - passed to every generation, never described in words; and the
+demo is motion from his two approved frames, not a GIF.
 
 ## Working rule
 
