@@ -13,8 +13,9 @@ Every exercise demo (exercise-sheets/, the glowing figure) is built by the skill
 `.claude/skills/exercise-animation/SKILL.md` - read it first, every time, and run its steps in order. It
 is a procedure, not a log (Asaf, 7 Nov): when he rejects something, change the step that should have caught
 it - never append a paragraph about what happened. It lives in the repo so a new session gets it with the
-clone. Its tools are `tools/sheets/` (each documents its usage on line 1); its references are
-`exercise-sheets/character/`, THE-FIGURE-3.jpg first.
+clone. Its tools are `tools/sheets/` (each documents its usage on line 1); its one body is
+the character sheet `exercise-sheets/character/sheet-2.jpg` (Asaf, 9 Nov: "we have a body we work with") -
+passed to every generation and never described in words.
 
 ## Working rule
 
