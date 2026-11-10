@@ -131,22 +131,25 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
    - **גודל:** הדמות באותו גודל בשני הפריימים, וכל מה שקבוע במקום.
    - **זוהר:** השריר הראשי זוהר הכי חזק.
    - **מסגור:** כל הדמות והציוד בפריים, עם שוליים.
-   - **מראה:** משפט אחד בלבד: "THE FIGURE IS EXACTLY THE CHARACTER OF IMAGE 2 (a turnaround sheet of one figure): copy its body, build, proportions, material, glow, head, shorts and bare feet exactly, from the view that matches the camera". **שום מילה נוספת על הגוף** (8.11: כל תיאור - שקיפות, זהב, שרירים, מכנס, ראש - משך את הגוף מהדף; x96/try2 נבנה בלי אף אחד מהם ואושר).
+   - **מראה:** משפט אחד בלבד: "THE FIGURE IS EXACTLY THE CHARACTER OF IMAGE 2 (a turnaround sheet of one figure): copy its body, build, proportions, material, glow, head, shorts and shoes exactly, from the view that matches the camera". **שום מילה נוספת על הגוף** (8.11: כל תיאור - שקיפות, זהב, שרירים, מכנס, ראש - משך את הגוף מהדף; x96/try2 נבנה בלי אף אחד מהם ואושר).
 4א. **מבנה ההנחיה - מחייב בכל יצירה ובכל עריכה (אסף, 10.11).** ההנחיה נכתבת בארבעה חלקים, בסדר הזה, ומוצגת בדיווח:
-   1. **STYLE:** הדמות שלנו (האלמנט השמור / תמונה 2) מול הרפרנס שלו כתמונה 1. תמיד כולל, מילה במילה: "glowing translucent golden shorts matching the 3D body material". וגם: "Attire (shorts and sneakers) must be fully rendered in the 3D glowing amber material with crisp structural boundaries" - סניקרס מוגדרות עם סוליה ברורה. לעולם לא "dark shorts" (x176 v4: המילה dark במכנס הוציאה בוקסר שחור אטום).
+   1. **STYLE:** "3D glowing amber style" בלבד. **לעולם לא המילה anatomical**: היא פיסלה את השרירים ומדד המרקם קפץ ל-12 (x176 v2); בלעדיה ההתחלה אושרה. הדמות שלנו (האלמנט השמור / תמונה 2) מול הרפרנס שלו כתמונה 1. תמיד כולל, מילה במילה: "glowing translucent golden shorts matching the 3D body material". וגם: "Attire (shorts and sneakers) must be fully rendered in the 3D glowing amber material with crisp structural boundaries" - סניקרס מוגדרות עם סוליה ברורה. לעולם לא "dark shorts" (x176 v4: המילה dark במכנס הוציאה בוקסר שחור אטום).
    2. **STARTING FRAME POSITION:** מצב כל מפרק במונחים אנטומיים (flexion / extension / dorsiflexion / plantarflexion), עם זוויות מהשלד.
    3. **MOVEMENT & ENDING FRAME POSITION:** מצב כל מפרק בסוף, ומה דינמי ומה נעול, במפורש. למשל: "Knees fully extended and locked, torso static, only the ankles move".
+      - **יציבות פנימית מול תנועה במרחב:** "static" פירושו שהמבנה לא משתנה, לא שהמיקום קבוע. כשהמפרק הפעיל מרים את הגוף (קרסול בהרמת עקבים, ברכיים בקפיצה), כל פלג הגוף העליון, הראש והמשקולות עולים כיחידה אחת קשיחה במישור האנכי, בדיוק בגובה שהמפרק עלה: "the entire upper body, torso, head, arms and dumbbells shift strictly UPWARD along the vertical Y-axis as ONE RIGID UNIT by about N% of the image height". נמדד בבדיקות (ראש מול קרסול).
+      - **פריים הסוף הוא תמיד עריכה ישירה של פריים ההתחלה המאושר** - לא יצירה חדשה ולא זוג פאנלים - כדי שהרקע, המצלמה והציוד יהיו זהים. תמונה נוספת מצורפת רק כרפרנס לחלק אחד (למשל הנעל), ונאמר במפורש שהיא רק לזה.
       - **תרגיל על אלמנט** (מדרגה, ספסל, ספה): האם האיבר שוקע מתחת למישור האלמנט. למשל: "Heels dropped low below the step plane".
    4. **CAMERA:** "100% static side-view camera shot. Zero camera movement, zero panning, zero rotation, background fixed."
       - כשהרפרנס שלו לא מהצד, `side-view` מוחלף בזווית שלו (למשל `rear three-quarter view`), וכל שאר המשפט נשאר.
-   - **AVOID (קבוע, תמיד, מילה במילה):** "flat feet on step, partial range of motion, heels not dropping, bent knees when meant to be straight, hip swaying, torso movement, camera zoom, camera movement, extra limbs, distorted anatomy, morphing body, black shorts, dark clothing, opaque black boxers, deformed shoes, sock-like feet, barefoot morphing". מוסיפים לו את הפגמים הספציפיים לתרגיל.
+   - **AVOID (קבוע, תמיד, מילה במילה):** "flat feet on step, partial range of motion, heels not dropping, bent knees when meant to be straight, body swaying, torso movement, camera zoom, camera movement, extra limbs, distorted anatomy, morphing body, black shorts, dark clothing, opaque black boxers, deformed shoes, sock-like feet, barefoot morphing". מוסיפים לו את הפגמים הספציפיים לתרגיל.
+   - **בלי המילה hips** בשום חלק של ההנחיה, גם לא ב-AVOID (x176 v2: "torso, hips, and arms" נחסם בסינון). כותבים "torso", "shorts" או "body".
    - **ל-`gpt_image_2_6` אין שדה negative prompt** (נבדק ב-`models_explore`, 10.11), ולכן הרשימה נכתבת בסוף ההנחיה עצמה, תחת "AVOID:".
 5. **סינון התוכן:**
    - **בשכיבה ובקיפולים** פותחים ב-"A 3D fitness app illustration of a glowing golden mannequin".
    - **מילים שגרמו לחסימה:** buttocks, pelvis, hips, groin, "the leg joins the body", "heels close to the back of the thighs".
    - **רפרנס שבו הישבן בולט** (במכנס צמוד שחור, למשל בכפיפות בטן הפוכות) נחסם כתמונה, גם בניסוח נקי (x185). בעריכה מוותרים עליו, כי הקווים והפריים שלנו מספיקים.
    - **חסימה עולה 0:** הקרדיט חוזר, ורואים את זה ב-`transactions`. מנסחים מחדש ושולחים שוב.
-6. **מודל:** `gpt_image_2_5`, איכות medium, 2k. **הורדה:** `hf-download.mjs <כתובת> <קובץ>`.
+6. **מודל:** `gpt_image_2_6` עם האלמנט השמור (`<<<ce70bd4e-e33c-416c-97cd-3d9f7c02a603>>>` בתוך ההנחיה), איכות medium, 2k. **הורדה:** `hf-download.mjs <כתובת> <קובץ>`.
 
 ### ג.0א - בדיקת פריים ההתחלה, מיד אחרי היצירה הראשונה
 
