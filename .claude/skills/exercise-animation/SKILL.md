@@ -314,7 +314,11 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
 > VISUAL LOCK: Amber 3D translucent glowing figure only - no opaque human skin. Transparent amber shorts only, the same glowing translucent material as the body - no fabric texture, no opaque sports shorts. Crisp 3D sneakers, each with ONE single solid contiguous sole. Clean seamless dark brown ambient background - no walls, no columns, no windows, no structures of any kind. Dark glossy reflective floor with an amber reflection only. Free weights: dark graphite / metal with an outer golden amber glow edge only.
 
 - **AVOID קבוע של הבלוק,** בנוסף לרשימה הכללית: background walls, background structures, opaque human skin, fabric shorts.
-- **תמונה 2 בכל יצירה של שלב א:** פריים התחלה מאושר שעומד בתקן. כרגע זה x60 (job `6c52fe6c-5bb8-467d-904c-f62cea97df94`), והוא משמש רק לדמות, לחומר ולסטודיו, לא לתנוחה.
+- **פרוטוקול שתי התמונות בכל יצירה של שלב א** (אסף, 10.11, אחרי x83: התחלה בלי עוגן גוף יצאה מלאה ושרירית מדי ונפסלה):
+  - **תמונה 1, עוגן הדמות:** פריים ההתחלה המאושר של x60 בלבד, job `6c52fe6c-5bb8-467d-904c-f62cea97df94`. ממנה באים מבנה הגוף, הפרופורציות, חומר הענבר והסטודיו.
+  - **תמונה 2, רפרנס התנוחה:** רק הרפרנס שאסף העלה לתרגיל. ממנו באים המנח, הזווית והאחיזה.
+  - **בכל הנחיה, מילה במילה:** "Use Image 1 strictly for body proportions, amber translucent material, transparent shorts, and clean studio. Use Image 2 ONLY for posture and gear grip."
+  - **בלי רפרנס מאסף:** לא מייצרים, מחכים לרפרנס. x83 ניסיון 1 נבנה בלי רפרנס ונפסל.
 - **בבדיקה של שלב א, לפני הצגה לאסף:**
   - **הרקע:** חלק בלי שום מבנה. מסתכלים בהגדלה עם ניגודיות מוגברת.
   - **המכנס:** שקוף כמו הגוף, בלי תפרים, שרוך או מרקם בד.
