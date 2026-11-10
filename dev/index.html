@@ -380,6 +380,12 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 /* a muscle card carries no picture, so its name gets the room */
 .gp.bare{padding:12px 13px}
 .gp.bare .gp-t{font-size:13px}
+/* a muscle card is tall: the body fills it, lit only at that muscle (assets/muscles, 11 Nov) */
+.gp.mu{flex-direction:column;align-items:stretch;gap:6px;padding:8px}
+.mu-art{display:block;width:100%;aspect-ratio:1;border-radius:11px;overflow:hidden;background:var(--nu-ground,#e9e7e3)}
+.mu-art img{display:block;width:100%;height:100%;object-fit:cover}
+.gp.mu .gp-row{display:flex;align-items:center;gap:8px;padding:0 4px 2px}
+.gp.mu .gp-t{font-size:13px}
 .eq-art{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--nu-ground,#e9e7e3);display:flex;align-items:center;justify-content:center;
   box-shadow:inset 1px 2px 4px var(--nu-shade,rgba(176,168,156,.44)),
              inset -1px -1px 3px var(--nu-lit,rgba(255,255,255,.95))}
@@ -30959,13 +30965,14 @@ function _exPaintBody(){
     function card(k,art){
       var n=count(k);
       if(!n)return '';
-      return '<button class="gp'+(art?'':' bare')+(_exFilters.indexOf(k)>=0?' on':'')+'" onclick="exToggleFilter(&quot;'+esc(k)+'&quot;)">'+
-        art+'<span class="gp-t">'+esc(_t(k))+'</span><span class="gp-n">'+nfmt(n)+'</span></button>';
+      var tall=art&&art.indexOf('mu-art')>=0, txt='<span class="gp-t">'+esc(_t(k))+'</span><span class="gp-n">'+nfmt(n)+'</span>';
+      return '<button class="gp'+(art?'':' bare')+(tall?' mu':'')+(_exFilters.indexOf(k)>=0?' on':'')+'" onclick="exToggleFilter(&quot;'+esc(k)+'&quot;)">'+
+        art+(tall?'<span class="gp-row">'+txt+'</span>':txt)+'</button>';
     }
     if(_exTab==='muscle'){
       for(var si=0;si<MU_SECTIONS.length;si++){
         var sec=MU_SECTIONS[si],inner='';
-        for(var mi=0;mi<sec.m.length;mi++)inner+=card(sec.m[mi],'');
+        for(var mi=0;mi<sec.m.length;mi++)inner+=card(sec.m[mi],muArtHTML(sec.m[mi]));
         if(!inner)continue;
         h+='<div class="gp-h">'+_t(sec.t)+'</div><div class="gp-grid">'+inner+'</div>';
       }
@@ -31092,6 +31099,14 @@ var EQ_ICONS={
   'כדור פיזיו':'<circle cx="12" cy="12" r="8.4"/><path d="M3.8 12h16.4"/><path d="M12 3.6a13 13 0 0 1 0 16.8"/>',   // i18n-exempt: icon lookup key
   'מכשיר אירובי':'<path d="M4 18.4h16"/><path d="m6 18.4 2.6-8.8h6.8L18 18.4"/><circle cx="8.6" cy="6.4" r="1.8"/>'   // i18n-exempt: icon lookup key
 };
+/* One soft-white body, the muscle lit from inside (exercise-sheets/muscle-tiles.html, Asaf chose it 11 Nov). */
+var MU_ART={'חזה':'chest','גב':'back','גב רחב':'lats','טרפז':'traps','כתפיים':'shoulders','יד קדמית':'biceps','יד אחורית':'triceps','אמה':'forearm',   // i18n-exempt: picture lookup keys
+  'ארבע ראשי':'quads','ירך אחורית':'hamstrings','ישבן':'glutes','מקרבים':'adductors','מרחיקים':'abductors','תאומים':'calves',   // i18n-exempt: picture lookup keys
+  'בטן':'abs','אלכסונים':'obliques','גב תחתון':'lowerback','אירובי':'cardio'};   // i18n-exempt: picture lookup keys
+function muArtHTML(name){
+  var k=MU_ART[name];
+  return k?'<span class="mu-art"><img src="'+liveBase()+'assets/muscles/'+k+'.jpg" alt="" loading="lazy"></span>':'';
+}
 function eqArtHTML(name){
   var p=EQ_ICONS[name];
   /* The letter is the LABEL's, not the key's. It used to be the key's, so a
