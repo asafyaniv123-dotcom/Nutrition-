@@ -315,7 +315,8 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
 
 - **AVOID קבוע של הבלוק,** בנוסף לרשימה הכללית: background walls, background structures, opaque human skin, fabric shorts.
 - **פרוטוקול שתי התמונות בכל יצירה של שלב א** (אסף, 10.11, אחרי x83: התחלה בלי עוגן גוף יצאה מלאה ושרירית מדי ונפסלה):
-  - **תמונה 1, עוגן הדמות:** פריים ההתחלה המאושר של x60 בלבד, job `6c52fe6c-5bb8-467d-904c-f62cea97df94`. ממנה באים מבנה הגוף, הפרופורציות, חומר הענבר והסטודיו.
+  - **תמונה 1, עוגן הדמות הקנוני:** פריים ההתחלה המאושר של x106 בלבד, job `6a142118-cf4f-49b5-a0c0-7e45722aff8b`, וקובץ `exercise-sheets/character/CANONICAL-x106-start.png` (אסף, 10.11). מהעוגן הזה בלבד באים כל מאפייני הדמות: מבנה הגוף, ענבר שקוף כמו זכוכית, הלבוש, התאורה והרצפה. קודם העוגן היה x60.
+    - **משקל העוגן:** אסף ביקש 80%. ל-`gpt_image_2_6` אין פרמטר משקל לתמונה, ולכן זה נכתב בהנחיה: "Image 1 dominates the look - about 80% of the visual identity (body, material, glow, lighting, floor) comes from Image 1".
   - **תמונה 2, רפרנס התנוחה:** רק הרפרנס שאסף העלה לתרגיל. ממנו באים המנח, הזווית והאחיזה.
   - **בכל הנחיה, מילה במילה:** "Use Image 1 strictly for body proportions, amber translucent material, transparent shorts, and clean studio. Use Image 2 ONLY for posture and gear grip."
   - **בלי רפרנס מאסף:** לא מייצרים, מחכים לרפרנס. x83 ניסיון 1 נבנה בלי רפרנס ונפסל.
