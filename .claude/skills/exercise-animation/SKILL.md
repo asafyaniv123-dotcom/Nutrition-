@@ -132,6 +132,15 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
    - **זוהר:** השריר הראשי זוהר הכי חזק.
    - **מסגור:** כל הדמות והציוד בפריים, עם שוליים.
    - **מראה:** משפט אחד בלבד: "THE FIGURE IS EXACTLY THE CHARACTER OF IMAGE 2 (a turnaround sheet of one figure): copy its body, build, proportions, material, glow, head, shorts and bare feet exactly, from the view that matches the camera". **שום מילה נוספת על הגוף** (8.11: כל תיאור - שקיפות, זהב, שרירים, מכנס, ראש - משך את הגוף מהדף; x96/try2 נבנה בלי אף אחד מהם ואושר).
+4א. **מבנה ההנחיה - מחייב בכל יצירה ובכל עריכה (אסף, 10.11).** ההנחיה נכתבת בארבעה חלקים, בסדר הזה, ומוצגת בדיווח:
+   1. **STYLE:** הדמות שלנו (האלמנט השמור / תמונה 2) מול הרפרנס שלו כתמונה 1.
+   2. **STARTING FRAME POSITION:** מצב כל מפרק במונחים אנטומיים (flexion / extension / dorsiflexion / plantarflexion), עם זוויות מהשלד.
+   3. **MOVEMENT & ENDING FRAME POSITION:** מצב כל מפרק בסוף, ומה דינמי ומה נעול, במפורש. למשל: "Knees fully extended and locked, torso static, only the ankles move".
+      - **תרגיל על אלמנט** (מדרגה, ספסל, ספה): האם האיבר שוקע מתחת למישור האלמנט. למשל: "Heels dropped low below the step plane".
+   4. **CAMERA:** "100% static side-view camera shot. Zero camera movement, zero panning, zero rotation, background fixed."
+      - כשהרפרנס שלו לא מהצד, `side-view` מוחלף בזווית שלו (למשל `rear three-quarter view`), וכל שאר המשפט נשאר.
+   - **AVOID (קבוע, תמיד, מילה במילה):** "flat feet on step, partial range of motion, heels not dropping, bent knees when meant to be straight, hip swaying, torso movement, camera zoom, camera movement, extra limbs, distorted anatomy, morphing body". מוסיפים לו את הפגמים הספציפיים לתרגיל.
+   - **ל-`gpt_image_2_6` אין שדה negative prompt** (נבדק ב-`models_explore`, 10.11), ולכן הרשימה נכתבת בסוף ההנחיה עצמה, תחת "AVOID:".
 5. **סינון התוכן:**
    - **בשכיבה ובקיפולים** פותחים ב-"A 3D fitness app illustration of a glowing golden mannequin".
    - **מילים שגרמו לחסימה:** buttocks, pelvis, hips, groin, "the leg joins the body", "heels close to the back of the thighs".
