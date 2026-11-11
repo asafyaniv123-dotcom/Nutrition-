@@ -30971,9 +30971,23 @@ function exSetTab(t){_exTab=t;_exFilters=[];_exShow=false;_exPaintBody();}
 function exToggleFilter(f){
   var at=_exFilters.indexOf(f);
   if(at>=0)_exFilters.splice(at,1);else _exFilters.push(f);
+  exPicksChanged();
+}
+function exPicksChanged(){
+  /* A tap changes one card and the count, so only those are touched (Asaf,
+     11 Nov: "the picture vanishes for a second - it looks like a bug").
+     Repainting the sheet rebuilt every <img>, and each one blinked white
+     while it decoded again. */
+  var body=document.getElementById('ex-body'),foot=body&&body.querySelector('.ex-foot');
+  if(foot&&!_exQ&&!_exShow&&!_exDetail){
+    var cs=body.querySelectorAll('.gp[data-k]');
+    for(var i=0;i<cs.length;i++)cs[i].classList.toggle('on',_exFilters.indexOf(cs[i].getAttribute('data-k'))>=0);
+    foot.outerHTML=exFootHTML(exList());
+    return;
+  }
   _exPaintBody();
 }
-function exClearFilters(){_exFilters=[];_exPaintBody();}
+function exClearFilters(){_exFilters=[];exPicksChanged();}
 function exShowResults(){_exShow=true;_exPaintBody();}
 function exBackToFilters(){_exShow=false;_exPaintBody();}
 function exSearch(v){_exQ=v;_exPaintBody();}
@@ -30990,6 +31004,14 @@ function exSheet(){
   document.body.style.overflow='hidden';
 }
 function exPaint(){_exPaintBody();}
+function exFootHTML(list){
+  var h='<div class="ex-foot">';
+  if(_exFilters.length)
+    h+='<button class="ex-clear" onclick="exClearFilters()">'+_t('נקה סינון')+'</button>';
+  h+='<button class="ex-go" onclick="exShowResults()">'+
+     _t('הצג {n} תרגילים',{n:list.length})+'</button>';
+  return h+'</div>';
+}
 function _exPaintBody(){
   var el=document.getElementById('ex-body');
   if(!el)return;
@@ -31015,7 +31037,7 @@ function _exPaintBody(){
       var n=count(k);
       if(!n)return '';
       var mu=art&&art.indexOf('mu-art')>=0, txt='<span class="gp-t">'+esc(_t(k))+'</span>'+(mu?'':'<span class="gp-n">'+nfmt(n)+'</span>');
-      return '<button class="gp'+(art?'':' bare')+(mu?' mu':'')+(_exFilters.indexOf(k)>=0?' on':'')+'" onclick="exToggleFilter(&quot;'+esc(k)+'&quot;)">'+
+      return '<button class="gp'+(art?'':' bare')+(mu?' mu':'')+(_exFilters.indexOf(k)>=0?' on':'')+'" data-k="'+esc(k)+'" onclick="exToggleFilter(&quot;'+esc(k)+'&quot;)">'+
         art+txt+'</button>';
     }
     if(_exTab==='muscle'){
@@ -31037,12 +31059,7 @@ function _exPaintBody(){
        is worth before you commit to reading the answer. It sits in a plural
        key with the number in a hole, so a language inflects the word and
        formats the digits for itself. */
-    h+='<div class="ex-foot">';
-    if(_exFilters.length)
-      h+='<button class="ex-clear" onclick="exClearFilters()">'+_t('נקה סינון')+'</button>';
-    h+='<button class="ex-go" onclick="exShowResults()">'+
-       _t('הצג {n} תרגילים',{n:list.length})+'</button>';
-    h+='</div>';
+    h+=exFootHTML(list);
     el.innerHTML=h;
     return;
   }
