@@ -17,9 +17,12 @@ function measure(f) {   // same figure / highlight selection as tone-check.mjs
 }
 fs.mkdirSync(out, { recursive: true });
 const res = [];
-for (const f of files) {
-  const m = measure(f);
-  const h = Math.max(-5, Math.min(0, HI - m.hiHue));        // only ever cooler: the figure drifts yellow, never red
+/* The hue target is shared: 36.5, or the reddest frame if one is already below it (x121, 11 Nov - the start
+   measured 34.5, could not be moved because shifts only ever go one way, and the pair came out 2.1 apart). */
+const ms = files.map(measure), hiT = Math.min(HI, ...ms.map((m) => m.hiHue));
+for (const [i, f] of files.entries()) {
+  const m = ms[i];
+  const h = Math.max(-5, Math.min(0, hiT - m.hiHue));       // only ever cooler: the figure drifts yellow, never red
   const s = SAT / m.sat;
   const o = path.join(out, path.basename(f).replace(/\.[^.]+$/, '') + '.png');
   execFileSync(FF, ['-v', 'error', '-y', '-i', f, '-vf', `hue=h=${h.toFixed(2)}:s=${s.toFixed(3)}`, o]);
