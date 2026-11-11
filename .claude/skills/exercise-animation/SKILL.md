@@ -133,7 +133,7 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
    - **מסגור:** כל הדמות והציוד בפריים, עם שוליים.
    - **מראה:** משפט אחד בלבד: "THE FIGURE IS EXACTLY THE CHARACTER OF IMAGE 2 (a turnaround sheet of one figure): copy its body, build, proportions, material, glow, head, shorts and shoes exactly, from the view that matches the camera". **שום מילה נוספת על הגוף** (8.11: כל תיאור - שקיפות, זהב, שרירים, מכנס, ראש - משך את הגוף מהדף; x96/try2 נבנה בלי אף אחד מהם ואושר).
 4א. **מבנה ההנחיה - מחייב בכל יצירה ובכל עריכה (אסף, 10.11).** ההנחיה נכתבת בארבעה חלקים, בסדר הזה, ומוצגת בדיווח:
-   1. **STYLE:** "3D glowing amber style" בלבד. **לעולם לא המילה anatomical**: היא פיסלה את השרירים ומדד המרקם קפץ ל-12 (x176 v2); בלעדיה ההתחלה אושרה. הדמות שלנו (האלמנט השמור / תמונה 2) מול הרפרנס שלו כתמונה 1. תמיד כולל, מילה במילה: "glowing translucent golden shorts matching the 3D body material". וגם: "Attire (shorts and sneakers) must be fully rendered in the 3D glowing amber material with crisp structural boundaries" - סניקרס מוגדרות עם סוליה ברורה. לעולם לא "dark shorts" (x176 v4: המילה dark במכנס הוציאה בוקסר שחור אטום).
+   1. **STYLE:** "a 3D fitness app illustration of a translucent amber mannequin" (מ-11.11 בלי המילה glowing - ראה "ארבע מילים אסורות"). **לעולם לא המילה anatomical**: היא פיסלה את השרירים ומדד המרקם קפץ ל-12 (x176 v2); בלעדיה ההתחלה אושרה. העוגן כתמונה 1, הרפרנס שלו כתמונה 2 (פרוטוקול שתי התמונות). המכנס והנעליים לפי בלוק ה-VISUAL LOCK: "transparent amber mid-thigh athletic shorts", "Crisp 3D sneakers, each with ONE single solid contiguous sole". לעולם לא "dark shorts" (x176 v4: המילה dark במכנס הוציאה בוקסר שחור אטום).
    2. **STARTING FRAME POSITION:** מצב כל מפרק במונחים אנטומיים (flexion / extension / dorsiflexion / plantarflexion), עם זוויות מהשלד.
    3. **MOVEMENT & ENDING FRAME POSITION:** מצב כל מפרק בסוף, ומה דינמי ומה נעול, במפורש. למשל: "Knees fully extended and locked, torso static, only the ankles move".
       - **יציבות פנימית מול תנועה במרחב:** "static" פירושו שהמבנה לא משתנה, לא שהמיקום קבוע. כשהמפרק הפעיל מרים את הגוף (קרסול בהרמת עקבים, ברכיים בקפיצה), כל פלג הגוף העליון, הראש והמשקולות עולים כיחידה אחת קשיחה במישור האנכי, בדיוק בגובה שהמפרק עלה: "the entire upper body, torso, head, arms and dumbbells shift strictly UPWARD along the vertical Y-axis as ONE RIGID UNIT by about N% of the image height". נמדד בבדיקות (ראש מול קרסול).
@@ -145,7 +145,7 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
    - **בלי המילה hips** בשום חלק של ההנחיה, גם לא ב-AVOID (x176 v2: "torso, hips, and arms" נחסם בסינון). כותבים "torso", "shorts" או "body".
    - **ל-`gpt_image_2_6` אין שדה negative prompt** (נבדק ב-`models_explore`, 10.11), ולכן הרשימה נכתבת בסוף ההנחיה עצמה, תחת "AVOID:".
 5. **סינון התוכן:**
-   - **בשכיבה ובקיפולים** פותחים ב-"A 3D fitness app illustration of a glowing golden mannequin".
+   - **בשכיבה ובקיפולים** פותחים ב-"A 3D fitness app illustration of a translucent amber mannequin".
    - **מילים שגרמו לחסימה:** buttocks, pelvis, hips, groin, "the leg joins the body", "heels close to the back of the thighs".
    - **רפרנס שבו הישבן בולט** (במכנס צמוד שחור, למשל בכפיפות בטן הפוכות) נחסם כתמונה, גם בניסוח נקי (x185). בעריכה מוותרים עליו, כי הקווים והפריים שלנו מספיקים.
    - **חסימה עולה 0:** הקרדיט חוזר, ורואים את זה ב-`transactions`. מנסחים מחדש ושולחים שוב.
@@ -311,14 +311,16 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
 
 ב-x97 הדמות והסטודיו סטו מהתקן. מכאן והלאה, כל הנחיה של פריים התחלה כוללת את הבלוק הזה מילה במילה. אחריו באה התנועה הספציפית לתרגיל:
 
-> VISUAL LOCK: Amber 3D translucent glowing figure only - no opaque human skin. Transparent amber shorts only, the same glowing translucent material as the body - no fabric texture, no opaque sports shorts. Crisp 3D sneakers, each with ONE single solid contiguous sole. Clean seamless dark brown ambient background - no walls, no columns, no windows, no structures of any kind. Dark glossy reflective floor with an amber reflection only. Free weights: dark graphite / metal with an outer golden amber glow edge only.
+> VISUAL LOCK: translucent amber figure exactly as Image 1 - no opaque human skin. Transparent amber mid-thigh athletic shorts with one straight natural waistband, the same translucent material as the body - no fabric texture, no opaque sports shorts. Crisp 3D sneakers, each with ONE single solid contiguous sole. Clean seamless dark brown ambient background - no walls, no columns, no windows, no structures of any kind. Dark glossy reflective floor with an amber reflection only. Equipment: dark graphite / metal with a thin amber edge light only.
 
-- **AVOID קבוע של הבלוק,** בנוסף לרשימה הכללית: background walls, background structures, opaque human skin, fabric shorts.
+- **ארבע מילים אסורות בכל הנחיה, גם ב-AVOID** (אסף, 11.11): hips, anatomical, glowing, neon. במקום glowing כותבים "lit warmly from inside". הבלוק למעלה נכתב מחדש בלי המילה glowing, וגם "3D glowing amber style" בסעיף ג.0 כבר לא בשימוש.
+- **נעילת ביגוד (אסף, 11.11):** המכנס הוא תמיד מכנס ספורט רחב ושקוף בענבר עד אמצע הירך, עם קו מותן ישר - כמו בעוגן x106. ב-x173 פריים 1 יצא עם קווי תחתון גבוהים ותוקן בקרדיט.
+- **AVOID קבוע של הבלוק,** בנוסף לרשימה הכללית: background walls, background structures, opaque human skin, fabric shorts, high-cut underwear, speedo briefs, bikini lines, dark waist seams, female bottom cut, frog elbow placement (90 degrees out), head distortion.
 - **פרוטוקול שתי התמונות בכל יצירה של שלב א** (אסף, 10.11, אחרי x83: התחלה בלי עוגן גוף יצאה מלאה ושרירית מדי ונפסלה):
   - **תמונה 1, עוגן הדמות הקנוני:** פריים ההתחלה המאושר של x106 בלבד, job `6a142118-cf4f-49b5-a0c0-7e45722aff8b`, וקובץ `exercise-sheets/character/CANONICAL-x106-start.png` (אסף, 10.11). מהעוגן הזה בלבד באים כל מאפייני הדמות: מבנה הגוף, ענבר שקוף כמו זכוכית, הלבוש, התאורה והרצפה. קודם העוגן היה x60.
     - **משקל העוגן:** אסף ביקש 80%. ל-`gpt_image_2_6` אין פרמטר משקל לתמונה, ולכן זה נכתב בהנחיה: "Image 1 dominates the look - about 80% of the visual identity (body, material, glow, lighting, floor) comes from Image 1".
-  - **תמונה 2, רפרנס התנוחה:** רק הרפרנס שאסף העלה לתרגיל. ממנו באים המנח, הזווית והאחיזה.
-  - **בכל הנחיה, מילה במילה:** "Use Image 1 strictly for body proportions, amber translucent material, transparent shorts, and clean studio. Use Image 2 ONLY for posture and gear grip."
+  - **תמונה 2, רפרנס התנוחה:** חיתוך של הדמות הרלוונטית בלבד מהרפרנס שאסף העלה (בצילום מסך: המידות האמיתיות של הקובץ, לא של התצוגה). ממנו באים המנח, הזווית והאחיזה. סימן מים לא מנקים בצבע אם הוא חוצה את הדמות (x243: הניקוי מחק את הכתף); כותבים "text, watermark, logo" ב-AVOID.
+  - **בכל הנחיה, מילה במילה:** "Use Image 1 strictly for body proportions, amber translucent material, transparent shorts, and clean studio. Use Image 2 ONLY for posture and gear grip." בהנחיה שמתחילה מתמונה 1 עם מנח רגיש לסינון (שכיבה, פישוק, V הפוך) פותחים ב-"A 3D fitness app illustration of a translucent amber mannequin".
   - **בלי רפרנס מאסף:** לא מייצרים, מחכים לרפרנס. x83 ניסיון 1 נבנה בלי רפרנס ונפסל.
 - **בבדיקה של שלב א, לפני הצגה לאסף:**
   - **הרקע:** חלק בלי שום מבנה. מסתכלים בהגדלה עם ניגודיות מוגברת.
@@ -334,6 +336,13 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
   3. `color-sync`. הפקודה נעצרת כאן אם התוצאה לא SYNCED.
   4. `gif.mjs`.
   - על x97 הפקודה הפיקה בדיוק את האנימציה שנבנתה ביד.
+- **תרגיל מחזורי של 4 פריימים, 2 קרדיטים (אסף, 11.11, x173):**
+  1. **פריים 1, מרכז:** עמידת הבסיס, קרדיט אחד. מצלמה חזיתית ומרווח רחב משני הצדדים, כדי שהרגל המתוחה תיכנס.
+  2. **פריים 2, צד אחד:** עריכה של פריים 1, קרדיט אחד, עם שתי נקודות המגע במקומן מפריים 1 (2ב למעלה).
+  3. **פריים 3, הצד השני:** `ffmpeg -vf hflip` של פריים 2, בחינם.
+  4. **פריים 4, חזרה למרכז:** פריים 1 שוב, בחינם.
+  - **הרכבה:** `color-sync.mjs` על שלושת הפריימים הייחודיים, ואז `gif-seq.mjs <תיקייה> f1 f2 f1 f3` (5.4 שניות). פריים 1 לא סימטרי לגמרי, ולכן במעבר מרכז ↔ צד שני כפות הרגליים זזות כמה פיקסלים (x173: 17).
+- **נעילה תחתונה כשהגוף כולו זז** (שכיבת סמיכה, לאנג'): מתחת לנקודות המגע יש רק רצפה עם השתקפות של הגוף הזז, ונעילה שם מדביקה את השתקפות ההתחלה מתחת לגוף של הסוף. כשהמגע כבר קפוא בחפיפה, Y הוא השוליים התחתונים (1960). ב-`color-sync` היעד משותף: 36.5, או הפריים האדום ביותר אם אחד כבר מתחתיו (x121).
 - **תרגילי צעידה בסוף הספרייה, כמקבץ אחד:** לאנג׳ים, עליות וירידות מדרגה וכל תרגיל שבו כף רגל משנה נקודת מגע (x141, x143). עד שיהיה שם פתרון לנקודת מגע שזזה, לא פותחים אותם.
 
 ## משקולות חופשיות ותרגילי פלג גוף עליון (אסף, 10.11, אחרי x60)
@@ -360,6 +369,10 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
 - **סדר העבודה שמחזיק את התקציב (אסף, 10.11, אחרי x179):**
   1. **שלב א:** בודקים כבר בפריים ההתחלה שהאיבר הנושא ניצב לציוד - כף רגל ישרה לתוך קצה המדרגה, לא באלכסון מעל פינה. אלכסון שם הוליד בסוף "עקבי רפאים" שלוש פעמים.
   2. **שלב ב, ההנחיה הראשונה:** כוללת מראש את התנועה האנכית של כל הגוף כיחידה אחת, עם המספר באחוזים. לא מוסיפים אותה בתיקון.
+  2א. **פלג גוף עליון קשיח (אסף, 11.11):** ראש, צוואר, חזה וגו הם בלוק קשיח אחד - בלי מתיחת צוואר ובלי הארכת גו כשהגוף יורד או זז לצד. בהנחיה: "treat the head, neck, shoulders, chest and the bar as ONE rigid block ... the head drops by exactly the same distance as the bar". **נמדד, לא נראה:** ירידת קודקוד הראש מול ירידת המוט או הכתפיים, בפיקסלים בגודל מלא (x230: 240 מול 195, פער 19%, אושר כך אחרי תיקון אחד).
+  2ב. **נקודות מגע קפואות 100% (אסף, 11.11):** כפות רגליים, בהונות, כפות ידיים ומסגרת המכונה באותו X/Y בשני הפריימים. נבדק בחפיפה (`blend=all_mode=average`): כל נקודת מגע חדה, בלי קו כפול. רגל מתוחה שהחליקה החוצה (x173 פריים 2, כ-140 פיקסלים) מתוקנת בעריכה שמצביעה על המקום בפריים 1: "its foot must rest exactly where the right-side shoe stands in Image 2".
+  2ג. **מרפקים ב-45° אחורה,** לא 90° לצדדים (צפרדע). ב-x243 שתי עריכות לא תיקנו את זה; הנחיה קצרה מפריים ההתחלה ("a moderate bend, elbows back toward the feet, close to the body") עבדה. הנחיה עמוסה הרסה את הפרופורציות.
+  2ד. **זוהר רק בשרירים העובדים.** כל השאר "the plain translucent amber material".
   3. **אין שרשרת עריכות:** עריכה יוצאת רק מפריים ההתחלה המאושר, או מפריים מורכב נקי. עריכה של עריכה השאירה סוליה כפולה.
   4. **תיקון מורכב:** הרכבה בקוד בלי עלות (הרמת כל התמונה ב-D, החזרת מה שלא זז), ואז עריכה מאחדת אחת, קרדיט אחד, על כל האזור - לא תיקוני פיקסלים בקוד אחד אחרי השני. ב-x179 ארבעה סבבי הדבקה בקוד נפסלו כ"טלאים", ועריכה מאחדת אחת סגרה את כולם בלי לזוז בגיאומטריה.
 - **שפת הדיווח:** "תקין ביומכנית", "מדויק", "עומד בתקן". לא "מושלם", "מעולה" או "נקי לחלוטין".
