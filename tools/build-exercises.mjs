@@ -53,17 +53,22 @@ import {HOWTO} from './exercise-howto.mjs';
 import {EN} from './exercise-howto-en.mjs';
 const HOWTO_L={en:EN};
 import {NAMES} from './exercise-names.mjs';
+import {FAMILIES,FAMILY_LANGS,familyIds,eqtOf,levelOf,EQT,LV} from './exercise-families-data.mjs';
 
 const M={
-  chest:'חזה', back:'גב', lats:'גב רחב', traps:'טרפז', shoulders:'כתפיים',
+  /* Asaf's names (11 Nov): the back is named by what each part of it is -
+     the rows train the rhomboids and the middle of the trapezius, the
+     pulldowns the lats, the shrugs its upper part - and the erectors are
+     what a back extension works, which "the lower back" only pointed at. */
+  chest:'חזה', back:'מעוינים וטרפז אמצעי', lats:'רחב גבי', traps:'טרפז עליון', shoulders:'כתפיים',
   biceps:'יד קדמית', triceps:'יד אחורית', forearm:'אמה',
-  quads:'ארבע ראשי', hams:'ירך אחורית', glutes:'ישבן', calves:'תאומים',
+  quads:'ארבע ראשי', hams:'ירך אחורית', glutes:'ישבן', calves:'שוקיים',
   /* The adductor and abductor machines stand in every gym and belong to
      neither the quadriceps nor the glutes. wger separates them and so does
      Garmin; filing the abduction machine under `ישבן` was the one placement
      in the old list that was simply wrong. */
   adduct:'מקרבים', abduct:'מרחיקים',
-  abs:'בטן', obliques:'אלכסונים', lower:'גב תחתון', cardio:'אירובי'
+  abs:'בטן', obliques:'אלכסונים', lower:'זוקפי גב', cardio:'אירובי'
 };
 const Q={
   bar:'מוט', db:'משקולות יד', kb:'קטלבל', cable:'פולי', machine:'מכונה',
@@ -401,11 +406,45 @@ const list=RAW.map(function(r,i){
   return o;
 });
 
+/* ── THE FAMILIES ──
+   Every row belongs to exactly one movement family, and the family decides
+   the row's first muscle: that is where Asaf moved the deadlift to the
+   hamstrings and the pullover to the lats. A muscle the row already had
+   beyond its first stays as a second one, so the picker keeps finding it
+   there. See tools/exercise-families-data.mjs. */
+const famOf={};
+for(const f of FAMILIES)for(const id of familyIds(f)){
+  if(famOf[id])throw new Error(id+' is in two families: '+famOf[id][0]+' and '+f[0]);
+  famOf[id]=f;
+}
+const families={};
+for(const f of FAMILIES){
+  const t={he:f[0]};FAMILY_LANGS.forEach((l,i)=>{t[l]=f[4+i];});
+  families[f[0]]={m:f[1],m2:f[2],t};
+}
+for(const e of list){
+  const f=famOf[e.id];
+  if(!f)throw new Error(e.id+' '+e.n+': in no family');
+  e.f=f[0];
+  /* A muscle the row named after its first stays. The first one, when the
+     family moved the row away from it, stays only if the family itself names
+     it as a secondary muscle - the pullover still works the chest, the
+     deadlift is not a rhomboid exercise. */
+  const was=e.m[0];
+  e.m=[f[1]].concat(e.m.filter((m,i)=>m!==f[1]&&(i>0||m===was&&f[2].indexOf(m)>=0)));
+  if(f[2].length)e.m2=f[2].slice();
+  e.eqt=eqtOf(e.id,e.q);
+  e.lv=levelOf(e.id,e.eqt);
+  if(EQT.indexOf(e.eqt)<0||LV.indexOf(e.lv)<0)throw new Error(e.id+': bad tag '+e.eqt+'/'+e.lv);
+}
+for(const id in famOf)if(!list.some(e=>e.id===id))throw new Error(id+' is in a family but not in the list');
+
 const LANGS=['he','en','de','es','fr','it','pt','ja','zh-Hans','zh-Hant','ar'];
 for(const e of list){
   if(!e.t)throw new Error(e.n+': no names');
   for(const l of LANGS)if(!e.t[l])throw new Error(e.n+': no '+l+' name');
 }
+for(const k in families)for(const l of LANGS)if(!families[k].t[l])throw new Error('family '+k+': no '+l+' name');
 // nothing named twice, or the picker shows the same movement in two places
 const seen={};
 for(const e of list){
@@ -440,6 +479,8 @@ fs.writeFileSync('data/exercises.json',JSON.stringify({
   built:new Date().toISOString().slice(0,10),
   muscles:MUSCLES,
   equipment:EQUIP,
+  levels:LV,
+  families,
   exercises:list
 }));
 const byM={};for(const e of list)byM[e.m[0]]=(byM[e.m[0]]||0)+1;

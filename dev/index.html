@@ -425,6 +425,14 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .ex-tile-ph b{font-size:12.5px;font-weight:800;color:#f0a92e}
 .ex-tile-ph span{font-size:11px;color:rgba(240,169,46,.62)}
 .ex-tile:active .ex-tile-v{transform:scale(.98)}
+/* a family's heading spans the grid; its variants follow two to a row */
+.ex-fam{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;margin:10px 2px -4px}
+.ex-fam:first-child{margin-top:0}
+.ex-fam-t{font-size:15px;font-weight:800;color:var(--ink)}
+.ex-fam-n{font-size:11px;font-weight:800;color:var(--muted)}
+.ex-tile-lv{font-size:11px;font-weight:700;color:var(--muted);padding-inline:2px;margin-top:-3px}
+.xd-fam{margin-top:-10px}
+.xd-fam+.xd-meta{margin-top:-10px}
 .ex-row{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:none;border-radius:13px;padding:10px 12px;background:var(--card);cursor:pointer;font-family:inherit;text-align:start;box-shadow:0 2px 8px rgba(200,180,160,.1)}
 .ex-n{font-size:13.5px;font-weight:800;color:var(--ink)}
 .ex-meta{font-size:10px;color:var(--muted)}
@@ -23687,8 +23695,9 @@ function e1rm(weight,reps){
    translating them here is what made the "Other" note invisible in ten
    languages and scored cardio against a strength set band. Translated where
    the bar is drawn, not here. */
-var MUSCLE_ROLLUP={"גב רחב":"גב","טרפז":"גב","גב תחתון":"גב","מקרבים":"ישבן","מרחיקים":"ישבן","אלכסונים":"ליבה","בטן":"ליבה"};   // i18n-exempt: keys and the groups they name, painted through _t(nm) where the bar is drawn
+var MUSCLE_ROLLUP={"מעוינים וטרפז אמצעי":"גב","רחב גבי":"גב","טרפז עליון":"גב","זוקפי גב":"גב","מקרבים":"ישבן","מרחיקים":"ישבן","אלכסונים":"ליבה","בטן":"ליבה"};   // i18n-exempt: keys and the groups they name, painted through _t(nm) where the bar is drawn
 var SETS_BAND={lo:10,hi:20};
+var GEN_MOVED={x24:1,x57:1,x58:1};   // rows whose first muscle changed group on 11 Nov; see genPick's pos
 function muscleGroupOf(exName){
   var all=exAll(),i;
   for(i=0;i<all.length;i++)if(all[i].n===exName){
@@ -23811,7 +23820,11 @@ function genPick(opt){
   /* The id IS the priority. RAW is ordered from the movement most people
      build a session around to the ones that finish it off, and the id is that
      position - so this needs no new field and nothing to keep in sync. */
-  var pos=function(e){var n=parseInt(String(e.id||'').replace(/^x/,''),10);return isFinite(n)?n:1e9;};
+  /* Except where Asaf moved a row to another muscle (11 Nov): its id is a
+     place in the group it LEFT, so in the new one it would jump the queue -
+     the pullover ahead of the pull-up, the deadlift ahead of the Romanian.
+     Those wait behind the group they joined. */
+  var pos=function(e){var n=parseInt(String(e.id||'').replace(/^x/,''),10);return isFinite(n)?n+(GEN_MOVED[e.id]?1000:0):1e9;};
   var all=exAll(),out=[],used={},asked={};
   for(i=0;i<muscles.length;i++){
     /* Fold the way muscleGroupOf folds. bandGroups returns rolled-up names
@@ -23887,11 +23900,11 @@ var PROG_SPLITS={
         days:[['כל הגוף',['ארבע ראשי','גב','חזה','ירך אחורית','כתפיים','ליבה']]]},   // i18n-exempt: a day key and library muscle keys; the day is painted through progDayLabel and the muscles where the bar is drawn
   ab:{cap:26,lo:72,hi:96,perMuscle:2,
       days:[['פלג גוף עליון',['גב','חזה','כתפיים','יד אחורית','יד קדמית']],   // i18n-exempt: same
-            ['פלג גוף תחתון',['ארבע ראשי','ירך אחורית','ישבן','תאומים','ליבה']]]},   // i18n-exempt: same
+            ['פלג גוף תחתון',['ארבע ראשי','ירך אחורית','ישבן','שוקיים','ליבה']]]},   // i18n-exempt: same
   abc:{cap:30,lo:96,hi:120,perMuscle:2,
        days:[['דחיפה',['חזה','כתפיים','יד אחורית']],   // i18n-exempt: same
              ['משיכה',['גב','יד קדמית']],   // i18n-exempt: same
-             ['רגליים',['ארבע ראשי','ירך אחורית','ישבן','תאומים','ליבה']]]}   // i18n-exempt: same
+             ['רגליים',['ארבע ראשי','ירך אחורית','ישבן','שוקיים','ליבה']]]}   // i18n-exempt: same
 };
 /* A day's name is STORED on every exercise of that day, so it is data and is
    translated where it is shown - the same split progLabel makes for a plan's
@@ -24241,7 +24254,7 @@ function genToggle(m){
   renderFitness();
 }
 /* the three quick answers to "what to focus on" */
-var GEN_UP=['חזה','גב','כתפיים','יד קדמית','יד אחורית','אמה'],GEN_LOW=['ארבע ראשי','ירך אחורית','ישבן','תאומים'];   // i18n-exempt: muscle keys compared with fitDeficit's, shown through _t at the button
+var GEN_UP=['חזה','גב','כתפיים','יד קדמית','יד אחורית','אמה'],GEN_LOW=['ארבע ראשי','ירך אחורית','ישבן','שוקיים'];   // i18n-exempt: muscle keys compared with fitDeficit's, shown through _t at the button
 function genGroupMs(k){
   if(!_gen)return [];
   return _gen.def.map(function(x){return x.m;}).filter(function(m){
@@ -30899,8 +30912,35 @@ function exList(){
   if(_exQ){
     var qq=_exQ.toLowerCase();
     out.sort(function(a,b){return exRank(a,qq)-exRank(b,qq);});
+  } else {
+    /* THE FAMILIES (Asaf, 11 Nov): every variant sits under its movement -
+       the bar, the dumbbells and the machine under לחיצת חזה - in the order
+       the families are written, the order the list had inside each. */
+    var fo=exFamOrder();
+    out.sort(function(a,b){return (fo[a.f]||0)-(fo[b.f]||0);});
   }
   return out;
+}
+var _exFamOrd=null;
+function exFamOrder(){
+  if(_exFamOrd)return _exFamOrd;
+  var o={},k,i=0,fs=(_exDB&&_exDB.families)||{};
+  for(k in fs)if(fs.hasOwnProperty(k))o[k]=++i;
+  return (_exFamOrd=o);
+}
+/* A family's name in the reader's language. Its eleven names live in the
+   file beside the exercises', for the same reason: they are the library's
+   words, not the app's. */
+function exFamTitle(k){
+  var f=_exDB&&_exDB.families&&_exDB.families[k];
+  if(!f||!f.t)return k||'';
+  var l=appLang();return f.t[l]||f.t.en||k;
+}
+function exLevelLabel(v){
+  if(v==='מתחיל')return _t('מתחיל|רמת קושי');   // i18n-exempt: a stored level compared, the label is the _t
+  if(v==='מתקדם')return _t('מתקדם|רמת קושי');   // i18n-exempt: same
+  if(v==='בינוני')return _t('בינוני|רמת קושי');   // i18n-exempt: same
+  return '';
 }
 function exOpen(){
   _exQ='';_exFilters=[];_exShow=false;_exTab='muscle';_exDetail=null;
@@ -31011,15 +31051,21 @@ function _exPaintBody(){
        the loop below; an exercise without a loop yet keeps the same square
        and says what it works and with what, so the grid reads as one. */
     h+='<div class="ex-grid">';
+    var famN={},lastF=null;
+    if(!_exQ)for(var fj=0;fj<list.length;fj++)famN[list[fj].f]=(famN[list[fj].f]||0)+1;
     for(var j=0;j<list.length;j++){
       var e=list[j],has=EX_DEMO[e.id];
+      if(!_exQ&&e.f&&e.f!==lastF){
+        lastF=e.f;
+        h+='<div class="ex-fam"><span class="ex-fam-t">'+esc(exFamTitle(e.f))+'</span><span class="ex-fam-n">'+nfmt(famN[e.f])+'</span></div>';
+      }
       h+='<button class="ex-tile" onclick="exDetailOpen('+j+')">'+
          '<span class="ex-tile-n">'+esc(exTitle(e))+'</span>'+
          '<span class="ex-tile-v">'+(has
            ?'<video data-src="'+liveBase()+'assets/exdemo/'+e.id+'.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>'+
             '<span class="ex-tile-m">'+esc(e.m.map(_t).join(' · '))+'</span>'
            :'<span class="ex-tile-ph"><b>'+esc(e.m.map(_t).join(' · '))+'</b><span>'+esc(e.q.map(_t).join(', '))+'</span></span>')+
-         '</span></button>';
+         '</span>'+(e.lv?'<span class="ex-tile-lv">'+esc(exLevelLabel(e.lv))+'</span>':'')+'</button>';
     }
     h+='</div>';
   }
@@ -31069,9 +31115,9 @@ function exChooseOwn(){
    sourcing photographs of gym kit would mean another licence to keep track of
    for something a few paths do better at this size. */
 var MU_SECTIONS=[
-  {t:'פלג גוף עליון',m:['חזה','גב','גב רחב','טרפז','כתפיים','יד קדמית','יד אחורית','אמה']},
-  {t:'פלג גוף תחתון',m:['ארבע ראשי','ירך אחורית','ישבן','מקרבים','מרחיקים','תאומים']},
-  {t:'מרכז הגוף ואחר',m:['בטן','אלכסונים','גב תחתון','אירובי']}
+  {t:'פלג גוף עליון',m:['חזה','מעוינים וטרפז אמצעי','רחב גבי','טרפז עליון','כתפיים','יד קדמית','יד אחורית','אמה']},
+  {t:'פלג גוף תחתון',m:['ארבע ראשי','ירך אחורית','ישבן','מקרבים','מרחיקים','שוקיים']},
+  {t:'מרכז הגוף ואחר',m:['בטן','אלכסונים','זוקפי גב','אירובי']}
 ];
 /* Equipment, drawn. Line work in the app's own weight rather than photographs
    of gym kit, which would be a fourth licence to keep track of. */
@@ -31100,9 +31146,9 @@ var EQ_ICONS={
   'מכשיר אירובי':'<path d="M4 18.4h16"/><path d="m6 18.4 2.6-8.8h6.8L18 18.4"/><circle cx="8.6" cy="6.4" r="1.8"/>'   // i18n-exempt: icon lookup key
 };
 /* One soft-white body, the muscle lit from inside (exercise-sheets/muscle-tiles.html, Asaf chose it 11 Nov). */
-var MU_ART={'חזה':'chest','גב':'back','גב רחב':'lats','טרפז':'traps','כתפיים':'shoulders','יד קדמית':'biceps','יד אחורית':'triceps','אמה':'forearm',   // i18n-exempt: picture lookup keys
-  'ארבע ראשי':'quads','ירך אחורית':'hamstrings','ישבן':'glutes','מקרבים':'adductors','מרחיקים':'abductors','תאומים':'calves',   // i18n-exempt: picture lookup keys
-  'בטן':'abs','אלכסונים':'obliques','גב תחתון':'lowerback','אירובי':'cardio'};   // i18n-exempt: picture lookup keys
+var MU_ART={'חזה':'chest','מעוינים וטרפז אמצעי':'back','רחב גבי':'lats','טרפז עליון':'traps','כתפיים':'shoulders','יד קדמית':'biceps','יד אחורית':'triceps','אמה':'forearm',   // i18n-exempt: picture lookup keys
+  'ארבע ראשי':'quads','ירך אחורית':'hamstrings','ישבן':'glutes','מקרבים':'adductors','מרחיקים':'abductors','שוקיים':'calves',   // i18n-exempt: picture lookup keys
+  'בטן':'abs','אלכסונים':'obliques','זוקפי גב':'lowerback','אירובי':'cardio'};   // i18n-exempt: picture lookup keys
 function muArtHTML(name){
   var k=MU_ART[name];
   return k?'<span class="mu-art"><img src="'+liveBase()+'assets/muscles/'+k+'.jpg" alt="" loading="lazy"></span>':'';
@@ -31189,6 +31235,8 @@ function exDetailHTML(e){
      '<span class="xd-name">'+esc(exTitle(e))+'</span></div>';
   h+='<div class="xd-meta">'+esc(e.m.map(_t).join(' · '))+' &middot; '+esc(e.q.map(_t).join(', '))+
      (e.en?' &middot; <span class="xd-en">'+esc(e.en)+'</span>':'')+'</div>';
+  if(e.f||e.lv)h+='<div class="xd-meta xd-fam">'+esc([e.f?exFamTitle(e.f):'',e.lv?exLevelLabel(e.lv):''].filter(Boolean).join(' · '))+'</div>';
+  if(e.m2&&e.m2.length)h+='<div class="xd-meta">'+esc(_t('שרירים משניים: {list}',{list:e.m2.map(_t).join(' · ')}))+'</div>';
   /* THE MOVEMENT FIRST, AND ONLY THE MOVEMENT (Asaf, 4 Nov). Choosing an
      exercise shows how it looks; how it is done is a door below. */
   h+=exDemoHTML(e);

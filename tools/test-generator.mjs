@@ -81,8 +81,8 @@ setTimeout(function(){exLoad(function(){
 
     /* ── not in a gym: a mat and your own weight ── */
     var HOME=['משקל גוף','מזרן'];
-    var home=genPick({muscles:['חזה','בטן','ירך אחורית','גב רחב'],equip:HOME,
-                      sets:{'חזה':6,'בטן':6,'ירך אחורית':6,'גב רחב':6}});
+    var home=genPick({muscles:['חזה','בטן','ירך אחורית','רחב גבי'],equip:HOME,
+                      sets:{'חזה':6,'בטן':6,'ירך אחורית':6,'רחב גבי':6}});
     R.homeNames=home.filter(function(r){return r.name;}).map(function(r){return r.name;});
     /* every one that came back must need nothing but what was offered */
     var all=exAll(),byName={};
@@ -96,16 +96,16 @@ setTimeout(function(){exLoad(function(){
     /* ── a muscle name that does not survive the rollup ──
        גב רחב folds into גב, so asking for it by name has to reach the same
        exercises rather than coming back as "nothing available". */
-    var folded=genPick({muscles:['גב רחב'],equip:GYM,sets:{'גב רחב':6}});
+    var folded=genPick({muscles:['רחב גבי'],equip:GYM,sets:{'רחב גבי':6}});
     R.foldedNone=folded.some(function(r){return r.none;});
     R.foldedSets=folded.reduce(function(a,r){return a+(r.sets||0);},0);
     R.foldedNames=folded.filter(function(r){return r.name;}).map(function(r){return r.name;});
-    var both=genPick({muscles:['גב','גב רחב'],equip:GYM,sets:{'גב':6}});
+    var both=genPick({muscles:['גב','רחב גבי'],equip:GYM,sets:{'גב':6}});
     R.bothCount=both.filter(function(r){return r.name;}).length;
 
     /* ── no exercise appears twice in one session ── */
-    var many=genPick({muscles:['גב','גב רחב','טרפז'],equip:GYM,
-                      sets:{'גב':9,'גב רחב':9,'טרפז':9}});
+    var many=genPick({muscles:['גב','רחב גבי','טרפז עליון'],equip:GYM,
+                      sets:{'גב':9,'רחב גבי':9,'טרפז עליון':9}});
     var names=many.filter(function(r){return r.name;}).map(function(r){return r.name;});
     R.dupes=names.length-(new Set(names)).size;
 

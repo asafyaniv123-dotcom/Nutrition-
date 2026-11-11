@@ -147,6 +147,12 @@ try {
   const ex = JSON.parse(fs.readFileSync('data/exercises.json', 'utf8'));
   for (const k of (ex.muscles || [])) keys.add(k);
   for (const k of (ex.equipment || [])) keys.add(k);
+  /* The families' finer secondary muscles (כתף קדמית, שרוול מסובב) are drawn
+     on an exercise's page the same way, and a difficulty with the context
+     that keeps מתקדם the level apart from מתקדם "progressing". A family's own
+     name is not a key: like an exercise's, its eleven names live in the file. */
+  for (const f of Object.values(ex.families || {})) for (const k of (f.m2 || [])) keys.add(k);
+  for (const k of (ex.levels || [])) keys.add(k + '|רמת קושי');
 } catch (e) { /* the table is optional; the app ships without it in dev */ }
 
 /* and the muscle names, which the browser's cards translate one by one -
