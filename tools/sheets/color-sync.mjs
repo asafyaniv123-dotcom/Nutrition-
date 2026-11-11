@@ -22,7 +22,10 @@ const res = [];
 const ms = files.map(measure), hiT = Math.min(HI, ...ms.map((m) => m.hiHue));
 for (const [i, f] of files.entries()) {
   const m = ms[i];
-  const h = Math.max(-5, Math.min(0, hiT - m.hiHue));       // only ever cooler: the figure drifts yellow, never red
+  // only ever cooler: the figure drifts yellow, never red. MAXSHIFT (default 5) can raise the limit, but check the
+  // BODY hue (tone-check "hue") as well: on x234 the end's strong muscle glow read 46.6 and a 10-degree shift turned
+  // the whole body red (25 -> 18). The default 5 kept the bodies 1.9 apart, and that version shipped.
+  const h = Math.max(-(+process.env.MAXSHIFT || 5), Math.min(0, hiT - m.hiHue));
   const s = SAT / m.sat;
   const o = path.join(out, path.basename(f).replace(/\.[^.]+$/, '') + '.png');
   execFileSync(FF, ['-v', 'error', '-y', '-i', f, '-vf', `hue=h=${h.toFixed(2)}:s=${s.toFixed(3)}`, o]);

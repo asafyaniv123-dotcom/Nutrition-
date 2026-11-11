@@ -125,7 +125,7 @@ export const FAMILIES = [
     'Plank & Core Stability', 'Plank und Rumpfstabilität', 'Plancha y estabilidad del core', 'Gainage et stabilité du tronc', 'Plank e stabilità del core', 'Prancha e estabilidade do core', 'プランク・体幹安定', '平板支撑与核心稳定', '棒式與核心穩定', 'اللوح وثبات الجذع'],
   ['טורקיש גט אפ', 'בטן', ['כתפיים', 'ישבן', 'אלכסונים'], '201',
     'Turkish Get-Up', 'Turkish Get-up', 'Levantamiento turco', 'Relevé turc', 'Turkish get-up', 'Levantamento turco', 'ターキッシュゲットアップ', '土耳其起立', '土耳其起立', 'النهوض التركي'],
-  ['פלאנק צידי', 'אלכסונים', ['בטן', 'מרחיקים'], '202 255',
+  ['פלאנק צידי', 'אלכסונים', ['בטן', 'מרחיקים'], '202 255 260',
     'Side Plank', 'Seitstütz', 'Plancha lateral', 'Gainage latéral', 'Plank laterale', 'Prancha lateral', 'サイドプランク', '侧平板支撑', '側棒式', 'اللوح الجانبي'],
   ['סיבוב גו', 'אלכסונים', ['בטן'], '203 204 207 208',
     'Torso Rotation', 'Rumpfrotation', 'Rotación del tronco', 'Rotation du buste', 'Rotazione del busto', 'Rotação do tronco', '体幹の回旋', '躯干旋转', '軀幹旋轉', 'تدوير الجذع'],

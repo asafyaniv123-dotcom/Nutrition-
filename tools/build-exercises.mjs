@@ -363,7 +363,8 @@ const RAW=[
 ['חתירה במשקולות בשכיבה על ספסל משופע',M.back,[Q.db,Q.bench],'Chest Supported Dumbbell Row',['חתירה על ספסל משופע','חתירה בשכיבה על הבטן']],
 ['חתירה ביד אחת בגומייה בישיבה',M.back,[Q.band],'Band Seated One Arm Row',['חתירה בגומייה ביד אחת','חתירה בגומייה על הרצפה']],
 ['חתירה בפולי תחתון בהטיה',M.back,[Q.cable],'Cable Bent Over Row',['חתירה בפולי בעמידה','בנט אובר בפולי']],
-['גוד מורנינג בישיבה',M.lower,[Q.bar,Q.bench],'Seated Good Morning',['גוד מורנינג על ספסל']]
+['גוד מורנינג בישיבה',M.lower,[Q.bar,Q.bench],'Seated Good Morning',['גוד מורנינג על ספסל']],
+['הרמת רגל בפלאנק צידי על הברכיים',[M.obliques,M.abduct],[Q.bw],'Side Plank Bent Leg Lift',['פלאנק צידי על הברכיים עם הרמת רגל','הרמת ברך בפלאנק צידי']]
 ];
 
 const list=RAW.map(function(r,i){

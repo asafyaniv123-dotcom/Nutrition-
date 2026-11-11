@@ -2166,6 +2166,15 @@ export const EN = {
       'Pushing hard with your hands instead of working your abs.',
       'Letting your feet touch down between reps.'] },
 
+'הרמת רגל בפלאנק צידי על הברכיים': {
+  s: ['Lie on your side propped on your hand, arm straight under your shoulder, knees bent and stacked on the floor.',
+      'Lift your torso into a straight line from knees to head, top hand on your waist.',
+      'Raise your top leg, still bent at the knee, without rotating your body.',
+      'Lower it slowly back onto the bottom leg, then switch sides.'],
+  m: ['Letting your torso sag toward the floor as the leg rises.',
+      'Rolling back to lift the leg higher.',
+      'Sinking into the shoulder over the supporting hand.'] },
+
 'גוד מורנינג בישיבה': {
   s: ['Sit on the end of a flat bench, feet wide, a bar resting on your upper back.',
       'Hold the bar, back flat and chest open.',
