@@ -2310,6 +2310,66 @@ export const EN = {
   s: ["Stand with your feet hip-width apart and your knees soft.","Fold your torso forward and down from the top of the thighs.","Let your head and arms hang toward the floor.","Hold and breathe, then roll up slowly."],
   m: ["Forcing your knees locked.","Bouncing to reach further.","Standing up so fast you feel dizzy."] },
 
+"מתיחת שוק קדמית בישיבה": {
+  s: ["Sit on the floor with one leg straight in front of you.","Rest the ankle of the other leg on the thigh of the straight leg.","Hold the top of the foot and gently draw it into a point until you feel the stretch along the front of the shin.","Hold and breathe, then switch legs."],
+  m: ["Pulling the toes too hard.","Slumping instead of sitting tall.","Pressing on the knee of the resting leg."] },
+
+"מתיחת שוק קדמית בישיבה על העקבים": {
+  s: ["Kneel on the floor with the tops of your feet flat on the floor.","Sit back slowly onto your heels.","Rest your hands on your thighs and sit tall.","Hold and breathe, lifting your knees a little to deepen it if you need to."],
+  m: ["Dropping onto your heels too fast.","Curling the toes under.","Rounding your back."] },
+
+"מתיחת שוקיים כנגד קיר": {
+  s: ["Stand facing a wall with your hands on it at shoulder height.","Step one foot back, knee straight and heel on the floor.","Bend the front knee and lean toward the wall until you feel the stretch in the back calf.","Hold and breathe, then switch legs."],
+  m: ["Letting the back heel lift.","Turning the back foot out.","Arching your lower back."] },
+
+"מתיחת שוקיים על מדרגה": {
+  s: ["Stand on the edge of a step with the balls of your feet on it.","Hold something steady for balance.","Let your heels lower slowly below the edge of the step.","Hold and breathe, then come back up."],
+  m: ["Bouncing instead of lowering calmly.","Forcing your knees locked.","Standing on the tips of the toes only."] },
+
+"מתיחת שוקיים עם כף רגל מוגבהת": {
+  s: ["Rest the ball of one foot on a block or low step, heel on the floor.","Keep that knee straight.","Lean your body slightly forward until you feel the stretch in the calf.","Hold and breathe, then switch legs."],
+  m: ["Letting the knee bend.","Using a block that is too high.","Leaning to one side."] },
+
+"מתיחת סולאוס בברך כפופה": {
+  s: ["Stand in a short split stance with one foot slightly behind.","Bend both knees, keeping the back heel on the floor.","Sink down until you feel the stretch low in the back calf.","Hold and breathe, then switch legs."],
+  m: ["Letting the back heel lift.","Taking too long a stance.","Leaning the torso forward."] },
+
+"מתיחת ירך אחורית עם רגל על ספסל": {
+  s: ["Stand facing a low bench and rest one heel on it.","Keep both knees straight.","Fold your torso forward over the raised leg, back long.","Hold and breathe, then switch legs."],
+  m: ["Rounding your back.","Using a bench that is too high.","Forcing the standing knee locked."] },
+
+"מתיחת ירך אחורית בשכיבה עם רצועה": {
+  s: ["Lie on your back with one leg straight on the floor.","Loop a strap around the other foot.","Raise that leg straight up and gently pull on the strap.","Hold and breathe, then switch legs."],
+  m: ["Letting the raised knee bend.","Lifting your shoulders off the floor.","Pulling too hard on the strap."] },
+
+"מתיחת ארבע ראשי בהישענות לאחור": {
+  s: ["Kneel and sit back on your heels.","Place your hands on the floor behind you.","Lean back slowly onto your hands until you feel the stretch along the front of the thighs.","Hold and breathe, then come back slowly."],
+  m: ["Letting the knees splay apart.","Leaning back too fast.","Pushing into knee pain."] },
+
+"מתיחת יונה מלכותית": {
+  s: ["Start in pigeon pose: one knee forward, the other leg long behind.","Bend the back knee and bring the foot up.","Hold the foot with your hand and gently draw it toward your back.","Hold and breathe, then switch sides."],
+  m: ["Arching the lower back too far.","Tipping to one side.","Pulling too hard on the foot."] },
+
+"מתיחת צד בישיבה": {
+  s: ["Sit on the floor with one leg straight out to the side and the other bent in.","Raise the far arm overhead.","Lean your torso toward the straight leg, the other hand resting on that leg.","Hold and breathe, then switch sides."],
+  m: ["Twisting forward instead of leaning sideways.","Shrugging the shoulder to the ear.","Lifting your seat off the floor."] },
+
+"כפיפה לפנים בישיבה": {
+  s: ["Sit on the floor with both legs straight in front of you.","Sit tall and lengthen your back.","Fold forward from the top of the thighs and reach toward your feet.","Hold and breathe deeply."],
+  m: ["Rounding your back instead of folding forward.","Bending the knees.","Bouncing to reach further."] },
+
+"כפיפה לפנים בפיסוק רחב": {
+  s: ["Stand with your feet wide apart, toes pointing forward.","Rest your hands on your thighs and lengthen your back.","Fold forward and down, placing your hands on the floor.","Hold and breathe, then rise slowly."],
+  m: ["Turning the feet out.","Forcing the knees locked.","Standing up so fast you feel dizzy."] },
+
+"חיבוק ברכיים לחזה": {
+  s: ["Lie on your back.","Draw both knees toward your chest.","Hug them with your arms and gently pull.","Hold and breathe, letting your lower back relax."],
+  m: ["Lifting your head and shoulders.","Pulling too hard.","Holding your breath."] },
+
+"פיתול עמוד שדרה בשכיבה": {
+  s: ["Lie on your back with your arms open to the sides.","Bend one knee and bring it across your body to the other side.","Keep both shoulders on the floor and turn your head the other way.","Hold and breathe, then switch sides."],
+  m: ["Letting a shoulder lift off the floor.","Forcing the knee down.","Twisting quickly."] },
+
 'גוד מורנינג בישיבה': {
   s: ['Sit on the end of a flat bench, feet wide, a bar resting on your upper back.',
       'Hold the bar, back flat and chest open.',

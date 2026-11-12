@@ -153,15 +153,15 @@ export const FAMILIES = [
     'Swimming', 'Schwimmen', 'Natación', 'Natation', 'Nuoto', 'Natação', '水泳', '游泳', '游泳', 'السباحة'],
   ['מתיחת חזה', 'חזה', ['כתף קדמית'], '267',
     'Chest Stretch', 'Brustdehnung', 'Estiramiento de pecho', 'Étirement des pectoraux', 'Allungamento del petto', 'Alongamento de peito', '胸のストレッチ', '胸部拉伸', '胸部伸展', 'إطالة الصدر'],
-  ["מתיחת גב תחתון", "זוקפי גב", ["אלכסונים","ישבן"], "268 279",
+  ["מתיחת גב תחתון", "זוקפי גב", ["אלכסונים","ישבן"], "268 279 299 300",
     "Lower Back Stretch", "Dehnung des unteren Rückens", "Estiramiento lumbar", "Étirement du bas du dos", "Allungamento lombare", "Alongamento lombar", "腰のストレッチ", "下背部拉伸", "下背部伸展", "إطالة أسفل الظهر"],
   ["מתיחת מקרבים", "מקרבים", ["ישבן"], "269 276",
     "Inner Thigh Stretch", "Adduktorendehnung", "Estiramiento de aductores", "Étirement des adducteurs", "Allungamento degli adduttori", "Alongamento de adutores", "内ももストレッチ", "大腿内侧拉伸", "大腿內側伸展", "إطالة الفخذ الداخلي"],
   ["מתיחת בטן", "בטן", ["חזה","מכופפי ירך"], "270 277",
     "Abdominal Stretch", "Bauchdehnung", "Estiramiento abdominal", "Étirement abdominal", "Allungamento addominale", "Alongamento abdominal", "腹部のストレッチ", "腹部拉伸", "腹部伸展", "إطالة البطن"],
-  ["מתיחת ירך אחורית", "ירך אחורית", ["שוקיים","זוקפי גב"], "271 273 285",
+  ["מתיחת ירך אחורית", "ירך אחורית", ["שוקיים","זוקפי גב"], "271 273 285 292 293 297 298",
     "Hamstring Stretch", "Dehnung der hinteren Oberschenkel", "Estiramiento de isquiotibiales", "Étirement des ischio-jambiers", "Allungamento dei femorali", "Alongamento de posteriores", "ハムストリングのストレッチ", "腘绳肌拉伸", "膕繩肌伸展", "إطالة أوتار الركبة"],
-  ["מתיחת קדמת הירך", "ארבע ראשי", ["מכופפי ירך"], "272 274 283 284",
+  ["מתיחת קדמת הירך", "ארבע ראשי", ["מכופפי ירך"], "272 274 283 284 294 295",
     "Front Thigh Stretch", "Dehnung der vorderen Oberschenkel", "Estiramiento de muslo anterior", "Étirement de l’avant de la cuisse", "Allungamento della coscia anteriore", "Alongamento da coxa anterior", "太もも前側のストレッチ", "大腿前侧拉伸", "大腿前側伸展", "إطالة الفخذ الأمامي"],
   ["מתיחת ישבן", "ישבן", ["מכופפי ירך","מקרבים"], "275 278",
     "Glute Stretch", "Gesäßdehnung", "Estiramiento de glúteos", "Étirement des fessiers", "Allungamento dei glutei", "Alongamento de glúteos", "お尻のストレッチ", "臀部拉伸", "臀部伸展", "إطالة الألوية"],
@@ -171,11 +171,15 @@ export const FAMILIES = [
     "Shoulder Stretch", "Schulterdehnung", "Estiramiento de hombros", "Étirement des épaules", "Allungamento delle spalle", "Alongamento de ombros", "肩のストレッチ", "肩部拉伸", "肩部伸展", "إطالة الكتف"],
   ["מתיחת יד אחורית", "יד אחורית", ["רחב גבי"], "282",
     "Triceps Stretch", "Trizepsdehnung", "Estiramiento de tríceps", "Étirement des triceps", "Allungamento dei tricipiti", "Alongamento de tríceps", "上腕三頭筋のストレッチ", "肱三头肌拉伸", "肱三頭肌伸展", "إطالة العضلة ثلاثية الرؤوس"],
+  ["מתיחת שוקיים", "שוקיים", [], "286 287 288 289 290 291",
+    "Calf Stretch", "Wadendehnung", "Estiramiento de gemelos", "Étirement des mollets", "Allungamento dei polpacci", "Alongamento de panturrilha", "ふくらはぎのストレッチ", "小腿拉伸", "小腿伸展", "إطالة الساق"],
+  ["מתיחת צד", "אלכסונים", ["רחב גבי"], "296",
+    "Side Stretch", "Seitdehnung", "Estiramiento lateral", "Étirement latéral", "Allungamento laterale", "Alongamento lateral", "体側のストレッチ", "侧身拉伸", "側身伸展", "الإطالة الجانبية"],
 ];
 
 /* Families that are stretches (Asaf, 12 Nov): held, not lifted. Their rows carry
  * `st`, and their demos use the stretch colour profile instead of amber. */
-export const STRETCH_FAMILIES = ['מתיחת חזה', 'מתיחת גב תחתון', 'מתיחת מקרבים', 'מתיחת בטן', 'מתיחת ירך אחורית', 'מתיחת קדמת הירך', 'מתיחת ישבן', 'מתיחת צוואר', 'מתיחת כתפיים', 'מתיחת יד אחורית'];
+export const STRETCH_FAMILIES = ['מתיחת חזה', 'מתיחת גב תחתון', 'מתיחת מקרבים', 'מתיחת בטן', 'מתיחת ירך אחורית', 'מתיחת קדמת הירך', 'מתיחת ישבן', 'מתיחת צוואר', 'מתיחת כתפיים', 'מתיחת יד אחורית', 'מתיחת שוקיים', 'מתיחת צד'];
 
 /* One equipment tag per exercise, from Asaf's eight (the Smith machine is the
    app's existing key סמית׳). The row's own kit is the evidence; where it names

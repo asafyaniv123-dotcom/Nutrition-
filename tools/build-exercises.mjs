@@ -389,7 +389,22 @@ const RAW=[
 ["מתיחת יד אחורית מעל הראש",M.triceps,[Q.bw],"Overhead Triceps Stretch",["מתיחת טרייספס"]],
 ["מתיחת אגן בכריעה",M.quads,[Q.mat],"Kneeling Hip Flexor Stretch",["מתיחת אגן"]],
 ["מתיחת ארבע ראשי בעמידה",M.quads,[Q.bw],"Standing Quad Stretch",["מתיחת קוואדס"]],
-["כפיפה לפנים בעמידה",M.hams,[Q.bw],"Standing Forward Bend",["מתיחת ירך אחורית בעמידה"]]
+["כפיפה לפנים בעמידה",M.hams,[Q.bw],"Standing Forward Bend",["מתיחת ירך אחורית בעמידה"]],
+["מתיחת שוק קדמית בישיבה",M.calves,[Q.mat],"Seated Tibialis Anterior Stretch",["מתיחת טיביאליס"]],
+["מתיחת שוק קדמית בישיבה על העקבים",M.calves,[Q.mat],"Kneeling Shin Stretch",["ישיבה על העקבים"]],
+["מתיחת שוקיים כנגד קיר",M.calves,[Q.bw],"Standing Wall Calf Stretch",["מתיחת שוקיים בקיר"]],
+["מתיחת שוקיים על מדרגה",M.calves,[Q.box],"Step Calf Stretch",["עקבים מתחת למדרגה"]],
+["מתיחת שוקיים עם כף רגל מוגבהת",M.calves,[Q.box],"Elevated Toe Calf Stretch",["מתיחת שוק על בלוק"]],
+["מתיחת סולאוס בברך כפופה",M.calves,[Q.bw],"Bent-Knee Soleus Stretch",["מתיחת שוק בברך כפופה"]],
+["מתיחת ירך אחורית עם רגל על ספסל",M.hams,[Q.bench],"Elevated Leg Hamstring Stretch",["רגל על ספסל"]],
+["מתיחת ירך אחורית בשכיבה עם רצועה",M.hams,[Q.mat],"Supine Strap Hamstring Stretch",["מתיחה עם רצועה"]],
+["מתיחת ארבע ראשי בהישענות לאחור",M.quads,[Q.mat],"Reclining Quad Stretch",["הישענות לאחור על הברכיים"]],
+["מתיחת יונה מלכותית",M.quads,[Q.mat],"Half King Pigeon Quad Stretch",["חצי יונה מלכותית"]],
+["מתיחת צד בישיבה",M.obliques,[Q.mat],"Seated Side Reach Stretch",["מתיחת צד"]],
+["כפיפה לפנים בישיבה",M.hams,[Q.mat],"Seated Forward Fold",["מתיחת ירך אחורית בישיבה"]],
+["כפיפה לפנים בפיסוק רחב",M.hams,[Q.bw],"Wide-Legged Forward Fold",["פיסוק רחב"]],
+["חיבוק ברכיים לחזה",M.lower,[Q.mat],"Knees-to-Chest Stretch",["ברכיים לחזה"]],
+["פיתול עמוד שדרה בשכיבה",M.lower,[Q.mat],"Supine Spinal Twist",["פיתול בשכיבה"]]
 ];
 
 const list=RAW.map(function(r,i){
