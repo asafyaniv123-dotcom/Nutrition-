@@ -8,6 +8,11 @@ if (files.length < 2) { console.log('usage: tone-check.mjs <approved> <ours> [..
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 const S = 512;
 const raw = (f, vf) => execFileSync(FF, ['-v', 'error', '-i', f, '-vf', `scale=${S}:${S},${vf}format=rgb24`, '-f', 'rawvideo', '-'], { maxBuffer: 1 << 26 });
+/* Hue in degrees, any colour. The amber figure always has red as its largest channel, which is what the old
+   one-line formula assumed; the teal stretch figure (12 Nov) has green, and read as 11.7 instead of ~168.
+   Where red IS the largest, this returns exactly what the old formula did. */
+function hueOf(r, g, b) { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (!d) return 0;
+  let h = mx === r ? (g - b) / d : mx === g ? 2 + (b - r) / d : 4 + (r - g) / d; h *= 60; return h < 0 ? h + 360 : h; }
 function measure(f) {
   const a = raw(f, ''), b = raw(f, 'gblur=sigma=2,');
   let n = 0, r = 0, g = 0, bl = 0, rough = 0, hn = 0, hr = 0, hg = 0, hb = 0;
@@ -20,8 +25,8 @@ function measure(f) {
   }
   r /= n; g /= n; bl /= n;
   const mx = Math.max(r, g, bl), mn = Math.min(r, g, bl), sat = (mx - mn) / mx;
-  const hue = 60 * ((g - bl) / (mx - mn));             // red is max for this palette
-  const hiHue = hn ? 60 * ((hg - hb) / (hr - Math.min(hg, hb))) : 0;   // hue of the highlights alone
+  const hue = hueOf(r, g, bl);
+  const hiHue = hn ? hueOf(hr, hg, hb) : 0;   // hue of the highlights alone
   return { r: Math.round(r), g: Math.round(g), b: Math.round(bl), hue: +hue.toFixed(1), sat: +sat.toFixed(3), hiHue: +hiHue.toFixed(1), bright: Math.round(mx), rough: +(rough / n).toFixed(2), area: +(n / (S * S) * 100).toFixed(1) };
 }
 const ref = measure(files[0]);
