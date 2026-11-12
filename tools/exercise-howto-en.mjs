@@ -2193,6 +2193,24 @@ export const EN = {
       'Lifting your chest off the pad.',
       'Going so heavy that the range gets short.'] },
 
+'כפיפת ברך בעמידה בפולי': {
+  s: ['Attach an ankle strap to the low cable of a cable tower and fasten it around one ankle.',
+      'Stand facing the tower, hold the frame with both hands and shift your weight onto the other leg.',
+      'Bend the knee and pull your heel back and up toward your seat, keeping the thigh still.',
+      'Lower slowly until the leg is straight, then switch legs.'],
+  m: ['Swinging the thigh forward instead of bending the knee.',
+      'Arching your lower back as you pull.',
+      'Letting the cable snap back on the way down.'] },
+
+'גלגל בטן בעמידה': {
+  s: ['Stand with straight legs, feet shoulder-width apart, and place the ab wheel on the floor in front of your feet.',
+      'Hold the handles with straight arms, back flat and abs braced.',
+      'Roll forward slowly until your body is stretched almost level with the floor.',
+      'Pull the wheel back to your feet with your abs, without rounding your back.'],
+  m: ['Letting your lower back sag toward the floor at full stretch.',
+      'Rolling further out than your abs can hold.',
+      'Pulling back with your arms instead of your abs.'] },
+
 'גוד מורנינג בישיבה': {
   s: ['Sit on the end of a flat bench, feet wide, a bar resting on your upper back.',
       'Hold the bar, back flat and chest open.',
