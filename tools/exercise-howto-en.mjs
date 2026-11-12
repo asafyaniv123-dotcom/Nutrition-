@@ -2211,6 +2211,24 @@ export const EN = {
       'Rolling further out than your abs can hold.',
       'Pulling back with your arms instead of your abs.'] },
 
+'פייס פול בכריעה': {
+  s: ['Attach a rope to the high pulley of a cable tower and kneel on one knee facing it, the other leg bent in front.',
+      'Hold both ends of the rope with your arms straight toward the pulley and your torso upright.',
+      'Pull the rope toward your face, elbows high and flaring out, squeezing your shoulder blades together.',
+      'Slowly return your arms forward until they are straight.'],
+  m: ['Leaning back to move the weight.',
+      'Letting your elbows drop below shoulder height.',
+      'Pulling to your chest instead of your face.'] },
+
+'הרמה קדמית בפולי במוט': {
+  s: ['Attach a bar to the low pulley and stand with your back to the tower, the cable running between your legs.',
+      'Hold the bar with an overhand grip in front of your thighs, arms straight and torso upright.',
+      'Raise the bar forward with nearly straight arms to shoulder height.',
+      'Lower it slowly back in front of your thighs.'],
+  m: ['Swinging your back to lift the bar.',
+      'Raising well above shoulder height.',
+      'Bending your elbows and turning it into a curl.'] },
+
 'גוד מורנינג בישיבה': {
   s: ['Sit on the end of a flat bench, feet wide, a bar resting on your upper back.',
       'Hold the bar, back flat and chest open.',
