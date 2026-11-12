@@ -2229,6 +2229,15 @@ export const EN = {
       'Raising well above shoulder height.',
       'Bending your elbows and turning it into a curl.'] },
 
+'מתיחת חזה בכריעה': {
+  s: ['Kneel on both knees facing a box or a sturdy bench, knees under your thighs.',
+      'Rest your forearms and hands on the top, arms reaching straight forward.',
+      'Let your chest and shoulders sink toward the floor, head between your arms, until you feel a stretch across your chest and shoulders.',
+      'Hold the position and breathe slowly, then come back up.'],
+  m: ['Arching your lower back instead of letting the chest drop.',
+      'Sitting back toward your heels.',
+      'Pushing into sharp shoulder pain instead of a gentle stretch.'] },
+
 'גוד מורנינג בישיבה': {
   s: ['Sit on the end of a flat bench, feet wide, a bar resting on your upper back.',
       'Hold the bar, back flat and chest open.',

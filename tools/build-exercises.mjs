@@ -53,7 +53,7 @@ import {HOWTO} from './exercise-howto.mjs';
 import {EN} from './exercise-howto-en.mjs';
 const HOWTO_L={en:EN};
 import {NAMES} from './exercise-names.mjs';
-import {FAMILIES,FAMILY_LANGS,familyIds,eqtOf,levelOf,EQT,LV} from './exercise-families-data.mjs';
+import {FAMILIES,FAMILY_LANGS,familyIds,eqtOf,levelOf,EQT,LV,STRETCH_FAMILIES} from './exercise-families-data.mjs';
 
 const M={
   /* Asaf's names (11 Nov): the back is named by what each part of it is -
@@ -370,7 +370,8 @@ const RAW=[
 ['כפיפת ברך בעמידה בפולי',M.hams,[Q.cable],'Standing Cable Leg Curl',['כפיפת ברך בכבל','כפיפת ברך בפולי ברגל אחת']],
 ['גלגל בטן בעמידה',M.abs,[Q.mat],'Standing Ab Wheel Rollout',['אב וויל מעמידה','גלגל בטן מעמידה']],
 ['פייס פול בכריעה',M.shoulders,[Q.cable],'Kneeling Cable Face Pull',['פייספול בכריעה','פייס פול על הברך']],
-['הרמה קדמית בפולי במוט',M.shoulders,[Q.cable],'Cable Bar Front Raise',['הרמה קדמית בכבל במוט','הרמה קדמית בפולי מאחור']]
+['הרמה קדמית בפולי במוט',M.shoulders,[Q.cable],'Cable Bar Front Raise',['הרמה קדמית בכבל במוט','הרמה קדמית בפולי מאחור']],
+['מתיחת חזה בכריעה',M.chest,[Q.box],'Kneeling Chest Stretch',['מתיחת חזה על קופסה','מתיחת כתפיים בכריעה']]
 ];
 
 const list=RAW.map(function(r,i){
@@ -442,6 +443,9 @@ for(const e of list){
   if(f[2].length)e.m2=f[2].slice();
   e.eqt=eqtOf(e.id,e.q);
   e.lv=levelOf(e.id,e.eqt);
+  /* A stretch is held, not lifted: no sets, no load. Marked so the workout
+     generator never fills a muscle's sets with one (genPick skips st). */
+  if(STRETCH_FAMILIES.includes(e.f))e.st=1;
   if(EQT.indexOf(e.eqt)<0||LV.indexOf(e.lv)<0)throw new Error(e.id+': bad tag '+e.eqt+'/'+e.lv);
 }
 for(const id in famOf)if(!list.some(e=>e.id===id))throw new Error(id+' is in a family but not in the list');

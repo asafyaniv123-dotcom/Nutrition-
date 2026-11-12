@@ -151,7 +151,13 @@ export const FAMILIES = [
     'Conditioning', 'Konditionstraining', 'Acondicionamiento', 'Conditionnement', 'Condizionamento', 'Condicionamento', 'コンディショニング', '体能训练', '體能訓練', 'تمارين اللياقة'],
   ['שחייה', 'אירובי', ['רחב גבי', 'כתפיים'], '224',
     'Swimming', 'Schwimmen', 'Natación', 'Natation', 'Nuoto', 'Natação', '水泳', '游泳', '游泳', 'السباحة'],
+  ['מתיחת חזה', 'חזה', ['כתף קדמית'], '267',
+    'Chest Stretch', 'Brustdehnung', 'Estiramiento de pecho', 'Étirement des pectoraux', 'Allungamento del petto', 'Alongamento de peito', '胸のストレッチ', '胸部拉伸', '胸部伸展', 'إطالة الصدر'],
 ];
+
+/* Families that are stretches (Asaf, 12 Nov): held, not lifted. Their rows carry
+ * `st`, and their demos use the stretch colour profile instead of amber. */
+export const STRETCH_FAMILIES = ['מתיחת חזה'];
 
 /* One equipment tag per exercise, from Asaf's eight (the Smith machine is the
    app's existing key סמית׳). The row's own kit is the evidence; where it names
