@@ -2175,6 +2175,24 @@ export const EN = {
       'Rolling back to lift the leg higher.',
       'Sinking into the shoulder over the supporting hand.'] },
 
+'חתירה במוט בתמיכת חזה': {
+  s: ['Lie face down on a high incline bench, chest on the pad, legs straight back with your feet on the floor.',
+      'Take the bar under the bench with an overhand grip a little wider than your shoulders, arms straight.',
+      'Pull the bar up to the underside of the bench, elbows back, and squeeze your shoulder blades together.',
+      'Lower it slowly until your arms are straight.'],
+  m: ['Lifting your chest off the pad to pull higher.',
+      'Swinging the weight up instead of pulling with your back.',
+      'Shrugging your shoulders toward your ears.'] },
+
+'חתירה רחבה במשקולות בתמיכת חזה': {
+  s: ['Lie face down on a low incline bench, chest on the pad, feet on the floor.',
+      'Hold a dumbbell in each hand, arms hanging straight down, palms facing back.',
+      'Pull the dumbbells up and out, elbows wide at shoulder height, and squeeze your shoulder blades together.',
+      'Lower slowly until your arms are straight.'],
+  m: ['Tucking your elbows in, which turns it into a regular row.',
+      'Lifting your chest off the pad.',
+      'Going so heavy that the range gets short.'] },
+
 'גוד מורנינג בישיבה': {
   s: ['Sit on the end of a flat bench, feet wide, a bar resting on your upper back.',
       'Hold the bar, back flat and chest open.',
