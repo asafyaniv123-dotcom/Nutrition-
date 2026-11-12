@@ -173,7 +173,7 @@ export const LV = ['מתחיל', 'בינוני', 'מתקדם'];
 const nums = s => s.split(' ').map(n => 'x' + n);
 const EASY = nums('18 19 22 241 242 131 148 162 69 70 181 182 185 186 190 192 196 197 200 202 203 204 210 199 234 229 255 253 254 247 65 211 212 213 214 215 216 217 218 224');
 const MID = nums('221 222');
-const HARD = nums('225 226 227 228 93 156 157 191 188 201 147 172 31 23 57 129 194 248 198');
+const HARD = nums('225 226 227 228 93 156 157 191 188 201 147 172 31 23 57 129 194 248 198 264');
 export function levelOf(id, eqt) {
   if (MID.includes(id)) return 'בינוני';
   if (HARD.includes(id)) return 'מתקדם';
