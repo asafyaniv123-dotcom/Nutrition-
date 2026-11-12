@@ -1444,6 +1444,29 @@ summary.who-hd::after{content:"";width:7px;height:7px;flex-shrink:0;align-self:c
 .tm-adds .tm-add{flex:1;min-width:0}
 .tm-x:active,.tm-add:active{box-shadow:inset 2px 3px 6px var(--nu-shade),
   inset -2px -2px 5px var(--nu-lit)}
+/* ── STRETCHES (13 Nov) ──
+   A routine is a saved-timer row; these are what it holds - a row per
+   stretch with its loop beside it - and the loop above the ring while it
+   runs. The dark square is the studio the loops were made in, so a loop
+   still loading reads as the same picture, not as a hole. */
+.st-list{margin:2px 0 14px}
+.tm-sv+.st-list{margin:-2px 4px 12px}
+.st-li{display:flex;align-items:center;gap:11px;padding:6px 2px}
+.st-th{flex:none;width:46px;height:46px;border-radius:13px;overflow:hidden;background:#2b1b13}
+.st-th video{width:100%;height:100%;object-fit:cover;display:block}
+.st-x{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:start}
+.st-x b{font-size:13.5px;font-weight:800;color:var(--nu-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-x span{font-size:11.5px;font-weight:700;color:var(--nu-muted)}
+.wtr-demo{width:min(176px,44vw);aspect-ratio:1;margin:14px auto 0;border-radius:22px;overflow:hidden;
+  background:#2b1b13;box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+.wtr-demo video{width:100%;height:100%;object-fit:cover;display:block}
+.wtr.st .wtr-ringw{width:min(236px,100%)}
+/* a stretch's name is long and carries its side, so it gets two lines in the
+   ring rather than one that cuts "צד 2" off the end */
+.wtr.st .wtr-nm{font-size:16px;white-space:normal;padding:0 20px;display:-webkit-box;
+  -webkit-line-clamp:3;-webkit-box-orient:vertical;hyphens:auto;overflow-wrap:break-word}
+.xd-say.st{background:rgba(111,190,180,.14);color:#2f6f66}
+.xd-hold{width:100%;margin:0 0 14px}
 /* saved timers */
 .tm-sv,.tm-sv-in,.tm-sv-sum{--nu-ground:#e9e7e3;--nu-lit:rgba(255,255,255,.95);
   --nu-shade:rgba(176,168,156,.44);--nu-shade-soft:rgba(176,168,156,.28);--nu-ink:#4a453f;--nu-muted:#6d675e}
@@ -5135,6 +5158,10 @@ html body.mod-fitness .fr-ic svg{width:20px;height:20px;stroke:var(--nu-ink)!imp
 html body.mod-fitness .fr-t{font-size:12px;color:var(--nu-ink);line-height:1.25}
 html body.mod-fitness .fr-s{font-size:9.5px;color:var(--nu-muted);line-height:1.35;margin-top:2px}
 html body.mod-fitness .fr-c{display:none}
+/* an odd door out takes the whole row, on its side, rather than leaving a
+   hole in the trough beside it */
+html body.mod-fitness .fr-list .fr:last-child:nth-child(odd){grid-column:1/-1;flex-direction:row;
+  align-items:center;gap:12px;min-height:64px}
 
 /* ── THE GOAL ── a setting, so it is pressed rather than raised */
 html body.mod-fitness .fg{background:var(--nu-ground);border-radius:20px;padding:13px 15px;
@@ -12472,6 +12499,8 @@ var HE={
   '{n} שניות':{one:'שנייה',two:'שתי שניות',other:'{n} שניות'},
   '{n} דקות':{one:'דקה',two:'שתי דקות',other:'{n} דקות'},
   '{n} סטים':{one:'סט אחד',two:'שני סטים',other:'{n} סטים'},
+  '{n} מתיחות':{one:'מתיחה אחת',two:'שתי מתיחות',other:'{n} מתיחות'},
+  '{n} שניות לכל צד':{one:'שנייה לכל צד',two:'שתי שניות לכל צד',other:'{n} שניות לכל צד'},
   /* How far from failure a set was, said beside the word on the effort wheel.
      Hebrew has a dual and Arabic six categories, so this is a plural key and
      not three strings with the digit written into them - a baked-in 2 shows
@@ -23520,6 +23549,7 @@ function renderFitness(){
   else if(_fitView==='steps')renderFitSteps();
   else if(_fitView==='steps-setup')renderFitStepsSetup();
   else if(_fitView==='videos')renderFitVideos();
+  else if(_fitView==='stretch')renderFitStretch();
   if(FIT_TRACK.indexOf(_fitView)>=0){
     var _c=document.getElementById('content');
     if(_c)_c.insertAdjacentHTML('afterbegin',fitTrackTabsHTML());
@@ -24821,6 +24851,9 @@ var FIT_AREAS;langOn(function(){FIT_AREAS=[
   /* A workout someone else made that you like doing - kept here so it is a
      tap away when you want it, rather than lost in a browser history. */
   {id:'videos',t:''+_t('אימונים שאהבתי')+'',s:''+_t('סרטונים ששמרת לעצמך')+'',g:'ter',ic:'<rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M10.5 9.5v5l4.2-2.5z"/>'},
+  /* Held, not lifted - the other half of training, and the one you open
+     after a session rather than during it. A figure with its arms open. */
+  {id:'stretch',t:''+_t('מתיחות וגמישות')+'',s:''+_t('שחרור מודרך עם טיימר')+'',g:'blu',ic:'<circle cx="12" cy="4.6" r="1.9"/><path d="M4 9.2c2.6 1.3 13.4 1.3 16 0"/><path d="M12 9.9v5.2"/><path d="M12 15.1l-3.6 5.4"/><path d="M12 15.1l3.6 5.4"/>'},
   {id:'weights',t:''+_t('מעקב משקלים')+'',s:''+_t('כמה אתה מרים בכל תרגיל')+'',g:'lav',ic:'<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h9"/>'},
   {id:'weekly-plan',t:''+_t('לוז האימונים')+'',s:''+_t('מה עושים ומתי')+'',g:'blu',ic:'<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 9.5h17"/><path d="M8.5 3v4"/><path d="M15.5 3v4"/>'},
   {id:'stats',t:''+_t('המספרים שלי')+'',s:''+_t('נפח, שרירים, והשיא שלך')+'',g:'grn',ic:'<path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-5"/>'},
@@ -24965,7 +24998,7 @@ function fitAreaGridHTML(){
      and steps became the four tabs of one tracking screen - so of the nine
      doors two are left, and the card under them shows what tracking holds. */
   h+='<div class="fr-list">';
-  for(i=1;i<FIT_AREAS.length;i++)if(FIT_AREAS[i].id==='timer'||FIT_AREAS[i].id==='videos')h+=fitRowHTML(FIT_AREAS[i]);
+  for(i=1;i<FIT_AREAS.length;i++)if(FIT_AREAS[i].id==='timer'||FIT_AREAS[i].id==='videos'||FIT_AREAS[i].id==='stretch')h+=fitRowHTML(FIT_AREAS[i]);
   return h+'</div>'+fitTrackCardHTML();
 }
 
@@ -25999,7 +26032,8 @@ function wtSavedMenu(id){
    workout should not be lost for want of a tap. Asked once per run. */
 function wtOfferSave(){
   var p=_wtPlan,a,i;
-  if(!p)return;
+  /* a routine already lives on its own screen; there is nothing to keep */
+  if(!p||p.kind==='stretch')return;
   a=wtSavedAll();
   for(i=0;i<a.length;i++)if(wtSameShape(a[i],p))return;
   setTimeout(function(){if(_wtPlan===p)wtSaveSheet(p,true);},900);
@@ -26010,6 +26044,171 @@ function wtGo(){
   /* the clock opens as a screen. It used to drop back to the hub and leave a
      floating slab over it, which is the thing this change exists to undo. */
   wtPlanStart(_wtKind,n.work,n.rest,n.rounds,n.prep,wtNamesClean());
+}
+/* ── STRETCH & MOBILITY (Asaf, 13 Nov) ──
+   The 34 stretches (st:1) are held, not lifted: a hold where a strength
+   exercise has sets and reps. They run in the timer's own screen as a
+   schedule - hold, then a short gap to move into the next - so a guided
+   routine is the same machine as a Tabata, and a phone locked on the floor
+   comes back at the right second. */
+var ST_HOLD=30,ST_GAP=10,ST_PREP=5;
+/* Held one side at a time, so both sides are given, one after the other.
+   Ids, not names: the names are translated, the ids never change. */
+var ST_SIDES={x268:1,x272:1,x273:1,x274:1,x275:1,x278:1,x280:1,x281:1,x282:1,x283:1,
+  x284:1,x288:1,x290:1,x291:1,x292:1,x293:1,x294:1,x295:1,x296:1,x300:1};
+var ST_ROUTINES=[
+  {id:'full', ids:['x271','x267','x281','x272','x278','x297','x279','x300']},
+  {id:'upper',ids:['x280','x281','x282','x267','x296','x279']},
+  {id:'lower',ids:['x284','x285','x288','x283','x278','x269','x293']},
+  {id:'back', ids:['x279','x270','x268','x299','x300','x271']}
+];
+/* a muscle no stretch is written for, sent to the nearest one that is */
+var ST_NEAR={'יד קדמית':'חזה','אמה':'חזה','מרחיקים':'ישבן','מעוינים וטרפז אמצעי':'כתפיים','רחב גבי':'אלכסונים'};   // i18n-exempt: stored muscle names, compared and never shown
+function stRoutineTitle(id){
+  return id==='full'?_t('שחרור לכל הגוף'):id==='upper'?_t('פלג גוף עליון'):
+         id==='lower'?_t('פלג גוף תחתון'):_t('גב תחתון');
+}
+function stRow(id){
+  var a=exAll(),i;
+  for(i=0;i<a.length;i++)if(a[i].id===id)return a[i];
+  return null;
+}
+function stVidSrc(e){return liveBase()+'assets/exdemo/'+e.id+'.mp4'+(EX_DEMO[e.id]>1?'?v='+EX_DEMO[e.id]:'');}
+function stHoldText(e){
+  return ST_SIDES[e.id]?_t('{n} שניות לכל צד',{n:ST_HOLD}):_t('{n} שניות',{n:ST_HOLD});
+}
+/* what the timer runs: one entry per hold, a one-sided stretch twice */
+function stPlan(ids){
+  var names=[],sides=[],i,e;
+  for(i=0;i<ids.length;i++){
+    e=stRow(ids[i]);if(!e)continue;
+    if(ST_SIDES[e.id]){names.push(e.n,e.n);sides.push(1,2);}
+    else{names.push(e.n);sides.push(0);}
+  }
+  return {names:names,sides:sides};
+}
+function stSumText(ids){
+  var secs=ST_PREP+stPlan(ids).names.length*(ST_HOLD+ST_GAP);
+  return _t('{n} מתיחות',{n:ids.length})+' · '+_t('{n} דקות',{n:Math.max(1,Math.round(secs/60))});
+}
+function stStart(list){
+  var ids=String(list||'').split(',');
+  exLoad(function(){
+    var p=stPlan(ids);
+    if(!p.names.length)return;
+    _wtFull=true;
+    wtPlanStart('stretch',ST_HOLD,ST_GAP,1,ST_PREP,p.names,p.sides);
+  });
+}
+/* the gap says what it is for: the same stretch on the other side, or the
+   next one. The last gap leads nowhere, so it is plain rest. */
+function stRestLabel(at){
+  var n=_wtPlan.names,i=at.ex;
+  if(i<0||i+1>=n.length)return wtPhaseLabel('rest');
+  return n[i+1]===n[i]?_t('החלפת צד'):_t('למתיחה הבאה');
+}
+function stVidSet(at){
+  var v=document.getElementById('wt-vid'),K=_wtPlan.names.length,i,e,src;
+  if(!v||!K)return;
+  i=at.phase==='work'?at.ex:at.phase==='prep'?0:Math.min(K-1,at.ex+1);
+  e=exByName(_wtPlan.names[i]);
+  src=(e&&EX_DEMO[e.id])?stVidSrc(e):'';
+  if(v.getAttribute('data-s')===src)return;
+  v.setAttribute('data-s',src);
+  if(src){v.src=src;var pr=v.play();if(pr&&pr.catch)pr.catch(function(){});}
+  else v.removeAttribute('src');
+}
+function stListHTML(ids){
+  var h='<div class="st-list">',i,e;
+  for(i=0;i<ids.length;i++){
+    e=stRow(ids[i]);if(!e)continue;
+    h+='<div class="st-li"><span class="st-th">'+
+       (EX_DEMO[e.id]?'<video src="'+stVidSrc(e)+'" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>':'')+
+       '</span><span class="st-x"><b>'+esc(exTitle(e))+'</b>'+
+       '<span>'+esc(e.m.map(_t).join(' · ')+' · '+stHoldText(e))+'</span></span></div>';
+  }
+  return h+'</div>';
+}
+/* ── THE COOLDOWN ──
+   After a strength session, the stretches for what it worked: the muscles
+   weighed by the sets each got, the heaviest first, one stretch for each -
+   its own if there is one, one that reaches it as a second muscle if not. */
+function stCooldown(exs){
+  var w={},order=[],all=exAll(),out=[],used={},i,j,e,m,n;
+  for(i=0;i<exs.length;i++){
+    e=exByName(exs[i].name);
+    if(!e||e.st)continue;
+    n=(exs[i].sets||[]).length||1;
+    for(j=0;j<e.m.length;j++){
+      m=e.m[j];
+      if(m==='אירובי')continue;   // i18n-exempt: a stored muscle compared, never shown
+      if(!w[m]){w[m]=0;order.push(m);}
+      w[m]+=n;
+    }
+  }
+  if(!order.length)return out;
+  order.sort(function(a,b){return w[b]-w[a];});
+  function take(test){
+    for(var k=0;k<all.length;k++){
+      var x=all[k];
+      if(x.st&&!used[x.id]&&EX_DEMO[x.id]&&test(x)){used[x.id]=1;out.push(x.id);return true;}
+    }
+    return false;
+  }
+  for(i=0;i<order.length&&out.length<4;i++){
+    m=order[i];
+    if(take(function(x){return x.m[0]===m;}))continue;
+    if(take(function(x){return (x.m2||[]).indexOf(m)>=0;}))continue;
+    if(ST_NEAR[m])take(function(x){return x.m[0]===ST_NEAR[m];});
+  }
+  /* fewer than three is not a cooldown; the full-body routine fills it */
+  for(i=0;i<ST_ROUTINES[0].ids.length&&out.length<3;i++)
+    if(!used[ST_ROUTINES[0].ids[i]]){used[ST_ROUTINES[0].ids[i]]=1;out.push(ST_ROUTINES[0].ids[i]);}
+  return out;
+}
+function stCooldownHTML(entry){
+  if(_exState!=='ready')return '';
+  var ids=stCooldown((entry&&entry.exercises)||[]);
+  if(!ids.length)return '';
+  return '<div class="tm-card"><div class="tm-h">'+_t('שחרור ומתיחות לשרירים שעבדו היום')+'</div>'+
+    '<div class="tm-sub">'+esc(stSumText(ids))+'</div>'+stListHTML(ids)+
+    '<button class="tm-start" onclick="stStart(\''+ids.join(',')+'\')">'+_t('להתחיל')+'</button></div>';
+}
+/* on the exercise's own card, in place of the sets and reps it does not have */
+function stHoldHTML(e){
+  return '<div class="xd-say st">'+esc(ST_SIDES[e.id]
+      ?_t('החזקה של {n} שניות בכל צד. נשימה איטית ועמוקה, ובכל נשיפה הגוף שוקע עוד קצת. מתיחה נעימה, לא כאב.',{n:ST_HOLD})
+      :_t('החזקה של {n} שניות. נשימה איטית ועמוקה, ובכל נשיפה הגוף שוקע עוד קצת. מתיחה נעימה, לא כאב.',{n:ST_HOLD}))+'</div>'+
+    '<button class="tm-go xd-hold" onclick="stStart(\''+e.id+'\')">'+_t('טיימר החזקה')+'</button>';
+}
+/* ── THE DOOR ── four routines, and the way into the stretches themselves */
+var _stOpen='';
+function stToggle(id){_stOpen=_stOpen===id?'':id;renderFitness();}
+function stBrowse(){_exPick=null;exOpen();_exKind='st';_exShow=true;_exPaintBody();}
+function renderFitStretch(){
+  document.getElementById('hdr-title').textContent=_t('מתיחות וגמישות');
+  var c=document.getElementById('content'),h='<div style="padding-bottom:20px">',i,r;
+  h+='<button class="fit-back" style="margin-bottom:14px" onclick="_fitView=\'home\';renderFitness()">&#8249; '+_t('חזרה')+'</button>';
+  if(_exState!=='ready'){
+    exLoad(function(){if(_fitView==='stretch')renderFitness();});
+    c.innerHTML=h+'<div class="tm-card"><div class="tm-what">'+_t('טוען')+'&hellip;</div></div></div>';
+    return;
+  }
+  h+='<div class="tm-card"><div class="tm-h">'+_t('רוטינות מודרכות')+'</div>';
+  h+='<div class="tm-what">'+esc(_t('כל מתיחה מוחזקת {n} שניות, ואחריה הפסקה קצרה כדי לעבור לבאה. מתיחה של צד אחד נעשית בשני הצדדים.',{n:ST_HOLD}))+'</div>';
+  for(i=0;i<ST_ROUTINES.length;i++){
+    r=ST_ROUTINES[i];
+    h+='<div class="tm-sv'+(_stOpen===r.id?' on':'')+'"><button class="tm-sv-l" onclick="stToggle(\''+r.id+'\')">'+
+       '<b>'+esc(stRoutineTitle(r.id))+'</b><span>'+esc(stSumText(r.ids))+'</span></button>'+
+       '<button class="tm-sv-go" onclick="stStart(\''+r.ids.join(',')+'\')" aria-label="'+esc(_t('להתחיל'))+'">'+
+       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5Z"/></svg></button></div>';
+    if(_stOpen===r.id)h+=stListHTML(r.ids);
+  }
+  h+='</div>';
+  h+='<div class="tm-card"><div class="tm-h">'+_t('ספריית המתיחות')+'</div>'+
+     '<div class="tm-what">'+esc(_t('כל המתיחות, לפי שריר, עם הדגמה והסבר.'))+'</div>'+
+     '<button class="tm-go" style="width:100%" onclick="stBrowse()">'+_t('לכל המתיחות')+'</button></div>';
+  c.innerHTML=h+'</div>';
 }
 function renderFitTimer(){
   var n=wtNums(),h='<div style="padding-bottom:20px">';
@@ -29884,7 +30083,10 @@ var WT_PLAN_KEY='fit_wtplan';
 function wtNameAt(i){
   var p=_wtPlan;
   if(!p||!p.names||!p.names.length||i<0)return '';
-  return exLabel(p.names[i%p.names.length]||'');
+  /* a stretch held one side at a time appears twice, and says which pass
+     this is - otherwise two identical rows read as a mistake */
+  var nm=exLabel(p.names[i%p.names.length]||''),sd=p.sides&&p.sides[i%p.names.length];
+  return sd?_t('{name} · צד {n}',{name:nm,n:sd}):nm;
 }
 function wtPlanLoad(){
   try{
@@ -29896,7 +30098,7 @@ function wtPlanLoad(){
 function wtPlanSave(p){try{localStorage.setItem(WT_PLAN_KEY,JSON.stringify(p));}catch(e){}}
 function wtPlanLabel(kind){
   return kind==='emom'?'EMOM':kind==='amrap'?'AMRAP':
-         kind==='tabata'?'Tabata':''+_t('אינטרוולים')+'';   // i18n-exempt: EMOM, AMRAP and Tabata are the names of the protocols, in every language
+         kind==='tabata'?'Tabata':kind==='stretch'?_t('מתיחות'):''+_t('אינטרוולים')+'';   // i18n-exempt: EMOM, AMRAP and Tabata are the names of the protocols, in every language
 }
 /* WHERE IN THE SCHEDULE, from elapsed time alone. Deriving it rather than
    counting it is what makes a locked screen cost nothing: come back in round
@@ -29986,11 +30188,14 @@ function wtPhaseSound(phase){
   if(phase==='rest'){wtSound('rest');wtCue('rest');return;}
   if(phase==='done'){wtSound('done');_wtCueWord='';_wtCueUntil=0;}
 }
-function wtPlanStart(kind,work,rest,rounds,prep,names){
+function wtPlanStart(kind,work,rest,rounds,prep,names,sides){
   _wtPlan={kind:kind,work:Math.max(1,work|0),rest:Math.max(0,rest|0),
            rounds:Math.max(1,rounds|0),prep:Math.max(0,prep|0),
-           names:(names&&names.length)?names.slice(0):[]};
-  wtPlanSave(_wtPlan);
+           names:(names&&names.length)?names.slice(0):[],
+           sides:(sides&&sides.length)?sides.slice(0):[]};
+  /* a stretch routine is not a timer she set up, so it must not take the
+     place of the one she did - the timer screen opens on what is saved here */
+  if(kind!=='stretch')wtPlanSave(_wtPlan);
   if(_wtPlan.names.length&&_exState!=='ready')exLoad();
   _wtMode='plan';_wtPhase='';_wtRound=0;_wtPaused=0;
   _wtFrom=Date.now();
@@ -30060,7 +30265,7 @@ function wtPlanAgain(){
   /* the names too - starting again without them was the shape of bug this
      file keeps producing: a new argument added in one place and forgotten
      in the other caller */
-  wtPlanStart(p.kind,p.work,p.rest,p.rounds,p.prep,p.names);
+  wtPlanStart(p.kind,p.work,p.rest,p.rounds,p.prep,p.names,p.sides);
 }
 /* THE SCREEN GOING DARK IS THE WHOLE PROBLEM. The phone lies on the floor for
    four minutes of Tabata and the display sleeps after thirty seconds, so the
@@ -30182,7 +30387,7 @@ function wtPaint(){
       document.body.insertAdjacentHTML('beforeend','<div id="wt"></div>');
       el=document.getElementById('wt');
     }
-    el.className=_wtFull?'wtr':'wtp';
+    el.className=_wtFull?'wtr'+(_wtMode==='plan'&&_wtPlan&&_wtPlan.kind==='stretch'?' st':''):'wtp';
     el.innerHTML=_wtFull?wtScreenHTML(run,at):wtPillHTML(run);
     _wtSig=sig;
   }
@@ -30204,6 +30409,10 @@ function wtScreenHTML(run,at){
      '<span id="wt-ph"></span><span class="wtr-cue" id="wt-cue"></span></div>'+
      '<div class="wtr-face" id="wt-face"></div>'+
      '<div class="wtr-of" id="wt-of"></div>';
+  /* A STRETCH IS SHOWN, not only named: the loop of the one being held, and
+     during the gap the one coming next, so she is already moving into it */
+  if(plan&&_wtPlan.kind==='stretch')
+    h+='<div class="wtr-demo"><video id="wt-vid" muted loop playsinline autoplay aria-hidden="true"></video></div>';
   if(plan){
     h+='<div class="wtr-mid"><div class="wtr-ringw">'+
        '<svg viewBox="0 0 300 300">'+
@@ -30292,7 +30501,7 @@ function wtWrite(sec,run,at){
   nm=(at&&at.phase==='work')?wtNameAt(at.ex):'';
   if(el){
     el.textContent=(nm&&_wtFull)?'':
-      (at?wtPhaseLabel(at.phase)
+      (at?(at.phase==='rest'&&_wtPlan.kind==='stretch'?stRestLabel(at):wtPhaseLabel(at.phase))
         :(_wtFull?'':(_wtMode==='down'?_t('ספירה לאחור'):_t('שעון עצר'))));
     el.className=(nm&&_wtFull)?'wtr-nm':'';
     if(nm&&_wtFull)el.textContent=nm;
@@ -30371,6 +30580,7 @@ function wtWrite(sec,run,at){
           '<em>'+nfmt(r+1)+'</em><span>'+esc(wtNameAt(r))+'</span></div>';
     if(hh!==el.getAttribute('data-h')){el.innerHTML=hh;el.setAttribute('data-h',hh);}
   }
+  if(plan&&at&&_wtPlan.kind==='stretch')stVidSet(at);
 }
 var REST_KEY='fit_rest',_restEnd=0,_restIv=null;
 /* ── THE REST, AS A WHEEL ON ITS SIDE ──
@@ -30908,10 +31118,29 @@ function exHasAny(list){
   for(var i=0;i<_exFilters.length;i++)if(list.indexOf(_exFilters[i])>=0)return true;
   return false;
 }
+/* WHICH KIND, strength or stretch - asked before which muscle, because it is
+   the bigger question: a hamstring curl and a hamstring stretch answer
+   different needs. Every other filter applies inside it. */
+var _exKind='all';
+function exKindOk(e){return _exKind==='st'?!!e.st:_exKind==='str'?!e.st:true;}
+function exKindLabel(){
+  return _exKind==='st'?_t('מתיחות וגמישות'):_exKind==='str'?_t('כוח'):_t('הכל');
+}
+function exKindHTML(){
+  var all=exAll(),ns=0,i;
+  for(i=0;i<all.length;i++)if(all[i].st)ns++;
+  function c(k,label,n){
+    return '<button class="ex-chip'+(_exKind===k?' on':'')+'" onclick="exSetKind(\''+k+'\')">'+esc(label)+'<b>'+nfmt(n)+'</b></button>';
+  }
+  return '<div class="ex-chips">'+c('all',_t('הכל'),all.length)+c('str',_t('כוח'),all.length-ns)+
+    c('st',_t('מתיחות וגמישות'),ns)+'</div>';
+}
+function exSetKind(k){_exKind=k;_exPaintBody();}
 function exList(){
   var all=exAll(),out=[],i,e;
   for(i=0;i<all.length;i++){
     e=all[i];
+    if(!exKindOk(e))continue;
     if(!exMatch(e,_exQ))continue;
     if(_exQ){out.push(e);continue;}                 // typing overrides the tabs
     /* ANY of the chosen, not all of them. Picking a second muscle should
@@ -30959,7 +31188,7 @@ function exLevelLabel(v){
   return '';
 }
 function exOpen(){
-  _exQ='';_exFilters=[];_exShow=false;_exTab='muscle';_exDetail=null;
+  _exQ='';_exFilters=[];_exShow=false;_exTab='muscle';_exDetail=null;_exKind='all';
   // the sheet has to exist before anything can be painted into it. Loading
   // first only worked while the file was still being fetched; once it was
   // cached exLoad called back immediately, ex-body did not exist yet, and
@@ -31027,7 +31256,7 @@ function _exPaintBody(){
   if(_exDetail){el.innerHTML=exDetailHTML(_exDetail);return;}
   /* Typing is its own answer and skips the picking half entirely. */
   var choosing=!_exQ&&!_exShow;
-  var h='';
+  var h=exKindHTML();
   if(choosing){
     h+='<div class="ex-tabs">'+
        '<button class="ex-tab'+(_exTab==='muscle'?' on':'')+'" onclick="exSetTab(&quot;muscle&quot;)">'+_t('לפי שריר')+'</button>'+
@@ -31037,7 +31266,7 @@ function _exPaintBody(){
        row - you find יד אחורית by seeing an arm, not by reading labels. */
     function count(k){
       return exAll().filter(function(e){
-        return (_exTab==='muscle'?e.m:e.q).indexOf(k)>=0;
+        return exKindOk(e)&&(_exTab==='muscle'?e.m:e.q).indexOf(k)>=0;
       }).length;
     }
     function card(k,art){
@@ -31075,7 +31304,7 @@ function _exPaintBody(){
        filter you are inside is not worth hiding behind a bare arrow. */
     h+='<button class="ex-back" onclick="exBackToFilters()">'+
        '<svg class="ex-back-a" viewBox="0 0 9 15"><path d="M7.4 1.3 1.6 7.5l5.8 6.2"/></svg>'+
-       '<span class="ex-back-t">'+esc(_exFilters.length?_exFilters.map(_t).join(' · '):_t('הכל'))+'</span></button>';
+       '<span class="ex-back-t">'+esc(_exFilters.length?_exFilters.map(_t).join(' · '):exKindLabel())+'</span></button>';
   }
   if(!list.length){
     h+='<div class="ex-none">'+_t('לא מצאתי. אפשר גם להקליד שם משלך למטה.')+'</div>';
@@ -31103,7 +31332,7 @@ function _exPaintBody(){
     h+='</div>';
   }
   // whatever the library does not have, you can still name yourself
-  h+='<div class="ex-own"><input class="ex-q" id="ex-own" placeholder="'+_t("או תרגיל משלך&hellip;")+'">'+
+  if(_exPick)h+='<div class="ex-own"><input class="ex-q" id="ex-own" placeholder="'+_t("או תרגיל משלך&hellip;")+'">'+
      '<button class="ex-add" onclick="exChooseOwn()">'+_t('הוסף')+'</button></div>';
   el.innerHTML=h;
   exTilesWatch(el);
@@ -31277,7 +31506,9 @@ function exDetailHTML(e){
   h+=exDemoHTML(e);
 
   // ── where you stand ──
-  if(!st){
+  if(e.st){
+    h+=stHoldHTML(e);
+  } else if(!st){
     h+='<div class="xd-none">'+_t('עוד לא רשמת את התרגיל הזה. אחרי האימון הראשון יופיע כאן איפה אתה עומד.')+'</div>';
   } else {
     h+='<div class="xd-now">';
@@ -31315,7 +31546,7 @@ function exDetailHTML(e){
   if(how.s&&how.s.length)h+=exHowBoxHTML('exDetailHow()');
   else h+='<div class="xd-none small">'+_t('ההסבר לתרגיל הזה עוד לא נכתב.')+'</div>';
 
-  h+='<button class="xd-pick" onclick="exDetailChoose()">'+_t('בחר את התרגיל הזה')+'</button>';
+  if(_exPick)h+='<button class="xd-pick" onclick="exDetailChoose()">'+_t('בחר את התרגיל הזה')+'</button>';
   return h+'</div>';
 }
 /* The instructions in the best language available: the reader's own,
@@ -32744,6 +32975,7 @@ function renderFitSummary(){
     var _e=entry.exercises[_i],_a=nextAdvice(_e.name,_e.sets);
     if(_a)_adv.push({n:_e.name,a:_a});
   }
+  h+=stCooldownHTML(entry);
   if(_adv.length){
     h+='<div class="nx"><div class="nx-h">'+_t('בפעם הבאה')+'</div>';
     /* The THIRD copy of this line. One was fixed a pass ago, one this pass,
