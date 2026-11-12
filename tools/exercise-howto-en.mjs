@@ -2238,6 +2238,78 @@ export const EN = {
       'Sitting back toward your heels.',
       'Pushing into sharp shoulder pain instead of a gentle stretch.'] },
 
+"פיתול עמוד שדרה בישיבה": {
+  s: ["Sit on the floor with one leg straight and the other bent, its foot crossed over the straight knee.","Place one hand on the floor behind you and sit tall.","Slowly turn your torso toward the bent knee, looking over your shoulder.","Hold and breathe, then switch sides."],
+  m: ["Slumping back instead of sitting tall.","Forcing the turn from the neck alone.","Holding your breath as you turn."] },
+
+"מתיחת פרפר בישיבה": {
+  s: ["Sit on the floor and press the soles of your feet together, knees open to the sides.","Hold your feet with both hands and sit tall.","Let your knees sink slowly toward the floor.","Hold and breathe deeply."],
+  m: ["Pushing the knees down by force.","Rounding your back forward.","Bouncing instead of holding still."] },
+
+"מתיחת קוברה": {
+  s: ["Lie on your stomach with your hands on the floor under your shoulders.","Press through your hands and lift your chest, elbows slightly bent.","Keep your thighs and feet on the floor.","Hold and breathe, then lower slowly."],
+  m: ["Shrugging your shoulders up to your ears.","Lifting your thighs off the floor.","Arching so far that your lower back hurts."] },
+
+"כלב מביט מטה": {
+  s: ["Start on your hands and knees, hands under your shoulders.","Lift your seat up and back until your body forms an upside-down V.","Press your heels toward the floor, head between your arms.","Hold and breathe, then lower to your knees."],
+  m: ["Rounding your back instead of keeping it long.","Forcing your knees locked.","Leaning too much weight onto your hands."] },
+
+"לאנג׳ עמוק": {
+  s: ["Step one foot forward and lower your back knee to the floor.","Keep your front knee over your ankle and your torso upright.","Shift forward and down until you feel a stretch at the front of the back thigh.","Hold and breathe, then switch legs."],
+  m: ["Letting the front knee travel far past the toes.","Arching your lower back.","Letting your torso fall forward."] },
+
+"חצי שפגט": {
+  s: ["Kneel on one knee and straighten the other leg in front of you, heel on the floor.","Place your hands on the floor on either side of the front leg.","Fold your torso forward over the straight leg, back long.","Hold and breathe, then switch legs."],
+  m: ["Rounding your back instead of folding from the top of the thigh.","Bending the front knee.","Forcing your body down."] },
+
+"לאנג׳ סהר": {
+  s: ["Kneel into a deep lunge with the back knee on the floor.","Raise both arms straight overhead.","Shift forward and reach your arms up and slightly back.","Hold and breathe, then switch legs."],
+  m: ["Arching your lower back too far.","Shrugging your shoulders to your ears.","Letting the front knee cave inward."] },
+
+"מתיחת לטאה": {
+  s: ["Step one foot forward to the outside of your hand.","Place both hands or forearms on the floor inside the front foot.","Keep the back leg long and let your body sink low.","Hold and breathe, then switch legs."],
+  m: ["Forcing the front knee open.","Rounding your back.","Resting on a sore back knee without padding."] },
+
+"מתיחת סקוואט עמוק": {
+  s: ["Stand with your feet a little wider than your shoulders, toes turned slightly out.","Lower slowly into as deep a squat as is comfortable.","Bring your palms together in front of your chest and press your knees out with your elbows.","Hold and breathe, then stand up slowly."],
+  m: ["Letting your heels lift off the floor.","Rounding your back.","Letting your knees cave inward."] },
+
+"תנוחת גמל": {
+  s: ["Kneel on both knees with your thighs upright.","Place your hands on your lower back.","Open your chest and lean back slowly, and if it is comfortable reach your hands to your heels.","Hold and breathe, then come back up slowly."],
+  m: ["Throwing your head back.","Sitting back toward your heels.","Dropping into the backbend too fast."] },
+
+"תנוחת יונה": {
+  s: ["Bring one knee forward to the floor with its shin angled in front of you.","Stretch the other leg straight back.","Keep your torso upright or fold it forward over the front leg.","Hold and breathe, then switch legs."],
+  m: ["Tipping to one side instead of staying square.","Feeling pain in the front knee.","Holding your breath."] },
+
+"תנוחת ילד": {
+  s: ["Kneel on the floor and sit back on your heels.","Fold your torso forward until your forehead is near the floor.","Stretch your arms forward along the floor.","Relax and breathe deeply."],
+  m: ["Lifting your seat off your heels.","Tensing your shoulders.","Shallow breathing instead of deep."] },
+
+"מתיחת צוואר הצידה": {
+  s: ["Stand or sit tall with your shoulders relaxed.","Slowly tilt your head to the side, ear toward the shoulder.","Rest your hand gently on your head to deepen it a little.","Hold and breathe, then switch sides."],
+  m: ["Pulling your head with your hand.","Lifting the shoulder toward the ear.","Turning the head instead of tilting it."] },
+
+"מתיחת כתף לרוחב החזה": {
+  s: ["Stand tall and bring one arm straight across your chest.","Hold it above the elbow with your other hand.","Gently draw it toward your chest until you feel the stretch in the shoulder.","Hold and breathe, then switch sides."],
+  m: ["Letting the shoulder rise toward the ear.","Twisting your torso instead of staying square.","Pulling on the elbow joint itself."] },
+
+"מתיחת יד אחורית מעל הראש": {
+  s: ["Raise one arm overhead and bend the elbow so the hand drops between your shoulder blades.","Hold the elbow with your other hand.","Gently draw it toward your head.","Hold and breathe, then switch sides."],
+  m: ["Pushing your head forward.","Arching your lower back.","Pulling too hard on the elbow."] },
+
+"מתיחת אגן בכריעה": {
+  s: ["Kneel on one knee with the other foot flat on the floor in front.","Rest your hands on the front knee and keep your torso upright.","Squeeze your glutes and shift forward a little until you feel a stretch at the front of the back thigh.","Hold and breathe, then switch legs."],
+  m: ["Arching your lower back.","Leaning your torso forward.","Letting the front knee travel far past the toes."] },
+
+"מתיחת ארבע ראשי בעמידה": {
+  s: ["Stand on one leg, holding something steady for balance if you need to.","Bend the other knee and hold the ankle behind you.","Draw the heel toward your seat, knees close together.","Hold and breathe, then switch legs."],
+  m: ["Letting the knee drift out to the side.","Arching your lower back.","Leaning your torso forward."] },
+
+"כפיפה לפנים בעמידה": {
+  s: ["Stand with your feet hip-width apart and your knees soft.","Fold your torso forward and down from the top of the thighs.","Let your head and arms hang toward the floor.","Hold and breathe, then roll up slowly."],
+  m: ["Forcing your knees locked.","Bouncing to reach further.","Standing up so fast you feel dizzy."] },
+
 'גוד מורנינג בישיבה': {
   s: ['Sit on the end of a flat bench, feet wide, a bar resting on your upper back.',
       'Hold the bar, back flat and chest open.',

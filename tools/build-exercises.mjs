@@ -371,7 +371,25 @@ const RAW=[
 ['גלגל בטן בעמידה',M.abs,[Q.mat],'Standing Ab Wheel Rollout',['אב וויל מעמידה','גלגל בטן מעמידה']],
 ['פייס פול בכריעה',M.shoulders,[Q.cable],'Kneeling Cable Face Pull',['פייספול בכריעה','פייס פול על הברך']],
 ['הרמה קדמית בפולי במוט',M.shoulders,[Q.cable],'Cable Bar Front Raise',['הרמה קדמית בכבל במוט','הרמה קדמית בפולי מאחור']],
-['מתיחת חזה בכריעה',M.chest,[Q.box],'Kneeling Chest Stretch',['מתיחת חזה על קופסה','מתיחת כתפיים בכריעה']]
+['מתיחת חזה בכריעה',M.chest,[Q.box],'Kneeling Chest Stretch',['מתיחת חזה על קופסה','מתיחת כתפיים בכריעה']],
+["פיתול עמוד שדרה בישיבה",M.lower,[Q.mat],"Seated Spinal Rotation",["פיתול בישיבה"]],
+["מתיחת פרפר בישיבה",M.adduct,[Q.mat],"Butterfly Sit",["פרפר בישיבה"]],
+["מתיחת קוברה",M.abs,[Q.mat],"Cobra Stretch",["קוברה"]],
+["כלב מביט מטה",M.hams,[Q.mat],"Downward Dog",["דאון דוג"]],
+["לאנג׳ עמוק",M.quads,[Q.mat],"Deep Lunge",["מתיחת לאנג׳"]],
+["חצי שפגט",M.hams,[Q.mat],"Half Split",["מתיחת ירך אחורית בכריעה"]],
+["לאנג׳ סהר",M.quads,[Q.mat],"Crescent Lunge",["קרסנט לאנג׳"]],
+["מתיחת לטאה",M.glutes,[Q.mat],"Lizard Lunge",["לאנג׳ לטאה"]],
+["מתיחת סקוואט עמוק",M.adduct,[Q.bw],"Deep Squat Stretch",["ישיבת סקוואט"]],
+["תנוחת גמל",M.abs,[Q.mat],"Camel Pose",["גמל"]],
+["תנוחת יונה",M.glutes,[Q.mat],"Pigeon Pose",["יונה"]],
+["תנוחת ילד",M.lower,[Q.mat],"Child's Pose",["תנוחת עובר"]],
+["מתיחת צוואר הצידה",M.traps,[Q.bw],"Neck Stretch",["מתיחת צוואר"]],
+["מתיחת כתף לרוחב החזה",M.shoulders,[Q.bw],"Cross-Body Shoulder Stretch",["מתיחת כתף"]],
+["מתיחת יד אחורית מעל הראש",M.triceps,[Q.bw],"Overhead Triceps Stretch",["מתיחת טרייספס"]],
+["מתיחת אגן בכריעה",M.quads,[Q.mat],"Kneeling Hip Flexor Stretch",["מתיחת אגן"]],
+["מתיחת ארבע ראשי בעמידה",M.quads,[Q.bw],"Standing Quad Stretch",["מתיחת קוואדס"]],
+["כפיפה לפנים בעמידה",M.hams,[Q.bw],"Standing Forward Bend",["מתיחת ירך אחורית בעמידה"]]
 ];
 
 const list=RAW.map(function(r,i){
