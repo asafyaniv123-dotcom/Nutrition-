@@ -24,7 +24,7 @@ for(const id of ${JSON.stringify(ids)}){const e=lib.find(x=>x.id===id);if(!e){ou
 const h=exDemoHTML(e,null);if(!h){out.push(id+' no demo markup');continue;}
 const d=document.createElement('div');d.innerHTML=h;document.body.appendChild(d);const v=d.querySelector('video');
 const ok=await new Promise(r=>{if(v.readyState>=2)return r(true);v.addEventListener('loadeddata',()=>r(true));v.addEventListener('error',()=>r(false));v.load();setTimeout(()=>r(false),8000);});
-out.push(id+' '+(ok?'plays '+v.videoWidth+'x'+v.videoHeight+' '+v.duration.toFixed(1)+'s':'FAILED '+v.src));d.remove();}
+out.push(id+' '+(ok?'plays '+v.videoWidth+'x'+v.videoHeight+' '+v.duration.toFixed(1)+'s '+v.src.split('/').pop():'FAILED '+v.src));d.remove();}
 return out.join('\\n');})()`;
 const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
 console.log(r.result?.result?.value || JSON.stringify(r.result));
