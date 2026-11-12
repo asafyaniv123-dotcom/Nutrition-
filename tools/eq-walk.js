@@ -12,8 +12,10 @@
     var later=qa('button').filter(function(b){return b.textContent.trim()==='אחר כך';})[0];if(later){later.click();await wait(400);}
     exPickInto(function(){});await wait(2500);
     qa('.ex-tab')[1].click();await wait(1500);
-    return 'cards '+qa('.gp .eq-art').length+' svg '+qa('.gp .eq-art svg').length;
+    return 'cards '+qa('.gp').length+' pictures '+qa('.gp .eq3 img').length+' drawn '+qa('.gp .eq-art svg').length;
   }
-  qa('.gp')[0].click();await wait(200);qa('.gp')[1].click();await wait(900);
-  return 'on '+qa('.gp.on').length;
+  if(st===1){qa('.gp')[0].click();await wait(200);qa('.gp')[1].click();await wait(900);return 'on '+qa('.gp.on').length;}
+  /* stage 2: the muscle tab, for the side by side */
+  qa('.ex-tab')[0].click();await wait(1500);
+  return 'muscle cards '+qa('.gp.mu').length;
 })();
