@@ -15992,12 +15992,118 @@ function coachFiles(input){
   input.value='';
   return n;
 }
+/* ── "DINNER LIKE YESTERDAY" (Asaf, 13 Nov) ──
+   The coach is only ever shown TODAY's log, so it cannot see yesterday's
+   dinner to copy it - and the phone can. A sentence that is nothing but a
+   meal, a day and a "like/same" is answered here, before the model: the
+   rows of that meal on that day are copied into today, under the same meal.
+   All three must be there, and NOTHING ELSE may be left once they and the
+   filler words are taken out - "like yesterday but without the sauce" is a
+   change, and changes are the model's job. Anything this does not recognise
+   simply goes on to the coach as before. Tables, not translations: these are
+   words compared against what she typed, never shown. */
+var MR_SLOTS={   // i18n-exempt: words matched in her message, never shown
+  breakfast:['ארוחת הבוקר','ארוחת בוקר','בוקר','breakfast','frühstück','desayuno','petit-déjeuner','petit déjeuner','colazione','café da manhã','pequeno-almoço','朝ごはん','朝食','朝飯','早餐','早饭','早飯','الفطور','فطور'],   // i18n-exempt: matched, never shown
+  lunch:['ארוחת הצהריים','ארוחת צהריים','ארוחת צהרים','צהריים','צהרים','lunch','mittagessen','almuerzo','comida','déjeuner','dejeuner','pranzo','almoço','almoco','昼ごはん','昼食','ランチ','午餐','午饭','午飯','الغداء','غداء'],   // i18n-exempt: matched, never shown
+  dinner:['ארוחת הערב','ארוחת ערב','ערב','dinner','supper','abendessen','abendbrot','cena','dîner','diner','jantar','夜ごはん','晩ごはん','夕ごはん','夕食','晚餐','晚饭','晚飯','العشاء','عشاء'],   // i18n-exempt: matched, never shown
+  snack:['ארוחת הביניים','ארוחת ביניים','נשנוש','חטיף','snack','merienda','goûter','collation','spuntino','merenda','lanche','おやつ','間食','零食','加餐','وجبة خفيفة']   // i18n-exempt: matched, never shown
+};
+var MR_DAYS=[   // i18n-exempt: [words, days back] - matched, never shown
+  ['לפני יומיים',2],['שלשום',2],['אתמול',1],['לפני שבוע',7],   // i18n-exempt: matched, never shown
+  ['the day before yesterday',2],['two days ago',2],['three days ago',3],['yesterday',1],['a week ago',7],['last week',7],
+  ['vorgestern',2],['vor zwei tagen',2],['vor drei tagen',3],['gestern',1],['vor einer woche',7],
+  ['anteayer',2],['antier',2],['hace dos días',2],['hace tres días',3],['ayer',1],['hace una semana',7],
+  ['avant-hier',2],['avant hier',2],['il y a deux jours',2],['il y a trois jours',3],['hier',1],['il y a une semaine',7],
+  ["l'altro ieri",2],['altroieri',2],['due giorni fa',2],['tre giorni fa',3],['ieri',1],['una settimana fa',7],
+  ['anteontem',2],['há dois dias',2],['há três dias',3],['ontem',1],['há uma semana',7],
+  ['一昨日',2],['おととい',2],['昨日',1],['きのう',1],['前天',2],['昨天',1],
+  ['أول أمس',2],['أول امس',2],['قبل يومين',2],['الأمس',1],['أمس',1],['امس',1],['قبل أسبوع',7]
+];
+var MR_DAYS_N=[/לפני (\d+) ימים/,/(\d+) days ago/,/vor (\d+) tagen/,/hace (\d+) días/,/il y a (\d+) jours/,/(\d+) giorni fa/,   // i18n-exempt: matched, never shown
+  /há (\d+) dias/,/(\d+) dias atrás/,/(\d+)日前/,/(\d+)天前/,/قبل (\d+) (?:أيام|يوم)/];
+var MR_WEEKDAYS=[['ראשון','sunday'],['שני','monday'],['שלישי','tuesday'],['רביעי','wednesday'],['חמישי','thursday'],['שישי','friday'],['שבת','saturday']];   // i18n-exempt: matched, never shown
+var MR_MARK=['כמו','אותה','אותו','זהה','שוב','like','same','again','repeat','wie','gleiche','gleiches','gleichen','selbe','nochmal','como','mismo','misma','igual','otra vez','comme','même','meme','pareil','come','stesso','stessa','uguale','mesmo','mesma','と同じ','同じ','一样','一樣','مثل','نفس'];   // i18n-exempt: matched, never shown
+var MR_FILL=('את,של,ה,היום,גם,בבקשה,לי,תכניס,תוסיף,הכנס,הוסף,תרשום,רשום,אכלתי,ארוחת,ביום,יום,דבר,'+   // i18n-exempt: filler words, never shown
+  'i,had,ate,have,the,a,an,my,for,today,please,add,log,put,as,it,was,on,eat,also,'+
+  'ich,habe,hatte,das,die,der,heute,bitte,am,zum,essen,'+
+  'yo,comí,el,la,de,hoy,por,favor,del,mi,'+
+  'je,j,ai,mangé,le,les,du,aujourd,hui,que,mon,ma,'+
+  'ho,mangiato,il,lo,di,oggi,per,'+
+  'eu,comi,o,os,do,da,hoje,'+
+  'و,اليوم,من,في,أكلت,اكلت,لو,سمحت').split(',');   // i18n-exempt: filler words, never shown
+var MR_CJK_FILL=['今日','今天','は','も','を','の','と','に','食べた','食べました','です','我','吃了','吃','了','的','和','跟','同','也','请','請','入れて','記録して'];   // i18n-exempt: filler, never shown
+var MR_CJK=/[぀-ヿ㐀-鿿]/;
+/* a word as a whole word - Hebrew and Arabic glue a preposition or the
+   article onto its front, so those are allowed there */
+function mrRx(w,g){
+  var e=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return new RegExp('(^|[^\\p{L}])(?:[והשמלבכ]{1,2}|ال|و|ل|ب)?'+e+'(?=$|[^\\p{L}])',g?'gu':'u');   // i18n-exempt: prefix letters matched, never shown
+}
+function mrHas(t,w){return MR_CJK.test(w)?t.indexOf(w)>=0:mrRx(w).test(t);}
+function mrCut(t,w){return MR_CJK.test(w)?t.split(w).join(' '):t.replace(mrRx(w,1),'$1 ');}
+/* {slot, back} when the whole message is "that meal, as on that day" */
+function mrParse(text){
+  var t=' '+String(text||'').toLowerCase().normalize('NFKC').replace(/[׳’`]/g,"'")+' ';
+  var k,i,w,slot=null,sw='',back=0,dw='',m;
+  for(k in MR_SLOTS)for(i=0;i<MR_SLOTS[k].length;i++){w=MR_SLOTS[k][i];
+    if(w.length>sw.length&&mrHas(t,w)){slot=k;sw=w;}}
+  if(!slot)return null;
+  for(i=0;i<MR_DAYS.length&&!back;i++)if(mrHas(t,MR_DAYS[i][0])){back=MR_DAYS[i][1];dw=MR_DAYS[i][0];}
+  for(i=0;i<MR_DAYS_N.length&&!back;i++){m=t.match(MR_DAYS_N[i]);if(m){back=+m[1];t=t.replace(m[0],' ');}}
+  if(!back){
+    var dow=appNow().getDay();
+    for(i=0;i<MR_WEEKDAYS.length&&!back;i++){
+      w=mrHas(t,MR_WEEKDAYS[i][0])?MR_WEEKDAYS[i][0]:mrHas(t,MR_WEEKDAYS[i][1])?MR_WEEKDAYS[i][1]:'';
+      if(w){back=((dow-i+7)%7)||7;dw=w;}
+    }
+  }
+  if(!back||back>14)return null;
+  var mark=false;
+  for(i=0;i<MR_MARK.length;i++)if(mrHas(t,MR_MARK[i])){mark=true;t=mrCut(t,MR_MARK[i]);}
+  if(!mark)return null;
+  /* everything recognised comes out; what is left must be filler only */
+  var all=[];for(k in MR_SLOTS)all=all.concat(MR_SLOTS[k]);
+  all.sort(function(a,b){return b.length-a.length;});
+  for(i=0;i<all.length;i++)if(mrHas(t,all[i]))t=mrCut(t,all[i]);
+  if(dw)t=mrCut(t,dw);
+  for(i=0;i<MR_CJK_FILL.length;i++)t=t.split(MR_CJK_FILL[i]).join(' ');
+  var left=t.split(/[^\p{L}\p{N}']+/u).filter(function(x){
+    if(!x||x==="'")return false;
+    if(MR_FILL.indexOf(x)>=0)return false;
+    x=x.replace(/^[והשמלבכ]{1,2}(?=\p{L}{2})/u,'');
+    return MR_FILL.indexOf(x)<0;
+  });
+  return left.length?null:{slot:slot,back:back};
+}
+/* the copy itself, and the two turns that record it in the chat */
+function mrApply(r,text){
+  var d=todayStr(),from=dayShift(-r.back),src=loadDay(from),day=loadDay(d),ids=[],i,m,c,now=Date.now();
+  var rec=loadCoach(d);
+  rec.turns.push({role:'user',text:text,at:now});
+  for(i=0;i<src.meals.length;i++){m=src.meals[i];
+    if(mealKind(m)!==r.slot)continue;
+    c=JSON.parse(JSON.stringify(m));
+    c.id='rp'+now+'_'+i;c.kind=r.slot;c.time=fmtTime();c.at=now;c.from=from;
+    day.meals.push(c);ids.push(c.id);
+  }
+  var label=mealKindLabel(r.slot),date=dfmt(new Date(from+'T12:00:00'),{weekday:'long',day:'numeric',month:'long'});
+  if(ids.length)saveDay(d,day);
+  rec.turns.push({role:'assistant',
+    text:ids.length?_t('הוספתי להיום את {meal} של {date}.',{meal:label,date:date})
+                   :_t('{date}: לא נרשם כלום תחת {meal}, אז לא הוספתי דבר.',{meal:label,date:date}),
+    q:'',changed:ids.length?1:0,ids:ids.slice(0,12),at:now+1});
+  saveCoach(d,rec);
+  render();
+}
 function coachSend(){
   if(_coachBusy)return;
   if(_coachEdit){coachEditSend();return;}
   var el=document.getElementById('co-in');
   var text=el?el.value.trim():'';
   if(!text&&!_coachPics.length)return;
+  /* a meal copied from another day is answered here, with no round trip */
+  var _mr=!_coachPics.length&&mrParse(text);
+  if(_mr){if(el)el.value='';mrApply(_mr,text);return;}
   var d=todayStr();
   var pics=_coachPics.slice();_coachPics=[];
   if(el)el.value='';
