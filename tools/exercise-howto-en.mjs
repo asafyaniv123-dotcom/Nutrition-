@@ -2493,5 +2493,13 @@ export const EN = {
       'Let it return slowly, then switch sides.'],
   m: ['Letting the elbow drift away from your body as you rotate.',
       'Turning your whole body instead of rotating at the shoulder.',
-      'Using a weight so heavy that it snaps your arm back.'] }
+      'Using a weight so heavy that it snaps your arm back.'] },
+'קירוב ירך בפלאנק קופנהגן': {
+  s: ['Lie on your side propped on your forearm, elbow under your shoulder, and rest your top leg on a bench.',
+      'Lift your body into a straight line from head to feet, the bottom leg hanging below the bench.',
+      'Raise the bottom leg until it meets the bench, without rotating your body.',
+      'Lower it slowly, and switch sides after the set.'],
+  m: ['Letting your middle sag toward the floor as the leg rises.',
+      'Rolling your body forward or back.',
+      'Sinking into the shoulder over the supporting elbow.'] }
 };

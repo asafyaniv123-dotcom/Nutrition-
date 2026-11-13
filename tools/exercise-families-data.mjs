@@ -109,7 +109,7 @@ export const FAMILIES = [
     'Power Clean', 'Power Clean', 'Cargada de potencia', 'Épaulé en puissance', 'Power clean', 'Power clean', 'パワークリーン', '高翻', '高翻', 'الكلين القوي'],
   ['קירוב ירך', 'מקרבים', [], '170 171',
     'Hip Adduction', 'Adduktion', 'Aducción de cadera', 'Adduction de hanche', 'Adduzione dell’anca', 'Adução de quadril', 'ヒップアダクション', '髋内收', '髖內收', 'تقريب الفخذ'],
-  ['פלאנק קופנהגן', 'מקרבים', ['אלכסונים'], '172',
+  ['פלאנק קופנהגן', 'מקרבים', ['אלכסונים'], '172 302',
     'Copenhagen Plank', 'Kopenhagen-Plank', 'Plancha Copenhague', 'Gainage Copenhague', 'Plank Copenaghen', 'Prancha Copenhague', 'コペンハーゲンプランク', '哥本哈根平板支撑', '哥本哈根棒式', 'لوح كوبنهاغن'],
   ['סקוואט קוזאק', 'מקרבים', ['ארבע ראשי', 'ישבן'], '173',
     'Cossack Squat', 'Kosakenkniebeuge', 'Sentadilla cosaca', 'Squat cosaque', 'Squat cosacco', 'Agachamento cossaco', 'コサックスクワット', '哥萨克深蹲', '哥薩克深蹲', 'قرفصاء القوزاق'],
@@ -203,7 +203,7 @@ export const LV = ['מתחיל', 'בינוני', 'מתקדם'];
 const nums = s => s.split(' ').map(n => 'x' + n);
 const EASY = nums('18 19 22 241 242 131 148 162 69 70 181 182 185 186 190 192 196 197 200 202 203 204 210 199 234 229 255 253 254 247 65 211 212 213 214 215 216 217 218 224');
 const MID = nums('221 222');
-const HARD = nums('225 226 227 228 93 156 157 191 188 201 147 172 31 23 57 129 194 248 198 264');
+const HARD = nums('225 226 227 228 93 156 157 191 188 201 147 172 302 31 23 57 129 194 248 198 264');
 export function levelOf(id, eqt) {
   if (MID.includes(id)) return 'בינוני';
   if (HARD.includes(id)) return 'מתקדם';
