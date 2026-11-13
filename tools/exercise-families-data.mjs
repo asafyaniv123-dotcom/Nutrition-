@@ -15,13 +15,13 @@ export const FAMILY_LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans'
 export const FAMILIES = [
   ['לחיצת חזה', 'חזה', ['כתף קדמית', 'יד אחורית'], '1 2 3 4 5 6 7 8 9 10 11 237 26',
     'Chest Press', 'Brustdrücken', 'Press de pecho', 'Développé pectoral', 'Distensioni per il petto', 'Supino', 'チェストプレス', '卧推', '臥推', 'ضغط الصدر'],
-  ['פרפר', 'חזה', ['כתף קדמית'], '12 13 14 15 16 17',
+  ['פרפר', 'חזה', ['כתף קדמית'], '12 13 14 15 16 17 303',
     'Chest Fly', 'Fliegende', 'Aperturas', 'Écarté', 'Croci', 'Crucifixo', 'フライ', '飞鸟', '飛鳥', 'تفتيح الصدر'],
   ['שכיבות סמיכה', 'חזה', ['כתף קדמית', 'יד אחורית', 'בטן'], '18 19 20 21 241 242 248',
     'Push-Up', 'Liegestütz', 'Flexiones', 'Pompes', 'Piegamenti', 'Flexão', '腕立て伏せ', '俯卧撑', '伏地挺身', 'تمرين الضغط'],
   ['מקבילים', 'חזה', ['יד אחורית', 'כתף קדמית'], '22 23',
     'Dip', 'Dips', 'Fondos', 'Dips', 'Dip', 'Paralelas', 'ディップス', '双杠臂屈伸', '雙槓撐體', 'تمرين الغطس'],
-  ['חתירה', 'מעוינים וטרפז אמצעי', ['רחב גבי', 'כתף אחורית', 'יד קדמית'], '41 42 43 44 45 46 47 48 49 50 51 52 53 54 256 257 258 261 262',
+  ['חתירה', 'מעוינים וטרפז אמצעי', ['רחב גבי', 'כתף אחורית', 'יד קדמית'], '41 42 43 44 45 46 47 48 49 50 51 52 53 54 256 257 258 261 262 306',
     'Row', 'Rudern', 'Remo', 'Rowing', 'Rematore', 'Remada', 'ロウ', '划船', '划船', 'التجديف'],
   ['חתירה הפוכה', 'מעוינים וטרפז אמצעי', ['רחב גבי', 'יד קדמית', 'בטן'], '55 56',
     'Inverted Row', 'Umgekehrtes Rudern', 'Remo invertido', 'Rowing inversé', 'Rematore inverso', 'Remada invertida', 'インバーテッドロウ', '反向划船', '反向划船', 'التجديف المقلوب'],
@@ -45,7 +45,7 @@ export const FAMILIES = [
     'Reverse Fly', 'Reverse Flys', 'Aperturas invertidas', 'Oiseau', 'Croci inverse', 'Crucifixo invertido', 'リアフライ', '反向飞鸟', '反向飛鳥', 'التفتيح العكسي'],
   ['פייס פול', 'כתפיים', ['מעוינים', 'שרוול מסובב'], '88 265',
     'Face Pull', 'Face Pulls', 'Face pull', 'Face pull', 'Face pull', 'Face pull', 'フェイスプル', '面拉', '面拉', 'سحب الوجه'],
-  ['סיבוב חיצוני של הכתף', 'כתפיים', ['שרוול מסובב'], '92',
+  ['סיבוב חיצוני של הכתף', 'כתפיים', ['שרוול מסובב'], '92 304 305',
     'Shoulder External Rotation', 'Außenrotation der Schulter', 'Rotación externa de hombro', 'Rotation externe de l’épaule', 'Extrarotazione della spalla', 'Rotação externa do ombro', '肩の外旋', '肩外旋', '肩外旋', 'التدوير الخارجي للكتف'],
   ['סיבוב פנימי של הכתף', 'כתפיים', ['שרוול מסובב', 'חזה'], '301',
     'Shoulder Internal Rotation', 'Innenrotation der Schulter', 'Rotación interna de hombro', 'Rotation interne de l’épaule', 'Intrarotazione della spalla', 'Rotação interna do ombro', '肩の内旋', '肩内旋', '肩內旋', 'التدوير الداخلي للكتف'],
@@ -75,7 +75,7 @@ export const FAMILIES = [
     'Wrist Work', 'Handgelenkübungen', 'Muñeca', 'Poignets', 'Polsi', 'Punho', '手首', '腕部训练', '腕部訓練', 'تمارين الرسغ'],
   ['אחיזה', 'אמה', ['טרפז עליון', 'רחב גבי'], '126 127',
     'Grip', 'Griffkraft', 'Agarre', 'Préhension', 'Presa', 'Pegada', '握力', '握力', '握力', 'قوة القبضة'],
-  ['סקוואט', 'ארבע ראשי', ['ישבן', 'מקרבים', 'זוקפי גב'], '128 129 130 131 132 133 134 139',
+  ['סקוואט', 'ארבע ראשי', ['ישבן', 'מקרבים', 'זוקפי גב'], '128 129 130 131 132 133 134 139 321 322 323 324',
     'Squat', 'Kniebeuge', 'Sentadilla', 'Squat', 'Squat', 'Agachamento', 'スクワット', '深蹲', '深蹲', 'القرفصاء'],
   ['לחיצת רגליים', 'ארבע ראשי', ['ישבן', 'מקרבים'], '135 136 137 138',
     'Leg Press', 'Beinpresse', 'Prensa de piernas', 'Presse à cuisses', 'Pressa per gambe', 'Leg press', 'レッグプレス', '腿举', '腿推', 'ضغط الأرجل'],
@@ -91,17 +91,17 @@ export const FAMILIES = [
     'Wall Sit', 'Wandsitzen', 'Sentadilla en pared', 'Chaise', 'Wall sit', 'Cadeirinha', '空気椅子', '靠墙静蹲', '靠牆靜蹲', 'الجلوس على الحائط'],
   ['דדליפט', 'ירך אחורית', ['ישבן', 'זוקפי גב', 'טרפז עליון', 'אמה'], '57 58',
     'Deadlift', 'Kreuzheben', 'Peso muerto', 'Soulevé de terre', 'Stacco', 'Levantamento terra', 'デッドリフト', '硬拉', '硬舉', 'الرفعة الميتة'],
-  ['דדליפט רומני', 'ירך אחורית', ['ישבן', 'זוקפי גב'], '149 150 151 152',
+  ['דדליפט רומני', 'ירך אחורית', ['ישבן', 'זוקפי גב'], '149 150 151 152 339',
     'Romanian Deadlift', 'Rumänisches Kreuzheben', 'Peso muerto rumano', 'Soulevé de terre roumain', 'Stacco rumeno', 'Stiff romeno', 'ルーマニアンデッドリフト', '罗马尼亚硬拉', '羅馬尼亞硬舉', 'الرفعة الرومانية'],
   ['כפיפת ברך', 'ירך אחורית', ['שוקיים'], '153 154 155 246 156 157 263',
     'Leg Curl', 'Beinbeugen', 'Curl femoral', 'Leg curl', 'Leg curl', 'Mesa flexora', 'レッグカール', '腿弯举', '腿彎舉', 'ثني الساق'],
   ['היפ ת׳ראסט וגשר ישבן', 'ישבן', ['ירך אחורית'], '159 160 161 162 239 240 251',
     'Hip Thrust & Glute Bridge', 'Hip Thrust und Glute Bridge', 'Hip thrust y puente de glúteos', 'Hip thrust et pont fessier', 'Hip thrust e ponte glutei', 'Elevação pélvica e ponte', 'ヒップスラスト・グルートブリッジ', '臀推与臀桥', '臀推與臀橋', 'دفع الورك وجسر الأرداف'],
-  ['סומו', 'ישבן', ['מקרבים', 'ארבע ראשי', 'זוקפי גב'], '163 164',
+  ['סומו', 'ישבן', ['מקרבים', 'ארבע ראשי', 'זוקפי גב'], '163 164 327 328 329 330 331 332 333 334 335 336 337 338',
     'Sumo', 'Sumo', 'Sumo', 'Sumo', 'Sumo', 'Sumô', 'スモウ', '相扑', '相撲', 'السومو'],
   ['בעיטת ישבן', 'ישבן', ['ירך אחורית'], '165 166',
     'Glute Kickback', 'Glute-Kickback', 'Patada de glúteo', 'Kickback fessier', 'Slanci posteriori', 'Coice para glúteos', 'グルートキックバック', '臀部后踢', '臀部後踢', 'ركلة الأرداف'],
-  ['ציר ירך דינמי', 'ישבן', ['ירך אחורית', 'זוקפי גב'], '158 167',
+  ['ציר ירך דינמי', 'ישבן', ['ירך אחורית', 'זוקפי גב'], '158 167 307',
     'Dynamic Hip Hinge', 'Dynamisches Hüftbeugen', 'Bisagra de cadera dinámica', 'Charnière de hanche dynamique', 'Hip hinge dinamico', 'Dobradiça de quadril dinâmica', 'ダイナミックヒップヒンジ', '动态髋铰链', '動態髖鉸鏈', 'مفصلة الورك الديناميكية'],
   ['הפעלת ישבן בגומייה', 'ישבן', ['מרחיקים'], '168 169',
     'Banded Glute Activation', 'Po-Aktivierung mit Band', 'Activación de glúteos con banda', 'Activation fessière à l’élastique', 'Attivazione glutei con elastico', 'Ativação de glúteos com elástico', 'バンドでの臀部活性化', '弹力带臀部激活', '彈力帶臀部激活', 'تنشيط الأرداف بالمطاط'],
@@ -121,7 +121,7 @@ export const FAMILIES = [
     'Tibialis Raise', 'Tibialis-Heben', 'Elevación de tibial', 'Relevé du tibial', 'Sollevamento del tibiale', 'Elevação do tibial', 'チビアリスレイズ', '胫骨前肌抬起', '脛骨前肌抬起', 'رفع مقدمة الساق'],
   ['כפיפות בטן', 'בטן', [], '182 183 184 186 187 238 252',
     'Crunch', 'Crunches', 'Abdominales', 'Crunch', 'Crunch', 'Abdominal', 'クランチ', '卷腹', '捲腹', 'كرنش البطن'],
-  ['הרמת רגליים וברכיים', 'בטן', ['מכופפי ירך'], '185 188 189 190 191 198 199 247 254',
+  ['הרמת רגליים וברכיים', 'בטן', ['מכופפי ירך'], '185 188 189 190 191 198 199 247 254 325 326',
     'Leg & Knee Raises', 'Bein- und Knieheben', 'Elevación de piernas y rodillas', 'Relevés de jambes et de genoux', 'Sollevamenti di gambe e ginocchia', 'Elevação de pernas e joelhos', 'レッグ・ニーレイズ', '举腿与提膝', '舉腿與提膝', 'رفع الأرجل والركبتين'],
   ['פלאנק וייצוב ליבה', 'בטן', ['כתפיים', 'אלכסונים'], '192 193 194 195 196 197 200 264',
     'Plank & Core Stability', 'Plank und Rumpfstabilität', 'Plancha y estabilidad del core', 'Gainage et stabilité du tronc', 'Plank e stabilità del core', 'Prancha e estabilidade do core', 'プランク・体幹安定', '平板支撑与核心稳定', '棒式與核心穩定', 'اللوح وثبات الجذع'],
@@ -137,11 +137,13 @@ export const FAMILIES = [
     'Anti-Rotation', 'Anti-Rotation', 'Antirrotación', 'Anti-rotation', 'Antirotazione', 'Antirrotação', 'アンチローテーション', '抗旋转', '抗旋轉', 'مقاومة الدوران'],
   ['ראק פול', 'זוקפי גב', ['טרפז עליון', 'ישבן', 'אמה'], '59',
     'Rack Pull', 'Rack Pull', 'Rack pull', 'Rack pull', 'Rack pull', 'Rack pull', 'ラックプル', '架上硬拉', '架上硬舉', 'السحب من الحامل'],
-  ['הרמת גב', 'זוקפי גב', ['ישבן', 'ירך אחורית'], '65 66 67',
+  ['הרמת גב', 'זוקפי גב', ['ישבן', 'ירך אחורית'], '65 66 67 308 311 312 316 317 318',
     'Back Extension', 'Rückenstrecken', 'Hiperextensiones', 'Extensions lombaires', 'Iperestensioni', 'Extensão lombar', 'バックエクステンション', '背部伸展', '背部伸展', 'تمديد الظهر'],
+  ['הרמת גב הפוכה', 'ישבן', ['ירך אחורית', 'זוקפי גב'], '310 314 315 320',
+    'Reverse Hyperextension', 'Reverse Hyperextension', 'Hiperextensión inversa', 'Hyperextension inversée', 'Iperestensione inversa', 'Hiperextensão reversa', 'リバースハイパーエクステンション', '反向山羊挺身', '反向山羊挺身', 'تمديد الظهر العكسي'],
   ['גוד מורנינג', 'זוקפי גב', ['ירך אחורית', 'ישבן'], '68 259',
     'Good Morning', 'Good Morning', 'Buenos días', 'Good morning', 'Good morning', 'Good morning', 'グッドモーニング', '早安式', '早安式', 'جود مورنينغ'],
-  ['ייצוב גב תחתון', 'זוקפי גב', ['ישבן', 'בטן'], '69 70',
+  ['ייצוב גב תחתון', 'זוקפי גב', ['ישבן', 'בטן'], '69 70 309 313 319',
     'Lower Back Stability', 'Stabilität des unteren Rückens', 'Estabilidad lumbar', 'Stabilité lombaire', 'Stabilità lombare', 'Estabilidade lombar', '腰の安定', '下背稳定', '下背穩定', 'ثبات أسفل الظهر'],
   ['ריצה והליכה', 'אירובי', ['ארבע ראשי', 'שוקיים'], '210 211 212',
     'Running & Walking', 'Laufen und Gehen', 'Correr y caminar', 'Course et marche', 'Corsa e camminata', 'Corrida e caminhada', 'ランニング・ウォーキング', '跑步与步行', '跑步與步行', 'الجري والمشي'],
@@ -202,8 +204,8 @@ export const EQT = ['משקל גוף', 'משקולות יד', 'מוט', 'מכו�
 export const LV = ['מתחיל', 'בינוני', 'מתקדם'];
 const nums = s => s.split(' ').map(n => 'x' + n);
 const EASY = nums('18 19 22 241 242 131 148 162 69 70 181 182 185 186 190 192 196 197 200 202 203 204 210 199 234 229 255 253 254 247 65 211 212 213 214 215 216 217 218 224');
-const MID = nums('221 222');
-const HARD = nums('225 226 227 228 93 156 157 191 188 201 147 172 302 31 23 57 129 194 248 198 264');
+const MID = nums('221 222 311 317');
+const HARD = nums('225 226 227 228 93 156 157 191 188 201 147 172 302 316 323 324 325 327 329 31 23 57 129 194 248 198 264');
 export function levelOf(id, eqt) {
   if (MID.includes(id)) return 'בינוני';
   if (HARD.includes(id)) return 'מתקדם';
