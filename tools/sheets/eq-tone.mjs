@@ -29,16 +29,32 @@ for (const f of fs.readdirSync(inDir).filter((x) => x.endsWith('.png'))) {
     T[i] = sstep(0.12, 0.34, (r - b) / Math.max(r, 1));
     if (a > 128) lum.push(L[i]);
   }
+  /* the amber map is noisy where the glow fades, and once the two tones are far apart (porcelain beside sunset
+     orange) that noise is grain on the boundary - so it is softened first: a 5 px box blur, twice */
+  for (let pass = 0; pass < 2; pass++) for (const horiz of [true, false]) {
+    const src2 = Float32Array.from(T);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let sum = 0, n = 0;
+      for (let d = -2; d <= 2; d++) { const xx = horiz ? x + d : x, yy = horiz ? y : y + d;
+        if (xx >= 0 && xx < W && yy >= 0 && yy < H) { sum += src2[yy * W + xx]; n++; } }
+      T[y * W + x] = sum / n;
+    }
+  }
+  /* ...and then made into an EDGE again: a glow fades, a material does not. A steep step through the middle of the
+     softened map gives one clean anti-aliased boundary instead of a halo or grain */
+  const E0 = +(process.env.EDGE0 || 0.32), E1 = +(process.env.EDGE1 || 0.62);
+  for (let i = 0; i < N; i++) T[i] = sstep(E0, E1, T[i]);
   lum.sort((x, y) => x - y);
   const med = lum[lum.length >> 1] || 200;
   const out = Buffer.alloc(N * 4);
   for (let i = 0; i < N; i++) {
     let s = L[i] / med;                                 // 1 = an ordinary lit surface
     s = 1 + Math.tanh((s - 1) * CURVE) * AMP;           // S-curve: deeper shade, brighter lit edge, never clipped
-    for (let c = 0; c < 3; c++) {
-      const base = MID[c] + (DARK[c] - MID[c]) * T[i];
-      out[i * 4 + c] = Math.max(0, Math.min(255, Math.round(base * s)));
-    }
+    /* a highlight that would pass 255 is scaled down whole, not clipped per channel: clipping red first leaves green
+       climbing, and an orange highlight turns yellow (13 Nov, the sunset amber pass) */
+    const v = [0, 1, 2].map((c) => (MID[c] + (DARK[c] - MID[c]) * T[i]) * s), top = Math.max(v[0], v[1], v[2]);
+    const k = top > 255 ? 255 / top : 1;
+    for (let c = 0; c < 3; c++) out[i * 4 + c] = Math.max(0, Math.round(v[c] * k));
     out[i * 4 + 3] = px[i * 4 + 3];
   }
   /* unsharp: colour minus a 3x3 blur of itself, added back */
