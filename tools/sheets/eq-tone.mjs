@@ -1,4 +1,4 @@
-// node tools/sheets/eq-tone.mjs <inDir> <outDir> [dark=383532] [mid=78746f] [sharp=0.7]  - transparent <slug>.png in, recoloured <slug>.png out
+// node tools/sheets/eq-tone.mjs <inDir> <outDir> [dark=383532] [mid=78746f] [sharp=0.7]  - transparent <slug>.png in, recoloured <slug>.png out; env AMP, CURVE = shading depth
 // Graphite and titanium (Asaf, 13 Nov): the amber-glowing parts of the generated kit become dark charcoal rubber, the
 // white porcelain becomes titanium grey, and nothing yellow is left. Per pixel:
 //   t      how amber it was, (r-b)/r through a smoothstep - the part that glowed, which is the part that weighs
@@ -12,6 +12,9 @@ if (!outDir) { console.log('usage: eq-tone.mjs <inDir> <outDir> [dark] [mid] [sh
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 const rgb = (h) => [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
 const DARK = rgb(darkHex), MID = rgb(midHex), SHARP = +sharpArg;
+/* how deep the shading goes: AMP is the reach of the S-curve either side of the base tone, CURVE its steepness.
+   0.62 / 2.6 was the graphite pass; the soft stone pass (13 Nov) runs lighter tones, which would burn out at that reach */
+const AMP = +(process.env.AMP || 0.62), CURVE = +(process.env.CURVE || 2.6);
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 fs.mkdirSync(outDir, { recursive: true });
 for (const f of fs.readdirSync(inDir).filter((x) => x.endsWith('.png'))) {
@@ -31,7 +34,7 @@ for (const f of fs.readdirSync(inDir).filter((x) => x.endsWith('.png'))) {
   const out = Buffer.alloc(N * 4);
   for (let i = 0; i < N; i++) {
     let s = L[i] / med;                                 // 1 = an ordinary lit surface
-    s = 1 + Math.tanh((s - 1) * 2.6) * 0.62;            // S-curve: deeper shade, brighter lit edge, never clipped
+    s = 1 + Math.tanh((s - 1) * CURVE) * AMP;           // S-curve: deeper shade, brighter lit edge, never clipped
     for (let c = 0; c < 3; c++) {
       const base = MID[c] + (DARK[c] - MID[c]) * T[i];
       out[i * 4 + c] = Math.max(0, Math.min(255, Math.round(base * s)));
