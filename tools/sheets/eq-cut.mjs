@@ -1,4 +1,4 @@
-// node tools/sheets/eq-cut.mjs <sheet.png> <outDir> <slug1,slug2,...> [grey=179] [fill=0.68]  -> <outDir>/<slug>.jpg (420x420)
+// node tools/sheets/eq-cut.mjs <sheet.png> <outDir> <slug1,slug2,...> [grey=179] [fill=0.68]  -> <outDir>/<slug>.jpg (420x420); ALPHA=<px> -> transparent <slug>.png
 // The equipment icons (13 Nov) come as generated sheets: a 3x2 grid, five objects, the sixth cell empty. Each object is
 // cut out by the same background-removal model the muscle pictures went through (muscle-grey.mjs), and laid on the
 // same flat grey, so the two tabs of the picker read as one set. An object fills `fill` of the square on its longer
@@ -29,6 +29,15 @@ slugs.forEach((slug, i) => {
   if (x1 < 0) { console.log(slug, 'EMPTY CELL'); return; }
   const w = x1 - x0 + 1, h = y1 - y0 + 1, side = Math.ceil(Math.max(w, h) / FILL);
   const touches = x0 === cx0 || y0 === cy0 || x1 === cx0 + cw - 1 || y1 === cy0 + ch - 1;
+  /* ALPHA=<px>: no ground at all - a transparent square of that size, for eq-tone.mjs to recolour */
+  if (process.env.ALPHA) {
+    const px = +process.env.ALPHA;
+    execFileSync(FF, ['-v', 'error', '-y', '-i', cut, '-vf',
+      `crop=${w}:${h}:${x0}:${y0},format=rgba,pad=${side}:${side}:${Math.floor((side - w) / 2)}:${Math.floor((side - h) / 2)}:color=black@0,scale=${px}:${px}:flags=lanczos`,
+      '-frames:v', '1', path.join(outDir, slug + '.png')]);
+    console.log(slug, w + 'x' + h, touches ? 'TOUCHES ITS CELL EDGE - check it is whole' : 'ok');
+    return;
+  }
   const out = path.join(outDir, slug + '.jpg');
   execFileSync(FF, ['-v', 'error', '-y', '-f', 'lavfi', '-i', `color=c=${hex}:s=420x420`, '-i', cut, '-filter_complex',
     `[1]crop=${w}:${h}:${x0}:${y0},format=rgba,pad=${side}:${side}:${Math.floor((side - w) / 2)}:${Math.floor((side - h) / 2)}:color=black@0,scale=420:420[f];[0][f]overlay=format=auto`,
