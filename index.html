@@ -2183,6 +2183,20 @@ html[dir=ltr] body.mod-planning .plv.m::before{transform:translateX(100%)}
 html body.mod-planning .plv button,html body.mod-planning .plv button.on{position:relative;background:none!important;box-shadow:none!important;transition:color .25s}
 html body.mod-planning .plv-lamp{flex:none;width:52px;height:52px;padding:0;justify-content:center;border-radius:50%}
 html body.mod-planning .plv-lamp svg{margin:0}
+/* the schedule as a picture: the lamp's size and material, without its light */
+html body.mod-planning .plv-shot{flex:none;width:52px;height:52px;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;background:var(--nu-ground);box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+html body.mod-planning .plv-shot:active{box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-planning .plv-shot svg{width:19px;height:19px;fill:none;stroke:var(--nu-ink);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pls-seg{margin-bottom:12px}
+.pls-go{width:100%;border:none;border-radius:16px;padding:15px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;
+  color:var(--nu-ink,#3d3832);background:var(--nu-ground,#e9e7e3);box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.pls-go:active{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
+.pls-go:disabled{opacity:.5}
+.pls-hint{font-size:12.5px;color:var(--muted);text-align:center;margin:9px 0 12px;line-height:1.5}
+.pls-img{border-radius:14px;overflow:hidden;min-height:160px;display:flex;align-items:center;justify-content:center;
+  background:var(--nu-ground,#ebe8e3);color:var(--muted);font-size:13px;font-weight:700}
+.pls-img img{width:100%;display:block}
 .plv-in{animation:plvIn .38s cubic-bezier(.22,.61,.36,1) both}
 .plv-in.from-end{--plv-from:-36px}.plv-in.from-start{--plv-from:36px}
 html[dir=ltr] .plv-in.from-end{--plv-from:36px}html[dir=ltr] .plv-in.from-start{--plv-from:-36px}
@@ -15992,12 +16006,118 @@ function coachFiles(input){
   input.value='';
   return n;
 }
+/* ── "DINNER LIKE YESTERDAY" (Asaf, 13 Nov) ──
+   The coach is only ever shown TODAY's log, so it cannot see yesterday's
+   dinner to copy it - and the phone can. A sentence that is nothing but a
+   meal, a day and a "like/same" is answered here, before the model: the
+   rows of that meal on that day are copied into today, under the same meal.
+   All three must be there, and NOTHING ELSE may be left once they and the
+   filler words are taken out - "like yesterday but without the sauce" is a
+   change, and changes are the model's job. Anything this does not recognise
+   simply goes on to the coach as before. Tables, not translations: these are
+   words compared against what she typed, never shown. */
+var MR_SLOTS={   // i18n-exempt: words matched in her message, never shown
+  breakfast:['ארוחת הבוקר','ארוחת בוקר','בוקר','breakfast','frühstück','desayuno','petit-déjeuner','petit déjeuner','colazione','café da manhã','pequeno-almoço','朝ごはん','朝食','朝飯','早餐','早饭','早飯','الفطور','فطور'],   // i18n-exempt: matched, never shown
+  lunch:['ארוחת הצהריים','ארוחת צהריים','ארוחת צהרים','צהריים','צהרים','lunch','mittagessen','almuerzo','comida','déjeuner','dejeuner','pranzo','almoço','almoco','昼ごはん','昼食','ランチ','午餐','午饭','午飯','الغداء','غداء'],   // i18n-exempt: matched, never shown
+  dinner:['ארוחת הערב','ארוחת ערב','ערב','dinner','supper','abendessen','abendbrot','cena','dîner','diner','jantar','夜ごはん','晩ごはん','夕ごはん','夕食','晚餐','晚饭','晚飯','العشاء','عشاء'],   // i18n-exempt: matched, never shown
+  snack:['ארוחת הביניים','ארוחת ביניים','נשנוש','חטיף','snack','merienda','goûter','collation','spuntino','merenda','lanche','おやつ','間食','零食','加餐','وجبة خفيفة']   // i18n-exempt: matched, never shown
+};
+var MR_DAYS=[   // i18n-exempt: [words, days back] - matched, never shown
+  ['לפני יומיים',2],['שלשום',2],['אתמול',1],['לפני שבוע',7],   // i18n-exempt: matched, never shown
+  ['the day before yesterday',2],['two days ago',2],['three days ago',3],['yesterday',1],['a week ago',7],['last week',7],
+  ['vorgestern',2],['vor zwei tagen',2],['vor drei tagen',3],['gestern',1],['vor einer woche',7],
+  ['anteayer',2],['antier',2],['hace dos días',2],['hace tres días',3],['ayer',1],['hace una semana',7],
+  ['avant-hier',2],['avant hier',2],['il y a deux jours',2],['il y a trois jours',3],['hier',1],['il y a une semaine',7],
+  ["l'altro ieri",2],['altroieri',2],['due giorni fa',2],['tre giorni fa',3],['ieri',1],['una settimana fa',7],
+  ['anteontem',2],['há dois dias',2],['há três dias',3],['ontem',1],['há uma semana',7],
+  ['一昨日',2],['おととい',2],['昨日',1],['きのう',1],['前天',2],['昨天',1],
+  ['أول أمس',2],['أول امس',2],['قبل يومين',2],['الأمس',1],['أمس',1],['امس',1],['قبل أسبوع',7]
+];
+var MR_DAYS_N=[/לפני (\d+) ימים/,/(\d+) days ago/,/vor (\d+) tagen/,/hace (\d+) días/,/il y a (\d+) jours/,/(\d+) giorni fa/,   // i18n-exempt: matched, never shown
+  /há (\d+) dias/,/(\d+) dias atrás/,/(\d+)日前/,/(\d+)天前/,/قبل (\d+) (?:أيام|يوم)/];
+var MR_WEEKDAYS=[['ראשון','sunday'],['שני','monday'],['שלישי','tuesday'],['רביעי','wednesday'],['חמישי','thursday'],['שישי','friday'],['שבת','saturday']];   // i18n-exempt: matched, never shown
+var MR_MARK=['כמו','אותה','אותו','זהה','שוב','like','same','again','repeat','wie','gleiche','gleiches','gleichen','selbe','nochmal','como','mismo','misma','igual','otra vez','comme','même','meme','pareil','come','stesso','stessa','uguale','mesmo','mesma','と同じ','同じ','一样','一樣','مثل','نفس'];   // i18n-exempt: matched, never shown
+var MR_FILL=('את,של,ה,היום,גם,בבקשה,לי,תכניס,תוסיף,הכנס,הוסף,תרשום,רשום,אכלתי,ארוחת,ביום,יום,דבר,'+   // i18n-exempt: filler words, never shown
+  'i,had,ate,have,the,a,an,my,for,today,please,add,log,put,as,it,was,on,eat,also,'+
+  'ich,habe,hatte,das,die,der,heute,bitte,am,zum,essen,'+
+  'yo,comí,el,la,de,hoy,por,favor,del,mi,'+
+  'je,j,ai,mangé,le,les,du,aujourd,hui,que,mon,ma,'+
+  'ho,mangiato,il,lo,di,oggi,per,'+
+  'eu,comi,o,os,do,da,hoje,'+
+  'و,اليوم,من,في,أكلت,اكلت,لو,سمحت').split(',');   // i18n-exempt: filler words, never shown
+var MR_CJK_FILL=['今日','今天','は','も','を','の','と','に','食べた','食べました','です','我','吃了','吃','了','的','和','跟','同','也','请','請','入れて','記録して'];   // i18n-exempt: filler, never shown
+var MR_CJK=/[぀-ヿ㐀-鿿]/;
+/* a word as a whole word - Hebrew and Arabic glue a preposition or the
+   article onto its front, so those are allowed there */
+function mrRx(w,g){
+  var e=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return new RegExp('(^|[^\\p{L}])(?:[והשמלבכ]{1,2}|ال|و|ل|ب)?'+e+'(?=$|[^\\p{L}])',g?'gu':'u');   // i18n-exempt: prefix letters matched, never shown
+}
+function mrHas(t,w){return MR_CJK.test(w)?t.indexOf(w)>=0:mrRx(w).test(t);}
+function mrCut(t,w){return MR_CJK.test(w)?t.split(w).join(' '):t.replace(mrRx(w,1),'$1 ');}
+/* {slot, back} when the whole message is "that meal, as on that day" */
+function mrParse(text){
+  var t=' '+String(text||'').toLowerCase().normalize('NFKC').replace(/[׳’`]/g,"'")+' ';
+  var k,i,w,slot=null,sw='',back=0,dw='',m;
+  for(k in MR_SLOTS)for(i=0;i<MR_SLOTS[k].length;i++){w=MR_SLOTS[k][i];
+    if(w.length>sw.length&&mrHas(t,w)){slot=k;sw=w;}}
+  if(!slot)return null;
+  for(i=0;i<MR_DAYS.length&&!back;i++)if(mrHas(t,MR_DAYS[i][0])){back=MR_DAYS[i][1];dw=MR_DAYS[i][0];}
+  for(i=0;i<MR_DAYS_N.length&&!back;i++){m=t.match(MR_DAYS_N[i]);if(m){back=+m[1];t=t.replace(m[0],' ');}}
+  if(!back){
+    var dow=appNow().getDay();
+    for(i=0;i<MR_WEEKDAYS.length&&!back;i++){
+      w=mrHas(t,MR_WEEKDAYS[i][0])?MR_WEEKDAYS[i][0]:mrHas(t,MR_WEEKDAYS[i][1])?MR_WEEKDAYS[i][1]:'';
+      if(w){back=((dow-i+7)%7)||7;dw=w;}
+    }
+  }
+  if(!back||back>14)return null;
+  var mark=false;
+  for(i=0;i<MR_MARK.length;i++)if(mrHas(t,MR_MARK[i])){mark=true;t=mrCut(t,MR_MARK[i]);}
+  if(!mark)return null;
+  /* everything recognised comes out; what is left must be filler only */
+  var all=[];for(k in MR_SLOTS)all=all.concat(MR_SLOTS[k]);
+  all.sort(function(a,b){return b.length-a.length;});
+  for(i=0;i<all.length;i++)if(mrHas(t,all[i]))t=mrCut(t,all[i]);
+  if(dw)t=mrCut(t,dw);
+  for(i=0;i<MR_CJK_FILL.length;i++)t=t.split(MR_CJK_FILL[i]).join(' ');
+  var left=t.split(/[^\p{L}\p{N}']+/u).filter(function(x){
+    if(!x||x==="'")return false;
+    if(MR_FILL.indexOf(x)>=0)return false;
+    x=x.replace(/^[והשמלבכ]{1,2}(?=\p{L}{2})/u,'');
+    return MR_FILL.indexOf(x)<0;
+  });
+  return left.length?null:{slot:slot,back:back};
+}
+/* the copy itself, and the two turns that record it in the chat */
+function mrApply(r,text){
+  var d=todayStr(),from=dayShift(-r.back),src=loadDay(from),day=loadDay(d),ids=[],i,m,c,now=Date.now();
+  var rec=loadCoach(d);
+  rec.turns.push({role:'user',text:text,at:now});
+  for(i=0;i<src.meals.length;i++){m=src.meals[i];
+    if(mealKind(m)!==r.slot)continue;
+    c=JSON.parse(JSON.stringify(m));
+    c.id='rp'+now+'_'+i;c.kind=r.slot;c.time=fmtTime();c.at=now;c.from=from;
+    day.meals.push(c);ids.push(c.id);
+  }
+  var label=mealKindLabel(r.slot),date=dfmt(new Date(from+'T12:00:00'),{weekday:'long',day:'numeric',month:'long'});
+  if(ids.length)saveDay(d,day);
+  rec.turns.push({role:'assistant',
+    text:ids.length?_t('הוספתי להיום את {meal} של {date}.',{meal:label,date:date})
+                   :_t('{date}: לא נרשם כלום תחת {meal}, אז לא הוספתי דבר.',{meal:label,date:date}),
+    q:'',changed:ids.length?1:0,ids:ids.slice(0,12),at:now+1});
+  saveCoach(d,rec);
+  render();
+}
 function coachSend(){
   if(_coachBusy)return;
   if(_coachEdit){coachEditSend();return;}
   var el=document.getElementById('co-in');
   var text=el?el.value.trim():'';
   if(!text&&!_coachPics.length)return;
+  /* a meal copied from another day is answered here, with no round trip */
+  var _mr=!_coachPics.length&&mrParse(text);
+  if(_mr){if(el)el.value='';mrApply(_mr,text);return;}
   var d=todayStr();
   var pics=_coachPics.slice();_coachPics=[];
   if(el)el.value='';
@@ -40091,6 +40211,319 @@ function psSeriesEndFrom(rid,date){
   if(rec){rec.until=psDayAdd(date,-1);rec.upto=rec.until;psSeriesSave(a);}
   renderPlanDay();
 }
+/* ── THE SCHEDULE AS A PICTURE (Asaf, 13 Nov) ──
+   The week or the month, saved to the phone like a photo. DRAWN, not
+   photographed: the board is neumorphic shadows, a measured overlay and a
+   three-week scroller, it shows three items a day at 8px, and there is no
+   week board at all - so the picture is drawn on a canvas from the same
+   dpAll() every board reads, at a size a phone screen can read. It opens in
+   a sheet with the picture in it: the share sheet must be opened by a tap,
+   and drawing first would spend the tap; a long press on the picture saves
+   it too. */
+var _plShot={kind:'week',url:'',file:null,n:0};
+var PLS_W=1080,PLS_PAD=48,PLS_BG='#e9e7e3',PLS_CARD='#f8f6f3',PLS_INK='#3d3832',PLS_MUTED='#7d756c',PLS_ACC='#c97a35';
+function plShotOpen(){_plShot.kind=planView()==='month'?'month':'week';plShotPaint();}
+function plShotClose(){
+  var o=document.getElementById('pls-ov');if(o)o.remove();
+  document.body.style.overflow='';
+  if(_plShot.url){try{URL.revokeObjectURL(_plShot.url);}catch(e){}_plShot.url='';}
+  _plShot.file=null;
+}
+function plShotKind(k){if(k!==_plShot.kind){_plShot.kind=k;plShotPaint();}}
+function plShotPaint(){
+  if(!document.getElementById('pls-ov')){
+    document.body.insertAdjacentHTML('beforeend','<div class="fc-ov" id="pls-ov" onclick="if(event.target===this)plShotClose()">'+
+      '<div class="fc-sheet pls-sheet" id="pls-sh"></div></div>');
+    document.body.style.overflow='hidden';
+  }
+  var k=_plShot.kind,run=++_plShot.n;
+  document.getElementById('pls-sh').innerHTML=
+    '<div class="fc-hd"><span>'+_t('הלו״ז כתמונה')+'</span><button class="fc-x" onclick="plShotClose()">&times;</button></div>'+
+    '<div class="ck-seg pls-seg"><button class="'+(k==='week'?'on':'')+'" onclick="plShotKind(\'week\')">'+_t('שבוע')+'</button>'+
+    '<button class="'+(k==='month'?'on':'')+'" onclick="plShotKind(\'month\')">'+_t('חודש')+'</button></div>'+
+    '<button class="pls-go" id="pls-go" disabled onclick="plShotShare()">'+_t('שמירה או שיתוף')+'</button>'+
+    '<div class="pls-hint">'+_t('אפשר גם ללחוץ לחיצה ארוכה על התמונה כדי לשמור אותה.')+'</div>'+
+    '<div class="pls-img" id="pls-img"><span>'+_t('מכין את התמונה…')+'</span></div>';
+  if(_plShot.url){try{URL.revokeObjectURL(_plShot.url);}catch(e){}_plShot.url='';}
+  _plShot.file=null;
+  plShotDraw(k).then(function(blob){
+    if(run!==_plShot.n||!blob)return;          // a newer picture was asked for, or none came
+    _plShot.url=URL.createObjectURL(blob);
+    try{_plShot.file=new File([blob],(k==='month'?'month-':'week-')+todayStr()+'.png',{type:'image/png'});}catch(e){_plShot.file=null;}
+    var box=document.getElementById('pls-img'),go=document.getElementById('pls-go');
+    if(box)box.innerHTML='<img src="'+_plShot.url+'" alt="">';
+    if(go)go.disabled=false;
+  });
+}
+/* the same chain the closet's look takes: the share sheet where there is one
+   ("Save Image" puts it in Photos), a download where there is not */
+function plShotShare(){
+  var f=_plShot.file;
+  if(f&&navigator.canShare&&navigator.canShare({files:[f]})){
+    navigator.share({files:[f]}).then(function(){},function(){});
+    return;
+  }
+  if(!_plShot.url)return;
+  var a=document.createElement('a');
+  a.href=_plShot.url;a.download=f?f.name:'schedule.png';a.style.display='none';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){try{a.remove();}catch(e){}},4000);
+  showToast(_t('✓ ירד|הורדת קובץ'));
+}
+function plShotDraw(kind){
+  var fam=getComputedStyle(document.body).fontFamily||'sans-serif';
+  var ready=(document.fonts&&document.fonts.load)
+    ?Promise.all([document.fonts.load('800 40px '+fam),document.fonts.load('600 28px '+fam)]).catch(function(){})
+    :Promise.resolve();
+  return ready.then(function(){
+    var c=kind==='month'?plShotMonth(fam):plShotWeek(fam);
+    return new Promise(function(res){try{c.toBlob(function(b){res(b);},'image/png');}catch(e){res(null);}});
+  });
+}
+function plsCtx(h,w){
+  var c=document.createElement('canvas');c.width=w||PLS_W;c.height=Math.ceil(h);
+  var x=c.getContext('2d'),rtl=document.documentElement.getAttribute('dir')==='rtl';
+  x.direction=rtl?'rtl':'ltr';x.textAlign='start';x.textBaseline='middle';
+  x.fillStyle=PLS_BG;x.fillRect(0,0,c.width,c.height);
+  return {c:c,x:x,rtl:rtl};
+}
+function plsBox(x,X,Y,W,H,r,fill,shadow){
+  x.save();
+  if(shadow){x.shadowColor='rgba(120,108,96,.18)';x.shadowBlur=18;x.shadowOffsetY=5;}
+  x.beginPath();
+  if(x.roundRect)x.roundRect(X,Y,W,H,r);
+  else{x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath();}
+  x.fillStyle=fill;x.fill();x.restore();
+}
+/* RAISED and PRESSED, the app's two moves: a raised thing catches the light
+   on its top-left edge and throws a soft shadow down to the right; a pressed
+   one is the same, inside. The numbers are the CSS ones, doubled for a
+   picture twice the size. */
+function plsShape(x,X,Y,W,H,r){
+  x.beginPath();
+  if(x.roundRect)x.roundRect(X,Y,W,H,r);
+  else{x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath();}
+}
+function plsRaised(x,X,Y,W,H,r,fill){
+  x.save();x.fillStyle=fill;
+  x.shadowColor='rgba(255,255,255,.95)';x.shadowBlur=6;x.shadowOffsetX=-2;x.shadowOffsetY=-2;plsShape(x,X,Y,W,H,r);x.fill();
+  x.shadowColor='rgba(176,168,156,.34)';x.shadowBlur=12;x.shadowOffsetX=3;x.shadowOffsetY=6;plsShape(x,X,Y,W,H,r);x.fill();
+  x.restore();
+}
+function plsPressed(x,X,Y,W,H,r){
+  x.save();plsShape(x,X,Y,W,H,r);x.clip();
+  x.fillStyle=PLS_BG;x.fillRect(X,Y,W,H);
+  /* an inner shadow: a thick frame drawn outside the shape, its shadow falling in */
+  x.lineWidth=20;
+  x.shadowColor='rgba(176,168,156,.5)';x.shadowBlur=10;x.shadowOffsetX=3;x.shadowOffsetY=4;
+  plsShape(x,X-10,Y-10,W+20,H+20,r+10);x.strokeStyle=PLS_BG;x.stroke();
+  x.shadowColor='rgba(255,255,255,.9)';x.shadowOffsetX=-3;x.shadowOffsetY=-3;
+  plsShape(x,X-10,Y-10,W+20,H+20,r+10);x.stroke();
+  x.restore();
+}
+/* timed first, in clock order, then the rest; one row per item */
+function plsSort(a){
+  var seen={},out=[],i;
+  for(i=0;i<a.length;i++){if(seen[a[i].id])continue;seen[a[i].id]=1;out.push(a[i]);}
+  return out.sort(function(p,q){
+    var tp=p.hour===null?1e5:p.hour*60+(p.min||0),tq=q.hour===null?1e5:q.hour*60+(q.min||0);
+    return tp-tq;
+  });
+}
+function plsTime(it){
+  if(it.hour===null)return '';
+  return dpHM(it.hour,it.min||0)+(it.end?'–'+dpFmt(it.end):'');
+}
+/* NOTHING CUT, EVER (Asaf, 13 Nov): the picture lives in the gallery, where
+   nothing can be opened or tapped, so a name that does not fit WRAPS - an
+   ellipsis there is a detail lost for good. */
+function plsWrap(x,s,first,rest){
+  var words=String(s||'').split(/\s+/).filter(Boolean),lines=[],cur='',w,max=first,i;
+  for(i=0;i<words.length;i++){
+    w=words[i];
+    var tryS=cur?cur+' '+w:w;
+    if(x.measureText(tryS).width<=max){cur=tryS;continue;}
+    if(cur){lines.push(cur);cur='';max=rest;}
+    /* a single word wider than the line is broken by letters, not dropped */
+    while(x.measureText(w).width>max&&w.length>1){
+      var k=w.length;while(k>1&&x.measureText(w.slice(0,k)).width>max)k--;
+      lines.push(w.slice(0,k));w=w.slice(k);max=rest;
+    }
+    cur=w;
+  }
+  if(cur||!lines.length)lines.push(cur);
+  return lines;
+}
+/* a time range is a left-to-right thing in every language: drawn as RTL
+   text, "07:00–08:00" came out as 08:00–07:00 */
+function plsLtr(x,g,s,p,y){x.save();x.direction='ltr';x.textAlign=g.rtl?'right':'left';x.fillText(s,p,y);x.restore();}
+/* THE WEEK as a time grid: a column a day, the hours down the side, every
+   task a block as long as it lasts. THE BOARD'S OWN MATERIAL (Asaf, 13 Nov):
+   on the sand, each task a raised block in its colour's soft tone - light
+   from the top left, shadow to the bottom right - the name first in the
+   colour's ink and the time under it, fainter, exactly as the day board
+   draws one. The scale is chosen so the longest name fits its own block. */
+function plShotWeek(fam){
+  var W=2000,PAD=40,AX=74,TOP=170,HEAD=86,GAP=10,LH=29,PADB=11,FT='700 22px '+fam,FTM='700 19px '+fam,FN='500 18px '+fam;
+  var sun=weekSunday(new Date((_dpDate||todayStr())+'T12:00:00')),days=[],i,d;
+  for(i=0;i<7;i++){d=new Date(sun.getTime());d.setDate(sun.getDate()+i);days.push({d:d,key:dayStr(d),its:plsSort(dpAll(dayStr(d)))});}
+  var colW=(W-2*PAD-AX)/7,meas=plsCtx(10,W).x,lo=24*60,hi=0;
+  /* the hours the week actually uses, whole hours, at least 08-20 */
+  days.forEach(function(dy){
+    dy.tim=[];dy.all=[];
+    dy.its.forEach(function(it){
+      if(it.hour===null){dy.all.push(it);return;}
+      var s=it.hour*60+(it.min||0),e=it.end>s?it.end:s+60;
+      dy.tim.push({it:it,s:s,e:e});lo=Math.min(lo,s);hi=Math.max(hi,e);
+    });
+  });
+  if(hi===0){lo=8*60;hi=20*60;}
+  lo=Math.min(Math.floor(lo/60)*60,8*60);hi=Math.max(Math.ceil(hi/60)*60,20*60);
+  /* side-by-side lanes for tasks that overlap in time */
+  days.forEach(function(dy){
+    var t=dy.tim.sort(function(a,b){return a.s-b.s||b.e-a.e;}),cl=[],end=-1;
+    t.forEach(function(b){
+      if(b.s>=end){cl=[];}
+      var lane=0;while(cl.some(function(o){return o.lane===lane&&o.e>b.s;}))lane++;
+      b.lane=lane;cl.push(b);b.group=cl;end=Math.max(end,b.e);
+    });
+    t.forEach(function(b){b.lanes=b.group.reduce(function(m,o){return Math.max(m,o.lane+1);},1);});
+  });
+  /* the text each block holds - name, then time, then note - and the scale that lets all of it fit */
+  var scale=1.5;
+  days.forEach(function(dy){dy.tim.forEach(function(b){
+    var bw=(colW-GAP)/b.lanes-6-2*12;
+    b.tm=plsTime(b.it);b.tf=19;
+    meas.font=FTM;while(b.tf>13&&meas.measureText(b.tm).width>bw){b.tf--;meas.font='700 '+b.tf+'px '+fam;}   // i18n-exempt: a CSS font, not words
+    meas.font=FT;b.lines=plsWrap(meas,b.it.w,bw,bw);
+    meas.font=FN;b.note=b.it.n?plsWrap(meas,b.it.n,bw,bw):[];
+    b.need=b.lines.length*LH+(b.tm?26:0)+b.note.length*24+2*PADB;
+    scale=Math.max(scale,b.need/(b.e-b.s));
+  });});
+  scale=Math.min(scale,3.2);
+  /* the tasks with no hour, in a band above the grid */
+  var allH=0;
+  days.forEach(function(dy){
+    var h=0;meas.font=FT;
+    dy.allL=dy.all.map(function(it){var L=plsWrap(meas,it.w,colW-GAP-30,colW-GAP-30);h+=L.length*LH+18+10;return L;});
+    allH=Math.max(allH,h);
+  });
+  if(allH)allH+=8;
+  var gridTop=TOP+HEAD+allH,gridH=(hi-lo)*scale,H=gridTop+gridH+90;
+  var g=plsCtx(H,W),x=g.x,today=todayStr();
+  function colX(c){return g.rtl?W-PAD-AX-(c+1)*colW:PAD+AX+c*colW;}
+  function st(L,w){return g.rtl?L+w:L;}
+  function inw(p,dx){return g.rtl?p-dx:p+dx;}
+  var sat=new Date(sun.getTime());sat.setDate(sun.getDate()+6);
+  x.fillStyle=PLS_INK;x.font='800 54px '+fam;
+  x.fillText(_t('הלו״ז השבועי'),st(PAD,W-2*PAD),70);
+  x.fillStyle=PLS_MUTED;x.font='600 30px '+fam;
+  x.fillText(dfmt(sun,{day:'numeric',month:'long'})+' – '+dfmt(sat,{day:'numeric',month:'long',year:'numeric'}),st(PAD,W-2*PAD),122);
+  /* the grid lies in a tray pressed into the sand */
+  plsPressed(x,PAD,TOP+HEAD-10,W-2*PAD,allH+gridH+24,22);
+  for(var m=lo;m<=hi;m+=60){
+    var yy=gridTop+(m-lo)*scale;
+    x.fillStyle='rgba(61,56,50,.07)';x.fillRect(g.rtl?PAD+10:PAD+AX,yy,W-2*PAD-AX-10,1.5);
+    x.font='700 20px '+fam;x.fillStyle=PLS_MUTED;x.textAlign='center';
+    x.fillText(dpHH(m/60),g.rtl?W-PAD-AX/2:PAD+AX/2,yy);x.textAlign='start';
+  }
+  for(i=0;i<7;i++){
+    var dy=days[i],cx=colX(i)+GAP/2,cw=colW-GAP,isT=dy.key===today;
+    if(isT){x.fillStyle='rgba(201,122,53,.06)';x.fillRect(cx,TOP+HEAD-4,cw,allH+gridH+12);}
+    x.textAlign='center';
+    x.font='800 28px '+fam;x.fillStyle=isT?PLS_ACC:PLS_INK;
+    x.fillText(dfmt(dy.d,{weekday:'long'}),cx+cw/2,TOP+20);
+    x.font='600 22px '+fam;x.fillStyle=isT?PLS_ACC:PLS_MUTED;
+    x.fillText(dfmt(dy.d,{day:'numeric',month:'numeric'}),cx+cw/2,TOP+54);
+    x.textAlign='start';
+    var ay=TOP+HEAD+6;
+    dy.all.forEach(function(it,k){
+      var L=dy.allL[k],h=L.length*LH+18,col=wkColor(it.c);
+      plsRaised(x,cx+5,ay,cw-10,h,12,col.soft);
+      x.font=FT;x.fillStyle=col.ink;
+      L.forEach(function(s,li){x.fillText(s,inw(st(cx+5,cw-10),13),ay+9+LH/2+li*LH);});
+      ay+=h+10;
+    });
+    dy.tim.forEach(function(b){
+      var lw=cw/b.lanes,bx=g.rtl?cx+cw-(b.lane+1)*lw:cx+b.lane*lw,by=gridTop+(b.s-lo)*scale;
+      var bh=Math.max((b.e-b.s)*scale-4,b.need),col=wkColor(b.it.c);
+      plsRaised(x,bx+3,by+2,lw-6,bh,12,col.soft);
+      var p0=inw(st(bx+3,lw-6),12),ty=by+PADB+LH/2;
+      x.fillStyle=col.ink;x.font=FT;
+      b.lines.forEach(function(s,li){x.fillText(s,p0,ty+li*LH);});
+      var ny=ty+b.lines.length*LH-2;
+      if(b.tm){x.font='700 '+b.tf+'px '+fam;x.globalAlpha=.62;plsLtr(x,g,b.tm,p0,ny);x.globalAlpha=1;ny+=26;}   // i18n-exempt: a CSS font, not words
+      x.font=FN;x.globalAlpha=.75;
+      b.note.forEach(function(s,li){x.fillText(s,p0,ny+li*24);});
+      x.globalAlpha=1;
+    });
+  }
+  x.textAlign='center';x.font='700 24px '+fam;x.fillStyle=PLS_MUTED;
+  x.fillText('Olimei',W/2,H-30);   // i18n-exempt: the app's name
+  return g.c;
+}
+/* THE MONTH: the calendar with every task of every day, in full - a busy
+   day makes its row taller, it never hides anything behind "+3". The same
+   material: each day a cell pressed into the sand, each task raised in it. */
+function plShotMonth(fam){
+  var W=2000,PAD=40,TOP=170,HDR=56,GAP=10,LH=26,FT='700 20px '+fam,FTM='700 17px '+fam,FN='500 17px '+fam;
+  var m=_moMonth||moFirst(appNow()),year=m.getFullYear(),mi=m.getMonth();
+  var first=new Date(year,mi,1,12),n=new Date(year,mi+1,0).getDate(),lead=first.getDay();
+  var rows=Math.ceil((lead+n)/7),cw=(W-2*PAD)/7,r,c,dd,meas=plsCtx(10,W).x;
+  var cells={};
+  for(dd=1;dd<=n;dd++){
+    var its=plsSort(dpAll(dayStr(new Date(year,mi,dd,12)))),h=0,bw=cw-GAP-14-24;
+    cells[dd]=its.map(function(it){
+      meas.font=FT;var L=plsWrap(meas,it.w,bw,bw);
+      meas.font=FN;var N=it.n?plsWrap(meas,it.n,bw,bw):[];
+      var tm=plsTime(it),eh=L.length*LH+(tm?22:0)+N.length*22+14;
+      h+=eh+8;return {it:it,tm:tm,L:L,N:N,h:eh};
+    });
+    cells[dd].h=h;
+  }
+  var rh=[];
+  for(r=0;r<rows;r++){var mx=0;
+    for(c=0;c<7;c++){dd=r*7+c-lead+1;if(dd>=1&&dd<=n)mx=Math.max(mx,cells[dd].h);}
+    rh.push(Math.max(130,58+mx+8));}
+  var H=TOP+HDR+70;for(r=0;r<rows;r++)H+=rh[r]+GAP;
+  var g=plsCtx(H,W),x=g.x,today=todayStr();
+  function colX(cc){return g.rtl?PAD+(6-cc)*cw:PAD+cc*cw;}
+  x.fillStyle=PLS_INK;x.font='800 54px '+fam;
+  x.fillText(dfmt(first,{month:'long',year:'numeric'}),g.rtl?W-PAD:PAD,80);
+  x.textAlign='center';x.font='700 26px '+fam;x.fillStyle=PLS_MUTED;
+  for(c=0;c<7;c++)x.fillText(dfmt(new Date(2023,0,1+c,12),{weekday:'long'}),colX(c)+cw/2,TOP+HDR/2-6);   // 1 Jan 2023 is a Sunday
+  x.textAlign='start';
+  var y=TOP+HDR;
+  for(r=0;r<rows;r++){
+    for(c=0;c<7;c++){
+      dd=r*7+c-lead+1;if(dd<1||dd>n)continue;
+      var X=colX(c)+GAP/2,CW=cw-GAP,key=dayStr(new Date(year,mi,dd,12)),isT=key===today;
+      plsPressed(x,X,y,CW,rh[r],16);
+      var s0=g.rtl?X+CW-14:X+14,nx=g.rtl?s0-18:s0+18;
+      if(isT){x.beginPath();x.arc(nx,y+28,20,0,Math.PI*2);x.fillStyle=PLS_ACC;x.fill();}
+      x.textAlign='center';x.font='800 24px '+fam;x.fillStyle=isT?'#ffffff':PLS_INK;
+      x.fillText(nfmt(dd),nx,y+29);x.textAlign='start';
+      var cy=y+58;
+      cells[dd].forEach(function(e){
+        var col=wkColor(e.it.c);
+        plsRaised(x,X+7,cy,CW-14,e.h,10,col.soft);
+        var p0=g.rtl?X+CW-19:X+19,ty=cy+7+LH/2;
+        x.fillStyle=col.ink;x.font=FT;
+        e.L.forEach(function(s,li){x.fillText(s,p0,ty+li*LH);});
+        var ny=ty+e.L.length*LH-3;
+        if(e.tm){x.font=FTM;x.globalAlpha=.62;plsLtr(x,g,e.tm,p0,ny);x.globalAlpha=1;ny+=22;}
+        x.font=FN;x.globalAlpha=.75;
+        e.N.forEach(function(s,li){x.fillText(s,p0,ny+li*22);});
+        x.globalAlpha=1;
+        cy+=e.h+8;
+      });
+    }
+    y+=rh[r]+GAP;
+  }
+  x.textAlign='center';x.font='700 24px '+fam;x.fillStyle=PLS_MUTED;
+  x.fillText('Olimei',W/2,H-30);   // i18n-exempt: the app's name
+  return g.c;
+}
 function renderPlanning(){
   psSeriesTopUp();
   document.getElementById('hdr-title').textContent=''+_t('תכנון זמן')+'';
@@ -40117,7 +40550,10 @@ function renderPlanning(){
   o={month:_pv==='month',week:false,day:_pv==='day'};
   h+='<div class="plv-row"><div class="plv'+(_pv==='month'?' m':'')+'" role="tablist">'+
      '<button role="tab" class="'+(_pv==='day'?'on':'')+'" onclick="planViewSet(\'day\')">'+_t('יום')+'</button>'+
-     '<button role="tab" class="'+(_pv==='month'?'on':'')+'" onclick="planViewSet(\'month\')">'+_t('חודש')+'</button></div>'+_lamp+'</div>';
+     '<button role="tab" class="'+(_pv==='month'?'on':'')+'" onclick="planViewSet(\'month\')">'+_t('חודש')+'</button></div>'+_lamp+
+     /* the schedule as a picture (13 Nov) */
+     '<button class="plv-shot" onclick="plShotOpen()" aria-label="'+esc(_t('הלו״ז כתמונה'))+'">'+
+     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg></button></div>';
   var _in=_planSlide?' class="plv-in '+_planSlide+'"':'';_planSlide='';
   if(o.month)h+='<div'+_in+'><div id="plan-sec-month">'+planMonthHTML()+'</div></div>';
   if(o.day)h+='<div'+_in+'>'+planWeekStripHTML()+'<div id="plan-sec-day">'+planDayHTML()+'</div></div>';
