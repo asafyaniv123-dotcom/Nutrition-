@@ -2183,6 +2183,18 @@ html[dir=ltr] body.mod-planning .plv.m::before{transform:translateX(100%)}
 html body.mod-planning .plv button,html body.mod-planning .plv button.on{position:relative;background:none!important;box-shadow:none!important;transition:color .25s}
 html body.mod-planning .plv-lamp{flex:none;width:52px;height:52px;padding:0;justify-content:center;border-radius:50%}
 html body.mod-planning .plv-lamp svg{margin:0}
+/* the schedule as a picture: the lamp's size and material, without its light */
+html body.mod-planning .plv-shot{flex:none;width:52px;height:52px;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;background:var(--nu-ground);box-shadow:-3px -3px 7px var(--nu-lit),3px 4px 9px var(--nu-shade-soft)}
+html body.mod-planning .plv-shot:active{box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+html body.mod-planning .plv-shot svg{width:19px;height:19px;fill:none;stroke:var(--nu-ink);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pls-seg{margin-bottom:12px}
+.pls-go{width:100%;border:none;border-radius:16px;padding:15px;font-family:inherit;font-size:15px;font-weight:800;color:#fff;background:var(--cta-fill);cursor:pointer}
+.pls-go:disabled{opacity:.5}
+.pls-hint{font-size:12.5px;color:var(--muted);text-align:center;margin:9px 0 12px;line-height:1.5}
+.pls-img{border-radius:14px;overflow:hidden;min-height:160px;display:flex;align-items:center;justify-content:center;
+  background:var(--nu-ground,#ebe8e3);color:var(--muted);font-size:13px;font-weight:700}
+.pls-img img{width:100%;display:block}
 .plv-in{animation:plvIn .38s cubic-bezier(.22,.61,.36,1) both}
 .plv-in.from-end{--plv-from:-36px}.plv-in.from-start{--plv-from:36px}
 html[dir=ltr] .plv-in.from-end{--plv-from:36px}html[dir=ltr] .plv-in.from-start{--plv-from:-36px}
@@ -40197,6 +40209,201 @@ function psSeriesEndFrom(rid,date){
   if(rec){rec.until=psDayAdd(date,-1);rec.upto=rec.until;psSeriesSave(a);}
   renderPlanDay();
 }
+/* ── THE SCHEDULE AS A PICTURE (Asaf, 13 Nov) ──
+   The week or the month, saved to the phone like a photo. DRAWN, not
+   photographed: the board is neumorphic shadows, a measured overlay and a
+   three-week scroller, it shows three items a day at 8px, and there is no
+   week board at all - so the picture is drawn on a canvas from the same
+   dpAll() every board reads, at a size a phone screen can read. It opens in
+   a sheet with the picture in it: the share sheet must be opened by a tap,
+   and drawing first would spend the tap; a long press on the picture saves
+   it too. */
+var _plShot={kind:'week',url:'',file:null,n:0};
+var PLS_W=1080,PLS_PAD=48,PLS_BG='#ebe8e3',PLS_CARD='#f8f6f3',PLS_INK='#3d3832',PLS_MUTED='#7d756c',PLS_ACC='#c97a35';
+function plShotOpen(){_plShot.kind=planView()==='month'?'month':'week';plShotPaint();}
+function plShotClose(){
+  var o=document.getElementById('pls-ov');if(o)o.remove();
+  document.body.style.overflow='';
+  if(_plShot.url){try{URL.revokeObjectURL(_plShot.url);}catch(e){}_plShot.url='';}
+  _plShot.file=null;
+}
+function plShotKind(k){if(k!==_plShot.kind){_plShot.kind=k;plShotPaint();}}
+function plShotPaint(){
+  if(!document.getElementById('pls-ov')){
+    document.body.insertAdjacentHTML('beforeend','<div class="fc-ov" id="pls-ov" onclick="if(event.target===this)plShotClose()">'+
+      '<div class="fc-sheet pls-sheet" id="pls-sh"></div></div>');
+    document.body.style.overflow='hidden';
+  }
+  var k=_plShot.kind,run=++_plShot.n;
+  document.getElementById('pls-sh').innerHTML=
+    '<div class="fc-hd"><span>'+_t('הלו״ז כתמונה')+'</span><button class="fc-x" onclick="plShotClose()">&times;</button></div>'+
+    '<div class="ck-seg pls-seg"><button class="'+(k==='week'?'on':'')+'" onclick="plShotKind(\'week\')">'+_t('שבוע')+'</button>'+
+    '<button class="'+(k==='month'?'on':'')+'" onclick="plShotKind(\'month\')">'+_t('חודש')+'</button></div>'+
+    '<button class="pls-go" id="pls-go" disabled onclick="plShotShare()">'+_t('שמירה או שיתוף')+'</button>'+
+    '<div class="pls-hint">'+_t('אפשר גם ללחוץ לחיצה ארוכה על התמונה כדי לשמור אותה.')+'</div>'+
+    '<div class="pls-img" id="pls-img"><span>'+_t('מכין את התמונה…')+'</span></div>';
+  if(_plShot.url){try{URL.revokeObjectURL(_plShot.url);}catch(e){}_plShot.url='';}
+  _plShot.file=null;
+  plShotDraw(k).then(function(blob){
+    if(run!==_plShot.n||!blob)return;          // a newer picture was asked for, or none came
+    _plShot.url=URL.createObjectURL(blob);
+    try{_plShot.file=new File([blob],(k==='month'?'month-':'week-')+todayStr()+'.png',{type:'image/png'});}catch(e){_plShot.file=null;}
+    var box=document.getElementById('pls-img'),go=document.getElementById('pls-go');
+    if(box)box.innerHTML='<img src="'+_plShot.url+'" alt="">';
+    if(go)go.disabled=false;
+  });
+}
+/* the same chain the closet's look takes: the share sheet where there is one
+   ("Save Image" puts it in Photos), a download where there is not */
+function plShotShare(){
+  var f=_plShot.file;
+  if(f&&navigator.canShare&&navigator.canShare({files:[f]})){
+    navigator.share({files:[f]}).then(function(){},function(){});
+    return;
+  }
+  if(!_plShot.url)return;
+  var a=document.createElement('a');
+  a.href=_plShot.url;a.download=f?f.name:'schedule.png';a.style.display='none';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){try{a.remove();}catch(e){}},4000);
+  showToast(_t('✓ ירד|הורדת קובץ'));
+}
+function plShotDraw(kind){
+  var fam=getComputedStyle(document.body).fontFamily||'sans-serif';
+  var ready=(document.fonts&&document.fonts.load)
+    ?Promise.all([document.fonts.load('800 40px '+fam),document.fonts.load('600 28px '+fam)]).catch(function(){})
+    :Promise.resolve();
+  return ready.then(function(){
+    var c=kind==='month'?plShotMonth(fam):plShotWeek(fam);
+    return new Promise(function(res){try{c.toBlob(function(b){res(b);},'image/png');}catch(e){res(null);}});
+  });
+}
+function plsCtx(h){
+  var c=document.createElement('canvas');c.width=PLS_W;c.height=Math.ceil(h);
+  var x=c.getContext('2d'),rtl=document.documentElement.getAttribute('dir')==='rtl';
+  x.direction=rtl?'rtl':'ltr';x.textAlign='start';x.textBaseline='middle';
+  x.fillStyle=PLS_BG;x.fillRect(0,0,c.width,c.height);
+  return {c:c,x:x,rtl:rtl};
+}
+function plsBox(x,X,Y,W,H,r,fill,shadow){
+  x.save();
+  if(shadow){x.shadowColor='rgba(120,108,96,.18)';x.shadowBlur=18;x.shadowOffsetY=5;}
+  x.beginPath();
+  if(x.roundRect)x.roundRect(X,Y,W,H,r);
+  else{x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath();}
+  x.fillStyle=fill;x.fill();x.restore();
+}
+function plsFit(x,s,max){
+  s=String(s||'');
+  if(x.measureText(s).width<=max)return s;
+  while(s.length>1&&x.measureText(s+'…').width>max)s=s.slice(0,-1);
+  return s+'…';
+}
+/* timed first, in clock order, then the rest; one row per item */
+function plsSort(a){
+  var seen={},out=[],i;
+  for(i=0;i<a.length;i++){if(seen[a[i].id])continue;seen[a[i].id]=1;out.push(a[i]);}
+  return out.sort(function(p,q){
+    var tp=p.hour===null?1e5:p.hour*60+(p.min||0),tq=q.hour===null?1e5:q.hour*60+(q.min||0);
+    return tp-tq;
+  });
+}
+function plsTime(it){
+  if(it.hour===null)return '';
+  return dpHM(it.hour,it.min||0)+(it.end?'–'+dpFmt(it.end):'');
+}
+/* THE WEEK: a card per day, every item on it - the time, the colour, the name */
+function plShotWeek(fam){
+  var sun=weekSunday(new Date((_dpDate||todayStr())+'T12:00:00')),days=[],i,j,d;
+  for(i=0;i<7;i++){d=new Date(sun.getTime());d.setDate(sun.getDate()+i);days.push({d:d,key:dayStr(d),its:plsSort(dpAll(dayStr(d)))});}
+  var ROW=58,HEAD=74,GAP=20,TOP=210,IN=30;
+  function cardH(dy){return HEAD+Math.max(1,dy.its.length)*ROW+22;}
+  var H=TOP+90;for(i=0;i<7;i++)H+=cardH(days[i])+GAP;
+  var g=plsCtx(H),x=g.x,W=PLS_W-2*PLS_PAD,today=todayStr();
+  function sx(L,w){return g.rtl?L+w:L;}
+  function inw(p,dx){return g.rtl?p-dx:p+dx;}
+  var sat=new Date(sun.getTime());sat.setDate(sun.getDate()+6);
+  x.fillStyle=PLS_INK;x.font='800 58px '+fam;
+  x.fillText(plsFit(x,_t('הלו״ז השבועי'),W),sx(PLS_PAD,W),96);
+  x.fillStyle=PLS_MUTED;x.font='600 32px '+fam;
+  x.fillText(dfmt(sun,{day:'numeric',month:'long'})+' – '+dfmt(sat,{day:'numeric',month:'long',year:'numeric'}),sx(PLS_PAD,W),152);
+  var y=TOP;
+  for(i=0;i<7;i++){
+    var dy=days[i],h=cardH(dy),s0=inw(sx(PLS_PAD,W),IN),isT=dy.key===today;
+    plsBox(x,PLS_PAD,y,W,h,26,PLS_CARD,true);
+    x.font='800 34px '+fam;x.fillStyle=isT?PLS_ACC:PLS_INK;
+    x.fillText(plsFit(x,dfmt(dy.d,{weekday:'long',day:'numeric',month:'short'}),W-2*IN),s0,y+44);
+    if(!dy.its.length){
+      x.font='600 28px '+fam;x.fillStyle=PLS_MUTED;
+      x.fillText(_t('אין משימות'),s0,y+HEAD+ROW/2-4);
+    }
+    for(j=0;j<dy.its.length;j++){
+      var it=dy.its[j],cy=y+HEAD+j*ROW+ROW/2-4,col=wkColor(it.c),tm=plsTime(it),p=s0;
+      plsBox(x,g.rtl?p-10:p,cy-17,10,34,5,col.bg,false);
+      p=inw(p,26);
+      /* a time range is a left-to-right thing in every language: drawn as RTL
+         text, "07:00–08:00" came out as 08:00–07:00 */
+      if(tm){x.font='700 26px '+fam;x.fillStyle=PLS_MUTED;
+        x.save();x.direction='ltr';x.textAlign=g.rtl?'right':'left';x.fillText(tm,p,cy);x.restore();
+        p=inw(p,x.measureText(tm).width+20);}
+      x.font='600 30px '+fam;x.fillStyle=PLS_INK;
+      x.fillText(plsFit(x,it.w,W-IN-Math.abs(p-sx(PLS_PAD,W))),p,cy);
+    }
+    y+=h+GAP;
+  }
+  x.textAlign='center';x.font='700 24px '+fam;x.fillStyle=PLS_MUTED;
+  x.fillText('Olimei',PLS_W/2,H-44);   // i18n-exempt: the app's name
+  return g.c;
+}
+/* THE MONTH: the calendar, up to four items a day and how many more */
+function plShotMonth(fam){
+  var m=_moMonth||moFirst(appNow()),year=m.getFullYear(),mi=m.getMonth();
+  var first=new Date(year,mi,1,12),n=new Date(year,mi+1,0).getDate(),lead=first.getDay();
+  var rows=Math.ceil((lead+n)/7),cw=(PLS_W-2*PLS_PAD)/7,MAXI=4,LH=32,TOP=200,HDR=56,GAP=6,i,r,c,dd;
+  var items={};for(dd=1;dd<=n;dd++)items[dd]=plsSort(dpAll(dayStr(new Date(year,mi,dd,12))));
+  var rh=[];
+  for(r=0;r<rows;r++){var mx=0;
+    for(c=0;c<7;c++){dd=r*7+c-lead+1;if(dd<1||dd>n)continue;
+      var k=items[dd].length,lines=Math.min(k,MAXI)+(k>MAXI?1:0);if(lines>mx)mx=lines;}
+    rh.push(Math.max(118,52+mx*LH+10));}
+  var H=TOP+HDR+90;for(r=0;r<rows;r++)H+=rh[r]+GAP;
+  var g=plsCtx(H),x=g.x,W=PLS_W-2*PLS_PAD,today=todayStr();
+  function colX(cc){return g.rtl?PLS_PAD+(6-cc)*cw:PLS_PAD+cc*cw;}
+  x.fillStyle=PLS_INK;x.font='800 58px '+fam;
+  x.fillText(plsFit(x,dfmt(first,{month:'long',year:'numeric'}),W),g.rtl?PLS_PAD+W:PLS_PAD,100);
+  x.textAlign='center';x.font='700 26px '+fam;x.fillStyle=PLS_MUTED;
+  for(c=0;c<7;c++)x.fillText(dfmt(new Date(2023,0,1+c,12),{weekday:'short'}),colX(c)+cw/2,TOP+HDR/2-6);   // 1 Jan 2023 is a Sunday
+  x.textAlign='start';
+  var y=TOP+HDR;
+  for(r=0;r<rows;r++){
+    for(c=0;c<7;c++){
+      dd=r*7+c-lead+1;
+      var X=colX(c)+GAP/2,CW=cw-GAP;
+      if(dd<1||dd>n){continue;}
+      var key=dayStr(new Date(year,mi,dd,12)),isT=key===today,its=items[dd];
+      plsBox(x,X,y,CW,rh[r],16,PLS_CARD,false);
+      var s0=g.rtl?X+CW-12:X+12;
+      if(isT){x.beginPath();x.arc(g.rtl?s0-17:s0+17,y+26,19,0,Math.PI*2);x.fillStyle=PLS_ACC;x.fill();}
+      x.textAlign='center';x.font='800 24px '+fam;x.fillStyle=isT?'#ffffff':PLS_INK;
+      x.fillText(nfmt(dd),g.rtl?s0-17:s0+17,y+27);
+      x.textAlign='start';
+      for(i=0;i<Math.min(its.length,MAXI);i++){
+        var it=its[i],col=wkColor(it.c),cy=y+52+i*LH;
+        plsBox(x,X+5,cy,CW-10,LH-5,7,col.bg,false);
+        x.font='700 19px '+fam;x.fillStyle=col.tx;
+        x.fillText(plsFit(x,it.w,CW-24),g.rtl?X+CW-12:X+12,cy+(LH-5)/2+1);
+      }
+      if(its.length>MAXI){
+        x.font='700 19px '+fam;x.fillStyle=PLS_MUTED;
+        x.fillText('+'+nfmt(its.length-MAXI),g.rtl?X+CW-12:X+12,y+52+MAXI*LH+12);
+      }
+    }
+    y+=rh[r]+GAP;
+  }
+  x.textAlign='center';x.font='700 24px '+fam;x.fillStyle=PLS_MUTED;
+  x.fillText('Olimei',PLS_W/2,H-44);   // i18n-exempt: the app's name
+  return g.c;
+}
 function renderPlanning(){
   psSeriesTopUp();
   document.getElementById('hdr-title').textContent=''+_t('תכנון זמן')+'';
@@ -40223,7 +40430,10 @@ function renderPlanning(){
   o={month:_pv==='month',week:false,day:_pv==='day'};
   h+='<div class="plv-row"><div class="plv'+(_pv==='month'?' m':'')+'" role="tablist">'+
      '<button role="tab" class="'+(_pv==='day'?'on':'')+'" onclick="planViewSet(\'day\')">'+_t('יום')+'</button>'+
-     '<button role="tab" class="'+(_pv==='month'?'on':'')+'" onclick="planViewSet(\'month\')">'+_t('חודש')+'</button></div>'+_lamp+'</div>';
+     '<button role="tab" class="'+(_pv==='month'?'on':'')+'" onclick="planViewSet(\'month\')">'+_t('חודש')+'</button></div>'+_lamp+
+     /* the schedule as a picture (13 Nov) */
+     '<button class="plv-shot" onclick="plShotOpen()" aria-label="'+esc(_t('הלו״ז כתמונה'))+'">'+
+     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg></button></div>';
   var _in=_planSlide?' class="plv-in '+_planSlide+'"':'';_planSlide='';
   if(o.month)h+='<div'+_in+'><div id="plan-sec-month">'+planMonthHTML()+'</div></div>';
   if(o.day)h+='<div'+_in+'>'+planWeekStripHTML()+'<div id="plan-sec-day">'+planDayHTML()+'</div></div>';
