@@ -2189,7 +2189,9 @@ html body.mod-planning .plv-shot{flex:none;width:52px;height:52px;border:none;bo
 html body.mod-planning .plv-shot:active{box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 html body.mod-planning .plv-shot svg{width:19px;height:19px;fill:none;stroke:var(--nu-ink);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .pls-seg{margin-bottom:12px}
-.pls-go{width:100%;border:none;border-radius:16px;padding:15px;font-family:inherit;font-size:15px;font-weight:800;color:#fff;background:var(--cta-fill);cursor:pointer}
+.pls-go{width:100%;border:none;border-radius:16px;padding:15px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;
+  color:var(--nu-ink,#3d3832);background:var(--nu-ground,#e9e7e3);box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(176,168,156,.28))}
+.pls-go:active{box-shadow:inset 2px 3px 6px var(--nu-shade,rgba(176,168,156,.44)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .pls-go:disabled{opacity:.5}
 .pls-hint{font-size:12.5px;color:var(--muted);text-align:center;margin:9px 0 12px;line-height:1.5}
 .pls-img{border-radius:14px;overflow:hidden;min-height:160px;display:flex;align-items:center;justify-content:center;
@@ -40219,7 +40221,7 @@ function psSeriesEndFrom(rid,date){
    and drawing first would spend the tap; a long press on the picture saves
    it too. */
 var _plShot={kind:'week',url:'',file:null,n:0};
-var PLS_W=1080,PLS_PAD=48,PLS_BG='#ebe8e3',PLS_CARD='#f8f6f3',PLS_INK='#3d3832',PLS_MUTED='#7d756c',PLS_ACC='#c97a35';
+var PLS_W=1080,PLS_PAD=48,PLS_BG='#e9e7e3',PLS_CARD='#f8f6f3',PLS_INK='#3d3832',PLS_MUTED='#7d756c',PLS_ACC='#c97a35';
 function plShotOpen(){_plShot.kind=planView()==='month'?'month':'week';plShotPaint();}
 function plShotClose(){
   var o=document.getElementById('pls-ov');if(o)o.remove();
@@ -40293,6 +40295,32 @@ function plsBox(x,X,Y,W,H,r,fill,shadow){
   else{x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath();}
   x.fillStyle=fill;x.fill();x.restore();
 }
+/* RAISED and PRESSED, the app's two moves: a raised thing catches the light
+   on its top-left edge and throws a soft shadow down to the right; a pressed
+   one is the same, inside. The numbers are the CSS ones, doubled for a
+   picture twice the size. */
+function plsShape(x,X,Y,W,H,r){
+  x.beginPath();
+  if(x.roundRect)x.roundRect(X,Y,W,H,r);
+  else{x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath();}
+}
+function plsRaised(x,X,Y,W,H,r,fill){
+  x.save();x.fillStyle=fill;
+  x.shadowColor='rgba(255,255,255,.95)';x.shadowBlur=6;x.shadowOffsetX=-2;x.shadowOffsetY=-2;plsShape(x,X,Y,W,H,r);x.fill();
+  x.shadowColor='rgba(176,168,156,.34)';x.shadowBlur=12;x.shadowOffsetX=3;x.shadowOffsetY=6;plsShape(x,X,Y,W,H,r);x.fill();
+  x.restore();
+}
+function plsPressed(x,X,Y,W,H,r){
+  x.save();plsShape(x,X,Y,W,H,r);x.clip();
+  x.fillStyle=PLS_BG;x.fillRect(X,Y,W,H);
+  /* an inner shadow: a thick frame drawn outside the shape, its shadow falling in */
+  x.lineWidth=20;
+  x.shadowColor='rgba(176,168,156,.5)';x.shadowBlur=10;x.shadowOffsetX=3;x.shadowOffsetY=4;
+  plsShape(x,X-10,Y-10,W+20,H+20,r+10);x.strokeStyle=PLS_BG;x.stroke();
+  x.shadowColor='rgba(255,255,255,.9)';x.shadowOffsetX=-3;x.shadowOffsetY=-3;
+  plsShape(x,X-10,Y-10,W+20,H+20,r+10);x.stroke();
+  x.restore();
+}
 /* timed first, in clock order, then the rest; one row per item */
 function plsSort(a){
   var seen={},out=[],i;
@@ -40330,11 +40358,14 @@ function plsWrap(x,s,first,rest){
    text, "07:00–08:00" came out as 08:00–07:00 */
 function plsLtr(x,g,s,p,y){x.save();x.direction='ltr';x.textAlign=g.rtl?'right':'left';x.fillText(s,p,y);x.restore();}
 /* THE WEEK as a time grid: a column a day, the hours down the side, every
-   task a block as long as it lasts - the shape of a week on paper. The scale
-   is chosen so the longest name fits inside its own block. */
+   task a block as long as it lasts. THE BOARD'S OWN MATERIAL (Asaf, 13 Nov):
+   on the sand, each task a raised block in its colour's soft tone - light
+   from the top left, shadow to the bottom right - the name first in the
+   colour's ink and the time under it, fainter, exactly as the day board
+   draws one. The scale is chosen so the longest name fits its own block. */
 function plShotWeek(fam){
-  var W=2000,PAD=40,AX=74,TOP=170,HEAD=86,GAP=8,LH=30,PADB=10,FT='600 23px '+fam,FTT='800 22px '+fam,FN='500 20px '+fam;
-  var sun=weekSunday(new Date((_dpDate||todayStr())+'T12:00:00')),days=[],i,j,d;
+  var W=2000,PAD=40,AX=74,TOP=170,HEAD=86,GAP=10,LH=29,PADB=11,FT='700 22px '+fam,FTM='700 19px '+fam,FN='500 18px '+fam;
+  var sun=weekSunday(new Date((_dpDate||todayStr())+'T12:00:00')),days=[],i,d;
   for(i=0;i<7;i++){d=new Date(sun.getTime());d.setDate(sun.getDate()+i);days.push({d:d,key:dayStr(d),its:plsSort(dpAll(dayStr(d)))});}
   var colW=(W-2*PAD-AX)/7,meas=plsCtx(10,W).x,lo=24*60,hi=0;
   /* the hours the week actually uses, whole hours, at least 08-20 */
@@ -40358,21 +40389,15 @@ function plShotWeek(fam){
     });
     t.forEach(function(b){b.lanes=b.group.reduce(function(m,o){return Math.max(m,o.lane+1);},1);});
   });
-  /* the text each block holds, and the scale that lets all of it fit */
+  /* the text each block holds - name, then time, then note - and the scale that lets all of it fit */
   var scale=1.5;
   days.forEach(function(dy){dy.tim.forEach(function(b){
-    var bw=(colW-GAP)/b.lanes-4-2*12,tm=plsTime(b.it);
-    /* a lane two tasks share is narrow: the time then takes a line of its
-       own, in a smaller size if even that is too wide - squeezed in beside
-       the name it spilled out of the block and broke the first word */
-    b.tf=22;meas.font='800 22px '+fam;   // i18n-exempt: a CSS font, not words
-    while(b.tf>14&&meas.measureText(tm).width>bw){b.tf--;meas.font='800 '+b.tf+'px '+fam;}   // i18n-exempt: a CSS font, not words
-    var tw=tm?meas.measureText(tm).width+10:0;
-    b.own=!!tm&&(bw-tw)<Math.max(90,bw*.45);
-    meas.font=FT;b.lines=plsWrap(meas,b.it.w,b.own?bw:bw-tw,bw);
-    if(b.own)b.lines.unshift('');
+    var bw=(colW-GAP)/b.lanes-6-2*12;
+    b.tm=plsTime(b.it);b.tf=19;
+    meas.font=FTM;while(b.tf>13&&meas.measureText(b.tm).width>bw){b.tf--;meas.font='700 '+b.tf+'px '+fam;}   // i18n-exempt: a CSS font, not words
+    meas.font=FT;b.lines=plsWrap(meas,b.it.w,bw,bw);
     meas.font=FN;b.note=b.it.n?plsWrap(meas,b.it.n,bw,bw):[];
-    b.need=b.lines.length*LH+b.note.length*26+2*PADB;
+    b.need=b.lines.length*LH+(b.tm?26:0)+b.note.length*24+2*PADB;
     scale=Math.max(scale,b.need/(b.e-b.s));
   });});
   scale=Math.min(scale,3.2);
@@ -40380,10 +40405,10 @@ function plShotWeek(fam){
   var allH=0;
   days.forEach(function(dy){
     var h=0;meas.font=FT;
-    dy.allL=dy.all.map(function(it){var L=plsWrap(meas,it.w,colW-GAP-28,colW-GAP-28);h+=L.length*LH+16+6;return L;});
+    dy.allL=dy.all.map(function(it){var L=plsWrap(meas,it.w,colW-GAP-30,colW-GAP-30);h+=L.length*LH+18+10;return L;});
     allH=Math.max(allH,h);
   });
-  if(allH)allH+=10;
+  if(allH)allH+=8;
   var gridTop=TOP+HEAD+allH,gridH=(hi-lo)*scale,H=gridTop+gridH+90;
   var g=plsCtx(H,W),x=g.x,today=todayStr();
   function colX(c){return g.rtl?W-PAD-AX-(c+1)*colW:PAD+AX+c*colW;}
@@ -40394,77 +40419,72 @@ function plShotWeek(fam){
   x.fillText(_t('הלו״ז השבועי'),st(PAD,W-2*PAD),70);
   x.fillStyle=PLS_MUTED;x.font='600 30px '+fam;
   x.fillText(dfmt(sun,{day:'numeric',month:'long'})+' – '+dfmt(sat,{day:'numeric',month:'long',year:'numeric'}),st(PAD,W-2*PAD),122);
-  plsBox(x,PAD,TOP-12,W-2*PAD,H-TOP-60,26,PLS_CARD,true);
-  /* the hours: a line across and the number at the side */
+  /* the grid lies in a tray pressed into the sand */
+  plsPressed(x,PAD,TOP+HEAD-10,W-2*PAD,allH+gridH+24,22);
   for(var m=lo;m<=hi;m+=60){
     var yy=gridTop+(m-lo)*scale;
-    x.fillStyle='rgba(61,56,50,.08)';x.fillRect(g.rtl?PAD+12:PAD+AX,yy,W-2*PAD-AX-12,1.5);
+    x.fillStyle='rgba(61,56,50,.07)';x.fillRect(g.rtl?PAD+10:PAD+AX,yy,W-2*PAD-AX-10,1.5);
     x.font='700 20px '+fam;x.fillStyle=PLS_MUTED;x.textAlign='center';
     x.fillText(dpHH(m/60),g.rtl?W-PAD-AX/2:PAD+AX/2,yy);x.textAlign='start';
   }
   for(i=0;i<7;i++){
     var dy=days[i],cx=colX(i)+GAP/2,cw=colW-GAP,isT=dy.key===today;
-    /* the column: a soft channel under the day */
-    x.fillStyle=isT?'rgba(201,122,53,.07)':'rgba(61,56,50,.025)';
-    x.fillRect(cx,TOP+HEAD-6,cw,allH+gridH+6);
+    if(isT){x.fillStyle='rgba(201,122,53,.06)';x.fillRect(cx,TOP+HEAD-4,cw,allH+gridH+12);}
     x.textAlign='center';
     x.font='800 28px '+fam;x.fillStyle=isT?PLS_ACC:PLS_INK;
-    x.fillText(dfmt(dy.d,{weekday:'long'}),cx+cw/2,TOP+24);
+    x.fillText(dfmt(dy.d,{weekday:'long'}),cx+cw/2,TOP+20);
     x.font='600 22px '+fam;x.fillStyle=isT?PLS_ACC:PLS_MUTED;
-    x.fillText(dfmt(dy.d,{day:'numeric',month:'numeric'}),cx+cw/2,TOP+58);
+    x.fillText(dfmt(dy.d,{day:'numeric',month:'numeric'}),cx+cw/2,TOP+54);
     x.textAlign='start';
-    /* the hourless ones */
-    var ay=TOP+HEAD+4;
+    var ay=TOP+HEAD+6;
     dy.all.forEach(function(it,k){
-      var L=dy.allL[k],h=L.length*LH+16,col=wkColor(it.c);
-      plsBox(x,cx+4,ay,cw-8,h,12,col.bg,false);
-      x.font=FT;x.fillStyle=col.tx;
-      L.forEach(function(s,li){x.fillText(s,inw(st(cx+4,cw-8),12),ay+8+LH/2+li*LH);});
-      ay+=h+6;
+      var L=dy.allL[k],h=L.length*LH+18,col=wkColor(it.c);
+      plsRaised(x,cx+5,ay,cw-10,h,12,col.soft);
+      x.font=FT;x.fillStyle=col.ink;
+      L.forEach(function(s,li){x.fillText(s,inw(st(cx+5,cw-10),13),ay+9+LH/2+li*LH);});
+      ay+=h+10;
     });
-    /* the timed ones */
     dy.tim.forEach(function(b){
-      var lw=(cw)/b.lanes,bx=g.rtl?cx+cw-(b.lane+1)*lw:cx+b.lane*lw,by=gridTop+(b.s-lo)*scale;
-      var bh=Math.max((b.e-b.s)*scale-3,b.need),col=wkColor(b.it.c);
-      plsBox(x,bx+2,by+1,lw-4,bh,12,col.bg,false);
-      var p0=inw(st(bx+2,lw-4),12),ty=by+PADB+LH/2,tm=plsTime(b.it);
-      x.fillStyle=col.tx;x.font='800 '+b.tf+'px '+fam;   // i18n-exempt: a CSS font, not words
-      var pt=p0;
-      if(tm){plsLtr(x,g,tm,p0,ty);pt=b.own?p0:inw(p0,x.measureText(tm).width+10);}
-      x.font=FT;
-      b.lines.forEach(function(s,li){if(s)x.fillText(s,li?p0:pt,ty+li*LH);});
-      x.font=FN;x.globalAlpha=.85;
-      b.note.forEach(function(s,li){x.fillText(s,p0,ty+b.lines.length*LH+li*26);});
+      var lw=cw/b.lanes,bx=g.rtl?cx+cw-(b.lane+1)*lw:cx+b.lane*lw,by=gridTop+(b.s-lo)*scale;
+      var bh=Math.max((b.e-b.s)*scale-4,b.need),col=wkColor(b.it.c);
+      plsRaised(x,bx+3,by+2,lw-6,bh,12,col.soft);
+      var p0=inw(st(bx+3,lw-6),12),ty=by+PADB+LH/2;
+      x.fillStyle=col.ink;x.font=FT;
+      b.lines.forEach(function(s,li){x.fillText(s,p0,ty+li*LH);});
+      var ny=ty+b.lines.length*LH-2;
+      if(b.tm){x.font='700 '+b.tf+'px '+fam;x.globalAlpha=.62;plsLtr(x,g,b.tm,p0,ny);x.globalAlpha=1;ny+=26;}   // i18n-exempt: a CSS font, not words
+      x.font=FN;x.globalAlpha=.75;
+      b.note.forEach(function(s,li){x.fillText(s,p0,ny+li*24);});
       x.globalAlpha=1;
     });
   }
   x.textAlign='center';x.font='700 24px '+fam;x.fillStyle=PLS_MUTED;
-  x.fillText('Olimei',W/2,H-28);   // i18n-exempt: the app's name
+  x.fillText('Olimei',W/2,H-30);   // i18n-exempt: the app's name
   return g.c;
 }
 /* THE MONTH: the calendar with every task of every day, in full - a busy
-   day makes its row taller, it never hides anything behind "+3" */
+   day makes its row taller, it never hides anything behind "+3". The same
+   material: each day a cell pressed into the sand, each task raised in it. */
 function plShotMonth(fam){
-  var W=2000,PAD=40,TOP=170,HDR=56,GAP=8,LH=27,FT='600 21px '+fam,FTT='800 19px '+fam;
+  var W=2000,PAD=40,TOP=170,HDR=56,GAP=10,LH=26,FT='700 20px '+fam,FTM='700 17px '+fam,FN='500 17px '+fam;
   var m=_moMonth||moFirst(appNow()),year=m.getFullYear(),mi=m.getMonth();
   var first=new Date(year,mi,1,12),n=new Date(year,mi+1,0).getDate(),lead=first.getDay();
-  var rows=Math.ceil((lead+n)/7),cw=(W-2*PAD)/7,i,r,c,dd,meas=plsCtx(10,W).x;
+  var rows=Math.ceil((lead+n)/7),cw=(W-2*PAD)/7,r,c,dd,meas=plsCtx(10,W).x;
   var cells={};
   for(dd=1;dd<=n;dd++){
-    var its=plsSort(dpAll(dayStr(new Date(year,mi,dd,12)))),h=0;
+    var its=plsSort(dpAll(dayStr(new Date(year,mi,dd,12)))),h=0,bw=cw-GAP-14-24;
     cells[dd]=its.map(function(it){
-      var tm=plsTime(it);meas.font=FTT;var tw=tm?meas.measureText(tm).width+8:0;
-      meas.font=FT;var L=plsWrap(meas,it.w,cw-GAP-24-tw,cw-GAP-24);
-      meas.font='500 18px '+fam;var N=it.n?plsWrap(meas,it.n,cw-GAP-24,cw-GAP-24):[];
-      var eh=L.length*LH+N.length*23+12;
-      h+=eh+5;return {it:it,tm:tm,L:L,N:N,h:eh};
+      meas.font=FT;var L=plsWrap(meas,it.w,bw,bw);
+      meas.font=FN;var N=it.n?plsWrap(meas,it.n,bw,bw):[];
+      var tm=plsTime(it),eh=L.length*LH+(tm?22:0)+N.length*22+14;
+      h+=eh+8;return {it:it,tm:tm,L:L,N:N,h:eh};
     });
     cells[dd].h=h;
   }
   var rh=[];
   for(r=0;r<rows;r++){var mx=0;
     for(c=0;c<7;c++){dd=r*7+c-lead+1;if(dd>=1&&dd<=n)mx=Math.max(mx,cells[dd].h);}
-    rh.push(Math.max(130,56+mx+8));}
+    rh.push(Math.max(130,58+mx+8));}
   var H=TOP+HDR+70;for(r=0;r<rows;r++)H+=rh[r]+GAP;
   var g=plsCtx(H,W),x=g.x,today=todayStr();
   function colX(cc){return g.rtl?PAD+(6-cc)*cw:PAD+cc*cw;}
@@ -40478,24 +40498,24 @@ function plShotMonth(fam){
     for(c=0;c<7;c++){
       dd=r*7+c-lead+1;if(dd<1||dd>n)continue;
       var X=colX(c)+GAP/2,CW=cw-GAP,key=dayStr(new Date(year,mi,dd,12)),isT=key===today;
-      plsBox(x,X,y,CW,rh[r],16,PLS_CARD,false);
+      plsPressed(x,X,y,CW,rh[r],16);
       var s0=g.rtl?X+CW-14:X+14,nx=g.rtl?s0-18:s0+18;
       if(isT){x.beginPath();x.arc(nx,y+28,20,0,Math.PI*2);x.fillStyle=PLS_ACC;x.fill();}
       x.textAlign='center';x.font='800 24px '+fam;x.fillStyle=isT?'#ffffff':PLS_INK;
       x.fillText(nfmt(dd),nx,y+29);x.textAlign='start';
-      var cy=y+56;
+      var cy=y+58;
       cells[dd].forEach(function(e){
         var col=wkColor(e.it.c);
-        plsBox(x,X+6,cy,CW-12,e.h,9,col.bg,false);
-        var p0=g.rtl?X+CW-18:X+18,pt=p0,ty=cy+6+LH/2;
-        x.fillStyle=col.tx;
-        if(e.tm){x.font=FTT;plsLtr(x,g,e.tm,p0,ty);pt=g.rtl?p0-x.measureText(e.tm).width-8:p0+x.measureText(e.tm).width+8;}
-        x.font=FT;
-        e.L.forEach(function(s,li){x.fillText(s,li?p0:pt,ty+li*LH);});
-        x.font='500 18px '+fam;x.globalAlpha=.85;
-        e.N.forEach(function(s,li){x.fillText(s,p0,ty+e.L.length*LH-4+li*23);});
+        plsRaised(x,X+7,cy,CW-14,e.h,10,col.soft);
+        var p0=g.rtl?X+CW-19:X+19,ty=cy+7+LH/2;
+        x.fillStyle=col.ink;x.font=FT;
+        e.L.forEach(function(s,li){x.fillText(s,p0,ty+li*LH);});
+        var ny=ty+e.L.length*LH-3;
+        if(e.tm){x.font=FTM;x.globalAlpha=.62;plsLtr(x,g,e.tm,p0,ny);x.globalAlpha=1;ny+=22;}
+        x.font=FN;x.globalAlpha=.75;
+        e.N.forEach(function(s,li){x.fillText(s,p0,ny+li*22);});
         x.globalAlpha=1;
-        cy+=e.h+5;
+        cy+=e.h+8;
       });
     }
     y+=rh[r]+GAP;
