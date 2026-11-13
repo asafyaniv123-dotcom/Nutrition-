@@ -404,7 +404,8 @@ const RAW=[
 ["כפיפה לפנים בישיבה",M.hams,[Q.mat],"Seated Forward Fold",["מתיחת ירך אחורית בישיבה"]],
 ["כפיפה לפנים בפיסוק רחב",M.hams,[Q.bw],"Wide-Legged Forward Fold",["פיסוק רחב"]],
 ["חיבוק ברכיים לחזה",M.lower,[Q.mat],"Knees-to-Chest Stretch",["ברכיים לחזה"]],
-["פיתול עמוד שדרה בשכיבה",M.lower,[Q.mat],"Supine Spinal Twist",["פיתול בשכיבה"]]
+["פיתול עמוד שדרה בשכיבה",M.lower,[Q.mat],"Supine Spinal Twist",["פיתול בשכיבה"]],
+['סיבוב פנימי של הכתף בפולי',M.shoulders,[Q.cable],'Cable Shoulder Internal Rotation',['סיבוב פנימי','רוטטור פנימי']]
 ];
 
 const list=RAW.map(function(r,i){

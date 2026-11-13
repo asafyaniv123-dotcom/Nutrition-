@@ -47,6 +47,8 @@ export const FAMILIES = [
     'Face Pull', 'Face Pulls', 'Face pull', 'Face pull', 'Face pull', 'Face pull', 'フェイスプル', '面拉', '面拉', 'سحب الوجه'],
   ['סיבוב חיצוני של הכתף', 'כתפיים', ['שרוול מסובב'], '92',
     'Shoulder External Rotation', 'Außenrotation der Schulter', 'Rotación externa de hombro', 'Rotation externe de l’épaule', 'Extrarotazione della spalla', 'Rotação externa do ombro', '肩の外旋', '肩外旋', '肩外旋', 'التدوير الخارجي للكتف'],
+  ['סיבוב פנימי של הכתף', 'כתפיים', ['שרוול מסובב', 'חזה'], '301',
+    'Shoulder Internal Rotation', 'Innenrotation der Schulter', 'Rotación interna de hombro', 'Rotation interne de l’épaule', 'Intrarotazione della spalla', 'Rotação interna do ombro', '肩の内旋', '肩内旋', '肩內旋', 'التدوير الداخلي للكتف'],
   ['חתירה אנכית', 'כתפיים', ['טרפז עליון', 'יד קדמית'], '89 90',
     'Upright Row', 'Aufrechtes Rudern', 'Remo al mentón', 'Rowing menton', 'Tirate al mento', 'Remada alta', 'アップライトロウ', '直立划船', '直立划船', 'التجديف العمودي'],
   ['הרמה אולימפית ומשולבת', 'כתפיים', ['ארבע ראשי', 'ישבן', 'טרפז עליון', 'זוקפי גב'], '225 227 228',

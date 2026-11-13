@@ -2485,5 +2485,13 @@ export const EN = {
       'Slow down gradually at the end of the set rather than dropping the ropes.'],
   m: ['Standing up and losing the bend in your knees as you tire.',
       'Moving from the shoulders alone — the waves here start at your hips.',
-      'Holding your breath instead of breathing normally.'] }
+      'Holding your breath instead of breathing normally.'] },
+'סיבוב פנימי של הכתף בפולי': {
+  s: ['Stand side-on to the cable tower with the handle at elbow height, holding it in the hand nearer the tower.',
+      'Tuck your elbow against your side, bent to 90 degrees, forearm pointing out toward the tower.',
+      'Rotate your forearm inward across your stomach, keeping the elbow pinned to your side.',
+      'Let it return slowly, then switch sides.'],
+  m: ['Letting the elbow drift away from your body as you rotate.',
+      'Turning your whole body instead of rotating at the shoulder.',
+      'Using a weight so heavy that it snaps your arm back.'] }
 };
