@@ -22,7 +22,9 @@ fs.mkdirSync(outDir, { recursive: true });
 const hex = '0x' + (+grey).toString(16).padStart(2, '0').repeat(3);
 slugs.forEach((slug, i) => {
   if (!slug) return;
-  const cx0 = Math.round((i % 3) * W / 3), cy0 = Math.round(Math.floor(i / 3) * H / 2), cw = Math.round(W / 3), ch = Math.round(H / 2);
+  /* GRID=<cols>x<rows>, 3x2 by default; ten objects on one sheet came as 4x3 (13 Nov) */
+  const [GC, GR] = (process.env.GRID || '3x2').split('x').map(Number);
+  const cx0 = Math.round((i % GC) * W / GC), cy0 = Math.round(Math.floor(i / GC) * H / GR), cw = Math.round(W / GC), ch = Math.round(H / GR);
   let x0 = W, y0 = H, x1 = -1, y1 = -1;
   for (let y = cy0; y < cy0 + ch; y++) for (let x = cx0; x < cx0 + cw; x++) if (rgba[(y * W + x) * 4 + 3] > 24) {
     if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }

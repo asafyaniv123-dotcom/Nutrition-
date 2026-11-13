@@ -12,3 +12,17 @@ one credit each; Image 1 = assets/muscles/chest.jpg (the material, light, glow a
 
 Cut to assets/equipment/<slug>.jpg (420x420, grey 179) with
 `node tools/sheets/eq-cut.mjs exercise-sheets/equipment-3d/sheet1.png assets/equipment barbell,dumbbells,machine,cable,bodyweight`.
+
+## What ships now: three materials (13 Nov)
+
+The amber sheets above were recoloured three times (graphite, stone, sunset) and set aside: the amber in them was
+LIGHT, not a material, so no recolour could give it volume. Two new sheets, 4x3 grid, ten objects each, one credit
+each, the same Image 1, each object in ivory porcelain, matte charcoal and a thin amber as specified per item:
+
+| sheet | job | objects, in cell order |
+|---|---|---|
+| materials-1 | d7cc14f9-3d4d-44c0-89fd-e3292e00e68a | barbell, dumbbells, machine, cable, bodyweight, pullup, kettlebell, bench, band, mat |
+| materials-2 | 62d5e657-829f-4478-aee4-838382817fe5 | cardio, smith, ezbar, trapbar, plate, trx, step, sled, ropes, medball |
+
+`GRID=4x3 node tools/sheets/eq-cut.mjs exercise-sheets/equipment-3d/materials-1.png assets/equipment barbell,...` - onto
+grey 179, the muscles' own ground.
