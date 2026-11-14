@@ -76,7 +76,12 @@ console.log(`foot-register: scale ${s} shift ${tx},${ty}` + (Math.abs(s - 1) > 0
 // 1. frame 1 into the end frame's coordinates: start x -> end (x - tx) / s
 const W = 2 * Math.round(1024 / s), X0 = Math.round(-tx / s), Y0 = Math.round(-ty / s);
 const bg = path.join(OUT, 'bg.png'), am = path.join(OUT, 'alpha.png'), sf = path.join(OUT, 'start-fit.png');
-ff(['-i', S0, '-vf', 'gblur=sigma=40,format=rgb24', bg]);
+/* the margin is frame 1's own EDGE smeared outward, then blurred - never a blur of the whole picture, which carried x4's
+   dumbbells into the top margin as orange blobs */
+/* a side where the scaled frame runs past the canvas (x4: bottom -33) is cropped first, then the other sides are smeared */
+const L = Math.max(X0, 0), T = Math.max(Y0, 0), cx = Math.max(-X0, 0), cy = Math.max(-Y0, 0);
+const cw = Math.min(W - cx, 2048 - L), chh = Math.min(W - cy, 2048 - T);
+ff(['-i', S0, '-vf', `scale=${W}:${W}:flags=lanczos,crop=${cw}:${chh}:${cx}:${cy},pad=2048:2048:${L}:${T},fillborders=left=${L}:right=${2048 - L - cw}:top=${T}:bottom=${2048 - T - chh}:mode=smear,gblur=sigma=40,format=rgb24`, bg]);
 ff(['-f', 'lavfi', '-i', `color=black:s=${W}x${W}`, '-vf', "format=gray,geq=lum='255*min(1\\,min(min(X\\,W-1-X)\\,min(Y\\,H-1-Y))/20)'", '-frames:v', '1', am]);
 ff(['-i', bg, '-i', S0, '-i', am, '-filter_complex', `[1]scale=${W}:${W}:flags=lanczos,format=rgb24[f];[2]format=gray[a];[f][a]alphamerge[fa];[0][fa]overlay=${X0}:${Y0},format=rgb24`, sf]);
 // 2. sole lock: the boxes in end coordinates, lower 55% of each
