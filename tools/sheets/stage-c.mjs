@@ -1,18 +1,29 @@
 // Stage C in one command, zero credits (Asaf, 10 Nov): for an isolated upper-body exercise with locked legs.
+//  0. foot-fit.mjs (Asaf, 14 Nov, x335 - required): scale + shift frame 1 onto the end frame's soles and copy the soles across;
+//     feet="x0,y0,x1,y1;..." = what stands on the floor in the START frame (2048 coords, above the reflection). feet=none only
+//     for a figure that touches nothing (say why in the report). After colour sync the lock is applied again and measured:
+//     mean difference under 1/255 or no loop is built.
 //  1. level the end frame's backdrop to the start's (an edit tends to lift the whole backdrop a few levels, which a
 //     lock then shows as a band - x97): mean RGB of an empty patch in both, the difference taken off the end;
 //  2. lower-lock: below row Y the end frame is the start frame, feathered (tools/sheets/lower-lock.mjs);
 //  3. color-sync both frames to the shared target (tools/sheets/color-sync.mjs) - stops if it does not report SYNCED;
 //  4. gif.mjs into <outDir>.
-// node tools/sheets/stage-c.mjs <start> <end> <outDir> <lockY> [feather=40] [patch=x,y,w,h of empty backdrop]
+// node tools/sheets/stage-c.mjs <start> <end> <outDir> <lockY> [feather=40] [patch=x,y,w,h of empty backdrop] feet=<boxes>|none
 //   lockY: below the lowest moving part in BOTH frames (not the waist - x97's start dumbbells hung by the thighs).
 import { execFileSync } from 'child_process'; import path from 'path'; import os from 'os'; import fs from 'fs';
-const [start, end, out, Ys, Fs = '40', patch = '900,60,200,600'] = process.argv.slice(2);
-if (!out || !Ys) { console.log('usage: stage-c.mjs <start> <end> <outDir> <lockY> [feather] [x,y,w,h]'); process.exit(2); }
+const ARGS = process.argv.slice(2), FEET = (ARGS.find((a) => a.startsWith('feet=')) || '').slice(5);
+const [start0, end0, out, Ys, Fs = '40', patch = '900,60,200,600'] = ARGS.filter((a) => !a.startsWith('feet='));
+if (!out || !Ys || !FEET) { console.log('usage: stage-c.mjs <start> <end> <outDir> <lockY> [feather] [x,y,w,h] feet=<x0,y0,x1,y1;...>|none'); process.exit(2); }
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const work = path.join(os.tmpdir(), 'stage-c-' + Date.now()); fs.mkdirSync(work, { recursive: true });
 const run = (args) => execFileSync(FF, ['-v', 'error', '-y', ...args]);
+// 0. one floor
+let start = start0, end = end0; const FIT = path.join(work, 'fit');
+if (FEET !== 'none') {
+  execFileSync('node', [path.join(here, 'foot-fit.mjs'), start0, end0, FIT, FEET], { stdio: 'inherit' });
+  start = path.join(FIT, 'start.png'); end = path.join(FIT, 'end.png');
+}
 // full size, same for both
 const S = path.join(work, 'start.png'), E0 = path.join(work, 'end-raw.png');
 run(['-i', start, '-vf', 'scale=1152:1152', S]); run(['-i', end, '-vf', 'scale=1152:1152', E0]);
@@ -31,6 +42,14 @@ execFileSync('node', [path.join(here, 'lower-lock.mjs'), S, E1, E2, Ys, Fs], { s
 // 3. colour sync (exits non-zero unless SYNCED)
 const SY = path.join(work, 'sync');
 execFileSync('node', [path.join(here, 'color-sync.mjs'), SY, S, E2], { stdio: 'inherit' });
+// 3b. colour sync moved both frames a little differently: the soles are copied across again, and measured
+let SS = path.join(SY, 'start.png');
+if (FEET !== 'none') {
+  const S2 = path.join(work, 'start-relocked.png');
+  run(['-i', SS, '-i', path.join(SY, 'end.png'), '-i', path.join(FIT, 'mask.png'), '-filter_complex', '[2]scale=1152:1152,format=gray,format=gbrp[m];[0]format=gbrp[a];[1]format=gbrp[b];[a][b][m]maskedmerge,format=rgb24', S2]);
+  execFileSync('node', [path.join(here, 'foot-fit.mjs'), '--check', S2, path.join(SY, 'end.png'), path.join(FIT, 'lock.json')], { stdio: 'inherit' });
+  SS = S2;
+}
 // 4. animation
-execFileSync('node', [path.join(here, 'gif.mjs'), path.join(SY, 'start.png'), path.join(SY, 'end.png'), out], { stdio: 'inherit' });
+execFileSync('node', [path.join(here, 'gif.mjs'), SS, path.join(SY, 'end.png'), out], { stdio: 'inherit' });
 console.log('stage C done ->', out, '(work files in', work + ')');

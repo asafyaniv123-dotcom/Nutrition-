@@ -1,18 +1,17 @@
 // The exercise animation (Asaf, 6 Nov): two approved frames and a GIF that only moves between them. No
 // video model, no credits. Run align.mjs on the end frame first, so whatever does not move is identical.
-// node tools/sheets/gif.mjs <start.png> <end.png> <out-dir> [hold=1.0] [fade=0.6] [mode=cross] [name=anim.gif]
-//   writes start.jpg, end.jpg and the GIF into out-dir; hold and fade are seconds
+// node tools/sheets/gif.mjs <start.png> <end.png> <out-dir> [name=anim.gif]
+//   writes start.jpg, end.jpg, the GIF and the mp4 into out-dir. Run foot-fit.mjs first (stage-c.mjs does).
 //
-// The change is never a cross-fade. A cross-fade shows both frames at once, and with arms in two places
-// that reads as four arms (his words: "they hide each other instead of being soft and clean"). Here the
-// start frame's moving part fades out to the background and only then does the end frame's fade in.
-// The background in between is min(start, end) per pixel: the figure glows brighter than the dark
-// ground, so wherever either frame has a limb the other does not, the minimum is the ground - and
-// wherever the two are identical (the aligned body, the bench) it is that same picture, which therefore
-// never moves. No mask, no threshold.
+// ONE timing for every loop (Asaf, 14 Nov, after x335 v3): 0.85 s on frame 1, a 0.3 s ease-out dissolve, 0.85 s on
+// frame 2, 0.3 s back - a 2.2 s cycle. Not a parameter: hold=, fade= and mode= are refused. A dry cut lost the rhythm
+// of batch A (x335 v2, rejected), a long cross-fade drew two bodies (x335 v1), and a mesh morph turned the head into
+// a cone and doubled the plates (x335, never shown) - none of the three comes back.
 import fs from 'fs'; import path from 'path'; import os from 'os'; import { execFileSync } from 'child_process';
 const [A, B, OUT, ...OPT] = process.argv.slice(2);
-if (!OUT) { console.log('usage: gif.mjs <start.png> <end.png> <out-dir> [hold=s] [fade=s] [name=file.gif]'); process.exit(2); }
+if (!OUT) { console.log('usage: gif.mjs <start.png> <end.png> <out-dir> [name=file.gif]'); process.exit(2); }
+const banned = OPT.find((o) => /^(hold|fade|mode)=/.test(o));
+if (banned) { console.log('gif.mjs: ' + banned + ' refused - the timing is fixed (0.85 s hold, 0.3 s ease-out dissolve)'); process.exit(2); }
 const opt = (k, d) => { const o = OPT.find((a) => a.startsWith(k + '=')); return o ? o.slice(k.length + 1) : d; };
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 const ff = (a, input) => execFileSync(FF, ['-v', 'error', '-y', ...a], { input, maxBuffer: 1 << 28 });
@@ -20,7 +19,7 @@ const ff = (a, input) => execFileSync(FF, ['-v', 'error', '-y', ...a], { input, 
    1.0 s held on each pose and 0.6 s to change, as measured off that recording. It works because align.mjs
    has made the still body identical, so only the moving limb is seen in both places. mode=through: out to
    the ground, then in (he saw a moment with no arms). mode=cut: no fade. */
-const N = 540, FPS = 20, HOLD = +opt('hold', 1.0), FADE = +opt('fade', 0.6), NAME = opt('name', 'anim.gif'), MODE = opt('mode', 'cross');
+const N = 540, FPS = 20, HOLD = 0.85, FADE = 0.3, NAME = opt('name', 'anim.gif'), MODE = 'cross';
 fs.mkdirSync(OUT, { recursive: true });
 ff(['-i', A, '-vf', 'scale=768:-1', '-q:v', '3', path.join(OUT, 'start.jpg')]);
 ff(['-i', B, '-vf', 'scale=768:-1', '-q:v', '3', path.join(OUT, 'end.jpg')]);

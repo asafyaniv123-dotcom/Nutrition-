@@ -1,16 +1,17 @@
 // An exercise animation through more than two poses (walking lunge, 6 Nov: stand, lunge, stand further on,
 // lunge on the other leg, and back to the start). The same timing as gif.mjs: each pose held, an ease-out
 // cross-fade to the next, and the last pose fades back into the first so the loop has no jump.
-// node tools/sheets/gif-seq.mjs <out-dir> <frame1.png> <frame2.png> ... [hold=0.8] [fade=0.6]
+// node tools/sheets/gif-seq.mjs <out-dir> <frame1.png> <frame2.png> ...   (timing fixed as gif.mjs: 0.85 s hold, 0.3 s dissolve)
 //   writes start.jpg (first pose), end.jpg (the deepest pose: the second), anim.gif and anim.mp4 into out-dir
 import fs from 'fs'; import path from 'path'; import os from 'os'; import { execFileSync } from 'child_process';
 const args = process.argv.slice(2), OUT = args[0];
 const opt = (k, d) => { const o = args.find((a) => a.startsWith(k + '=')); return o ? +o.slice(k.length + 1) : d; };
 const files = args.slice(1).filter((a) => !a.includes('='));
-if (!OUT || files.length < 2) { console.log('usage: gif-seq.mjs <out-dir> <frame1> <frame2> ... [hold=s] [fade=s]'); process.exit(2); }
+if (!OUT || files.length < 2) { console.log('usage: gif-seq.mjs <out-dir> <frame1> <frame2> ...'); process.exit(2); }
+if (args.some((a) => /^(hold|fade)=/.test(a))) { console.log('gif-seq.mjs: hold=/fade= refused - the timing is fixed (0.85 s hold, 0.3 s dissolve)'); process.exit(2); }
 const FF = process.env.FFMPEG || path.join(os.tmpdir(), 'fftool/node_modules/ffmpeg-static/ffmpeg.exe');
 const ff = (a, input) => execFileSync(FF, ['-v', 'error', '-y', ...a], { input, maxBuffer: 1 << 29 });
-const N = 540, FPS = 20, HOLD = opt('hold', 0.8), FADE = opt('fade', 0.6);
+const N = 540, FPS = 20, HOLD = 0.85, FADE = 0.3;
 fs.mkdirSync(OUT, { recursive: true });
 ff(['-i', files[0], '-vf', 'scale=768:-1', '-q:v', '3', path.join(OUT, 'start.jpg')]);
 ff(['-i', files[1], '-vf', 'scale=768:-1', '-q:v', '3', path.join(OUT, 'end.jpg')]);
