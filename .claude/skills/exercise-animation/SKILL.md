@@ -129,7 +129,8 @@ description: בניית אנימציה של תרגיל אחד למאגר (exerci
    - **תנוחה:** התיאור איבר אחרי איבר משלב א, עם מספרים מהשלד, למשל "thigh at 78°".
    - **ציר:** הציר של כל מפרק. לרגליים: "the legs rise from the hip joint; the gym shorts turn with the legs".
    - **גודל:** הדמות באותו גודל בשני הפריימים, וכל מה שקבוע במקום.
-   - **זוהר:** השריר הראשי זוהר הכי חזק.
+   - **זוהר:** השריר הראשי זוהר הכי חזק. **ניסוח קצר ונקי, בלי רשימת שרירים קטנים** (אסף, 14.11, x54): שרשרת כמו "lats, trapezius, rhomboids, rear delt" גורמת למודל לפסל "קוביות" בגב. במקומה: "soft smooth internal highlight on the working upper back and rear shoulder", וב-AVOID: "blocky segmented back muscles, grid-like back".
+   - **ראש וצוואר:** כיוון המבט וזווית הצוואר נעולים לרפרנס. בהטיה קדימה המבט פונה מטה לרצפה, בהמשך לעמוד השדרה, ולא מורם קדימה (אסף, 14.11).
    - **מסגור:** כל הדמות והציוד בפריים, עם שוליים.
    - **מראה:** משפט אחד בלבד: "THE FIGURE IS EXACTLY THE CHARACTER OF IMAGE 2 (a turnaround sheet of one figure): copy its body, build, proportions, material, glow, head, shorts and shoes exactly, from the view that matches the camera". **שום מילה נוספת על הגוף** (8.11: כל תיאור - שקיפות, זהב, שרירים, מכנס, ראש - משך את הגוף מהדף; x96/try2 נבנה בלי אף אחד מהם ואושר).
 4א. **מבנה ההנחיה - מחייב בכל יצירה ובכל עריכה (אסף, 10.11).** ההנחיה נכתבת בארבעה חלקים, בסדר הזה, ומוצגת בדיווח:
