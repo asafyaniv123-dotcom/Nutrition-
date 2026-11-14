@@ -1,7 +1,8 @@
 // Stage C in one command, zero credits (Asaf, 10 Nov): for an isolated upper-body exercise with locked legs.
 //  0. foot-fit.mjs (Asaf, 14 Nov, x335 - required): scale + shift frame 1 onto the end frame's soles and copy the soles across;
 //     feet="x0,y0,x1,y1;..." = what stands on the floor in the START frame (2048 coords, above the reflection). feet=none only
-//     for a figure that touches nothing (say why in the report). After colour sync the lock is applied again and measured:
+//     for a figure that touches nothing (say why in the report). feet=local:<boxes> when the scene already matches and only
+//     a shoe moved (foot-fit --local, x336): nothing is rescaled, each shoe of the end frame is put on frame 1's. After colour sync the lock is applied again and measured:
 //     mean difference under 1/255 or no loop is built.
 //  1. level the end frame's backdrop to the start's (an edit tends to lift the whole backdrop a few levels, which a
 //     lock then shows as a band - x97): mean RGB of an empty patch in both, the difference taken off the end;
@@ -21,7 +22,8 @@ const run = (args) => execFileSync(FF, ['-v', 'error', '-y', ...args]);
 // 0. one floor
 let start = start0, end = end0; const FIT = path.join(work, 'fit');
 if (FEET !== 'none') {
-  execFileSync('node', [path.join(here, 'foot-fit.mjs'), start0, end0, FIT, FEET], { stdio: 'inherit' });
+  const LOCAL = FEET.startsWith('local:');
+  execFileSync('node', [path.join(here, 'foot-fit.mjs'), start0, end0, FIT, LOCAL ? FEET.slice(6) : FEET, ...(LOCAL ? ['--local'] : [])], { stdio: 'inherit' });
   start = path.join(FIT, 'start.png'); end = path.join(FIT, 'end.png');
 }
 // full size, same for both
@@ -43,13 +45,16 @@ execFileSync('node', [path.join(here, 'lower-lock.mjs'), S, E1, E2, Ys, Fs], { s
 const SY = path.join(work, 'sync');
 execFileSync('node', [path.join(here, 'color-sync.mjs'), SY, S, E2], { stdio: 'inherit' });
 // 3b. colour sync moved both frames a little differently: the soles are copied across again, and measured
-let SS = path.join(SY, 'start.png');
+let SS = path.join(SY, 'start.png'), SE = path.join(SY, 'end.png');
 if (FEET !== 'none') {
-  const S2 = path.join(work, 'start-relocked.png');
-  run(['-i', SS, '-i', path.join(SY, 'end.png'), '-i', path.join(FIT, 'mask.png'), '-filter_complex', '[2]scale=1152:1152,format=gray,format=gbrp[m];[0]format=gbrp[a];[1]format=gbrp[b];[a][b][m]maskedmerge,format=rgb24', S2]);
-  execFileSync('node', [path.join(here, 'foot-fit.mjs'), '--check', S2, path.join(SY, 'end.png'), path.join(FIT, 'lock.json')], { stdio: 'inherit' });
-  SS = S2;
+  /* default: the end frame's soles go into frame 1; --local: frame 1's soles go into the end frame */
+  const toEnd = JSON.parse(fs.readFileSync(path.join(FIT, 'lock.json'), 'utf8')).dir === 'start-to-end';
+  const R2 = path.join(work, toEnd ? 'end-relocked.png' : 'start-relocked.png');
+  const [base, over] = toEnd ? [SE, SS] : [SS, SE];
+  run(['-i', base, '-i', over, '-i', path.join(FIT, 'mask.png'), '-filter_complex', '[2]scale=1152:1152,format=gray,format=gbrp[m];[0]format=gbrp[a];[1]format=gbrp[b];[a][b][m]maskedmerge,format=rgb24', R2]);
+  if (toEnd) SE = R2; else SS = R2;
+  execFileSync('node', [path.join(here, 'foot-fit.mjs'), '--check', SS, SE, path.join(FIT, 'lock.json')], { stdio: 'inherit' });
 }
 // 4. animation
-execFileSync('node', [path.join(here, 'gif.mjs'), SS, path.join(SY, 'end.png'), out], { stdio: 'inherit' });
+execFileSync('node', [path.join(here, 'gif.mjs'), SS, SE, out], { stdio: 'inherit' });
 console.log('stage C done ->', out, '(work files in', work + ')');
