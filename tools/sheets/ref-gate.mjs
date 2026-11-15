@@ -18,7 +18,13 @@ const fails = [];
 const need = (ok, why) => { if (!ok) fails.push(why); };
 const png = (f) => { const p = path.join(d, f); if (!fs.existsSync(p)) return null; const b = fs.readFileSync(p); return b.readUInt32BE(16) + 'x' + b.readUInt32BE(20); };
 const rs = png('ref-start.png'), re = png('ref-end.png'), st = png('start.png');
-if (FR === '1') need(rs, `no reference crop: ${ID}/ref-start.png`);
+if (FR === '1') {
+  need(rs, `no reference crop: ${ID}/ref-start.png`);
+  // under 800 px the 2048 style anchor wins over the reference's small details (x175, 15 Nov): upload the 1024 version instead
+  if (rs && Math.max(...rs.split('x').map(Number)) < 800) need(png('ref-start-1024.png'), `ref-start.png is ${rs}, under 800 px: run tools/sheets/ref-upscale.mjs ${ID} and upload ref-start-1024.png`);
+  // the depth order is read off the reference and written down before anything else (x175: "legs close together" for a crossed leg)
+  need(/depth order\s*-/.test(low), 'frame 1: no "DEPTH ORDER -" section (which limb is in front, what crosses the midline, where the cable/bar runs past the body)');
+}
 else { need(re, `no reference crop: ${ID}/ref-end.png`); need(st, `no approved frame 1: ${ID}/start.png`); }
 for (const w of ['hips', 'anatomical', 'glowing', 'neon']) need(!new RegExp(`\\b${w}\\b`).test(low), `forbidden word in the prompt: ${w}`);
 need(t.includes('transparent amber mid-thigh athletic shorts with one straight waistband, exactly as in the CANONICAL-x106'), 'garment sentence missing');
