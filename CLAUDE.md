@@ -109,7 +109,9 @@ Two traps specific to this file. **Write patch scripts as files**, never as
 And **`{ … }` blocks overlap `style="…"` attributes**, so an edit reached
 through both gets applied twice.
 
-**Never touch:** `index.html` (release only).
+**Never touch:** `index.html` (release only) - with one exception Asaf set on
+15 Nov: an exercise demo he approves goes straight to stable as a one-line
+`EX_DEMO` edit plus its mp4 in `stable/assets/exdemo/` (the skill has the steps).
 
 The game that used to live inside `<script id="game-src">` — a standalone
 document with its own `:root` — is **gone**: `game-src` appears zero times in
