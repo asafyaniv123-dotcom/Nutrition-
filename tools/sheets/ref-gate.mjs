@@ -27,7 +27,12 @@ if (FR === '1') {
 }
 else { need(re, `no reference crop: ${ID}/ref-end.png`); need(st, `no approved frame 1: ${ID}/start.png`); }
 for (const w of ['hips', 'anatomical', 'glowing', 'neon']) need(!new RegExp(`\\b${w}\\b`).test(low), `forbidden word in the prompt: ${w}`);
-need(t.includes('transparent amber mid-thigh athletic shorts with one straight waistband, exactly as in the CANONICAL-x106'), 'garment sentence missing');
+// a stretch (profile 2, SKILL: "two colour profiles") carries the teal garment sentence instead of the amber one, word for word,
+// and keeps the reference's black shorts out (x267, 12 Nov) - before 16 Nov this gate knew only the amber sentence (x342)
+if (low.includes('teal-cyan')) {
+  need(t.includes("translucent soft teal-cyan mid-thigh athletic shorts with one straight waistband, the same geometry as Image 1 - the reference's black shorts are NOT copied"), 'stretch garment sentence missing');
+  for (const w of ['black shorts', 'teal background']) need(low.includes(w), `stretch AVOID term missing: ${w}`);
+} else need(t.includes('transparent amber mid-thigh athletic shorts with one straight waistband, exactly as in the CANONICAL-x106'), 'garment sentence missing');
 for (const w of ['high-cut underwear', 'speedo briefs', 'bikini lines', 'three arms', 'extra arm']) need(low.includes(w), `AVOID term missing: ${w}`);
 need(/only\s+(a\s+)?style/.test(low), 'the anchor is not named as STYLE ONLY');
 need(/only authority/.test(low), 'the reference is not named as the ONLY authority on pose, camera and equipment');
