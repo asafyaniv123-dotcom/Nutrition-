@@ -2,7 +2,7 @@
 //   generation; exit 1 = the call is not sent. No reference = no credit, and nothing the reference does not show.
 //   frame 1: exercise-sheets/<id>/ref-start.png must exist (the clean crop of the START pose, from liftmanual or a reference he approved).
 //   frame 2: exercise-sheets/<id>/ref-end.png (the END crop), exercise-sheets/<id>/start.png (the approved frame 1) AND
-//   exercise-sheets/<id>/ref-motion.png (ref-motion.mjs: start left, end right) must exist, and the prompt must read its two halves.
+//   exercise-sheets/<id>/ref-end-1024.png (ref-upscale.mjs) must exist, and the prompt must name it the authority on the END pose and full range.
 //   The prompt must: carry the garment sentence and the AVOID terms, keep the four forbidden words out, name the anchor as STYLE ONLY,
 //   name the reference as the only authority on pose/camera/equipment, forbid inventing, and (frame 2) lock the background/equipment to frame 1.
 //   Prints the sha of the prompt so the report can show which text passed.
@@ -33,11 +33,12 @@ need(/only\s+(a\s+)?style/.test(low), 'the anchor is not named as STYLE ONLY');
 need(/only authority/.test(low), 'the reference is not named as the ONLY authority on pose, camera and equipment');
 need(/nothing (that is )?not (shown|in) (in )?image|do not (add|invent)|invent nothing/.test(low), 'no "invent nothing / add nothing not in the reference" sentence');
 if (FR === '2') need(/frozen/.test(low) && /(background|studio)/.test(low), 'frame 2: background and equipment not locked to frame 1 (FROZEN ...)');
-// frame 2 is made from the motion sheet (ref-motion.mjs), not from the end crop alone (15 Nov, after x178 and x170): the model must SEE
-// the change. The sheet must exist and the prompt must read it as two halves.
+// frame 2 is made from the 1024 END crop as the dominant authority on the end pose (Asaf, 16 Nov, after x182): the motion sheet alone let
+// the model cling to frame 1 and stop half way (x182: top elbow 44% of the reference). Image 2 = ref-end-1024.png, and the prompt must
+// say that Image 2 decides the END pose and the full range. The motion sheet stays for the approval page, not for the generation.
 if (FR === '2') {
-  need(png('ref-motion.png'), `no motion sheet: run tools/sheets/ref-motion.mjs ${ID}`);
-  need(/left half/.test(low) && /right half/.test(low), 'frame 2: the prompt does not read the motion sheet as a LEFT half (start) and a RIGHT half (end)');
+  need(png('ref-end-1024.png'), `no 1024 end crop: run tools/sheets/ref-upscale.mjs ${ID} and upload ref-end-1024.png as Image 2`);
+  need(/end pose/.test(low) && /full range/.test(low), 'frame 2: the prompt does not name Image 2 (ref-end-1024) as the authority on the END pose and the FULL RANGE');
 }
 const sha = crypto.createHash('sha256').update(t).digest('hex').slice(0, 12);
 console.log(`ref-gate ${ID} frame ${FR}: ref-start ${rs || '-'} ref-end ${re || '-'} frame1 ${st || '-'} prompt ${sha}`);
