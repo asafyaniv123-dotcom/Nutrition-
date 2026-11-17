@@ -2797,5 +2797,13 @@ export const EN = {
       'Drive your hips forward to stand tall again.'],
   m: ['Bending the knees more as you lower, which turns it into a squat.',
       'Rounding your back to reach lower.',
-      'The bar drifting away from your legs.'] }
+      'The bar drifting away from your legs.'] },
+'המתיחה הגדולה בעולם': {
+  s: ['Step one foot far forward into a low lunge, back leg straight and back heel off the floor.',
+      'Place both hands on the floor on the inside of your front foot.',
+      'Turn your chest toward the front leg and reach the arm on that side straight up to the ceiling, eyes following the hand.',
+      'Bring the hand back to the floor, hold for a breath or two, and repeat on the other side.'],
+  m: ['Letting the front knee cave in or drift past the toes.',
+      'Letting the hips sag to the floor and losing the lunge.',
+      'Turning only the arm, without opening the chest.'] }
 };

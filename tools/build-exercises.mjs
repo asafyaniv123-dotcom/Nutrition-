@@ -443,7 +443,9 @@ const RAW=[
 ['דדליפט סומו בסמית׳',M.glutes,[Q.smith],'Smith Machine Sumo Deadlift',['סומו בסמית']],
 ['דדליפט סומו עם משיכה גבוהה',M.glutes,[Q.bar],'Sumo Deadlift High Pull',['סומו היי פול']],
 ['דדליפט סומו במשקולת',M.glutes,[Q.db],'Dumbbell Sumo Deadlift',['סומו במשקולת']],
-['דדליפט רומני בעמידת סומו',M.hams,[Q.bar],'Sumo Romanian Deadlift',['רומני סומו']]
+['דדליפט רומני בעמידת סומו',M.hams,[Q.bar],'Sumo Romanian Deadlift',['רומני סומו']],
+/* x341 keeps the id its demo loop was made under (16 Nov); x340 is held for Cat-Cow, parked. */
+['המתיחה הגדולה בעולם',[M.quads,M.hams,M.glutes],[Q.bw],"World's Greatest Stretch",['מתיחת ספיידרמן עם סיבוב','לאנג׳ עם סיבוב','וורלדס גרייטסט'],'x341']
 ];
 
 const list=RAW.map(function(r,i){
@@ -451,7 +453,9 @@ const list=RAW.map(function(r,i){
      a lunge is quadriceps and glutes - and having no way to say so in a row
      is why they were written straight into the JSON, where the build could
      not see them and silently dropped them on its next run. */
-  const o={id:'x'+(i+1),n:r[0],m:Array.isArray(r[1])?r[1].slice():[r[1]],q:r[2]};
+  /* The id is the row's position, unless the row names one (a sixth element) -
+     for a row whose demo was made under an id before the row existed. */
+  const o={id:r[5]||'x'+(i+1),n:r[0],m:Array.isArray(r[1])?r[1].slice():[r[1]],q:r[2]};
   if(r[3])o.en=r[3];
   /* The name in every language. `n` stays the STORED id - the workout log, the
      history and loadKind all key on it - and `t` is what the reader is shown,
@@ -492,6 +496,7 @@ const list=RAW.map(function(r,i){
    hamstrings and the pullover to the lats. A muscle the row already had
    beyond its first stays as a second one, so the picker keeps finding it
    there. See tools/exercise-families-data.mjs. */
+{const seen=new Set();for(const e of list){if(seen.has(e.id))throw new Error(e.id+': two rows with one id');seen.add(e.id);}}
 const famOf={};
 for(const f of FAMILIES)for(const id of familyIds(f)){
   if(famOf[id])throw new Error(id+' is in two families: '+famOf[id][0]+' and '+f[0]);
