@@ -107,7 +107,7 @@ export const FAMILIES = [
     'Banded Glute Activation', 'Po-Aktivierung mit Band', 'Activación de glúteos con banda', 'Activation fessière à l’élastique', 'Attivazione glutei con elastico', 'Ativação de glúteos com elástico', 'バンドでの臀部活性化', '弹力带臀部激活', '彈力帶臀部激活', 'تنشيط الأرداف بالمطاط'],
   ['פאוור קלין', 'ישבן', ['ארבע ראשי', 'ירך אחורית', 'טרפז עליון', 'זוקפי גב'], '226',
     'Power Clean', 'Power Clean', 'Cargada de potencia', 'Épaulé en puissance', 'Power clean', 'Power clean', 'パワークリーン', '高翻', '高翻', 'الكلين القوي'],
-  ['קירוב ירך', 'מקרבים', [], '170 171',
+  ['קירוב ירך', 'מקרבים', [], '170 171 342',
     'Hip Adduction', 'Adduktion', 'Aducción de cadera', 'Adduction de hanche', 'Adduzione dell’anca', 'Adução de quadril', 'ヒップアダクション', '髋内收', '髖內收', 'تقريب الفخذ'],
   ['פלאנק קופנהגן', 'מקרבים', ['אלכסונים'], '172 302',
     'Copenhagen Plank', 'Kopenhagen-Plank', 'Plancha Copenhague', 'Gainage Copenhague', 'Plank Copenaghen', 'Prancha Copenhague', 'コペンハーゲンプランク', '哥本哈根平板支撑', '哥本哈根棒式', 'لوح كوبنهاغن'],

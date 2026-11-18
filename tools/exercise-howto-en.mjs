@@ -2805,5 +2805,13 @@ export const EN = {
       'Bring the hand back to the floor, hold for a breath or two, and repeat on the other side.'],
   m: ['Letting the front knee cave in or drift past the toes.',
       'Letting the hips sag to the floor and losing the lunge.',
-      'Turning only the arm, without opening the chest.'] }
+      'Turning only the arm, without opening the chest.'] },
+'קירוב ירך בשכיבה על הצד': {
+  s: ['Lie on your side propped up on your forearm, the bottom leg straight in line with your body.',
+      'Cross the top leg over and set its foot flat on the floor in front of the bottom knee.',
+      'Lift the straight bottom leg as high off the floor as you can without rolling your hips.',
+      'Pause at the top and lower it slowly, without resting it on the floor between reps.'],
+  m: ['Rolling the hips back to lift the leg higher.',
+      'Bending the knee of the working leg.',
+      'Swinging the leg up instead of lifting it under control.'] }
 };
