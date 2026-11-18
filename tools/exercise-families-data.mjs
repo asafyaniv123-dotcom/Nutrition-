@@ -167,7 +167,7 @@ export const FAMILIES = [
     "Hamstring Stretch", "Dehnung der hinteren Oberschenkel", "Estiramiento de isquiotibiales", "Étirement des ischio-jambiers", "Allungamento dei femorali", "Alongamento de posteriores", "ハムストリングのストレッチ", "腘绳肌拉伸", "膕繩肌伸展", "إطالة أوتار الركبة"],
   ["מתיחת קדמת הירך", "ארבע ראשי", ["מכופפי ירך"], "272 274 283 284 294 295 341",
     "Front Thigh Stretch", "Dehnung der vorderen Oberschenkel", "Estiramiento de muslo anterior", "Étirement de l’avant de la cuisse", "Allungamento della coscia anteriore", "Alongamento da coxa anterior", "太もも前側のストレッチ", "大腿前侧拉伸", "大腿前側伸展", "إطالة الفخذ الأمامي"],
-  ["מתיחת ישבן", "ישבן", ["מכופפי ירך","מקרבים"], "275 278",
+  ["מתיחת ישבן", "ישבן", ["מכופפי ירך","מקרבים"], "275 278 343",
     "Glute Stretch", "Gesäßdehnung", "Estiramiento de glúteos", "Étirement des fessiers", "Allungamento dei glutei", "Alongamento de glúteos", "お尻のストレッチ", "臀部拉伸", "臀部伸展", "إطالة الألوية"],
   ["מתיחת צוואר", "טרפז עליון", [], "280",
     "Neck Stretch", "Nackendehnung", "Estiramiento de cuello", "Étirement du cou", "Allungamento del collo", "Alongamento de pescoço", "首のストレッチ", "颈部拉伸", "頸部伸展", "إطالة الرقبة"],

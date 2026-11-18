@@ -2813,5 +2813,13 @@ export const EN = {
       'Pause at the top and lower it slowly, without resting it on the floor between reps.'],
   m: ['Rolling the hips back to lift the leg higher.',
       'Bending the knee of the working leg.',
-      'Swinging the leg up instead of lifting it under control.'] }
+      'Swinging the leg up instead of lifting it under control.'] },
+'חיבוק ברך לחזה בעמידה': {
+  s: ['Stand tall, feet hip-width apart, arms at your sides.',
+      'Lift one knee forward and up.',
+      'Wrap both hands around the shin just below the knee and pull the knee to your chest, keeping your back upright.',
+      'Hold for a second or two, lower the leg, and switch sides.'],
+  m: ['Rounding the back down to the knee instead of bringing the knee to the chest.',
+      'Bending the standing leg.',
+      'Losing balance by looking down at the floor.'] }
 };

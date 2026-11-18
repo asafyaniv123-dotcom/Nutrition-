@@ -447,7 +447,9 @@ const RAW=[
 /* x341 keeps the id its demo loop was made under (16 Nov); x340 is held for Cat-Cow, parked. */
 ['המתיחה הגדולה בעולם',[M.quads,M.hams,M.glutes],[Q.bw],"World's Greatest Stretch",['מתיחת ספיידרמן עם סיבוב','לאנג׳ עם סיבוב','וורלדס גרייטסט'],'x341'],
 /* x342 from Asaf's Lift Manual screenshot (18 Nov); x340 is still held for Cat-Cow. */
-['קירוב ירך בשכיבה על הצד',M.adduct,[Q.bw],'Side Lying Hip Adduction',['הרמת רגל תחתונה בשכיבה על הצד','מקרבים על הרצפה'],'x342']
+['קירוב ירך בשכיבה על הצד',M.adduct,[Q.bw],'Side Lying Hip Adduction',['הרמת רגל תחתונה בשכיבה על הצד','מקרבים על הרצפה'],'x342'],
+/* x343 from Asaf's Lift Manual screenshot (18 Nov), its first two panels. */
+['חיבוק ברך לחזה בעמידה',M.glutes,[Q.bw],'Standing Knee-to-Chest Stretch',['ברך לחזה בעמידה','חיבוק ברך'],'x343']
 ];
 
 const list=RAW.map(function(r,i){
