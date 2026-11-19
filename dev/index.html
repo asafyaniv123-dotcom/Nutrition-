@@ -24013,7 +24013,7 @@ function genPick(opt){
      the pullover ahead of the pull-up, the deadlift ahead of the Romanian.
      Those wait behind the group they joined. */
   var pos=function(e){var n=parseInt(String(e.id||'').replace(/^x/,''),10);return isFinite(n)?n+(GEN_MOVED[e.id]?1000:0):1e9;};
-  var all=exAll(),out=[],used={},asked={};
+  var all=exShown(),out=[],used={},asked={};
   for(i=0;i<muscles.length;i++){
     /* Fold the way muscleGroupOf folds. bandGroups returns rolled-up names
        and muscleGroupOf only ever returns those, so a caller passing גב רחב
@@ -26223,7 +26223,7 @@ function stHoldText(e){
 function stPlan(ids){
   var names=[],sides=[],i,e;
   for(i=0;i<ids.length;i++){
-    e=stRow(ids[i]);if(!e)continue;
+    e=stRow(ids[i]);if(!e||!exHasDemo(e))continue;
     if(ST_SIDES[e.id]){names.push(e.n,e.n);sides.push(1,2);}
     else{names.push(e.n);sides.push(0);}
   }
@@ -26263,7 +26263,7 @@ function stVidSet(at){
 function stListHTML(ids){
   var h='<div class="st-list">',i,e;
   for(i=0;i<ids.length;i++){
-    e=stRow(ids[i]);if(!e)continue;
+    e=stRow(ids[i]);if(!e||!exHasDemo(e))continue;
     h+='<div class="st-li"><span class="st-th">'+
        (EX_DEMO[exDemoId(e)]?'<video src="'+stVidSrc(e)+'" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>':'')+
        '</span><span class="st-x"><b>'+esc(exTitle(e))+'</b>'+
@@ -26276,7 +26276,7 @@ function stListHTML(ids){
    weighed by the sets each got, the heaviest first, one stretch for each -
    its own if there is one, one that reaches it as a second muscle if not. */
 function stCooldown(exs){
-  var w={},order=[],all=exAll(),out=[],used={},i,j,e,m,n;
+  var w={},order=[],all=exShown(),out=[],used={},i,j,e,m,n;
   for(i=0;i<exs.length;i++){
     e=exByName(exs[i].name);
     if(!e||e.st)continue;
@@ -31269,7 +31269,7 @@ function exKindLabel(){
   return _exKind==='st'?_t('מתיחות וגמישות'):_exKind==='str'?_t('כוח'):_t('הכל');
 }
 function exKindHTML(){
-  var all=exAll(),ns=0,i;
+  var all=exShown(),ns=0,i;
   for(i=0;i<all.length;i++)if(all[i].st)ns++;
   function c(k,label,n){
     return '<button class="ex-chip'+(_exKind===k?' on':'')+'" onclick="exSetKind(\''+k+'\')">'+esc(label)+'<b>'+nfmt(n)+'</b></button>';
@@ -31279,7 +31279,7 @@ function exKindHTML(){
 }
 function exSetKind(k){_exKind=k;_exPaintBody();}
 function exList(){
-  var all=exAll(),out=[],i,e;
+  var all=exShown(),out=[],i,e;
   for(i=0;i<all.length;i++){
     e=all[i];
     if(!exKindOk(e))continue;
@@ -31407,7 +31407,7 @@ function _exPaintBody(){
     /* Cards with a picture, in sections, rather than fifteen word-chips in a
        row - you find יד אחורית by seeing an arm, not by reading labels. */
     function count(k){
-      return exAll().filter(function(e){
+      return exShown().filter(function(e){
         return exKindOk(e)&&(_exTab==='muscle'?e.m:e.q).indexOf(k)>=0;
       }).length;
     }
@@ -31729,6 +31729,11 @@ var EX_DEMO={x131:1,x18:1,x57:1,x1:1,x229:1,x192:1,x27:1,x71:1,x41:1,x162:1,
    instead of none. Its own loop, if one is ever made, wins. */
 var EX_DEMO_OF={x324:'x321',x23:'x22',x28:'x27',x30:'x27',x31:'x27',x32:'x27',x43:'x41',x45:'x41',x56:'x55',x58:'x57',x59:'x57',x65:'x66',x77:'x71',x117:'x22',x132:'x128',x133:'x128',x134:'x128',x138:'x137',x143:'x229',x146:'x145',x151:'x149',x157:'x156',x161:'x240',x163:'x335',x180:'x176',x185:'x247',x186:'x187',x191:'x188',x231:'x229',x232:'x94',x233:'x60',x235:'x174',x255:'x202',x257:'x49',x258:'x41',x303:'x15',x305:'x92',x306:'x44',x307:'x158',x308:'x162',x309:'x69',x310:'x315',x311:'x66',x312:'x67',x313:'x69',x314:'x315',x316:'x66',x317:'x67',x318:'x149',x319:'x69',x320:'x315',x322:'x130',x325:'x188',x327:'x335',x328:'x335',x329:'x335',x330:'x335',x331:'x335',x332:'x335',x333:'x335',x334:'x335',x337:'x335',x338:'x335',x339:'x149',x265:'x88'};
 function exDemoId(e){return EX_DEMO[e.id]||!EX_DEMO_OF[e.id]?e.id:EX_DEMO_OF[e.id];}
+/* Asaf, 19 Nov: an exercise with no live demo is not offered anywhere. The row stays in the library (a demo may come,
+   and a logged workout still has to find its name through exAll), it is only never SHOWN: every list, count,
+   alternative, generated workout and stretch routine reads exShown. */
+function exHasDemo(e){return !!(e&&EX_DEMO[exDemoId(e)]);}
+function exShown(){return exAll().filter(exHasDemo);}
 /* ── HOW IT IS DONE, GUIDED (Asaf, 4 Nov) ──
    Each step of the library's own instructions gets the moment of the loop
    to stop at and the part of the frame to light: [seconds, x%, y%, ring
@@ -31919,6 +31924,7 @@ function exAlternatives(name,n,freeEquip){
   for(i=0;i<all.length;i++)if(all[i].n===name)want=all[i];
   if(!want)return [];
   var out=[];
+  all=exShown();
   for(i=0;i<all.length;i++){
     var r=exAltRank(want,all[i],freeEquip);
     if(r>0)out.push({e:all[i],r:r});
