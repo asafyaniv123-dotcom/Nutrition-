@@ -2821,5 +2821,13 @@ export const EN = {
       'Hold for a second or two, lower the leg, and switch sides.'],
   m: ['Rounding the back down to the knee instead of bringing the knee to the chest.',
       'Bending the standing leg.',
-      'Losing balance by looking down at the floor.'] }
+      'Losing balance by looking down at the floor.'] },
+'חתול-פרה': {
+  s: ['Get on all fours, hands under your shoulders and knees under your hips.',
+      'Round your back up toward the ceiling, tucking your chin and your pelvis under.',
+      'Let your belly sink gently, lift your head to look ahead and tilt your seat up.',
+      'Move slowly between the two positions with your breath.'],
+  m: ['Overarching the lower back.',
+      'Throwing the head back.',
+      'Rushing the movement instead of breathing through it.'] }
 };

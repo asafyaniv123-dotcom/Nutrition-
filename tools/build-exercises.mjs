@@ -449,7 +449,9 @@ const RAW=[
 /* x342 from Asaf's Lift Manual screenshot (18 Nov); x340 is still held for Cat-Cow. */
 ['קירוב ירך בשכיבה על הצד',M.adduct,[Q.bw],'Side Lying Hip Adduction',['הרמת רגל תחתונה בשכיבה על הצד','מקרבים על הרצפה'],'x342'],
 /* x343 from Asaf's Lift Manual screenshot (18 Nov), its first two panels. */
-['חיבוק ברך לחזה בעמידה',M.glutes,[Q.bw],'Standing Knee-to-Chest Stretch',['ברך לחזה בעמידה','חיבוק ברך'],'x343']
+['חיבוק ברך לחזה בעמידה',M.glutes,[Q.bw],'Standing Knee-to-Chest Stretch',['ברך לחזה בעמידה','חיבוק ברך'],'x343'],
+/* x340, the id held for Cat-Cow since 16 Nov; its loop approved 19 Nov. */
+['חתול-פרה',M.lower,[Q.bw],'Cat-Cow',['חתול פרה','קט קאו','חתול וגמל'],'x340']
 ];
 
 const list=RAW.map(function(r,i){

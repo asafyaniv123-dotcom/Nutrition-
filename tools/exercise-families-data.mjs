@@ -157,7 +157,7 @@ export const FAMILIES = [
     'Swimming', 'Schwimmen', 'Natación', 'Natation', 'Nuoto', 'Natação', '水泳', '游泳', '游泳', 'السباحة'],
   ['מתיחת חזה', 'חזה', ['כתף קדמית'], '267',
     'Chest Stretch', 'Brustdehnung', 'Estiramiento de pecho', 'Étirement des pectoraux', 'Allungamento del petto', 'Alongamento de peito', '胸のストレッチ', '胸部拉伸', '胸部伸展', 'إطالة الصدر'],
-  ["מתיחת גב תחתון", "זוקפי גב", ["אלכסונים","ישבן"], "268 279 299 300",
+  ["מתיחת גב תחתון", "זוקפי גב", ["אלכסונים","ישבן"], "268 279 299 300 340",
     "Lower Back Stretch", "Dehnung des unteren Rückens", "Estiramiento lumbar", "Étirement du bas du dos", "Allungamento lombare", "Alongamento lombar", "腰のストレッチ", "下背部拉伸", "下背部伸展", "إطالة أسفل الظهر"],
   ["מתיחת מקרבים", "מקרבים", ["ישבן"], "269 276",
     "Inner Thigh Stretch", "Adduktorendehnung", "Estiramiento de aductores", "Étirement des adducteurs", "Allungamento degli adduttori", "Alongamento de adutores", "内ももストレッチ", "大腿内侧拉伸", "大腿內側伸展", "إطالة الفخذ الداخلي"],
