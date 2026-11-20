@@ -1,0 +1,193 @@
+// node tools/patches/ex-steps-x226-x228.mjs <exercises.json> [--undo] - the two exercises that still had no "how it's done" (20 Nov):
+//   the power clean (x226) and the snatch (x228). Written in English first, the way every other exercise's steps were; the Hebrew
+//   and the nine others are written from the English. Four steps and three common mistakes each, in all eleven languages, in
+//   the register their neighbours already use (the Hebrew in the masculine singular imperative, German and French in du/tu).
+//   Refuses if either exercise already has steps. --undo removes exactly these keys again, which must give back the original
+//   file byte for byte.
+import fs from 'node:fs';
+const F = process.argv[2], undo = process.argv.includes('--undo');
+const W = {
+  x226: {
+    he: { s: ['עמוד כשהמוט מעל אמצע כף הרגל, אחיזה מעט מחוץ לברכיים, אגן מעל הברכיים, חזה למעלה וגב ישר.',
+              'דחוף את הרצפה והרם את המוט צמוד לשוקיים, בלי לשנות את זווית הגב עד שהמוט עובר את הברכיים.',
+              'פתח את האגן בכוח, משוך כתפיים למעלה והיכנס מתחת למוט, מרפקים קדימה במהירות כדי לתפוס אותו על קדמת הכתפיים.',
+              'התיישר לגמרי כשהמוט על הכתפיים, ואז הורד אותו לאגן ובחזרה לרצפה בשליטה.'],
+          k: ['משיכה מוקדמת עם הידיים — הכוח מגיע מהאגן ומהרגליים.',
+              'מוט שמתרחק מהגוף במקום להישאר צמוד.',
+              'מרפקים נמוכים בתפיסה, כך שהמוט נוחת על שורשי כפות הידיים.'] },
+    en: { s: ['Stand with the bar over the middle of your feet, grip just outside your knees, hips above your knees, chest up and back flat.',
+              'Push the floor away and lift the bar close to your shins, keeping your back angle until the bar passes your knees.',
+              'Drive your hips forward hard, shrug, and pull yourself under the bar, whipping your elbows forward to catch it on the front of your shoulders.',
+              'Stand up tall with the bar resting on your shoulders, then lower it to your hips and back to the floor under control.'],
+          k: ['Pulling with the arms too early — the power comes from the hips and legs.',
+              'The bar swinging away from your body instead of staying close.',
+              'Elbows low in the catch, so the bar lands on your wrists.'] },
+    de: { s: ['Stell dich so hin, dass die Stange über der Fußmitte ist, greif knapp außerhalb der Knie, die Hüfte über den Knien, die Brust oben und der Rücken gerade.',
+              'Drück den Boden weg und heb die Stange dicht an den Schienbeinen an, ohne den Rückenwinkel zu ändern, bis die Stange an den Knien vorbei ist.',
+              'Streck die Hüfte explosiv nach vorn, zieh die Schultern hoch und zieh dich unter die Stange; bring die Ellbogen schnell nach vorn und fang sie vorn auf den Schultern.',
+              'Richte dich mit der Stange auf den Schultern ganz auf, dann senk sie kontrolliert zur Hüfte und zurück zum Boden.'],
+          k: ['Zu früh mit den Armen ziehen – die Kraft kommt aus Hüfte und Beinen.',
+              'Die Stange schwingt vom Körper weg, statt nah dranzubleiben.',
+              'Tiefe Ellbogen beim Fangen, sodass die Stange auf den Handgelenken landet.'] },
+    es: { s: ['Colócate con la barra sobre la mitad de los pies, agarre justo por fuera de las rodillas, cadera por encima de las rodillas, pecho arriba y espalda recta.',
+              'Empuja el suelo y sube la barra pegada a las espinillas, sin cambiar el ángulo de la espalda hasta que la barra pase las rodillas.',
+              'Extiende la cadera con fuerza, encoge los hombros y métete bajo la barra, llevando los codos adelante rápido para recibirla sobre la parte delantera de los hombros.',
+              'Ponte de pie del todo con la barra sobre los hombros y luego bájala a la cadera y de vuelta al suelo, con control.'],
+          k: ['Tirar con los brazos demasiado pronto: la fuerza sale de la cadera y las piernas.',
+              'La barra que se aleja del cuerpo en lugar de ir pegada.',
+              'Codos bajos al recibir, de modo que la barra cae sobre las muñecas.'] },
+    fr: { s: ['Place-toi avec la barre au-dessus du milieu des pieds, prise juste à l\'extérieur des genoux, hanches au-dessus des genoux, poitrine haute et dos plat.',
+              'Pousse le sol et monte la barre près des tibias, sans changer l\'angle du dos jusqu\'à ce que la barre dépasse les genoux.',
+              'Projette les hanches vers l\'avant avec force, hausse les épaules et passe sous la barre, en lançant les coudes vers l\'avant pour la recevoir sur l\'avant des épaules.',
+              'Redresse-toi complètement, la barre posée sur les épaules, puis redescends-la aux hanches et au sol, de façon contrôlée.'],
+          k: ['Tirer avec les bras trop tôt — la puissance vient des hanches et des jambes.',
+              'La barre qui s\'éloigne du corps au lieu de rester près.',
+              'Coudes bas à la réception, si bien que la barre tombe sur les poignets.'] },
+    it: { s: ['Mettiti con il bilanciere sopra il centro dei piedi, presa appena fuori dalle ginocchia, anche sopra le ginocchia, petto alto e schiena piatta.',
+              'Spingi via il pavimento e solleva il bilanciere vicino agli stinchi, senza cambiare l\'angolo della schiena finché non supera le ginocchia.',
+              'Estendi le anche con forza, alza le spalle e infilati sotto il bilanciere, portando i gomiti avanti di scatto per riceverlo sulla parte anteriore delle spalle.',
+              'Alzati del tutto con il bilanciere sulle spalle, poi abbassalo alle anche e di nuovo a terra, con controllo.'],
+          k: ['Tirare con le braccia troppo presto: la forza viene da anche e gambe.',
+              'Il bilanciere che si allontana dal corpo invece di restare vicino.',
+              'Gomiti bassi nella ricezione, così il bilanciere finisce sui polsi.'] },
+    pt: { s: ['Fique com a barra sobre o meio dos pés, pegada logo por fora dos joelhos, quadril acima dos joelhos, peito alto e costas retas.',
+              'Empurre o chão e suba a barra junto às canelas, sem mudar o ângulo das costas até a barra passar dos joelhos.',
+              'Estenda o quadril com força, encolha os ombros e entre por baixo da barra, levando os cotovelos à frente rápido para recebê-la na frente dos ombros.',
+              'Fique totalmente de pé com a barra nos ombros e depois desça-a até o quadril e de volta ao chão, com controle.'],
+          k: ['Puxar com os braços cedo demais — a força vem do quadril e das pernas.',
+              'A barra se afastando do corpo em vez de ficar junto.',
+              'Cotovelos baixos na recepção, de modo que a barra cai sobre os punhos.'] },
+    ja: { s: ['バーが足の中央の真上に来るように立ち、膝のすぐ外側を握ります。お尻は膝より高く、胸を張り、背中をまっすぐにします。',
+              '床を押すようにして、すねに沿わせてバーを持ち上げます。バーが膝を越えるまで背中の角度を変えません。',
+              '股関節を力強く前へ伸ばし、肩をすくめてバーの下にもぐり込みます。肘をすばやく前へ回し、肩の前でバーを受け止めます。',
+              'バーを肩に乗せたまま完全に立ち上がり、コントロールしながら腰へ、そして床へ下ろします。'],
+          k: ['早くから腕で引いてしまう。力は股関節と脚から生まれます。',
+              'バーが体から離れて弧を描いてしまう。',
+              '受け止めるときに肘が低く、バーが手首に乗ってしまう。'] },
+    'zh-Hans': { s: ['站立时杠铃位于脚掌中部正上方，握距略宽于膝盖，臀部高于膝盖，挺胸，背部平直。',
+              '把地面推开，杠铃贴着小腿上拉，在杠铃越过膝盖之前保持背部角度不变。',
+              '用力向前伸髋，耸肩，把身体拉到杠铃下方，快速把手肘翻向前，用肩膀前侧接住杠铃。',
+              '杠铃架在肩上完全站直，然后有控制地放回髋部，再放回地面。'],
+          k: ['过早用手臂拉——力量来自髋部和腿。',
+              '杠铃离开身体向外甩，而不是贴近身体。',
+              '接杠时手肘太低，杠铃压在手腕上。'] },
+    'zh-Hant': { s: ['站立時槓鈴位於腳掌中段正上方，握距略寬於膝蓋，臀部高於膝蓋，挺胸，背部打平。',
+              '把地面推開，槓鈴貼著小腿往上拉，在槓鈴越過膝蓋之前保持背部角度不變。',
+              '用力向前伸髖，聳肩，把身體拉到槓鈴下方，快速把手肘翻向前，用肩膀前側接住槓鈴。',
+              '槓鈴架在肩上完全站直，然後有控制地放回髖部，再放回地面。'],
+          k: ['太早用手臂拉——力量來自髖部和腿。',
+              '槓鈴離開身體往外甩，而不是貼近身體。',
+              '接槓時手肘太低，槓鈴壓在手腕上。'] },
+    ar: { s: ['قف والبار فوق منتصف قدميك، وأمسكه خارج ركبتيك مباشرة، والورك أعلى من الركبتين، والصدر مرفوع والظهر مستوٍ.',
+              'ادفع الأرض بعيدًا وارفع البار ملاصقًا لساقيك، دون أن تغيّر زاوية ظهرك حتى يتجاوز البار ركبتيك.',
+              'ادفع وركك إلى الأمام بقوة، وارفع كتفيك وانزل تحت البار، مع تدوير مرفقيك إلى الأمام بسرعة لتستقبله على مقدمة كتفيك.',
+              'قف مستقيمًا تمامًا والبار على كتفيك، ثم أنزله إلى الورك وعُد به إلى الأرض بتحكم.'],
+          k: ['السحب بالذراعين مبكرًا، فالقوة تأتي من الورك والساقين.',
+              'ابتعاد البار عن جسمك بدلًا من بقائه قريبًا منه.',
+              'مرفقان منخفضان عند الاستقبال، فيقع البار على الرسغين.'] },
+  },
+  x228: {
+    he: { s: ['אחוז את המוט רחב, ידיים הרבה מחוץ לכתפיים, אגן נמוך, חזה למעלה וגב ישר, והמוט מעל אמצע כף הרגל.',
+              'דחוף את הרצפה והרם את המוט צמוד לרגליים, בלי לשנות את זווית הגב עד שהוא עובר את הברכיים.',
+              'פתח את האגן בפיצוץ, משוך כתפיים למעלה והיכנס מתחת למוט, ודחוף אותו מעל הראש כדי לתפוס בידיים ישרות ונעולות.',
+              'התיישר לגמרי כשהמוט יציב מעל הראש, ואז הורד אותו לאגן ובחזרה לרצפה בשליטה.'],
+          k: ['תפיסה במרפקים כפופים — המוט צריך לנחות על ידיים נעולות.',
+              'מוט שבורח קדימה מהגוף ומוציא אותך משיווי משקל.',
+              'כיפוף ידיים מוקדם במקום לתת לאגן לזרוק את המוט.'] },
+    en: { s: ['Take a wide grip, hands far outside your shoulders, hips low, chest up and back flat, with the bar over the middle of your feet.',
+              'Push the floor away and lift the bar close to your legs, keeping your back angle until it passes your knees.',
+              'Explode through your hips, shrug, and pull yourself under the bar, punching it overhead to catch it on straight, locked arms.',
+              'Stand up fully with the bar steady overhead, then lower it to your hips and back to the floor under control.'],
+          k: ['Catching with bent elbows — the bar has to land on locked arms.',
+              'The bar drifting forward, away from your body, which pulls you off balance.',
+              'Bending the arms early instead of letting the hips throw the bar.'] },
+    de: { s: ['Greif die Stange weit, die Hände deutlich außerhalb der Schultern, die Hüfte tief, die Brust oben und der Rücken gerade, die Stange über der Fußmitte.',
+              'Drück den Boden weg und heb die Stange dicht an den Beinen an, ohne den Rückenwinkel zu ändern, bis sie an den Knien vorbei ist.',
+              'Streck die Hüfte explosiv, zieh die Schultern hoch und zieh dich unter die Stange; stoß sie über den Kopf und fang sie mit gestreckten, durchgedrückten Armen.',
+              'Richte dich ganz auf, die Stange ruhig über dem Kopf, dann senk sie kontrolliert zur Hüfte und zurück zum Boden.'],
+          k: ['Mit gebeugten Ellbogen fangen – die Stange muss auf durchgedrückten Armen landen.',
+              'Die Stange wandert nach vorn vom Körper weg und bringt dich aus dem Gleichgewicht.',
+              'Die Arme zu früh beugen, statt die Hüfte die Stange werfen zu lassen.'] },
+    es: { s: ['Agarra la barra con un agarre ancho, manos muy por fuera de los hombros, cadera baja, pecho arriba y espalda recta, con la barra sobre la mitad de los pies.',
+              'Empuja el suelo y sube la barra pegada a las piernas, sin cambiar el ángulo de la espalda hasta que pase las rodillas.',
+              'Extiende la cadera de forma explosiva, encoge los hombros y métete bajo la barra, empujándola por encima de la cabeza para recibirla con los brazos rectos y bloqueados.',
+              'Ponte de pie del todo con la barra estable sobre la cabeza y luego bájala a la cadera y de vuelta al suelo, con control.'],
+          k: ['Recibir con los codos doblados: la barra tiene que caer sobre brazos bloqueados.',
+              'La barra que se va hacia delante, lejos del cuerpo, y te desequilibra.',
+              'Doblar los brazos pronto en lugar de dejar que la cadera lance la barra.'] },
+    fr: { s: ['Prends la barre en prise large, mains bien à l\'extérieur des épaules, hanches basses, poitrine haute et dos plat, la barre au-dessus du milieu des pieds.',
+              'Pousse le sol et monte la barre près des jambes, sans changer l\'angle du dos jusqu\'à ce qu\'elle dépasse les genoux.',
+              'Explose par les hanches, hausse les épaules et passe sous la barre, en la poussant au-dessus de la tête pour la recevoir bras tendus et verrouillés.',
+              'Redresse-toi complètement, la barre stable au-dessus de la tête, puis redescends-la aux hanches et au sol, de façon contrôlée.'],
+          k: ['Recevoir les coudes fléchis — la barre doit arriver sur des bras verrouillés.',
+              'La barre qui part vers l\'avant, loin du corps, et te déséquilibre.',
+              'Plier les bras trop tôt au lieu de laisser les hanches lancer la barre.'] },
+    it: { s: ['Prendi il bilanciere con presa larga, mani ben fuori dalle spalle, anche basse, petto alto e schiena piatta, con il bilanciere sopra il centro dei piedi.',
+              'Spingi via il pavimento e solleva il bilanciere vicino alle gambe, senza cambiare l\'angolo della schiena finché non supera le ginocchia.',
+              'Estendi le anche in modo esplosivo, alza le spalle e infilati sotto il bilanciere, spingendolo sopra la testa per riceverlo a braccia tese e bloccate.',
+              'Alzati del tutto con il bilanciere stabile sopra la testa, poi abbassalo alle anche e di nuovo a terra, con controllo.'],
+          k: ['Ricevere con i gomiti piegati: il bilanciere deve arrivare su braccia bloccate.',
+              'Il bilanciere che scappa in avanti, lontano dal corpo, e ti sbilancia.',
+              'Piegare le braccia troppo presto invece di lasciare che siano le anche a lanciare il bilanciere.'] },
+    pt: { s: ['Segure a barra com pegada larga, mãos bem por fora dos ombros, quadril baixo, peito alto e costas retas, com a barra sobre o meio dos pés.',
+              'Empurre o chão e suba a barra junto às pernas, sem mudar o ângulo das costas até ela passar dos joelhos.',
+              'Estenda o quadril de forma explosiva, encolha os ombros e entre por baixo da barra, empurrando-a acima da cabeça para recebê-la com os braços retos e travados.',
+              'Fique totalmente de pé com a barra estável acima da cabeça e depois desça-a até o quadril e de volta ao chão, com controle.'],
+          k: ['Receber com os cotovelos dobrados — a barra precisa chegar em braços travados.',
+              'A barra indo para a frente, longe do corpo, e tirando seu equilíbrio.',
+              'Dobrar os braços cedo em vez de deixar o quadril lançar a barra.'] },
+    ja: { s: ['肩幅よりかなり広くバーを握ります。お尻を低くし、胸を張り、背中をまっすぐにして、バーは足の中央の真上に置きます。',
+              '床を押すようにして、脚に沿わせてバーを持ち上げます。バーが膝を越えるまで背中の角度を変えません。',
+              '股関節を爆発的に伸ばし、肩をすくめてバーの下にもぐり込みます。バーを頭上へ突き上げ、肘をまっすぐロックした腕で受け止めます。',
+              'バーを頭上で安定させたまま完全に立ち上がり、コントロールしながら腰へ、そして床へ下ろします。'],
+          k: ['肘が曲がったまま受け止めてしまう。バーはロックした腕で受けます。',
+              'バーが体から前へ離れていき、バランスを崩してしまう。',
+              '股関節にバーを飛ばさせず、早くから腕を曲げてしまう。'] },
+    'zh-Hans': { s: ['宽握杠铃，双手远在肩膀外侧，臀部放低，挺胸，背部平直，杠铃位于脚掌中部正上方。',
+              '把地面推开，杠铃贴着双腿上拉，在杠铃越过膝盖之前保持背部角度不变。',
+              '爆发式伸髋，耸肩，把身体拉到杠铃下方，把杠铃推过头顶，用伸直锁定的手臂接住。',
+              '杠铃稳定在头顶时完全站直，然后有控制地放回髋部，再放回地面。'],
+          k: ['手肘弯曲着接杠——杠铃必须落在锁定的手臂上。',
+              '杠铃向前飘离身体，让你失去平衡。',
+              '过早弯曲手臂，而不是让髋部把杠铃送上去。'] },
+    'zh-Hant': { s: ['寬握槓鈴，雙手遠在肩膀外側，臀部放低，挺胸，背部打平，槓鈴位於腳掌中段正上方。',
+              '把地面推開，槓鈴貼著雙腿往上拉，在槓鈴越過膝蓋之前保持背部角度不變。',
+              '爆發式伸髖，聳肩，把身體拉到槓鈴下方，把槓鈴推過頭頂，用伸直鎖定的手臂接住。',
+              '槓鈴穩定在頭頂時完全站直，然後有控制地放回髖部，再放回地面。'],
+          k: ['手肘彎曲著接槓——槓鈴必須落在鎖定的手臂上。',
+              '槓鈴往前飄離身體，讓你失去平衡。',
+              '太早彎曲手臂，而不是讓髖部把槓鈴送上去。'] },
+    ar: { s: ['أمسك البار بقبضة واسعة، واليدان بعيدتان خارج الكتفين، والورك منخفض، والصدر مرفوع والظهر مستوٍ، والبار فوق منتصف قدميك.',
+              'ادفع الأرض بعيدًا وارفع البار ملاصقًا لساقيك، دون أن تغيّر زاوية ظهرك حتى يتجاوز ركبتيك.',
+              'افرد وركك بانفجار، وارفع كتفيك وانزل تحت البار، وادفعه فوق رأسك لتستقبله بذراعين مستقيمتين مقفلتين.',
+              'قف مستقيمًا تمامًا والبار ثابت فوق رأسك، ثم أنزله إلى الورك وعُد به إلى الأرض بتحكم.'],
+          k: ['الاستقبال بمرفقين مثنيين، فالبار يجب أن يستقر على ذراعين مقفلتين.',
+              'اندفاع البار إلى الأمام بعيدًا عن جسمك، فيُفقدك توازنك.',
+              'ثني الذراعين مبكرًا بدلًا من ترك الورك يقذف البار.'] },
+  },
+};
+const LANGS = ['en', 'de', 'es', 'fr', 'it', 'pt', 'ja', 'zh-Hans', 'zh-Hant', 'ar'];
+const raw = fs.readFileSync(F, 'utf8'), J = JSON.parse(raw);
+const HEB = /[֐-׿]/;
+for (const [id, w] of Object.entries(W)) {
+  const i = J.exercises.findIndex((e) => e.id === id), e = J.exercises[i];
+  if (!e) throw new Error('no ' + id);
+  if (undo) { delete e.s; delete e.k; delete e.sl; continue; }
+  if (e.s || e.k || e.sl) throw new Error(id + ' already has steps');
+  // every language says as much as the English: the same number of steps and mistakes, nothing empty, no Hebrew outside Hebrew
+  for (const l of ['he', ...LANGS]) {
+    const x = w[l];
+    if (!x || x.s.length !== w.en.s.length || x.k.length !== w.en.k.length) throw new Error(id + ' ' + l + ': count differs from English');
+    for (const t of [...x.s, ...x.k]) if (!t.trim() || (l !== 'he' && HEB.test(t)) || (l === 'he' && !HEB.test(t))) throw new Error(id + ' ' + l + ': bad item ' + t);
+  }
+  // the same key order as every neighbour: ... aka, s, k, sl, f ...
+  const out = {};
+  for (const [k, v] of Object.entries(e)) {
+    if (k === 'f') { out.s = w.he.s; out.k = w.he.k; out.sl = Object.fromEntries(LANGS.map((l) => [l, w[l]])); }
+    out[k] = v;
+  }
+  if (!out.s) throw new Error(id + ': no f key to place the steps before');
+  J.exercises[i] = out;
+}
+fs.writeFileSync(F, JSON.stringify(J) + (raw.endsWith('\n') ? '\n' : ''));
+console.log(undo ? 'undone' : 'applied');
