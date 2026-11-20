@@ -24590,7 +24590,8 @@ function renderFitBuild(){
      or when it lands. Never hold on to an empty list. */
   if(!g.def.length){
     if(exAll().length)g.def=fitDeficit();
-    else exLoad(function(){if(_gen&&!_gen.def.length&&exAll().length){_gen.def=fitDeficit();if(_fitView==='build')renderFitness();}});
+    /* a failed fetch also calls back, with nothing: say so once, and wait for her to ask again */
+    else if(!g.libFail)exLoad(function(){if(!_gen||_gen.def.length)return;if(exAll().length)_gen.def=fitDeficit();else _gen.libFail=1;if(_fitView==='build')renderFitness();});
   }
   if(g.step>=ns)g.step=ns-1;
   if(!g.mode){
@@ -24627,7 +24628,9 @@ function renderFitBuild(){
   if(g.step===1){
   /* ── what to focus on: three quick answers, then the muscles ── */
   h+='<div class="gn-c"><div class="gn-q">'+_t('במה תרצה להתרכז?')+'</div><div class="gn-w" style="margin-bottom:14px">';
-  if(!g.def.length)h+='<div class="gn-s">'+_t('טוען את המאגר…')+'</div>';
+  if(!g.def.length)h+=g.libFail?'<div class="gn-s">'+_t('לא הצלחתי לטעון את המאגר. בדוק חיבור ונסה שוב.')+'</div>'+
+      '<div class="gn-w"><button class="gn-e" onclick="_gen.libFail=0;renderFitness()">'+_t('נסה שוב')+'</button></div>'
+    :'<div class="gn-s">'+_t('טוען את המאגר…')+'</div>';
   else ['all','up','low'].forEach(function(k){
     h+='<button class="gn-e'+(genGroupOn(k)?' on':'')+'" onclick="genGroup(\''+k+'\')">'+
        (k==='all'?_t('כל הגוף'):k==='up'?_t('פלג גוף עליון'):_t('פלג גוף תחתון'))+'</button>';});
@@ -32513,6 +32516,7 @@ function xgShow(el,i){
   if(!g){
     sp.classList.add('off');v.loop=true;
     if(!still){var p=v.play();if(p&&p.catch)p.catch(function(){});}
+    else v.controls=true;
     return;
   }
   g=g.split(',').map(Number);
@@ -32521,7 +32525,8 @@ function xgShow(el,i){
   v.loop=false;
   if(!still&&g[0]>v.currentTime+.3){
     v._xgStop=g[0];
-    var q=v.play();if(q&&q.catch)q.catch(function(){});
+    /* refused (Low Power Mode will not let a page play by itself): go straight to the moment */
+    var q=v.play();if(q&&q.catch)q.catch(function(){if(v._xgStop===g[0]){v._xgStop=null;v.currentTime=g[0];}});
     (function tick(){
       if(v._xgStop!==g[0])return;
       /* a frame late is a frame past the pose the ring was placed on, so
