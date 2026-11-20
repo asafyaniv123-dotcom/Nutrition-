@@ -15954,8 +15954,9 @@ function coachApply(j,onDate){
         kcal:q.calories,p:q.protein,c:q.carbs,f:q.fat,note:q.assumption||'',g:q.approx_g>0?q.approx_g:undefined,
         gw:q.whole_g>0?q.whole_g:undefined,
         na:q.sodium_level||'',rest:q.restaurant?1:0,label:q.label||undefined,
-        kind:coachMealOk(q.meal),time:fmtTime(),at:Date.now()});
+        kind:coachMealOk(q.meal)||_coachKind,time:fmtTime(),at:Date.now()});
       added.push(q.id);}
+    _coachKind='';
   } else if(j.action==='update'){
     for(i=0;i<day.meals.length;i++){
       /* as strings: a meal added by hand has a numeric id and the coach
@@ -20642,9 +20643,21 @@ var _openKind='';
 function kindOpen(k){
   var day=loadDay(curDate),any=false;
   for(var i=0;i<day.meals.length;i++)if(mealKind(day.meals[i])===k){any=true;break;}
-  if(!any){_addKind=k;addSetMode('find');return;}
+  if(!any){kindToChat(k);return;}
   _openKind=(_openKind===k?'':k);
   renderToday();
+}
+/* An empty meal opens the chat for it: the box says which meal, the cursor
+   waits after the name, and the next thing the chat logs is filed there. */
+var _coachKind='';
+function kindToChat(k){
+  var b=document.getElementById('co-in');if(!b)return;
+  _coachKind=k;
+  var l=mealKindLabel(k)+' ',v=b.value;
+  for(var i=0;i<MEAL_KINDS.length;i++){var o=mealKindLabel(MEAL_KINDS[i].k)+' ';if(v.indexOf(o)===0){v=v.slice(o.length);break;}}
+  b.value=l+v;coachGrow(b);
+  b.scrollIntoView({block:'center',behavior:'smooth'});
+  b.focus();try{b.setSelectionRange(b.value.length,b.value.length);}catch(e){}
 }
 /* One meal, drawn the same way wherever it is asked for. */
 function logItemHTML(m){
