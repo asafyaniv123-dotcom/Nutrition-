@@ -361,3 +361,9 @@ Hebrew `ק"ג` went past — and the app spells that two ways.
   No caching, deliberately.
 - `push-server/` - Cloudflare Worker holding push subscriptions and firing the
   daily reminder. Deployed separately with wrangler.
+- `data/exercises.json` - the exercise library every tool reads and writes.
+  **The app does not fetch it**: it reads `data/exercises-core.json` and the
+  reader's own `data/exsteps/<lang>.json`, both made from it by
+  `node tools/split-exercises.mjs` (2 MB on LTE was the generator's empty
+  muscle list, 20 Nov). After editing the library, run that; `--check` says
+  whether the split is stale, and `release.sh` refuses to run while it is.

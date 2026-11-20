@@ -25,6 +25,12 @@ set -euo pipefail
 trap 'echo; echo "release.sh FAILED at line $LINENO - nothing was published" >&2' ERR
 cd "$(dirname "$0")"
 
+# The app reads the exercise library SPLIT - data/exercises-core.json and one
+# data/exsteps/<lang>.json - while every tool edits data/exercises.json. A
+# library edited and never split would ship the old steps without a word, so a
+# stale split stops the release here, dry run included.
+node tools/split-exercises.mjs --check
+
 changed=0
 for f in index.html sw.js; do
   if ! cmp -s "dev/$f" "$f"; then
