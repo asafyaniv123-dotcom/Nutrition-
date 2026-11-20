@@ -42400,17 +42400,20 @@ function renderEditPerson(){
   var relOpts=optOnce(RELATIONSHIP_TYPES);
   for(var ri=0;ri<relOpts.length;ri++){
     var rt=relOpts[ri].v;var isSel=relOpts[ri].same.indexOf(p.relationship)>=0;
-    h+='<button class="pp-chip'+(isSel?' on':'')+'" onclick="document.getElementById(\'ep-rel\').value=\''+rt+'\'">'+labelOf(rt)+'</button>';
+    h+='<button type="button" class="pp-chip'+(isSel?' on':'')+'" onclick="epChip(this,\'ep-rel\',\''+rt+'\')">'+labelOf(rt)+'</button>';
   }
-  h+='</div><input id="ep-rel" class="mtin" value="'+esc(p.relationship||'')+'" placeholder="'+_t("או כתוב בעצמך...")+'"></div>';
+  /* the box shows the label in her language; the key behind it is what is saved */
+  var relL=p.relationship?labelOf(p.relationship):'';
+  h+='</div><input id="ep-rel" class="mtin" value="'+esc(relL)+'" data-k="'+esc(p.relationship||'')+'" data-l="'+esc(relL)+'" placeholder="'+_t("או כתוב בעצמך...")+'"></div>';
   // where you know them from - its own field, so the list can group on it
   h+='<div class="pp-f"><span class="pp-fl">'+_t('מאיפה אתם מכירים')+'</span>';
   h+='<div class="pp-chips">';
   for(var qi=0;qi<PEOPLE_PLACES.length;qi++){
     var qp=PEOPLE_PLACES[qi],qsel=p.place===qp;
-    h+='<button type="button" class="pp-chip'+(qsel?' on':'')+'" onclick="document.getElementById(&quot;ep-place&quot;).value=&quot;'+qp+'&quot;">'+_t(qp)+'</button>';
+    h+='<button type="button" class="pp-chip'+(qsel?' on':'')+'" onclick="epChip(this,\'ep-place\',\''+qp+'\')">'+_t(qp)+'</button>';
   }
-  h+='</div><input id="ep-place" class="mtin" value="'+esc(p.place||'')+'" placeholder="'+_t("או כתוב בעצמך...")+'"></div>';
+  var plL=p.place?_t(p.place):'';
+  h+='</div><input id="ep-place" class="mtin" value="'+esc(plL)+'" data-k="'+esc(p.place||'')+'" data-l="'+esc(plL)+'" placeholder="'+_t("או כתוב בעצמך...")+'"></div>';
   h+=pfield(''+_t('מה הוא/היא בשבילי')+'','ep-mean',p.whatTheyMean,'',true);
   h+=pfield(''+_t('מה אני אוהב בו/בה')+'','ep-love',p.whatILove,'',true);
   h+=pfield(''+_t('מה קורה עכשיו')+'','ep-update',p.currentUpdate,'',true);
@@ -42486,6 +42489,20 @@ function addDateToPerson(){
   savePeople(people);showToast(''+_t('תאריך נוסף')+' ✓');title.value='';val.value='';epDateShow();
 }
 
+/* A chip on the edit form: the box gets the label she reads, and remembers
+   the key it stands for; the highlight moves to the chip tapped. */
+function epChip(b,id,k){
+  var el=document.getElementById(id);if(!el)return;
+  el.value=b.textContent;el.setAttribute('data-k',k);el.setAttribute('data-l',b.textContent);
+  [].forEach.call(b.parentNode.querySelectorAll('.pp-chip'),function(x){x.classList.toggle('on',x===b);});
+}
+/* what to save: the key while the box still shows that key's label; whatever
+   she typed once she has typed over it */
+function epKeyed(id){
+  var el=document.getElementById(id);if(!el)return '';
+  var v=el.value.trim();
+  return v&&v===el.getAttribute('data-l')?(el.getAttribute('data-k')||v):v;
+}
 function savePersonEdit(){
   var name=document.getElementById('ep-name');
   if(!name||!name.value.trim()){showToast(''+_t('נא הזן שם')+'');return;}
@@ -42493,8 +42510,8 @@ function savePersonEdit(){
   var existing=_personIdx>=0?people[_personIdx]:{memories:[],importantDates:[]};
   var updated=Object.assign({},existing,{
     name:name.value.trim(),
-    relationship:(document.getElementById('ep-rel')||{}).value||'',
-    place:(document.getElementById('ep-place')||{}).value||'',
+    relationship:epKeyed('ep-rel'),
+    place:epKeyed('ep-place'),
     whatTheyMean:(document.getElementById('ep-mean')||{}).value||'',
     whatILove:(document.getElementById('ep-love')||{}).value||'',
     currentUpdate:(document.getElementById('ep-update')||{}).value||'',
