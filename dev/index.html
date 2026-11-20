@@ -22375,6 +22375,9 @@ function enterModule(mod){
   _mainTab='better';
   var _me=document.getElementById('me-screen');if(_me)_me.style.display='none';
   currentModule=mod;
+  /* the exercise library is 2 MB: start it on the way in, so the first tap on
+     anything that reads it does not arrive before it */
+  if(mod==='fitness')exLoad();
   /* the frosted-glass nutrition screen hangs off this, and only off this */
   document.body.classList.toggle('mod-nutrition',mod==='nutrition');
   /* and כושר hangs off this one, and only off this one */
@@ -24583,6 +24586,12 @@ function renderFitBuild(){
   if(!_gen)genOpen();
   if(!_gen)return;
   var g=_gen,h='<div style="padding-bottom:24px">',ns=genSteps();
+  /* the muscles come from the library; opened before it landed, read them now -
+     or when it lands. Never hold on to an empty list. */
+  if(!g.def.length){
+    if(exAll().length)g.def=fitDeficit();
+    else exLoad(function(){if(_gen&&!_gen.def.length&&exAll().length){_gen.def=fitDeficit();if(_fitView==='build')renderFitness();}});
+  }
   if(g.step>=ns)g.step=ns-1;
   if(!g.mode){
     h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
@@ -24618,7 +24627,8 @@ function renderFitBuild(){
   if(g.step===1){
   /* ── what to focus on: three quick answers, then the muscles ── */
   h+='<div class="gn-c"><div class="gn-q">'+_t('במה תרצה להתרכז?')+'</div><div class="gn-w" style="margin-bottom:14px">';
-  ['all','up','low'].forEach(function(k){
+  if(!g.def.length)h+='<div class="gn-s">'+_t('טוען את המאגר…')+'</div>';
+  else ['all','up','low'].forEach(function(k){
     h+='<button class="gn-e'+(genGroupOn(k)?' on':'')+'" onclick="genGroup(\''+k+'\')">'+
        (k==='all'?_t('כל הגוף'):k==='up'?_t('פלג גוף עליון'):_t('פלג גוף תחתון'))+'</button>';});
   h+='</div>';
