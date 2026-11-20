@@ -177,6 +177,13 @@ const ALLOW = new Set([
   'שאל על אוכל — מה יש בזה?','אוכל',                            /* אוכל = food */
   'הערכה של גודל המנה. תקן אם צריך, וזה ייזכר.',                /* צריך impersonal */
   'תרגיל שלא מרגיש נכון אחרי שתי ניסיונות — החלף אותו היום ותברר אחר כך.',
+  /* the same sentence after its grammar was fixed (שני ניסיונות, ותבדוק) - the
+     allowance above rotted with the old wording. מרגיש is the EXERCISE feeling
+     wrong; the overlay turns החלף and ותבדוק, the two verbs that are hers. */
+  'תרגיל שלא מרגיש נכון אחרי שני ניסיונות — החלף אותו היום, ותבדוק את זה אחר כך.',
+  'קורא מה אכלת…',                                              /* the app reading */
+  'מחפש במאגר המזונות…',                                        /* the app searching */
+  'מיפ חושב…',                                                  /* Mip is he, whoever is reading */
   'כתוב לפחות מספר אחד.',                                       /* מספר = a number */
   'לאן הולך הזמן',
   /* מלא here is the ADJECTIVE - full width - not the imperative "fill".

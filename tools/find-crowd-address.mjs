@@ -61,6 +61,11 @@ const RE = new RegExp('(?:^|[\\s"\'>,.:;(\\[-])(' + WORDS.join('|') + ')(?:$|[\\
 
    Spelled out here rather than kept in a head, and kept short on purpose. */
 const RECIPE_REGISTER = ['למשל:\nחממו שמן במחבת...\nהוסיפו בצל...'];
+/* THE SAME LETTERS IN THE PAST TENSE. קבעו is "set!" to a crowd and also "they
+   set" - here the doctor or the dietitian did, which is third person and past,
+   and nobody is being addressed. A word list cannot tell the two apart; this
+   names the one key where it is the past, and the word it excuses. */
+const THIRD_PAST = { 'אשלגן וזרחן: לפי מה שהרופא או הדיאטנית קבעו': 'קבעו' };
 
 const unescape = (s) =>
   s.replace(/\\n/g, LF).replace(/\\t/g, '\t').replace(/\\(['"\\])/g, '$1');
@@ -89,6 +94,7 @@ for (const m of app.matchAll(/_t\((['"])((?:(?!\1).)*)\1/g)) {
   seen.add(key);
   if (RECIPE_REGISTER.indexOf(key) >= 0) continue;
   const w = key.match(RE);
+  if (w && THIRD_PAST[key] === w[1]) continue;
   if (w) hits.push({ line: app.slice(0, m.index).split(LF).length, w: w[1], key });
 }
 

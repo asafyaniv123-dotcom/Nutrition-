@@ -85,6 +85,9 @@ for (const m of app.matchAll(/>([A-Za-z][A-Za-z0-9 ,.!?&:%()\/-]{2,60})</g)) {
   const txt = m[1].trim();
   /* three letters together, or it is a code, an id or a number with a suffix */
   if (!/[A-Za-z]{3,}/.test(txt)) continue;
+  /* a comparison chain is code, not a label: "a.right>b.left-3&&a.top<b.bottom"
+     reads as text between a > and a < - no label on a screen holds && or || */
+  if (/&&|\|\|/.test(txt)) continue;
   if (KEPT.indexOf(txt) >= 0) continue;
   if (markedLine.has(lineOf(m.index))) continue;
   BETWEEN.push({ line: lineOf(m.index), txt });
