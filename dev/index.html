@@ -24470,11 +24470,14 @@ function genMinSet(v){
 function genStep(d){
   if(!_gen)return;
   var last=genSteps()-1;
+  if(d<0&&_gen.step===0&&_gen.mode){_gen.mode='';renderFitness();return;}
   if(d<0&&_gen.step===0){_gen=null;_fitView='home';renderFitness();return;}
   _gen.step=Math.max(0,Math.min(last,_gen.step+d));
   renderFitness();
 }
 /* the emphasis is asked only when there is more than one muscle to lean on */
+/* THE FIRST QUESTION: logged, or on the clock. 'log' | 'gt' */
+function genMode(m){if(!_gen)return;_gen.mode=m;_gen.step=0;renderFitness();}
 function genSteps(){
   var n=0,k;for(k in _gen.on)if(_gen.on.hasOwnProperty(k))n++;
   return 3;
@@ -24492,7 +24495,7 @@ function genOpen(){
   /* NOTHING PRESELECTED (24 Oct): the question is what you want to focus on
      now, not what a tally thinks is behind */
   var mn=30;try{mn=+localStorage.getItem('gen_min')||30;}catch(e){}
-  _gen={def:d,on:on,equip:genEquip(),emphasis:'',min:mn,step:0};
+  _gen={def:d,on:on,equip:genEquip(),emphasis:'',min:mn,step:0,mode:''};
   _fitView='build';renderFitness();
 }
 function genToggle(m){
@@ -24566,11 +24569,22 @@ function renderFitBuild(){
   if(!_gen)return;
   var g=_gen,h='<div style="padding-bottom:24px">',ns=genSteps();
   if(g.step>=ns)g.step=ns-1;
+  if(!g.mode){
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+    h+='<div class="gn-st">'+_t('שאלה {a} מתוך {b}',{a:1,b:ns+1})+'</div>';
+    h+='<button class="fit-back" onclick="genStep(-1)">&#8249; '+_t('חזרה')+'</button></div>';
+    h+='<div class="gn-c"><div class="gn-q">'+_t('איך להתאמן הפעם?')+'</div><div class="gn-two">'+
+       '<button class="gn-go" onclick="genMode(\'log\')"><b>'+_t('אימון מתועד')+'</b>'+
+       '<span>'+_t('סטים, משקל וחזרות, כל סט בתורו')+'</span></button>'+
+       '<button class="gn-go" onclick="genMode(\'gt\')"><b>'+_t('אימון על זמן')+'</b>'+
+       '<span>'+_t('עבודה ומנוחה על שעון, עם ההדגמה')+'</span></button></div></div>';
+    return void(document.getElementById('content').innerHTML=h+'</div>');
+  }
   /* A QUESTIONNAIRE (24 Oct): one question a screen, as the door to כושר
      already asks its own - time, place, muscles, and an emphasis when there
      is more than one. The back pill steps back; on the first it leaves. */
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
-  h+='<div class="gn-st">'+_t('שאלה {a} מתוך {b}',{a:g.step+1,b:ns})+'</div>';
+  h+='<div class="gn-st">'+_t('שאלה {a} מתוך {b}',{a:g.step+2,b:ns+1})+'</div>';
   h+='<button class="fit-back" onclick="genStep(-1)">&#8249; '+_t('חזרה')+'</button>';
   h+='</div>';
 
@@ -24617,10 +24631,10 @@ function renderFitBuild(){
      to answer one question is two answers that can disagree. */
   if(g.step===ns-1){
     h+='<div class="gn-g">'+_t('לפי המטרה שלך: {g}',{g:fitGoal().t})+'</div>';
-    h+='<div class="gn-two"><button class="gn-go" onclick="genBuild()"><b>'+_t('אימון מתועד')+'</b>'+
-       '<span>'+_t('סטים, משקל וחזרות, כל סט בתורו')+'</span></button>'+
-       '<button class="gn-go" onclick="genBuild(1)"><b>'+_t('אימון על זמן')+'</b>'+
-       '<span>'+_t('עבודה ומנוחה על שעון, עם ההדגמה')+'</span></button></div>';
+    /* the one button that builds what the first question chose */
+    h+='<div class="gn-two">'+(g.mode==='gt'
+       ?'<button class="gn-go" onclick="genBuild(1)"><b>'+_t('אימון על זמן')+'</b><span>'+_t('עבודה ומנוחה על שעון, עם ההדגמה')+'</span></button>'
+       :'<button class="gn-go" onclick="genBuild()"><b>'+_t('אימון מתועד')+'</b><span>'+_t('סטים, משקל וחזרות, כל סט בתורו')+'</span></button>')+'</div>';
   } else h+='<button class="gn-go" onclick="'+(g.step===1?'if(!Object.keys(_gen.on).length){showToast(_t(\'בחר שריר אחד לפחות\'));return;}':'')+'genStep(1)">'+_t('המשך')+'</button>';
   return void(document.getElementById('content').innerHTML=h+'</div>');
 }
@@ -32143,7 +32157,8 @@ var EX_DEMO={x131:1,x18:1,x57:1,x1:1,x229:1,x192:1,x27:1,x71:1,x41:1,x162:1,
 /* A DUPLICATE SHOWS ITS ORIGINAL (Asaf, 17 Nov). A row the triage found to share its two
    frames with another (chin-up and pull-up, Smith squat and squat) plays that row's loop
    instead of none. Its own loop, if one is ever made, wins. */
-var EX_DEMO_OF={x324:'x321',x23:'x22',x28:'x27',x30:'x27',x31:'x27',x32:'x27',x43:'x41',x45:'x41',x56:'x55',x58:'x57',x59:'x57',x65:'x66',x77:'x71',x117:'x22',x132:'x128',x133:'x128',x134:'x128',x138:'x137',x143:'x229',x146:'x145',x151:'x149',x157:'x156',x161:'x240',x163:'x335',x180:'x176',x185:'x247',x186:'x187',x191:'x188',x231:'x229',x232:'x94',x233:'x60',x235:'x174',x255:'x202',x257:'x49',x258:'x41',x303:'x15',x305:'x92',x306:'x44',x307:'x158',x308:'x162',x309:'x69',x310:'x315',x311:'x66',x312:'x67',x313:'x69',x314:'x315',x316:'x66',x317:'x67',x318:'x149',x319:'x69',x320:'x315',x322:'x130',x325:'x188',x327:'x335',x328:'x335',x329:'x335',x330:'x335',x331:'x335',x332:'x335',x333:'x335',x334:'x335',x337:'x335',x338:'x335',x339:'x149',x265:'x88',x214:'x213',x211:'x212'};
+/* 20 Nov (Asaf): a borrowed loop stays only where it shows the name AND the equipment - 51 links that did not are gone, see tools/patches/demo-of-prune.mjs */
+var EX_DEMO_OF={x324:'x321',x28:'x27',x30:'x27',x43:'x41',x58:'x57',x77:'x71',x117:'x22',x134:'x128',x151:'x149',x185:'x247',x186:'x187',x191:'x188',x305:'x92',x309:'x69',x319:'x69',x211:'x212'};
 function exDemoId(e){return EX_DEMO[e.id]||!EX_DEMO_OF[e.id]?e.id:EX_DEMO_OF[e.id];}
 /* Asaf, 19 Nov: an exercise with no live demo is not offered anywhere. The row stays in the library (a demo may come,
    and a logged workout still has to find its name through exAll), it is only never SHOWN: every list, count,
