@@ -31,7 +31,10 @@ workflows:
       - name: Assemble the stable app into the shell
         script: node tools/native-www.mjs && node tools/native-plist.mjs && node tools/native-icon.mjs && cd native && npx cap sync ios
       - name: Signing - create or fetch the certificate and profile
+        # set -e: on 23 Nov Apple refused the request (403, an expired agreement) and the step still
+        # went green, so the failure only surfaced two steps later as "requires a provisioning profile"
         script: |
+          set -e
           keychain initialize
           app-store-connect fetch-signing-files "com.asafyaniv.betterme" --type IOS_APP_STORE --create
           keychain add-certificates
