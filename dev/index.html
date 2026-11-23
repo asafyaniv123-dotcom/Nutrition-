@@ -3995,6 +3995,8 @@ html[dir=ltr] .swipe-trash:not(.on){transform:translate(140%,-50%) scale(.8)}
   background:linear-gradient(105deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.7) 50%,rgba(255,255,255,0) 62%)}
 .rfd-card.live .rfd-sheen{opacity:.9;transition:none}
 
+.rfd-date{text-align:center;font-size:18px;font-weight:800;color:var(--ink);line-height:1.3;margin:2px 0 14px;transform:translateZ(22px)}
+.rfd-card .sm2-date{display:none}
 .rfd-seal{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .rfd-mark{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;
   justify-content:center;color:#fff;font-size:16px;font-weight:700;
@@ -5933,8 +5935,7 @@ html body.mod-endofday .rf-cq{text-align:center;font-weight:700;font-size:14px;m
    flattens it under the tab bar it flies to */
 .rff{position:fixed;inset:0;z-index:9000;pointer-events:auto;perspective:900px;touch-action:none}
 .rff-page,.rff-bk,.rff-mini{position:fixed;left:0;top:0}
-.rff-page{border-radius:14px;background:var(--nu-ground);padding:16px 14px;box-sizing:border-box;overflow:hidden;
-  box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade)}
+.rff-page{box-sizing:border-box;pointer-events:none;position:absolute!important;left:0!important;top:0!important}
 .rff-page i{display:block;height:6px;border-radius:3px;background:var(--nu-shade-soft);margin:0 0 9px}
 .rff-page i:first-child{width:62%;height:8px;margin-bottom:13px}.rff-page i:nth-child(3){width:82%}.rff-page i:nth-child(4){width:58%}
 .rff-bk{transform-style:preserve-3d}
@@ -5956,7 +5957,7 @@ html body.mod-endofday .rf-cq{text-align:center;font-weight:700;font-size:14px;m
 /* ── AND THE END ── the one moment the day is allowed to be an object ── */
 html body.mod-endofday .rfd-card{background:var(--nu-ground);
   box-shadow:-6px -6px 15px var(--nu-lit),8px 10px 22px var(--nu-shade)}
-html body.mod-endofday .rfd-seal-t,html body.mod-endofday .rfd-mark{color:var(--nu-ink)}
+html body.mod-endofday .rfd-seal-t,html body.mod-endofday .rfd-mark,html body.mod-endofday .rfd-date{color:var(--nu-ink)}
 
 /* ── THE DOOR (first run, rebuilt 21 Oct 2026) ──
    One sand room for the whole door - golden hour, always, with a hint of low
@@ -45691,28 +45692,31 @@ function rfFileDay(){
   var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(!card||!me||!me.offsetParent||!card.animate||still){rfFileLand(ds,null);return;}
   _rffBusy=true;
-  var W=Math.min(176,Math.round(innerWidth*.46)),H=Math.round(W*1.26),cx=innerWidth/2,cy=innerHeight*.42;
-  var x0=cx-W/2,y0=cy-H/2,inset=13;
-  var c=card.getBoundingClientRect(),top=Math.max(c.top,8),bot=Math.min(c.bottom,innerHeight-8);
-  if(bot-top<60){top=c.top;bot=c.top+Math.max(60,c.height);}
+  var inset=12,c=card.getBoundingClientRect();
+  var k=Math.min((innerWidth*.62-inset*2)/c.width,(innerHeight*.46-inset*2)/c.height,1);
+  var W=Math.round(c.width*k+inset*2),H=Math.round(c.height*k+inset*2),cx=innerWidth/2,cy=innerHeight*.44;
+  var x0=cx-W/2,y0=cy-H/2;
   var day=new Date(ds+'T12:00:00');
   var ov=document.createElement('div');ov.className='rff';
-  ov.innerHTML='<div class="rff-bk" style="width:'+W+'px;height:'+H+'px;transform:translate('+x0+'px,'+y0+'px);opacity:0">'+
+  ov.innerHTML='<div class="rff-bk" style="width:'+W+'px;height:'+H+'px;transform:translate('+x0+'px,'+y0+'px)">'+
     '<div class="rff-bind"></div><div class="rff-cover"><div class="rff-plate"><small>'+esc(dfmt(day,{weekday:'long'}))+'</small>'+
     '<b>'+esc(dfmt(day,{day:'numeric',month:'long'}))+'</b></div><div class="rff-spine"></div></div></div>'+
-    '<div class="rff-page" style="width:'+c.width+'px;height:'+(bot-top)+'px;transform:translate('+c.left+'px,'+top+'px)"><i></i><i></i><i></i><i></i><i></i></div>';
+    '';
+  /* the page itself, copied as it stands - photo, words and all */
+  var pg=card.cloneNode(true);pg.removeAttribute('id');pg.removeAttribute('tabindex');pg.removeAttribute('onpointerdown');
+  pg.classList.remove('live');pg.classList.add('rff-page');
+  pg.style.cssText='width:'+c.width+'px;margin:0;transition:none;transform-origin:0 0;transform:translate('+(c.left-x0)+'px,'+(c.top-y0)+'px)';
+  var bk0=ov.querySelector('.rff-bk');bk0.insertBefore(pg,bk0.querySelector('.rff-cover'));
   document.body.appendChild(ov);
   card.style.visibility='hidden';
   var body=card.closest('.rf-body');
   if(body&&body.animate)body.animate([{opacity:1},{opacity:0}],{duration:260,fill:'forwards'});
-  var bk=ov.querySelector('.rff-bk'),pg=ov.querySelector('.rff-page'),cv=ov.querySelector('.rff-cover'),sp=ov.querySelector('.rff-spine');
+  var bk=ov.querySelector('.rff-bk'),cv=ov.querySelector('.rff-cover'),sp=ov.querySelector('.rff-spine');
   var go=function(el,kf,ms,ease){return el.animate(kf,{duration:ms,easing:ease||'ease-in-out',fill:'forwards'}).finished;};
   var pause=function(ms){return new Promise(function(r){setTimeout(r,ms);});};
   var at=function(x,y){return 'translate('+x+'px,'+y+'px)';};
-  var pw=W-inset*2,ph=H-inset*2;
-  go(bk,[{opacity:0},{opacity:1}],350);
-  go(pg,[{transform:at(c.left,top),width:c.width+'px',height:(bot-top)+'px'},
-         {transform:at(x0+inset,y0+inset),width:pw+'px',height:ph+'px'}],750)
+  go(ov.querySelector('.rff-bind'),[{opacity:0},{opacity:1}],350);
+  go(pg,[{transform:at(c.left-x0,c.top-y0)+' scale(1)'},{transform:at(inset,inset)+' scale('+k+')'}],800)
   .then(function(){return go(cv,[{opacity:0,transform:'rotateY(-88deg)'},{opacity:1,transform:'rotateY(-80deg)',offset:.15},{opacity:1,transform:'rotateY(0)'}],750);})
   .then(function(){pg.style.opacity='0';
     return go(sp,[{background:'var(--nu-shade-soft)',boxShadow:'none'},
@@ -45751,16 +45755,16 @@ function rfFileLand(ds,ov){
     ov.remove();cell.classList.remove('rff-wait');cell.classList.add('rff-landed');
   });
 }
-/* The SAME page the sheet shows, on glass instead of in a drawer. The seal is
-   the only thing the card adds - it is the graphic that says the day is
-   closed - and it carries no date, because the page under it opens with one. */
+/* The SAME page the sheet shows, on glass instead of in a drawer. It used to
+   open with a seal - a tick and "סיכום יום" - and Asaf took it off (23 Nov):
+   it is plain to everyone what this page is. What leads it instead is the
+   date, centred at the top, and the page's own date line steps aside. */
 function dayCardHTML(dateStr){
   var body=summaryBodyHTML(dateStr);
   if(!body)return '';
   return '<div class="rfd-stage"><div class="rfd-card" id="rfd-card" tabindex="0" onpointerdown="rfdTilt(event)">'+
     '<div class="rfd-sheen"></div>'+
-    '<div class="rfd-seal"><div class="rfd-mark">&#10003;</div>'+
-    '<div class="rfd-seal-t">'+_t('סיכום יום')+'</div></div>'+
+    '<div class="rfd-date">'+fmtDate(dateStr)+'</div>'+
     body+'</div></div>';
 }
 /* Tapping a photograph in the calendar hands you the day as a card - the same
