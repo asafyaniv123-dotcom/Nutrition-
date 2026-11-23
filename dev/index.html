@@ -5931,7 +5931,7 @@ html body.mod-endofday .rf-cq{text-align:center;font-weight:700;font-size:14px;m
 @keyframes rffLand{0%{transform:scale(1.3);filter:drop-shadow(0 0 10px rgba(240,169,46,.9))}100%{transform:none;filter:none}}
 /* ── FILING THE DAY ── on body, outside every screen, so no stacking context
    flattens it under the tab bar it flies to */
-.rff{position:fixed;inset:0;z-index:9000;pointer-events:none;perspective:900px}
+.rff{position:fixed;inset:0;z-index:9000;pointer-events:auto;perspective:900px;touch-action:none}
 .rff-page,.rff-bk,.rff-mini{position:fixed;left:0;top:0}
 .rff-page{border-radius:14px;background:var(--nu-ground);padding:16px 14px;box-sizing:border-box;overflow:hidden;
   box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade)}
@@ -5940,7 +5940,7 @@ html body.mod-endofday .rf-cq{text-align:center;font-weight:700;font-size:14px;m
 .rff-bk{transform-style:preserve-3d}
 .rff-bind,.rff-cover{position:absolute;inset:0;border-radius:14px;background:var(--nu-ground)}
 .rff-bind{box-shadow:inset 3px 4px 9px var(--nu-shade),inset -3px -3px 8px var(--nu-lit)}
-.rff-cover{transform-origin:right center;opacity:0;backface-visibility:visible;
+.rff-cover{transform-origin:right center;opacity:0;backface-visibility:hidden;
   box-shadow:-3px -3px 8px var(--nu-lit),4px 5px 12px var(--nu-shade)}
 .rff-plate{position:absolute;left:16px;right:28px;top:22%;border-radius:11px;padding:11px 8px;text-align:center;
   box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
@@ -45667,7 +45667,7 @@ function renderReflectDone(){
     /* glad of the day first - then he falls asleep into the moon, and the
        page goes to night around him */
     setTimeout(function(){
-      if(!_rfEl.isConnected)return;
+      if(!_rfEl.isConnected||_rffBusy)return;
       try{K.glow(b,0);b.play(BEEM_NIGHT);}catch(e){}
       document.body.classList.add('rf-night');
       var sub=document.querySelector('.rf-body .rf-sub'),nm=greetName();
@@ -45703,6 +45703,8 @@ function rfFileDay(){
     '<div class="rff-page" style="width:'+c.width+'px;height:'+(bot-top)+'px;transform:translate('+c.left+'px,'+top+'px)"><i></i><i></i><i></i><i></i><i></i></div>';
   document.body.appendChild(ov);
   card.style.visibility='hidden';
+  var body=card.closest('.rf-body');
+  if(body&&body.animate)body.animate([{opacity:1},{opacity:0}],{duration:260,fill:'forwards'});
   var bk=ov.querySelector('.rff-bk'),pg=ov.querySelector('.rff-page'),cv=ov.querySelector('.rff-cover'),sp=ov.querySelector('.rff-spine');
   var go=function(el,kf,ms,ease){return el.animate(kf,{duration:ms,easing:ease||'ease-in-out',fill:'forwards'}).finished;};
   var pause=function(ms){return new Promise(function(r){setTimeout(r,ms);});};
@@ -45711,7 +45713,7 @@ function rfFileDay(){
   go(bk,[{opacity:0},{opacity:1}],350);
   go(pg,[{transform:at(c.left,top),width:c.width+'px',height:(bot-top)+'px'},
          {transform:at(x0+inset,y0+inset),width:pw+'px',height:ph+'px'}],750)
-  .then(function(){return go(cv,[{opacity:0,transform:'rotateY(-165deg)'},{opacity:1,transform:'rotateY(-150deg)',offset:.1},{opacity:1,transform:'rotateY(0)'}],850);})
+  .then(function(){return go(cv,[{opacity:0,transform:'rotateY(-88deg)'},{opacity:1,transform:'rotateY(-80deg)',offset:.15},{opacity:1,transform:'rotateY(0)'}],750);})
   .then(function(){pg.style.opacity='0';
     return go(sp,[{background:'var(--nu-shade-soft)',boxShadow:'none'},
       {background:'linear-gradient(90deg,rgba(240,169,46,.35),rgba(255,214,140,.95),rgba(240,169,46,.35))',boxShadow:'0 0 12px rgba(240,169,46,.6)'}],550,'ease-out');})
