@@ -4036,6 +4036,8 @@ html[dir=ltr] .swipe-trash:not(.on){transform:translate(140%,-50%) scale(.8)}
    ends up after reading the day */
 .summary-edit{display:block;width:100%;margin:18px 0 4px;padding:14px;border:none;border-radius:16px;
   background:var(--cta-fill);color:var(--white);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
+html body .summary-edit{background:var(--nu-ground,var(--panel));color:var(--nu-ink,var(--ink));
+  box-shadow:-3px -3px 8px var(--nu-lit,rgba(255,255,255,.9)),4px 5px 11px var(--nu-shade-soft,rgba(176,168,156,.3))}
 /* ── the composed summary page ──
    The sheet itself is the paper now, so these blocks sit ON it rather than
    each being a card. Border, fill and shadow are spent where they mean
@@ -5760,6 +5762,22 @@ html body.mod-endofday .rf-hero{background:var(--nu-ground);border:none;border-r
   padding:20px 18px;
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
 html body.mod-endofday .rf-hero-t{color:var(--nu-ink);font-size:17px;font-weight:800}
+/* a finished day stands in the middle, under Mip, like the binder it is filed in */
+html body.mod-endofday .rf-hero.done{text-align:center}
+html body.mod-endofday .rf-hero.done .rf-streak{text-align:center}
+.rf-bind{position:relative;display:flex;align-items:center;gap:14px;width:min(240px,78%);height:118px;margin:8px auto 18px;
+  padding:0 28px 0 18px;border:none;border-radius:16px;cursor:pointer;font-family:inherit;direction:rtl;
+  background:var(--nu-ground);box-shadow:-4px -4px 10px var(--nu-lit),5px 6px 14px var(--nu-shade)}
+.rfb-plate{flex:1;border-radius:12px;padding:12px 8px;text-align:center;
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+.rfb-plate small{display:block;font-size:12px;font-weight:600;color:var(--nu-muted)}
+.rfb-plate b{display:block;font-size:17px;font-weight:800;line-height:1.25;color:var(--nu-ink)}
+.rfb-dot{flex:0 0 auto;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
+.rfb-dot[style]::after{content:"";width:24px;height:24px;border-radius:50%;background:var(--dc);box-shadow:0 0 12px var(--dc)}
+.rfb-dot.ph img{width:34px;height:34px;border-radius:50%;object-fit:cover;display:block}
+.rfb-spine{position:absolute;right:11px;top:16px;bottom:16px;width:4px;border-radius:2px;
+  background:linear-gradient(90deg,rgba(240,169,46,.35),rgba(255,214,140,.95),rgba(240,169,46,.35));box-shadow:0 0 10px rgba(240,169,46,.5)}
 html body.mod-endofday .rf-hero-s{color:var(--nu-muted);font-size:12px;font-weight:600}
 html body.mod-endofday .rfm{background:var(--nu-ground);
   box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
@@ -44828,7 +44846,7 @@ function renderReflectHome(){
   h+='<div class="rf-tabs"><button class="'+(_rfTab==='week'?'':'on')+'" onclick="rfTabSet(&quot;today&quot;)">'+_t('היום')+'</button>'+
      '<button class="'+(_rfTab==='week'?'on':'')+'" onclick="rfTabSet(&quot;week&quot;)">'+_t('השבוע')+'</button></div>';
   h+='<div class="rf-pane'+(_rfTab==='week'?'':' on')+'">';
-  h+='<div class="rf-hero">';
+  h+='<div class="rf-hero'+(rfDone(r)?' done':'')+'">';
   /* BEEM LIVES HERE. Entering סיום יום lands on this screen, not on the
      intro behind "התחל סיכום" - so the first build, which put him only on
      the intro, was invisible to anyone who walked in through the door
@@ -44847,10 +44865,10 @@ function renderReflectHome(){
     h+='<button onclick="rfResume()" class="rf-next" style="margin-top:20px">'+_t('המשך מאיפה שעצרת')+'</button>';
     h+='<button onclick="rfStart()" class="rf-ghost">'+_t('התחל מחדש')+'</button>';
   } else {
+    h+=rfBinderHTML(today,r);
     h+='<div class="rf-hero-t">'+_t('סיכמת את היום שלך.')+'</div>';
     h+='<div class="rf-hero-s">'+rfRecap(r)+'</div>';
-    if(r.photo)h+=photoImg(r.photo,'style="width:100%;border-radius:18px;margin-top:16px;display:block"');
-    h+='<button onclick="rfResume()" class="rf-ghost" style="margin-top:12px">'+_t('פתח שוב')+'</button>';
+    h+='<button onclick="rfResume()" class="rf-ghost" style="margin-top:8px">'+_t('פתח שוב')+'</button>';
   }
   h+='</div>';
 
@@ -44934,6 +44952,17 @@ function rfmSheetOpen(){
   setTimeout(function(){var i=document.getElementById('rfm-in');if(i)i.focus();},60);
 }
 function rfmSheetClose(){rfSecsClose();if(_rfView==='home'&&document.querySelector('.rf-tabs'))renderReflectHome();}
+/* THE DAY, FILED. The same binder the closing page drops into: its date on the
+   cover, the spine lit, and in a channel beside the date the day's photograph
+   or its colour - whichever it was given. Tapping it opens the page inside. */
+function rfBinderHTML(ds,r){
+  var day=new Date(ds+'T12:00:00'),col=r&&r.dayColor?dayColorOf(r.dayColor):'';
+  var dot=r&&r.photo?'<span class="rfb-dot ph">'+photoImg(r.photo,'alt=""')+'</span>'
+    :'<span class="rfb-dot"'+(col?' style="--dc:'+col+'"':'')+'></span>';
+  return '<button class="rf-bind" onclick="openDayCard(\''+ds+'\')" aria-label="'+esc(fmtDate(ds))+'">'+
+    '<span class="rfb-plate"><small>'+esc(dfmt(day,{weekday:'long'}))+'</small><b>'+esc(dfmt(day,{day:'numeric',month:'long'}))+'</b></span>'+
+    dot+'<span class="rfb-spine"></span></button>';
+}
 function rfRecap(r){
   var bits=[];
   if(r.mood)bits.push(RF_MOODS[Math.max(1,Math.min(5,r.mood))-1].l);
