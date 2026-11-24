@@ -110,9 +110,13 @@ const viaVar = (() => {
     }
     const tpl = JSON.parse(fs.readFileSync('data/lang/_template.json', 'utf8'));
     for (const k of Object.keys(tpl.strings || tpl)) keys.add(k);
+    /* labelOf() paints a stored word under its LABEL_CTX key - 'כבד' as 'כבד|גוף' - so that key is the one
+       that has to exist. Without this, every word given a context was reported as never translated. */
+    const ctx = {}, lc = src.match(/var LABEL_CTX=\{([^}]*)\}/);
+    if (lc) for (const p of lc[1].matchAll(/'([^']+)':'([^']+)'/g)) ctx[p[1]] = p[2];
     return {
       named,
-      has: (at, text) => keys.has(text) && spans.some(([a, b]) => at >= a && at <= b),
+      has: (at, text) => (keys.has(text) || keys.has(ctx[text])) && spans.some(([a, b]) => at >= a && at <= b),
     };
   } catch (e) {
     /* no template yet, or the tool moved - report everything rather than
