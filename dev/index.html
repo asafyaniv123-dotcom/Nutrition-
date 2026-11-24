@@ -46066,8 +46066,9 @@ function rfFileDay(){
   if(!card||!me||!me.offsetParent||!card.animate||still){rfFileLand(ds,null);return;}
   _rffBusy=true;
   var inset=12,c=card.getBoundingClientRect();
-  var k=Math.min((innerWidth*.62-inset*2)/c.width,(innerHeight*.46-inset*2)/c.height,1);
-  var W=Math.round(c.width*k+inset*2),H=Math.round(c.height*k+inset*2),cx=innerWidth/2,cy=innerHeight*.44;
+  /* a binder is a binder, 3 by 4, whatever the page's length: the page goes in at its width and its foot is tucked */
+  var W=Math.round(Math.min(innerWidth*.62,innerHeight*.46*.75)),H=Math.round(W/.75);
+  var k=Math.min((W-inset*2)/c.width,1),tuck=Math.max(0,Math.round(c.height-(H-inset*2)/k)),cx=innerWidth/2,cy=innerHeight*.44;
   var x0=cx-W/2,y0=cy-H/2;
   var day=new Date(ds+'T12:00:00');
   var ov=document.createElement('div');ov.className='rff';
@@ -46089,8 +46090,10 @@ function rfFileDay(){
   var pause=function(ms){return new Promise(function(r){setTimeout(r,ms);});};
   var at=function(x,y){return 'translate('+x+'px,'+y+'px)';};
   go(ov.querySelector('.rff-bind'),[{opacity:0},{opacity:1}],350);
-  go(pg,[{transform:at(c.left-x0,c.top-y0)+' scale(1)'},{transform:at(inset,inset)+' scale('+k+')'}],800)
-  .then(function(){return go(cv,[{opacity:0,transform:'rotateY(-88deg)'},{opacity:1,transform:'rotateY(-80deg)',offset:.15},{opacity:1,transform:'rotateY(0)'}],750);})
+  go(pg,[{transform:at(c.left-x0,c.top-y0)+' scale(1)',clipPath:'inset(0 0 0)'},
+    {transform:at(inset,inset)+' scale('+k+')',clipPath:'inset(0 0 '+tuck+'px)'}],800)
+  .then(function(){return go(cv,[{opacity:0,transform:'rotateY(176deg)'},{opacity:0,transform:'rotateY(92deg)',offset:.3},
+    {opacity:1,transform:'rotateY(86deg)',offset:.36},{opacity:1,transform:'rotateY(0)'}],900,'cubic-bezier(.45,0,.3,1)');})
   .then(function(){pg.style.opacity='0';
     return go(sp,[{background:'var(--nu-shade-soft)',boxShadow:'none'},
       {background:'linear-gradient(90deg,rgba(240,169,46,.35),rgba(255,214,140,.95),rgba(240,169,46,.35))',boxShadow:'0 0 12px rgba(240,169,46,.6)'}],550,'ease-out');})
