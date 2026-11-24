@@ -21274,6 +21274,7 @@ function clockInitDrag(){
     if(interviewAnswers.timeclock[h]===cat)return;
     interviewAnswers.timeclock[h]=cat;clockDraw();
     var clk=interviewAnswers.timeclock;
+    var _rs=document.getElementById('rf-clock-sum');if(_rs)_rs.innerHTML=rfClockTotalsHTML();
     var cnts={sleep:0,work:0,social:0,other:0};
     for(var i=0;i<25;i++){if(cnts[clk[i]]!==undefined)cnts[clk[i]]++;}
     var statsEl=document.getElementById('clock-stats');
@@ -45130,6 +45131,16 @@ function rfAnsShort(r,q){
   if(f)return f;
   if(q.kind==='branch')return v?_t('כן'):_t('לא');
   if(q.kind==='mood'){var m=RF_MOODS[v-1];return m?m.l:'';}
+  if(q.kind==='clock'&&Array.isArray(v)){
+    var ct=rfClockTotals(v),CC={sleep:PAL.terra200,work:PAL.green500,social:'#c9b8f0',other:PAL.amber500},
+        CL={sleep:_t('שינה'),work:_t('עבודה'),social:_t('חברתי'),other:_t('אחר')},k,o=[];
+    for(k in ct)if(ct[k])o.push('<span class="sm2-dot" style="background:'+CC[k]+'"></span>'+CL[k]+' <b>'+nfmt(ct[k])+'</b>');
+    return o.join(' &nbsp; ');
+  }
+  if(q.kind==='flow'){
+    var fw=parseFlow(v).filter(function(x){return x.w;}).map(function(x){return esc(x.w);});
+    return fw.join(' &#8250; ');
+  }
   if(Array.isArray(v)){
     var w=v.filter(function(x){return typeof x==='string'&&x;}).map(function(x){return esc(_t(x));});
     if(w.length)return w.join(' · ');
@@ -45408,7 +45419,12 @@ function rfClockTotalsHTML(){
   h+='</div><div style="text-align:center;font-size:10.5px;color:var(--muted-soft);margin-top:8px">'+tot+' '+_t('מתוך 24 שעות')+'</div>';
   return h;
 }
-function rfClockCat(cat){window._clockSelCat=cat;renderReflectStep();}
+function rfClockCat(cat){
+  /* keep what is painted: the step re-reads the clock from storage */
+  var clk=interviewAnswers.timeclock;
+  if(Array.isArray(clk)&&clk.length===25)rfSave({timeclock:clk.slice(),timeDistribution:rfClockTotals(clk)});
+  window._clockSelCat=cat;renderReflectStep();
+}
 
 /* ── KEEPING WHAT IS HALF-WRITTEN ──
    An answer reaches storage when she presses המשיכי, and not before, so the
