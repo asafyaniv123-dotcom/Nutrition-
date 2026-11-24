@@ -6061,6 +6061,18 @@ html body.mod-endofday .rf-card.done .rf-card-ic svg{filter:drop-shadow(0 0 5px 
 html body.mod-endofday .rf-card .rf-card-v{width:22px;height:22px;top:10px;inset-inline-end:10px;border-radius:50%;font-size:12px;color:#336843;
   text-shadow:0 0 6px rgba(111,178,131,.7);box-shadow:inset 1px 2px 4px var(--nu-shade),inset -1px -1px 3px var(--nu-lit)}
 html body.mod-endofday .rf-ladder{background:none}
+/* the third pair (24 Nov): the target is assets/rf-q3.webp, 300px, drawn at half */
+html body.mod-endofday .rfq-target{background-size:150px 150px;background-position:0 0}
+html body.mod-endofday .rfq-plan{gap:12px}
+html body.mod-endofday .rfq-plan .rf-rung{display:flex;align-items:center;gap:14px;border:none;border-radius:20px;padding:12px 16px;
+  background:var(--nu-ground);color:var(--nu-ink);font-weight:600;
+  box-shadow:-4px -4px 10px var(--nu-lit),4px 5px 12px var(--nu-shade-soft)}
+html body.mod-endofday .rfq-plan .rf-rung.on{color:#8a5a1c;
+  box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit),0 0 0 2px rgba(240,169,46,.5),0 0 14px 2px rgba(240,169,46,.25)}
+html body.mod-endofday .rfq-g{flex:none;width:30px;height:30px;border-radius:50%;
+  background:radial-gradient(circle,var(--nu-ground) 42%,transparent 45%),conic-gradient(rgba(240,169,46,.85) calc(var(--p) * 1turn),rgba(176,168,156,.22) 0);
+  box-shadow:inset 1px 2px 3px var(--nu-shade),inset -1px -1px 2px var(--nu-lit)}
+html body.mod-endofday .rfq-plan .rf-rung.on .rfq-g{filter:drop-shadow(0 0 4px rgba(240,169,46,.6))}
 
 /* ── WHAT THE EVENING ASKS ── the sheet of sections ── */
 html body.mod-endofday .rf-secs-ov{background:rgba(120,110,98,.3)}
@@ -22022,6 +22034,7 @@ function sumLabelFor(id){
   if(id==='moment')return ''+_t('הרגע הכי טוב')+'';
   if(id==='photo')return ''+_t('תמונת היום')+'';
   /* no longer asked (24 Nov), but the days that answered it still show it */
+  if(id==='workoutDone')return ''+_t('אימון')+'';
   if(id==='endOfDayMood')return ''+_t('איך אתה עכשיו')+'';
   return '';
 }
@@ -44388,10 +44401,8 @@ var RF_STAGE2;langOn(function(){RF_STAGE2=[
   {id:'dayRating',kind:'scale',t:''+_t('ציון היום')+'',s:''+_t('מספר אחד')+'',ic:'star',g:'amb',q:''+_t('אם היית צריך לתת ליום הזה ציון — איזה ציון הוא מקבל?')+''},
   {id:'flow',kind:'flow',t:''+_t('איך עבר היום')+'',s:''+_t('עוגנים לפי הסדר')+'',ic:'wave',g:'blu',q:''+_t('איך עבר עליך היום?')+'',sub:''+_t('כמה נקודות ציון לפי הסדר — ככה תזכור אותו.')+''},
   {id:'plannedVsActual',kind:'ladder',t:''+_t('מתוכנן מול בפועל')+'',s:''+_t('כמה זה דומה לתוכנית')+'',ic:'target',g:'gry',q:''+_t('עד כמה היום שלך היה כמו שתכננת?')+'',opts:RF_PLANNED},
-  /* Only ever reaches the board on a day the schedule planned something and
-     nothing was recorded - see rfSteps. The text names the type, so it is a
-     yes/no about one specific thing rather than a general audit. */
-  {id:'workoutDone',kind:'branch',t:''+_t('האימון')+'',s:''+_t('יצא לך?')+'',ic:'dumbbell',g:'grn',q:''+_t('היום היה מתוכנן אימון. יצא לך?')+''},
+  /* workoutDone is no longer asked in the evening (24 Nov): whether you trained
+     is a question for the day. Days that answered it still show it. */
   {id:'takeawayForTomorrow',kind:'text',t:''+_t('למחר')+'',s:''+_t('מה לוקחים למחר')+'',ic:'sunrise',g:'lav',q:''+_t('מה מהיום הזה תרצה לקחת איתך למחר?')+'',ph:''+_t('מחשבה, כוונה, או משהו קטן.')+''},
   {id:'grateful',kind:'text',t:''+_t('הכרת תודה')+'',s:''+_t('על מה היום')+'',ic:'hands',g:'amb',q:''+_t('על מה אתה אסיר תודה היום?')+'',ph:''+_t('דבר אחד. אפילו קטן מאוד.')+''},
   {id:'impactfulMoment',kind:'text',t:''+_t('הרגע שהשפיע')+'',s:''+_t('מה שינה את היום')+'',ic:'spark',g:'lav',q:''+_t('מה היה הרגע שהכי השפיע עליך היום?')+'',ph:''+_t('משהו ששינה לך את ההרגשה, את המחשבות או את המשך היום.')+''},
@@ -44551,21 +44562,8 @@ function sumHiddenIds(){
    on every rest day. One filter, both callers. */
 function rfFilter(all){
   var hide=sumHiddenIds(),out=[],i;
-  /* The workout question is the one step that is not always worth asking. On a
-     rest day there is nothing to ask, and when a session is already recorded
-     the answer is known - asking anyway would be the app pretending not to
-     know something it does. */
-  var planned=null,logged=null;
-  try{planned=plannedWorkoutFor(todayStr());logged=workoutLoggedOn(todayStr());}catch(e){}
   for(i=0;i<all.length;i++){
     if(hide[all[i].id])continue;
-    if(all[i].id==='workoutDone'){
-      if(!planned||logged)continue;
-      var w={},k;for(k in all[i])w[k]=all[i][k];
-      w.q=''+_t('היום היה מתוכנן {what}. יצא לך?',{what:planned.label||_t('אימון')});
-      out.push(w);
-      continue;
-    }
     out.push(all[i]);
   }
   return out.length?out:all;
@@ -44640,8 +44638,8 @@ function rfFace(i,col,on){
 /* the porcelain pieces in assets/rf-q.webp: a hero over a question, and the five faces */
 var _rfFeelAll=false;
 function rfqHero(q){
-  var k=q.kind==='mood'?'face':q.id==='bodyFeelings'?'body':q.id==='dayRating'?'star':q.kind==='flow'?'wave':'';
-  var pic=k==='star'||k==='wave'?'rf-q2':'rf-q';
+  var k=q.kind==='mood'?'face':q.id==='bodyFeelings'?'body':q.id==='dayRating'?'star':q.kind==='flow'?'wave':q.id==='plannedVsActual'?'target':'';
+  var pic=k==='star'||k==='wave'?'rf-q2':k==='target'?'rf-q3':'rf-q';
   return k?'<div class="rfq-hero rfq-'+k+'" style="background-image:url('+liveBase()+'assets/'+pic+'.webp)"></div>':'';
 }
 function rfqFace(i){return '<i class="rfq-f" style="background-image:url('+liveBase()+'assets/rf-q.webp);--fi:'+i+'"></i>';}
@@ -45509,8 +45507,8 @@ function renderReflectStep(){
     h+='</div><div class="rf-echo" id="rf-echo">'+(cur?rfRatingEcho(cur):'')+'</div>';
   }
   else if(q.kind==='ladder'){
-    h+='<div class="rf-ladder">';
-    for(i=0;i<q.opts.length;i++)h+='<button class="rf-rung'+(cur===i+1?' on':'')+'" onclick="rfPickLadder('+(i+1)+')">'+_t(q.opts[i])+'</button>';
+    h+='<div class="rf-ladder rfq-plan">';
+    for(i=0;i<q.opts.length;i++)h+='<button class="rf-rung'+(cur===i+1?' on':'')+'" onclick="rfPickLadder('+(i+1)+')"><i class="rfq-g" style="--p:'+(i/(q.opts.length-1))+'"></i><span>'+_t(q.opts[i])+'</span></button>';
     h+='</div>';
   }
   else if(q.kind==='text'){
