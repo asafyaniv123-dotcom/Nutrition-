@@ -1,0 +1,92 @@
+  var i,rows=sumFactRowsIds(sum,dateStr);
+  /* THE DAY'S PAGE (24 Nov). One line of reading, top to bottom. */
+  h+='<div class="sm2-date">'+fmtDate(dateStr)+'</div>';
+  if(hasPh){
+    h+='<div class="sm3-pola">'+photoImg(sum.photo,'alt="" style="cursor:zoom-in" '+
+       'onclick="event.stopPropagation();photoOpen(&quot;'+esc(sum.photo)+'&quot;)"')+'</div>'+
+       (sum.photoCaption?'<div class="sm3-cap">'+esc(sum.photoCaption)+'</div>':'');
+  }
+  if(sum.moment&&sumSecOn('moment'))h+='<div class="sm3-lead">'+esc(sum.moment)+'</div>';
+  /* three numbers in a row: how it felt, the score, the steps */
+  var trio='',TRIO={mood:1,dayRating:1,steps:1},rest=[];
+  for(i=0;i<rows.length;i++){
+    var rw=rows[i];
+    if(!TRIO[rw.id]){rest.push(rw);continue;}
+    var tv=rw.id==='mood'?(RF_MOODS[sum.mood-1]||{}).l:rw.v;
+    trio+='<div class="sm3-t">'+sumIconSVG(rw.id,'sm3-t-ic')+'<div class="sm3-t-n">'+tv+'</div><div class="sm3-t-l">'+rw.l+'</div></div>';
+  }
+  if(trio)h+='<div class="sm3-trio">'+trio+'</div>';
+
+  if(flowStops.length>0&&sumSecOn('flow')){
+    h+='<div class="sm3-sec"><div class="sm3-h">'+sumIconSVG('flow')+'<span>'+_t('מהלך היום')+'</span></div><div class="sm3-path">';
+    for(i=0;i<flowStops.length;i++){
+      h+='<div class="sm3-stop'+(i===0?' first':'')+(i===flowStops.length-1?' last':'')+'">';
+      if(flowStops[i].p)
+        h+=photoImg(flowStops[i].p,'class="sm3-stop-ph" '+
+          'onclick="event.stopPropagation();photoOpen(&quot;'+esc(flowStops[i].p)+'&quot;)"');
+      h+='<span>'+esc(flowStops[i].w)+'</span></div>';
+    }
+    h+='</div></div>';
+  }
+  if(Array.isArray(sum.dayTimeline)&&sum.dayTimeline.length&&sumSecOn('flow')){
+    h+='<div class="sm3-sec"><div class="sm3-h">'+sumIconSVG('dayTimeline')+'<span>'+sumLabelFor('dayTimeline')+'</span></div><div class="sm2-tl">';
+    for(i=0;i<sum.dayTimeline.length;i++)
+      h+='<div class="sm2-tl-r"><span>'+esc(sum.dayTimeline[i].t||'')+'</span><b>'+esc(sum.dayTimeline[i].w||'')+'</b></div>';
+    h+='</div></div>';
+  }
+  var _wos=workoutsOn(dateStr);
+  if(_wos.length&&sumSecOn('fit')){
+    h+='<div class="sm3-sec"><div class="sm3-h">'+sumIconSVG('workoutDone')+'<span>'+_t('אימון')+'</span></div><div class="sm2-wo">';
+    for(i=0;i<_wos.length;i++){
+      var _wo=_wos[i],_wb=fitBurn(_wo),_bits=[];
+      _bits.push(_t('{n} תרגילים',{n:(_wo.exercises||[]).length}));
+      if(_wo.duration>0)_bits.push(_t('{n} דקות',{n:_wo.duration}));
+      if(_wb)_bits.push(_t('בערך {n} קק"ל',{n:_wb.kcal}));
+      h+='<div class="sm2-wo-r"><b>'+esc(_wo.name||_t('אימון'))+'</b>'+
+         '<span>'+_bits.join(' · ')+'</span></div>';
+    }
+    h+='</div></div>';
+  }
+
+  h+=sumProseHTML(sum,null);
+
+  /* the small things, as a quiet list - and the two that open on a tap */
+  var more='',drawer='';
+  for(i=0;i<rest.length;i++){
+    if(rest[i].id==='song'){
+      more+='<div class="sm3-k">'+sumIconSVG('song')+'<span>'+rest[i].l+'</span></div><div class="sm3-v sm3-sg">'+
+        (sum.songArt&&/^https:\/\//.test(sum.songArt)?'<img src="'+esc(sum.songArt)+'" alt="">':'')+
+        '<span class="sm3-sg-tx"><span>'+rest[i].v+'</span>'+songLinksHTML(sum)+'</span></div>';
+      continue;
+    }
+    more+='<div class="sm3-k">'+sumIconSVG(rest[i].id)+'<span>'+rest[i].l+'</span></div><div class="sm3-v">'+rest[i].v+'</div>';
+  }
+  if(sum.timeclock&&sumSecOn('time')&&sum.timeclock.some(function(hx){return hx!=='none';})){
+    var TC={sleep:PAL.terra200,work:PAL.green500,social:'#c9b8f0',other:PAL.amber500};
+    var TL={sleep:_t('שינה'),work:_t('עבודה'),social:_t('חברתי'),other:_t('אחר')};
+    var clkD=sum.timeclock,cnts2={sleep:0,work:0,social:0,other:0},ck,tparts=[];
+    for(var hi4=0;hi4<25;hi4++){if(cnts2[clkD[hi4]]!==undefined)cnts2[clkD[hi4]]++;}
+    for(ck in cnts2)if(cnts2[ck])tparts.push('<span class="sm2-dot" style="background:'+TC[ck]+'"></span>'+TL[ck]+' '+nfmt(cnts2[ck]));
+    more+='<div class="sm3-k">'+sumIconSVG('timeclock')+'<span>'+_t('לאן הלך הזמן')+'</span></div>'+
+          '<button class="sm3-v sm3-open" onclick="event.stopPropagation();sumOpenPart(this,\'sm3-clock\')">'+tparts.join(' · ')+' <i>&#8249;</i></button>';
+    drawer+='<div class="sm3-drawer sm3-clock" hidden><canvas id="sum-clock-canvas" width="160" height="166"></canvas></div>';
+    window._sumClockData=clkD;
+    window._sumClockNeedsDraw=true;
+  }
+  /* only a day something was eaten or drunk on: zeros are not a fact about it */
+  if(sum.kcal!==undefined&&(sum.kcal>0||sum.water>0)&&sumSecOn('food')){
+    var kp=Math.min(100,Math.round(sum.kcal/TARGETS.kcal*100)),pp2=Math.min(100,Math.round(sum.p/TARGETS.p*100)),cp3=Math.min(100,Math.round(sum.c/TARGETS.c*100)),fp2=Math.min(100,Math.round(sum.f/TARGETS.f*100));
+    var nb='<div class="sm2-nut"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
+    var smb=[{v:nfmt(sum.kcal),pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))'},{v:fmtGrams(sum.p),pct:pp2,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)'},{v:fmtGrams(sum.c),pct:cp3,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)'},{v:fmtGrams(sum.f),pct:fp2,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)'}];
+    for(var bi2=0;bi2<smb.length;bi2++){var sb=smb[bi2];nb+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:24px;height:68px;background:var(--line);border-radius:12px;overflow:hidden;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+(+sb.pct||0)+'%;background:'+sb.g+'"></div></div><div style="font-size:10.5px;font-weight:700">'+sb.v+'</div><div style="font-size:9px;color:var(--muted)">'+sb.lbl+'</div></div>';}
+    /* Against the READER'S target, not against 3000. */
+    if(sum.water){var wp2=Math.min(100,Math.round(sum.water/(TARGETS.water||3000)*100));nb+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px;grid-column:1/-1"><span style="font-size:11px;color:#5b8fa8">'+_t('מים')+'</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+fmtVolume(sum.water)+'</span></div>';}
+    nb+='</div></div>';
+    var fparts=[];
+    if(sum.kcal>0)fparts.push(_t('{n} קק"ל',{n:sum.kcal}));
+    if(sum.p>0)fparts.push(fmtGrams(sum.p)+' '+_t('חלבון'));
+    more+='<div class="sm3-k">'+sumIconSVG('food')+'<span>'+_t('תזונה')+'</span></div>'+
+          '<button class="sm3-v sm3-open" onclick="event.stopPropagation();sumOpenPart(this,\'sm3-food\')">'+fparts.join(' · ')+' <i>&#8249;</i></button>';
+    drawer+='<div class="sm3-drawer sm3-food" hidden>'+nb+'</div>';
+  }
+  if(more)h+='<div class="sm3-rule"></div><div class="sm3-more">'+more+'</div>'+drawer;
