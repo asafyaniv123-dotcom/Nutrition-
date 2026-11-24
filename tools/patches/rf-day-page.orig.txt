@@ -1,0 +1,110 @@
+  var i,rows=sumFactRows(sum,dateStr),head=rows.slice(0,SUM_HEAD_MAX),rest=rows.slice(SUM_HEAD_MAX);
+
+  /* THE HEAD. The picture sits where the drawing sits in the reference - on
+     the left, which in an RTL row means the photo column comes SECOND - and
+     its caption sits directly under it, so it stays attached to the thing it
+     describes. With no picture the facts take the width instead of leaving a
+     hole where one would have been. */
+  var facts='<div class="sm2-date">'+fmtDate(dateStr)+'</div>';
+  for(i=0;i<head.length;i++)
+    facts+='<div class="sm2-r"><span>'+head[i].l+'</span><b>'+head[i].v+'</b></div>';
+  /* The sentence of the day, in the room the photograph is already holding
+     open. Under the facts, which puts it under the song when the song is the
+     last of them - which is where he asked for it. */
+  var _q=sumQuoteFits(sum,head.length,hasPh);
+  if(_q)facts+='<div class="sm2-q">'+esc(sum.quote.trim())+'</div>';
+  if(hasPh){
+    h+='<div class="sm2-hd"><div class="sm2-fx">'+facts+'</div><div class="sm2-phc">'+
+       '<div class="sm2-box">'+photoImg(sum.photo,'alt="" style="cursor:zoom-in" '+
+          'onclick="event.stopPropagation();photoOpen(&quot;'+esc(sum.photo)+'&quot;)"')+'</div>'+
+       (sum.photoCaption?'<div class="sm2-cap">'+esc(sum.photoCaption)+'</div>':'')+
+       '</div></div>';
+  } else {
+    h+='<div class="sm2-hd"><div class="sm2-fx">'+facts+'</div></div>';
+  }
+  h+='<hr class="sm2-rule">';
+
+  /* The one question everybody is asked first, and the only answer big enough
+     to lead the page on its own. */
+  if(sum.moment&&sumSecOn('moment'))
+    h+='<div class="sm2-lead">'+esc(sum.moment)+'</div>';
+
+  if(rest.length){
+    h+='<div class="sm2-ovf">';
+    for(i=0;i<rest.length;i++)h+='<div><span>'+rest[i].l+'</span><b>'+rest[i].v+'</b></div>';
+    h+='</div>';
+  }
+
+  if(flowStops.length>0&&sumSecOn('flow')){
+    h+='<div class="sm2-blk"><div class="sm2-pz-l">'+_t('מהלך היום')+'</div><div class="sm2-flw">';
+    for(i=0;i<flowStops.length;i++){
+      if(flowStops[i].p)
+        h+=photoImg(flowStops[i].p,'class="sm2-flw-ph" style="width:30px;height:30px;'+
+          'object-fit:cover;border-radius:8px;cursor:zoom-in" '+
+          'onclick="event.stopPropagation();photoOpen(&quot;'+esc(flowStops[i].p)+'&quot;)"');
+      h+='<span>'+esc(flowStops[i].w)+'</span>';
+      if(i<flowStops.length-1)h+='<i>&#8250;</i>';
+    }
+    h+='</div></div>';
+  }
+  if(Array.isArray(sum.dayTimeline)&&sum.dayTimeline.length&&sumSecOn('flow')){
+    h+='<div class="sm2-blk"><div class="sm2-pz-l">'+sumLabelFor('dayTimeline')+'</div><div class="sm2-tl">';
+    for(i=0;i<sum.dayTimeline.length;i++)
+      h+='<div class="sm2-tl-r"><span>'+esc(sum.dayTimeline[i].t||'')+'</span><b>'+esc(sum.dayTimeline[i].w||'')+'</b></div>';
+    h+='</div></div>';
+  }
+
+  /* only a day something was eaten or drunk on: zeros are not a fact about it */
+  if(sum.kcal!==undefined&&(sum.kcal>0||sum.water>0)&&sumSecOn('food')){
+  var kp=Math.min(100,Math.round(sum.kcal/TARGETS.kcal*100)),pp2=Math.min(100,Math.round(sum.p/TARGETS.p*100)),cp3=Math.min(100,Math.round(sum.c/TARGETS.c*100)),fp2=Math.min(100,Math.round(sum.f/TARGETS.f*100));
+  h+='<div class="sm2-nut"><div class="sm2-pz-l">'+_t('תזונה')+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
+  var smb=[{v:nfmt(sum.kcal),pct:kp,lbl:''+_t('קק"ל')+'',g:'linear-gradient(180deg,var(--violet-300),var(--violet-500))'},{v:fmtGrams(sum.p),pct:pp2,lbl:''+_t('חלבון')+'',g:'linear-gradient(180deg,#f3b9a8,#e08a72)'},{v:fmtGrams(sum.c),pct:cp3,lbl:''+_t('פחמימה')+'',g:'linear-gradient(180deg,#bfe0c7,#8fc79e)'},{v:fmtGrams(sum.f),pct:fp2,lbl:''+_t('שומן')+'',g:'linear-gradient(180deg,#f6dfa0,#e8c162)'}];
+  for(var bi2=0;bi2<smb.length;bi2++){var sb=smb[bi2];h+='<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div style="width:24px;height:68px;background:var(--line);border-radius:12px;overflow:hidden;position:relative"><div style="position:absolute;bottom:0;width:100%;height:'+(+sb.pct||0)+'%;background:'+sb.g+'"></div></div><div style="font-size:10.5px;font-weight:700">'+sb.v+'</div><div style="font-size:9px;color:var(--muted)">'+sb.lbl+'</div></div>';}
+  /* Against the READER'S target, not against 3000. The four bars above this
+     line divide by TARGETS.kcal, .p, .c and .f; this one divided by a literal,
+     so a 58kg woman whose target is 2000 drank all of it and was shown 67%. */
+  if(sum.water){var wp2=Math.min(100,Math.round(sum.water/(TARGETS.water||3000)*100));h+='<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:#5b8fa8">&#x1F4A7; '+_t('מים')+'</span><div style="flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+wp2+'%;background:linear-gradient(90deg,#74b9e8,var(--water-500))"></div></div><span style="font-size:10px;color:#5b8fa8">'+fmtVolume(sum.water)+'</span></div>';}
+  h+='</div></div>';
+  }
+
+  /* A SESSION IS PART OF THE DAY, and until now it was not on this page at
+     all: the workout question drops out of the evening the moment a session
+     is logged - correctly, the app already knows - and sum.workoutDone is
+     what this sheet read. So the day she actually trained was the day that
+     said nothing about training. This reads the log instead of the answer. */
+  var _wos=workoutsOn(dateStr);
+  if(_wos.length&&sumSecOn('fit')){
+    h+='<div class="sm2-blk"><div class="sm2-pz-l">'+_t('אימון')+'</div><div class="sm2-wo">';
+    for(i=0;i<_wos.length;i++){
+      var _wo=_wos[i],_wb=fitBurn(_wo),_bits=[];
+      _bits.push(_t('{n} תרגילים',{n:(_wo.exercises||[]).length}));
+      if(_wo.duration>0)_bits.push(_t('{n} דקות',{n:_wo.duration}));
+      if(_wb)_bits.push(_t('בערך {n} קק"ל',{n:_wb.kcal}));
+      h+='<div class="sm2-wo-r"><b>'+esc(_wo.name||_t('אימון'))+'</b>'+
+         '<span>'+_bits.join(' · ')+'</span></div>';
+    }
+    h+='</div></div>';
+  }
+
+  // the clock stays a drawing - a picture does not become a line
+  if(sum.timeclock&&sumSecOn('time')&&sum.timeclock.some(function(hx){return hx!=='none';})){
+    var TC={sleep:PAL.terra200,work:PAL.green500,social:'#c9b8f0',other:PAL.amber500,none:''};
+    var TL={sleep:''+_t('שינה')+'',work:''+_t('עבודה')+'',social:''+_t('חברתי')+'',other:''+_t('אחר')+''};
+    var clkD=sum.timeclock;
+    var cnts2={sleep:0,work:0,social:0,other:0};
+    for(var hi4=0;hi4<25;hi4++){if(cnts2[clkD[hi4]]!==undefined)cnts2[clkD[hi4]]++;}
+    h+='<div class="sm2-blk"><div class="sm2-pz-l">'+_t('לאן הלך הזמן')+'</div>';
+    h+='<div style="display:flex;align-items:center;gap:14px">';
+    h+='<canvas id="sum-clock-canvas" width="160" height="166" style="display:block;flex-shrink:0"></canvas>';
+    h+='<div style="display:flex;flex-direction:column;gap:8px">';
+    var ckeys2=Object.keys(cnts2);
+    for(var ki2=0;ki2<ckeys2.length;ki2++){
+      var ck2=ckeys2[ki2];if(!cnts2[ck2])continue;
+      h+='<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:'+TC[ck2]+';display:inline-block;flex-shrink:0"></span><span style="font-size:11px;color:var(--ink)">'+TL[ck2]+' <b>'+nfmt(cnts2[ck2])+'</b></span></div>';
+    }
+    h+='</div></div></div>';
+    window._sumClockData=clkD;
+    window._sumClockNeedsDraw=true;
+  }
+
+  h+=sumProseHTML(sum,_q?{quote:1}:null);
