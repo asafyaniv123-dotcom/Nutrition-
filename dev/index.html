@@ -6134,6 +6134,12 @@ html body.mod-endofday .rfq-yn3 .rf-rung{font-size:15px;min-height:96px}
 html body.mod-endofday .rfq-yn .rf-rung svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
 html body.mod-endofday .rfq-yn .rf-rung.on{color:#8a5a1c;
   box-shadow:inset 3px 4px 8px var(--nu-shade),inset -3px -3px 7px var(--nu-lit),0 0 0 2px rgba(240,169,46,.5),0 0 14px 2px rgba(240,169,46,.25)}
+/* the eighth pair (25 Nov): assets/rf-q8.webp, a 500px loop and a 240px cup, 200 high, drawn at 0.42 */
+html body.mod-endofday .rfq-loop,html body.mod-endofday .rfq-cup{height:84px;background-size:311px 84px;
+  -webkit-mask:radial-gradient(farthest-side,#000 64%,transparent 100%);mask:radial-gradient(farthest-side,#000 64%,transparent 100%)}
+html body.mod-endofday .rfq-loop{width:210px;background-position:0 0}
+html body.mod-endofday .rfq-cup{width:101px;background-position:-210px 0}
+html body.mod-endofday .rfq-pebbles+.rf-in.rfq-one{margin-top:18px}
 html body.mod-endofday .rf-in.rfq-one{min-height:54px;margin-top:22px;border-radius:99px;padding:14px 20px}
 html body.mod-endofday .rfq-avs{display:flex;flex-wrap:wrap;justify-content:center;gap:14px 10px}
 html body.mod-endofday .rfq-av{display:flex;flex-direction:column;align-items:center;gap:6px;width:64px;padding:0;border:none;background:none;color:var(--nu-ink);cursor:pointer}
@@ -22309,7 +22315,7 @@ function sumLitLast(t){
 function sumProseBody(sum,id){
   var h=esc(sum[id]);
   if(id==='takeawayForTomorrow'&&sum.takeawayKind)h='<i class="sm-kind">'+labelOf(sum.takeawayKind)+'</i>'+h;
-  var tg=id==='impactfulMoment'?sum.impactOn:id==='proudOf'?(sum.proudWhere?[sum.proudWhere]:[]):null;
+  var tg=id==='impactfulMoment'?sum.impactOn:id==='proudOf'?(sum.proudWhere?[sum.proudWhere]:[]):id==='recurringThought'?(sum.thoughtTone?[sum.thoughtTone]:[]):null;
   if(Array.isArray(tg)&&tg.length)h='<i class="sm-kind">'+tg.map(function(x){return labelOf(x);}).join(' · ')+'</i>'+h;
   return h;
 }
@@ -44485,7 +44491,8 @@ var RF_TAKE_KIND=['מחשבה','כוונה','צעד קטן'];
 var RF_MOVED=['משהו לא צפוי','עייפות','תכננתי יותר מדי','עבודה','אנשים אחרים','בריאות','מצב רוח','דחיתי','משהו אחר'];
 var RF_IMPACT_ON=['את ההרגשה','את המחשבות','את המשך היום'];
 var RF_PROUD_WHERE=['בעבודה','בבית','בגוף','עם אנשים','עם עצמי'];
-var RFQ_TAGS={plannedMoved:RF_MOVED,impactOn:RF_IMPACT_ON,proudWhere:RF_PROUD_WHERE};
+var RF_THOUGHT_TONE=['העסיקה אותי','ריגשה אותי','הדאיגה אותי','פשוט נתקעה'];
+var RFQ_TAGS={plannedMoved:RF_MOVED,impactOn:RF_IMPACT_ON,proudWhere:RF_PROUD_WHERE,thoughtTone:RF_THOUGHT_TONE};
 var RF_ENERGY=['אנשים','עבודה','יצירה','אימון','מנוחה','טבע','מוזיקה','זמן לבד','משהו אחר'];
 // What drains is not the mirror of what fills, so it gets its own list.
 var RF_DRAIN=['עבודה','אנשים','מסכים','חוסר שינה','התנגשויות','דברים שנדחו','רעש','דאגות','משהו אחר'];
@@ -44596,11 +44603,12 @@ var RF_ICONS={
   eyeshut:'<path d="M3.6 10.4c4.6 5 12.2 5 16.8 0"/><path d="m6.2 13.2-1.6 2.4"/><path d="m12 14.6v2.8"/><path d="m17.8 13.2 1.6 2.4"/>',
   cross:'<path d="m5.4 5.4 13.2 13.2"/><path d="M18.6 5.4 5.4 18.6"/>',
   sound:'<path d="M4.4 9.6v4.8h3.2l4.4 3.6V6L7.6 9.6Z"/><path d="M15.4 9.2a4 4 0 0 1 0 5.6"/><path d="M18 6.8a7.4 7.4 0 0 1 0 10.4"/>',
+  door:'<path d="M5.6 20.4V4.6a1 1 0 0 1 1-1h8.2a1 1 0 0 1 1 1v15.8"/><path d="M3.6 20.4h16.8"/><path d="M15.8 5.4 19 4v14.8l-3.2 1.6"/><circle cx="12.6" cy="12.4" r=".9" fill="currentColor" stroke="none"/>',
   suncloud:'<circle cx="9" cy="8.4" r="3"/><path d="M9 2.6v1.2"/><path d="M3.2 8.4h1.2"/><path d="m4.9 4.3.9.9"/><path d="m13.1 4.3-.9.9"/><path d="M9.4 19.4a3.4 3.4 0 0 1-.4-6.8 4.8 4.8 0 0 1 9.2 1.2 2.8 2.8 0 0 1-.6 5.6Z"/>'
 };
 // the three answers to "how did they affect you", in RF_IMPACT's order
 var RF_IMPACT_IC=['sun','cloud','suncloud'];
-var RF_CHIP_IC={'אנשים':'people','עבודה':'briefcase','יצירה':'brush','אימון':'dumbbell','מנוחה':'moon','טבע':'leaf','מוזיקה':'note','זמן לבד':'person','משהו אחר':'dot','מסכים':'phone','חוסר שינה':'eyeshut','התנגשויות':'cross','דברים שנדחו':'hourglass','רעש':'sound','דאגות':'cloud'};   // i18n-exempt: keys, the stored words of RF_ENERGY and RF_DRAIN - matched, never shown
+var RF_CHIP_IC={'אנשים':'people','עבודה':'briefcase','יצירה':'brush','אימון':'dumbbell','מנוחה':'moon','טבע':'leaf','מוזיקה':'note','זמן לבד':'person','משהו אחר':'dot','מסכים':'phone','חוסר שינה':'eyeshut','התנגשויות':'cross','דברים שנדחו':'hourglass','רעש':'sound','דאגות':'cloud','לצאת החוצה':'door','לדבר עם מישהו':'bubble','לישון מספיק':'moon','לאכול משהו טוב':'bowl','כלום מיוחד':'dot'};   // i18n-exempt: keys, the stored words of RF_ENERGY and RF_DRAIN - matched, never shown
 
 // What counts as answered per question - an explicit "no" is an answer too.
 function rfAnsweredIn(r,q){
@@ -44780,8 +44788,8 @@ function rfFace(i,col,on){
 /* the porcelain pieces in assets/rf-q.webp: a hero over a question, and the five faces */
 var _rfFeelAll=false;
 function rfqHero(q){
-  var k=q.kind==='mood'?'face':q.id==='bodyFeelings'?'body':q.id==='dayRating'?'star':q.kind==='flow'?'wave':q.id==='plannedVsActual'?'target':q.id==='takeawayForTomorrow'?'sunrise':q.id==='grateful'?'hands':q.id==='impactfulMoment'?'ripple':q.id==='proudOf'?'medal':q.id==='energyGivers'?'jarfull':q.id==='energyDrainers'?'jarlow':q.id==='procrastinated'?'hourglass':q.id==='influentialPerson'?'pair':'';
-  var pic=k==='star'||k==='wave'?'rf-q2':k==='target'?'rf-q3':k==='sunrise'||k==='hands'?'rf-q4':k==='ripple'||k==='medal'?'rf-q5':k==='jarfull'||k==='jarlow'?'rf-q6':k==='hourglass'||k==='pair'?'rf-q7':'rf-q';
+  var k=q.kind==='mood'?'face':q.id==='bodyFeelings'?'body':q.id==='dayRating'?'star':q.kind==='flow'?'wave':q.id==='plannedVsActual'?'target':q.id==='takeawayForTomorrow'?'sunrise':q.id==='grateful'?'hands':q.id==='impactfulMoment'?'ripple':q.id==='proudOf'?'medal':q.id==='energyGivers'?'jarfull':q.id==='energyDrainers'?'jarlow':q.id==='procrastinated'?'hourglass':q.id==='influentialPerson'?'pair':q.id==='recurringThought'?'loop':q.id==='selfCare'?'cup':'';
+  var pic=k==='star'||k==='wave'?'rf-q2':k==='target'?'rf-q3':k==='sunrise'||k==='hands'?'rf-q4':k==='ripple'||k==='medal'?'rf-q5':k==='jarfull'||k==='jarlow'?'rf-q6':k==='hourglass'||k==='pair'?'rf-q7':k==='loop'||k==='cup'?'rf-q8':'rf-q';
   return k?'<div class="rfq-hero rfq-'+k+'" style="background-image:url('+liveBase()+'assets/'+pic+'.webp)"></div>':'';
 }
 /* gratitude: a slot per thing, at most three asked for; a day that wrote more keeps them all */
@@ -45718,6 +45726,7 @@ function renderReflectStep(){
     if(q.id==='takeawayForTomorrow')h+=rfqKindHTML();
     if(q.id==='impactfulMoment')h+=rfqTagsHTML('impactOn',true,_t('מה הוא שינה?'));
     if(q.id==='proudOf')h+=rfqTagsHTML('proudWhere',false,_t('איפה זה היה?'));
+    if(q.id==='recurringThought')h+=rfqTagsHTML('thoughtTone',false,_t('איזו מחשבה זו הייתה?'));
     h+='<button onclick="rfNext()" class="rf-next">'+_t('המשך')+'</button>';
   }
   else if(q.kind==='photo'){
@@ -45742,9 +45751,9 @@ function renderReflectStep(){
       h+='<div class="rfq-tl rfq-tl2">'+q.follow+'</div>';
       h+=rfChipsHTML(q.listId,q.opts,rfArr(q.listId),true);
     } else if(cur===true&&q.follow){
-      h+='<div class="rf-sub" style="margin-top:26px;font-weight:700;color:var(--ink);font-size:15px">'+q.follow+'</div>';
-      h+='<div style="margin-top:14px">'+rfChipsHTML(q.listId,q.opts,rfArr(q.listId))+'</div>';
-      h+='<textarea class="rf-in" id="rf-note" style="min-height:64px;margin-top:16px" placeholder="'+(q.ph||'')+'">'+(rfVal(q.note)?esc(rfVal(q.note)):'')+'</textarea>';
+      h+='<div class="rfq-tl rfq-tl2">'+q.follow+'</div>';
+      h+=rfChipsHTML(q.listId,q.opts,rfArr(q.listId),true);
+      h+='<textarea class="rf-in rfq-short rfq-one" id="rf-note" placeholder="'+(q.ph||'')+'">'+(rfVal(q.note)?esc(rfVal(q.note)):'')+'</textarea>';
     }
     if(cur===true&&q.follow){
       h+='<button onclick="rfNext()" class="rf-next">'+_t('המשך')+'</button>';

@@ -66,7 +66,7 @@ const called = new Set(keys);
    data in the file and text on the screen, so their keys are real but invisible
    to the pattern above. Named explicitly, because guessing which arrays feed a
    _t(variable) is exactly the guess this whole exercise exists to avoid. */
-const VIA_VARIABLE = ['SAY_DERIVED_NONE', 'RF_TAKE_KIND', 'RF_MOVED', 'RF_IMPACT_ON', 'RF_PROUD_WHERE', 'PLAN_FEELINGS', 'RELATIONSHIP_TYPES',
+const VIA_VARIABLE = ['SAY_DERIVED_NONE', 'RF_TAKE_KIND', 'RF_MOVED', 'RF_IMPACT_ON', 'RF_PROUD_WHERE', 'RF_THOUGHT_TONE', 'PLAN_FEELINGS', 'RELATIONSHIP_TYPES',
                       'PEOPLE_FREQS', 'PEOPLE_DATE_TYPES',
                       'PEOPLE_PLACES', 'WIZ_NAME_OPTS', 'CLOSET_SEASONS',
                       'PROG_DAY_OPTS', 'GENPROG_EXP', 'FIT_ME_LIMITS', 'FIT_OUT', 'EFFORT_WORD',
