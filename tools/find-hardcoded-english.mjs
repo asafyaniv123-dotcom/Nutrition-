@@ -69,6 +69,7 @@ const lineOf = (i) => app.slice(0, i).split(LF).length;
 const KEPT = [
   'Better Me', 'Better', 'Apple Health',                       // proper nouns
   'Olimei',                                                    // the app's name since 24 Oct - the page title
+  'Olimei Pro',                                                // the paid level's name - a product name, as the store lists it (26 Nov)
   'Apple Music', 'Spotify',                                    // where the song of the day opens (24 Nov)
   'HABIT TRACKER', 'THIS MONTH I WILL', 'NOTES',               // the paper spread
   'progress, not perfection', 'VISION BOARD',
