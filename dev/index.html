@@ -6883,6 +6883,31 @@ html body.mod-insights .ins-was{background:var(--nu-ground);
   box-shadow:inset 2px 3px 6px var(--nu-shade),inset -2px -2px 5px var(--nu-lit)}
 html body.mod-insights .ins-was-h{color:var(--nu-muted)}
 html body.mod-insights .ins-was-t{color:var(--nu-ink)}
+/* ── DIG DEEPER ── one small raised button under the topic; the question it
+   brings is a raised card, because it is a thing handed to you, and the
+   plaque stays the surface. No lamp of its own: "add an insight" keeps the
+   only one on the screen. ── */
+.ins-dig{display:flex;align-items:center;gap:7px;margin:-4px auto 18px;border:none;border-radius:99px;
+  padding:9px 16px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.ins-dig svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;
+  stroke-linejoin:round;opacity:.7}
+.ins-deep{border-radius:18px;padding:16px 17px 14px;margin:-4px 0 18px}
+.ins-deep-h{font-size:10px;font-weight:800;margin-bottom:8px;letter-spacing:.02em}
+.ins-deep-q{font-size:17px;font-weight:800;line-height:1.5;text-wrap:balance}
+.ins-deep-b{display:flex;gap:10px;margin-top:14px;align-items:center}
+.ins-deep-o{border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:700;
+  padding:10px 4px;cursor:pointer}
+.ins-deep-a{flex:1;border:none;border-radius:14px;padding:12px;font-family:inherit;font-size:13.5px;
+  font-weight:800;cursor:pointer}
+.ins-ask-t{font-size:10px;font-weight:800;margin-bottom:6px}
+.ins-card-q{font-size:11.5px;font-weight:800;line-height:1.5;margin-bottom:6px}
+html body.mod-insights .ins-dig,html body.mod-insights .ins-deep,html body.mod-insights .ins-deep-a{
+  background:var(--nu-ground);color:var(--nu-ink);
+  box-shadow:-3px -3px 7px var(--nu-lit),4px 5px 10px var(--nu-shade-soft)}
+html body.mod-insights .ins-deep{box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft)}
+html body.mod-insights .ins-deep-q{color:var(--nu-ink)}
+html body.mod-insights .ins-deep-h,html body.mod-insights .ins-deep-o,
+html body.mod-insights .ins-ask-t,html body.mod-insights .ins-card-q{color:var(--nu-muted)}
 
 /* ── WRITING ── every field a channel, and one action with a lamp under it ── */
 .ins-lbl{font-size:10px;font-weight:700;margin:0 2px 6px}
@@ -43586,6 +43611,231 @@ var INSIGHTS_CATS;langOn(function(){INSIGHTS_CATS=[
 var _insView='home';
 var _insCat=null;
 var _insQ=null;
+/* DIG DEEPER: the question on show (an index into insDeepQs of the topic it
+   was drawn for), whether its card is open, and which topic that was. */
+var _insDQ=null,_insDeepOpen=false,_insDeepK=null;
+var INS_DIG_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v13M6.5 12.5 12 18l5.5-5.5"/><path d="M8 21h8"/></svg>';
+/* The bank, by topic. Drawn at display so it follows the language; an entry
+   stores the index, so a topic's list may grow at the end and never be
+   reordered. Written from tools/patches/ins-deep-bank.mjs. */
+function insDeepQs(k){
+  switch(k){
+    case 'self__0':return [_t('מה היה מפתיע אנשים שמכירים אותך טוב, אם היו יודעים?'),
+      _t('איזה חלק בך אתה מראה רק כשאתה לבד?'),
+      _t('אם היית מתאר את עצמך בלי העבודה ובלי התפקידים שלך, מה היה נשאר?')];
+    case 'self__1':return [_t('אם אף אחד לא היה רואה ולא יודע, מה היית בוחר?'),
+      _t('מה אתה רוצה, שמביך אותך להגיד בקול?'),
+      _t('מה רצית בגיל חמש־עשרה, ואתה עדיין רוצה היום?')];
+    case 'self__2':return [_t('למה פינית זמן השבוע, למרות שהיית עסוק?'),
+      _t('על מה היית שומר קודם, אם כל השאר היה מתפרק?'),
+      _t('על מה אתה אומר שזה חשוב לך, אבל הימים שלך אומרים אחרת?')];
+    case 'self__3':return [_t('מתי בפעם האחרונה שילמת מחיר על משהו שאתה מאמין בו?'),
+      _t('איזה ערך קיבלת מהבית, ואיזה בחרת בעצמך?'),
+      _t('מה לא היית עושה אף פעם, גם בשביל הרבה כסף?')];
+    case 'self__4':return [_t('בשביל מה אנשים פונים דווקא אליך?'),
+      _t('מה בא לך כל כך בקלות, שאתה שוכח שזו חוזקה?'),
+      _t('מתי בפעם האחרונה הפתעת את עצמך?')];
+    case 'self__5':return [_t('איזו חולשה שלך גם מגינה עליך ממשהו?'),
+      _t('מה אתה מבטיח לעצמך לשנות, שוב ושוב?'),
+      _t('מה היית סולח לאדם אחר בקלות, אבל לא לעצמך?')];
+    case 'self__6':return [_t('איזה פחד מחליט בשבילך יותר ממה שהיית רוצה?'),
+      _t('מה הכי גרוע שיכול לקרות, ואיך היית עובר את זה?'),
+      _t('איזה פחד ירשת ממישהו אחר?')];
+    case 'self__7':return [_t('מה קורה לך שוב ושוב, עם אנשים שונים?'),
+      _t('מה אתה עושה כשאתה עייף, שלא היית עושה כשאתה נח?'),
+      _t('מה הדבר הראשון שאתה עושה כשמשהו משתבש?')];
+    case 'self__8':return [_t('מה אתה מספר לעצמך, כדי שלא תצטרך להחליט?'),
+      _t('מתי השבוע אמרת שאתה בסדר, וזה לא היה נכון?'),
+      _t('מה אתה כבר יודע, אבל ממשיך להתנהג כאילו לא?')];
+    case 'self__9':return [_t('מה שמת לב השבוע על עצמך, שלא ידעת לפני שנה?'),
+      _t('באיזה מצב אתה הכי אתה?'),
+      _t('מה חשבת פעם על עצמך, שהתברר כלא נכון?')];
+    case 'emotions__0':return [_t('ממה פחדת לפני חמש שנים, שהיום כבר לא מפחיד אותך? מה השתנה?'),
+      _t('מה היית עושה מחר, אם הפחד הזה פשוט היה נעלם?'),
+      _t('איפה בגוף אתה מרגיש את הפחד קודם?')];
+    case 'emotions__1':return [_t('מתי בפעם האחרונה הרשית לעצמך להיות עצוב, בלי למהר לתקן את זה?'),
+      _t('איזה עצב אתה עדיין סוחב, שלא סיפרת עליו לאף אחד?'),
+      _t('מה עוזר לעצב שלך: חברה, שקט, או אוזן קשבת?')];
+    case 'emotions__2':return [_t('על מה אתה כועס, שבעצם מגן על משהו שחשוב לך?'),
+      _t('על מי קל לך לכעוס, ועל מי אתה לא מצליח לכעוס בכלל?'),
+      _t('מה אתה עושה עם כעס שלא אמרת בקול?')];
+    case 'emotions__3':return [_t('איזה דבר קטן שימח אותך השבוע, כמעט בלי ששמת לב?'),
+      _t('מתי בפעם האחרונה היית שמח בלי שום סיבה?'),
+      _t('מה עוצר אותך מלהרשות לעצמך לשמוח?')];
+    case 'emotions__4':return [_t('איך אתה מראה אהבה בלי להגיד אותה?'),
+      _t('מתי בפעם האחרונה הרגשת אהוב בדיוק כמו שאתה?'),
+      _t('את מי אתה אוהב, ולא אמרת לו את זה כבר הרבה זמן?')];
+    case 'emotions__5':return [_t('ליד מי אתה מרגיש לבד, גם כשאתם יחד?'),
+      _t('מה ההבדל אצלך בין להיות לבד לבין להיות בודד?'),
+      _t('למי היית מתקשר, אם היית צריך לספר למישהו משהו קשה הערב?')];
+    case 'emotions__6':return [_t('במי קינאת לאחרונה, ומה זה אומר על מה שאתה רוצה?'),
+      _t('מה יש לך, שמישהו אחר אולי מקנא בו?'),
+      _t('יש קנאה שאתה מתבייש בה? מה יש מתחתיה?')];
+    case 'emotions__7':return [_t('איפה אתה מרגיש בטוח בעצמך לגמרי?'),
+      _t('של מי הקול שאתה שומע כשאתה מטיל ספק בעצמך?'),
+      _t('מה היית מנסה, אם היית בטוח שתצליח בזה?')];
+    case 'emotions__8':return [_t('איזו מחשבה חוזרת אליך השבוע שוב ושוב?'),
+      _t('איזו מחשבה שלך לא היית אומר בקול לחבר?'),
+      _t('על מה אתה חושב רגע לפני שאתה נרדם?')];
+    case 'emotions__9':return [_t('מה אתה עושה עם רגש שאתה לא רוצה להרגיש?'),
+      _t('איזה רגש הכי קשה לך להראות מול אחרים?'),
+      _t('מה עוזר לך להירגע, כשהכול יותר מדי?')];
+    case 'people__0':return [_t('מה אתה שם לב אליו ראשון אצל אדם חדש?'),
+      _t('מי בחיים שלך הופך אותך לגרסה טובה יותר של עצמך?'),
+      _t('אילו אנשים מרוקנים אותך, ולמה?')];
+    case 'people__1':return [_t('למי מהחברים שלך היית מתקשר בשלוש לפנות בוקר?'),
+      _t('איזו חברות נתת לה לדעוך, ואתה מתגעגע אליה?'),
+      _t('איזה חבר אתה, באמת?')];
+    case 'people__2':return [_t('מה למדת על אהבה מהזוגות שגדלת לידם?'),
+      _t('מה אתה צריך מבן או בת זוג, שקשה לך לבקש?'),
+      _t('מה גורם לך להרגיש קרוב למישהו?')];
+    case 'people__3':return [_t('מה קיבלת מהמשפחה שלך, שאתה רוצה לשמור?'),
+      _t('מה אתה רוצה לעשות אחרת ממה שגידלו אותך?'),
+      _t('את מי במשפחה אתה מבין היום יותר טוב מפעם?')];
+    case 'people__4':return [_t('על מי אתה סומך בלי לחשוב פעמיים, ואיך זה נבנה?'),
+      _t('מתי פגעו באמון שלך, ומה זה שינה בך?'),
+      _t('מי סומך עליך יותר ממה שאתה סומך על עצמך?')];
+    case 'people__5':return [_t('על מה אמרת כן השבוע, כשרצית להגיד לא?'),
+      _t('איזה גבול שלך אנשים חוצים הכי הרבה?'),
+      _t('האכזבה של מי הכי מפחידה אותך כשאתה אומר לא?')];
+    case 'people__6':return [_t('איזו שיחה אתה דוחה כבר הרבה זמן?'),
+      _t('בוויכוח, אתה נלחם, בורח או קופא?'),
+      _t('מה לימד אותך ריב, שלא היית לומד אחרת?')];
+    case 'people__7':return [_t('מה קל לך יותר, לתת או לקבל? למה?'),
+      _t('מה מישהו נתן לך, ולא הודית לו על זה אף פעם?'),
+      _t('מתי הנתינה שלך מפסיקה להיות מתנה ונהיית עול?')];
+    case 'people__8':return [_t('מה אתה מצפה מאנשים, בלי להגיד את זה אף פעם?'),
+      _t('בציפיות של מי אתה עדיין מנסה לעמוד?'),
+      _t('איזו אכזבה שלך באה מהציפייה, ולא מהאדם עצמו?')];
+    case 'people__9':return [_t('ממי נפרדת, ומה זה שחרר בך?'),
+      _t('יש מישהו שהיית צריך להיפרד ממנו, ואתה עדיין מחזיק?'),
+      _t('מה היית אומר למישהו שיצא מהחיים שלך, אם היית יכול?')];
+    case 'life__0':return [_t('על מה הלך לך זמן השבוע, שהיית רוצה לקבל בחזרה?'),
+      _t('מתי בפעם האחרונה שכחת להסתכל על השעון? מה עשית?'),
+      _t('מה אתה מחכה לזמן הנכון כדי לעשות?')];
+    case 'life__1':return [_t('מתי בפעם האחרונה הרגשת שמה שאתה עושה באמת חשוב?'),
+      _t('למי זה היה חסר, אם היית מפסיק לעשות את מה שאתה עושה?'),
+      _t('מה נותן משמעות ליום רגיל אצלך?')];
+    case 'life__2':return [_t('מה משמח אותך, שאין לו שום קשר להצלחה?'),
+      _t('מתי בפעם האחרונה הרגשת ששום דבר לא חסר?'),
+      _t('אחרי מה אתה אומר לעצמך שתהיה מאושר?')];
+    case 'life__3':return [_t('איזו תקופה קשה הפכה אותך למי שאתה היום?'),
+      _t('לאיזה כאב אתה חוזר שוב, למרות שהוא נגמר?'),
+      _t('מה אתה צריך לשמוע ביום רע?')];
+    case 'life__4':return [_t('מה השתנה בך השנה, בלי שהחלטת על זה?'),
+      _t('איזה שינוי אתה רוצה, אבל עוד לא מוכן לשלם עליו?'),
+      _t('מה היית רוצה שיישאר בדיוק כמו שהוא, לא משנה מה?')];
+    case 'life__5':return [_t('איזו בחירה בחיים שלך לא באמת בחרת?'),
+      _t('מתי אתה מרגיש הכי חופשי?'),
+      _t('מה היית עושה אחרת, אם אף אחד לא היה מסתכל?')];
+    case 'life__6':return [_t('איזה מזל היה לך, שלא באמת הודית עליו?'),
+      _t('איזה מזל רע התברר אחר כך כטוב בשבילך?'),
+      _t('איזה מפגש מקרי שינה לך את החיים?')];
+    case 'life__7':return [_t('מה היית רוצה שיגידו עליך, שעדיין לא נכון היום?'),
+      _t('אם הייתה נשארת לך שנה אחת, מה היית מפסיק לעשות?'),
+      _t('את מי היית רוצה לידך בסוף?')];
+    case 'life__8':return [_t('איזו החלטה שלך כאבה, ובכל זאת היית מקבל אותה שוב?'),
+      _t('על מה אתה מצטער שלא אמרת?'),
+      _t('איזו חרטה שלך עוד אפשר לתקן?')];
+    case 'life__9':return [_t('תאר יום רגיל וטוב. מה יש בו?'),
+      _t('מה יש לך היום, שפעם רק חלמת עליו?'),
+      _t('מה הופך את החיים שלך לטובים, שאי אפשר לקנות בכסף?')];
+    case 'success__0':return [_t('איזה חלק בעבודה שלך היית עושה גם בלי שכר?'),
+      _t('מתי אתה שוכח את הזמן בעבודה?'),
+      _t('מה העבודה לוקחת ממך, שהיא לא אמורה לקחת?')];
+    case 'success__1':return [_t('מה אתה מקווה שהכסף ייתן לך, שאולי הוא לא באמת נותן?'),
+      _t('מה למדת על כסף בבית?'),
+      _t('על מה הוצאת כסף לאחרונה, וזה היה שווה לגמרי?')];
+    case 'success__2':return [_t('למי אתה מנסה להוכיח משהו?'),
+      _t('מה יהיה מספיק בשבילך?'),
+      _t('על איזה חלום ויתרת, והאם זה היה נכון?')];
+    case 'success__3':return [_t('איזה כישלון לימד אותך יותר מכל הצלחה?'),
+      _t('מה היית מנסה, אם לכישלון לא הייתה משמעות?'),
+      _t('איך אתה מדבר לעצמך אחרי שאתה נכשל?')];
+    case 'success__4':return [_t('איזו הצלחה שלך אף אחד לא ראה, אבל אתה יודע שהרווחת?'),
+      _t('איך תדע שהצלחת, בלי שאף אחד יגיד לך?'),
+      _t('לפי ההגדרה של מי להצלחה אתה חי?')];
+    case 'success__5':return [_t('מה אתה עושה גם בימים שאין לך כוח?'),
+      _t('איפה קצת יותר משמעת הייתה נותנת לך הרבה יותר חופש?'),
+      _t('איזה הרגל בנית, שאתה גאה בו?')];
+    case 'success__6':return [_t('מה מוציא אותך מהמיטה בבוקר קשה?'),
+      _t('מתי בפעם האחרונה עשית משהו רק כי רצית?'),
+      _t('מה פעם הניע אותך, והיום כבר לא?')];
+    case 'success__7':return [_t('מתי בפעם האחרונה יצרת משהו בידיים?'),
+      _t('מה היית יוצר, אם אף אחד לא היה רואה את זה אף פעם?'),
+      _t('איפה מגיעים אליך הרעיונות הכי טובים שלך?')];
+    case 'success__8':return [_t('למי אתה הכי משווה את עצמך, ומה זה עולה לך?'),
+      _t('במה התקדמת לעומת מי שהיית לפני שנה?'),
+      _t('החיים של מי נראים לך קלים יותר ממה שהם באמת?')];
+    case 'success__9':return [_t('מה היה קשה, ושווה כל דקה?'),
+      _t('במה אתה משקיע מאמץ, שהיית מוותר עליו אם היית כנה?'),
+      _t('מה מגיע לו יותר מהמאמץ שלך ממה שהוא מקבל?')];
+    case 'world__0':return [_t('איזה כלל חברתי אתה שומר עליו, בלי להאמין בו?'),
+      _t('איפה אתה מרגיש שאתה שייך?'),
+      _t('אם היית יכול לשנות דבר אחד בחברה שאתה חי בה, מה זה היה?')];
+    case 'world__1':return [_t('מתי עשית את הדבר הנכון, למרות שזה עלה לך?'),
+      _t('איפה עובר אצלך הקו בין שקר לבן לשקר?'),
+      _t('איזו דעה שלך על טוב ורע השתנתה?')];
+    case 'world__2':return [_t('איפה יש לך יותר כוח ממה שאתה משתמש בו?'),
+      _t('למי יש כוח עליך, שלא שאלת עליו שאלות אף פעם?'),
+      _t('איך אתה מתנהג כשאתה החזק?')];
+    case 'world__3':return [_t('איזו עמדה שלך הכי קשה היה לשנות?'),
+      _t('מתי בפעם האחרונה הקשבת באמת למישהו שאתה לא מסכים איתו?'),
+      _t('מה חשוב לך, שאף מפלגה לא מייצגת?')];
+    case 'world__4':return [_t('איזה סרט, שיר או משהו שקראת שינה לך את המבט על משהו?'),
+      _t('מה מהתרבות שלך אתה רוצה להעביר הלאה?'),
+      _t('מה מהתרבות שלך אתה בוחר לא להמשיך?')];
+    case 'world__5':return [_t('מה הטלפון גוזל ממך, ומה הוא נותן?'),
+      _t('מה היית עושה עם שעה בלי מסך?'),
+      _t('איזו טכנולוגיה באמת שיפרה לך את החיים?')];
+    case 'world__6':return [_t('מתי בפעם האחרונה עצרת להסתכל על השמיים?'),
+      _t('איזה מקום בטבע מרגיע אותך?'),
+      _t('מה שמת לב אליו בחוץ היום?')];
+    case 'world__7':return [_t('במה אתה מאמין, שרוב האנשים סביבך לא?'),
+      _t('באיזו אמונה החזקת פעם, ושחררת?'),
+      _t('האמונה של מי נראית לך יפה, גם אם היא לא שלך?')];
+    case 'world__8':return [_t('מה למדת על העולם, שאף אחד לא לימד אותך בבית הספר?'),
+      _t('במה לדעתך רוב האנשים טועים לגבי איך דברים עובדים?'),
+      _t('מה הפתיע אותך בלהיות מבוגר?')];
+    case 'world__9':return [_t('מה אתה לא מבין בעצמך?'),
+      _t('מה אנשים אחרים עושים, שאתה פשוט לא מבין?'),
+      _t('מה היית שואל מישהו עם השקפת עולם הפוכה משלך?')];
+    case 'notebook__0':return [_t('מה הבנת השבוע, שאתה לא רוצה לשכוח?'),
+      _t('מה היית כותב לעצמך ליום קשה?'),
+      _t('איזה משפט שמישהו אמר לך עדיין איתך?')];
+    case 'notebook__1':return [_t('על מה שינית את דעתך השנה?'),
+      _t('מה גרם לך לשנות את דעתך: אדם, חוויה, או זמן?'),
+      _t('איזו דעה שלך היית מוכן לשנות כבר מחר?')];
+    case 'notebook__2':return [_t('איפה אתה אומר דבר אחד ועושה דבר אחר?'),
+      _t('אילו שני דברים שאתה רוצה מושכים לכיוונים הפוכים?'),
+      _t('עם איזו סתירה בעצמך השלמת?')];
+    case 'notebook__3':return [_t('איזו שאלה משאירה אותך ער?'),
+      _t('על איזו שאלה אתה מפחד לענות?'),
+      _t('מה היית שואל את עצמך בעוד עשר שנים?')];
+    case 'notebook__4':return [_t('מה היית מנסה, אם היית יודע שתמיד אפשר לחזור?'),
+      _t('איזה מקום אתה רוצה לראות לפני שתזדקן?'),
+      _t('מה תמיד רצית ללמוד, ואתה ממשיך לדחות?')];
+  }
+  return [];
+}
+/* where a draft lives: a deep question has its own, so starting to answer
+   one never lands in the topic's plain box */
+function insDraftKey(){return insKey(_insCat,_insQ)+(_insDQ!=null?'#'+_insDQ:'');}
+/* the next question of a topic: in order from where she stopped, skipping
+   the ones she has already answered while any are left */
+function insDeepPick(k){
+  var qs=insDeepQs(k);if(!qs.length)return null;
+  var pos={};try{pos=JSON.parse(localStorage.getItem('ins_deep_pos')||'{}')||{};}catch(e){}
+  var done={};(loadInsights()[k]||[]).forEach(function(e){if(e&&e.dq!=null)done[e.dq]=1;});
+  var start=(+pos[k]||0)%qs.length,i=start;
+  for(var n=0;n<qs.length;n++){var c=(start+n)%qs.length;if(!done[c]){i=c;break;}}
+  pos[k]=i+1;try{localStorage.setItem('ins_deep_pos',JSON.stringify(pos));}catch(e){}
+  return i;
+}
+function insDeepNext(){
+  _insDeepK=insKey(_insCat,_insQ);_insDQ=insDeepPick(_insDeepK);_insDeepOpen=_insDQ!=null;
+  renderInsights();
+}
 
 function loadInsights(){try{var x=localStorage.getItem('insights_data');return x?JSON.parse(x):{};}catch(e){return{};}}
 function saveInsights(obj){try{localStorage.setItem('insights_data',JSON.stringify(obj));}catch(e){}}
@@ -43604,7 +43854,7 @@ function insDraftHold(){
     var t=document.getElementById('ins-text');if(!t)return;
     var f=document.getElementById('ins-changed-from'),
         w=document.getElementById('ins-changed-why'),
-        d=loadInsDrafts(),k=insKey(_insCat,_insQ),
+        d=loadInsDrafts(),k=insDraftKey(),
         text=String(t.value||'').trim(),
         from=String((f&&f.value)||'').trim(),
         why=String((w&&w.value)||'').trim();
@@ -43664,6 +43914,7 @@ function renderInsHome(){
 }
 
 function renderInsCat(){
+  _insDQ=null;_insDeepOpen=false;_insDeepK=null;
   var cat=INSIGHTS_CATS.find(function(c){return c.id===_insCat;});
   if(!cat){_insView='home';renderInsights();return;}
   var data=loadInsights();
@@ -43700,12 +43951,24 @@ function renderInsQ(){
   /* the question is pressed INTO the plaster and what you wrote is raised out
      of it: the prompt is the surface, your answer is the thing lying on it */
   h+='<div class="ins-ask" style="--c:'+cat.color+'">'+esc(q)+'</div>';
+  var ik=insKey(cat.id,_insQ),dqs=insDeepQs(ik);
+  if(_insDeepK!==ik){_insDQ=null;_insDeepOpen=false;_insDeepK=ik;}
+  if(dqs.length){
+    if(_insDeepOpen&&_insDQ!=null&&dqs[_insDQ]){
+      h+='<div class="ins-deep"><div class="ins-deep-h">'+_t('שאלה לעומק')+'</div>';
+      h+='<div class="ins-deep-q">'+esc(dqs[_insDQ])+'</div><div class="ins-deep-b">';
+      h+='<button class="ins-deep-o" onclick="insDeepNext()">&#8635; '+_t('שאלה אחרת')+'</button>';
+      h+='<button class="ins-deep-a" onclick="_insView=\'entry\';renderInsights()">'+_t('לענות')+'</button>';
+      h+='</div></div>';
+    } else h+='<button class="ins-dig" onclick="insDeepNext()">'+INS_DIG_SVG+_t('חפור עמוק יותר')+'</button>';
+  }
   for(var ei=entries.length-1;ei>=0;ei--){
     var e=entries[ei];
     var dd=new Date(e.date);
     var ds=fmtDay(dd);
     h+='<div class="ins-card">';
     h+='<div class="ins-when">'+ds+'</div>';
+    if(e.dq!=null&&dqs[e.dq])h+='<div class="ins-card-q">'+esc(dqs[e.dq])+'</div>';
     h+='<div class="ins-txt">'+esc(e.text)+'</div>';
     if(e.changedFrom){
       /* a quote of an older you, so it sits in a channel of its own rather
@@ -43722,7 +43985,7 @@ function renderInsQ(){
     h+='<button class="ins-x" onclick="deleteInsEntry('+ei+')">&times;</button>';
     h+='</div>';
   }
-  h+='<button class="ins-add" onclick="_insView=\'entry\';renderInsights()">'+_t('הוסף תובנה')+'</button>';
+  h+='<button class="ins-add" onclick="_insDQ=null;_insDeepOpen=false;_insView=\'entry\';renderInsights()">'+_t('הוסף תובנה')+'</button>';
   h+='</div>';
   document.getElementById('content').innerHTML=h;
 }
@@ -43733,11 +43996,12 @@ function renderInsEntry(){
   var q=cat.questions[_insQ];
   /* read before the markup is built, so the boxes are drawn already holding it
      rather than filled in afterwards - no flash of an empty field */
-  var draft=loadInsDrafts()[insKey(_insCat,_insQ)]||{};
+  var draft=loadInsDrafts()[insDraftKey()]||{};
+  var dq=_insDQ!=null?insDeepQs(insKey(_insCat,_insQ))[_insDQ]:null;
   document.getElementById('hdr-title').textContent=''+_t('תובנה חדשה')+'';
   var h='<div style="padding-bottom:30px">';
   h+='<button class="ins-back" onclick="_insView=\'q\';renderInsights()">&#8249; '+esc(q)+'</button>';
-  h+='<div class="ins-ask" style="--c:'+cat.color+'">'+esc(q)+'</div>';
+  h+='<div class="ins-ask" style="--c:'+cat.color+'">'+(dq?'<div class="ins-ask-t">'+esc(q)+'</div>'+esc(dq):esc(q))+'</div>';
   h+='<div class="ins-lbl">'+_t('התובנה שלך')+'</div>';
   h+='<textarea id="ins-text" class="ins-ta" rows="5" placeholder="'+_t("כתוב כאן...")+'">'+esc(draft.text||'')+'</textarea>';
   h+='<div class="ins-was">';
@@ -43760,11 +44024,14 @@ function saveInsEntry(){
   var data=loadInsights();
   var key=insKey(_insCat,_insQ);
   if(!data[key])data[key]=[];
-  data[key].push({text:textInp.value.trim(),date:Date.now(),changedFrom:changedFrom.trim()||null,changedWhy:changedWhy.trim()||null});
+  var ent={text:textInp.value.trim(),date:Date.now(),changedFrom:changedFrom.trim()||null,changedWhy:changedWhy.trim()||null};
+  if(_insDQ!=null)ent.dq=_insDQ;
+  data[key].push(ent);
   saveInsights(data);
   /* it is an entry now, so the draft must go - otherwise the next visit to
      this question offers her what she already saved, as if unsaved */
-  try{var dr=loadInsDrafts();if(dr[key]){delete dr[key];saveInsDrafts(dr);}}catch(e){}
+  try{var dr=loadInsDrafts(),dk=insDraftKey();if(dr[dk]){delete dr[dk];saveInsDrafts(dr);}}catch(e){}
+  _insDQ=null;_insDeepOpen=false;
   showToast(''+_t('תובנה נשמרה')+' ✓');
   _insView='q';renderInsights();
 }
