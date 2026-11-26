@@ -1048,6 +1048,47 @@ function activityBonus(a) {
 }
 
 /* the ADMIN_KEY secret, as a Bearer token */
+/* ── OLIMEI PRO ── the base is free; what calls a model and costs money on
+   every use is the subscription (Asaf, 26 Nov 2026). Typing a meal or a
+   sentence into the calendar stays free: it is how the free app works, and
+   it costs a fraction of a cent.
+   Off until env.PAYWALL is 'on'. Even then only the iPhone app is asked
+   (the web app has no way to pay), so the testers, the first user and the
+   browser are untouched. RevenueCat holds the store's answer; it is asked at
+   most once an hour per install, and if it cannot be reached the last answer
+   stands - a store outage must not lock out somebody who paid.
+   Secrets: RC_SECRET (RevenueCat secret API key). Vars: PAYWALL, PRO_ALL. */
+const PRO_ROUTES = ['/coach', '/see', '/vision', '/plan', '/week', '/beem', '/act', '/transcribe', '/say', '/recipe', '/analyze', '/ask', '/estimate'];
+async function proStatus(env, uid, fresh) {
+  if (!uid) return { pro: false, why: 'none' };
+  if (env.PRO_ALL === '1') return { pro: true, why: 'all' };
+  if (await env.SUBS.get('prog:' + uid)) return { pro: true, why: 'grant' };
+  let c = null;
+  try { c = JSON.parse((await env.SUBS.get('pro:' + uid)) || 'null'); } catch {}
+  const now = Date.now();
+  if (c && !fresh && now - c.at < 3600000) return { pro: c.until > now, until: c.until || 0, why: 'store' };
+  if (!env.RC_SECRET) return { pro: !!(c && c.until > now), until: (c && c.until) || 0, why: 'unset' };
+  try {
+    const r = await fetch('https://api.revenuecat.com/v1/subscribers/' + encodeURIComponent(uid),
+      { headers: { Authorization: 'Bearer ' + env.RC_SECRET } });
+    if (r.ok) {
+      const j = await r.json();
+      const e = j && j.subscriber && j.subscriber.entitlements && j.subscriber.entitlements.pro;
+      /* a lifetime entitlement has no expiry */
+      const until = e ? (e.expires_date ? Date.parse(e.expires_date) : 8.64e15) : 0;
+      await env.SUBS.put('pro:' + uid, JSON.stringify({ until, at: now }), { expirationTtl: 30 * 86400 });
+      return { pro: until > now, until, why: 'store' };
+    }
+  } catch {}
+  return { pro: !!(c && c.until > now), until: (c && c.until) || 0, why: 'stale' };
+}
+async function proGate(req, env, url, M) {
+  if (env.PAYWALL !== 'on' || req.method !== 'POST' || !PRO_ROUTES.includes(url.pathname)) return null;
+  if (!/^ios/.test(url.searchParams.get('p') || '')) return null;
+  const s = await proStatus(env, M.uid);
+  return s.pro ? null : json({ error: 'pro', pro: false }, 402);
+}
+
 /* the "how" of a day of usage (the app's usageNote names each): a fixed list
    of numbers, flags and two short words - anything else is dropped, so no
    content can arrive here even by mistake. Numbers only grow, flags only turn
@@ -1260,6 +1301,16 @@ async function routeRequest(req, env, ctx, M) {
     const url = new URL(req.url);
 
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+
+    /* the subscription: a paid route asked for without Olimei Pro is a 402 */
+    const gate = await proGate(req, env, url, M);
+    if (gate) return gate;
+    /* GET /pro?u=<install>[&fresh=1] - what the app shows: has it Pro, and why */
+    if (url.pathname === '/pro' && req.method === 'GET') {
+      const uid = M.uid;
+      if (!uid) return json({ error: 'bad uid' }, 400);
+      return json({ ok: true, on: env.PAYWALL === 'on', ...(await proStatus(env, uid, url.searchParams.get('fresh') === '1')) });
+    }
 
     /* Ask Gemini the same question with the same system prompt. Returns the
        raw text, or null - what a failure MEANS is the caller's business. */
