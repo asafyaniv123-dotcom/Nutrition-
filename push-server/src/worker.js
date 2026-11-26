@@ -4758,9 +4758,53 @@ async function routeRequest(req, env, ctx, M) {
         l: String(b.lang || was.l || '').slice(0, 8),
         f: was.f && was.f < first ? was.f : first,
         d: b.dev === true,
+        /* which build: 'web', 'ios-13'. A ping without one keeps the last */
+        p: String(b.p || was.p || '').replace(/[^a-z0-9-]/g, '').slice(0, 16),
       };
       await env.SUBS.put(key, JSON.stringify(rec), { expirationTtl: 120 * 86400 });
       return json({ ok: true });
+    }
+    /* ── /err and /admin/errors ── a script error the app caught: message,
+       where, area, build, language. Never content. One key per day (er:<day>),
+       one entry per distinct error, counted; kept 60 days. */
+    if (url.pathname === '/err' && req.method === 'POST') {
+      let b;
+      try { b = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const uid = String((b && b.uid) || '');
+      if (!/^[0-9a-f]{24}$/.test(uid)) return json({ error: 'bad uid' }, 400);
+      const day = String((b && b.day) || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !(Math.abs(Date.parse(day + 'T12:00:00Z') - Date.now()) < 3 * 86400000)) return json({ error: 'bad day' }, 400);
+      const m = String(b.m || '').slice(0, 300), at = String(b.at || '').slice(0, 120);
+      if (!m) return json({ error: 'empty' }, 400);
+      const p = String(b.p || '').replace(/[^a-z0-9-]/g, '').slice(0, 16);
+      const area = String(b.area || '').replace(/[^a-z]/g, '').slice(0, 16);
+      const key = 'er:' + day;
+      let rec = {};
+      try { rec = JSON.parse((await env.SUBS.get(key)) || '{}') || {}; } catch { rec = {}; }
+      const sig = m + '|' + at + '|' + p;
+      if (!rec[sig] && Object.keys(rec).length >= 300) return json({ ok: true, kept: false });
+      const e = rec[sig] || { m, at, p, n: 0, u: [], t0: Date.now(), d: b.dev === true };
+      e.n = Math.min(1e6, (Number(e.n) || 0) + 1);
+      e.t1 = Date.now();
+      e.area = area || e.area || '';
+      e.l = String(b.lang || e.l || '').slice(0, 8);
+      e.d = !!e.d && b.dev === true;
+      const who = uid.slice(0, 6);
+      if (!e.u.includes(who) && e.u.length < 20) e.u.push(who);
+      rec[sig] = e;
+      await env.SUBS.put(key, JSON.stringify(rec), { expirationTtl: 60 * 86400 });
+      return json({ ok: true });
+    }
+    if (url.pathname === '/admin/errors' && req.method === 'GET') {
+      if (!adminOk(req, env)) return json({ error: 'not allowed' }, 401);
+      const days = Math.max(1, Math.min(60, Number(url.searchParams.get('days')) || 14));
+      const out = [];
+      for (let i = -1; i <= days; i++) {
+        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+        const v = await env.SUBS.get('er:' + d);
+        if (v) { try { out.push({ day: d, errors: Object.values(JSON.parse(v)) }); } catch {} }
+      }
+      return json({ ok: true, days: out });
     }
     if (url.pathname === '/admin/usage' && req.method === 'GET') {
       if (!adminOk(req, env)) return json({ error: 'not allowed' }, 401);

@@ -17284,11 +17284,50 @@ function usageNote(what,area){
   try{
     fetch(SYNC_SERVER+'/ping',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
       body:JSON.stringify({uid:installId(),dev:!!window.__DEV__,day:day,first:first,lang:appLang(),
-        o:u.o,s:u.s,a:Object.keys(u.a)})}).catch(function(){});
+        o:u.o,s:u.s,a:Object.keys(u.a),p:appPlatform()})}).catch(function(){});
   }catch(e){}
 }
 document.addEventListener('visibilitychange',function(){if(!document.hidden)try{usageNote('open');}catch(e){}});
 window.addEventListener('load',function(){setTimeout(function(){try{usageNote('open');}catch(e){}},1500);});
+/* ── WHICH BUILD ── 'web' in a browser; 'ios-13' or 'android' inside the
+   shell. The number is the TestFlight build: Codemagic writes it into
+   build.json beside the page, so the page itself stays the same file in
+   every copy. Read once, long before the first ping at 1.5 s. */
+var _appBuildNo='';
+function appPlatform(){
+  var C=window.Capacitor;
+  if(!(C&&C.isNativePlatform&&C.isNativePlatform()))return 'web';
+  return ((C.getPlatform&&C.getPlatform())||'native')+(_appBuildNo?'-'+_appBuildNo:'');
+}
+(function(){
+  var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform()))return;
+  try{fetch('build.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;})
+    .then(function(j){if(j&&/^\d{1,6}$/.test(String(j.b)))_appBuildNo=String(j.b);}).catch(function(){});}catch(e){}
+})();
+/* ── ERRORS, ANONYMOUS ── a script error nobody reported is still a bug.
+   Sent: the message, where it was thrown, the area open, the build and the
+   language - never anything typed. A JSON error can quote the data it choked
+   on, so everything from its first quote on is cut. Each distinct error
+   goes once per session, ten at most; a dropped connection is not a bug. */
+var _errSeen={},_errN=0;
+function errNote(msg,at){
+  if(!SYNC_SERVER)return;
+  msg=String(msg||'').slice(0,300);at=String(at||'').slice(0,120);
+  if(!msg||/^Script error\.?$/.test(msg)||/ResizeObserver loop|Load failed|Failed to fetch|NetworkError|AbortError|cancelled/i.test(msg))return;
+  if(/JSON/i.test(msg))msg=msg.replace(/["'][\s\S]*$/,'"…"');
+  var sig=msg+'|'+at;if(_errSeen[sig]||_errN>=10)return;_errSeen[sig]=1;_errN++;
+  try{fetch(SYNC_SERVER+'/err',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
+    body:JSON.stringify({uid:installId(),dev:!!window.__DEV__,day:todayStr(),p:appPlatform(),lang:appLang(),
+      area:(typeof currentModule==='string'&&currentModule)||'home',m:msg,at:at})}).catch(function(){});}catch(e){}
+}
+window.addEventListener('error',function(e){
+  if(!e||(e.target&&e.target!==window))return; /* a picture that failed to load, not a script */
+  try{errNote(e.message||(e.error&&String(e.error)),(e.filename||'').replace(/^.*\//,'')+':'+(e.lineno||0)+':'+(e.colno||0));}catch(_){}
+});
+window.addEventListener('unhandledrejection',function(e){
+  var r=e&&e.reason;
+  try{errNote('unhandled: '+(r&&r.message?r.message:String(r)),r&&r.stack?(String(r.stack).split('\n')[1]||'').trim():'');}catch(_){}
+});
 function corrItem(m){
   if(!m)return null;
   return {id:String(m.id),name:m.name||'',amount:m.amount||'',kcal:m.kcal||0,p:m.p||0,c:m.c||0,f:m.f||0,

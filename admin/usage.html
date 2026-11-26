@@ -70,7 +70,7 @@ var NEED=4;                       /* evenings in week 2 that make a pass */
 var keyEl=document.getElementById('key');keyEl.value=localStorage.getItem('admin_key')||'';
 var AREA={nutrition:'תזונה',fitness:'כושר',hobbies:'תחביבים',people:'האנשים שלי',planning:'תכנון זמן',closet:'הארון שלי',insights:'תובנות',endofday:'סיום יום'};
 var LANG={he:'עברית',en:'English',de:'Deutsch',es:'Español',fr:'Français',it:'Italiano',pt:'Português',ja:'日本語',zh:'简体中文','zh-TW':'繁體中文',ar:'العربية'};
-var lastDays=null;
+var lastDays=null,lastErrs=[];
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 /* day strings are calendar labels; arithmetic on them is done at UTC noon so no zone can move one */
 function dnum(d){return Math.floor(Date.parse(d+'T12:00:00Z')/86400000);}
@@ -89,6 +89,9 @@ function load(){
       if(x.s!==200||!x.j.ok){st.innerHTML='<span class="err">'+(x.s===401?'המפתח לא נכון':'שגיאה '+x.s)+'</span>';return;}
       st.textContent='';lastDays=x.j.days;draw();
     }).catch(function(){st.innerHTML='<span class="err">אין חיבור</span>';});
+  /* the errors the app caught on its own; a failure here leaves the usage alone */
+  fetch(HOST+'/admin/errors?days='+Math.min(60,+document.getElementById('days').value),{headers:{Authorization:'Bearer '+k}})
+    .then(function(r){return r.json();}).then(function(j){if(j&&j.ok){lastErrs=j.days;if(lastDays)draw();}}).catch(function(){});
 }
 document.getElementById('nodev').addEventListener('change',function(){if(lastDays)draw();});
 
@@ -98,8 +101,8 @@ function draw(){
   var today=appToday(),tn=dnum(today);
   var people={},areas={},langs={},id,r;
   days.forEach(function(D){for(id in D.ids){r=D.ids[id];if(nodev&&r.d)continue;
-    var p=people[id]||(people[id]={first:r.f||D.day,lang:'',days:{}});
-    p.days[D.day]=r;if(r.l)p.lang=r.l;
+    var p=people[id]||(people[id]={first:r.f||D.day,lang:'',plat:'',days:{}});
+    p.days[D.day]=r;if(r.l)p.lang=r.l;if(r.p)p.plat=r.p;
     /* the first day is the earlier of what the app remembers and what we saw */
     if(r.f&&r.f<p.first)p.first=r.f;if(D.day<p.first)p.first=D.day;
     (r.a||[]).forEach(function(a){areas[a]=(areas[a]||0)+1;});}});
@@ -136,6 +139,7 @@ function draw(){
     '<div class="card"><b>'+active7+'</b><span>פעילות ב־7 הימים האחרונים</span></div>'+
     '<div class="card"><b>'+back+'</b><span>חזרו יומיים או יותר אחרי היום הראשון</span></div>'+
     '<div class="card"><b>'+sums7+'</b><span>ערבים שסוכמו ב־7 הימים האחרונים</span></div></div>';
+  h+=errTable(nodev);
 
   /* ── retention: of the installs old enough to have a day N, how many opened / closed on it ── */
   var MAXN=21,ret=[];
@@ -155,11 +159,11 @@ function draw(){
 
   /* ── every install, by its own day 1..21 ── */
   h+='<h2>כל התקנה, לפי הימים שלה</h2><div class="meta">עמודה 1 היא היום הראשון של אותה התקנה. עיגול בהיר: פתחו. עיגול כהה: סיכמו. ריבוע אפור: היום הזה עוד לא הגיע.'+
-    ' ✱ ליד המזהה: נראתה כבר ביום הראשון של הנתונים, אז ייתכן שהיא ותיקה יותר והשבוע השני שלה מחושב מאוחר מדי.</div><div class="panel scroll"><table><tr><th>מזהה</th><th>שפה</th><th>התחילה</th>';
+    ' ✱ ליד המזהה: נראתה כבר ביום הראשון של הנתונים, אז ייתכן שהיא ותיקה יותר והשבוע השני שלה מחושב מאוחר מדי.</div><div class="panel scroll"><table><tr><th>מזהה</th><th>שפה</th><th>גרסה</th><th>התחילה</th>';
   for(var k=1;k<=MAXN;k++)h+='<th'+(k===8||k===15?' class="wk"':'')+'>'+k+'</th>';
   h+='<th class="wk">שבוע 1</th><th>שבוע 2</th><th></th></tr>';
   ids.forEach(function(id){var p=people[id],f=dnum(p.first);
-    h+='<tr><td class="id">'+id.slice(0,6)+(p.cut?' ✱':'')+'</td><td>'+esc(p.lang)+'</td><td>'+short(p.first)+'</td>';
+    h+='<tr><td class="id">'+id.slice(0,6)+(p.cut?' ✱':'')+'</td><td>'+esc(p.lang)+'</td><td>'+esc(p.plat||'–')+'</td><td>'+short(p.first)+'</td>';
     for(var k=1;k<=MAXN;k++){var x=p.days[dstr(f+k-1)],cls=k===8||k===15?' class="wk"':'';
       h+='<td'+cls+'>'+(k>p.dayN?'<span class="dot none" style="border-radius:3px"></span>':x?'<span class="dot '+(x.s?'sum':'on')+'" title="'+x.o+' פתיחות"></span>':'')+'</td>';}
     h+='<td class="wk">'+p.w1+'</td><td>'+(p.dayN>=8?p.w2:'–')+'</td><td class="'+p.state+'">'+(p.state==='pass'?'עברה':p.state==='fail'?'לא עברה':'יום '+p.dayN)+'</td></tr>';});
@@ -169,6 +173,23 @@ function draw(){
   h+='<h2>שפות</h2><div class="meta">כמה התקנות בכל שפה.</div><div class="panel">'+hbars(langs,LANG)+'</div>';
   if(!ids.length)h='<div class="meta">עוד אין נתונים בתקופה הזאת.</div>';
   document.getElementById('out').innerHTML=h;
+}
+
+/* ── errors the app caught: one row per distinct error, its days summed,
+   newest first. 'גרסה' is web, or the TestFlight build (ios-13). ── */
+function errTable(nodev){
+  var by={};
+  (lastErrs||[]).forEach(function(D){(D.errors||[]).forEach(function(e){if(nodev&&e.d)return;
+    var k=e.m+'|'+e.at+'|'+e.p,x=by[k]||(by[k]={m:e.m,at:e.at,p:e.p,area:e.area,l:e.l,n:0,u:{},t1:0});
+    x.n+=e.n||0;(e.u||[]).forEach(function(u){x.u[u]=1;});if((e.t1||0)>x.t1){x.t1=e.t1;x.area=e.area||x.area;}});});
+  var rows=Object.keys(by).map(function(k){return by[k];}).sort(function(a,b){return b.t1-a.t1;});
+  var h='<h2>שגיאות שהאפליקציה תפסה</h2><div class="meta">שגיאה שקרתה אצל מישהו, גם אם לא דיווח עליה: ההודעה, איפה בקוד, באיזה אזור, ובאיזו גרסה. אף פעם לא מה שכתבו. כל שגיאה נספרת פעם אחת בכל פתיחה.</div>';
+  if(!rows.length)return h+'<div class="panel meta">אין שגיאות בתקופה הזאת.</div>';
+  h+='<div class="panel scroll"><table><tr><th>אחרונה</th><th>פעמים</th><th>התקנות</th><th>גרסה</th><th>אזור</th><th style="text-align:start">הודעה</th><th style="text-align:start">איפה</th></tr>';
+  rows.forEach(function(x){var t=new Date(x.t1);
+    h+='<tr><td>'+short(t.toISOString().slice(0,10))+' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')+'</td><td>'+x.n+'</td><td class="id">'+Object.keys(x.u).join(' ')+'</td><td>'+esc(x.p||'–')+'</td><td>'+esc(AREA[x.area]||x.area||'')+'</td>'+
+      '<td style="text-align:start;direction:ltr">'+esc(x.m)+'</td><td class="id" style="direction:ltr">'+esc(x.at)+'</td></tr>';});
+  return h+'</table></div>';
 }
 
 /* two overlaid columns per label: a (light) behind, b (dark) in front.
@@ -199,7 +220,8 @@ function demo(){
   var AR=['nutrition','fitness','endofday','people','planning','closet','hobbies','insights'],LS=['he','he','he','en','de','he','en','he','he','de'];
   for(var u=0;u<10;u++){var id='',start=tn-25+u*2,keen=.35+rnd()*.6;for(var c=0;c<24;c++)id+='0123456789abcdef'[Math.floor(rnd()*16)];
     for(var d=start;d<=tn;d++){var age=d-start,p=keen*Math.pow(.97,age);if(age&&rnd()>p+.15)continue;
-      var day=dstr(d);(out[day]=out[day]||{})[id]={o:1+Math.floor(rnd()*5),s:rnd()<p,a:AR.filter(function(){return rnd()<.35;}),l:LS[u],f:dstr(start),d:false};}}
+      var day=dstr(d);(out[day]=out[day]||{})[id]={o:1+Math.floor(rnd()*5),s:rnd()<p,a:AR.filter(function(){return rnd()<.35;}),l:LS[u],f:dstr(start),d:false,p:u%3?'ios-13':'web'};}}
+  lastErrs=[{day:dstr(tn),errors:[{m:"TypeError: undefined is not an object (evaluating 'rec.turns')",at:'index.html:17240:12',p:'ios-13',area:'endofday',l:'he',n:3,u:['a1b2c3','d4e5f6'],t1:Date.now()-3600000}]}];
   return Object.keys(out).map(function(d){return {day:d,ids:out[d]};});
 }
 if(/[?&]demo/.test(location.search))load();
