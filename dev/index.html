@@ -11761,6 +11761,22 @@ function nqDaySub(v){return v==='sit'?_t('משרד, לימודים, מחשב, נ
 var PACE_CUT={gentle:0.10,regular:0.15,fast:0.20};
 var PACES=['gentle','regular','fast'];
 function nqPaceText(v){return v==='gentle'?_t('קצב עדין'):v==='fast'?_t('קצב מהיר'):_t('קצב רגיל');}
+/* The paces this body can actually tell apart. Below the safe floor every
+   cut is raised to the same calories, so a faster pace that loses no more
+   than a gentler one is not offered: rep maps each pace to the one it
+   equals, and cut says one was dropped. Two paces are "the same" when the
+   reader would see the same number, which is the question rule 5 asks. */
+function nqPaceSet(inp){
+  var show=[],rep={},cut=false,prev=null;
+  PACES.forEach(function(pv){
+    var r=inp?nutriCalc(Object.assign({},inp,{goal:'lose',pace:pv})):null,k=r&&r.kgWeek>0?nqPaceKg(r.kgWeek):null;
+    if(prev&&k!==null&&k===prev.k){rep[pv]=prev.pv;cut=true;}
+    else{show.push(pv);rep[pv]=pv;prev={pv:pv,k:k,r:r};}
+  });
+  return {show:show,rep:rep,cut:cut,floor:FLOOR_KCAL[inp&&inp.sex]||FLOOR_KCAL.f};
+}
+function nqPaceKg(kg){return fmtWeight(APP_UNITS==='imperial'?kg:Math.round(kg*100)/100);}
+function nqPaceCutText(ps){return _t('קצב מהיר יותר היה דורש פחות מ־{k} קלוריות ביום, מתחת למינימום הבטוח, ולכן הוא לא מוצע.',{k:ps.floor});}
 function goalDef(v){for(var i=0;i<GOALS.length;i++)if(GOALS[i].v===v)return GOALS[i];return null;}
 // the greeting reads it too, so both places stay in step
 function profName(v){greetSetName(v);renderGreeting();}
@@ -12231,8 +12247,11 @@ function asetPaint(nudge){
     if(gs.why)why=esc(nqBlockText(gs.why));
     for(i=0;i<GOALS.length;i++)if(!GOALS[i].old&&gs.goals.indexOf(GOALS[i].v)>=0)body+=asetChoice('goal',GOALS[i].v,GOALS[i].t,GOALS[i].n);}
   if(k==='pace'){q=_t('באיזה קצב?');why=_t('אפשר לשנות את זה בכל רגע, במסך האישי.');
-    PACES.forEach(function(pv){var pr=nutriCalc(Object.assign(nqInputT(t),{goal:'lose',pace:pv}));
-      body+=asetChoice('pace',pv,nqPaceText(pv),pr&&pr.kgWeek>0?esc(_t('בערך {w} בשבוע',{w:nqKgTxt(pr.kgWeek)})):'');});}
+    var ps=nqPaceSet(nqInputT(t));
+    if(t.pace&&ps.rep[t.pace]&&ps.rep[t.pace]!==t.pace)t.pace=ps.rep[t.pace];
+    if(ps.cut)why=esc(nqPaceCutText(ps));
+    ps.show.forEach(function(pv){var pr=nutriCalc(Object.assign(nqInputT(t),{goal:'lose',pace:pv}));
+      body+=asetChoice('pace',pv,nqPaceText(pv),pr&&pr.kgWeek>0?esc(_t('בערך {w} בשבוע',{w:nqPaceKg(pr.kgWeek)})):'');});}
   if(k==='tw'){q=_t('יש משקל יעד?');why=_t('לא חובה. לפיו נחשב בערך כמה שבועות זה ייקח.');
     W=nqKgWheel('as-tw',t.tw>0?t.tw:nqTwGuess(t));body=W.html;
     if(t.tw>0&&!t.twSkip&&!nutriTargetOk(t.height,t.tw))body+='<div class="nq-err">'+esc(_t('במשקל הזה ה־BMI יהיה מתחת ל־{b}, וזה נמוך מדי לבריאות. כדאי לבחור משקל יעד גבוה יותר.',{b:18.5}))+'</div>';
@@ -12947,9 +12966,11 @@ function renderProfile(){
   else if(gd)h+='<div class="pf-goaln">'+gd.n+'</div>';
   if(gv==='lose'&&gs.goals.indexOf('lose')>=0){
     h+='<div class="pf-lbl" style="margin-top:14px">'+_t('קצב')+'</div><div class="wg-chips">';
-    PACES.forEach(function(pv){
-      h+='<button class="wg-chip'+(nqPaceOf(p)===pv?' on':'')+'" onclick="profSet(\u0027pace\u0027,\u0027'+pv+'\u0027)">'+nqPaceText(pv)+'</button>';});
+    var ps=nqPaceSet(nutriInput(p)),pon=ps.rep[nqPaceOf(p)]||nqPaceOf(p);
+    ps.show.forEach(function(pv){
+      h+='<button class="wg-chip'+(pon===pv?' on':'')+'" onclick="profSet(\u0027pace\u0027,\u0027'+pv+'\u0027)">'+nqPaceText(pv)+'</button>';});
     h+='</div>';
+    if(ps.cut)h+='<div class="pf-goaln">'+esc(nqPaceCutText(ps))+'</div>';
   }
   if(p.sex==='f'){
     h+='<div class="pf-lbl" style="margin-top:14px">'+_t('הריון או הנקה?')+'</div><div class="wg-chips">'+
