@@ -17265,29 +17265,65 @@ function installId(){
   return t;
 }
 /* ── USAGE, ANONYMOUS ── one small record per app day: opens, which areas
-   were entered, and whether the evening was summarised. */
-var USAGE_KEY='usage_day',USAGE_FIRST='usage_first';
+   were entered, and whether the evening was summarised - and in x, numbers
+   about how: rs how far into סיום יום (its step; 50 the bridge, 99 closed),
+   ra seconds spent in it, rh the hour it was closed, rr opened from the
+   evening reminder, rq how many questions were answered (never the answers),
+   rp/rg a photo or a song, lb a look back at an earlier day or the week,
+   dr the door's last step, td/tx the tours finished or skipped.
+   A mark waits at most a minute, and everything still unsent goes the moment
+   the app leaves the screen: a first session that ended inside the old
+   fifteen-minute wait used to reach nobody. */
+var USAGE_KEY='usage_day',USAGE_FIRST='usage_first',_usageLater=0;
+/* numbers only grow, lists only gain, a word is the latest; ra+ adds seconds */
+function usageMerge(u,m){
+  var x=u.x||(u.x={}),k,v;
+  for(k in m){v=m[k];
+    if(k==='ra+'){x.ra=(x.ra||0)+v;continue;}
+    if(Array.isArray(v)){var a=x[k]||[];v.forEach(function(e){if(a.indexOf(e)<0)a.push(e);});x[k]=a;}
+    else if(typeof v==='number'&&k!=='rh')x[k]=Math.max(x[k]||0,v);
+    else x[k]=v;}
+}
 function usageNote(what,area){
   if(!SYNC_SERVER)return;
   var day=todayStr(),u=null;
   try{u=JSON.parse(localStorage.getItem(USAGE_KEY)||'null');}catch(e){}
   if(!u||u.day!==day)u={day:day,o:0,a:{},s:false,sent:0};
   var urgent=false;
-  if(what==='open')u.o++;
-  if(what==='area'&&area&&!u.a[area]){u.a[area]=1;}
+  if(what==='open'){u.o++;u.dirty=1;}
+  if(what==='area'&&area&&!u.a[area]){u.a[area]=1;u.dirty=1;}
   if(what==='sum'&&!u.s){u.s=true;urgent=true;}
+  if(what==='mark'&&area){usageMerge(u,area);u.dirty=1;}
+  if(what==='flush'&&u.dirty)urgent=true;
   var first='';try{first=localStorage.getItem(USAGE_FIRST)||'';if(!first){first=day;localStorage.setItem(USAGE_FIRST,day);}}catch(e){}
-  var now=Date.now(),due=urgent||!u.sent||now-u.sent>15*60000;
-  if(due)u.sent=now;
+  var now=Date.now(),due=urgent||!u.sent||now-u.sent>(what==='mark'?60000:15*60000);
+  if(due){u.sent=now;u.dirty=0;}
+  else if(what==='mark'&&!_usageLater)_usageLater=setTimeout(function(){_usageLater=0;try{usageNote('flush');}catch(e){}},61000);
   try{localStorage.setItem(USAGE_KEY,JSON.stringify(u));}catch(e){}
   if(!due)return;
   try{
     fetch(SYNC_SERVER+'/ping',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
       body:JSON.stringify({uid:installId(),dev:!!window.__DEV__,day:day,first:first,lang:appLang(),
-        o:u.o,s:u.s,a:Object.keys(u.a),p:appPlatform()})}).catch(function(){});
+        o:u.o,s:u.s,a:Object.keys(u.a),p:appPlatform(),x:u.x||{}})}).catch(function(){});
   }catch(e){}
 }
-document.addEventListener('visibilitychange',function(){if(!document.hidden)try{usageNote('open');}catch(e){}});
+function usageMark(m){try{usageNote('mark',m);}catch(e){}}
+/* time in סיום יום: the gaps between its screens, each counted only when
+   under two minutes, so a phone left on the table adds nothing */
+var _usRfTick=0;
+function usageRf(m){
+  if(!rfIsToday())return;
+  var now=Date.now(),o={},k;for(k in m)o[k]=m[k];
+  if(_usRfTick&&now-_usRfTick<120000)o['ra+']=Math.round((now-_usRfTick)/1000);
+  _usRfTick=now;usageMark(o);
+}
+/* at the close: how many of the evening's questions have an answer - a count */
+function usageDepth(r){
+  var seen={},n=0;
+  (RF_STAGE1||[]).concat(RF_STAGE2||[]).forEach(function(q){if(q&&!seen[q.id]){seen[q.id]=1;if(rfAnsweredIn(r,q))n++;}});
+  return {rs:99,rq:n,rp:r&&r.photo?1:0,rg:r&&r.song?1:0,rh:new Date().getHours()};
+}
+document.addEventListener('visibilitychange',function(){try{usageNote(document.hidden?'flush':'open');}catch(e){}});
 window.addEventListener('load',function(){setTimeout(function(){try{usageNote('open');}catch(e){}},1500);});
 /* ── WHICH BUILD ── 'web' in a browser; 'ios-13' or 'android' inside the
    shell. The number is the TestFlight build: Codemagic writes it into
@@ -21111,6 +21147,7 @@ function openSummary(d){renderSummaryOverlay(d);}
    nothing to dismiss it. */
 function rfOpenDay(d){
   if(!d||d>todayStr())return;
+  if(d<todayStr())usageMark({lb:1});
   closeSummary();
   var c=document.getElementById('daycard-ov');if(c)c.remove();
   document.body.classList.remove('sheet-open');
@@ -36526,7 +36563,7 @@ function remNativeAct(id,n){
     savePeople(P);showToast(_t('נרשם')+' ✓');remNativeSync();return;
   }
   /* a tap on the notification itself, or "summarise now" */
-  if(k==='eve'||k==='streak'){sumRemGo();return;}
+  if(k==='eve'||k==='streak'){usageMark({rr:1});sumRemGo();return;}
   if(k==='plan'){GO_ROUTES.day();return;}
   if(k==='weigh'){GO_ROUTES.nutrition();return;}
   if(k==='bday'||k==='ppl'){
@@ -45776,6 +45813,7 @@ function rfPzStyle(id){var n=RF_PZ[id];
   return 'background-image:url('+liveBase()+'assets/rf-icons.webp);--pzc:'+(n%4)+';--pzr:'+Math.floor(n/4);}
 function renderReflectBoard(){
   var bank=rfBank(),i,done=0;
+  usageRf({});
   for(i=0;i<bank.length;i++)if(rfAnswered(bank[i]))done++;
 
   var h='<div style="padding:6px 0 24px">';
@@ -45882,6 +45920,7 @@ function renderReflectIntro(){
 function renderReflectStep(){
   var q=rfSteps()[_rfStep];
   if(!q){rfStageEnd();return;}
+  usageRf(_rfStage===1?{rs:_rfStep+1}:{});
   var cur=rfVal(q.id),i,c,o;
 
   var h='<div class="rf"><div class="rf-top">';
@@ -46611,6 +46650,7 @@ function rfPhotoPick(input){
    the answer, and the bank is offered underneath it. */
 function renderReflectBridge(){
   rfSave({stage1Done:true});
+  usageRf({rs:50});
   var h='<div class="rf"><div class="rf-body" style="text-align:center">';
   h+='<div class="rfq-hero rfq-cards" style="background-image:url('+liveBase()+'assets/rf-q16.webp)"></div>';
   h+='<div class="rf-q">'+_t('נוסף…')+'</div>';
@@ -46623,6 +46663,7 @@ function renderReflectBridge(){
 
 function rfFinish(){
   var r=rfSave({done:true});
+  try{if(_rfDate===todayStr())usageRf(usageDepth(r));}catch(e){}
   try{if(_rfDate===todayStr())usageNote('sum');}catch(e){}
   try{remNativeSync();}catch(e){}
   saveSummaryTotals(r);
@@ -47590,6 +47631,7 @@ function wkCardHTML(){
 }
 
 function wkDeckOpen(from){
+  usageMark({lb:1});
   _wkDeck=from;_wkAt=0;_wkDeckRing=0;
   _wkRevText='';_wkRevErr='';_wkRevBusy=false;
   /* a sentence already written for the week AFTER this one is what the last
@@ -47979,6 +48021,7 @@ function doorPaint(){
   if(!w||!host)return;
   var step=_doorSteps[_doorStep];
   w.className='dr2 at-'+step;
+  usageMark({dr:step});
   host.innerHTML='<div class="dr-step">'+doorHTML()+'</div>';
   if(step==='name'){doorBeem('listen');setTimeout(function(){var e=document.getElementById('dr-nm');if(e)e.focus();},700);}
   if(step==='gender'||step==='why'||step==='hi')doorBeem('smile');
@@ -48282,6 +48325,7 @@ function doorRemind2(yes){
 }
 function doorFinish(){
   try{localStorage.setItem(DOOR_KEY,'1');}catch(e){}
+  usageMark({dr:'end'});
   var w=document.getElementById('door');
   if(w)w.parentNode.removeChild(w);
   document.body.classList.remove('mod-door');
@@ -48344,10 +48388,10 @@ function homeTour(){
   }
   function hold(e){var t=e.target.closest&&e.target.closest('.hdisc,.chub');if(t&&document.getElementById('tour')){e.stopPropagation();e.preventDefault();}}
   document.addEventListener('click',hold,true);
-  function end(){try{localStorage.setItem(TOUR_KEY,'1');}catch(e){}document.removeEventListener('click',hold,true);
+  function end(skip){usageMark(skip?{tx:['home']}:{td:['home']});try{localStorage.setItem(TOUR_KEY,'1');}catch(e){}document.removeEventListener('click',hold,true);
     var t=document.getElementById('tour');if(t)t.remove();}
   document.getElementById('tour-n').onclick=function(){k++;if(k>=N)end();else show();};
-  document.getElementById('tour-x').onclick=end;
+  document.getElementById('tour-x').onclick=function(){end(true);};
   show();
 }
 /* ── MIP SHOWS EACH AREA ── once, on the first entry (6B, 26.10). A step is
@@ -48481,9 +48525,9 @@ function areaTour(a){
   function areaTourNext(i){for(var j=i+1;j<N;j++){var x=areaTourStep(a,j);if(x&&(!x.el||document.querySelector(x.el)))return true;}return false;}
   function hold(ev){if(document.getElementById('tour')&&!(ev.target.closest&&ev.target.closest('.tour-c'))){ev.stopPropagation();ev.preventDefault();}}
   document.addEventListener('click',hold,true);
-  function end(){areaTourMark(a);document.removeEventListener('click',hold,true);var t=document.getElementById('tour');if(t)t.remove();}
+  function end(skip){usageMark(skip?{tx:[a]}:{td:[a]});areaTourMark(a);document.removeEventListener('click',hold,true);var t=document.getElementById('tour');if(t)t.remove();}
   document.getElementById('tour-n').onclick=function(){k++;if(k>=N)end();else show();};
-  document.getElementById('tour-x').onclick=end;
+  document.getElementById('tour-x').onclick=function(){end(true);};
   show();
 }
 /* ── BEEM, THE HELPER ── in the corner of every screen; a press opens a chat

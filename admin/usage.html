@@ -44,7 +44,8 @@
   .meta{color:#5f564e;font-size:12.5px}.err{color:#a2412a;font-weight:700}
   .pass{color:#2f6b3a;font-weight:800}.fail{color:#a2412a;font-weight:800}.wait{color:#5f564e}
   .hb div{display:flex;align-items:center;gap:8px;margin:5px 0}
-  .hb span{width:96px;flex-shrink:0}.hb i{display:block;height:14px;border-radius:7px;background:#8a5a1c}
+  .hb span,.funnel span{width:96px;flex-shrink:0}
+  .funnel div{display:flex;align-items:center;gap:8px;margin:5px 0}.funnel i{display:block;height:14px;border-radius:7px;background:#8a5a1c}.hb i{display:block;height:14px;border-radius:7px;background:#8a5a1c}
   .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:#5f564e;margin:4px 0 6px}
   .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-inline-end:5px;vertical-align:-1px}
   svg text{font:11px system-ui,sans-serif;fill:#5f564e}
@@ -169,10 +170,65 @@ function draw(){
     h+='<td class="wk">'+p.w1+'</td><td>'+(p.dayN>=8?p.w2:'–')+'</td><td class="'+p.state+'">'+(p.state==='pass'?'עברה':p.state==='fail'?'לא עברה':'יום '+p.dayN)+'</td></tr>';});
   h+='</table></div>';
 
+  h+=depthHTML(ids,people);
   h+='<h2>אילו אזורים פותחים</h2><div class="meta">כמה ימי־משתמש נכנסו לכל אזור.</div><div class="panel">'+hbars(areas,AREA)+'</div>';
   h+='<h2>שפות</h2><div class="meta">כמה התקנות בכל שפה.</div><div class="panel">'+hbars(langs,LANG)+'</div>';
   if(!ids.length)h='<div class="meta">עוד אין נתונים בתקופה הזאת.</div>';
   document.getElementById('out').innerHTML=h;
+}
+
+/* ── סיום יום from the inside, and the first entry. Every number comes from x
+   in the daily record (usageNote in the app names each field); none is content. ── */
+var DOOR_STEP={hi:'שלום',lang:'שפה',name:'שם',gender:'פנייה',birth:'יום הולדת',areas:'אזורים',why:'למה (הדוגמה)',time:'שעת ערב',remind:'תזכורת',bridge:'מעבר',mood:'מצב רוח',moment:'רגע',day1:'הדף הראשון',end:'סיימה'};
+function med(a){if(!a.length)return null;a=a.slice().sort(function(x,y){return x-y;});var m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2;}
+function pc(n,d){return d?Math.round(n/d*100)+'%':'–';}
+function depthHTML(ids,people){
+  var started=0,closed=0,steps={},bridge=0,mins=[],hours={},fromRem=0,qs=[],photo=0,song=0,look=0,days=0,maxStep=0;
+  var door={},td={},tx={};
+  ids.forEach(function(id){var p=people[id],lastDr='',lastD='';
+    Object.keys(p.days).forEach(function(d){var r=p.days[d],x=r.x||{};days++;
+      if(x.lb)look++;
+      if(x.dr&&d>=lastD){lastDr=x.dr;lastD=d;}
+      (x.td||[]).forEach(function(a){td[a]=(td[a]||0)+1;});(x.tx||[]).forEach(function(a){tx[a]=(tx[a]||0)+1;});
+      if(!(x.rs||r.s))return;
+      started++;var rs=r.s?99:(x.rs||0);
+      for(var i=1;i<=Math.min(rs,49);i++)steps[i]=(steps[i]||0)+1;
+      if(rs>maxStep&&rs<50)maxStep=rs;
+      if(rs>=50)bridge++;
+      if(x.rr)fromRem++;
+      if(r.s){closed++;if(x.ra)mins.push(x.ra/60);if(x.rh!==undefined)hours[x.rh]=(hours[x.rh]||0)+1;if(x.rq)qs.push(x.rq);if(x.rp)photo++;if(x.rg)song++;}
+    });
+    if(lastDr)door[lastDr]=(door[lastDr]||0)+1;});
+  var h='<h2>סיום יום מבפנים</h2><div class="meta">מכל הימים שבהם נפתח סיום יום: עד איפה הגיעו, כמה זמן זה לקח ומה ענו. מספרים בלבד, אף פעם לא התשובות.</div>';
+  if(!started)return h+'<div class="panel meta">עוד אין ימים עם הנתונים האלה. הם מגיעים מהבנייה הבאה ומהדפדפן.</div>'+doorHTML(door,td,tx);
+  var m=med(mins),q=med(qs);
+  h+='<div class="cards">'+
+    '<div class="card"><b>'+pc(closed,started)+'</b><span>מהימים שהתחילו בהם, נסגרו ('+closed+' מתוך '+started+')</span></div>'+
+    '<div class="card"><b>'+(m===null?'–':(m<10?m.toFixed(1):Math.round(m)))+'</b><span>דקות, חציון, לסיכום שנסגר</span></div>'+
+    '<div class="card"><b>'+(q===null?'–':q)+'</b><span>שאלות שנענו, חציון</span></div>'+
+    '<div class="card"><b>'+pc(fromRem,started)+'</b><span>מהימים, נפתחו מהתזכורת</span></div>'+
+    '<div class="card"><b>'+pc(photo,closed)+'</b><span>מהערבים שנסגרו, עם תמונה</span></div>'+
+    '<div class="card"><b>'+pc(song,closed)+'</b><span>מהערבים שנסגרו, עם שיר</span></div>'+
+    '<div class="card"><b>'+look+'</b><span>ימים שבהם חזרו לראות יום קודם או את השבוע</span></div></div>';
+  /* the funnel: of the days it was opened, how many reached each step */
+  var rows=[];for(var i=1;i<=maxStep;i++)rows.push(['שאלה '+i,steps[i]||0]);
+  rows.push(['סוף השאלות',bridge]);rows.push(['נסגר',closed]);
+  h+='<div class="panel funnel"><div class="meta" style="margin-bottom:6px">עד איפה הגיעו, מתוך '+started+' ימים שבהם נפתח</div>';
+  rows.forEach(function(r){h+='<div><span>'+r[0]+'</span><i style="width:'+Math.max(4,Math.round(r[1]/started*320))+'px"></i><b>'+r[1]+'</b></div>';});
+  h+='</div>';
+  var hr=[];for(var k=0;k<24;k++)hr.push({lab:String(k),a:hours[k]||0,b:0,tip:k+':00 — '+(hours[k]||0)+' סיכומים'});
+  h+='<div class="panel"><div class="meta">באיזו שעה נסגר הערב</div>'+chart(hr,false)+'</div>';
+  return h+doorHTML(door,td,tx);
+}
+function doorHTML(door,td,tx){
+  var h='<h2>הכניסה הראשונה, והסיורים</h2><div class="meta">לכל התקנה: השלב האחרון שאליו הגיעה בכניסה הראשונה ("סיימה" = עברה את כולה). ולכל אזור: כמה סיימו את הסיור וכמה דילגו.</div>';
+  var n={};Object.keys(door).forEach(function(k){n[DOOR_STEP[k]||k]=door[k];});
+  h+='<div class="panel">'+hbars(n,{})+'</div>';
+  var areas={};Object.keys(td).concat(Object.keys(tx)).forEach(function(a){areas[a]=1;});
+  if(!Object.keys(areas).length)return h+'<div class="panel meta">עוד אין סיורים.</div>';
+  h+='<div class="panel scroll"><table><tr><th style="text-align:start">אזור</th><th>סיימו</th><th>דילגו</th></tr>';
+  Object.keys(areas).forEach(function(a){h+='<tr><td style="text-align:start">'+esc(AREA[a]||(a==='home'?'הבית':a))+'</td><td>'+(td[a]||0)+'</td><td>'+(tx[a]||0)+'</td></tr>';});
+  return h+'</table></div>';
 }
 
 /* ── errors the app caught: one row per distinct error, its days summed,
@@ -215,12 +271,19 @@ function hbars(obj,names){
 }
 
 /* invented data, to see the page before there is a real week of it */
+function demoX(rnd,age,p){
+  var x={},TS=['hi','lang','name','birth','areas','why','time','remind','bridge','mood','moment','day1','end','end','end'];
+  if(rnd()<.8){x.rs=rnd()<p+.2?99:1+Math.floor(rnd()*4);if(x.rs===99){x.ra=90+Math.floor(rnd()*400);x.rh=19+Math.floor(rnd()*5);x.rq=4+Math.floor(rnd()*6);x.rp=rnd()<.4?1:0;x.rg=rnd()<.3?1:0;}x.rr=rnd()<.5?1:0;}
+  if(rnd()<.15)x.lb=1;
+  if(!age){x.dr=TS[Math.floor(rnd()*TS.length)];x.td=['endofday'];if(rnd()<.4)x.tx=['planning'];}
+  return x;
+}
 function demo(){
   var tn=dnum(appToday()),out={},rnd=(function(s){return function(){s=(s*16807)%2147483647;return s/2147483647;};})(7);
   var AR=['nutrition','fitness','endofday','people','planning','closet','hobbies','insights'],LS=['he','he','he','en','de','he','en','he','he','de'];
   for(var u=0;u<10;u++){var id='',start=tn-25+u*2,keen=.35+rnd()*.6;for(var c=0;c<24;c++)id+='0123456789abcdef'[Math.floor(rnd()*16)];
     for(var d=start;d<=tn;d++){var age=d-start,p=keen*Math.pow(.97,age);if(age&&rnd()>p+.15)continue;
-      var day=dstr(d);(out[day]=out[day]||{})[id]={o:1+Math.floor(rnd()*5),s:rnd()<p,a:AR.filter(function(){return rnd()<.35;}),l:LS[u],f:dstr(start),d:false,p:u%3?'ios-13':'web'};}}
+      var day=dstr(d);(out[day]=out[day]||{})[id]={o:1+Math.floor(rnd()*5),s:rnd()<p,a:AR.filter(function(){return rnd()<.35;}),l:LS[u],f:dstr(start),d:false,p:u%3?'ios-13':'web',x:demoX(rnd,age,p)};}}
   lastErrs=[{day:dstr(tn),errors:[{m:"TypeError: undefined is not an object (evaluating 'rec.turns')",at:'index.html:17240:12',p:'ios-13',area:'endofday',l:'he',n:3,u:['a1b2c3','d4e5f6'],t1:Date.now()-3600000}]}];
   return Object.keys(out).map(function(d){return {day:d,ids:out[d]};});
 }

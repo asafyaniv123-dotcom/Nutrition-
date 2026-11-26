@@ -1048,6 +1048,24 @@ function activityBonus(a) {
 }
 
 /* the ADMIN_KEY secret, as a Bearer token */
+/* the "how" of a day of usage (the app's usageNote names each): a fixed list
+   of numbers, flags and two short words - anything else is dropped, so no
+   content can arrive here even by mistake. Numbers only grow, flags only turn
+   on, lists only gain; rh (the hour the day was closed) is the latest. */
+function pingX(nx, ox) {
+  const X = nx && typeof nx === 'object' ? nx : {}, O = ox && typeof ox === 'object' ? ox : {};
+  const num = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
+  const word = (v) => String(v || '').replace(/[^a-z0-9]/g, '').slice(0, 16);
+  const list = (v) => (Array.isArray(v) ? v : []).map((s) => String(s).replace(/[^a-z]/g, '').slice(0, 16)).filter(Boolean);
+  const out = {};
+  for (const [k, max] of [['rs', 99], ['ra', 36000], ['rq', 200]]) { const v = Math.max(num(O[k], max), num(X[k], max)); if (v) out[k] = v; }
+  for (const k of ['rr', 'rp', 'rg', 'lb']) if (O[k] || X[k]) out[k] = 1;
+  if (X.rh !== undefined && X.rh !== null && X.rh !== '') out.rh = num(X.rh, 23); else if (O.rh !== undefined) out.rh = num(O.rh, 23);
+  const dr = word(X.dr) || word(O.dr); if (dr) out.dr = dr;
+  for (const k of ['td', 'tx']) { const a = Array.from(new Set([...list(O[k]), ...list(X[k])])).slice(0, 12); if (a.length) out[k] = a; }
+  return out;
+}
+
 function adminOk(req, env) {
   const want = env.ADMIN_KEY || '';
   const got = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
@@ -4760,6 +4778,7 @@ async function routeRequest(req, env, ctx, M) {
         d: b.dev === true,
         /* which build: 'web', 'ios-13'. A ping without one keeps the last */
         p: String(b.p || was.p || '').replace(/[^a-z0-9-]/g, '').slice(0, 16),
+        x: pingX(b.x, was.x),
       };
       await env.SUBS.put(key, JSON.stringify(rec), { expirationTtl: 120 * 86400 });
       return json({ ok: true });
