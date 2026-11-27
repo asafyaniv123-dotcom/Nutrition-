@@ -44,9 +44,8 @@ html body.mod-home .hdial.hplate .chub:active{box-shadow:none;opacity:.85}
 html body.mod-home .hdial.hplate .chub::before,html body.mod-home .hdial.hplate .chub::after{display:none}
 html body.mod-home .hdial.hplate .chub-ic.hart{position:absolute;left:9.4px;top:-.8px;width:90px;height:90px;
   background:var(--art) center/100% 100% no-repeat;box-shadow:none}
-html body.mod-home .hdial.hplate .chub-t{position:absolute;inset:0;pointer-events:none;font-size:13.5px;font-weight:700}
-html body.mod-home .hdial.hplate .chub-t svg{position:absolute;left:0;top:0;overflow:visible}
-html body.mod-home .hdial.hplate .chub-t .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+html body.mod-home .hdial.hplate .chub-t{position:absolute;left:0;right:0;bottom:3px;text-align:center;
+  font-size:13.5px;font-weight:700}
 /* the names in the caption's own face above the dial (Asaf, 27 Nov: "like this"), not a serif of their own */
 html body.mod-home .hdial.hplate .hdisc-t{font-size:12px;font-weight:600;white-space:nowrap;max-width:none;
   letter-spacing:.01em;color:var(--nu-ink);opacity:.78}
@@ -75,27 +74,16 @@ function homeArtIc(a,cls){
   if(n==null)return '<span class="'+cls+'" style="color:'+a.color+'">'+a.svg+'</span>';
   return '<span class="'+cls+' '+k+'" style="color:'+a.color+';--hc:'+(n%3)+';--hr:'+Math.floor(n/3)+';--art:url('+liveBase()+'assets/'+sheet+'.webp)"></span>';
 }
-/* the moon's name bends with the bottom of the well (Asaf, 27 Nov): its baseline is an arc
-   sitting 43px under the centre, from a circle of 62 - gentler than the well's own rim, the same way round.
-   A long name in another language shrinks to the 76px the arc has, measured, not guessed. */
 var _hArcCtx=null;
 function homeTextW(txt,px,wt){
   try{_hArcCtx=_hArcCtx||document.createElement('canvas').getContext('2d');
     _hArcCtx.font=[wt,px+'px',getComputedStyle(document.body).fontFamily].join(' ');return _hArcCtx.measureText(txt).width;}catch(e){return 0;}
 }
-/* a seat's name stays on one line: a long one (自分のクローゼット) shrinks a little rather than break into the well */
+/* a name stays on one line and inside its place: a long one (自分のクローゼット, Tagesabschluss) shrinks a little
+   rather than break into the well or past its rim */
 function homeFitPx(title,px,wt,max){
   var tmp=document.createElement('div');tmp.innerHTML=title;var w=homeTextW(tmp.textContent,px,wt);
   return w>max?Math.max(9,Math.floor(px*max/w*10)/10):px;
-}
-function homeArcT(title){
-  var fs=13.5,max=76,tmp=document.createElement('div');tmp.innerHTML=title;var txt=tmp.textContent,w=homeTextW(txt,fs,700);
-  if(w>max)fs=Math.max(10,fs*max/w);
-  var fit=w*fs/13.5>max?' textLength="'+max+'" lengthAdjust="spacingAndGlyphs"':'';
-  return '<span class="chub-t"><svg viewBox="0 0 102 102" width="102" height="102" aria-hidden="true">'+
-    '<path id="h-arc-p" d="M-11 32A62 62 0 0 0 113 32" fill="none"/>'+
-    '<text font-size="'+fs.toFixed(1)+'" font-weight="700" fill="currentColor"><textPath href="#h-arc-p" startOffset="50%" text-anchor="middle"'+fit+'>'+
-    esc(txt)+'</textPath></text></svg><b class="sr">'+esc(txt)+'</b></span>';
 }
 function homeDialHTML(hub,rest){`],
   [String.raw`    h+='<button class="hdisc" data-area="'+a.id+'" data-i="'+i+'" style="--area:'+a.color+'">'+
@@ -109,7 +97,8 @@ function homeDialHTML(hub,rest){`],
        '<span class="chub-t">'+hub.title+'</span></button>';
   return h+'</div>';`,
    String.raw`  if(hub)h+='<button class="chub" data-area="'+hub.id+'" style="--area:'+hub.color+';--fill:'+hubFill().toFixed(2)+'">'+
-       homeArtIc(hub,'chub-ic')+homeArcT(hub.title)+'</button>';
+       homeArtIc(hub,'chub-ic')+
+       '<span class="chub-t" style="font-size:'+homeFitPx(hub.title,13.5,700,58)+'px">'+hub.title+'</span></button>';
   return h+'</div>';`],
 ];
 
