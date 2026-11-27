@@ -5052,7 +5052,10 @@ async function routeRequest(req, env, ctx, M) {
       const buckets = coachBuckets({
         today, ip, uid: b && b.uid,
         test: adminOk(req, env),
-        cap: Number(env.COACH_DAILY_CAP || 120),
+        /* 60 a day per install (Asaf, 27 Nov): what keeps a yearly Pro
+           subscriber from costing more in model calls than they pay. A photo
+           spends 3. The app already says the limit was reached. */
+        cap: Number(env.COACH_DAILY_CAP || 60),
         ipCap: Number(env.COACH_IP_DAILY_CAP || 400),
         testCap: Number(env.COACH_TEST_DAILY_CAP || 600),
       });
