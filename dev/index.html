@@ -24754,6 +24754,7 @@ var _fitHistExercise=null; // which exercise to show progress for
 
 function renderFitness(){
   fitwSave();   // every mutation ends here, so this is the one place that catches them all
+  exDemoWarm();
   /* Every view below can show a stored exercise name, and exLabel needs the
      library to turn one into the reader's language. Only the picker used to
      ask for it, so the history, the weights list and a reopened workout all
@@ -33021,7 +33022,7 @@ function exTilesWatch(root){
   if(!('IntersectionObserver' in window)){for(var i=0;i<vs.length;i++)on(vs[i]);return;}
   _exTileIO=new IntersectionObserver(function(es){
     es.forEach(function(x){if(x.isIntersecting)on(x.target);else if(!x.target.paused)x.target.pause();});
-  },{rootMargin:'120px 0px'});
+  },{rootMargin:'400px 0px'});
   for(var k=0;k<vs.length;k++)_exTileIO.observe(vs[k]);
 }
 function exChooseOwn(){
@@ -33274,6 +33275,36 @@ function exDemoId(e){return EX_DEMO[e.id]||!EX_DEMO_OF[e.id]?e.id:EX_DEMO_OF[e.i
    alternative, generated workout and stretch routine reads exShown. */
 function exHasDemo(e){return !!(e&&EX_DEMO[exDemoId(e)]);}
 function exShown(){return exAll().filter(exHasDemo);}
+/* THE LOOPS LIVE ON THE PHONE (Asaf, 27 Nov: "they are part of the app - it should not have to
+   wait"). Each was fetched the moment its tile came on screen, every time, so the library opened
+   on empty squares filling in one by one. Now the first visit to כושר - and every later start of
+   the app for someone who has been there - quietly stores every loop not yet stored, three at a
+   time, in the cache sw.js serves them from. A URL carries its version, so nothing here can go
+   stale; a reader who asked to save data is left alone, and the iPhone shell carries the files
+   itself (no http, no cache to fill). */
+var _exWarmed=false;
+function exDemoUrl(id){return new URL(liveBase()+'assets/exdemo/'+id+'.mp4'+(EX_DEMO[id]>1?'?v='+EX_DEMO[id]:''),location.href).href;}
+function exDemoWarm(){
+  if(_exWarmed)return;_exWarmed=true;
+  try{if(!window.caches||!/^https?:$/.test(location.protocol)||(navigator.connection&&navigator.connection.saveData))return;}catch(e){return;}
+  var ids=Object.keys(EX_DEMO),next=0;
+  caches.open('exdemo-v1').then(function(c){
+    function one(){
+      if(next>=ids.length)return;
+      var u=exDemoUrl(ids[next++]);
+      c.match(u).then(function(hit){
+        if(hit)return;
+        /* with the worker in charge, asking is storing - it keeps what it fetches; storing it
+           here as well wrote every file twice and took three times as long */
+        return fetch(u).then(function(r){
+          if(navigator.serviceWorker&&navigator.serviceWorker.controller)return r.arrayBuffer();
+          if(r.status===200)return c.put(u,r);});
+      }).catch(function(){}).then(one);
+    }
+    setTimeout(function(){one();one();one();one();},1200);
+  }).catch(function(){});
+}
+setTimeout(function(){try{if(fitMe().started)exDemoWarm();}catch(e){}},6000);
 /* ── HOW IT IS DONE, GUIDED (Asaf, 4 Nov) ──
    Each step of the library's own instructions gets the moment of the loop
    to stop at and the part of the frame to light: [seconds, x%, y%, ring

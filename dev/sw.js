@@ -41,10 +41,55 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(self.clients.claim());
 });
 
-// Network passthrough. Chrome wants a fetch handler before it offers "install".
+// Network passthrough - except the exercise loops. Chrome wants a fetch handler
+// before it offers "install".
+//
+// THE ONE THING KEPT ON THE PHONE (27 Nov). "No caching" above is about the app,
+// which changes daily and must never be served stale. The loops are the
+// opposite: 267 small files, each one's URL carries its version (?v=), so a
+// cached copy can never be out of date. Fetched from the network they arrived
+// one by one as each tile scrolled into view, every time the library opened -
+// "they don't load straight away, and they're part of the app" (Asaf). The page
+// fills this cache in the background; this serves from it, and a video asks
+// for byte ranges (Safari always does), so a range is cut from the stored file.
+var DEMO_CACHE = 'exdemo-v1';
 self.addEventListener('fetch', function (e) {
-  return;
+  var r = e.request;
+  if (r.method !== 'GET' || r.url.indexOf('/assets/exdemo/') < 0 || !/\.mp4(\?|$)/.test(r.url)) return;
+  e.respondWith(demoServe(r));
 });
+async function demoServe(req) {
+  var url = req.url, cache, hit;
+  try {
+    cache = await caches.open(DEMO_CACHE);
+    hit = await cache.match(url);
+    if (!hit) {
+      var net = await fetch(url);   // the whole file, never a range: that is what gets kept
+      if (net.status !== 200) return fetch(req);
+      await cache.put(url, net.clone());
+      demoPrune(cache, url);
+      hit = net;
+    }
+  } catch (err) { return fetch(req); }
+  var range = req.headers.get('range');
+  if (!range) return hit;
+  var buf = await hit.arrayBuffer(), size = buf.byteLength;
+  var m = /bytes=(\d*)-(\d*)/.exec(range) || [], start, end;
+  if (m[1] === '' && m[2]) { start = Math.max(0, size - +m[2]); end = size - 1; }
+  else { start = m[1] ? +m[1] : 0; end = m[2] ? Math.min(+m[2], size - 1) : size - 1; }
+  if (start >= size || start > end) return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + size } });
+  return new Response(buf.slice(start, end + 1), { status: 206, headers: {
+    'Content-Type': 'video/mp4', 'Content-Length': String(end - start + 1),
+    'Content-Range': 'bytes ' + start + '-' + end + '/' + size, 'Accept-Ranges': 'bytes' } });
+}
+// a loop replaced in place gets a new ?v=; the old one is dropped, not kept for ever
+async function demoPrune(cache, url) {
+  try {
+    var path = url.split('?')[0], keys = await cache.keys();
+    for (var i = 0; i < keys.length; i++)
+      if (keys[i].url !== url && keys[i].url.split('?')[0] === path) await cache.delete(keys[i]);
+  } catch (err) {}
+}
 
 self.addEventListener('push', function (e) {
   // Payload-less by design; if one ever arrives, prefer it.
