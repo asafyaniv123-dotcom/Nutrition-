@@ -11454,12 +11454,19 @@ html body .plan-undo{background:#f3f0eb;color:#4a453f;border-radius:999px;box-sh
   color:var(--nu-ink,#4a453f);background:transparent;min-width:0;
   box-shadow:inset 2px 3px 6px var(--nu-shade-soft,rgba(168,160,148,.3)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 button.fwk-d{cursor:pointer}
-.fwk-d b{font-size:12px;font-weight:800;color:var(--nu-muted,#6d675e)}
-.fwk-d span{font-size:10px;font-weight:700;line-height:1.15;text-align:center;-webkit-hyphens:auto;hyphens:auto;overflow-wrap:break-word;max-width:100%}
+.fwk-d b{font-size:13px;font-weight:800;color:var(--nu-muted,#6d675e)}
+.fwk-d span{font-size:12px;font-weight:700;line-height:1.15;text-align:center;-webkit-hyphens:auto;hyphens:auto;overflow-wrap:break-word;max-width:100%}
 .fwk-d.s{box-shadow:-3px -3px 7px var(--nu-lit,rgba(255,255,255,.95)),3px 4px 9px var(--nu-shade-soft,rgba(168,160,148,.3))}
 .fwk-d.s span{color:var(--nu-ink,#4a453f)}
 .fwk-d.r span{color:var(--nu-muted,#6d675e);font-weight:600}
 .fwk-h{font-size:12.5px;margin-top:6px}
+.fw-dh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+.fw-dh b{font-size:17px;font-weight:800;color:var(--nu-ink,#4a453f);min-width:0}
+.fw-dh span{font-size:13px;font-weight:700;color:var(--nu-muted,#6d675e);flex:none}
+.fw-when{font-size:13px;color:var(--nu-muted,#6d675e);margin:-2px 0 6px}
+.fw-ex{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0}
+.fw-ex b{font-size:15px;font-weight:600;color:var(--nu-ink,#4a453f);min-width:0}
+.fw-ex span{font-size:13px;color:var(--nu-muted,#6d675e);flex:none}
 .fw-tile{border-radius:16px;padding:12px 14px;box-shadow:inset 2px 3px 6px var(--nu-shade-soft,rgba(168,160,148,.3)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .fw-tile b{display:block;font-size:20px;font-weight:800;color:var(--nu-ink,#4a453f);line-height:1.2}
 .fw-tile span{display:block;font-size:13px;font-weight:700;color:var(--nu-muted,#6d675e);margin-top:2px}
@@ -12134,7 +12141,7 @@ function asetSteps(a,upd){
     if(!upd&&p.trainWeek===undefined)out.push('train');
   } else {
     if(!o.outDone)out.push('gate','add','out');
-    if(!(+o.days>0))out.push('days');if(!o.otherDone)out.push('other','otherN');if(!(+o.minutes>0))out.push('minutes');
+    if(!o.otherDone)out.push('other','otherN','days');else if(!(+o.days>0))out.push('days');if(!(+o.minutes>0))out.push('minutes');
     if(!o.exp)out.push('exp');if(!o.equipDone)out.push('equip');if(!o.limitsDone)out.push('limits');
   }
   if(!upd&&!hlLoad().ack&&!asetSeen('health'))out.push('health','hack','hconds','hcoach');
@@ -12166,7 +12173,9 @@ function asetKey(){return _aset.steps[_aset.i];}
 /* which steps actually show: "add" only after a no, the goal only after a
    yes; pregnancy only for a woman, the pace only for a cut, a goal weight
    only for a goal that moves the scale */
-function asetSkip(k){var t=_aset.t;if(k==='otherN')return !t.other.length||t.other.indexOf('none')>=0||t.days<2;if(k==='hack'||k==='hconds'||k==='hcoach')return t.health!=='yes';if(k==='add')return t.gate!=='no';if(k==='goal'||k==='out')return t.gate==='no'&&t.add!=='yes';
+/* how many of the week the other training takes, once it has been answered */
+function asetOthN(){var t=_aset&&_aset.t;return t&&t.other&&t.other.length&&t.other.indexOf('none')<0?(+t.otherN||0):0;}
+function asetSkip(k){var t=_aset.t;if(k==='otherN')return !t.other.length||t.other.indexOf('none')>=0;if(k==='hack'||k==='hconds'||k==='hcoach')return t.health!=='yes';if(k==='add')return t.gate!=='no';if(k==='goal'||k==='out')return t.gate==='no'&&t.add!=='yes';
   if(k==='preg')return t.sex!=='f';if(k==='pace')return t.goal!=='lose';if(k==='tw')return t.goal!=='lose'&&t.goal!=='gain';return false;}
 function asetMove(d){
   var i=_aset.i+d;
@@ -12261,8 +12270,8 @@ function asetReady(){
   if(k==='birth')return t.by>0;if(k==='height')return +t.height>0;if(k==='weight')return +t.weight>0;
   if(k==='preg')return !!t.preg;if(k==='pace')return !!PACE_CUT[t.pace];if(k==='day')return !!DAY_FACTOR[t.day];
   if(k==='tw')return !!t.twSkip||nutriTargetOk(t.height,t.tw);if(k==='train')return t.train>=0;
-  if(k==='out')return t.out.length>0;if(k==='days')return t.days>0;if(k==='minutes')return t.minutes>0;
-  if(k==='other')return t.other.length>0;if(k==='otherN')return t.otherN>0&&t.otherN<t.days;if(k==='exp')return !!t.exp;if(k==='equip')return !!t.equip;if(k==='limits')return t.limits.length>0;if(k==='health')return !!t.health;
+  if(k==='out')return t.out.length>0;if(k==='days')return t.days>asetOthN();if(k==='minutes')return t.minutes>0;
+  if(k==='other')return t.other.length>0;if(k==='otherN')return t.otherN>0;if(k==='exp')return !!t.exp;if(k==='equip')return !!t.equip;if(k==='limits')return t.limits.length>0;if(k==='health')return !!t.health;
   if(k==='hack')return t.ack==='yes';if(k==='hconds')return t.hl.length>0;if(k==='hcoach')return !!t.coach;
   return true;
 }
@@ -12394,12 +12403,15 @@ function asetPaint(nudge){
     DAY_TYPES.forEach(function(dv){body+=asetChoice('day',dv,nqDayText(dv),nqDaySub(dv));});}
   if(k==='train'){q=_t('כמה אימונים בשבוע, בדרך כלל?');why=_t('זה לא משנה את יעד הקלוריות: כל אימון שנרשם מוסיף ליעד של אותו יום.');
     body='<div class="as-grid nq-grid">';for(i=0;i<=7;i++)body+=asetChoice('train',i,nfmt(i));body+='</div>';}
-  if(k==='days'){q=fitMeQuestion('days');why=fitMeWhy('days');body='<div class="as-grid">';for(i=0;i<GENPROG_DAYS.length;i++)body+=asetChoice('days',GENPROG_DAYS[i],nfmt(GENPROG_DAYS[i]));body+='</div>';}
+  /* with other training, strength is its own number: the button says 3, the total stored is 3 + Pilates */
+  if(k==='days'&&asetOthN()){var _on=asetOthN();q=_t('וכמה אימוני כוח בשבוע?');why=fitMeWhy('days');body='<div class="as-grid">';
+    for(i=1;i<=Math.min(6,7-_on);i++)body+=asetChoice('days',i+_on,nfmt(i));body+='</div>';}
+  else if(k==='days'){q=fitMeQuestion('days');why=fitMeWhy('days');body='<div class="as-grid">';for(i=0;i<GENPROG_DAYS.length;i++)body+=asetChoice('days',GENPROG_DAYS[i],nfmt(GENPROG_DAYS[i]));body+='</div>';}
   if(k==='other'){q=_t('אתה עושה כבר אימונים אחרים?');why=_t('חוץ מאימוני כוח. נשמור להם ימים בשבוע, והתוכנית תיבנה סביבם.');
     body='<div class="as-grid">';for(i=0;i<FIT_OTHER.length;i++)body+=asetChoice('other',FIT_OTHER[i],esc(wtLabel(FIT_OTHER[i])),'',1);
     body+=asetChoice('other','none',_t('לא'),'',1)+'</div>';}
-  if(k==='otherN'){q=_t('כמה מהם בשבוע?');why=_t('השאר יהיו אימוני כוח.');
-    body='<div class="as-grid">';for(i=1;i<t.days;i++)body+=asetChoice('otherN',i,nfmt(i));body+='</div>';}
+  if(k==='otherN'){q=_t('כמה מהם בשבוע?');why=_t('השאלה הבאה: כמה אימוני כוח.');
+    body='<div class="as-grid">';for(i=1;i<=5;i++)body+=asetChoice('otherN',i,nfmt(i));body+='</div>';}
   if(k==='minutes'){q=fitMeQuestion('minutes');body='<div class="as-grid">';[20,30,45,60,75,90].forEach(function(m){body+=asetChoice('minutes',m,_t('{n} דקות',{n:m}));});body+='</div>';}
   if(k==='exp'){q=fitMeQuestion('exp');for(i=0;i<GENPROG_EXP.length;i++)body+=asetChoice('exp',GENPROG_EXP[i][0],esc(_t(GENPROG_EXP[i][1])),genExpSub(GENPROG_EXP[i][0]));}
   if(k==='equip'){q=fitMeQuestion('equip');for(i=0;i<GEN_EQUIP_ORDER.length;i++)body+=asetChoice('equip',GEN_EQUIP_ORDER[i],genEquipLabel(GEN_EQUIP_ORDER[i]),genEquipSub(GEN_EQUIP_ORDER[i]));}
@@ -25787,8 +25799,8 @@ function fitWeekName(e){return !e||e.type==='rest'?_t('מנוחה'):e.type==='st
 /* a day's name fits its seventh of the width: the longest word shrinks a little rather than break
    in the middle (Ganzkörper did) - and below that, hyphens:auto breaks it where the language does */
 function fitWkPx(label){
-  var w=0;String(label).split(/s+/).forEach(function(x){w=Math.max(w,homeTextW(x,10,700));});
-  return w>40?Math.max(8,Math.floor(400/w*10)/10):10;
+  var w=0;String(label).split(/\s+/).forEach(function(x){w=Math.max(w,homeTextW(x,12,700));});
+  return w>40?Math.max(9,Math.floor(480/w*10)/10):12;
 }
 function fitWeekRowHTML(wk,edit){
   var h='<div class="fwk">',i,e,tag=edit?'button':'div';
@@ -26021,11 +26033,9 @@ function renderFitWelcome(){
   for(i=0;i<order.length;i++){
     var day=byDay[order[i]],dsets=0;
     for(j=0;j<day.length;j++)dsets+=day[j].sets;
-    h+='<div class="gn-c"><div class="gn-h">'+esc(progDayLabel(order[i]))+
-       ' \u00b7 '+_t('{n} סטים',{n:dsets})+'</div>';
+    h+='<div class="gn-c"><div class="fw-dh"><b>'+esc(progDayLabel(order[i]))+'</b><span>'+_t('{n} סטים',{n:dsets})+'</span></div>';
     for(j=0;j<day.length;j++)
-      h+='<div class="gn-s">'+esc(exLabel(day[j].name))+' \u00b7 '+
-         _t('{n} סטים',{n:day[j].sets})+'</div>';
+      h+='<div class="fw-ex"><b>'+esc(exLabel(day[j].name))+'</b><span>'+_t('{n} סטים',{n:day[j].sets})+'</span></div>';
     h+='</div>';
   }
   h+='<div class="gn-c"><div class="gn-s">'+_t('אחרי שישה שבועות — שבוע הקלה, ואז ממשיכים. התוכנית מתחלפת כל 6–8 שבועות.')+'</div></div>';
@@ -31136,10 +31146,10 @@ function renderViewProgram(){
   for(k=0;k<7;k++){e=wk['w0d'+k];if(e&&e.prog===prog.id)(when[e.pday||'']=when[e.pday||'']||[]).push(k);}
   for(i=0;i<order.length;i++){
     d=order[i];
-    h+='<div class="gn-c"><div class="gn-h">'+esc(progDayLabel(d)||progLabel(prog.name))+'</div>';
-    if(when[d])h+='<div class="gn-s">'+esc(when[d].map(function(k){return dfmt(dayShift(k-appNow().getDay())+'T12:00:00',{weekday:'long'});}).join(' \u00b7 '))+'</div>';
+    h+='<div class="gn-c"><div class="fw-dh"><b>'+esc(progDayLabel(d)||progLabel(prog.name))+'</b></div>';
+    if(when[d])h+='<div class="fw-when">'+esc(when[d].map(function(k){return dfmt(dayShift(k-appNow().getDay())+'T12:00:00',{weekday:'long'});}).join(' \u00b7 '))+'</div>';
     for(j=0;j<by[d].length;j++)
-      h+='<div class="gn-s">'+esc(exLabel(by[d][j].name))+' \u00b7 '+_t('{n} סטים',{n:by[d][j].sets})+' &times; '+_t('{n} חזר',{n:by[d][j].targetReps})+'</div>';
+      h+='<div class="fw-ex"><b>'+esc(exLabel(by[d][j].name))+'</b><span>'+_t('{n} סטים',{n:by[d][j].sets})+' &times; '+_t('{n} חזר',{n:by[d][j].targetReps})+'</span></div>';
     h+='<button class="gn-go" style="margin-top:12px" onclick="fitProgStart('+_fitProgIdx+','+i+',1)">'+_t('להתחיל')+'</button></div>';
   }
   document.getElementById('content').innerHTML=h+'</div>';
