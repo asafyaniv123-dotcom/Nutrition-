@@ -11482,7 +11482,11 @@ button.fwk-d{cursor:pointer}
 .fask-re{display:block;margin:2px auto 8px}
 .fw-more{display:block;margin:10px auto 0}
 .fw-ex{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0}
-.fw-ex b{font-size:15px;font-weight:600;color:var(--nu-ink,#4a453f);min-width:0}
+.fw-ex b{font-size:15px;font-weight:600;color:var(--nu-ink,#4a453f);min-width:0;flex:1}
+.fw-ex{align-items:center}
+.fw-vid{width:52px;height:52px;flex:none;border-radius:14px;object-fit:cover;background:#120d08;display:block}
+.as-n5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.as-n5 .as-o{padding:13px 0;align-items:center}
 .fw-ex span{font-size:13px;color:var(--nu-muted,#6d675e);flex:none}
 .fw-tile{border-radius:16px;padding:12px 14px;box-shadow:inset 2px 3px 6px var(--nu-shade-soft,rgba(168,160,148,.3)),inset -2px -2px 5px var(--nu-lit,rgba(255,255,255,.95))}
 .fw-tile b{display:block;font-size:20px;font-weight:800;color:var(--nu-ink,#4a453f);line-height:1.2}
@@ -12185,7 +12189,7 @@ function asetOpen(a,upd){
   _aset={a:a,upd:!!upd,steps:asetSteps(a,upd),i:0,t:{hl:[],goal:nqGoalOf(p)||'',pace:nqPaceOf(p),sex:p.sex||(g1==='m'||g1==='f'?g1:''),
     preg:p.preg===true?'yes':p.preg===false?'no':'',by:parseInt(p.birthYear,10)||0,height:parseFloat(p.height)||0,weight:kg||0,
     tw:weighCfg().goal||0,day:p.dayType||'',train:p.trainWeek!==undefined?+p.trainWeek:-1,
-    out:(o.out||[]).slice(),days:+o.days||0,minutes:+o.minutes||0,exp:o.exp||'',equip:genEquip(),limits:(o.limits||[]).slice(),other:(o.other||[]).slice(),otherN:+o.otherN||0,oMode:Object.assign({},o.oMode||{}),oFix:JSON.parse(JSON.stringify(o.oFix||{}))}};
+    out:(o.out||[]).slice(),days:+o.days||0,minutes:+o.minutes||0,exp:o.exp||'',equip:o.equipDone?genEquipList():[],limits:(o.limits||[]).slice(),other:(o.other||[]).slice(),otherN:+o.otherN||0,oMode:Object.assign({},o.oMode||{}),oFix:JSON.parse(JSON.stringify(o.oFix||{}))}};
   var ov=document.getElementById('as-ov');if(!ov){ov=document.createElement('div');ov.id='as-ov';ov.className='as-ov';document.body.appendChild(ov);}
   if(_aset.steps.length)asetPaint();else asetGoals();
 }
@@ -12206,6 +12210,7 @@ function asetMode(x,v){_aset.t.oMode[x]=v;asetPaint();}
 /* yes opens the sports, no answers the question */
 function asetOtherYes(v){var t=_aset.t;if(v){_aset.oYes=1;t.other=t.other.filter(function(x){return x!=='none';});}   // i18n-exempt: a stored key
   else{_aset.oYes=0;_aset.spShown=0;t.other=['none'];}asetPaint();}   // i18n-exempt: a stored key
+function asetCnt(x,c){var t=_aset.t;t.oCnt=t.oCnt||{};t.oCnt[x]=c;t.otherN=0;asetOth('v').forEach(function(y){t.otherN+=t.oCnt[y]||0;});asetPaint();}
 function asetFix(x,d){var F=_aset.t.oFix,L=F[x]=(F[x]||[]),j=L.indexOf(d);if(j>=0)L.splice(j,1);else L.push(d);L.sort();asetPaint();}
 function asetSkip(k){var t=_aset.t;if(k==='oMode')return !asetOth().length;if(k==='oDays')return !asetOth('f').length;if(k==='otherN')return !asetOth('v').length;if(k==='hack'||k==='hconds'||k==='hcoach')return t.health!=='yes';if(k==='add')return t.gate!=='no';if(k==='goal'||k==='out')return t.gate==='no'&&t.add!=='yes';
   if(k==='preg')return t.sex!=='f';if(k==='pace')return t.goal!=='lose';if(k==='tw')return t.goal!=='lose'&&t.goal!=='gain';return false;}
@@ -12218,7 +12223,7 @@ function asetMove(d){
 }
 function asetSet(f,v,multi){
   var t=_aset.t;
-  if(multi){var l=t[f],j=l.indexOf(v),ex=f==='limits'||f==='other';if(ex&&v==='none')l.splice(0,l.length);else if(ex)l=t[f]=l.filter(function(x){return x!=='none';});   // i18n-exempt: a stored key
+  if(multi){var l=t[f],j=l.indexOf(v),ex=f==='limits'||f==='other'||f==='equip';if(ex&&v==='none')l.splice(0,l.length);else if(ex)l=t[f]=l.filter(function(x){return x!=='none';});   // i18n-exempt: a stored key
     j=t[f].indexOf(v);if(j>=0)t[f].splice(j,1);else t[f].push(v);}
   else t[f]=v;
   asetPaint();
@@ -12302,8 +12307,8 @@ function asetReady(){
   if(k==='birth')return t.by>0;if(k==='height')return +t.height>0;if(k==='weight')return +t.weight>0;
   if(k==='preg')return !!t.preg;if(k==='pace')return !!PACE_CUT[t.pace];if(k==='day')return !!DAY_FACTOR[t.day];
   if(k==='tw')return !!t.twSkip||nutriTargetOk(t.height,t.tw);if(k==='train')return t.train>=0;
-  if(k==='out')return t.out.length>0;if(k==='days')return t.days>asetOthN();if(k==='minutes')return t.minutes>0;
-  if(k==='other')return t.other.length>0;if(k==='otherN')return t.otherN>0;if(k==='oMode')return asetOth().every(function(x){return !!t.oMode[x];});if(k==='oDays')return asetOth('f').every(function(x){return (t.oFix[x]||[]).length>0;});if(k==='exp')return !!t.exp;if(k==='equip')return !!t.equip;if(k==='limits')return t.limits.length>0;if(k==='health')return !!t.health;
+  if(k==='out')return t.out.length>0;if(k==='days')return asetOthN()?t.days>=asetOthN()&&_aset.dSet:t.days>0;if(k==='minutes')return t.minutes>0;
+  if(k==='other')return t.other.length>0;if(k==='otherN')return asetOth('v').length>1?asetOth('v').every(function(x){return (t.oCnt||{})[x]>0;}):t.otherN>0;if(k==='oMode')return asetOth().every(function(x){return !!t.oMode[x];});if(k==='oDays')return asetOth('f').every(function(x){return (t.oFix[x]||[]).length>0;});if(k==='exp')return !!t.exp;if(k==='equip')return t.equip.length>0;if(k==='limits')return t.limits.length>0;if(k==='health')return !!t.health;
   if(k==='hack')return t.ack==='yes';if(k==='hconds')return t.hl.length>0;if(k==='hcoach')return !!t.coach;
   return true;
 }
@@ -12337,9 +12342,9 @@ function asetFinish(){
     if(_aset.steps.indexOf('out')>=0){o.out=t.out.slice();o.outDone=1;}
     if(t.days)o.days=t.days;if(t.minutes)o.minutes=t.minutes;
     if(_aset.steps.indexOf('other')>=0){o.other=t.other.filter(function(x){return x!=='none';});   // i18n-exempt: a stored key
-      o.otherN=o.other.length?Math.max(0,Math.min(asetOthN(),t.days-1)):0;o.oMode={};o.oFix={};
+      o.otherN=o.other.length?Math.max(0,Math.min(asetOthN(),t.days)):0;o.oMode={};o.oFix={};
       o.other.forEach(function(x){if(t.oMode[x])o.oMode[x]=t.oMode[x];if(t.oMode[x]==='f')o.oFix[x]=(t.oFix[x]||[]).slice();});o.otherDone=1;}if(t.exp)o.exp=t.exp;
-    if(_aset.steps.indexOf('equip')>=0){o.equipDone=1;try{localStorage.setItem(GEN_EQUIP_KEY,t.equip);}catch(e){}}
+    if(_aset.steps.indexOf('equip')>=0){o.equipDone=1;try{localStorage.setItem(GEN_EQUIP_KEY,t.equip.join(','));}catch(e){}}
     if(_aset.steps.indexOf('limits')>=0){o.limits=t.limits.slice();o.limitsDone=1;}
     o.noteDone=1;
     try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
@@ -12440,7 +12445,7 @@ function asetPaint(nudge){
     body='<div class="as-grid nq-grid">';for(i=0;i<=7;i++)body+=asetChoice('train',i,nfmt(i));body+='</div>';}
   /* with other training, strength is its own number: the button says 3, the total stored is 3 + Pilates */
   if(k==='days'&&asetOthN()){var _on=asetOthN();q=_t('וכמה אימוני כוח בשבוע?');why=fitMeWhy('days');body='<div class="as-grid">';
-    for(i=1;i<=6;i++)body+=asetChoice('days',i+_on,nfmt(i));body+='</div>';}
+    for(i=0;i<=6;i++)body+=asetChoice('days',i+_on,nfmt(i)).replace('onclick="','onclick="_aset.dSet=1;');body+='</div>';}
   else if(k==='days'){q=fitMeQuestion('days');why=fitMeWhy('days');body='<div class="as-grid">';for(i=0;i<GENPROG_DAYS.length;i++)body+=asetChoice('days',GENPROG_DAYS[i],nfmt(GENPROG_DAYS[i]));body+='</div>';}
   if(k==='other'){q=_t('אתה עושה כבר אימונים אחרים?');why=_t('חוץ מאימוני כוח. נשמור להם ימים בשבוע, והתוכנית תיבנה סביבם.');
     var _yes=_aset.oYes||t.other.filter(function(x){return x!=='none';}).length>0,_rise=_yes&&!_aset.spShown;   // i18n-exempt: a stored key
@@ -12451,8 +12456,13 @@ function asetPaint(nudge){
       _L.forEach(function(x,j){var b=asetChoice('other',x,esc(wtLabel(x)),'',1);
         body+=_rise?b.replace('class="dr-r2 as-o','style="animation-delay:'+(j*35)+'ms" class="dr-r2 as-o as-rise'):b;});
       body+='</div>';_aset.spShown=1;}}
-  if(k==='otherN'){q=asetOth('v').length===1?_t('כמה פעמים בשבוע {name}?',{name:wtLabel(asetOth('v')[0])}):_t('כמה מהם בשבוע?');why=_t('השאלה הבאה: כמה אימוני כוח.');
+  if(k==='otherN'&&asetOth('v').length===1){q=_t('כמה פעמים בשבוע {name}?',{name:wtLabel(asetOth('v')[0])});why=_t('השאלה הבאה: כמה אימוני כוח.');
     body='<div class="as-grid">';for(i=1;i<=5;i++)body+=asetChoice('otherN',i,nfmt(i));body+='</div>';}
+  /* two or more: one row each, the name above its own numbers - "how many of them" named nothing */
+  else if(k==='otherN'){q=_t('כמה פעמים בשבוע כל אחד?');why=_t('השאלה הבאה: כמה אימוני כוח.');
+    asetOth('v').forEach(function(x){body+='<div class="as-oml">'+esc(wtLabel(x))+'</div><div class="as-n5">';
+      for(var c=1;c<=5;c++)body+='<button class="dr-r2 as-o'+((t.oCnt||{})[x]===c?' on':'')+'" onclick="asetCnt(\''+x+'\','+c+')"><b>'+nfmt(c)+'</b></button>';
+      body+='</div>';});}
   /* each other training answers for itself: the same days every week, or different ones */
   if(k==='oMode'){q=_t('באותם ימים כל שבוע?');
     asetOth().forEach(function(x){body+='<div class="as-oml">'+esc(wtLabel(x))+'</div><div class="as-grid as-om">'+
@@ -12464,7 +12474,7 @@ function asetPaint(nudge){
       body+='</div>';});}
   if(k==='minutes'){q=fitMeQuestion('minutes');body='<div class="as-grid">';[20,30,45,60,75,90].forEach(function(m){body+=asetChoice('minutes',m,_t('{n} דקות',{n:m}));});body+='</div>';}
   if(k==='exp'){q=fitMeQuestion('exp');for(i=0;i<GENPROG_EXP.length;i++)body+=asetChoice('exp',GENPROG_EXP[i][0],esc(_t(GENPROG_EXP[i][1])),genExpSub(GENPROG_EXP[i][0]));}
-  if(k==='equip'){q=fitMeQuestion('equip');for(i=0;i<GEN_EQUIP_ORDER.length;i++)body+=asetChoice('equip',GEN_EQUIP_ORDER[i],genEquipLabel(GEN_EQUIP_ORDER[i]),genEquipSub(GEN_EQUIP_ORDER[i]));}
+  if(k==='equip'){q=fitMeQuestion('equip');why=_t('אפשר לבחור יותר מאחת.');for(i=0;i<GEN_EQUIP_ORDER.length;i++)body+=asetChoice('equip',GEN_EQUIP_ORDER[i],genEquipLabel(GEN_EQUIP_ORDER[i]),genEquipSub(GEN_EQUIP_ORDER[i]),1);}
   if(k==='limits'){q=fitMeQuestion('limits');why=_t('אפשר לבחור יותר מאחת.');body='<div class="as-grid">';for(i=0;i<FIT_ME_LIMITS.length;i++)body+=asetChoice('limits',FIT_ME_LIMITS[i][0],esc(_t(FIT_ME_LIMITS[i][1])),'',1);body+='</div>';}
   if(k==='hack'){q=_t('לפני שבוחרים');body=asetChk('ack','yes',_t('אני מבין/ה שזה מידע כללי ולא ייעוץ רפואי. ההתאמות מבוססות על המלצות של גופים רפואיים, אבל הן לא מותאמות אישית, לא מחליפות רופא, ואני מחליט/ה מה לעשות. לפני שינוי בפעילות או בתזונה אתייעץ עם הרופא שלי.'));}
   if(k==='hconds'){q=_t('מצב רפואי שהאפליקציה תתחשב בו');why=_t('אפשר לבחור יותר מאחת.');for(i=0;i<HL_IDS.length;i++)body+=asetChoice('hl',HL_IDS[i],esc(hlName(HL_IDS[i])),'',1);}
@@ -25230,7 +25240,7 @@ function genPick(opt){
   var doable=function(e){
     var q=e.q||[];
     for(var z=0;z<q.length;z++)if(!have[q[z]])return false;
-    if(place&&GEN_GEAR[e.id]&&GEN_GEAR[e.id].indexOf(place)<0)return false;
+    if(place&&GEN_GEAR[e.id]&&!genPlaceIn(GEN_GEAR[e.id],place))return false;
     if(GEN_BARE[place]&&e.lv==='מתקדם')return false;   // i18n-exempt: a level key from the library, compared
     return true;
   };
@@ -25604,14 +25614,26 @@ var GEN_GEAR={x22:['gym','park'],x55:['gym','park'],x65:['gym'],x156:['gym'],x19
    "no equipment" asks for (Asaf, 20 Nov) */
 var GEN_BARE={none:1,bands:1,home:1};   // i18n-exempt: place keys
 var GEN_EQUIP_ORDER=['gym','home','bands','park','none'];   // i18n-exempt: stored keys, drawn through genEquipLabel
-function genEquip(){
-  var v;try{v=localStorage.getItem(GEN_EQUIP_KEY);}catch(e){}
-  return GEN_EQUIP[v]?v:'gym';   // i18n-exempt: a stored key, not a label
+/* MORE THAN ONE PLACE (27 Nov, "they may combine"): stored as "home,park". One place is itself; several
+   are 'mix' - the equipment of all of them, the gear any of them has, and bare only when every one is */
+var GEN_MIX=[];
+function genEquipList(){
+  var v='';try{v=localStorage.getItem(GEN_EQUIP_KEY)||'';}catch(e){}
+  var L=v.split(',').filter(function(k){return GEN_EQUIP_ORDER.indexOf(k)>=0;});
+  return L.length?L:['gym'];   // i18n-exempt: a stored key, not a label
 }
+function genEquip(){
+  var L=genEquipList();if(L.length===1)return L[0];
+  var u=[];L.forEach(function(k){GEN_EQUIP[k].forEach(function(q){if(u.indexOf(q)<0)u.push(q);});});
+  GEN_EQUIP.mix=u;GEN_MIX=L;GEN_BARE.mix=L.every(function(k){return !!GEN_BARE[k];})?1:0;
+  return 'mix';   // i18n-exempt: a stored key, not a label
+}
+function genPlaceIn(list,place){return place==='mix'?GEN_MIX.some(function(k){return list.indexOf(k)>=0;}):list.indexOf(place)>=0;}
 /* The label for one of the three, alone in a function - the shape
    weightUnit() established, and the shape find-translated-data allows. The
    keys stay bare data: they are stored and compared, never shown. */
 function genEquipLabel(v){
+  if(v==='mix')return GEN_MIX.map(genEquipLabel).join(' \u00b7 ');
   if(v==='home')return ''+_t('בבית')+'';
   if(v==='bands')return ''+_t('גומיות ומזרן')+'';
   if(v==='park')return ''+_t('בחוץ')+'';
@@ -25621,6 +25643,7 @@ function genEquipLabel(v){
 /* what each answer means, under it - the line that turns three bare words
    into a choice somebody can actually make */
 function genEquipSub(v){
+  if(v==='mix')return '';
   if(v==='home')return ''+_t('משקולות יד, ספסל וגומיות')+'';
   if(v==='bands')return ''+_t('בבית, בלי משקולות')+'';
   if(v==='park')return ''+_t('מתח, ספסל ומדרגות בגינה')+'';
@@ -25830,7 +25853,7 @@ function renderFitBuild(){
 var FIT_OTHER=['cardio','walk','yoga','pilates','swim','cycle','hiit','dance','football','basketball','tennis','padel','martial','boxing','climb','volley','surf','skate','iceskate','ski','ride','row','other'];   // i18n-exempt: WORKOUT_TYPES ids, drawn through wtLabel
 function wtHidden(id,cur){var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===id;})[0];return !!(t&&t.more&&id!==cur&&(fitMe().other||[]).indexOf(id)<0);}
 function wtLabel(id){var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===id;})[0];return t?t.label:'';}
-function fitStrengthDays(me){me=me||fitMe();var d=+me.days||3,o=(me.other||[]).length?(+me.otherN||0):0;return Math.max(1,d-o);}
+function fitStrengthDays(me){me=me||fitMe();var d=+me.days||3,o=(me.other||[]).length?(+me.otherN||0):0;return o>0?Math.max(0,d-o):Math.max(1,d);}
 /* THE WEEK IS PLACED, NOT LAID ON SLOTS (27 Nov). Fixed training sits on its own days; changing
    training sits where she said it is THIS week (or last week, until she says); what she changed by
    hand stays; strength takes the free days spread as far apart as they go - no two in a row where it
@@ -25883,6 +25906,12 @@ function fitWeekFor(p,me,hand){
   for(i=0;i<7;i++)if(!wk[i])wk[i]={type:'rest'};
   return wk;
 }
+/* the plan is read with its loops beside it, the same ones the library plays */
+function fitExVid(name){
+  var e=exByName(name);if(!e||!EX_DEMO[exDemoId(e)])return '<span class="fw-vid"></span>';
+  var still=false;try{still=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(x){}
+  return '<video class="fw-vid" src="'+exDemoUrl(exDemoId(e))+'" muted loop playsinline preload="metadata"'+(still?'':' autoplay')+' aria-hidden="true"></video>';
+}
 function fitWeekName(e){return !e||e.type==='rest'?_t('מנוחה'):e.type==='strength'?fitPlanName(e)+(e.with?' + '+wtLabel(e.with):''):wtLabel(e.type);}
 /* a day's name fits its seventh of the width: the longest word shrinks a little rather than break
    in the middle (Ganzkörper did) - and below that, hyphens:auto breaks it where the language does */
@@ -25902,7 +25931,7 @@ function fitWeekRowHTML(wk,edit){
 /* a day of the week being drawn, changed: the plan's own days, her other training, or rest */
 function fitWeekPick(i){
   if(!_fitW||!_fitW.week)return;
-  var P=fitWPlan(),days=[],opts=[],j,h;
+  var P=fitStrengthDays()?fitWPlan():{exercises:[]},days=[],opts=[],j,h;
   for(j=0;j<P.exercises.length;j++)if(days.indexOf(P.exercises[j].day||'')<0)days.push(P.exercises[j].day||'');
   days.forEach(function(dk){opts.push({type:'strength',label:'',prog:P.id,pday:dk});});
   (fitMe().other||[]).forEach(function(t){opts.push({type:t,label:''});});
@@ -25955,7 +25984,7 @@ function fitAskAgainHTML(){return (!_fitAsk&&fitVaryTypes().length&&!fitAskDue()
 function fitAskSave(){
   if(!_fitAsk)return;
   try{localStorage.setItem('fit_wk_ans',JSON.stringify({wk:fitWeekKey(),days:_fitAsk}));}catch(e){}
-  _fitAsk=null;fitWeekRedo();showToast('&#10003; '+_t('השבוע סודר'));renderFitness();
+  _fitAsk=null;fitWeekRedo();showToast('✓ '+_t('השבוע סודר'));renderFitness();
 }
 /* the saved plan placed again around this week's answer */
 function fitWeekRedo(){
@@ -26020,6 +26049,8 @@ function fitWPerSession(p){
   for(var k in by)if(by.hasOwnProperty(k)&&by[k]>m)m=by[k];
   return m;
 }
+function fitWSaveWeek(){var me=fitMe();me.hand=(_fitW&&_fitW.hand)||{};try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(me));}catch(e){}
+  fitWeekWrite((_fitW&&_fitW.week)||fitWeekFor(null,me,me.hand));_fitW=null;showToast('✓ '+_t('השבוע נשמר'));_fitView='home';renderFitness();}
 function fitWAgain(){if(_fitW){_fitW.built=false;_fitW.plan=null;renderFitness();}}
 function fitWSave(){
   /* the one that was DRAWN, not a fresh one - genPick's order is stable but
@@ -26033,7 +26064,7 @@ function fitWSave(){
   var me0=fitMe();me0.hand=(_fitW&&_fitW.hand)||{};try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(me0));}catch(e){}
   fitWeekWrite((_fitW&&_fitW.week)||fitWeekFor(p,me0,me0.hand));
   _fitProgIdx=progs.length-1;_fitW=null;
-  showToast('&#10003; '+_t('התוכנית נבנתה'));
+  showToast('✓ '+_t('התוכנית נבנתה'));
   _fitView='home';renderFitness();
 }
 
@@ -26099,6 +26130,14 @@ function renderFitWelcome(){
     return void(document.getElementById('content').innerHTML=h+'</div>');
   }
 
+  /* NO STRENGTH AT ALL (27 Nov): the other training is the week, and there is no plan to build */
+  if(!fitStrengthDays(me)){
+    _fitW.week=_fitW.week||fitWeekFor(null,me,_fitW.hand);
+    h+='<div class="gn-c"><div class="fw-sum-t">'+_t('השבוע שלך')+'</div>'+fitWeekRowHTML(_fitW.week,1)+'</div>';
+    h+='<button class="gn-go" onclick="fitWSaveWeek()">'+_t('שמור את השבוע')+'</button>';
+    h+='<button class="fq-later" onclick="fitWSkip()">'+_t('אימון בלי תוכנית')+'</button>';
+    return void(document.getElementById('content').innerHTML=h+'</div>');
+  }
   /* ── THE PART THAT WAS MISSING: what it all adds up to ── */
   var sp=progSplitFor(fitStrengthDays(me),me.exp||'new'),I=PROG_SPLITS[sp],names=[];
   for(i=0;i<I.days.length;i++)names.push(progDayLabel(I.days[i][0]));
@@ -26150,10 +26189,9 @@ function renderFitWelcome(){
     for(j=0;j<day.length;j++)dsets+=day[j].sets;
     h+='<div class="gn-c"><div class="fw-dh"><b>'+esc(progDayLabel(order[i]))+'</b><span>'+_t('{n} סטים',{n:dsets})+'</span></div>';
     for(j=0;j<day.length;j++)
-      h+='<div class="fw-ex"><b>'+esc(exLabel(day[j].name))+'</b><span>'+_t('{n} סטים',{n:day[j].sets})+'</span></div>';
+      h+='<div class="fw-ex">'+fitExVid(day[j].name)+'<b>'+esc(exLabel(day[j].name))+'</b><span>'+_t('{n} סטים',{n:day[j].sets})+'</span></div>';
     h+='</div>';
   }
-  h+='<div class="gn-c"><div class="gn-s">'+_t('אחרי שישה שבועות — שבוע הקלה, ואז ממשיכים. התוכנית מתחלפת כל 6–8 שבועות.')+'</div></div>';
   h+='<button class="gn-go" onclick="fitWSave()">'+_t('שמור את התוכנית')+'</button>';
   h+='<div class="gn-g"><button class="fq-later" onclick="fitWAgain()">'+_t('בנה לי אחרת')+'</button></div>';
   return void(document.getElementById('content').innerHTML=h+'</div>');
@@ -26214,7 +26252,7 @@ function genProgSave(){
   try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(me0));}catch(e){}
   fitWeekWrite(fitWeekFor(p,me0));
   _genProg=null;
-  showToast('&#10003; '+_t('התוכנית נבנתה'));
+  showToast('✓ '+_t('התוכנית נבנתה'));
   _fitView='home';renderFitness();
 }
 
@@ -31282,7 +31320,7 @@ function renderViewProgram(){
     h+='<div class="gn-c"><div class="fw-dh"><b>'+esc(progDayLabel(d)||progLabel(prog.name))+'</b></div>';
     if(when[d])h+='<div class="fw-when">'+esc(when[d].map(function(k){return dfmt(dayShift(k-appNow().getDay())+'T12:00:00',{weekday:'long'});}).join(' \u00b7 '))+'</div>';
     for(j=0;j<by[d].length;j++)
-      h+='<div class="fw-ex"><b>'+esc(exLabel(by[d][j].name))+'</b><span>'+_t('{n} סטים',{n:by[d][j].sets})+' &times; '+_t('{n} חזר',{n:by[d][j].targetReps})+'</span></div>';
+      h+='<div class="fw-ex">'+fitExVid(by[d][j].name)+'<b>'+esc(exLabel(by[d][j].name))+'</b><span>'+_t('{n} סטים',{n:by[d][j].sets})+' &times; '+_t('{n} חזר',{n:by[d][j].targetReps})+'</span></div>';
     h+='<button class="gn-go" style="margin-top:12px" onclick="fitProgStart('+_fitProgIdx+','+i+',1)">'+_t('להתחיל')+'</button></div>';
   }
   document.getElementById('content').innerHTML=h+'</div>';
