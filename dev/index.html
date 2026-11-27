@@ -8072,7 +8072,7 @@ html body.mod-home .hdial{position:relative;margin:22px auto 4px;border-radius:5
   -webkit-user-select:none;user-select:none}
 html body.mod-home .hdial-rim{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 html body.mod-home .hdial-n{font-size:10.5px;font-weight:800;fill:#9a928b;font-family:inherit;transition:opacity .25s}
-html body.mod-home .hdial-n.under{opacity:0}
+html body.mod-home .hdial-n.under,html body.mod-home .rim-tk.under{opacity:0}
 /* the notch the focused area sits under */
 html body.mod-home .hdial-notch{position:absolute;left:50%;top:-15px;width:4px;height:11px;margin-left:-2px;border-radius:2px;
   background:#d6cfc7;box-shadow:inset 1px 1px 2px rgba(150,140,128,.6)}
@@ -8191,6 +8191,30 @@ html body.mod-home.tod-night .hdisc-ic{
 html body.mod-home.tod-night .hdisc.on .hdisc-ic{
   box-shadow:0 -2px 8px var(--nu-lit),0 8px 16px var(--nu-shade),
     0 0 24px 7px color-mix(in srgb,var(--area,#a49a8e) 40%,transparent)}
+/* THE DIAL IS THE COMP (27 Nov): its plate behind, its seats moving over it, nothing recoloured */
+html body.mod-home .hdial.hplate{background:none}
+html body.mod-home .hdial.hplate::before{content:"";position:absolute;left:50%;top:50%;width:377px;height:377px;
+  margin:-188.5px 0 0 -188.5px;background:var(--plate) center/100% 100% no-repeat;pointer-events:none}
+html body.mod-home .hdial.hplate .rim-sh,html body.mod-home .hdial.hplate .rim-ch,html body.mod-home .hdial.hplate .rim-lip,
+html body.mod-home .hdial.hplate .hdial-n{display:none}
+html body.mod-home .hdial.hplate .rim-tk{stroke:rgba(150,138,128,.6)}
+html body.mod-home .hdial.hplate .hdisc-ic.hseat{width:72.4px;height:72.4px;margin-top:-15.2px;margin-bottom:-8px;
+  background:var(--art) no-repeat;background-size:300% 300%;background-position:calc(var(--hc) * 50%) calc(var(--hr) * 50%);
+  box-shadow:none}
+html body.mod-home .hdial.hplate .hdisc.on .hdisc-ic.hseat{box-shadow:none}
+html body.mod-home .hdial.hplate .hdisc.heard .hdisc-ic.hseat{
+  box-shadow:0 0 0 2.5px color-mix(in srgb,var(--area,#a49a8e) 75%,transparent),0 0 26px 10px color-mix(in srgb,var(--area,#a49a8e) 55%,transparent)}
+/* the well is the plate's own: no button drawn over it, only the moon and its name */
+html body.mod-home .hdial.hplate .chub{width:102px;height:102px;margin:-51px 0 0 -51px;background:none;box-shadow:none}
+html body.mod-home .hdial.hplate .chub:active{box-shadow:none;opacity:.85}
+html body.mod-home .hdial.hplate .chub::before,html body.mod-home .hdial.hplate .chub::after{display:none}
+html body.mod-home .hdial.hplate .chub-ic.hart{position:absolute;left:9.4px;top:-.8px;width:90px;height:90px;
+  background:var(--art) center/100% 100% no-repeat;box-shadow:none}
+html body.mod-home .hdial.hplate .chub-t{position:absolute;left:0;right:0;bottom:8px;text-align:center;
+  font-family:"Frank Ruhl Libre",Georgia,serif;font-size:13.5px;font-weight:700}
+/* the names in the serif the questions are set in (סיום יום, תובנות), not the bold sans of the controls */
+html body.mod-home .hdial.hplate .hdisc-t{font-family:"Frank Ruhl Libre",Georgia,serif;font-size:12px;font-weight:500;
+  letter-spacing:.01em;color:var(--nu-ink);opacity:.78}
 /* under the dial, what comes next is one raised line, not a headline */
 html body.mod-home .home-board:has(.hdial)~#home-today .hnext,
 html body.mod-home .home-board:has(.hdial)~.td-wrap .hnext{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;
@@ -50120,11 +50144,18 @@ function homeFanHTML(hub,rest,all){
    so the dial opens where it was left. */
 var DIAL_KEY='home_dial_at';
 var _dialRot=0,_dialN=0,_dialIds=[];
-var DIAL_S=360,DIAL_RING=118,DIAL_RIM=170;
+var DIAL_S=360,DIAL_RING=112,DIAL_RIM=170;
 function dialDir(){return document.documentElement.dir==='rtl'?-1:1;}
 function dialStep(){return _dialN?360/_dialN:0;}
 /* the rotation that brings item i to the notch */
 function dialRotFor(i){return -dialDir()*i*dialStep();}
+var HOME_SEAT={nutrition:0,fitness:1,hobbies:2,insights:3,people:4,planning:5,closet:6};
+function homeArtIc(a,cls){
+  var n=HOME_SEAT[a.id],sheet='home-seats',k='hseat';
+  if(a.id==='endofday'){n=0;sheet='home-moon';k='hart';}
+  if(n==null)return '<span class="'+cls+'" style="color:'+a.color+'">'+a.svg+'</span>';
+  return '<span class="'+cls+' '+k+'" style="color:'+a.color+';--hc:'+(n%3)+';--hr:'+Math.floor(n/3)+';--art:url('+liveBase()+'assets/'+sheet+'.webp)"></span>';
+}
 function homeDialHTML(hub,rest){
   var i,a,at=0,saved='';
   try{saved=localStorage.getItem(DIAL_KEY)||'';}catch(e){}
@@ -50132,18 +50163,18 @@ function homeDialHTML(hub,rest){
   for(i=0;i<rest.length;i++){_dialIds[_dialIds.length]=rest[i].id;if(rest[i].id===saved)at=i;}
   _dialRot=_dialShown=_dialTarget=dialRotFor(at);_dialMode='';_dialVel=0;_dialThen=null;
   var h='<div class="hdial-cap" id="hdial-cap" aria-live="polite"><b></b><span></span></div>'+
-    '<div class="hdial" style="width:'+DIAL_S+'px;height:'+DIAL_S+'px">'+
+    '<div class="hdial hplate" style="width:'+DIAL_S+'px;height:'+DIAL_S+'px;--plate:url('+liveBase()+'assets/home-plate.webp)">'+
     '<svg class="hdial-rim" id="hdial-rim" viewBox="'+(-DIAL_S/2)+' '+(-DIAL_S/2)+' '+DIAL_S+' '+DIAL_S+'" aria-hidden="true">'+dialRimInner()+'</svg>'+
     '<span class="hdial-notch"></span>';
   for(i=0;i<rest.length;i++){
     a=rest[i];
     h+='<button class="hdisc" data-area="'+a.id+'" data-i="'+i+'" style="--area:'+a.color+'">'+
-       '<span class="hdisc-ic" style="color:'+a.color+'">'+a.svg+'</span>'+
+       homeArtIc(a,'hdisc-ic')+
        '<span class="hdisc-t">'+a.title+'</span>'+
        '<span class="hdisc-s">'+a.sub+'</span></button>';
   }
   if(hub)h+='<button class="chub" data-area="'+hub.id+'" style="--area:'+hub.color+';--fill:'+hubFill().toFixed(2)+'">'+
-       '<span class="chub-ic" style="color:'+hub.color+'">'+hub.svg+'</span>'+
+       homeArtIc(hub,'chub-ic')+
        '<span class="chub-t">'+hub.title+'</span></button>';
   return h+'</div>';
 }
@@ -50162,7 +50193,7 @@ function dialLay(root){
        the channel above (Asaf, 3 Nov), and steps down the 7px the glyph
        grows below its own box, so the two never touch */
     near=Math.max(0,1-dist/dialStep());near=near*near*(3-2*near);
-    els[i].querySelector('.hdisc-ic').style.transform='scale('+(1+near/3).toFixed(3)+')';
+    els[i].querySelector('.hdisc-ic').style.transform='scale('+(1+near/5).toFixed(3)+')';
     els[i].querySelector('.hdisc-t').style.transform=near?'translateY('+(near*7).toFixed(1)+'px)':'';
   }
   for(i=0;i<els.length;i++)els[i].classList.toggle('on',i===best);
@@ -50185,7 +50216,7 @@ function dialCapSet(b){
 /* an hour numeral that a label is lying on steps aside, by measurement */
 function dialNumFree(d){
   d=d||document.querySelector('.hdial');if(!d)return;
-  var ns=d.querySelectorAll('.hdial-n'),ls=d.querySelectorAll('.hdisc-t'),i,j,a,b,hit;
+  var ns=d.querySelectorAll('.hdial-n,.rim-tk'),ls=d.querySelectorAll('.hdisc-t'),i,j,a,b,hit;
   for(i=0;i<ns.length;i++){
     a=ns[i].getBoundingClientRect();hit=false;
     for(j=0;j<ls.length&&!hit;j++){
@@ -50292,8 +50323,7 @@ function dialRimInner(){
      '<circle r="'+R+'" fill="none" class="rim-lip" stroke-width="1.4" transform="translate(-.8,-1.2)"/>';
   /* hour ticks inside the channel, the four quarters as numbers */
   for(i=0;i<24;i++){
-    if(i%6===0)continue;
-    var a=dialHourAng(i*60),q0=pt(a,R-11),q1=pt(a,R-(i%3===0?16:14));
+    var a=dialHourAng(i*60),q0=pt(a,R-14),q1=pt(a,R-21);
     h+='<line x1="'+q0[0].toFixed(1)+'" y1="'+q0[1].toFixed(1)+'" x2="'+q1[0].toFixed(1)+'" y2="'+q1[1].toFixed(1)+'" class="rim-tk" stroke-width="1.2" stroke-linecap="round"/>';
   }
   for(i=6;i<=24;i+=6){
