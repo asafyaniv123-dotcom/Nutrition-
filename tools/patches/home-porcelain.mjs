@@ -45,9 +45,9 @@ html body.mod-home .hdial.hplate .chub::before,html body.mod-home .hdial.hplate 
 html body.mod-home .hdial.hplate .chub-ic.hart{position:absolute;left:9.4px;top:-.8px;width:90px;height:90px;
   background:var(--art) center/100% 100% no-repeat;box-shadow:none}
 html body.mod-home .hdial.hplate .chub-t{position:absolute;left:0;right:0;bottom:8px;text-align:center;
-  font-family:"Frank Ruhl Libre",Georgia,serif;font-size:13.5px;font-weight:700}
-/* the names in the serif the questions are set in (סיום יום, תובנות), not the bold sans of the controls */
-html body.mod-home .hdial.hplate .hdisc-t{font-family:"Frank Ruhl Libre",Georgia,serif;font-size:12px;font-weight:500;
+  font-size:13.5px;font-weight:700}
+/* the names in the caption's own face above the dial (Asaf, 27 Nov: "like this"), not a serif of their own */
+html body.mod-home .hdial.hplate .hdisc-t{font-size:12px;font-weight:600;
   letter-spacing:.01em;color:var(--nu-ink);opacity:.78}
 /* under the dial, what comes next is one raised line, not a headline */`],
   [String.raw`var DIAL_S=360,DIAL_RING=118,DIAL_RIM=170;`,
