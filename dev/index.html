@@ -6900,6 +6900,24 @@ html body.mod-insights .ins-was-t{color:var(--nu-ink)}
 .ins-deep-a{flex:1;border:none;border-radius:14px;padding:12px;font-family:inherit;font-size:13.5px;
   font-weight:800;cursor:pointer}
 .ins-ask-t{font-size:10px;font-weight:800;margin-bottom:6px}
+.ins-dig-w{margin:2px auto 20px}
+.ins-deep-w{margin:2px 0 20px}
+/* THE PORCELAIN (27 Nov): a cell of assets/ins-art.webp, 3 across and 3 down, drawn at --s */
+.ins-pz{display:block;flex:none;width:var(--s);height:var(--s);background-repeat:no-repeat;
+  background-size:calc(var(--s) * 3) calc(var(--s) * 3);
+  background-position:calc(var(--s) * var(--c) * -1) calc(var(--s) * var(--r) * -1);
+  -webkit-mask:radial-gradient(closest-side,#000 72%,transparent 100%);mask:radial-gradient(closest-side,#000 72%,transparent 100%)}
+.ins-tile .ins-pz{--s:74px;margin:-10px -8px 4px}
+.ins-hero{--s:132px;margin:-4px auto 8px}
+/* the question, asked the way סיום יום asks one */
+.ins-qt{font-size:19px;font-weight:800;line-height:1.42;text-wrap:balance;margin-bottom:18px}
+.ins-qt-t{font-size:11px;font-weight:700;margin-bottom:6px}
+.ins-ta.ins-lined{font-family:"Frank Ruhl Libre",Georgia,serif;font-size:16px;line-height:34px;padding:12px 18px;min-height:184px;outline:none}
+/* after the field's own background shorthand, which would wipe the lines */
+html body.mod-insights .ins-ta.ins-lined{
+  background-image:repeating-linear-gradient(transparent 0 33px,rgba(176,168,156,.32) 33px 34px);background-position:0 12px;background-attachment:local}
+html body.mod-insights .ins-qt{color:var(--nu-ink)}
+html body.mod-insights .ins-qt-t{color:var(--nu-muted)}
 .ins-card-q{font-size:11.5px;font-weight:800;line-height:1.5;margin-bottom:6px}
 html body.mod-insights .ins-dig,html body.mod-insights .ins-deep,html body.mod-insights .ins-deep-a{
   background:var(--nu-ground);color:var(--nu-ink);
@@ -43836,6 +43854,50 @@ function insDeepNext(){
   _insDeepK=insKey(_insCat,_insQ);_insDQ=insDeepPick(_insDeepK);_insDeepOpen=_insDQ!=null;
   renderInsights();
 }
+/* GO DEEPER from above: _insW is the question on show {s:scope,c,q,d} - the
+   scope is '' on the home screen or the category it was drawn in, so a card
+   drawn on one screen never appears on another. _insFrom is the screen
+   "answer" was pressed on, so saving goes back there. */
+var _insW=null,_insFrom=null;
+function insWideDraw(catId){
+  var data=loadInsights(),all=[],fresh=[];
+  INSIGHTS_CATS.forEach(function(c){
+    if(catId&&c.id!==catId)return;
+    for(var qi=0;qi<c.questions.length;qi++){
+      var k=insKey(c.id,qi),n=insDeepQs(k).length,done={};
+      (data[k]||[]).forEach(function(e){if(e&&e.dq!=null)done[e.dq]=1;});
+      for(var d=0;d<n;d++){var x={s:catId||'',c:c.id,q:qi,d:d};all.push(x);if(!done[d])fresh.push(x);}
+    }
+  });
+  var pool=fresh.length?fresh:all,w=_insW;
+  if(w&&pool.length>1)pool=pool.filter(function(x){return !(x.c===w.c&&x.q===w.q&&x.d===w.d);});
+  _insW=pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+  renderInsights();
+}
+function insWideCard(catId){
+  var arg=catId?"'"+catId+"'":'null',w=_insW&&_insW.s===(catId||'')?_insW:null;
+  if(!w)return '<button class="ins-dig ins-dig-w" onclick="insWideDraw('+arg+')">'+INS_DIG_SVG+_t('להעמיק')+'</button>';
+  var c=INSIGHTS_CATS.find(function(x){return x.id===w.c;}),dq=insDeepQs(insKey(w.c,w.q))[w.d];
+  if(!c||!dq){_insW=null;return insWideCard(catId);}
+  /* where the question comes from, small above it: on the home screen the
+     category too, since it could be any of seven */
+  var from=catId?c.questions[w.q]:c.title+' · '+c.questions[w.q];
+  var h='<div class="ins-deep ins-deep-w"><div class="ins-deep-h">'+esc(from)+'</div>';
+  h+='<div class="ins-deep-q">'+esc(dq)+'</div><div class="ins-deep-b">';
+  h+='<button class="ins-deep-o" onclick="insWideDraw('+arg+')">&#8635; '+_t('שאלה אחרת')+'</button>';
+  h+='<button class="ins-deep-a" onclick="insWideAnswer('+arg+')">'+_t('לענות')+'</button>';
+  return h+'</div></div>';
+}
+var INS_ART={self:0,emotions:1,people:2,life:3,success:4,world:5,notebook:6};
+function insArt(id,cls){
+  var n=INS_ART[id];if(n==null)return '';
+  return '<span class="ins-pz'+(cls?' '+cls:'')+'" style="background-image:url('+liveBase()+'assets/ins-art.webp);--c:'+(n%3)+';--r:'+Math.floor(n/3)+'"></span>';
+}
+function insWideAnswer(catId){
+  var w=_insW;if(!w)return;
+  _insCat=w.c;_insQ=w.q;_insDQ=w.d;_insFrom=catId?'cat':'home';_insW=null;
+  _insView='entry';renderInsights();
+}
 
 function loadInsights(){try{var x=localStorage.getItem('insights_data');return x?JSON.parse(x):{};}catch(e){return{};}}
 function saveInsights(obj){try{localStorage.setItem('insights_data',JSON.stringify(obj));}catch(e){}}
@@ -43895,15 +43957,15 @@ function renderInsHome(){
   var data=loadInsights();
   var h='<div style="padding-bottom:30px">';
   h+='<div class="ins-intro">'+_t('כשיש לך תובנה על החיים — תרשום אותה כאן.')+'</div>';
+  h+=insWideCard(null);
   h+='<div class="ins-grid">';
   for(var ci=0;ci<INSIGHTS_CATS.length;ci++){
     var cat=INSIGHTS_CATS[ci];
     var totalEntries=0;
     for(var qi=0;qi<cat.questions.length;qi++)totalEntries+=(data[insKey(cat.id,qi)]||[]).length;
-    /* the category's colour survives as the ONE thing it draws: a line icon
-       in its own raised square. It is what tells the seven apart. */
+    /* each category is a porcelain object - it is what tells the seven apart */
     h+='<button class="ins-tile" onclick="_insCat=\''+cat.id+'\';_insView=\'cat\';renderInsights()">';
-    h+='<span class="ins-ic" style="color:'+cat.color+'">'+insIcon(cat.id)+'</span>';
+    h+=insArt(cat.id);
     h+='<span class="ins-tile-t">'+cat.title+'</span>';
     h+='<span class="ins-tile-s">'+_t('{n} שאלות',{n:cat.questions.length})+
        (totalEntries?' &middot; '+_t('{n} רשומות',{n:totalEntries}):'')+'</span>';
@@ -43921,6 +43983,8 @@ function renderInsCat(){
   document.getElementById('hdr-title').textContent=cat.title;
   var h='<div style="padding-bottom:30px">';
   h+='<button class="ins-back" onclick="_insView=\'home\';renderInsights()">&#8249; '+_t('חזרה')+'</button>';
+  h+=insArt(cat.id,'ins-hero');
+  h+=insWideCard(cat.id);
   for(var qi=0;qi<cat.questions.length;qi++){
     var q=cat.questions[qi];
     var entries=data[insKey(cat.id,qi)]||[];
@@ -43948,20 +44012,11 @@ function renderInsQ(){
   document.getElementById('hdr-title').textContent=esc(q);
   var h='<div style="padding-bottom:30px">';
   h+='<button class="ins-back" onclick="_insView=\'cat\';renderInsights()">&#8249; '+esc(cat.title)+'</button>';
-  /* the question is pressed INTO the plaster and what you wrote is raised out
-     of it: the prompt is the surface, your answer is the thing lying on it */
-  h+='<div class="ins-ask" style="--c:'+cat.color+'">'+esc(q)+'</div>';
+  /* the question as סיום יום asks one; what you wrote is raised out of the surface */
+  h+=insArt(cat.id,'ins-hero');
+  h+='<div class="ins-qt">'+esc(q)+'</div>';
   var ik=insKey(cat.id,_insQ),dqs=insDeepQs(ik);
   if(_insDeepK!==ik){_insDQ=null;_insDeepOpen=false;_insDeepK=ik;}
-  if(dqs.length){
-    if(_insDeepOpen&&_insDQ!=null&&dqs[_insDQ]){
-      h+='<div class="ins-deep"><div class="ins-deep-h">'+_t('שאלה לעומק')+'</div>';
-      h+='<div class="ins-deep-q">'+esc(dqs[_insDQ])+'</div><div class="ins-deep-b">';
-      h+='<button class="ins-deep-o" onclick="insDeepNext()">&#8635; '+_t('שאלה אחרת')+'</button>';
-      h+='<button class="ins-deep-a" onclick="_insView=\'entry\';renderInsights()">'+_t('לענות')+'</button>';
-      h+='</div></div>';
-    } else h+='<button class="ins-dig" onclick="insDeepNext()">'+INS_DIG_SVG+_t('חפור עמוק יותר')+'</button>';
-  }
   for(var ei=entries.length-1;ei>=0;ei--){
     var e=entries[ei];
     var dd=new Date(e.date);
@@ -44000,10 +44055,10 @@ function renderInsEntry(){
   var dq=_insDQ!=null?insDeepQs(insKey(_insCat,_insQ))[_insDQ]:null;
   document.getElementById('hdr-title').textContent=''+_t('תובנה חדשה')+'';
   var h='<div style="padding-bottom:30px">';
-  h+='<button class="ins-back" onclick="_insView=\'q\';renderInsights()">&#8249; '+esc(q)+'</button>';
-  h+='<div class="ins-ask" style="--c:'+cat.color+'">'+(dq?'<div class="ins-ask-t">'+esc(q)+'</div>'+esc(dq):esc(q))+'</div>';
-  h+='<div class="ins-lbl">'+_t('התובנה שלך')+'</div>';
-  h+='<textarea id="ins-text" class="ins-ta" rows="5" placeholder="'+_t("כתוב כאן...")+'">'+esc(draft.text||'')+'</textarea>';
+  h+='<button class="ins-back" onclick="_insView=_insFrom||\'q\';_insFrom=null;renderInsights()">&#8249; '+esc(_insFrom==='home'?_t('תובנות'):_insFrom==='cat'?cat.title:q)+'</button>';
+  h+=insArt(cat.id,'ins-hero');
+  h+='<div class="ins-qt">'+(dq?'<div class="ins-qt-t">'+esc(q)+'</div>'+esc(dq):esc(q))+'</div>';
+  h+='<textarea id="ins-text" class="ins-ta ins-lined" rows="5" placeholder="'+_t("כתוב כאן...")+'">'+esc(draft.text||'')+'</textarea>';
   h+='<div class="ins-was">';
   h+='<div class="ins-was-h">'+_t('שיניתי דעה? (אופציונלי)')+'</div>';
   h+='<div class="ins-lbl">'+_t('פעם חשבתי:')+'</div>';
@@ -44033,7 +44088,7 @@ function saveInsEntry(){
   try{var dr=loadInsDrafts(),dk=insDraftKey();if(dr[dk]){delete dr[dk];saveInsDrafts(dr);}}catch(e){}
   _insDQ=null;_insDeepOpen=false;
   showToast(''+_t('תובנה נשמרה')+' ✓');
-  _insView='q';renderInsights();
+  _insView=_insFrom||'q';_insFrom=null;renderInsights();
 }
 
 function deleteInsEntry(idx){
