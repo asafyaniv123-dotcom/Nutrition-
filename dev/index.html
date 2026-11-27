@@ -12210,10 +12210,13 @@ function asetMode(x,v){_aset.t.oMode[x]=v;asetPaint();}
 /* yes opens the sports, no answers the question */
 function asetOtherYes(v){var t=_aset.t;if(v){_aset.oYes=1;t.other=t.other.filter(function(x){return x!=='none';});}   // i18n-exempt: a stored key
   else{_aset.oYes=0;_aset.spShown=0;t.other=['none'];}asetPaint();}   // i18n-exempt: a stored key
+/* the questions only a strength plan needs, and the answer that means there will be none */
+var FIT_STRENGTH_ONLY=['minutes','exp','equip','limits'];   // i18n-exempt: step keys
+function asetNoStrength(){var t=_aset&&_aset.t;return !!(t&&_aset.a==='fitness'&&_aset.dSet&&asetOthN()&&t.days===asetOthN());}
 function asetCnt(x,c){var t=_aset.t;t.oCnt=t.oCnt||{};t.oCnt[x]=c;t.otherN=0;asetOth('v').forEach(function(y){t.otherN+=t.oCnt[y]||0;});asetPaint();}
 function asetFix(x,d){var F=_aset.t.oFix,L=F[x]=(F[x]||[]),j=L.indexOf(d);if(j>=0)L.splice(j,1);else L.push(d);L.sort();asetPaint();}
 function asetSkip(k){var t=_aset.t;if(k==='oMode')return !asetOth().length;if(k==='oDays')return !asetOth('f').length;if(k==='otherN')return !asetOth('v').length;if(k==='hack'||k==='hconds'||k==='hcoach')return t.health!=='yes';if(k==='add')return t.gate!=='no';if(k==='goal'||k==='out')return t.gate==='no'&&t.add!=='yes';
-  if(k==='preg')return t.sex!=='f';if(k==='pace')return t.goal!=='lose';if(k==='tw')return t.goal!=='lose'&&t.goal!=='gain';return false;}
+  if(asetNoStrength()&&FIT_STRENGTH_ONLY.indexOf(k)>=0)return true;if(k==='preg')return t.sex!=='f';if(k==='pace')return t.goal!=='lose';if(k==='tw')return t.goal!=='lose'&&t.goal!=='gain';return false;}
 function asetMove(d){
   var i=_aset.i+d;
   while(i>=0&&i<_aset.steps.length&&asetSkip(_aset.steps[i]))i+=d;
@@ -12736,7 +12739,8 @@ function fitMeHas(k){
 }
 function fitMePending(){
   var out=[],i;
-  for(i=0;i<FIT_ME_ORDER.length;i++)if(!fitMeHas(FIT_ME_ORDER[i]))out.push(FIT_ME_ORDER[i]);
+  var none=!fitStrengthDays();
+  for(i=0;i<FIT_ME_ORDER.length;i++)if(!fitMeHas(FIT_ME_ORDER[i])&&!(none&&FIT_STRENGTH_ONLY.indexOf(FIT_ME_ORDER[i])>=0))out.push(FIT_ME_ORDER[i]);
   return out;
 }
 function fitMeQuestion(k){
@@ -25273,7 +25277,8 @@ function genPick(opt){
     var cands=[];
     for(j=0;j<all.length;j++)
       if(!used[all[j].n]&&!all[j].st&&muscleGroupOf(all[j].n)===m&&doable(all[j]))cands.push(all[j]);
-    cands.sort(function(a,b){return pos(a)-pos(b);});
+    var av=opt.avoid||[];
+    cands.sort(function(a,b){return (av.indexOf(a.n)>=0)-(av.indexOf(b.n)>=0)||pos(a)-pos(b);});
     var n=Math.min(perMuscleCap,Math.max(1,Math.ceil(want/GEN_SETS_PER_EX)));
     var picked=cands.slice(0,n);
     /* A muscle with nothing available says so, rather than being dropped in
@@ -25567,7 +25572,7 @@ function genProgram(opt){
        notebook's "at least two sets of every exercise" */
     var per=Math.max(2,Math.round(budget/ms.length)),sets={};
     for(j=0;j<ms.length;j++)sets[ms[j]]=per;
-    var rows=genPick({muscles:ms,equip:equip,sets:sets,maxPerMuscle:sp.perMuscle}),day=[];
+    var rows=genPick({muscles:ms,equip:equip,sets:sets,maxPerMuscle:sp.perMuscle,avoid:opt.avoid}),day=[];
     for(j=0;j<rows.length;j++){
       /* a muscle with nothing available is dropped from the programme rather
          than written in as an empty row - the generator screen is where
@@ -26037,7 +26042,7 @@ function fitWSkip(){_fitW=null;_fitView='start';renderFitness();}
 function fitWPlan(){
   if(_fitW&&_fitW.plan)return _fitW.plan;
   var me=fitMe();
-  var p=genProgram({days:fitStrengthDays(me),exp:me.exp||'new',minutes:+me.minutes||60,
+  var p=genProgram({avoid:(_fitW&&_fitW.avoid)||[],days:fitStrengthDays(me),exp:me.exp||'new',minutes:+me.minutes||60,
                     goal:fitGoal().v,equip:GEN_EQUIP[genEquip()]||GEN_EQUIP.gym});
   if(_fitW){_fitW.plan=p;_fitW.week=fitWeekFor(p,me,_fitW.hand);}
   return p;
@@ -26051,7 +26056,9 @@ function fitWPerSession(p){
 }
 function fitWSaveWeek(){var me=fitMe();me.hand=(_fitW&&_fitW.hand)||{};try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(me));}catch(e){}
   fitWeekWrite((_fitW&&_fitW.week)||fitWeekFor(null,me,me.hand));_fitW=null;showToast('✓ '+_t('השבוע נשמר'));_fitView='home';renderFitness();}
-function fitWAgain(){if(_fitW){_fitW.built=false;_fitW.plan=null;renderFitness();}}
+function fitWAgain(){if(!_fitW)return;var A=_fitW.avoid=_fitW.avoid||[];
+  ((_fitW.plan&&_fitW.plan.exercises)||[]).forEach(function(x){if(A.indexOf(x.name)<0)A.push(x.name);});
+  _fitW.plan=null;_fitW.built=true;renderFitness();window.scrollTo(0,0);}
 function fitWSave(){
   /* the one that was DRAWN, not a fresh one - genPick's order is stable but
      saving a second build would still be saving something she did not see */
