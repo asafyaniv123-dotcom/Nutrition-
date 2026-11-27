@@ -12154,15 +12154,19 @@ function asetSteps(a,upd){
     if(!upd&&p.trainWeek===undefined)out.push('train');
   } else {
     if(!o.outDone)out.push('gate','add','out');
-    if(!o.otherDone)out.push('other','oMode','oDays','otherN','days');else if(!(+o.days>0))out.push('days');if(!(+o.minutes>0))out.push('minutes');
+    if(!o.otherDone||fitNeedsMode(o))out.push('other','oMode','oDays','otherN','days');else if(!(+o.days>0))out.push('days');if(!(+o.minutes>0))out.push('minutes');
     if(!o.exp)out.push('exp');if(!o.equipDone)out.push('equip');if(!o.limitsDone)out.push('limits');
   }
   if(!upd&&!hlLoad().ack&&!asetSeen('health'))out.push('health','hack','hconds','hcoach');
   return out;
 }
+/* other training stored before "same days every week?" was asked - asked once, never again */
+function fitNeedsMode(o){o=o||fitMe();return !o.oMode&&!o.modeAsked&&(o.other||[]).filter(function(x){return x!=='none';}).length>0;}   // i18n-exempt: a stored key
 function asetMaybe(a){
   if(asetSeen(a)){
     if(a==='nutrition'&&nqNeedsUpdate())asetOpen(a,true);
+    /* opened first, then marked: the steps are read from the answers as they stand */
+    if(a==='fitness'&&fitNeedsMode()){asetOpen(a,true);var _om=fitMe();_om.modeAsked=1;try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(_om));}catch(e){}}
     return;
   }
   var st=asetSteps(a);
@@ -12333,11 +12337,13 @@ function asetFinish(){
     o.noteDone=1;
     try{localStorage.setItem(FIT_ME_KEY,JSON.stringify(o));}catch(e){}
     if(o.out&&o.out.length)try{localStorage.setItem(FIT_GOAL_KEY,fitMeStyle());}catch(e){}
+    /* answered again over a saved plan: the week is placed again around the new answers */
+    if(_aset.upd&&_aset.steps.indexOf('oMode')>=0){fitWeekRedo();var _fitUpd=1;}
   }
   if(_aset.steps.indexOf('health')>=0&&t.health)asetMark('health');   /* asked once, in whichever area came first */
   if(t.health==='yes'&&t.ack==='yes'&&t.hl.length)hlSave({ack:todayStr(),on:t.hl.slice(),off:[],coach:t.coach==='yes'});
   asetClose();
-  if(a==='fitness'){_fitView=fitMePending().length?'home':'welcome';renderFitness();}else render();
+  if(a==='fitness'){_fitView=fitMePending().length||_fitUpd?'home':'welcome';renderFitness();}else render();
 }
 /* back from the goals to the last question; finishing again saves again */
 function asetGoalsBack(){if(!_aset)return;var i=_aset.steps.length-1;while(i>0&&asetSkip(_aset.steps[i]))i--;_aset.i=i;asetPaint();}
