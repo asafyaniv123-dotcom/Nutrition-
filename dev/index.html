@@ -25863,7 +25863,11 @@ function renderFitBuild(){
    WORKOUT_TYPES', so every label is already in every language. Saved, the week goes into the same
    schedule לוז האימונים shows, and today's plan day starts from the top of כושר in one tap. */
 var FIT_OTHER=['cardio','walk','yoga','pilates','swim','cycle','hiit','dance','football','basketball','tennis','padel','martial','boxing','climb','volley','surf','skate','iceskate','ski','ride','row','other'];   // i18n-exempt: WORKOUT_TYPES ids, drawn through wtLabel
-function wtHidden(id,cur){var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===id;})[0];return !!(t&&t.more&&id!==cur&&(fitMe().other||[]).indexOf(id)<0);}
+function wtHidden(id,cur){var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===id;})[0];
+  if(id===cur||id==='rest'||id==='strength')return false;
+  /* she said what she trains: her kinds, strength and rest (28 Nov) */
+  var o=(fitMe().other||[]).filter(function(x){return x!=='none';});if(o.length)return o.indexOf(id)<0;   // i18n-exempt: a stored key
+  return !!(t&&t.more);}
 function wtLabel(id){if(id==='other'){var on=((_aset&&_aset.t&&_aset.t.oName)||'').trim()||fitMe().oName;if(on)return on;}var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===id;})[0];return t?t.label:'';}
 function fitStrengthDays(me){me=me||fitMe();var d=+me.days||3,o=(me.other||[]).length?(+me.otherN||0):0;return o>0?Math.max(0,d-o):Math.max(1,d);}
 /* THE WEEK IS PLACED, NOT LAID ON SLOTS (27 Nov). Fixed training sits on its own days; changing
@@ -26913,6 +26917,7 @@ function renderFitSteps(){
   var src=loadStepsSrc(),today=todayStr(),rec=loadSteps(today),v=rec?rec.v:0;
   var linked=src.kind!=='manual';
   var h='<div style="padding-bottom:20px">';
+  h+='<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="fit-back" onclick="_fitView=\'home\';renderFitness()">&#8249; '+_t('חזרה')+'</button></div>';
 
   h+='<div style="background:var(--card);border-radius:22px;padding:22px 18px;margin-bottom:12px;box-shadow:-4px -4px 9px var(--nu-lit),5px 6px 13px var(--nu-shade-soft);text-align:center">';
   h+='<div style="font-size:10px;color:var(--muted);letter-spacing:.1em;font-weight:700;margin-bottom:12px">'+_t('היום')+'</div>';
@@ -26960,8 +26965,6 @@ function renderFitSteps(){
   h+='</div><div style="font-size:15px;color:var(--chev);flex-shrink:0">&#8250;</div></button>';
   h+='<button onclick="syncStepsNow()" style="width:100%;background:var(--surface);border:none;border-radius:12px;padding:10px;font-size:11.5px;font-weight:700;cursor:pointer;color:var(--muted);margin-top:8px;font-family:inherit">'+_t('סנכרן עכשיו')+'</button>';
   h+='</div>';
-
-  h+='<button onclick="_fitView=\'home\';renderFitness()" style="width:100%;background:var(--surface);border:none;border-radius:12px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit">&#8249; '+_t('חזרה לכושר')+'</button>';
   h+='</div>';
   document.getElementById('content').innerHTML=h;
 }
@@ -30970,7 +30973,7 @@ function renderWeeklyPlan(){
   var DAY_NAMES=[''+_t('ראשון')+'',''+_t('שני')+'',''+_t('שלישי')+'',''+_t('רביעי')+'',''+_t('חמישי')+'',''+_t('שישי')+'',''+_t('שבת')+''];
   var h='<div style="padding-bottom:20px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
-  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('תכנון לשבועיים')+'</div>';
+  h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('השבוע')+'</div>';
   h+='<button class="fit-back" onclick="_fitView=\'home\';renderFitness()">&#8249; '+_t('חזרה')+'</button>';
   h+='</div>';
 
@@ -30978,8 +30981,10 @@ function renderWeeklyPlan(){
      coloured word; a week of them was the crowd. The workout is chosen in a
      sheet, so the list itself only has to say what is planned. */
   var dowNow=appNow().getDay();
-  for(var w=0;w<2;w++){
-    h+='<div class="fwp-h">'+(w===0?_t('שבוע ראשון'):_t('שבוע שני'))+'</div><div class="fwp">';
+  /* ONE WEEK (28 Nov): week 0 is always "this week" and nothing ever rotated, so a second one was a
+     week that never arrives */
+  for(var w=0;w<1;w++){
+    h+='<div class="fwp">';
     for(var dw=0;dw<7;dw++){
       var _k='w'+w+'d'+dw,_e=weekPlan[_k]||{type:'rest'},_rest=!_e.type||_e.type==='rest';
       h+='<button class="fwp-r'+(w===0&&dw===dowNow?' now':'')+'" onclick="fitDaySheet(\''+_k+'\')">'+
@@ -30989,8 +30994,7 @@ function renderWeeklyPlan(){
     h+='</div>';
   }
 
-  // Copy week 1 to week 2
-  h+='<button onclick="copyWeekToWeek2()" style="width:100%;background:var(--surface);border:none;border-radius:14px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted)">'+_t('שכפל שבוע 1 לשבוע 2')+'</button>';
+  /* (the copy to a week two went with week two) */
   h+='</div>';
   document.getElementById('content').innerHTML=h;
 }
@@ -31004,7 +31008,7 @@ function fitDaySheet(key){
   var ov=document.createElement('div');ov.className='cf-ov fss-ov';ov.id='fss-ov';
   h='<div class="cf-card fss"><div class="cf-q" style="margin-bottom:12px">'+esc(dfmt(dayShift(+key.charAt(3)-appNow().getDay())+'T12:00:00',{weekday:'long'}))+'</div><div class="fwp-c" id="fwp-c">';
   for(i=0;i<WORKOUT_TYPES.length;i++)if(!wtHidden(WORKOUT_TYPES[i].id,cur.type))
-    h+='<button data-wt="'+WORKOUT_TYPES[i].id+'" class="'+(cur.type===WORKOUT_TYPES[i].id?'on':'')+'">'+WORKOUT_TYPES[i].label+'</button>';
+    h+='<button data-wt="'+WORKOUT_TYPES[i].id+'" class="'+(cur.type===WORKOUT_TYPES[i].id?'on':'')+'">'+esc(wtLabel(WORKOUT_TYPES[i].id))+'</button>';
   h+='</div><input id="fwp-n" class="tm-sv-in" maxlength="40" placeholder="'+esc(_t('תווית / שם האימון (אופציונלי)'))+'" value="'+esc(cur.label)+'">'+
     '<div class="tm-sv-col"><button class="cf-yes" id="fwp-ok">'+esc(_t('שמור'))+'</button>'+
     '<button class="cf-no" onclick="fitSheetClose()">'+esc(_t('ביטול'))+'</button></div></div>';
@@ -32284,6 +32288,9 @@ function wtReset(){
 /* DONE means the clock goes away. Not paused, not reset-and-waiting: the
    screen closes onto whatever she was doing, and no handle is left behind. */
 function wtDone(){
+  /* what ran, and for how long - asked about once the clock is put away (28 Nov) */
+  var _lk=_wtMode==='plan'&&_wtPlan?_wtPlan.kind:'',_lp=_wtPlan,_lm=0;
+  if(_lk&&_wtFrom){var _ls=((_wtPaused||Date.now())-_wtFrom)/1000,_lt=_lp.prep+_lp.rounds*(_lp.work+_lp.rest);_lm=Math.round(Math.min(_ls,_lt)/60);}
   if(_wtIv){clearInterval(_wtIv);_wtIv=null;}
   _wtFrom=0;_wtEnd=0;_wtPaused=0;
   _wtPlan=null;_wtPhase='';_wtRound=0;
@@ -32291,6 +32298,15 @@ function wtDone(){
   _wtOpen=false;_wtFull=false;
   wtLockOff();
   wtPaint();
+  if(_lk&&_lk!=='stretch'&&_lk!=='follow'&&_lm>=3)wtLogAsk(_lk,_lm);
+}
+/* a Tabata done is a workout done: one question, and a yes is a session in the log */
+function wtLogAsk(kind,mins){
+  askConfirm(_t('לרשום את {name} כאימון?',{name:wtPlanLabel(kind)}),_t('כן, לרשום'),function(){
+    var log=loadWorkoutLog(),e={date:Date.now(),name:wtPlanLabel(kind),timer:kind,duration:mins,exercises:[]};
+    log.push(e);saveWorkoutLog(log);_stkWorkoutDays=null;
+    showToast('✓ '+_t('נרשם: {name}',{name:e.name}));if(typeof renderFitness==='function'&&document.body.classList.contains('mod-fitness'))renderFitness();
+  },_t('לא'));
 }
 function wtMin(){_wtFull=false;wtPaint();}
 function wtOpenFull(){_wtFull=true;wtPaint();}
@@ -35454,7 +35470,7 @@ function renderFitHistory(){
     var vol=entry.exercises.reduce(function(a,ex){return a+ex.sets.reduce(function(b,s){return b+(s.weight||0)*(s.reps||0);},0);},0);
     h+='<div class="wh-c" onclick="fitOpenSummary('+i+')">';
     h+='<div class="wh-t">';
-    h+='<div class="wh-n">'+esc(entry.type?wtLabel(entry.type):entry.name)+(entry.follow?' <span class="wh-gt">'+esc(_t('אימון על זמן'))+'</span>':'')+'</div>';
+    h+='<div class="wh-n">'+esc(entry.timer?wtPlanLabel(entry.timer):entry.type?wtLabel(entry.type):entry.name)+(entry.follow?' <span class="wh-gt">'+esc(_t('אימון על זמן'))+'</span>':'')+'</div>';
     /* THE DELETE IS GONE FROM HERE, and it was the second thing read on every
        card. The whole card is a click target, so a 44px destructive control
        on its face - in the only strong colour on the screen - was a mis-aim
@@ -35514,7 +35530,7 @@ function renderFitProgress(){
   var h='<div style="padding-bottom:20px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
   h+='<div style="font-size:15px;font-weight:800;color:var(--ink)">'+_t('גרף התקדמות')+'</div>';
-  h+='<button class="fit-back" onclick="_fitView=\'home\';renderFitness()">&#8249; '+_t('חזרה')+'</button>';
+  h+='<button class="fit-back" onclick="_fitView=\'weights\';renderFitness()">&#8249; '+_t('חזרה')+'</button>';
   h+='</div>';
 
   if(exList.length===0){
