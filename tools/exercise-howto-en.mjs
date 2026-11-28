@@ -1639,13 +1639,14 @@ export const EN = {
       'Starting at full range before you have the strength to control it.'] },
 
 'היפ ת׳ראסט ברגל אחת': {
-  s: ['Sit on the floor with your upper back resting against a bench.',
+  s: ['Sit on the floor with your upper back resting against a bench or a padded box, a band around both thighs just above the knees.',
       'One foot on the floor with the knee at a right angle, the other leg lifted.',
-      'Drive your hips up to a straight line from knee to shoulder and squeeze your glutes.',
+      'Drive your hips up to a straight line from knee to shoulder, squeeze your glutes and press the working knee out against the band.',
       'Lower under control, stopping before your hips touch the floor.'],
   m: ['The hips dropping on the side of the lifted leg — they should stay level.',
       'Arching your lower back at the top instead of squeezing the glutes — that loads the lower back.',
-      'The foot too far out, which hands the work to the hamstrings.'] },
+      'The foot too far out, which hands the work to the hamstrings.',
+      'The working knee caving in towards the band.'] },
 
 'סקוואט קוזאק': {
   s: ['Stand with your feet much wider than your shoulders, toes turned out a little.',
@@ -2837,5 +2838,69 @@ export const EN = {
       'Pause at the top, then lower slowly until your hips almost touch the floor.'],
   m: ['Arching the lower back instead of extending at the hip.',
       'A surface that slides or wobbles under your heels.',
-      'Pushing through the toes instead of the heels.'] }
+      'Pushing through the toes instead of the heels.'] },
+  'פייק על כדור פיזיו': {
+  s: ['Get into a straight-arm plank with your hands under your shoulders and your shins on a stability ball.',
+      'Brace your core so your body forms one straight line from head to heels.',
+      'Keeping your legs straight, lift your hips towards the ceiling and roll the ball in towards your hands until your body forms an upside-down V.',
+      'Lower your hips slowly back to the plank, rolling the ball out again.'],
+  m: ['Bending the knees instead of keeping the legs straight.',
+      'Letting the shoulders drift back behind the hands.',
+      'Sagging in the lower back as you return to the plank.'] },
+  'ירידת מדרגה בקידה': {
+  s: ['Stand on one leg on a low box, holding one dumbbell upright against your chest.',
+      'Bend the standing knee and lower the free leg behind you and across, past the box, as in a curtsy.',
+      'Lightly tap the floor with your toes without shifting your weight onto them.',
+      'Drive through the heel of the standing foot to stand up again.'],
+  m: ['Letting the standing knee cave in.',
+      'Dropping onto the free foot instead of lowering under control.',
+      'Leaning the torso far forward.'] },
+  'דדליפט רומני ברגל אחת עם רגל בהרחקה': {
+  s: ['Stand on one leg beside a high bench and rest the other foot on it, out to the side with the leg straight.',
+      'Hold a dumbbell in one hand, the arm long in front of your thigh.',
+      'Hinge at the hip with a flat back and lower the dumbbell along the standing leg until you feel a stretch in the back of the thigh.',
+      'Drive your hips forward to stand tall again, without lifting the foot off the bench.'],
+  m: ['Rounding the back to reach lower.',
+      'Bending the standing knee into a squat.',
+      'Leaning on the leg on the bench instead of working the standing leg.'] },
+  'פלאנק דוב מרחף': {
+  s: ['Get on all fours: hands under your shoulders, knees under your hips, toes tucked under.',
+      'Brace your core and lift your knees just off the mat.',
+      'Hold with a flat back and steady breathing, the knees hovering.',
+      'To finish, lower your knees gently to the mat.'],
+  m: ['Lifting the hips high instead of keeping the back flat.',
+      'Holding your breath.',
+      'Letting the knees drift forward or back.'] },
+  'החזקת כפיפת ירך עם כדור מול קיר': {
+  s: ['Stand facing a wall and rest your forearms on it.',
+      'Lift one knee to hip height and pin a stability ball between the knee and the wall.',
+      'Drive the knee into the ball and hold, standing tall on the other leg.',
+      'Breathe steadily through the hold, then lower the leg slowly and switch sides.'],
+  m: ['Leaning back instead of standing tall.',
+      'Letting the ball slip because the knee stops pushing.',
+      'Rounding the lower back to lift the knee higher.'] },
+  'החזקת סקוואט מפוסק על טריז': {
+  s: ['Stand in a split stance with the toes of your front foot up on a wedge and the heel on the floor.',
+      'Lower your back knee until it hovers just above the floor, the front knee travelling forward over the toes.',
+      'Hold the bottom position with your torso upright and your weight on the front foot.',
+      'Breathe steadily, then drive up through the front foot and switch sides.'],
+  m: ['Letting the front heel lift off the floor.',
+      'Resting the back knee on the floor instead of holding.',
+      'Leaning the torso forward to make the hold easier.'] },
+  'קפיצה מהברכיים לסקוואט': {
+  s: ['Kneel on a mat with your shins flat on it, hips sitting back towards your heels and arms behind you.',
+      'Swing your arms forward hard and drive your hips up to pop both feet under you.',
+      'Land in a deep squat with your feet flat and your knees over your toes.',
+      'Explode straight up into a jump, land softly, and kneel back down for the next rep.'],
+  m: ['Landing on your toes instead of flat feet.',
+      'Knees caving in on the landing.',
+      'Jumping before the squat is stable.'] },
+  'קפיצה מהברכיים לסקוואט עם מוט': {
+  s: ['Kneel on a mat with a barbell across your upper back, shins flat on the mat and hips sitting back towards your heels.',
+      'Hold the bar firmly and drive your hips up hard to pop both feet under you.',
+      'Land in a deep squat with your feet flat and your chest up.',
+      'Drive up into a jump, land softly into a squat, and kneel back down with control.'],
+  m: ['A load you cannot land with control.',
+      'The bar bouncing on your neck as you land.',
+      'Knees caving in on the landing.'] }
 };

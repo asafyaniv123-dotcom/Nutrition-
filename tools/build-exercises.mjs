@@ -257,7 +257,7 @@ const RAW=[
 // ── ישבן ──
 ['היפ ת׳ראסט',M.glutes,[Q.bar,Q.bench],'Hip Thrust',['היפ תראסט','hip thrust','דחיקת אגן','היפ טראסט']],
 ['היפ ת׳ראסט במכונה',M.glutes,[Q.machine],'Machine Hip Thrust',[]],
-['היפ ת׳ראסט ברגל אחת',M.glutes,[Q.bw],'Single Leg Hip Thrust',[]],
+['היפ ת׳ראסט ברגל אחת',M.glutes,[Q.bw,Q.band],'Single Leg Hip Thrust',[]],
 ['גשר ישבן',M.glutes,[Q.bw],'Glute Bridge',['ברידג׳']],
 ['דדליפט סומו',M.glutes,[Q.bar],'Sumo Deadlift',['סומו']],
 ['סקוואט סומו',M.glutes,[Q.db],'Sumo Squat',[]],
@@ -453,7 +453,16 @@ const RAW=[
 /* x340, the id held for Cat-Cow since 16 Nov; its loop approved 19 Nov. */
 ['חתול-פרה',M.lower,[Q.bw],'Cat-Cow',['חתול פרה','קט קאו','חתול וגמל'],'x340'],
 /* x344 from Asaf's two screenshots (28 Nov): heels on a box, the body is the load - a sofa or a stable chair does at home. */
-['גשר ישבן עם רגליים מוגבהות',[M.hams,M.glutes],[Q.bw],'Elevated Glute Bridge',['גשר מוגבה','גשר עם רגליים על קופסה','גשר רגליים על ספה','ברידג׳ מוגבה'],'x344']
+['גשר ישבן עם רגליים מוגבהות',[M.hams,M.glutes],[Q.bw],'Elevated Glute Bridge',['גשר מוגבה','גשר עם רגליים על קופסה','גשר רגליים על ספה','ברידג׳ מוגבה'],'x344'],
+/* x345-x352 from Asaf's 28 Nov photos. x348 and x349 and x350 are holds: one frame, no movement. */
+['פייק על כדור פיזיו',[M.abs,M.shoulders],[Q.ball],'Stability Ball Pike',['פייק על כדור','פייק בכדור']],
+['ירידת מדרגה בקידה',[M.quads,M.glutes],[Q.box,Q.db],'Curtsy Step Down',['ירידת מדרגה אלכסונית','קרטסי סטפ דאון']],
+['דדליפט רומני ברגל אחת עם רגל בהרחקה',[M.hams,M.glutes],[Q.db,Q.bench],'Single Leg Abducted Romanian Deadlift',['דדליפט רגל אחת עם רגל על ספסל']],
+['פלאנק דוב מרחף',[M.abs,M.shoulders],[Q.mat],'Bear Plank Hover',['בר פלאנק','דוב מרחף','ברכיים מרחפות']],
+['החזקת כפיפת ירך עם כדור מול קיר',[M.abs],[Q.ball],'Wall Ball Isometric Hip Flexion',['ברך לכדור מול קיר']],
+['החזקת סקוואט מפוסק על טריז',[M.quads,M.glutes],[Q.bw],'Wedge Split Squat Hold',['ספליט סקוואט איזומטרי','החזקה בעמידה מפוסקת']],
+['קפיצה מהברכיים לסקוואט',[M.quads,M.glutes],[Q.mat],'Knee Jump to Squat',['קפיצת ברכיים','ניי ג׳אמפ']],
+['קפיצה מהברכיים לסקוואט עם מוט',[M.quads,M.glutes],[Q.bar],'Barbell Knee Jump to Squat',['קפיצת ברכיים עם מוט']]
 ];
 
 const list=RAW.map(function(r,i){
