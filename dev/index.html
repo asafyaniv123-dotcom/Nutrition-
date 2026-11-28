@@ -11467,6 +11467,7 @@ button.fwk-d{cursor:pointer}
 .as-oml{font-size:15px;font-weight:800;color:var(--nu-ink,#4a453f);margin:14px 0 6px}
 .as-om{grid-template-columns:1fr 1fr}
 .as-sp{margin-top:14px}
+#as-ov .as-oname{margin:12px 0 0;text-align:start}
 .as-rise{animation:asRise .38s cubic-bezier(.2,.8,.2,1) both}
 @keyframes asRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.as-rise{animation:none}}
@@ -12189,7 +12190,7 @@ function asetOpen(a,upd){
   _aset={a:a,upd:!!upd,steps:asetSteps(a,upd),i:0,t:{hl:[],goal:nqGoalOf(p)||'',pace:nqPaceOf(p),sex:p.sex||(g1==='m'||g1==='f'?g1:''),
     preg:p.preg===true?'yes':p.preg===false?'no':'',by:parseInt(p.birthYear,10)||0,height:parseFloat(p.height)||0,weight:kg||0,
     tw:weighCfg().goal||0,day:p.dayType||'',train:p.trainWeek!==undefined?+p.trainWeek:-1,
-    out:(o.out||[]).slice(),days:+o.days||0,minutes:+o.minutes||0,exp:o.exp||'',equip:o.equipDone?genEquipList():[],limits:(o.limits||[]).slice(),other:(o.other||[]).slice(),otherN:+o.otherN||0,oMode:Object.assign({},o.oMode||{}),oFix:JSON.parse(JSON.stringify(o.oFix||{}))}};
+    out:(o.out||[]).slice(),days:+o.days||0,minutes:+o.minutes||0,exp:o.exp||'',equip:o.equipDone?genEquipList():[],limits:(o.limits||[]).slice(),other:(o.other||[]).slice(),otherN:+o.otherN||0,oMode:Object.assign({},o.oMode||{}),oFix:JSON.parse(JSON.stringify(o.oFix||{})),oName:o.oName||''}};
   var ov=document.getElementById('as-ov');if(!ov){ov=document.createElement('div');ov.id='as-ov';ov.className='as-ov';document.body.appendChild(ov);}
   if(_aset.steps.length)asetPaint();else asetGoals();
 }
@@ -12230,6 +12231,8 @@ function asetSet(f,v,multi){
     j=t[f].indexOf(v);if(j>=0)t[f].splice(j,1);else t[f].push(v);}
   else t[f]=v;
   asetPaint();
+  /* "other" is a name to type, so the line it opens takes the keyboard at once */
+  if(f==='other'&&v==='other'&&t.other.indexOf('other')>=0){var oi=document.getElementById('as-oname');if(oi){oi.focus();oi.scrollIntoView({block:'center'});}}   // i18n-exempt: a stored key
 }
 /* ── A NUMBER ON A WHEEL ──
    The birth year, the height and the weights are chosen, not typed: the
@@ -12311,7 +12314,7 @@ function asetReady(){
   if(k==='preg')return !!t.preg;if(k==='pace')return !!PACE_CUT[t.pace];if(k==='day')return !!DAY_FACTOR[t.day];
   if(k==='tw')return !!t.twSkip||nutriTargetOk(t.height,t.tw);if(k==='train')return t.train>=0;
   if(k==='out')return t.out.length>0;if(k==='days')return asetOthN()?t.days>=asetOthN()&&_aset.dSet:t.days>0;if(k==='minutes')return t.minutes>0;
-  if(k==='other')return t.other.length>0;if(k==='otherN')return asetOth('v').length>1?asetOth('v').every(function(x){return (t.oCnt||{})[x]>0;}):t.otherN>0;if(k==='oMode')return asetOth().every(function(x){return !!t.oMode[x];});if(k==='oDays')return asetOth('f').every(function(x){return (t.oFix[x]||[]).length>0;});if(k==='exp')return !!t.exp;if(k==='equip')return t.equip.length>0;if(k==='limits')return t.limits.length>0;if(k==='health')return !!t.health;
+  if(k==='other')return t.other.length>0&&(t.other.indexOf('other')<0||!!(t.oName||'').trim());if(k==='otherN')return asetOth('v').length>1?asetOth('v').every(function(x){return (t.oCnt||{})[x]>0;}):t.otherN>0;if(k==='oMode')return asetOth().every(function(x){return !!t.oMode[x];});if(k==='oDays')return asetOth('f').every(function(x){return (t.oFix[x]||[]).length>0;});if(k==='exp')return !!t.exp;if(k==='equip')return t.equip.length>0;if(k==='limits')return t.limits.length>0;if(k==='health')return !!t.health;
   if(k==='hack')return t.ack==='yes';if(k==='hconds')return t.hl.length>0;if(k==='hcoach')return !!t.coach;
   return true;
 }
@@ -12346,7 +12349,7 @@ function asetFinish(){
     if(t.days)o.days=t.days;if(t.minutes)o.minutes=t.minutes;
     if(_aset.steps.indexOf('other')>=0){o.other=t.other.filter(function(x){return x!=='none';});   // i18n-exempt: a stored key
       o.otherN=o.other.length?Math.max(0,Math.min(asetOthN(),t.days)):0;o.oMode={};o.oFix={};
-      o.other.forEach(function(x){if(t.oMode[x])o.oMode[x]=t.oMode[x];if(t.oMode[x]==='f')o.oFix[x]=(t.oFix[x]||[]).slice();});o.otherDone=1;}if(t.exp)o.exp=t.exp;
+      o.other.forEach(function(x){if(t.oMode[x])o.oMode[x]=t.oMode[x];if(t.oMode[x]==='f')o.oFix[x]=(t.oFix[x]||[]).slice();});o.otherDone=1;o.oName=o.other.indexOf('other')>=0?(t.oName||'').trim():'';}if(t.exp)o.exp=t.exp;
     if(_aset.steps.indexOf('equip')>=0){o.equipDone=1;try{localStorage.setItem(GEN_EQUIP_KEY,t.equip.join(','));}catch(e){}}
     if(_aset.steps.indexOf('limits')>=0){o.limits=t.limits.slice();o.limitsDone=1;}
     o.noteDone=1;
@@ -12458,7 +12461,9 @@ function asetPaint(nudge){
       body+='<div class="as-grid as-sp">';
       _L.forEach(function(x,j){var b=asetChoice('other',x,esc(wtLabel(x)),'',1);
         body+=_rise?b.replace('class="dr-r2 as-o','style="animation-delay:'+(j*35)+'ms" class="dr-r2 as-o as-rise'):b;});
-      body+='</div>';_aset.spShown=1;}}
+      body+='</div>';
+      if(t.other.indexOf('other')>=0)body+='<input id="as-oname" class="tm-sv-in as-oname" maxlength="30" enterkeyhint="done" placeholder="'+esc(_t('מה זה? למשל: קרוספיט'))+'" value="'+esc(t.oName||'')+'" oninput="_aset.t.oName=this.value">';   // i18n-exempt: a stored key
+      _aset.spShown=1;}}
   if(k==='otherN'&&asetOth('v').length===1){q=_t('כמה פעמים בשבוע {name}?',{name:wtLabel(asetOth('v')[0])});why=_t('השאלה הבאה: כמה אימוני כוח.');
     body='<div class="as-grid">';for(i=1;i<=5;i++)body+=asetChoice('otherN',i,nfmt(i));body+='</div>';}
   /* two or more: one row each, the name above its own numbers - "how many of them" named nothing */
@@ -25857,7 +25862,7 @@ function renderFitBuild(){
    schedule לוז האימונים shows, and today's plan day starts from the top of כושר in one tap. */
 var FIT_OTHER=['cardio','walk','yoga','pilates','swim','cycle','hiit','dance','football','basketball','tennis','padel','martial','boxing','climb','volley','surf','skate','iceskate','ski','ride','row','other'];   // i18n-exempt: WORKOUT_TYPES ids, drawn through wtLabel
 function wtHidden(id,cur){var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===id;})[0];return !!(t&&t.more&&id!==cur&&(fitMe().other||[]).indexOf(id)<0);}
-function wtLabel(id){var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===id;})[0];return t?t.label:'';}
+function wtLabel(id){if(id==='other'){var on=((_aset&&_aset.t&&_aset.t.oName)||'').trim()||fitMe().oName;if(on)return on;}var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===id;})[0];return t?t.label:'';}
 function fitStrengthDays(me){me=me||fitMe();var d=+me.days||3,o=(me.other||[]).length?(+me.otherN||0):0;return o>0?Math.max(0,d-o):Math.max(1,d);}
 /* THE WEEK IS PLACED, NOT LAID ON SLOTS (27 Nov). Fixed training sits on its own days; changing
    training sits where she said it is THIS week (or last week, until she says); what she changed by
@@ -26531,8 +26536,7 @@ function fitPlanName(e){
   /* a plan's day is named from the plan, in the reader's language, never stored as words */
   if(e.prog){var P0=loadPrograms().filter(function(x){return x.id===e.prog;})[0];
     return progDayLabel(e.pday||'')||(P0?progLabel(P0.name):'')||wtLabel('strength');}
-  var t=(WORKOUT_TYPES||[]).filter(function(x){return x.id===e.type;})[0];
-  return t?t.label:'';
+  return wtLabel(e.type);
 }
 function fitTodayPlan(){
   var e=fitMoved(todayStr())||loadWeekPlan()['w0d'+appNow().getDay()];
