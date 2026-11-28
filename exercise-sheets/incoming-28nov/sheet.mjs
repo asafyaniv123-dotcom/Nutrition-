@@ -8,10 +8,9 @@ const ROWS = [
   ['2  x346 NEW  Curtsy Step Down  (5505 > 5504)', 'curtsy-step-down/ref-start', 'curtsy-step-down/ref-end'],
   ['3  x347 NEW  SL Abducted Contralateral DB RDL  (5501 > 5502)', 'sl-abducted-rdl/ref-start', 'sl-abducted-rdl/ref-end'],
   ['4  x161 EXISTS, no demo  Single Leg Hip Thrust  (5506 > 5507)', 'sl-bridge-band/ref-start', 'sl-bridge-band/ref-end'],
-  ['5  x348 NEW  Bear Plank Hover - hold  (5496)', 'bear-hover/ref-start', null],
+  ['5  x348 NEW  All Fours to Single-Leg Airplane  (5496 > 5494)', 'airplane/ref-start', 'airplane/ref-end'],
   ['6  x349 NEW  Wall Ball ISO Hip Flexion - hold  (5503)', 'wall-ball-iso/ref-start', null],
-  ['7  x350 NEW  Single-Leg Airplane - END only, start missing  (5494)', null, 'airplane/ref-end'],
-  ['8  x351 NEW  Wedge Split Squat - END only, start missing  (5497)', null, 'wedge-split-squat/ref-end'],
+  ['7  x350 NEW  Wedge Split Squat ISO - hold  (5497)', 'wedge-split-squat/ref-start', null],
 ];
 const H = 420, W = 1500, LAB = 70;
 const files = [];

@@ -16,10 +16,10 @@ const J = [
   ['sl-abducted-rdl', 'ref-end', '98848be9-image.png', '820:1090:177:709'],   // IMG_5502 hinged
   ['sl-bridge-band', 'ref-start', 'c2de21be-image.png', '820:560:175:709'],   // IMG_5506 seat down
   ['sl-bridge-band', 'ref-end', '4fac9c5d-image.png', '820:560:175:709'],     // IMG_5507 seat up
-  ['bear-hover', 'ref-start', '73682afb-image.jpg', '700:330:0:170'],         // IMG_5496 hold
+  ['airplane', 'ref-start', '73682afb-image.jpg', '700:330:0:170'],           // IMG_5496 start: on all fours (Asaf, 28 Nov: same exercise as 5494)
   ['wall-ball-iso', 'ref-start', '1db28330-image.png', '820:1180:175:418'],   // IMG_5503 hold
-  ['airplane', 'ref-end', 'b40e6c6d-image.jpg', '1050:640:100:40'],          // IMG_5494 top only - start frame missing
-  ['wedge-split-squat', 'ref-end', '11bf7051-image.jpg', '880:1753:150:0'],   // IMG_5497 bottom only - start frame missing
+  ['airplane', 'ref-end', 'b40e6c6d-image.jpg', '1050:640:100:40'],          // IMG_5494 end: standing on one leg
+  ['wedge-split-squat', 'ref-start', '11bf7051-image.jpg', '880:1753:150:0'], // IMG_5497 isometric hold - one image (Asaf, 28 Nov)
 ];
 for (const [dir, name, src, crop] of J) {
   fs.mkdirSync(OUT + dir, { recursive: true });

@@ -30,7 +30,7 @@ for (const d of ['knee-jump-bw', 'knee-jump-bb']) {
 // sheet: one row per version, five poses, numbered
 const FONT = 'C\:/Windows/Fonts/arialbd.ttf';
 const rows = [];
-for (const [d, lab] of [['knee-jump-bw', 'x352 NEW  Knee Jump to Squat Jump - bodyweight (5509-5513)'], ['knee-jump-bb', 'x353 NEW  Knee Jump to Squat Jump - barbell (5514-5518)']]) {
+for (const [d, lab] of [['knee-jump-bw', '8  x351 NEW  Knee Jump to Squat Jump - bodyweight (5509-5513)'], ['knee-jump-bb', '9  x352 NEW  Knee Jump to Squat Jump - barbell (5514-5518)']]) {
   const ins = [], f = [];
   ['p1-kneel', 'p2-air', 'p3-squat', 'p4-jump', 'p5-land'].forEach((p, i) => {
     ins.push('-i', OUT + d + '/' + p + '.png');
