@@ -12188,7 +12188,7 @@ function asetOpen(a,upd){
   var p=loadProfile(),o=fitMe();
   if(a==='nutrition'){p.tgV2=1;saveProfile(p);}   /* the update screen is shown once */
   var g1=appGender(),kg=nutriKg(p);
-  _aset={a:a,upd:!!upd,steps:asetSteps(a,upd),i:0,t:{hl:[],goal:nqGoalOf(p)||'',pace:nqPaceOf(p),sex:p.sex||(g1==='m'||g1==='f'?g1:''),
+  _aset={a:a,upd:!!upd,steps:(upd&&upd.steps)||asetSteps(a,upd),i:0,t:{hl:[],goal:nqGoalOf(p)||'',pace:nqPaceOf(p),sex:p.sex||(g1==='m'||g1==='f'?g1:''),
     preg:p.preg===true?'yes':p.preg===false?'no':'',by:parseInt(p.birthYear,10)||0,height:parseFloat(p.height)||0,weight:kg||0,
     tw:weighCfg().goal||0,day:p.dayType||'',train:p.trainWeek!==undefined?+p.trainWeek:-1,
     out:(o.out||[]).slice(),days:+o.days||0,minutes:+o.minutes||0,exp:o.exp||'',equip:o.equipDone?genEquipList():[],limits:(o.limits||[]).slice(),other:(o.other||[]).slice(),otherN:+o.otherN||0,oMode:Object.assign({},o.oMode||{}),oFix:JSON.parse(JSON.stringify(o.oFix||{})),oName:o.oName||''}};
@@ -12361,8 +12361,9 @@ function asetFinish(){
   }
   if(_aset.steps.indexOf('health')>=0&&t.health)asetMark('health');   /* asked once, in whichever area came first */
   if(t.health==='yes'&&t.ack==='yes'&&t.hl.length)hlSave({ack:todayStr(),on:t.hl.slice(),off:[],coach:t.coach==='yes'});
-  asetClose();
-  if(a==='fitness'){_fitView=fitMePending().length||_fitUpd?'home':'welcome';renderFitness();}else render();
+  var _toPlan=_aset.toPlan;asetClose();
+  if(a==='fitness'&&_toPlan){_fitW={built:true,back:1};_fitView='welcome';renderFitness();window.scrollTo(0,0);}
+  else if(a==='fitness'){_fitView=fitMePending().length||_fitUpd?'home':'welcome';renderFitness();}else render();
 }
 /* back from the goals to the last question; finishing again saves again */
 function asetGoalsBack(){if(!_aset)return;var i=_aset.steps.length-1;while(i>0&&asetSkip(_aset.steps[i]))i--;_aset.i=i;asetPaint();}
@@ -24927,7 +24928,7 @@ function renderFitness(){
   else if(_fitView==='weights')document.getElementById('content').innerHTML=renderFitWeights();
   else if(_fitView==='stats')document.getElementById('content').innerHTML=renderFitStats();
   else if(_fitView==='build')renderFitBuild();
-  else if(_fitView==='genprog')renderFitGenProg();
+  else if(_fitView==='genprog'){_fitView='welcome';_fitW=_fitW||{built:false,back:1};renderFitWelcome();}   /* one builder (28 Nov) */
   else if(_fitView==='welcome')renderFitWelcome();
   else if(_fitView==='timer')renderFitTimer();
   else if(_fitView==='clock')renderFitClock();
@@ -26017,8 +26018,8 @@ function fitWeekRedo(){
    A screen rather than a card in the hub, because a card asks one question
    per visit, reappears for ever, and never adds up to anything. */
 var _fitW=null;
-function fitWOpen(){
-  _fitW={built:false};
+function fitWOpen(back){
+  _fitW={built:false,back:!!back};
   _fitView='welcome';renderFitness();
 }
 /* The greeting is not a question and is not stored - stepping past it is
@@ -26040,6 +26041,9 @@ function fitWBuild(){if(_fitW){_fitW.built=true;renderFitness();}}
 /* everything she answered is kept - it still sets the rep range and the
    rest - and she goes straight to starting a workout */
 function fitWSkip(){_fitW=null;_fitView='start';renderFitness();}
+/* every answer the plan stands on, asked again with what she said already chosen, and then a fresh plan (28 Nov) */
+function fitWAnswers(){asetOpen('fitness',{steps:['other','oMode','oDays','otherN','days','minutes','exp','equip','limits']});   // i18n-exempt: step keys
+  if(_aset){_aset.dSet=1;_aset.toPlan=1;}}
 /* THE PLAN IS BUILT BEFORE ANYTHING IS SAID ABOUT IT. The recommendation
    card used to quote a budget and the week under it listed whatever came
    out, and the two did not always agree - a session of ten exercises has a
@@ -26143,12 +26147,15 @@ function renderFitWelcome(){
     return void(document.getElementById('content').innerHTML=h+'</div>');
   }
 
+  /* came here on purpose, from a button: the way back is a button too */
+  if(_fitW.back)h+='<div style="margin-bottom:12px"><button class="fit-back" onclick="_fitW=null;_fitView=\'home\';renderFitness()">&#8249; '+_t('חזרה')+'</button></div>';
   /* NO STRENGTH AT ALL (27 Nov): the other training is the week, and there is no plan to build */
   if(!fitStrengthDays(me)){
     _fitW.week=_fitW.week||fitWeekFor(null,me,_fitW.hand);
     h+='<div class="gn-c"><div class="fw-sum-t">'+_t('השבוע שלך')+'</div>'+fitWeekRowHTML(_fitW.week,1)+'</div>';
     h+='<button class="gn-go" onclick="fitWSaveWeek()">'+_t('שמור את השבוע')+'</button>';
     h+='<button class="fq-later" onclick="fitWSkip()">'+_t('אימון בלי תוכנית')+'</button>';
+    h+='<button class="fq-later" onclick="fitWAnswers()">'+_t('לשנות את התשובות')+'</button>';
     return void(document.getElementById('content').innerHTML=h+'</div>');
   }
   /* ── THE PART THAT WAS MISSING: what it all adds up to ── */
@@ -26177,6 +26184,7 @@ function renderFitWelcome(){
     h+='<button class="gn-go" onclick="fitWBuild()">'+_t('בנה לי תוכנית')+'</button>';
     /* the line under it always said "or start without a plan" - now it can */
     h+='<button class="fq-later" onclick="fitWSkip()">'+_t('אימון בלי תוכנית')+'</button>';
+    h+='<button class="fq-later" onclick="fitWAnswers()">'+_t('לשנות את התשובות')+'</button>';
     return void(document.getElementById('content').innerHTML=h+'</div>');
   }
 
@@ -26566,7 +26574,7 @@ function fitStartSheet(){
   /* and the two ways to plan ahead, the same as "+ new program" */
   h+='</div><div class="fss-g">'+esc(_t('לתכנן מראש'))+'</div><div class="fss-l">';
   h+='<button onclick="fitSheetClose();startFitEdit(-1)"><b>'+esc(_t('כתוב תוכנית בעצמי'))+'</b><span>'+esc(_t('אימון אחד, או כמה ימים'))+'</span></button>'+
-     '<button onclick="fitSheetClose();genProgOpen()"><b>'+esc(_t('בנה לי תוכנית'))+'</b><span>'+esc(_t('האפליקציה בונה אותה בשבילך'))+'</span></button>';
+     '<button onclick="fitSheetClose();fitWOpen(1)"><b>'+esc(_t('בנה לי תוכנית'))+'</b><span>'+esc(_t('האפליקציה בונה אותה בשבילך'))+'</span></button>';
   h+='</div><button class="cf-no" style="width:100%;margin-top:12px" onclick="fitSheetClose()">'+esc(_t('ביטול'))+'</button></div>';
   ov.innerHTML=h;document.body.appendChild(ov);
   ov.onclick=function(ev){if(ev.target===ov)fitSheetClose();};
@@ -27124,7 +27132,7 @@ function fitNewProgSheet(){
   var ov=document.createElement('div');ov.className='cf-ov fss-ov';ov.id='fss-ov';
   ov.innerHTML='<div class="cf-card fss"><div class="cf-q" style="margin-bottom:12px">'+esc(_t('תוכנית חדשה'))+'</div><div class="fss-l">'+
     '<button onclick="fitSheetClose();startFitEdit(-1)"><b>'+esc(_t('כתוב תוכנית בעצמי'))+'</b><span>'+esc(_t('אימון אחד, או כמה ימים'))+'</span></button>'+
-    '<button onclick="fitSheetClose();genProgOpen()"><b>'+esc(_t('בנה לי תוכנית'))+'</b><span>'+esc(_t('האפליקציה בונה אותה בשבילך'))+'</span></button>'+
+    '<button onclick="fitSheetClose();fitWOpen(1)"><b>'+esc(_t('בנה לי תוכנית'))+'</b><span>'+esc(_t('האפליקציה בונה אותה בשבילך'))+'</span></button>'+
     '</div><button class="cf-no" style="width:100%;margin-top:12px" onclick="fitSheetClose()">'+esc(_t('ביטול'))+'</button></div>';
   document.body.appendChild(ov);
   ov.onclick=function(ev){if(ev.target===ov)fitSheetClose();};
