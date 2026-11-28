@@ -95,7 +95,7 @@ export const FAMILIES = [
     'Romanian Deadlift', 'Rumänisches Kreuzheben', 'Peso muerto rumano', 'Soulevé de terre roumain', 'Stacco rumeno', 'Stiff romeno', 'ルーマニアンデッドリフト', '罗马尼亚硬拉', '羅馬尼亞硬舉', 'الرفعة الرومانية'],
   ['כפיפת ברך', 'ירך אחורית', ['שוקיים'], '153 154 155 246 156 157 263',
     'Leg Curl', 'Beinbeugen', 'Curl femoral', 'Leg curl', 'Leg curl', 'Mesa flexora', 'レッグカール', '腿弯举', '腿彎舉', 'ثني الساق'],
-  ['היפ ת׳ראסט וגשר ישבן', 'ישבן', ['ירך אחורית'], '159 160 161 162 239 240 251',
+  ['היפ ת׳ראסט וגשר ישבן', 'ישבן', ['ירך אחורית'], '159 160 161 162 239 240 251 344',
     'Hip Thrust & Glute Bridge', 'Hip Thrust und Glute Bridge', 'Hip thrust y puente de glúteos', 'Hip thrust et pont fessier', 'Hip thrust e ponte glutei', 'Elevação pélvica e ponte', 'ヒップスラスト・グルートブリッジ', '臀推与臀桥', '臀推與臀橋', 'دفع الورك وجسر الأرداف'],
   ['סומו', 'ישבן', ['מקרבים', 'ארבע ראשי', 'זוקפי גב'], '163 164 327 328 329 330 331 332 333 334 335 336 337 338',
     'Sumo', 'Sumo', 'Sumo', 'Sumo', 'Sumo', 'Sumô', 'スモウ', '相扑', '相撲', 'السومو'],

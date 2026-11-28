@@ -451,7 +451,9 @@ const RAW=[
 /* x343 from Asaf's Lift Manual screenshot (18 Nov), its first two panels. */
 ['חיבוק ברך לחזה בעמידה',M.glutes,[Q.bw],'Standing Knee-to-Chest Stretch',['ברך לחזה בעמידה','חיבוק ברך'],'x343'],
 /* x340, the id held for Cat-Cow since 16 Nov; its loop approved 19 Nov. */
-['חתול-פרה',M.lower,[Q.bw],'Cat-Cow',['חתול פרה','קט קאו','חתול וגמל'],'x340']
+['חתול-פרה',M.lower,[Q.bw],'Cat-Cow',['חתול פרה','קט קאו','חתול וגמל'],'x340'],
+/* x344 from Asaf's two screenshots (28 Nov): heels on a box, the body is the load - a sofa or a stable chair does at home. */
+['גשר ישבן עם רגליים מוגבהות',[M.hams,M.glutes],[Q.bw],'Elevated Glute Bridge',['גשר מוגבה','גשר עם רגליים על קופסה','גשר רגליים על ספה','ברידג׳ מוגבה'],'x344']
 ];
 
 const list=RAW.map(function(r,i){

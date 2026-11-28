@@ -2829,5 +2829,13 @@ export const EN = {
       'Move slowly between the two positions with your breath.'],
   m: ['Overarching the lower back.',
       'Throwing the head back.',
-      'Rushing the movement instead of breathing through it.'] }
+      'Rushing the movement instead of breathing through it.'] },
+'גשר ישבן עם רגליים מוגבהות': {
+  s: ['Lie on your back facing a box, sofa or sturdy chair, heels on its edge and knees bent.',
+      'Rest your arms on the floor at your sides or on your hips.',
+      'Drive through your heels and lift your hips until your knees, hips and shoulders form a straight line.',
+      'Pause at the top, then lower slowly until your hips almost touch the floor.'],
+  m: ['Arching the lower back instead of extending at the hip.',
+      'A surface that slides or wobbles under your heels.',
+      'Pushing through the toes instead of the heels.'] }
 };
